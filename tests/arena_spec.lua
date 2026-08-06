@@ -36,6 +36,22 @@ local function signature(arena)
     return table.concat(parts, "|")
 end
 
+-- The same, for a raw LAYOUT (Arena.generateLayout) rather than a built arena: its tiles are plain type
+-- strings and its spawns are partySpawns/enemySpawns, with no units bound yet. Props ride along, since a
+-- board that laid its barrels somewhere else is a different board.
+local function layoutSignature(layout)
+    local parts = {}
+    for y = 1, layout.rows do
+        for x = 1, layout.cols do
+            parts[#parts + 1] = layout.tiles[y][x]
+        end
+    end
+    for _, s in ipairs(layout.partySpawns or {}) do parts[#parts + 1] = "P" .. s.x .. "," .. s.y end
+    for _, s in ipairs(layout.enemySpawns or {}) do parts[#parts + 1] = "E" .. s.x .. "," .. s.y end
+    for _, p in ipairs(layout.props or {}) do parts[#parts + 1] = "O" .. p.id .. "@" .. p.x .. "," .. p.y end
+    return table.concat(parts, "|")
+end
+
 return {
     {
         name = "same seed produces an identical arena (determinism)",
@@ -244,6 +260,142 @@ return {
                 end
             end
             assert(checked > 50, "the sweep should cover the whole quest line, saw " .. checked)
+        end,
+    },
+
+    -- ---------------------------------------------------------------------------
+    -- Ground: the overworld tile a fight was taken on shapes the board
+    -- ---------------------------------------------------------------------------
+
+    {
+        name = "ground: plain trail builds exactly the board this generator always did",
+        fn = function()
+            -- The load-bearing one. Every caller that knows nothing about ground -- draft matches, duels,
+            -- build previews, the debug harness, every stored seed -- must keep its board. `path` and
+            -- `nil` are the same board, and both are the board from before profiles existed.
+            for seed = 1, 40 do
+                local base = Arena.generateLayout({ biome = "forest", seed = seed * 13, party = 4, enemies = 3 })
+                local path = Arena.generateLayout({ biome = "forest", seed = seed * 13, party = 4, enemies = 3,
+                    ground = "path" })
+                local junk = Arena.generateLayout({ biome = "forest", seed = seed * 13, party = 4, enemies = 3,
+                    ground = "__no_such_ground" })
+                assert(layoutSignature(base) == layoutSignature(path),
+                    "ground='path' changed the default board")
+                assert(layoutSignature(base) == layoutSignature(junk),
+                    "an unknown ground should fall back to plain trail")
+            end
+        end,
+    },
+    {
+        name = "ground: the same seed and ground reproduce the same board",
+        fn = function()
+            for ground in pairs(Arena.GROUND_PROFILES) do
+                for _, biome in ipairs({ "forest", "swamp", "volcanic", "tundra" }) do
+                    local a = Arena.generateLayout({ biome = biome, seed = 90210, party = 4, enemies = 3,
+                        ground = ground })
+                    local b = Arena.generateLayout({ biome = biome, seed = 90210, party = 4, enemies = 3,
+                        ground = ground })
+                    assert(layoutSignature(a) == layoutSignature(b),
+                        "ground " .. ground .. " on " .. biome .. " is not reproducible from its seed")
+                end
+            end
+        end,
+    },
+    {
+        name = "ground: a crossing lays a channel with exactly one free ford",
+        fn = function()
+            local found = 0
+            for seed = 1, 60 do
+                local layout = Arena.generateLayout({ biome = "forest", seed = seed * 71, party = 4, enemies = 3,
+                    ground = "bridge" })
+                -- Find the channel row: the one with water on it.
+                for y = 1, layout.rows do
+                    local water, open, other = 0, 0, 0
+                    for x = 1, layout.cols do
+                        local t = layout.tiles[y][x]
+                        if t == "water" then water = water + 1
+                        elseif t == "ground" then open = open + 1
+                        else other = other + 1 end
+                    end
+                    if water > 0 then
+                        found = found + 1
+                        -- Asserted on the ford's TILE TYPE, not on reachability. Water is walkable, so a
+                        -- channel whose only gap is an obstacle still lets the party wade across and still
+                        -- passes every connectivity check -- while the profile's one fast lane is a wall.
+                        -- That is the bug this pins, and only the tile type can see it.
+                        assert(open >= 1, string.format(
+                            "seed %d row %d: a crossing with no open ford (%d water, %d blocked)",
+                            seed * 71, y, water, other))
+                        assert(water == layout.cols - open - other, "channel row accounting is off")
+                        assert(water >= layout.cols - 2, string.format(
+                            "a crossing should be a channel, not a puddle (row %d: %d water)", y, water))
+                    end
+                end
+            end
+            assert(found > 0, "no crossing profile ever laid a channel")
+        end,
+    },
+    {
+        name = "ground: no profile ever strands a spawn from the fight",
+        fn = function()
+            -- A4. The channel cannot cut a board -- water is walkable -- but the `block` scatter lays
+            -- genuinely impassable tiles (obstacle, and lava on a volcanic floor), and the rock profile
+            -- raises that count. So the connectivity this asserts is real and it is the block scatter's
+            -- to break: every party spawn must be able to reach every enemy spawn.
+            local function walkable(t)
+                local p = Arena.TILE_PROPS[t]
+                return p ~= nil and p.walkable == true
+            end
+            for ground in pairs(Arena.GROUND_PROFILES) do
+                for _, biome in ipairs({ "forest", "desert", "tundra", "volcanic", "swamp", "castle" }) do
+                    for seed = 1, 25 do
+                        local L = Arena.generateLayout({ biome = biome, seed = seed * 137, party = 4, enemies = 3,
+                            ground = ground })
+                        local from = L.partySpawns[1]
+                        assert(from, "a generated board seated no party spawn")
+                        -- Flood from the first party spawn over walkable tiles.
+                        local seen = { [from.y * 100 + from.x] = true }
+                        local q, qi = { from }, 1
+                        while qi <= #q do
+                            local c = q[qi]; qi = qi + 1
+                            for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+                                local nx, ny = c.x + d[1], c.y + d[2]
+                                local k = ny * 100 + nx
+                                if nx >= 1 and ny >= 1 and nx <= L.cols and ny <= L.rows
+                                    and not seen[k] and walkable(L.tiles[ny][nx]) then
+                                    seen[k] = true
+                                    q[#q + 1] = { x = nx, y = ny }
+                                end
+                            end
+                        end
+                        for _, e in ipairs(L.enemySpawns) do
+                            assert(seen[e.y * 100 + e.x], string.format(
+                                "%s/%s seed %d: enemy spawn %d,%d is walled off from the party",
+                                biome, ground, seed * 137, e.x, e.y))
+                        end
+                    end
+                end
+            end
+        end,
+    },
+    {
+        name = "ground: no profile ever buries a spawn under terrain",
+        fn = function()
+            for ground in pairs(Arena.GROUND_PROFILES) do
+                for _, biome in ipairs({ "forest", "volcanic", "swamp" }) do
+                    for seed = 1, 25 do
+                        local L = Arena.generateLayout({ biome = biome, seed = seed * 211, party = 4, enemies = 3,
+                            ground = ground })
+                        for _, list in ipairs({ L.partySpawns, L.enemySpawns }) do
+                            for _, s in ipairs(list) do
+                                local t = L.tiles[s.y][s.x]
+                                assert(t == "ground", string.format(
+                                    "%s/%s: a spawn opened the fight standing on %s", biome, ground, t))
+                            end
+                        end
+                    end
+                end
+            end
         end,
     },
 }

@@ -25,6 +25,7 @@
 local Tileset = require("models.tileset")
 local Biome = require("models.biome")
 local Material = require("models.material") -- cache payloads: craft grades + the sponsoring house's stock
+local Encounter = require("models.encounter") -- guaranteed stops resolve by kind off the blueprints (see guaranteedEntry)
 
 local Overworld = {}
 Overworld.__index = Overworld
@@ -996,6 +997,46 @@ function Overworld:guardBoons(params)
     self.guardedBoons = placed
 end
 
+-- ---------------------------------------------------------------------------
+-- Guaranteed stops
+-- ---------------------------------------------------------------------------
+
+-- The guarantee's two knobs, per kind. A kind absent here is seated exactly ONCE, wherever the candidate
+-- order offers first -- which is what "at least one Reliquary" has always meant, and still does.
+--
+-- REST is the only entry, and it needs both knobs. It is the run's single refund: everything else on the
+-- board spends the party's carried health and nothing else gives it back (models/player.lua), so how many
+-- rests a board holds has to track how LONG the run is rather than being a flat one. And a refund twenty
+-- tiles down a spur is not a pressure valve, it is one more boon to earn, so it is seated within `spine`
+-- tiles of the critical path.
+local GUARANTEE = {
+    rest = { per = 6, spine = 1 }, -- one rest per 6 stops, on or beside the road
+}
+
+-- Resolve a guaranteed KIND to a placeable { kind, id, name }.
+--
+-- The pool is preferred, so a quest supplying its own encounter list still decides what its Reliquary is.
+-- But the pool is WEIGHT-FILTERED -- Encounter.pool drops non-positive weights -- and some texture kinds
+-- are deliberately weight 0: a Rest is authored-only precisely so it never turns up at random or in
+-- clusters. Reading the guarantee off the pool therefore asked the wrong table. It made a DENSITY floor
+-- depend on a RANDOM-DRAW weight, and the two disagreed silently: the rest guarantee no-opped on every
+-- rolled board, which is why a run's attrition was one-way and no board ever offered a refund.
+--
+-- So fall back to the blueprint registry, by kind. Walked in sorted id order because `pairs` over the
+-- registry is unspecified and this pick has to reproduce from a seed like everything else in here.
+local function guaranteedEntry(pool, kind)
+    for _, e in ipairs(pool) do
+        if e.kind == kind then return e end
+    end
+    local ids = {}
+    for id, def in pairs(Encounter.defs) do
+        if def.kind == kind then ids[#ids + 1] = id end
+    end
+    if #ids == 0 then return nil end
+    table.sort(ids)
+    return { kind = kind, id = ids[1], name = Encounter.defs[ids[1]].name }
+end
+
 -- Place encounters on spaced trail tiles (never on start/objective/gate/key).
 -- `params.encounterCount` is a number or { min, max } range (total encounters).
 -- `params.alwaysEncounters` are guaranteed picks placed first; the rest are
@@ -1156,23 +1197,57 @@ function Overworld:placeEncounters(params)
         end
     end
 
-    -- Guaranteed VARIETY (density + mix): a rolled board must never be a wall of fights. Seat at least one
-    -- of each "texture" kind the pool offers -- a Reliquary to stock the run's relics, a Rest to mend --
-    -- when `always` didn't already. Placed like the guaranteed ids above (front candidates, spacing a
-    -- preference), all non-combat so the objective spine stays walkable. Tunable via params.guaranteeKinds;
-    -- the default is what the roguelike inner loop needs to feel like one (see models/relic.lua).
-    for _, kind in ipairs(params.guaranteeKinds or { "relic_cache", "rest" }) do
-        local have = false
-        for _, p in ipairs(placed) do if p.encounter.kind == kind then have = true; break end end
-        if not have then
-            local entry
-            for _, e in ipairs(pool) do if e.kind == kind then entry = e; break end end
-            local c = entry and cands[next_]
-            if c then
-                next_ = next_ + 1
-                c.encounter = { kind = entry.kind, id = entry.id, name = entry.name }
-                placed[#placed + 1] = c
+    -- Guaranteed VARIETY (density + mix): a rolled board must never be a wall of fights. Seat the texture
+    -- kinds -- a Reliquary to stock the run's relics, a Rest to mend -- that `always` didn't already, all
+    -- non-combat so the objective spine stays walkable. HOW MANY of each, and whether it wants to sit near
+    -- the road, is per kind (see GUARANTEE above); the roster of kinds is tunable via params.guaranteeKinds
+    -- and its default is what the roguelike inner loop needs to feel like one (see models/relic.lua).
+
+    -- How far off the critical path each walkable tile lies, computed only if some kind asks (the BFS is
+    -- cheap but this runs at generation for every board, and most guarantees don't care where they land).
+    local spineDist
+    local function withinSpine(c, radius)
+        spineDist = spineDist or self:spineDistances()
+        return (spineDist[cellKey(c)] or math.huge) <= radius
+    end
+
+    -- The next free candidate, preferring one that satisfies `prefer`. Falls back to the first free tile
+    -- of any kind, the same silent partial fallback placeKeys and placeCaches take on a cramped board --
+    -- a guarantee that cannot be honoured exactly is still better honoured somewhere than dropped.
+    --
+    -- A preferred pick can come from ANYWHERE in the list, not just the front, so `next_` is re-seated to
+    -- the first free candidate afterwards rather than blindly incremented. Taking a cell out of the middle
+    -- is safe: it now carries an encounter, and the fill loop below skips it on its own spacing rule
+    -- (a placed cell reads distance 0 to itself).
+    local function takeCandidate(prefer)
+        local pick
+        if prefer then
+            for _, c in ipairs(cands) do
+                if not c.encounter and prefer(c) then pick = c; break end
             end
+        end
+        if not pick then
+            for _, c in ipairs(cands) do
+                if not c.encounter then pick = c; break end
+            end
+        end
+        return pick
+    end
+
+    for _, kind in ipairs(params.guaranteeKinds or { "relic_cache", "rest" }) do
+        local g = GUARANTEE[kind]
+        local want = (g and g.per) and math.max(1, math.ceil((count or 0) / g.per)) or 1
+        local have = 0
+        for _, p in ipairs(placed) do if p.encounter.kind == kind then have = have + 1 end end
+        local entry = (have < want) and guaranteedEntry(pool, kind) or nil
+        local prefer = (g and g.spine) and function(c) return withinSpine(c, g.spine) end or nil
+        while entry and have < want do
+            local c = takeCandidate(prefer)
+            if not c then break end -- board is full: it simply holds fewer, as everywhere else here
+            c.encounter = { kind = entry.kind, id = entry.id, name = entry.name }
+            placed[#placed + 1] = c
+            have = have + 1
+            while cands[next_] and cands[next_].encounter do next_ = next_ + 1 end
         end
     end
 
@@ -1426,6 +1501,44 @@ end
 
 function Overworld:startCell() return self:get(self.start.x, self.start.y) end
 function Overworld:objectiveCell() return self:get(self.objective.x, self.objective.y) end
+
+-- WHAT THE GROUND AT (x, y) IS MADE OF, as one of this model's own tile-type names. The battle reads it
+-- to decide how a generated arena is laid out (models/arena.lua's GROUND_PROFILES), so a fight taken on
+-- a river crossing is a chokepoint and one taken in open grass is a long ranged exchange -- the marker
+-- you chose to walk onto is the board you fight on.
+--
+-- Answers in overworld vocabulary, deliberately. This model knows what its own tiles are; naming arena
+-- scatter profiles here would put battle concepts in the map layer. Arena owns that mapping.
+--
+-- A bridge decides outright -- a crossing is a crossing, however much forest is around it. Otherwise the
+-- 5x5 neighbourhood votes, so "beside a river" and "in a rock field" read as themselves rather than
+-- needing the party to be standing exactly on the feature. Below the threshold nothing has a claim and
+-- the answer is plain trail, which is the common case and the one that changes nothing.
+--
+-- Pure and RNG-free: the same tile always answers the same way, which is what lets the arena stay
+-- reproducible from its seed once this is threaded into it.
+local GROUND_VOTERS = { "water", "rock", "grass" } -- fixed order, so a tie breaks the same way every time
+local GROUND_MIN = 3 -- of the 24 neighbours, how many it takes for the surroundings to name the board
+function Overworld:groundAt(x, y)
+    local cell = self:get(x, y)
+    if not cell then return "path" end
+    if cell.tile == "bridge" then return "bridge" end
+
+    local tally = { water = 0, rock = 0, grass = 0 }
+    for dy = -2, 2 do
+        for dx = -2, 2 do
+            local c = self:get(x + dx, y + dy)
+            local t = c and c.tile
+            if t and tally[t] then tally[t] = tally[t] + 1 end
+        end
+    end
+
+    local best, bestN = "path", GROUND_MIN - 1
+    for _, t in ipairs(GROUND_VOTERS) do
+        if tally[t] > bestN then best, bestN = t, tally[t] end
+    end
+    return best
+end
 
 -- Walkable for an actor holding `keysHeld` (a set of keyId -> true). A gate is
 -- passable only with its matching key.

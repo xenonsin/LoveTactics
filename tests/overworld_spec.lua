@@ -768,4 +768,138 @@ return {
             end
         end,
     },
+
+    -- THE REST GUARANTEE. Both halves ratchet, because this is the failure that hid in the gap between
+    -- two files that each read correctly on their own: models/overworld.lua named "rest" in its
+    -- guaranteeKinds, data/encounters/encounter_rest.lua set weight 0 to stay out of the random draw, and
+    -- the guarantee read the WEIGHT-FILTERED pool -- so it silently found nothing and every rolled board
+    -- shipped with no refund at all. A test on either file alone would have passed.
+    {
+        name = "overworld: every rolled board carries a rest",
+        fn = function()
+            local Encounter = require("models.encounter")
+            -- The real, weight-filtered pool -- the exact table states/game.lua passes, and the one that
+            -- does NOT contain a rest. If this guarantee ever starts depending on the pool again, it fails.
+            local pool = Encounter.pool({ prestige = 3, biome = "forest" })
+            for _, e in ipairs(pool) do
+                assert(e.kind ~= "rest", "encounter_rest should stay out of the weighted pool (weight 0)")
+            end
+
+            for seed = 1, 40 do
+                local grid = Overworld.generate({
+                    biome = "forest", seed = seed * 977, encounters = pool,
+                    encounterCount = { min = 8, max = 11 },
+                    objective = { name = "Boss" }, houseMaterial = "material_iron",
+                })
+                local rests = 0
+                for y = 1, grid.rows do
+                    for x = 1, grid.cols do
+                        local enc = grid:get(x, y).encounter
+                        if enc and enc.kind == "rest" then rests = rests + 1 end
+                    end
+                end
+                assert(rests >= 1, "seed " .. seed .. " rolled a board with no rest on it")
+            end
+        end,
+    },
+    {
+        name = "overworld: a rest is seated on or beside the critical path",
+        fn = function()
+            local Encounter = require("models.encounter")
+            local pool = Encounter.pool({ prestige = 3, biome = "forest" })
+            -- One tile: the radius GUARANTEE.rest declares. A refund the party has to leave the road to
+            -- reach is another boon to earn, not the pressure valve the attrition model needs.
+            local RADIUS = 1
+
+            for seed = 1, 40 do
+                local grid = Overworld.generate({
+                    biome = "forest", seed = seed * 977, encounters = pool,
+                    encounterCount = { min = 8, max = 11 },
+                    objective = { name = "Boss" }, houseMaterial = "material_iron",
+                })
+                local dist = grid:spineDistances()
+                for y = 1, grid.rows do
+                    for x = 1, grid.cols do
+                        local c = grid:get(x, y)
+                        if c.encounter and c.encounter.kind == "rest" then
+                            local d = dist[c.y * 100000 + c.x]
+                            assert(d and d <= RADIUS,
+                                "seed " .. seed .. ": rest at " .. x .. "," .. y
+                                .. " sits " .. tostring(d) .. " tiles off the road")
+                        end
+                    end
+                end
+            end
+        end,
+    },
+    {
+        name = "overworld: a longer quest gets more rests",
+        fn = function()
+            local Encounter = require("models.encounter")
+            local pool = Encounter.pool({ prestige = 3, biome = "forest" })
+            local function restsOn(count, seed)
+                local grid = Overworld.generate({
+                    biome = "forest", seed = seed, encounters = pool, encounterCount = count,
+                    objective = { name = "Boss" }, houseMaterial = "material_iron",
+                })
+                local n = 0
+                for y = 1, grid.rows do
+                    for x = 1, grid.cols do
+                        local enc = grid:get(x, y).encounter
+                        if enc and enc.kind == "rest" then n = n + 1 end
+                    end
+                end
+                return n
+            end
+            -- One per 6 stops (GUARANTEE.rest.per): a short errand gets one refund, a 16-stop march
+            -- gets three. The run's only recovery has to scale with how long the run is.
+            for seed = 1, 12 do
+                assert(restsOn(6, seed * 31) >= 1, "a 6-stop board should carry one rest")
+                assert(restsOn(16, seed * 31) >= 3, "a 16-stop board should carry three rests")
+            end
+        end,
+    },
+
+    -- The tile a fight is TAKEN ON, which models/arena.lua lays the board out from.
+    {
+        name = "groundAt: a crossing names itself, and open trail stays plain",
+        fn = function()
+            local grid = gen()
+            -- Author a small patch directly: the census is pure and RNG-free, so it can be tested by
+            -- writing tiles rather than by hunting a seed that happens to roll one.
+            local function paint(cx, cy, tile, r)
+                for dy = -r, r do
+                    for dx = -r, r do
+                        local c = grid:get(cx + dx, cy + dy)
+                        if c then c.tile = tile end
+                    end
+                end
+            end
+            local cx, cy = 12, 10
+
+            paint(cx, cy, "path", 2)
+            assert(grid:groundAt(cx, cy) == "path", "bare trail should name no feature")
+
+            -- A bridge decides outright, however much plain trail surrounds it.
+            grid:get(cx, cy).tile = "bridge"
+            assert(grid:groundAt(cx, cy) == "bridge", "a crossing is a crossing")
+
+            -- Otherwise the neighbourhood votes, and the party need not stand on the feature itself.
+            paint(cx, cy, "path", 2)
+            for i = -2, 1 do grid:get(cx + i, cy - 2).tile = "water" end
+            assert(grid:groundAt(cx, cy) == "water", "a fight beside a river should read as one")
+
+            paint(cx, cy, "path", 2)
+            for i = -2, 2 do grid:get(cx + i, cy + 2).tile = "rock" end
+            assert(grid:groundAt(cx, cy) == "rock", "a fight in a rock field should read as one")
+
+            -- One stray tile is not a feature.
+            paint(cx, cy, "path", 2)
+            grid:get(cx + 1, cy).tile = "water"
+            assert(grid:groundAt(cx, cy) == "path", "a single tile should not name the board")
+
+            -- Off the map answers, rather than erroring.
+            assert(grid:groundAt(-5, -5) == "path", "an off-board tile should answer plain trail")
+        end,
+    },
 }

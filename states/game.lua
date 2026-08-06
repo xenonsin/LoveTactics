@@ -708,6 +708,11 @@ function game:openEncounter(cell)
         State.switch(require("states.battle"), {
             encounter = cell.encounter,
             biome = mp.biome,
+            -- What the ground under this marker is made of, so the arena is laid out like the place the
+            -- fight was picked: a crossing becomes a chokepoint, a rock field a cover fight, open grass a
+            -- ranged exchange (Overworld:groundAt -> Arena.GROUND_PROFILES). Read off the cell rather than
+            -- the quest, because it is the tile the player chose to walk onto that decides it.
+            ground = game.grid and game.grid.groundAt and game.grid:groundAt(cell.x, cell.y) or nil,
             quest = game.quest,
             -- The objective's own scene, played over the board with the general standing on it
             -- (states/battle.lua's openingConversation). This is the ONLY seam an antagonist can
@@ -899,6 +904,9 @@ function game:openEncounter(cell)
             local built = EncounterBattle.build({
                 encounter = cell.encounter,
                 biome = mp.biome,
+                -- The same ground the played fight would have been laid out on: a walk-off must resolve
+                -- the board the player could have fought, not a different one (see EncounterBattle.spec).
+                ground = game.grid and game.grid.groundAt and game.grid:groundAt(cell.x, cell.y) or nil,
                 quest = game.quest,
                 prestige = game.prestige,
                 floorLevel = game.quest and game.quest.floorLevel or nil,

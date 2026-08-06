@@ -100,6 +100,42 @@ function Arena.terrainFor(biome)
     return Arena.BIOME_TERRAIN[biome or "default"] or Arena.BIOME_TERRAIN.default
 end
 
+-- HOW THE GROUND A FIGHT IS TAKEN ON ARRANGES WHAT THE BIOME IS MADE OF.
+--
+-- The overworld tile the marker stood on (models/overworld.lua's `Overworld:groundAt`) names one of
+-- these. The split of responsibility is strict and worth keeping: the BIOME decides which tiles a board
+-- is made of (Arena.BIOME_TERRAIN), the GROUND decides how much of them there is and what shape they
+-- take. So a swamp bridge and a tundra bridge are both chokepoints, each built out of its own country.
+--
+-- Every profile makes the same three scatter draws in the same order, so only the RANGES move -- which
+-- is what keeps `path` bit-identical to the board this generator has always produced. A fight on plain
+-- trail is the common case, and it changes nothing.
+--
+-- `band` is the one structural addition: a channel of water laid after the scatters. Water is walkable
+-- at double cost (see TILE_PROPS), so a band is a SOFT chokepoint -- it taxes a crossing rather than
+-- forbidding one -- and it can never cut a board in half. That is deliberate: a hard wall across an 8x8
+-- board with a single gap hands the fight to whoever brought bows, where a slow band with a fast lane is
+-- a decision about whether the shortcut is worth the crowding.
+Arena.GROUND_PROFILES = {
+    -- Plain trail: today's board exactly, down to the draw ranges.
+    path   = { fill = { 2, 5 }, rise = { 1, 3 }, block = { 1, 3 } },
+    -- Open country. Little to stand behind and nothing to slow a charge: the long ranged exchange.
+    grass  = { fill = { 0, 2 }, rise = { 0, 1 }, block = { 0, 1 } },
+    -- A rock field. Cover everywhere, so sight lines are short and the board is fought in pockets.
+    rock   = { fill = { 2, 4 }, rise = { 2, 4 }, block = { 3, 5 } },
+    -- Beside the water: a channel down one flank, so one side of the board is slow to work around.
+    water  = { fill = { 1, 3 }, rise = { 0, 2 }, block = { 0, 2 }, band = "side" },
+    -- The crossing itself: a channel across the middle with a single free ford. The chokepoint fight.
+    bridge = { fill = { 0, 2 }, rise = { 0, 1 }, block = { 0, 1 }, band = "cross" },
+}
+
+-- The profile for `ground`, always complete. An unknown or absent ground is plain trail, so every caller
+-- that never learned about this (draft matches, duels, build previews, the debug harness) keeps the
+-- board it always had.
+function Arena.groundProfile(ground)
+    return Arena.GROUND_PROFILES[ground or "path"] or Arena.GROUND_PROFILES.path
+end
+
 -- Default objective when an encounter/quest doesn't specify one.
 local DEFAULT_OBJECTIVE = { type = "killAll" }
 
@@ -521,6 +557,13 @@ function Arena.generateLayout(params)
     end
     local enemySpawns = placeUnits({ 1, 2 }, params.enemies or 0, cols, occupied)
 
+    -- Which occupied tiles are SPAWNS, captured before any terrain is laid (at this point `occupied` holds
+    -- nothing else). The channel below cuts through whatever the scatters put down -- a river runs over a
+    -- boulder rather than politely around it, and flowing around them leaves a dotted line instead of a
+    -- channel -- but it must never open the fight with somebody already standing in the water.
+    local spawnKeys = {}
+    for k in pairs(occupied) do spawnKeys[k] = true end
+
     -- Scatter terrain only on the neutral middle band so it never walls off a side.
     local function scatter(kind, n)
         local tries = 0
@@ -534,14 +577,60 @@ function Arena.generateLayout(params)
             end
         end
     end
-    -- WHICH tile each scatter lays down is the biome's business; how MANY is not. The three rng draws
-    -- below are unchanged in count and order from when every board scattered forest/mountain/obstacle,
-    -- so a seed that produced a given board still produces it -- the tiles on it are simply made of
-    -- whatever that biome is made of now. See Arena.BIOME_TERRAIN.
+    -- WHICH tile each scatter lays down is the biome's business; how MANY is the ground's. The three rng
+    -- draws below are unchanged in COUNT and ORDER from when every board scattered forest/mountain/obstacle
+    -- at fixed ranges, so a seed that produced a given board still produces it: the tiles on it are made of
+    -- whatever that biome is made of, in the quantity the ground the fight was taken on calls for. On plain
+    -- trail -- the default, and every caller that passes no ground at all -- the ranges are the originals.
+    -- See Arena.BIOME_TERRAIN and Arena.GROUND_PROFILES.
     local terrain = Arena.terrainFor(params.biome)
-    scatter(terrain.fill, rng:random(2, 5))
-    scatter(terrain.rise, rng:random(1, 3))
-    scatter(terrain.block, rng:random(1, 3))
+    local profile = Arena.groundProfile(params.ground)
+    scatter(terrain.fill, rng:random(profile.fill[1], profile.fill[2]))
+    scatter(terrain.rise, rng:random(profile.rise[1], profile.rise[2]))
+    scatter(terrain.block, rng:random(profile.block[1], profile.block[2]))
+
+    -- THE CHANNEL. A fight taken on a crossing or beside a river gets the water itself on the board.
+    --
+    -- Laid after the scatters (so the ranges above still describe the whole scatter) and before the props
+    -- (so nothing is left standing in the river), and only when the profile asks -- a `path` board makes
+    -- no draw here at all, which is what keeps the common case reproducing exactly as it always did.
+    --
+    -- Never laid over a spawn: `occupied` already holds every one of them, and a channel simply flows
+    -- around any tile it would have buried. Since water is walkable this cannot strand a unit either way;
+    -- skipping the spawn is about not opening the fight with somebody already standing in the river.
+    if profile.band == "cross" then
+        -- A channel across the middle with ONE free ford. The ford is the point: it is the tile everyone
+        -- wants, and the reason a crossing fight is a crossing fight rather than a slow field.
+        local y = rng:random(3, rows - 2)
+        local ford = rng:random(1, cols)
+        for x = 1, cols do
+            if not spawnKeys[key(x, y)] then
+                tiles[y][x] = "water"
+                occupied[key(x, y)] = true
+            end
+        end
+        -- The ford is carved LAST and UNCONDITIONALLY, over whatever is standing there.
+        --
+        -- Skipping an occupied tile instead (the obvious way to write this) hands the ford to whatever the
+        -- block scatter happened to drop on this row: the channel flows around an obstacle, the obstacle
+        -- keeps the one column the channel left open, and the crossing's single free lane is a wall. The
+        -- board still passes a connectivity check -- water is walkable, so the party can wade across
+        -- anywhere -- which is exactly why this has to be asserted on the ford's own tile type and not on
+        -- reachability. The ford IS the profile; a crossing without one is just a slow field.
+        tiles[y][ford] = "ground"
+        occupied[key(ford, y)] = true
+    elseif profile.band == "side" then
+        -- A channel down one flank, full height: it does not gate the fight, it makes one way around the
+        -- board cost more than the other. Runs the whole column rather than the middle band, because a
+        -- river that stops short of the edges reads as a puddle.
+        local x = (rng:random() < 0.5) and rng:random(1, 2) or rng:random(cols - 1, cols)
+        for y = 1, rows do
+            if not spawnKeys[key(x, y)] then
+                tiles[y][x] = "water"
+                occupied[key(x, y)] = true
+            end
+        end
+    end
 
     -- Props (models/prop.lua): standing furniture -- a powder keg, a supply crate -- drawn from the
     -- biome's own pool, so a castle yard is littered with barrels and a forest trail with crates. Rolled
@@ -651,12 +740,14 @@ function Arena.pickLayout(spec, partyCount, enemyCount)
     local pick = rng:random(0, #curated)
     if pick == 0 then
         return Arena.generateLayout({
-            biome = spec.biome, seed = spec.seed,
+            biome = spec.biome, seed = spec.seed, ground = spec.ground,
             party = partyCount, enemies = enemyCount,
             formation = spec.formation, formationCols = spec.formationCols,
             formationRows = spec.formationRows,
         })
     end
+    -- A curated board keeps its authored geometry, ground or no ground: a hand-placed colosseum does not
+    -- grow a river because the marker outside happened to sit by one. Ground shapes generated boards only.
     return hydrateLayout(curated[pick].def)
 end
 
@@ -784,7 +875,7 @@ function Arena.build(ctx, spec)
     -- back to a procedural layout sized for everyone. Only escort builds can trip this.
     if #allyIds > 0 and #layout.partySpawns < #partyIds + #allyIds then
         layout = Arena.generateLayout({
-            biome = spec.biome, seed = spec.seed,
+            biome = spec.biome, seed = spec.seed, ground = spec.ground,
             party = #partyIds + #allyIds, enemies = #enemyIds,
             formation = spec.formation, formationCols = spec.formationCols,
             formationRows = spec.formationRows,

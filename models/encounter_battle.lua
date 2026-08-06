@@ -32,7 +32,12 @@ local EncounterBattle = {}
 -- authority owns this fight. An objective reads the quest's `map.objective`; everything else reads the
 -- encounter blueprint. Lifted verbatim from states/battle.lua's specFor.
 function EncounterBattle.spec(opts, partyIds, seed)
-    local spec = { biome = opts.biome, party = partyIds, seed = seed }
+    -- `ground` is what the overworld tile the marker stood on was made of (Overworld:groundAt): a river
+    -- crossing, a rock field, open grass. A generated board is laid out to match, so WHERE a fight was
+    -- taken is a tactical fact and not just a colour (Arena.GROUND_PROFILES). Threaded through the spec
+    -- rather than read at either call site, so the walk-off (models/autobattle.lua) fights the same board
+    -- the battle state would have built -- which is the whole reason this function exists.
+    local spec = { biome = opts.biome, ground = opts.ground, party = partyIds, seed = seed }
     -- A marching formation, as a list of {col,row} slots parallel to partyIds, so Arena.build's bindUnits
     -- seats each member on their chosen tile. DRAFT MODE only: it keeps a 4x2 grid in its shop UI
     -- (models/draft_run.lua) and hands it over pre-resolved, because its un-merged duplicate ids would
