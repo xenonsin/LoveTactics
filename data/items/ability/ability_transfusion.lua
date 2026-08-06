@@ -6,7 +6,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Transfusion",
-    description = "Lends your own health to an ally: you lose what they gain.",
+    description = "Heals an ally, draining the same amount from your own health.",
     flavor = "The vial is empty. It was always going to be one of you.",
     sprite = "assets/items/ability_transfusion.png",
     type = "ability",

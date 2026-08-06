@@ -228,6 +228,38 @@ return {
         end,
     },
     {
+        name = "Transfusion previews the vitality it lends, without spending it",
+        fn = function()
+            -- The lend is drawn from the caster and poured into the ally in one effect, so its whole
+            -- output hangs off what fx.drain REPORTS. A dry run that answered 0 (as it once did) fed
+            -- fx.heal nothing, and the ability previewed -- on the board and to the AI's scorer -- as a
+            -- cast that did nothing at all.
+            local map = Fixture.new(10, 10)
+            local hero = Fixture.unit("character_ren", 3, 3,
+                { isolate = "bare", items = { "ability_transfusion" } })
+            local ally = Fixture.unit("character_rowan", 3, 4, { isolate = "bare" })
+            local foe = Fixture.unit("character_bandit", 9, 9, { isolate = "bare", stats = { health = 300 } })
+            local combat = Combat.new(map, { hero, ally }, { foe })
+            local h, a = combat.units[1], combat.units[2]
+            h.char.stats.mana.max, h.char.stats.mana.current = 99, 99
+            h.char.stats.health.current = h.char.stats.health.max
+            a.char.stats.health.current = 5
+
+            local before = h.char.stats.health.current
+            local pv = Combat.previewAbility(combat, h, Fixture.itemNamed(h.char, "ability_transfusion"),
+                a.x, a.y)
+            local e = pv and pv.entries[a]
+            assert(e and e.heal > 0, "the ally's forecast quotes the vitality coming its way")
+            assert(h.char.stats.health.current == before, "and the caster pays nothing for being hovered")
+
+            -- ...and the live cast moves exactly the figure the preview promised.
+            local previewed = e.heal
+            assert(Fixture.strike(combat, h, a, "ability_transfusion"), "vitality is lent")
+            assert(a.char.stats.health.current == 5 + previewed, "the ally gains what was previewed")
+            assert(h.char.stats.health.current == before - previewed, "and the caster loses that same amount")
+        end,
+    },
+    {
         name = "Borrowed Hands reads the party rather than a number in its own file",
         fn = function()
             local map = Fixture.new(10, 10)

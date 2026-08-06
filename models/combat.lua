@@ -6514,7 +6514,16 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         hasStatus = function(tgt, id) return tgt ~= nil and Status.has(tgt, id) end,
         clearStatus = function() touchesBoard() end,
         swap = function() touchesBoard() return false end,
-        drain = function() touchesBoard() return 0 end,
+        -- Report what the drain WOULD take (against the pool it is aimed at) without taking it: the
+        -- number is the whole cast for an effect that hands it straight back out -- Transfusion heals
+        -- the ally for exactly what it draws from the caster, so a drain that reported 0 previewed a
+        -- cast that did nothing, on the board and in the AI's scorer alike. Still counts as touching
+        -- the board: emptying a foe's mana is a real effect even when no entry records it.
+        drain = function(tgt, stat, amount)
+            touchesBoard()
+            if not tgt then return 0 end
+            return Combat.drainableAmount(tgt.char, stat, amount)
+        end,
         -- A dry run must not mutate resources; report the clamped gain without applying it, against
         -- the same ceiling Combat.restoreResource honours.
         restore = function(tgt, stat, amount)
@@ -6836,7 +6845,11 @@ function Combat.abilityOutput(unit, item)
         hasStatus = function() return false end,
         clearStatus = function() end,
         swap = function() return false end,
-        drain = function() return 0 end,
+        -- Hands back the full amount rather than what a real pool holds, exactly as `restore` below
+        -- does and for the same reason: this run describes the ITEM, not a cast by a particular body
+        -- (the caster here is often a 1 HP stand-in on a shop hover). A lending effect can then quote
+        -- the heal it moves, instead of showing nothing because its stand-in had no blood to give.
+        drain = function(_, _, amount) return math.max(0, amount or 0) end,
         restore = function(_, _, amount) return amount or 0 end,
         adjacentItems = function() return {} end,
         adjacentMatching = function() return 0 end,
@@ -7036,6 +7049,17 @@ end
 -- than it held). The mirror of Combat.restoreResource, which refuses negatives -- so Drain Mana reads
 -- what it took here and hands exactly that much back to its caster. A {max,current} pool loses from
 -- `current` (floored at 0); a plain-number stat is decremented the same way.
+-- What Combat.drainResource WOULD take, without taking it: the read-only twin the dry runs need. An
+-- effect that pours back what it drained (Transfusion lending health, Drain Mana siphoning a pool)
+-- reads the drain's return value and does nothing at all when it comes back 0 -- so a preview whose
+-- drain reported nothing showed no heal, no siphon, and no reason for the AI to reach for the cast.
+function Combat.drainableAmount(char, stat, amount)
+    if not amount or amount <= 0 then return 0 end
+    local res = char.stats[stat]
+    local have = (type(res) == "table") and res.current or (res or 0)
+    return math.max(0, math.min(amount, have))
+end
+
 function Combat.drainResource(char, stat, amount)
     if not amount or amount <= 0 then return 0 end
     local res = char.stats[stat]
