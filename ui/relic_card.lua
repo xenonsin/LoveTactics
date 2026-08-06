@@ -1,9 +1,8 @@
 -- The shared LOOK of a relic wherever one is shown: its moral colour, the faceted gem that marks it, and
--- the badge row that names its axes. Three panels draw relics -- the Reliquary's pick-one offer
--- (ui/panels/relic_offer.lua), the Sin's Altar reveal (ui/panels/relic_reveal.lua) and the Fence's shelf
--- (ui/panels/fence.lua) -- and each had its own copy of the palette and the gem. One reader here keeps a
--- Virtue reading the same cool jade in all three, the twin of models/relic.lua's Relic.info being the one
--- reader for a relic's TEXT.
+-- the badge row that names its axes. The panels that draw relics -- the Reliquary's pick-one offer
+-- (ui/panels/relic_offer.lua) and the Sin's Altar reveal (ui/panels/relic_reveal.lua) -- each had its own
+-- copy of the palette and the gem. One reader here keeps a Virtue reading the same cool jade in both, the
+-- twin of models/relic.lua's Relic.info being the one reader for a relic's TEXT.
 
 local RelicCard = {}
 
@@ -24,8 +23,8 @@ function RelicCard.tierColorOf(info)
 end
 
 -- The faceted gem, the same mark the overworld marker uses. `cx` is its horizontal centre, `top` its top
--- edge. Facet lines are drawn only on a gem big enough to carry them -- at the Fence's 22px the two hairs
--- would just muddy the silhouette.
+-- edge. Facet lines are drawn only on a gem big enough to carry them -- at 22px the two hairs would just
+-- muddy the silhouette.
 function RelicCard.gem(cx, top, w, h, accent)
     local a = accent or RelicCard.VIRTUE
     love.graphics.setColor(a[1], a[2], a[3], 1)

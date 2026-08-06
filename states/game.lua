@@ -17,11 +17,13 @@ local Save = require("models.save")
 local Quest = require("models.quest")
 local Vendor = require("models.vendor")   -- the sponsoring house behind a quest, for its cache stock
 local Material = require("models.material")
+local Item = require("models.item")     -- the Merchant's shelf prices come off the blueprints
+local Spoils = require("models.spoils") -- ...and its stock off the same band a fight's loot rolls in
 local EncounterPanel = require("ui.panels.encounter")
 local LootReveal = require("ui.panels.loot_reveal")
 local RelicOffer = require("ui.panels.relic_offer")   -- the Reliquary's pick-one-of-three
 local RelicReveal = require("ui.panels.relic_reveal") -- the Sin's Altar's single relic + toll
-local Fence = require("ui.panels.fence")
+local Merchant = require("ui.panels.merchant") -- the road's shop: ordinary goods for gold
 local Choice = require("ui.panels.choice")
 local Crossroads = require("models.crossroads")
 local RestChoice = require("ui.panels.rest_choice")
@@ -227,7 +229,7 @@ end
 -- a wipe (the defeat panel's Return to Hub) and a walk-out (Back / Esc). They differ only in how the
 -- player arrived; neither pays.
 --
--- What comes back: items found, gold gained, gold SPENT (a Fence relic, a Sin's Altar toll), materials
+-- What comes back: items found, gold gained, gold SPENT (a Merchant's ware, a Sin's Altar toll), materials
 -- picked, recipes, story flags. Reversing the spending is not generosity -- without it a forfeit would
 -- launder run gold into permanent hub goods, which is the same hole from the other side.
 --
@@ -256,7 +258,7 @@ end
 -- report. There is no ledger to fall out of step with the stash.
 --
 -- Positive differences only. Drinking a potion the company marched in with is not a negative find, and
--- gold spent at a Fence is not at stake -- a rollback would hand it back. What is shown is what a wipe
+-- gold spent at the Merchant is not at stake -- a rollback would hand it back. What is shown is what a wipe
 -- would actually take.
 local function tallyItems(roster, stash)
     local t = {}
@@ -1068,7 +1070,7 @@ function game:openEncounter(cell)
     -- A Reliquary: builds a SLATE of three run relics (models/relic.lua's Relic.slate -- a Vice against two
     -- Virtues where the shelf allows) and takes exactly ONE. The two refused are the price of the one kept,
     -- which is the whole reason the stop exists: a single free relic was never a decision. The slate is
-    -- rolled ONCE and pinned to the cell (like the Fence's stock), so LEAVE -- which leaves the cell
+    -- rolled ONCE and pinned to the cell (like the Merchant's shelf), so LEAVE -- which leaves the cell
     -- uncleared to reconsider -- can't be walked off and back onto for a fresh roll. An empty shelf (the
     -- run already holds everything eligible) pays a small gold consolation rather than an empty panel.
     if kind == "relic_cache" then
@@ -1081,7 +1083,7 @@ function game:openEncounter(cell)
                 exclude = game.relicState,
             }, 3)
         end
-        -- The pinned slate can go stale: a relic on it may have been bought at a Fence or won at a
+        -- The pinned slate can go stale: a relic on it may have been taken at a Sin's Altar or won at a
         -- Crossroads since. Drop what the run already holds rather than offering a duplicate.
         local offer = {}
         for _, id in ipairs(enc.offer) do
@@ -1139,39 +1141,37 @@ function game:openEncounter(cell)
         return
     end
 
-    -- The Fence: a wandering market. Rolls a small stock of run relics ONCE (stored on the cell so a
-    -- re-step shows the same shelf, never a fresh reroll) and sells them for gold. Leaving keeps the cell
-    -- so you can come back and spend later; a bought relic stays marked sold.
-    if kind == "fence" then
+    -- The Merchant: a wandering market. Rolls a small shelf of ordinary goods ONCE (stored on the cell
+    -- so a re-step shows the same stock, never a fresh reroll) and sells them for gold, at the item's own
+    -- shelf price -- see Spoils.shelf for why the road charges what the houses charge. Leaving keeps the
+    -- cell so you can come back and spend later; a bought row stays marked sold.
+    if kind == "merchant" then
         local enc = cell.encounter
         if not enc.stock then
-            local exclude = {}
-            for _, hid in ipairs(game.relicState.held or {}) do exclude[hid] = true end
             enc.stock = {}
-            for _ = 1, 3 do
-                local id = Relic.roll(Relic.pool({ prestige = game.prestige, exclude = exclude }))
-                if not id then break end
-                exclude[id] = true
-                local info = Relic.info(id)
-                local price = (info.tier == "rare" and 55 or 30) + game.prestige * 6
-                if info.alignment == "vice" then price = math.floor(price * 0.7) end -- a Vice sells cheaper
-                enc.stock[#enc.stock + 1] = { id = id, price = price, bought = false }
+            for _, id in ipairs(Spoils.shelf({ prestige = game.prestige, count = 3 })) do
+                enc.stock[#enc.stock + 1] = { id = id, price = Item.defs[id].price, bought = false }
             end
         end
         if #enc.stock == 0 then cell.cleared = true; saveRun(); return end
         local stock = {}
         for _, s in ipairs(enc.stock) do
-            stock[#stock + 1] = { id = s.id, info = Relic.info(s.id), price = s.price, bought = s.bought, src = s }
+            -- A shelf pinned to the cell can outlive the blueprint it names (a removed item, an older
+            -- save), so a row whose id no longer resolves is simply not offered rather than crashing the
+            -- panel that would have instantiated it.
+            if Item.defs[s.id] then
+                stock[#stock + 1] = { id = s.id, price = s.price, bought = s.bought, src = s }
+            end
         end
-        game.activePanel = Fence.new({
-            title = enc.name or "The Fence",
+        game.activePanel = Merchant.new({
+            title = enc.name or "Merchant",
             stock = stock,
             gold = function() return (game.player and game.player.gold) or 0 end,
             onBuy = function(entry)
                 if game.player and Player.spendGold(game.player, entry.price) then
-                    Relic.grant(game.relicState, entry.id)
+                    Player.grantItem(game.player, entry.id) -- straight into the stash, like any find
                     if entry.src then entry.src.bought = true end -- persist the sale on the cell's shelf
-                    game:pushToast("Bought: " .. (Relic.info(entry.id).name or entry.id))
+                    game:pushToast("Bought: " .. (entry.item and entry.item.name or entry.id))
                     saveRun()
                     return true
                 end

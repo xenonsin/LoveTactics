@@ -26,7 +26,7 @@ local function gen(overrides)
             { kind = "treasure", weight = 2 },
             { kind = "relic_cache", weight = 1 },
             { kind = "rest", weight = 1 },
-            { kind = "fence", weight = 1 },
+            { kind = "merchant", weight = 1 },
         },
     }
     if overrides then
@@ -113,7 +113,7 @@ return {
             local grid = gen({ seed = seed })
             for _, p in ipairs(pairsOf(grid)) do
                 local k = p.boon.encounter and p.boon.encounter.kind
-                assert(k ~= "rest" and k ~= "fence" and k ~= "shrine" and k ~= "town",
+                assert(k ~= "rest" and k ~= "merchant" and k ~= "shrine" and k ~= "town",
                     "a service (" .. tostring(k) .. ") was guarded (seed " .. seed .. ")")
             end
         end

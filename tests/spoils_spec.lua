@@ -304,4 +304,75 @@ return {
             end
         end,
     },
+
+    -- ---- The Merchant's shelf (Spoils.shelf) --------------------------------------------------
+
+    {
+        -- Everything the drop table guarantees, the shelf guarantees too: it is literally the same
+        -- pool. A shelf row that could not instantiate would crash the panel that displays it.
+        name = "a shelf stocks real, priced, unbound items and no duplicates",
+        fn = function()
+            for _ = 1, 100 do
+                local ids = Spoils.shelf({ prestige = 3, count = 3 })
+                assert(#ids == 3, "the band at prestige 3 is deep enough to fill three rows")
+                local seen = {}
+                for _, id in ipairs(ids) do
+                    local def = Item.defs[id]
+                    assert(def, "a shelf id must exist: " .. tostring(id))
+                    assert(Item.instantiate(id), "a shelf id must instantiate: " .. tostring(id))
+                    assert(def.price and def.price > 0, "an unpriced item is not for sale: " .. tostring(id))
+                    assert(not def.bound, "a bound item must never be stocked: " .. tostring(id))
+                    assert(not seen[id], "the same ware must not fill two rows: " .. tostring(id))
+                    seen[id] = true
+                end
+            end
+        end,
+    },
+    {
+        -- The shelf and the drop table are one band, so what the road sells climbs with the run exactly
+        -- as what it drops does -- and a low-prestige company can never be offered top-shelf gear.
+        name = "the shelf's price band widens with prestige",
+        fn = function()
+            local function dearest(prestige)
+                local best = 0
+                for _ = 1, 200 do
+                    for _, id in ipairs(Spoils.shelf({ prestige = prestige, count = 3 })) do
+                        best = math.max(best, Item.defs[id].price)
+                    end
+                end
+                return best
+            end
+            local low, high = dearest(1), dearest(6)
+            assert(high > low, "a deeper run should see dearer stock, got " .. low .. " vs " .. high)
+            -- The band's own ceiling, quoted from bandPrice: 40 + prestige * 60.
+            assert(low <= 40 + 1 * 60, "prestige 1 must never be offered past its band, got " .. low)
+        end,
+    },
+    {
+        name = "an excluded id is kept off the shelf",
+        fn = function()
+            local ids = Spoils.shelf({ prestige = 3, count = 3 })
+            local banned = ids[1]
+            for _ = 1, 100 do
+                for _, id in ipairs(Spoils.shelf({ prestige = 3, count = 3, exclude = { [banned] = true } })) do
+                    assert(id ~= banned, "an excluded ware was stocked anyway: " .. tostring(banned))
+                end
+            end
+        end,
+    },
+    {
+        -- A market with nothing on it is a stop with nothing to do; the caller clears the cell instead,
+        -- so the empty case has to come back as an empty list rather than an error.
+        name = "a shelf that cannot be filled returns what it could, without erroring",
+        fn = function()
+            assert(#Spoils.shelf({ prestige = 3, count = 0 }) == 0, "a zero-row shelf is empty")
+            local huge = Spoils.shelf({ prestige = 1, count = 10000 })
+            assert(type(huge) == "table", "an unfillable shelf still returns a list")
+            local seen = {}
+            for _, id in ipairs(huge) do
+                assert(not seen[id], "the exhausted pool must not start repeating: " .. tostring(id))
+                seen[id] = true
+            end
+        end,
+    },
 }

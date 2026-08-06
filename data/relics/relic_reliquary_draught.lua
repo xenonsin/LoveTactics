@@ -1,6 +1,6 @@
 -- VIRTUE · both · rare. Every ally mends a little each turn of every fight. A battleStart boon
 -- (status_regen) laid on the WHOLE party, not just the line -- the rare-shelf sustain that turns a long
--- run of attrition survivable. Reads as "both" so a Reliquary or a Fence can offer it either way.
+-- run of attrition survivable. Reads as "both" so a Reliquary or a Sin's Altar can offer it either way.
 return {
     name = "Reliquary Draught",
     blurb = "Every ally regenerates a little each turn, in every fight this quest.",

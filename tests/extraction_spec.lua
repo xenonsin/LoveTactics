@@ -95,13 +95,13 @@ return {
     end },
 
     { name = "gold SPENT mid-run comes back too", fn = function()
-        -- Otherwise a forfeit launders run gold into permanent hub goods: buy a relic at a Fence, walk
-        -- out, keep the relic's effect on the books while the coin is refunded by the next run. Same
-        -- hole as keeping the loot, entered from the other side.
+        -- Otherwise a forfeit launders run gold into permanent hub goods: buy a blade at the Merchant,
+        -- walk out, keep the blade on the books while the coin is refunded by the next run. Same hole as
+        -- keeping the loot, entered from the other side.
         local player = playerInRun()
         local goldBefore = player.gold or 0
         Player.addGold(player, 100)
-        assert(Player.spendGold(player, 120), "the run spends at a Fence")
+        assert(Player.spendGold(player, 120), "the run spends at the Merchant")
         assert((player.gold or 0) < goldBefore, "the company is out of pocket mid-run")
 
         local rolled = Save.restore(player.activeRun.entry)

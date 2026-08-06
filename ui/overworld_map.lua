@@ -368,7 +368,7 @@ local function markerColor(kind)
     if kind == "rest" then return 0.45, 0.80, 0.80 end     -- a safe breather
     if kind == "relic_cache" then return 0.80, 0.52, 0.92 end -- a reliquary: a run relic waits inside
     if kind == "shrine" then return 0.88, 0.40, 0.48 end       -- a sin's altar: a Vice for a toll
-    if kind == "fence" then return 0.90, 0.74, 0.32 end         -- a wandering market: relics for gold
+    if kind == "merchant" then return 0.90, 0.74, 0.32 end      -- a wandering market: goods for gold
     if kind == "crossroads" then return 0.70, 0.72, 0.80 end     -- a branching dilemma: a gamble
     return 0.85, 0.25, 0.25 -- combat
 end
@@ -454,8 +454,8 @@ function MarkerIcon.crossroads(x, y, w, h, r, g, b, a)
     love.graphics.setLineWidth(1)
 end
 
--- A coin: a wandering fence selling relics for gold.
-function MarkerIcon.fence(x, y, w, h, r, g, b, a)
+-- A coin: a wandering merchant selling goods for gold.
+function MarkerIcon.merchant(x, y, w, h, r, g, b, a)
     local cx, cy = x + w / 2, y + h / 2
     love.graphics.setColor(r, g, b, a)
     love.graphics.circle("fill", cx, cy, w * 0.42)

@@ -9,6 +9,9 @@
 --
 -- The third field is the FLOOR, and unlike the other two it is not a roll -- see "Salvage" below.
 --
+-- The same price band also stocks the road's one shop, the Merchant (Spoils.shelf) -- what a run can
+-- turn up is one question whether the goods are taken off a body or bought off a cart.
+--
 -- LOOT COMES OFF THE BODIES FIRST. It used to be a price-banded random draw over every item in the
 -- game, with no connection at all to the roster that was beaten -- there was no drop-table
 -- authoring, so there was nothing to connect it to. That was invisible while enemies carried
@@ -64,6 +67,14 @@ local function rollGold(count, prestige, kind, override, scale)
     local gold = base * jitter * (scale or 1)
     if kind == "elite" then gold = gold * ELITE_GOLD_MULT end
     return math.max(1, math.floor(gold + 0.5))
+end
+
+-- The ceiling of the ROAD BAND at `prestige`: how dear a thing a run can turn up at all. One number,
+-- because the road turns goods up two ways -- off a beaten body and off the Merchant's shelf
+-- (Spoils.shelf) -- and a market carrying gear the same road could never drop would be a second,
+-- silent answer to a question this already answers.
+local function bandPrice(prestige)
+    return 40 + math.max(1, prestige or 1) * 60
 end
 
 -- The drop pool: every PRICED item within a prestige-scaled price band. Price is the "shoppable"
@@ -135,7 +146,7 @@ local function rollLoot(prestige, kind, override, enemyUnits, scale)
     end
     local bump = math.sqrt(scale or 1)
     local elite = kind == "elite"
-    local maxPrice = 40 + math.max(1, prestige) * 60
+    local maxPrice = bandPrice(prestige)
     if elite then maxPrice = maxPrice * 1.5 end
     maxPrice = maxPrice * bump
     local band = lootCandidates(maxPrice)
@@ -154,6 +165,43 @@ local function rollLoot(prestige, kind, override, enemyUnits, scale)
     end
     if rnd() < math.min(0.80, (elite and 0.45 or 0.18) * bump) then
         local id = draw(); if id then out[#out + 1] = id end
+    end
+    return out
+end
+
+-- ---------------------------------------------------------------------------
+-- The Merchant's shelf: the same band, bought instead of taken
+-- ---------------------------------------------------------------------------
+
+-- `count` DISTINCT item ids for the wandering Merchant to stock (data/encounters/encounter_merchant.lua),
+-- drawn out of the very band a fight's loot rolls in: priced, unbound, and no dearer than the road pays
+-- at this prestige. The weighting comes along with it, so a shelf leans the way the drop table does --
+-- mostly supplies, the occasional piece of gear worth the detour.
+--
+-- Ids only. What each COSTS is the item's own shelf price, which belongs to the item and not to a roll:
+-- the Merchant charges what the houses charge, since a markup the player cannot compare against a hub
+-- they are three stops from is a tax rather than a decision.
+--
+-- `exclude` is an optional bare set of ids to keep off the shelf. Returns fewer than `count` (or
+-- nothing) when the band is too thin to fill it, which the caller must handle -- a market with an empty
+-- shelf is a stop with nothing on it.
+function Spoils.shelf(opts)
+    opts = opts or {}
+    local count = math.max(0, opts.count or 3)
+    local taken = {}
+    for id in pairs(opts.exclude or {}) do taken[id] = true end
+
+    local pool = lootCandidates(bandPrice(opts.prestige))
+    local out = {}
+    for _ = 1, count do
+        local available = {}
+        for _, entry in ipairs(pool) do
+            if not taken[entry.id] then available[#available + 1] = entry end
+        end
+        local id = pick(available)
+        if not id then break end
+        taken[id] = true
+        out[#out + 1] = id
     end
     return out
 end
