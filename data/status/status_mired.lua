@@ -4,11 +4,15 @@
 -- FAR the unit can walk, only how much time the walk and its casts burn.
 --
 -- And it STOPS the walk that earned it (`stopsMovement`, Combat.stepMove): the tile that mires a unit
--- is the tile it finishes its move on, whether that was a step into the sand or a kris landing the
--- status from across the board mid-route. Only GAINING it halts -- a unit that was already mired when
--- it set off walks its whole route -- so the sand is a wall you walk into once, never a cage that
--- refuses to let you wade back out. The remaining route is cancelled, not banked: the move is spent,
--- though it is re-priced down to the ground actually crossed rather than the ground intended.
+-- is the tile it finishes its move on. Only GAINING it halts -- a unit that was already mired when it
+-- set off walks its whole route -- so the sand is a wall you walk into once, never a cage that refuses
+-- to let you wade back out. The remaining route is cancelled, not banked: the move is spent, though it
+-- is re-priced down to the ground actually crossed rather than the ground intended.
+--
+-- One exception, and it is the older rule winning: a body may cross a friendly's tile but never come to
+-- rest on one. Sand with an ally already bogged down in it would make it do exactly that, so the walk
+-- stops SHORT of that tile instead -- unmired, on the last clear ground behind it (Combat.stepMove,
+-- and Combat.walkStop draws the route preview to the same place).
 --
 -- Delivered by the Quicksand hazard (data/hazards/hazard_quicksand.lua). It declares no `lingers`, so
 -- it is ZONE-BOUND: the grant is stamped with that hazard as its `source`, it never ages, and it lasts

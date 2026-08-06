@@ -877,6 +877,19 @@ function BattleMap:drawMovePath()
         pts[#pts + 1] = wx + s / 2
         pts[#pts + 1] = wy + s / 2
     end
+    -- A route that goes NOWHERE -- stop index 1, the first tile refused outright (stopping ground with
+    -- a body already standing in it: Combat.walkStop) -- is all ghost and takes no arrowhead. There is
+    -- no walk to point at, and the clamp below would otherwise promise a solid tile of movement onto
+    -- the very tile the walk declines to enter.
+    if (self.overlays.pathStop or #path) < 2 then
+        love.graphics.setColor(1, 1, 1, 0.22)
+        love.graphics.setLineWidth(1.5)
+        love.graphics.line(pts)
+        love.graphics.setLineWidth(1)
+        love.graphics.setColor(1, 1, 1)
+        return
+    end
+
     -- Split at the stop tile. `stop` counts TILES; each tile is an x,y pair, so the solid run is the
     -- first 2*stop numbers, and the ghost picks up from the stop tile so the two meet rather than gap.
     local stop = math.max(2, math.min(self.overlays.pathStop or #path, #path))

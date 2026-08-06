@@ -177,6 +177,30 @@ return {
         end,
     },
     {
+        name = "quicksand an ally is standing in stops the walk SHORT of it -- never two bodies on a tile",
+        fn = function()
+            -- A one-row corridor: the route to (4,1) can only run straight through the sand at (3,1),
+            -- and an ally is already bogged down in it. A route walks THROUGH a friendly and may never
+            -- come to rest on one, so the mire that would end the walk there is never entered at all.
+            local c = Combat.new(arena(8, 1), { unit("character_mage", 1, 1), unit("character_knight", 3, 1) }, {})
+            local mage, ally = c.units[1], c.units[2]
+            Hazard.place(c, 3, 1, "hazard_quicksand")
+
+            local path = { { x = 1, y = 1 }, { x = 2, y = 1 }, { x = 3, y = 1 }, { x = 4, y = 1 } }
+            local stop, walked = Combat.walkStop(c, mage, path)
+            assert(stop == 2, "the preview stops on the last clear tile, got " .. tostring(stop))
+            assert(walked == 1, "and never prices the tile it refuses to enter, got " .. tostring(walked))
+
+            openTurn(c, mage)
+            local ok, cost = Combat.moveUnit(c, mage, 4, 1)
+            assert(ok, "the walk is legal -- the ground ends it, not the rules: " .. tostring(cost))
+            assert(mage.x == 2, "it comes to rest short of the sand, got x=" .. tostring(mage.x))
+            assert(ally.x == 3 and Combat.unitAt(c, 3, 1) == ally, "the ally still holds the sand alone")
+            assert(not Status.has(mage, "status_mired"), "and was never mired by ground it never stepped on")
+            assert(cost == 1, "charged for the one tile crossed, got " .. tostring(cost))
+        end,
+    },
+    {
         name = "an immunity to Mired walks through quicksand without stopping",
         fn = function()
             local rogueChar = Character.instantiate("character_rogue")

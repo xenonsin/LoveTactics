@@ -3557,6 +3557,19 @@ end
 -- place a tile is priced, and all three route-finders call it. It was defined here, third and last,
 -- back when the other two carried their own copies of the arithmetic.)
 
+-- The body standing where `unit` would come to rest with its anchor on (x, y) -- any OTHER unit under
+-- the footprint -- or nil when the tile is free to stand on. A route may pass THROUGH a friendly and
+-- must never stop on one (moveGraph, Combat.reachable, Combat.planMoveVia), which those three enforce
+-- for the tile a walk was AIMED at and cannot enforce for the tile a walk cut short lands on. This is
+-- that same question asked of a tile the route only meant to cross.
+local function bodyInTheWay(combat, unit, x, y)
+    for _, c in ipairs(Combat.cellsAt(unit.w or 1, unit.h or 1, x, y)) do
+        local occ = Combat.unitAt(combat, c.x, c.y)
+        if occ and occ ~= unit then return occ end
+    end
+    return nil
+end
+
 -- Cut a walk off where it stands: the tiles still ahead of it are never entered, and the move is
 -- re-priced down to the ground actually crossed (at the multiplier the unit set off under -- see
 -- beginMove). The move itself stays SPENT: `turn.moved` is not given back, so a unit bogged down two
@@ -3564,6 +3577,24 @@ end
 -- it stopped, exactly as any unit that finished its walk may.
 local function haltWalk(combat, walk)
     walk.halted = true
+    -- NOBODY COMES TO REST ON A BODY. A route walks THROUGH a friendly and stops only on clear ground,
+    -- which the route-finders enforce for the tile a walk was AIMED at -- and a halt is by definition a
+    -- resting place nobody planned. So the halt backs the unit out along the ground it just crossed
+    -- until it is on a tile it fits on; the origin always fits (it stood there a moment ago), so this
+    -- ends. Deliberately no second Combat.enterTile: those tiles sprang whatever they held on the way
+    -- IN, and stepping back off a friend is not a fresh arrival.
+    --
+    -- Today nothing reaches this loop: the only thing that halts a walk is stopping GROUND, and
+    -- Combat.stepMove refuses to enter a mire it could not stand in one step earlier. It is the floor
+    -- under that check rather than a second copy of it -- what must not happen is a body resting on a
+    -- body, and that is worth stating once at the one place a walk can end somewhere it did not choose.
+    while walk.index > 1 and bodyInTheWay(combat, walk.unit, walk.unit.x, walk.unit.y) do
+        walk.index = walk.index - 1
+        local back = walk.path[walk.index]
+        walk.unit.x, walk.unit.y = back.x, back.y
+    end
+    -- Priced by the ground CROSSED, which includes a tile it was pushed back off: the stagger back is
+    -- not a second walk, and the unit really did wade in there.
     combat.turn.moveCost = math.floor((walk.walked or 0) * (walk.mult or 1) + 0.5)
     Combat.logEvent(combat, "move",
         string.format("%s is stopped at (%d, %d).", unitName(walk.unit), walk.unit.x, walk.unit.y),
@@ -3602,8 +3633,12 @@ function Combat.walkStop(combat, unit, path)
     local cost = 0
     for i = 2, #path do
         local t = path[i]
-        cost = cost + stepTerrainCost(combat, unit, t.x, t.y, flying)
         local grants = groundStopsMovement(combat, unit, t.x, t.y)
+        -- Stopping ground with a friendly already standing in it is never entered at all: the walk ends
+        -- on the tile BEFORE it, and never pays for the tile it refused. Mirrors Combat.stepMove's
+        -- pre-step check, so the drawn route stops on the tile the feet will.
+        if grants and not carrying and bodyInTheWay(combat, unit, t.x, t.y) then return i - 1, cost end
+        cost = cost + stepTerrainCost(combat, unit, t.x, t.y, flying)
         if grants and not carrying then return i, cost end
         carrying = grants
     end
@@ -3622,6 +3657,20 @@ function Combat.stepMove(combat, walk)
     -- already mired -- standing in the sand when its turn came round -- has to be able to wade out, and
     -- would otherwise be stopped by its own condition after a single tile, every turn, forever.
     local wasStopped = Status.stopsMovement(walk.unit)
+    -- STOPPED SHORT. Ground that would both mire this unit AND leave it standing on a body is ground it
+    -- does not step onto: a route walks through a friendly and may never come to rest on one, and the
+    -- sand would make it do exactly that. The walk ends on the last clear tile behind it, unmired.
+    -- Asked BEFORE the step rather than untangled after it, because the alternative -- wade in, get
+    -- caught, stagger back off the ally -- hands the unit a status from a tile it is not standing on
+    -- and then (Mired being zone-bound) drops it again a moment later, which is a great deal of noise
+    -- for the same resting place. Combat.walkStop answers this identically, so the route preview draws
+    -- its line stopping on this same tile.
+    local ahead = walk.path[walk.index + 1]
+    if not wasStopped and groundStopsMovement(combat, walk.unit, ahead.x, ahead.y)
+        and bodyInTheWay(combat, walk.unit, ahead.x, ahead.y) then
+        haltWalk(combat, walk)
+        return false
+    end
     walk.index = walk.index + 1
     local tile = walk.path[walk.index]
     local fromX, fromY = walk.unit.x, walk.unit.y -- the tile being vacated, for a trail laid behind
