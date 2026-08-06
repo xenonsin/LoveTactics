@@ -9,7 +9,12 @@ return {
     tags = { "potion", "restorative" },
     class = "alchemist",
     price = 35,
-    unlockQuests = 1,
+    -- OPENING SHELF. It sat at 1 for as long as the Cafe resold it un-gated, so the gate only ever
+    -- decided which door a new player bought their first heal through, never whether they could. The
+    -- Cafe sells suppers now (models/meal.lua), and a house whose own flavor line calls this "the
+    -- Crucible's steadiest seller" cannot be the house you must run an errand for before it will sell
+    -- you one.
+    unlockQuests = 0,
     activeAbility = {
         target = "ally", -- includes the user (a unit is its own ally)
         range = 1,

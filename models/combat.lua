@@ -881,6 +881,25 @@ local function applyUnitPassives(unit)
             maxBonus[stat] = (maxBonus[stat] or 0) + amount
         end
     end
+    -- The meal the company ate before this quest (models/meal.lua), stamped onto the unit at spawn by
+    -- battle setup. Folded in HERE, beside the grid, on purpose: a supper's +2 defense has to be the
+    -- same quantity a coat's +2 is, or the damage breakdown, the mitigation maths and the loadout
+    -- tooltip would each need a case of their own. Rebuilt from scratch every setup like everything
+    -- above it, so the meal is re-eaten at each bell of the quest and never compounds across its fights.
+    -- The platter's SKILL half is a trait instead (Trait.attach). Nil for every enemy, and for any
+    -- battle fought without one.
+    local meal = unit.meal
+    if meal then
+        for stat, amount in pairs(meal.bonus or {}) do
+            unit.bonus[stat] = (unit.bonus[stat] or 0) + amount
+        end
+        for tag, amount in pairs(meal.resist or {}) do
+            unit.resist[tag] = (unit.resist[tag] or 0) + amount
+        end
+        for stat, amount in pairs(meal.maxBonus or {}) do
+            maxBonus[stat] = (maxBonus[stat] or 0) + amount
+        end
+    end
     unit.char.maxBonus = maxBonus
 end
 
@@ -993,6 +1012,13 @@ function Combat.addUnit(combat, char, side, x, y, opts)
         -- Aurea's interim coffer, until her full gold-ward finale subsystem lands (docs/roadmap.md #15).
         -- nil for anyone who is not a walking treasury; the party never uses this (it shares combat.purse).
         coffer = opts.coffer or char.coffer,
+        -- Carried onto a body that ARRIVES mid-fight rather than starting on the board: a rotation off
+        -- the bench brings the run's relic traits and the quest's meal back on with it (see sendIn).
+        -- Both were dropped on the floor here until the meal needed the same seam -- which meant a
+        -- benched member rotated in wearing none of the relics the rest of the line was wearing,
+        -- against the promise in models/relic.lua's own header.
+        relicTraits = opts.relicTraits,
+        meal = opts.meal,
     }
     unit.index = #combat.units + 1
     combat.units[unit.index] = unit
@@ -1029,6 +1055,9 @@ local function buildOpeningUnit(combat, u, side)
         -- Trait ids granted by the run's relics (models/relic.lua), resolved per-char by battle
         -- setup. Trait.attach folds them in alongside the char's own; nil for enemies.
         relicTraits = u.relicTraits,
+        -- The meal blueprint the company ate before this quest (models/meal.lua), stamped by battle
+        -- setup. One platter for the whole party, so unlike relicTraits it needs no per-char map.
+        meal = u.meal,
     }
     unit.index = #combat.units + 1
     combat.units[unit.index] = unit
@@ -1063,6 +1092,7 @@ function Combat.deployUnit(combat, char, x, y, opts)
         char = char, x = x, y = y,
         control = opts.control,
         relicTraits = opts.relicTraits,
+        meal = opts.meal,
         coffer = opts.coffer,
     }, opts.side or "party")
 end
@@ -5001,7 +5031,7 @@ end
 -- deployment phase. The other four wait on `combat.bench` and can be brought on mid-fight. See
 -- docs/deployment.md for the rules; what follows is why the model is shaped the way it is.
 --
--- A BENCHED MEMBER IS NOT IN `combat.units`. It is an entry -- { char, relicTraits, statuses } -- and
+-- A BENCHED MEMBER IS NOT IN `combat.units`. It is an entry -- { char, relicTraits, meal, statuses } -- and
 -- nothing more. Every query in this file walks combat.units and asks `u.alive`; a benched body wearing a
 -- flag would have to be excluded from roughly two hundred of them (targeting, AoE dedupe, the AI, hazard
 -- ticks) and any one missed reads as a ghost you can hit from across the board. Worse, Combat.inTimeline
@@ -5059,12 +5089,13 @@ function Combat.benchCount(combat, side)
 end
 
 -- Put a company member on the bench before the fight opens (battle setup, from whoever the player did
--- not deploy). `entry` may be a bare character or { char, relicTraits }.
+-- not deploy). `entry` may be a bare character or { char, relicTraits, meal }.
 function Combat.benchUnit(combat, entry)
     if not entry then return nil end
     combat.bench = combat.bench or {}
     local e = entry.char and entry or { char = entry }
-    combat.bench[#combat.bench + 1] = { char = e.char, relicTraits = e.relicTraits, statuses = nil }
+    combat.bench[#combat.bench + 1] =
+        { char = e.char, relicTraits = e.relicTraits, meal = e.meal, statuses = nil }
     return combat.bench[#combat.bench]
 end
 
@@ -5120,7 +5151,7 @@ function Combat.withdraw(combat, unit, text)
     leaveTurn(combat, unit)
 
     combat.bench = combat.bench or {}
-    local entry = { char = unit.char, relicTraits = unit.relicTraits, statuses = unit.statuses }
+    local entry = { char = unit.char, relicTraits = unit.relicTraits, meal = unit.meal, statuses = unit.statuses }
     combat.bench[#combat.bench + 1] = entry
     return entry
 end
@@ -5135,7 +5166,8 @@ local function sendIn(combat, index, x, y, initiative)
     local fp = entry.char.footprint or { w = 1, h = 1 }
     if not Combat.footprintFree(combat, fp.w, fp.h, x, y) then return nil end
     table.remove(combat.bench, index)
-    local unit = Combat.addUnit(combat, entry.char, "party", x, y, { relicTraits = entry.relicTraits })
+    local unit = Combat.addUnit(combat, entry.char, "party", x, y,
+        { relicTraits = entry.relicTraits, meal = entry.meal })
     -- Whatever they were carrying when they stepped out is still on them when they step back in.
     if entry.statuses then unit.statuses = entry.statuses end
     if initiative then unit.initiative = initiative end

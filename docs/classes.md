@@ -160,7 +160,7 @@ Two notes on how this shook out:
   had *no* armour at all before this pass, so the five quest-only pieces are most of what exists there
   — which reads correctly for the two sins whose gear is taken rather than ordered. If either shelf
   grows, it grows on the priced side; the five stay five.
-- **The elemental coats are the Crucible's, not the Cafe's.** `armor_salamander_hide`,
+- **The elemental coats are the Crucible's, not a general good.** `armor_salamander_hide`,
   `armor_stormcloth` and `armor_rimecloth` are the counterplay to fire, lightning and cold — and in
   this game those overwhelmingly arrive from a bomb, a stone or a spilled reagent. The house that sells
   the burning sells the coat, which is envy's voice and not a general good.
@@ -225,40 +225,40 @@ are the design: *a knight you keep casting Fireball with grows into a battlemage
 
 Two consequences worth holding on to:
 
-- **A `price` with no `class` is a *general good*, not a build failure** — it goes on the general
-  store's shelf (see below). What `tests/progression_spec.lua` still forbids is a price that *nothing*
-  stocks: a classless priced item must actually appear in the Cafe's stock. The reverse — `class`
-  with no `price` — is fine and meaningful: it says "this tallies here, but nobody sells it."
-  `armor_sworn_aegis`, the knight's bound relic, is one of those.
+- **A `price` with no `class` is unbuyable dead data**, and `tests/progression_spec.lua` fails the
+  build for it. There was a general store for a while and a classless price meant "the Cafe's" — the
+  Cafe sells meals now (see below), so the escape hatch is closed and every price names a house. The
+  reverse — `class` with no `price` — is fine and meaningful: it says "this tallies here, but nobody
+  sells it." `armor_sworn_aegis`, the knight's bound relic, is one of those.
 - **The weapon floor counts *sellable* weapons**, since a shelf you cannot buy from is not a shelf.
 
-### The general store
+### There is no general store: seven shelves, and a kitchen
 
-There is an eighth vendor that is not a class shelf: the **Cafe** (`data/vendors/cafe.lua`,
-`general = true`). It sells two things:
+The **Cafe** used to be an eighth vendor that was not a class shelf — a rack for the classless priced
+goods plus a resale counter carrying every `potion`, whichever house brewed it. It is neither now. It
+declares `sells = false`, stocks nothing at all, and its whole offer is a **meal** bought before a
+quest: see [meals.md](meals.md).
 
-1. **The classless priced goods** — the mundane supplies no sin claims: a torch, the `Boots of Speed`.
-   An item lands here by having a `price` and **no `class`**; `models/vendor.lua` (`Vendor.sells`)
-   derives that stock exactly the way a class vendor derives its own, so a classless priced blueprint
-   is all it takes.
-2. **Resold potions** — anything bearing a tag in the Cafe's `stockTags` (today, `potion`), whatever
-   house brews it. A healing potion is an alchemist item *and* a Cafe item; it appears on both
-   shelves. This is the one place the shelves overlap on purpose.
+Two things about that belong in *this* file, because they are shelf rules rather than kitchen rules:
 
-It has no sin and runs no quest line: nobody quests for the grocer's favour, so every ware is
-available from the first visit — `Vendor.stock` ignores `unlockQuests` for a general store, so even a
-Panacea that needs ten quests at the alchemist is simply on the shelf here. Two rules keep the resale
-from eroding the class shelf it borrows from:
+- **The five classless wares were given houses.** `utility_torch` → hunter (gluttony's vocabulary is
+  knowing what is out there first, and a torch is the crudest instrument of it); `utility_boots_of_speed`
+  and `consumable_witchlight_flare` → rogue (greed already owns every other boot that buys a square,
+  and already owns the hiding the flare answers); `utility_stormglass_rod` → mage;
+  `consumable_wellspring_sandals` → alchemist (a `consumesItem` stack that hands somebody else a
+  resource back is envy twice over, and it is the party-wide reading of the Mana Potion the same house
+  brews). All five sit at `unlockQuests = 0`, because availability from the first visit was the one
+  thing the general store was really providing.
+- **The potion resale is closed, and that was a hole in a ladder.** A general store ignores
+  `unlockQuests` by design, so a Panacea gated at ten alchemist quests was on the grocer's counter from
+  the first visit: the gate was authored, displayed, and walkable around by shopping next door. A potion
+  is now sold by the house that brews it and nowhere else — which is why `consumable_healing_potion`
+  dropped to `unlockQuests = 0`. Its gate had only ever decided *which door* a new player bought their
+  first heal through, never whether they could.
 
-- **A resale is not a re-home.** The potion keeps its `class`, so it still *grows the alchemist's
-  tally* — and that class is what its bill and its ceiling read at The Forge. No shop upgrades
-  anything, here or anywhere: a vendor sells, and every ladder is climbed at the one bench
-  (`models/forge.lua`).
-- **The Cafe sells no weapons and no abilities.** Those carry identity; the general store carries
-  supplies and the potions everyone drinks. Its stock is classless gear plus resold consumables.
-
-`tests/class_spec.lua` skips the general store in its family-cluster sweep (it is not a class shelf),
-and `tests/progression_spec.lua` pins the whole arrangement.
+`tests/class_spec.lua` skips a `sells = false` vendor in its family-cluster sweep, and
+`tests/progression_spec.lua` pins that the Cafe's shelf is empty at any standing and that every priced
+item names a class.
 
 ### Monk, and why there is no fist weapon
 
@@ -412,13 +412,14 @@ that family below its five-on-a-shelf roster, so a discipline banner-weapon has 
 `ability_march_wardens_standard` is tagged `summon` rather than `banner` and is one of only two knight-side
 Warden items, so moving it would strip a parent shelf bare.
 
-**A discipline consumable never wears the `potion` tag.** The Cafe resells anything in its `stockTags`
-and a general store ignores `unlockQuests` entirely (see *The general store* above), so a gated draught tagged
-`potion` sits on the grocer's shelf from the first visit — the gate is still there and the item is behind
-it at its own vendor, and you can buy it anyway. The existing discipline consumables had all quietly
-avoided this (Berserker's Brew and the Wildcraft Poultice are `restorative`); it is written down now
-because three new ones tripped it, and `tests/progression_spec.lua` is what caught them. Use `elixir`,
-`draught`, `coating`, `restorative` — anything but the one word the grocer is watching for.
+~~**A discipline consumable never wears the `potion` tag.**~~ **Moot, and kept because the shape of the
+bug is worth remembering.** The Cafe used to resell anything in its `stockTags` and, as a general store,
+ignored `unlockQuests` entirely — so a gated draught tagged `potion` sat on the grocer's shelf from the
+first visit: the gate authored, displayed, and buyable around. Three discipline consumables tripped it
+and `tests/progression_spec.lua` caught them. The resale is gone (see *There is no general store*
+above), so the tag is free again. The lesson that outlives it is the general one: **a second shelf that
+carries an item by tag rather than by class inherits none of that item's gates**, and any future
+cross-stocking rule owes an answer to what happens to the gate.
 
 ### Watched ground: a zone of control, sold rather than granted
 

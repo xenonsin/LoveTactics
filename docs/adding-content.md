@@ -11,6 +11,9 @@ Adding **any item** has one too, because every item must answer which shelf it g
 owns a vocabulary, and an item's `class` should be the shelf whose vocabulary it speaks. See
 [classes.md](classes.md).
 
+A **meal** is the one piece of content that is not an item and has no shelf: the Cafe's supper, bought
+before a quest and worn by the whole company for it. See [meals.md](meals.md).
+
 ## The progression loop
 
 Seven class vendors (`data/vendors/`) each own a hub building, a shelf of items, and a line of
@@ -267,11 +270,13 @@ return {
 ```
 
 A vendor declares no thresholds of its own: standing is the count of its quests you have finished, and
-the shelf opens in waves at `Vendor.TIERS = { 0, 3, 6, 10 }` (in `models/vendor.lua`), which every
-class vendor shares.
+each item names how many of that count unlock it (`unlockQuests`, below).
 
-Then point a building at it with `panel = "party", vendor = "<id>"` (the Party screen opens in store
-mode when a `vendor` is named).
+Then point a building at it with `panel = "shop", vendor = "<id>"`.
+
+There is an eighth vendor with no class and no shelf — the **Cafe**, which declares `sells = false`
+and sells meals rather than goods ([meals.md](meals.md)). It keeps a blueprint here only because it
+keeps a shopkeeper: a portrait, a name, and a first-visit greeting.
 
 **Stock is derived, not authored.** A vendor sells every item whose `class` matches its own and
 which has a `price`. To put an item on a shelf, give it both:

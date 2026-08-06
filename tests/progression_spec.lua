@@ -211,7 +211,7 @@ return {
         fn = function()
             local Quest = require("models.quest")
             for vendorId, vdef in pairs(Vendor.defs) do
-                if not vdef.general then
+                if vdef.sells ~= false then
                     local sponsored = 0
                     for _, qdef in pairs(Quest.defs) do
                         if qdef.sponsor == vendorId then sponsored = sponsored + 1 end
@@ -251,70 +251,74 @@ return {
         end,
     },
     {
-        name = "every priced item has a shelf: a class vendor, or the general store",
+        name = "every priced item has a shelf, and every shelf is a class vendor",
         fn = function()
-            -- The union of every general store's stock (the Cafe). A priced item with no class is
-            -- not dead data any more -- it belongs to the general shelf. Built cafe-id-agnostically
-            -- so this stays true if the general store is ever renamed or a second one is added.
-            local generalStock = {}
-            for vid, vdef in pairs(Vendor.defs) do
-                if vdef.general then
-                    for _, e in ipairs(Vendor.stock(vid, 999)) do generalStock[e.id] = true end
-                end
-            end
-
+            -- There is no general store any more. The Cafe was one -- classless goods plus a potion
+            -- resale rack -- and it sells suppers now (models/meal.lua), so a price with no class is
+            -- once again unbuyable dead data with nowhere to go.
             for id, def in pairs(Item.defs) do
                 if def.class then
                     assert(Item.CLASSES[def.class], id .. " has unknown class '" .. def.class .. "'")
-                elseif def.price then
-                    -- Priced but classless: a general good. Some general store must actually stock it,
-                    -- or it is unbuyable dead data after all.
-                    assert(generalStock[id], id .. " has a price but no class, and no general store stocks it")
+                else
+                    assert(not def.price,
+                        id .. " has a price but no class -- no vendor can stock it (docs/classes.md)")
                 end
             end
         end,
     },
     {
-        name = "the general store stocks classless goods and resells potions, gating nothing on standing",
+        -- The five wares that were classless while the Cafe was a general store, each now on the house
+        -- that actually wanted it -- and each on that house's OPENING shelf, since being available from
+        -- the first visit was the one thing the general store was really providing.
+        name = "the redistributed general goods sit on a class shelf, un-gated",
         fn = function()
-            local cafe = Vendor.stock("cafe", 1)
-            assert(#cafe > 0, "the Cafe should stock something")
+            local homes = {
+                utility_torch = "hunter",
+                utility_boots_of_speed = "rogue",
+                utility_stormglass_rod = "mage",
+                consumable_witchlight_flare = "rogue",
+                consumable_wellspring_sandals = "alchemist",
+            }
+            for id, class in pairs(homes) do
+                local def = Item.defs[id]
+                assert(def, id .. " has gone missing")
+                assert(def.class == class, id .. " should be sold by " .. class)
+                assert((def.unlockQuests or 0) == 0,
+                    id .. " was available from the first visit at the Cafe and must stay so")
 
-            local function hasTag(id, want)
-                for _, tag in ipairs(Item.defs[id].tags or {}) do
-                    if tag == want then return true end
+                local vendorId
+                for vid, vdef in pairs(Vendor.defs) do
+                    if vdef.class == class then vendorId = vid end
                 end
-                return false
+                local found
+                for _, entry in ipairs(Vendor.stock(vendorId, 0)) do
+                    if entry.id == id then found = entry end
+                end
+                assert(found and not found.locked,
+                    id .. " is not buyable at " .. tostring(vendorId) .. " on the opening shelf")
             end
+        end,
+    },
+    {
+        name = "the Cafe stocks no items at all, and its potions went home to the Crucible",
+        fn = function()
+            local cafe = Vendor.defs.cafe
+            assert(cafe and cafe.sells == false, "the Cafe declares that it sells no items")
+            assert(#Vendor.stock("cafe", 999) == 0, "the Cafe's shelf is empty at any standing")
+            assert(not Vendor.hasMarkedStock("cafe", { consumable_healing_potion = true }),
+                "and nothing a quest opens can ever dot the Cafe's door")
 
-            local ids = {}
-            for _, entry in ipairs(cafe) do
-                ids[entry.id] = true
-                assert(entry.price, entry.id .. " is for sale with no price")
-                -- Every ware is either a classless good or a potion resold from some house.
-                assert(Item.defs[entry.id].class == nil or hasTag(entry.id, "potion"),
-                    entry.id .. " is on the general shelf but is neither classless nor a potion")
-                -- The Cafe keeps no ladder, so nothing it sells is ever rank-locked -- not even a
-                -- Panacea, which needs rank 2 at the alchemist.
-                assert(not entry.locked, entry.id .. " should never be standing-locked at the Cafe")
-            end
-
-            assert(ids.utility_torch, "the torch is a classless good the Cafe should sell")
-            assert(ids.utility_boots_of_speed, "the boots of speed are classless and belong on the shelf")
-            assert(ids.consumable_healing_potion, "the Cafe resells the healing potion")
-            assert(ids.consumable_panacea, "a rank-2 alchemist potion is still un-gated at the Cafe")
-
-            -- Reselling does not re-home: the potion keeps its class and still sells at the alchemist.
+            -- The resale is gone: a potion is sold by the house that brews it and nowhere else.
             assert(Item.defs.consumable_healing_potion.class == "alchemist",
-                "the healing potion is still an alchemist item")
-            local atAlchemist = false
-            for _, entry in ipairs(Vendor.stock("alchemist", 4)) do
-                if entry.id == "consumable_healing_potion" then atAlchemist = true end
+                "the healing potion is an alchemist item")
+            local atAlchemist
+            for _, entry in ipairs(Vendor.stock("alchemist", 0)) do
+                if entry.id == "consumable_healing_potion" then atAlchemist = entry end
             end
-            assert(atAlchemist, "the alchemist still stocks the potions it brews")
+            assert(atAlchemist and not atAlchemist.locked,
+                "the Crucible sells its steadiest seller from the opening shelf -- nowhere else does now")
 
-            -- And no shelf refines anything any more: the Cafe resells potions, its house brews them,
-            -- but every recipe is honed at the Forge (models/forge.lua).
+            -- And no shelf refines anything: every recipe is honed at the Forge (models/forge.lua).
             assert(Vendor.canRefineHere == nil and Vendor.upgradeRecipe == nil,
                 "a vendor sells; upgrading moved to the Forge")
         end,

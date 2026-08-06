@@ -629,8 +629,9 @@ function Shop:drawVendor()
     Theme.set(Theme.ink)
     -- Standing here is purely a count of this house's quests you have finished; the "N more to unlock"
     -- detail lives on each locked row instead, so this line stays short and never wraps into the
-    -- description below. The general store runs no quest line, so it shows nothing.
-    if not self.def.general then
+    -- description below. A vendor with no shelf of its own (the Cafe) runs no quest line and shows
+    -- nothing -- though it does not open this panel at all any more (ui/panels/cafe.lua).
+    if self.def.sells ~= false then
         love.graphics.printf("Quests Completed: " .. (self.questsDone or 0), x + 12, ty + 22, w - 24, "left")
     end
     love.graphics.setFont(self.smallFont)

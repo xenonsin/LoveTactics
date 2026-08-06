@@ -28,8 +28,13 @@ return {
     sprite = "assets/items/consumable_witchlight_flare.png",
     type = "consumable",
     tags = { "light" },
-    price = 90, -- no class: the Cafe stocks it, and every party should carry one
-    unlockQuests = 0,
+    -- The Undercroft's, and its own flavor line said so long before its `class` did. Greed owns the
+    -- hiding (Stillshade, the smoke mantle, the vanishing act), so greed sells the answer to it -- the
+    -- same shape as the elemental coats being the Crucible's rather than a general good: the house
+    -- that sells the trick sells the counter, and charges you for both.
+    class = "rogue",
+    price = 90,
+    unlockQuests = 0, -- opening shelf: every party should be able to carry one from the first night
     maxStack = 3,
     activeAbility = {
         target = "tile",

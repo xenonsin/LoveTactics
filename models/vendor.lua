@@ -21,13 +21,16 @@
 -- Stock is *derived, not authored*: a vendor sells every priced item whose `class` matches its
 -- own. Adding data/items/<slot>/<id>.lua with the right class puts it on that vendor's shelf.
 --
--- One vendor is different: a `general = true` store (the Cafe) is the shelf for CLASSLESS priced
--- goods -- mundane traveler's supplies no sin claims (a torch, the boots of speed). A priced item
--- with no class used to be unbuyable dead data; the general store is where it now belongs. It ALSO
--- resells any item bearing one of its `stockTags` (the Cafe carries every `potion`, whichever house
--- brews it) -- so a class item can appear on two shelves, its own and the Cafe's. That is a resale,
--- not a re-home: the potion keeps its class, which is what its forge bill and ceiling read. See the
--- stock derivation below and docs/classes.md ("The general store").
+-- One vendor is different: the Cafe declares `sells = false` and stocks NOTHING. It used to be the
+-- general store -- the shelf for classless priced goods, plus a resale rack for every `potion`. Both
+-- are gone: the five classless wares were given the houses that actually wanted them, and the resale
+-- was a way to walk around the Crucible's own ladder. What the Cafe sells now is a meal before the
+-- road, which is not an item at all (models/meal.lua, docs/meals.md). It keeps a blueprint here
+-- because it keeps a shopkeeper -- a portrait, a name, a first-visit greeting.
+--
+-- The flag is stated on the vendor rather than assumed from an empty shelf, so an item that loses its
+-- class by accident lands nowhere rather than quietly on the grocer's counter -- and so
+-- tests/progression_spec.lua's "every priced item has a shelf" catches it.
 
 local Registry = require("models.registry")
 local Item = require("models.item")
@@ -87,21 +90,13 @@ function Vendor.priceFor(base, level)
     return base and math.floor(base * (1 + 0.5 * (level or 0)) + 0.5)
 end
 
--- Whether `def` (a vendor blueprint) stocks `item`. A class vendor sells its own class; a general
--- store sells the classless goods AND resells anything bearing one of its `stockTags` (the Cafe
--- carries every `potion`, whatever its class). One rule, so the shop, the sell-back, and the refine
--- gate all agree on what a shelf holds. Takes the def rather than an id so stock can call it in a loop.
+-- Whether `def` (a vendor blueprint) stocks `item`. A class vendor sells its own class; a vendor that
+-- declares `sells = false` (the Cafe, whose whole offer is the meal menu) stocks nothing at all. One
+-- rule, so the shop, the sell-back and the hub's new-stock dot all agree on what a shelf holds. Takes
+-- the def rather than an id so stock can call it in a loop.
 function Vendor.sells(def, item)
     if not def or not item then return false end
-    if def.general then
-        if Item.classOf(item) == nil then return true end
-        for _, want in ipairs(def.stockTags or {}) do
-            for _, tag in ipairs(item.tags or {}) do
-                if tag == want then return true end
-            end
-        end
-        return false
-    end
+    if def.sells == false then return false end
     if Item.classOf(item) == def.class then return true end
     -- A discipline item also lands on each of its discipline's parent shelves. That is how a multiclass
     -- item (whose `class` is one parent, its home tally) appears on the OTHER parent's shelf too --
@@ -146,10 +141,7 @@ function Vendor.stock(vendorId, questsDone, recipes, unlocked, levels)
     local stock = {}
     for id, item in pairs(Item.defs) do
         if item.price and Vendor.sells(def, item) then
-            -- The general store runs no quest line, so it gates nothing on quests: an item that needs
-            -- ten quests at its own house (a Panacea) is simply on the shelf here. Class vendors honour
-            -- the item's own unlockQuests.
-            local unlockQuests = def.general and 0 or (item.unlockQuests or 0)
+            local unlockQuests = item.unlockQuests or 0
             local level = (recipes and recipes[id]) or 0
             -- A discipline item is locked until its discipline is unlocked, on top of any quest gate --
             -- and, if it names an unlockLevel, until that discipline has grown that far.

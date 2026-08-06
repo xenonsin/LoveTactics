@@ -148,9 +148,9 @@ return {
             -- derives its stock (Vendor.stock reads `class`, it is never authored) cannot drift apart
             -- from the table above.
             for id, def in pairs(Vendor.defs) do
-                -- The general store (the Cafe) is not a class shelf: it sells classless goods and
-                -- no weapons at all, so the family-cluster contract does not apply to it.
-                if not def.general then
+                -- The Cafe is not a class shelf and stocks no items at all (it sells meals -- see
+                -- models/meal.lua), so the family-cluster contract has nothing to say about it.
+                if def.sells ~= false then
                     local families = CONTRACT[def.class] and CONTRACT[def.class].families
                     assert(families, id .. " sells for unknown class '" .. tostring(def.class) .. "'")
                     local allowed = {}

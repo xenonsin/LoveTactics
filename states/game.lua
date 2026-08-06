@@ -41,6 +41,7 @@ local PartyStatus = require("ui.party_status")
 local RelicStrip = require("ui.relic_strip")
 local OverworldAbility = require("models.overworld_ability")
 local Relic = require("models.relic")
+local Meal = require("models.meal") -- the Cafe's supper: one platter, worn by the company all run
 local CoachBubble = require("ui.coach_bubble")
 local Locale = require("models.locale")
 local Theme = require("ui.theme")
@@ -739,6 +740,10 @@ function game:openEncounter(cell)
             -- and where; the rest wait on the bench and can be rotated in (docs/deployment.md).
             party = game.player and game.player.roster or {},
             player = game.player, -- so the phase can remember who was fielded (Player.noteDeployed)
+            -- The supper bought at the Cafe before this quest (models/meal.lua): one platter, worn by
+            -- the whole company at every fight of the run, and cleared when the run resolves. Read live
+            -- off the player rather than snapshotted at launch, so a resumed run picks it up too.
+            meal = Meal.held(game.player),
             -- Resolved AFTER placement, since the front line is a thing the player chooses on the board.
             -- Returns { relicTraits, openingBoons } for battle setup to stamp at spawn; see above.
             resolveOpening = resolveOpening,

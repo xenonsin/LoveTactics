@@ -370,6 +370,14 @@ function Quest.complete(player, quest, carried)
     for matId, count in pairs(quest.rewardMaterials or {}) do grant(matId, count) end
     for matId, count in pairs(carried or {}) do grant(matId, count) end
 
+    -- The supper is eaten. A meal bought at the Cafe is bought FOR one quest (models/meal.lua's
+    -- one-ration rule), and this is the objective that spends it -- so the next run is a fresh
+    -- decision at the counter rather than a buff that quietly renews itself. Cleared here rather than
+    -- at the run's start so a quest walked away from keeps it, alongside everything else the rollback
+    -- puts back. Named in the reward table below, since a thing that just ran out should say so.
+    local mealSpent = player.meal
+    require("models.meal").clear(player)
+
     -- What this quest put on its sponsor's shelf. Marked UNSEEN as well as reported, so the shop
     -- itself dots the new rows (Player.markNew) -- the reward panel names three of them, and the
     -- shelf they landed on is forty rows deep. Resolved before the save below so the marks persist
@@ -399,6 +407,7 @@ function Quest.complete(player, quest, carried)
         prestigeAfter = prestigeAfter,
         sponsor = quest.sponsor,
         sponsorQuests = sponsorQuests, -- the sponsor's new finished-quest count (its standing), for the reward panel
+        mealSpent = mealSpent, -- the meal id this quest ate through, or nil if the company went hungry
         -- The wares this completion put on the sponsor's shelf, or nil when it opened none:
         -- { vendorId, vendor = shop name, items = { { id, name, type, price }, ... } }. The reward panel
         -- lists them by name -- "run the quest, then spend at the shelf it opened" is the campaign loop,

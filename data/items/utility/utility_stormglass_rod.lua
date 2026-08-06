@@ -3,9 +3,11 @@
 --
 -- The item form of Updraft, and the two are deliberately not the same purchase. The spell is a mage's
 -- ability, gated on an arcane neighbour, priced in mana, and forged along one axis. The rod is a
--- CHARM -- anyone can carry it, it asks nothing of the grid around it, and it is bought from the
--- general shelf. That is the whole reason it exists: suspension is the one control in this game that
--- protects what it lands on, and a party with no mage should still be able to rescue somebody.
+-- CHARM -- anyone can carry it and it asks nothing of the grid around it. That is the whole reason it
+-- exists: suspension is the one control in this game that protects what it lands on, and a party with
+-- no mage should still be able to rescue somebody. The Arcanum sells it from its OPENING shelf, which
+-- is what keeps that promise now the general store is gone: the rod is bought at the house whose
+-- weather it is, on turn one, by anybody.
 --
 -- Which is what makes it the most-used item on this list, and the most misused. A suspension is a
 -- spell with no obvious side:
@@ -26,7 +28,8 @@ return {
     sprite = "assets/items/utility_stormglass_rod.png",
     type = "utility",
     tags = { "arcane" },
-    price = 380, -- no class: the general store stocks it, and anybody may carry one
+    class = "mage", -- sealed weather is pride's craft; the Arcanum sells it, and anybody may carry one
+    price = 380,
     unlockQuests = 0,
     activeAbility = {
         target = "tile",

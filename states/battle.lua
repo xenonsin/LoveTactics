@@ -4094,8 +4094,13 @@ local function commitDeploy(opts, deployed, front, placed)
         -- plus whatever is sitting in relicTraits) and only then fires the openers, so a relic's trait is
         -- on the body before anything asks it to react.
         local traits = resolved.relicTraits or opts.relicTraits
+        -- The supper the company ate before setting out (models/meal.lua). One platter for everyone
+        -- who marched, so unlike the relic traits it needs no per-char map -- and it goes onto the
+        -- BENCH too, since a member rotated in mid-fight ate the same meal as the four who opened.
+        local meal = opts.meal
         for _, p in ipairs(placed) do
             p.unit.relicTraits = traits and traits[p.char] or nil
+            p.unit.meal = meal
         end
 
         -- Whoever was not placed waits on the bench, in company order, and can be rotated in.
@@ -4103,7 +4108,8 @@ local function commitDeploy(opts, deployed, front, placed)
         for _, c in ipairs(deployed) do standing[c] = true end
         for _, char in ipairs(opts.party or {}) do
             if not standing[char] then
-                Combat.benchUnit(battle.combat, { char = char, relicTraits = traits and traits[char] or nil })
+                Combat.benchUnit(battle.combat,
+                    { char = char, relicTraits = traits and traits[char] or nil, meal = meal })
             end
         end
 
@@ -4347,6 +4353,9 @@ function battle.enter(self, opts)
                 -- states/game.lua; Trait.attach folds them in with the char's own. Nil when the member wears
                 -- none, or in a fight with no relics carried (a tutorial leg, a duel).
                 relicTraits = opts.relicTraits and opts.relicTraits[party[i]] or nil,
+                -- The quest's meal (models/meal.lua). Nil on every fight launched outside a campaign
+                -- run -- a duel, a draft, a build match -- which is the correct reading: nobody ate.
+                meal = opts.meal,
             }
         end
     end

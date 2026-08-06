@@ -266,6 +266,7 @@ function Player.new()
         lastDeployed = {}, -- char ids fielded last battle; the deployment phase's opening pick (Player.noteDeployed)
         stash = {}, -- unequipped items; unbounded (see Player.addToStash)
         completedQuests = {}, -- quest id -> true; keeps finished quests off the board AND is a vendor's standing (Quest.sponsorProgress)
+        meal = nil,           -- the one supper bought at the Cafe and not yet eaten through (models/meal.lua)
         materials = {},       -- material id -> count; spent at the Blacksmith (see models/material.lua)
         recipes = {},         -- item id -> tier level; a consumable bought at its vendor comes at this level
         newItems = {},        -- item id -> true; arrived in the stash and not yet looked at (Player.markNew)

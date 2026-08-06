@@ -1,12 +1,12 @@
 -- Conversation authored inline (English); localization ids (`tag`) are stamped by
 -- tools/extract_strings.lua and must not be hand-edited. See models/conversation.lua.
 return {
-    title = "Everything the Road Needs",
+    title = "One Before the Road",
     cast  = { "cafe", "character_avatar" },
 
     script = {
-        { "cafe", "Torches, boots, bread, and a potion or two the temples pretend they don't stock. Everything the road needs, {name}, and nothing it'll shrive you for wanting.", tag = 1 },
-        { "character_avatar", "And the price?", tag = 2 },
-        { "cafe", "Fair. That's the whole of the pitch. The seven houses up the hill sell you a name to become; I sell you what gets you to tomorrow to spend it. Come back whenever the road's been unkind.", tag = 3 },
+        { "cafe", "You'll want feeding before you go. One order, {name}, and one is the whole of it -- I'll not send a company up the hill on two breakfasts and a stomachache.", tag = 1 },
+        { "character_avatar", "One meal does that much?", tag = 2 },
+        { "cafe", "Mine does. Every one of yours eats it and every one of them carries it until the work is done. Read the board before you order -- what's good for a long walk isn't what's good for a bad afternoon.", tag = 3 },
     },
 }

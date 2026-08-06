@@ -237,9 +237,9 @@ return {
     ["line.conversation_bastion_vendor_intro.4"] = { en = "Squire Rowan. Greywatch's own. It is an honor to arm you again.", ja = "" },  -- TODO
     ["line.conversation_bastion_vendor_intro.5"] = { en = "It is Rowan of no post now. I kept the oath and gave up the wall -- and I hold something better than a line these days. Outfit us both.", ja = "" },  -- TODO
     ["line.conversation_bastion_vendor_intro.6"] = { en = "Hold until relieved, then. The shelf is yours -- and the order remembers the ones who stay.", ja = "" },  -- TODO
-    ["line.conversation_cafe_vendor_intro.1"] = { en = "Torches, boots, bread, and a potion or two the temples pretend they don't stock. Everything the road needs, {name}, and nothing it'll shrive you for wanting.", ja = "" },  -- TODO
-    ["line.conversation_cafe_vendor_intro.2"] = { en = "And the price?", ja = "" },  -- TODO
-    ["line.conversation_cafe_vendor_intro.3"] = { en = "Fair. That's the whole of the pitch. The seven houses up the hill sell you a name to become; I sell you what gets you to tomorrow to spend it. Come back whenever the road's been unkind.", ja = "" },  -- TODO
+    ["line.conversation_cafe_vendor_intro.1"] = { en = "You'll want feeding before you go. One order, {name}, and one is the whole of it -- I'll not send a company up the hill on two breakfasts and a stomachache.", ja = "" },  -- TODO
+    ["line.conversation_cafe_vendor_intro.2"] = { en = "One meal does that much?", ja = "" },  -- TODO
+    ["line.conversation_cafe_vendor_intro.3"] = { en = "Mine does. Every one of yours eats it and every one of them carries it until the work is done. Read the board before you order -- what's good for a long walk isn't what's good for a bad afternoon.", ja = "" },  -- TODO
     ["line.conversation_cathedral_discipline_unlocked.1"] = { en = "The {discipline}'s calling is open to you, {name}. What the Cathedral kept back for that path is on the shelf -- take what serves.", ja = "" },  -- TODO
     ["line.conversation_cathedral_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_cathedral_discipline_unlocked.3"] = { en = "The Light gives what is earned, and you earned this. Carry it gently.", ja = "" },  -- TODO
@@ -682,7 +682,7 @@ return {
     ["title.conversation_bastion_slot_10_intro"] = { en = "Past the Gate", ja = "" },  -- TODO
     ["title.conversation_bastion_slot_10_outro"] = { en = "Until Relieved", ja = "" },  -- TODO
     ["title.conversation_bastion_vendor_intro"] = { en = "Those Who Hold", ja = "" },  -- TODO
-    ["title.conversation_cafe_vendor_intro"] = { en = "Everything the Road Needs", ja = "" },  -- TODO
+    ["title.conversation_cafe_vendor_intro"] = { en = "One Before the Road", ja = "" },  -- TODO
     ["title.conversation_cathedral_discipline_unlocked"] = { en = "What the Faith Keeps", ja = "" },  -- TODO
     ["title.conversation_cathedral_slot_02_confront"] = { en = "The Fallen Confessor", ja = "" },  -- TODO
     ["title.conversation_cathedral_slot_02_join"] = { en = "A Trust Returned", ja = "" },  -- TODO

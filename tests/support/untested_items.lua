@@ -110,7 +110,6 @@ return {
     "armor_rimeguard",
     "armor_robes_unbidden",
     "armor_runed_plate",
-    "armor_salamander_hide",
     "armor_sealed_coat",
     "armor_second_chance_vest",
     "armor_shared_bulwark",

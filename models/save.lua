@@ -404,6 +404,11 @@ function Save.snapshot(player)
         -- build their own previous session published. Nil on a save that never needed one.
         authorId = player.authorId,
         completedQuests = completedQuests,
+        -- The supper bought at the Cafe and not yet eaten through (models/meal.lua) -- a bare meal id,
+        -- nil when nobody has ordered. Purely additive, so Save.VERSION deliberately does NOT move: an
+        -- older save loads with no meal held, which reads as a company that has not been to the counter
+        -- yet, which is exactly what it is.
+        meal = player.meal,
         materials = materials,
         recipes = recipes,
         visitedVendors = visitedVendors,
@@ -574,6 +579,9 @@ function Save.restore(snap)
         name = snap.name,
         authorId = snap.authorId, -- nil on an older save; Player.authorId mints one on demand
         completedQuests = completedQuests,
+        -- A meal id that vanished from data/ is dropped rather than crashing the load, exactly like a
+        -- removed item or character -- and reads as a company that has not eaten.
+        meal = known(require("models.meal").defs, snap.meal) and snap.meal or nil,
         materials = materials,
         recipes = recipes,
         visitedVendors = visitedVendors,

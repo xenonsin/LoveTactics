@@ -9,7 +9,7 @@
 --   * It costs a WHOLE TURN, from somebody, and it heals nobody. In a fight that is going badly, that
 --     turn was needed elsewhere -- which is what stops this being a free tax on the enemy's patience.
 --   * It is a CONSUMABLE STACK, not a permanent charm. Three uses a battle, and then it is an empty
---     slot until it is restocked at the Cafe.
+--     slot until it is restocked at the Crucible.
 --   * It pays out at radius 1, so the party has to be standing together -- the same formation this
 --     game's area damage exists to punish.
 --
@@ -23,8 +23,12 @@ return {
     sprite = "assets/items/consumable_wellspring_sandals.png",
     type = "consumable", -- a stack: three uses, then an empty slot until it is restocked
     tags = { "arcane" },
-    price = 220, -- no class: the Cafe's shelf, and every party wants one
-    unlockQuests = 0,
+    -- The Crucible's. It is a `consumesItem` stack that hands somebody else a resource back, which is
+    -- envy's own vocabulary twice over -- and it is the party-wide reading of the Mana Potion the same
+    -- house already brews. Being FOOTWEAR rather than a flask is flavor, not a second craft.
+    class = "alchemist",
+    price = 220,
+    unlockQuests = 0, -- opening shelf: a two-caster party should be able to buy this on day one
     maxStack = 3,
     activeAbility = {
         target = "self",

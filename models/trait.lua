@@ -437,7 +437,8 @@ function Trait.tryCounterMagic(combat, unit, attacker, tags)
 end
 
 -- Does a once-per-battle Second Wind reflex (a `revivesOnLethal` trait) catch a blow that would drop
--- `unit`, standing it back up at half its (unreserved) max health? Mirrors Trait.tryEvade in shape:
+-- `unit`, standing it back up at a share of its (unreserved) max health -- half, unless the trait
+-- names its own `revivesAt`? Mirrors Trait.tryEvade in shape:
 -- Combat.dealFlatDamage consults it at the moment a hit reaches 0 HP and, if it fires, keeps the unit
 -- alive and skips the kill. The trait's own `stacks` latch spends the one charge, so it saves the
 -- bearer exactly once a battle. Mutates (restores HP, latches, logs), so it must run on a REAL lethal
@@ -449,7 +450,12 @@ function Trait.trySurvive(combat, unit)
         if t.def.revivesOnLethal and t.stacks == 0 then
             t.stacks = 1
             local hp = unit.char.stats.health
-            hp.current = math.max(1, math.floor(Combat.unreservedMax(unit.char, "health") * 0.5 + 0.5))
+            -- How much of the bar the refusal is worth. Half by default (Second Wind, which is priced
+            -- as a relic and as a general's own rule), but a trait may name its own -- the Cafe's Moxie
+            -- rises at a sliver, because a supper that stood the WHOLE company back up at half health
+            -- would be the only thing on the menu anybody ever ordered.
+            local fraction = t.def.revivesAt or 0.5
+            hp.current = math.max(1, math.floor(Combat.unreservedMax(unit.char, "health") * fraction + 0.5))
             Combat.logEvent(combat, "action",
                 string.format("%s catches a second wind and rises!", (unit.char and unit.char.name) or "Unit"),
                 unit)
@@ -780,6 +786,15 @@ local function ctxFor(combat, unit, trait, event)
             if not tgt then return 0 end
             return Combat.drainResource(tgt.char, stat, amount)
         end,
+        -- The twin of `drain`: pour a resource back into a unit, capped at its effective ceiling,
+        -- returning what actually landed. Deliberately not `heal` when the resource is health -- a heal
+        -- is a mend somebody performed, logged and answerable; this is a pool topping itself up (the
+        -- Cafe's Bottomless Pot opening each battle with mana back, which matters precisely because
+        -- mana never regenerates on its own -- see data/items/consumable/consumable_wellspring_sandals).
+        restore = function(tgt, stat, amount)
+            if not tgt then return 0 end
+            return Combat.restoreResource(tgt.char, stat, amount)
+        end,
         -- Shove `tgt` straight away from the bearer, `distance` tiles, hurting whatever the slide
         -- collides with (Combat.knockback -- the same call a mace's swing makes). What a reflex that
         -- answers with the SHIELD rather than the blade reaches for: the shield-bearer's reply to being
@@ -984,6 +999,14 @@ function Trait.attach(unit, combat)
     -- Battle setup stamps `unit.relicTraits` from the run's relic-state before Trait.setup runs, so they
     -- attach and fire onCombatStart exactly like a character's own.
     for _, id in ipairs(unit.relicTraits or {}) do
+        list[#list + 1] = Trait.instantiate(id, nil)
+    end
+    -- The MEAL the company ate before setting out (models/meal.lua) rides in the same way: its kitchen
+    -- skill is an item-less trait on every member for every fight of the quest. Battle setup stamps
+    -- `unit.meal` with the blueprint at spawn; the flat half of the platter is folded in beside the
+    -- grid's armour instead (Combat.applyUnitPassives), since a supper's defense is the same quantity a
+    -- coat's is.
+    for _, id in ipairs(require("models.meal").traits(unit.meal)) do
         list[#list + 1] = Trait.instantiate(id, nil)
     end
     unit.traits = list
