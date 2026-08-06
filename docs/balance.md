@@ -129,7 +129,19 @@ the rescale may never move a body out of the rung it declares.
    swings is Fire Bolt, then Fireball).
 8. **An item's magnitude scales with the gate that opens it, within its family.** See below.
 9. **The forge ceiling rises every quest** and reaches the top of the ladder before a line ends.
-10. **Every quest at a house opens at least one shelf row it can actually sell.**
+10. **Every quest at a house opens at least two shelf rows it can actually sell**, while that house
+    still has stock to come. The final opening gate is exempt — a shelf that is finishing has nothing
+    left to spread.
+
+### On rule 10 — a trickle then a flood
+
+One row per quest was the original bar and it is too low. It catches a gate that opens *nothing*, but
+passes a house that dribbles a single row for three quests running and then drops five at once, which
+reads to the player as the shop not moving at all. The Cathedral was doing exactly that at gates 2, 3
+and 4; the Arcanum at 3 and 4; the Undercroft at 4, 7, 9 and 10.
+
+Counting **plain** (non-discipline) rows on purpose: a gate whose only additions are discipline stock
+opens nothing for a player who has not unlocked the discipline.
 
 ### On rule 8 — item power against its gate
 

@@ -11,5 +11,5 @@ return {
     tags = { "boots", "ignore traps" },
     class = "rogue",
     price = 220,
-    unlockQuests = 3,
+    unlockQuests = 7,
 }

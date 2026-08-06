@@ -41,7 +41,7 @@ return {
     tags = { "wand", "magical", "ranged" },
     class = "mage",
     price = 620,
-    unlockQuests = 10,
+    unlockQuests = 8,
     -- Immune to what it deals, from any source. Scoped to debuffs by Status.namedImmunity, so it
     -- refuses nothing the bearer wants.
     statusImmunity = { "status_burn", "status_freeze" },

@@ -454,7 +454,7 @@ return {
         end,
     },
     {
-        name = "every quest at a house opens at least one shelf row it can actually sell",
+        name = "every quest at a house opens a fair share of shelf, not a trickle then a flood",
         fn = function()
             -- Counting PLAIN (non-discipline) rows on purpose. A gate whose only additions are
             -- discipline stock is a gate that opens nothing for a player who has not unlocked the
@@ -487,11 +487,24 @@ return {
                     counts[done] = plain
                 end
 
+                -- At least MIN_OPENED rows per quest while the shelf still has stock to come.
+                --
+                -- One was the original bar and it is too low: it catches a gate that opens NOTHING
+                -- but passes a house that dribbles a single row for three quests running and then
+                -- drops five at once, which reads to the player as the shop not moving. The Cathedral
+                -- was doing exactly that at gates 2, 3 and 4, and the Arcanum at 3 and 4.
+                --
+                -- The FINAL opening gate is exempt: a house whose catalogue is finishing has nothing
+                -- left to spread, and demanding two more rows there is demanding an infinite shelf.
+                local MIN_OPENED = 2
                 local final = counts[lineLength]
                 for done = 1, lineLength do
-                    if counts[done] == counts[done - 1] and counts[done] < final then
-                        bad[#bad + 1] = string.format("%s: quest %d opened no plain row (still %d, and %d more arrive later)",
-                            vendorId, done, counts[done], final - counts[done])
+                    local opened = counts[done] - counts[done - 1]
+                    if counts[done] < final and opened < MIN_OPENED then
+                        bad[#bad + 1] = string.format(
+                            "%s: quest %d opened %d plain row%s (want %d; %d more arrive later)",
+                            vendorId, done, opened, opened == 1 and "" or "s",
+                            MIN_OPENED, final - counts[done])
                     end
                 end
             end

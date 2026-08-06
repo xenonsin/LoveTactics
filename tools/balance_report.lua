@@ -86,7 +86,13 @@ end
 -- `physical` is the probe the player would actually pick from a melee company; `best` includes magic
 -- and is diagnostic. A body is only unhittable if EVERY tool fails against it, so reporting the worst
 -- probe instead would flag every specialist armour in the game.
+-- Memoized: this is the expensive walk (every body the campaign fields, against four probes apiece,
+-- each probe instantiating and folding two units), and M.run asks for it twice -- once directly for
+-- the failure sections and once inside walkQuests. Recomputing it was most of the report's runtime,
+-- and adding one more section pushed the whole thing past four minutes.
+local bodiesCache
 function M.walkBodies()
+    if bodiesCache then return bodiesCache end
     local byId = {}
     for _, questId in ipairs(Balance.questOrder()) do
         local def = Quest.defs[questId]
@@ -110,6 +116,7 @@ function M.walkBodies()
         if a.prestige ~= b.prestige then return a.prestige < b.prestige end
         return a.id < b.id
     end)
+    bodiesCache = rows
     return rows
 end
 
@@ -287,6 +294,75 @@ function M.walkItems()
         if a.gate ~= b.gate then return a.gate < b.gate end
         return a.id < b.id
     end)
+    return rows
+end
+
+-- Does the SHOP keep the player in pace, and does the FORGE bridge the gaps between purchases?
+--
+-- The intended loop is that upgrades come mostly from the shelf, and the bench keeps what you already
+-- carry relevant until the next one arrives. That makes the question "does a weapon bought at gate N
+-- still pull its weight at gate N+1, N+2..." -- NOT "can the player forge everything to the top",
+-- which is what the forge-economy section below measures and is the wrong question for this loop.
+--
+-- So: walk each class's shelf gate by gate. At each, take the best plain weapon on sale, and follow
+-- it FORWARD as the wielder's stat grows -- unforged, and forged to the ceiling -- until the next
+-- weapon appears. A share that sags below the family's level before the next purchase is a stretch
+-- where the player is falling behind; whether the forge can cover it is exactly what the two columns
+-- answer.
+function M.walkPace()
+    local rows = {}
+    for _, v in ipairs(Vendor.list()) do
+        local class = v.class
+        if class then
+            -- Every plain damaging thing of this class, by the gate that opens it -- weapons AND
+            -- abilities. For half the houses the ability IS the weapon: the Arcanum sells no blade
+            -- better than a gate-0 wand until quest 10, and reading weapons alone reported a
+            -- nine-quest drought where its player was actually buying Fire Bolt, then Fireball.
+            local byGate = {}
+            for id, def in pairs(Item.defs) do
+                if def.price and (def.type == "weapon" or def.type == "ability")
+                    and not def.discipline and def.class == class then
+                    local g = def.unlockQuests or 0
+                    local item = Item.instantiate(id, 1, 0)
+                    local power = (item.activeAbility and item.activeAbility.damage) or 0
+                    if type(power) == "number" and power > 0 then
+                        if not byGate[g] or power > byGate[g].power then
+                            byGate[g] = { id = id, power = power, def = def }
+                        end
+                    end
+                end
+            end
+            local gates = {}
+            for g in pairs(byGate) do gates[#gates + 1] = g end
+            table.sort(gates)
+
+            for i, g in ipairs(gates) do
+                local entry = byGate[g]
+                local nextGate = gates[i + 1]
+                local fam = Balance.familyOf(entry.id)
+                local level = fam and Balance.familyShares()[fam]
+
+                -- How the weapon reads at the gate AFTER it -- the far end of the stretch it has to
+                -- cover. Unforged, and taken to the ceiling a player of that standing could reach.
+                local until_ = nextGate or 12
+                local stat = Balance.wielderStatFor({ tags = entry.def.tags,
+                    unlockQuests = until_ })
+                local ceiling = Balance.forgeCeiling(entry.id, math.max(1, until_), until_)
+                local forged = Item.instantiate(entry.id, 1, ceiling)
+                local forgedPower = (forged.activeAbility and forged.activeAbility.damage) or entry.power
+
+                rows[#rows + 1] = {
+                    vendor = v.id, class = class, gate = g, id = entry.id,
+                    nextGate = nextGate, gap = until_ - g,
+                    level = level,
+                    atBuy = stat > 0 and entry.power / stat or 0,
+                    plainEnd = stat > 0 and entry.power / stat or 0,
+                    forgedEnd = stat > 0 and forgedPower / stat or 0,
+                    ceiling = ceiling,
+                }
+            end
+        end
+    end
     return rows
 end
 
@@ -686,6 +762,31 @@ function M.run(args)
                 r.share > r.med and "STRONG" or "weak  ",
                 r.discipline and ("  [" .. r.discipline .. "]") or ""))
         end
+    end
+
+    print("")
+    print("Keeping pace -- the shop upgrades you, the forge bridges the gap between purchases")
+    print("  For each class's shelf: the best plain weapon at a gate, then how it reads by the time")
+    print("  the NEXT weapon arrives -- unforged, and forged to the ceiling. `level` is that family's")
+    print("  own share. A plain figure well under it is a stretch the bench has to cover.")
+    print("  class      gate  weapon                        next  gap  level  plain  forged  verdict")
+    for _, r in ipairs(M.walkPace()) do
+        local lvl = r.level or 0
+        local verdict
+        if r.gap <= 0 then verdict = "-"
+        elseif r.forgedEnd >= lvl * 0.85 and r.plainEnd >= lvl * 0.85 then verdict = "holds unforged"
+        elseif r.forgedEnd >= lvl * 0.85 then verdict = "forge covers it"
+        elseif Balance.hasRider(r.id) then
+            -- A rider weapon trades raw damage for an effect, so a low share is what it IS, not a
+            -- shortfall. Calling that "falls behind" is the same mistake the magnitude rule made
+            -- before riders were detected -- the number is not what the player is carrying it for.
+            verdict = "trades damage for its rider"
+        else verdict = "FALLS BEHIND"
+        end
+        print(string.format("  %-10s %-5d %-29s %-5s %-4d %-6.2f %-6.2f %-7.2f %s",
+            r.class, r.gate, r.id:gsub("^weapon_", ""),
+            r.nextGate and tostring(r.nextGate) or "(last)", r.gap,
+            lvl, r.plainEnd, r.forgedEnd, verdict))
     end
 
     print("")
