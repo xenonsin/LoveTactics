@@ -30,7 +30,7 @@ return {
         health = 62, mana = 0, stamina = 13,
         staminaRegen = 2,
         damage = 15, magicDamage = 0,
-        defense = 2, magicDefense = 6,
+        defense = 0, magicDefense = 6,
         movement = 4,
         speed = 3,
     },

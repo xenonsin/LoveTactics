@@ -16,7 +16,7 @@ return {
     stats = {
         health = 98, mana = 60, stamina = 13,
         damage = 8, magicDamage = 22,
-        defense = 8, magicDefense = 14,
+        defense = 7, magicDefense = 14,
         movement = 4,
         speed = 4,
     },

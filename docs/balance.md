@@ -40,9 +40,30 @@ the real thing moves:
   rest of the melee kit is tuned against"
 - `armor_leather_armor`
 
-Its **attack budget** at a given standing is its attack stat plus its weapon's power at the forge
-level a player of that standing could have reached. Everything else in the system is measured in
-that number.
+Its **attack budget** at a given standing is its attack stat plus its weapon's power **as bought** —
+`Balance.FORGE_BASELINE = 0`, gear straight off the shelf. Everything else in the system is measured
+in that number.
+
+### Forging is headroom, not a toll
+
+**A piece of gear is balanced for the content it unlocks into, unforged.** Something the shelf opens
+after slot 1 must carry slot 2 on its own; the bench is what puts a player *ahead* of the curve, not
+what gets them level with it. Rule 7 below enforces this directly.
+
+The first version of this measured at the forge *ceiling*, reasoning that the reference should be "a
+player who has kept up". That quietly made the bench mandatory — a body could sit inside its band on
+paper while anyone who had not visited the Forge faced a wall, and the verification run caught it:
+an unforged avatar took 8 swings to fell a Grey Knight the band had passed at 5. Baking the bench
+into the yardstick also hides the question of whether its materials are earnable, because the budget
+assumes the answer.
+
+The reference is also **grown into what it swings**. Growth is apportioned across whatever a
+character casts, and the neutral fallback table (fighter) has no magic side at all — so a magic probe
+grown neutrally has its `magicDamage` frozen at level 1 while every enemy's `magicDefense` climbs,
+and the report claims the Arcanum's own Fireball cannot hurt a mage. Physical probes take the neutral
+default; the magic probe grows as a mage. Growing 100% into the probe weapon's *own* class was tried
+and rejected: a sword is knight stock, the knight table gives `+1` damage a level, and a reference
+committed entirely to one house is a stronger claim than any real player makes.
 
 ## The four probes
 
@@ -102,8 +123,43 @@ the rescale may never move a body out of the rung it declares.
 6. **No single armour walls a weapon by itself.** One piece may take at most
    `Balance.ARMOR_SHARE` (40%) of the attack budget off one weapon — defense bonus *plus* every
    resist that weapon's tags match.
-7. **The forge ceiling rises every quest** and reaches the top of the ladder before a line ends.
-8. **Every quest at a house opens at least one shelf row it can actually sell.**
+7. **A weapon bought at one gate carries the next gate's fights, unforged.** Measured on the house's
+   best plain damaging item — weapons *and* abilities, because for half the houses the ability *is*
+   the weapon (the Arcanum sells no blade better than a gate-0 wand until quest 10; what its player
+   swings is Fire Bolt, then Fireball).
+8. **An item's magnitude scales with the gate that opens it, within its family.** See below.
+9. **The forge ceiling rises every quest** and reaches the top of the ladder before a line ends.
+10. **Every quest at a house opens at least one shelf row it can actually sell.**
+
+### On rule 8 — item power against its gate
+
+A character's attack stat grows every level, so a magnitude authored flat across the campaign quietly
+stops mattering. The audit measured that directly: damage was **~0.45 of the wielder's stat on the
+opening shelf and ~0.20 on the last one**, so a 400-gold late weapon was a smaller step than a
+60-gold early one.
+
+Held **per family**, never across them. `docs/weapons.md` gives each archetype its own level, paid
+for in tempo and hands — a greatsword "winds up a turn, then lands the heaviest hit in the game" and
+`weapon_iron_greatsword` really does carry four times a dagger's power. Measured levels, from each
+family's early exemplars: greatsword 0.93, longbow 0.83, mace 0.53, sword 0.50, hammer 0.50, spear
+0.42, ability 0.40, dagger 0.40, censer/staff/axe 0.33, bow 0.27, wand 0.25. One share across all
+weapons proposed cutting the iron greatsword 24 → 5.
+
+A family with fewer than `Balance.FAMILY_MIN_SAMPLE` early exemplars is **not judged** — eight of
+thirteen are in that position, and a level read off two items is one of the two items.
+
+**Riders are detected, not listed.** An item is *plain* only if its effect does exactly one
+unqualified `fx.damage(fx.target)` and nothing else; anything else is selling an effect and is
+allowed to sit low. That test is structural because four attempts at a keyword list each
+under-reached — `knockback` passed inside a closure, a chi multiplier, an AoE loop, a top-level
+`waitBehavior` — and each miss proposed buffing a weapon whose own header explains why its number is
+small.
+
+**The audit's result: zero items needed changing.** The declining raw share is real, but it is not a
+defect — the catalogue was already selling effects rather than numbers at late gates. `weapon_quietus`
+is a gate-6 dagger at 330 gold with power 5 because what it sells is a kill that cannot be revived;
+`weapon_long_fall` is a 2-power mace because "a mace that displaced this far AND hit for a mace's
+damage would simply be the best knight weapon in the game."
 
 ### On rule 6, and why the resist loop was left alone
 
@@ -163,10 +219,27 @@ only loads at startup). It rewrites the literal in the blueprint's source, so co
 never writes Lua that does not parse.
 
 **It is a tool, not an oracle.** It refuses to touch companions (their statlines are the player's,
-even when fought once), tier-0 placeholders, and bodies whose low damage is authored intent — and
-when a body cannot reach its band without leaving its declared health rung, it says
+even when fought once), tier-0 placeholders, `Balance.FROZEN` bodies whose numbers another file's
+arithmetic is written against, and bodies whose low damage is authored intent — and when a body
+cannot reach its band without leaving its declared health rung, it says
 `OVER-ARMOURED: fix its loadout` and stops, because a loadout is a content decision. Pass 4 in
 particular should be read, not applied: the first time it ran it proposed arming a scarecrow.
+
+`Balance.FROZEN` exists because a spec waiver is not enough — it says "do not judge this", and the
+rescale needed "do not *touch* this". The demon grunt was waived in the spec, invisible to the tool,
+and quietly retuned from defense 4 to 1; the prologue's parry lesson is written against those exact
+numbers and two tutorial tests failed.
+
+### Does a run pay for the rung it opened?
+
+`balance-report`'s FORGE ECONOMY section measures it, at the floor — one run's objective, one elite
+and four road fights, counting no caches. One item keeps pace comfortably: **1 run per early rung,
+3 at the top of the ladder**, against a house line of 12–14 quests. The bill grows with depth
+(`t+1` craft, `ceil(t/2)` house) while the payout per run is flat, which is the right shape.
+
+The real constraint is **breadth, not depth**: a run funds about two early rungs, so a company of
+four carrying two forgeables each cannot be kept level across the board. That is a choice about who
+gets the good gear, and is the intended shape of the decision.
 
 In-battle, right-click a unit for **Damage table** (every weapon it holds against every foe on the
 board, floored cells marked), **Forge +1**, and **Level up to…**.

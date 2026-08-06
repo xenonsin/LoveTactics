@@ -170,6 +170,52 @@ end
 -- may not exceed this share. An author can still layer resists; they just cannot add up to a wall.
 Balance.ARMOR_SHARE = 0.40
 
+-- What a WEAPON or damaging ABILITY contributes, as a share of the attack stat of the body swinging
+-- it, at the gate that opens it.
+--
+-- The rule this exists to hold: **an item's magnitude scales with its gate, because the body does.**
+-- A character's attack stat grows every level, so a magnitude authored flat across the campaign is a
+-- magnitude that quietly stops mattering -- and the audit found exactly that. Damage contributed
+-- ~0.45 of the wielder's stat at gate 0 and ~0.20 by gate 11, so the four-hundred-gold weapon on the
+-- last shelf was a smaller step than the sixty-gold one on the first. That is the shop ceasing to be
+-- a reward, which is the whole thing docs/progression.md is trying to fix.
+--
+-- 0.45 is where gates 0-4 already sit, chosen so the EARLY game does not move: that end was verified
+-- by hand and plays correctly, and a target drawn from the late end would have dragged it with it.
+-- The late shelf comes up to meet it.
+--
+-- BAND, not a point, because riders are real: weapon_quietus is a gate-6 dagger at 330 gold whose
+-- number is deliberately small because what it sells is a kill that cannot be revived. An item paying
+-- for an effect is allowed to sit low; tests/balance_spec.lua names those.
+--
+-- PER FAMILY, NOT ACROSS THEM. This is the correction that matters: docs/weapons.md gives each
+-- archetype its own power level, paid for with tempo and hands -- a greatsword "winds up a turn, then
+-- lands the heaviest hit in the game" and weapon_iron_greatsword really does carry four times a
+-- dagger's power. A single share across all weapons proposed cutting it 24 -> 5 and would have
+-- deleted the entire archetype system tests/weapon_spec.lua exists to defend. So the share is
+-- measured against the family's OWN early exemplars, and what is held constant is each family's
+-- level across the gates -- not one level for every weapon in the game.
+--
+-- There is deliberately no global fallback share. A family with too few early exemplars to read a
+-- level from gets NO judgement rather than an invented one -- see Balance.FAMILY_MIN_SAMPLE. (A
+-- `Balance.ITEM_SHARE = 0.45` constant lived here briefly and was deleted unused, which is the same
+-- mistake Vendor.tier was: a knob nothing reads is a knob that drifts.)
+Balance.ITEM_SHARE_BAND = { min = 0.55, max = 1.8 } -- as a RATIO to the family's own target
+
+-- Gates counted as "early" when reading a family's own power level: the end of the campaign that was
+-- verified by hand and plays correctly, and therefore the end the rest is brought into line with.
+Balance.EARLY_GATES = 4
+
+-- How many early exemplars a family needs before its measured level is trusted enough to retune the
+-- rest of it automatically.
+--
+-- Eight of the thirteen families have one or two, and a level read off two items is not a level -- it
+-- is one of the two items. It read weapon_iron_greatsword, the family's own base weapon and the
+-- heaviest hit in the game by documented design, as 2.18x "its family" and proposed halving it. A
+-- family under this bar is REPORTED and left alone; retuning it is an authoring decision about what
+-- that archetype is for, which is docs/weapons.md's business and not a solver's.
+Balance.FAMILY_MIN_SAMPLE = 3
+
 -- ---------------------------------------------------------------------------
 -- Derived: the player's side
 -- ---------------------------------------------------------------------------
@@ -211,8 +257,25 @@ function Balance.forgeCeiling(item, prestige, sponsorDone)
     return Forge.ceilingFor(player, item)
 end
 
+-- The forge level the bands are measured at: ZERO. Gear as bought, straight off the shelf.
+--
+-- THE RULE THIS ENCODES: a piece of gear is balanced for the content it unlocks into, unforged.
+-- Something the shelf opens after slot 1 must carry slot 2 on its own; forging is HEADROOM, the thing
+-- that puts the player ahead of the curve, not the toll that gets them level with it.
+--
+-- The first version of this measured at the forge CEILING, on the reasoning that the reference should
+-- be "a player who has kept up". That quietly made the bench mandatory: a body could sit inside its
+-- band on paper while anyone who had not visited the Forge faced a wall, and the verification run
+-- caught it -- an unforged avatar took 8 swings to fell a Grey Knight the band had passed at 5.
+-- Baking the bench into the yardstick also hides the question of whether the materials for it are
+-- even earnable (see the report's FORGE ECONOMY section), because the budget assumes the answer.
+--
+-- Forging is still measured, just not assumed: Balance.forgeCeiling reports the reachable rung and
+-- tools/balance_report.lua prints it beside the budget, so the headroom is visible as headroom.
+Balance.FORGE_BASELINE = 0
+
 -- The pre-mitigation power the reference loadout throws at prestige P: the wielder's attack stat plus
--- the weapon's power at the forge level a player of that standing could have reached.
+-- the weapon's power AS BOUGHT (Balance.FORGE_BASELINE), not as forged.
 --
 -- Returns `budget, parts`, where parts is shaped like Combat.damageBreakdown's rows
 -- ({ label, value }) so the report's arithmetic and the in-game hover receipt read identically -- a
@@ -232,13 +295,16 @@ function Balance.attackBudget(prestige, opts)
     if magical == nil then magical = (probe and probe.magical) or false end
 
     local level = Growth.levelForPrestige(prestige)
-    local char = Character.instantiate(charId)
-    Growth.resolve(char, level)
-
-    local forgeLevel = opts.forgeLevel
-    if not forgeLevel then
-        forgeLevel = Balance.forgeCeiling(weaponId, prestige, opts.sponsorDone)
+    local char
+    if charId == Balance.REFERENCE.charId then
+        -- Grown into what it swings, and memoized, via the one owner of that rule.
+        char = Balance.refChar(prestige, Balance.growthClassFor(probe or { weapon = weaponId }))
+    else
+        char = Character.instantiate(charId)
+        Growth.resolve(char, level)
     end
+
+    local forgeLevel = opts.forgeLevel or Balance.FORGE_BASELINE
     local weapon = Item.instantiate(weaponId, 1, forgeLevel)
 
     local statName = magical and "magicDamage" or "damage"
@@ -291,6 +357,25 @@ function Balance.isPlaceholder(charOrId)
     if type(hp) == "table" then hp = hp.max end
     return (hp or 0) <= 1
 end
+
+-- Bodies whose numbers are LOAD-BEARING SOMEWHERE ELSE, and which no automated pass may touch.
+--
+-- Distinct from a spec waiver, which only says "do not judge this". This says "do not TOUCH this",
+-- and it has to live here rather than in tests/balance_spec.lua because tools/balance_rescale.lua
+-- cannot require a spec -- which is exactly how the demon grunt got quietly retuned: the spec waived
+-- it, the rescale never saw the waiver, its defense went 4 -> 1, and two prologue tests failed
+-- because the tutorial's authored script depends on the grunt surviving an exact number of blows.
+--
+-- The bar for an entry is that some OTHER file would break, or some other lesson stop being true.
+Balance.FROZEN = {
+    -- data/tutorials/village.lua quotes this body's arithmetic line by line -- the parry beat is built
+    -- on the grunt landing a specific blow and surviving a specific answer. It also declares
+    -- `scaling = false`, so it is blueprint-exact wherever it appears and there is nowhere for a
+    -- rescale to hide.
+    character_demon_grunt = "prologue: the parry lesson is written against these exact numbers",
+}
+
+function Balance.isFrozen(id) return Balance.FROZEN[id] ~= nil end
 
 -- Is this body one the player ends up OWNING -- the avatar, a starting companion, or anyone a quest
 -- grants through `rewardCharacter`?
@@ -484,7 +569,9 @@ function Balance.exchange(prestige, charOrId, probeOrTags, opts)
 
     local level = opts.level or Growth.levelForPrestige(prestige)
     local unit = Balance.unitFor(charOrId, level)
-    local refUnit = Balance.unitFor(Balance.refChar(prestige), level)
+    -- The same reference the budget was priced from, grown the same way -- a caster measured with a
+    -- fighter-grown body's armour would be comparing two different people.
+    local refUnit = Balance.unitFor(Balance.refChar(prestige, Balance.growthClassFor(probe)), level)
 
     local budget = opts.budget
     if not budget then
@@ -515,23 +602,62 @@ function Balance.exchange(prestige, charOrId, probeOrTags, opts)
     }
 end
 
--- The reference character as a grown instance, carrying its authored starting grid. Memoized per
--- prestige because the walk asks for it once per body per probe and instantiating a character is not
--- free at 108 blueprints x 4 probes.
+-- The reference character as a grown instance, carrying its authored starting grid, GROWN INTO THE
+-- THING IT SWINGS.
+--
+-- `growthClass` seeds the technique ledger so the level-ups credit that class's table, which is
+-- exactly what the game does to a real player: growth is apportioned across whatever they have been
+-- casting (Character.recordTechnique), and models/growth.lua's whole thesis is "a knight you keep
+-- casting Fireball with grows into a battlemage".
+--
+-- Without it the reference is grown under Growth.NEUTRAL_CLASS -- fighter, whose table has no magic
+-- side at all -- so its magicDamage sits at its level-1 value forever while every enemy's
+-- magicDefense climbs. The magic probe then reported that the Arcanum's own Fireball could not hurt a
+-- mage, which is not a fact about the Arcanum's shelf but about a yardstick that had never cast
+-- anything. A caster reference must have cast.
+--
+-- Memoized per (level, class): the walk asks for this once per body per probe, and instantiating a
+-- character 108 x 4 times is not free.
 local refCache = {}
-function Balance.refChar(prestige)
+function Balance.refChar(prestige, growthClass)
     local level = Growth.levelForPrestige(prestige)
-    if refCache[level] then return refCache[level] end
+    local key = level .. "/" .. tostring(growthClass)
+    if refCache[key] then return refCache[key] end
+
     local char = Character.instantiate(Balance.REFERENCE.charId)
+    if growthClass and Growth.defs[growthClass] then
+        -- Any positive amount under one key is a 100% share -- Growth.shares normalizes -- so this
+        -- says "everything this body did, it did as a <class>" without inventing a rate.
+        char.technique = { [growthClass] = 1 }
+    end
     Growth.resolve(char, level)
-    refCache[level] = char
+    refCache[key] = char
     return char
+end
+
+-- The growth class the reference is grown under for a given probe.
+--
+-- NOT the probe weapon's own class, which was the first attempt and is too strong a claim. A sword is
+-- knight stock, and the knight table is `health 6, defense 2, damage 1` -- so growing the reference
+-- 100% knight gives it +1 attack a level, and every armoured body in the back half of the campaign
+-- reads unhittable. That is a real property of a player who commits ENTIRELY to one house, and it may
+-- be worth looking at on its own, but it is not the yardstick: growth here is apportioned across
+-- everything a character casts, and nobody casts one thing.
+--
+-- So the physical probes take the neutral default -- what Growth.resolve gives an avatar with no cast
+-- history, which is the honest "unspecialized player" this is measuring for. The magic probe cannot:
+-- the neutral table (fighter) has no magic side AT ALL, so magicDamage would sit at its level-1 value
+-- forever while every enemy's magicDefense climbed, and the report would claim the Arcanum's own
+-- Fireball could not hurt a mage. A caster reference has to have cast something.
+function Balance.growthClassFor(probe)
+    return (probe and probe.magical) and "mage" or nil
 end
 
 -- Drop the memos. Only a tool that rewrites blueprints between walks needs this.
 function Balance.reset()
     refCache = {}
     facedCache = nil
+    familyCache = nil
 end
 
 -- ---------------------------------------------------------------------------
@@ -799,6 +925,190 @@ function Balance.itemPrestige(id, def)
     local faced = Balance.facedAt()[id]
     if faced and faced < prestige then prestige = faced end
     return prestige
+end
+
+-- The attack stat a body swinging `item` would have at the gate that opens it -- the denominator the
+-- item's magnitude is judged against. Magic items are measured against magicDamage on a mage-grown
+-- reference, for the same reason the magic probe is (see Balance.growthClassFor).
+function Balance.wielderStatFor(idOrItem)
+    local def = idOrItem
+    if type(idOrItem) == "string" then def = Item.defs[idOrItem] end
+    if not def then return 0 end
+
+    local magical = false
+    for _, t in ipairs(def.tags or {}) do
+        if t == "magical" then magical = true end
+    end
+    local prestige = math.max(1, def.unlockQuests or 0)
+    local ref = Balance.refChar(prestige, magical and "mage" or nil)
+    return (magical and ref.stats.magicDamage or ref.stats.damage) or 0
+end
+
+-- The share of its wielder's stat an item's level-0 magnitude currently is, or nil if it has no
+-- damaging magnitude to judge. Consumables are excluded: a one-shot is priced on being one-shot, and
+-- a healing potion legitimately restores several times what a blow deals.
+function Balance.itemShare(id)
+    local def = Item.defs[id]
+    if not def or def.type == "consumable" then return nil end
+    local item = Item.instantiate(id, 1, 0)
+    local ab = item.activeAbility
+    if not (ab and type(ab.damage) == "number") then return nil end
+    local stat = Balance.wielderStatFor(def)
+    if stat <= 0 then return nil end
+    return ab.damage / stat, ab.damage, stat
+end
+
+-- The grouping an item's power level is read within: its weapon family (Item.archetype), or its item
+-- type for anything that declares none. An ability is not a weapon and has no archetype, so all
+-- damaging abilities are read as one group.
+function Balance.familyOf(idOrDef)
+    local def = idOrDef
+    if type(idOrDef) == "string" then def = Item.defs[idOrDef] end
+    if not def then return nil end
+    return Item.archetype(def) or def.type
+end
+
+-- family -> the share its EARLY exemplars sit at. This is the level each family is held to across
+-- every gate, so a greatsword stays a greatsword and a dagger stays a dagger while both stop drifting
+-- as the campaign goes on. Memoized; derived, never authored.
+local familyCache
+function Balance.familyShares()
+    if familyCache then return familyCache end
+    local acc = {}
+    for id, def in pairs(Item.defs) do
+        if def.price and (def.type == "weapon" or def.type == "ability")
+            and (def.unlockQuests or 0) <= Balance.EARLY_GATES then
+            local share = Balance.itemShare(id)
+            local fam = Balance.familyOf(def)
+            if share and fam then
+                acc[fam] = acc[fam] or {}
+                acc[fam][#acc[fam] + 1] = share
+            end
+        end
+    end
+    familyCache = {}
+    for fam, list in pairs(acc) do
+        if #list >= Balance.FAMILY_MIN_SAMPLE then
+            table.sort(list)
+            -- Median, so one outlier exemplar cannot set a whole family's level. On an even count
+            -- take the MEAN of the two middles rather than an arbitrary side: `list[#list/2]` picks
+            -- the lower, which on a two-item family means the family's level is simply its weaker
+            -- member -- and that is what proposed cutting the iron greatsword in half.
+            local n = #list
+            if n % 2 == 1 then
+                familyCache[fam] = list[(n + 1) / 2]
+            else
+                familyCache[fam] = (list[n / 2] + list[n / 2 + 1]) / 2
+            end
+        end
+    end
+    return familyCache
+end
+
+-- Families with too few early exemplars to read a level from, and how many each has. Reported so the
+-- gap is visible rather than silently skipped.
+function Balance.thinFamilies()
+    local counts = {}
+    for id, def in pairs(Item.defs) do
+        if def.price and (def.type == "weapon" or def.type == "ability")
+            and (def.unlockQuests or 0) <= Balance.EARLY_GATES then
+            local fam = Balance.familyOf(def)
+            if fam and Balance.itemShare(id) then counts[fam] = (counts[fam] or 0) + 1 end
+        end
+    end
+    local out = {}
+    for fam, n in pairs(counts) do
+        if n < Balance.FAMILY_MIN_SAMPLE then out[#out + 1] = { family = fam, n = n } end
+    end
+    table.sort(out, function(a, b) return a.family < b.family end)
+    return out
+end
+
+-- The level-0 magnitude an item SHOULD carry for its gate, and what it currently does carry.
+-- Returns `want, have, ratio` -- `ratio` being how far off its family's level it sits, so 1.0 is
+-- exactly right whatever family it belongs to. Nil when there is no magnitude to judge.
+function Balance.itemMagnitude(id)
+    local share, have, stat = Balance.itemShare(id)
+    if not share then return nil end
+    local fam = Balance.familyOf(id)
+    -- No trusted level for this family -> no judgement. Returning the global fallback here would be
+    -- inventing a target for exactly the families whose levels are least understood.
+    local target = fam and Balance.familyShares()[fam]
+    if not target then return nil end
+    local want = math.max(1, math.floor(stat * target + 0.5))
+    return want, have, have / math.max(1, want), target
+end
+
+-- Markers that say "this item sells something other than its number". Matched against the
+-- blueprint's declared fields AND its source text.
+--
+-- The source scan is not laziness -- it is the only thing that works. Most riders are arguments to
+-- `fx.damage` INSIDE the effect closure (`fx.damage(fx.target, { knockback = { distance = 4 } })`),
+-- and a closure can only be inspected by calling it, which needs a live board. Reading the blueprint
+-- fields alone reported weapon_long_fall as a plain 2-power mace and proposed a sevenfold buff -- a
+-- weapon whose own header says "a damage curve so low that the shove is not merely the point, it is
+-- the entire weapon", and that hitting for a mace's damage as well "would simply be the best knight
+-- weapon in the game". The prose was right and the field list could not see it.
+local RIDER_FIELDS = {
+    "inflicts", "hits", "stun", "healing", "restore", "summon",
+    "waitBehavior", "requiresAdjacent", "raw", "reviveHealth",
+}
+-- Rather than a keyword list, the source test is STRUCTURAL: an item is plain only if its effect does
+-- exactly one thing -- a single unqualified `fx.damage(fx.target)` and no other fx call. Anything
+-- else is selling something.
+--
+-- A keyword list was tried and kept under-reaching, three times over: it missed `knockback` (an
+-- argument inside the closure), then `fx.spendChi` (ability_asura_strike's 6 is a FLOOR, the real
+-- damage is +6 per chi), then a loop applying `fx.damage` to every enemy in a hazard. Each miss
+-- proposed buffing a weapon whose own header explains why the number is small. Enumerating what a
+-- rider can be is a losing game; recognising what PLAIN looks like is one line.
+local PLAIN_EFFECT = "fx%.damage%(%s*fx%.target%s*%)"
+
+local sourceCache = {}
+local function itemSource(id)
+    if sourceCache[id] ~= nil then return sourceCache[id] end
+    local text = false
+    for _, dir in ipairs({ "weapon", "armor", "utility", "consumable", "ability" }) do
+        local path = "data/items/" .. dir .. "/" .. id .. ".lua"
+        if love and love.filesystem and love.filesystem.getInfo(path) then
+            text = love.filesystem.read(path) or false
+            break
+        end
+    end
+    sourceCache[id] = text
+    return text
+end
+
+-- Does this item sell something other than its number? Items that carry a rider are allowed to sit
+-- low in the share band, because the number is not what the player is buying.
+function Balance.hasRider(idOrDef)
+    local def, id = idOrDef, nil
+    if type(idOrDef) == "string" then id, def = idOrDef, Item.defs[idOrDef] end
+    if not def then return false end
+    if def.traits and #def.traits > 0 then return true end
+
+    -- Checked on the ITEM as well as on its ability: `waitBehavior` (a staff's Focus swap, and where
+    -- the Warding Staff's whole ward lives) is a top-level field, and looking only inside
+    -- activeAbility reported a 560-gold relic as a plain 4-power stick.
+    local ab = def.activeAbility
+    for _, key in ipairs(RIDER_FIELDS) do
+        if def[key] ~= nil or (ab and ab[key] ~= nil) then return true end
+    end
+
+    local text = id and itemSource(id)
+    if not text then return false end
+
+    -- Strip comments AND string literals first: these blueprints are two-thirds prose, and a header
+    -- explaining what the weapon does not do -- or a `description` reading "Inflicts Root" -- would
+    -- otherwise register as the mechanic it is describing.
+    local code = text:gsub("%-%-%[%[.-%]%]", " "):gsub("%-%-[^\n]*", " ")
+    code = code:gsub('"[^"]*"', '""'):gsub("%[%[.-%]%]", '""')
+
+    -- Count fx calls. Exactly one, and it a plain strike at the target, is a plain weapon.
+    local fxCalls, plain = 0, 0
+    for _ in code:gmatch("fx%.%a+%s*%(") do fxCalls = fxCalls + 1 end
+    for _ in code:gmatch(PLAIN_EFFECT) do plain = plain + 1 end
+    return not (fxCalls == 1 and plain == 1)
 end
 
 -- Every quest, ordered the way a player meets them -- by the prestige they require, then by name so

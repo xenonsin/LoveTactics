@@ -229,6 +229,135 @@ function M.walkCadence()
     return rows
 end
 
+-- Every priced item's LEVEL-0 magnitude against the gate it unlocks at.
+--
+-- The question this answers is "does an item's power respect its `unlockQuests`" -- is a thing the
+-- shelf opens after nine quests actually better than what it sold on day one, and is anything on the
+-- opening shelf so strong the gate behind it means nothing.
+--
+-- Measured as a share of the WIELDER'S ATTACK STAT at that gate rather than as a raw number, because
+-- the raw number is not comparable across the campaign: the same 6 power is half a level-1 body's
+-- output and a rounding error at level 40. Share says how much of the blow the ITEM is.
+--
+-- Reported, not asserted, and the reason is riders. weapon_quietus is a gate-6 discipline dagger at
+-- 330 gold with power 5 -- less than a 60-gold iron sword -- because what it sells is a kill that
+-- cannot be revived. A pure-magnitude rule would call that broken every time, and it is not; a human
+-- reads the outliers and decides which are paying for something.
+function M.walkItems()
+    local rows = {}
+    for id, def in pairs(Item.defs) do
+        if def.price then
+            local gate = def.unlockQuests or 0
+            local prestige = math.max(1, gate)
+
+            -- The headline magnitude, at level 0, and which axis it sits on.
+            local item = Item.instantiate(id, 1, 0)
+            local ab = item.activeAbility
+            local kind, mag
+            if ab and type(ab.damage) == "number" then kind, mag = "damage", ab.damage
+            elseif ab and type(ab.healing) == "number" then kind, mag = "healing", ab.healing
+            elseif item.bonus and type(item.bonus.defense) == "number" and item.bonus.defense > 0 then
+                kind, mag = "defense", item.bonus.defense
+            elseif item.bonus and type(item.bonus.magicDefense) == "number" and item.bonus.magicDefense > 0 then
+                kind, mag = "magicDefense", item.bonus.magicDefense
+            end
+
+            if kind and mag then
+                -- The body's own contribution at this gate: what the item is measured against.
+                local magical = false
+                for _, t in ipairs(item.tags or {}) do
+                    if t == "magical" then magical = true end
+                end
+                local ref = Balance.refChar(prestige, magical and "mage" or nil)
+                local stat
+                if kind == "defense" then stat = ref.stats.defense
+                elseif kind == "magicDefense" then stat = ref.stats.magicDefense
+                else stat = magical and ref.stats.magicDamage or ref.stats.damage end
+
+                rows[#rows + 1] = {
+                    id = id, gate = gate, price = def.price, kind = kind, mag = mag,
+                    class = def.class, discipline = def.discipline,
+                    family = (item.tags or {})[1],
+                    stat = stat, share = stat > 0 and (mag / stat) or 0,
+                }
+            end
+        end
+    end
+    table.sort(rows, function(a, b)
+        if a.gate ~= b.gate then return a.gate < b.gate end
+        return a.id < b.id
+    end)
+    return rows
+end
+
+-- Can a run PAY for the rungs it opens?
+--
+-- The bands assume gear as bought (Balance.FORGE_BASELINE = 0), so forging is headroom rather than a
+-- toll -- but headroom nobody can reach is not headroom, it is a dead lever, which is what the forge
+-- ceiling was before it started following the shelf. This measures the other half: what one run of a
+-- house's quest actually hands over in materials, against what the next rung on that house's gear
+-- costs.
+--
+-- The payout is the FLOOR, deliberately: Spoils.materials is computed and never rolled, so this is
+-- what a run pays even if the player walks past every cache. Caches add 1-4 craft and 1-3 house on
+-- top (models/overworld.lua), and they are the reward for leaving the path, so counting them here
+-- would price the bench at the exploring player and quietly tax everyone else.
+function M.walkForgeEconomy()
+    local Spoils = require("models.spoils")
+    local Material = require("models.material")
+
+    local rows = {}
+    for _, v in ipairs(Vendor.list()) do
+        local house = Material.houseFor and Material.houseFor(v.class or v.id) or nil
+
+        -- A representative plain class weapon of this house -- what the player is actually forging.
+        local sample
+        for id, def in pairs(Item.defs) do
+            if def.class and Forge.houseVendorFor(def.class) == v.id
+                and def.type == "weapon" and not def.discipline and def.price
+                and (def.unlockQuests or 0) == 0 then
+                if not sample or id < sample.id then sample = { id = id, def = def } end
+            end
+        end
+        if sample then
+            for _, done in ipairs({ 0, 2, 5, 9 }) do
+                local player = Balance.playerAt(math.max(1, done), v.id, done)
+                player.materials = {}
+                local item = Item.instantiate(sample.id, 1, done)
+                local cost = Forge.upgradeCost(player, item)
+
+                -- One run of this house's line, at its floor: an objective plus a couple of road
+                -- fights, one of them elite.
+                local earned = {}
+                local function bank(t)
+                    for id, n in pairs(t) do earned[id] = (earned[id] or 0) + n end
+                end
+                bank(Spoils.materials({ kind = "objective", tier = 2, houseMaterial = house }))
+                bank(Spoils.materials({ kind = "elite", tier = 2, houseMaterial = house }))
+                for _ = 1, 4 do bank(Spoils.materials({ kind = "combat", tier = 1 })) end
+
+                -- Runs needed to cover the worst-supplied material in the bill.
+                local runs = 0
+                for id, need in pairs((cost and cost.materials) or {}) do
+                    local per = earned[id] or 0
+                    local r = per > 0 and math.ceil(need / per) or math.huge
+                    if r > runs then runs = r end
+                end
+
+                rows[#rows + 1] = {
+                    vendor = v.id, done = done, item = sample.id,
+                    target = (item.level or 0) + 1,
+                    locked = cost and cost.locked,
+                    materials = cost and cost.materials or {},
+                    earned = earned,
+                    runs = runs,
+                }
+            end
+        end
+    end
+    return rows
+end
+
 -- Trail encounters run to a decision through the real turn loop. See the header for what this cannot
 -- reach. Deterministic per seed, so two runs of the tool agree.
 function M.walkSim(opts)
@@ -456,6 +585,154 @@ function M.run(args)
     printReference(M.walkReference(), full)
     printQuests(M.walkQuests(), full)
     printCadence(M.walkCadence(), full)
+
+    -- Level-0 magnitude against the gate that opens it.
+    local items = M.walkItems()
+    local byGate = {}
+    for _, r in ipairs(items) do
+        local g = byGate[r.gate] or { n = 0, sum = 0, shares = {}, rows = {} }
+        g.n, g.sum = g.n + 1, g.sum + r.share
+        g.shares[#g.shares + 1] = r.share
+        g.rows[#g.rows + 1] = r
+        byGate[r.gate] = g
+    end
+    local gates = {}
+    for g in pairs(byGate) do gates[#gates + 1] = g end
+    table.sort(gates)
+
+    print("")
+    print("Item power vs its gate -- level-0 magnitude as a share of the wielder's own stat")
+    print("  A weapon at 0.50 contributes half as much as the body swinging it. The point is whether")
+    print("  the share HOLDS as gates rise: a later gate that sells a smaller share is a purchase")
+    print("  that is a downgrade, and an opening gate that sells a large one makes the gates behind")
+    print("  it meaningless. Riders are not visible here -- see the outliers below.")
+    -- Split by KIND as well as by gate. A falling overall median could just be a changing mix --
+    -- late gates holding more armour, whose numbers are naturally smaller than a weapon's -- and that
+    -- would be an artefact of the measurement rather than a fact about the shelf.
+    local KINDS = { "damage", "healing", "defense", "magicDefense" }
+    local function medianOf(list)
+        if #list == 0 then return nil end
+        table.sort(list)
+        return list[math.ceil(#list / 2)]
+    end
+
+    print("  gate  n    median share   range          per kind (median share)")
+    for _, g in ipairs(gates) do
+        local e = byGate[g]
+        table.sort(e.shares)
+        local med = e.shares[math.ceil(#e.shares / 2)]
+        local bits = {}
+        for _, kind in ipairs(KINDS) do
+            local sub = {}
+            for _, r in ipairs(e.rows) do
+                if r.kind == kind then sub[#sub + 1] = r.share end
+            end
+            local m = medianOf(sub)
+            if m then bits[#bits + 1] = string.format("%s %.2f (%d)", kind:sub(1, 3), m, #sub) end
+        end
+        print(string.format("  %-5d %-4d %-14.2f %.2f - %-8.2f %s",
+            g, e.n, med, e.shares[1], e.shares[#e.shares], table.concat(bits, "  ")))
+    end
+
+    -- Outliers: the items furthest from their own gate's median, both directions.
+    local flagged = {}
+    for _, g in ipairs(gates) do
+        local e = byGate[g]
+        table.sort(e.shares)
+        local med = e.shares[math.ceil(#e.shares / 2)]
+        for _, r in ipairs(e.rows) do
+            if med > 0 and (r.share > med * 2 or r.share < med * 0.5) then
+                r.med = med
+                flagged[#flagged + 1] = r
+            end
+        end
+    end
+    table.sort(flagged, function(a, b)
+        local ra = a.share / (a.med > 0 and a.med or 1)
+        local rb = b.share / (b.med > 0 and b.med or 1)
+        return ra > rb
+    end)
+    -- The per-family levels the rescale holds items to, and how many early exemplars set each. A
+    -- level read off one or two items is a level to distrust.
+    local fams = {}
+    for fam, share in pairs(Balance.familyShares()) do fams[#fams + 1] = { fam = fam, share = share } end
+    table.sort(fams, function(a, b) return a.share > b.share end)
+    local counts = {}
+    for _, r in ipairs(items) do
+        if r.gate <= Balance.EARLY_GATES then
+            local f = Balance.familyOf(r.id)
+            if f then counts[f] = (counts[f] or 0) + 1 end
+        end
+    end
+    print("")
+    print("  Family power levels -- the share each archetype is held to, from its EARLY exemplars")
+    print("  (docs/weapons.md gives each family its own level; this is measuring that, not setting it)")
+    for _, f in ipairs(fams) do
+        local n = counts[f.fam] or 0
+        print(string.format("    %-12s %.2f   from %d early exemplar%s",
+            f.fam, f.share, n, n == 1 and "" or "s"))
+    end
+    local thin = Balance.thinFamilies()
+    if #thin > 0 then
+        print("")
+        print(string.format("    NOT JUDGED -- fewer than %d early exemplars, so there is no level to read (%d):",
+            Balance.FAMILY_MIN_SAMPLE, #thin))
+        local bits = {}
+        for _, t in ipairs(thin) do bits[#bits + 1] = string.format("%s (%d)", t.family, t.n) end
+        print("      " .. table.concat(bits, ", "))
+        print("      These are left alone on purpose: a level read off one or two items is one of the")
+        print("      two items, and it read the iron greatsword -- the heaviest hit in the game by")
+        print("      design -- as twice 'its family'. Deciding what an archetype is worth is")
+        print("      docs/weapons.md's business, not a solver's.")
+    end
+
+    print("")
+    print(string.format("  Outliers -- more than 2x or under half their own gate's median (%d):", #flagged))
+    if #flagged == 0 then
+        print("    none.")
+    else
+        for _, r in ipairs(flagged) do
+            print(string.format("    gate %-3d %-34s %-12s %3d (%.2f vs %.2f median) %s%s",
+                r.gate, r.id, r.kind, r.mag, r.share, r.med,
+                r.share > r.med and "STRONG" or "weak  ",
+                r.discipline and ("  [" .. r.discipline .. "]") or ""))
+        end
+    end
+
+    print("")
+    print("Forge economy -- can a run pay for the rung it opened?")
+    print("  Materials from ONE run at its floor (objective + elite + 4 road fights, no caches),")
+    print("  against the next rung on that house's opening weapon. `runs` is how many such runs the")
+    print("  worst-supplied line of the bill needs. Caches pay 1-4 craft / 1-3 house on top.")
+    print("  house           after  rung  runs  bill")
+    local econ = M.walkForgeEconomy()
+    local worst, deepest = 0, 0
+    for _, r in ipairs(econ) do
+        if r.runs ~= math.huge then
+            if r.done == 0 and r.runs > worst then worst = r.runs end
+            if r.runs > deepest then deepest = r.runs end
+        end
+    end
+    for _, r in ipairs(econ) do
+        local bits = {}
+        for id, n in pairs(r.materials) do
+            bits[#bits + 1] = string.format("%dx %s (have %d)", n, id:gsub("^material_", ""), r.earned[id] or 0)
+        end
+        table.sort(bits)
+        print(string.format("  %-14s  %-5d  +%-4d %-5s %s%s",
+            r.vendor, r.done, r.target, r.runs == math.huge and "NEVER" or tostring(r.runs),
+            #bits > 0 and table.concat(bits, ", ") or "(no material cost)",
+            r.locked and "   [past the ceiling]" or ""))
+    end
+    print("")
+    print(string.format("  ONE item keeps pace: %d run per early rung, %d at the top of the ladder,",
+        worst, deepest))
+    print("  against a house line of 12-14 quests. The bill grows with depth (t+1 craft,")
+    print("  ceil(t/2) house) while the payout per run is flat, which is the right shape -- a deep")
+    print("  rung should cost more runs than a shallow one.")
+    print("  The constraint is BREADTH, not depth: a run funds about two early rungs, so a company")
+    print("  of four carrying two forgeables each cannot be kept level across the board. That is a")
+    print("  choice about who gets the good gear, which is the intended shape of the decision.")
 
     if sim then
         print("")

@@ -26,6 +26,6 @@ return {
     tags = { "cloth", "arcane" },
     class = "mage",
     traits = { "trait_sealed_reliquary" },
-    bonus = { magicDefense = Curve.ramp(5, 15), movement = -1 },
+    bonus = { magicDefense = Curve.ramp(4, 14), movement = -1 },
     resist = { magical = 2 },
 }

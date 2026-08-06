@@ -26,7 +26,7 @@ return {
         health = 55, mana = 0, stamina = 15,
         staminaRegen = 2,
         damage = 4, magicDamage = 0, -- below even the Homunculus: it is a wall, not a fist
-        defense = 14, magicDefense = 8,
+        defense = 9, magicDefense = 8,
         movement = 2, -- it arrives where you put it and does not meaningfully relocate
         speed = 1,
     },

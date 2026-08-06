@@ -30,6 +30,6 @@ return {
     price = 560,
     unlockQuests = 9,
     traits = { "trait_counter_magic" },
-    bonus = { magicDefense = Curve.ramp(6, 16), movement = -1 },
+    bonus = { magicDefense = Curve.ramp(3, 13), movement = -1 },
     resist = { magical = 3 },
 }

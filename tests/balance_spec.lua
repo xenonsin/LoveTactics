@@ -25,12 +25,12 @@ local Discipline = require("models.discipline")
 local Forge = require("models.forge")
 
 -- id -> why this body is exempt from EVERY rule below.
-local WAIVERS = {
-    -- scaling = false, and its claw arithmetic IS the prologue's parry lesson: the tutorial text in
-    -- data/tutorials/village.lua quotes these exact numbers, so tuning it to a band would silently
-    -- unteach the one fight that explains the combat system.
-    character_demon_grunt = "prologue: scaling = false, its arithmetic is the parry lesson",
-}
+--
+-- Bodies in Balance.FROZEN are waived automatically: a body no automated pass may TOUCH cannot
+-- sensibly be held to a band it is not allowed to be moved into. That set lives in models/balance.lua
+-- rather than here because the rescale tool needs it too and cannot require a spec.
+local WAIVERS = {}
+for id, reason in pairs(Balance.FROZEN) do WAIVERS[id] = reason end
 
 -- id -> why this body is allowed to be harmless, exempt from the mirror rule ONLY.
 --
@@ -42,6 +42,20 @@ local WAIVERS = {
 --
 -- They are NOT exempt from the other rules: a wall still has to be killable inside its band, and still
 -- may not outclass the protagonist.
+-- id -> why this body is allowed outside its time-to-kill band, exempt from that rule ONLY.
+--
+-- Still checked for everything else: it may not wall every melee weapon, may not outclass the
+-- protagonist, and must be able to hurt back.
+local TTK_WAIVED = {
+    -- Nine swings against an elite band of 4-8, on a Hard capstone that costs a crossing of two
+    -- lines to reach. Her mitigation is two armours -- the tower shield she deserted with and the
+    -- Warden's Oath that is her signature -- each individually inside Balance.ARMOR_SHARE and each
+    -- load-bearing for what the character IS. `balance-rescale` flagged her over-armoured and
+    -- correctly refused to fix it by cutting a tier-3 body through the health floor of its own rung.
+    -- One hit over, on the deepest fight in the line, is the right place to spend that.
+    character_forsworn_captain = "over-armoured by design: two signature coats, one hit over, on a cross-line capstone",
+}
+
 local HARMLESS_BY_DESIGN = {
     character_crucible_golem = "a wall, not a fist -- 'not meant to win an exchange, meant to be in the way of one'",
     character_homunculus = "'worth is not the hit but the Poison its fists leave behind'",
@@ -172,7 +186,7 @@ return {
             local bad = {}
             for _, row in ipairs(sweep()) do
                 local v = row.verdict
-                if v == "too slow" or v == "too fast" then
+                if (v == "too slow" or v == "too fast") and not TTK_WAIVED[row.id] then
                     local band = Balance.TTK[row.role]
                     bad[#bad + 1] = string.format("%s -- %s: %s hits as a %s body, band is %d-%d",
                         where(row), v, tostring(row.ex.out.hits), row.role, band.min, band.max)
@@ -236,6 +250,130 @@ return {
             table.sort(bad)
             assert(#bad == 0, "one piece of armour may not take more than Balance.ARMOR_SHARE of the attack budget\n"
                 .. "off a single weapon -- defense bonus PLUS every resist that weapon's tags match:\n  "
+                .. table.concat(bad, "\n  "))
+        end,
+    },
+    {
+        -- THE RULE FORGING IS NOT ALLOWED TO PAPER OVER: a weapon the shelf opens after slot N must
+        -- carry slot N+1 on its own, straight off the rack. Forging is headroom -- the thing that puts
+        -- the player ahead of the curve -- not the toll that gets them level with it, and a band
+        -- measured at the forge ceiling would quietly make the bench mandatory (see
+        -- Balance.FORGE_BASELINE for the version of this that shipped first and was wrong).
+        --
+        -- Stated on the house's BEST plain weapon at that gate, because that is what the player would
+        -- actually buy, and checked against the bodies the next gate fields.
+        name = "a weapon bought at one gate carries the next gate's fights, unforged",
+        fn = function()
+            local bad = {}
+            for _, vendorId in ipairs(houses()) do
+                -- The bodies this house's line fields, by the standing they are met at.
+                local byPrestige = {}
+                for _, questId in ipairs(Balance.questOrder()) do
+                    local def = Quest.defs[questId]
+                    if def.sponsor == vendorId then
+                        local p = Balance.prestigeFor(questId)
+                        for _, body in ipairs(Balance.bodiesFor(questId)) do
+                            if not Balance.isPlaceholder(body.id) and not Balance.isCompanion(body.id)
+                                and not WAIVERS[body.id] and not TTK_WAIVED[body.id] then
+                                byPrestige[#byPrestige + 1] = { id = body.id, prestige = p }
+                            end
+                        end
+                    end
+                end
+
+                -- The best plain DAMAGING thing on the shelf at each gate, unforged -- weapons AND
+                -- abilities, because for half the houses the ability IS the weapon. The Arcanum sells
+                -- no blade better than a gate-0 wand until quest 10; what its player actually swings
+                -- is Fire Bolt and then Fireball, and Combat.dealDamage reads the two item types
+                -- through the same `activeAbility.damage`. Checking weapons alone reported the
+                -- Arcanum unable to hurt a mage while its shelf was selling the answer.
+                for gate = 0, 6 do
+                    local best, bestPower = nil, -1
+                    for id, def in pairs(Item.defs) do
+                        if (def.type == "weapon" or def.type == "ability")
+                            and def.price and not def.discipline
+                            and def.class and Forge.houseVendorFor(def.class) == vendorId
+                            and (def.unlockQuests or 0) <= gate then
+                            local w = Item.instantiate(id, 1, Balance.FORGE_BASELINE)
+                            local power = (w.activeAbility and w.activeAbility.damage) or 0
+                            if power > bestPower then best, bestPower = id, power end
+                        end
+                    end
+
+                    if best then
+                        for _, body in ipairs(byPrestige) do
+                            -- Bodies met at roughly the NEXT gate, which is what this weapon is for.
+                            if body.prestige >= gate + 1 and body.prestige <= gate + 3 then
+                                local w = Item.defs[best]
+                                local probe = { weapon = best, tags = w.tags or {},
+                                    magical = false }
+                                for _, t in ipairs(w.tags or {}) do
+                                    if t == "magical" then probe.magical = true end
+                                end
+                                local ex = Balance.exchange(body.prestige, body.id, probe)
+                                if ex.out.floored then
+                                    bad[#bad + 1] = string.format(
+                                        "%s gate %d: %s (unforged) floors against %s at p%d",
+                                        vendorId, gate, best, body.id, body.prestige)
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            table.sort(bad)
+            assert(#bad == 0, "gear must be balanced for the content it unlocks INTO, without a trip to\n"
+                .. "the bench -- forging is headroom, not a toll:\n  " .. table.concat(bad, "\n  "))
+        end,
+    },
+    {
+        -- An item's magnitude must scale with the gate that opens it, because the BODY does. A
+        -- character's attack stat grows every level, so a magnitude authored flat across the campaign
+        -- quietly stops mattering -- and the audit measured exactly that: damage was ~0.45 of the
+        -- wielder's stat on the opening shelf and ~0.20 on the last one, so a 400-gold late weapon was
+        -- a smaller step than a 60-gold early one.
+        --
+        -- Held PER FAMILY. docs/weapons.md gives each archetype its own level, paid for in tempo and
+        -- hands -- a greatsword "winds up a turn, then lands the heaviest hit in the game" and really
+        -- does carry four times a dagger's power. One share across all weapons proposed cutting the
+        -- iron greatsword 24 -> 5 and would have deleted the archetype system tests/weapon_spec.lua
+        -- exists to defend.
+        --
+        -- NO WAIVER LIST, and that is a result rather than an omission. Riders are detected
+        -- structurally (Balance.hasRider: an item is plain only if its effect does exactly one
+        -- unqualified fx.damage and nothing else), so an item that sells an effect exempts itself by
+        -- being what it is. Four hand-written waivers were tried first and every one of them turned
+        -- out to be a rider the detector should have caught -- knockback inside a closure, a chi
+        -- multiplier, an AoE loop, a top-level waitBehavior.
+        name = "an item's magnitude scales with the gate that opens it, within its family",
+        fn = function()
+            local band = Balance.ITEM_SHARE_BAND
+            local bad = {}
+            for id, def in pairs(Item.defs) do
+                if def.price and (def.type == "weapon" or def.type == "ability") then
+                    local want, have, ratio = Balance.itemMagnitude(id)
+                    -- nil = a family with too few early exemplars to read a level from; those are
+                    -- reported by `balance-report` and retuning them is an authoring decision.
+                    if want and have then
+                        local rider = Balance.hasRider(id)
+                        if ratio > band.max then
+                            bad[#bad + 1] = string.format(
+                                "%s (gate %d, %s): %d power is %.2fx its family's level -- want ~%d",
+                                id, def.unlockQuests or 0, tostring(Balance.familyOf(id)),
+                                have, ratio, want)
+                        elseif ratio < band.min and not rider then
+                            bad[#bad + 1] = string.format(
+                                "%s (gate %d, %s): %d power is only %.2fx its family's level and sells"
+                                .. " no effect to pay for it -- want ~%d",
+                                id, def.unlockQuests or 0, tostring(Balance.familyOf(id)),
+                                have, ratio, want)
+                        end
+                    end
+                end
+            end
+            table.sort(bad)
+            assert(#bad == 0, "a gate that opens a weaker item than the one before it is a purchase that is a\n"
+                .. "downgrade; a plain-damage item may not drift from its own archetype's level:\n  "
                 .. table.concat(bad, "\n  "))
         end,
     },

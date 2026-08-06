@@ -15,7 +15,7 @@ return {
     -- Medium tier: better all-round steel than leather, still one square slower. Defense and resists
     -- are per-level tables (levels 0..10) the forge steps up; the movement penalty is flat.
     bonus = {
-        defense = Curve.ramp(3, 13),
+        defense = Curve.ramp(2, 12),
         movement = -1,
     },
     resist = {

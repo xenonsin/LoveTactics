@@ -15,7 +15,7 @@ return {
         health = 52, mana = 15, stamina = 23, -- resource stats
         staminaRegen = 2, -- stamina recovered per elapsed tick (a flat stat, not a resource)
         damage = 16, magicDamage = 3,          -- flat stats
-        defense = 7, magicDefense = 5,
+        defense = 6, magicDefense = 5,
         movement = 4, -- number of spaces this character can move
         speed = 5,    -- nimble
     },

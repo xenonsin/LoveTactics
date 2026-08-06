@@ -29,6 +29,6 @@ return {
     tags = { "cloth", "holy" },
     class = "priest",
     traits = { "trait_devotion_unbidden" },
-    bonus = { magicDefense = Curve.ramp(5, 15), defense = Curve.ramp(2, 12), movement = -1 },
+    bonus = { magicDefense = Curve.ramp(4, 14), defense = Curve.ramp(2, 12), movement = -1 },
     resist = { magical = 2 },
 }

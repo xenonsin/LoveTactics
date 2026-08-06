@@ -25,7 +25,7 @@ return {
         health = 52, mana = 0, stamina = 11,
         staminaRegen = 2,
         damage = 12, magicDamage = 0,
-        defense = 6, magicDefense = 5,
+        defense = 3, magicDefense = 5,
         movement = 4,
         speed = 2,
     },

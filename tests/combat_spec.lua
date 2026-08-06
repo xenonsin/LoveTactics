@@ -270,14 +270,16 @@ return {
             local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_warlord", 1, 2) })
             local mage, warlord = c.units[1], c.units[2]
             local sword = Item.instantiate("weapon_iron_sword")
-            -- A soft caster swinging steel at a heavily armoured target: power + Damage does not
-            -- cover the warlord's Defense, so the blow floors rather than going negative. The premise
-            -- is checked rather than assumed, so a rebalance that made the mage genuinely able to hurt
-            -- him reports THAT instead of a bare "expected the floor".
+            -- A soft caster swinging steel at a target whose armour outweighs the blow: the result
+            -- goes negative and the floor catches it.
+            --
+            -- The armour is SET here rather than borrowed from the warlord's blueprint. This case is
+            -- about the floor mechanic, not about any body's tuning, and reading a live statline made
+            -- it a hostage to the balance data -- the warlord's defense came down in a rescale, landed
+            -- exactly equal to the mage's swing, and this failed on its own premise check while the
+            -- mechanic it tests was working perfectly.
             local raw = Combat.abilityMagnitude(sword.activeAbility) + mage.char.stats.damage
-            assert(raw < warlord.char.stats.defense,
-                "this case needs a strike the target's armor outweighs (" .. raw .. " vs "
-                    .. warlord.char.stats.defense .. ")")
+            warlord.char.stats.defense = raw + 10
             local d = Combat.dealDamage(c, mage, warlord, sword, {})
             local expected = math.max(1, math.floor(raw * Combat.MIN_DAMAGE_SHARE))
             assert(d == expected, "damage floors at " .. expected .. ", got " .. d)

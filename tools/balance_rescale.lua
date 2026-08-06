@@ -166,7 +166,9 @@ local function bodySites()
             -- A COMPANION is skipped for the opposite reason: its statline is read constantly, just
             -- not as an enemy's. Several are fought once before they join, and retuning Rowan because
             -- she is briefly an opponent would weaken the knight the player keeps.
-            if Balance.isPlaceholder(body.id) or Balance.isCompanion(body.id) then
+            -- Balance.FROZEN is the third: a body some OTHER file's arithmetic is written against.
+            if Balance.isPlaceholder(body.id) or Balance.isCompanion(body.id)
+                or Balance.isFrozen(body.id) then
                 -- skipped
             elseif not cur or prestige < cur.prestige then
                 byId[body.id] = {
@@ -200,24 +202,31 @@ function M.walkArmor()
         -- (Balance.itemPrestige), which tests/balance_spec.lua judges it at too.
         local prestige = Balance.itemPrestige(id, def)
 
-        -- The worst probe decides, since the cap is "no single weapon meets a wall".
-        local worst, worstProbe, cap = 0, nil, nil
+        -- The worst probe decides -- and "worst" is the biggest OVERAGE against that probe's own cap,
+        -- not the biggest raw total. Each probe carries a different budget (a wand's power and
+        -- magicDamage are not a sword's), so totals across probes are not comparable. Ranking by total
+        -- let armor_runed_plate through: it takes 9 off both the slash and the magic probe, slash won
+        -- the tie by iteration order, and the slash budget is large enough that 9 fits under its cap
+        -- while the magic one is not -- so the tool reported nothing to do while the guard failed.
+        local worst, worstProbe, cap, over = 0, nil, nil, 0
         for _, probeName in ipairs(Balance.PROBE_ORDER) do
             local probe = Balance.PROBES[probeName]
             local budget = (Balance.attackBudget(prestige, { probe = probe }))
+            local probeCap = budget * Balance.ARMOR_SHARE
             local item = Item.instantiate(id, 1, 0)
             local statName = probe.magical and "magicDefense" or "defense"
             local total = (item.bonus and item.bonus[statName]) or 0
             for _, t in ipairs(probe.tags) do
                 total = total + ((item.resist and item.resist[t]) or 0)
             end
-            if total > worst then
-                worst, worstProbe, cap = total, probe, budget * Balance.ARMOR_SHARE
+            if total - probeCap > over then
+                over, worst, worstProbe, cap = total - probeCap, total, probe, probeCap
             end
         end
 
         if worstProbe and worst > cap then
-            local over = worst - math.floor(cap)
+            local over = worst - math.floor(cap) -- shadows the ranking overage above, deliberately:
+            -- that one is a float used to pick the probe, this one is the whole points to shed.
             local statName = worstProbe.magical and "magicDefense" or "defense"
             local raw = def.bonus and def.bonus[statName]
             local edit = { id = id, path = itemPath(id), probe = worstProbe, total = worst, cap = cap }
@@ -263,6 +272,81 @@ function M.walkArmor()
 end
 
 -- ---------------------------------------------------------------------------
+-- Pass 5 -- item magnitude vs its gate
+-- ---------------------------------------------------------------------------
+
+-- Bring each damaging item's LEVEL-0 magnitude to Balance.ITEM_SHARE of the attack stat of the body
+-- that would swing it at its own gate.
+--
+-- The defect: magnitudes were authored roughly flat across the campaign (4-8 power everywhere) while
+-- a character's attack stat grows every level. Damage was ~0.45 of the wielder's stat on the opening
+-- shelf and ~0.20 on the last one, so a 400-gold late weapon was a smaller step than a 60-gold early
+-- one and the shop stopped being a reward.
+--
+-- Only CURVED magnitudes are rewritten, and the span is preserved. A plain number is an author saying
+-- "this does not grow with forging" (models/curve.lua's span rule), and turning it into a curve here
+-- would silently overrule that on an axis this pass has no opinion about.
+--
+-- Riders are left alone below the band, never above it: an item may be quiet because it sells an
+-- effect, but nothing justifies a plain-damage weapon overshooting its gate.
+function M.walkItemMagnitudes()
+    local edits = {}
+    local ids = {}
+    for id, def in pairs(Item.defs) do
+        if def.price and (def.type == "weapon" or def.type == "ability") then ids[#ids + 1] = id end
+    end
+    table.sort(ids)
+
+    for _, id in ipairs(ids) do
+        local want, have, ratio = Balance.itemMagnitude(id)
+        if want and have then
+            local band = Balance.ITEM_SHARE_BAND
+            local low, high = ratio < band.min, ratio > band.max
+            -- A rider earns the bottom of the band, never the top.
+            if low and Balance.hasRider(id) then low = false end
+
+            if low or high then
+                local def = Item.defs[id]
+                local raw = def.activeAbility and def.activeAbility.damage
+                if type(raw) == "table" then
+                    local base, top = raw[1], raw[#raw]
+                    local span = top - base
+                    local newBase = math.max(1, want)
+                    if newBase ~= base then
+                        edits[#edits + 1] = {
+                            id = id, path = itemPath(id), gate = def.unlockQuests or 0,
+                            ramp = { field = "damage", base = newBase, top = newBase + span },
+                            from = base, ratio = ratio, want = want,
+                            family = Balance.familyOf(id),
+                        }
+                    end
+                end
+            end
+        end
+    end
+    return edits
+end
+
+local function applyItemMagnitudes(edits, apply)
+    local done, failed = 0, {}
+    for _, e in ipairs(edits) do
+        local text = e.path and readFile(e.path)
+        if not text then
+            failed[#failed + 1] = e.id .. " (no source file)"
+        else
+            local out = rewriteRamp(text, e.ramp.field, e.ramp.base, e.ramp.top)
+            if out then
+                if apply then writeFile(e.path, out) end
+                done = done + 1
+            else
+                failed[#failed + 1] = e.id .. " (damage ramp pattern did not match)"
+            end
+        end
+    end
+    return done, failed
+end
+
+-- ---------------------------------------------------------------------------
 -- Pass 2 -- innate defense
 -- ---------------------------------------------------------------------------
 
@@ -305,9 +389,24 @@ function M.walkToughness()
         -- whatever knob it does own, which for those is health.
         local path = charPath(site.id)
         local canDefense = hasLiteral(path, statName)
-        local newInnate = canDefense
-            and math.max(0, math.min(innate, allowed - worn))
-            or innate
+        local baseInnate = ((def.stats and def.stats[statName]) or 0)
+
+        -- SOLVE DEFENSE IN BLUEPRINT SPACE AND CONVERT BACK, before health is solved at all.
+        --
+        -- Doing it the other way round -- pick a grown target, then clamp the literal at 0 -- computes
+        -- the health target from a mitigation the body will never actually have. A blueprint saying
+        -- `defense = 0` cannot go lower, but level-up growth still adds its class table's gains on top,
+        -- so the achievable grown floor is `delta`, not zero. character_bastion_sworn is the case:
+        -- the solve asked for 8 grown defense, the literal was already 0, growth put it back to 12 --
+        -- and health was then sized against 8, leaving the body permanently out of band while the tool
+        -- reported nothing to do and the guard failed.
+        local newBaseInnate = baseInnate
+        if canDefense then
+            local wantGrown = allowed - worn
+            newBaseInnate = math.max(0, math.min(baseInnate, wantGrown - (delta[statName] or 0)))
+        end
+        -- What the body will REALLY carry once growth is applied to that literal.
+        local newInnate = newBaseInnate + (delta[statName] or 0)
 
         local newMit = worn + newInnate
         local perHit = math.max(1, ex.out.budget - newMit)
@@ -322,11 +421,8 @@ function M.walkToughness()
         local highest = perHit * band.max
         local newHp = math.max(lowest, math.min(hp, highest))
 
-        -- Back to BLUEPRINT space -- what the literal in the file has to say for the grown body to
-        -- land where the solve wants it.
-        local baseInnate = ((def.stats and def.stats[statName]) or 0)
+        -- Health back to BLUEPRINT space (defense was solved there already, above).
         local baseHp = (def.stats and def.stats.health) or 0
-        local newBaseInnate = math.max(0, newInnate - (delta[statName] or 0))
         local newBaseHp = newHp - (delta.health or 0)
 
         -- Never cut a body to a sliver in one pass. When its WORN gear alone exceeds what the band
@@ -547,7 +643,12 @@ local function report(label, count, failed)
     for _, f in ipairs(failed) do print("      ! " .. f) end
 end
 
+-- Pass 0 runs FIRST and is numbered so: it moves the SHELF, and every later pass measures bodies
+-- against what the shelf sells. Retuning a knight before the sword that hits it has settled is
+-- tuning against a number about to change.
 M.PASSES = {
+    { n = 0, label = "0 item magnitude", walk = function() return M.walkItemMagnitudes() end,
+      apply = applyItemMagnitudes },
     { n = 1, label = "1 armour share", walk = function() return M.walkArmor() end, apply = applyArmor },
     { n = 2, label = "2 toughness", walk = function() return M.walkToughness() end, apply = applyStatEdits },
     { n = 3, label = "3 attack cap", walk = function() return M.walkAttack() end, apply = applyStatEdits },
@@ -557,7 +658,10 @@ M.PASSES = {
 -- Print what a pass would do, one line per blueprint, so a dry run is reviewable rather than a count.
 local function detail(n, edits)
     for _, e in ipairs(edits) do
-        if n == 1 then
+        if n == 0 then
+            print(string.format("      gate %-3d %-34s %-11s damage %3d -> %-3d (%.2fx its family)",
+                e.gate, e.id, e.family or "?", e.from, e.ramp.base, e.ratio))
+        elseif n == 1 then
             local bits = {}
             if e.ramp then
                 bits[#bits + 1] = string.format("%s ramp -> (%d, %d)", e.ramp.field, e.ramp.base, e.ramp.top)

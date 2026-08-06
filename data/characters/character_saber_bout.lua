@@ -27,11 +27,23 @@ bout.boss = true
 
 -- A deeper pool than the companion's 84: the debut's fuller toolkit (the trappers' nets, her own deep
 -- holds) would kill 84 before the 33% commit threshold could ever read, and the phase IS the fight's
--- turn. Copied off the base stats so movement/speed/defense stay exactly the companion's -- only the
--- ceiling moves.
+-- turn. Copied off the base stats so movement and speed stay exactly the companion's.
 bout.stats = {}
 for k, v in pairs(base.stats) do bout.stats[k] = v end
+-- MUST stay above the recruit's 84, and tests/saber_debut_spec.lua fails the build if it does not:
+-- the phases read off percentages of this pool, and a twin shallower than the companion cannot reach
+-- its own 33% commit before the fight is over. A balance pass cut it to 81 once -- inside the tier-3
+-- band, and still wrong for that reason.
 bout.stats.health = 96
+
+-- Defense is overridden here rather than inherited, and that is the whole reason this line exists.
+-- This is slot 1 of the Colosseum -- the first fight of a line, on an Easy quest, against a company
+-- carrying whatever the shelf sold them unforged -- and the companion's own armour value made the
+-- bout a nine-swing grind against a band of four to eight (docs/balance.md). It cannot be fixed on
+-- character_saber: she is a PLAYER unit for the rest of the campaign and tuning her down to settle an
+-- opening duel would be paying for this fight with every later one. The bout form already keeps its
+-- own health for the same kind of reason; this is that argument applied to the other axis.
+bout.stats.defense = 8
 
 -- The base kit (potion, bolas, bound First Motion in the centre) plus the bout relic in the
 -- bottom-centre cell. Two bound items in two cells is fine -- the lock lives on the item, not on a
