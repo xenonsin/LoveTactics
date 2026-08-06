@@ -6,5 +6,5 @@ return {
     health = 6,
     defense = 2,
     magicDefense = 1,
-    damage = 1,
+    damage = 2,
 }

@@ -75,6 +75,33 @@ return {
             end
         end,
     },
+    {
+        -- The offensive mirror of the case above, and it went unwritten for most of this project's
+        -- life. Mitigation subtracts, so the argument runs identically in both directions: a class
+        -- whose ATTACK grows slower than the enemy's ARMOUR gets relatively weaker every level and its
+        -- damage converges on the floor of 1. `knight` was losing ~0.8 a level against knight-stock
+        -- armour -- and the knight shelf is the sword, spear and mace the starting company carries --
+        -- while `bulwark` and `sentinel` gained nothing offensively at all, forever.
+        --
+        -- The bar is LETHALITY_FLOOR (get better at all), not ENEMY_ARMOR_GROWTH (keep pace). A wall
+        -- is allowed to lose ground on the stat sheet because its WEAPON does not: docs/balance.md
+        -- holds an item's magnitude to its archetype's level at the gate that opens it. What is
+        -- forbidden is a table that can never improve, whatever the player does with it.
+        --
+        -- One channel, not both: a class needs one way to hurt things. A mage's `damage` is 0 and that
+        -- is correct, not a gap.
+        name = "every growth table gets better at hurting things, on at least one channel",
+        fn = function()
+            for class, def in pairs(Growth.defs) do
+                assert(Growth.meetsLethalityFloor(def), string.format(
+                    "%s gains %d attack per level (damage +%d, magicDamage +%d) -- it never hits harder,"
+                    .. " so against armour climbing ~%d a level its damage converges on the floor."
+                    .. " Raise damage or magicDamage to at least %d.",
+                    class, Growth.lethality(def), def.damage or 0, def.magicDamage or 0,
+                    Growth.ENEMY_ARMOR_GROWTH, Growth.LETHALITY_FLOOR))
+            end
+        end,
+    },
 
     -- ------------------------------------------------------------ dominant class
     {

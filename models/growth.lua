@@ -76,6 +76,66 @@ function Growth.meetsSurvivabilityFloor(def, magical)
     return Growth.survivability(def, magical) >= Growth.ENEMY_DAMAGE_GROWTH
 end
 
+-- How fast an ENEMY's ARMOUR climbs per level -- the mirror of ENEMY_DAMAGE_GROWTH above, and the
+-- number the rule below is measured against.
+--
+-- 2 because the commonest stock the player fights is knight-table -- 15 character blueprints declare
+-- `class = "knight"`, more than any other -- and that table gains `defense 2` a level. ENEMY_LEVEL_LAG
+-- pulls the effective rate to about 1.8; this rounds up, so a class sitting at PARITY gains a little
+-- on armour each level rather than precisely tying it.
+--
+-- This is the parity mark, NOT the enforced minimum -- see LETHALITY_FLOOR.
+Growth.ENEMY_ARMOR_GROWTH = 2
+
+-- The enforced minimum: every class must get BETTER at hurting things, however slowly.
+--
+-- One, not parity, and the gap between the two numbers is a design statement rather than a compromise.
+-- A class below parity does fall behind enemy armour on the stat sheet -- a bulwark gaining 1 against
+-- armour gaining ~1.8 loses ground every level -- and that is allowed, because stat growth is not the
+-- only thing carrying a build. GEAR is, and gear now provably scales: an item's magnitude is held to
+-- its archetype's level at the gate that opens it (models/balance.lua, docs/balance.md), so a wall's
+-- damage comes from the weapon in its hands and keeps pace whether or not its table does.
+--
+-- What the floor forbids is a class that can NEVER improve at all. `bulwark` and `sentinel` gained
+-- exactly nothing offensively, forever, which is not "a wall that buys damage elsewhere" -- it is a
+-- build whose damage converges on the floor of 1 no matter what the player does with it.
+Growth.LETHALITY_FLOOR = 1
+
+-- What a growth table buys per level in ATTACK, on whichever channel it actually fights with. Unlike
+-- survivability, which must clear on both channels because an enemy may come at you either way, a
+-- class needs only ONE way to hurt things: a mage's `damage` is 0 and that is correct, not a gap.
+function Growth.lethality(def)
+    if not def then return 0 end
+    return math.max(def.damage or 0, def.magicDamage or 0)
+end
+
+-- THE OFFENSIVE MIRROR OF THE RULE ABOVE, and it was missing for most of this project's life.
+--
+-- Mitigation is subtractive, so the argument runs identically in both directions. The defensive half
+-- was reasoned out: a class whose pool and armour grow slower than the enemy's blow gets relatively
+-- frailer every level and is eventually one-shot. The offensive half is the same sentence reflected --
+-- a class whose ATTACK grows slower than the enemy's ARMOUR gets relatively weaker every level, and
+-- its damage converges on the floor of 1. That is not a tuning wobble either; it is the same
+-- divergence, and it always arrives.
+--
+-- It was arriving. `knight` gained 1 attack a level against knight-stock armour gaining ~1.8, so a
+-- player who committed to that one house fell behind by ~0.8 a level for the whole campaign -- and the
+-- knight shelf is the sword, spear and mace the starting company is handed. It sits at parity now.
+-- `bulwark` and `sentinel` gained NOTHING, ever, and sit at the floor.
+--
+-- Deliberately a floor, not an equality, exactly as its twin is: a class buying far more attack than
+-- the minimum is a striker, and the exchange stays stable because the surplus only shortens the fight
+-- rather than inverting it. And deliberately a LOW floor -- a wall is allowed to lose ground on the
+-- stat sheet, because its weapon does not (see LETHALITY_FLOOR).
+--
+-- `mammonite` passes at 1 and would fail a parity bar, correctly: its own table says "a mammonite's
+-- output is priced in coin, not in Power -- The Gilded Wound folds none of its bearer's damage stat in
+-- at all", so points spent here would buy that build nothing. A growth table can pay for lethality
+-- somewhere other than this stat, and the floor is set low enough not to argue with one that does.
+function Growth.meetsLethalityFloor(def)
+    return Growth.lethality(def) >= Growth.LETHALITY_FLOOR
+end
+
 -- A character's ceiling, and how fast prestige walks toward it. Levels are DERIVED from the player's
 -- global prestige (Player.syncLevels) rather than earned per character, so without a cap a character's
 -- level is just the campaign's prestige total. Prestige is now a flat count of quests completed

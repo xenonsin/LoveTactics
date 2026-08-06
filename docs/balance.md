@@ -211,6 +211,36 @@ transitive `requiredQuests` count (prestige is a flat count of quests finished, 
 eleven behind it cannot be met below prestige twelve), and `Quest.floorLevelFor`'s SLOT_FLOOR
 ladder. Getting this wrong measured a slot-10 general against a tutorial budget.
 
+## Growth: two floors, not one
+
+`models/growth.lua` argues the **defensive** exchange carefully — `meetsSurvivabilityFloor` requires
+every class to gain `health + defense >= ENEMY_DAMAGE_GROWTH` per level, because a class whose pool
+and armour grow slower than the enemy's blow is eventually one-shot.
+
+The **offensive mirror went unwritten**. Mitigation subtracts, so the argument runs identically both
+ways: a class whose attack grows slower than the enemy's *armour* gets relatively weaker every level
+and its damage converges on the floor. It was happening — `knight` gained 1 attack a level against
+knight-stock armour gaining ~1.8, and the knight shelf is the sword, spear and mace the starting
+company is handed. `bulwark` and `sentinel` gained nothing offensively at all, ever.
+
+Two numbers now, and the gap between them is deliberate:
+
+- **`ENEMY_ARMOR_GROWTH = 2`** — parity. The commonest enemy stock is knight-table (15 blueprints,
+  more than any other class) gaining `defense 2` a level, lagged to ~1.8.
+- **`LETHALITY_FLOOR = 1`** — the enforced minimum, checked over every table by `growth_spec` on
+  `max(damage, magicDamage)`. One channel, not both: a class needs *one* way to hurt things, and a
+  mage's `damage` of 0 is correct rather than a gap.
+
+A class below parity **does** lose ground on the stat sheet, and that is allowed, because stat growth
+is not the only thing carrying a build. **Gear is, and gear now provably scales** — rule 8 holds an
+item's magnitude to its archetype's level at the gate that opens it, so a wall's damage comes from
+the weapon in its hands whether or not its table keeps up. What the floor forbids is a table that can
+never improve at all.
+
+`mammonite` passes at 1 and would fail a parity bar, correctly: its own table says *"a mammonite's
+output is priced in coin, not in Power — The Gilded Wound folds none of its bearer's damage stat in
+at all."* A growth table may pay for lethality somewhere other than this stat.
+
 ## The damage floor
 
 A hit always lands **more than zero** — a scratch still triggers counters, feeds Rimebitten, wakes a
