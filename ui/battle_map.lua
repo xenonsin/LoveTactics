@@ -360,7 +360,11 @@ local RALLY_LINE = 0.34 -- the party blue, at the weight of a hint
 function BattleMap:drawRallyGround()
     local zone = self.overlays and self.overlays.rally
     if not zone or #zone == 0 then return end
-    if self.overlays.deployZone then return end -- the phase owns the tiles; it says this louder
+    -- The phase (or a placement) owns the tiles and says this louder, so stand down -- UNLESS its fill
+    -- covers only part of the zone (deployZonePartial: a slot is open, but some tiles are withheld
+    -- because the acting unit could walk to them). Then the boundary still has a job, and dropping it
+    -- would put holes in your own lines on exactly the tiles nothing else is marking.
+    if self.overlays.deployZone and not self.overlays.deployZonePartial then return end
     local s = self.size
     local inZone = {}
     for _, t in ipairs(zone) do inZone[t.x .. "," .. t.y] = true end

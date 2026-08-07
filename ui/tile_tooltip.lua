@@ -388,8 +388,17 @@ local function appendRally(blocks, info, lead)
     if not r then return false end
     if not lead then blocks[#blocks + 1] = { kind = "sep" } end
     blocks[#blocks + 1] = { kind = lead and "title" or "head", text = "Rally Ground", color = PARTY_COLOR }
-    blocks[#blocks + 1] = { kind = "desc",
-        text = "Your own lines. A unit standing here can fall back and send a reserve in its place, at the cost of its turn." }
+    -- Two different sentences off one tile, because the tile is two different offers. Empty ground with
+    -- a slot open is the CLICKABLE one -- the move is made right here, for nothing -- so it leads with
+    -- that and never buries it under the fall-back rule, which needs a body standing here to be true at
+    -- all. Occupied (or with the line full) it teaches fall-back exactly as it always did.
+    if r.slotOpen then
+        blocks[#blocks + 1] = { kind = "desc",
+            text = "Your own lines, and a slot is open. Click to send a reserve in on this tile -- it costs no turn." }
+    else
+        blocks[#blocks + 1] = { kind = "desc",
+            text = "Your own lines. A unit standing here can fall back and send a reserve in its place, at the cost of its turn." }
+    end
     blocks[#blocks + 1] = { kind = "stat", label = "In reserve", value = tostring(r.reserves),
         valueColor = PARTY_COLOR }
     return true

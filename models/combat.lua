@@ -5287,7 +5287,8 @@ end
 --
 --   { reserves,     -- how many of the company are waiting off the board
 --     occupant,     -- your own unit standing on the tile right now, if any
---     canFallBack } -- whether that occupant could trade places this instant (Combat.canRotate)
+--     canFallBack,  -- whether that occupant could trade places this instant (Combat.canRotate)
+--     slotOpen }    -- free ground, with a slot standing open: a reserve can be sent in HERE, free
 function Combat.rallyTileInfo(combat, x, y)
     if #Combat.rallyGround(combat) == 0 then return nil end
     if not Combat.inDeployZone(combat, x, y) then return nil end
@@ -5296,6 +5297,13 @@ function Combat.rallyTileInfo(combat, x, y)
     if unit and unit.side == "party" and Combat.isPlayerControlled(unit) then
         info.occupant = unit
         info.canFallBack = (Combat.canRotate(combat, unit)) and true or false
+    end
+    -- Empty ground while a slot is open: this exact tile is one a reserve may walk in on, which is what
+    -- makes it clickable on the board (states/battle.lua's battle.reinforceHere). Answered here, beside
+    -- the fall-back read, so the mark, the tooltip and the click can never disagree about which tiles
+    -- are live -- the same one-rule-two-surfaces the rest of this bag is built on.
+    if not unit and Combat.footprintFree(combat, 1, 1, x, y) and Combat.canReinforce(combat, "party") then
+        info.slotOpen = true
     end
     return info
 end

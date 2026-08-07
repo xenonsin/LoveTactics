@@ -275,4 +275,27 @@ return {
             assert(not Combat.rallyTileInfo(c, 2, 6), "a spent bench closes the box with the mark")
         end,
     },
+    {
+        -- `slotOpen` is what makes a rally tile CLICKABLE mid-fight: the board lights exactly these, the
+        -- tooltip reads its sentence off the same flag, and a click on one sends a reserve in there. One
+        -- answer feeding three surfaces, so none of them can offer a tile the others would refuse.
+        name = "a free rally tile reports the open slot; an occupied one still talks about falling back",
+        fn = function()
+            local c = fight()
+            local occupied = Combat.rallyTileInfo(c, 2, 6) -- the hero is standing here
+            assert(occupied and not occupied.slotOpen, "a tile with a body on it is not one to send a body to")
+            assert(Combat.rallyTileInfo(c, 5, 6).slotOpen, "free ground with a slot open is a tile you can click")
+            assert(not Combat.rallyTileInfo(c, 3, 1), "and the far rows are still not your lines at all")
+
+            -- Fill the line. The slot is what the offer hangs on, so closing it closes the offer -- the
+            -- same ground, still yours, still outlined, with nothing to send onto it.
+            for x = 1, Combat.MAX_FIELD - 1 do
+                assert(Combat.addUnit(c, Character.instantiate("character_knight"), "party", x, 5),
+                    "precondition: the filler stands")
+            end
+            assert(Combat.fieldCount(c, "party") == Combat.MAX_FIELD, "precondition: the line is full")
+            assert(not Combat.rallyTileInfo(c, 5, 6).slotOpen,
+                "a full line offers no tile to come in on, however free the ground is")
+        end,
+    },
 }
