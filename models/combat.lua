@@ -5159,6 +5159,11 @@ end
 --               a body. This is also what makes the bench a genuine second life: the fight is not lost
 --               while there is anyone left to send in.
 --
+-- THE PLAYER NEVER READS THE WORD "ROTATE". The move is called FALL BACK on every surface and the ground
+-- it is made from is RALLY GROUND (Combat.rallyGround / rallyTileInfo, ui/battle_map.lua drawRallyGround);
+-- the model keeps the older spelling because `rotate` is what the whole bench section, its tests and
+-- docs/deployment.md are written in, and renaming the mechanic is not the same job as naming it.
+--
 -- Statuses ride out and back with the body, so falling back is not a cleanse -- it parks a poison rather
 -- than curing it. They do not tick while off the board, for the plain reason that nothing off the board
 -- ticks at all.
@@ -5180,6 +5185,34 @@ function Combat.inDeployZone(combat, x, y)
         if t.x == x and t.y == y then return true end
     end
     return false
+end
+
+-- The ground marked as RALLY GROUND right now: the deploy zone, but only while somebody is still on the
+-- bench to send in. Once the last reserve has taken the field those tiles are ordinary ground again and
+-- the board stops marking them -- a mark that means nothing is a mark the player learns to ignore.
+-- One rule, two surfaces: the board overlay and the hover tooltip both read this.
+function Combat.rallyGround(combat)
+    if Combat.benchCount(combat, "party") == 0 then return {} end
+    return (combat and combat.deployZone) or {}
+end
+
+-- What the hover tooltip says about the rally tile (x, y), or nil when it is not your ground (or the
+-- bench is spent). The read side of Combat.inDeployZone, shaped like Combat.objectiveTileInfo so
+-- states/battle.lua feeds the two the same way and this can be tested headless:
+--
+--   { reserves,     -- how many of the company are waiting off the board
+--     occupant,     -- your own unit standing on the tile right now, if any
+--     canFallBack } -- whether that occupant could trade places this instant (Combat.canRotate)
+function Combat.rallyTileInfo(combat, x, y)
+    if #Combat.rallyGround(combat) == 0 then return nil end
+    if not Combat.inDeployZone(combat, x, y) then return nil end
+    local info = { reserves = Combat.benchCount(combat, "party") }
+    local unit = Combat.unitAt(combat, x, y)
+    if unit and unit.side == "party" and Combat.isPlayerControlled(unit) then
+        info.occupant = unit
+        info.canFallBack = (Combat.canRotate(combat, unit)) and true or false
+    end
+    return info
 end
 
 -- How many bodies `side` has ON THE FIELD, against the MAX_FIELD cap. Summons don't count -- the cap is
@@ -5212,20 +5245,23 @@ function Combat.benchUnit(combat, entry)
     return combat.bench[#combat.bench]
 end
 
--- May `unit` rotate out right now? Returns true, or false plus the reason to show -- a Rotate button that
--- greys out silently reads as a bug, and every refusal here has a fix the player can act on.
+-- May `unit` fall back right now? Returns true, or false plus the reason to show. The player-facing
+-- name of this move is FALL BACK and the ground it is made from is RALLY GROUND; the model keeps the
+-- older `rotate` spelling for the mechanic itself (see the section header). The button appears only
+-- where this returns true, so the reasons below reach the player through `notify` rather than a
+-- greyed plate -- and every one of them still names a fix.
 function Combat.canRotate(combat, unit)
     if not (unit and unit.alive) then return false, "no one is acting" end
     if unit.side ~= "party" or not Combat.isPlayerControlled(unit) then
-        return false, "only your own company rotates"
+        return false, "only your own company falls back"
     end
     if unit.summoned then return false, "a summon has no one to trade with" end
     if Combat.benchCount(combat, unit.side) == 0 then return false, "no one is on the bench" end
     if not (combat.deployZone and #combat.deployZone > 0) then
-        return false, "there is no ground to fall back to"
+        return false, "there is no rally ground to fall back to"
     end
     if not Combat.inDeployZone(combat, unit.x, unit.y) then
-        return false, "fall back to your own lines to rotate"
+        return false, "stand on your rally ground to fall back"
     end
     if unit.channel then return false, "not in the middle of a cast" end
     return true

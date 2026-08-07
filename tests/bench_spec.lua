@@ -245,4 +245,34 @@ return {
             assert(not ok and why, "a duel or a scripted fight has no ground to fall back to")
         end,
     },
+    -- RALLY GROUND: the board's standing statement about where a body may fall back from, and the only
+    -- place the move is taught now that the button appears solely where it can be pressed. The mark and
+    -- the tooltip read the same function, so neither can outlive the reserve that gives it meaning.
+    {
+        name = "rally ground is the deploy zone while a reserve waits, and nothing once it is spent",
+        fn = function()
+            local c = fight()
+            assert(#Combat.rallyGround(c) == #c.deployZone, "your lines are the ground you deployed onto")
+            c.bench = {}
+            assert(#Combat.rallyGround(c) == 0, "with nobody to send in the tiles are ground again")
+            local nozone = fight()
+            nozone.deployZone = nil
+            assert(#Combat.rallyGround(nozone) == 0, "a duel has no lines to mark")
+        end,
+    },
+    {
+        name = "the rally tooltip opens only on your own ground, and counts the reserve",
+        fn = function()
+            local c = fight()
+            local hero = c.units[1] -- standing at 2,6, inside the zone
+            assert(not Combat.rallyTileInfo(c, 3, 1), "the far rows are not your lines")
+            local info = Combat.rallyTileInfo(c, 2, 6)
+            assert(info and info.reserves == 1, "it names how many are still in reserve")
+            assert(info.occupant == hero, "and who of yours is standing on it")
+            openTurn(c, hero)
+            assert(Combat.rallyTileInfo(c, 2, 6).canFallBack, "who, mid-turn, could trade places")
+            c.bench = {}
+            assert(not Combat.rallyTileInfo(c, 2, 6), "a spent bench closes the box with the mark")
+        end,
+    },
 }

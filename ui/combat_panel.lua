@@ -205,7 +205,7 @@ function CombatPanel.new(combat, opts)
     self.onHoverItem = opts.onHoverItem
     self.onHoverUnit = opts.onHoverUnit
     self.onWait = opts.onWait -- the long Wait/Focus/Defend button under the item grid
-    self.onRotate = opts.onRotate -- the Rotate button above it (trade places with the bench)
+    self.onRotate = opts.onRotate -- the Fall Back button above it (trade places with the bench)
 
     -- Chrome wears the display face (Theme.display -> the engraved serif, falling back to the default
     -- until the ttf lands); dense numeric read-outs stay on the plain body face for legibility.
@@ -227,12 +227,16 @@ function CombatPanel.new(combat, opts)
     self.waitBtn = { x = self.gridX, w = self.gridW, h = 34 }
     self.waitBtn.y = Scale.HEIGHT - 16 - self.waitBtn.h
     self.waitHover = false
-    -- Rotate: trade places with the bench (models/combat.lua's Combat.rotate). A slimmer bar directly
+    -- FALL BACK: trade places with the bench (models/combat.lua's Combat.rotate). A slimmer bar directly
     -- above Wait, because it is the same KIND of thing -- an action that ends the turn without striking
-    -- -- and belongs in the same place the player already looks for one. Drawn only when there is a
-    -- bench at all, so an ordinary duel or draft panel is exactly as it was.
-    -- Fixed at construction, not read live: a bench that empties as the last reserve is rotated in must
-    -- not make the button -- and every line laid out above it -- jump. It goes disabled instead.
+    -- -- and belongs in the same place the player already looks for one.
+    --
+    -- It draws only where the move is actually available: a body of yours standing on rally ground with
+    -- a reserve to call. A plate that sits there greyed for most of every fight is a permanent claim on
+    -- the eye for a move that is rarely on offer, and the board now carries the standing statement
+    -- instead (ui/battle_map.lua drawRallyGround, and the tile's own tooltip). What stays fixed is the
+    -- LANE: reserved for the whole fight wherever there is a bench, so the button appearing under an
+    -- acting unit never shoves the item grid -- and every line above it -- up the panel.
     self.hasRotate = self:hasBench()
     self.rotateBtn = { x = self.gridX, w = self.gridW, h = 26 }
     self.rotateBtn.y = self.waitBtn.y - 6 - self.rotateBtn.h
@@ -486,48 +490,48 @@ function CombatPanel:draw()
 
     self:drawTurnStrip()
     self:drawItemGrid()
-    self:drawRotateButton()
+    self:drawFallBackButton()
     self:drawWaitButton()
     love.graphics.setColor(1, 1, 1)
 end
 
--- The Rotate button: trade places with someone on the bench, at the cost of this turn. Drawn only when
--- there IS a bench, and greyed with its reason when the acting unit cannot use it -- almost always
--- "you have to be standing in your own lines", which is a thing the player can go and fix, so saying it
--- is the difference between a rule and a dead button. The reason comes from Combat.canRotate, so the
--- label and the refusal can never disagree.
-function CombatPanel:drawRotateButton()
-    if not self.hasRotate then return end
-    local b = self.rotateBtn
+-- Can the acting unit fall back this instant? The one question the button's whole existence hangs on --
+-- asked of the model, so the plate can never offer a move Combat.rotate would refuse. False on an enemy
+-- turn, off rally ground, mid-cast, and in every fight with no bench.
+function CombatPanel:canFallBack()
+    if not self.hasRotate then return false end
     local unit = self.view.isPartyTurn and self.view.current or nil
-    local ok, why = false, nil
-    if unit then ok, why = Combat.canRotate(self.combat, unit) end
-    local hot = ok and self.rotateHover
+    if not unit then return false end
+    return (Combat.canRotate(self.combat, unit)) and true or false
+end
 
-    if ok then Theme.set(hot and Theme.panel or Theme.panel2) else Theme.set(Theme.slot) end
+-- The FALL BACK button: trade places with someone on the bench, at the cost of this turn. Drawn only
+-- while the move is on offer -- the acting unit is standing on its own rally ground with a reserve to
+-- call -- so the plate means "you can do this here", not "there is a rule about this somewhere". The
+-- reasons it is NOT on offer are said by the board instead: the rally ground is outlined all fight and
+-- its tooltip explains the move, which is a lesson the player can read before they need it rather than
+-- one that only appears on a button they cannot press.
+function CombatPanel:drawFallBackButton()
+    if not self:canFallBack() then return end
+    local b = self.rotateBtn
+    local hot = self.rotateHover
+
+    Theme.set(hot and Theme.panel or Theme.panel2)
     love.graphics.rectangle("fill", b.x, b.y, b.w, b.h, 6, 6)
-    if hot then Theme.set(Theme.accentAmber) else Theme.set(Theme.frame, ok and 1 or 0.5) end
+    if hot then Theme.set(Theme.accentAmber) else Theme.set(Theme.frame) end
     love.graphics.setLineWidth(hot and 2 or 1)
     love.graphics.rectangle("line", b.x, b.y, b.w, b.h, 6, 6)
     love.graphics.setLineWidth(1)
 
     love.graphics.setFont(self.nameFont)
-    if not ok then Theme.set(Theme.muted) elseif hot then Theme.set(Theme.accentAmber) else Theme.set(Theme.ink) end
-    Theme.printTracked("ROTATE", b.x, b.y + b.h / 2 - 8, b.w)
-
-    -- The reason rides under the label while the cursor is on a button that will not fire, rather than
-    -- waiting for a click that does nothing to explain itself.
-    if not ok and why and self.rotateHover then
-        love.graphics.setFont(self.smallFont)
-        Theme.set(Theme.muted)
-        love.graphics.printf(Theme.ellipsize(why, self.smallFont, b.w - 8), b.x + 4, b.y + b.h + 2, b.w - 8, "center")
-    end
+    if hot then Theme.set(Theme.accentAmber) else Theme.set(Theme.ink) end
+    Theme.printTracked("FALL BACK", b.x, b.y + b.h / 2 - 8, b.w)
 end
 
--- Is (px, py) over the Rotate button? Always false when there is no bench, so the rect can never eat a
--- click on a panel that isn't drawing it.
+-- Is (px, py) over the Fall Back button? False whenever the button is not drawn, so the reserved lane
+-- can never eat a click on empty panel.
 function CombatPanel:overRotate(px, py)
-    if not self.hasRotate then return false end
+    if not self:canFallBack() then return false end
     local b = self.rotateBtn
     return px >= b.x and px <= b.x + b.w and py >= b.y and py <= b.y + b.h
 end
@@ -1634,8 +1638,7 @@ function CombatPanel:mousemoved(x, y)
     local item, i = self:usableItemAt(x, y)
     self:setHover(item, i, self:unitAt(x, y))
     self.waitHover = self.view.isPartyTurn and self:overWait(x, y) or false
-    -- Hovered even when it is refused: that is what surfaces the reason (drawRotateButton).
-    self.rotateHover = self:overRotate(x, y)
+    self.rotateHover = self:overRotate(x, y) -- false unless the button is actually on offer
     return true
 end
 
@@ -1646,8 +1649,8 @@ function CombatPanel:mousepressed(x, y, button)
         if self.onWait then self.onWait() end
         return true
     end
-    -- Routed whether or not the rotation is currently legal, like an ability slot: the state answers
-    -- with the reason rather than swallowing a click on a button that looks pressable.
+    -- Only reachable while the plate is drawn (overRotate answers the same question drawFallBackButton
+    -- does), so a click here can never land on a move the model would turn away.
     if self:overRotate(x, y) then
         if self.onRotate then self.onRotate() end
         return true

@@ -156,6 +156,7 @@ end
 --   threat -> default-attack reach (red), the band beyond `move` shown during MOVE mode
 --   traps  -> runtime trap objects the viewer can see (own + detected), drawn under the units
 --   logSubjects -> { x, y, unit } marks for the units the hovered combat-log line is about (white)
+--   rally  -> your own lines (Combat.rallyGround), outlined quietly for the whole fight
 function BattleMap:setOverlays(overlays)
     self.overlays = overlays or { move = {}, range = {}, threat = {}, traps = {}, hazards = {}, walls = {}, props = {}, charges = {} }
 end
@@ -293,6 +294,7 @@ function BattleMap:draw()
     self:drawProps() -- scattered furniture (barrels, crates) stands beside the walls
     self:drawTraps() -- revealed traps sit above the ground/overlays, under the units
     self:drawCharges() -- buried fuses the viewer can see, with their countdown, beside the traps
+    self:drawRallyGround() -- your own lines, traced quietly all fight: the ground a body may fall back to
     self:drawDeployZone() -- your own ground: where you may stand a body (the opening bell, and rotations)
     self:drawReinforcements() -- where the next enemy muster lands + its countdown, above overlays, under units
     self:drawUnits()
@@ -341,6 +343,44 @@ function BattleMap:drawDeployZone()
         love.graphics.rectangle("line", wx + 3, wy + 3, s - 6, s - 6, 4, 4)
         love.graphics.setLineWidth(1)
     end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- RALLY GROUND: the same tiles, mid-fight. Where drawDeployZone above is an invitation to act right now
+-- (a breathing fill on every tile, one at a time being filled), this has to sit on the board for the
+-- whole battle without ever competing with the move/range overlays the player is actually reading. So it
+-- says the same thing more quietly and in a different shape: not eight boxes but ONE outline, traced only
+-- along the edges where the zone meets ground that is not yours. A boundary reads as "your lines"; eight
+-- boxes read as "these eight tiles matter", which is the deploy phase's sentence, not this one.
+--
+-- Drawn only while somebody is on the bench (Combat.rallyGround decides, not this), and skipped outright
+-- while the deploy overlay is up so the two can never double-draw the same tiles.
+local RALLY_LINE = 0.34 -- the party blue, at the weight of a hint
+
+function BattleMap:drawRallyGround()
+    local zone = self.overlays and self.overlays.rally
+    if not zone or #zone == 0 then return end
+    if self.overlays.deployZone then return end -- the phase owns the tiles; it says this louder
+    local s = self.size
+    local inZone = {}
+    for _, t in ipairs(zone) do inZone[t.x .. "," .. t.y] = true end
+
+    love.graphics.setColor(DEPLOY[1], DEPLOY[2], DEPLOY[3], 0.05)
+    for _, t in ipairs(zone) do
+        local wx, wy = self:cellToPixel(t.x, t.y)
+        love.graphics.rectangle("fill", wx, wy, s, s)
+    end
+
+    love.graphics.setColor(DEPLOY[1], DEPLOY[2], DEPLOY[3], RALLY_LINE)
+    love.graphics.setLineWidth(2)
+    for _, t in ipairs(zone) do
+        local wx, wy = self:cellToPixel(t.x, t.y)
+        if not inZone[t.x .. "," .. (t.y - 1)] then love.graphics.line(wx, wy, wx + s, wy) end
+        if not inZone[t.x .. "," .. (t.y + 1)] then love.graphics.line(wx, wy + s, wx + s, wy + s) end
+        if not inZone[(t.x - 1) .. "," .. t.y] then love.graphics.line(wx, wy, wx, wy + s) end
+        if not inZone[(t.x + 1) .. "," .. t.y] then love.graphics.line(wx + s, wy, wx + s, wy + s) end
+    end
+    love.graphics.setLineWidth(1)
     love.graphics.setColor(1, 1, 1, 1)
 end
 

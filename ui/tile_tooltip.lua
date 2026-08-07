@@ -10,7 +10,8 @@
 --     info = { cell = <arena tile>, bonus = <fieldBonus bag>, unit = <combat unit|nil>,
 --              trap = <revealed trap|nil>, wall = <wall|nil>, prop = <prop|nil>,
 --              reinforce = <{ edge, ticksUntil, char }|nil>,   -- a telegraphed muster landing tile
---              objective = <Combat.objectiveTileInfo bag|nil> } -- marked objective ground
+--              objective = <Combat.objectiveTileInfo bag|nil>, -- marked objective ground
+--              rally = <Combat.rallyTileInfo bag|nil> }        -- your own lines (the fall-back ground)
 --
 -- Content is assembled once into an ordered list of blocks that is both measured and drawn, so the
 -- computed box height can never drift from what's rendered. No love.graphics at require-time.
@@ -375,6 +376,25 @@ local function appendObjective(blocks, info)
     return true
 end
 
+-- RALLY GROUND (info.rally, from Combat.rallyTileInfo): your own lines, the ground the board outlines
+-- quietly all fight (ui/battle_map.lua drawRallyGround). It is the only place the FALL BACK move is
+-- explained, since the button for it appears only once a body is already standing here -- so the tile
+-- has to teach the rule before the player is in a position to use it. Rides on the terrain info like the
+-- objective does, which is what makes it open on a tile with one of your own units on it: that is the
+-- state the read is for. `lead` is false when the objective section already took the title.
+-- Returns true if it appended anything.
+local function appendRally(blocks, info, lead)
+    local r = info.rally
+    if not r then return false end
+    if not lead then blocks[#blocks + 1] = { kind = "sep" } end
+    blocks[#blocks + 1] = { kind = lead and "title" or "head", text = "Rally Ground", color = PARTY_COLOR }
+    blocks[#blocks + 1] = { kind = "desc",
+        text = "Your own lines. A unit standing here can fall back and send a reserve in its place, at the cost of its turn." }
+    blocks[#blocks + 1] = { kind = "stat", label = "In reserve", value = tostring(r.reserves),
+        valueColor = PARTY_COLOR }
+    return true
+end
+
 -- Build the ordered content blocks for the hovered tile. The occupant is the priority: when a
 -- unit or trap stands on the tile it leads (its name is the title, its stats first), and the
 -- terrain is demoted to a section below. An empty tile shows the terrain alone. Block kinds:
@@ -549,8 +569,9 @@ local function buildBlocks(info)
         -- the tile is worth walking onto at all. appendHazard adds its own divider above itself when
         -- the objective already filled the box.
         local objLed = appendObjective(blocks, info)
+        local rallyLed = appendRally(blocks, info, not objLed)
         local hazLed = appendHazard(blocks, info)
-        if objLed or hazLed then blocks[#blocks + 1] = { kind = "sep" } end
+        if objLed or rallyLed or hazLed then blocks[#blocks + 1] = { kind = "sep" } end
         appendTerrain(blocks, info, false)
     end
     return blocks
@@ -581,7 +602,7 @@ end
 -- draw, so it can't disagree with what gets drawn. Lets a caller stacking several boxes into a fixed
 -- column work out what fits BEFORE it commits any of them to the screen (states/battle.lua).
 function TileTooltip.measure(info, width)
-    if not info or not (info.cell or (info.unit and info.unit.char) or info.trap or info.wall or info.prop or info.reinforce or info.objective) then return 0 end
+    if not info or not (info.cell or (info.unit and info.unit.char) or info.trap or info.wall or info.prop or info.reinforce or info.objective or info.rally) then return 0 end
     local _, body = fonts()
     return measureBlocks(buildBlocks(info), ((width or 210) - 9 * 2), body)
 end
@@ -592,7 +613,7 @@ end
 -- so it never covers the board highlights (the blast footprint) the player is reading. No-op when
 -- there is no tile to describe.
 function TileTooltip.draw(info, mx, my, maxRight, opts)
-    if not info or not (info.cell or (info.unit and info.unit.char) or info.trap or info.wall or info.prop or info.reinforce or info.objective) then return end
+    if not info or not (info.cell or (info.unit and info.unit.char) or info.trap or info.wall or info.prop or info.reinforce or info.objective or info.rally) then return end
     local title, body, small = fonts()
     local pad, w = 9, (opts and opts.width) or 210
     local innerW = w - pad * 2

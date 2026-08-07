@@ -55,6 +55,25 @@ reinforcement walks on — and it is lit with one overlay (`BattleMap:drawDeploy
 blue, deliberately the same grammar as the enemy muster telegraph in its red. Same statement,
 different owner.
 
+### Rally ground: the same tiles, mid-fight
+
+Once the bell has rung the zone is **rally ground**, and it stays on the board. Not as the phase's
+breathing fill — that is an invitation to act *now*, and this has to sit under the move and range
+overlays for a whole battle without competing with them — but as **one outline**, traced along the
+edges where the zone meets ground that is not yours (`BattleMap:drawRallyGround`). A boundary reads as
+*your lines*; eight lit boxes read as *these eight tiles matter*, which is the phase's sentence and not
+this one.
+
+It is drawn **only while somebody is on the bench** (`Combat.rallyGround`): with the last reserve
+spent, those tiles are ordinary ground again, and a mark that means nothing is a mark the player learns
+to ignore. Hovering one opens a **Rally Ground** box in the terrain slot of the tooltip column
+(`Combat.rallyTileInfo` → `ui/tile_tooltip.lua`) naming the move, its price, and how many are still in
+reserve. One rule, two surfaces — the outline and the box read the same function.
+
+That box is the only place the move is *taught*, which is why it rides on the terrain info rather than
+the occupant's: the terrain box never yields when the column runs short, and it opens on a tile with
+one of your own bodies standing on it — the exact moment falling back is a live option.
+
 ## The phase
 
 `ui/deploy_phase.lua`, hosted by `states/battle.lua`. The board is built and the enemy is standing on
@@ -121,12 +140,24 @@ never acts: it pegs the rebase minimum at 0 and **freezes every duration in the 
 
 Two ways onto the field, priced differently because they are different decisions:
 
-### Rotate — costs the turn
+### Fall Back — costs the turn
 
-A living unit **standing in the deploy zone** spends its turn to trade places with someone on the
-bench. The button sits above Wait in the combat panel; it greys out with the reason
-(`Combat.canRotate` returns `false, why`) so "fall back to your own lines to rotate" is something you
-can act on rather than a dead button.
+A living unit **standing on rally ground** spends its turn to trade places with someone on the bench.
+The button sits above Wait in the combat panel and **appears only while the move is on offer** — a body
+of yours standing on the ground, with a reserve to call. A plate greyed out for most of every fight is
+a permanent claim on the eye for a move that is rarely available; the board carries the standing
+statement instead (the outline above, and the tile's tooltip), and the panel says only *you can do this
+here*. The lane it occupies stays reserved for the whole fight, so the button arriving under an acting
+unit never shoves the item grid up the panel.
+
+`Combat.canRotate` still returns `false, why` for every refusal, and each reason still names a fix
+("stand on your rally ground to fall back"); with the button gone those reach the player through
+`notify` rather than a dead plate.
+
+**The player never reads the word "rotate".** The move is *Fall Back* and the ground is *rally ground*
+on every surface. The model keeps the older `rotate` spelling for the mechanic itself — that is what
+this whole section, `tests/bench_spec.lua` and the bench API are written in, and renaming a mechanic is
+not the same job as naming it.
 
 The incoming body stands on the tile the outgoing one was holding, at the initiative that unit's turn
 would have cost (`turnMoveCost + tempoDebt + Combat.ROTATE_COST`). A rotation buys you a different
@@ -191,10 +222,11 @@ everyone who marched, and a benched member has to arrive already wearing it.
 | File | What |
 | --- | --- |
 | `models/arena.lua` | `arena.deployZone`, `Arena.DEPLOY_COLS`/`DEPLOY_DEPTH`/`DEPLOY_MIN`, the authored `deployZone` field |
-| `models/combat.lua` | `deferOpen` / `Combat.openBattle`, `deployUnit`, `undeployUnit`, the bench section (`benchUnit`, `canRotate`, `rotate`, `withdraw`, `canReinforce`, `reinforceTiles`, `reinforce`, `fieldCount`, `benchCount`, `eliminated`) |
+| `models/combat.lua` | `deferOpen` / `Combat.openBattle`, `deployUnit`, `undeployUnit`, the bench section (`benchUnit`, `canRotate`, `rotate`, `withdraw`, `canReinforce`, `reinforceTiles`, `reinforce`, `fieldCount`, `benchCount`, `eliminated`), and the two rally-ground reads (`rallyGround`, `rallyTileInfo`) |
 | `ui/deploy_phase.lua` | the phase: the strip, the drag, the placement |
 | `ui/panels/bench_chooser.lua` | who comes on, for both routes |
-| `ui/battle_map.lua` | `drawDeployZone` |
-| `ui/combat_panel.lua` | the Rotate button |
+| `ui/battle_map.lua` | `drawDeployZone` (the phase), `drawRallyGround` (the fight) |
+| `ui/tile_tooltip.lua` | the Rally Ground box |
+| `ui/combat_panel.lua` | the Fall Back button (`canFallBack`, `drawFallBackButton`) |
 | `states/battle.lua` | `gutterRect`, `commitDeploy`, `openDeployPhase`, `rotateTurn`, `reinforceAt`, `offerLastStand`, the Reinforce drawer entry |
 | `tests/deploy_spec.lua`, `tests/bench_spec.lua` | the rules above, headless |

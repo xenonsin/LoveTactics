@@ -4,7 +4,8 @@
 -- shape and manners -- a decision made AT the place it happens, over a board that stays fully visible --
 -- and it is deliberately the same widget for both routes onto the field:
 --
---   ROTATE     -- the acting unit trades places with the pick, and the turn ends (Combat.rotate)
+--   ROTATE     -- the acting unit trades places with the pick, and the turn ends (Combat.rotate). Titled
+--                 FALL BACK, which is what the move is called on every surface the player sees.
 --   REINFORCE  -- a slot has opened and the pick fills it for free (Combat.reinforce)
 --
 -- One card, because the question is identical: which of these people. What differs is the price, and the
@@ -29,7 +30,7 @@ local W = 220
 
 -- opts:
 --   entries    the bench, a list of { char = <instance>, ... } (models/combat.lua's combat.bench)
---   title      what picking costs, in a few words ("Rotate -- costs this turn")
+--   title      what picking costs, in a few words ("Fall Back -- costs this turn")
 --   mandatory  this pick cannot be declined: the last-stand prompt, raised when nothing of the player's
 --              is standing. There is no turn to hand back and no other way to reach one, so the X is
 --              not drawn and every cancel is swallowed. See states/battle.lua's offerLastStand.

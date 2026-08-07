@@ -2918,7 +2918,8 @@ end
 -- ui/panels/bench_chooser.lua) because the question -- which of these people -- is the same one:
 --
 --   ROTATE     the acting unit spends its TURN to trade places, and must be standing in the deploy zone
---              (its own lines). The Rotate button under the item grid.
+--              (its own lines). Called FALL BACK everywhere the player can read it -- the button under
+--              the item grid, which appears only once a body of theirs is standing on rally ground.
 --   REINFORCE  a slot has opened, so filling it is FREE. The drawer button, and -- when nothing of the
 --              player's is left standing -- a prompt raised automatically, because a company with a body
 --              still on the bench has not lost and the turn loop has nobody to hand the turn to.
@@ -2981,7 +2982,7 @@ openBenchChooser = function(mode, mandatory)
     local anchorUnit = battle.current
     if mode == "rotate" then
         local ok, why = Combat.canRotate(combat, anchorUnit)
-        if not ok then notify(why or "You cannot rotate right now.") return false end
+        if not ok then notify(why or "You cannot fall back right now.") return false end
     else
         local ok, why = Combat.canReinforce(combat)
         if not ok then notify(why or "There is no room to bring anyone in.") return false end
@@ -2996,7 +2997,7 @@ openBenchChooser = function(mode, mandatory)
         ay = m.originY + (anchorUnit.y - 0.5) * m.size
     end
 
-    local title = mode == "rotate" and "Rotate  --  costs this turn" or "Reinforce  --  free"
+    local title = mode == "rotate" and "Fall Back  --  costs this turn" or "Reinforce  --  free"
     if mandatory then title = "Your line is broken" end -- the log carries the rest; the card is narrow
 
     battle.benchChooser = BenchChooser.new({
@@ -4045,6 +4046,13 @@ refreshView = function()
         end
     end
 
+    -- Your own lines, outlined quietly for the whole fight (ui/battle_map.lua drawRallyGround) -- but
+    -- only while somebody is still on the bench, which Combat.rallyGround decides. It is the standing
+    -- statement that replaced the always-there Fall Back plate: the ground says where the move can be
+    -- made from, the tile's tooltip says what it does, and the button appears once a body is on it.
+    local rally = Combat.rallyGround(battle.combat)
+    overlays.rally = #rally > 0 and rally or nil
+
     battle.map:setOverlays(overlays)
 end
 
@@ -4143,7 +4151,7 @@ local function commitDeploy(opts, deployed, front, placed)
     end
 
     -- Whether this fight has a bench AT ALL, fixed here rather than read live, so the drawer's
-    -- Reinforce entry (and the panel's Rotate button) cannot appear and vanish as reserves are spent.
+    -- Reinforce entry (and the panel's Fall Back lane) cannot appear and vanish as reserves are spent.
     -- False in every duel, draft and scripted lesson, which field exactly who they were given.
     battle.hasBench = #(battle.combat.bench or {}) > 0
 
@@ -4188,7 +4196,7 @@ local function commitDeploy(opts, deployed, front, placed)
         onHoverItem = function(item) battle.hoverItem = item end,
         onHoverUnit = function(unit) battle.hoverUnit = unit end,
         onWait = function() waitTurn() end, -- the long Wait button under the item grid
-        onRotate = function() openBenchChooser("rotate") end, -- trade places with the bench
+        onRotate = function() openBenchChooser("rotate") end, -- FALL BACK: trade places with the bench
     })
     battle.panel.fx = battle.fx
 
@@ -5193,7 +5201,11 @@ function battle.drawTileTooltip(mx, my)
     local terrainInfo = { cell = cell, bonus = Combat.fieldBonus(battle.combat, cx, cy),
                           hazards = Hazard.allAt(battle.combat, cx, cy),
                           watched = watched > 0 and watched or nil,
-                          objective = Combat.objectiveTileInfo(battle.combat, cx, cy) }
+                          objective = Combat.objectiveTileInfo(battle.combat, cx, cy),
+                          -- Rally ground rides here for the same reason the objective does: the terrain
+                          -- box never yields, and the read matters MOST on a tile with one of your own
+                          -- bodies already on it -- that is the moment falling back is a live option.
+                          rally = Combat.rallyTileInfo(battle.combat, cx, cy) }
     local objInfo
     -- Same precedence actionPreviewFor picks a strike target with (trap, then wall, then prop), so the
     -- box that opens describes the very thing a click would hit.
