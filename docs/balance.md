@@ -145,6 +145,15 @@ opens nothing for a player who has not unlocked the discipline.
 
 ### On rule 8 — item power against its gate
 
+> **The gate is no longer typed by hand.** An item's slot is now decided by what the item is worth
+> and its price by the slot it landed on — `grade -> slot -> price`, see [shelf.md](shelf.md). This
+> rule is unchanged and still enforced; what changed is where the gate it reads comes from. Two
+> consequences bear on everything below: the ladder anchors named in `Balance.FAMILY_BASE` and
+> `Balance.ABILITY_BASE` must be **pinned to slot 0** before that pass runs, because they are the
+> ruler it measures against — and the grade is deliberately **blind to an item's own damage**, since
+> the slot grants it. Moving slots leaves magnitudes out of band by construction, so
+> `. grade-report apply` is always followed by `. balance-rescale apply`.
+
 A character's attack stat grows every level, so a magnitude authored flat across the campaign quietly
 stops mattering. The audit measured that directly: damage was **~0.45 of the wielder's stat on the
 opening shelf and ~0.20 on the last one**, so a 400-gold late weapon was a smaller step than a
@@ -259,6 +268,10 @@ It is a **net, not a mechanism**. Rule 1 asserts nothing reference-grade needs i
 & "E:\LOVE\lovec.exe" . balance-rescale [N] [apply]       # correct
 & "E:\LOVE\lovec.exe" . test balance                      # guard
 ```
+
+A fourth sits upstream of these: `. grade-report` decides which *slot* an item unlocks from, and
+`balance-rescale` then reads that slot to set its magnitude. Run them in that order and iterate until
+neither moves — [shelf.md](shelf.md) has the loop.
 
 `balance-report` leads with its failure sections — walled to steel, unhittable, dominates, harmless
 — because the point is to be read at the top and acted on. Everything it prints comes out of

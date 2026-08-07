@@ -288,6 +288,24 @@ price = 60,
 unlockQuests = 0,  -- how many of the vendor's quests unlock it (default 0 = opening shelf); higher waves show as locked
 ```
 
+**`price` and `unlockQuests` are DERIVED — write what you like, then let the tool set them.** Where an
+item sits is decided by what it is worth, and what it costs is decided by where it sits:
+`grade -> slot -> price`. Author the item's *effect* and run `. grade-report` to see where it lands;
+`. grade-report apply` writes both fields. Two numbers you type here are a starting guess, not a
+decision — see [shelf.md](shelf.md) for the whole system, and for the handful of slots that are pinned
+against the grade because a contract elsewhere depends on them.
+
+Three consequences worth knowing before you author:
+
+- **The effect is what ranks it.** The grade is blind to the item's own damage, because the slot
+  grants that anyway ([balance.md](balance.md), rule 8). A late item with no rider grades like an
+  early one with no rider, and sinks accordingly.
+- **A discipline item never sits below slot 3**, however weak it grades — it would be a locked row in
+  front of the stock a newcomer can actually buy.
+- **If the item reads the board** — consumes a corpse, sets off a planted charge, repeats an ally's
+  motion — the dry run cannot see it and the grader will set it aside rather than rank it. Place it by
+  hand with a pin.
+
 `class` is deliberately its own field rather than an entry in `tags`: `tags` drives combat
 scaling and `resist` lookups, so a shop taxonomy living there would be one typo away from armor
 mitigating "rogue" damage. An item with no `class` is universal and no vendor stocks it; an item
