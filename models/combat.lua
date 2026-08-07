@@ -4622,12 +4622,39 @@ end
 -- models/character.lua; these read the current arrangement of a character's inventory.
 -- ---------------------------------------------------------------------------
 
+-- ONE WEAPON FAMILY CONTAINS ANOTHER, and only an adjacency predicate asks the question this way.
+--
+-- A weapon carries exactly one archetype tag -- a second is an authoring slip tests/weapon_spec.lua
+-- fails the build over (Item.archetype) -- so a longbow is tagged `longbow` and never also `bow`.
+-- Eleven abilities are authored against `tag = "bow"`: Rain of Arrows, Called Shot, Pinning Shot,
+-- Hobbling Shot, Warding Line, Break Off, and the stake/snare half of the Trapper's kit. Every one of
+-- them went dead beside a longbow, so a hunter climbing their own shelf's ladder disarmed their own
+-- abilities at the top of it -- the Hailfall Longbow bought the setup half of the class out of its
+-- payoff.
+--
+-- Stated as containment rather than fixed by tagging the bows twice, because the second tag would be
+-- the slip. `bow` is the umbrella the abilities were written against and `longbow` the deeper cut of
+-- it; nothing else in the catalog needs a row here. The other five archetype predicates (dagger,
+-- staff, spear, censer, shield) have no sub-family at all, and the broad predicates the rest of the
+-- kit uses -- melee, ranged, arcane, and the elements -- are ordinary tags authored straight onto the
+-- item beside its family, which is how a bow already answers `ranged`.
+Combat.FAMILY_CONTAINS = { bow = { longbow = true } }
+
+-- Does `item` carry `tag`, or a tag of a family that `tag` contains?
+local function hasFamilyTag(item, tag)
+    if hasTag(item.tags, tag) then return true end
+    for sub in pairs(Combat.FAMILY_CONTAINS[tag] or {}) do
+        if hasTag(item.tags, sub) then return true end
+    end
+    return false
+end
+
 -- Does `item` match an adjacency predicate `{ type=?, tag=? }`? Each field is optional (an absent
 -- field is a wildcard); a predicate with neither field matches any item.
 function Combat.matchesAdjacency(item, pred)
     if not (item and pred) then return false end
     if pred.type and item.type ~= pred.type then return false end
-    if pred.tag and not hasTag(item.tags, pred.tag) then return false end
+    if pred.tag and not hasFamilyTag(item, pred.tag) then return false end
     return true
 end
 

@@ -534,6 +534,15 @@ it despite its behaviour being a Follow-Up ally-strike reflex. The rule is writt
 so a discipline banner-weapon must be authored) and `ability_march_wardens_standard` is tagged `summon`
 rather than `banner` and is one of only two knight-side Warden items.
 
+**A third banner escaped it for a duller reason: the sweep read prices.** `armor_rally_coat` is a
+fighter banner — a worn one, laying `hazard_rally` as it walks — and it is *quest-only*, so it was not
+among the 264 priced items the audit looked at. It carries `discipline = "warlord"` now, unpriced, the
+same shape as Cutpurse's Coat below: for growth and identity, never for the rack. The move costs
+nothing anywhere else, because the coat's source is the Warlord's own gate quest (Siege of Warlord's
+Keep, slot 3) — the shelf opens and the reward lands on the same beat. The general lesson is the one
+worth keeping: **an audit scoped to what is for sale cannot see the half of a shelf that is given
+away.**
+
 ### Round two: the strict pass on the Arcanum and the Cathedral
 
 Round one's bar left mage at 54 and priest at 47 — still the two longest shelves by a distance. A second

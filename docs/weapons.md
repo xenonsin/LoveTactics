@@ -37,7 +37,7 @@ which vendor stocks the item and never gates who may carry it. A hunter may abso
 | `hammer` | **Stuns**, and is ponderous (`speed` 7) — you buy the stun with your own tempo. `hands = 2`. | `weapon_iron_hammer` |
 | `dagger` | **Quick** (`speed` 1–2) and applies **Bleed**. Modest damage; the wound does the rest. | `weapon_iron_dagger` |
 | `bow` | **Ranged physical**. `requiresSight`, and `minRange = 2` — a bow has no point-blank shot. `hands = 2`, as every bow is. | `weapon_iron_bow` |
-| `longbow` | **Winds up** a turn to draw, then looses from `range = 5` — two tiles beyond a bow — keeping `requiresSight`, `minRange = 2` and `hands = 2`. Its own family, *not* a bow: the draw is the verb, and the reach is what pays for it. | `weapon_iron_longbow` |
+| `longbow` | **Winds up** a turn to draw, then looses from `range = 5` — two tiles beyond a bow — keeping `requiresSight`, `minRange = 2` and `hands = 2`. Its own family, *not* a bow: the draw is the verb, and the reach is what pays for it. It does still **answer an adjacent-`bow` requirement** in the grid, though — see `requiresAdjacent` below. | `weapon_iron_longbow` |
 | `wand` | **Ranged magical**. `requiresSight`, and *no* `minRange`: a wand needs only a direction, which is its whole claim over a bow. | `weapon_wand` |
 | `staff` | Swaps **Wait → Focus** (`waitBehavior`): end the turn to recover mana. The swap *is* the weapon; the strike is a deliberate afterthought. | `weapon_staff` |
 | `censer` | **Emits `incense`**: a square of ground around the bearer, lifted and laid again wherever they go. The smoke is the weapon and the strike an afterthought, as a staff's is — but where a staff's swap pays the bearer, a censer's ground pays whoever stands in it. | `weapon_censer` |
@@ -414,7 +414,7 @@ it for free. Prefer one over hand-rolling the same logic in an `effect`.
 | `lifesteal = f` | The user heals `f` of everything the cast deals. Adds to a Vampiric Strike aura rather than overriding it. |
 | `minRange = n` | A dead zone: the cast cannot be aimed closer than `n`. |
 | `requiresSight` | Needs a clear line (`Combat.hasLineOfSight`); terrain cover blocks it. |
-| `requiresAdjacent = { type, tag }` | Only usable with a matching item beside it in the 3×3 grid. |
+| `requiresAdjacent = { type, tag }` | Only usable with a matching item beside it in the 3×3 grid. A `tag` naming a family reads **containment**: `bow` is answered by a longbow too (`Combat.FAMILY_CONTAINS`). |
 | `consumesItem` | Spends one of the stack on use. |
 | `windup = { min, max }` | The same field, made **chargeable**: the wind-up's length is chosen at cast, anywhere between `min` and `max` *total* ticks. The effect reads `fx.windup` (the whole tell) or `fx.held` (just the part chosen above `min`). `weapon_avalanche` spends it on footprint, `weapon_wardens_longbow` and `weapon_first_motion` on damage. "Not chargeable" is simply `min == max`, which is what the scalar form above is shorthand for. |
 | `channelStatus = id` | A status the caster gains **on commit** and carries through the wind-up. The half an `effect` cannot reach — an effect runs when the cast resolves, and this has to land before the enemy's turn to punish the tell (`weapon_held_breath`). |

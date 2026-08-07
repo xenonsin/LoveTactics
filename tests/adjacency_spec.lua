@@ -120,6 +120,32 @@ return {
         end,
     },
     {
+        name = "a longbow answers a bow requirement -- the deeper family is still the family",
+        fn = function()
+            -- A weapon carries one archetype tag, so a longbow is never also tagged `bow`
+            -- (Item.archetype, tests/weapon_spec.lua). Without Combat.FAMILY_CONTAINS every
+            -- bow-gated ability in the hunter's kit went dead the moment the player upgraded to the
+            -- longbow at the top of the same shelf's ladder.
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 3, 3) }, { unit("character_bandit", 3, 5) })
+            local k = c.units[1]
+            equip(k.char, { [5] = "ability_rain_of_arrows", [4] = "weapon_iron_longbow" })
+            k.char.stats.stamina.current = 99
+            openTurn(c, k)
+
+            local bow = k.char.inventory[4]
+            assert(Item.archetype(bow) == "longbow", "the fixture is a longbow, not a bow")
+            assert(not contains(bow.tags, "bow"), "and it does not carry the umbrella tag too")
+            assert(Combat.adjacencyMet(k.char, k.char.inventory[5]), "the longbow satisfies the gate")
+            assert(select(1, Combat.useItem(c, k, k.char.inventory[5], 3, 5)), "and the volley fires")
+
+            -- Containment is one-directional and narrow: a hammer is still not a bow.
+            equip(k.char, { [5] = "ability_rain_of_arrows", [4] = "weapon_iron_hammer" })
+            openTurn(c, k)
+            assert(not Combat.adjacencyMet(k.char, k.char.inventory[5]),
+                "an unrelated family answers nothing")
+        end,
+    },
+    {
         name = "itemBlockReason names why an ability can't be activated (the gate the UI grays on)",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("character_rowan", 3, 3) }, { unit("character_bandit", 3, 5) })
