@@ -25,8 +25,8 @@ return {
     tags = { "axe", "slash", "physical", "melee" },
     hands = 2, -- a two-handed wedge (Dual Wield can pair it only once forged to +5)
     class = "fighter",
-    price = 380,
-    unlockQuests = 5,
+    price = 320,
+    unlockQuests = 4,
     activeAbility = {
         target = "tile",       -- aim an adjacent tile: it sets the facing the arc sweeps
         allowOccupied = true,  -- the tile in front may hold a foe -- it's the centre of the arc

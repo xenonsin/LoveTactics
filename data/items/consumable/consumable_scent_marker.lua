@@ -19,8 +19,8 @@ return {
     type = "consumable",
     tags = { "mark" },
     class = "hunter",
-    price = 270,
-    unlockQuests = 10,
+    price = 295,
+    unlockQuests = 11,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

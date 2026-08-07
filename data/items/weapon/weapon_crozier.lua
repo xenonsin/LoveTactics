@@ -20,8 +20,8 @@ return {
     type = "weapon",
     tags = { "staff", "magical", "melee" }, -- magical: routes through magicDamage / magicDefense
     class = "priest",
-    price = 440,
-    unlockQuests = 6,
+    price = 320,
+    unlockQuests = 4,
     -- The `mana` climbs with the forge; `speed` deliberately does not (an upgrade never buys back tempo
     -- -- see models/item.lua's WAIT_BEHAVIOR_MAGNITUDES), and neither does `covers`, which counts a
     -- SHARE rather than a size: what the neighbour draws is always less than what the bearer keeps, and
@@ -37,7 +37,7 @@ return {
         range = 1, -- adjacent only: a crozier is not a wand
         speed = 4,
         cost = { stat = "stamina", amount = 6 }, -- stamina, so a cornered priest can always swing it
-        damage = Curve.ramp(9, 19), -- feeble on purpose: the swap is the weapon
+        damage = Curve.ramp(7, 17), -- feeble on purpose: the swap is the weapon
         effect = function(fx)
             fx.damage(fx.target)
         end,

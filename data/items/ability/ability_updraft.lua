@@ -28,8 +28,8 @@ return {
     type = "ability",
     tags = { "arcane", "magical" },
     class = "mage",
-    price = 620,
-    unlockQuests = 9,
+    price = 260,
+    unlockQuests = 3,
     activeAbility = {
         -- A TILE target rather than "enemy" or "ally", and that is the whole point: neither of those
         -- words describes what this spell is for. Aimed at a cell, it lifts whoever is standing there

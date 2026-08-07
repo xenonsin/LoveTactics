@@ -23,8 +23,8 @@ return {
     tags = { "ranged", "physical", "pierce" },
     class = "hunter",
     discipline = "skirmisher",
-    price = 680,
-    unlockQuests = 10,
+    price = 560,
+    unlockQuests = 8,
     activeAbility = {
         target = "enemy",
         range = 4,

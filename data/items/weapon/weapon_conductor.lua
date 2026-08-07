@@ -27,8 +27,8 @@ return {
     type = "weapon",
     tags = { "wand", "magical", "lightning", "ranged" },
     class = "mage",
-    price = 380,
-    unlockQuests = 5,
+    price = 320,
+    unlockQuests = 4,
     activeAbility = {
         target = "enemy",
         range = 3,
@@ -36,7 +36,7 @@ return {
         speed = 3,
         cost = { stat = "mana", amount = 7 },
         -- Under a plain wand's: the aimed bolt is the smaller half of this weapon on any turn it matters.
-        damage = Curve.ramp(10, 20),
+        damage = Curve.ramp(8, 18),
         effect = function(fx)
             local t = fx.target
             if t then fx.damage(t) end

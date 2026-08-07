@@ -34,8 +34,8 @@ return {
     -- Being sold is also the more Greedish arrangement, whatever an earlier note here claimed: the guild
     -- sells it, buys it back, and takes a cut each time. You pay the Undercroft for the knife it named
     -- after somebody's blood, which is the joke.
-    price = 620,
-    unlockQuests = 9,
+    price = 680,
+    unlockQuests = 10,
     stealPriority = 2, -- a thief covets it above ordinary kit (below a Decoy's bait)
     activeAbility = {
         target = "enemy",

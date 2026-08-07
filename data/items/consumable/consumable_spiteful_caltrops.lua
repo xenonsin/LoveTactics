@@ -19,8 +19,8 @@ return {
     type = "consumable",
     tags = { "caltrop" },
     class = "rogue",
-    price = 150,
-    unlockQuests = 5,
+    price = 225,
+    unlockQuests = 8,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

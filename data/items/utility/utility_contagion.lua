@@ -24,7 +24,7 @@ return {
     tags = { "charm", "poison" },
     class = "alchemist",
     discipline = "plague_knight",
-    price = 320,
-    unlockQuests = 4,
+    price = 380,
+    unlockQuests = 5,
     traits = { "trait_contagion" },
 }

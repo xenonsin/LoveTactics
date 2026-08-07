@@ -12,8 +12,8 @@ return {
     type = "ability",
     tags = { "ice", "magical" },
     class = "mage",
-    price = 680,
-    unlockQuests = 10,
+    price = 620,
+    unlockQuests = 9,
     activeAbility = {
         target = "enemy",
         range = 3,

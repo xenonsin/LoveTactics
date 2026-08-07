@@ -34,8 +34,8 @@ return {
     tags = { "guile", "physical" }, -- `guile`, the rogue's own word for a conditional multiplier
     class = "rogue",
     discipline = "thief", -- deeper cut of the shelf: buyable only once the thief gate is cleared
-    price = 680,
-    unlockQuests = 10,
+    price = 560,
+    unlockQuests = 8,
     activeAbility = {
         target = "enemy",
         range = 1,

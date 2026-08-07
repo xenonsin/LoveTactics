@@ -27,8 +27,8 @@ return {
     tags = { "impact" },
     class = "fighter",
     discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
-    price = 560,
-    unlockQuests = 8,
+    price = 680,
+    unlockQuests = 10,
     activeAbility = {
         target = "self",
         range = 0,

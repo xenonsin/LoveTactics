@@ -34,8 +34,8 @@ return {
     tags = { "sword", "slash", "physical", "melee" },
     hands = 1,
     class = "knight",
-    price = 380,
-    unlockQuests = 5,
+    price = 260,
+    unlockQuests = 3,
     traits = { "trait_riposte" },
     activeAbility = {
         target = "enemy",

@@ -24,8 +24,8 @@ return {
     type = "weapon",
     tags = { "censer", "impact", "physical", "light", "melee" },
     class = "priest",
-    price = 560,
-    unlockQuests = 8,
+    price = 440,
+    unlockQuests = 6,
     incense = {
         hazard = "hazard_witchlight",
         radius = 1,
@@ -36,7 +36,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.ramp(11, 21),
+        damage = Curve.ramp(9, 19),
         effect = function(fx)
             fx.damage(fx.target)
         end,

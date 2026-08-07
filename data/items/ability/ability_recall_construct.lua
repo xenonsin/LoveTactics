@@ -22,8 +22,8 @@ return {
     tags = { "utility" },
     class = "mage",
     discipline = "artificer",
-    price = 340,
-    unlockQuests = 4,
+    price = 260,
+    unlockQuests = 3,
     activeAbility = {
         target = "tile",
         range = 3,

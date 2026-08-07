@@ -25,14 +25,14 @@ return {
     type = "weapon",
     tags = { "mace", "impact", "physical", "melee" },
     class = "knight",
-    price = 620,
-    unlockQuests = 9,
+    price = 380,
+    unlockQuests = 5,
     activeAbility = {
         target = "enemy",
         range = 2, -- a hook has reach the family does not: it has to be able to fetch something
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
-        damage = Curve.ramp(16, 26),
+        damage = Curve.ramp(12, 22),
         effect = function(fx)
             fx.damage(fx.target)
             -- Pulled AFTER the blow rather than folded into it, unlike every shove on the shelf. A shove

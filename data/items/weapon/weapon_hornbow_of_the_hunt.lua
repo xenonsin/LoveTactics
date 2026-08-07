@@ -25,8 +25,8 @@ return {
     tags = { "bow", "pierce", "physical", "ranged" },
     hands = 2, -- two-handed, like every bow
     class = "hunter",
-    price = 380,
-    unlockQuests = 5, -- the bow shelf's capstone
+    price = 260,
+    unlockQuests = 3, -- the bow shelf's capstone
     activeAbility = {
         target = "enemy",
         range = 5, -- two tiles further than a plain bow
@@ -34,7 +34,7 @@ return {
         requiresSight = true,
         speed = 3,
         cost = { stat = "stamina", amount = 10 },
-        damage = Curve.ramp(10, 24),
+        damage = Curve.ramp(8, 22),
         effect = function(fx)
             -- Tiles past the point-blank band (minRange 2), each worth a fifth of the shot's power.
             -- Taken off fx.amount rather than a flat number, so the reward climbs with the forge just

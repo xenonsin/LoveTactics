@@ -21,8 +21,8 @@ return {
     tags = { "hammer", "impact", "physical", "melee" },
     hands = 2,
     class = "fighter",
-    price = 500,
-    unlockQuests = 7,
+    price = 440,
+    unlockQuests = 6,
     activeAbility = {
         target = "enemy",
         range = 1,
@@ -30,7 +30,7 @@ return {
         cost = { stat = "stamina", amount = 12 },
         -- Under an iron hammer's, and deliberately so: this weapon wants its own damage to be small,
         -- because its damage is the thing most likely to wake what it just put down.
-        damage = Curve.ramp(21, 31),
+        damage = Curve.ramp(18, 28),
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_sleep" })
         end,

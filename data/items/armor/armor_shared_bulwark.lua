@@ -29,8 +29,8 @@ return {
     type = "armor",
     tags = { "shield", "heavy" },
     class = "knight",
-    price = 500,
-    unlockQuests = 7,
+    price = 560,
+    unlockQuests = 8,
     incense = { hazard = "hazard_shared_bulwark", radius = 1 },
     bonus = { defense = Curve.ramp(4, 14), movement = -2 },
     -- The family contract: a shield swaps its holder's Wait into Defend (docs/weapons.md, enforced by

@@ -12,7 +12,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "mage",
-    price = 260,
-    unlockQuests = 3,
+    price = 320,
+    unlockQuests = 4,
     maxBonus = { mana = Curve.ramp(12) },
 }

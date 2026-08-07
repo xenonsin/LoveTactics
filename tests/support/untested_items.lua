@@ -253,7 +253,6 @@ return {
     "weapon_sealed_censer",
     "weapon_sealed_hour",
     "weapon_second_rank",
-    "weapon_sleepers_maul",
     "weapon_slow_verdict",
     "weapon_splitglass_saber",
     "weapon_splitting_maul",

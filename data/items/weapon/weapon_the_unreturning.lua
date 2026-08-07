@@ -29,15 +29,15 @@ return {
     tags = { "wand", "dark", "magical" }, -- magical: routes through magicDamage / magicDefense
     class = "mage",
     discipline = "necromancer",
-    price = 440,
-    unlockQuests = 6,
+    price = 320,
+    unlockQuests = 4,
     activeAbility = {
         target = "enemy",
         range = 5,
         requiresSight = true, -- a wand needs only a direction (no minRange), but it must SEE down the line
         speed = 5,
         cost = { stat = "mana", amount = 12 },
-        damage = Curve.ramp(10, 20), -- power + the wielder's Magic Damage, minus Magic Defense
+        damage = Curve.ramp(8, 18), -- power + the wielder's Magic Damage, minus Magic Defense
         effect = function(fx)
             -- denyRevival rides on the bolt and is honoured only on the fatal path (Combat.dealFlatDamage):
             -- a kill severs the revive window, a mere wound does nothing.

@@ -20,15 +20,15 @@ return {
     type = "weapon",
     tags = { "wand", "magical", "acid", "ranged" },
     class = "alchemist",
-    price = 620,
-    unlockQuests = 9,
+    price = 560,
+    unlockQuests = 8,
     activeAbility = {
         target = "enemy",
         range = 3,
         requiresSight = true, -- a bolt needs a clear line, as every wand's does
         speed = 3,
         cost = { stat = "mana", amount = 5 },
-        damage = Curve.ramp(12, 22), -- under a plain wand's: what it opens is the point
+        damage = Curve.ramp(13, 23), -- under a plain wand's: what it opens is the point
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_acid" })
         end,

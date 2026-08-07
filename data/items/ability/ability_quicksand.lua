@@ -10,8 +10,8 @@ return {
     type = "ability",
     tags = { "earth", "magical" },
     class = "mage",
-    price = 140,
-    unlockQuests = 1,
+    price = 200,
+    unlockQuests = 2,
     activeAbility = {
         target = "tile",
         allowOccupied = true, -- an area cast may center on an occupied tile

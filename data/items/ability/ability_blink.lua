@@ -15,8 +15,8 @@ return {
     type = "ability",
     tags = { "arcane" },
     class = "mage",
-    price = 260,
-    unlockQuests = 3,
+    price = 320,
+    unlockQuests = 4,
     moveBehavior = {
         mode = "teleport",
         movement = 5, -- teleport reach while armed (vs. the caster's walking movement)

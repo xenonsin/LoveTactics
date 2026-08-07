@@ -32,8 +32,8 @@ return {
     tags = { "holy", "impact" },
     class = "fighter",
     discipline = "crusader",
-    price = 680,
-    unlockQuests = 10,
+    price = 620,
+    unlockQuests = 9,
     -- Shallower than either crusader charm on purpose: the spender opens the pool, the charms deepen it
     -- (Combat.chargeDef merges -- highest max wins, `from` unions).
     charge = { key = "zeal", from = { "kill", "healDone" }, max = 5 },

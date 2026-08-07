@@ -79,9 +79,17 @@ Grade.FIGHT_TURNS = 8
 -- rate every radius-1 spell as the best item in the game. These are what a competent cast lands.
 Grade.EXPECTED_BODIES = {
     [1] = 1,     -- single target
-    small = 1.7, -- radius 1 / a 3-wide arc / a 2-long line: the common case
-    large = 2.4, -- radius 2+ / a long line: worth more, but the field is still only four deep
+    small = 2.1, -- radius 1 / a 3-wide arc / a 2-long line: the common case
+    large = 2.8, -- radius 2+ / a long line: worth more, but the field is still only four deep
 }
+
+-- The most one APPLICATION of a status may be worth, in turns, however many of the fields above it
+-- happens to set. The components are additive and several statuses set four or five of them: Frozen
+-- shoves initiative, disables reactions, interrupts a channel AND opens a vulnerability, which summed
+-- to better than two turns off one cast. That made a single-target bolt out-rank an area spell, which
+-- is the wrong answer to a question the anchor pairs already settle -- so the ceiling is stated here
+-- rather than by quietly shaving whichever component was most convenient.
+Grade.STATUS_VALUE_CAP = 1.5
 
 -- What one application of a status is worth, in TURNS of the body it lands on, by what the status
 -- DOES. Read off the status blueprint's own fields (models/status.lua's contract), so retuning a
@@ -491,6 +499,26 @@ Grade.POOL_POINT = 0.35
 -- Ticks of initiative bought or taken, against a turn's worth of them.
 Grade.HASTEN_PER_TICK = 0.2
 
+-- WHAT A SWING COSTS TO THROW, now that its damage no longer distinguishes it. Once the blow is
+-- normalized to the family base, two weapons of a family are told apart only by what rides along --
+-- and `speed` and `cost` ride along on nearly every ability in the game (449 and 392 of them). A
+-- ponderous, expensive axe and a quick, cheap one are not the same item, and before these were read
+-- the grader said they were.
+--
+-- Speed is in TICKS against a reference swing: faster than the sword comes round sooner and is worth
+-- the difference, slower pays it. Cost is against a reference outlay, and is a discount rather than a
+-- credit -- an ability you can afford three times in a fight does less than the same one at half the
+-- price, however hard each cast hits.
+Grade.REFERENCE_SPEED = 4   -- an iron sword's swing, the thing every other tempo is read against
+Grade.TICK_VALUE = 0.06     -- a tick of initiative, in turns
+Grade.REFERENCE_COST = 10   -- a middling outlay; dearer than this discounts, cheaper credits
+Grade.COST_SWING = 0.25     -- how much of the total the full spread of costs is allowed to move
+
+-- The wielder drinks a share of everything the blow opens. A keyword rather than an effect, so the
+-- dry run never sees it -- and it is the whole difference between the Crimson Greataxe and the iron
+-- axe it is supposed to tower over.
+Grade.LIFESTEAL_VALUE = 1.0 -- health returned is worth damage dealt, point for point
+
 -- Discounts, as multipliers on the whole. A wind-up is paid in tempo before anything lands; a
 -- two-handed weapon costs the grid cell a second item would have used.
 Grade.WINDUP_TURN_DISCOUNT = 0.15 -- per turn of hold, off the total
@@ -661,7 +689,9 @@ function Grade.statusValue(id)
         value = value + 0.45 * math.max(1, turns) * turn
     end
 
-    return value
+    -- Capped, see Grade.STATUS_VALUE_CAP: the components above are additive and a status that sets
+    -- four of them summed past two turns off one cast.
+    return math.min(value, Grade.STATUS_VALUE_CAP * turn)
 end
 
 -- ---------------------------------------------------------------------------
@@ -751,6 +781,24 @@ local function activeValue(def, item, rows)
     if not ab or not ab.effect then return 0 end
 
     local magical = isMagical(def)
+
+    -- THE ITEM'S OWN MAGNITUDE IS OVERWRITTEN BEFORE THE DRY RUN, and this is the line that keeps the
+    -- grade honest. Since the slot became the grade, every item on a rung SHARES a magnitude -- so an
+    -- item's damage number says which rung it is on and nothing whatever about the item. Reading it
+    -- closed the loop: grade set the slot, the slot granted the magnitude, and the magnitude fed the
+    -- next grade. It converged only because it was damped, which is not the same as being right.
+    --
+    -- So the blow is normalized to the FAMILY BASE's own unforged power (Balance.slotAnchors, pinned at
+    -- slot 0) before the effect is replayed. Two plain weapons of a family then grade identically,
+    -- which is exactly the design's claim: "two items sharing a slot share a magnitude -- the effect is
+    -- the whole of what distinguishes them." What survives the normalization is everything that is
+    -- really the ITEM: how many bodies the blow reaches, what it inflicts, what it leaves behind, what
+    -- it multiplies itself by (Omnislash's per-weapon stacking, the Hornbow's distance scaling), and
+    -- what it costs in tempo.
+    local fam = Balance.familyOf(def)
+    local anchor = fam and Balance.slotAnchors()[fam]
+    if anchor and type(ab.damage) == "number" then ab.damage = anchor.base end
+
     local out = Combat.abilityOutput(caster(magical), item)
     if not out then return 0 end
 
@@ -774,6 +822,11 @@ local function activeValue(def, item, rows)
         raw = ab.damage + ((magical and stats.magicDamage or stats.damage) or 0)
     end
 
+    -- ...and the ordinary blow nets itself off, because THE MARGIN BELOW ALREADY IS THE PLAIN BLOW.
+    -- `ownTurn` is what the reference loadout lands in one turn, which is exactly what a normalized
+    -- single-target swing now delivers -- so a plain weapon scores its blow, pays a turn for it, and
+    -- comes out at nothing. No second subtraction: netting the baseline off here as well would bill
+    -- the same swing twice and put every plain item deep in the negative.
     local dmg = landed(raw, def.tags) * bodies
     if dmg > 0 then rows[#rows + 1] = { "damage", dmg }; total = total + dmg end
 
@@ -840,6 +893,20 @@ local function activeValue(def, item, rows)
         end
     end
 
+    -- The blood it drinks back. A keyword folded into Combat.dealDamage, never an fx call, so the dry
+    -- run cannot report it -- read off the ability and priced against what the blow actually landed.
+    if tonumber(ab.lifesteal) and ab.lifesteal > 0 then
+        local v = landed(raw, def.tags) * bodies * ab.lifesteal * Grade.LIFESTEAL_VALUE
+        rows[#rows + 1] = { "lifesteal", v }; total = total + v
+    end
+
+    -- Tempo: how far this swing sits from an ordinary one on the clock.
+    local speed = tonumber(ab.speed)
+    if speed and speed ~= Grade.REFERENCE_SPEED then
+        local v = (Grade.REFERENCE_SPEED - speed) * Grade.TICK_VALUE * turn
+        rows[#rows + 1] = { "tempo", v }; total = total + v
+    end
+
     -- THE MARGIN. Spending the action means not swinging, so an ordinary cast is worth what it beats
     -- the reference swing by. An ability that keeps the turn (`free`) hands that turn back.
     if ab.free then
@@ -856,6 +923,14 @@ local function activeValue(def, item, rows)
     if windup and windup > 0 then
         local held = windup / 5
         total = total * math.max(0.4, 1 - Grade.WINDUP_TURN_DISCOUNT * held)
+    end
+
+    -- ...and what it costs to throw at all. A discount on the whole rather than a subtraction, because
+    -- a price limits how OFTEN the thing happens rather than how much it does when it does.
+    local outlay = ab.cost and tonumber(ab.cost.amount)
+    if outlay and outlay > 0 and total > 0 then
+        local ratio = Grade.REFERENCE_COST / math.max(1, outlay)
+        total = total * (1 + Grade.COST_SWING * (math.min(2, ratio) - 1))
     end
 
     return total

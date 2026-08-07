@@ -29,8 +29,8 @@ return {
     tags = { "dagger", "pierce", "physical", "melee" },
     class = "rogue",
     discipline = "assassin",
-    price = 500,
-    unlockQuests = 7,
+    price = 560,
+    unlockQuests = 8,
     activeAbility = {
         target = "enemy",
         range = 1,

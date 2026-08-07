@@ -25,7 +25,7 @@ return {
     tags = { "charm" },
     class = "fighter",
     discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
-    price = 320,
-    unlockQuests = 4,
+    price = 380,
+    unlockQuests = 5,
     traits = { "trait_blood_fever" },
 }

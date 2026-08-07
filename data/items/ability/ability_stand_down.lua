@@ -25,8 +25,8 @@ return {
     tags = { "impact" },
     class = "knight",
     discipline = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
-    price = 260,
-    unlockQuests = 3,
+    price = 320,
+    unlockQuests = 4,
     activeAbility = {
         target = "unit",
         range = 2,

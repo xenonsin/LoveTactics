@@ -21,7 +21,7 @@ return {
     tags = { "charm" },
     class = "mage",
     discipline = "spellbreaker",
-    price = 440,
-    unlockQuests = 6,
+    price = 500,
+    unlockQuests = 7,
     traits = { "trait_empty_vessel" },
 }

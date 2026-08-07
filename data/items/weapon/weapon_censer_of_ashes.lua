@@ -25,8 +25,8 @@ return {
     type = "weapon",
     tags = { "censer", "impact", "physical", "poison", "melee" },
     class = "priest",
-    price = 500,
-    unlockQuests = 7,
+    price = 440,
+    unlockQuests = 6,
     incense = {
         hazard = "hazard_choking",
         radius = 1,

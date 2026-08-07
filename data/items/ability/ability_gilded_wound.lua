@@ -27,11 +27,11 @@ return {
     tags = { "physical", "guile" }, -- guile: the rogue's own word; the purse is the header's business (as on Blood Money)
     class = "rogue",
     discipline = "mammonite", -- a spender: the gate opens the shelf, this half completes it at quest 9
-    price = 360,
+    price = 440,
     -- Gated to the END of the greed line: on sale only once all ten Undercroft quests are cleared --
     -- which means Aurea herself is beaten (slot 10). You do not buy the art of paying in another's blood
     -- until you have taken it off the one who owned it. `Vendor.stock` unlocks at questsDone >= 10.
-    unlockQuests = 9,
+    unlockQuests = 6,
     activeAbility = {
         target = "enemy",
         range = 3, -- greed reaches: it prices you from across the room, it does not close

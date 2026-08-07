@@ -26,8 +26,8 @@ return {
     tags = { "elixir" },
     class = "alchemist",
     discipline = "apothecary",
-    price = 160,
-    unlockQuests = 11,
+    price = 105,
+    unlockQuests = 3,
     maxStack = 3,
     activeAbility = {
         target = "self",

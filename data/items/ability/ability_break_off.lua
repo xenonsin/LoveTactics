@@ -31,8 +31,8 @@ return {
     tags = { "pierce", "physical" },
     class = "hunter",
     discipline = "skirmisher", -- fighter x hunter; Hit-and-run -- the strike that buys the band back
-    price = 680,
-    unlockQuests = 10,
+    price = 560,
+    unlockQuests = 8,
     activeAbility = {
         target = "enemy",
         -- NO `minRange` of its own, deliberately, and it is the only bow-gated ability on the shelf

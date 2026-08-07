@@ -22,8 +22,8 @@ return {
     tags = { "utility" },
     class = "rogue",
     discipline = "saboteur",
-    price = 340,
-    unlockQuests = 8,
+    price = 260,
+    unlockQuests = 3,
     activeAbility = {
         target = "self",
         range = 0,

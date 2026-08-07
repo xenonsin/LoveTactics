@@ -31,8 +31,8 @@ return {
     tags = { "fire", "explosive" },
     class = "alchemist",
     discipline = "bombardier", -- deeper cut of the shelf: buyable only once the bombardier gate is cleared
-    price = 680,
-    unlockQuests = 10,
+    price = 620,
+    unlockQuests = 9,
     activeAbility = {
         description = "Increase damage the longer it is held; past the safe window it bursts on the alchemist.",
         target = "tile",

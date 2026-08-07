@@ -19,7 +19,7 @@ return {
     tags = { "beast" },
     class = "hunter",
     discipline = "beastmaster", -- deeper cut of the shelf: buyable only once the beastmaster gate is cleared
-    price = 560,
-    unlockQuests = 8,
+    price = 620,
+    unlockQuests = 9,
     traits = { "trait_falconers_hawk" },
 }

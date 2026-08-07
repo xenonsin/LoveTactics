@@ -12,7 +12,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "fighter",
-    price = 200,
-    unlockQuests = 2,
+    price = 260,
+    unlockQuests = 3,
     traits = { "trait_dodge" },
 }

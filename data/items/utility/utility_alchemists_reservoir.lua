@@ -13,7 +13,7 @@ return {
     type = "utility",
     tags = { "satchel", "arcane" },
     class = "alchemist",
-    price = 440,
-    unlockQuests = 6,
+    price = 500,
+    unlockQuests = 7,
     traits = { "trait_alchemists_reservoir" },
 }

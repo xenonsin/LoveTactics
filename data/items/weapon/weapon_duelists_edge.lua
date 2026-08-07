@@ -22,8 +22,8 @@ return {
     hands = 1, -- a sword is one-handed, and this one wants the free slot for whatever finishes the duel
     traits = { "trait_binding_parry" }, -- NOT trait_parry: the bind replaces the cut, it does not join it
     class = "knight", -- a blade that answers is the Bastion's argument (docs/classes.md)
-    price = 320,
-    unlockQuests = 4,
+    price = 260,
+    unlockQuests = 3,
     activeAbility = {
         target = "enemy",
         range = 1,

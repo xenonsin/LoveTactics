@@ -34,8 +34,8 @@ return {
     tags = { "heavy" },
     class = "knight",
     discipline = "spellbreaker", -- knight x mage; the sword-oath's own plate -- forswear the craft, ward against it
-    price = 620,
-    unlockQuests = 9,
+    price = 680,
+    unlockQuests = 10,
     traits = { "trait_magic_denial" }, -- lays Magic Denied at the bell; see data/status/magic_denied.lua
     -- Ordinary defense is mediocre on purpose: this is not a better Runed Plate, it is a different
     -- trade. `statusResist` is the headline the wearer actually bought -- see Status.resistRating.

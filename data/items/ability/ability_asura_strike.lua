@@ -26,14 +26,14 @@ return {
     tags = { "fist", "physical" },
     class = "priest",
     discipline = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
-    price = 620,
-    unlockQuests = 9,
+    price = 440,
+    unlockQuests = 6,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 7, -- the slowest thing on the shelf: a blow this size is telegraphed
         cost = { stat = "stamina", amount = 10 },
-        damage = Curve.ramp(13, 23), -- fx.amount: the floor, before the chi
+        damage = Curve.ramp(11, 21), -- fx.amount: the floor, before the chi
         -- The pool this reads, quoted on the slot and in the tooltip (see Flurry for why chi is named
         -- here rather than declared with `charge`). It matters more on this one than anywhere: the blow
         -- is +6 per chi, so the count IS the damage, and a monk deciding whether to throw it now or

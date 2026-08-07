@@ -12,8 +12,8 @@ return {
     type = "ability",
     tags = { "impact", "physical" }, -- `impact` is the blunt tag the game actually reads (see status_freeze)
     class = "fighter",
-    price = 260,
-    unlockQuests = 3,
+    price = 200,
+    unlockQuests = 2,
     activeAbility = {
         target = "enemy",
         range = 1,

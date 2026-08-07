@@ -20,10 +20,10 @@ return {
     type = "ability",
     tags = { "slash", "physical" },
     class = "fighter",
-    price = 440,
+    price = 380,
     -- Rank 1, not 3: the player is handed this mid-prologue (see above), so a shelf that withheld it
     -- until the third quest would be gating an ability they already own and have already been taught.
-    unlockQuests = 6,
+    unlockQuests = 5,
     activeAbility = {
         -- Aimed at the caster's own tile: the ring is centred on the body that spins, so there is
         -- nothing to pick but yourself (states/battle.lua's computeRange gives a self-target exactly
@@ -35,7 +35,7 @@ return {
         support = false,
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
-        damage = Curve.ramp(12, 22),
+        damage = Curve.ramp(10, 20),
         aoe = { shape = "diamond", radius = 1 }, -- the four tiles around you (and the one you stand on)
         effect = function(fx)
             -- Foes only. The ring is centred on the caster and every ally at their shoulder stands

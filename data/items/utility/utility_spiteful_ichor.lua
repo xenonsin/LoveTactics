@@ -15,7 +15,7 @@ return {
     tags = { "charm", "poison" },
     class = "alchemist",
     discipline = "poisoner", -- deeper cut of the shelf: buyable only once the poisoner gate is cleared
-    price = 500,
-    unlockQuests = 7,
+    price = 560,
+    unlockQuests = 8,
     traits = { "trait_spiteful_ichor" },
 }

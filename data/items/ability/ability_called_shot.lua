@@ -11,8 +11,8 @@ return {
     type = "ability",
     tags = { "pierce", "physical" },
     class = "hunter",
-    price = 440,
-    unlockQuests = 6,
+    price = 320,
+    unlockQuests = 4,
     activeAbility = {
         target = "enemy",
         range = 5,
@@ -21,7 +21,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 8 },
         requiresAdjacent = { type = "weapon", tag = "bow" },
-        damage = Curve.ramp(12, 22),
+        damage = Curve.ramp(9, 19),
         effect = function(fx)
             local t = fx.target
             if not t then return end

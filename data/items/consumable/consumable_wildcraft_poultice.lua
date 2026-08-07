@@ -16,8 +16,8 @@ return {
     tags = { "restorative" },
     class = "hunter",
     discipline = "herbalist", -- hunter x alchemist; the Field-brewing mechanic's first stock
-    price = 250,
-    unlockQuests = 9,
+    price = 270,
+    unlockQuests = 10,
     activeAbility = {
         target = "ally", -- includes the user (a unit is its own ally)
         range = 1,

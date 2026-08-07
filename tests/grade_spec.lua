@@ -115,6 +115,38 @@ return {
         end,
     },
     {
+        -- THE LOOP GUARD, and the one that took two attempts to get right. The slot grants an item its
+        -- magnitude (Balance.slotTarget), so a grade that read the item's own damage was reading the
+        -- slot it had just assigned -- grade -> slot -> magnitude -> grade. It converged only because
+        -- it was damped, and a ranking that feeds its own input is the tautology this whole file exists
+        -- to break, arriving one step further out than the two guards above look.
+        --
+        -- The blow is normalized to the family base before the effect is replayed, so this holds: move
+        -- an item's authored damage as far as you like and its grade must not budge. What CAN move it
+        -- is how many bodies the blow reaches and what rides along with it, which is the item.
+        name = "grade: an item's own damage cannot move its grade",
+        fn = function()
+            -- Deliberately not a family BASE: those twelve weapons and ability_fire_bolt ARE the ruler
+            -- (Balance.slotAnchors reads the normalization off them), so moving one legitimately moves
+            -- every grade on its ladder. That is the anchors doing their job, not the loop reopening.
+            for _, id in ipairs({ "weapon_crimson_greataxe", "ability_fireball", "weapon_sleepers_maul" }) do
+                local def = Item.defs[id]
+                local ab = def.activeAbility
+                local was = ab.damage
+                local before = Grade.of(id)
+                -- A curve resolves per level, so replace it with a flat number well off its own scale.
+                ab.damage = 999
+                Grade.reset()
+                local after = Grade.of(id)
+                ab.damage = was
+                Grade.reset()
+                assert(math.abs(before - after) < 0.001,
+                    id .. "'s grade moved with its own damage: " .. before .. " -> " .. after
+                        .. " -- the slot is feeding the grade again")
+            end
+        end,
+    },
+    {
         name = "grade: a stun is worth about a turn",
         fn = function()
             local turn = Grade.turnValue()

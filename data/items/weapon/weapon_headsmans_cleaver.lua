@@ -22,8 +22,8 @@ return {
     tags = { "greatsword", "slash", "physical", "melee" },
     hands = 2,
     class = "fighter",
-    price = 680,
-    unlockQuests = 10,
+    price = 500,
+    unlockQuests = 7,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -34,7 +34,7 @@ return {
         cost = { stat = "stamina", amount = 13 },
         -- Well under the iron greatsword's curve: this is what it lands into a HEALTHY target, and the
         -- bonus below is what it lands into the wounded one it is actually for.
-        damage = Curve.ramp(46, 62),
+        damage = Curve.ramp(39, 55),
         effect = function(fx)
             local t = fx.target
             if not t then return end

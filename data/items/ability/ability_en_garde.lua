@@ -14,14 +14,14 @@ return {
     tags = { "slash", "physical" },
     class = "fighter",
     discipline = "duelist", -- fighter x rogue; the Duel-stance mechanic's first stock
-    price = 620,
-    unlockQuests = 9,
+    price = 260,
+    unlockQuests = 3,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.ramp(14, 24),
+        damage = Curve.ramp(9, 19),
         effect = function(fx)
             local u = fx.user
             if u.enGardeTarget == fx.target then

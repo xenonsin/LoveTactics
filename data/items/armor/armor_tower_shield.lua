@@ -22,8 +22,8 @@ return {
     type = "armor",
     tags = { "shield" }, -- a Shield Bash item beside it in the grid can bash with it
     class = "knight",
-    price = 440,
-    unlockQuests = 6,
+    price = 500,
+    unlockQuests = 7,
     bonus = { defense = Curve.ramp(4, 14), movement = -1 },
     resist = { physical = 2 },
     -- Well above a buckler's 6-11, which is what the root buys. `status` is applied to the holder on

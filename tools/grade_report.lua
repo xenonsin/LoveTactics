@@ -246,13 +246,22 @@ local function planFor(class, maxGate, pinned)
         if row.def.type == "weapon" and row.want <= 0 and not row.def.discipline then hasOpener = true end
     end
     if not hasOpener then
+        -- CHOSEN ON RAW GRADE, not on the adjusted order, and that is the difference between a rule and
+        -- a coin flip. `asc` is sorted by the FITNESS-adjusted value, and fitness reads the proposed
+        -- slot -- so picking the first weapon out of it means the choice depends on the assignment it is
+        -- feeding. The Crucible has no family base, and its two plain weapons traded the opening seat
+        -- every round: the pass stopped converging and sat in a 2-cycle forever. `value` is slot-free by
+        -- construction, so this settles on the same weapon every time.
+        local opener
         for _, row in ipairs(asc) do
-            -- `asc` is weakest-first, so the first weapon found is the one to drop.
             if row.def.type == "weapon" and not row.def.discipline then
-                row.want, row.pinned = 0, "this house's opening weapon"
-                break
+                if not opener or row.value < opener.value
+                    or (row.value == opener.value and row.id < opener.id) then
+                    opener = row
+                end
             end
         end
+        if opener then opener.want, opener.pinned = 0, "this house's opening weapon" end
     end
     return asc, blind
 end

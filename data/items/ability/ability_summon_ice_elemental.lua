@@ -9,8 +9,8 @@ return {
     tags = { "summon", "ice" },
     class = "mage",
     discipline = "summoner", -- deeper cut of the shelf: buyable only once the summoner gate is cleared
-    price = 560,
-    unlockQuests = 8,
+    price = 620,
+    unlockQuests = 9,
     activeAbility = {
         target = "tile",
         range = 2,

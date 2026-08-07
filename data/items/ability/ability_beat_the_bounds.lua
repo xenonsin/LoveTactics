@@ -25,8 +25,8 @@ return {
     tags = { "control", "physical" },
     class = "hunter",
     discipline = "warden",
-    price = 620,
-    unlockQuests = 9,
+    price = 440,
+    unlockQuests = 6,
     activeAbility = {
         target = "self",
         range = 0,

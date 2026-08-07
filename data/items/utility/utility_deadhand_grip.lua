@@ -27,7 +27,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "rogue",
-    price = 440,
-    unlockQuests = 6,
+    price = 380,
+    unlockQuests = 5,
     statusImmunity = { "status_disarmed" },
 }

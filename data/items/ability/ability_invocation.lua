@@ -13,8 +13,8 @@ return {
     tags = { "holy", "magical" },
     class = "mage",
     discipline = "theurge", -- mage x priest; the Channelled-miracle mechanic's first stock
-    price = 500,
-    unlockQuests = 7,
+    price = 560,
+    unlockQuests = 8,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
