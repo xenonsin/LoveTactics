@@ -4457,6 +4457,119 @@ function Combat.charge(combat, user, target, distance)
     return moved
 end
 
+-- Can a charge clear a body standing in its lane? The live rush shoves a bystander one tile to either
+-- side and tramples it; this only ASKS, so the preview twin below can walk the same lane without
+-- moving anybody. Furniture and walls answer false -- a barrel is not shoved aside by a shoulder, it
+-- stops the run -- which is why the test is `blocker.alive` rather than "is there something there".
+local function laneClears(combat, blocker, dx, dy)
+    if not (blocker and blocker.alive) then return false end
+    if Status.blocksForcedMove(blocker) then return false end -- an anchored bystander is a wall
+    local px, py = -dy, dx
+    return footprintCanShift(combat, blocker, px, py) or footprintCanShift(combat, blocker, -px, -py)
+end
+
+-- A charge into OPEN GROUND: the same rush with nobody pinned in front of it. `user` runs up to
+-- `distance` tiles along (dx, dy) under its own weight, halted by the map edge, impassable terrain, a
+-- wall or a body it cannot clear, and shoving aside (and trampling) any bystander caught in the lane
+-- exactly as the pinned drive does. Returns the number of tiles advanced.
+--
+-- Written as its own loop rather than folded into Combat.charge because the two runs are shaped
+-- differently: the pinned drive walks the TARGET and follows it, and there is no target here to walk.
+-- Uses footprintCanShift rather than canShoveInto, so a wide charger runs the lane as one body (the
+-- lockstep form has to refuse a wide charger; this one does not).
+local function chargeLane(combat, user, dx, dy, distance)
+    local oX, oY = user.x, user.y
+    local moved = 0
+    for _ = 1, (distance or 1) do
+        if not user.alive then break end -- a hazard or trap in the lane may end the run mid-stride
+        local ok, blocker = footprintCanShift(combat, user, dx, dy)
+        if not ok then
+            if not laneClears(combat, blocker, dx, dy) then break end
+            local px, py = -dy, dx
+            local _ = shoveStep(combat, blocker, px, py) or shoveStep(combat, blocker, -px, -py)
+            Combat.logEvent(combat, "damage",
+                string.format("%s is trampled by the charge.", unitName(blocker)), { blocker, user })
+            Combat.dealFlatDamage(combat, blocker, Combat.COLLISION_DAMAGE, { "physical", "impact" }, "the charge")
+            ok = footprintCanShift(combat, user, dx, dy) -- the lane may now be clear (pushed aside, or slain)
+            if not ok then break end
+        end
+        local fromX, fromY = user.x, user.y
+        user.x, user.y = user.x + dx, user.y + dy
+        -- "forced", as the charger's half of the lockstep drive is: the rush carries it rather than
+        -- being a metered walk, but it is on the ground the whole way and pays the ground's bleed.
+        Combat.enterTile(combat, user, user.x, user.y, "forced", fromX, fromY)
+        moved = moved + 1
+        Combat.logEvent(combat, "move",
+            string.format("%s charges to (%d, %d).", unitName(user), user.x, user.y), user)
+    end
+    -- One slide cue for the whole run, so it reads as a rush rather than a teleport (the pinned form
+    -- pushes two, one per body). Nothing to slide if the lane was barred at the outset.
+    if moved > 0 and user.alive then
+        Combat.pushFx(combat, { type = "slide", unit = user, fromX = oX, fromY = oY })
+    end
+    return moved
+end
+
+-- Charge at a TILE rather than at a body -- the form the Charge ability aims with. Whatever stands on
+-- the aimed (adjacent) tile is what gets pinned and driven; when NOTHING stands there, the charger runs
+-- that empty lane itself. The second half is what makes Charge a way to MOVE as well as a way to
+-- displace: aim a foe to bury it in a corner, aim open ground to cross three tiles of it on an action
+-- rather than on your move. Returns the number of tiles advanced.
+function Combat.chargeInto(combat, user, tx, ty, distance)
+    if not (user and user.alive and tx and ty) then return 0 end
+    local dx, dy = signDominant(tx - user.x, ty - user.y)
+    if dx == 0 and dy == 0 then return 0 end
+    local pinned = Combat.unitAt(combat, tx, ty)
+    if pinned and pinned ~= user then return Combat.charge(combat, user, pinned, distance) end
+    -- An anchored charger (Root) has no rush in it. Combat.charge makes this check in both directions;
+    -- here only the charger can be planted, because there is nobody in front of it to drive.
+    if Status.blocksForcedMove(user) then
+        Combat.logEvent(combat, "status",
+            string.format("%s is rooted, and the charge goes nowhere.", unitName(user)), user)
+        return 0
+    end
+    return chargeLane(combat, user, dx, dy, distance)
+end
+
+-- Where a charge aimed at (tx, ty) would leave the CHARGER, without moving anything -- Combat.chargeInto's
+-- pure twin, the way Combat.knockbackTile is Combat.knockback's. A charge is bought for where it puts
+-- you, so the hover has to be able to ring that tile (Combat.previewAbility's userRestsX/userRestsY) and
+-- the counter preview has to weigh the cast from it rather than from the square it is thrown off.
+--
+-- Walks the same lane by the same rule as the live rush, counting a bystander the rush could shove clear
+-- as ground it takes. It does not model the trample KILLING a bystander it could not shove (which would
+-- vacate the tile), nor a hazard on the way felling the charger -- the first only ever lengthens the real
+-- run, the second only shortens it, and both are rarer than the tooltip is looked at.
+function Combat.chargeTile(combat, user, tx, ty, distance)
+    if not (user and user.alive and tx and ty) then return user and user.x, user and user.y end
+    local dx, dy = signDominant(tx - user.x, ty - user.y)
+    if (dx == 0 and dy == 0) or Status.blocksForcedMove(user) then return user.x, user.y end
+    -- The pinned form moves the pair in LOCKSTEP, so the charger's run is really the target's run: walk
+    -- the lane from the pinned body's tile, and the charger comes to rest one stride behind wherever
+    -- that stops. Every gate Combat.charge refuses the pin on leaves the charger where it stands.
+    local pinned = Combat.unitAt(combat, tx, ty)
+    if pinned == user then pinned = nil end
+    if pinned then
+        if (user.w or 1) > 1 or (user.h or 1) > 1 or (pinned.w or 1) > 1 or (pinned.h or 1) > 1
+            or Status.blocksForcedMove(pinned) or Combat.unitGap(user, pinned) ~= 1 then
+            return user.x, user.y
+        end
+    end
+    local body = pinned or user
+    local w, h = body.w or 1, body.h or 1
+    local x, y = body.x, body.y
+    local moved = 0
+    for _ = 1, (distance or 1) do
+        if not Combat.footprintFree(combat, w, h, x + dx, y + dy, body)
+            and not laneClears(combat, Combat.unitAt(combat, x + dx, y + dy), dx, dy) then
+            break
+        end
+        x, y = x + dx, y + dy
+        moved = moved + 1
+    end
+    return user.x + moved * dx, user.y + moved * dy
+end
+
 -- ---------------------------------------------------------------------------
 -- Item actions + damage/heal helpers
 -- ---------------------------------------------------------------------------
@@ -6748,7 +6861,19 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
             return false
         end,
         teleport = function() touchesBoard() return false end,
-        charge = function() touchesBoard() return 0 end,
+        -- A charge carries the CHARGER down the lane, so -- like a blink -- it is inert to the board but
+        -- not silent about where it leaves you: record the landing (see userRestsX above), because for a
+        -- rush that is most of what the cast is being weighed on. Combat.chargeTile walks it purely.
+        charge = function(tgt, distance)
+            touchesBoard()
+            if tgt then userRestsX, userRestsY = Combat.chargeTile(combat, unit, tgt.x, tgt.y, distance) end
+            return 0
+        end,
+        chargeInto = function(x, y, distance)
+            touchesBoard()
+            if x and y then userRestsX, userRestsY = Combat.chargeTile(combat, unit, x, y, distance) end
+            return 0
+        end,
         steal = function() touchesBoard() return nil end,
         -- Knowledge only, so there is nothing to preview on the timeline -- but pulling a hidden trap
         -- into the light IS something the cast does, so it counts as touching the board.
@@ -7120,6 +7245,9 @@ function Combat.abilityOutput(unit, item)
         teleportUser = function() out.teleport = true; return true end,
         teleport = function() out.teleport = true; return true end,
         charge = function(_, distance) out.charge = distance or 1; return 0 end,
+        -- Tile-aimed, but the same tiles closed: the grade weighs a charge per tile of lane it takes
+        -- (models/grade.lua), and what it was pointed at does not change how far it runs.
+        chargeInto = function(_, _, distance) out.charge = distance or 1; return 0 end,
         steal = function() out.steal = true; return nil end,
         -- Record that the ability lays a foe's kit open, so the tooltip can name it (like `steal`).
         reveal = function() out.reveal = true end,
@@ -9167,6 +9295,12 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         charge = function(tgt, distance)
             if not tgt then return 0 end
             return Combat.charge(combat, unit, tgt, distance)
+        end,
+        -- The same rush aimed at a TILE: drive whoever stands there, or run the empty lane yourself
+        -- (Combat.chargeInto). What the Charge ability casts through, and why it doubles as a way to
+        -- move -- fx.charge above needs a body, and open ground is exactly what it cannot be pointed at.
+        chargeInto = function(x, y, distance)
+            return Combat.chargeInto(combat, unit, x, y, distance)
         end,
         -- FIELD CRAFTING (S4): put a freshly-made item into a unit's grid. Marked `ephemeral`, so it is
         -- real for this fight -- it stacks, casts, previews and can be stolen exactly like bought stock

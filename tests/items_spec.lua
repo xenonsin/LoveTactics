@@ -306,6 +306,43 @@ return {
         end,
     },
     {
+        -- The other half of the same cast: aimed at OPEN ground it is a way to move, three tiles of
+        -- lane crossed on an action rather than on the turn's walk.
+        name = "Charge aimed at an empty tile runs the charger down the lane",
+        fn = function()
+            local c = Combat.new(arena(8, 6),
+                { mkunit(2, 3, { stats = { stamina = 50 }, items = { "ability_charge" } }) },
+                { mkunit(7, 1, {}) }) -- a foe on the board, but nowhere near the lane
+            local hero = c.units[1]
+            local charge = hero.char.inventory[1]
+
+            -- The dry run says where it will leave you before it leaves you there.
+            local preview = Combat.previewAbility(c, hero, charge, 3, 3)
+            assert(preview and preview.userRestsX == 5 and preview.userRestsY == 3,
+                "the rush previews its landing at (5,3)")
+            assert(hero.x == 2 and hero.y == 3, "and the dry run moves nobody")
+
+            openTurn(c, hero)
+            assert(Combat.useItem(c, hero, charge, 3, 3), "charge into the empty tile in front")
+            assert(hero.x == 5 and hero.y == 3,
+                "the charger runs three tiles to (5,3), got " .. hero.x .. "," .. hero.y)
+        end,
+    },
+    {
+        name = "a charge into open ground stops against the wall the lane runs out on",
+        fn = function()
+            -- Two tiles of lane, then the edge: the rush takes what there is and halts.
+            local c = Combat.new(arena(8, 6),
+                { mkunit(6, 3, { stats = { stamina = 50 }, items = { "ability_charge" } }) },
+                { mkunit(1, 1, {}) })
+            local hero = c.units[1]
+            openTurn(c, hero)
+            assert(Combat.useItem(c, hero, hero.char.inventory[1], 7, 3), "charge toward the edge")
+            assert(hero.x == 8 and hero.y == 3,
+                "it stops on the last tile there is, got " .. hero.x .. "," .. hero.y)
+        end,
+    },
+    {
         name = "Taunt forces the enemy AI onto the taunter, ignoring a nearer foe",
         fn = function()
             -- Enemy flanked by two party units, both adjacent. Without a taunt it could hit either;
