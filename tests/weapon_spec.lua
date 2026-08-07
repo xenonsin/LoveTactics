@@ -1039,6 +1039,51 @@ return {
         end,
     },
     {
+        name = "Second Utterance spoken at a channeler lands the working it is already holding",
+        fn = function()
+            -- The other half of the same sentence: the wind-up it deletes is the one in the ally's
+            -- mouth RIGHT NOW. A channel is the only commitment in the game that can be taken away
+            -- after it has been paid for, and this is the answer to that -- the blast falls on this
+            -- beat instead of hanging over the board for the bodies under it to walk out of.
+            local mage = plainChar("character_mage")
+            local gift = give(mage, "ability_second_utterance")
+            local channeler = plainChar("character_mage")
+            local fireball = give(channeler, "ability_fireball")
+            local c = Combat.new(arena(8, 8),
+                { unit(mage, 3, 3), unit(channeler, 3, 4) },
+                { unit(plainChar("character_bandit"), 5, 5) })
+            local m, ally, foe = c.units[1], c.units[2], c.units[3]
+            m.char.stats.mana.max, m.char.stats.mana.current = 999, 999
+            ally.char.stats.mana.max, ally.char.stats.mana.current = 999, 999
+            foe.char.stats.health.max, foe.char.stats.health.current = 400, 400
+            -- A flat ladder: every rebase subtracts 0, so the initiative numbers below are read raw.
+            m.initiative, ally.initiative, foe.initiative = 0, 0, 0
+
+            openTurn(c, ally)
+            assert(Combat.useItem(c, ally, fireball, foe.x, foe.y), "the blast winds up")
+            assert(ally.channel, "and hangs over the board rather than landing")
+            local standing = ally.initiative -- the ticks of tell still to run
+            local before, turns = hp(foe), c.turnCount
+
+            openTurn(c, m)
+            assert(Combat.useItem(c, m, gift, ally.x, ally.y), "the mage speaks for the channeler")
+            assert(hp(foe) < before, "the blast lands at once, without waiting its wind-up out")
+            assert(ally.channel == nil, "and there is nothing left hanging")
+            assert(not Status.has(ally, "status_second_utterance"),
+                "the promise is not ALSO banked -- one word buys one wind-up, never two")
+            -- Tempo untouched: the channeler pays the spell's recovery from where it stands, so its
+            -- next real turn falls on the tick the un-hastened resolution would have left it on. What
+            -- the gift buys is the deleted telegraph, never free initiative.
+            assert(ally.initiative == standing + fireball.activeAbility.speed,
+                string.format("the channeler pays its speed from where it stood (%d + %d), not %d",
+                    standing, fireball.activeAbility.speed, ally.initiative))
+            -- One turn ended here, the speaker's. Resolving somebody else's channel off their own slot
+            -- must not run their turn-end machinery -- their statuses have not reached the end of a turn.
+            assert(c.turnCount == turns + 1,
+                "only the speaker's turn ended; the channeler's turn-end did not fire early")
+        end,
+    },
+    {
         name = "a wand's ward is shorter than the ability that grants the same thing standing",
         fn = function()
             -- The reason the wands do not retire ability_reflect_magic. The ability spends a whole slow

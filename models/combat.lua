@@ -2540,6 +2540,27 @@ end
 -- the field getting a beat in between. See the note on that function for why the tempo is banked
 -- rather than waived.
 local function endTurn(combat, unit, actionCost, defer)
+    -- OUT OF BAND: somebody else's turn is open, so `unit` is not ending a turn -- it is being made to
+    -- act off its own slot, from inside the acting unit's cast (fx.hastenChannel finishing an ally's
+    -- wind-up early). Bill the initiative and nothing else, because none of the rest is true: the
+    -- unit's statuses have not reached their end of turn (a Burn would sear a turn early and every
+    -- duration would drop a tick), no turn has been taken to count, and `combat.turn` belongs to the
+    -- caster standing in the middle of its own action -- clearing it would end THAT turn.
+    --
+    -- The initiative is ADDED to what the unit already stands at rather than replacing it, so a body
+    -- pulled off its slot lands exactly where it would have. A channeler sitting on W ticks of wind-up
+    -- was going to resolve at W and then pay speed + debt on top; hastened, it pays them from W here
+    -- and its next real action falls on the same tick either way. What the gift buys is that the blow
+    -- lands NOW instead of at W -- untelegraphed, uninterruptible -- and never free tempo.
+    --
+    -- Cannot fire on any path that exists today (every caller below is the active unit, and a headless
+    -- test with no open turn leaves `combat.turn` nil and takes the ordinary road).
+    if combat.turn and combat.turn.unit ~= unit then
+        unit.initiative = unit.initiative + actionCost + (unit.tempoDebt or 0)
+        unit.tempoDebt = nil
+        return
+    end
+
     local moveCost = turnMoveCost(combat, unit)
 
     -- A surge in hand: bank this action's whole price and hand the turn straight back. Deliberately
@@ -6807,6 +6828,17 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         -- Read-only, so the dry run may answer truthfully; the mutating ones are inert.
         hasStatus = function(tgt, id) return tgt ~= nil and Status.has(tgt, id) end,
         clearStatus = function() touchesBoard() end,
+        -- Answers truthfully and finishes nothing. The read has to be honest -- an effect that branches
+        -- on it (Second Utterance: finish the working in front of you, or promise the next one) would
+        -- otherwise preview the wrong half of itself over a channeling ally -- but the dry run must not
+        -- actually resolve anybody's Meteor Storm under the aim cursor, which is the loudest preview
+        -- side effect there is. Flips `mutates` only when there IS a wind-up to finish, so aiming this
+        -- at a body holding none still reads as a cast that does something (the status it grants).
+        hastenChannel = function(tgt)
+            if not (tgt and tgt.alive and tgt.channel) then return false end
+            touchesBoard()
+            return true
+        end,
         swap = function() touchesBoard() return false end,
         -- Report what the drain WOULD take (against the pool it is aimed at) without taking it: the
         -- number is the whole cast for an effect that hands it straight back out -- Transfusion heals
@@ -7200,6 +7232,10 @@ function Combat.abilityOutput(unit, item)
         end,
         hasStatus = function() return false end,
         clearStatus = function() end,
+        -- A shelf hover has no board and its stand-in holds no wind-up, so there is never a channel to
+        -- finish here: an effect that branches on it describes the other half, which is the right half
+        -- for an item's own tooltip (the promise it makes to a body that is not already casting).
+        hastenChannel = function() return false end,
         -- Reports the trade it would make. Answering false made every effect that swaps and then acts
         -- on the result (Safeguard taking an ally's place) bail on the line after.
         swap = function() out.swap = true; return true end,
@@ -9122,6 +9158,26 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         -- sets off). Unlike fx.cleanse (every debuff at once) this removes only the named one.
         clearStatus = function(tgt, id)
             if tgt then Status.remove(combat, tgt, id) end
+        end,
+        -- Finish a wind-up somebody ELSE is still holding: their channelled spell resolves on this beat
+        -- rather than hanging over the board until their slot comes back around (Second Utterance spoken
+        -- at a mage already mid-working). Returns true only if there was a channel to finish, so an
+        -- effect can fall through to whatever it does for a body holding none.
+        --
+        -- Routed through Combat.resolveChannel -- the same door the caster's own slot would have opened
+        -- -- so the spell reads the LIVE board, lifts its own channelAfflict, logs its resolution and
+        -- banks its trait exactly as it always does. Nothing here is a second, thinner casting.
+        --
+        -- The tempo is settled inside endTurn's out-of-band branch (see the note there): the channeler
+        -- pays the ability's speed from where it stands, so its next real turn lands on the tick it was
+        -- always going to. What this buys is the deletion of the telegraph, never free initiative.
+        hastenChannel = function(tgt)
+            if not (tgt and tgt.alive and tgt.channel) then return false end
+            Combat.logEvent(combat, "action",
+                string.format("%s speaks for %s, and the working needs no more winding.",
+                    unitName(unit), unitName(tgt)), { unit, tgt })
+            Combat.resolveChannel(combat, tgt)
+            return true
         end,
         -- Trade tiles with `tgt` (the Rogue's Swap); both arrivals spring what waits on the new tile.
         swap = function(tgt)
