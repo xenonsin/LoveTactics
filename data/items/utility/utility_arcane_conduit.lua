@@ -22,8 +22,8 @@ return {
     tags = { "charm", "magical" },
     class = "mage",
     discipline = "battlemage",
-    price = 460,
-    unlockQuests = 8,
+    price = 260,
+    unlockQuests = 3,
     charge = { key = "arcane", from = { "cast" }, max = 5 },
     traits = { "trait_arcane_conduit" },
 }

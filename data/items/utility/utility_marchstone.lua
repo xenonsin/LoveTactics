@@ -27,6 +27,6 @@ return {
     class = "hunter",
     discipline = "warden",
     price = 440,
-    unlockQuests = 11,
+    unlockQuests = 6,
     incense = { hazard = "hazard_halting_ground", radius = 1 },
 }

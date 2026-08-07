@@ -13,15 +13,15 @@ return {
     tags = { "pierce", "physical" },
     class = "hunter",
     discipline = "poacher", -- rogue x hunter; the Snare-execute mechanic's first stock
-    price = 240,
-    unlockQuests = 4,
+    price = 740,
+    unlockQuests = 11,
     activeAbility = {
         target = "enemy",
         range = 3,
         requiresSight = true,
         speed = 4,
         cost = { stat = "stamina", amount = 7 },
-        damage = Curve.ramp(8, 18),
+        damage = Curve.ramp(15, 25),
         effect = function(fx)
             -- Root rides the blow (opts.inflicts) rather than landing on the line after it, so a
             -- guardian who takes the hit in the target's place (Sworn Aegis, Oathward) is the one left

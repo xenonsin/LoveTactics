@@ -62,10 +62,10 @@ return {
     tags = { "guile" }, -- the rogue's own word, so the shelf reads right; the purse is the header's business
     class = "rogue",
     discipline = "mammonite", -- deeper cut of the shelf: buyable only once the mammonite gate is cleared
-    price = 340,
+    price = 440,
     -- Gated to the END of the greed line: on sale only once all ten Undercroft quests are cleared -- i.e.
     -- Aurea is beaten (slot 10). Her gold ward is the one piece of her fight this is a straight copy of.
-    unlockQuests = 9,
+    unlockQuests = 6,
     activeAbility = {
         target = "self", -- nobody else's account is yours to open, and nobody else's to close
         range = 0,

@@ -14,5 +14,6 @@
 -- than the two statuses racing each other -- which matters, because The Long Wait reads either one.
 return {
     name = "Quarry's Due",
+    description = "Anything caught in a trap you set is Marked.",
     marksTrapped = true,
 }

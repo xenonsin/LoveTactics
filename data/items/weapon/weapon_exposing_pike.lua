@@ -22,8 +22,8 @@ return {
     tags = { "spear", "pierce", "physical", "melee" },
     hands = 2,
     class = "knight",
-    price = 300,
-    unlockQuests = 5,
+    price = 680,
+    unlockQuests = 10,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -32,7 +32,7 @@ return {
         speed = 3,
         cost = { stat = "stamina", amount = 9 },
         -- Under an iron spear's: this weapon's output is measured across the party, not on its own line.
-        damage = Curve.ramp(10, 20),
+        damage = Curve.ramp(14, 24),
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
             -- The spear convention (docs/weapons.md): the point opens only the FAR rank.

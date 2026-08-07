@@ -23,7 +23,7 @@ return {
     tags = { "charm", "spirit" },
     class = "hunter",
     discipline = "shaman",
-    price = 400,
-    unlockQuests = 9,
+    price = 380,
+    unlockQuests = 5,
     traits = { "trait_ancestor_mask" },
 }

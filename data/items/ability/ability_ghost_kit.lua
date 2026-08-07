@@ -13,8 +13,8 @@ return {
     tags = { "fire", "utility" },
     class = "rogue",
     discipline = "saboteur", -- rogue x alchemist; the Planted-charges mechanic's first stock
-    price = 300,
-    unlockQuests = 4,
+    price = 680,
+    unlockQuests = 10,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -23,7 +23,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 8 },
         aoe = { radius = 1, shape = "square" },
-        damage = Curve.ramp(9, 19),
+        damage = Curve.ramp(14, 24),
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do
                 if u.side ~= fx.user.side then fx.damage(u, { tags = { "fire" } }) end

@@ -29,7 +29,7 @@ return {
     class = "knight",
     discipline = "warden", -- the Lockdown zone itself -- ground that Roots whatever crosses it
     price = 320,
-    unlockQuests = 5,
+    unlockQuests = 4,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

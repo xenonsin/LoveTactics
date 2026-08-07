@@ -12,5 +12,6 @@
 -- the item -- a still that keeps producing means keeping a cell empty to catch it.
 return {
     name = "Field Still",
+    description = "A reagent is brewed into your grid at the top of each of your turns.",
     brewsEachTurn = "consumable_wildcraft_reagent",
 }

@@ -95,7 +95,7 @@ return {
             local before = splash.char.stats.health.current
             local untouched = direct.char.stats.health.current
 
-            local jolt = grant(mage.char, "ability_jolt", 1)
+            local jolt = grant(mage.char, "ability_minor_shock", 1)
             openTurn(c, mage)
             assert(Combat.useItem(c, mage, jolt, direct.x, direct.y), "the Jolt lands on its target")
 
@@ -117,7 +117,7 @@ return {
             Status.apply(c, splash, "status_wet")
             local hp0, hp1 = direct.char.stats.health.current, splash.char.stats.health.current
 
-            local jolt = grant(mage.char, "ability_jolt", 1)
+            local jolt = grant(mage.char, "ability_minor_shock", 1)
             openTurn(c, mage)
             assert(Combat.useItem(c, mage, jolt, direct.x, direct.y), "the Jolt lands")
 
@@ -136,7 +136,7 @@ return {
             local mage, direct, dry = c.units[1], c.units[2], c.units[3]
 
             local before = dry.char.stats.health.current
-            local jolt = grant(mage.char, "ability_jolt", 1)
+            local jolt = grant(mage.char, "ability_minor_shock", 1)
             openTurn(c, mage)
             assert(Combat.useItem(c, mage, jolt, direct.x, direct.y), "the Jolt lands")
 
@@ -153,7 +153,7 @@ return {
             Status.apply(c, ally, "status_wet")
             local before = ally.char.stats.health.current
 
-            local jolt = grant(mage.char, "ability_jolt", 1)
+            local jolt = grant(mage.char, "ability_minor_shock", 1)
             openTurn(c, mage)
             assert(Combat.useItem(c, mage, jolt, foe.x, foe.y), "the Jolt lands on the foe")
 

@@ -190,8 +190,13 @@ return {
                 { unit("character_bandit", 6, 4) })
             local mage
             golem, mage = c.units[1], c.units[2]
-            assert(Trait.has(golem, "trait_bulwark"), "the guard reached the unit from its hands")
-            assert(golem.guard, "Bulwark set the guard at the opening bell")
+            -- Oathward, not a Bulwark of its own: the golem's guard was a second trait identical to the
+            -- knight's but for the breath between coverings, and that figure now rides on the hands
+            -- (weapon_golem_fists' `traitParams`).
+            assert(Trait.has(golem, "trait_oathward"), "the guard reached the unit from its hands")
+            assert(golem.guard, "the oath set the guard at the opening bell")
+            assert(golem.guard.cooldown == 9,
+                "the hands name the golem's own longer breath, got " .. tostring(golem.guard.cooldown))
 
             local taker = Combat.tryRedirect(c, mage, 10, { "physical" })
             assert(taker == golem, "the blow aimed at the mage is taken by the golem instead")

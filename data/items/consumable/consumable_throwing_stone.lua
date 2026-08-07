@@ -14,8 +14,8 @@ return {
     type = "consumable",
     tags = { "physical" },
     class = "alchemist",
-    price = 15,
-    unlockQuests = 0,
+    price = 150,
+    unlockQuests = 5,
     maxStack = 12, -- ammunition: a fuller stack than the default 9
     activeAbility = {
         target = "enemy",

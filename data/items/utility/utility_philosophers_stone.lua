@@ -17,7 +17,7 @@ return {
     type = "utility",
     tags = { "arcane", "illusion" },
     class = "alchemist",
-    price = 800,
+    price = 740,
     unlockQuests = 11,
     noCopy = true,
     activeAbility = {

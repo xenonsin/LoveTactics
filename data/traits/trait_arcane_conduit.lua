@@ -20,6 +20,7 @@
 -- simply always on -- a passive wearing a resource bar. At two it reads "cast twice, sharpen once".
 return {
     name = "Arcane Conduit",
+    description = "Items beside this one in the grid cast harder, spending banked Arcane each time.",
     magnitude = 50, -- percent added to an adjacent item's magnitude, per point spent
     arcaneConduit = true, -- the flag Combat.resolveCast looks for (Trait.flag)
 }

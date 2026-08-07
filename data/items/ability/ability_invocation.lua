@@ -13,8 +13,8 @@ return {
     tags = { "holy", "magical" },
     class = "mage",
     discipline = "theurge", -- mage x priest; the Channelled-miracle mechanic's first stock
-    price = 340,
-    unlockQuests = 3,
+    price = 500,
+    unlockQuests = 7,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -24,7 +24,7 @@ return {
         windup = 4, -- winds up before it fires (Combat reads `windup`; see ability_meteor_storm)
         cost = { stat = "mana", amount = 14 },
         aoe = { radius = 1, shape = "diamond" },
-        damage = Curve.ramp(8, 18), -- carries `holy` + `magical` via tags
+        damage = Curve.ramp(12, 22), -- carries `holy` + `magical` via tags
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do
                 if u.side ~= fx.user.side then fx.damage(u) end

@@ -31,8 +31,8 @@ return {
     tags = { "pierce", "physical" },
     class = "hunter",
     discipline = "skirmisher", -- fighter x hunter; Hit-and-run -- the strike that buys the band back
-    price = 240,
-    unlockQuests = 5,
+    price = 680,
+    unlockQuests = 10,
     activeAbility = {
         target = "enemy",
         -- NO `minRange` of its own, deliberately, and it is the only bow-gated ability on the shelf
@@ -45,7 +45,7 @@ return {
         cost = { stat = "stamina", amount = 6 },
         -- Under Hobbling Shot's curve: this one already pays out in position, and a step back out of
         -- reach is worth more than the two damage it gives up.
-        damage = Curve.ramp(9, 19),
+        damage = Curve.ramp(14, 24),
         requiresAdjacent = { type = "weapon", tag = "bow" },
         effect = function(fx)
             fx.damage(fx.target)

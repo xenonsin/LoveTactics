@@ -14,6 +14,7 @@
 -- satchel with no room every time something died would be unbearable in a long fight.
 return {
     name = "Culler's Kit",
+    description = "A foe you fell leaves a reagent in your satchel.",
     onAnyDeath = function(ctx)
         local fallen = ctx.fallen
         if not (fallen and ctx.unit.alive) then return end

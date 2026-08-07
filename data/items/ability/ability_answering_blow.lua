@@ -25,8 +25,8 @@ return {
     tags = { "impact", "physical" },
     class = "fighter",
     discipline = "champion",
-    price = 340,
-    unlockQuests = 6,
+    price = 740,
+    unlockQuests = 11,
     -- Shallower than Defiant Stand's 6 and Crowd's Favour's 8: the spender opens the pool, the rest of
     -- the Champion shelf deepens and widens it (Combat.chargeDef merges).
     charge = { key = "defiance", from = { "hitTaken" }, max = 4 },
@@ -38,7 +38,7 @@ return {
         aoe = { radius = 1, shape = "square" },
         speed = 5,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(11, 21), -- the floor; Defiance is what makes it a blow
+        damage = Curve.ramp(15, 25), -- the floor; Defiance is what makes it a blow
         unlock = {
             when = function(unit) return require("models.combat").chargePool(unit, "defiance") >= 1 end,
             text = "Bank Defiance by weathering blows",

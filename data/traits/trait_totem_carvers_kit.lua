@@ -14,6 +14,7 @@
 -- -- so a Totemist who also fields a wolf gets a tougher wolf, and nothing here has to know it.
 return {
     name = "Totem-Carver's Kit",
+    description = "Everything you plant stands up with more health than it was written with, and keeps it.",
     magnitude = 16, -- extra health, on top of whatever the summoning ability scaled it to
     bolstersSummons = true,
 }

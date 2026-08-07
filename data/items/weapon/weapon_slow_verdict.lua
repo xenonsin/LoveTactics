@@ -23,8 +23,8 @@ return {
     tags = { "hammer", "impact", "physical", "melee" },
     hands = 2,
     class = "fighter",
-    price = 660,
-    unlockQuests = 10,
+    price = 560,
+    unlockQuests = 8,
     activeAbility = {
         target = "enemy",
         range = 1,
@@ -33,7 +33,7 @@ return {
         cost = { stat = "stamina", amount = 14 },
         -- Above an iron hammer's, because it has to be: a swing that costs this much of the timeline and
         -- did not also land heavily would never be worth taking off the rack.
-        damage = Curve.ramp(22, 37),
+        damage = Curve.ramp(19, 34),
         effect = function(fx)
             -- Double the stun's declared magnitude, which is what a Stun's initiative shove reads
             -- (data/status/status_stun.lua). The status rides IN the blow for the family's usual reason

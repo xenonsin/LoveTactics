@@ -14,14 +14,14 @@ return {
     tags = { "guile", "physical" },
     class = "rogue",
     discipline = "assassin", -- deeper cut of the shelf: buyable only once the assassin gate is cleared
-    price = 300,
-    unlockQuests = 5,
+    price = 500,
+    unlockQuests = 7,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 4 },
-        damage = Curve.ramp(10, 20),
+        damage = Curve.ramp(12, 22),
         effect = function(fx)
             fx.damage(fx.target)
             -- Snap back to the turn's origin tile, if we moved off it. That tile is empty -- no one

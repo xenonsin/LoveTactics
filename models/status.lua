@@ -853,6 +853,34 @@ function Status.apply(combat, unit, id, opts)
         opts = scaled
     end
 
+    -- A BADGE MUST OUTLAST THE DELAY IT CAUSES. A status that shoves initiative by its own magnitude
+    -- (Frozen, Stunned) and is then handed a magnitude by its CASTER -- Ice Bolt and Blizzard both pass
+    -- their damage, so the delay scales with the spell's weight -- can shove the target further down
+    -- the order than the badge lasts. The clock then advances past the whole duration before the
+    -- afflicted body's next turn, and the status expires having done nothing but the shove: no
+    -- brittleness to exploit, no badge to read, and an ability whose text promises a condition it never
+    -- delivers.
+    --
+    -- It was latent for as long as the numbers happened to stay under the duration and surfaced the day
+    -- a rescale raised them -- Blizzard began shoving 29 ticks against a 12-tick badge and stopped
+    -- freezing anything at all. Stated as an invariant here rather than patched into the two callers,
+    -- because it is a fact about what a delaying status IS, and the next one to scale its shove would
+    -- otherwise rediscover it.
+    if def.shovesInitiative == "magnitude" and opts.magnitude then
+        local shove = math.abs(opts.magnitude)
+        local held = opts.duration or def.duration or 0
+        -- Stretched to the shove PLUS the badge's own span, not to the shove exactly. At exactly the
+        -- shove the clock reaches the delayed turn on the same tick the badge runs out, so the
+        -- afflicted body arrives with the condition already gone -- which is the bug again, one tick
+        -- narrower. The status's own duration is what "and a moment either side" is worth here.
+        if shove > held then
+            local stretched = {}
+            for k, v in pairs(opts) do stretched[k] = v end
+            stretched.duration = shove + (def.duration or 0)
+            opts = stretched
+        end
+    end
+
     local status = Status.get(unit, id)
     local isNew = status == nil
     if status then

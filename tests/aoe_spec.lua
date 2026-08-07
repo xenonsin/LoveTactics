@@ -66,11 +66,15 @@ return {
         name = "a single-target ability (no aoe) covers only the target cell",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("character_mage", 2, 2) }, { unit("character_bandit", 5, 5) })
-            local jolt
+            -- Matched by ID rather than by display name: the mage's opening spell used to be Jolt and is
+            -- now Minor Shock (Jolt grew into a real bolt and left the starting kit), and a lookup keyed
+            -- to the word "Jolt" answered nil the moment it did.
+            local shock
             for _, it in ipairs(c.units[1].char.inventory) do
-                if it.activeAbility and it.name == "Jolt" then jolt = it end
+                if it.activeAbility and it.id == "ability_minor_shock" then shock = it end
             end
-            local cells = Combat.aoeCells(c, jolt.activeAbility, 3, 3)
+            assert(shock, "the mage opens with Minor Shock")
+            local cells = Combat.aoeCells(c, shock.activeAbility, 3, 3)
             assert(#cells == 1 and cells[1].x == 3 and cells[1].y == 3, "no aoe -> just the cell")
         end,
     },

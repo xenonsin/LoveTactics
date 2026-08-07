@@ -15,5 +15,6 @@
 -- first.
 return {
     name = "Ancestor Mask",
+    description = "Hazards deal no damage to anything you summon. Their statuses still land.",
     summonsShrugHazards = true,
 }

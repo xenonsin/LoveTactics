@@ -17,6 +17,7 @@
 -- provokes nothing. A wreck is not a swing.
 return {
     name = "Salvage Rig",
+    description = "A construct of yours that is destroyed bursts, and the wreck is refunded to you as mana.",
     magnitude = 12, -- damage to everything adjacent to the wreck, and mana handed back
     onSummonLost = function(ctx)
         local fallen = ctx.lost

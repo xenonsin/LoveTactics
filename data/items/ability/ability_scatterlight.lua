@@ -22,8 +22,8 @@ return {
     tags = { "illusion", "utility" },
     class = "mage",
     discipline = "ninja",
-    price = 480,
-    unlockQuests = 9,
+    price = 680,
+    unlockQuests = 10,
     activeAbility = {
         target = "self",
         range = 0,

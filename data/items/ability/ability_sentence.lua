@@ -23,8 +23,8 @@ return {
     tags = { "holy" },
     class = "priest",
     discipline = "inquisitor",
-    price = 440,
-    unlockQuests = 11,
+    price = 680,
+    unlockQuests = 10,
     activeAbility = {
         target = "enemy",
         range = 2,

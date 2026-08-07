@@ -28,8 +28,8 @@ return {
     type = "utility",
     tags = { "arcane" },
     class = "mage",
-    price = 340,
-    unlockQuests = 6,
+    price = 560,
+    unlockQuests = 8,
     activeAbility = {
         target = "self",
         range = 0,

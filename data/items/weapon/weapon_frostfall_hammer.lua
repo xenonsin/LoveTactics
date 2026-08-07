@@ -25,8 +25,8 @@ return {
     tags = { "hammer", "impact", "physical", "ice", "melee" },
     hands = 2,
     class = "fighter",
-    price = 380,
-    unlockQuests = 7,
+    price = 620,
+    unlockQuests = 9,
     activeAbility = {
         target = "enemy",
         range = 1,

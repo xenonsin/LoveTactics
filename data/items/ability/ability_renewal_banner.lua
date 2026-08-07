@@ -13,8 +13,8 @@ return {
     tags = { "banner", "holy", "restorative" },
     class = "priest",
     discipline = "paladin", -- knight x priest; a banner is a Paladin or Warlord object (docs/classes.md)
-    price = 360,
-    unlockQuests = 9,
+    price = 740,
+    unlockQuests = 11,
     activeAbility = {
         target = "tile",
         range = 3,

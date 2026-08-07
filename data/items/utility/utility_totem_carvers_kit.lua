@@ -24,7 +24,7 @@ return {
     tags = { "charm" },
     class = "hunter",
     discipline = "totemist",
-    price = 400,
-    unlockQuests = 10,
+    price = 440,
+    unlockQuests = 6,
     traits = { "trait_totem_carvers_kit" },
 }

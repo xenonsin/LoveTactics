@@ -9,7 +9,7 @@
 -- her, and is sure the scale falls her way.
 --
 -- Her rule rides on the codex in her grid (a blueprint's own `traits` field is never collected; only an
--- item's is -- models/trait.lua): "answers every spell with your own" (data/traits/trait_perfect_recall.lua)
+-- item's is -- models/trait.lua): "answers every spell with your own" (data/traits/trait_counter_magic.lua)
 -- -- a single-target spell aimed at her is answered and unravelled, because she already knows it. The
 -- counterplay is the sin read as tactics: do not show her your hand; win with what she cannot answer. The
 -- one mage she can never measure is Gyeom (character_gyeom.lua), who shows nothing worth taking.

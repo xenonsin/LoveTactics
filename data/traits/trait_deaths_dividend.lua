@@ -12,6 +12,7 @@
 -- `magnitude` is the reach in tiles: a death farther off than that is somebody else's harvest.
 return {
     name = "Death's Dividend",
+    description = "Every real body that falls near you permanently raises your Magic Damage for the battle.",
     magnitude = 3, -- tiles: a body must fall within this range of the bearer to feed them
     onAnyDeath = function(ctx)
         local fallen = ctx.fallen

@@ -20,7 +20,7 @@
 -- she kept hidden in one heavy strike. She peaks late; a long fight is study, not downtime.
 --
 -- The other half of her rule -- she cannot be answered -- needs no second hook and rides on that same
--- concealment: Pride answers only what is SHOWN (data/traits/trait_perfect_recall.lua), and a spell
+-- concealment: Pride answers only what is SHOWN (data/traits/trait_counter_magic.lua), and a spell
 -- answered off her suppressed value is answered off nothing. You can glance a spell; you cannot glance the
 -- hours she never put on display. It lives on the Ledger's trait and not here because a blueprint's own
 -- `traits` field is never collected -- only an item's is (models/trait.lua).
@@ -63,7 +63,7 @@ return {
     -- she is built around is four turns of it away. So the one instinct worth authoring is not to trade
     -- when a glass body is caught: break off under a third health and let the skirmish posture keep the
     -- range the bolt wants. The concealment that makes her unanswerable rides on the Ledger's trait, not
-    -- here (trait_perfect_recall.lua), so nothing about it belongs in this list.
+    -- here (trait_counter_magic.lua), so nothing about it belongs in this list.
     ai = {
         { priority = "emergency", act = "retreat", when = { subject = "self", test = "hp_pct_below", value = 0.3 } },
     },

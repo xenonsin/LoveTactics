@@ -16,8 +16,8 @@ return {
     tags = { "utility", "holy" },
     class = "priest",
     discipline = "inquisitor", -- rogue x priest; Judgment -- the naming that holds a body open for the execute
-    price = 220,
-    unlockQuests = 4,
+    price = 260,
+    unlockQuests = 3,
     activeAbility = {
         target = "enemy",
         range = 5,

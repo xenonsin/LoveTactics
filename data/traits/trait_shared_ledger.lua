@@ -13,5 +13,6 @@
 -- Skips the bearer, so mending yourself does not lend you your own armour twice.
 return {
     name = "The Shared Ledger",
+    description = "Anyone you mend also borrows a share of your own guard.",
     lendsGuard = true,
 }

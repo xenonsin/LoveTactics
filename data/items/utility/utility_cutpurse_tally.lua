@@ -16,7 +16,7 @@ return {
     tags = { "charm" },
     class = "rogue",
     discipline = "thief", -- deeper cut of the shelf: buyable only once the thief gate is cleared
-    price = 320,
-    unlockQuests = 6,
+    price = 380,
+    unlockQuests = 5,
     traits = { "trait_cutpurse_tally" },
 }

@@ -11,5 +11,6 @@
 -- authors. A warden's Fireball Halts. A warden's Rain Halts. Anything added next year Halts.
 return {
     name = "Warden's Writ",
+    description = "Every hazard you lay down also Halts the foes that walk into it.",
     haltsOwnHazards = true,
 }

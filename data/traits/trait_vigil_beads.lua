@@ -16,5 +16,6 @@
 -- and being immune to all of them at once is not a small thing dressed up, it is the whole purchase.
 return {
     name = "Vigil Beads",
+    description = "Your channels cannot be interrupted, by anything.",
     steadfastChannels = true,
 }

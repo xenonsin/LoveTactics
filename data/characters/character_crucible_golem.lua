@@ -10,7 +10,7 @@
 --
 -- Read the stat line as a wall and not a fighter, because that is what it is. It has the most health
 -- and the most armor of anything summonable, and a damage stat below the Homunculus's -- it is not
--- meant to win an exchange, it is meant to be in the way of one (see data/traits/trait_bulwark.lua).
+-- meant to win an exchange, it is meant to be in the way of one (see data/traits/trait_oathward.lua).
 -- Movement 2 and speed 1 are the price: it arrives where you put it and it does not meaningfully
 -- relocate, so a golem summoned into the wrong lane is a golem you paid full price to watch.
 --
@@ -25,7 +25,7 @@ return {
     stats = {
         health = 55, mana = 0, stamina = 15,
         staminaRegen = 2,
-        damage = 4, magicDamage = 0, -- below even the Homunculus: it is a wall, not a fist
+        damage = 9, magicDamage = 0, -- below even the Homunculus: it is a wall, not a fist
         defense = 9, magicDefense = 8,
         movement = 2, -- it arrives where you put it and does not meaningfully relocate
         speed = 1,

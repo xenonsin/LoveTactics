@@ -2,7 +2,7 @@
 -- A `natural` weapon (docs/weapons.md) -- a creature's own body, granted by its blueprint's
 -- startingItems, never sold and never stolen.
 --
--- It also CARRIES THE GOLEM'S GUARD (data/traits/trait_bulwark.lua), and that is the only reason this
+-- It also CARRIES THE GOLEM'S GUARD (data/traits/trait_oathward.lua), and that is the only reason this
 -- exists as its own file rather than the golem simply borrowing weapon_stone_fists. Traits attach to a
 -- unit from grid items and from nowhere else: Trait.attach reads `unit.char.traits`, but
 -- Character.instantiate builds the runtime character field by field and never copies a blueprint's
@@ -22,7 +22,10 @@ return {
     type = "weapon",
     tags = { "natural", "impact", "physical", "melee" },
     noSteal = true,
-    traits = { "trait_bulwark" }, -- the wall's guard rides on the body, since blueprint traits do not attach
+    traits = { "trait_oathward" }, -- the wall's guard rides on the body, since blueprint traits do not attach
+    -- The golem's guard is the knight's oath with a longer breath between coverings. It used to be a
+    -- trait of its own (Bulwark) whose whole difference from Oathward was this integer.
+    traitParams = { guardCooldown = 9 },
     activeAbility = {
         target = "enemy",
         range = 1,

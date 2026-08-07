@@ -12,7 +12,7 @@ return {
     tags = { "charm" },
     class = "fighter",
     discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
-    price = 300,
+    price = 380,
     unlockQuests = 5,
     aura = {
         appliesTo = { "weapon" }, -- only the blades it sits beside gain the thirst

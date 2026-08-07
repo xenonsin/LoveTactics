@@ -29,8 +29,8 @@ return {
     tags = { "charm" },
     class = "knight",
     discipline = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
-    price = 620,
-    unlockQuests = 11,
+    price = 440,
+    unlockQuests = 6,
     statusImmunity = { "status_stun" },
     -- A token of the drill itself, so the slot is not literally empty in a fight with no stuns in it.
     -- Defense rather than health: the stance is a way of standing, and that is what it improves.

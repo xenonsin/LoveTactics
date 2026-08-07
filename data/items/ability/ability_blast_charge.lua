@@ -22,8 +22,8 @@ return {
     tags = { "trap", "fire" },
     class = "alchemist",
     discipline = "bombardier", -- deeper cut of the shelf: buyable only once the bombardier gate is cleared
-    price = 400,
-    unlockQuests = 9,
+    price = 260,
+    unlockQuests = 3,
     activeAbility = {
         target = "tile",
         range = 3,

@@ -13,15 +13,15 @@ return {
     type = "ability",
     tags = { "water", "magical" },
     class = "mage",
-    price = 260,
-    unlockQuests = 2,
+    price = 620,
+    unlockQuests = 9,
     activeAbility = {
         target = "enemy",
         range = 3,
         requiresSight = true,
         speed = 4,
         cost = { stat = "mana", amount = 12 },
-        damage = Curve.ramp(7, 17), -- the impact damage a stopped shove deals; the soak is the real payoff
+        damage = Curve.ramp(14, 24), -- the impact damage a stopped shove deals; the soak is the real payoff
         effect = function(fx)
             local ox, oy = fx.target.x, fx.target.y -- the tile the blow lands on, before the shove
             fx.knockback(fx.target, 3, { amount = fx.amount })

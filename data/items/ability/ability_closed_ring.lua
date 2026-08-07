@@ -33,8 +33,8 @@ return {
     tags = { "earth" },
     class = "knight",
     discipline = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
-    price = 480,
-    unlockQuests = 11,
+    price = 440,
+    unlockQuests = 6,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

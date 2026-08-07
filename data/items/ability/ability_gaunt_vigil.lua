@@ -31,8 +31,8 @@ return {
     tags = { "dark" },
     class = "knight",
     discipline = "spellbreaker", -- knight x mage; a standing tax on casting, the anti-mage answer that spends no turn
-    price = 420,
-    unlockQuests = 8,
+    price = 740,
+    unlockQuests = 11,
     activeAbility = {
         target = "tile",
         range = 3,

@@ -8,7 +8,7 @@
 -- The swordsman cleaves and then the alchemist cleaves, with the swordsman's sword, at something else.
 --
 -- WHY PHYSICAL ONLY, and it is the load-bearing restriction rather than a balance tweak. Pride already
--- owns the magical version of this: Perfect Recall (data/traits/trait_perfect_recall.lua) is the
+-- owns the magical version of this: Counter Magic (data/traits/trait_counter_magic.lua) is the
 -- Unequalled having "only to glance at a working to own it" -- she sees a spell and it is hers. If the
 -- Understudy copied spells it would be a worse, purchasable retelling of a general's defining rule, and
 -- the two sins would be saying the same sentence. So the line is drawn where the sins actually differ:

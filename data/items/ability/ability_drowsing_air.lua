@@ -27,8 +27,8 @@ return {
     type = "ability",
     tags = { "arcane", "magical" },
     class = "hunter",
-    price = 420,
-    unlockQuests = 10,
+    price = 200,
+    unlockQuests = 2,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

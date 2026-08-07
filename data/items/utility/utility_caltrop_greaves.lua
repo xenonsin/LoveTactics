@@ -26,8 +26,8 @@ return {
     tags = { "boots" },
     class = "hunter",
     discipline = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
-    price = 380,
-    unlockQuests = 5,
+    price = 440,
+    unlockQuests = 6,
     -- No `duration`: a trap is an object left lying there, not ground that ages out. It waits.
     trail = { trap = "caltrops" },
 }

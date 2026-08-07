@@ -1,5 +1,5 @@
 -- The most expensive thing on the menu, and the last to open. Small courses; the whole price is the
--- kitchen skill (data/traits/trait_meal_moxie.lua), which refuses one death per member per battle.
+-- kitchen skill (data/traits/trait_second_wind.lua), which refuses one death per member per battle.
 --
 -- On a board where a fallen body starts a countdown toward being a corpse, and where the loss condition
 -- is the company running out of bodies to send in, buying back a death outright is the largest thing
@@ -16,5 +16,9 @@ return {
     price = 340,
     unlockPrestige = 8,
     bonus = { defense = 1, magicDefense = 1 },
-    skill = "trait_meal_moxie",
+    skill = "trait_second_wind",
+    -- The supper refuses the death but not the recovery: a sliver, where a relic's Second Wind rises at
+    -- half. This used to be a trait of its own (Moxie) that was Second Wind with this one number changed
+    -- -- it is now the number, named here beside the dish that pays for it (Trait.param).
+    skillParams = { revivesAt = 0.15 },
 }

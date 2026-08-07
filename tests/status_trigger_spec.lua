@@ -25,6 +25,18 @@ local function unit(charOrId, x, y)
     return { char = char, x = x, y = y }
 end
 
+-- A target with room to survive the blow. These cases compare two hits against each other -- the
+-- debuffed foe against the healthy one, the frozen against the thawed -- and a dummy that DIES to the
+-- first has its damage clamped by whatever health was left, which makes the comparison meaningless
+-- and fails the case on lethality rather than on the scaling it names.
+local function tough(id, hp)
+    local char = Character.instantiate(id)
+    char.traits = {}
+    local h = char.stats.health
+    h.max, h.current = hp or 500, hp or 500
+    return char
+end
+
 local function withGrid(id, ids)
     local char = Character.instantiate(id)
     char.traits = {}
@@ -53,7 +65,7 @@ return {
         fn = function()
             local caster = withGrid("character_bandit", { "weapon_iron_sword", "ability_exploit" })
             local c = Combat.new(arena(8, 8), { unit(caster, 1, 1) },
-                { unit("character_bandit", 2, 1), unit("character_bandit", 1, 2) })
+                { unit(tough("character_bandit"), 2, 1), unit(tough("character_bandit"), 1, 2) })
             local u = c.units[1]
             local ab = itemOf(u.char, "ability_exploit")
             local sick = Combat.unitAt(c, 2, 1)
@@ -78,7 +90,7 @@ return {
         fn = function()
             local caster = withGrid("character_bandit", { "weapon_iron_sword", "ability_exploit" })
             local c = Combat.new(arena(8, 8), { unit(caster, 1, 1) },
-                { unit("character_bandit", 2, 1), unit("character_bandit", 1, 2) })
+                { unit(tough("character_bandit"), 2, 1), unit(tough("character_bandit"), 1, 2) })
             local u = c.units[1]
             local ab = itemOf(u.char, "ability_exploit")
             local one = Combat.unitAt(c, 2, 1)
@@ -104,7 +116,7 @@ return {
         fn = function()
             local caster = withGrid("character_bandit", { "weapon_iron_sword", "ability_shatter_strike" })
             local c = Combat.new(arena(8, 8), { unit(caster, 1, 1) },
-                { unit("character_bandit", 2, 1), unit("character_bandit", 1, 2) })
+                { unit(tough("character_bandit"), 2, 1), unit(tough("character_bandit"), 1, 2) })
             local u = c.units[1]
             local ab = itemOf(u.char, "ability_shatter_strike")
             local frozen = Combat.unitAt(c, 2, 1)
@@ -130,7 +142,7 @@ return {
         fn = function()
             local caster = withGrid("character_mage", { "ability_detonate" })
             local c = Combat.new(arena(8, 8), { unit(caster, 1, 1) },
-                { unit("character_bandit", 4, 1), unit("character_bandit", 4, 2) })
+                { unit(tough("character_bandit"), 4, 1), unit(tough("character_bandit"), 4, 2) })
             local u = c.units[1]
             local ab = itemOf(u.char, "ability_detonate")
             local burning = Combat.unitAt(c, 4, 1)
@@ -148,7 +160,7 @@ return {
         name = "Opportunist: afflicting a foe with a debuff hastes the bearer",
         fn = function()
             local bearer = withGrid("character_bandit", { "utility_opportunists_charm" })
-            local c = Combat.new(arena(8, 8), { unit(bearer, 1, 1) }, { unit("character_bandit", 1, 3) })
+            local c = Combat.new(arena(8, 8), { unit(bearer, 1, 1) }, { unit(tough("character_bandit"), 1, 3) })
             local b = c.units[1]
             local foe = Combat.unitAt(c, 1, 3)
             assert(not Status.has(b, "status_hasted"), "the bearer starts un-hasted")
@@ -172,7 +184,7 @@ return {
         name = "Executioner's Eye marks a foe the bearer stuns",
         fn = function()
             local bearer = withGrid("character_bandit", { "utility_executioners_eye" })
-            local c = Combat.new(arena(8, 8), { unit(bearer, 1, 1) }, { unit("character_bandit", 1, 3) })
+            local c = Combat.new(arena(8, 8), { unit(bearer, 1, 1) }, { unit(tough("character_bandit"), 1, 3) })
             local b = c.units[1]
             local foe = Combat.unitAt(c, 1, 3)
             Status.apply(c, foe, "status_stun", { applier = b })

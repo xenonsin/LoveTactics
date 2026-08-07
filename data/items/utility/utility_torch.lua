@@ -12,5 +12,5 @@ return {
     -- house that hunts in the dark is the one that sells the light to do it by.
     class = "hunter",
     unlockQuests = 0, -- opening shelf: a party should be able to see on its first night out
-    price = 20, -- no magnitude to scale, so it never forges past the plain thing it is
+    price = 80, -- no magnitude to scale, so it never forges past the plain thing it is
 }

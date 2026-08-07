@@ -29,8 +29,8 @@ return {
     type = "armor",
     tags = { "shield" }, -- a Shield Bash charm beside it in the grid can bash with this
     class = "knight",
-    price = 620,
-    unlockQuests = 7,
+    price = 560,
+    unlockQuests = 8,
     traits = { "trait_shield_shove" },
     bonus = { defense = Curve.ramp(2, 12), movement = -1 },
     resist = { physical = 3, impact = 3 },

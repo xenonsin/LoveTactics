@@ -6923,10 +6923,39 @@ function Combat.abilityOutput(unit, item)
     -- and the tooltip would name none of the statuses/heals the ability grants. Put the stand-in on the
     -- caster's side for a support ability, so its friendly branch actually runs. Offensive casts (Holy
     -- Light and the rest, gated the other way) keep the enemy-side dummy and their damage numbers.
-    if ab.support then dummy.side = unit.side end
+    -- ...but `support` says how the cast READS (green, not red), not who it is aimed AT, and treating
+    -- the two as the same thing silently blanked a whole class of tooltip. Stand Down is `support`
+    -- because a refusal is not a blow, and it is pointed squarely at an enemy: with the stand-in flipped
+    -- friendly, its own `fx.target.side == fx.user.side` guard returned on the first line and the
+    -- Bastion's commission described itself as doing nothing at all.
+    --
+    -- So the AIM decides. An `enemy`/`unit` cast keeps the enemy stand-in whatever colour it reads; a
+    -- support cast at anything else (an ally, a tile, the caster) gets the friendly one, which is what
+    -- Blessing, Aegis and Sanctuary need to run their `u.side == fx.user.side` branch at all.
+    local aimsAtFoe = ab.target == "enemy" or ab.target == "unit"
+    if (ab.support and not aimsAtFoe) or ab.target == "ally" or ab.target == "self" then
+        dummy.side = unit.side
+    end
     local out = { damage = 0, heal = 0, statuses = {}, multi = ab.aoe ~= nil }
+
+    -- A STAND-IN BOARD, for the thirteen effects that scan one. `fx.combat` used to be a flat nil
+    -- here, and an effect that walks the roster (The Pyre burning every Marked foe, Benediction
+    -- healing every ally, the Conductor arcing to everyone Wet) indexed it and threw -- inside the
+    -- pcall, so the tooltip simply went blank and the ability described itself as doing nothing.
+    --
+    -- Two bodies, one a side, for the same reason aoeUnits hands back a single dummy: a roster scan
+    -- should find SOMEBODY so the effect runs and reports, and exactly one somebody so a sweep cannot
+    -- inflate its own damage. `turn` is present and empty -- a preview has no turn in progress, and an
+    -- effect reading turn.startX (weapon_talons returning to its perch) must read nil, not fault.
+    local mate = previewStandIn()
+    mate.side = unit.side
+    local board = { units = { dummy, mate }, turn = {} }
+
     local fx = {
-        user = userProxy, target = dummy, item = item, combat = nil, tx = 0, ty = 0,
+        user = userProxy, target = dummy, item = item, combat = board, tx = 0, ty = 0,
+        -- A channel's depth. Both are numbers in the live table and in Combat.previewAbility; absent
+        -- here, `(fx.windup or 0)` was fine but `fx.held * n` was not, and a chargeable ability faulted.
+        windup = 0, held = 0,
         amount = Combat.abilityMagnitude(ab),
         level = item and item.level or 0, -- so a summon/hazard/trap effect can quote its level-scaled output
         -- The charge this bearer holds, and an inert spend that only reports (see the note on the
@@ -6987,13 +7016,26 @@ function Combat.abilityOutput(unit, item)
         end,
         hasStatus = function() return false end,
         clearStatus = function() end,
-        swap = function() return false end,
+        -- Reports the trade it would make. Answering false made every effect that swaps and then acts
+        -- on the result (Safeguard taking an ally's place) bail on the line after.
+        swap = function() out.swap = true; return true end,
         -- Hands back the full amount rather than what a real pool holds, exactly as `restore` below
         -- does and for the same reason: this run describes the ITEM, not a cast by a particular body
         -- (the caster here is often a 1 HP stand-in on a shop hover). A lending effect can then quote
         -- the heal it moves, instead of showing nothing because its stand-in had no blood to give.
-        drain = function(_, _, amount) return math.max(0, amount or 0) end,
-        restore = function(_, _, amount) return amount or 0 end,
+        drain = function(_, _, amount)
+            local n = math.max(0, amount or 0)
+            out.drain = (out.drain or 0) + n
+            return n
+        end,
+        -- Refilling a pool is an effect, and it was the only one here that computed its answer without
+        -- recording it -- so a stamina or mana potion, whose entire text is the refill, reported an
+        -- empty row and read as an item that does nothing.
+        restore = function(_, _, amount)
+            local n = amount or 0
+            out.restore = (out.restore or 0) + n
+            return n
+        end,
         adjacentItems = function() return {} end,
         adjacentMatching = function() return 0 end,
         -- Record WHICH trap the ability would place, and the item-level-scaled magnitude it carries, so
@@ -7012,7 +7054,7 @@ function Combat.abilityOutput(unit, item)
             out.hazardAmount = opts and opts.amount
             return nil
         end,
-        placeWall = function() return nil end,
+        placeWall = function(_, _, id) out.wall = id or true; return nil end,
         -- No board and no clock here, so a fuse can neither be laid nor set off; both report nothing,
         -- like the other placers. plantCharge hands back a stand-in so a chained effect doesn't fault.
         plantCharge = function() return {} end,
@@ -7048,6 +7090,24 @@ function Combat.abilityOutput(unit, item)
             out.summonDuration = opts and opts.duration
             return previewStandIn()
         end,
+        -- The four verbs below were absent entirely, and each one faulted every effect that used it.
+        -- Inert and reporting, like their neighbours.
+        --
+        -- A charge this stand-in does not hold: answer what was asked for, so an effect that scores its
+        -- blow off the spend (`fx.damage(t, { amount = base * fx.spendCharge(k, n) })`) quotes its full
+        -- form rather than throwing. Mirrors spendChi above.
+        spendCharge = function(_, n) return n or 0 end,
+        dismiss = function() out.dismiss = true; return true end,
+        placeProp = function(_, _, id) out.prop = id; return nil end,
+        -- Record the shape rather than wearing it: the tooltip wants to name what the caster becomes.
+        transform = function(_, charId, opts)
+            out.transform = charId
+            out.transformDuration = opts and opts.duration
+            return true
+        end,
+        -- No stash and no board here, so nothing is handed over -- but the item is recorded, so a
+        -- describer can say what the cast would yield (ability_distil's draught).
+        grantItem = function(_, itemId) out.grants = itemId; return nil end,
         knockback = function(_, distance) out.knockback = distance or 1; return 0, false end,
         retreat = function() return 0 end, -- the caster's own step-back moves nobody the row quotes
         pull = function() out.pull = true; return false end,
@@ -7057,21 +7117,36 @@ function Combat.abilityOutput(unit, item)
         objectAt = function() return nil end,
         hurl = function() return 0, false end,
         pullObject = function() return false end,
-        teleportUser = function() return false end,
-        teleport = function() return false end,
+        teleportUser = function() out.teleport = true; return true end,
+        teleport = function() out.teleport = true; return true end,
         charge = function(_, distance) out.charge = distance or 1; return 0 end,
         steal = function() out.steal = true; return nil end,
         -- Record that the ability lays a foe's kit open, so the tooltip can name it (like `steal`).
         reveal = function() out.reveal = true end,
-        hasten = function() return 0 end,
+        hasten = function(_, ticks) out.hasten = (out.hasten or 0) + (ticks or 0); return 0 end,
         -- No board here, so the corpse/reanimation helpers report nothing; `raise` records what it
         -- would call so the inventory tooltip can name it, like `summon` does.
         random = function() return 1 end,
-        cleanse = function() return 0 end,
+        cleanse = function() out.cleanse = true; return 0 end,
         corpseAt = function() return nil end,
-        downedAt = function() return nil end,
+        -- A FALLEN ALLY TO RAISE. This used to answer nil, and a revival effect bails on that before it
+        -- reaches fx.reanimate -- so Revive, the Revive Scroll and the Reviving Salts each described
+        -- themselves as doing nothing at all, in the shop and the inventory alike. Hand back a stand-in
+        -- on the caster's own side, because every one of those effects gates on
+        -- `body.side == fx.user.side` and an enemy-sided body would fall straight through the branch
+        -- the same way nil did.
+        downedAt = function()
+            local body = previewStandIn()
+            body.side = unit.side
+            return body
+        end,
         corpsesIn = function() return {} end,
-        reanimate = function() return false end,
+        -- ...and record the raising, so a caller can say so. `fraction` is the share of max health the
+        -- body comes back with -- what the ability's own magnitude means for this verb.
+        reanimate = function(_, fraction)
+            out.revives = fraction or 1
+            return true
+        end,
         raise = function(_, charId, opts)
             out.summon = charId
             out.summonDuration = opts and opts.duration
@@ -7110,7 +7185,7 @@ function Combat.abilityOutput(unit, item)
         -- effect is still building its arguments, and the inventory tooltip goes blank rather than
         -- wrong, which is much harder to notice.
         clearCooldowns = function() return 0 end,
-        recall = function() return false end,
+        recall = function() out.recall = true; return true end,
         bounty = function(amount) out.bounty = (out.bounty or 0) + (amount or 0); return 0 end,
         consumeCorpse = function() return false end,
     }
@@ -9288,8 +9363,8 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
     -- reference it replaces.
     --
     -- Per side, so a copy is always of an ally's work and never of the thing that just hit you: that is
-    -- what makes it a rehearsal rather than a second Perfect Recall
-    -- (data/traits/trait_perfect_recall.lua answers the enemy's magic; this borrows your own side's
+    -- what makes it a rehearsal rather than a second Counter Magic
+    -- (data/traits/trait_counter_magic.lua answers the enemy's magic; this borrows your own side's
     -- muscle, and the two never overlap).
     --
     -- Weapons and abilities only, and only non-magical ones (Combat.isMagicItem: any mana in the price

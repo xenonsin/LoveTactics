@@ -12,8 +12,8 @@ return {
     tags = { "summon" },
     class = "hunter",
     discipline = "totemist", -- hunter x priest; the Ward-totems mechanic's first stock
-    price = 340,
-    unlockQuests = 6,
+    price = 800,
+    unlockQuests = 12,
     activeAbility = {
         target = "tile",
         range = 3,

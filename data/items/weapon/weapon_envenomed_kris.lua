@@ -21,8 +21,8 @@ return {
     type = "weapon",
     tags = { "dagger", "pierce", "physical", "poison", "melee" },
     class = "alchemist",
-    price = 210,
-    unlockQuests = 11,
+    price = 620,
+    unlockQuests = 9,
     activeAbility = {
         target = "enemy",
         range = 1,

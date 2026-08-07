@@ -25,8 +25,8 @@ return {
     tags = { "axe", "slash", "physical", "melee" },
     hands = 2, -- a two-handed wedge (Dual Wield can pair it only once forged to +5)
     class = "fighter",
-    price = 420,
-    unlockQuests = 8,
+    price = 380,
+    unlockQuests = 5,
     activeAbility = {
         target = "tile",       -- aim an adjacent tile: it sets the facing the arc sweeps
         allowOccupied = true,  -- the tile in front may hold a foe -- it's the centre of the arc
@@ -35,7 +35,7 @@ return {
         speed = 5,
         cost = { stat = "stamina", amount = 13 },
         -- Deliberately poor for its rank against a lone target: the crowd is the damage stat.
-        damage = Curve.ramp(12, 22),
+        damage = Curve.ramp(8, 18),
         aoe = { shape = "front", width = 3 }, -- axes cleave innately: a 3-wide arc in front
         frenzy = 0.33, -- each EXTRA body in the arc adds a third of the swing to all of them (a keyword)
         effect = function(fx)

@@ -648,6 +648,11 @@ function Item.instantiate(id, quantity, level)
         noCopy = def.noCopy,                   -- a summoned copy of the holder never carries this
         bound = def.bound,                     -- bound to its holder: never moved, stowed, sold, or stolen (a signature relic)
         traits = deepCopy(def.traits),         -- combat reactions granted to whoever carries it
+        -- Tunables for those traits, named by THIS item (Trait.param). What lets one trait blueprint
+        -- serve two items that agree on the rule and disagree only about a figure -- the golem's guard
+        -- waiting nine ticks where a knight's waits six, Sublimitas answering a spell sooner and for
+        -- less. Copied beside `traits` because it is meaningless without them.
+        traitParams = deepCopy(def.traitParams),
         manaShield = deepCopy(def.manaShield), -- { ratio }: wounds paid out of mana (Combat.soakIntoMana)
         statusImmunity = deepCopy(def.statusImmunity), -- status ids this carrier simply cannot be given
         phases = deepCopy(def.phases),         -- a boss relic's health-threshold script, read by trait_boss_phases

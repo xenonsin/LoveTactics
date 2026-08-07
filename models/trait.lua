@@ -146,7 +146,7 @@ function Trait.answerCost(combat, unit, trait, dist)
     if rule and rule.closes then dist = 1 end
     local base
     if rule and (rule.reflect or rule.applies or rule.shoves) then
-        base = trait.def.cost -- not a swing: it costs what it says it costs, if anything
+        base = Trait.param(trait, "cost") -- not a swing: it costs what it says it costs, if anything
     else
         local weapon = Combat.answeringWeapon(combat, unit, dist)
         base = weapon and weapon.activeAbility and weapon.activeAbility.cost
@@ -182,7 +182,7 @@ function Trait.tryEvade(combat, unit, tags)
     local Combat = require("models.combat")
     for _, t in ipairs(unit.traits) do
         if t.def.evadesPhysical and not Combat.onCooldown(unit, t.id) then
-            Combat.setCooldown(unit, t.id, t.def.cooldown or 0)
+            Combat.setCooldown(unit, t.id, Trait.param(t, "cooldown", 0))
             Combat.logEvent(combat, "action",
                 string.format("%s dodges the blow!", (unit.char and unit.char.name) or "Unit"), unit)
             return true
@@ -424,9 +424,10 @@ function Trait.tryCounterMagic(combat, unit, attacker, tags)
     local Combat = require("models.combat")
     for _, t in ipairs(unit.traits) do
         -- Cost last, so a counter already on cooldown is never weighed against mana it needn't spend.
-        if t.def.countersSpell and not Combat.onCooldown(unit, t.id) and canPay(unit, t.def.cost) then
-            payCost(unit, t.def.cost)
-            Combat.setCooldown(unit, t.id, t.def.cooldown or 0)
+        local counterCost = Trait.param(t, "cost")
+        if t.def.countersSpell and not Combat.onCooldown(unit, t.id) and canPay(unit, counterCost) then
+            payCost(unit, counterCost)
+            Combat.setCooldown(unit, t.id, Trait.param(t, "cooldown", 0))
             Combat.logEvent(combat, "action", string.format("%s unravels %s's spell!",
                 (unit.char and unit.char.name) or "Unit", (attacker.char and attacker.char.name) or "the caster"),
                 { unit, attacker })
@@ -451,10 +452,10 @@ function Trait.trySurvive(combat, unit)
             t.stacks = 1
             local hp = unit.char.stats.health
             -- How much of the bar the refusal is worth. Half by default (Second Wind, which is priced
-            -- as a relic and as a general's own rule), but a trait may name its own -- the Cafe's Moxie
+            -- as a relic and as a general's own rule), but a granter may name its own -- the Cafe's Empty Chair
             -- rises at a sliver, because a supper that stood the WHOLE company back up at half health
             -- would be the only thing on the menu anybody ever ordered.
-            local fraction = t.def.revivesAt or 0.5
+            local fraction = Trait.param(t, "revivesAt", 0.5)
             hp.current = math.max(1, math.floor(Combat.unreservedMax(unit.char, "health") * fraction + 0.5))
             Combat.logEvent(combat, "action",
                 string.format("%s catches a second wind and rises!", (unit.char and unit.char.name) or "Unit"),
@@ -753,6 +754,11 @@ local function ctxFor(combat, unit, trait, event)
         unit = unit,
         trait = trait,
         def = trait.def,
+        -- The trait's tunable as the GRANTER named it, falling back to the blueprint's own default.
+        -- A hook that reads `ctx.def.foo` gets the one authored number; `ctx.param("foo", d)` lets the
+        -- item or meal that handed the trait over name a different one, which is what lets a single
+        -- rule serve two items that only disagree about a figure (see Trait.param).
+        param = function(key, default) return Trait.param(trait, key, default) end,
         -- The item this trait came off, or nil when the character itself declares it. A relic's
         -- hook can read its own blueprint (name, magnitude) without a registry lookup.
         item = trait.item,
@@ -936,7 +942,7 @@ local function ctxFor(combat, unit, trait, event)
             local isAnswer = (trait.def.counter ~= nil or trait.def.followUp) and e.attacker ~= nil
             local cost = isAnswer
                 and Trait.answerCost(combat, unit, trait, distance(e.attacker, unit))
-                or trait.def.cost
+                or Trait.param(trait, "cost")
             if not payCost(unit, cost) then return false end
             if isAnswer then tallyAnswer(unit) end
             return true
@@ -960,7 +966,9 @@ local function ctxFor(combat, unit, trait, event)
 end
 
 -- Build a fresh trait instance. `item` is the grid item that granted it, or nil for an innate one.
-function Trait.instantiate(id, item)
+-- `params` is an optional { key = value } table from a granter that has no item to hang them on -- a
+-- meal's kitchen skill, a run relic (see Trait.attach and Trait.param).
+function Trait.instantiate(id, item, params)
     local def = Trait.defs[id]
     assert(def, "unknown trait id: " .. tostring(id))
     return {
@@ -968,8 +976,37 @@ function Trait.instantiate(id, item)
         name = def.name or id,
         def = def,
         item = item,
+        params = params,
         stacks = 0, -- free counter for a hook that accumulates (wrath_rising, hollow_crown phases)
     }
+end
+
+-- A trait's tunable, read from whoever GRANTED it before the trait's own default.
+--
+-- THE REASON THIS EXISTS. The roster had grown a habit of expressing "the same rule with a different
+-- number" as a second trait file: Bulwark was Oathward with a cooldown of 9 instead of 6, Perfect
+-- Recall was Counter Magic answering a beat sooner, Moxie was Second Wind rising at a sliver instead of
+-- half. Three whole blueprints, three names, three entries in every ledger that walks the traits -- to
+-- carry one integer each. Since a trait already knows the item that granted it, the integer can live
+-- there, and the rule can be written once.
+--
+-- Resolution order, most specific first:
+--   trait.params[key]        an item-less granter's override (a meal's `skillParams`)
+--   trait.item.traitParams   the granting item's own override
+--   trait.def[key]           the trait's authored default
+--
+-- `traitParams` is namespaced rather than read off the item's top level deliberately: an item already
+-- has `cost` and `cooldown` fields of its own meaning its ACTIVE ability, and a trait quietly reading
+-- those would tie a charm's reflex to the ability sitting beside it.
+function Trait.param(trait, key, default)
+    if not trait then return default end
+    local p = trait.params
+    if p and p[key] ~= nil then return p[key] end
+    local tp = trait.item and trait.item.traitParams
+    if tp and tp[key] ~= nil then return tp[key] end
+    local d = trait.def and trait.def[key]
+    if d ~= nil then return d end
+    return default
 end
 
 -- Collect `unit.traits` from the character blueprint and from every item in its 3x3 grid. Idempotent
@@ -1006,8 +1043,12 @@ function Trait.attach(unit, combat)
     -- `unit.meal` with the blueprint at spawn; the flat half of the platter is folded in beside the
     -- grid's armour instead (Combat.applyUnitPassives), since a supper's defense is the same quantity a
     -- coat's is.
+    --
+    -- A meal has no item to hang a tunable on, so its blueprint's `skillParams` rides in as the
+    -- instance's params -- which is how the Empty Chair keeps reviving at a sliver while the Bastion's
+    -- relic, one rule and one file now, still rises at half (Trait.param).
     for _, id in ipairs(require("models.meal").traits(unit.meal)) do
-        list[#list + 1] = Trait.instantiate(id, nil)
+        list[#list + 1] = Trait.instantiate(id, nil, unit.meal and unit.meal.skillParams)
     end
     unit.traits = list
     return list

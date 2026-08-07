@@ -1175,7 +1175,7 @@ return {
 
             local sword = Item.instantiate("weapon_iron_sword")
             local parry = Combat.computeDamage(combat, avatar, grunt, sword)   -- its swing, answered
-            local jolt = Combat.computeDamage(combat, avatar, grunt, Item.instantiate("ability_jolt"))
+            local jolt = Combat.computeDamage(combat, avatar, grunt, Item.instantiate("ability_minor_shock"))
             -- Rowan swings her own weapon, whatever the blueprint says it is -- read off her grid so
             -- this stays a statement about the lesson's arithmetic and not about the mace.
             local hers = Combat.computeDamage(combat, rowan, grunt, Combat.defaultWeapon(rowan.char))
@@ -1215,10 +1215,10 @@ return {
             local hers = Item.defs[Combat.defaultWeapon(rowan.char).id]
             assert(hers.description:lower():find("back", 1, true),
                 "Rowan's weapon no longer drives its target back: " .. hers.name)
-            assert(Item.defs["ability_jolt"].activeAbility.range >= 2,
+            assert(Item.defs["ability_minor_shock"].activeAbility.range >= 2,
                 "Jolt has no reach left to teach")
 
-            local cost = Item.defs["ability_jolt"].activeAbility.cost
+            local cost = Item.defs["ability_minor_shock"].activeAbility.cost
             assert(cost.stat == "mana", "the lesson's mana beat no longer costs mana")
             local pool = avatar.char.stats.mana.max
             assert(cost.amount <= pool, "the avatar cannot afford the Jolt the lesson hands them")

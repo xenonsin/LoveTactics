@@ -23,7 +23,7 @@ return {
     tags = { "holy", "reaction" },
     class = "priest",
     discipline = "monk", -- the answer that lands before the blow: a martial reflex, not a liturgical one
-    price = 320,
-    unlockQuests = 8,
+    price = 500,
+    unlockQuests = 7,
     traits = { "trait_keen_senses" },
 }

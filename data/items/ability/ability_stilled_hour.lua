@@ -28,8 +28,8 @@ return {
     type = "ability",
     tags = { "arcane", "magical" },
     class = "mage",
-    price = 600,
-    unlockQuests = 10,
+    price = 140,
+    unlockQuests = 1,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

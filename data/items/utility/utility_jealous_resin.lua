@@ -26,7 +26,7 @@ return {
     type = "utility",
     tags = { "charm", "ward" },
     class = "alchemist",
-    price = 240,
-    unlockQuests = 7,
+    price = 200,
+    unlockQuests = 2,
     traits = { "trait_jealous_resin" },
 }

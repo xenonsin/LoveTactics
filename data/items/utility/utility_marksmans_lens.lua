@@ -15,7 +15,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "hunter",
-    price = 300,
-    unlockQuests = 7,
+    price = 320,
+    unlockQuests = 4,
     traits = { "trait_marksmans_lens" },
 }

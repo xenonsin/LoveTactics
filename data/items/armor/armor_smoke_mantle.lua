@@ -22,8 +22,8 @@ return {
     tags = { "leather", "illusion" },
     class = "rogue",
     discipline = "ninja",
-    price = 420,
-    unlockQuests = 10,
+    price = 320,
+    unlockQuests = 4,
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     traits = { "trait_smoke_mantle" },
 }

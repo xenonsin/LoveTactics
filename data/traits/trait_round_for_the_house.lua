@@ -15,6 +15,7 @@
 -- the game.
 return {
     name = "Round for the House",
+    description = "When you drink a draught, the allies standing beside you get a share of it.",
     magnitude = 8, -- health and stamina handed to each neighbour when the bearer drinks
     onCast = function(ctx)
         local item = ctx.item

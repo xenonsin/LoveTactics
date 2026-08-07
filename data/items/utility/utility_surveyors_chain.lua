@@ -35,8 +35,8 @@ return {
     tags = { "charm" },
     class = "knight",
     discipline = "warden", -- multiclass: stocked on the hunter's shelf too once the gate is cleared
-    price = 420,
-    unlockQuests = 8,
+    price = 320,
+    unlockQuests = 4,
     -- Flat, like the boots': 1 is open field and a cap has nowhere below it to grow.
     escortsMovement = 1,
 }

@@ -11,8 +11,8 @@ return {
     type = "ability",
     tags = { "pierce", "physical" },
     class = "hunter",
-    price = 220,
-    unlockQuests = 4,
+    price = 620,
+    unlockQuests = 9,
     activeAbility = {
         target = "enemy",
         range = 4,
@@ -20,7 +20,7 @@ return {
         requiresSight = true,
         speed = 4,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(8, 18),
+        damage = Curve.ramp(14, 24),
         requiresAdjacent = { type = "weapon", tag = "bow" },
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_root" })

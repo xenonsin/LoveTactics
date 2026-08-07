@@ -11,7 +11,7 @@ return {
     type = "utility",
     tags = { "technique" },
     class = "knight",
-    price = 240,
+    price = 260,
     unlockQuests = 3,
     traits = { "trait_shield_bash" },
 }

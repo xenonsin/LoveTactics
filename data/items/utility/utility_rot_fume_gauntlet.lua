@@ -22,7 +22,7 @@ return {
     tags = { "charm", "poison" },
     class = "knight",
     discipline = "plague_knight",
-    price = 440,
-    unlockQuests = 10,
+    price = 500,
+    unlockQuests = 7,
     traits = { "trait_rot_fume" },
 }

@@ -29,8 +29,8 @@ return {
     tags = { "charm" },
     class = "hunter",
     discipline = "poacher", -- multiclass: stocked on the rogue's shelf too once the gate is cleared
-    price = 520,
-    unlockQuests = 9,
+    price = 320,
+    unlockQuests = 4,
     traits = { "trait_thrill_of_the_hunt" },
     -- A floor for the fights that never present a marked kill. Damage rather than defense: this is a
     -- charm about finishing things, and a hunter short of the kill is short of damage, not of plate.

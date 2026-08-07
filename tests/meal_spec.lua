@@ -232,10 +232,14 @@ return {
         name = "the kitchen skill attaches as an item-less trait, on the whole company",
         fn = function()
             local _, unit = boardWithMeal("meal_empty_chair")
-            assert(Trait.has(unit, "trait_meal_moxie"), "the eater carries the skill")
+            assert(Trait.has(unit, "trait_second_wind"), "the eater carries the skill")
             for _, t in ipairs(unit.traits) do
-                if t.id == "trait_meal_moxie" then
+                if t.id == "trait_second_wind" then
                     assert(t.item == nil, "a meal's skill hangs off no item -- there is nothing to unequip")
+                    -- ...and with nothing to hang a tunable on either, so the supper's own sliver rides
+                    -- in as instance params rather than as a second trait blueprint (Trait.param).
+                    assert(t.params and t.params.revivesAt == 0.15,
+                        "the dish names its own recovery, got " .. tostring(t.params and t.params.revivesAt))
                 end
             end
             -- A platter with no skill grants no trait, rather than an empty one.
@@ -244,7 +248,7 @@ return {
         end,
     },
     {
-        name = "Moxie refuses one death a battle, and comes up on a sliver rather than half",
+        name = "the Empty Chair refuses one death a battle, and comes up on a sliver rather than half",
         fn = function()
             local combat, unit = boardWithMeal("meal_empty_chair")
             local max = Combat.unreservedMax(unit.char, "health")

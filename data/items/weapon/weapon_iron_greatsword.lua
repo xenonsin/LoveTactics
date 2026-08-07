@@ -23,7 +23,7 @@ return {
     -- greatsword's is no exception -- what gates it is the purse, not the standing. Dear for a rank-1
     -- (five times an iron sword) because the heaviest hit in the game should be an early thing you save
     -- toward rather than an early thing you are handed.
-    price = 300,
+    price = 80,
     unlockQuests = 0,
     activeAbility = {
         target = "tile",       -- aim an adjacent tile: it sets the facing the blow falls on

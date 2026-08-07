@@ -38,6 +38,17 @@ local function unit(charOrId, x, y)
     return Fixture.unit(charOrId, x, y, { isolate = "mechanics" })
 end
 
+-- A target with room to survive being hit. The cases that use it name a BEHAVIOUR -- does the bolt
+-- freeze, does the root stick -- and the ability roster has grown enough that a plain bandit now dies
+-- to the blow before the assertion can read the answer. Raising the dummy keeps the case about what it
+-- says it is about; the magnitudes themselves are tests/balance_spec.lua's business.
+local function tough(id, hp)
+    local char = Character.instantiate(id)
+    local h = char.stats.health
+    h.max, h.current = hp or 400, hp or 400
+    return char
+end
+
 -- Open a turn for a specific unit, independent of initiative order, so a test can exercise
 -- moveUnit/endTurn on the unit it cares about (mirrors what Combat.startTurn sets up).
 local openTurn = Fixture.openTurn
@@ -425,7 +436,7 @@ return {
             -- tempo, so the delay it buys is tuned on its own axis rather than read off the damage
             -- roll (which used to cap the one thing the spell is for). Read off the blueprint rather
             -- than typed in, so re-tuning the curve does not come here to be re-typed.
-            local jolt = Item.instantiate("ability_jolt")
+            local jolt = Item.instantiate("ability_minor_shock")
             local jOut = Combat.abilityOutput(mage, jolt)
             assert(jOut.damage == Combat.abilityMagnitude(jolt.activeAbility) + mage.char.stats.magicDamage,
                 "the jolt previews power + magicDamage, got " .. jOut.damage)
@@ -1046,7 +1057,7 @@ return {
         fn = function()
             local Status = require("models.status")
             local c = Combat.new(arena(8, 8),
-                { unit("character_mage", 1, 1), unit(swordsman(), 5, 5) }, { unit("character_bandit", 1, 3), unit("character_bandit", 5, 6) })
+                { unit("character_mage", 1, 1), unit(swordsman(), 5, 5) }, { unit(tough("character_bandit"), 1, 3), unit(tough("character_bandit"), 5, 6) })
             local mage, rogue, bandit1, bandit2 = c.units[1], c.units[2], c.units[3], c.units[4]
 
             mage.char.inventory = { Item.instantiate("ability_tangling_roots") }

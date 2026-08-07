@@ -554,4 +554,34 @@ return {
                 cap .. " bodies at +" .. perBody .. " and then nothing more, got " .. bearer.bonus.damage)
         end,
     },
+    {
+        -- The peer of item_schema_spec's "every item declares a mechanical description". Thirty traits
+        -- shipped without one, and it stayed invisible because a trait has no shelf row of its own to
+        -- look wrong on -- it is read through whatever item grants it. It surfaced only when the trait
+        -- weights had to be judged by hand and a third of the cards came up blank.
+        --
+        -- Same contract as an item's: say what it DOES, in one sentence, in the player's words.
+        name = "every trait declares a name and a mechanical description",
+        fn = function()
+            local missing, long = {}, {}
+            local DESC_MAX = 120 -- as item_schema_spec.lua: one sentence, not a paragraph
+            for id, def in pairs(Trait.defs) do
+                if type(def.name) ~= "string" or def.name == "" then
+                    missing[#missing + 1] = id .. " (no name)"
+                elseif type(def.description) ~= "string" or def.description == "" then
+                    missing[#missing + 1] = id
+                elseif #def.description > DESC_MAX then
+                    long[#long + 1] = id .. " (" .. #def.description .. " chars)"
+                end
+            end
+            table.sort(missing)
+            table.sort(long)
+            assert(#missing == 0, #missing .. " trait(s) declare no description -- say what the trait"
+                .. " DOES, the way its header's first line already does:\n         "
+                .. table.concat(missing, "\n         "))
+            assert(#long == 0, #long .. " trait description(s) run past " .. DESC_MAX
+                .. " chars -- lead with the verb and leave the argument to the header:\n         "
+                .. table.concat(long, "\n         "))
+        end,
+    },
 }

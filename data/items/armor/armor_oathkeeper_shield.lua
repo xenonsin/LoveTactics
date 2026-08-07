@@ -15,9 +15,9 @@ return {
     type = "armor",
     tags = { "shield" }, -- a Shield Bash item beside it in the grid can bash with it
     class = "knight",
-    price = 800,
-    unlockQuests = 11,
-    bonus = { defense = Curve.ramp(6, 16), movement = -1 },
+    price = 560,
+    unlockQuests = 8,
+    bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     resist = { physical = 4, slash = 3, pierce = 3, impact = 3 },
     -- A tower shield braces hardest of all -- a large, forge-scaling +defense while it holds the line.
     -- `covers` is its EXTRA over the plain buckler (data/items/armor/armor_buckler.lua), fixed rather than

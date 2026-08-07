@@ -12,8 +12,8 @@ return {
     type = "consumable",
     tags = { "scroll", "restorative" },
     class = "priest",
-    price = 220,
-    unlockQuests = 6,
+    price = 295,
+    unlockQuests = 11,
     activeAbility = {
         target = "tile",
         support = true, -- friendly cast: preview green

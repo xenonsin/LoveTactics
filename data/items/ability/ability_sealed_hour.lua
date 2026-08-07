@@ -32,8 +32,8 @@ return {
     type = "ability",
     tags = { "holy", "magical" },
     class = "priest",
-    price = 520,
-    unlockQuests = 12,
+    price = 80,
+    unlockQuests = 0,
     activeAbility = {
         -- A tile target, for the same reason Updraft is one: neither "ally" nor "enemy" describes what
         -- this spell is for, and the player picks which of the two readings above they are buying every

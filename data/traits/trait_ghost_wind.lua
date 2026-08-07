@@ -12,5 +12,6 @@
 -- the behaviour never asks which shelf sold it.
 return {
     name = "Ghost-Wind",
+    description = "Everything you summon arrives already Hasted.",
     hastensSummons = true,
 }

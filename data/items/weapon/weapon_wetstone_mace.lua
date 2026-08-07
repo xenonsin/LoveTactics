@@ -22,15 +22,15 @@ return {
     type = "weapon",
     tags = { "mace", "impact", "physical", "lightning", "melee" },
     class = "knight",
-    price = 360,
-    unlockQuests = 6,
+    price = 620,
+    unlockQuests = 9,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 9 },
         -- Under an iron mace's: the second swing is where this weapon's number actually lives.
-        damage = Curve.ramp(13, 23),
+        damage = Curve.ramp(16, 26),
         effect = function(fx)
             -- Soak FIRST, then strike. A mace that hit and then wet would never benefit from its own
             -- vulnerability on the opening blow, and the ordering is free -- the shove rides in the

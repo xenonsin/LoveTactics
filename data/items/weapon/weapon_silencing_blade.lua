@@ -23,7 +23,7 @@ return {
     tags = { "sword", "slash", "physical", "melee" },
     class = "knight",
     discipline = "spellbreaker",
-    price = 440,
+    price = 680,
     unlockQuests = 10,
     traits = { "trait_parry" },
     activeAbility = {

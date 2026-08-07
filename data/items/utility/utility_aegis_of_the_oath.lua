@@ -14,7 +14,7 @@ return {
     tags = { "charm", "holy" },
     class = "knight",
     discipline = "paladin", -- knight x priest; the Ward-aura mechanic's first stock
-    price = 440,
-    unlockQuests = 9,
+    price = 380,
+    unlockQuests = 5,
     incense = { hazard = "hazard_shared_bulwark", radius = 1, amount = Curve.ramp(1, 11) },
 }

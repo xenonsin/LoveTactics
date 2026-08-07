@@ -16,5 +16,6 @@
 -- the mechanic reads as a free area spell rather than as a plague.
 return {
     name = "Contagion",
+    description = "At the top of your turn, poison spreads from every poisoned body to your foes beside it.",
     spreadsPoison = true,
 }

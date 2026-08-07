@@ -22,7 +22,7 @@ return {
     tags = { "charm", "illusion" },
     class = "rogue",
     discipline = "ninja",
-    price = 460,
-    unlockQuests = 10,
+    price = 380,
+    unlockQuests = 5,
     traits = { "trait_substitution" },
 }

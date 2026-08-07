@@ -14,5 +14,6 @@
 -- who circles back to the same tile has covered no ground, whatever the pathfinder counted.
 return {
     name = "Outrider's Harness",
+    description = "A blow you throw after covering two tiles or more cannot be answered.",
     unanswerableAfterMove = true,
 }

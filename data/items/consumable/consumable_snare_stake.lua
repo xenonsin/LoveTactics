@@ -18,7 +18,7 @@ return {
     tags = { "trap" },
     class = "hunter",
     discipline = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
-    price = 110,
+    price = 105,
     unlockQuests = 3,
     activeAbility = {
         target = "tile", -- planted on open ground, not on a foe

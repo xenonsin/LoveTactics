@@ -21,14 +21,14 @@ return {
     tags = { "guile", "utility" },
     class = "rogue",
     discipline = "thief", -- deeper cut of the shelf: buyable only once the thief gate is cleared
-    price = 200,
-    unlockQuests = 3,
+    price = 620,
+    unlockQuests = 9,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 5 },
-        damage = Curve.ramp(8, 18), -- the strike itself, attack-stat scaled like any blow
+        damage = Curve.ramp(14, 24), -- the strike itself, attack-stat scaled like any blow
         effect = function(fx)
             fx.damage(fx.target)
             local want = 8 + fx.level -- the theft: a flat bite of stamina, sharpened by the forge

@@ -25,6 +25,17 @@ local function unit(charOrId, x, y)
     return { char = char, x = x, y = y }
 end
 
+-- A target with room to survive being hit. The cases that use it name a BEHAVIOUR -- does the bolt
+-- freeze, does the root stick -- and the ability roster has grown enough that a plain bandit now dies
+-- to the blow before the assertion can read the answer. Raising the dummy keeps the case about what it
+-- says it is about; the magnitudes themselves are tests/balance_spec.lua's business.
+local function tough(id, hp)
+    local char = Character.instantiate(id)
+    local h = char.stats.health
+    h.max, h.current = hp or 400, hp or 400
+    return char
+end
+
 -- The two cases below measure the CLOCK against a known ability speed, so they need a unit whose
 -- weapon speed they can state. `character_rowan` used to be that by accident -- Rowan carried a
 -- sword (speed 3) -- until the prologue gave her an iron mace (speed 4), which silently changed the
@@ -83,18 +94,23 @@ return {
     {
         name = "previewAbility projects a stunned target's delayed turn onto the timeline",
         fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_bandit", 1, 2) })
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit(tough("character_bandit"), 1, 2) })
             local mage, bandit = c.units[1], c.units[2]
-            mage.char.inventory[1] = Item.instantiate("ability_jolt")
+            mage.char.inventory[1] = Item.instantiate("ability_minor_shock")
             bandit.initiative = 2
 
             local preview = Combat.previewAbility(c, mage, mage.char.inventory[1], bandit.x, bandit.y)
             local e = preview.entries[bandit]
             assert(e, "the bandit is an affected target")
-            assert(not e.lethal, "a Jolt doesn't fell a healthy bandit (so the ghost is worth showing)")
-            -- Jolt's base stun is 10 (its per-level `stun` curve at level 0), carried on the hit.
-            assert(e.initiativeAfter == bandit.initiative + 10,
-                "the ghost lands at initiative + stun, got " .. tostring(e.initiativeAfter))
+            assert(not e.lethal, "a shock doesn't fell a healthy bandit (so the ghost is worth showing)")
+            -- The shove is read off the ITEM's own `stun` curve rather than typed. It was pinned at 10
+            -- and that made this a second place the spell's tempo had to be maintained -- the day the
+            -- delay was tuned down, a case about whether the PREVIEW matches the cast failed on a
+            -- number it had no opinion about.
+            local shove = mage.char.inventory[1].activeAbility.stun
+            assert(e.initiativeAfter == bandit.initiative + shove,
+                "the ghost lands at initiative + stun (" .. tostring(shove) .. "), got "
+                    .. tostring(e.initiativeAfter))
             assert(e.initiativeCause == "Stun", "the ghost is labelled by its cause")
             -- Pure: previewing the shove never touched the live initiative.
             assert(bandit.initiative == 2, "the dry run left the bandit's real initiative alone")

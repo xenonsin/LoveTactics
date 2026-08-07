@@ -23,6 +23,7 @@
 -- quietly cross-heal, and the bearer itself is skipped -- a handler is not their own beast.
 return {
     name = "Beastlord's Bond",
+    description = "Every action you take mends the creatures you summoned that are standing near you.",
     magnitude = 4, -- health returned to each creature, per action
     radius = 3,    -- the leash: how far the bond reaches
     onCast = function(ctx)

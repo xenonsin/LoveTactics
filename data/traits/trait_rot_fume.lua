@@ -15,6 +15,7 @@
 -- hover promises is the number the blow lands, and this must never mutate anything.
 return {
     name = "Rot-Fume",
+    description = "Your blows land harder for every poisoned body on the field.",
     magnitude = 3, -- damage per poisoned body on the field
     damageBonusVs = function(ctx)
         local combat = ctx.combat

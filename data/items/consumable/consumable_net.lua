@@ -10,7 +10,7 @@ return {
     type = "consumable",
     tags = { "snare" },
     class = "rogue",
-    price = 90,
+    price = 30,
     unlockQuests = 0,
     activeAbility = {
         target = "enemy",

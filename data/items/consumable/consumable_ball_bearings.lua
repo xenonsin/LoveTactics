@@ -16,7 +16,7 @@ return {
     type = "consumable",
     tags = { "snare" },
     class = "rogue",
-    price = 100,
+    price = 30,
     unlockQuests = 0,
     activeAbility = {
         target = "tile", -- thrown at a tile and bursts around it, like the Flash Bomb

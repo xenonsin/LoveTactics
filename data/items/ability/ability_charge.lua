@@ -11,8 +11,8 @@ return {
     type = "ability",
     tags = { "impact", "physical" },
     class = "fighter",
-    price = 320,
-    unlockQuests = 5,
+    price = 80,
+    unlockQuests = 0,
     activeAbility = {
         target = "enemy",
         range = 1, -- the target must start directly in front (adjacent) -- the "pin"

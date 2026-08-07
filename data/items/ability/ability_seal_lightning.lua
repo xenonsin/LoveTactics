@@ -14,8 +14,8 @@ return {
     type = "ability",
     tags = { "protective" },
     class = "mage",
-    price = 260,
-    unlockQuests = 5,
+    price = 200,
+    unlockQuests = 2,
     activeAbility = {
         target = "ally", -- includes the caster
         range = 2,

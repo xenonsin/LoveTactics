@@ -10,7 +10,7 @@ return {
     tags = { "arcane" },
     class = "mage",
     discipline = "summoner", -- deeper cut of the shelf: buyable only once the summoner gate is cleared
-    price = 340,
-    unlockQuests = 4,
+    price = 260,
+    unlockQuests = 3,
     traits = { "trait_arcane_reservoir" },
 }

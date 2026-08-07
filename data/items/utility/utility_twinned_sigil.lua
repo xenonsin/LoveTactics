@@ -27,8 +27,8 @@ return {
     tags = { "arcane", "sigil" },
     class = "mage",
     discipline = "elementalist", -- deeper cut of the shelf: buyable only once the elementalist gate is cleared
-    price = 480,
-    unlockQuests = 7,
+    price = 380,
+    unlockQuests = 5,
     aura = {
         appliesTo = { "ability", "weapon" },
         requiresTags = { "magical" },

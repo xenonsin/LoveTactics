@@ -1,4 +1,4 @@
--- Lifted off Sublimitas's body, and it kept her rule (data/traits/trait_perfect_recall.lua): carry the
+-- Lifted off Sublimitas's body, and it kept her rule (data/traits/trait_counter_magic.lua): carry the
 -- Codex and a single-target spell aimed at you is answered and unravelled -- you become the thing you
 -- killed, the shape every one of the seven relics takes (compare data/items/utility/
 -- utility_reliquary_unbidden.lua).
@@ -26,6 +26,13 @@ return {
     type = "utility",
     tags = { "relic" },
     noSteal = true, -- nothing takes this off you; you took it off her
-    traits = { "trait_perfect_recall" },
+    traits = { "trait_counter_magic" },
+    -- Sublimitas answers a beat sooner and for less than an ordinary counterspell does -- she is the
+    -- Unequalled, and the book kept the habit. That used to be a trait of its own (Perfect Recall)
+    -- whose entire difference from Counter Magic was these two figures (Trait.param).
+    traitParams = {
+        cooldown = 6,
+        cost = { stat = "mana", amount = 12 },
+    },
     bonus = { magicDefense = Curve.ramp(3, 13) },
 }

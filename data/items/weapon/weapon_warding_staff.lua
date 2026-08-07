@@ -22,8 +22,8 @@ return {
     type = "weapon",
     tags = { "staff", "magical", "melee" },
     class = "mage",
-    price = 560,
-    unlockQuests = 10,
+    price = 440,
+    unlockQuests = 6,
     -- Shallower than a plain staff's 8-18: the ward is paid for out of the meditation's own depth.
     -- `status` is applied to the focuser on every Focus (Combat.focus).
     waitBehavior = {
@@ -37,7 +37,7 @@ return {
         range = 1, -- adjacent only: a staff is not a wand
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.ramp(12, 22), -- feeble, as every staff's strike is
+        damage = Curve.ramp(9, 19), -- feeble, as every staff's strike is
         effect = function(fx)
             fx.damage(fx.target)
         end,

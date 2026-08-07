@@ -26,14 +26,14 @@ return {
     tags = { "pierce", "physical", "guile" },
     class = "rogue",
     discipline = "poacher",
-    price = 400,
-    unlockQuests = 9,
+    price = 500,
+    unlockQuests = 7,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 7 },
-        damage = Curve.ramp(14, 24),
+        damage = Curve.ramp(12, 22),
         description = "Kills a held foe under a third; a kill hands the turn back.",
         effect = function(fx)
             local t = fx.target

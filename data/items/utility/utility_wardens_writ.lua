@@ -23,7 +23,7 @@ return {
     tags = { "charm", "control" },
     class = "knight",
     discipline = "warden",
-    price = 420,
-    unlockQuests = 8,
+    price = 440,
+    unlockQuests = 6,
     traits = { "trait_wardens_writ" },
 }

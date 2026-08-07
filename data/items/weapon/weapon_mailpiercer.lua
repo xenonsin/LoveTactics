@@ -32,8 +32,8 @@ return {
     tags = { "spear", "pierce", "physical", "melee" },
     hands = 2, -- a two-handed polearm, as every spear is
     class = "knight",
-    price = 420,
-    unlockQuests = 9,
+    price = 740,
+    unlockQuests = 11,
     activeAbility = {
         target = "tile",       -- the aimed neighbour sets the direction the thrust runs
         allowOccupied = true,

@@ -28,8 +28,8 @@ return {
     tags = { "charm", "holy" },
     class = "priest",
     discipline = "crusader",
-    price = 400,
-    unlockQuests = 10,
+    price = 440,
+    unlockQuests = 6,
     traits = { "trait_kept_faith" },
     charge = { key = "zeal", from = { "foeDown", "allyMended" }, max = 10 },
 }

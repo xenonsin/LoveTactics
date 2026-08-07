@@ -13,8 +13,8 @@ return {
     tags = { "ice", "magical" },
     class = "mage",
     discipline = "elementalist", -- deeper cut of the shelf: buyable only once the elementalist gate is cleared
-    price = 380,
-    unlockQuests = 4,
+    price = 680,
+    unlockQuests = 10,
     activeAbility = {
         target = "tile",
         allowOccupied = true, -- an area cast may center on an occupied tile
@@ -22,7 +22,7 @@ return {
         speed = 5,
         windup = 6, -- a longer tell than Fireball, fitting the Freeze payoff
         cost = { stat = "mana", amount = 16 },
-        damage = Curve.ramp(8, 18), -- per-target damage = power + the caster's MagicDamage, minus MagicDefense
+        damage = Curve.ramp(14, 24), -- per-target damage = power + the caster's MagicDamage, minus MagicDefense
         aoe = { radius = 1, shape = "square" }, -- 3x3 storm, corners included
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

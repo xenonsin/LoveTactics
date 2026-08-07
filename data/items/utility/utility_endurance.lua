@@ -12,7 +12,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "hunter",
-    price = 160,
-    unlockQuests = 1,
+    price = 200,
+    unlockQuests = 2,
     maxBonus = { stamina = Curve.ramp(15) },
 }

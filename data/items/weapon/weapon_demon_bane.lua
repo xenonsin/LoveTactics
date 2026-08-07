@@ -19,14 +19,14 @@ return {
     hands = 1,
     traits = { "trait_parry" }, -- a sword, so it parries (docs/weapons.md) -- and the counter carries `holy` too
     class = "knight",
-    price = 260,
-    unlockQuests = 4,
+    price = 500,
+    unlockQuests = 7,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 9 },
-        damage = Curve.ramp(8, 18),
+        damage = Curve.ramp(11, 21),
         effect = function(fx)
             fx.damage(fx.target) -- inherits the item tags, so the hit carries `holy`
         end,

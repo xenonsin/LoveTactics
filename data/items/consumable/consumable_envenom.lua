@@ -24,8 +24,8 @@ return {
     tags = { "poison", "coating" },
     class = "alchemist",
     discipline = "poisoner", -- deeper cut of the shelf: buyable only once the poisoner gate is cleared
-    price = 160,
-    unlockQuests = 3,
+    price = 150,
+    unlockQuests = 5,
     aura = {
         appliesTo = { "weapon", "ability" }, -- which neighbor types the toxin coats
         exceptTags = { "restorative" },      -- a healing draught is not turned into a poison

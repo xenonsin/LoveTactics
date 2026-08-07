@@ -87,8 +87,14 @@ return {
             assert(ok2, "omnislash lands with adjacent weapons")
             assert(r2.damageDealt == predicted,
                 "preview (" .. predicted .. ") matches the live hit (" .. r2.damageDealt .. ")")
-            assert(r2.damageDealt == r0.damageDealt + 12,
-                "two adjacent weapons add 12 damage, got " .. r2.damageDealt .. " vs base " .. r0.damageDealt)
+            -- The bonus is "+1x per adjacent weapon", so two of them add twice the ability's own
+            -- magnitude. Read off the item rather than pinned as a literal: the figure moves with the
+            -- slot the ability unlocks from (Balance.slotTarget), and a hard-coded 12 only ever meant
+            -- "the magnitude was 6 the day this was written".
+            local mag = Combat.abilityMagnitude(k2.char.inventory[5].activeAbility)
+            assert(r2.damageDealt == r0.damageDealt + 2 * mag,
+                "two adjacent weapons add twice the magnitude (" .. (2 * mag) .. "), got "
+                    .. (r2.damageDealt - r0.damageDealt))
         end,
     },
     {

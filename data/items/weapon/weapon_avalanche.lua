@@ -23,7 +23,7 @@ return {
     tags = { "greatsword", "slash", "physical", "melee" },
     hands = 2,
     class = "fighter",
-    price = 900,
+    price = 740,
     unlockQuests = 11,
     activeAbility = {
         description = "Holding the wind-up longer widens the blow: two extra ticks turn one tile into a three-tile arc.",

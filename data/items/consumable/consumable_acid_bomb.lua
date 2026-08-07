@@ -16,8 +16,8 @@ return {
     tags = { "acid" },
     class = "alchemist",
     discipline = "bombardier", -- deeper cut of the shelf: buyable only once the bombardier gate is cleared
-    price = 150,
-    unlockQuests = 3,
+    price = 295,
+    unlockQuests = 11,
     activeAbility = {
         target = "tile", -- thrown at a foe and bursts around it, like Fireball
         allowOccupied = true,

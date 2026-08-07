@@ -350,7 +350,7 @@ return {
             -- Mage's Jolt (tags lightning+magical) against a knight, before and after soaking it.
             local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit("character_rowan", 1, 2) })
             local mage, knight = c.units[1], c.units[2]
-            local jolt = findItem(mage.char, "ability_jolt")
+            local jolt = findItem(mage.char, "ability_minor_shock")
             assert(jolt, "the mage carries Jolt")
 
             local before = Combat.computeDamage(c, mage, knight, jolt)

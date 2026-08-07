@@ -10,5 +10,6 @@
 -- scenery for the enemy AI to waste a swing on and becomes a resource with a second use.
 return {
     name = "Substitution",
+    description = "A blow that would land on you kills a standing clone instead, and the two of you trade places.",
     substitutes = true,
 }

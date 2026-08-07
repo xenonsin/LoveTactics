@@ -12,8 +12,8 @@ return {
     tags = { "summon" },
     class = "mage",
     discipline = "shaman", -- hunter x mage; the Spirit-totems mechanic's first stock
-    price = 360,
-    unlockQuests = 4,
+    price = 560,
+    unlockQuests = 8,
     activeAbility = {
         target = "tile",
         range = 2,

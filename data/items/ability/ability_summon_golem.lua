@@ -1,7 +1,7 @@
 -- Summon Golem: Final Fantasy Tactics' Golem, the summon nobody cast for its damage -- it stood in
 -- front of the party and let the damage happen to it instead. Binds a Crucible Golem
 -- (data/characters/character_crucible_golem.lua): the heaviest body in the game, which takes the first
--- blow each turn aimed at whoever is standing beside it (data/traits/trait_bulwark.lua).
+-- blow each turn aimed at whoever is standing beside it (data/traits/trait_oathward.lua).
 --
 -- It is the alchemist's second construct and the deliberate opposite of its first. Summon Homunculus
 -- (data/items/ability/ability_summon_homunculus.lua) buys a frail thing whose worth is the Poison it
@@ -31,7 +31,7 @@ return {
     type = "ability",
     tags = { "summon" },
     class = "alchemist",
-    price = 480,
+    price = 680,
     unlockQuests = 10,
     activeAbility = {
         target = "tile",

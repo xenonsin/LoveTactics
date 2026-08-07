@@ -57,6 +57,16 @@ function love.load(args)
         return
     end
 
+    -- Grade ledger: `& "E:\LOVE\lovec.exe" . grade-report [full | diff | explain ID]`
+    -- Ranks every item by what it is actually worth (models/grade.lua) -- read without looking at its
+    -- slot or its price, both of which are downstream of the grade -- and says where the shelf
+    -- disagrees. Reports only; the rewrite is a separate pass. See tools/grade_report.
+    if args and args[1] == "grade-report" then
+        require("tools.grade_report").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
     -- Balance rescale: `& "E:\LOVE\lovec.exe" . balance-rescale [N] [apply]`
     -- Brings blueprint magnitudes into the band tests/balance_spec.lua enforces, in four passes
     -- (armour, defense, attack, mirror). Dry run by default. See tools/balance_rescale.

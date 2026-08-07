@@ -14,7 +14,7 @@ return {
     tags = { "spear", "pierce", "physical", "melee" },
     hands = 2, -- a two-handed polearm (Dual Wield can pair it only once forged to +5)
     class = "knight", -- reach holds a line, and holding the line is the Bastion's whole trade (docs/classes.md)
-    price = 140,
+    price = 80,
     unlockQuests = 0, -- a family's base weapon is always rank 1 (docs/weapons.md)
     activeAbility = {
         target = "tile",       -- aim an adjacent tile: it sets the direction the thrust runs

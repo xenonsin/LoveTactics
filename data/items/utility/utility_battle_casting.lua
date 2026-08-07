@@ -22,7 +22,7 @@ return {
     tags = { "charm", "magical" },
     class = "mage",
     discipline = "battlemage",
-    price = 420,
-    unlockQuests = 5,
+    price = 320,
+    unlockQuests = 4,
     traits = { "trait_battle_casting" },
 }

@@ -12,5 +12,6 @@
 -- signature is supposed to be.
 return {
     name = "Breaker's Wedge",
+    description = "Every shove you throw also Sunders the body it moved.",
     sundersOnShove = true,
 }

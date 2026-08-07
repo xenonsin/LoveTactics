@@ -12,6 +12,7 @@
 -- whose side was it (an ally falling is not a mercy) and was it close enough to see.
 return {
     name = "Zealot's Mercy",
+    description = "Fell a foe and the wound closes, deeper for every point of Zeal you are holding.",
     magnitude = 3, -- tiles: a death farther off than this is not yours to be lifted by
     onAnyDeath = function(ctx)
         local fallen = ctx.fallen

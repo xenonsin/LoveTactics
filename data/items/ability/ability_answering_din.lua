@@ -31,7 +31,7 @@ return {
     tags = { "earth", "impact", "magical" },
     class = "mage",
     discipline = "elementalist", -- the earth storm, beside Blizzard / Meteor Storm / Thunder Storm
-    price = 400,
+    price = 620,
     unlockQuests = 9,
     activeAbility = {
         target = "self", -- it runs out from the caster's own feet: no aiming, only placement

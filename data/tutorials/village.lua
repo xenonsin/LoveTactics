@@ -244,7 +244,7 @@ return {
         -- (an empty enemy side is a victory) a beat before the body that the rest of the lesson is
         -- about. Tutorial.awaitsSpawn is what holds that win open for exactly one beat.
         { line = "spark", coach = "spark_hint", actor = "character_avatar", nudge = "nudge",
-          grant = "ability_jolt",
+          grant = "ability_minor_shock",
           -- -1, not 0, and the sign is load-bearing: the grunt must act BEFORE the mentor, whose own
           -- next turn is the shove that answers this charge. At 0 it merely tied with her, and a tie
           -- between two party-and-enemy units goes to the party -- so she threw the shove at an empty
@@ -252,13 +252,13 @@ return {
           -- a body standing somewhere else. A seat ahead of the whole board says "acts next" outright;
           -- the next rebase normalizes it away.
           spawn = { { char = "character_demon_grunt", x = 6, y = 1, initiative = -1 } },
-          gate = { kind = "arm", item = "ability_jolt", approach = {} },
-          anchor = { kind = "item", id = "ability_jolt" } },
+          gate = { kind = "arm", item = "ability_minor_shock", approach = {} },
+          anchor = { kind = "item", id = "ability_minor_shock" } },
 
         -- Jolt the grunt. Named by blueprint id with NO cells -- it walked in on its own script and
         -- the lesson pins the body, not the tile.
         { line = "jolt", coach = "jolt_hint", actor = "character_avatar", nudge = "nudge",
-          gate = { kind = "attack", item = "ability_jolt", target = "character_demon_grunt",
+          gate = { kind = "attack", item = "ability_minor_shock", target = "character_demon_grunt",
                    approach = {} },
           anchor = { kind = "unit", char = "character_demon_grunt" } },
 

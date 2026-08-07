@@ -20,7 +20,7 @@ return {
     tags = { "charm", "magical" },
     class = "mage",
     discipline = "spellbreaker",
-    price = 460,
-    unlockQuests = 8,
+    price = 440,
+    unlockQuests = 6,
     traits = { "trait_spell_eater" },
 }

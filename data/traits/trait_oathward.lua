@@ -10,6 +10,9 @@ return {
     name = "Oathward",
     description = "The first hit each turn on an adjacent ally is taken by you instead.",
     onCombatStart = function(ctx)
-        ctx.unit.guard = { kind = "oathward", cooldown = 6 }
+        -- How long the guard needs before it can cover the next blow. Six for a knight who swore it;
+        -- the Crucible golem's hands name nine, because a wall that is always up is not a wall, it is
+        -- a rule. That used to be a second trait (Bulwark) identical to this one but for the number.
+        ctx.unit.guard = { kind = "oathward", cooldown = ctx.param("guardCooldown", 6) }
     end,
 }

@@ -12,8 +12,8 @@ return {
     type = "ability",
     tags = { "pierce", "physical" },
     class = "hunter",
-    price = 340,
-    unlockQuests = 9,
+    price = 740,
+    unlockQuests = 11,
     activeAbility = {
         -- A saturating volley is aimed at a CELL, not a single foe: it can be centred on any
         -- walkable tile in range -- empty ground, an enemy, or one of your own (allowOccupied) --
@@ -24,7 +24,7 @@ return {
         requiresSight = true, -- arrows need a clear arc to the target cell
         speed = 5,
         cost = { stat = "stamina", amount = 10 },
-        damage = Curve.ramp(14, 24), -- per-target damage = power + the caster's Damage, minus Defense
+        damage = Curve.ramp(16, 26), -- per-target damage = power + the caster's Damage, minus Defense
         aoe = { radius = 1, shape = "square" }, -- 3x3 burst around the aimed cell (corners included)
         requiresAdjacent = { type = "weapon", tag = "bow" }, -- a bow must sit adjacent in the grid
         effect = function(fx)

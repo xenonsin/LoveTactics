@@ -13,6 +13,7 @@
 -- absorbed more would automatically feed more. `magnitude` is that share, in percent.
 return {
     name = "Spell Eater",
+    description = "Magical blows land lighter on you, and the difference is refunded as mana.",
     magnitude = 40, -- percent of an incoming magical blow swallowed, and refunded as mana
     eatsMagic = true,
 }

@@ -40,7 +40,7 @@ return {
     -- than a wand that claims to be both things at once.
     tags = { "wand", "magical", "ranged" },
     class = "mage",
-    price = 620,
+    price = 560,
     unlockQuests = 8,
     -- Immune to what it deals, from any source. Scoped to debuffs by Status.namedImmunity, so it
     -- refuses nothing the bearer wants.

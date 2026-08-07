@@ -16,8 +16,8 @@ return {
     tags = { "charm", "fire" },
     class = "mage",
     discipline = "battlemage", -- fighter x mage; the Spellstrike mechanic's first stock
-    price = 420,
-    unlockQuests = 6,
+    price = 380,
+    unlockQuests = 5,
     aura = {
         appliesTo = { "weapon" },   -- re-forges the neighbouring blades, not consumables
         grantTags = { "magical" },  -- their hits route through magicDefense

@@ -14,8 +14,8 @@ return {
     tags = { "holy" },
     class = "priest",
     discipline = "crusader", -- fighter x priest; Smite as an aura -- the Cathedral consecrating somebody else's steel
-    price = 800,
-    unlockQuests = 12,
+    price = 500,
+    unlockQuests = 7,
     aura = {
         appliesTo = { "weapon", "ability" },
         exceptTags = { "shadow" },

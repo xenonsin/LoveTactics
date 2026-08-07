@@ -14,8 +14,8 @@ return {
     type = "ability",
     tags = { "holy", "restorative" },
     class = "priest",
-    price = 480,
-    unlockQuests = 11,
+    price = 680,
+    unlockQuests = 10,
     activeAbility = {
         target = "tile",
         support = true, -- friendly cast: preview green

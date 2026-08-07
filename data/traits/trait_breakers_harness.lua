@@ -11,5 +11,6 @@
 -- nine grid cells and a correctly-read board to arrange, which is the price the discipline is sold at.
 return {
     name = "Breaker's Harness",
+    description = "A shove that slams its victim into something Stuns them.",
     stunsOnCollision = true,
 }

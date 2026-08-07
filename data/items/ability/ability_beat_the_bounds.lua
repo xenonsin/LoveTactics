@@ -25,14 +25,14 @@ return {
     tags = { "control", "physical" },
     class = "hunter",
     discipline = "warden",
-    price = 360,
-    unlockQuests = 8,
+    price = 620,
+    unlockQuests = 9,
     activeAbility = {
         target = "self",
         range = 0,
         speed = 5,
         cost = { stat = "stamina", amount = 9 },
-        damage = Curve.ramp(13, 23),
+        damage = Curve.ramp(12, 22),
         description = "Inflicts Root on and damages every enemy standing in a hazard, wherever it is and whoever laid it.",
         effect = function(fx)
             local Hazard = require("models.hazard")

@@ -25,6 +25,6 @@ return {
     type = "utility",
     tags = { "boots", "flying" },
     class = "rogue",
-    price = 520,
-    unlockQuests = 8,
+    price = 500,
+    unlockQuests = 7,
 }

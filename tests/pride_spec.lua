@@ -1,6 +1,6 @@
 -- The Arcanum line's two rules, read the two ways (docs/story.md, "The Arcanum": the mage answers pride
--- with humility). Sublimitas's Perfect Recall answers a spell aimed at her (data/traits/
--- trait_perfect_recall.lua); Gyeom's Diligence banks a little strength from every action and her Ledger
+-- with humility). Sublimitas's Counter Magic answers a spell aimed at her (data/traits/
+-- trait_counter_magic.lua); Gyeom's Diligence banks a little strength from every action and her Ledger
 -- releases it only once she has done her best four times over (data/traits/trait_ledger_diligence.lua,
 -- data/items/utility/utility_ledger.lua). Headless.
 
@@ -62,13 +62,15 @@ return {
         end,
     },
     {
-        name = "Perfect Recall: a spell aimed at Sublimitas is answered and unravelled; a sword is not",
+        name = "Sublimitas answers a spell aimed at her and unravels it; a sword is not",
         fn = function()
             local c = Combat.new(arena(6, 6),
                 { { char = Character.instantiate("character_general_pride"), x = 1, y = 1 } },
                 { { char = Character.instantiate("character_mage"), x = 2, y = 1 } })
             local sublimitas, caster = c.units[1], c.units[2]
-            assert(Trait.has(sublimitas, "trait_perfect_recall"), "Sublimitas carries her rule")
+            -- Counter Magic, not a Perfect Recall of its own: hers was a second trait identical but for
+            -- answering sooner and cheaper, and those two figures now ride on the codex.
+            assert(Trait.has(sublimitas, "trait_counter_magic"), "Sublimitas carries her rule")
 
             -- A sword is not something she can unweave.
             assert(not Trait.tryCounterMagic(c, sublimitas, caster, { "physical" }),

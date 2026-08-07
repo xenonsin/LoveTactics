@@ -24,7 +24,7 @@ return {
     tags = { "charm" },
     class = "hunter",
     discipline = "herbalist",
-    price = 400,
-    unlockQuests = 12,
+    price = 380,
+    unlockQuests = 5,
     traits = { "trait_cullers_kit" },
 }

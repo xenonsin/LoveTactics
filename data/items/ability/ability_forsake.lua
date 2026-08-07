@@ -13,8 +13,8 @@ return {
     type = "ability",
     tags = { "utility", "dark" },
     class = "mage",
-    price = 220,
-    unlockQuests = 1,
+    price = 200,
+    unlockQuests = 2,
     activeAbility = {
         target = "enemy",
         range = 5,

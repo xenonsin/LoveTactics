@@ -24,7 +24,7 @@ return {
     tags = { "longbow", "pierce", "physical", "ranged" },
     hands = 2, -- two-handed, like every bow -- and a longbow more literally than most
     class = "hunter",
-    price = 190,
+    price = 80,
     unlockQuests = 0, -- a family's base weapon is always rank 1 (docs/weapons.md)
     activeAbility = {
         target = "enemy",

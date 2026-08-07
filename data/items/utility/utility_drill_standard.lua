@@ -10,7 +10,7 @@ return {
     tags = { "banner" },
     class = "knight",
     discipline = "paladin", -- knight x priest; a banner is a Paladin or Warlord object (docs/classes.md)
-    price = 200,
-    unlockQuests = 2,
+    price = 320,
+    unlockQuests = 4,
     traits = { "trait_formation_fighter" },
 }

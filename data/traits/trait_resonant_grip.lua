@@ -15,5 +15,6 @@
 -- explain why it begins empty.
 return {
     name = "Resonant Grip",
+    description = "Your weapon strikes carry the element of whatever you last cast.",
     carriesLastElement = true,
 }

@@ -16,6 +16,7 @@
 -- constantly is a different item than the one this is meant to be.
 return {
     name = "Stripped Plate",
+    description = "Every body you Sunder leaves you wearing its plate: defense kept for the battle.",
     magnitude = 2, -- defense kept per body Sundered
     onStatusApplied = function(ctx)
         if ctx.role ~= "applier" then return end

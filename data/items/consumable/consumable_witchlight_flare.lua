@@ -33,7 +33,7 @@ return {
     -- same shape as the elemental coats being the Crucible's rather than a general good: the house
     -- that sells the trick sells the counter, and charges you for both.
     class = "rogue",
-    price = 90,
+    price = 30,
     unlockQuests = 0, -- opening shelf: every party should be able to carry one from the first night
     maxStack = 3,
     activeAbility = {

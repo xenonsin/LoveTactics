@@ -27,7 +27,7 @@ return {
     -- envy's own vocabulary twice over -- and it is the party-wide reading of the Mana Potion the same
     -- house already brews. Being FOOTWEAR rather than a flask is flavor, not a second craft.
     class = "alchemist",
-    price = 220,
+    price = 30,
     unlockQuests = 0, -- opening shelf: a two-caster party should be able to buy this on day one
     maxStack = 3,
     activeAbility = {

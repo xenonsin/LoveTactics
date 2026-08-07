@@ -14,6 +14,7 @@
 -- armour.
 return {
     name = "Battle Casting",
+    description = "Spells cost less while a foe is adjacent, and your weapon strikes hand a little mana back.",
     magnitude = 30, -- percent off a mana cost while a foe is adjacent
     cheaperInMelee = true,
     strikesRefundMana = true,

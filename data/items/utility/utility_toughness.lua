@@ -12,7 +12,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "fighter",
-    price = 220,
-    unlockQuests = 2,
+    price = 140,
+    unlockQuests = 1,
     maxBonus = { health = Curve.ramp(20) },
 }

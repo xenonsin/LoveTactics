@@ -14,8 +14,8 @@ return {
     type = "utility",
     tags = { "arcane" },
     class = "alchemist",
-    price = 200,
-    unlockQuests = 5,
+    price = 320,
+    unlockQuests = 4,
     aura = {
         appliesTo = { "consumable" }, -- only the throwables it sits beside
         rangeBonus = { 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2 },               -- added to the neighbor consumable's ability range

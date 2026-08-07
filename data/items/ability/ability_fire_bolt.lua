@@ -11,7 +11,7 @@ return {
     type = "ability",
     tags = { "fire", "magical" },
     class = "mage",
-    price = 150,
+    price = 80,
     unlockQuests = 0,
     activeAbility = {
         target = "enemy",

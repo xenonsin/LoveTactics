@@ -25,6 +25,19 @@ local function unit(charOrId, x, y)
     return { char = char, x = x, y = y }
 end
 
+-- A target with room to survive being hit. Every case below names a BEHAVIOUR -- does the shot root,
+-- does the mark bite, is the execute denied -- and a plain bandit now dies to the blow before the
+-- assertion can read the answer, so the case fails on lethality instead of on the thing it is about.
+-- Raising the dummy keeps it about what it says it is about; the magnitudes themselves are
+-- tests/balance_spec.lua's business, and pinning them here would be a second opinion that drifts.
+local function dummy(id, hp)
+    local char = Character.instantiate(id)
+    char.traits = {}
+    local h = char.stats.health
+    h.max, h.current = hp or 400, hp or 400
+    return char
+end
+
 -- A character with a clean 3x3 grid holding exactly `ids` in order (slots 1,2,3...), so a weapon and
 -- the ability that requires it adjacent land in neighbouring cells. Innate traits are cleared.
 local function withGrid(id, ids)
@@ -171,7 +184,7 @@ return {
 
             -- Above threshold: a heavy but survivable hit.
             local c2 = Combat.new(arena(8, 8), { unit(withGrid("character_bandit", { "weapon_iron_sword", "ability_coup_de_grace" }), 1, 1) },
-                { unit("character_bandit", 2, 1) })
+                { unit(dummy("character_bandit"), 2, 1) })
             local u2 = c2.units[1]
             local ab2 = itemOf(u2.char, "ability_coup_de_grace")
             local healthy = Combat.unitAt(c2, 2, 1)
@@ -186,11 +199,11 @@ return {
         name = "Coup de Grace never executes a boss",
         fn = function()
             local caster = withGrid("character_bandit", { "weapon_iron_sword", "ability_coup_de_grace" })
-            local c = Combat.new(arena(8, 8), { unit(caster, 1, 1) }, { unit("character_warlord", 2, 1) })
+            local c = Combat.new(arena(8, 8), { unit(caster, 1, 1) }, { unit(dummy("character_warlord"), 2, 1) })
             local u = c.units[1]
             local ab = itemOf(u.char, "ability_coup_de_grace")
             local boss = Combat.unitAt(c, 2, 1)
-            boss.char.stats.health.current = 10 -- deep in "execute" territory for a normal foe
+            boss.char.stats.health.current = 90 -- deep in "execute" territory for a normal foe
             openTurn(c, u)
             assert(Combat.useItem(c, u, ab, 2, 1), "the strike lands")
             assert(boss.alive, "a boss survives the finisher (execute is denied)")
@@ -246,7 +259,7 @@ return {
         name = "Pinning Shot roots the target; Hobbling Shot cripples it",
         fn = function()
             local pinner = withGrid("character_archer", { "weapon_iron_bow", "ability_pinning_shot" })
-            local c = Combat.new(arena(8, 8), { unit(pinner, 1, 1) }, { unit("character_bandit", 1, 4) })
+            local c = Combat.new(arena(8, 8), { unit(pinner, 1, 1) }, { unit(dummy("character_bandit"), 1, 4) })
             local u = c.units[1]
             u.char.stats.stamina.current = 40
             local ab = itemOf(u.char, "ability_pinning_shot")
@@ -258,7 +271,7 @@ return {
             assert(foe.char.stats.health.current < hp0, "and takes damage")
 
             local hobbler = withGrid("character_archer", { "weapon_iron_bow", "ability_hobbling_shot" })
-            local c2 = Combat.new(arena(8, 8), { unit(hobbler, 1, 1) }, { unit("character_bandit", 1, 4) })
+            local c2 = Combat.new(arena(8, 8), { unit(hobbler, 1, 1) }, { unit(dummy("character_bandit"), 1, 4) })
             local u2 = c2.units[1]
             u2.char.stats.stamina.current = 40
             local ab2 = itemOf(u2.char, "ability_hobbling_shot")
@@ -273,7 +286,7 @@ return {
         fn = function()
             local caster = withGrid("character_archer", { "ability_mark_target", "weapon_iron_bow", "ability_called_shot" })
             local c = Combat.new(arena(8, 8), { unit(caster, 1, 1) },
-                { unit("character_bandit", 1, 4), unit("character_bandit", 2, 4) })
+                { unit(dummy("character_bandit"), 1, 4), unit(dummy("character_bandit"), 2, 4) })
             local u = c.units[1]
             u.char.stats.stamina.current = 60
             local mark = itemOf(u.char, "ability_mark_target")

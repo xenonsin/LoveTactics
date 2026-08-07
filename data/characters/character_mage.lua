@@ -27,7 +27,7 @@ return {
     -- from the start (see fire_stone.lua). Summon Fire Elemental reserves a quarter of the deep mana pool
     -- for as long as the elemental stands.
     startingItems = {
-        "consumable_healing_potion", "ability_jolt",                  "armor_silk_robes",
+        "consumable_healing_potion", "ability_minor_shock",                  "armor_silk_robes",
         "weapon_parasitic_staff",    "ability_fireball",              "consumable_fire_stone",
         "ability_rain",              "ability_summon_fire_elemental", false,
     },

@@ -10,8 +10,8 @@ return {
     sprite = "assets/items/runed_plate.png",
     type = "armor",
     class = "knight",
-    price = 400,
-    unlockQuests = 6,
+    price = 500,
+    unlockQuests = 7,
     -- Heavy tier: trades a little raw steel for a genuine guard against magic.
     bonus = { defense = Curve.ramp(6, 16), magicDefense = Curve.ramp(3, 13), movement = -2 },
     resist = { physical = 3, magical = 3 },

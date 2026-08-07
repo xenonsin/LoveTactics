@@ -8,7 +8,7 @@ return {
     type = "consumable",
     tags = { "potion", "restorative" },
     class = "alchemist",
-    price = 35,
+    price = 30,
     -- OPENING SHELF. It sat at 1 for as long as the Cafe resold it un-gated, so the gate only ever
     -- decided which door a new player bought their first heal through, never whether they could. The
     -- Cafe sells suppers now (models/meal.lua), and a house whose own flavor line calls this "the

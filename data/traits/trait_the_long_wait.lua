@@ -14,5 +14,6 @@
 -- paint is worth.
 return {
     name = "The Long Wait",
+    description = "Your blows against a Rooted or Marked body cannot be answered.",
     unanswerableVsHeld = true,
 }

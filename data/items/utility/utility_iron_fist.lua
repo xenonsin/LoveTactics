@@ -13,7 +13,7 @@ return {
     tags = { "fist" },
     class = "priest",
     discipline = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
-    price = 180,
-    unlockQuests = 3,
+    price = 320,
+    unlockQuests = 4,
     unarmedBonus = { damage = Curve.ramp(4, 14) },
 }

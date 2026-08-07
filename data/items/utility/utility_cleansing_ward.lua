@@ -9,7 +9,7 @@ return {
     tags = { "ward" },
     class = "priest",
     discipline = "exorcist", -- deeper cut of the shelf: buyable only once the exorcist gate is cleared
-    price = 260,
-    unlockQuests = 4,
+    price = 380,
+    unlockQuests = 5,
     traits = { "trait_cleansing_ward" },
 }

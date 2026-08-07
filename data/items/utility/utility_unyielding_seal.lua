@@ -16,7 +16,7 @@ return {
     tags = { "charm" },
     class = "knight",
     discipline = "sentinel", -- deeper cut of the shelf: buyable only once the sentinel gate is cleared
-    price = 340,
-    unlockQuests = 7,
+    price = 380,
+    unlockQuests = 5,
     traits = { "trait_unyielding" },
 }

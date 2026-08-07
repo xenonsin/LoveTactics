@@ -236,7 +236,7 @@ return {
             -- (models/ai.lua), which would fail silently and leave her swinging into empty ground.
             local map = Fixture.new(8, 8)
             local her = Fixture.unit("character_saber", 4, 4)
-            local foe = Fixture.unit("character_bandit", 4, 6)
+            local foe = Fixture.unit("character_bandit", 4, 6, { stats = { health = 400 } })
             local combat = Fixture.combat(map, her, foe)
             local s, f = combat.units[1], combat.units[2]
             local bolas = Fixture.itemNamed(s.char, "ability_bolas")

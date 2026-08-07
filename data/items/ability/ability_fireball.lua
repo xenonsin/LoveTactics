@@ -8,8 +8,8 @@ return {
     type = "ability",
     tags = { "fire", "magical" }, -- the "magical" tag routes damage to magicDamage/magicDefense
     class = "mage",
-    price = 350,
-    unlockQuests = 6,
+    price = 680,
+    unlockQuests = 10,
     activeAbility = {
         -- Hurled at a CELL, not a single foe: aim it at any walkable tile in range -- empty ground,
         -- an enemy, or one of your own (allowOccupied) -- and it bursts there, sweeping everyone in
@@ -22,7 +22,7 @@ return {
         speed = 4, -- powerful but slow
         windup = 4, -- winds up before it lands: foes get several turns to leave the blast
         cost = { stat = "mana", amount = 12 },
-        damage = Curve.ramp(11, 21), -- per-target damage = power + the caster's MagicDamage, minus MagicDefense
+        damage = Curve.ramp(14, 24), -- per-target damage = power + the caster's MagicDamage, minus MagicDefense
         -- Bursts on impact: a 1-tile radius around the aimed cell, corners included (a 3x3 square).
         -- The targeting UI reads this to paint the affected tiles red before you commit.
         aoe = { radius = 1, shape = "square" },

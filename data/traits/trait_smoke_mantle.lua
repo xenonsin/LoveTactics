@@ -14,5 +14,6 @@
 -- (status_mark's `forbids`), so a hunter who paints the ninja shuts this off until the mark is cleansed.
 return {
     name = "Smoke Mantle",
+    description = "Draw no blood on a turn and you open the next one Invisible.",
     veilsWhenIdle = true,
 }

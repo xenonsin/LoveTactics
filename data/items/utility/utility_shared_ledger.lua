@@ -23,7 +23,7 @@ return {
     tags = { "charm" },
     class = "priest",
     discipline = "apothecary",
-    price = 420,
-    unlockQuests = 11,
+    price = 440,
+    unlockQuests = 6,
     traits = { "trait_shared_ledger" },
 }

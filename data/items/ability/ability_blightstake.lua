@@ -32,8 +32,8 @@ return {
     tags = { "poison" },
     class = "hunter",
     discipline = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
-    price = 340,
-    unlockQuests = 6,
+    price = 800,
+    unlockQuests = 12,
     activeAbility = {
         target = "tile",
         range = 4,

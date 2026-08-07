@@ -12,7 +12,7 @@ return {
     stats = {
         health = 18, mana = 0, stamina = 12,
         staminaRegen = 2,
-        damage = 5, magicDamage = 0,
+        damage = 10, magicDamage = 0,
         defense = 2, magicDefense = 3,
         movement = 4,
         speed = 5,

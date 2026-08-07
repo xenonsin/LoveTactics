@@ -22,15 +22,15 @@ return {
     type = "weapon",
     tags = { "wand", "magical", "fire", "ranged" },
     class = "mage",
-    price = 200,
-    unlockQuests = 1,
+    price = 440,
+    unlockQuests = 6,
     activeAbility = {
         target = "enemy",
         range = 3,
         requiresSight = true, -- a bolt needs a clear line, as every wand's does
         speed = 3,
         cost = { stat = "mana", amount = 5 },
-        damage = Curve.ramp(6, 16), -- under a plain wand's: the ground it leaves is the rest
+        damage = Curve.ramp(9, 19), -- under a plain wand's: the ground it leaves is the rest
         effect = function(fx)
             fx.damage(fx.target)
             -- The ember: ground that burns where the bolt struck. Scales off the item's level the way

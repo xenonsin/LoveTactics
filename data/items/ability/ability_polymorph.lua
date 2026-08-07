@@ -25,8 +25,8 @@ return {
     type = "ability",
     tags = { "arcane", "magical", "illusion", "utility" },
     class = "mage",
-    price = 380,
-    unlockQuests = 7,
+    price = 80,
+    unlockQuests = 0,
     activeAbility = {
         target = "enemy",
         range = 3,

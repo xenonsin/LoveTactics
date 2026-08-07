@@ -15,5 +15,6 @@
 -- is the threat, and warning them at the button would defuse it.
 return {
     name = "Dampening Oath",
+    description = "Enemy spells cast within three tiles of you cost double mana.",
     dampensNearbyCasts = true,
 }

@@ -14,7 +14,7 @@ return {
     hands = 1, -- one-handed: the sword's other half is the slot it leaves free for a shield
     traits = { "trait_parry" }, -- swords parry (docs/weapons.md): answer a melee blow with one of your own
     class = "knight", -- the sword is the Bastion's shelf: a blade that answers is a wall's argument (docs/classes.md)
-    price = 60,
+    price = 80,
     unlockQuests = 0,
     activeAbility = {
         target = "enemy",

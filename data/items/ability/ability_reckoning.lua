@@ -32,8 +32,8 @@ return {
     tags = { "holy", "impact" },
     class = "fighter",
     discipline = "crusader",
-    price = 380,
-    unlockQuests = 7,
+    price = 680,
+    unlockQuests = 10,
     -- Shallower than either crusader charm on purpose: the spender opens the pool, the charms deepen it
     -- (Combat.chargeDef merges -- highest max wins, `from` unions).
     charge = { key = "zeal", from = { "kill", "healDone" }, max = 5 },
@@ -42,7 +42,7 @@ return {
         range = 1,
         speed = 5,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(12, 22),
+        damage = Curve.ramp(13, 23),
         unlock = {
             when = function(unit) return require("models.combat").chargePool(unit, "zeal") >= 1 end,
             text = "Bank Zeal by felling and healing",

@@ -17,15 +17,15 @@ return {
     type = "ability",
     tags = { "pierce", "physical", "ranged" },
     class = "hunter",
-    price = 200,
-    unlockQuests = 2,
+    price = 620,
+    unlockQuests = 9,
     activeAbility = {
         target = "enemy",
         range = 4,
         requiresSight = true,
         speed = 3,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(7, 17), -- light: the mark is the payload, not the dart
+        damage = Curve.ramp(15, 25), -- light: the mark is the payload, not the dart
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_vulnerable_pierce" })
         end,

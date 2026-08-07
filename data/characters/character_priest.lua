@@ -32,14 +32,14 @@ return {
     -- on hit) and buys the family's real verb: walking smoke that Blesses whoever stays beside him. That
     -- is the more priestly bargain, and it makes mana upkeep a gear decision rather than a given.
     startingItems = {
-        "ability_heal",              "ability_jolt",     "armor_silk_robes",
+        "ability_heal",              "ability_minor_shock",     "armor_silk_robes",
         "consumable_healing_potion", "weapon_censer",    "utility_focus_stone",
         "ability_sanctuary",         false,              false,
     },
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so
     -- its range shows, and driving the basic click-to-use. Jolt (an offensive zap) keeps click-to-
     -- attack intuitive; the player can re-pin the heal or any other ability.
-    defaultAction = "ability_jolt",
+    defaultAction = "ability_minor_shock",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
     -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the
     -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.

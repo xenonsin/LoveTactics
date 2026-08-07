@@ -26,6 +26,17 @@ local function unit(charOrId, x, y)
     return { char = char, x = x, y = y }
 end
 
+-- A target with room to survive being hit. The cases that use it name a BEHAVIOUR -- does the bolt
+-- freeze, does the root stick -- and the ability roster has grown enough that a plain bandit now dies
+-- to the blow before the assertion can read the answer. Raising the dummy keeps the case about what it
+-- says it is about; the magnitudes themselves are tests/balance_spec.lua's business.
+local function tough(id, hp)
+    local char = Character.instantiate(id)
+    local h = char.stats.health
+    h.max, h.current = hp or 2000, hp or 2000
+    return char
+end
+
 local function openTurn(c, u)
     c.turn = { unit = u, moved = false, moveCost = 0 }
 end
@@ -264,7 +275,7 @@ return {
         name = "Blizzard damages and Freezes everyone in its blast",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) },
-                                              { unit("character_bandit", 5, 5), unit("character_bandit", 6, 5) })
+                                              { unit(tough("character_bandit"), 5, 5), unit(tough("character_bandit"), 6, 5) })
             local mage = c.units[1]
             local b1, b2 = c.units[2], c.units[3]
             local blizzard = Item.instantiate("ability_blizzard")
@@ -275,6 +286,41 @@ return {
             assert(Combat.resolveChannel(c, mage), "the wound-up blast lands on the cluster")
             assert(b1.char.stats.health.current < hp1, "the blast damaged a foe")
             assert(Status.has(b1, "status_freeze") and Status.has(b2, "status_freeze"), "both foes are Frozen")
+        end,
+    },
+    {
+        -- Jolt and Minor Shock are the same idea at two ends of the shelf: a bolt that steals the
+        -- target's next turn. Minor Shock teaches it in the prologue and is tuned to that script;
+        -- Jolt is what the idea is worth once it is graded rather than protected. What is asserted is
+        -- the RELATIONSHIP, not either magnitude -- both move with their slots, and pinning a number
+        -- here would be a second place the shelf ladder had to be maintained.
+        name = "Jolt is Minor Shock grown up: the same stun, on a bolt that actually hits",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) },
+                { unit(tough("character_bandit"), 1, 3), unit(tough("character_bandit"), 1, 4) })
+            local mage, a, b = c.units[1], c.units[2], c.units[3]
+            local jolt = Item.instantiate("ability_jolt")
+            local shock = Item.instantiate("ability_minor_shock")
+
+            -- Each stun is read the moment it lands. A stun is a clock effect, and the second cast
+            -- advances the clock past the first one's badge -- checking both at the end would be asking
+            -- whether the first stun was still running two casts later, which is a different question.
+            local hpA = a.char.stats.health.current
+            openTurn(c, mage)
+            assert(Combat.useItem(c, mage, jolt, 1, 3), "the jolt lands")
+            local jolted = hpA - a.char.stats.health.current
+            assert(Status.has(a, "status_stun"), "the jolt steals the target's next turn")
+
+            local hpB = b.char.stats.health.current
+            openTurn(c, mage)
+            mage.char.stats.mana.current = mage.char.stats.mana.max
+            assert(Combat.useItem(c, mage, shock, 1, 4), "the shock lands")
+            local shocked = hpB - b.char.stats.health.current
+            assert(Status.has(b, "status_stun"), "and so does the apprentice's version")
+            assert(jolted > shocked,
+                "Jolt hits harder than the apprentice's version (" .. jolted .. " vs " .. shocked .. ")")
+            assert((Item.defs.ability_jolt.unlockQuests or 0) > (Item.defs.ability_minor_shock.unlockQuests or 0),
+                "and it sits deeper on the shelf for it")
         end,
     },
     {

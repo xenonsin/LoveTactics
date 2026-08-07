@@ -30,7 +30,7 @@ return {
     class = "priest",
     discipline = "exorcist", -- Banish, turned inward -- it strips what is riding the body and lifts it out of reach
     price = 500,
-    unlockQuests = 12,
+    unlockQuests = 7,
     traits = { "trait_stayed_hand" },
     bonus = { magicDefense = Curve.ramp(1, 11) },
 }

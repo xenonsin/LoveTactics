@@ -4,36 +4,37 @@ local Curve = require("models.curve")
 
 return {
     name = "Jolt",
-    description = "Deals light damage and inflicts Stun.",
-    flavor = "An apprentice's first spell, and the first thing they overestimate.",
+    description = "Deals lightning damage and inflicts Stun.",
+    flavor = "The apprentice's shock, grown up: the same idea, with a storm behind it.",
     sprite = "assets/items/ability_jolt.png",
     type = "ability",
     tags = { "lightning", "magical" },
     class = "mage",
-    price = 90,
-    unlockQuests = 0,
+    price = 560,
+    unlockQuests = 8,
     activeAbility = {
         target = "enemy",
         range = 3,
         requiresSight = true, -- a bolt needs a clear line: terrain cover blocks it
-        -- Slower than a sword swing, and that is the price of what it buys. A Jolt does almost no
-        -- damage; what it sells is TEMPO -- ticks off the target's next turn -- and an ability that
-        -- hands you the initiative should cost some of your own to throw. (It is also what makes the
-        -- prologue's closing beat land: the caster comes back around just BEHIND the ally the stun
-        -- bought a turn for, so the ally swings first and the player still lands the last blow. See
-        -- data/tutorials/village.lua.)
+        -- Slower than a sword swing, and that is the price of what it buys: an ability that hands you
+        -- the initiative should cost some of your own to throw.
+        --
+        -- IT NO LONGER TEACHES THE PROLOGUE, and that is why it is allowed to hit. Jolt used to be both
+        -- the Arcanum's opening spell and the village lesson's teaching cast, so its weight answered to
+        -- the choreography instead of to the shelf -- a stun on a bolt is a large thing to carry, and
+        -- nothing could say so without breaking the lesson's closing beat. The lesson now has its own
+        -- spell (data/items/ability/ability_minor_shock.lua) with these numbers as they stood when the
+        -- prologue was written around them, and Jolt is graded for what it does.
         speed = 4,
         cost = { stat = "mana", amount = 5 },
-        damage = Curve.ramp(6, 16),
+        damage = Curve.ramp(12, 22),
         -- The delay, tuned on its own axis and upgraded on its own curve. It used to be read off the
-        -- damage roll, which quietly welded the spell's two halves together: a Jolt is DESIGNED to
-        -- barely hurt, so pinning the tempo it sells to how little it hurts capped the one thing it
-        -- is for. Worse, it made the number unauthorable -- the prologue's closing beat needs the
-        -- stun to buy two turns and nothing could say so without making the spell hit harder.
+        -- damage roll, which welded the spell's two halves together: pinning the tempo it sells to how
+        -- hard it hits capped the one thing it is really for.
         --
         -- Scales faster than the damage does, which is the point of the split: forging a Jolt should
-        -- buy TIME, not a better hit. Ten at base is what clears two party turns in the village
-        -- lesson (data/tutorials/village.lua's `pace`), where it is counted exactly.
+        -- buy TIME, not a better hit. That is what makes it worth its rung -- two thirds of a turn taken
+        -- off whoever it lands on, on top of a bolt that now hits like the shelf it sits on.
         stun = Curve.ramp(10),
         effect = function(fx)
             -- power + the caster's MagicDamage, minus MagicDefense. The stun rides the blow so it

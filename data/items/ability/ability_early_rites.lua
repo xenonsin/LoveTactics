@@ -31,8 +31,8 @@ return {
     tags = { "magical", "dark" },
     class = "mage",
     discipline = "necromancer", -- deeper cut of the shelf: buyable only once the necromancer gate is cleared
-    price = 480,
-    unlockQuests = 9,
+    price = 260,
+    unlockQuests = 3,
     activeAbility = {
         target = "enemy",
         range = 4,
