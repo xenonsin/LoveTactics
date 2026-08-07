@@ -299,29 +299,30 @@ function Arena.resolveRegion(name, layout)
     return {}
 end
 
--- How often (in ticks) a reach fight's synthesized endless reinforcement tops the board back up, and
--- how the trickle relates to the opening line (Arena.reachWaveFrom). A road you have to WALK across
--- can't be won by clearing the field, so fresh enemies keep coming until the escort actually arrives.
-Arena.REACH_WAVE_PERIOD = 12
+-- How often (in ticks) a synthesized endless reinforcement tops the board back up, and how the trickle
+-- relates to the opening line (pressureWave below). Two objectives are handed one, for the same reason:
+-- a road you have to WALK across can't be won by clearing the field, and neither can a clock you have
+-- to OUTLAST. Fresh enemies keep coming until the escort arrives or the duration runs out.
+Arena.PRESSURE_WAVE_PERIOD = 12
 
--- Build the endless reinforcement a reach objective fights against, drawn from the SAME roster the
--- opening line came from (`enemyIds`) so a demon road refills with demons and a forsworn ruin with
--- forsworn -- no per-encounter authoring, no hardcoded ids. `maxAlive` holds the recurrence at the
+-- Build the endless reinforcement a reach or survive objective fights against, drawn from the SAME
+-- roster the opening line came from (`enemyIds`) so a demon road refills with demons and a forsworn ruin
+-- with forsworn -- no per-encounter authoring, no hardcoded ids. `maxAlive` holds the recurrence at the
 -- opening strength (it tops up toward that count rather than piling on), and the trickle is half the
 -- opening line, rounded up, walking in from all sides so it threatens the column's flanks, not just
 -- its front. Returns nil when there is no roster to draw from (nothing to reinforce with).
-local function reachWave(enemyIds)
+local function pressureWave(enemyIds)
     if not enemyIds or #enemyIds == 0 then return nil end
     local trickle = {}
     for i = 1, math.max(1, math.ceil(#enemyIds / 2)) do trickle[i] = enemyIds[i] end
-    return { every = Arena.REACH_WAVE_PERIOD, composition = trickle,
+    return { every = Arena.PRESSURE_WAVE_PERIOD, composition = trickle,
              from = "surround", maxAlive = #enemyIds }
 end
 
 -- Copy the objective and, for the tile-based win types, stamp the ground onto it. Copied rather
 -- than mutated: `spec.objective` comes straight off an immutable quest blueprint, and writing
 -- resolved tiles into it would leak one run's board into the next (tests/quest_spec.lua pins that).
--- `enemyIds` is the resolved opening composition, the roster a synthesized reach wave draws from.
+-- `enemyIds` is the resolved opening composition, the roster a synthesized pressure wave draws from.
 local function normalizeObjective(obj, layout, enemyIds)
     if not obj or not obj.type then return { type = DEFAULT_OBJECTIVE.type } end
 
@@ -335,10 +336,17 @@ local function normalizeObjective(obj, layout, enemyIds)
     if out.type == "defend" and not out.tiles then
         out.tiles = Arena.resolveRegion(out.anchor or "center", layout)
     end
-    -- A reach fight gets endless reinforcements unless it authored its own waves: crossing has to
-    -- stay a race under pressure, never a stroll across a board you already emptied.
-    if out.type == "reach" and not out.waves then
-        local wave = reachWave(enemyIds)
+    -- A `reach` or a `survive` fight gets endless reinforcements unless it authored its own waves.
+    -- Crossing has to stay a race under pressure, never a stroll across a board you already emptied --
+    -- and outlasting has to stay a HOLD-OUT. A survive whose opening line can simply be killed is not a
+    -- survive at all: it is a killAll wearing a stopwatch, and the wood that nearly swallowed you is a
+    -- wood you cleared in nine ticks. The tide is what the duration is a duration OF.
+    --
+    -- An author who wants a finite one says so with an explicit `waves` list (even an empty one), and
+    -- then clearing the last of them ends the fight rather than running the clock out on bare ground
+    -- (Combat.outcomeFor's survive branch).
+    if (out.type == "reach" or out.type == "survive") and not out.waves then
+        local wave = pressureWave(enemyIds)
         if wave then out.waves = { wave } end
     end
     return out

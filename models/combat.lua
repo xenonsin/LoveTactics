@@ -10260,11 +10260,13 @@ function Combat.outcomeFor(combat, side)
         if combat.clock >= (obj.duration or math.huge) then return "win" end
         -- ...or once there is nothing left to outlast. A cleared board with every reinforcement already
         -- spent means the fight is decided and the remaining ticks are dead air -- the player would be
-        -- pressing Wait on an empty field to satisfy a clock that no longer measures anything. The wave
-        -- clause is what keeps that from ending the fight in the lull before the next muster; the muster
-        -- itself is pulled forward on a cleared board rather than made to wait (states/battle.lua
-        -- spawnWaves), so a waved survive answers an emptied field with more demons and an unwaved one
-        -- answers it by being over.
+        -- pressing Wait on an empty field to satisfy a clock that no longer measures anything.
+        --
+        -- Rarely the ending that fires, and deliberately: a survive is dealt an ENDLESS tide by default
+        -- (Arena.normalizeObjective), and an uncapped recurrence is never spent, so the ordinary fight is
+        -- won on the clock with demons still walking in. This branch is what the opt-out lands on -- an
+        -- authored `waves` list that runs dry, or an explicit empty one -- plus the lull inside any
+        -- finite tide, which spawnWaves answers by pulling the next muster forward instead of waiting.
         if Combat.eliminated(combat, foe) and Combat.allWavesArrived(combat, obj) then return "win" end
         return nil
     elseif obj.type == "defend" then

@@ -108,14 +108,14 @@ return {
             local waves = arena.objective.waves
             assert(waves and #waves == 1, "a reach fight should carry one synthesized wave")
             local w = waves[1]
-            assert(w.every == Arena.REACH_WAVE_PERIOD, "the wave recurs on the reach cadence")
+            assert(w.every == Arena.PRESSURE_WAVE_PERIOD, "the wave recurs on the pressure cadence")
             assert(w.maxAlive == 4, "it tops the board up toward the opening strength of four")
             assert(#w.composition == 2, "the trickle is half the opening line, rounded up")
             assert(w.composition[1] == "character_bandit", "drawn from the encounter's own roster")
         end,
     },
     {
-        name = "an authored reach wave is left alone, and non-reach fights get none",
+        name = "an authored wave list is left alone, and a killAll gets none",
         fn = function()
             local authored = { { at = 5, composition = { "character_bandit" } } }
             local reach = Arena.build({}, {
@@ -128,7 +128,34 @@ return {
                 party = { "character_rowan" }, composition = function() return { "character_bandit" } end,
                 objective = { type = "killAll" }, seed = 4,
             })
-            assert(kill.objective.waves == nil, "only reach fights get the endless-wave default")
+            assert(kill.objective.waves == nil,
+                "only the two pressure objectives get the endless-wave default")
+        end,
+    },
+    {
+        -- A survive whose opening line can be killed is a killAll wearing a stopwatch. The tide is what
+        -- the duration is a duration OF, so the same endless reinforcement a reach fight gets is handed
+        -- to a survive -- and an author who wants a finite one opts out with an explicit `waves` list.
+        name = "a survive is dealt the same endless tide, and can opt out of it",
+        fn = function()
+            local arena = Arena.build({}, {
+                party = { "character_rowan" },
+                composition = function() return { "character_wolf_grunt", "character_wolf_grunt" } end,
+                objective = { type = "survive", duration = 36 }, seed = 5,
+            })
+            local w = arena.objective.waves and arena.objective.waves[1]
+            assert(w, "a survive fight should carry a synthesized wave")
+            assert(w.every == Arena.PRESSURE_WAVE_PERIOD, "it recurs rather than firing once")
+            assert(w.count == nil, "and it is uncapped -- the tide does not run out")
+            assert(w.maxAlive == 2, "topping the board up toward the opening strength")
+            assert(w.composition[1] == "character_wolf_grunt", "drawn from the wood's own roster")
+
+            local finite = Arena.build({}, {
+                party = { "character_rowan" },
+                composition = function() return { "character_wolf_grunt" } end,
+                objective = { type = "survive", duration = 36, waves = {} }, seed = 5,
+            })
+            assert(#finite.objective.waves == 0, "an explicit empty list is an opt-out, not an absence")
         end,
     },
     {

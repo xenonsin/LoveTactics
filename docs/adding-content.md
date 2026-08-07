@@ -722,13 +722,18 @@ objective = {
 
 Encounters without a `composition` fall back to a single generic foe.
 
-A `survive` fight ends **two** ways: the clock reaching its `duration`, or the board being cleared with
-no reinforcement still owed. The second exists because the first, alone, leaves the player pressing
-Wait at an empty field for the balance of the duration — a clock that no longer measures anything.
-Give the objective reinforcement `waves` (`{ at = <tick>, composition = ..., from = <edge> }`, as
-`data/encounters/encounter_survivors_defend.lua` does) if the fight should *keep* pressing: a cleared board pulls
-the next muster forward to one turn out rather than letting it wait for its authored tick, so a waved
-survive answers an emptied field with more of them and an unwaved one answers it by being over.
+A `survive` fight is **a hold-out, not a stopwatch over a board you can empty.** It is dealt an endless
+reinforcement automatically — half its own opening line, from all sides, every
+`Arena.PRESSURE_WAVE_PERIOD` ticks, capped by `maxAlive` at the opening strength, exactly as a `reach`
+fight is — so killing what is in front of you is never the end of it. The duration is what you outlast;
+the tide is what you outlast *through*.
+
+It can still end early, two ways. Clearing the board with no reinforcement still owed is a win (nobody
+should press Wait at an empty field to satisfy a clock that has stopped measuring anything), and a
+cleared board with a wave still pending pulls that muster **forward** to one turn out rather than
+letting it sit on its tick. Both matter only for a *finite* tide, which you get by authoring `waves`
+yourself (`{ at = <tick>, composition = ..., from = <edge> }`, as
+`data/encounters/encounter_survivors_defend.lua` does) — or `waves = {}` for none at all.
 
 ## Escort missions: allies and `protect`
 
