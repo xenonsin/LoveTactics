@@ -2,7 +2,7 @@
 -- with mana back in the pool -- the pot the counter keeps topping up, all the way out and back.
 --
 -- MANA DOES NOT REGENERATE IN THIS GAME. That is the hard rule the whole caster economy is built on
--- (see data/items/consumable/consumable_wellspring_sandals.lua), and it is what makes this the single
+-- (see data/items/utility/utility_wellspring_sandals.lua), and it is what makes this the single
 -- most valuable thing a supper can do for a party with two casters in it: wounds carry between the
 -- fights of a run, and so does a spent mana pool. A mage who arrives at the objective empty has been
 -- out of the fight since the third node.

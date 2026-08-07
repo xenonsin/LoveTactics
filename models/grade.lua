@@ -1145,7 +1145,7 @@ Grade.SLOT_PINS = {
     utility_boots_of_speed = { at = 0, why = "a rehomed general good" },
     utility_stormglass_rod = { at = 0, why = "a rehomed general good" },
     consumable_witchlight_flare = { at = 0, why = "a rehomed general good" },
-    consumable_wellspring_sandals = { at = 0, why = "a rehomed general good" },
+    utility_wellspring_sandals = { at = 0, why = "a rehomed general good" },
     -- The resale rack is gone, so exactly one shelf sells the commonest thing in the game, and it sells
     -- it from the first visit.
     consumable_healing_potion = { at = 0, why = "the Crucible's steadiest seller, and nowhere else now" },

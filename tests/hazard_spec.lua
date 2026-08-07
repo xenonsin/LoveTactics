@@ -234,6 +234,94 @@ return {
         end,
     },
     {
+        name = "Wellspring Sandals fill every tile LEFT with mana, and the ally who steps in drinks that print dry",
+        fn = function()
+            local c = Combat.new(arena(8, 8),
+                { unit("character_rowan", 4, 4), unit("character_mage", 7, 7) },
+                { unit("character_bandit", 8, 8) })
+            local wearer, mage, bandit = c.units[1], c.units[2], c.units[3]
+            Character.addItem(wearer.char, Item.instantiate("utility_wellspring_sandals"))
+            mage.char.stats.mana.current = 0 -- a caster who has spent its battle
+            wearer.char.stats.mana.current = 0 -- ...and so has the wearer, so a drink would show
+            openTurn(c, wearer)
+
+            assert(Combat.moveUnit(c, wearer, 2, 4), "the wearer walks two tiles west")
+            assert(Hazard.at(c, 4, 4, "hazard_wellspring"), "the tile it set off from fills")
+            assert(Hazard.at(c, 3, 4, "hazard_wellspring"), "and the tile it crossed en route")
+            assert(not Hazard.at(c, 2, 4, "hazard_wellspring"),
+                "but NOT the tile it stands on -- a trail is laid behind, which is why the wearer never drinks")
+            assert(wearer.char.stats.mana.current == 0,
+                "and the wearer gains nothing from its own wake: there is no second Arcane Reservoir here")
+
+            -- The company follows the wake, and the print is a single mouthful.
+            openTurn(c, mage)
+            mage.x, mage.y = 3, 3
+            assert(Combat.moveUnit(c, mage, 3, 4), "the mage steps into the print behind the wearer")
+            assert(mage.char.stats.mana.current == 8, "and drinks the 8 mana the sandals left in it")
+            assert(not Hazard.at(c, 3, 4, "hazard_wellspring"), "the print is spent by the body that drank it")
+            assert(Hazard.at(c, 4, 4, "hazard_wellspring"), "the next one along is untouched and still waiting")
+
+            -- Sided with the wearer, exactly as Pilgrim's Sandals lays its hallowed ground.
+            openTurn(c, bandit)
+            bandit.x, bandit.y = 4, 3
+            assert(Combat.moveUnit(c, bandit, 4, 4), "the bandit follows the party down its own footsteps")
+            assert(Hazard.at(c, 4, 4, "hazard_wellspring"), "a foe drinks nothing, and leaves the print standing")
+        end,
+    },
+    {
+        name = "a body with no mana walks the wellspring without spending it -- the front rank crosses first",
+        fn = function()
+            -- The case that decides whether the item works at all: the party has no way to reserve a
+            -- tile, so the mana-less front rank is always first through the wearer's wake. A Bastion
+            -- Sworn is a real one (`mana = 0` in its blueprint, like most of the game's soldiery).
+            local c = Combat.new(arena(8, 8),
+                { unit("character_rowan", 4, 4), unit("character_bastion_sworn", 6, 4),
+                  unit("character_mage", 7, 7) }, {})
+            local wearer, sworn, mage = c.units[1], c.units[2], c.units[3]
+            Character.addItem(wearer.char, Item.instantiate("utility_wellspring_sandals"))
+            mage.char.stats.mana.current = 0
+            openTurn(c, wearer)
+            assert(Combat.moveUnit(c, wearer, 3, 4), "the wearer takes a step and leaves a print at (4,4)")
+            assert(Hazard.at(c, 4, 4, "hazard_wellspring"), "the print is laid")
+
+            openTurn(c, sworn)
+            sworn.x, sworn.y = 4, 5
+            -- Through the print and onward, which is what a front-liner actually does: it does not
+            -- stop on the tile, it crosses it to reach the line.
+            assert(Combat.moveUnit(c, sworn, 4, 3), "the soldier crosses it on the way to the front")
+            assert((sworn.char.stats.mana.current or 0) == 0, "a zero pool takes nothing")
+            assert(Hazard.at(c, 4, 4, "hazard_wellspring"),
+                "so the print stands, and is still there for the caster coming up behind")
+
+            openTurn(c, mage)
+            mage.x, mage.y = 5, 4
+            assert(Combat.moveUnit(c, mage, 4, 4), "the mage arrives a beat later")
+            assert(mage.char.stats.mana.current == 8, "and gets the drink the soldier could not take")
+        end,
+    },
+    {
+        name = "a wellspring never MINTS a mana pool on a body that has none, which would eat the print too",
+        fn = function()
+            -- Combat.restoreResource treats a missing stat as a plain number and adds to it, so a body
+            -- with no `mana` key at all would come out of a print carrying `mana = 8` -- a pool it has
+            -- no maximum for, no UI row for, and no business having -- and would report a drink, which
+            -- spends the print. The one line in hazard_wellspring's onEnter that stops it.
+            local c = Combat.new(arena(8, 8),
+                { unit("character_rowan", 4, 4), unit("character_bandit", 6, 4) }, {})
+            local wearer, poolless = c.units[1], c.units[2]
+            Character.addItem(wearer.char, Item.instantiate("utility_wellspring_sandals"))
+            poolless.char.stats.mana = nil -- no pool at all, not an empty one
+            openTurn(c, wearer)
+            assert(Combat.moveUnit(c, wearer, 3, 4), "the wearer leaves a print at (4,4)")
+
+            openTurn(c, poolless)
+            poolless.x, poolless.y = 4, 5
+            assert(Combat.moveUnit(c, poolless, 4, 4), "the mana-less body walks through it")
+            assert(poolless.char.stats.mana == nil, "and no mana was conjured onto it")
+            assert(Hazard.at(c, 4, 4, "hazard_wellspring"), "nor was the print spent by a body that could not drink")
+        end,
+    },
+    {
         name = "Cinderstride Boots burn the tile behind them, leaving the wearer a step ahead of its own fire",
         fn = function()
             -- A knight rather than the mage whose shelf sells these: the mage's nine starting slots are

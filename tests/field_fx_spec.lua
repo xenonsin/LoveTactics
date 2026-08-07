@@ -70,6 +70,14 @@ return {
             -- threat, and not a heal.
             assert(FieldFx.hazardCategory(haz("hazard_muster", "party")) == "buff_ally",
                 "muster reads as your buff, not a threat")
+
+            -- A refilled POOL is not a closed wound: the Wellspring Sandals' print pours mana and reads
+            -- as a buff, not as a heal. hazardHeals dry-runs the zone and looks for health specifically,
+            -- which is what keeps the blue heal look meaning one thing.
+            assert(FieldFx.hazardCategory(haz("hazard_wellspring", "party")) == "buff_ally",
+                "a wellspring is your buff -- it fills a pool, it does not heal")
+            assert(FieldFx.hazardCategory(haz("hazard_wellspring", "enemy")) == "buff_enemy",
+                "and theirs is red like any other buff you cannot use")
         end,
     },
     {

@@ -244,9 +244,10 @@ Two things about that belong in *this* file, because they are shelf rules rather
 - **The five classless wares were given houses.** `utility_torch` → hunter (gluttony's vocabulary is
   knowing what is out there first, and a torch is the crudest instrument of it); `utility_boots_of_speed`
   → rogue (greed already owns every other boot that buys a square); `utility_stormglass_rod` → mage;
-  `consumable_wellspring_sandals` → alchemist (a `consumesItem` stack that hands somebody else a
-  resource back is envy twice over, and it is the party-wide reading of the Mana Potion the same house
-  brews). `consumable_witchlight_flare` went to rogue in the same pass, on the argument that greed owns
+  `utility_wellspring_sandals` → alchemist (the party-wide reading of the Mana Potion the same house
+  brews, and lending out a pool you are not casting from yourself is envy's own sentence — it was a
+  `consumesItem` stack when it was rehomed, and stayed put when the stack became a `trail`).
+  `consumable_witchlight_flare` went to rogue in the same pass, on the argument that greed owns
   the hiding the flare answers, and has since moved to **alchemist**: a twist of ground glass thrown
   once to leave a hazard on the floor is a thing a house brews, and the mixing bench beat the
   nice line about a house selling the counter to its own trick. All five sit at `unlockQuests = 0`,

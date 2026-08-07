@@ -139,7 +139,6 @@ return {
     "consumable_stamina_potion",
     "consumable_throwing_stone",
     "consumable_watchpost_draught",
-    "consumable_wellspring_sandals",
     "consumable_wildcraft_poultice",
     "consumable_wine",
     "utility_aegis_of_the_oath",

@@ -123,6 +123,21 @@ local function ctxFor(combat, hazard, unit)
             if not tgt then return 0 end
             return Combat.applyHeal(combat, tgt, amount)
         end,
+        -- Pour a RESOURCE back -- mana, stamina -- rather than health. The peer of `heal` above, and
+        -- deliberately not folded into it: healing is a wound closing and this is a pool refilling, and
+        -- ui/field_fx.lua's hazardHeals reads the difference to decide whether a friendly zone is
+        -- coloured as a heal or as a buff. Returns what was actually restored (0 for a full pool), which
+        -- is what lets a zone tell "somebody drank" from "somebody walked through with nothing to gain".
+        restore = function(tgt, stat, amount)
+            if not tgt then return 0 end
+            return Combat.restoreResource(tgt.char, stat, amount)
+        end,
+        -- End this zone NOW, from inside its own onEnter: the tile is spent by the body standing on it.
+        -- Expiry, a dead owner and a douse all remove ground on a clock or on somebody else's action;
+        -- this is the one that fires because the ground DID its job -- a footprint holding a single
+        -- mouthful (data/hazards/hazard_wellspring.lua). The zone-bound statuses it was granting are
+        -- left alone here and unwind through Hazard.reap a beat later, exactly as they do on expiry.
+        consume = function() Hazard.consume(combat, hazard) end,
         damage = function(tgt, amount, tags)
             if not tgt then return 0 end
             -- A SUMMON whose summoner carries the Ancestor Mask takes nothing from ground: a spirit is
@@ -334,6 +349,36 @@ function Hazard.dropOwnedBy(combat, owner, id)
     return n
 end
 
+-- Spend one zone outright -- the ground did what it was laid to do and is gone. Called from a def's
+-- own onEnter through `ctx.consume`, so a hazard can be a ONE-SHOT: a footprint holding a single
+-- mouthful of mana is drunk by the ally who steps in it and is not there for the next one
+-- (data/hazards/hazard_wellspring.lua). Without it every friendly zone is a fountain that pays out
+-- afresh on every crossing, and a wearer pacing back and forth over their own wake would print
+-- unbounded resource.
+--
+-- Safe to call from inside onEnter: Hazard.onEnter iterates a COPY of the tile's zones (Hazard.allAt
+-- builds a fresh list), and the other two onEnter callers each fire against a single zone, so nothing
+-- is walking `combat.hazards` when this splices out of it.
+--
+-- Removes only the ZONE, exactly as Hazard.dropOwnedBy does: whatever it was granting unwinds by the
+-- ordinary rule when Hazard.reap next finds no live ground under its bearer. Returns true if a live
+-- zone was actually taken (false for one already gone, so a double-consume is inert rather than an
+-- error). `onExpire` fires: from the def's point of view being drunk and running out are the same end.
+function Hazard.consume(combat, hazard)
+    if not (combat and hazard and hazard.alive) then return false end
+    local list = combat.hazards
+    if not list then return false end
+    for i = #list, 1, -1 do
+        if list[i] == hazard then
+            hazard.alive = false
+            table.remove(list, i)
+            if hazard.def.onExpire then hazard.def.onExpire(ctxFor(combat, hazard, nil)) end
+            return true
+        end
+    end
+    return false
+end
+
 -- Carry every zone `owner` holds open along with it: shift each of its hazards by (dx, dy), the same
 -- delta the owner just travelled. The ground a body holds open is held open WHERE THAT BODY IS -- so a
 -- banner heaved across the field takes its rally square with it, and does not leave a live 3x3 blessing
@@ -514,12 +559,17 @@ end
 -- WITHOUT a real combat. Mirrors Trap.preview: the hazard's own effect is the source of truth, so the
 -- inventory tooltip can describe a Sanctuary or a Fire without duplicating its numbers. The stand-in
 -- counts as an ally so a side-gated hazard (Sanctuary) still fires. pcall-guarded against a data quirk.
--- Returns { heal, damage, statuses = { { id, def, magnitude } } }, or nil for an unknown id.
+-- Returns { heal, damage, restore = { [stat] = n }, statuses = { { id, def, magnitude } } }, or nil for
+-- an unknown id.
+--
+-- INERT IS NOT ZERO, the same rule an ability's dry run obeys: `restore` reports what a pool WOULD be
+-- given and `consume` answers as though the zone were really spent, so a one-shot zone describes itself
+-- honestly instead of reading as a hazard that does nothing.
 function Hazard.preview(id, amount)
     local def = Hazard.defs[id]
     if not def then return nil end
     local Status = require("models.status")
-    local out = { heal = 0, damage = 0, statuses = {} }
+    local out = { heal = 0, damage = 0, restore = {}, statuses = {} }
     local unit = { alive = true, side = "party", char = { name = "ally" } }
     local ctx = {
         combat = nil,
@@ -533,7 +583,13 @@ function Hazard.preview(id, amount)
             return nil
         end,
         heal = function(_, a) out.heal = out.heal + (a or 0); return a or 0 end,
+        restore = function(_, stat, a)
+            if not stat then return 0 end
+            out.restore[stat] = (out.restore[stat] or 0) + (a or 0)
+            return a or 0
+        end,
         damage = function(_, a) out.damage = out.damage + (a or 0); return a or 0 end,
+        consume = function() return true end,
         unitsNear = function() return { unit } end,
         isAlly = function() return true end,
     }

@@ -817,7 +817,7 @@ local function ctxFor(combat, unit, trait, event)
         -- returning what actually landed. Deliberately not `heal` when the resource is health -- a heal
         -- is a heal somebody performed, logged and answerable; this is a pool topping itself up (the
         -- Cafe's Bottomless Pot opening each battle with mana back, which matters precisely because
-        -- mana never regenerates on its own -- see data/items/consumable/consumable_wellspring_sandals).
+        -- mana never regenerates on its own -- see data/items/utility/utility_wellspring_sandals.lua).
         restore = function(tgt, stat, amount)
             if not tgt then return 0 end
             return Combat.restoreResource(tgt.char, stat, amount)
