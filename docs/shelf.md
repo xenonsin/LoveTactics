@@ -158,9 +158,18 @@ tell them apart.
 | **ordering** | the Mammonite earners and spenders | its gate sits between the halves |
 | **legality** | `armor_iron_plate` | its resist bag only fits the cap from slot 7 up |
 | **hand-placed** | items the dry run cannot see | a human supplying the missing information |
+| **reach** | `ability_polymorph` | what the verb *is*, not what it is worth |
 
 Read the anchors off `Balance` rather than typing them, so the pin list and the magnitude ladder can
 never name different items.
+
+The last row is the only one that overrules a grade the tool can read perfectly well, so it carries the
+heaviest burden of proof. Polymorph takes a body out of the fight outright, deterministically, with no
+roll to survive — and *when a line hands that verb over* is a question about the shape of the line
+rather than about power. Note what it is not: it is not a correction to a number. The number was
+wrong too, and that was fixed where it was wrong — `status_polymorph` had no authored weight, so the
+grader could only see the two flags the badge carries and read the strongest removal spell on the
+shelf at half a turn. Fixing the misread moved it five rungs on merit; the pin holds the sixth.
 
 ### Pin the anchors before the first apply
 

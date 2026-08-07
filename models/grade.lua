@@ -146,6 +146,15 @@ Grade.REVIVE_TURNS = 3.5
 Grade.STATUS_GRADE = {
     -- Control: the turn belongs to somebody else now.
     status_charm = 2.2,          -- it fights for you: their turn denied and yours gained
+    -- A pig, for the twelve ticks it lasts. The disable is not in any field and cannot be: what the
+    -- victim loses is everything data/characters/character_pig.lua does not have, which is items and
+    -- fangs. The derivation saw only the two flags the badge does carry (a channel dropped, reactions
+    -- off) and read the strongest removal spell on the shelf at half a turn -- second-worst item in the
+    -- Arcanum. Valued instead at STATUS_TURNS.disablesActions for every turn it covers, because that is
+    -- exactly what it is: 12 ticks is 2.4 turns in which the body can walk and do nothing else.
+    -- Balance.MAGNITUDE_WAIVERS already says the same thing from the other end -- the Swineherd's Wand
+    -- is excused its damage because "polymorph removes the body from the fight outright".
+    status_polymorph = 2.4,
     status_taunt = 1.3,          -- must swing at the taunter, wherever that leaves it
     status_knell = 3.0,          -- a kill on a clock, if the clock is allowed to run out
     status_downed = 2.5,         -- a body off the board, short of a corpse
@@ -1146,6 +1155,13 @@ Grade.SLOT_PINS = {
     -- correctly already, so they keep their slots and stay out of the spread.
     ability_collapse = { at = 3, why = "blind to the dry run: placed by hand" },
     ability_understudy = { at = 3, why = "blind to the dry run: placed by hand" },
+
+    -- PLACED BY HAND for a different reason: the grade can see this one perfectly well now. Polymorph
+    -- read at half a turn until status_polymorph carried an authored weight (the pig's emptiness is not
+    -- a field), and on merit it ranks a rung below this. The last rung is the author's, and the thing it
+    -- is protecting is not power but reach: taking a body out of the fight outright, deterministically,
+    -- with no roll to survive, is not a verb the Arcanum hands over in its first half.
+    ability_polymorph = { at = 6, why = "removing a body outright is not opened in the line's first half" },
 
     -- HEAVY ARMOUR NEEDS A DEEP ENOUGH RUNG TO BE LEGAL ON. Balance.ARMOR_SHARE caps one piece at 40%
     -- of the attack budget AT ITS OWN SLOT, and the iron plate's resist bag (physical 4, slash 4,
