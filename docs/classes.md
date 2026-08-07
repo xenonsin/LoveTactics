@@ -553,7 +553,7 @@ Two rules the pool inherits from chi, and one it added:
   and driving it down the lane — and it has an `fx.charge` of its own. The pool took the longer name
   rather than shadow a working function.
 - **A pool banks from a tally, never from carrying one particular weapon.** Zeal takes any kill and any
-  nearby mend, so a Crusader who spent the fight healing still arrives at the payoff — the pool is the
+  nearby heal, so a Crusader who spent the fight healing still arrives at the payoff — the pool is the
   discipline's, not one item's admission fee. This is why `from` is a list.
 - **A spender declares the pool it spends.** An ability that consumes Zeal banks Zeal, off the same
   tally its `unlock.text` names — buy it, equip it, and the mechanic works. The first three spenders

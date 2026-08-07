@@ -205,7 +205,7 @@ local BLOCKED_WORDS = {
     --   `finish-line`         took BOTH Ley Line and Sapper's Line, on a word this game means
     --                         geometrically ("a line of charges") and never as a race
     --   `relationship-bounds` took Beat the Bounds -- a parish boundary, not a modern therapy chart
-    --   `first-aid-kit`       took the Culler's Kit, which is for butchering rather than mending
+    --   `first-aid-kit`       took the Culler's Kit, which is for butchering rather than healing
     oil = true, finish = true, relationship = true, aid = true,
 }
 

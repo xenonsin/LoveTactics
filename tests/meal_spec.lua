@@ -273,7 +273,7 @@ return {
             assert(Trait.liveBonus(unit, "magicDamage") == 6, "for casters too")
             -- Live means it falls back down again; a banked version would not.
             unit.char.stats.health.current = max
-            assert(Trait.liveBonus(unit, "damage") == 0, "mend them and the edge goes with it")
+            assert(Trait.liveBonus(unit, "damage") == 0, "heal them and the edge goes with it")
         end,
     },
     {

@@ -1,7 +1,7 @@
 -- Slot 8 of the Crucible's ten: the break, and the hardest beat to write in the line.
 --
 -- Ren's virtue is kindness read mechanically: she grants others' power instead of coveting it -- she
--- gilds, lifts, mends, and compresses the party upward (docs/story.md, "Ren, the honest alchemist").
+-- gilds, lifts, heals, and compresses the party upward (docs/story.md, "Ren, the honest alchemist").
 -- Her failure mode is the one every giver has: she gives REFLEXIVELY, which is not generosity, it is a
 -- way of never being owed anything and never being seen. Six quests of handing things out have left
 -- her with nothing of her own and nobody allowed to do anything for her.

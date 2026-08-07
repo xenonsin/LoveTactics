@@ -1,5 +1,5 @@
 -- Smite: the priest half of the Crusader (fighter x priest). A holy blow that leaves the ground it lands
--- on consecrated (data/hazards/hazard_heal.lua) -- allies who hold the tile mend, and the hazard knows
+-- on consecrated (data/hazards/hazard_heal.lua) -- allies who hold the tile heal, and the hazard knows
 -- whose side it is on. Keeps the name the shelf always wanted; the priest's answer is a ZONE, not a
 -- heal-on-kill. Carries `holy`, so demonic flesh takes far more (utility_demonic_essence.lua).
 local Curve = require("models.curve")

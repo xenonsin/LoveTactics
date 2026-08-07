@@ -1,6 +1,6 @@
--- Unclosing Wound: the cut will not knit. Nothing mends this body while it holds -- not a spell, not
+-- Unclosing Wound: the cut will not knit. Nothing heals this body while it holds -- not a spell, not
 -- a potion, not a Regeneration tick, not a lifesteal drink, not the priest's Sanctified Presence.
--- Combat.applyHeal refuses at the top, which is the single funnel every mend in the game runs through,
+-- Combat.applyHeal refuses at the top, which is the single funnel every heal in the game runs through,
 -- so one flag closes all of them at once and none of them can route around it.
 --
 -- THE GAP IT FILLS. Every other debuff in this catalog makes a body take more or do less. None of them

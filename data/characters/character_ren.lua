@@ -12,7 +12,7 @@
 --
 -- HER VIRTUE IS A CLEAN MECHANICAL INVERSION of Livia: the general copies your strongest onto HERSELF;
 -- Ren copies your strongest onto your own side, a gift, keeping nothing (data/items/utility/utility_aqua_vitae.lua).
--- Envy levels down, kindness levels up. Her kit is giving made mechanical: Heal to mend (which also charges
+-- Envy levels down, kindness levels up. Her kit is giving made mechanical: Heal at range (which also charges
 -- the Aqua Vitae's GIVEN tally), a panacea for the party, and the Aqua Vitae in the center.
 --
 -- `boss = true` gives the recruit fight its integrity (immune to execute + Charm); best her and she is
@@ -30,7 +30,7 @@ return {
     class = "alchemist",
     boss = true,
     overworldAbility = "aqua_vitae", -- kindness: each side-win distils a dose, poured into the party at the boss
-    archetype = "support", -- she mends before she strikes (models/ai.lua)
+    archetype = "support", -- she heals before she strikes (models/ai.lua)
     stats = {
         health = 60, mana = 46, stamina = 11,
         staminaRegen = 2,
@@ -40,7 +40,7 @@ return {
         speed = 3,
     },
     -- The 3x3 loadout grid (row-major); false = an empty cell. The Aqua Vitae is the build-around in the
-    -- center; Heal beside it is what charges it (every mend is a GIVEN), and the panacea is one more gift.
+    -- center; Heal beside it is what charges it (every heal is a GIVEN), and the panacea is one more gift.
     startingItems = {
         "ability_heal",      "weapon_vitriol_wand", "consumable_panacea",
         false,               "utility_aqua_vitae",  false,

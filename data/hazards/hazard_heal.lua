@@ -1,4 +1,4 @@
--- Sanctuary: hallowed ground. An ALLY entering it gains Regeneration (data/status/regen.lua), mending
+-- Sanctuary: hallowed ground. An ALLY entering it gains Regeneration (data/status/regen.lua), healing
 -- health at the start of each of its turns; a foe of the caster stands on it untouched. The blessing
 -- lingers for a duration. Because only the owning side profits, the enemy AI is drawn to a sanctuary
 -- of its own (disposition "friendly", weighed side-aware in Hazard.tileBias) and ignores the party's.
@@ -14,7 +14,7 @@ return {
         -- Regeneration does not declare `lingers`, so it is zone-bound: this grant is stamped with the
         -- Sanctuary as its source automatically, and ends the moment the unit steps off the hallowed
         -- ground or the ground itself fades. ctx.amount (the Sanctuary item's level-scaled heal) sets
-        -- how much it mends; nil falls back to regen's own.
+        -- how much it heals; nil falls back to regen's own.
         ctx.applyStatus(ctx.unit, "status_regen", { magnitude = ctx.amount })
     end,
 }

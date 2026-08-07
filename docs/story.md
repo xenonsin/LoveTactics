@@ -1026,7 +1026,7 @@ made thing that envies the born.
 
 Envy has two motions and they are opposites, which is the whole sin: **COPY** is the aspiration (*I want
 to be you*); **LEVEL** is the spite (*and if I can't, no one is above me*). Every ability is one or the
-other, and both are **Ren's toolkit run backwards** — Ren gives, lifts, and mends; Livia takes, drags
+other, and both are **Ren's toolkit run backwards** — Ren gives, lifts, and heals; Livia takes, drags
 down, and blocks. A foil answered move for move.
 
 | Ability | Verb | What it does | Engine |

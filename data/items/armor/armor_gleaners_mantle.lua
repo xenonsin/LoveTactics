@@ -25,7 +25,7 @@
 -- That is what keeps it a gleaning rather than a battery a caster winds up alone.
 --
 -- Deliberately NOT a second Gleaning Rod. The rod is this same economy pointed OUTWARD -- a bolt or a
--- mending, aimed, at range. This points inward, at the ring you are already standing in, and wards
+-- healing, aimed, at range. This points inward, at the ring you are already standing in, and wards
 -- rather than answers. Charges live per ITEM, so carrying both banks two independent purses off the
 -- same casts: a real Arcanum-specialist build, and not a double-dip worth closing -- filling two
 -- purses still costs two turns to spend.

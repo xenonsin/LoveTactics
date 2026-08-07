@@ -1,5 +1,5 @@
 -- The Reliquary of Tallies: a small iron box that fills up as the battle goes badly for somebody. It
--- takes a charge from every death on the field, and spends its charges either way -- mending an ally,
+-- takes a charge from every death on the field, and spends its charges either way -- healing an ally,
 -- or wounding a foe.
 --
 -- AN ECONOMY RATHER THAN AN EFFECT, and the shape of it is the item. It arrives EMPTY: on turn one it
@@ -10,7 +10,7 @@
 -- Which makes it the catalog's one explicitly LATE item, and a genuine argument against itself: the
 -- fights it is best in are the fights the party is closest to losing.
 --
--- Two mouths, one purse. The charges mend or they wound, and the choice is made per cast rather than
+-- Two mouths, one purse. The charges heal or they wound, and the choice is made per cast rather than
 -- per build -- so the same box is a heal in the first half of a battle and a finisher in the second.
 -- Nothing else here lets a single slot be either.
 --
@@ -28,7 +28,7 @@ return {
     price = 80,
     unlockQuests = 0,
     activeAbility = {
-        -- A tile target so one item can point both ways: at an ally it mends, at a foe it wounds, and
+        -- A tile target so one item can point both ways: at an ally it heals, at a foe it wounds, and
         -- the player decides on the turn rather than at the shop. See Updraft and Seal the Hour, which
         -- are built the same way and for the same reason.
         target = "tile",

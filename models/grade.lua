@@ -158,7 +158,7 @@ Grade.STATUS_GRADE = {
     status_taunt = 1.3,          -- must swing at the taunter, wherever that leaves it
     status_knell = 3.0,          -- a kill on a clock, if the clock is allowed to run out
     status_downed = 2.5,         -- a body off the board, short of a corpse
-    status_interred = 1.0,       -- every mend lands as a wound: it cannot be saved
+    status_interred = 1.0,       -- every heal lands as a wound: it cannot be saved
     status_unclosing_wound = 0.9,-- cannot be healed at all
     status_sealed_hour = 0.6,    -- damage and healing held, then settled at once
     status_conjoined = 1.2,      -- wounds shared across the binding
@@ -174,7 +174,7 @@ Grade.STATUS_GRADE = {
     status_graven = 0.7,         -- cheaper inside your own circle
     status_second_utterance = 1.0, -- one channel resolves at once: a wind-up refunded
     status_open_account = 1.2,   -- wounds settled out of the purse instead of the body
-    status_intercession = 1.5,   -- their blows mend you
+    status_intercession = 1.5,   -- their blows heal you
 
     -- Guard, lent and taken.
     status_defending = 0.5,      -- braced until your next turn

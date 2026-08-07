@@ -27,7 +27,7 @@ return {
     -- frontline kit with NO bound relic -- that is exactly what separates a generic template from a
     -- companion. The spear and buckler are the pair the class is actually about (see the signatures
     -- below); the sword keeps its free Parry as the close-in answer, chainmail holds the line, and a
-    -- potion self-mends.
+    -- potion self-heals.
     startingItems = {
         "weapon_iron_spear", "weapon_iron_sword", "armor_chainmail",
         "armor_buckler",     "consumable_healing_potion", false,

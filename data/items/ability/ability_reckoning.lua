@@ -1,8 +1,8 @@
 -- Reckoning: the Crusader's spender (fighter x priest). Empties the Zeal pool into one holy blow -- and
--- mends every ally standing beside the crusader for the same amount it dealt.
+-- heals every ally standing beside the crusader for the same amount it dealt.
 --
 -- Both halves from one cast, which is the argument for the discipline existing. A fighter's spender does
--- damage; a priest's does mending; the Crusader's does exactly one thing and it is both, so there is
+-- damage; a priest's does healing; the Crusader's does exactly one thing and it is both, so there is
 -- never a turn where the crusade has to choose which of its two jobs it is doing today. That is also why
 -- the heal is the damage rather than a separate number: they cannot be tuned apart, and a build that
 -- wanted only one of them would still be paying for the other.
@@ -17,7 +17,7 @@
 -- `unlock.when` reads the shared pool directly, as every charge spender does -- a counted unlock would
 -- keep a per-item baseline and quietly give this file its own private Zeal.
 --
--- Note it REBANKS as it resolves: the mending it does is `healDone`, which is one of Zeal's own sources,
+-- Note it REBANKS as it resolves: the healing it does is `healDone`, which is one of Zeal's own sources,
 -- so the cast hands back a point on the way out. Deliberate, and the same rebate Flurry takes -- a
 -- crusade that spends itself empty on one blow and is credited nothing for the mercy in it would be
 -- teaching the player not to stand near their own allies.
@@ -51,8 +51,8 @@ return {
         effect = function(fx)
             local spent = fx.spendCharge("zeal")
             local dealt = fx.damage(fx.target, { amount = fx.amount + spent * 3 })
-            -- The mend is what the blow actually LANDED, not what it was aimed at: a strike that broke
-            -- on armour mends little, which keeps the heal honest against a wall of plate and stops the
+            -- The heal is what the blow actually LANDED, not what it was aimed at: a strike that broke
+            -- on armour heals little, which keeps the heal honest against a wall of plate and stops the
             -- ability being a party heal that happens to be pointed at somebody.
             if dealt <= 0 then return end
             for _, u in ipairs(fx.unitsNear(fx.user.x, fx.user.y, 1)) do

@@ -1,4 +1,4 @@
--- The Shared Ledger: the priest half of the Apothecary (priest x alchemist). Everyone you mend also
+-- The Shared Ledger: the priest half of the Apothecary (priest x alchemist). Everyone you heal also
 -- borrows a share of your own guard.
 --
 -- The item that makes this discipline a fusion rather than a second cleric. Every other heal in the
@@ -9,7 +9,7 @@
 -- rather than casting its own").
 --
 -- It attaches to healing rather than to a particular spell, so it pays out on whatever the apothecary
--- already owns -- Transfusion, a potion thrown to an ally, a Litany, a totem's mending. The apothecary
+-- already owns -- Transfusion, a potion thrown to an ally, a Litany, a totem's healing. The apothecary
 -- does not need a new heal; it needs its existing ones to mean two things.
 --
 -- The first draft of this shelf was three healing items and the author turned all three down. The

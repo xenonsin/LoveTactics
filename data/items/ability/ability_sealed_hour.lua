@@ -1,5 +1,5 @@
 -- Seal the Hour: for a little while, nothing that happens to one body actually happens to it. Every
--- wound and every mending is held on a ledger, and the whole account settles as one number when the
+-- wound and every healing is held on a ledger, and the whole account settles as one number when the
 -- hour is up (data/status/status_sealed_hour.lua).
 --
 -- THE BEST THING THE CATHEDRAL SELLS, and the reason is that it buys TIME, which a tactics game can
@@ -9,7 +9,7 @@
 --
 -- AND IT HOLDS THE HEALING TOO, which is what stops it being a strictly better barrier and what makes
 -- it genuinely difficult to cast well. Sealing an ally at four health is not a rescue. It is a PROMISE
--- to rescue them, and the priest still has to keep it -- get the enemy off them, or pour mending in
+-- to rescue them, and the priest still has to keep it -- get the enemy off them, or pour healing in
 -- during the hour so the ledger settles negative and lands whole at the end. This is the only place in
 -- the game where healing a full-health unit is not waste.
 --

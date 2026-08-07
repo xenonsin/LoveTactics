@@ -1,4 +1,4 @@
--- Renewal: the priest lays a mending grace on a single ally, granting Regeneration
+-- Renewal: the priest lays a healing grace on a single ally, granting Regeneration
 -- (data/status/regen.lua) -- flat health recovered at the start of each of that unit's turns for a
 -- while. The over-time counterpart to Heal: where Heal restores a lump of HP now, Renewal drips it
 -- back across the coming rounds, so it wants to land BEFORE the wounds come, on a frontliner about to

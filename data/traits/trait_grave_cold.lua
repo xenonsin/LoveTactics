@@ -1,10 +1,10 @@
--- Grave-Cold: what a dead thing is, stated as a rule. Mending does not reach it -- a heal aimed at a
+-- Grave-Cold: what a dead thing is, stated as a rule. Healing does not reach it -- a heal aimed at a
 -- corpse burns it for the whole amount instead, from every source there is.
 --
 -- A FLAG, not a hook (Trait.flag): the interesting code is already written, at the one funnel every
--- mend in the game runs through (Combat.applyHeal, via Combat.healingInverted). What a dead body adds
+-- heal in the game runs through (Combat.applyHeal, via Combat.healingInverted). What a dead body adds
 -- is one clause at that seam, and a hook would have to re-derive who was healed and for how much --
--- which the mend already knows.
+-- which the heal already knows.
 --
 -- A TRAIT rather than a permanent status, for the reason models/trait.lua's header gives: a status is a
 -- timed effect that ticks down and wears off, and this neither ticks nor wears. It is also the half of
@@ -24,11 +24,11 @@
 -- be legible at the moment it matters.
 --
 -- One inherited edge, left standing rather than special-cased: Trait.flag is gagged by Sundered, so a
--- sundered corpse can be mended for as long as the break holds. That is the flag contract applied
+-- sundered corpse can be healed for as long as the break holds. That is the flag contract applied
 -- evenly -- a bearer whose standing rules have gone quiet does not get to keep the quiet ones working --
 -- and as a play it costs a whole cast to buy one heal on a body that rots on a timer anyway.
 return {
     name = "Grave-Cold",
-    description = "Mending does not reach the dead: every heal aimed at this body wounds it instead.",
+    description = "Healing does not reach the dead: every heal aimed at this body wounds it instead.",
     invertsHealing = true,
 }

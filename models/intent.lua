@@ -54,7 +54,7 @@ function Intent.classify(combat, unit, plan)
 
     -- The dry preview, aimed at the plan's own cell, so an AoE is priced by everyone it truly catches
     -- (the same reason the AI scored it there). Split by side: harm to the caster's foes is the attack
-    -- number, mending on its own side is the heal number.
+    -- number, healing on its own side is the heal number.
     local dmg, heal, statuses = 0, 0, 0
     -- plan.spend rides in so a PURCHASABLE blow (Aurea's Gilded Wound) telegraphs the damage she has
     -- actually decided to buy, not the 0 it costs unpaid -- the planner priced it there, so the arrow must.

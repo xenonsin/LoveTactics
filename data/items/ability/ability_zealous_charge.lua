@@ -1,5 +1,5 @@
 -- Zealous Charge: the fighter half of the Crusader. A holy rush that heals harder the deeper into the
--- mob it lands -- the faith that mends by wading in, not by standing back. The heal scales with the
+-- mob it lands -- the faith that heals by wading in, not by standing back. The heal scales with the
 -- number of enemies adjacent to the Crusader after the blow, so it rewards being surrounded, which is
 -- exactly where wrath wants a holy warrior to be.
 local Curve = require("models.curve")

@@ -1,6 +1,6 @@
 -- Intercession: the mark of being prayed AT. A unit carrying this is the one ally an Intercessor's
 -- Staff (data/items/weapon/weapon_intercessors_staff.lua) has named, and every blow that staff lands on
--- an enemy mends this body instead of its wielder's.
+-- an enemy heals this body instead of its wielder's.
 --
 -- Purely a BADGE. It carries no hooks, no stat bonus and no clock of its own: the link itself lives on
 -- the wielder (`unit.intercession`, set by data/traits/trait_intercession.lua at combat start) and the
@@ -13,7 +13,7 @@
 return {
     name = "Intercession",
     abbr = "Int",
-    description = "Named by an intercessor: their blows mend you.",
+    description = "Named by an intercessor: their blows heal you.",
     color = { 0.811, 0.769, 0.559 }, -- badge tint (candle gold, the Cathedral's own)
     duration = 9999, -- answers to the battle, not a clock
 }

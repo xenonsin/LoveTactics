@@ -1,11 +1,11 @@
 -- Rest, as a decision. Opened when the player steps onto a Rest tile (states/game.lua's openEncounter).
 -- A rest used to just refill the party; now it forces a choice between three ways to spend the breather --
--- Mend the party, Sharpen a lasting combat edge, or Study the ground -- so a safe stop is a real weigh,
--- and the companions plug in (Amana strengthens Mend, Gyeom strengthens Study). One only; the others are
+-- Heal the party, Sharpen a lasting combat edge, or Study the ground -- so a safe stop is a real weigh,
+-- and the companions plug in (Amana strengthens Heal, Gyeom strengthens Study). One only; the others are
 -- forgone. Modeled on ui/panels/loot_reveal.lua: a state owns it as game.activePanel and forwards input;
 -- three-input + mouse-only.
 --
---   RestChoice.new({ title=, onMend=, onSharpen=, onStudy=, onClose= })
+--   RestChoice.new({ title=, onHeal=, onSharpen=, onStudy=, onClose= })
 
 local CloseButton = require("ui.close_button")
 local InputMode = require("input_mode")
@@ -20,7 +20,7 @@ local PAD = 26
 local OPT_H = 78
 local OPT_GAP = 12
 
--- Each option's accent, so the three read apart at a glance: Mend jade (restore), Sharpen amber (power),
+-- Each option's accent, so the three read apart at a glance: Heal jade (restore), Sharpen amber (power),
 -- Study steel-blue (knowledge).
 local ACCENTS = { { 0.42, 0.80, 0.62 }, { 0.86, 0.66, 0.30 }, { 0.50, 0.68, 0.92 } }
 
@@ -33,7 +33,7 @@ function RestChoice.new(opts)
     self.onClose = opts.onClose
     self.finished = false
     self.options = {
-        { label = "Mend",    desc = "Restore the whole party to full health.",                 cb = opts.onMend },
+        { label = "Heal",    desc = "Restore the whole party to full health.",                 cb = opts.onHeal },
         { label = "Sharpen", desc = "Gain Honed Edge -- the front line opens every fight emboldened.", cb = opts.onSharpen },
         { label = "Study",   desc = "Lift the fog from the objective and every Reliquary.",     cb = opts.onStudy },
     }

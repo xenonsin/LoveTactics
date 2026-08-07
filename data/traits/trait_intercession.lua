@@ -1,5 +1,5 @@
 -- Intercession: the staff-borne half of the Cathedral's oddest bargain. At the start of battle the
--- bearer NAMES one ally, and from then on every blow its Intercessor's Staff lands on an enemy mends
+-- bearer NAMES one ally, and from then on every blow its Intercessor's Staff lands on an enemy heals
 -- that one body instead of the wielder's (the healing itself is the staff's own effect -- see
 -- data/items/weapon/weapon_intercessors_staff.lua). This trait does nothing but choose, and record the
 -- choice on the unit as `unit.intercession`.
@@ -18,7 +18,7 @@
 -- note that when it is wired, this and the declared oathward want the SAME prompt, not two.
 return {
     name = "Intercession",
-    description = "Names one ally at the start of battle. Your intercessor's staff mends them with every blow it lands.",
+    description = "Names one ally at the start of battle. Your intercessor's staff heals them with every blow it lands.",
     onCombatStart = function(ctx)
         local best, bestHp
         for _, u in ipairs(ctx.combat.units) do

@@ -92,14 +92,14 @@ return {
         end,
     },
     {
-        name = "Amana's Kept Trust mends the most-wounded after a fight",
+        name = "Amana's Kept Trust heals the most-wounded after a fight",
         fn = function()
             local amana = char("character_amana", "kept_trust", { 62, 62 })
             local hurt = char("character_a", nil, { 5, 40 })
             local ok = char("character_b", nil, { 30, 40 })
             local ctx = ctxFor({ amana, hurt, ok }, { cell = combatCell() })
             OverworldAbility.dispatch("encounterCleared", ctx)
-            assert(hurt.stats.health.current == 17, "the most-wounded should be mended by 12 (5 -> 17)")
+            assert(hurt.stats.health.current == 17, "the most-wounded should be healed by 12 (5 -> 17)")
             assert(ok.stats.health.current == 30, "a less-wounded member is left alone")
         end,
     },

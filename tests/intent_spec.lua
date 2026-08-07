@@ -95,7 +95,7 @@ return {
             local medic, hurt = c.units[2], c.units[3]
             setHp(hurt, 3)
             local intent = Intent.of(c, medic)
-            assert(intent.kind == "support", "mending its own side is support, got " .. tostring(intent.kind))
+            assert(intent.kind == "support", "healing its own side is support, got " .. tostring(intent.kind))
             assert(intent.target == hurt, "aimed at the wounded ally")
             assert(intent.heal and intent.heal > 0, "and it quotes the healing, not a damage number")
         end,

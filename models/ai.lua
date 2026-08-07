@@ -442,7 +442,7 @@ AI.POSTURES = {
     -- Reads its allies before its enemies. Nothing in the old planner ever pointed a heal at
     -- anything, so an enemy healer's kit was decoration; this is the posture that makes it a threat.
     support = {
-        desc = "Reads its allies before its enemies. It mends whoever is worst off first, and only"
+        desc = "Reads its allies before its enemies. It heals whoever is worst off first, and only"
             .. " turns on the enemy when nobody needs it.",
         rules = {
             { act = "support", when = { subject = "any_ally", test = "hp_pct_below", value = 0.9 },

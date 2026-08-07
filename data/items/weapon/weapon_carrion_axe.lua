@@ -1,5 +1,5 @@
 -- An axe, so it cleaves (docs/weapons.md). Its extra is that the arc eats: any corpse lying in the tiles
--- the swing sweeps is consumed (Combat.consumeCorpse) and the wielder is mended for it.
+-- the swing sweeps is consumed (Combat.consumeCorpse) and the wielder is healed for it.
 --
 -- Quest-only: `class` with no `price`.
 --

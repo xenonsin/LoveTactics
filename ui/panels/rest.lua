@@ -30,7 +30,7 @@ local PORTRAIT = 40
 local BAR_H = 16
 
 -- How long the bars take to sweep to full, and the ease that makes the fill decelerate into place
--- (a linear crawl reads as a progress bar, not as mending). Cubic ease-out.
+-- (a linear crawl reads as a progress bar, not as healing). Cubic ease-out.
 local FILL_TIME = 0.9
 local function easeOut(t) local u = 1 - t return 1 - u * u * u end
 
@@ -105,7 +105,7 @@ function Rest:draw()
     love.graphics.printf("A Moment's Rest", self.boxX, self.boxY + 22, self.boxW, "center")
     love.graphics.setFont(self.smallFont)
     Theme.set(Theme.muted)
-    love.graphics.printf("The party makes camp -- wounds mend and reserves return.",
+    love.graphics.printf("The party makes camp -- wounds heal and reserves return.",
         self.boxX + 30, self.boxY + 58, self.boxW - 60, "center")
 
     local p = self:progress()
@@ -119,7 +119,7 @@ function Rest:draw()
     local b = self.button
     Theme.set(b.hovered and Theme.panel or Theme.panel2)
     love.graphics.rectangle("fill", b.x, b.y, b.w, b.h, Theme.R, Theme.R)
-    love.graphics.setColor(0.55, 0.75, 0.58) -- rest = mending; the Continue button keeps a heal-green frame
+    love.graphics.setColor(0.55, 0.75, 0.58) -- rest = healing; the Continue button keeps a heal-green frame
     love.graphics.rectangle("line", b.x, b.y, b.w, b.h, Theme.R, Theme.R)
     Theme.set(Theme.ink)
     love.graphics.setFont(self.bodyFont)
@@ -158,7 +158,7 @@ function Rest:drawRow(e, rowY, p)
     -- Track.
     Theme.set(Theme.barTrack)
     love.graphics.rectangle("fill", barX, barY, barW, BAR_H, 3, 3)
-    -- The portion that was already there when we sat down reads dim; the mend that fills over it reads
+    -- The portion that was already there when we sat down reads dim; the heal that fills over it reads
     -- bright, so the eye lands on what the rest actually restored.
     love.graphics.setColor(0.24, 0.42, 0.28)
     love.graphics.rectangle("fill", barX, barY, barW * startFrac, BAR_H, 3, 3)

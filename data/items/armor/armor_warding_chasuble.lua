@@ -7,7 +7,7 @@
 --
 -- What holds it down is that it does nothing on its own: an armour that only speaks when its wearer
 -- casts is dead weight in a grid without heals, and the ward refreshes rather than stacks (Status.apply)
--- so healing one ally twice in a beat does not give them two barriers. It rewards spreading the mending
+-- so healing one ally twice in a beat does not give them two barriers. It rewards spreading the healing
 -- around, which is the behaviour the Cathedral wanted out of its healers in the first place.
 --
 -- Read against armor_shared_bulwark, which hands the same ward to a whole line at once but only while

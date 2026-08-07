@@ -1,6 +1,6 @@
 -- The Beastlord's Bond: a braided cord of hair, feather and hide worn at the throat, carrying the trait
 -- of the same name (data/traits/trait_beastlords_bond.lua). While it is in the grid, every creature the
--- bearer has fielded and that is standing within three tiles is mended a little each time the bearer
+-- bearer has fielded and that is standing within three tiles is healed a little each time the bearer
 -- acts.
 --
 -- It answers the one thing every conjuring build actually loses to, which is not damage but ATTRITION.
@@ -8,7 +8,7 @@
 -- until it winks out -- and the only existing answer is to spend another turn and another reservation
 -- calling a replacement. This makes the menagerie you already have worth keeping alive.
 --
--- IT DOES NOT KNOW WHAT A BEAST IS. The rule is written against `summoned`, so it mends the
+-- IT DOES NOT KNOW WHAT A BEAST IS. The rule is written against `summoned`, so it heals the
 -- Beastmaster's wolf and hawk and the Summoner's elementals identically. An item can only carry ONE
 -- discipline (docs/classes.md), so its home is the Lodge's shelf and its `class` is hunter -- but a
 -- mage-side conjurer who has cleared the Beastmaster gate can buy it and get exactly the same effect,

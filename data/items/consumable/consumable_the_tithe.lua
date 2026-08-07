@@ -1,7 +1,7 @@
 -- The Tithe: the Apothecary's second elixir (priest x alchemist). Drink it and every blessing your
 -- allies are carrying is copied onto you, at half its remaining life.
 --
--- It replaced a Bleed the Vein -- an ability that drained a healthy ally to mend a wounded one -- which
+-- It replaced a Bleed the Vein -- an ability that drained a healthy ally to heal a wounded one -- which
 -- the author turned down, and the reason is worth keeping: a cost most players will not pay even when
 -- the arithmetic works is not a cost, it is a dead button. This takes nothing from anybody. The buffs
 -- stay exactly where they were; the apothecary simply also has them.

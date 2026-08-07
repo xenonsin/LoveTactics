@@ -13,7 +13,7 @@
 -- who wears it and walks into the middle of three bodies has started a race they intend to win.
 --
 -- Which makes it the closest the envy shelf gets to a wrath item, and the pairing that makes it work
--- is not on this file: something that mends. A Vampiric Strike, a Red Thirst, a priest, an Unspent
+-- is not on this file: something that heals. A Vampiric Strike, a Red Thirst, a priest, an Unspent
 -- Heart -- the flask is a build's engine rather than a slot's payload, and on its own it is a slow
 -- way to lose.
 --

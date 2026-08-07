@@ -1,5 +1,5 @@
 -- The alchemist's answer to the one pool that does not come back on its own. Mana is the game's
--- scarce resource by design -- stamina regenerates every tick, health is mended by half the priest's
+-- scarce resource by design -- stamina regenerates every tick, health is healed by half the priest's
 -- shelf, and mana regenerates for nobody at all except the one body carrying an Arcane Reservoir. A
 -- mage's whole battle is therefore rationing, and this flask is the only thing on any shelf that
 -- sells that ration back.

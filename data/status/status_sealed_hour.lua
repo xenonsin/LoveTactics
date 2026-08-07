@@ -1,5 +1,5 @@
 -- Sealed Hour: for a little while, nothing that happens to this body actually happens to it. Every
--- point of damage and every point of mending aimed at the bearer is BANKED (Status.defer) instead of
+-- point of damage and every point of healing aimed at the bearer is BANKED (Status.defer) instead of
 -- landing, and the whole ledger settles as one number the moment the hour is up.
 --
 -- Both funnels honour it -- Combat.dealFlatDamage and Combat.applyHeal -- and that symmetry is the
@@ -13,7 +13,7 @@
 -- still owed -- so the seal is a wager that your side can use those turns better than theirs can. Lose
 -- the wager and the ledger kills them anyway, on the priest's own clock.
 --
--- A net-NEGATIVE ledger mends, which is the payoff for winning the wager: mending poured in during the
+-- A net-NEGATIVE ledger heals, which is the payoff for winning the wager: healing poured in during the
 -- hour lands all at once at the end, and lands whole even if the target "died" three times over on the
 -- way. This is the only place in the game where healing a full-health unit is not waste.
 return {
@@ -36,7 +36,7 @@ return {
             ctx.damage(ctx.unit, owed, nil, { raw = true })
         else
             ctx.heal(ctx.unit, -owed)
-            ctx.log("status", string.format("%s's sealed hour resolves in mending: %d.",
+            ctx.log("status", string.format("%s's sealed hour resolves in healing: %d.",
                 (ctx.unit.char and ctx.unit.char.name) or "Unit", -owed), ctx.unit)
         end
     end,

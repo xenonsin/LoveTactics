@@ -1,5 +1,5 @@
 -- Thinblood Rime: a phial of grey frost smeared along a blade. Everything the blade touches is slowed
--- and, for a little while, cannot be mended at all.
+-- and, for a little while, cannot be healed at all.
 --
 -- A COATING (the `aura` block -- see Combat.auraApplies and the fold in resolveCast's fx.damage), which
 -- is the alchemist's own contract: it does nothing itself, it sits in the grid next to somebody else's
@@ -8,7 +8,7 @@
 -- plainly as the mechanic allows.
 --
 -- WHAT IT ACTUALLY SELLS is the Unclosing Wound, and it is the cheapest way in the game to get one.
--- Nothing else the party owns can close an enemy priest's mending -- a focused kill that three people
+-- Nothing else the party owns can close an enemy priest's healing -- a focused kill that three people
 -- committed to could always be undone by one cast, and the only answer was "kill the priest first",
 -- which is the same problem one tile over. Coat a blade in this and every blow the party lands buys a
 -- window where healing simply does not happen.

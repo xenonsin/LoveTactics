@@ -2,17 +2,17 @@
 -- A reliquary she carries but keeps nothing from -- the build-around at the center of her loadout grid.
 --
 -- It carries her giving loop as a passive (data/traits/trait_sanctified_presence.lua): she and the
--- allies beside her mend a little each tick. And its own answer is the virtue stated as an unlock: it
--- does nothing until she has DONE the giving -- mended three times ("healDone", banked by any heal that
+-- allies beside her heal a little each tick. And its own answer is the virtue stated as an unlock: it
+-- does nothing until she has DONE the giving -- healed three times ("healDone", banked by any heal that
 -- actually restored something, Combat.tally at fx.heal) -- and only then may it be poured out. When it
 -- fires she wards the whole company around her with Aegis and Regeneration and keeps NONE of it for
 -- herself (the cast spares fx.user): devotion is the gift she cannot turn inward. The conditional-
--- signature system greys it with a "Mend thrice (n/3)" badge until earned and re-locks it after each use
+-- signature system greys it with a "Heal 3 times (n/3)" badge until earned and re-locks it after each use
 -- (Combat.unlockMet / itemBlockReason), exactly as the Knight's Sworn Aegis re-locks after its sweep.
 --
 -- She stacks the giving with an ordinary Heal in the grid (data/items/ability/ability_heal.lua): three
 -- casts of mercy open the reliquary. Note the ward it lays does NOT feed itself -- Aegis and Regeneration
--- mend on the status clock (Combat.regenerate/onTick), which never routes through fx.heal, so the payoff
+-- heal on the status clock (Combat.regenerate/onTick), which never routes through fx.heal, so the payoff
 -- can't re-charge on its own smoke. It is the inverse of Lust's arithmetic: Luxuria takes the reserves a
 -- foe withheld (data/traits/trait_rapture.lua); Amana spends her own turns handing wards away, and takes
 -- nothing back.
@@ -45,7 +45,7 @@ return {
         range = 1,
         speed = 6,
         cost = { stat = "mana", amount = 18 },
-        unlock = { event = "healDone", count = 3, text = "Mend thrice" },
+        unlock = { event = "healDone", count = 3, text = "Heal 3 times" },
         aoe = { radius = 3, shape = "square" },
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

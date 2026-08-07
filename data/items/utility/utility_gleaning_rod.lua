@@ -1,6 +1,6 @@
 -- The Gleaning Rod: a plain iron shaft that drinks the leavings of other people's workings. Every
 -- spell cast near it -- theirs or yours -- banks a charge, and the charges are spent all at once as a
--- bolt or as a mending (data/traits/trait_gleaning.lua).
+-- bolt or as a healing (data/traits/trait_gleaning.lua).
 --
 -- THE STRANGEST ECONOMY ON THE SHELF, and that is the item. Every other thing in this catalog is worth
 -- what the tooltip says. This is worth whatever KIND OF BATTLE the player has walked into, and they
@@ -15,7 +15,7 @@
 -- purpose. Gleaning off the enemy mage is the profitable half, and it has a lovely shape to it: the
 -- more dangerous their casting is, the more the rod has to answer it with.
 --
--- It points both ways, like the Reliquary of Tallies -- a bolt at a foe, a mending for an ally -- so
+-- It points both ways, like the Reliquary of Tallies -- a bolt at a foe, a healing for an ally -- so
 -- the same charges serve whichever the turn needs. And it EMPTIES when it fires: this is a purse, not
 -- a rate, and spending it early for a small effect is a real mistake the player will make once.
 return {

@@ -1,9 +1,12 @@
--- Totem of Mending: the Totemist's second priest-shelf totem (hunter x priest). It plants a post
+-- Totem of Renewal: the Totemist's second priest-shelf totem (hunter x priest). It plants a post
 -- projecting RENEWAL rather than healing ground.
 --
 -- The distinction against Raise Totem is the whole item, and it is mechanical rather than numeric.
--- Raise Totem lays hazard_heal: you are mended while you stand in it, and the moment you step out the
--- mending stops. This lays hazard_renewal, which grants Regeneration -- a status the ally CARRIES AWAY.
+-- Raise Totem lays hazard_heal: you are healed while you stand in it, and the moment you step out the
+-- healing stops. This lays hazard_renewal, which grants Regeneration -- a status the ally CARRIES AWAY.
+-- It is named for the ground it lays, not for the healing: the game says "heal" and nothing else
+-- (docs/item-text.md), so calling this one a Totem of Healing would have made the two totems a pair of
+-- synonyms and buried the very distinction the item exists for.
 --
 -- So the two totems ask opposite things of a party. One says hold this ground; the other says come and
 -- touch this, then go and do your job. A Totemist owning both is not owning the same item twice at
@@ -14,10 +17,10 @@
 -- It is also the totem that works for a party that cannot stand still: a Skirmisher or a Ninja will
 -- never camp in a heal zone, and until now the Totemist had nothing to offer them.
 return {
-    name = "Totem of Mending",
+    name = "Totem of Renewal",
     description = "Plants a totem granting Regeneration -- allies who touch its ground carry the healing away with them.",
     flavor = "You are not meant to stay. You are meant to come back through.",
-    sprite = "assets/items/ability_totem_of_mending.png",
+    sprite = "assets/items/ability_totem_of_renewal.png",
     type = "ability",
     tags = { "holy", "summon" },
     class = "priest",

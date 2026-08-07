@@ -36,7 +36,7 @@ local function place(id, x, y, side)
 end
 
 -- y2: the five looks, then the three special cases. The `side` is what flips a friendly zone between
--- your colour and the enemy's -- a Sanctuary the party owns mends in blue, one the enemy owns in red.
+-- your colour and the enemy's -- a Sanctuary the party owns heals in blue, one the enemy owns in red.
 place("hazard_fire", 1, 2)              -- threat            : orange, falling
 place("hazard_rally", 2, 2, "party")    -- your buff         : green, rising
 place("hazard_rally", 3, 2, "enemy")    -- their buff        : red, rising

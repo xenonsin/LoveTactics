@@ -104,7 +104,7 @@ end
 -- flight tutorial it is held back TWICE over: it needs loot to spend (game.itemsVisible, set by the
 -- teaching chest) and the first fight behind the party (game.useUnlocked, set on the survivors'
 -- defence win). Until then that leg's HUD is deliberately spare -- the Items button IS the equip
--- lesson -- and a potion has nothing to mend yet.
+-- lesson -- and a potion has nothing to heal yet.
 local function useVisible()
     return game.itemsVisible and game.useUnlocked
 end
@@ -125,7 +125,7 @@ local function partyVisible()
     return game.tutorial ~= "flight"
 end
 
--- A transient on-screen line an ability pushes when it fires (Amana mends X, Kaya forages, ...). Fades
+-- A transient on-screen line an ability pushes when it fires (Amana heals X, Kaya forages, ...). Fades
 -- over TOAST_LIFE; the newest sits on top. Capped so a flurry of wins can't stack off the screen.
 local TOAST_LIFE = 3.2
 function game:pushToast(text)
@@ -689,9 +689,9 @@ function game:openEncounter(cell)
                 end
                 Player.save()
             end
-            -- Companion abilities react to the win (Amana mends, Ren distils a dose, Rowan banks a
+            -- Companion abilities react to the win (Amana heals, Ren distils a dose, Rowan banks a
             -- vigil, Clem takes her cut, Gyeom studies), then the relics do too (Pilgrim's Coin pays,
-            -- Alms Bowl mends, a Vice bites). Save so their effects persist.
+            -- Alms Bowl heals, a Vice bites). Save so their effects persist.
             fireAbility("encounterCleared", { cell = cell, spoils = spoils })
             fireRelics("encounterCleared", { cell = cell, spoils = spoils })
             if game.player then Player.save() end
@@ -1242,15 +1242,15 @@ function game:openEncounter(cell)
         return
     end
 
-    -- A Rest is a DECISION, not just a breather: Mend the party, Sharpen a lasting run edge, or Study the
+    -- A Rest is a DECISION, not just a breather: Heal the party, Sharpen a lasting run edge, or Study the
     -- ground (models/relic.lua + the fog reveal). One only; leaving (X/Esc) forgoes it and leaves the cell
-    -- to reconsider. The companions plug in here later (Amana strengthens Mend, Gyeom strengthens Study).
+    -- to reconsider. The companions plug in here later (Amana strengthens Heal, Gyeom strengthens Study).
     if kind == "rest" then
         game.activePanel = RestChoice.new({
             title = cell.encounter.name or "Make Camp",
-            onMend = function()
+            onHeal = function()
                 cell.cleared = true
-                game:restMend()
+                game:restHeal()
                 saveRun()
             end,
             onSharpen = function()
@@ -1284,15 +1284,15 @@ function game:openEncounter(cell)
     })
 end
 
--- MEND (a rest's first choice): refill every resource on the roster to full (Player.restore), then replay
--- the mend on a reveal panel so the player SEES what it did -- each party member's HP bar sweeps up to
--- full (ui/panels/rest.lua). Factored out of the rest resolution so RestChoice's Mend option and any
+-- HEAL (a rest's first choice): refill every resource on the roster to full (Player.restore), then replay
+-- the heal on a reveal panel so the player SEES what it did -- each party member's HP bar sweeps up to
+-- full (ui/panels/rest.lua). Factored out of the rest resolution so RestChoice's Heal option and any
 -- back-compat non-combat path both reach the same code.
-function game:restMend()
+function game:restHeal()
     if not game.player then return end
     -- Snapshot each shown member's wound BEFORE the refill: the reveal animates from it, and once
     -- Player.restore runs the live stat is already at max, so this is the only place the "before"
-    -- exists. The whole roster marches, so the whole roster is mended and shown.
+    -- exists. The whole roster marches, so the whole roster is healed and shown.
     local shown = game.player.roster or {}
     local entries = {}
     for _, char in ipairs(shown) do
@@ -1332,7 +1332,7 @@ end
 -- "Enter/Resolve" stops that hand over nothing mechanical.
 function game:resolveNonCombat(cell)
     local enc = cell.encounter
-    if enc.kind == "rest" then game:restMend() end -- back-compat: any path still routing rest here mends
+    if enc.kind == "rest" then game:restHeal() end -- back-compat: any path still routing rest here heals
 end
 
 local function toHub()

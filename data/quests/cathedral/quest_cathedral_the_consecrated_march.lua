@@ -1,7 +1,7 @@
 -- Capstone for the CRUSADER discipline (fighter x priest) -- data/disciplines/crusader.lua names this
 -- file in `requiredQuests`.
 --
--- Signature on show: SMITE -- holy melee that bites hardest on demons and the undead and mends its
+-- Signature on show: SMITE -- holy melee that bites hardest on demons and the undead and heals its
 -- wielder on the kill (ability_smite and ability_zealous_charge ship). So the staging is a demon
 -- incursion met by a marching column, and the demonstration is the column not slowing down: a
 -- crusader gets stronger the deeper into the horde she is, which is the exact inverse of how the

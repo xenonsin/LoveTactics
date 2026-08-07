@@ -4,7 +4,7 @@
 --
 -- The reason it is worth a slot: every other sword in the game answers with a number, and a number is
 -- something a healer can undo. This one answers by taking the healer out of the fight for that body. It
--- does nothing whatsoever to a foe nobody was going to mend, and it is the whole battle against one that
+-- does nothing whatsoever to a foe nobody was going to heal, and it is the whole battle against one that
 -- was -- which makes it a read on the enemy roster rather than on the exchange in front of you.
 --
 -- `applies` and no swing, for the same reason data/traits/trait_binding_parry.lua declares it: the hover

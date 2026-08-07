@@ -3,7 +3,7 @@
 -- Three engine seams are pinned here alongside the items, because nothing else reaches them:
 --   * Combat.spreadContagion  -- the plague's one-step-per-turn spread
 --   * the unit-level `steadfastChannels` flag in Combat.interruptChannel
---   * the `lendsGuard` clause in fx.heal, the one heal path that knows who did the mending
+--   * the `lendsGuard` clause in fx.heal, the one heal path that knows who did the healing
 
 local Combat = require("models.combat")
 local Status = require("models.status")
@@ -12,7 +12,7 @@ local Fixture = require("tests.support.fixture")
 return {
     -- PALADIN ---------------------------------------------------------------------------------------
     {
-        name = "Lay On Hands mends, wards, and moves the ally's afflictions onto the paladin",
+        name = "Lay On Hands heals, wards, and moves the ally's afflictions onto the paladin",
         fn = function()
             local map = Fixture.new(10, 10)
             local hero = Fixture.unit("character_amana", 3, 3,
@@ -29,7 +29,7 @@ return {
             assert(Status.has(a, "status_poison") and Status.has(a, "status_bleed"), "the ally is in a bad way")
 
             assert(Fixture.strike(combat, h, a, "ability_lay_on_hands"), "hands are laid on")
-            assert(a.char.stats.health.current > 10, "the ally is mended")
+            assert(a.char.stats.health.current > 10, "the ally is healed")
             assert(Status.has(a, "status_aegis"), "and warded")
             assert(not Status.has(a, "status_poison"), "the poison has left them")
             assert(Status.has(h, "status_poison"), "and is on the paladin")
@@ -208,7 +208,7 @@ return {
 
     -- APOTHECARY ------------------------------------------------------------------------------------
     {
-        name = "The Shared Ledger lends the apothecary's guard to whoever it mends",
+        name = "The Shared Ledger lends the apothecary's guard to whoever it heals",
         fn = function()
             local map = Fixture.new(10, 10)
             local hero = Fixture.unit("character_ren", 3, 3,
@@ -222,7 +222,7 @@ return {
             a.char.stats.health.current = 5
 
             assert(Fixture.strike(combat, h, a, "ability_transfusion"), "vitality is lent")
-            assert(a.char.stats.health.current > 5, "the ally is mended")
+            assert(a.char.stats.health.current > 5, "the ally is healed")
             assert(Status.has(a, "status_lent_guard"),
                 "and borrows the apothecary's own guard -- every other heal in the game merely gives")
         end,

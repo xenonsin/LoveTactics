@@ -80,7 +80,7 @@ return {
         end,
     },
     {
-        name = "the Reliquary of the Kept Trust opens only after three mends",
+        name = "the Reliquary of the Kept Trust opens only after three heals",
         fn = function()
             local c = Combat.new(arena(6, 6),
                 { { char = Character.instantiate("character_amana"), x = 1, y = 1 } },
@@ -92,7 +92,7 @@ return {
             assert(not Combat.unlockMet(amana, relic, c), "locked before she has given")
             Combat.tally(amana, "healDone", 1)
             Combat.tally(amana, "healDone", 1)
-            assert(not Combat.unlockMet(amana, relic, c), "still locked at two mends")
+            assert(not Combat.unlockMet(amana, relic, c), "still locked at two heals")
             Combat.tally(amana, "healDone", 1)
             assert(Combat.unlockMet(amana, relic, c), "open at the third")
         end,

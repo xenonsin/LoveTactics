@@ -122,8 +122,8 @@ function DraftRun.outcome(run)
     return nil
 end
 
--- Roll the round over: bump the counter, refresh the budget, mend the company back to full, and
--- restock the consumables the fight just drank (see the mending and restocking sections -- a draft
+-- Roll the round over: bump the counter, refresh the budget, heal the company back to full, and
+-- restock the consumables the fight just drank (see the healing and restocking sections -- a draft
 -- round is a whole match, so neither wounds nor a drained flask carry into the next one).
 -- Called by recordResult after a non-terminal battle; the shop roll is the state layer's to trigger
 -- (DraftShop.roll), because only it knows whether the player froze anything.
@@ -264,7 +264,7 @@ function DraftRun.party(run)
 end
 
 -- Every unit the run holds -- fielded first, then the bench -- through `fn`. The one walker for
--- anything that is true of the whole company (mending it between rounds, restocking its flasks).
+-- anything that is true of the whole company (healing it between rounds, restocking its flasks).
 function DraftRun.eachChar(run, fn)
     for _, char in ipairs(DraftRun.party(run)) do fn(char) end
     for _, char in ipairs(run.bench or {}) do fn(char) end
@@ -513,11 +513,11 @@ function DraftRun.mergeItemInto(char, item)
 end
 
 -- ---------------------------------------------------------------------------
--- Mending: the company comes back whole every round
+-- Healing: the company comes back whole every round
 -- ---------------------------------------------------------------------------
 --
 -- Same reasoning as the consumable restock below. A campaign quest is a chain of fights and attrition
--- across them is the point (Player.restore mends only at the hub); a draft ROUND is a whole match, and
+-- across them is the point (Player.restore heals only at the hub); a draft ROUND is a whole match, and
 -- the next one is a fresh match against a bot synthesized whole (models/draft_match.lua). Carrying
 -- wounds forward would hand that bot a compounding edge nobody drafted, and a unit that fell would be
 -- dead weight forever -- health persists on the reused instance (models/combat.lua's between-battle

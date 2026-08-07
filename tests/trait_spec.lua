@@ -281,7 +281,7 @@ return {
             local banked = boss.bonus.damage
             assert(banked and banked > 0, "nearly dead, she is carrying the curve")
 
-            hp.current = hp.max -- mended, whatever the fiction of it
+            hp.current = hp.max -- healed, whatever the fiction of it
             Combat.dealFlatDamage(c, boss, 1, nil, "test")
             assert(boss.bonus.damage == banked, "the bonus must not fall back with her health")
         end,

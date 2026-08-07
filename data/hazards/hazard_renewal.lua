@@ -1,5 +1,5 @@
 -- Renewing ground: the square a planted Renewal Banner holds. Allies standing in it gain Regeneration
--- (data/status/regen.lua), mending as the clock runs. Laid as a 3x3 around the standard by
+-- (data/status/regen.lua), healing as the clock runs. Laid as a 3x3 around the standard by
 -- data/items/ability/ability_renewal_banner.lua, owned by the banner unit -- see
 -- data/hazards/hazard_rally.lua for why each banner needs a zone id of its own.
 --

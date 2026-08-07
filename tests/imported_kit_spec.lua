@@ -122,23 +122,23 @@ return {
 
     -- ------------------------------------------------- the Unclosing Wound (the heal block)
     {
-        name = "an Unclosing Wound refuses every mend, whatever the source",
+        name = "an Unclosing Wound refuses every heal, whatever the source",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit(bare("character_rowan"), 3, 3) },
                 { unit(tough(bare("character_bandit")), 6, 6) })
             local u = c.units[1]
             u.char.stats.health.current = 20
 
-            assert(Combat.applyHeal(c, u, 15) == 15, "an ordinary mend lands")
+            assert(Combat.applyHeal(c, u, 15) == 15, "an ordinary heal lands")
             assert(hp(u) == 35, "and moves the bar")
 
             Status.apply(c, u, "status_unclosing_wound")
-            assert(Combat.applyHeal(c, u, 15) == 0, "the wound refuses the mend")
+            assert(Combat.applyHeal(c, u, 15) == 0, "the wound refuses the heal")
             assert(hp(u) == 35, "and the bar does not move")
 
             -- Cleansable like any debuff: this takes a window away, not a healer.
             Combat.cleanse(c, u)
-            assert(Combat.applyHeal(c, u, 10) == 10, "cured, the body mends again")
+            assert(Combat.applyHeal(c, u, 10) == 10, "cured, the body heals again")
         end,
     },
     {
@@ -196,7 +196,7 @@ return {
     {
         name = "a Sealed Hand refuses a single-target heal aimed at the body wearing it",
         fn = function()
-            -- Two bodies on the SAME side: a priest and the wounded ally they are trying to mend. The
+            -- Two bodies on the SAME side: a priest and the wounded ally they are trying to heal. The
             -- Sealed Hand is a curse put on an enemy, so from the enemy's own point of view this is what
             -- it costs them -- their healer's whole turn, and the patient stays hurt.
             local priest = equip(bare("character_priest"), { "ability_renewal" })
@@ -209,7 +209,7 @@ return {
             local before = hp(patient)
             openTurn(c, healer)
 
-            assert(Combat.useItem(c, healer, itemNamed(priest, "ability_renewal"), 3, 4), "the mend resolves")
+            assert(Combat.useItem(c, healer, itemNamed(priest, "ability_renewal"), 3, 4), "the heal resolves")
             assert(hp(patient) == before, "the Sealed Hand refused the working entirely")
             assert(not Status.aidWardOn(patient), "and spent itself doing so")
         end,
@@ -288,7 +288,7 @@ return {
         end,
     },
     {
-        name = "mending poured into a Sealed Hour is held too, and lands whole when it ends",
+        name = "healing poured into a Sealed Hour is held too, and lands whole when it ends",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit(bare("character_rowan"), 3, 3) },
                 { unit(tough(bare("character_bandit")), 6, 6) })
@@ -298,10 +298,10 @@ return {
 
             Combat.dealFlatDamage(c, u, 10, nil, "probe")
             Combat.applyHeal(c, u, 25)
-            assert(hp(u) == 30, "neither the wound nor the mend has landed yet")
+            assert(hp(u) == 30, "neither the wound nor the heal has landed yet")
 
             Status.remove(c, u, "status_sealed_hour")
-            assert(hp(u) > 30, "a net-negative ledger mends: the wager was won")
+            assert(hp(u) > 30, "a net-negative ledger heals: the wager was won")
         end,
     },
 

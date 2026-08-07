@@ -192,7 +192,7 @@ return {
         end,
     },
     {
-        name = "the party mends between rounds: wounds, spent mana and a felled unit all come back",
+        name = "the party heals between rounds: wounds, spent mana and a felled unit all come back",
         fn = function()
             local run = DraftRun.new(1)
             local fielder = DraftChassis.instantiate("character_knight")
@@ -209,14 +209,14 @@ return {
             assert(fielder.stats.health.current == fielder.stats.health.max,
                 "a felled fielder stands at full health for the next round")
             assert(reserve.stats.health.current == reserve.stats.health.max,
-                "the bench mends too -- it is next round's team")
+                "the bench heals too -- it is next round's team")
             if type(reserve.stats.mana) == "table" then
                 assert(reserve.stats.mana.current == reserve.stats.mana.max, "and its mana is full again")
             end
         end,
     },
     {
-        name = "a decided run does not mend -- the rollover it skips is the one that would have",
+        name = "a decided run does not heal -- the rollover it skips is the one that would have",
         fn = function()
             local run = DraftRun.new(1)
             local knight = DraftChassis.instantiate("character_knight")

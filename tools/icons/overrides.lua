@@ -244,7 +244,7 @@ return {
     ["items/ability_ley_line.png"] = "stone-path",           -- the line between two standing stones
     ["items/consumable_sappers_line.png"] = "land-mine",     -- a line of charges, not a race
     ["items/utility_salvage_rig.png"] = "gears",             -- wreckage worth having
-    ["items/utility_cullers_kit.png"] = "meat-cleaver",      -- it renders bodies down, it does not mend
+    ["items/utility_cullers_kit.png"] = "meat-cleaver",      -- it renders bodies down, it does not heal
     ["items/ability_bring_it_down.png"] = "demolish",        -- the verb, not the gesture
     ["items/ability_field_assembly.png"] = "clockwork",      -- built in the field, out of the satchel
     ["items/utility_round_for_the_house.png"] = "beer-stein", -- a round, not a building

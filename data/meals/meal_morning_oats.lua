@@ -3,7 +3,7 @@
 -- buys is the plainest good a supper can buy, which is that everyone walks in with a little more room
 -- to be wrong in.
 --
--- Health here is a CEILING raise (maxBonus), not a heal: the extra is headroom to mend into, exactly as
+-- Health here is a CEILING raise (maxBonus), not a heal: the extra is headroom to heal into, exactly as
 -- Toughness's is. Wounds carry between the fights of a run, so the difference matters -- this does not
 -- undo the last quest, it lengthens this one.
 return {

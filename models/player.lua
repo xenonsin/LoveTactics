@@ -458,7 +458,7 @@ end
 -- ---------------------------------------------------------------------------
 --
 -- Between battles a run's wounds carry (see Player.restore's note on attrition), and the only free
--- mend before the hub is a Rest tile. A restorative draught is the paid alternative: drink one on the
+-- heal before the hub is a Rest tile. A restorative draught is the paid alternative: drink one on the
 -- overworld to spend a flask from the satchel and top a member's pool back up. It pours the SAME
 -- magnitude the item pours in combat (Combat.restorativeStat / Combat.restoreResource -- the one
 -- classifier and the one refill helper both reflexes and casts use), but with no turn, no aim, and no

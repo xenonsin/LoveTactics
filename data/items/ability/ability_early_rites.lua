@@ -10,7 +10,7 @@
 -- upright is now the fastest thing on the board to kill, and the person killing it is them.
 --
 -- Deliberately no damage at all, like Toll the Knell beside it on the same shelf. Against a fight with
--- nobody mending anything it is a wasted turn and should be: this is the Arcanum's answer to a specific
+-- nobody healing anything it is a wasted turn and should be: this is the Arcanum's answer to a specific
 -- enemy, not a spell you open with. Read the other side's kit before you buy it.
 --
 -- WHY IT IS THE NECROMANCER'S. The whole discipline is a clerical error about who counts as dead --

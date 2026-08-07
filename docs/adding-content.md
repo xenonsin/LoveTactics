@@ -942,8 +942,8 @@ debuff — they look similar and refuse very different things:
 | `disablesActions` | any action at all; walking and reflexes still work | `Combat.itemBlockReason` |
 | `disablesReactions` | counters, thorns, dodges — but not `onStatusApplied` | `models/trait.lua` |
 | `disablesTraits` | **every** trait hook, `onStatusApplied` included | `models/trait.lua` |
-| `blocksHealing` | every mend, from every source | `Combat.applyHeal` |
-| `invertsHealing` | nothing — it turns every mend into a wound of the same size | `Combat.applyHeal` |
+| `blocksHealing` | every heal, from every source | `Combat.applyHeal` |
+| `invertsHealing` | nothing — it turns every heal into a wound of the same size | `Combat.applyHeal` |
 | `preventsDeath` | the drop: a lethal blow floors the bearer at 1 | `Combat.dealFlatDamage` |
 | `revealsBearer` | concealment: an invisible bearer is targetable anyway | `Status.untargetable` |
 | `defers` | *everything*, onto a ledger that settles on expiry | both damage and heal |
@@ -954,10 +954,10 @@ very stun that landed, and a break has to be able to stop that too.
 
 `blocksHealing` and `invertsHealing` are separate flags rather than one with a mode, and the order
 between them is fixed: the block is read first and refuses outright, so a body carrying both is simply
-not mended — stacking them can never be worth more than either alone. Inversion has a second source
+not healed — stacking them can never be worth more than either alone. Inversion has a second source
 that is not a status at all: the trait flag of the same name, worn by every undead thing in the game
 (`data/traits/trait_grave_cold.lua`). `Combat.healingInverted` asks both questions at once, and both the
-live funnel and the tooltip's dry run go through it, so a heal aimed at a body past mending previews in
+live funnel and the tooltip's dry run go through it, so a heal aimed at a body past healing previews in
 red for the amount it is about to take.
 
 ### Wards: three different kinds of "no"

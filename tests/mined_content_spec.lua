@@ -55,7 +55,7 @@ end
 return {
     -- ---------------------------------------------------------------- Intercessor's Staff
     {
-        name = "the Intercessor's Staff mends the ally it named, not the priest swinging it",
+        name = "the Intercessor's Staff heals the ally it named, not the priest swinging it",
         fn = function()
             local priest = plainChar("character_priest")
             local staff = give(priest, "weapon_intercessors_staff")
@@ -77,7 +77,7 @@ return {
             openTurn(c, p)
             assert(Combat.useItem(c, p, staff, foe.x, foe.y), "the staff swings")
 
-            assert(hp(w) > wardBefore, "the blow mends the NAMED ally")
+            assert(hp(w) > wardBefore, "the blow heals the NAMED ally")
             assert(hp(p) == priestBefore, "and gives the priest nothing -- this is not lifesteal")
         end,
     },
@@ -131,7 +131,7 @@ return {
 
             openTurn(c, h)
             assert(Combat.perform(c, h), "the third air plays")
-            assert(Status.has(h, "status_regen"), "The Feast mends")
+            assert(Status.has(h, "status_regen"), "The Feast heals")
 
             -- ...and it wraps, rather than running out. The order is the cost: reaching an air again
             -- means walking the whole cycle again.

@@ -22,7 +22,7 @@
 -- be one (see models/trait.lua): a reflex is a thing that answers an event, and the clock is not one.
 return {
     name = "Unspent Heart",
-    description = "Mends hard while untouched; any wound stops it for a while.",
+    description = "Heals hard while untouched; any wound stops it for a while.",
     cooldown = 25, -- ticks the heart stays shut after a wound (~5 turns)
     onDamaged = function(ctx)
         ctx.setCooldown("trait_unspent_heart", ctx.def.cooldown or 25)

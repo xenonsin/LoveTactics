@@ -7,7 +7,7 @@ return {
     -- stand-in now, so it owes no painted VN portrait -- it falls back to the letter token if it speaks.
     -- Innate growth class: the fallback/tie-break for the level-up growth system (models/growth.lua).
     class = "priest",
-    -- Reads his allies before his enemies (models/ai.lua): mending outranks swinging, and he keeps
+    -- Reads his allies before his enemies (models/ai.lua): healing outranks swinging, and he keeps
     -- out of reach while he does it. The Heal in his grid carries its own rule, so most of this
     -- posture's work is the footwork rather than the choice of spell.
     archetype = "support",
@@ -24,9 +24,9 @@ return {
     -- Amana's signature -- see character_amana.lua -- not a template's). It carries the PLAIN censer
     -- instead, the way the other templates carry their `weapon_iron_<family>`: the censer is the priest's
     -- own arm and belongs to this shelf and no other (data/items/weapon/weapon_censer.lua), so a body that
-    -- fought with a staff was borrowing the mage's. Around it, a support caster's kit: Heal to mend at
+    -- fought with a staff was borrowing the mage's. Around it, a support caster's kit: Heal at
     -- range, Jolt to delay a pressing threat, silk robes for spell resistance, a potion as a fallback
-    -- mend, and the focus stone (Wait -> Focus) to refuel the non-regenerating mana pool.
+    -- heal, and the focus stone (Wait -> Focus) to refuel the non-regenerating mana pool.
     --
     -- Trading the parasitic staff for the censer costs the second mana-refuel route (the staff siphoned
     -- on hit) and buys the family's real verb: walking smoke that Blesses whoever stays beside him. That
@@ -45,7 +45,7 @@ return {
     -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
     signatureWeapon  = "weapon_censer",
     signatureAbility = "ability_heal",
-    -- Basic tactics (models/ai.lua): mend the moment mending matters. The `support` posture already
+    -- Basic tactics (models/ai.lua): heal the moment healing matters. The `support` posture already
     -- reads allies before enemies; this reaches for Heal specifically once someone slips below
     -- two-thirds, ahead of any swing.
     ai = {

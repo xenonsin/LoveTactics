@@ -1,5 +1,5 @@
 -- Sanctuary: the priest consecrates an area, leaving a Sanctuary hazard on every tile in the blast
--- (data/hazards/hazard_heal.lua). Allies standing on hallowed ground gain Regeneration, mending
+-- (data/hazards/hazard_heal.lua). Allies standing on hallowed ground gain Regeneration, healing
 -- health each turn; the hazard carries the caster's side, so enemies who wander in gain nothing. A
 -- ground-target area cast (target = "tile", allowOccupied) flagged `support` so its footprint
 -- previews green like a heal rather than red like an attack.

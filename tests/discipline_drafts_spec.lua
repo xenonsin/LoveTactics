@@ -271,7 +271,7 @@ return {
 
     -- BEASTMASTER ------------------------------------------------------------------------------------
     {
-        name = "Beastlord's Bond mends the bearer's summoned creatures whenever they act",
+        name = "Beastlord's Bond heals the bearer's summoned creatures whenever they act",
         fn = function()
             local map = Fixture.new(8, 8)
             local hero = Fixture.unit("character_kaya", 3, 3,
@@ -287,7 +287,7 @@ return {
             local hurt = wolf.char.stats.health.current
 
             assert(Fixture.strike(combat, h, f, "weapon_iron_dagger"), "the handler acts")
-            assert(wolf.char.stats.health.current > hurt, "and the bond mends the creature beside them")
+            assert(wolf.char.stats.health.current > hurt, "and the bond heals the creature beside them")
         end,
     },
 }

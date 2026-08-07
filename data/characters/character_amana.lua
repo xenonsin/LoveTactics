@@ -13,7 +13,7 @@
 -- children and the bodies dumped in pits (docs/story.md, "The Cathedral").
 --
 -- HER KIT IS GIVING MADE MECHANICAL, and she bears no edge (the cleric taboo, docs/classes.md): a censer,
--- not a blade. Rowan decides where you stand; Amana decides who survives. Heal to mend (which also opens
+-- not a blade. Rowan decides where you stand; Amana decides who survives. Heal at range (which also opens
 -- her signature), the Martyr's Icon to take a mortal blow for the ally beside her, and the Reliquary of
 -- the Kept Trust in the center (data/items/utility/utility_reliquary_kept_trust.lua), which wards the
 -- whole company once she has given three times and keeps nothing back for herself.
@@ -35,7 +35,7 @@ return {
     portrait = "assets/portraits/amana.png", -- large VN portrait for conversations (falls back if missing)
     class = "priest",
     boss = true,
-    overworldAbility = "kept_trust", -- devotion: mends the most-wounded after each fight, returned intact
+    overworldAbility = "kept_trust", -- devotion: heals the most-wounded after each fight, returned intact
     -- She does not kill (damage 5), so she must not be left on the aggressive default that would send
     -- her up to punch. `support` reads the company's wounds before the enemy's throats (models/ai.lua).
     archetype = "support",
@@ -49,7 +49,7 @@ return {
     },
     -- The 3x3 loadout grid (row-major); false = an empty cell. The Reliquary is the build-around in the
     -- center; Heal beside it is what opens it, and the Martyr's Icon is the giving she can make with her
-    -- body when there is no mana left to mend with.
+    -- body when there is no mana left to heal with.
     startingItems = {
         "ability_heal",         "weapon_censer",                "consumable_healing_potion",
         "utility_martyrs_icon", "utility_reliquary_kept_trust", false,

@@ -8,7 +8,7 @@
 --
 -- BANKED, NOT LIVE, and that is the whole design of it. Every other reading would be worse:
 --   * a `live` version keyed on "allies down" would UNDO itself the moment somebody was revived, which
---     turns a mend into a debuff and makes the correct play leaving your dead where they lie;
+--     turns a heal into a debuff and makes the correct play leaving your dead where they lie;
 --   * one keyed on wounded allies is trait_saviors_watch, which already exists on the priest's shelf.
 -- A wake is a thing that HAPPENED. It does not un-happen because the body got up.
 --

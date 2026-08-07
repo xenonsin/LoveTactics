@@ -1,4 +1,4 @@
--- The Cathedral's entry armor. Allies standing beside the wearer -- and the wearer -- mend a little
+-- The Cathedral's entry armor. Allies standing beside the wearer -- and the wearer -- heal a little
 -- health every tick (trait_sanctified_presence).
 --
 -- The priest shelf has never sold armour, and the reason it can start here is that this is not a

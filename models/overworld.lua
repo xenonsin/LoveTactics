@@ -1198,7 +1198,7 @@ function Overworld:placeEncounters(params)
     end
 
     -- Guaranteed VARIETY (density + mix): a rolled board must never be a wall of fights. Seat the texture
-    -- kinds -- a Reliquary to stock the run's relics, a Rest to mend -- that `always` didn't already, all
+    -- kinds -- a Reliquary to stock the run's relics, a Rest to heal -- that `always` didn't already, all
     -- non-combat so the objective spine stays walkable. HOW MANY of each, and whether it wants to sit near
     -- the road, is per kind (see GUARANTEE above); the roster of kinds is tunable via params.guaranteeKinds
     -- and its default is what the roguelike inner loop needs to feel like one (see models/relic.lua).

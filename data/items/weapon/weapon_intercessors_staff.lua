@@ -3,7 +3,7 @@
 -- A staff, so it owes the family's Focus swap (docs/weapons.md) -- end the turn to recover mana instead
 -- of striking. What it adds over data/items/weapon/weapon_staff.lua is where its damage GOES: the trait
 -- it carries names one ally at the start of battle (data/traits/trait_intercession.lua), and from then
--- on every blow this staff lands mends that one body. Lifesteal pointed at somebody else.
+-- on every blow this staff lands heals that one body. Lifesteal pointed at somebody else.
 --
 -- Read against the shelf's other two and the trio is complete. The Crozier asks a priest WHERE TO STAND
 -- so the line behind it recovers (`waitBehavior.covers`). The censers ask where to WALK, and lay their
@@ -52,7 +52,7 @@ return {
             if dealt > 0 and ward and ward.alive then
                 -- Three fifths, floored at 1 so a blow that landed always carries something across. Below
                 -- a full point-for-point trade because the priest keeps the tempo either way: it struck a
-                -- foe AND mended an ally on one turn, and that is worth a discount on both halves.
+                -- foe AND healed an ally on one turn, and that is worth a discount on both halves.
                 fx.heal(ward, math.max(1, math.floor(dealt * 0.6)))
             end
         end,

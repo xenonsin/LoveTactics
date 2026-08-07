@@ -1,4 +1,4 @@
--- The Unspent Heart: a heavy cuirass with something still beating behind the breastplate. It mends its
+-- The Unspent Heart: a heavy cuirass with something still beating behind the breastplate. It heals its
 -- wearer hard while nobody is touching them, and stops dead the moment anybody does
 -- (data/traits/trait_unspent_heart.lua).
 --

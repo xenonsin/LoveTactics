@@ -1,5 +1,5 @@
 -- A sword, so it answers (docs/weapons.md). Its answer deals nothing at all: it opens a wound that
--- cannot be mended (data/traits/trait_unclosing_parry.lua -> status_unclosing_wound) and lets somebody
+-- cannot be healed (data/traits/trait_unclosing_parry.lua -> status_unclosing_wound) and lets somebody
 -- else do the killing.
 --
 -- Quest-only: `class` with no `price`.

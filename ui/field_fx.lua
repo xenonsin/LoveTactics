@@ -18,7 +18,7 @@
 --
 --   hostile     red chevrons falling      -- ground that damages or debuffs one of your units
 --   buff        green chevrons rising     -- a zone that strengthens your side (red, rising, for theirs)
---   heal        blue crosses              -- ground that mends your side (red for theirs)
+--   heal        blue crosses              -- ground that heals your side (red for theirs)
 --
 -- The category of a HAZARD comes from its disposition, whether it heals, and whose side owns it -- not
 -- from its tags, so nothing in data/hazards had to be told how it looks (Muster is the one exception:
@@ -88,7 +88,7 @@ local LAYER_ORDER = { stain = 1, field = 2, mist = 3, glow = 4 }
 -- Category resolution (pure -- no love.graphics -- tests/field_fx_spec.lua drives these directly)
 -- ---------------------------------------------------------------------------
 
--- Does standing in this hazard mend anybody? Memoised by def (the registry hands out stable
+-- Does standing in this hazard heal anybody? Memoised by def (the registry hands out stable
 -- singletons), because the honest answer is a dry-run: Hazard.preview fires the zone's onEnter against
 -- an allied stand-in and reports the heal and the statuses it grants, and a zone heals if it heals
 -- directly or grants a status marked `restorative` (Regeneration). Derived rather than declared, so a
@@ -128,7 +128,7 @@ function FieldFx.hazardCategory(hazard)
     return "hostile"
 end
 
--- The category a carried STATUS reads as, under a body on `unitSide`. A restorative condition mends (a
+-- The category a carried STATUS reads as, under a body on `unitSide`. A restorative condition heals (a
 -- heal, coloured for whose body it is on), a `debuff` harms (a threat), and anything else is a boon.
 function FieldFx.statusCategory(def, unitSide)
     local mine = (unitSide == FieldFx.VIEWER)

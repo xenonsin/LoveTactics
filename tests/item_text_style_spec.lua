@@ -19,6 +19,7 @@
 
 local Item = require("models.item")
 local Status = require("models.status")
+local Trait = require("models.trait")
 
 -- Display names of every status, for the "name it, don't re-explain it" check. A "<Status>:" in a
 -- description is the tell that the line restates the definition the glossary column already renders
@@ -65,9 +66,13 @@ local LEAKS = {
     "bleeds",
 }
 
--- Healing is written "heal", never mend/mends/mending/mended (docs/item-text.md). Whole-word,
--- case-insensitive: item NAMES and flavor may still say "Mending" (a Totem of Mending), but a
--- description is rules text and uses the one canonical verb.
+-- Healing is written "heal", never mend/mends/mending/mended (docs/item-text.md) -- in EVERY authored
+-- string, not only rules text. Whole-word, case-insensitive.
+--
+-- This used to carve out names and flavor, and shipped a Totem of Mending under the exemption. That
+-- taught the mechanic under two words at once: the shelf said Mending, the tooltip said heals. The
+-- carve-out is gone, the totem is named for the ground it lays (Totem of Renewal), and there is one
+-- word for putting health back.
 local MEND_WORDS = { "mend", "mends", "mending", "mended" }
 
 local function eachItem()
@@ -83,6 +88,15 @@ local function descriptions(def)
     if type(def.description) == "string" then out[#out + 1] = def.description end
     local ab = def.activeAbility
     if ab and type(ab.description) == "string" then out[#out + 1] = ab.description end
+    return out
+end
+
+-- Every authored string an item exposes, descriptions plus the name and flavor. A rule about how the
+-- game says a mechanic holds over all four; the rules-text-only rules above keep reading descriptions().
+local function allText(def)
+    local out = descriptions(def)
+    if type(def.name) == "string" then out[#out + 1] = def.name end
+    if type(def.flavor) == "string" then out[#out + 1] = def.flavor end
     return out
 end
 
@@ -120,15 +134,27 @@ return {
         end,
     },
     {
-        name = "healing is written \"heal\", never mend/mends/mending (docs/item-text.md)",
+        name = "healing is written \"heal\" -- never mend -- in name, flavor and rules text alike",
         fn = function()
+            local function scan(kind, id, text)
+                local low = text:lower()
+                for _, word in ipairs(MEND_WORDS) do
+                    assert(not low:find("%f[%a]" .. word .. "%f[%A]"),
+                        kind .. " " .. id .. ' says "' .. word .. '" -- healing is written as "heal"'
+                            .. ' everywhere: name, flavor and rules text (docs/item-text.md)')
+                end
+            end
             for _, it in ipairs(eachItem()) do
-                for _, desc in ipairs(descriptions(it.def)) do
-                    local low = desc:lower()
-                    for _, word in ipairs(MEND_WORDS) do
-                        assert(not low:find("%f[%a]" .. word .. "%f[%A]"),
-                            it.id .. ' says "' .. word .. '" -- healing is written as "heal" in rules'
-                                .. ' text; save mend for the item name or flavor (docs/item-text.md)')
+                for _, text in ipairs(allText(it.def)) do scan("item", it.id, text) end
+            end
+            -- Traits and statuses were never covered, and under the old carve-out that is exactly where
+            -- the word survived: Grave-Cold read "Mending does not reach the dead" and the Unspent Heart
+            -- "Mends hard while untouched" -- both of them rules text, in the badge tooltip the player
+            -- reads mid-fight.
+            for _, source in ipairs({ { "trait", Trait.defs }, { "status", Status.defs } }) do
+                for id, def in pairs(source[2]) do
+                    for _, key in ipairs({ "name", "description" }) do
+                        if type(def[key]) == "string" then scan(source[1], id, def[key]) end
                     end
                 end
             end

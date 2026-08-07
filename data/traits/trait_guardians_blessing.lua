@@ -1,4 +1,4 @@
--- Every mend is also a ward: when the bearer casts a healing ability, the target also gains a
+-- Every heal is also a ward: when the bearer casts a healing ability, the target also gains a
 -- physical barrier (negating the next physical blow). Turns a healer's reactive patching into
 -- proactive shielding. Fires from onCast -- where `ctx.item` is the CAST item (the event's item
 -- overrides the trait's granting item), so it reads the heal's own tags to know a heal was cast.

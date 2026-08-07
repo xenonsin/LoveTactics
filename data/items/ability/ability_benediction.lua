@@ -1,4 +1,4 @@
--- Benediction: the mending half of the Theurge's channelled miracle (mage x priest). A wind-up that
+-- Benediction: the healing half of the Theurge's channelled miracle (mage x priest). A wind-up that
 -- breaks over the whole party at once, and heals harder for every tick it was held.
 --
 -- The Long Prayer is this fusion pointed at ground; this is it pointed at bodies. Together they are the
@@ -11,7 +11,7 @@
 -- are standing is a thing no other shelf sells, and it is why the Theurge is the discipline you build
 -- when the party has stopped being able to stay together.
 --
--- Scales off fx.windup, so an interrupted prayer still mends -- less, but the mana is not wasted. Pair
+-- Scales off fx.windup, so an interrupted prayer still heals -- less, but the mana is not wasted. Pair
 -- it with the Vigil Beads and the wind-up becomes a promise rather than a hope.
 local Curve = require("models.curve")
 
@@ -36,9 +36,9 @@ return {
         healing = Curve.ramp(10, 23), -- Combat.abilityMagnitude reads this
         description = "Channeled: heals every ally, more for the wind-up held.",
         effect = function(fx)
-            local mend = fx.amount + (fx.windup or 0) * 4
+            local heal = fx.amount + (fx.windup or 0) * 4
             for _, u in ipairs(fx.combat.units) do
-                if u.alive and u.side == fx.user.side then fx.heal(u, mend) end
+                if u.alive and u.side == fx.user.side then fx.heal(u, heal) end
             end
         end,
     },

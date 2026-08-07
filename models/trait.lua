@@ -815,7 +815,7 @@ local function ctxFor(combat, unit, trait, event)
         end,
         -- The twin of `drain`: pour a resource back into a unit, capped at its effective ceiling,
         -- returning what actually landed. Deliberately not `heal` when the resource is health -- a heal
-        -- is a mend somebody performed, logged and answerable; this is a pool topping itself up (the
+        -- is a heal somebody performed, logged and answerable; this is a pool topping itself up (the
         -- Cafe's Bottomless Pot opening each battle with mana back, which matters precisely because
         -- mana never regenerates on its own -- see data/items/consumable/consumable_wellspring_sandals).
         restore = function(tgt, stat, amount)

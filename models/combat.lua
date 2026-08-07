@@ -1390,7 +1390,7 @@ end
 --   hitTaken / damageTaken  -- ate a blow and lived            (raiseAnswer)
 --   kill                    -- felled a foe                    (Combat.dealFlatDamage kill branch)
 --   allyDown                -- an ally of this unit fell        (killUnit)
---   healDone                -- mended someone                  (the cast's fx.heal)
+--   healDone                -- healed someone                  (the cast's fx.heal)
 --   cast                    -- committed to an ability         (Combat.useItem)
 --   turnTaken               -- began a turn                    (Combat.startTurn)
 --   companionDamage         -- a summon of this unit drew blood (Combat.dealDamage)
@@ -1399,7 +1399,7 @@ end
 --   repeatStrike            -- struck the same body twice running (Combat.dealDamage)
 --   answered                -- turned a blow aside / countered    (Trait's tallyAnswer)
 --   foeDown                 -- an enemy of this unit fell         (killUnit)
---   allyMended              -- someone on its side was healed     (Combat.applyHeal)
+--   allyHealed              -- someone on its side was healed     (Combat.applyHeal)
 -- ---------------------------------------------------------------------------
 
 -- Add `n` (default 1) to `unit`'s running count of `event`. Nil-safe on both the unit and its
@@ -1467,7 +1467,7 @@ end
 -- `charge = { key = ..., from = ..., max = ... }`, folded together with the engine's own defs.
 --
 -- Merged rather than first-wins so a second charm can DEEPEN a pool instead of opening a rival one:
--- `from` unions (Crusader's Tabard banks Zeal on kills, Vow of the March adds nearby mends, and a
+-- `from` unions (Crusader's Tabard banks Zeal on kills, Vow of the March adds nearby heals, and a
 -- Crusader holding both banks on either) and the highest `max` wins. Two items disagreeing about what
 -- a pool is would otherwise mean "your zeal" named a different number in each file -- the exact bug
 -- chi's single-baseline design exists to avoid.
@@ -1680,7 +1680,7 @@ end
 -- Verb fragments for the auto-generated lock label, when an unlock declares no `text` of its own.
 local UNLOCK_LABELS = {
     hitDealt = "Land", damageDealt = "Deal", hitTaken = "Weather", damageTaken = "Soak",
-    kill = "Fell", allyDown = "Lose", healDone = "Mend", cast = "Cast", turnTaken = "Hold",
+    kill = "Fell", allyDown = "Lose", healDone = "Heal", cast = "Cast", turnTaken = "Hold",
 }
 
 -- Evaluate a raw `unlock` descriptor for `unit`, with per-`key` baseline bookkeeping. `key` is
@@ -1782,7 +1782,7 @@ end
 
 -- Passive recovery each rebase: every living unit regains its staminaRegen rate per elapsed tick
 -- (clamped to max). Mana deliberately does NOT regenerate -- except for an Arcane Reservoir bearer.
--- A unit under a Sanctified Presence also mends a little health. Called from rebase with the ticks
+-- A unit under a Sanctified Presence also heals a little health. Called from rebase with the ticks
 -- that just elapsed (the same amount fed to Status.tick), so recovery scales with time on the clock.
 function Combat.regenerate(combat, elapsed)
     if not elapsed or elapsed <= 0 then return end
@@ -2167,7 +2167,7 @@ end
 -- The corollary is that a trail can no longer do anything FOR its wearer through the ground -- you
 -- cannot stand in your own print any more. `selfStatus = { id, duration }` is the honest way to say
 -- what the walking does to the walker: a status applied straight to the unit, refreshed on every tile
--- it crosses, so it holds while it keeps moving and fades once it stops. The Pilgrim's Sandals' mending
+-- it crosses, so it holds while it keeps moving and fades once it stops. The Pilgrim's Sandals' healing
 -- is that (see the blueprint) -- it used to fall out of standing in the hallowed tile, and now it is
 -- stated rather than implied.
 --
@@ -4190,7 +4190,7 @@ end
 -- re-deriving an event.
 --
 -- Written against `summoned` in general rather than against spirits or totems, which is the precedent
--- the Beastlord's Bond set (docs/disciplines-plan.md): a Shaman's Ancestor Mask mends a Beastmaster's
+-- the Beastlord's Bond set (docs/disciplines-plan.md): a Shaman's Ancestor Mask heals a Beastmaster's
 -- wolf too, and nothing in its behaviour knows which shelf sold it. That is "anyone carries anything"
 -- earning its keep.
 function Combat.summonRiders(combat, summoner, summoned)
@@ -6383,10 +6383,10 @@ function Combat.computeTrapDamage(unit, weapon)
     return math.max(1, math.floor(dmg + flatStat(unit, atkStat) + 0.5))
 end
 
--- Is a mend aimed at `target` turned back on it -- does it WOUND instead of heal? Returns the thing
+-- Is a heal aimed at `target` turned back on it -- does it WOUND instead of heal? Returns the thing
 -- doing the turning (a status instance or a trait), or nil, so a caller can name it in the log.
 --
--- Two sources, one question, because there are two shapes of "this body does not take mending" and the
+-- Two sources, one question, because there are two shapes of "this body does not take healing" and the
 -- funnel must not learn them separately:
 --
 --   * a STATUS the body was cursed with (Interred, data/status/status_interred.lua) -- a window somebody
@@ -6394,7 +6394,7 @@ end
 --   * a TRAIT the body simply IS (Grave-Cold, worn by every undead thing on data/items/utility/
 --     utility_grave_cold.lua) -- a standing fact about a corpse, not a condition it caught. A permanent
 --     status would be the wrong instrument for it (see models/trait.lua's header on why), and a corpse
---     that could be CLEANSED back into taking mending would be nonsense besides.
+--     that could be CLEANSED back into taking healing would be nonsense besides.
 --
 -- Asked by Combat.applyHeal below and by the dry run in Combat.abilityOutput, so the number the hover
 -- promises is the number the cast delivers: a heal aimed at an interred body previews in red.
@@ -6406,48 +6406,48 @@ end
 -- life can't be healed back into). Returns the amount actually healed. Reached through `fx.heal`
 -- inside an ability effect.
 function Combat.applyHeal(combat, target, amount)
-    -- An UNCLOSING WOUND refuses the mend outright. Sat at the top of the one funnel every heal in the
+    -- An UNCLOSING WOUND refuses the heal outright. Sat at the top of the one funnel every heal in the
     -- game runs through -- a spell, a potion, a Regeneration tick, a lifesteal drink, a Sanctified
     -- Presence -- so nothing has to learn the rule twice and nothing can route around it.
     local blocked = Status.blocksHealing(target)
     if blocked and (amount or 0) > 0 then
         Combat.logEvent(combat, "status",
-            string.format("%s cannot be mended: %s.", unitName(target), blocked.name or blocked.id), target)
+            string.format("%s cannot be healed: %s.", unitName(target), blocked.name or blocked.id), target)
         return 0
     end
-    -- INTERRED, or simply dead: the mend curdles and lands as a wound of the same size. Checked after
+    -- INTERRED, or simply dead: the heal curdles and lands as a wound of the same size. Checked after
     -- the block above, so a body under both is refused rather than burned -- a heal that was never going
     -- to land cannot be turned around.
     --
     -- The wound is a TOLL (tollHealth): unmitigated, attacker-less, and answered by nothing. That is not
     -- a shortcut. Grace poured into a corpse is a consequence, not an exchange -- there is nobody in the
-    -- room to parry, riposte or reflect, and charging the priest's own mending to the target's armor
+    -- room to parry, riposte or reflect, and charging the priest's own healing to the target's armor
     -- would make plate a defense against being healed. It can fell, and is meant to.
     local inverted = Combat.healingInverted(target)
     if inverted and (amount or 0) > 0 then
         local held = Status.deferralOn(target)
         if held then
             -- A Sealed Hour holds this too, and holds it as what it BECAME: positive on the ledger,
-            -- since what is owed is now damage. Curdling it into mending owed would let the hour launder
+            -- since what is owed is now damage. Curdling it into healing owed would let the hour launder
             -- an interred body's heals back into a rescue.
             Status.defer(held, amount)
             Combat.logEvent(combat, "status",
-                string.format("%s's mending curdles, and is held for later (%d).", unitName(target), amount), target)
+                string.format("%s's healing curdles, and is held for later (%d).", unitName(target), amount), target)
             return 0
         end
         tollHealth(combat, target, amount,
-            string.format("%s cannot be mended -- the grace burns it for %d (%s).",
+            string.format("%s cannot be healed -- the grace burns it for %d (%s).",
                 unitName(target), amount, inverted.name or inverted.id), target)
         return 0
     end
-    -- A DEFERRAL banks the mend instead of landing it (the Sealed Hour). Negative on the ledger, since
+    -- A DEFERRAL banks the heal instead of landing it (the Sealed Hour). Negative on the ledger, since
     -- the ledger is denominated in damage -- and this is the whole reason a deferral is a bargain
-    -- rather than a pure ward: mending banked under it does not save anyone in the meantime either.
+    -- rather than a pure ward: healing banked under it does not save anyone in the meantime either.
     local deferral = Status.deferralOn(target)
     if deferral and (amount or 0) > 0 then
         Status.defer(deferral, -(amount or 0))
         Combat.logEvent(combat, "heal",
-            string.format("%s's mending is held for later (%d).", unitName(target), amount or 0), target)
+            string.format("%s's healing is held for later (%d).", unitName(target), amount or 0), target)
         return amount or 0
     end
     local hp = target.char.stats.health
@@ -6458,13 +6458,13 @@ function Combat.applyHeal(combat, target, amount)
         Combat.logEvent(combat, "heal", string.format("%s is healed for %d.", unitName(target), healed), target)
         Combat.pushFx(combat, { type = "heal", unit = target, amount = healed })
     end
-    -- Every unit on the patient's side banks an `allyMended`. The counterpart to `healDone`, which is
+    -- Every unit on the patient's side banks an `allyHealed`. The counterpart to `healDone`, which is
     -- credited to the CASTER: this is "the line was tended", which is what a pool belonging to a cause
-    -- rather than to a healer fills on (the Crusader's Zeal). Fired here, in the one funnel every mend
+    -- rather than to a healer fills on (the Crusader's Zeal). Fired here, in the one funnel every heal
     -- in the game runs through, so a potion, a regeneration tick and a lifesteal drink all count.
     if healed > 0 and target then
         for _, u in ipairs(combat.units) do
-            if u.alive and u.side == target.side then Combat.tally(u, "allyMended", 1) end
+            if u.alive and u.side == target.side then Combat.tally(u, "allyHealed", 1) end
         end
     end
     return healed
@@ -6847,7 +6847,7 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         end,
         heal = function(tgt, amount)
             if not tgt then return 0 end
-            -- A mend aimed at an INTERRED body (or at anything grave-cold) lands as a wound instead, so
+            -- A heal aimed at an INTERRED body (or at anything grave-cold) lands as a wound instead, so
             -- the preview has to show it as one -- a green number over a zombie the party is about to
             -- burn down is the preview lying about the one thing the player needed to know. The toll is
             -- unmitigated, so the previewed figure is the whole amount, exactly as it lands.
@@ -8841,7 +8841,7 @@ function Combat.useItem(combat, unit, item, tx, ty, windup, dest, spend)
         local held = ticks - windLo
         -- DEPTH vs TIME. `ticks`/`held` are the COMMITMENT -- how long she chose to hold, and how far
         -- past the floor -- and they are what every wind-up-scaled EFFECT is scored on (this weapon's
-        -- bonus off `held`, a benediction's mend and the Long Prayer's radius off the total `windup`),
+        -- bonus off `held`, a benediction's heal and the Long Prayer's radius off the total `windup`),
         -- so they are left undiscounted: the payoff is worth what the hold was worth. `timeTicks` is how
         -- long that hold actually takes on the TIMELINE, and it rides the same costMultiplier knob every
         -- other timeline cost does (Combat.abilityCost) -- Haste halves it, Mired doubles it, Graven
@@ -9253,17 +9253,17 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
             if not tgt then return 0 end
             local h = Combat.applyHeal(combat, tgt, amount)
             result.healed = result.healed + h
-            -- THE SHARED LEDGER (the Apothecary's): a mend that landed also lends the patient a share
+            -- THE SHARED LEDGER (the Apothecary's): a heal that landed also lends the patient a share
             -- of the healer's own guard (status_lent_guard). Here rather than in Combat.applyHeal
-            -- because this is the one heal path that knows WHO did the mending -- applyHeal is handed
-            -- only a patient, which is exactly why the Crusader's allyMended tally lives there and this
-            -- does not. Envy's verb on the priest's action: healing that lends rather than only mends.
+            -- because this is the one heal path that knows WHO did the healing -- applyHeal is handed
+            -- only a patient, which is exactly why the Crusader's allyHealed tally lives there and this
+            -- does not. Envy's verb on the priest's action: healing that lends rather than only heals.
             if h > 0 and tgt ~= unit and Trait.flag(unit, "lendsGuard") then
                 Status.apply(combat, tgt, "status_lent_guard", { applier = unit })
             end
-            -- A mend that actually restored something banks a `healDone` on the CASTER (applyHeal
+            -- A heal that actually restored something banks a `healDone` on the CASTER (applyHeal
             -- itself knows only the patient) -- what a mercy signature gated on healing counts. An
-            -- AoE mend that lands on three allies is three, which is what "heal N times" reads as.
+            -- AoE heal that lands on three allies is three, which is what "heal N times" reads as.
             if h > 0 then Combat.tally(unit, "healDone", 1) end
             return h
         end,

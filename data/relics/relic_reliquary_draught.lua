@@ -1,4 +1,4 @@
--- VIRTUE · both · rare. Every ally mends a little each turn of every fight. A battleStart boon
+-- VIRTUE · both · rare. Every ally heals a little each turn of every fight. A battleStart boon
 -- (status_regen) laid on the WHOLE party, not just the line -- the rare-shelf sustain that turns a long
 -- run of attrition survivable. Reads as "both" so a Reliquary or a Sin's Altar can offer it either way.
 return {

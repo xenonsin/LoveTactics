@@ -3,7 +3,7 @@
 -- stands rather than banked when somebody got hurt.
 --
 -- WHY THE CRUSADER'S. Fighter x priest already sells the swing that heals (Smite), the charge that
--- ends in a blessing (Zealous Charge) and the pool that fills off mending (Reckoning). What none of
+-- ends in a blessing (Zealous Charge) and the pool that fills off healing (Reckoning). What none of
 -- them answer is the actual failure mode of the discipline, which is arithmetic rather than thematic:
 -- a Crusader is a heavy body, and a heavy body wearing plate walks at 3. It is forever two squares
 -- short of the person it exists to reach. This is the charm that closes that gap, and it closes it

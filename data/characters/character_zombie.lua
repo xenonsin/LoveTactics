@@ -2,7 +2,7 @@
 -- and witless -- it fights on your side but takes its own turns (AI-run) -- yet tough and strong, a
 -- shambling wall of dead flesh. It carries Rotting Claws and no mana. See fire_elemental.lua for shape.
 --
--- It is also GRAVE-COLD (data/items/utility/utility_grave_cold.lua): mending does not reach the dead,
+-- It is also GRAVE-COLD (data/items/utility/utility_grave_cold.lua): healing does not reach the dead,
 -- so a heal aimed at it burns it for the whole amount instead. Worth knowing before you raise one --
 -- it is a body that rots down on a timer and cannot be topped up, and a healing zone your line is
 -- standing in will quietly eat it.

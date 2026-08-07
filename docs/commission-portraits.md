@@ -61,7 +61,7 @@ eight **vendors** are the shopkeepers of the town's shops; the **Demon Lord** is
 | `kaya.png` | **Kaya** | The hunter — virtue *temperance* ("enough"); ranged, measured. |
 | `gyeom.png` | **Gyeom** | The mage — arcane skirmisher. |
 | `amana.png` | **Amana** | The priest/acolyte — support/healer (Cathedral line). |
-| `ren.png` | **Ren** | The alchemist — kindness; mends before she strikes (Crucible line). |
+| `ren.png` | **Ren** | The alchemist — kindness; heals before she strikes (Crucible line). |
 | `clem.png` | **Clem** | The rogue — aggressive glass-cannon skirmisher. |
 
 ### The seven generals — personified sins (Latin register; all women)

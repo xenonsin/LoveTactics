@@ -1,5 +1,5 @@
 -- Herbalist exemplar (hunter x alchemist multiclass). Field brewing: convert field hazards / plants
--- into consumables mid-fight, to mend or to poison. Met as a field-apothecary, a recruit. Home shelf
+-- into consumables mid-fight, to heal or to poison. Met as a field-apothecary, a recruit. Home shelf
 -- is hunter. Kit from data/disciplines/herbalist.lua.
 return {
     name = "Herbalist",
@@ -8,7 +8,7 @@ return {
     sprite = "assets/chars/herbalist.png",
     class = "hunter",
     discipline = "herbalist",
-    -- Harvests the field, brews, and mends or poisons from it (models/ai.lua `support`).
+    -- Harvests the field, brews, and heals or poisons from it (models/ai.lua `support`).
     archetype = "support",
     stats = {
         health = 66, mana = 45, stamina = 16,
@@ -29,7 +29,7 @@ return {
     -- rest of its kit is gear the player chose and read rather than nine inherited unknowns.
     signatureWeapon  = "weapon_iron_bow",
     signatureAbility = "ability_field_brew",
-    -- Mend the most wounded ally with a poultice before anything else.
+    -- Heal the most wounded ally with a poultice before anything else.
     ai = {
         { priority = "urgent", act = "support", item = "consumable_wildcraft_poultice", targetPref = "most_wounded",
           when = { subject = "any_ally", test = "hp_pct_below", value = 0.6 } },

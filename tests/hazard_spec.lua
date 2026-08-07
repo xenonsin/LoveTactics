@@ -168,11 +168,11 @@ return {
             openTurn(c, bandit)
 
             assert(Combat.moveUnit(c, bandit, 4, 3), "the bandit walks onto the party's sanctuary")
-            assert(not Status.has(bandit, "status_regen"), "the party's hallowed ground does not mend a foe")
+            assert(not Status.has(bandit, "status_regen"), "the party's hallowed ground does not heal a foe")
 
             openTurn(c, bandit)
             assert(Combat.moveUnit(c, bandit, 4, 5), "the bandit walks onto its own sanctuary")
-            assert(Status.has(bandit, "status_regen"), "its own hallowed ground mends it")
+            assert(Status.has(bandit, "status_regen"), "its own hallowed ground heals it")
         end,
     },
     {
@@ -183,11 +183,11 @@ return {
             Hazard.place(c, 4, 4, "hazard_heal") -- no side: hallowed ground that was always there
             Hazard.place(c, 5, 5, "hazard_heal")
             assert(Status.has(knight, "status_regen") and Status.has(bandit, "status_regen"),
-                "with no owner to take a side, it mends both")
+                "with no owner to take a side, it heals both")
         end,
     },
     {
-        name = "Pilgrim's Sandals hallow every tile LEFT, mend the wearer by the walking, and spare a foe",
+        name = "Pilgrim's Sandals hallow every tile LEFT, heal the wearer by the walking, and spare a foe",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("character_priest", 4, 4) }, { unit("character_bandit", 8, 8) })
             local priest, bandit = c.units[1], c.units[2]
@@ -201,18 +201,18 @@ return {
             -- The self-heal no longer falls out of standing in a print (there is none underfoot now):
             -- it is applied straight to the wearer by the walking, and is not zone-bound.
             local regen = Status.get(priest, "status_regen")
-            assert(regen, "the walking itself mends the wearer")
+            assert(regen, "the walking itself heals the wearer")
             assert(regen.source == nil, "and does so on its own clock, not as a zone-bound blessing")
 
             -- The trail is sided with the wearer, so the foe following it down gains nothing.
             openTurn(c, bandit)
             bandit.x, bandit.y = 3, 3
             assert(Combat.moveUnit(c, bandit, 3, 4), "the bandit steps onto the priest's footprint")
-            assert(not Status.has(bandit, "status_regen"), "a foe walking the priest's trail is not mended by it")
+            assert(not Status.has(bandit, "status_regen"), "a foe walking the priest's trail is not healed by it")
         end,
     },
     {
-        name = "the sandals' mending holds while the wearer walks and runs out when it stops",
+        name = "the sandals' healing holds while the wearer walks and runs out when it stops",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("character_priest", 4, 4) }, {})
             local priest = c.units[1]
@@ -230,7 +230,7 @@ return {
                 "and walking refreshes it to full -- the walking is the sacrament")
 
             Status.tick(c, granted)
-            assert(not Status.has(priest, "status_regen"), "a pilgrim who stops long enough stops mending")
+            assert(not Status.has(priest, "status_regen"), "a pilgrim who stops long enough stops healing")
         end,
     },
     {
@@ -376,9 +376,9 @@ return {
 
             local before = hp.current
             Status.tick(c, Status.TICKS_PER_TURN) -- one turn's worth of ticks
-            assert(hp.current > before, "Regeneration mended health as time passed")
+            assert(hp.current > before, "Regeneration healed health as time passed")
             assert(hp.current == before + Status.defs.status_regen.magnitude,
-                "a turn's worth of ticks mends exactly its per-turn magnitude")
+                "a turn's worth of ticks heals exactly its per-turn magnitude")
         end,
     },
     {

@@ -184,7 +184,7 @@ return {
             -- Neither tally is the bearer's own doing, which is the vow's point: a crusader who has
             -- personally killed and healed nobody is owed the same faith.
             Combat.tally(h, "foeDown", 3)
-            Combat.tally(h, "allyMended", 4)
+            Combat.tally(h, "allyHealed", 4)
             assert(Combat.chargePool(h, "zeal") == 7, "seven banked off the column's work")
             assert(Combat.flatStat(h, "magicDefense") == base + 3, "and seven held is three magic defense")
         end,
@@ -402,7 +402,7 @@ return {
 
     -- CRUSADER --------------------------------------------------------------------------------------
     {
-        name = "the Crusader's Tabard banks Zeal from kills AND mends, with no weapon in the loop",
+        name = "the Crusader's Tabard banks Zeal from kills AND heals, with no weapon in the loop",
         fn = function()
             local map = Fixture.new(8, 8)
             local hero = Fixture.unit("character_amana", 3, 3,
@@ -416,7 +416,7 @@ return {
             assert(Combat.chargePool(h, "zeal") == 2, "two felled")
             Combat.tally(h, "healDone", 3)
             assert(Combat.chargePool(h, "zeal") == 5,
-                "and three mended bank the same coin -- R2: the pool belongs to the crusade, not to a hammer")
+                "and three healed bank the same coin -- R2: the pool belongs to the crusade, not to a hammer")
         end,
     },
     {
@@ -430,7 +430,7 @@ return {
             local h = combat.units[1]
 
             Combat.tally(h, "foeDown", 3)   -- somebody else's kills
-            Combat.tally(h, "allyMended", 2) -- somebody else's mending
+            Combat.tally(h, "allyHealed", 2) -- somebody else's healing
             assert(Combat.chargePool(h, "zeal") == 5,
                 "a priest who has personally neither killed nor healed still holds the faith")
             Combat.tally(h, "kill", 20)
@@ -438,7 +438,7 @@ return {
         end,
     },
     {
-        name = "Reckoning spends Zeal into one blow and mends the line beside it for what landed",
+        name = "Reckoning spends Zeal into one blow and heals the line beside it for what landed",
         fn = function()
             local map = Fixture.new(8, 8)
             local hero = Fixture.unit("character_saber", 3, 3,
@@ -456,12 +456,12 @@ return {
             assert(Fixture.strike(combat, h, f, "ability_reckoning"), "Reckoning lands")
             local dealt = hp - f.char.stats.health.current
 
-            -- At most the point its own mending rebanked: Reckoning heals, healDone is a Zeal source,
+            -- At most the point its own healing rebanked: Reckoning heals, healDone is a Zeal source,
             -- so the crusade is credited for the mercy it just did. Deliberate, and the same rebate
             -- Flurry takes -- what must not survive is the four points it was PAID for.
-            assert(Combat.chargePool(h, "zeal") <= 1, "the pool is emptied, bar what the mending rebanked")
+            assert(Combat.chargePool(h, "zeal") <= 1, "the pool is emptied, bar what the healing rebanked")
             assert(dealt > 0, "the blow bites")
-            assert(a.char.stats.health.current > 5, "and the wounded ally beside the crusader is mended by it")
+            assert(a.char.stats.health.current > 5, "and the wounded ally beside the crusader is healed by it")
         end,
     },
 
@@ -480,13 +480,13 @@ return {
             assert(Combat.chargePool(h, "zeal") == 3,
                 "no Tabard, no Vow: the spender banks its own faith off what it fells")
             Combat.tally(h, "healDone", 4)
-            assert(Combat.chargePool(h, "zeal") == 5, "and off mending, to its own shallower cap of 5")
+            assert(Combat.chargePool(h, "zeal") == 5, "and off healing, to its own shallower cap of 5")
 
             local hp = f.char.stats.health.current
             assert(Fixture.strike(combat, h, f, "ability_reckoning"),
                 "and the crusade can spend it without owning a second item")
             assert(hp - f.char.stats.health.current > 0, "the blow bites")
-            assert(Combat.chargePool(h, "zeal") <= 1, "the pool is emptied, bar what the mending rebanked")
+            assert(Combat.chargePool(h, "zeal") <= 1, "the pool is emptied, bar what the healing rebanked")
 
             Fixture.give(h.char, "armor_crusaders_tabard")
             Combat.tally(h, "kill", 20)

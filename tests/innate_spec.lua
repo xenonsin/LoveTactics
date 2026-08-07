@@ -81,7 +81,7 @@ return {
         end,
     },
     {
-        name = "the Priest's Sanctified Presence mends an adjacent ally each tick",
+        name = "the Priest's Sanctified Presence heals an adjacent ally each tick",
         fn = function()
             -- The generic priest is relic-free; the Hallowed Censer (Sanctified Presence) is Amana's
             -- signature, so it is added here explicitly rather than pulled from a default kit.
@@ -96,7 +96,7 @@ return {
             local hurt = knight.char.stats.health.current
 
             Combat.regenerate(c, 4) -- four ticks under the priest's presence
-            assert(knight.char.stats.health.current > hurt, "the adjacent knight mends under the presence")
+            assert(knight.char.stats.health.current > hurt, "the adjacent knight heals under the presence")
             assert(knight.char.stats.health.current == hurt + Combat.SANCTIFY_HEAL * 4,
                 "healed by the sanctify rate times the ticks")
         end,

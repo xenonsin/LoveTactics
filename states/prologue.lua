@@ -102,7 +102,7 @@ local FLIGHT_QUEST = {
                     "consumable_mana_potion", "consumable_mana_potion",
                     "consumable_healing_potion", "consumable_healing_potion", "consumable_healing_potion",
                 } },
-                -- Stop 2: priest (Heal) -- the roadside shrine's mending rite, granted by the scene's choices.
+                -- Stop 2: priest (Heal) -- the roadside shrine's healing rite, granted by the scene's choices.
                 { id = "encounter_event", conversation = "conversation_flight_event_shrine" },
                 -- Stop 3: knight (Shout/Taunt) -- won holding the line for the survivors.
                 { id = "encounter_survivors_defend", loot = { "ability_shout" } },

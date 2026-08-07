@@ -42,7 +42,7 @@ return {
         -- air that carries a magnitude. See WAIT_BEHAVIOR_MAGNITUDES in models/item.lua.
         duration = Curve.ramp(10),
         amount = Curve.ramp(5, 15),
-        -- The cycle, and the order is the item. Tempo, then teeth, then the mending -- the Lodge's own
+        -- The cycle, and the order is the item. Tempo, then teeth, then the healing -- the Lodge's own
         -- account of a hunt, which is why the payoff is last and you have to earn your way back to it.
         songs = {
             -- Halves what every ability and every step costs the timeline. The strongest of the three,
@@ -50,7 +50,7 @@ return {
             { name = "The Chase", status = "status_hasted" },
             -- Damage and Defense both (statBonus, tuned by the status's own def -- so no `scales`).
             { name = "The Scent", status = "status_inspiration" },
-            -- The only air that reads the horn's `amount`, as health mended per turn.
+            -- The only air that reads the horn's `amount`, as health healed per turn.
             { name = "The Feast", status = "status_regen", scales = true },
         },
     },

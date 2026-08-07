@@ -1,4 +1,4 @@
-﻿-- Battle arena renderer + input, driven by a models/arena.lua arena and a live
+-- Battle arena renderer + input, driven by a models/arena.lua arena and a live
 -- models/combat.lua instance. Like ui/overworld_map.lua it supports mouse + keyboard +
 -- gamepad. The whole 8x8 grid fits on screen (no camera); a tile cursor can be moved with
 -- any input source, and the owning state (states/battle.lua) interprets confirm presses.
@@ -1524,7 +1524,7 @@ end
 
 -- Target lines (models/intent.lua, assembled in states/battle.lua): a line from each enemy to the
 -- mark it will strike, tinted by the KIND of thing it is about to do -- red for a blow, purple for a
--- spell, green toward an ally it will mend, amber for a hex. So "who is this one going for, and what
+-- spell, green toward an ally it will heal, amber for a hex. So "who is this one going for, and what
 -- will it do" reads off the board without opening anything (Into the Breach / Slay the Spire).
 --
 -- A `retargeted` line is the answer to a step being weighed: this foe would WHEEL onto the actor if

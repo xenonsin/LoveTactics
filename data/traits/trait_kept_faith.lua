@@ -9,7 +9,7 @@
 -- wrong side of it.
 --
 -- WARD RATHER THAN A BLOW, and that is the priest half of the Crusader speaking. The shelf already
--- fields the other two readings of Zeal: the Tabard mends on a kill for the Zeal held, the Savior's
+-- fields the other two readings of Zeal: the Tabard heals on a kill for the Zeal held, the Savior's
 -- Watch turns a wounded ally into damage and ground crossed. What none of them was, was the thing a vow
 -- actually does for the man who keeps it, which is hold him together. Magic defense is also the stat
 -- the fighter half brings none of -- a crusader is plate walking into a cathedral's worth of casting.

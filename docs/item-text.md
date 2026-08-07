@@ -122,6 +122,13 @@ Several effect shapes have one canonical wording so the corpus reads uniform. Cl
 - **`heal` is the verb for restoring health** (not mend / mends / mending): `"Mends a nearby ally."` →
   `"Heals a nearby ally."`, `"mending every adjacent ally"` → `"healing every adjacent ally"`. (`Restores`
   stays the verb for a *resource* potion — `"Restores stamina"`, `"Restores mana"`, `"Restores health"`.)
+  The word is banned in **every authored string, not only rules text** — names, flavor, trait and status
+  descriptions included. This rule used to exempt names and flavor, and the exemption shipped a *Totem of
+  Mending* whose own tooltip said "heals": the shelf taught one word for the mechanic and the card taught
+  another, which is a vocabulary the player has to reconcile for no gain. An item whose name wants a
+  second word for healing is telling you what it actually does that healing does not cover — that totem
+  grants Regeneration allies carry off the tile, so it is the **Totem of Renewal**. `tests/item_text_style_spec.lua`
+  enforces this over items, traits and statuses.
 - **`Deflect` is the one verb for negating the next incoming attack** — a reactive reflex that cancels a
   hit outright, whether a single-target spell or a physical blow. Never Refuses / Unravels / Answers /
   Evades / "turns aside" / "negates" for this: `"Unravels a single-target spell aimed at you"` →

@@ -1,4 +1,4 @@
--- Renewal Banner: a mending standard the priest raises on open ground. While it stands, every ally in
+-- Renewal Banner: a healing standard the priest raises on open ground. While it stands, every ally in
 -- the 3x3 square around it gains Regeneration (data/status/regen.lua) -- flat health recovered at the
 -- start of each of their turns, refreshed while they hold the ground beside it. The restorative cousin
 -- of the Rally and Sacred banners: same destructible standard (data/characters/banner.lua), same

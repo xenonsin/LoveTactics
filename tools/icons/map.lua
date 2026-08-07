@@ -199,7 +199,7 @@ return {
     ["items/ability_thicketing.png"] = { icon = "delapouite/vines", by = "hand" },
     ["items/ability_throatcut.png"] = { icon = "lorc/backstab", by = "hand" },
     ["items/ability_thunder_storm.png"] = { icon = "lorc/lightning-storm", by = "hand" },
-    ["items/ability_totem_of_mending.png"] = { icon = "delapouite/totem", by = "auto" },
+    ["items/ability_totem_of_renewal.png"] = { icon = "delapouite/totem", by = "auto" },
     ["items/ability_transfusion.png"] = { icon = "delapouite/healing", by = "auto" },
     ["items/ability_understudy.png"] = { icon = "lorc/mirror-mirror", by = "auto" },
     ["items/ability_updraft.png"] = { icon = "lorc/wind-hole", by = "hand" },

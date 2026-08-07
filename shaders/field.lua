@@ -20,8 +20,8 @@
 --   chevron  animated arrows. `uDir` points and scrolls them: -1 down for a hostile zone, +1 up for a
 --            friendly one. The colour (red for a threat, green for your buff, red for the enemy's)
 --            is the controller's, not the shape's.
---   cross    a filled tile of small medical crosses -- a heal zone. Blue where it mends your side, red
---            where it mends theirs.
+--   cross    a filled tile of small medical crosses -- a heal zone. Blue where it heals your side, red
+--            where it heals theirs.
 -- ---------------------------------------------------------------------------
 -- WHAT THE SHADER IS TOLD
 --

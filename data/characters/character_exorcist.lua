@@ -13,7 +13,7 @@ return {
     class = "priest",
     discipline = "exorcist",
     -- Reads the field's foul work before the enemy's throats (models/ai.lua `support`): she unmakes
-    -- summons and strips buffs, and mends what is left.
+    -- summons and strips buffs, and heals what is left.
     archetype = "support",
     stats = {
         health = 60, mana = 46, stamina = 12,
@@ -25,14 +25,14 @@ return {
     },
     -- The 3x3 loadout grid (row-major); false = an empty cell. Banish is the build-around -- it removes a
     -- summon outright -- with Dispel to strip a buff or hazard and Silence to shut a caster's mouth; Heal
-    -- and a potion mend what the fight leaves.
+    -- and a potion heal what the fight leaves.
     startingItems = {
         "weapon_censer",             "ability_banish",           "consumable_healing_potion",
         "ability_dispel_illusions",  "ability_silence",          "utility_cleansing_ward",
         "ability_heal",              false,                     false,
     },
     defaultAction = "ability_banish",
-    -- Basic tactics: mend the moment mending matters; Banish and the dispels carry their own reads about
+    -- Basic tactics: heal the moment healing matters; Banish and the dispels carry their own reads about
     -- when a summon or a buff is worth unmaking.
     ai = {
         { priority = "urgent", act = "support", item = "ability_heal", targetPref = "most_wounded",

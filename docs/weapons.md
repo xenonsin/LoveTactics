@@ -192,7 +192,7 @@ outside the count and are not listed here.
 | S4 | `weapon_crimson_greataxe` | **`lifesteal`**: drinks a third of everything the arc opens, so it heals most when most outnumbered. |
 | S4 | `weapon_splitting_maul` | The arc leaves everything **Conjoined** — each of them takes half of every wound the others suffer. Turns the party's single-target damage into area damage. |
 | Q | `weapon_reapers_due` | Harder for **every foe already killed this battle** — and an axe is the weapon that fills that counter fastest. |
-| Q | `weapon_carrion_axe` | The swing **eats corpses** in its arc and mends the wielder. Pays out of the dead, so it works on an empty swing. |
+| Q | `weapon_carrion_axe` | The swing **eats corpses** in its arc and heals the wielder. Pays out of the dead, so it works on an empty swing. |
 | Q | `weapon_hollow_arc` | The arc lands **`magical`** *and* leaves `status_hollowed` — so it sets itself up, and makes your own knight's sword useless on those bodies. |
 | Q | `weapon_ledgemans_axe` | Knockback on the **outer two tiles only**: one swing splits a rank of three and leaves the centre standing alone. Manufactures a duel. |
 | Q | `weapon_wolfs_portion` | **Inverted frenzy** ⚠️: devastating into one body, falling off hard for every extra. The family's duel weapon, and a stated deviation. |
@@ -306,7 +306,7 @@ one exception: it *pairs* the two tiles, so it needs both.
 | S1 | `weapon_staff` | the base: Wait → Focus |
 | S2 | `weapon_parasitic_staff` | Siphons mana on the **hit**, so Focus is its floor rather than its only recourse. |
 | S3 | `weapon_crozier` | `waitBehavior.covers`: Focus also feeds mana to every **adjacent ally**. A mage's staff answers *my* mana ran out; this one answers the party's. |
-| S4 | `weapon_intercessors_staff` | Names one ally at the start of battle, and every blow it lands **mends that ally**. The only healer in the game that heals by attacking. |
+| S4 | `weapon_intercessors_staff` | Names one ally at the start of battle, and every blow it lands **heals that ally**. The only healer in the game that heals by attacking. |
 | S4 | `weapon_warding_staff` | `waitBehavior.status`: Focus also raises a **Magical Barrier**. Answers the turn a mage is most likely to die on. |
 | Q | `weapon_graven_circle_staff` | `waitBehavior.hazard`: Focus **cuts sigils** into the ground. Gives a caster a position worth defending — and one they can be driven off. |
 | Q | `weapon_overchannelled_staff` | `waitBehavior.toll`: **double the mana, paid in blood.** Stops the mage running out of mana and starts it running out of health. |

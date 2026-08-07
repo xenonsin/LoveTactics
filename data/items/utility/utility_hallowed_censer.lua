@@ -1,6 +1,6 @@
 -- The Priest's signature relic: the censer whose smoke marks the ground they stand on as consecrated.
 -- It carries the Priest's innate (data/traits/sanctified_presence.lua) -- each tick, every ally
--- standing adjacent (and the Priest) mends a little. Like Overchannel it hangs no hook; the recovery
+-- standing adjacent (and the Priest) heals a little. Like Overchannel it hangs no hook; the recovery
 -- loop reads it via Trait.has, and Trait.attach finds it on this item where it once sat on the char.
 --
 -- `bound = true` (models/item.lua): never moved, stowed, given, sold, or stolen -- only forged. The

@@ -59,7 +59,7 @@ return {
             assert(FieldFx.hazardCategory(haz("hazard_darkness")) == "hostile", "darkness folds into hostile")
 
             -- A heal is blue on your side, red on theirs -- the one distinction the player most needs.
-            assert(FieldFx.hazardCategory(haz("hazard_heal", "party")) == "heal_ally", "your sanctuary mends you")
+            assert(FieldFx.hazardCategory(haz("hazard_heal", "party")) == "heal_ally", "your sanctuary heals you")
             assert(FieldFx.hazardCategory(haz("hazard_heal", "enemy")) == "heal_enemy", "their sanctuary is red")
 
             -- A buff is green on your side, red on theirs.
@@ -73,7 +73,7 @@ return {
         end,
     },
     {
-        name = "a carried status reads by its nature: a debuff threatens, a mend heals, a boon buffs",
+        name = "a carried status reads by its nature: a debuff threatens, a heal heals, a boon buffs",
         fn = function()
             local burn = { debuff = true }
             local regen = { restorative = true }

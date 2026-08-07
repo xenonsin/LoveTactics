@@ -497,8 +497,8 @@ end
 -- different points of resolveCast and a single function taking a side would read as though one status
 -- could do both jobs. It cannot -- a def names one `negates` value.
 --
--- Not the same thing as Status.blocksHealing below: that forbids MENDING for as long as it holds, which
--- is attrition. This refuses one working of any friendly kind -- a cure, a buff, a revive, a mend -- and
+-- Not the same thing as Status.blocksHealing below: that forbids HEALING for as long as it holds, which
+-- is attrition. This refuses one working of any friendly kind -- a cure, a buff, a revive, a heal -- and
 -- is then spent, which is tempo aimed at the enemy's support turn.
 function Status.aidWardOn(unit)
     for _, s in ipairs((unit and unit.statuses) or {}) do
@@ -507,8 +507,8 @@ function Status.aidWardOn(unit)
     return nil
 end
 
--- Is `unit` forbidden from being mended? True while any active status sets `blocksHealing` (the
--- Unclosing Wound). Read by Combat.applyHeal, the single funnel every mend in the game runs through --
+-- Is `unit` forbidden from being healed? True while any active status sets `blocksHealing` (the
+-- Unclosing Wound). Read by Combat.applyHeal, the single funnel every heal in the game runs through --
 -- a spell, a potion, a regeneration tick, a lifesteal drink -- so one flag closes all of them at once.
 --
 -- The counterweight the catalog was missing. Every other debuff in this game makes a body take more or
@@ -521,14 +521,14 @@ function Status.blocksHealing(unit)
     return nil
 end
 
--- Is `unit`'s mending turned back on it -- does a heal aimed at this body WOUND it instead? True while
+-- Is `unit`'s healing turned back on it -- does a heal aimed at this body WOUND it instead? True while
 -- any active status sets `invertsHealing` (Interred). Read through Combat.healingInverted, which asks
--- this and the trait side of the same question together, at the one funnel every mend runs through.
+-- this and the trait side of the same question together, at the one funnel every heal runs through.
 --
 -- The step past blocksHealing above, and the two are deliberately separate flags rather than one with a
 -- mode. A block is a window closed: the healer wastes a turn and the board is unchanged. This makes the
--- healer a liability -- their turn does the enemy's work, and the party's own reflexive answer (mend the
--- one who is falling) becomes the thing that fells them. A body under both is simply not mended: the
+-- healer a liability -- their turn does the enemy's work, and the party's own reflexive answer (heal the
+-- one who is falling) becomes the thing that fells them. A body under both is simply not healed: the
 -- block is checked first and refuses outright, so the two never compound into a wound the player was
 -- never warned about.
 function Status.invertsHealing(unit)
@@ -582,7 +582,7 @@ function Status.deferralOn(unit)
     return nil
 end
 
--- Bank `amount` onto a deferral's ledger (positive = damage owed, negative = mending owed) and hand
+-- Bank `amount` onto a deferral's ledger (positive = damage owed, negative = healing owed) and hand
 -- back the running total. The single writer, so the two call sites cannot disagree about the sign.
 function Status.defer(status, amount)
     status.ledger = (status.ledger or 0) + (amount or 0)

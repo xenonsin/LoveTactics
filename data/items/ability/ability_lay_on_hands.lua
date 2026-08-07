@@ -1,4 +1,4 @@
--- Lay On Hands: the priest half of the Paladin (knight x priest). Mends an ally, wards them, and takes
+-- Lay On Hands: the priest half of the Paladin (knight x priest). Heals an ally, wards them, and takes
 -- every affliction they were carrying onto yourself.
 --
 -- The transfer is the item. A cleanse removes a problem from the world; this MOVES it, and the paladin
@@ -11,7 +11,7 @@
 -- plate, every affliction you accept is a permanent lift to your own guard, and the paladin's answer to
 -- a party covered in debuffs is to walk around collecting them.
 --
--- Aegis on top of the mend, so the ally is not merely patched but braced -- the ward is the half that
+-- Aegis on top of the heal, so the ally is not merely patched but braced -- the ward is the half that
 -- makes this worth a turn when nobody is actually poisoned.
 local Curve = require("models.curve")
 

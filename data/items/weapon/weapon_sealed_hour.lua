@@ -6,7 +6,7 @@
 -- delay, and the delay is the weapon. Three things fall out of it, and all three are the reason to carry
 -- it rather than an iron greatsword:
 --
---   * The enemy healer wastes their turn. Mending a sealed body puts nothing back; it only adds to a
+--   * The enemy healer wastes their turn. Healing a sealed body puts nothing back; it only adds to a
 --     pile that is still going to land.
 --   * The kill is scheduled rather than rolled. A sealed foe that the party keeps hitting dies when the
 --     hour comes due, and the player can count the ticks on the timeline before committing anything.

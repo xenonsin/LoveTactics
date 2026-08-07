@@ -7,7 +7,7 @@
 -- full pool who never casts Reckoning is not playing wrong -- they are playing the sustain half, and the
 -- tabard is what makes that a real choice instead of a mistake.
 --
--- Hangs on onAnyDeath rather than on a kill hook so a foe finished by an ally still mends the crusader
+-- Hangs on onAnyDeath rather than on a kill hook so a foe finished by an ally still heals the crusader
 -- standing over it: the crusade is not a scoreboard. It asks two questions the dividend does not --
 -- whose side was it (an ally falling is not a mercy) and was it close enough to see.
 return {
@@ -24,7 +24,7 @@ return {
         local Combat = require("models.combat")
         local zeal = Combat.chargePool(ctx.unit, "zeal")
         Combat.applyHeal(ctx.combat, ctx.unit, 4 + zeal)
-        ctx.log("action", string.format("%s is mended by the fall (%d Zeal).",
+        ctx.log("action", string.format("%s is healed by the fall (%d Zeal).",
             (ctx.unit.char and ctx.unit.char.name) or "The crusader", zeal), ctx.unit)
     end,
 }

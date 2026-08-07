@@ -1,12 +1,12 @@
 -- Pilgrim's Sandals: the road a pilgrim walks is consecrated by the walking. Every tile the wearer
 -- steps OFF is left holding a short-lived Sanctuary (data/hazards/hazard_heal.lua) -- so the company
--- following in their footsteps mends as it advances -- and the wearer itself is mended by the walking,
+-- following in their footsteps heals as it advances -- and the wearer itself is healed by the walking,
 -- through a Regeneration applied straight to it (`selfStatus`) and refreshed on every tile it crosses.
 --
 -- The self-heal used to be emergent rather than stated: the trail was laid UNDER the wearer, so the
--- tile it stopped on was a tile it had blessed, and standing in its own last print mended it for free.
+-- tile it stopped on was a tile it had blessed, and standing in its own last print healed it for free.
 -- That was elegant and it is gone, because a trail is now always laid behind (see Combat.layTrail) --
--- ground you leave, never ground you stand on. So the mending has to be said out loud. Two things are
+-- ground you leave, never ground you stand on. So the healing has to be said out loud. Two things are
 -- worth knowing about the version that replaced it:
 --
 --   * it is NOT zone-bound. The old self-heal came from the hazard, so it carried the Sanctuary as its
@@ -14,7 +14,7 @@
 --     source at all, so it ages on its own clock like a Regeneration from a potion -- which is why the
 --     duration below is quoted rather than left to Regeneration's own 15.
 --   * it therefore fades when the wearer STOPS, not when it moves. Refreshed per tile crossed, so a
---     pilgrim on the road keeps mending and a pilgrim standing still runs out. That is the same shape
+--     pilgrim on the road keeps healing and a pilgrim standing still runs out. That is the same shape
 --     the old behaviour had (a print faded under a wearer who stayed on it) arrived at by a different
 --     road, and it is the more honest reading of the item: the walking is the sacrament.
 --
@@ -41,7 +41,7 @@ return {
     -- in it, which is the whole point of the sandals.
     trail = {
         hazard = "hazard_heal", duration = 10,
-        -- Matched to the print's own life, so a wearer that stops walking keeps mending for about as
+        -- Matched to the print's own life, so a wearer that stops walking keeps healing for about as
         -- long as the last footprint it left behind would have lasted.
         selfStatus = { id = "status_regen", duration = 10 },
     },

@@ -1,7 +1,7 @@
 -- Overworld "Use Items" panel: drink a restorative draught between battles to spend a flask and top a
 -- party member's pool back up, without walking all the way back to the hub. Opened from the overworld
 -- (states/game.lua's Use button / U / gamepad X); a run's wounds carry across its fights, and this is
--- the paid way to undo some of them mid-quest -- a Rest tile is the only free mend.
+-- the paid way to undo some of them mid-quest -- a Rest tile is the only free heal.
 --
 -- Two columns, one cursor: the LEFT list is the company -- which is the whole roster, so it scrolls --
 -- and its highlighted member is the target who drinks; the RIGHT list is every restorative that

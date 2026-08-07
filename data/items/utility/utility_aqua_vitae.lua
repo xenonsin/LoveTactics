@@ -11,8 +11,12 @@
 -- Its answer is a conditional-unlock signature (per the system on Rowan's Sworn Aegis and Kaya's Wolfsong
 -- Horn): it charges on a GIVEN tally -- the healing she has poured into allies ("healDone", banked by
 -- Combat.useItem) -- and only once she has given three times may she transmute. The signature system greys
--- it with a "Given (n/3)" badge until earned, and the copyOf claim holds the item while the gift still
--- stands: one gift at a time (Combat.itemBlockReason).
+-- it with a "Heal 3 times (n/3)" badge until earned, and the copyOf claim holds the item while the gift
+-- still stands: one gift at a time (Combat.itemBlockReason).
+--
+-- The badge named the virtue and not the deed for months ("Given (2/3)"), which is the one place that
+-- cannot afford flavor: the grid shows a bare fraction and the tooltip is the only statement of what to
+-- do. Her giving is carried by `flavor`, where nothing depends on it.
 --
 -- TODO (see docs/story.md): its SECOND form, earned at slot 8 -- the giver lets herself be gilded in
 -- return, the one who only ever gave finally receiving -- is deferred new work.
@@ -23,7 +27,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Aqua Vitae",
-    description = "Give three times, then grant the party a copy of your strongest -- a gift, kept for no one.",
+    description = "Heal three times, then grant the party a copy of your strongest -- a gift, kept for no one.",
     flavor = "The water of life. She has poured out a great deal of it, and asked for none back.",
     sprite = "assets/items/sig_aqua_vitae.png",
     type = "utility",
@@ -37,7 +41,7 @@ return {
         range = 1,
         speed = 6,
         cost = { stat = "mana", amount = 20 },
-        unlock = { event = "healDone", count = 3, text = "Given" },
+        unlock = { event = "healDone", count = 3, text = "Heal 3 times" },
         effect = function(fx)
             -- The one that towers on your OWN side (Ren may lift herself, but usually another): a gift of
             -- the party's best, granted to the party. Copies of copies are skipped.

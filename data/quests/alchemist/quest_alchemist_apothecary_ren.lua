@@ -2,7 +2,7 @@
 -- this file in `requiredQuests`, and names Ren as its exemplar.
 --
 -- This is the odd one of the twenty-one, and deliberately so: Apothecary is what Ren ALREADY is --
--- she mends before she strikes -- so the exemplar is a companion the player has been fielding for
+-- she heals before she strikes -- so the exemplar is a companion the player has been fielding for
 -- half the campaign, and the "first meet" beat every other capstone runs is unavailable. What
 -- replaces it is a COMPANION QUEST, which is the reuse that docs/disciplines-plan.md flags as a
 -- choice rather than a bake (see its open calls: keep companions as roots only, or let a few double

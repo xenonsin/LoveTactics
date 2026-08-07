@@ -441,18 +441,18 @@ return {
         end,
     },
     {
-        name = "Totem of Mending grants Regeneration the ally carries away, unlike Raise Totem's ground",
+        name = "Totem of Renewal grants Regeneration the ally carries away, unlike Raise Totem's ground",
         fn = function()
             local map = Fixture.new(10, 10)
             local hero = Fixture.unit("character_amana", 3, 3,
-                { isolate = "bare", items = { "ability_totem_of_mending" } })
+                { isolate = "bare", items = { "ability_totem_of_renewal" } })
             local ally = Fixture.unit("character_rowan", 3, 4, { isolate = "bare" })
             local foe = Fixture.unit("character_bandit", 9, 9, { isolate = "bare", stats = { health = 300 } })
             local combat = Combat.new(map, { hero, ally }, { foe })
             local h, a = combat.units[1], combat.units[2]
             h.char.stats.mana.max, h.char.stats.mana.current = 99, 99
 
-            assert(Fixture.strike(combat, h, { x = 5, y = 3 }, "ability_totem_of_mending"), "the post goes in")
+            assert(Fixture.strike(combat, h, { x = 5, y = 3 }, "ability_totem_of_renewal"), "the post goes in")
             assert(Combat.unitAt(combat, 5, 3), "a totem stands")
             assert(Hazard.at(combat, 5, 3, "hazard_renewal"), "and lays Renewal rather than healing ground")
 

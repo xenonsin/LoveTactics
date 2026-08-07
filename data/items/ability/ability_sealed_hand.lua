@@ -1,4 +1,4 @@
--- Sealed Hand: cut one body off from HELP. The next single-target friendly working aimed at it -- a mend, a
+-- Sealed Hand: cut one body off from HELP. The next single-target friendly working aimed at it -- a heal, a
 -- cure, a buff, a revive -- is refused outright (data/status/status_sealed_hand.lua).
 --
 -- The gap it was written for. Nothing in this catalog touched enemy SUPPORT. Every answer to an enemy
@@ -8,10 +8,10 @@
 --
 -- The mirror of data/status/status_sealed_ward.lua with the sides swapped, and it reuses that ward's exact
 -- machinery -- Status.aidWardOn, one charge spent through Status.consumeBarrier, and the same
--- single-target-only clause, so an area mend that catches the sealed body among others goes straight past
+-- single-target-only clause, so an area heal that catches the sealed body among others goes straight past
 -- it. A healer who owns a blast already holds the counterplay and needs to know nothing about this.
 --
--- WHY IT IS NOT THE UNCLOSING WOUND. Status.blocksHealing forbids MENDING for as long as it holds, which is
+-- WHY IT IS NOT THE UNCLOSING WOUND. Status.blocksHealing forbids HEALING for as long as it holds, which is
 -- attrition and only ever answers a heal. This refuses one WORKING of any friendly kind and is then spent
 -- -- the cure that would have lifted your Poison, the buff that would have made them hit harder, the revive
 -- that would have stood their champion back up. Attrition versus tempo, and they are different purchases.

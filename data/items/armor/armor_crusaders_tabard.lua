@@ -1,6 +1,6 @@
 -- Crusader's Tabard: the Crusader (fighter x priest) declaring its pool. Zeal banks on KILLS and on
--- MENDS -- the discipline's two halves, either one of them -- and the tabard turns what is banked into
--- the thing a crusade actually runs on: every kill mends the wearer, harder the more Zeal is standing
+-- HEALS -- the discipline's two halves, either one of them -- and the tabard turns what is banked into
+-- the thing a crusade actually runs on: every kill heals the wearer, harder the more Zeal is standing
 -- behind it.
 --
 -- The `from` list is rule R2 made concrete (docs/classes.md). The first draft of this shelf banked Zeal

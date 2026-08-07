@@ -2,14 +2,14 @@
 -- data/status/status_sealed_ward.lua, and everything true of that one is true of this one with the sides
 -- swapped -- so the notes there on why a categorical refusal is fair apply here unchanged:
 --
---   * SINGLE TARGET ONLY. A mend that catches this body inside an area goes straight past it. A blast
+--   * SINGLE TARGET ONLY. A heal that catches this body inside an area goes straight past it. A blast
 --     does not aim at anybody, so there is nothing to refuse, and every healer who owns an aoe already
 --     holds the answer without needing to know this exists.
 --   * ONE CHARGE, spent through Status.consumeBarrier exactly as a barrier's is. The second heal lands.
 --   * THE CASTER STILL PAID. The enemy priest spends cost, cooldown and the turn -- which is the entire
 --     purchase. You are not reducing a heal, you are buying an enemy's whole action for one of yours.
 --
--- WHY IT IS NOT THE UNCLOSING WOUND. Status.blocksHealing (the Unclosing Wound) forbids MENDING, all of
+-- WHY IT IS NOT THE UNCLOSING WOUND. Status.blocksHealing (the Unclosing Wound) forbids HEALING, all of
 -- it, for as long as it holds -- a strictly stronger thing to do to a heal, and a different purchase.
 -- This refuses a WORKING: the cure that would have lifted your Poison off them, the buff that would have
 -- made them hit harder, the revive that would have put their champion back on its feet. It stops one of

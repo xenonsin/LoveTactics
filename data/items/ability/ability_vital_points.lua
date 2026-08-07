@@ -2,7 +2,7 @@
 --
 -- THE ONE VERB THIS GAME COULD NOT SAY. `fx.grantExtraAction` has existed for a long time and was
 -- hardwired to the caster -- an ability could hand ITSELF another swing and nothing could hand one to
--- anybody else. So the whole support ceiling was mending, warding and moving people; "let the best body
+-- anybody else. So the whole support ceiling was healing, warding and moving people; "let the best body
 -- on the field act twice" was unauthorable. Widening that helper to take a target is the engine change
 -- this item exists to spend, and it is the only genuinely new thing a priest has been given in a while.
 --
@@ -16,7 +16,7 @@
 -- BOUGHT WITH A POOL, not with mana. A second action for the party's heaviest hitter is the strongest
 -- support effect in the catalog, and mana is a resource a priest simply has -- gating on it would make
 -- this a button pressed on turn one of every fight. `focus` banks off the two things a priest is doing
--- anyway (mending and casting), so the acolyte earns it across the fight and spends it once, at the
+-- anyway (healing and casting), so the acolyte earns it across the fight and spends it once, at the
 -- moment they judge worth doubling. That is a decision; a cooldown would only have been a delay.
 --
 -- The pool is declared HERE, in the file that spends it, which is the rule (docs/classes.md: a spender
@@ -50,7 +50,7 @@ return {
         cost = { stat = "mana", amount = 8 },
         unlock = {
             when = function(unit) return require("models.combat").chargePool(unit, "focus") >= 5 end,
-            text = "Bank Focus by mending and casting",
+            text = "Bank Focus by healing and casting",
         },
         description = "Spend Focus: an ally's next turn carries two actions instead of one, and arrives sooner.",
         effect = function(fx)

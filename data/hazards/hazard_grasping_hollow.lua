@@ -3,7 +3,7 @@
 --
 -- Roots on ENTRY, which is a genuinely different kind of zone from everything else in this catalog and
 -- the reason it is worth having. Quicksand taxes you for standing in it, fire hurts you for standing
--- in it, a sanctuary mends you for standing in it -- all of them price OCCUPANCY, so all of them are
+-- in it, a sanctuary heals you for standing in it -- all of them price OCCUPANCY, so all of them are
 -- answered by not going there. This prices the CROSSING. It is worth nothing against a line that was
 -- going to hold its ground and everything against a line that has to come to you, which makes it the
 -- knight's zone rather than the mage's: sloth does not kill you, it decides where you stand.

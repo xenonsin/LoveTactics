@@ -1,4 +1,4 @@
-﻿-- Rowan, the knight companion (diligence) and the player's FIRST recruit -- she rallies to defend
+-- Rowan, the knight companion (diligence) and the player's FIRST recruit -- she rallies to defend
 -- the burning village, fights at your shoulder, and when it is ash she swears her broken oath anew
 -- to you (states/prologue.lua). She is the foil to sloth, whose general is the oath abandoned; Rowan
 -- is the oath kept. The oath makes her the player's bodyguard and mentor: she guards the body she
@@ -62,7 +62,7 @@ return {
     -- build-around is the Sworn Aegis relic in the center (data/items/armor/armor_sworn_aegis.lua):
     -- a bound item -- never moved, stowed, sold, or stolen, only forged -- that carries the Knight's
     -- Oathward guard. Frontline steel around it: chainmail for all-round defense (only -1 movement so
-    -- it keeps pace), a potion to self-mend under fire, and the party's torch (its overworld vision
+    -- it keeps pace), a potion to self-heal under fire, and the party's torch (its overworld vision
     -- -- see Player.visionRadius).
     --
     -- The MACE rather than a sword, and it is characterisation rather than loadout trivia. A mace

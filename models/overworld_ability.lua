@@ -9,7 +9,7 @@
 -- math.random when love.math is absent). states/game.lua calls OverworldAbility.dispatch(event, ctx) on
 -- four traversal events:
 --   "step"             every landed tile (Kaya forages, Saber's held swing banks steps, ...)
---   "encounterCleared" a combat/elite win (Amana mends, Ren distils a dose, Rowan banks a vigil, ...)
+--   "encounterCleared" a combat/elite win (Amana heals, Ren distils a dose, Rowan banks a vigil, ...)
 --   "battleStart"      just before a fight launches (Rowan/Saber spend their banked readiness)
 --   "objectiveReached" just before the boss (Ren pours the doses into a whole-party lift)
 -- A handler gets (char, bucket, ctx): `bucket` is the ability's per-RUN scratch (auto-created, keyed by
@@ -145,7 +145,7 @@ A.vigil = {
     end,
 }
 
--- SABER -- The Held Swing (patience). She is never in a hurry, and contentment is its own mend: the
+-- SABER -- The Held Swing (patience). She is never in a hurry, and contentment is its own heal: the
 -- longer since her last fight, the cleaner she comes through the next one. Banks ground COVERED -- each
 -- tile counted once (cell.paced), the way Kaya's forage marks a tile once -- so pacing two tiles back and
 -- forth mints nothing; only new road pays. On the win it heals her scaled by the distance, then resets.
@@ -166,14 +166,14 @@ A.held_swing = {
 }
 
 -- AMANA -- The Kept Trust (devotion). "Gives what is offered, returned intact": after each fight she
--- mends the most-wounded, keeping nothing for herself. Softens the very attrition her line answers.
+-- heals the most-wounded, keeping nothing for herself. Softens the very attrition her line answers.
 A.kept_trust = {
     encounterCleared = function(_, _, ctx)
         if not isCombat(ctx.cell) then return end
         local t = mostWounded(ctx.party)
         if t then
-            local mended = restore(t, "health", 12)
-            if mended > 0 then say(ctx, "Amana mends " .. (t.name or "an ally") .. " (+" .. mended .. ")") end
+            local healed = restore(t, "health", 12)
+            if healed > 0 then say(ctx, "Amana heals " .. (t.name or "an ally") .. " (+" .. healed .. ")") end
         end
     end,
 }
@@ -305,7 +305,7 @@ local INFO = {
         blurb = "The more new ground Saber covers between fights, the more she heals herself on her next "
             .. "win. Patience, not haste -- pacing in place mints nothing." },
     kept_trust = { name = "Kept Trust",
-        blurb = "After every fight, Amana mends the most-wounded ally. Given freely, kept from no one." },
+        blurb = "After every fight, Amana heals the most-wounded ally. Given freely, kept from no one." },
     aqua_vitae = { name = "Aqua Vitae",
         blurb = "Each side-fight won distils a dose. On reaching the boss, every dose is poured into "
             .. "the whole party at once." },

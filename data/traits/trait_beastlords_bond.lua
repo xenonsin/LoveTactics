@@ -1,10 +1,10 @@
 -- Beastlord's Bond: the standing rule of the charm of the same name
 -- (data/items/utility/utility_beastlords_bond.lua). Every time the bearer acts, the creatures they have
--- put on the field and that are standing near them are mended a little.
+-- put on the field and that are standing near them are healed a little.
 --
 -- WRITTEN AGAINST `summoned`, NOT AGAINST BEASTS. That is the whole point of the item and worth being
 -- explicit about: the hook asks whether a unit is a conjuration of the BEARER'S, and never what kind.
--- So it mends a Beastmaster's wolf and hawk and a Summoner's elementals with one rule, and the two
+-- So it heals a Beastmaster's wolf and hawk and a Summoner's elementals with one rule, and the two
 -- shelves' builds get the same sustain out of it. A discipline field can only ever name one owner
 -- (docs/classes.md), so this charm lives on the Beastmaster's shelf -- but nothing in its behaviour
 -- knows that, which is what lets a conjuring build of either kind carry it and have it mean the same
@@ -15,7 +15,7 @@
 -- the pack is steadied by its handler doing something, not by standing there.
 --
 -- `radius` is the leash, and it is a tactical statement rather than a limit for its own sake: your
--- creatures are mended where you can see them. A summoner who fields elementals and then walks away
+-- creatures are healed where you can see them. A summoner who fields elementals and then walks away
 -- from them gets nothing, and a beastmaster who fights beside the pack gets everything -- which is the
 -- posture both disciplines are supposed to want, and the one this game's area damage argues against.
 --
@@ -23,7 +23,7 @@
 -- quietly cross-heal, and the bearer itself is skipped -- a handler is not their own beast.
 return {
     name = "Beastlord's Bond",
-    description = "Every action you take mends the creatures you summoned that are standing near you.",
+    description = "Every action you take heals the creatures you summoned that are standing near you.",
     magnitude = 4, -- health returned to each creature, per action
     radius = 3,    -- the leash: how far the bond reaches
     onCast = function(ctx)

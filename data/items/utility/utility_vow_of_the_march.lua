@@ -1,7 +1,7 @@
 -- Vow of the March: the priest half of the Crusader (fighter x priest), and the item that makes Zeal
 -- belong to the crusade rather than to the crusader. The Tabard banks on what YOU do -- your kills, your
--- mends. This widens the pool to what the COLUMN does: any enemy that falls anywhere on the field, and
--- any mending that lands on your side, wherever it came from.
+-- heals. This widens the pool to what the COLUMN does: any enemy that falls anywhere on the field, and
+-- any healing that lands on your side, wherever it came from.
 --
 -- Which is the point of a vow. A crusade is not a scoreboard, and a priest walking at the back of the
 -- march who has personally neither killed nor healed anyone is still owed the same faith as the man at
@@ -15,9 +15,9 @@
 -- spenders only; the Reckoning banks its own Zeal, and this is the same debt paid from the other side.
 --
 -- One deviation, said out loud the way the contracts expect: the design called for "an ally within three
--- tiles is healed", and this bank has no range on it -- `allyMended` is tallied on the whole side. A
+-- tiles is healed", and this bank has no range on it -- `allyHealed` is tallied on the whole side. A
 -- tally is a running count on a unit, not a query about the map, so a radius would have meant either a
--- second bespoke tally per radius or a hook that re-walked the field on every mend. The vow reads better
+-- second bespoke tally per radius or a hook that re-walked the field on every heal. The vow reads better
 -- without it anyway: a crusader does not stop believing at four tiles.
 return {
     name = "Vow of the March",
@@ -31,5 +31,5 @@ return {
     price = 440,
     unlockQuests = 6,
     traits = { "trait_kept_faith" },
-    charge = { key = "zeal", from = { "foeDown", "allyMended" }, max = 10 },
+    charge = { key = "zeal", from = { "foeDown", "allyHealed" }, max = 10 },
 }

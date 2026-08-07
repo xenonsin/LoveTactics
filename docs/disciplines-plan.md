@@ -158,7 +158,7 @@ harmless. A quest-level gate that could express it would be new engine work.
 | **Artificer** | mage × alchemist | a sentry-engine builder | N | boss / mentor | `quest_alchemist_the_automaton_foundry` — The Automaton Foundry |
 | **Apothecary** | priest × alchemist | Ren (`character_ren`)* | E | recruit | `quest_alchemist_apothecary_ren` — The Open Ward |
 
-\* Apothecary (priest × alchemist) is what Ren already is — mends before she strikes. Reusing her makes
+\* Apothecary (priest × alchemist) is what Ren already is — heals before she strikes. Reusing her makes
 this multiclass a companion capstone. Same choice-not-baked note as the subclasses.
 
 ## Signature mechanics — what each discipline *does*
@@ -304,7 +304,7 @@ Two of them are worth calling out as design rather than stock:
 - **Monk's pair made the shelf pressable at all.** It was four passive fist charms with nothing to
   spend them on — the one discipline with no active item. Flurry and Asura Strike are both built on
   **chi**, which is now real (see the mechanics table above).
-- **Beastlord's Bond is written against `summoned`, not against beasts**, so it mends a Beastmaster's
+- **Beastlord's Bond is written against `summoned`, not against beasts**, so it heals a Beastmaster's
   wolf and a Summoner's elementals with one rule. A `discipline` field names only one owner, so its
   home is the Lodge — but nothing in its behaviour knows that, which is "anyone carries anything"
   earning its keep.
@@ -343,7 +343,7 @@ than the items that prompted them:
 | | Rule | Where it lives |
 |---|---|---|
 | **R1** | **Armor never grants movement.** The movement tiers in the armor spread are a cost table; an armor that pays movement back undoes them. | [classes.md](classes.md) armor spread |
-| **R2** | **A charge pool banks from a generic tally, never from carrying one weapon.** Zeal banks on kills *and* heals, so a Crusader who spent the fight mending still reaches the payoff. | `Combat.chargeDef` |
+| **R2** | **A charge pool banks from a generic tally, never from carrying one weapon.** Zeal banks on kills *and* heals, so a Crusader who spent the fight healing still reaches the payoff. | `Combat.chargeDef` |
 | **R3** | **`status_mark` gains `preventsInvisible`.** The rule belongs in the debuff, not in a lamp you have to buy — it now holds for everyone who applies Mark. | `data/status/status_mark.lua` |
 | **R4** | **Contagion is a passive, not an active.** Standing beside you spreads what you carry; you never press a button for it. | `plague_knight` roster |
 | **R5** | **Poison needs payoffs before Plague Knight is real.** Contagion was spreading a status almost nothing read. Rot-Fume Gauntlet now scales with how many enemies are poisoned; the Poisoner shelf owes the same audit. | open thread |
@@ -406,7 +406,7 @@ new stock.
 | Duelist | Coup Droit — spend Tempo, damage × spent, duelbound only *(fighter · ability)* S1 | Main-Gauche — parries bank Tempo *(rogue · dagger)* S1 | Reading the Blade — bank Tempo per repeat strike; empties if you switch target *(fighter · utility)* S1 |
 | Skirmisher | Running Shot — damage scales with tiles moved this turn *(hunter · ability)* ✓ | Outrider's Harness — first post-move strike Exposes and cannot be answered *(fighter · armor)* ~ | Harrier's Bow — the shot does not close your movement *(hunter · bow)* ~ |
 | Battlemage | Resonant Grip — strikes carry the element of your last cast *(fighter · utility)* ~ | Arcane Conduit — adjacent grid items cast harder, spending Arcane *(mage · utility)* S1 | *(Spellstrike and Arcane Cleave stand)* |
-| Crusader | Vow of the March — bank Zeal on any kill or nearby heal *(priest · utility)* S1 | Reckoning — spend Zeal: holy blow that mends every adjacent ally *(fighter · ability)* S1 | Crusader's Tabard — heal-on-kill scales with Zeal held *(fighter · armor)* S1 |
+| Crusader | Vow of the March — bank Zeal on any kill or nearby heal *(priest · utility)* S1 | Reckoning — spend Zeal: holy blow that heals every adjacent ally *(fighter · ability)* S1 | Crusader's Tabard — heal-on-kill scales with Zeal held *(fighter · armor)* S1 |
 | Warbrewer | Battle Tonic — free action, restores stamina *(alchemist · consumable)* S2 | Field Still — brews a draught into your grid each turn *(fighter · utility)* S4 | Round for the House — your draughts also reach adjacent allies at half *(fighter · utility)* ✓ |
 | Vanguard | Breaker's Harness — knockbacks into a wall Stun *(knight · armor)* ~ | Breaker's Wedge — **any** knockback you inflict Sunders *(knight · utility)* ✓ | Stripped Plate — armour you Sunder is added to yours *(rogue · utility)* ~ |
 | Warden | Warden's Writ — every hazard you place also Halts *(knight · utility)* ~ | Beat the Bounds — foes standing in **any** hazard are Rooted and damaged *(hunter · ability)* ✓ | Marchstone — incense: the ground you stand on counts as your hazard *(hunter · utility)* ✓ |
@@ -418,7 +418,7 @@ new stock.
 | Inquisitor | Sentence — execute a Marked target; holy, dispels *(priest · ability)* S5 | The Question — steal a buff off a Marked target *(rogue · ability)* S5 | The Pyre — every Marked enemy on the field burns at once *(priest · ability)* ✓ |
 | Saboteur | Detonator — set off every charge you planted *(rogue · ability)* S3 | Sapper's Line — three charges in a line, two-turn fuse *(alchemist · consumable)* S3 | Collapse — destroy a wall or prop, hazard the rubble *(alchemist · ability)* ~ |
 | Shaman | Bind Spirit — bind a spirit to a hazard; it follows *(mage · ability)* ~ | Ancestor Mask — spirits inherit your hazards' element *(hunter · utility)* ~ | Ghost-Wind — spirits pass walls unharmed and feed on hazards *(hunter · utility)* ~ |
-| Totemist | Totem of Mending — a totem that heals adjacent allies *(priest · ability)* ✓ | Totem-Carver's Kit — totems gain health and radius *(hunter · utility)* ✓ | Ley Line — a totem's effect floods the line to another totem *(priest · ability)* ~ |
+| Totemist | Totem of Renewal — a totem whose ground grants Regeneration allies carry away *(priest · ability)* ✓ | Totem-Carver's Kit — totems gain health and radius *(hunter · utility)* ✓ | Ley Line — a totem's effect floods the line to another totem *(priest · ability)* ~ |
 | Herbalist | Distil — consume a hazard tile, gain a matching consumable *(alchemist · ability)* S4 | Bitterroot Draught — cleanse + immunity to the hazard you stand in *(alchemist · consumable)* ✓ | Culler's Kit — an enemy you kill leaves a reagent in your grid *(hunter · utility)* S4 |
 | Theurge | The Long Prayer — channel; the sanctified zone grows each turn *(priest · ability)* ~ | Vigil Beads — your channels cannot be interrupted *(mage · utility)* ~ | Benediction — a channelled heal that bursts over the party *(priest · ability)* ~ |
 | Artificer | Field Assembly — build a construct from a consumable; it attacks with its effect *(mage · ability)* S4 | Recall Construct — dismiss for half refund, redeploy in range *(mage · ability)* ✓ | Salvage Rig — a destroyed construct bursts and refunds mana *(alchemist · utility)* ~ |

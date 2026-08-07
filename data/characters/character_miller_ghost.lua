@@ -1,6 +1,6 @@
 -- Enemy boss blueprint (quest objective). See data/characters/bandit.lua.
 --
--- Dead, and so GRAVE-COLD (data/items/utility/utility_grave_cold.lua) like the raised: mending does not
+-- Dead, and so GRAVE-COLD (data/items/utility/utility_grave_cold.lua) like the raised: healing does not
 -- reach it, and a heal aimed at it wounds it instead. Nothing on its own side heals, so this changes no
 -- fight it currently appears in -- it is here because the rule is about what a thing IS, and a rule that
 -- only holds for the undead somebody remembered is not a rule.

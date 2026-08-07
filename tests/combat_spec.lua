@@ -264,7 +264,7 @@ return {
             local ok, res = Combat.useItem(c, mage, potion, 3, 4) -- heal adjacent ally
             assert(ok, "healing an ally should succeed")
             assert(res.healed == heal, "the whole flask lands: " .. heal .. ", got " .. res.healed)
-            assert(knight.char.stats.health.current == wounded + heal, "and the ally is mended by it")
+            assert(knight.char.stats.health.current == wounded + heal, "and the ally is healed by it")
             -- The single-use potion is now spent (quantity 0) but its slot is KEPT.
             assert(#mage.char.inventory == invBefore, "empty stack keeps its inventory slot")
             assert(potion.quantity == 0, "stack is spent")

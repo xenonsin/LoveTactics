@@ -1,18 +1,18 @@
--- Scouring Mercy: the priest burns the ally first, and then mends them for considerably more, slowly.
--- Cast at an enemy it is simply fire with an insult attached -- the mending goes to them too, which is
+-- Scouring Mercy: the priest burns the ally first, and then heals them for considerably more, slowly.
+-- Cast at an enemy it is simply fire with an insult attached -- the healing goes to them too, which is
 -- rarely what anybody wanted.
 --
 -- A HEAL THAT COSTS THE PATIENT SOMETHING, and the reason to build one is arithmetic the Cathedral's
 -- other spells cannot do. A direct heal is instant and safe and therefore priced modestly. This one
 -- pays out over the clock (`status_regen`), which means it is worth MORE in total and worth NOTHING if
--- the target dies in the meantime -- and it opens by taking them closer to that. So it is the mend you
+-- the target dies in the meantime -- and it opens by taking them closer to that. So it is the heal you
 -- cast on somebody who is hurt but not in danger, and never on somebody who is about to fall.
 --
 -- Which is precisely the gap in the priest's kit. Holy Light and Cure answer emergencies. This answers
 -- attrition -- the long grind where the party is winning but everybody is at half -- and it answers it
 -- better than an emergency spell does, at the price of being useless in an emergency.
 --
--- IT DOES NOT PICK SIDES, and cast at a foe the arithmetic inverts: the burn lands now, the mending
+-- IT DOES NOT PICK SIDES, and cast at a foe the arithmetic inverts: the burn lands now, the healing
 -- arrives later, and if the party finishes them in between the priest has simply dealt damage. That is
 -- a legitimate (if graceless) use, and the Cathedral would prefer you did not call it that.
 --
@@ -47,7 +47,7 @@ return {
         effect = function(fx)
             local body = fx.unitAt(fx.tx, fx.ty)
             if not body then return end
-            -- Burn first, mend second, and the order is the spell: a target the scour KILLS never gets
+            -- Burn first, heal second, and the order is the spell: a target the scour KILLS never gets
             -- the regeneration, which is what makes casting it on somebody at low health a genuine
             -- mistake rather than a slightly worse heal.
             fx.damage(body, { tags = { "holy", "magical" } })

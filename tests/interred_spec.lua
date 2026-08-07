@@ -1,11 +1,11 @@
--- Tests for INVERTED MENDING: the one rule that turns a heal into a wound, and its two doors.
+-- Tests for INVERTED HEALING: the one rule that turns a heal into a wound, and its two doors.
 --
 --   * status_interred -- the curse the necromancer lays with ability_early_rites, cleansable like any
 --     debuff;
 --   * trait_grave_cold -- what the undead simply are, carried on utility_grave_cold in their grid, and
 --     not cleansable at all.
 --
--- Both are read through Combat.healingInverted at the single funnel every mend in the game runs
+-- Both are read through Combat.healingInverted at the single funnel every heal in the game runs
 -- through (Combat.applyHeal), so the cases below spend most of their effort on the seams that funnel
 -- guards: that a blocked heal still beats an inverted one, that the wound can fell, and that the
 -- tooltip's dry run tells the same story the live cast does.
@@ -30,26 +30,26 @@ end
 
 return {
     {
-        name = "Interred turns every mend into a wound of exactly the same size",
+        name = "Interred turns every heal into a wound of exactly the same size",
         fn = function()
             local c, u = loneUnit()
             u.char.stats.health.current = 40
 
-            assert(Combat.applyHeal(c, u, 12) == 12, "an ordinary mend lands")
+            assert(Combat.applyHeal(c, u, 12) == 12, "an ordinary heal lands")
             assert(hp(u) == 52, "and moves the bar up")
 
             Status.apply(c, u, "status_interred")
-            assert(Combat.applyHeal(c, u, 12) == 0, "an interred body is never MENDED")
-            assert(hp(u) == 40, "the mend landed as a wound of the same 12 points")
+            assert(Combat.applyHeal(c, u, 12) == 0, "an interred body is never HEALED")
+            assert(hp(u) == 40, "the heal landed as a wound of the same 12 points")
 
             -- Cleansable like any debuff: this takes a healer's window away, not a healer.
             Combat.cleanse(c, u)
-            assert(Combat.applyHeal(c, u, 10) == 10, "cured, the body takes mending again")
+            assert(Combat.applyHeal(c, u, 10) == 10, "cured, the body takes healing again")
             assert(hp(u) == 50, "and the bar moves up once more")
         end,
     },
     {
-        name = "an inverted mend is unmitigated, answered by nobody, and can fell",
+        name = "an inverted heal is unmitigated, answered by nobody, and can fell",
         fn = function()
             local c, u = loneUnit()
             u.char.stats.health.current = 9
@@ -57,7 +57,7 @@ return {
 
             Combat.applyHeal(c, u, 30)
             assert(hp(u) == 0, "the whole amount landed -- armour has no say in a toll")
-            assert(not u.alive, "and grace poured into a body past mending kills it")
+            assert(not u.alive, "and grace poured into a body past healing kills it")
         end,
     },
     {
@@ -70,12 +70,12 @@ return {
             Status.apply(c, u, "status_unclosing_wound")
             Status.apply(c, u, "status_interred")
 
-            assert(Combat.applyHeal(c, u, 15) == 0, "the wound refuses the mend")
-            assert(hp(u) == 30, "and nothing is turned around on a mend that never landed")
+            assert(Combat.applyHeal(c, u, 15) == 0, "the wound refuses the heal")
+            assert(hp(u) == 30, "and nothing is turned around on a heal that never landed")
         end,
     },
     {
-        name = "every mend runs the same funnel -- a potion and a Regeneration tick burn too",
+        name = "every heal runs the same funnel -- a potion and a Regeneration tick burn too",
         fn = function()
             -- Neither of these is a cast aimed by anybody: a draught goes through Combat.quaff and a
             -- Regeneration tick through the status's own ctx.heal, and both come out at applyHeal.
@@ -104,12 +104,12 @@ return {
                 "the zombie carries Grave-Cold on utility_grave_cold in its grid")
 
             u.char.stats.health.current = 20
-            assert(Combat.applyHeal(c, u, 8) == 0, "the dead are never mended")
-            assert(hp(u) == 12, "the mend landed as a wound instead")
+            assert(Combat.applyHeal(c, u, 8) == 0, "the dead are never healed")
+            assert(hp(u) == 12, "the heal landed as a wound instead")
         end,
     },
     {
-        name = "being dead is not an affliction: a cleanse does not restore the zombie's mending",
+        name = "being dead is not an affliction: a cleanse does not restore the zombie's healing",
         fn = function()
             local c, u = loneUnit("character_zombie", { isolate = "none" })
             Trait.attach(u)
@@ -117,7 +117,7 @@ return {
 
             Combat.cleanse(c, u)
             assert(Combat.applyHeal(c, u, 8) == 0, "a cure cannot cure being a corpse")
-            assert(hp(u) == 12, "and the mend still lands as a wound")
+            assert(hp(u) == 12, "and the heal still lands as a wound")
         end,
     },
     {
@@ -138,7 +138,7 @@ return {
         fn = function()
             local healer = Fixture.unit("character_priest", 3, 3,
                 { isolate = "bare", items = { "ability_heal" } })
-            -- Roomy enough to take the whole mend as a wound without flooring at 0, so the previewed
+            -- Roomy enough to take the whole heal as a wound without flooring at 0, so the previewed
             -- figure and the bar can be compared exactly.
             local zombie = Fixture.unit("character_zombie", 3, 4, { stats = { health = 90 } })
             local c = Fixture.combat(Fixture.new(8, 8), { healer, zombie }, {})
@@ -149,8 +149,8 @@ return {
                 dead.x, dead.y)
             local e = pv and pv.entries[dead]
             assert(e, "the preview reports the body it is aimed at")
-            assert(e.heal == 0, "and promises it no mending at all")
-            assert(e.damage > 0, "it previews the mend as the wound it will be")
+            assert(e.heal == 0, "and promises it no healing at all")
+            assert(e.damage > 0, "it previews the heal as the wound it will be")
 
             -- The dry run must not have moved the bar: it is asked on every hover frame.
             assert(hp(dead) == 90, "a preview never touches the board")
@@ -180,7 +180,7 @@ return {
             -- The enemy's own priest is now the fastest thing on the board to kill it with.
             target.char.stats.health.current = 30
             Combat.applyHeal(c, target, 20)
-            assert(hp(target) == 10, "their mend is the wound")
+            assert(hp(target) == 10, "their heal is the wound")
         end,
     },
 }
