@@ -194,12 +194,63 @@ return {
         fn = function()
             -- `duration` is quoted in the same unit `combat.clock` accumulates (elapsed initiative),
             -- so a designer's number means the ticks it says and the HUD countdown reads the same.
-            local combat = fakeCombat({ unit("party", 1, 1) }, { type = "survive", duration = 15 })
+            -- A foe is left standing so the CLOCK is what this measures: an emptied board is its own
+            -- ending (the next case), and would otherwise answer before the tick ever mattered.
+            local combat = fakeCombat({ unit("party", 1, 1), unit("enemy", 8, 8) },
+                { type = "survive", duration = 15 })
             combat.clock = 14
             assert(Combat.evaluate(combat) == nil, "one tick short of the duration is not done")
 
             combat.clock = 15
             assert(Combat.evaluate(combat) == "win", "the clock reaching the tick duration ends it")
+        end,
+    },
+    {
+        -- The other way out of a survive: there is nothing left to outlast. Standing on an empty field
+        -- pressing Wait at nobody is not a fight, so the clock stops mattering the moment the last enemy
+        -- falls -- see the survive branch of Combat.outcomeFor.
+        name = "a cleared board ends a survive without waiting out its clock",
+        fn = function()
+            local combat = fakeCombat({ unit("party", 1, 1), unit("enemy", 8, 8) },
+                { type = "survive", duration = 40 })
+            assert(Combat.evaluate(combat) == nil, "a foe still stands, so there is still something to outlast")
+
+            combat.units[2].alive = false
+            assert(combat.clock < 40, "and the clock is nowhere near the duration")
+            assert(Combat.evaluate(combat) == "win", "with the board cleared the fight is over")
+        end,
+    },
+    {
+        -- ...but not in the lull before the next muster. A waved survive is a rising tide, and clearing
+        -- one set of it is not clearing the fight. states/battle.lua pulls that wave FORWARD on an empty
+        -- board rather than making the player wait for its tick, which is why "arrived" is read off the
+        -- wave's firing state here and not off the clock (Combat.allWavesArrived).
+        name = "a survive with a wave still owed is not won by clearing the board",
+        fn = function()
+            local obj = { type = "survive", duration = 40, waves = { { at = 12, composition = {} } } }
+            local combat = fakeCombat({ unit("party", 1, 1), unit("enemy", 8, 8, false) }, obj)
+            assert(Combat.evaluate(combat) == nil, "the wave has not walked on yet")
+
+            -- Pulled forward and fired at tick 4, well short of its authored 12: the reinforcement has
+            -- arrived even though the clock says otherwise, and the board it landed on is clear again.
+            combat.clock = 4
+            combat.waveState = { { fires = 1, nextAt = math.huge } }
+            assert(Combat.evaluate(combat) == "win", "every muster spent and nobody standing ends it")
+        end,
+    },
+    {
+        -- An endless `every` wave is never spent -- it is authored to keep coming -- so a fight carrying
+        -- one is never won by emptying the board, only by its own clock.
+        name = "an endless recurring wave is never spent",
+        fn = function()
+            local wave = { every = 12, composition = {} }
+            assert(not Combat.waveSpent(wave, { fires = 3 }), "an uncapped recurrence keeps sending")
+            assert(Combat.waveSpent({ every = 12, count = 3, composition = {} }, { fires = 3 }),
+                "a capped one is done once it has fired its count")
+            assert(Combat.waveSpent({ at = 6, composition = {} }, { fires = 1 }),
+                "a one-shot is spent the moment it fires")
+            assert(not Combat.waveSpent({ at = 6, composition = {} }, { fires = 0 }),
+                "and is still owed until then")
         end,
     },
     {

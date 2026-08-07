@@ -1137,6 +1137,12 @@ function Combat.new(arena, partyUnits, enemyUnits, opts)
         -- a combat with no seeded arena (a scripted layout), which falls back to Combat.random.
         rng = (arena and arena.seed) and Combat.newRandom(arena.seed) or nil,
         clock = 0,      -- accumulated elapsed initiative (drives `survive`)
+        -- Per-wave firing state for objective.waves ({ fires, nextAt, committed }), owned by whoever
+        -- walks the waves on (states/battle.lua spawnWaves). It lives HERE rather than in the battle
+        -- state because "has that reinforcement arrived yet?" is a question the win conditions ask
+        -- (Combat.allWavesArrived) -- and once a wave can be pulled forward off its authored tick, the
+        -- clock is no longer an honest answer to it.
+        waveState = {},
         turnCount = 0,  -- number of actions taken
         turn = nil,     -- the in-progress turn: { unit, moved, moveCost } (see startTurn)
         log = {},       -- rolling event log for the combat-log panel (Combat.logEvent)
@@ -5159,11 +5165,6 @@ end
 --               a body. This is also what makes the bench a genuine second life: the fight is not lost
 --               while there is anyone left to send in.
 --
--- THE PLAYER NEVER READS THE WORD "ROTATE". The move is called FALL BACK on every surface and the ground
--- it is made from is RALLY GROUND (Combat.rallyGround / rallyTileInfo, ui/battle_map.lua drawRallyGround);
--- the model keeps the older spelling because `rotate` is what the whole bench section, its tests and
--- docs/deployment.md are written in, and renaming the mechanic is not the same job as naming it.
---
 -- Statuses ride out and back with the body, so falling back is not a cleanse -- it parks a poison rather
 -- than curing it. They do not tick while off the board, for the plain reason that nothing off the board
 -- ticks at all.
@@ -5185,34 +5186,6 @@ function Combat.inDeployZone(combat, x, y)
         if t.x == x and t.y == y then return true end
     end
     return false
-end
-
--- The ground marked as RALLY GROUND right now: the deploy zone, but only while somebody is still on the
--- bench to send in. Once the last reserve has taken the field those tiles are ordinary ground again and
--- the board stops marking them -- a mark that means nothing is a mark the player learns to ignore.
--- One rule, two surfaces: the board overlay and the hover tooltip both read this.
-function Combat.rallyGround(combat)
-    if Combat.benchCount(combat, "party") == 0 then return {} end
-    return (combat and combat.deployZone) or {}
-end
-
--- What the hover tooltip says about the rally tile (x, y), or nil when it is not your ground (or the
--- bench is spent). The read side of Combat.inDeployZone, shaped like Combat.objectiveTileInfo so
--- states/battle.lua feeds the two the same way and this can be tested headless:
---
---   { reserves,     -- how many of the company are waiting off the board
---     occupant,     -- your own unit standing on the tile right now, if any
---     canFallBack } -- whether that occupant could trade places this instant (Combat.canRotate)
-function Combat.rallyTileInfo(combat, x, y)
-    if #Combat.rallyGround(combat) == 0 then return nil end
-    if not Combat.inDeployZone(combat, x, y) then return nil end
-    local info = { reserves = Combat.benchCount(combat, "party") }
-    local unit = Combat.unitAt(combat, x, y)
-    if unit and unit.side == "party" and Combat.isPlayerControlled(unit) then
-        info.occupant = unit
-        info.canFallBack = (Combat.canRotate(combat, unit)) and true or false
-    end
-    return info
 end
 
 -- How many bodies `side` has ON THE FIELD, against the MAX_FIELD cap. Summons don't count -- the cap is
@@ -5245,23 +5218,20 @@ function Combat.benchUnit(combat, entry)
     return combat.bench[#combat.bench]
 end
 
--- May `unit` fall back right now? Returns true, or false plus the reason to show. The player-facing
--- name of this move is FALL BACK and the ground it is made from is RALLY GROUND; the model keeps the
--- older `rotate` spelling for the mechanic itself (see the section header). The button appears only
--- where this returns true, so the reasons below reach the player through `notify` rather than a
--- greyed plate -- and every one of them still names a fix.
+-- May `unit` rotate out right now? Returns true, or false plus the reason to show -- a Rotate button that
+-- greys out silently reads as a bug, and every refusal here has a fix the player can act on.
 function Combat.canRotate(combat, unit)
     if not (unit and unit.alive) then return false, "no one is acting" end
     if unit.side ~= "party" or not Combat.isPlayerControlled(unit) then
-        return false, "only your own company falls back"
+        return false, "only your own company rotates"
     end
     if unit.summoned then return false, "a summon has no one to trade with" end
     if Combat.benchCount(combat, unit.side) == 0 then return false, "no one is on the bench" end
     if not (combat.deployZone and #combat.deployZone > 0) then
-        return false, "there is no rally ground to fall back to"
+        return false, "there is no ground to fall back to"
     end
     if not Combat.inDeployZone(combat, unit.x, unit.y) then
-        return false, "stand on your rally ground to fall back"
+        return false, "fall back to your own lines to rotate"
     end
     if unit.channel then return false, "not in the middle of a cast" end
     return true
@@ -10087,15 +10057,36 @@ function Combat.objectiveTileInfo(combat, x, y)
     return info
 end
 
--- Have all of a wave-based `defend` fight's reinforcement waves walked on? A wave arrives once the
--- clock passes its `at` tick (states/battle.lua spawnWaves runs BEFORE this fight is judged, so the
--- moment the clock reaches the mark the bodies are already on the board). "All arrived" is therefore
--- just the clock reaching the last wave's tick. Combined with a cleared board it is the wave-based
--- win: no victory is awarded in the quiet before the next wave lands. No waves at all reads as arrived,
--- so a defend with only its opening set wins the moment that set falls.
+-- Has `wave` finished sending, given its firing state? A one-shot is spent the moment it fires; a
+-- `count`-capped recurrence once it has fired that many times; an uncapped `every` wave is NEVER spent,
+-- because an endless tide is exactly what it was authored to be and a fight carrying one has to be won
+-- some other way (a reach objective's synthesized trickle is the live example).
+function Combat.waveSpent(wave, st)
+    if not (wave and st) or (st.fires or 0) == 0 then return false end
+    if not wave.every then return true end
+    return wave.count ~= nil and st.fires >= wave.count
+end
+
+-- Has every reinforcement this fight owes already walked on? Asked by the two objectives whose end is
+-- not in the player's hands while the board is empty -- `defend` (win once the last wave is dead) and
+-- `survive` (same, below) -- so that no victory is awarded in the quiet before the next wave lands. No
+-- waves at all reads as arrived, so a defend with only its opening set wins the moment that set falls.
+--
+-- Read off `combat.waveState` where there is one: a wave has arrived when it has FIRED, not when the
+-- clock passes its `at`. The two used to be the same statement and no longer are -- a cleared survive
+-- pulls the next muster forward off its tick (states/battle.lua), and a fight judged by the clock would
+-- then sit on an empty field until the mark it already answered. The clock remains the fallback for a
+-- combat with no firing state at all (a model-only caller, a fixture), where nothing has fired early
+-- because nothing walks the waves on.
 function Combat.allWavesArrived(combat, obj)
-    for _, w in ipairs((obj and obj.waves) or {}) do
-        if (combat.clock or 0) < (w.at or 0) then return false end
+    local state = combat.waveState
+    for i, w in ipairs((obj and obj.waves) or {}) do
+        local st = state and state[i]
+        if st then
+            if not Combat.waveSpent(w, st) then return false end
+        elseif (combat.clock or 0) < (w.at or 0) then
+            return false
+        end
     end
     return true
 end
@@ -10214,6 +10205,14 @@ function Combat.outcomeFor(combat, side)
         -- Outlast a clock: win once the elapsed ticks pass the authored `duration`. The consecrated
         -- rite in data/quests/cathedral/quest_cathedral_slot_03.lua is the live user.
         if combat.clock >= (obj.duration or math.huge) then return "win" end
+        -- ...or once there is nothing left to outlast. A cleared board with every reinforcement already
+        -- spent means the fight is decided and the remaining ticks are dead air -- the player would be
+        -- pressing Wait on an empty field to satisfy a clock that no longer measures anything. The wave
+        -- clause is what keeps that from ending the fight in the lull before the next muster; the muster
+        -- itself is pulled forward on a cleared board rather than made to wait (states/battle.lua
+        -- spawnWaves), so a waved survive answers an emptied field with more demons and an unwaved one
+        -- answers it by being over.
+        if Combat.eliminated(combat, foe) and Combat.allWavesArrived(combat, obj) then return "win" end
         return nil
     elseif obj.type == "defend" then
         -- A WAVE-based hold with a body to keep alive: win once every demon is defeated -- the whole

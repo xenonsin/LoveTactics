@@ -1388,21 +1388,48 @@ end
 -- commit and shows nothing until it can fire again.
 local LEAD_TICKS = 2 * Status.TICKS_PER_TURN -- how far ahead a wave commits and starts telegraphing
 
+-- Nothing left to outlast: with the board cleared during a `survive`, the next muster is pulled forward
+-- rather than letting the clock run down over an empty field. Without it, killing the wood's last wolf
+-- early leaves the player pressing Wait at nobody for the rest of the duration.
+--
+-- Only the EARLIEST pending wave moves, so the tide keeps its authored shape -- it just stops making the
+-- player wait for it -- and it is pulled to ONE TURN out rather than to now, so the muster still
+-- telegraphs and can still be turned back by marching onto the ground it lands on. A wave already due
+-- sooner than that is left alone.
+--
+-- `survive` only. A `defend` fight's waves are its pacing (the flight leg's lesson beats are written
+-- against those ticks) and a `reach` fight's trickle is pressure on a road the player advances by
+-- walking -- neither is standing still waiting for a clock.
+local function pullMusterForward(waves, clock)
+    local soonest
+    for i, wave in ipairs(waves) do
+        local st = battle.combat.waveState[i]
+        -- A retired wave has nothing left to send, so it is not what the empty board is waiting for.
+        if not (wave.count and st.fires >= wave.count) and st.nextAt < math.huge then
+            if not soonest or st.nextAt < soonest.nextAt then soonest = st end
+        end
+    end
+    local due = clock + Status.TICKS_PER_TURN
+    if soonest and soonest.nextAt > due then soonest.nextAt = due end
+end
+
 local function spawnWaves()
     local obj = battle.combat and battle.combat.objective
     local waves = obj and obj.waves
     if not waves then return end
-    battle.waveState = battle.waveState or {}
+    local state = battle.combat.waveState
     local clock = battle.combat.clock or 0
     local ctx = battle.encounterCtx or {}
     for i, wave in ipairs(waves) do
-        local st = battle.waveState[i]
-        if not st then
-            -- First fire lands at `at` for a one-shot, at `every` for a recurring wave that gives no
-            -- explicit start (so an endless wave holds off one period before its first reinforcement).
-            st = { fires = 0, nextAt = wave.at or wave.every or 0 }
-            battle.waveState[i] = st
-        end
+        -- First fire lands at `at` for a one-shot, at `every` for a recurring wave that gives no
+        -- explicit start (so an endless wave holds off one period before its first reinforcement).
+        state[i] = state[i] or { fires = 0, nextAt = wave.at or wave.every or 0 }
+    end
+    if obj.type == "survive" and Combat.aliveCount(battle.combat, "enemy") == 0 then
+        pullMusterForward(waves, clock)
+    end
+    for i, wave in ipairs(waves) do
+        local st = state[i]
         local capped = wave.count and st.fires >= wave.count
         local crowded = wave.maxAlive and Combat.aliveCount(battle.combat, "enemy") >= wave.maxAlive
         if capped or crowded then
@@ -2918,8 +2945,7 @@ end
 -- ui/panels/bench_chooser.lua) because the question -- which of these people -- is the same one:
 --
 --   ROTATE     the acting unit spends its TURN to trade places, and must be standing in the deploy zone
---              (its own lines). Called FALL BACK everywhere the player can read it -- the button under
---              the item grid, which appears only once a body of theirs is standing on rally ground.
+--              (its own lines). The Rotate button under the item grid.
 --   REINFORCE  a slot has opened, so filling it is FREE. The drawer button, and -- when nothing of the
 --              player's is left standing -- a prompt raised automatically, because a company with a body
 --              still on the bench has not lost and the turn loop has nobody to hand the turn to.
@@ -2982,7 +3008,7 @@ openBenchChooser = function(mode, mandatory)
     local anchorUnit = battle.current
     if mode == "rotate" then
         local ok, why = Combat.canRotate(combat, anchorUnit)
-        if not ok then notify(why or "You cannot fall back right now.") return false end
+        if not ok then notify(why or "You cannot rotate right now.") return false end
     else
         local ok, why = Combat.canReinforce(combat)
         if not ok then notify(why or "There is no room to bring anyone in.") return false end
@@ -2997,7 +3023,7 @@ openBenchChooser = function(mode, mandatory)
         ay = m.originY + (anchorUnit.y - 0.5) * m.size
     end
 
-    local title = mode == "rotate" and "Fall Back  --  costs this turn" or "Reinforce  --  free"
+    local title = mode == "rotate" and "Rotate  --  costs this turn" or "Reinforce  --  free"
     if mandatory then title = "Your line is broken" end -- the log carries the rest; the card is narrow
 
     battle.benchChooser = BenchChooser.new({
@@ -3790,7 +3816,7 @@ refreshView = function()
     local reinforcements
     local reinforceCells = {}
     local clock = battle.combat.clock or 0
-    for _, st in ipairs(battle.waveState or {}) do
+    for _, st in ipairs(battle.combat.waveState or {}) do
         local ticksUntil = st.committed and (st.nextAt - clock)
         if st.committed and clock < st.nextAt and ticksUntil <= Status.TICKS_PER_TURN then
             local p = st.committed
@@ -4046,13 +4072,6 @@ refreshView = function()
         end
     end
 
-    -- Your own lines, outlined quietly for the whole fight (ui/battle_map.lua drawRallyGround) -- but
-    -- only while somebody is still on the bench, which Combat.rallyGround decides. It is the standing
-    -- statement that replaced the always-there Fall Back plate: the ground says where the move can be
-    -- made from, the tile's tooltip says what it does, and the button appears once a body is on it.
-    local rally = Combat.rallyGround(battle.combat)
-    overlays.rally = #rally > 0 and rally or nil
-
     battle.map:setOverlays(overlays)
 end
 
@@ -4151,7 +4170,7 @@ local function commitDeploy(opts, deployed, front, placed)
     end
 
     -- Whether this fight has a bench AT ALL, fixed here rather than read live, so the drawer's
-    -- Reinforce entry (and the panel's Fall Back lane) cannot appear and vanish as reserves are spent.
+    -- Reinforce entry (and the panel's Rotate button) cannot appear and vanish as reserves are spent.
     -- False in every duel, draft and scripted lesson, which field exactly who they were given.
     battle.hasBench = #(battle.combat.bench or {}) > 0
 
@@ -4196,7 +4215,7 @@ local function commitDeploy(opts, deployed, front, placed)
         onHoverItem = function(item) battle.hoverItem = item end,
         onHoverUnit = function(unit) battle.hoverUnit = unit end,
         onWait = function() waitTurn() end, -- the long Wait button under the item grid
-        onRotate = function() openBenchChooser("rotate") end, -- FALL BACK: trade places with the bench
+        onRotate = function() openBenchChooser("rotate") end, -- trade places with the bench
     })
     battle.panel.fx = battle.fx
 
@@ -4486,10 +4505,11 @@ function battle.enter(self, opts)
     -- Auto-battle playback speed carries across fights as a preference (like autoAll itself), so a
     -- player who likes 3x keeps it -- but seed it the first time so battle.update's multiply is safe.
     battle.autoSpeed = battle.autoSpeed or 1
-    -- Timed reinforcements (objective.waves): each wave's firing state (count + next tick), and the
-    -- context a wave's `composition(ctx)` scales itself against. Reset per battle so a replayed fight
-    -- starts with every wave still pending. See spawnWaves.
-    battle.waveState = {}
+    -- Timed reinforcements (objective.waves): each wave's firing state (count + next tick) rides on the
+    -- combat, because the win conditions read it too (Combat.allWavesArrived). Cleared per battle so a
+    -- replayed fight starts with every wave still pending; the context beside it is what a wave's
+    -- `composition(ctx)` scales itself against. See spawnWaves.
+    battle.combat.waveState = {}
     battle.encounterCtx = ctx
     battle.map = BattleMap.new(battle.arena,
         { combat = battle.combat, leftMargin = LEFT_W, rightMargin = PANEL_W,
@@ -5201,11 +5221,7 @@ function battle.drawTileTooltip(mx, my)
     local terrainInfo = { cell = cell, bonus = Combat.fieldBonus(battle.combat, cx, cy),
                           hazards = Hazard.allAt(battle.combat, cx, cy),
                           watched = watched > 0 and watched or nil,
-                          objective = Combat.objectiveTileInfo(battle.combat, cx, cy),
-                          -- Rally ground rides here for the same reason the objective does: the terrain
-                          -- box never yields, and the read matters MOST on a tile with one of your own
-                          -- bodies already on it -- that is the moment falling back is a live option.
-                          rally = Combat.rallyTileInfo(battle.combat, cx, cy) }
+                          objective = Combat.objectiveTileInfo(battle.combat, cx, cy) }
     local objInfo
     -- Same precedence actionPreviewFor picks a strike target with (trap, then wall, then prop), so the
     -- box that opens describes the very thing a click would hit.

@@ -722,6 +722,14 @@ objective = {
 
 Encounters without a `composition` fall back to a single generic foe.
 
+A `survive` fight ends **two** ways: the clock reaching its `duration`, or the board being cleared with
+no reinforcement still owed. The second exists because the first, alone, leaves the player pressing
+Wait at an empty field for the balance of the duration — a clock that no longer measures anything.
+Give the objective reinforcement `waves` (`{ at = <tick>, composition = ..., from = <edge> }`, as
+`data/encounters/encounter_survivors_defend.lua` does) if the fight should *keep* pressing: a cleared board pulls
+the next muster forward to one turn out rather than letting it wait for its authored tick, so a waved
+survive answers an emptied field with more of them and an unwaved one answers it by being over.
+
 ## Escort missions: allies and `protect`
 
 `win.protect = "<character id>"` is a **composable loss condition, not a win type**: whatever the
