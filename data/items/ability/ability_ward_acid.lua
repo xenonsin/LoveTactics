@@ -1,5 +1,5 @@
 -- Resistant: Acid -- a protective working laid on the caster or a nearby ally, granting Resistant:
--- Acid (data/status/status_resistant_acid.lua): -8 to every acid-tagged hit for a time. It floors
+-- Acid (data/status/status_resistant_acid.lua): -4 to every acid-tagged hit for a time. It floors
 -- at 1 and never reaches immunity -- that is Immunity: Acid, the same house's deeper answer. The
 -- ACTIVE mirror of the Vulnerable openers: read the intent telegraph and ward the target of the
 -- incoming blow the turn before it lands.
@@ -17,8 +17,8 @@ return {
     type = "ability",
     tags = { "protective" },
     class = "rogue",
-    price = 200,
-    unlockQuests = 2,
+    price = 260,
+    unlockQuests = 3,
     activeAbility = {
         target = "ally", -- includes the caster
         range = 3,

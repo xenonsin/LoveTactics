@@ -9,5 +9,5 @@ return {
     description = "Lightning-warded: takes less damage from lightning.",
     color = { 0.902, 0.765, 0.302 }, -- badge tint (lightning's own hue; the abbr marks the state)
     duration = 15,           -- ~3 turns: long enough to sit through the fight it was cast to answer
-    vulnerable = { lightning = -8 },
+    vulnerable = { lightning = -4 },
 }

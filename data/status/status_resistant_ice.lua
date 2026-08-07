@@ -9,5 +9,5 @@ return {
     description = "Ice-warded: takes less damage from ice.",
     color = { 0.629, 0.815, 0.899 }, -- badge tint (ice's own hue; the abbr marks the state)
     duration = 15,           -- ~3 turns: long enough to sit through the fight it was cast to answer
-    vulnerable = { ice = -8 },
+    vulnerable = { ice = -4 },
 }

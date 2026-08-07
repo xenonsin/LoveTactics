@@ -9,5 +9,5 @@ return {
     description = "Dark-warded: takes less damage from dark.",
     color = { 0.627, 0.455, 0.784 }, -- badge tint (dark's own hue; the abbr marks the state)
     duration = 15,           -- ~3 turns: long enough to sit through the fight it was cast to answer
-    vulnerable = { dark = -8 },
+    vulnerable = { dark = -4 },
 }

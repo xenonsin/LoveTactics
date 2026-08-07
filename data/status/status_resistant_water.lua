@@ -9,5 +9,5 @@ return {
     description = "Water-warded: takes less damage from water.",
     color = { 0.425, 0.603, 0.846 }, -- badge tint (water's own hue; the abbr marks the state)
     duration = 15,           -- ~3 turns: long enough to sit through the fight it was cast to answer
-    vulnerable = { water = -8 },
+    vulnerable = { water = -4 },
 }

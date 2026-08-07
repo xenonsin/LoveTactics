@@ -9,5 +9,5 @@ return {
     description = "Pierce-warded: takes less damage from pierce.",
     color = { 0.769, 0.345, 0.431 }, -- badge tint (pierce's own hue; the abbr marks the state)
     duration = 15,           -- ~3 turns: long enough to sit through the fight it was cast to answer
-    vulnerable = { pierce = -8 },
+    vulnerable = { pierce = -4 },
 }

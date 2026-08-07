@@ -9,5 +9,5 @@ return {
     description = "Slash-warded: takes less damage from slash.",
     color = { 0.714, 0.737, 0.776 }, -- badge tint (slash's own hue; the abbr marks the state)
     duration = 15,           -- ~3 turns: long enough to sit through the fight it was cast to answer
-    vulnerable = { slash = -8 },
+    vulnerable = { slash = -4 },
 }

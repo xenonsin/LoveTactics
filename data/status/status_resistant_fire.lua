@@ -15,5 +15,5 @@ return {
     description = "Fire-warded: takes less damage from fire.",
     color = { 0.878, 0.541, 0.235 }, -- badge tint (fire's own amber; the abbr marks the state)
     duration = 15,           -- ~3 turns: long enough to sit through the fight it was cast to answer
-    vulnerable = { fire = -8 },
+    vulnerable = { fire = -4 },
 }

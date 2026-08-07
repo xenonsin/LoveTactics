@@ -14,8 +14,8 @@ return {
     type = "ability",
     tags = { "protective" },
     class = "rogue",
-    price = 140,
-    unlockQuests = 1,
+    price = 620,
+    unlockQuests = 9,
     activeAbility = {
         target = "ally", -- includes the caster
         range = 2,

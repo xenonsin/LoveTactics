@@ -1,5 +1,5 @@
 -- Resistant: Dark -- a protective working laid on the caster or a nearby ally, granting Resistant:
--- Dark (data/status/status_resistant_dark.lua): -8 to every dark-tagged hit for a time. It floors
+-- Dark (data/status/status_resistant_dark.lua): -4 to every dark-tagged hit for a time. It floors
 -- at 1 and never reaches immunity -- that is Immunity: Dark, the same house's deeper answer. The
 -- ACTIVE mirror of the Vulnerable openers: read the intent telegraph and ward the target of the
 -- incoming blow the turn before it lands.

@@ -9,5 +9,5 @@ return {
     description = "Impact-warded: takes less damage from impact.",
     color = { 0.788, 0.604, 0.388 }, -- badge tint (impact's own hue; the abbr marks the state)
     duration = 15,           -- ~3 turns: long enough to sit through the fight it was cast to answer
-    vulnerable = { impact = -8 },
+    vulnerable = { impact = -4 },
 }

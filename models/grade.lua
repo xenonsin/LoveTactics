@@ -693,8 +693,25 @@ function Grade.statusValue(id)
         value = value + best * hits * Grade.VULNERABLE_TAG_MATCH
     end
 
-    -- Blanket immunity or negation is worth the blows it eats, capped by how long it lasts.
-    if def.immune or def.negates then
+    -- Immunity is the WHOLE blow, and it has to be priced in the same unit the resistance above is.
+    -- A `vulnerable` bag is worth the damage points it subtracts (8); an immunity subtracts all of
+    -- them, so its per-hit worth is the reference blow itself -- Grade.turnValue, which is exactly
+    -- "what one blow lands after mitigation". Quoting it instead as a hardcoded 0.45 of a turn priced
+    -- a voided hit at half a partial one and stood the ward line on its head: every Immunity: <Type>
+    -- graded BELOW the Resistant: <Type> it is meant to sit four quests deeper than.
+    --
+    -- Scaled by landing hits and discounted the same way a resistance is, for the same reason: an
+    -- immunity that names tags is worth nothing at all unless the blow coming in carries one.
+    if type(def.immune) == "table" and next(def.immune) then
+        local hits = math.min(Grade.VULNERABLE_MAX_HITS, math.max(1, turns))
+        value = value + turn * hits * Grade.VULNERABLE_TAG_MATCH
+    end
+
+    -- Negation is a different shape and keeps its own read: `negates` is a CHARGE bag -- `magnitude`
+    -- blows eaten and then gone (status_physical_barrier) -- so what it is worth is a count, not a
+    -- window, and the duration it is quoted against here is the wrong axis. Left as it was rather
+    -- than corrected in passing, so the six barriers do not move on a change that is about the wards.
+    if def.negates then
         value = value + 0.45 * math.max(1, turns) * turn
     end
 
@@ -1191,6 +1208,47 @@ Grade.SLOT_PINS = {
     ability_gilded_wound = { min = 6, why = "spends the purse" },
     ability_grease_palms = { min = 6, why = "spends the purse" },
     ability_open_account = { min = 6, why = "spends the purse" },
+
+    -- THE WARD LINE IS PLACED, NOT RANKED -- both halves, at 3 and at 9, across all seven houses.
+    --
+    -- This is the hand-placed row of the table above and it carries that row's burden of proof, so:
+    -- the grade reads this family perfectly well and reads it LOW, because both halves score as a turn
+    -- spent to prevent less than a swing (-4.9 and -2.0 against the reference body). That reading is
+    -- honest about the average turn and wrong about the family, which does not exist for the average
+    -- turn. A ward is bought for the one telegraphed blow the fight actually turns on, and a dry run
+    -- against a reference body has no telegraph in it -- the whole of what you are paying for is
+    -- invisible to the instrument. Left to the ranking the line pooled at slot 0, which prices refusing
+    -- a dragon's breath as opening-rack stock.
+    --
+    -- The two rungs are the family's shape rather than two numbers: a house teaches you to take the
+    -- blow (3) long before it teaches you to refuse it (9), and voiding a blow outright is late-line
+    -- power in the same way ability_polymorph's reach is. Every house reaches slot 10, so 9 is a real
+    -- rung on all seven shelves and not a clamp.
+    --
+    -- tests/vulnerability_spec.lua asserts the ordering; these pins are what hold it.
+    ability_ward_fire = { at = 3, why = "the ward line is placed at 3: taught before it is refused" },
+    ability_ward_ice = { at = 3, why = "the ward line is placed at 3" },
+    ability_ward_lightning = { at = 3, why = "the ward line is placed at 3" },
+    ability_ward_water = { at = 3, why = "the ward line is placed at 3" },
+    ability_ward_dark = { at = 3, why = "the ward line is placed at 3" },
+    ability_ward_holy = { at = 3, why = "the ward line is placed at 3" },
+    ability_ward_acid = { at = 3, why = "the ward line is placed at 3" },
+    ability_ward_poison = { at = 3, why = "the ward line is placed at 3" },
+    ability_ward_slash = { at = 3, why = "the ward line is placed at 3" },
+    ability_ward_impact = { at = 3, why = "the ward line is placed at 3" },
+    ability_ward_pierce = { at = 3, why = "the ward line is placed at 3" },
+
+    ability_seal_fire = { at = 9, why = "voiding a blow outright is late-line power, not a graded row" },
+    ability_seal_ice = { at = 9, why = "the seal line is placed at 9" },
+    ability_seal_lightning = { at = 9, why = "the seal line is placed at 9" },
+    ability_seal_water = { at = 9, why = "the seal line is placed at 9" },
+    ability_seal_dark = { at = 9, why = "the seal line is placed at 9" },
+    ability_seal_holy = { at = 9, why = "the seal line is placed at 9" },
+    ability_seal_acid = { at = 9, why = "the seal line is placed at 9" },
+    ability_seal_poison = { at = 9, why = "the seal line is placed at 9" },
+    ability_seal_slash = { at = 9, why = "the seal line is placed at 9" },
+    ability_seal_impact = { at = 9, why = "the seal line is placed at 9" },
+    ability_seal_pierce = { at = 9, why = "the seal line is placed at 9" },
 }
 
 Grade.PRICE_BASE = 80   -- what the opening rung costs

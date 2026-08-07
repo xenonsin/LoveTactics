@@ -9,5 +9,5 @@ return {
     description = "Holy-warded: takes less damage from holy.",
     color = { 0.910, 0.816, 0.541 }, -- badge tint (holy's own hue; the abbr marks the state)
     duration = 15,           -- ~3 turns: long enough to sit through the fight it was cast to answer
-    vulnerable = { holy = -8 },
+    vulnerable = { holy = -4 },
 }

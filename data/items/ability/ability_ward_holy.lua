@@ -1,5 +1,5 @@
 -- Resistant: Holy -- a protective working laid on the caster or a nearby ally, granting Resistant:
--- Holy (data/status/status_resistant_holy.lua): -8 to every holy-tagged hit for a time. It floors
+-- Holy (data/status/status_resistant_holy.lua): -4 to every holy-tagged hit for a time. It floors
 -- at 1 and never reaches immunity -- that is Immunity: Holy, the same house's deeper answer. The
 -- ACTIVE mirror of the Vulnerable openers: read the intent telegraph and ward the target of the
 -- incoming blow the turn before it lands.
@@ -17,8 +17,8 @@ return {
     type = "ability",
     tags = { "protective" },
     class = "priest",
-    price = 200,
-    unlockQuests = 2,
+    price = 260,
+    unlockQuests = 3,
     activeAbility = {
         target = "ally", -- includes the caster
         range = 3,

@@ -1,5 +1,5 @@
 -- Resistant: Water -- a protective working laid on the caster or a nearby ally, granting Resistant:
--- Water (data/status/status_resistant_water.lua): -8 to every water-tagged hit for a time. It
+-- Water (data/status/status_resistant_water.lua): -4 to every water-tagged hit for a time. It
 -- floors at 1 and never reaches immunity -- that is Immunity: Water, the same house's deeper
 -- answer. The ACTIVE mirror of the Vulnerable openers: read the intent telegraph and ward the
 -- target of the incoming blow the turn before it lands.
@@ -17,8 +17,8 @@ return {
     type = "ability",
     tags = { "protective" },
     class = "hunter",
-    price = 140,
-    unlockQuests = 1,
+    price = 260,
+    unlockQuests = 3,
     activeAbility = {
         target = "ally", -- includes the caster
         range = 3,

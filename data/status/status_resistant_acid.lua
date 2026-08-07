@@ -9,5 +9,5 @@ return {
     description = "Acid-warded: takes less damage from acid.",
     color = { 0.565, 0.689, 0.223 }, -- badge tint (acid's own hue; the abbr marks the state)
     duration = 15,           -- ~3 turns: long enough to sit through the fight it was cast to answer
-    vulnerable = { acid = -8 },
+    vulnerable = { acid = -4 },
 }

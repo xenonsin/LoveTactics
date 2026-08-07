@@ -9,5 +9,5 @@ return {
     description = "Poison-warded: takes less damage from poison.",
     color = { 0.537, 0.663, 0.310 }, -- badge tint (poison's own hue; the abbr marks the state)
     duration = 15,           -- ~3 turns: long enough to sit through the fight it was cast to answer
-    vulnerable = { poison = -8 },
+    vulnerable = { poison = -4 },
 }
