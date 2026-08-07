@@ -1150,6 +1150,15 @@ Grade.SLOT_PINS = {
     -- it from the first visit.
     consumable_healing_potion = { at = 0, why = "the Crucible's steadiest seller, and nowhere else now" },
 
+    -- A ROCK IS OPENING-RACK STOCK OR IT IS NOT A ROCK. Moved from the Crucible to the Colosseum, and
+    -- the ranking wants it a rung up from there -- it grades barely above nothing (2.5) and then takes
+    -- the shelf's best fitness multiplier, because a plain physical throw is exactly what the arena's
+    -- next fight is soft to. That is a true reading of the fight and the wrong reading of the item: what
+    -- this thing IS is thirty gold and a fist-sized stone, the first answer a newcomer can afford to a
+    -- foe standing out of reach. A gate in front of that sells nothing the player could not do by
+    -- walking.
+    consumable_throwing_stone = { at = 0, why = "a rock: the cheapest ware in the arena, and gated by nothing" },
+
     -- THE PROLOGUE'S TEACHING SPELL. The first working the player ever casts, and the lesson's closing
     -- beat is built on its exact weight -- data/characters/character_demon_grunt.lua's health is "the
     -- SUM of five authored blows" and this is one of them.
@@ -1187,6 +1196,16 @@ Grade.SLOT_PINS = {
     -- is protecting is not power but reach: taking a body out of the fight outright, deterministically,
     -- with no roll to survive, is not a verb the Arcanum hands over in its first half.
     ability_polymorph = { at = 6, why = "removing a body outright is not opened in the line's first half" },
+
+    -- PLACED BY HAND against a grade the tool reads correctly, so it carries that row's burden of proof.
+    -- Disarm moved from the Crucible to the Undercroft and grades 5.3 there, which lands it at slot 7 --
+    -- and the number is honest: a status that refuses a body its weapon for a few turns really is worth
+    -- most of a turn against the average body. What the ruler cannot price is the shelf's ORDER. This is
+    -- greed's verb taught small: `steal` one step short, the version that only knocks the thing loose,
+    -- and it belongs beside Pickpocket (3) at the front of the line rather than among the executes and
+    -- the outright thefts the Undercroft's deep shelf is for. Slot 7 would sell the lesson after the
+    -- graduation.
+    ability_disarm = { at = 4, why = "greed's verb taught small: it sits beside Pickpocket, not past the executes" },
 
     -- HEAVY ARMOUR NEEDS A DEEP ENOUGH RUNG TO BE LEGAL ON. Balance.ARMOR_SHARE caps one piece at 40%
     -- of the attack budget AT ITS OWN SLOT, and the iron plate's resist bag (physical 4, slash 4,
