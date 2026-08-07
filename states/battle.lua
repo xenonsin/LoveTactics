@@ -140,12 +140,26 @@ local SPEED_STEPS = { 1, 2, 3 }
 -- matching "Lose": Forfeit above is that button, in every build, and two ways to concede one fight is
 -- one too many.
 local winButton = { x = 16, y = 280, w = 130, h = 36 }
+-- The drawer's whole content BEFORE the bell (the deployment phase): Settings, and nothing else. Every
+-- other entry describes a fight that is not running yet -- there is nothing to forfeit, the log has no
+-- lines and its rect is the deployment strip's, and Threats / Auto / Reinforce all read a turn order
+-- that has not started. So it takes the drawer's FIRST slot rather than settingsButton's own: a lone
+-- entry belongs under the hamburger, not half-way down an empty column.
+--
+-- A field on `battle` rather than another file local, and so are the three helpers further down
+-- (drawMenuButton / drawMenuEntry / menuHoverCue): this chunk is within a handful of names of Lua
+-- 5.1's ceiling of 200 locals per function, and going over it is a SYNTAX error at load -- one no
+-- spec catches, because nothing headless requires a state that draws. Add module-level names here as
+-- `battle.*`, not `local`.
+battle.deploySettingsButton = { x = 16, y = 60, w = 130, h = 36 }
 
 -- The y the docked tooltip stack may rise to: just under the hamburger while the menu is closed, or
 -- under its last visible entry while it is open, so the menu and the tooltips never draw over each
--- other. Read as drawTileTooltip's `dockTop`.
+-- other. Read as drawTileTooltip's `dockTop`, and handed to the deployment phase for its own docked
+-- hover boxes (ui/deploy_phase.lua).
 local function menuBottom()
     if not battle.menuOpen then return MENU_BUTTON.y + MENU_BUTTON.h + 8 end
+    if battle.deploy then return battle.deploySettingsButton.y + battle.deploySettingsButton.h + 8 end
     local last = Debug.enabled and winButton or settingsButton
     return last.y + last.h + 8
 end
@@ -176,6 +190,7 @@ end
 -- misses it -- and cursorKind, so the hand cursor and the click regions can't drift apart.
 local function overMenuEntry(x, y)
     if not battle.menuOpen then return false end
+    if battle.deploy then return pointIn(battle.deploySettingsButton, x, y) end
     return pointIn(forfeitButton, x, y) or pointIn(logButton, x, y) or pointIn(rangesButton, x, y)
         or (autoAllowed() and pointIn(autoButton, x, y)) or pointIn(settingsButton, x, y)
         or (autoAllowed() and battle.autoAll and pointIn(speedButton, x, y))
@@ -191,6 +206,9 @@ end
 local function hoveredMenuButton(x, y)
     if pointIn(MENU_BUTTON, x, y) then return "menu" end
     if not battle.menuOpen then return nil end
+    if battle.deploy then
+        return pointIn(battle.deploySettingsButton, x, y) and "settings" or nil
+    end
     if pointIn(forfeitButton, x, y) then return "forfeit" end
     if pointIn(logButton, x, y) then return "log" end
     if pointIn(rangesButton, x, y) then return "threats" end
@@ -4896,12 +4914,21 @@ end
 function battle.draw()
     Theme.drawMount(Scale.WIDTH, Scale.HEIGHT)
 
-    -- Before the bell: the board with the deploy zone lit and the company in the gutter. None of the
-    -- fight's own furniture is drawn -- no turn strip (nobody is acting), no combat log (nothing has
-    -- happened), no left-column drawer (there is no fight to forfeit) -- so the screen says one thing.
+    -- Before the bell: the board with the deploy zone lit and the company in the gutter. The SCREEN is
+    -- the same screen -- left column, hamburger, the encounter's name and objective over the board --
+    -- because the deployment phase is a beat of this battle and not a lobby in front of it, and the
+    -- boxes the phase docks into that column (its tile/occupant hover) need the column drawn under
+    -- them. What is left out is the fight's own furniture, which has nothing to report yet: no turn
+    -- strip (nobody is acting), no combat log (nothing has happened), and a drawer holding only what
+    -- means anything before the bell (drawDeployMenu).
     if battle.deploy then
+        battle.drawLeftColumn()
         battle.map:draw()
-        battle.deploy:draw({ x = LEFT_W, w = Scale.WIDTH - LEFT_W - PANEL_W })
+        battle.drawEncounterLines(LEFT_W, Scale.WIDTH - LEFT_W - PANEL_W)
+        battle.drawDeployMenu()
+        battle.deploy:draw({ x = LEFT_W, w = Scale.WIDTH - LEFT_W - PANEL_W, dockTop = menuBottom() })
+        -- Opened from that drawer, and modal over the phase exactly as it is over the fight.
+        if battle.settingsMenu then battle.drawSettingsOverlay() end
         love.graphics.setColor(1, 1, 1)
         return
     end
@@ -5250,14 +5277,10 @@ function battle.drawLeftColumn()
     love.graphics.setColor(1, 1, 1)
 end
 
-function battle.drawHud()
-    -- Centre the HUD text over the board region (the gap between the two side columns), not the
-    -- whole window, so title/objective/hint sit squarely above the battlefield.
-    local boardX = LEFT_W
-    local boardW = Scale.WIDTH - LEFT_W - PANEL_W
-
-    -- The hamburger itself: three bars, brighter while the menu is open so its state reads at a
-    -- glance (the same on/off treatment the toggles below use).
+-- The hamburger itself: three bars, brighter while the menu is open so its state reads at a
+-- glance (the same on/off treatment the toggles below use). Drawn on every screen the left column
+-- appears on -- the fight, and the deployment phase before it.
+function battle.drawMenuButton()
     local menuOpen = battle.menuOpen
     if menuOpen then Theme.set(Theme.panel) else Theme.set(Theme.panel2) end
     love.graphics.rectangle("fill", MENU_BUTTON.x, MENU_BUTTON.y, MENU_BUTTON.w, MENU_BUTTON.h, 6, 6)
@@ -5271,47 +5294,65 @@ function battle.drawHud()
     end
     love.graphics.setLineWidth(1)
     love.graphics.setColor(1, 1, 1)
+end
+
+-- Every left-column button shares one themed look: a slate plate with a bone-gold frame + ink
+-- label when off, and the control's OWN accent on the border + label when active, so the toggle
+-- state still reads by colour.
+function battle.drawMenuEntry(btn, label, on, accent)
+    Theme.set(on and Theme.panel or Theme.panel2)
+    love.graphics.rectangle("fill", btn.x, btn.y, btn.w, btn.h, Theme.R, Theme.R)
+    love.graphics.setLineWidth(on and 1.5 or 1)
+    if on then love.graphics.setColor(accent[1], accent[2], accent[3]) else Theme.set(Theme.frame) end
+    love.graphics.rectangle("line", btn.x, btn.y, btn.w, btn.h, Theme.R, Theme.R)
+    love.graphics.setLineWidth(1)
+    if on then love.graphics.setColor(accent[1], accent[2], accent[3]) else Theme.set(Theme.ink) end
+    love.graphics.setFont(hudFont)
+    love.graphics.printf(label, btn.x, btn.y + btn.h / 2 - 8, btn.w, "center")
+end
+
+-- The drawer as the DEPLOYMENT phase wears it: the same hamburger in the same corner, opening on the
+-- one entry that means something before the bell (see deploySettingsButton). The column's controls are
+-- part of the screen's furniture, not the fight's, so they stand before the first turn as after it.
+function battle.drawDeployMenu()
+    battle.drawMenuButton()
+    if not battle.menuOpen then return end
+    battle.drawMenuEntry(battle.deploySettingsButton, "Settings", false, { 0.70, 0.70, 0.78 })
+end
+
+function battle.drawHud()
+    -- Centre the HUD text over the board region (the gap between the two side columns), not the
+    -- whole window, so title/objective/hint sit squarely above the battlefield.
+    local boardX = LEFT_W
+    local boardW = Scale.WIDTH - LEFT_W - PANEL_W
+
+    battle.drawMenuButton()
 
     -- The entries only exist while the menu is open -- closed, the column below the hamburger is the
     -- tooltips' (and a click there falls through to them, see mousepressed).
-    if not menuOpen then
+    if not battle.menuOpen then
         battle.drawHudText(boardX, boardW)
         return
     end
 
-    -- Every left-column button shares one themed look: a slate plate with a bone-gold frame + ink
-    -- label when off, and the control's OWN accent on the border + label when active, so the toggle
-    -- state still reads by colour.
-    local function toggleBtn(btn, label, on, accent)
-        Theme.set(on and Theme.panel or Theme.panel2)
-        love.graphics.rectangle("fill", btn.x, btn.y, btn.w, btn.h, Theme.R, Theme.R)
-        love.graphics.setLineWidth(on and 1.5 or 1)
-        if on then love.graphics.setColor(accent[1], accent[2], accent[3]) else Theme.set(Theme.frame) end
-        love.graphics.rectangle("line", btn.x, btn.y, btn.w, btn.h, Theme.R, Theme.R)
-        love.graphics.setLineWidth(1)
-        if on then love.graphics.setColor(accent[1], accent[2], accent[3]) else Theme.set(Theme.ink) end
-        love.graphics.setFont(hudFont)
-        love.graphics.printf(label, btn.x, btn.y + btn.h / 2 - 8, btn.w, "center")
-    end
-
     -- Forfeit is a danger action -- its frame + label stay a muted red even when idle.
-    toggleBtn(forfeitButton, "Forfeit", true, { 0.78, 0.45, 0.45 })
+    battle.drawMenuEntry(forfeitButton, "Forfeit", true, { 0.78, 0.45, 0.45 })
 
     local logOn = battle.log and battle.log.visible
-    toggleBtn(logButton, logOn and "Log ✓" or "Log", logOn, { 0.55, 0.80, 0.55 })
+    battle.drawMenuEntry(logButton, logOn and "Log ✓" or "Log", logOn, { 0.55, 0.80, 0.55 })
 
     local rangesOn = battle.showEnemyRanges
-    toggleBtn(rangesButton, rangesOn and "Threats ✓" or "Threats", rangesOn, { 0.72, 0.45, 0.92 })
+    battle.drawMenuEntry(rangesButton, rangesOn and "Threats ✓" or "Threats", rangesOn, { 0.72, 0.45, 0.92 })
 
     -- Auto is hidden entirely during a tutorial fight -- the student must take their own turns.
     local autoOn = battle.autoAll
     if autoAllowed() then
-        toggleBtn(autoButton, autoOn and "Auto ✓" or "Auto", autoOn, { 0.42, 0.80, 0.82 })
+        battle.drawMenuEntry(autoButton, autoOn and "Auto ✓" or "Auto", autoOn, { 0.42, 0.80, 0.82 })
     end
 
     -- Playback-speed cycler, paired to the right of Auto and only while Auto is on.
     if autoOn and autoAllowed() then
-        toggleBtn(speedButton, tostring(battle.autoSpeed or 1) .. "x", true, { 0.42, 0.80, 0.82 })
+        battle.drawMenuEntry(speedButton, tostring(battle.autoSpeed or 1) .. "x", true, { 0.42, 0.80, 0.82 })
     end
 
     -- Reinforce: only in a fight that HAS a bench, and lit only while a slot is actually open. Greyed
@@ -5319,25 +5360,25 @@ function battle.drawHud()
     -- before the moment they need it.
     if battle.hasBench then
         local canReinforce = Combat.canReinforce(battle.combat)
-        toggleBtn(reinforceButton, "Reinforce", canReinforce, { 0.42, 0.66, 0.92 })
+        battle.drawMenuEntry(reinforceButton, "Reinforce", canReinforce, { 0.42, 0.66, 0.92 })
     end
 
     -- Settings: a plain entry (never a toggle state), opening the overlay over the paused fight.
-    toggleBtn(settingsButton, "Settings", false, { 0.70, 0.70, 0.78 })
+    battle.drawMenuEntry(settingsButton, "Settings", false, { 0.70, 0.70, 0.78 })
 
     -- Debug-only instant-win shortcut, sat where Main Menu used to be. (No "Lose" twin: Forfeit is it.)
     if Debug.enabled then
-        toggleBtn(winButton, "Win", true, { 0.45, 0.75, 0.50 })
+        battle.drawMenuEntry(winButton, "Win", true, { 0.45, 0.75, 0.50 })
     end
 
     battle.drawHudText(boardX, boardW)
 end
 
--- The board's own three top lines (encounter name, objective, control hint), split out of drawHud so
--- the collapsed menu can skip straight to them without repeating the block. Centred over the
--- battlefield region, never the whole window, so they sit squarely above the board.
-function battle.drawHudText(boardX, boardW)
-    -- Encounter name + objective, centred over the battlefield region.
+-- The first two of the board's three top lines: which fight this is, and what wins it. Split out of
+-- drawHudText because the DEPLOYMENT phase draws exactly these two and then its own third line -- what
+-- the fight is and what it is won by is the whole basis of where to stand, so it is on screen while
+-- that decision is being made, at the same two y's it keeps once the bell rings.
+function battle.drawEncounterLines(boardX, boardW)
     love.graphics.setFont(titleFont)
     local name = battle.encounter.name or "Battle"
     local cx, cyTitle = boardX + boardW / 2, 20 + titleFont:getHeight() / 2
@@ -5349,6 +5390,13 @@ function battle.drawHudText(boardX, boardW)
 
     battle.drawObjective(boardX, 52, boardW)
     if battle.isDraft then battle.drawControlHud(boardX, boardW) end
+end
+
+-- The board's own three top lines (encounter name, objective, control hint), split out of drawHud so
+-- the collapsed menu can skip straight to them without repeating the block. Centred over the
+-- battlefield region, never the whole window, so they sit squarely above the board.
+function battle.drawHudText(boardX, boardW)
+    battle.drawEncounterLines(boardX, boardW)
 
     -- Contextual control hint, worded for the device last used, so it never names an input the player
     -- can't reach: mouse phrasing ("Click..."), keyboard phrasing (Enter confirm, Tab aim, number keys
@@ -5459,16 +5507,16 @@ local function cycleAutoSpeed()
 end
 
 function battle.keypressed(key)
-    -- The deployment phase owns every input until the player commits their line. It is not a modal over
-    -- the fight -- it is what the screen IS before the fight starts -- so it sits above even the settings
-    -- overlay's usual precedence and simply takes the key.
-    if battle.deploy then battle.deploy:keypressed(key); return end
     -- The settings overlay is the top-most modal: it eats every key while it is up. Esc closes it
-    -- (never forfeits the fight underneath), the rest work the list.
+    -- (never forfeits the fight underneath), the rest work the list. Above the deployment phase too,
+    -- since the phase's own drawer opens it -- a modal a screen raised is a modal over that screen.
     if battle.settingsMenu then
         if key == "escape" then closeSettings() else battle.settingsMenu:keypressed(key) end
         return
     end
+    -- The deployment phase owns every other input until the player commits their line. It is not a modal
+    -- over the fight -- it is what the screen IS before the fight starts -- so it simply takes the key.
+    if battle.deploy then battle.deploy:keypressed(key); return end
     -- The bench chooser owns the keyboard while someone is being picked off the bench.
     if battle.benchChooser then battle.benchChooser:keypressed(key); return end
     -- The wind-up chooser eats every key while a chargeable swing is being sized (arrows/+- adjust,
@@ -5562,11 +5610,12 @@ function battle.textinput(t)
 end
 
 function battle.gamepadpressed(joystick, button)
-    if battle.deploy then battle.deploy:gamepadpressed(joystick, button); return end
+    -- The settings overlay first, on the deployment phase as in the fight (see keypressed).
     if battle.settingsMenu then
         if button == "b" then closeSettings() else battle.settingsMenu:gamepadpressed(joystick, button) end
         return
     end
+    if battle.deploy then battle.deploy:gamepadpressed(joystick, button); return end
     if battle.benchChooser then battle.benchChooser:gamepadpressed(joystick, button); return end
     -- The wind-up chooser owns the pad while a chargeable swing is being sized (D-pad / bumpers adjust,
     -- A commits, B backs out).
@@ -5621,23 +5670,32 @@ function battle.gamepadpressed(joystick, button)
     end
 end
 
+-- Soft tick as the pointer crosses onto a new left-column button (the hamburger, or a drawer entry
+-- while it is open). Fires on the crossing only, so resting on a button is silent. Shared by the fight
+-- and the deployment phase, which wears the same column.
+function battle.menuHoverCue(x, y)
+    local hb = hoveredMenuButton(x, y)
+    if hb and hb ~= battle.hoverMenuBtn then Sound.play("ui.move") end
+    battle.hoverMenuBtn = hb
+end
+
 function battle.mousemoved(x, y, dx, dy)
     battle.mouseX, battle.mouseY = x, y -- drives the status tooltip (board + panel hit-tests)
-    if battle.deploy then battle.deploy:mousemoved(x, y); return end
-    if battle.benchChooser then battle.benchChooser:mousemoved(x, y); return end
     if battle.settingsMenu then
         battle.settingsMenu:mousemoved(x, y)
         battle.settingsClose:mousemoved(x, y)
         return
     end
+    if battle.deploy then
+        battle.menuHoverCue(x, y) -- the pre-bell drawer is hoverable like any other left-column button
+        battle.deploy:mousemoved(x, y)
+        return
+    end
+    if battle.benchChooser then battle.benchChooser:mousemoved(x, y); return end
     if battle.spendChooser then battle.spendChooser:mousemoved(x, y); return end
     if battle.windupChooser then battle.windupChooser:mousemoved(x, y); return end
     if battle.debugMenu then battle.debugMenu:mousemoved(x, y); return end
-    -- Hover cue on the HUD buttons: a soft tick as the pointer crosses onto a new one (the hamburger,
-    -- or a drawer entry while it is open). Fires on the crossing only, so resting on a button is silent.
-    local hb = hoveredMenuButton(x, y)
-    if hb and hb ~= battle.hoverMenuBtn then Sound.play("ui.move") end
-    battle.hoverMenuBtn = hb
+    battle.menuHoverCue(x, y)
     battle.log:mousemoved(x, y)         -- drives the combat log's damage-breakdown hover
     if battle.logReview then
         battle.logReview.log:mousemoved(x, y)
@@ -5658,11 +5716,11 @@ end
 -- first when the cursor is inside it, so its own history still scrolls; contains() is false while
 -- the log is closed, so a wheel over the board falls through to the strip.
 function battle.wheelmoved(dx, dy)
+    if battle.settingsMenu then return end -- the short list needs no scroll; swallow it
     -- The deployment strip owns the wheel while the phase is up: the company is the whole roster and
     -- an unbounded one overflows the strip, which then pages sideways (ui/deploy_phase.lua).
     if battle.deploy then battle.deploy:wheelmoved(dx, dy); return end
     if battle.benchChooser then battle.benchChooser:wheelmoved(dx, dy); return end
-    if battle.settingsMenu then return end -- the short list needs no scroll; swallow it
     -- The wind-up chooser owns the wheel while it is up: scrolling tunes the depth on the rung ladder.
     if battle.spendChooser then battle.spendChooser:wheelmoved(dx, dy); return end
     if battle.windupChooser then battle.windupChooser:wheelmoved(dx, dy); return end
@@ -5694,7 +5752,24 @@ local function openDebugMenu(x, y)
 end
 
 function battle.mousepressed(x, y, button)
-    if battle.deploy then battle.deploy:mousepressed(x, y, button); return end
+    -- The settings overlay, opened from the pre-bell drawer, is modal over the deployment phase (see
+    -- keypressed) -- so it is asked before the phase is, and the shared block below handles it.
+    if battle.deploy and not battle.settingsMenu then
+        -- The left column's hamburger works before the bell exactly as it does during the fight: it
+        -- toggles the drawer, its one entry opens Settings, and a click that missed both folds the
+        -- drawer away and still falls THROUGH to the phase, so the drag it was aimed at is not eaten.
+        if button == 1 and pointIn(MENU_BUTTON, x, y) then
+            battle.menuOpen = not battle.menuOpen
+            return
+        end
+        if battle.menuOpen and button == 1 and pointIn(battle.deploySettingsButton, x, y) then
+            openSettings()
+            return
+        end
+        if battle.menuOpen and not overMenuEntry(x, y) then battle.menuOpen = false end
+        battle.deploy:mousepressed(x, y, button)
+        return
+    end
     if battle.benchChooser then battle.benchChooser:mousepressed(x, y, button); return end
     -- Placing a reinforcement: the next board click on a lit tile lands them. A click anywhere else --
     -- or a right-click -- puts the pick back on the bench rather than stranding the player in a mode.
@@ -5816,6 +5891,7 @@ end
 -- Only the wind-up slider cares about a mouse release (to end a rung drag); everything else on the
 -- board is press-driven.
 function battle.mousereleased(x, y, button)
+    if battle.settingsMenu then return end -- the modal took the press; the release is not the board's
     if battle.deploy then battle.deploy:mousereleased(x, y, button); return end
     if battle.spendChooser then battle.spendChooser:mousereleased(x, y, button); return end
     if battle.windupChooser then battle.windupChooser:mousereleased(x, y, button) end
@@ -5830,10 +5906,14 @@ end
 function battle.cursorKind()
     local mx, my = battle.mouseX, battle.mouseY
     if not mx then return "arrow" end
-    if battle.deploy then return battle.deploy:cursorKind(mx, my) end
     if battle.settingsMenu then
         if battle.settingsClose:contains(mx, my) then return "hand" end
         return battle.settingsMenu:mouseOverItem(mx, my) and "hand" or "arrow"
+    end
+    if battle.deploy then
+        -- The column's hamburger and its open entry are clickable before the bell too.
+        if pointIn(MENU_BUTTON, mx, my) or overMenuEntry(mx, my) then return "hand" end
+        return battle.deploy:cursorKind(mx, my)
     end
     if battle.logReview then
         return battle.logReview.close:contains(mx, my) and "hand" or "arrow"

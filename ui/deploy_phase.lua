@@ -40,6 +40,11 @@ local DRAG_THRESHOLD = 5
 
 local BUTTON_H = 22
 local CARD_GAP = 6
+-- The phase's headline takes the THIRD of the fight's three HUD lines -- the row the control hint
+-- occupies once the bell rings. The two above it are the host's and say the same thing before the
+-- fight as during it: the encounter's name (y 20) and its objective (y 52). This line is the one that
+-- is about the phase, so it goes last, directly above the board (states/battle.lua's BOARD_TOP).
+local TITLE_Y = 82
 -- The narrowest a company card may get before the strip pages instead of squeezing. Roughly a
 -- portrait plus its health pip -- below this a card carries no information you can act on.
 local MIN_CARD_W = 62
@@ -411,13 +416,14 @@ function DeployPhase:drawButton(r, label, enabled, on)
 end
 
 -- `bounds` is the board region (left column .. combat panel), so the title centres over the board.
+-- `bounds.dockTop` is the y the docked hover boxes may rise to (the host's menu drawer sits above it).
 function DeployPhase:draw(bounds)
     bounds = bounds or { x = 0, w = Scale.WIDTH }
 
     love.graphics.setFont(self.titleFont)
     Theme.set(Theme.accentAmber)
     love.graphics.printf("Deploy your company  --  " .. #self.placed .. " / " .. Combat.MAX_FIELD
-        .. " on the field", bounds.x, 64, bounds.w, "center")
+        .. " on the field", bounds.x, TITLE_Y, bounds.w, "center")
 
     for i, char in ipairs(self.roster) do self:drawCard(i, char) end
     -- Only when the company overflows the strip: how many are off each end, tabbed over the card at
@@ -535,10 +541,12 @@ function DeployPhase:drawHover(bounds)
     elseif kind == "wall" then objInfo = { wall = obj }
     elseif kind == "prop" then objInfo = { prop = obj } end
 
-    -- The column's full width, minus the 16px margins the fight's docked boxes keep. There is no
-    -- menu drawer open before the bell, so the stack may rise the whole height of the column.
+    -- The column's full width, minus the 16px margins the fight's docked boxes keep. The stack rises to
+    -- the host's ceiling (`dockTop`) -- under the hamburger, or under the drawer while it is open --
+    -- exactly as the fight's own boxes do, so the two never draw over each other.
     local W = math.max(180, ((bounds and bounds.x) or 0) - 32)
-    local gap, dockTop = 8, 8
+    local gap = 8
+    local dockTop = (bounds and bounds.dockTop) or 8
     local dock = { dock = true, dockX = 16, dockTop = dockTop, width = W }
 
     -- Terrain never yields; the OCCUPANT is the valve, exactly as in the fight -- losing it costs the
