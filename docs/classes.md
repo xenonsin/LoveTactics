@@ -243,12 +243,14 @@ Two things about that belong in *this* file, because they are shelf rules rather
 
 - **The five classless wares were given houses.** `utility_torch` → hunter (gluttony's vocabulary is
   knowing what is out there first, and a torch is the crudest instrument of it); `utility_boots_of_speed`
-  and `consumable_witchlight_flare` → rogue (greed already owns every other boot that buys a square,
-  and already owns the hiding the flare answers); `utility_stormglass_rod` → mage;
+  → rogue (greed already owns every other boot that buys a square); `utility_stormglass_rod` → mage;
   `consumable_wellspring_sandals` → alchemist (a `consumesItem` stack that hands somebody else a
   resource back is envy twice over, and it is the party-wide reading of the Mana Potion the same house
-  brews). All five sit at `unlockQuests = 0`, because availability from the first visit was the one
-  thing the general store was really providing.
+  brews). `consumable_witchlight_flare` went to rogue in the same pass, on the argument that greed owns
+  the hiding the flare answers, and has since moved to **alchemist**: a twist of ground glass thrown
+  once to leave a hazard on the floor is a thing a house brews, and the mixing bench beat the
+  nice line about a house selling the counter to its own trick. All five sit at `unlockQuests = 0`,
+  because availability from the first visit was the one thing the general store was really providing.
 - **The potion resale is closed, and that was a hole in a ladder.** A general store ignores
   `unlockQuests` by design, so a Panacea gated at ten alchemist quests was on the grocer's counter from
   the first visit: the gate was authored, displayed, and walkable around by shopping next door. A potion

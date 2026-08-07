@@ -276,7 +276,7 @@ return {
                 utility_torch = "hunter",
                 utility_boots_of_speed = "rogue",
                 utility_stormglass_rod = "mage",
-                consumable_witchlight_flare = "rogue",
+                consumable_witchlight_flare = "alchemist",
                 consumable_wellspring_sandals = "alchemist",
             }
             for id, class in pairs(homes) do

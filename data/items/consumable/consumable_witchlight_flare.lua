@@ -24,15 +24,16 @@
 return {
     name = "Witchlight Flare",
     description = "Throws a hard light: nothing standing in it can hide from being targeted.",
-    flavor = "Ground glass, salt, and a grudge. The Undercroft sells them and pretends to disapprove.",
+    flavor = "Ground glass, salt, and a grudge. The Crucible mixes them by the crate and asks no questions.",
     sprite = "assets/items/consumable_witchlight_flare.png",
     type = "consumable",
     tags = { "light" },
-    -- The Undercroft's, and its own flavor line said so long before its `class` did. Greed owns the
-    -- hiding (Stillshade, the smoke mantle, the vanishing act), so greed sells the answer to it -- the
-    -- same shape as the elemental coats being the Crucible's rather than a general good: the house
-    -- that sells the trick sells the counter, and charges you for both.
-    class = "rogue",
+    -- The Crucible's, on the plainer of the two arguments. It was the Undercroft's for a while on the
+    -- reasoning that greed owns the hiding (Stillshade, the smoke mantle, the vanishing act) and so
+    -- should sell the answer to it -- but a thing you throw once and grind out of glass and salt is
+    -- something a house BREWS, and envy's shelf is the throwables and the ground they leave behind.
+    -- The counter-to-your-own-trick reading is a nice line; the mixing bench is the item.
+    class = "alchemist",
     price = 30,
     unlockQuests = 0, -- opening shelf: every party should be able to carry one from the first night
     maxStack = 3,

@@ -1,7 +1,8 @@
 -- Net: a weighted throwing net that tangles a foe's legs. Deals no damage -- it just Roots the target
 -- (data/status/root.lua), pinning it where it stands and burning its time as if it had walked. A
--- rogue's cheap, disposable answer to a runner: throw it, then close in. Carries no magnitude to
--- forge (the root's duration is fixed), so it never appears at the alchemist's upgrade bench.
+-- hunter's cheap, disposable answer to a runner: the quarry stops, and everything the shelf sells
+-- after it is aimed at something that cannot leave. Carries no magnitude to forge (the root's
+-- duration is fixed), so it never appears at the alchemist's upgrade bench.
 return {
     name = "Net",
     description = "Inflicts Root on a foe.",
@@ -9,7 +10,7 @@ return {
     sprite = "assets/items/net.png",
     type = "consumable",
     tags = { "snare" },
-    class = "rogue",
+    class = "hunter",
     price = 30,
     unlockQuests = 0,
     activeAbility = {
