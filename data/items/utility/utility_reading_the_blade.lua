@@ -11,11 +11,18 @@
 -- the same body twice -- two disciplines, opposite answers to one question.
 --
 -- A charm rather than an ability, because it is a way of fighting rather than a thing you do
--- (docs/classes.md, traits-attach-via-items). It declares the pool and nothing else; Coup Droit spends
--- it and the Main-Gauche deepens it.
+-- (docs/classes.md, traits-attach-via-items). Coup Droit spends the pool and the Main-Gauche deepens it.
+--
+-- IT USED TO DECLARE THE POOL AND NOTHING ELSE, and this header said so approvingly. That was half a
+-- mechanic sold as a whole item: a 380g charm banking Tempo that only a second purchase could drain, so
+-- bought on its own it did nothing at all. docs/classes.md forbids exactly that shape -- "what no item
+-- may be is another item's on-switch" -- and the rule had only ever been enforced against SPENDERS, so
+-- the three self-sufficient spenders were paired with three bankers that were nobody's. Watching the
+-- Shoulder is the dividend: it READS Tempo without spending it, one damage a point, so the read pays
+-- while it is held and Coup Droit is still the only thing that cashes it in.
 return {
     name = "Reading the Blade",
-    description = "Each blow on the foe you struck last banks Tempo. Strike anyone else and it is gone.",
+    description = "Increase damage by 1 per Tempo held. Blows on the foe you struck last bank Tempo; strike anyone else and it is gone.",
     flavor = "Four exchanges in, she was not watching the sword any more. She was watching his shoulder.",
     sprite = "assets/items/utility_reading_the_blade.png",
     type = "utility",
@@ -24,5 +31,6 @@ return {
     discipline = "duelist",
     price = 380,
     unlockQuests = 8,
+    traits = { "trait_watching_the_shoulder" },
     charge = { key = "tempo", from = { "repeatStrike" }, max = 5, resetOn = "targetSwitch" },
 }

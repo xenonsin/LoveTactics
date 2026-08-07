@@ -564,6 +564,17 @@ Two rules the pool inherits from chi, and one it added:
   and you must declare it in the same file, chi excepted (the engine declares that one). A `resetOn`
   clause travels with the spender too — it is per-item, so a pool that forfeits only when the charm is
   present is a different bargain than the one the numbers were priced for.
+- **And a banker pays a dividend on the pool it banks.** The rule above reads in both directions, and was
+  enforced in one for a long while: the spenders were fixed and the *widening charms* were left as pure
+  `charge` declarations — Crowd's Favour, Reading the Blade, the Vow of the March, three 380–400g items
+  whose entire content was a number some other purchase had to arrive to drain. Bought alone each did
+  nothing whatsoever, which is the same half-a-mechanic sale with the halves swapped. So every banker now
+  carries a `live` trait that **reads its pool without spending it** — Still Standing, Watching the
+  Shoulder, Kept Faith, alongside the Tabard's Zealot's Mercy, which is where the shape came from: *the
+  interest a pool pays while you hold it.* Reading rather than spending is what keeps the two halves one
+  build — the spender still empties the pool, so cashing in drops the dividend the same instant, and
+  sitting on a full purse stays a real thing to be doing. `tests/charge_spec.lua` scans for this too: an
+  item that declares a `charge` must also give its bearer an `activeAbility` or a `trait`.
 
 ### A free action does not close the turn
 

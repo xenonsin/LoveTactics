@@ -109,6 +109,87 @@ return {
         end,
     },
     {
+        -- The same rule read from the other end, and the direction it went unenforced in for longer.
+        -- A charm that only WIDENS a pool is still a purchase, and three of them (Crowd's Favour,
+        -- Reading the Blade, the Vow of the March) were `charge` lines and nothing else -- 380-400g
+        -- for a number no item in their own file could drain. Each now carries a `live` trait that
+        -- reads its pool without spending it, so the shelf sells a whole mechanic in either order.
+        name = "an item that declares a pool also gives its bearer something that works alone",
+        fn = function()
+            for path, src in pairs(itemSources()) do
+                if src:find('charge%s*=%s*{%s*key%s*=') then
+                    assert(src:find("activeAbility") or src:find("traits%s*=%s*{"), path
+                        .. " declares a charge pool but carries neither an activeAbility nor a trait --"
+                        .. " bought on its own it would bank a number nothing it owns can spend")
+                end
+            end
+        end,
+    },
+    {
+        name = "Crowd's Favour pays a dividend on the Defiance it banks, and loses it when the pool is spent",
+        fn = function()
+            local map = Fixture.new(8, 8)
+            -- The charm ALONE: no Defiant Stand, no Answering Blow. What it is worth bought by itself
+            -- is the whole question.
+            local hero = Fixture.unit("character_saber", 2, 2,
+                { isolate = "bare", items = { "utility_crowds_favour" } })
+            local foe = Fixture.unit("character_bandit", 2, 3, { isolate = "bare" })
+            local combat = Fixture.combat(map, hero, foe)
+            local h = combat.units[1]
+            local base = Combat.flatStat(h, "defense")
+
+            assert(Combat.flatStat(h, "defense") == base, "an unblooded Champion is owed nothing yet")
+            Combat.tally(h, "hitTaken", 5)
+            assert(Combat.chargePool(h, "defiance") == 5, "five blows weathered, five Defiance")
+            assert(Combat.flatStat(h, "defense") == base + 2,
+                "and five held is two defense -- one per two, floored")
+
+            -- The tension the dividend exists to create: Answering Blow consumes ALL of it, so the
+            -- blow and the guard leave together. A live read is what makes that true without anybody
+            -- remembering to undo a banked bonus.
+            Combat.spendCharge(h, "defiance")
+            assert(Combat.flatStat(h, "defense") == base, "cashing the pool in drops the guard with it")
+        end,
+    },
+    {
+        name = "Reading the Blade pays a point of damage per Tempo held, and forfeits it on a target switch",
+        fn = function()
+            local map = Fixture.new(8, 8)
+            local hero = Fixture.unit("character_saber", 2, 2,
+                { isolate = "bare", items = { "utility_reading_the_blade" } })
+            local foe = Fixture.unit("character_bandit", 2, 3, { isolate = "bare" })
+            local combat = Fixture.combat(map, hero, foe)
+            local h = combat.units[1]
+            local base = Combat.flatStat(h, "damage")
+
+            Combat.tally(h, "repeatStrike", 4)
+            assert(Combat.flatStat(h, "damage") == base + 4, "four pressed blows are four damage, one for one")
+
+            -- Its own bargain, unchanged: look away and the read is gone -- and so, now, is the dividend.
+            Combat.resetChargesOn(h, "targetSwitch")
+            assert(Combat.flatStat(h, "damage") == base, "and the whole of it is forfeited with the duel")
+        end,
+    },
+    {
+        name = "the Vow of the March wards the one who took it, off the Zeal the column banks",
+        fn = function()
+            local map = Fixture.new(8, 8)
+            local hero = Fixture.unit("character_saber", 2, 2,
+                { isolate = "bare", items = { "utility_vow_of_the_march" } })
+            local foe = Fixture.unit("character_bandit", 2, 3, { isolate = "bare" })
+            local combat = Fixture.combat(map, hero, foe)
+            local h = combat.units[1]
+            local base = Combat.flatStat(h, "magicDefense")
+
+            -- Neither tally is the bearer's own doing, which is the vow's point: a crusader who has
+            -- personally killed and healed nobody is owed the same faith.
+            Combat.tally(h, "foeDown", 3)
+            Combat.tally(h, "allyMended", 4)
+            assert(Combat.chargePool(h, "zeal") == 7, "seven banked off the column's work")
+            assert(Combat.flatStat(h, "magicDefense") == base + 3, "and seven held is three magic defense")
+        end,
+    },
+    {
         name = "spending all of it takes the overflow too, and leaves no hidden remainder",
         fn = function()
             local map = Fixture.new(8, 8)
