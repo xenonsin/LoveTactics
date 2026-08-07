@@ -1135,6 +1135,18 @@ Grade.SLOT_PINS = {
     -- now holds the spell that actually has a script to protect.
     ability_minor_shock = { at = 0, why = "the prologue's teaching spell: the lesson is tuned to its weight" },
 
+    -- PLACED BY HAND, because the grader is honest about not being able to see them. Both are blind to
+    -- the dry run -- Collapse drags whatever is within four tiles and Understudy repeats whatever your
+    -- side last did, so a replay with no board finds nothing to drag and nothing to repeat, and their
+    -- grades describe the instrument rather than the item. Neither carries a discipline, so neither is
+    -- held above the discipline floor by anything; slot 3 is the author's call about where two
+    -- board-reading abilities belong on a shelf.
+    --
+    -- The other ten items the dry run cannot see all carry a discipline and were judged to be sitting
+    -- correctly already, so they keep their slots and stay out of the spread.
+    ability_collapse = { at = 3, why = "blind to the dry run: placed by hand" },
+    ability_understudy = { at = 3, why = "blind to the dry run: placed by hand" },
+
     -- HEAVY ARMOUR NEEDS A DEEP ENOUGH RUNG TO BE LEGAL ON. Balance.ARMOR_SHARE caps one piece at 40%
     -- of the attack budget AT ITS OWN SLOT, and the iron plate's resist bag (physical 4, slash 4,
     -- pierce 4) already takes 8 off a sword before its defense is counted at all -- more than the whole

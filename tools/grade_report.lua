@@ -161,9 +161,19 @@ end
 -- THE single owner of the ranking, read by both the report and the rewrite. Two copies of this is
 -- exactly how a tool ends up writing something its own dry run never showed.
 local function planFor(class, maxGate, pinned)
+    -- A BLIND ROW WITH AN `at` PIN IS NO LONGER BLIND. Being blind means the dry run could not see the
+    -- item, so the grade describes the instrument and there is nothing to rank on -- but a pin is a
+    -- human saying where it goes, which is the missing information supplied by hand. Those rejoin the
+    -- written set so the decision actually lands in the blueprint; the rest stay set aside, keeping
+    -- whatever slot they already had.
     local rows, blind = {}, {}
     for _, row in ipairs(Grade.rank(class, { priced = true })) do
-        if row.breakdown.blind then blind[#blind + 1] = row else rows[#rows + 1] = row end
+        local pin = Grade.SLOT_PINS[row.id]
+        if row.breakdown.blind and not (pin and pin.at) then
+            blind[#blind + 1] = row
+        else
+            rows[#rows + 1] = row
+        end
     end
 
     -- Ascending, so slot 0 is the bottom of the ladder.

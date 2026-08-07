@@ -9,7 +9,7 @@ return {
     type = "utility",
     tags = { "arcane" },
     class = "mage",
-    price = 440,
-    unlockQuests = 6,
+    price = 500,
+    unlockQuests = 7,
     traits = { "trait_overchannel" },
 }
