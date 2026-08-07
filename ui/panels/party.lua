@@ -76,9 +76,45 @@ local LEGEND = {
 
 -- Navigable regions, left to right. The focus sheet is skipped as a stop -- it has no interactive
 -- cells -- so a single cursor flows Rail <-> Grid <-> Stash by pushing left/right at a column edge.
--- `filters` is appended only when the host supplies a filter strip (see opts.filters); it is not a
--- left/right stop but a Tab one, like the rule editor's own internal regions.
+-- `sort` and `filters` are appended after them (filters only when the host supplies a strip -- see
+-- opts.filters); neither is a left/right stop but a Tab one, like the rule editor's own internal
+-- regions.
 local REGIONS = { "rail", "grid", "pool" }
+
+-- The orders the stash can be shown in, offered by the "Sort" dropdown in the stash header. `found`
+-- is the default and carries no comparator at all: it is the stash exactly as the player's list holds
+-- it, which is both the order the Armory has always shown and what lets the pool stay pointed straight
+-- at the live table (see Party:visibleStash).
+--
+-- Each entry is named for THE ORDER IT PRODUCES, not the field it reads. "Type" alone does not say
+-- whether a potion sorts above a sword and "Value" does not say which end the expensive things land at,
+-- so every row carries a hint spelling out the resulting order -- a menu of one-word options is a menu
+-- you learn by trying all of it. The offer order is a scale of its own: the two arrival orders first
+-- (the stash's own answer to "where is the thing I just picked up"), then the three that rearrange it.
+--
+-- `less(a, b)` compares two ENTRIES -- { item = , index = } -- so an order can read stash POSITION
+-- (Recent) as well as the item. It may be a partial order: visibleStash falls back to arrival position
+-- for anything it calls equal, which keeps ties stable and makes table.sort deterministic.
+local TYPE_RANK = { weapon = 1, armor = 2, ability = 3, utility = 4, consumable = 5 }
+local function byName(a, b) return (a.item.name or "") < (b.item.name or "") end
+
+local SORTS = {
+    { id = "found", label = "Found", hint = "In the order they arrived" },
+    { id = "recent", label = "Recent", hint = "Newest arrivals first",
+        less = function(a, b) return a.index > b.index end },
+    { id = "type", label = "Type", hint = "Weapons first, potions last",
+        less = function(a, b)
+            local ra, rb = TYPE_RANK[a.item.type] or 9, TYPE_RANK[b.item.type] or 9
+            if ra ~= rb then return ra < rb end
+            return byName(a, b)
+        end },
+    { id = "name", label = "Name", hint = "A to Z", less = byName },
+    { id = "value", label = "Value", hint = "Costliest first",
+        less = function(a, b) return (a.item.price or 0) > (b.item.price or 0) end },
+}
+Party.SORTS = SORTS -- exposed for tests/loadout_sort_spec.lua
+
+local SORT_ROW_H = 22
 
 -- The tabs. `loadout` is the original screen, unchanged; `tactics` swaps the grid/stash columns for
 -- the rule editor (ui/tactics_editor.lua), and the optional `stats` tab (opts.stats -- the debug
@@ -251,7 +287,8 @@ function Party.new(opts)
     --            Tactics tab stays hidden until the player has reached the hub city and it is taught
     --   persist  false to skip the Player.save() on close -- a synthetic player must never be able
     --            to overwrite the real save
-    --   filters  a chip strip above the stash; see Party:drawFilters
+    --   filters  a chip strip above the stash; see Party:drawFilters. The stash's other header
+    --            control, Sort, needs nothing from the host and is always offered (see SORTS)
     self.modes = { "loadout" }
     if opts.tactics ~= false then self.modes[#self.modes + 1] = "tactics" end
     if opts.stats then self.modes[#self.modes + 1] = "stats" end
@@ -260,6 +297,11 @@ function Party.new(opts)
     self.onFilterChanged = opts.onFilterChanged
     self.filterCursor = 1
     self.filterOpen = false -- the stash filter dropdown starts closed, behind its "Filter" toggle
+    -- Sorting needs nothing from the host -- an order is a property of the list, not of what a filter
+    -- means -- so unlike the chips it is offered on every Loadout screen: hub, overworld and draft.
+    self.sortIndex = 1
+    self.sortCursor = 1
+    self.sortOpen = false
 
     self.titleFont = require("ui.theme").display(28)
     self.headFont = require("ui.theme").display(18)
@@ -328,18 +370,24 @@ function Party.new(opts)
     })
     self.pool:setItems(self.player and self.player.stash or {})
 
-    -- Stash filter dropdown: a "Filter" toggle in the stash header (drawFilterButton) opens a chip
-    -- strip -- one chip per weapon type / discipline -- laid out over the top of the stash. The options
-    -- are fixed for the panel's lifetime, so the chips are positioned ONCE here; only their visibility
-    -- (self.filterOpen) changes at runtime. The strip OVERLAYS the stash rather than reserving a band,
-    -- so a closed filter costs the stash no height.
+    -- The stash header's two controls, filling in from the right edge of the stash: Filter, then Sort
+    -- beside it. Both open a dropdown that OVERLAYS the stash rather than reserving a band, so a shut
+    -- control costs the stash no height, and both are positioned ONCE here -- only their visibility
+    -- changes at runtime.
+    --
+    -- Stash filter dropdown: a "Filter" toggle (drawFilterButton) opens a chip strip -- one chip per
+    -- weapon type / discipline -- laid out over the top of the stash. The options are fixed for the
+    -- panel's lifetime.
+    local btnH, edge = 20, self.pool.x + self.pool.w
     if self.filters then
-        local bw, bh, pad = 96, 20, 8
-        self.filterBtn = { x = self.pool.x + self.pool.w - bw, y = self.poolHeaderY - 2, w = bw, h = bh }
+        local bw, pad = 96, 8
+        self.filterBtn = { x = edge - bw, y = self.poolHeaderY - 2, w = bw, h = btnH }
         local dx, dy = self.pool.x, self.filterBtn.y + self.filterBtn.h + 4
         local dropBottom = self:layoutFilters(dx + pad, dy + pad, self.pool.w - pad * 2)
         self.dropdownRect = { x = dx, y = dy, w = self.pool.w, h = (dropBottom - dy) + pad }
+        edge = self.filterBtn.x - 6
     end
+    self:layoutSort(edge, self.poolHeaderY - 2, btnH)
 
     -- Tab segments, sized to the label rather than to a share of the box: two words centred over a
     -- 1160px panel would read as a header, not as something you can click.
@@ -470,7 +518,9 @@ function Party:setFocus(region)
     self.pool.focused = (region == "pool")
     -- The filter dropdown IS the "filters" region: it is open exactly while focused, so Tabbing to it
     -- (or clicking a chip) opens it and moving away closes it, with no separate open flag to desync.
+    -- The sort menu is the same bargain, which also makes the two mutually exclusive for free.
     if self.filters then self.filterOpen = (region == "filters") end
+    self.sortOpen = (region == "sort")
 end
 
 -- Region-cycle fallback (Tab / Y): advance through REGIONS and drop any in-progress pickup.
@@ -492,13 +542,13 @@ function Party:cycleFocus(delta)
         return
     end
 
-    -- The stash filter strip is a Tab stop rather than a left/right one: inside it, left/right
-    -- CHANGES a filter's value (as in the rule editor's field column), so it has no free horizontal
-    -- axis to cross a region boundary on.
-    local regions = REGIONS
-    if self.filters then
-        regions = { "rail", "grid", "pool", "filters" }
-    end
+    -- The stash's dropdowns are Tab stops rather than left/right ones: inside them, left/right CHANGES
+    -- a value (as in the rule editor's field column), so they have no free horizontal axis to cross a
+    -- region boundary on. They follow the stash they act on, in the order the header shows them.
+    local regions = {}
+    for i, r in ipairs(REGIONS) do regions[i] = r end
+    regions[#regions + 1] = "sort"
+    if self.filters then regions[#regions + 1] = "filters" end
     local idx = 1
     for i, r in ipairs(regions) do if r == self.focus then idx = i break end end
     self:setFocus(regions[(idx - 1 + delta) % #regions + 1])
@@ -585,19 +635,37 @@ function Party:passesFilters(item)
     return true
 end
 
--- The stash as the pool should show it: the whole list when nothing narrows it, else only the items
--- passing the strip. Building the view also records self.stashMap (pool index -> real stash index) so
--- every transfer can translate back -- the REAL player.stash is never reordered or thinned by a filter,
--- which is what keeps the direct-index transfer paths (Party:placeIntoGrid) handing out the right item.
+-- The stash as the pool should show it: the whole list in arrival order when nothing narrows or
+-- reorders it, else the items passing the strip in the chosen order. Building the view also records
+-- self.stashMap (pool index -> real stash index) so every transfer can translate back -- the REAL
+-- player.stash is never reordered or thinned by either control, which is what keeps the direct-index
+-- transfer paths (Party:placeIntoGrid) handing out the right item.
+--
+-- A sort is therefore exactly as non-destructive as a filter, and for the same reason: what the player
+-- is rearranging is a VIEW. Nothing here writes the stash, so an order picked in the Armory cannot
+-- outlive the panel or reach the save.
 function Party:visibleStash()
     local stash = (self.player and self.player.stash) or {}
-    if not self.filters then self.stashMap = nil return stash end
-    local view, map = {}, {}
+    local sort = self:sortSpec()
+    if not self.filters and not sort.less then self.stashMap = nil return stash end
+
+    local entries = {}
     for i, item in ipairs(stash) do
-        if self:passesFilters(item) then
-            view[#view + 1] = item
-            map[#view] = i
-        end
+        if self:passesFilters(item) then entries[#entries + 1] = { item = item, index = i } end
+    end
+    if sort.less then
+        table.sort(entries, function(a, b)
+            -- Ties fall back to arrival position: `less` is allowed to be a partial order (two items of
+            -- the same type, two priceless items), and table.sort needs a total one to be deterministic.
+            if sort.less(a, b) then return true end
+            if sort.less(b, a) then return false end
+            return a.index < b.index
+        end)
+    end
+
+    local view, map = {}, {}
+    for i, entry in ipairs(entries) do
+        view[i], map[i] = entry.item, entry.index
     end
     self.stashMap = map
     return view
@@ -974,6 +1042,12 @@ function Party:navigate(dc, dr)
         self:moveFilterCursor(dc, dr)
         return
     end
+    if region == "sort" then
+        -- One column of orders: up/down walks it, and pushing left leaves for the stash it orders.
+        if dc == -1 then self:setFocus("pool") return end
+        self.sortCursor = math.max(1, math.min(#SORTS, (self.sortCursor or 1) + dr))
+        return
+    end
     if dc ~= 0 then
         local col, cols
         if region == "grid" then
@@ -1008,6 +1082,13 @@ function Party:confirm()
     end
     if self.focus == "filters" then
         self:toggleFilter(self.filterCursor)
+        return
+    end
+    if self.focus == "sort" then
+        -- Picking an order is a one-shot -- there is only ever one in force -- so the menu shuts behind
+        -- it and hands focus back to the stash it just rearranged.
+        self:setSort(self.sortCursor)
+        self:setFocus("pool")
         return
     end
     if self.focus == "rail" then
@@ -1237,6 +1318,163 @@ function Party:drawFilters()
 end
 
 -- ---------------------------------------------------------------------------
+-- Stash sort (see SORTS): which order the pool shows the stash in
+-- ---------------------------------------------------------------------------
+--
+-- A "Sort: <order>" toggle beside Filter, opening a radio list of the orders. The button names the
+-- order in force rather than just saying "Sort", because the stash reads as an arbitrary jumble either
+-- way -- a player who cannot tell BY LOOKING that a list is sorted needs the control to say so, the
+-- same reason the Filter toggle carries its count.
+--
+-- The list is described rather than stepped: cycling through five orders to read what each one is
+-- means seeing the stash rearrange four times to answer a question about a word.
+
+-- Position the button so its right edge sits at `edge` (the stash's right edge, or just left of the
+-- Filter toggle), and hang the menu under it. Both are fixed for the panel's lifetime.
+function Party:layoutSort(edge, y, h)
+    local iconW, gap, pad = 12, 6, 8
+    local textW = 0
+    for _, spec in ipairs(SORTS) do
+        textW = math.max(textW, self.smallFont:getWidth("Sort: " .. spec.label))
+    end
+    local w = pad + iconW + gap + textW + pad
+    self.sortBtn = { x = edge - w, y = y, w = w, h = h }
+
+    -- The menu is as wide as its widest row (label + hint) and never wider than the stash it covers,
+    -- hung from the button's left edge but pulled back inside the stash if it would overhang.
+    local rowW = 0
+    for _, spec in ipairs(SORTS) do
+        rowW = math.max(rowW, 20 + self.smallFont:getWidth(spec.label) + 14 + self.tinyFont:getWidth(spec.hint))
+    end
+    local menuW = math.min(math.max(rowW + pad * 2 + 8, w), self.pool.w)
+    local mx = math.max(self.pool.x, math.min(self.sortBtn.x, self.pool.x + self.pool.w - menuW))
+    local my = y + h + 4
+
+    self.sortRows = {}
+    for i in ipairs(SORTS) do
+        self.sortRows[i] = {
+            x = mx + pad, y = my + pad + (i - 1) * SORT_ROW_H,
+            w = menuW - pad * 2, h = SORT_ROW_H,
+        }
+    end
+    self.sortRect = { x = mx, y = my, w = menuW, h = #SORTS * SORT_ROW_H + pad * 2 }
+end
+
+function Party:sortSpec()
+    return SORTS[self.sortIndex or 1]
+end
+
+-- Show / hide the sort menu. As with the filter dropdown, open and "the sort region is focused" are the
+-- same state (see setFocus), so there is no second flag to fall out of step.
+function Party:toggleSortPanel()
+    if self.sortOpen then self:closeSortPanel() else self:openSortPanel() end
+end
+
+function Party:openSortPanel()
+    self.grid:cancelPickup()
+    self.pool:cancelPickup()
+    self.drag = nil
+    self.sortCursor = self.sortIndex or 1 -- the menu opens on the order already in force
+    self:setFocus("sort")
+end
+
+function Party:closeSortPanel()
+    if self.focus == "sort" then self:setFocus("pool") else self.sortOpen = false end
+end
+
+-- Put the stash in order `i`. The cursored item is FOLLOWED into the new order rather than the cursor
+-- staying on a cell number: the whole list moves under it, and landing on whatever happens to be third
+-- afterwards would lose the thing the player was looking at at the exact moment they went looking for
+-- it more easily.
+function Party:setSort(i)
+    if not SORTS[i] then return end
+    local watched = self.pool:itemAt(self.pool.cursor)
+    self.sortIndex = i
+    self.sortCursor = i
+    self.pool:cancelPickup()
+    self:refreshStash()
+    if watched then
+        for k = 1, self.pool:count() do
+            if self.pool:itemAt(k) == watched then self.pool.cursor = k break end
+        end
+    end
+    self.pool.cursor = math.max(1, math.min(math.max(1, self.pool:count()), self.pool.cursor))
+    self.pool:scrollToCursor()
+end
+
+function Party:sortIndexAt(x, y)
+    if not self.sortOpen then return nil end -- the rows aren't drawn (or clickable) while the menu is shut
+    for i, r in ipairs(self.sortRows or {}) do
+        if pointIn(r, x, y) then return i end
+    end
+    return nil
+end
+
+function Party:drawSortButton()
+    local r = self.sortBtn
+    if not r then return end
+    local spec = self:sortSpec()
+    local sorted = (self.sortIndex or 1) > 1 -- "Found" is the stash's own order, not an order imposed on it
+    Theme.set(self.sortOpen and Theme.panel or Theme.panel2)
+    love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 5, 5)
+    Theme.set(sorted and Theme.accentAmber or Theme.frame)
+    love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 5, 5)
+
+    -- Three bars stepping shorter: the sort mark, deliberately a near-rhyme with the Filter burger
+    -- beside it so the pair reads as two controls on one list.
+    local bx, barW = r.x + 8, 12
+    Theme.set(Theme.ink)
+    for k = 0, 2 do
+        love.graphics.rectangle("fill", bx, r.y + 6 + k * 4, barW - k * 4, 2, 1, 1)
+    end
+    love.graphics.setFont(self.smallFont)
+    Theme.set(Theme.ink)
+    love.graphics.print("Sort: " .. spec.label, bx + barW + 6, r.y + (r.h - self.smallFont:getHeight()) / 2)
+    love.graphics.setColor(1, 1, 1)
+end
+
+-- The sort menu: drawn only while open, over the top of the stash. One row per order -- a radio dot,
+-- the order's name, and the order it produces in muted text at the right.
+function Party:drawSortMenu()
+    if not (self.sortOpen and self.sortRect) then return end
+    local r = self.sortRect
+    Theme.set(Theme.panel) -- fully opaque so the stash beneath doesn't bleed through
+    love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 6, 6)
+    Theme.set(Theme.frame)
+    love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 6, 6)
+
+    local lh, hh = self.smallFont:getHeight(), self.tinyFont:getHeight()
+    for i, row in ipairs(self.sortRows) do
+        local spec = SORTS[i]
+        local on = (i == (self.sortIndex or 1))
+        if on then
+            Theme.set(Theme.panel2)
+            love.graphics.rectangle("fill", row.x, row.y, row.w, row.h, 4, 4)
+        end
+        if self.sortCursor == i then
+            Theme.set(Theme.cursor)
+            love.graphics.setLineWidth(2)
+            love.graphics.rectangle("line", row.x, row.y, row.w, row.h, 4, 4)
+            love.graphics.setLineWidth(1)
+        end
+
+        -- The radio dot: exactly one order is in force, and the list has to say which without relying
+        -- on the row tint alone (a cursored row is lit too).
+        local cx, cy = row.x + 11, row.y + row.h / 2
+        Theme.set(on and Theme.accentAmber or Theme.frame)
+        love.graphics.circle(on and "fill" or "line", cx, cy, 3.5)
+
+        love.graphics.setFont(self.smallFont)
+        Theme.set(on and Theme.accentAmber or Theme.ink)
+        love.graphics.print(spec.label, row.x + 22, row.y + (row.h - lh) / 2)
+        love.graphics.setFont(self.tinyFont)
+        Theme.set(Theme.muted)
+        love.graphics.printf(spec.hint, row.x, row.y + (row.h - hh) / 2, row.w - 6, "right")
+    end
+    love.graphics.setColor(1, 1, 1)
+end
+
+-- ---------------------------------------------------------------------------
 -- Equip-delta preview (read-only): how a picked item would change the focused member's stats.
 -- ---------------------------------------------------------------------------
 
@@ -1425,8 +1663,12 @@ function Party:draw()
         self:drawFocus()
         self:drawMemberGrid()
         self:drawPool()
+        self:drawSortButton()
         self:drawFilterButton()
-        self:drawFilters() -- the dropdown, drawn last so it overlays the top of the stash while open
+        -- The dropdowns last, so whichever is open overlays the top of the stash. Only one ever is:
+        -- each is open exactly while its region holds focus.
+        self:drawFilters()
+        self:drawSortMenu()
     end
 
     self:drawFooter()
@@ -1861,8 +2103,12 @@ function Party:drawPromptBar()
             add(switchGlyph, "Switch")
         end
     else
+        -- What confirm does where the cursor is. The two stash dropdowns answer for themselves: on a
+        -- filter chip it toggles, on a sort row it reorders -- neither is "Pick up".
         local label = (self.focus == "rail") and "Select"
-            or (self.focus == "pool") and "Equip" or "Pick up"
+            or (self.focus == "pool") and "Equip"
+            or (self.focus == "sort") and "Sort by"
+            or (self.focus == "filters") and "Toggle" or "Pick up"
         add(confirmGlyph, label, PROMPT_GO)
         add(cancelGlyph, "Close", PROMPT_NO)
         add(regionGlyph, "Region")
@@ -2054,6 +2300,12 @@ function Party:mousemoved(x, y)
     if editor then editor:mousemoved(x, y) return end
     self.grid:mousemoved(x, y)
     self.pool:mousemoved(x, y)
+    -- The pointer crossing a row of the open sort menu moves the same cursor the keyboard drives, so a
+    -- mouse user reading down the list sees the row they are about to pick highlighted.
+    if self.sortOpen then
+        local si = self:sortIndexAt(x, y)
+        if si then self.sortCursor = si end
+    end
     local drag = self.drag
     if drag then
         drag.x, drag.y = x, y
@@ -2131,6 +2383,23 @@ function Party:mousepressed(x, y, button)
             return
         end
         if not pointIn({ x = self.boxX, y = self.boxY, w = BOX_W, h = BOX_H }, x, y) then self:close() end
+        return
+    end
+
+    if self.sortBtn and pointIn(self.sortBtn, x, y) then
+        self:toggleSortPanel()
+        return
+    end
+    if self.sortOpen then
+        local si = self:sortIndexAt(x, y)
+        if si then
+            self:setSort(si)
+            self:setFocus("pool") -- one order at a time: picking one shuts the menu behind it
+            return
+        end
+        -- A click off the open menu just closes it, and is swallowed so it can't also equip or pick up
+        -- whatever cell was sitting behind the overlay.
+        if not pointIn(self.sortRect, x, y) then self:closeSortPanel() end
         return
     end
 
@@ -2223,7 +2492,8 @@ function Party:keypressed(key)
     local editor = self:columnEditor()
     if key == "escape" then
         self.drag = nil
-        if self.filterOpen then self:closeFilterPanel() return end -- shut the dropdown before the panel
+        if self.sortOpen then self:closeSortPanel() return end -- shut a dropdown before the panel
+        if self.filterOpen then self:closeFilterPanel() return end
         local caught = (editor and editor:cancel())
             or self.grid:cancelPickup() or self.pool:cancelPickup()
         if not caught then self:close() end
@@ -2268,7 +2538,8 @@ function Party:gamepadpressed(joystick, button)
     local editor = self:columnEditor()
     if button == "b" then
         self.drag = nil
-        if self.filterOpen then self:closeFilterPanel() return end -- shut the dropdown before the panel
+        if self.sortOpen then self:closeSortPanel() return end -- shut a dropdown before the panel
+        if self.filterOpen then self:closeFilterPanel() return end
         local caught = (editor and editor:cancel())
             or self.grid:cancelPickup() or self.pool:cancelPickup()
         if not caught then self:close() end
