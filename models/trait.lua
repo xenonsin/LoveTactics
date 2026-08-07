@@ -119,6 +119,27 @@ end
 -- cleared in Combat.startTurn.
 Trait.ANSWER_ESCALATION_CAP = 8
 
+-- The price a trait charges out of its OWN def -- `cost`, resolved through whatever granted it -- or
+-- nil when carrying it draws on nothing.
+--
+-- Also nil for a reflex whose firing is a SWING. A counter or a follow-up is billed the weapon it
+-- throws back (Trait.answerCost below) and never reads the def's `cost` at all, so a swing-priced def
+-- that declares one anyway (trait_whirl_answer's 4 stamina) must not be quoted as though it charged
+-- it. The distinction cannot be made from the def's `cost` field alone, which is why it lives here
+-- beside the rule rather than in the reader.
+--
+-- This is the question asked from OUTSIDE a battle -- "what pool does carrying this item draw on?"
+-- (Combat.unpayableCosts, the Loadout screen's warning) -- where there is no board to measure a reach
+-- against and so no weapon to price an answer from.
+function Trait.ownCost(trait)
+    local def = trait and trait.def
+    if not def then return nil end
+    local rule = def.counter
+    local swing = (rule ~= nil and not (rule.reflect or rule.applies or rule.shoves)) or def.followUp
+    if swing then return nil end
+    return Trait.param(trait, "cost")
+end
+
 -- What answering a blow from `dist` tiles away costs `unit`, or nil when the answer is free.
 --
 -- The rule is "an answer is a swing, and a swing costs what a swing costs": a reflex that throws the

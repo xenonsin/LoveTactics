@@ -34,6 +34,7 @@ local InputMode = require("input_mode")
 local Character = require("models.character")
 local Player = require("models.player")
 local Item = require("models.item")
+local Combat = require("models.combat") -- for Combat.unpayableCosts: the equip-time affordability warning
 local Growth = require("models.growth")
 local Discipline = require("models.discipline")
 local Debug = require("models.debug")
@@ -693,6 +694,33 @@ function Party:coachAnchor()
     return { x = x, y = y, w = (lastX + w) - x, h = h }
 end
 
+-- Say so when `item` has just landed somewhere it will not work: on a body whose pools can never meet
+-- its price (Combat.unpayableCosts -- a mana-priced staff given to a fighter, a Counter-Magic charm on
+-- a knight), or in a cell with nothing beside it to answer what it requires (Combat.adjacencyGap -- a
+-- Rain of Arrows dropped in the first free slot, three cells from the bow).
+--
+-- The item is still handed over: this screen warns, it does not refuse. Nothing in the game stops you
+-- arming somebody badly, and a silent refusal on the one screen for arming people would be worse than
+-- the silence this replaces. The adjacency case is not even a mistake yet -- the auto-equip takes the
+-- first empty cell, so it is often just the next thing to do -- which is exactly why it is a line of
+-- text and not a rejection.
+--
+-- PRICE FIRST when both are wrong, because only one of them can be acted on here. A cell can be moved;
+-- a ceiling cannot, so the shortfall is the one that decides whether this body should carry the item
+-- at all.
+--
+-- Called from EVERY path that lands an item on a member, rather than from one funnel, because there
+-- isn't one -- a cell drop, an auto-equip, a stack merge and a drag onto a rail portrait each write the
+-- inventory themselves. Returns true when it warned, so a caller with a success message of its own
+-- knows this one has taken the line.
+function Party:noteUnusable(char, item)
+    if not (char and item) then return false end
+    local fault = Combat.unpayableCosts(char, item)[1] or Combat.adjacencyGap(char, item)
+    if not fault then return false end
+    self:setMsg((item.name or "That item") .. ": " .. fault.text .. ".", false)
+    return true
+end
+
 -- STASH -> current grid cell. Index into the pool maps 1:1 to the stash, since the pool was fed
 -- player.stash directly.
 function Party:placeIntoGrid(stashIndex, cell)
@@ -705,6 +733,7 @@ function Party:placeIntoGrid(stashIndex, cell)
     char.inventory[cell] = incoming
     if displaced then Player.addToStash(self.player, displaced) end
     self:refreshStash()
+    self:noteUnusable(char, incoming)
     if self.onEquip then self.onEquip() end -- a stash item just moved onto a member
 end
 
@@ -783,6 +812,7 @@ function Party:commitStashToGrid(stashItem, cell, count)
 
     self.pool:cancelPickup()
     self:refreshStash()
+    if moved > 0 then self:noteUnusable(char, stashItem) end
     if moved > 0 and self.onEquip then self.onEquip() end -- some of the stack reached the grid
 end
 
@@ -830,7 +860,9 @@ function Party:giveGridItemToMember(cell, memberIdx)
         -- No room: return it to where it came from (its cell just freed up).
         Character.addItem(char, item)
         self:setMsg((member.name or "That member") .. "'s grid is full.", false)
-    else
+    elseif not self:noteUnusable(member, item) then
+        -- The warning takes the line when there is one: "Gave X to Y" is the less useful half of what
+        -- just happened, and the player watched the item land anyway.
         self:setMsg("Gave " .. (item.name or "item") .. " to " .. (member.name or "member") .. ".", true)
     end
     self.grid:cancelPickup()
@@ -846,7 +878,7 @@ function Party:givePoolItemToMember(poolIndex, memberIdx)
     if not Character.addItem(member, item) then
         Player.addToStash(self.player, item)
         self:setMsg((member.name or "That member") .. "'s grid is full.", false)
-    else
+    elseif not self:noteUnusable(member, item) then
         self:setMsg("Gave " .. (item.name or "item") .. " to " .. (member.name or "member") .. ".", true)
     end
     self.pool:cancelPickup()
@@ -1712,6 +1744,21 @@ function Party:drawMemberGrid()
     InventoryGrid.drawStar(self.grid.x + 13, ly + 8, 8, true)
     Theme.set(Theme.ink)
     love.graphics.print("Default action (click the star to set)", self.grid.x + 36, ly)
+    ly = ly + 24
+
+    -- ...and the red rim, which is the one mark on this grid that reports a MISTAKE rather than a
+    -- mechanic. Drawn as the rim itself rather than a colour swatch, so the legend and the cell are
+    -- visibly the same thing.
+    --
+    -- It stands for two faults (unaffordable, and unmet requirement) and names neither, because the
+    -- line has room for one of them at most and picking one would teach the player to read the rim as
+    -- that one. What it promises instead is where the answer is, which is true of both.
+    love.graphics.setColor(0.95, 0.35, 0.32, 0.90)
+    love.graphics.setLineWidth(2)
+    love.graphics.rectangle("line", self.grid.x, ly, 26, 16, 4, 4)
+    love.graphics.setLineWidth(1)
+    Theme.set(Theme.ink)
+    love.graphics.print("Won't work here (hover to see why)", self.grid.x + 36, ly)
 end
 
 -- Loadout / Tactics segmented tabs, mirroring ui/panels/shop.lua's mode selector: filled + outlined
@@ -1937,6 +1984,10 @@ end
 -- follows the pointer and shows only while a cell is hovered (so it clears the moment the pointer
 -- leaves); with keyboard/gamepad it sits at the active region's cursor cell. Out of combat there is
 -- no acting unit, so `actor` is nil: ItemTooltip shows the item's static stats.
+--
+-- The focused member goes down as the tooltip's `owner` instead, including for a STASH cell, where the
+-- question the player is actually asking is "should this go to them" -- so the box priced against
+-- whoever the sheet is showing is the one that can answer it before the item is handed over.
 function Party:drawActiveTooltip()
     if self:columnEditor() then return end -- an editor labels its own fields; no item is on show
     if self.filterOpen then return end     -- the dropdown overlays the stash; no cell tooltip beneath it
@@ -1953,7 +2004,7 @@ function Party:drawActiveTooltip()
             local char = self:currentChar()
             item, maxRight = char and char.inventory[self.grid.hover], self.pool.x
         end
-        if item then ItemTooltip.draw(item, self.mx, self.my, maxRight, nil) end
+        if item then ItemTooltip.draw(item, self.mx, self.my, maxRight, nil, self:currentChar()) end
         return
     end
 
@@ -1969,7 +2020,7 @@ function Party:drawActiveTooltip()
         local cx, cy, cw = self.grid:slotRect(self.grid.cursor)
         maxRight, ax, ay = self.pool.x, cx + cw, cy
     end
-    if item and ax then ItemTooltip.draw(item, ax, ay, maxRight, nil) end
+    if item and ax then ItemTooltip.draw(item, ax, ay, maxRight, nil, self:currentChar()) end
 end
 
 -- ---------------------------------------------------------------------------

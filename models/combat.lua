@@ -4910,6 +4910,37 @@ function Combat.adjacencyCandidateCells(char, item)
     return out
 end
 
+-- Why `item` cannot reach what it needs from where `char` keeps it, or nil when it can. The Loadout
+-- screen's second warning and the twin of Combat.unpayableCosts: that one asks whether this body can
+-- pay for a thing, this one whether the GRID is arranged so the thing works at all.
+--
+-- TWO FAILURES WEAR ONE RETURN, because they want two different sentences:
+--
+--   placed = true    the item is in the grid and nothing beside it answers. A placement mistake, and
+--                    the fix is to pick it up -- the cells that would satisfy it light green the
+--                    moment you do (Combat.adjacencyCandidateCells).
+--   placed = false   the item is NOT in this grid -- a stash piece being weighed up -- and no cell of
+--                    it would satisfy the requirement either. Not a mistake yet: the body simply
+--                    carries no bow for a Rain of Arrows to draw on, which is the thing worth knowing
+--                    BEFORE handing it over rather than after.
+--
+-- A stash item some cell WOULD satisfy is no gap at all and reports nil. It is placeable, the grid
+-- already paints where, and calling that an error would flag every good item in the stash.
+function Combat.adjacencyGap(char, item)
+    local ab = item and item.activeAbility
+    local req = ab and ab.requiresAdjacent
+    if not (char and req) then return nil end
+    local label = Combat.adjacencyLabel(req)
+    if Character.slotIndex(char, item) then
+        if Combat.adjacencyMet(char, item) then return nil end
+        return { label = label, placed = true,
+            text = "Needs an " .. label .. " -- nothing beside it is one" }
+    end
+    if next(Combat.adjacencyCandidateCells(char, item)) ~= nil then return nil end
+    return { label = label, placed = false,
+        text = "Needs an " .. label .. " -- " .. (char.name or "this body") .. " carries none" }
+end
+
 -- The active adjacency relationships in `char`'s grid, for UI connector lines. Returns a list of
 -- { from, to, kind } where from/to are 1-based cell indices and `kind` is one of:
 --   "aura"        -- the item at `from` has an aura that applies to the item at `to`,
@@ -8153,6 +8184,77 @@ end
 -- only one of the conditions that gate a cast.
 function Combat.canAfford(unit, ab)
     return costBlock(unit, ab) == nil
+end
+
+-- Does `char` carry an item granting trait `id`? The out-of-battle twin of Trait.has, which reads the
+-- traits ATTACHED to a live unit and so answers nothing before a fight has started. Innate blueprint
+-- traits are deliberately not consulted: that field is dead (traits attach only from grid items).
+local function gridGrantsTrait(char, id)
+    for _, item in ipairs(Character.eachItem(char)) do
+        for _, tid in ipairs(item.traits or {}) do
+            if tid == id then return true end
+        end
+    end
+    return false
+end
+
+-- The prices on `item` that `char`'s pools COULD NEVER MEET, however rested -- what the Loadout screen
+-- warns about when a body is handed something it will never be able to use.
+--
+-- A DIFFERENT QUESTION FROM costBlock ABOVE, which is why it is a separate function rather than a
+-- caller of it. That one asks whether a unit can pay right now, off `current`; out of combat a pool
+-- that is merely empty refills before the next fight, so asked there it would cry wolf every time
+-- somebody walked home tired. This one asks the permanent version: the CEILING, gear folded in
+-- (Character.statTotal), against the price. A 12-mana working in the hands of a body with no mana at
+-- all is a grid cell that will never do anything, and nothing on any screen used to say so -- the item
+-- simply sat there greyed out in the fight, one battle too late to fix.
+--
+-- Both of costBlock's escape hatches are honoured, or the screen would warn about casts that work
+-- perfectly well: Overchannel bills a mana shortfall to health, and the Alchemist's Reservoir opens a
+-- carried flask mid-cast. Both are trait-borne, and traits attach at battle start, so out here they
+-- are read off the grid (gridGrantsTrait) rather than off a unit.
+--
+-- Traits are priced too, not just the active ability: a Counter-Magic charm on a body with no mana is
+-- the same dead slot as an unaffordable spell, and it is quieter, since a trait never even offers
+-- itself to be clicked. Trait.ownCost decides which of them actually charge what they declare.
+--
+-- Returns { { stat, amount, ceiling, text }, ... }, one entry per pool that falls short -- ALL of
+-- them, where the battle message names only the first. Mid-turn a player can act on one shortfall; the
+-- Loadout is the screen where every one of them gets fixed, so it gets the whole list.
+function Combat.unpayableCosts(char, item)
+    local out = {}
+    if not (char and item) then return out end
+
+    local function consider(costs)
+        for _, cost in ipairs(costs) do
+            local ceiling = Character.statTotal(char, cost.stat)
+            if ceiling < cost.amount then
+                -- Mana has two other purses. Overchannel pays the shortfall in blood, and since a
+                -- shortfall is never allowed to be lethal, health has to CLEAR the gap rather than
+                -- merely meet it -- the same test costBlock makes.
+                local covered = false
+                if cost.stat == "mana" and gridGrantsTrait(char, "trait_overchannel") then
+                    covered = Character.statTotal(char, "health") > cost.amount - ceiling
+                end
+                if cost.stat == "mana" and not covered
+                    and gridGrantsTrait(char, "trait_alchemists_reservoir") then
+                    local flask = Combat.carriedRestorative({ char = char }, "mana")
+                    covered = flask ~= nil and ceiling + (flask.activeAbility.restore or 0) >= cost.amount
+                end
+                if not covered then
+                    out[#out + 1] = { stat = cost.stat, amount = cost.amount, ceiling = ceiling,
+                        text = string.format("Needs %d %s -- %s tops out at %d",
+                            cost.amount, cost.stat, char.name or "this body", ceiling) }
+                end
+            end
+        end
+    end
+
+    consider(Item.costs(item.activeAbility))
+    for _, tid in ipairs(item.traits or {}) do
+        consider(Item.costList(Trait.ownCost(Trait.instantiate(tid, item))))
+    end
+    return out
 end
 
 -- Is `item` a working of magic -- the thing a denier's armor won't let its wearer touch? True when

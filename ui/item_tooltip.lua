@@ -7,10 +7,17 @@
 --   ItemTooltip.draw(item, mx, my, maxRight, actor)   -- actor (optional) gates the ability cost:
 --                                                     -- it renders red + a note when unaffordable
 --
+-- `actor` is a live combat unit and so exists only during a fight. Out of a fight the owner is a plain
+-- character, and the question changes with it: not "can they pay for this right now" (a pool that is
+-- merely empty refills before the next battle) but "could this body EVER pay for this", which is the
+-- one the Loadout screen has to answer before the fight rather than during it. That is `owner`:
+--
+--   ItemTooltip.draw(item, mx, my, maxRight, nil, char)  -- owner: warns on a price it can never meet
+--
 -- `draw` is measure-then-paint, and both halves are public for a caller that has to place the box
 -- itself rather than hang it off a cursor:
 --
---   ItemTooltip.measure(item, actor) -> layout      -- the expensive half; memoizable per item
+--   ItemTooltip.measure(item, actor, owner) -> layout -- the expensive half; memoizable per item
 --   ItemTooltip.paint(layout, x, y, opts) -> box    -- pinned exactly at (x, y); opts.accent = border
 --
 -- The draft unit sheet uses them to open one tooltip per carried piece at once (states/draft.lua).
@@ -202,11 +209,22 @@ end
 --   warn   { text }                     -- red wrapped line (e.g. "Not enough mana")
 -- `actor` (optional) is the unit the ability is priced and gated against: whatever stops it from
 -- being cast right now (Combat.itemBlockReason) reddens the offending row and closes the ability
--- section with a `warn` block spelling the reason out.
-local function buildBlocks(item, actor, innerW, out)
+-- section with a `warn` block spelling the reason out. `owner` (optional) is the out-of-battle
+-- character carrying it, and asks the permanent version of the same question instead.
+local function buildBlocks(item, actor, innerW, out, owner)
     local blocks = {}
     -- The one reason this item can't be activated (nil when it can, or when it's passive).
     local blocked = Combat.itemBlockReason(actor, item)
+    -- Every price on the item this body's pools could never meet, however rested -- keyed by pool, so
+    -- the cost row that names one can turn red on its own. Empty in a fight, where `blocked` above is
+    -- the sharper reading (it knows what is actually in the pool this turn).
+    local unpayable = owner and Combat.unpayableCosts(owner, item) or {}
+    local unpayableStat = {}
+    for _, short in ipairs(unpayable) do unpayableStat[short.stat] = true end
+    -- ...and the other half of "this will not work": a requirement the grid does not answer from where
+    -- the item sits (Combat.adjacencyGap). Same source for the Requires row's colour below and for the
+    -- warning at the foot, so the row and the line can never disagree about whether it is met.
+    local adjacent = owner and Combat.adjacencyGap(owner, item) or nil
 
     -- The header is a TWO-COLUMN row (the mock's flex `.th`): the bone-gold NAME + muted type eyebrow on
     -- the left, and -- when the item has one -- the big headline value + its label on the RIGHT, on the
@@ -421,7 +439,8 @@ local function buildBlocks(item, actor, innerW, out)
         -- one that is actually short has to be able to turn red on its own.
         local costs = actor and Combat.abilityCosts(actor, ab) or Item.costs(ab)
         for i, cost in ipairs(costs) do
-            local short = blocked and blocked.kind == "cost" and blocked.stat == cost.stat
+            local short = (blocked and blocked.kind == "cost" and blocked.stat == cost.stat)
+                or unpayableStat[cost.stat]
             blocks[#blocks + 1] = { kind = "stat", label = i == 1 and "Cost" or "",
                 value = cost.amount .. " " .. titleCase(cost.stat),
                 valueColor = short and WARN or RES_COLOR[cost.stat] }
@@ -452,11 +471,22 @@ local function buildBlocks(item, actor, innerW, out)
         end
         -- An adjacency requirement always shows, green once the grid satisfies it and red while it
         -- doesn't -- the same green as the connector line the item grid draws to the neighbor.
+        --
+        -- THREE STATES rather than two once an `owner` is known, because green is a claim and there is
+        -- a case it cannot honestly make. Out of battle `blocked` is always nil, so this row used to
+        -- render green on every loadout tooltip in the game -- reporting "requirement met" over a Rain
+        -- of Arrows sitting three cells from the nearest bow. Red is the gap (`adjacent`); green is a
+        -- requirement genuinely answered where the item sits; and an item still in the STASH gets
+        -- neither, since a piece that is nowhere is neither met nor unmet -- it is placeable, which is
+        -- what the plain ink says.
         if ab.requiresAdjacent then
-            local unmet = blocked and blocked.kind == "adjacency"
+            local unmet = (blocked and blocked.kind == "adjacency") or adjacent ~= nil
+            local color = MET
+            if unmet then color = WARN
+            elseif owner and not Character.slotIndex(owner, item) then color = VALUE end
             blocks[#blocks + 1] = { kind = "stat", label = "Requires",
                 value = titleCase(Combat.adjacencyLabel(ab.requiresAdjacent)),
-                valueColor = unmet and WARN or MET }
+                valueColor = color }
         end
         if ab.consumesItem then
             blocks[#blocks + 1] = { kind = "note", text = "Consumed on use" }
@@ -620,6 +650,22 @@ local function buildBlocks(item, actor, innerW, out)
         end
     end
 
+    -- Everything that stops this item working for this body, at the foot of everything mechanical: a
+    -- price the pools will never meet, and a requirement the grid does not answer.
+    --
+    -- Deliberately NOT inside the ability section that `blocked` closes, even though each usually has a
+    -- row up there naming the same fact: a price may come from a TRAIT, which the tooltip prints no
+    -- cost row for at all (a Counter-Magic charm on a body with no mana is the quietest dead slot in
+    -- the game, since a trait never even offers itself to be clicked). One place to look, whichever
+    -- part is at fault.
+    if #unpayable > 0 or adjacent then
+        blocks[#blocks + 1] = { kind = "sep" }
+        for _, short in ipairs(unpayable) do
+            blocks[#blocks + 1] = { kind = "warn", text = short.text }
+        end
+        if adjacent then blocks[#blocks + 1] = { kind = "warn", text = adjacent.text } end
+    end
+
     -- The story line has the tooltip's last word, below everything mechanical (docs/item-text.md).
     if item.flavor and item.flavor ~= "" then
         blocks[#blocks + 1] = { kind = "sep" }
@@ -636,7 +682,7 @@ end
 -- one per carried piece) has to know how tall each box is BEFORE it can decide where any of them goes.
 -- It is also the expensive half -- the dry run and the wrapping live here -- so such a caller can
 -- memoize the layout per item and repaint it every frame for free.
-function ItemTooltip.measure(item, actor)
+function ItemTooltip.measure(item, actor, owner)
     if not item then return nil end
     local title, body, small, power = fonts()
     local pad, w = 9, ItemTooltip.WIDTH
@@ -645,7 +691,7 @@ function ItemTooltip.measure(item, actor)
     -- One dry run per hover, shared: the blocks below quote its numbers and the glossary column beside
     -- the box names the statuses it turned up.
     local out = Combat.abilityOutput(actor, item) or false
-    local blocks = buildBlocks(item, actor, innerW, out)
+    local blocks = buildBlocks(item, actor, innerW, out, owner)
     local titleH, bodyH, smallH, powerH = title:getHeight(), body:getHeight(), small:getHeight(), power:getHeight()
 
     -- Measure: sum each block's height (wrapping desc against innerW, cached for the draw pass).
@@ -802,8 +848,8 @@ end
 
 -- Draw the tooltip for `item` anchored near (mx, my). `maxRight` caps the box's right edge so it
 -- never slides under a side panel (defaults to the screen width). No-op when item is nil.
-function ItemTooltip.draw(item, mx, my, maxRight, actor)
-    local layout = ItemTooltip.measure(item, actor)
+function ItemTooltip.draw(item, mx, my, maxRight, actor, owner)
+    local layout = ItemTooltip.measure(item, actor, owner)
     if not layout then return end
     local w, h = layout.w, layout.h
     maxRight = maxRight or Scale.WIDTH

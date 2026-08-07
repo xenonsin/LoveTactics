@@ -115,6 +115,34 @@ function InventoryGrid:setHeldItem(item)
     self.held = item
 end
 
+-- Cells holding an item that will not work for this character, as an index set. Two reasons, and they
+-- share one mark because they share one consequence -- the cell does nothing in the fight:
+--
+--   * a price the body's pools can never meet (Combat.unpayableCosts) -- a spell costed in mana on a
+--     body with no mana at all;
+--   * a requirement nothing beside it answers (Combat.adjacencyGap) -- a Rain of Arrows three cells
+--     from the nearest bow.
+--
+-- The second is the one the grid can actually fix, and the fix is already built: pick the item up and
+-- the cells that WOULD satisfy it light green (candidateCells below). Red says which item to pick up.
+--
+-- Read every frame rather than cached, because everything that could change either answer happens on
+-- this screen -- the ceiling moves the moment an Attunement charm lands, and the requirement is
+-- answered or broken by every single rearrangement. A cached set would keep flagging a cell the player
+-- has just fixed, which is the one thing a warning must never do.
+function InventoryGrid:unusableCells()
+    local out = {}
+    if not self.char then return out end
+    for i = 1, COLS * ROWS do
+        local item = self.char.inventory[i]
+        if item and (#Combat.unpayableCosts(self.char, item) > 0
+                or Combat.adjacencyGap(self.char, item)) then
+            out[i] = true
+        end
+    end
+    return out
+end
+
 -- Cells where the held item would have its adjacency requirement met (Rain of Arrows: the cells that
 -- touch a bow), as an index set. Empty unless something requiring a neighbor is in hand -- an item
 -- with no requirement can go anywhere, so lighting cells would say nothing.
@@ -218,6 +246,7 @@ function InventoryGrid:draw()
     -- Cells that would satisfy the held item's adjacency requirement. Computed once here and reused
     -- by the plate wash and the outline pass below.
     local candidates = self:candidateCells()
+    local unusable = self:unusableCells()
 
     -- Cell plates, then the adjacency wires across them -- both under the items, so a wire reads
     -- over the plate without ever covering an icon or a name band.
@@ -314,6 +343,21 @@ function InventoryGrid:draw()
         if candidates[i] then
             local sx, sy, sw, sh = self:slotRect(i)
             love.graphics.setColor(0.40, 0.90, 0.50, 0.85)
+            love.graphics.setLineWidth(2)
+            love.graphics.rectangle("line", sx + 1, sy + 1, sw - 2, sh - 2, 6, 6)
+        end
+    end
+
+    -- ...and a red rim, in the same grammar, over a cell that will not work. The two are one sentence
+    -- about the cell -- "this works here" against "this does not" -- so they are the same mark in the
+    -- two colours the whole game already reads that way, rather than a second badge fighting the lock
+    -- and the star for a corner. It also puts the two halves of the adjacency question in one visual
+    -- pair: green is where the held item would work, red is where the placed one doesn't. The reason
+    -- lives in the item tooltip; the rim's job is only to say WHICH cell to go and read.
+    for i = 1, COLS * ROWS do
+        if unusable[i] then
+            local sx, sy, sw, sh = self:slotRect(i)
+            love.graphics.setColor(0.95, 0.35, 0.32, 0.90)
             love.graphics.setLineWidth(2)
             love.graphics.rectangle("line", sx + 1, sy + 1, sw - 2, sh - 2, 6, 6)
         end
