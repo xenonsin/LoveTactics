@@ -1,7 +1,7 @@
 -- The item that carries Follow-Up (data/traits/trait_follow_up.lua): when an ally lands a blow on a foe
 -- standing next to the wearer, the wearer piles on with a swing of its own.
 --
--- A passive utility whose whole effect is the trait it grants, like the Rage-Wrought Girdle beside it on
+-- A passive utility whose whole effect is the trait it grants, like the Duelist's Reflex beside it on
 -- the shelf. Sold by the fighter's vendor -- wrath's line, and a pincer is wrath at its most collective:
 -- the reward for two of you catching one of them between you (see docs/story.md).
 --

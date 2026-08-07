@@ -7,7 +7,7 @@
 -- A party that has been split by terrain, or strung out by a chase, or half-caught in a fire, is a
 -- party that is losing; this un-loses it in one turn.
 --
--- Which is why it is the most expensive knight item on the shelf, why it channels for two turns before
+-- Which is why it is gated late and priced near the top of the knight shelf, why it channels for two turns before
 -- it lands, and why the enemy gets to watch the whole thing coming. The wind-up is the counterplay:
 -- everyone can see where the muster is going to be, and the enemy has a turn to be standing there when
 -- it arrives. Calling your scattered line into the middle of the enemy's is a legal way to lose.
@@ -28,8 +28,8 @@ return {
     type = "ability",
     tags = { "arcane" },
     class = "knight",
-    price = 80,
-    unlockQuests = 0,
+    price = 560,
+    unlockQuests = 8,
     activeAbility = {
         target = "self",
         range = 0,
