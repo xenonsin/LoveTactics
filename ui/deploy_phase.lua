@@ -45,9 +45,10 @@ local CARD_GAP = 6
 -- fight as during it: the encounter's name (y 20) and its objective (y 52). This line is the one that
 -- is about the phase, so it goes last, directly above the board (states/battle.lua's BOARD_TOP).
 local TITLE_Y = 82
--- The narrowest a company card may get before the strip pages instead of squeezing. Roughly a
--- portrait plus its health pip -- below this a card carries no information you can act on.
-local MIN_CARD_W = 62
+-- The whole company, and the number the strip is sized to: the avatar and seven companions. Eight is
+-- what the campaign can ever muster, so eight is what the gutter has to hold at once -- an eighth card
+-- tabbed off the end is the one member you cannot see while deciding who stands.
+local COMPANY_MAX = 8
 
 -- opts:
 --   combat, map, arena  the live (unopened) battle and its board widget
@@ -255,20 +256,21 @@ end
 -- Layout
 -- ---------------------------------------------------------------------------
 
--- One card per company member, laid across the strip. It fits the whole company at once where it can,
--- so "who is left" is a glance rather than a count -- but the company is the whole roster and the
--- roster is unbounded, so cards stop shrinking at MIN_CARD_W and the strip scrolls instead. A card
--- narrower than that is a smear, and a smear you cannot pick out of is worse than a page you turn.
-function DeployPhase:cardWidth()
-    local n = math.max(1, #self.roster)
-    local w = (self.gutter.w - CARD_GAP * (n - 1)) / n
-    return math.max(MIN_CARD_W, w)
+-- How many cards the strip shows at once: the whole company, because the company has a ceiling and the
+-- gutter is wide enough for it. "Who is left on the bench" is then a glance rather than a count, and
+-- nobody is decided about from behind a page tab. A roster longer than a company can only come from a
+-- probe or a debug hand, and that one pages -- which is what `scroll` below is still for.
+function DeployPhase:cardsVisible()
+    return math.max(1, math.min(#self.roster, COMPANY_MAX))
 end
 
--- How many cards fit at the current width, and the largest first-index the strip may scroll to.
-function DeployPhase:cardsVisible()
-    local w = self:cardWidth()
-    return math.max(1, math.floor((self.gutter.w + CARD_GAP) / (w + CARD_GAP)))
+-- One card per company member, laid across the strip. Solved for exactly the number visible rather than
+-- floored at some minimum: the gutter is the board's width (8 tiles) and a full company divides into it
+-- at a little over fifty pixels a card, which still carries a portrait, a name and a health pip. A floor
+-- the company cannot fit under does not protect legibility -- it just hides the eighth member.
+function DeployPhase:cardWidth()
+    local n = self:cardsVisible()
+    return math.max(1, (self.gutter.w - CARD_GAP * (n - 1)) / n)
 end
 
 function DeployPhase:maxScroll()
