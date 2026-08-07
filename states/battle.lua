@@ -2297,6 +2297,10 @@ end
 --   2. it connects with nothing, and a move is still available -> walk there (staying armed).
 --   3. it connects with nothing and the move is spent -> swing anyway, into empty air. A wasted swing
 --      is the player's to make; a click that silently does nothing is not.
+-- An offensive swing that catches nobody but your OWN line connects with nothing for this purpose
+-- (Combat.castDoesSomething): a facing whose arc runs through an ally is a walk, not an aim -- which
+-- is what gives the step back in a corridor, where the company stands shoulder to shoulder and every
+-- tile in front of a knight is covered by a friend.
 -- `ab.groundAim` pins an ability to (1) whatever the dry run says, for anything whose real work a dry
 -- run can't see.
 --

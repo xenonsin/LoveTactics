@@ -61,6 +61,14 @@ The battle screen gives the tile back by asking what the cast would actually **d
 3. It connects with nothing and the move is spent → **swing anyway**, into empty air. A wasted swing
    is the player's to make; a click that silently does nothing is not.
 
+**Your own line is not a target.** An offensive footprint that catches nobody but *friends* counts as
+connecting with nothing, so it takes branch (2) and steps. A facing whose arc runs through your own
+knight was never an aim, and without this the step disappeared exactly where a company needs it most
+— shoulder to shoulder in a corridor, where every tile in front of a wielder is covered by a friend.
+The caster itself still counts, so a tile-aimed cast that works on its own wielder is not demoted to
+a step; and friendly fire is unchanged — a swing thrown into an ally (branch 3, or aimed at a facing
+that also catches a foe) still hurts them.
+
 The question is always put **from the tile the swing would be thrown from** — the stand tile a
 click-to-use walks to first, not the tile the unit is standing on when the click lands. A facing is
 read from wherever the wielder *ends up*, so the same aim answers differently from two different

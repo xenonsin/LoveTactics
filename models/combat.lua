@@ -6936,11 +6936,22 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
              userRestsX = userRestsX, userRestsY = userRestsY }
 end
 
--- Pure: would this cast, aimed at (tx, ty), DO anything -- land on a unit, or touch the board at all?
+-- Pure: would this cast, aimed at (tx, ty), DO anything WORTH SWINGING AT -- land on a body the cast
+-- is for, or touch the board at all?
 -- False is the swing into empty air: a cleaving axe or a spear's line aimed at open ground that its
 -- footprint catches nobody in, a bomb thrown where it will hurt no one. True the moment the dry run
 -- records an affected unit, or reaches for a helper that would place / summon / teleport / steal /
 -- reveal (see `mutates` in previewAbility).
+--
+-- Your own line is not a target. An OFFENSIVE footprint that catches nobody but friends is the same
+-- empty swing as one that catches nobody at all: nobody arcs an axe through their own knight on
+-- purpose, so the aim was a walk. Without this the ally read as a connection and the step vanished --
+-- exactly where a company is tightest, shoulder to shoulder in a corridor, and exactly where the
+-- player needs to shuffle. The cursor ring already knew (targetCells in states/battle.lua only ever
+-- offers a facing that sweeps a unit of the TARGET side); it was the mouse's tie-break that didn't.
+-- The caster itself still counts, so an ability whose work lands on the wielder -- a self-applied
+-- stance thrown off a tile aim -- is not demoted to a step. Friendly fire is untouched: the swing
+-- still hurts whoever is standing in it once it is thrown (rule 3, with the move spent, throws it).
 --
 -- This is what lets states/battle.lua resolve a click on a tile-aimed weapon. Those weapons -- every
 -- spear, axe and greatsword, whose aimed tile is a FACING rather than a victim -- make EVERY tile in
@@ -6955,7 +6966,13 @@ function Combat.castDoesSomething(combat, unit, item, tx, ty)
     if not (ab and ab.effect) then return false end
     local preview = Combat.previewAbility(combat, unit, item, tx, ty)
     if not preview then return false end
-    return #preview.order > 0 or preview.mutates == true
+    if preview.mutates == true then return true end
+    -- A support cast is aimed at friends by definition, so it counts every body it reaches.
+    local sparesFriends = unit ~= nil and not Combat.isSupportAbility(ab)
+    for _, e in ipairs(preview.order) do
+        if not (sparesFriends and e.unit ~= unit and e.unit.side == unit.side) then return true end
+    end
+    return false
 end
 
 -- Pure: what `target` would throw BACK if `unit` struck it with `item` right now -- the standing

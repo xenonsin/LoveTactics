@@ -108,6 +108,49 @@ return {
         end,
     },
     {
+        name = "a swing that catches nobody but an ALLY connects with nothing -- the click means walk",
+        fn = function()
+            -- The knight at (2,2) with a companion standing at (3,2), the foe far off. Aiming east
+            -- runs the line straight through the companion: a body IS caught, and it used to make the
+            -- click a swing -- into your own line, with the step nowhere left to be taken. Nobody aims
+            -- an axe through their own knight on purpose, so the aim was a walk.
+            local c = Combat.new(arena(8, 8),
+                { unit("character_knight", 2, 2), unit("character_fighter", 3, 2) },
+                { unit("character_bandit", 7, 7) })
+            local knight = c.units[1]
+            local spear = arm(knight, "weapon_iron_spear")
+
+            assert(Combat.castDoesSomething(c, knight, spear, 3, 2) == false,
+                "a thrust that skewers only your own line is a step, not a swing")
+
+            -- ...but the moment a FOE stands behind the companion, the same aim connects again: the
+            -- friendly body in the way must never eat a swing that also lands on the enemy.
+            c.units[3].x, c.units[3].y = 4, 2
+            assert(Combat.castDoesSomething(c, knight, spear, 3, 2) == true,
+                "the line runs on past the companion into the bandit -- that is still a swing")
+        end,
+    },
+    {
+        name = "a SUPPORT tile cast counts the allies it reaches",
+        fn = function()
+            -- The sparing rule is offensive-only: a cast declared for friends is aimed at them, so an
+            -- ally under its footprint is the whole point and must never resolve as a step.
+            local c = Combat.new(arena(8, 8),
+                { unit("character_knight", 2, 2), unit("character_fighter", 3, 2) },
+                { unit("character_bandit", 7, 7) })
+            local knight = c.units[1]
+            local ally = c.units[2]
+            local heal = { activeAbility = {
+                target = "tile", support = true, range = 3, allowOccupied = true,
+                effect = function(fx) fx.heal(fx.unitAt(fx.tx, fx.ty), 5) end,
+            } }
+            ally.char.stats.health.current = 1
+
+            assert(Combat.castDoesSomething(c, knight, heal, 3, 2) == true,
+                "a support cast landing on an ally is doing exactly what it is for")
+        end,
+    },
+    {
         name = "abilities that LAY something classify themselves as doing something on bare ground",
         fn = function()
             -- No per-item declaration decides this: the dry run reaches for fx.placeTrap /
