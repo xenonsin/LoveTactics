@@ -223,25 +223,20 @@ function CombatPanel.new(combat, opts)
     self.gridW = COLS * SLOT_W + (COLS - 1) * SLOT_GAP
     self.gridH = ROWS * SLOT_H + (ROWS - 1) * SLOT_GAP
     self.gridX = self.x + math.floor((PANEL_W - self.gridW) / 2)
-    -- Wait/Focus/Defend button: a bar the width of the grid, pinned to the panel bottom.
+    -- The bottom lane: one bar the width of the grid, pinned to the panel bottom. Wait/Focus/Defend
+    -- owns the whole of it, and shares it with FALL BACK on the turns that move is on offer (see
+    -- bottomBarRects). One lane, never two -- a second row reserved for a move that is legal on a
+    -- handful of turns a fight is a permanent hole in the panel.
     self.waitBtn = { x = self.gridX, w = self.gridW, h = 34 }
     self.waitBtn.y = Scale.HEIGHT - 16 - self.waitBtn.h
     self.waitHover = false
-    -- FALL BACK: trade places with the bench (models/combat.lua's Combat.rotate). A slimmer bar directly
-    -- above Wait, because it is the same KIND of thing -- an action that ends the turn without striking
-    -- -- and belongs in the same place the player already looks for one.
-    --
-    -- It draws only where the move is actually available: a body of yours standing on rally ground with
-    -- a reserve to call. A plate that sits there greyed for most of every fight is a permanent claim on
-    -- the eye for a move that is rarely on offer, and the board now carries the standing statement
-    -- instead (ui/battle_map.lua drawRallyGround, and the tile's own tooltip). What stays fixed is the
-    -- LANE: reserved for the whole fight wherever there is a bench, so the button appearing under an
-    -- acting unit never shoves the item grid -- and every line above it -- up the panel.
+    -- FALL BACK: trade places with the bench (models/combat.lua's Combat.rotate). It draws only where
+    -- the move is actually available: a body of yours standing on rally ground with a reserve to call.
+    -- The reasons it is NOT on offer are said by the board instead (ui/battle_map.lua drawRallyGround,
+    -- and the rally tile's own tooltip), which is a lesson the player can read before they need it.
     self.hasRotate = self:hasBench()
-    self.rotateBtn = { x = self.gridX, w = self.gridW, h = 26 }
-    self.rotateBtn.y = self.waitBtn.y - 6 - self.rotateBtn.h
     self.rotateHover = false
-    self.gridY = (self.hasRotate and self.rotateBtn.y or self.waitBtn.y) - 14 - self.gridH
+    self.gridY = self.waitBtn.y - 14 - self.gridH
     -- Turn strip lives above the item grid; stripTop leaves the "Turn Order" caption clear breathing
     -- room above it (top + bottom margin around the header).
     self.stripTop = 52
@@ -505,15 +500,27 @@ function CombatPanel:canFallBack()
     return (Combat.canRotate(self.combat, unit)) and true or false
 end
 
+-- How the bottom lane is split this frame: the Wait plate, then the Fall Back plate or nil.
+--
+-- Wait holds the whole lane by default. The instant Fall Back is on offer the lane halves and the two
+-- sit side by side -- they are the same KIND of move (end the turn without striking), so they read as
+-- one row of them. Splitting rather than stacking means an unavailable Fall Back costs no space at all,
+-- and an available one shoves nothing: the lane's edges never move, whichever way it is divided.
+local BAR_GAP = 6
+function CombatPanel:bottomBarRects()
+    local lane = self.waitBtn
+    if not self:canFallBack() then return lane, nil end
+    local half = math.floor((lane.w - BAR_GAP) / 2)
+    return { x = lane.x, y = lane.y, w = half, h = lane.h },
+        { x = lane.x + lane.w - half, y = lane.y, w = half, h = lane.h }
+end
+
 -- The FALL BACK button: trade places with someone on the bench, at the cost of this turn. Drawn only
 -- while the move is on offer -- the acting unit is standing on its own rally ground with a reserve to
--- call -- so the plate means "you can do this here", not "there is a rule about this somewhere". The
--- reasons it is NOT on offer are said by the board instead: the rally ground is outlined all fight and
--- its tooltip explains the move, which is a lesson the player can read before they need it rather than
--- one that only appears on a button they cannot press.
+-- call -- so the plate means "you can do this here", not "there is a rule about this somewhere".
 function CombatPanel:drawFallBackButton()
-    if not self:canFallBack() then return end
-    local b = self.rotateBtn
+    local _, b = self:bottomBarRects()
+    if not b then return end
     local hot = self.rotateHover
 
     Theme.set(hot and Theme.panel or Theme.panel2)
@@ -525,14 +532,14 @@ function CombatPanel:drawFallBackButton()
 
     love.graphics.setFont(self.nameFont)
     if hot then Theme.set(Theme.accentAmber) else Theme.set(Theme.ink) end
-    Theme.printTracked("FALL BACK", b.x, b.y + b.h / 2 - 8, b.w)
+    Theme.printTracked("FALL BACK", b.x, b.y + b.h / 2 - 9, b.w)
 end
 
--- Is (px, py) over the Fall Back button? False whenever the button is not drawn, so the reserved lane
--- can never eat a click on empty panel.
+-- Is (px, py) over the Fall Back button? False whenever the button is not drawn -- on those turns Wait
+-- holds the whole lane, and the click belongs to it.
 function CombatPanel:overRotate(px, py)
-    if not self:canFallBack() then return false end
-    local b = self.rotateBtn
+    local _, b = self:bottomBarRects()
+    if not b then return false end
     return px >= b.x and px <= b.x + b.w and py >= b.y and py <= b.y + b.h
 end
 
@@ -542,7 +549,7 @@ end
 -- (view.waitPreview). The battle state supplies onWait and reads waitHover (set in mousemoved) to
 -- preview the delay slot on the timeline.
 function CombatPanel:drawWaitButton()
-    local b = self.waitBtn
+    local b = self:bottomBarRects() -- half the lane on the turns Fall Back shares it
     local enabled = self.view.isPartyTurn
     -- Brightens under the mouse (waitHover) OR while the keyboard Wait preview is armed (view.waitPreview,
     -- the first of its two presses) -- both are the selection resting on Wait, so it lights the same way.
@@ -575,13 +582,17 @@ function CombatPanel:drawWaitButton()
     else Theme.set(Theme.ink) end
     love.graphics.setFont(self.nameFont)
     -- UPPERCASE and letter-tracked, matching the section captions -- this button is a chrome header,
-    -- not prose.
-    Theme.printTracked(string.upper(label), b.x, b.y + b.h / 2 - 9, b.w)
+    -- not prose. A performer's label is a song title rather than a verb, so it is trimmed to the plate:
+    -- half a lane is narrow, and the tracking is part of what has to fit.
+    label = string.upper(label)
+    label = Theme.ellipsize(label, self.nameFont, b.w - 16 - #label * Theme.TRACK)
+    Theme.printTracked(label, b.x, b.y + b.h / 2 - 9, b.w)
 end
 
--- Is (px, py) over the Wait button?
+-- Is (px, py) over the Wait button? Asks the same split the plate was drawn from, so the half Fall
+-- Back is standing in never answers for Wait.
 function CombatPanel:overWait(px, py)
-    local b = self.waitBtn
+    local b = self:bottomBarRects()
     return px >= b.x and px <= b.x + b.w and py >= b.y and py <= b.y + b.h
 end
 

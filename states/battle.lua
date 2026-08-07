@@ -4182,7 +4182,7 @@ local function commitDeploy(opts, deployed, front, placed)
     end
 
     -- Whether this fight has a bench AT ALL, fixed here rather than read live, so the drawer's
-    -- Reinforce entry (and the panel's Fall Back lane) cannot appear and vanish as reserves are spent.
+    -- Reinforce entry cannot appear and vanish as reserves are spent.
     -- False in every duel, draft and scripted lesson, which field exactly who they were given.
     battle.hasBench = #(battle.combat.bench or {}) > 0
 

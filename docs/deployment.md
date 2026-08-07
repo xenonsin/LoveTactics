@@ -143,12 +143,15 @@ Two ways onto the field, priced differently because they are different decisions
 ### Fall Back — costs the turn
 
 A living unit **standing on rally ground** spends its turn to trade places with someone on the bench.
-The button sits above Wait in the combat panel and **appears only while the move is on offer** — a body
-of yours standing on the ground, with a reserve to call. A plate greyed out for most of every fight is
-a permanent claim on the eye for a move that is rarely available; the board carries the standing
-statement instead (the outline above, and the tile's tooltip), and the panel says only *you can do this
-here*. The lane it occupies stays reserved for the whole fight, so the button arriving under an acting
-unit never shoves the item grid up the panel.
+The button **appears only while the move is on offer** — a body of yours standing on the ground, with a
+reserve to call. A plate greyed out for most of every fight is a permanent claim on the eye for a move
+that is rarely available; the board carries the standing statement instead (the outline above, and the
+tile's tooltip), and the panel says only *you can do this here*.
+
+It shares Wait's lane rather than taking one of its own: on the turns it is offered, the bar at the
+panel's foot halves and the two plates sit side by side. They are the same kind of move — end the turn
+without striking — so they read as one row of them, and an unavailable Fall Back costs no space at all
+while an available one shoves nothing, since the lane's edges never move.
 
 `Combat.canRotate` still returns `false, why` for every refusal, and each reason still names a fix
 ("stand on your rally ground to fall back"); with the button gone those reach the player through
