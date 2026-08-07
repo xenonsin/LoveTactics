@@ -115,6 +115,51 @@ return {
         end,
     },
     {
+        -- The board shows a locked card only when the quest ASKS to be seen locked (`showLocked`),
+        -- which the Gate Below alone sets. The rule used to be inferred from holding one key of
+        -- several, and that swept in all 21 discipline capstones -- they name two gates apiece, carry
+        -- no `gateHint` between them, and so recited the fragments pane's "the generals know where"
+        -- fallback at a player whose real answer was a two-quest checklist. A capstone is advertised
+        -- on its parent vendor's shelf instead, where the lock names the class still missing.
+        name = "a quest that has not asked to be shown locked is hidden, not locked",
+        fn = function()
+            -- One key of several capstones (the Colosseum's first subclass gate), and prestige past
+            -- every gate, so anything willing to show locked would be on the board here.
+            local p = playerAt(10)
+            p.completedQuests.quest_colosseum_slot_03 = true
+
+            for _, q in ipairs(Quest.available(p)) do
+                assert(not q.locked or Quest.defs[q.id].showLocked,
+                    q.id .. " is shown locked without asking to be -- see Quest.available")
+            end
+
+            local seen = {}
+            for _, q in ipairs(Quest.available(p)) do seen[q.id] = true end
+            assert(not seen.quest_colosseum_the_fighting_cellar,
+                "a capstone one key short belongs off the board, not on it wearing a riddle")
+        end,
+    },
+    {
+        name = "the Gate Below still counts its keys on the board from the first general down",
+        fn = function()
+            local p = playerAt(10)
+            p.completedQuests.quest_colosseum_slot_10 = true
+
+            local gate
+            for _, q in ipairs(Quest.available(p)) do
+                if q.id == "quest_the_gate_below" then gate = q end
+            end
+            assert(gate, "one general down must put the Gate Below on the board")
+            assert(gate.locked, "and it is locked -- six keys are still missing")
+            assert(gate.keysHeld == 1 and gate.keysNeeded == 7,
+                string.format("the count reads 1 of 7, got %s of %s",
+                    tostring(gate.keysHeld), tostring(gate.keysNeeded)))
+            -- The dead general's fragment, so the pane has something to recite instead of the fallback.
+            assert(gate.hints and #gate.hints == 1,
+                "the finished prerequisite owes the board its location fragment")
+        end,
+    },
+    {
         name = "blueprints are untouched after list/available",
         fn = function()
             Building.list(1)

@@ -7,6 +7,13 @@
 -- gateHints in models/quest.lua, and the locked detail pane in ui/panels/quest_board.lua). Watching the
 -- count climb from 1 of 7 is the last stretch of the game.
 --
+-- `showLocked` is what asks for that, and this is the only file that sets it. The board used to infer
+-- it from holding one key of several, which swept in every discipline capstone -- they name two
+-- prerequisites apiece and wanted none of this pane. A capstone is already advertised where it can be
+-- acted on: a locked path collapses to a header on its parent vendor's shelf, and shop.lua's lockReason
+-- names the missing parent class, which is a building the player can walk to. This quest has no shelf
+-- and no direction to give but the fragments, so it is the one that asks to be seen locked.
+--
 -- What opens the Gate is the completed QUEST, never the relic it granted. Relics are meant to be worn,
 -- and a key you can misplace in a loadout screen is not a key.
 --
@@ -27,6 +34,8 @@ return {
     rewardGold = 2000,
     requiredPrestige = 10,
     endsCampaign = true,
+    showLocked = true, -- show on the board from the first key, counting the rest; see the header
+
     -- The last scene in the game, played over the frozen final frame before the credits roll.
     outro = "conversation_gate_below_ending",
     requiredQuests = {

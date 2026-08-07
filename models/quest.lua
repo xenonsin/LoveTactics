@@ -194,19 +194,24 @@ end
 -- The field is still honoured here so a `repeatable` def cannot silently misbehave (the specs build
 -- synthetic ones to pin the double-payout and duplicate-recruit guards), not as an invitation.
 --
--- Prestige, the sponsor-quest gate, and the sponsor's unlock are HARD gates: fail one and the quest is
--- not on the board at all. A
--- `requiredQuests` gate is SOFT: once the player holds at least one of the prerequisites, the quest
--- appears `locked`, carrying its key count and the hints earned so far. Seeing what you have not yet
--- earned is the point of a ladder -- the same reason Vendor.stock returns quest-locked items flagged
--- rather than hidden. The caller must refuse to start a locked quest (see ui/panels/quest_board.lua).
+-- Prestige, the sponsor-quest gate, the sponsor's unlock and `requiredQuests` are all HARD gates by
+-- default: fail one and the quest is not on the board at all. That is what lets every sin line run as a
+-- chain -- slot 5 names slot 4, and the board shows a line's next card and nothing further
+-- (docs/story.md, "The ten slots").
 --
--- THE ONE-KEY CASE IS EFFECTIVELY HARD, and the sin lines lean on it. A quest naming a SINGLE
--- prerequisite has `keysHeld >= 1` and `questsMet` become true at the same instant, so it is hidden
--- outright until its predecessor is done rather than shown locked. That is what lets every sin line
--- run as a chain -- slot 5 names slot 4, and the board shows a line's next card and nothing further
--- (docs/story.md, "The ten slots"). The soft, show-it-locked behaviour is for the multi-key case that
--- wants it: the Gate Below, where being two keys short is information worth putting on the board.
+-- A quest may OPT IN to being shown locked with `showLocked`, which surfaces it from the first
+-- prerequisite held, carrying its key count and the hints earned so far. The caller must refuse to
+-- start a locked quest (see ui/panels/quest_board.lua).
+--
+-- ONLY THE GATE BELOW ASKS FOR THIS, and the flag is authored rather than inferred because the
+-- inference was wrong. The rule used to be `keysHeld >= 1` -- show anything holding one key of
+-- several -- which reads a PROXY (how many prerequisites a quest happens to name) for the question
+-- actually being asked (does this quest want the fragments pane). It swept in all 21 discipline
+-- capstones, which name two gates apiece and want none of it: they have no `gateHint` between them, so
+-- every one of them fell through to the pane's "Sealed. The generals know where." fallback, promising a
+-- riddle for what is really a two-quest checklist. They are advertised properly on their parent
+-- vendor's shelf instead, where Discipline.missingParents turns the lock into a direction. A future
+-- quest naming several prerequisites now stays hidden unless it says otherwise.
 function Quest.available(player)
     local prestige = player.prestige or 1
 
@@ -225,7 +230,7 @@ function Quest.available(player)
         local locked = not questsMet
         if showAll then unlocked, exhausted, locked = true, false, false end
 
-        if unlocked and not exhausted and (questsMet or keysHeld >= 1 or showAll) then
+        if unlocked and not exhausted and (questsMet or (def.showLocked and keysHeld >= 1) or showAll) then
             local sponsor = def.sponsor and Vendor.get(def.sponsor)
             list[#list + 1] = {
                 id = id,
