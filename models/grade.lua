@@ -1156,6 +1156,14 @@ Grade.SLOT_PINS = {
     ability_collapse = { at = 3, why = "blind to the dry run: placed by hand" },
     ability_understudy = { at = 3, why = "blind to the dry run: placed by hand" },
 
+    -- PLACED BY HAND against the grade rather than around a blind spot. The dry run reads the Muster
+    -- Rift perfectly well -- the teleport scores +5.0 -- and still nets it to -4.0, because everything
+    -- it does is spent on the turn it costs, and the unit here is damage. What the ruler cannot price
+    -- is WHAT is moved: a whole side, any distance, which is a verb nothing else in the game has. A
+    -- party split by terrain or strung out by a chase is a party losing, and this un-loses it in one
+    -- action. That is not opening-rack stock at 80 gold, whatever it grades.
+    ability_muster_rift = { at = 8, why = "board-scale repositioning: not a verb the opening rack sells" },
+
     -- PLACED BY HAND for a different reason: the grade can see this one perfectly well now. Polymorph
     -- read at half a turn until status_polymorph carried an authored weight (the pig's emptiness is not
     -- a field), and on merit it ranks a rung below this. The last rung is the author's, and the thing it
