@@ -4586,7 +4586,10 @@ function battle.enter(self, opts)
     -- but no passive has been applied and no battle-opener trait has fired. Combat.openBattle does that
     -- once, in commitDeploy, when the company is standing where the player put them. See models/combat.lua.
     battle.combat = Combat.new(battle.arena, battle.partyUnits, battle.enemyUnits,
-        { deferOpen = battle.deployEnabled })
+        { deferOpen = battle.deployEnabled,
+          -- A draft match or a duel has a person on the other side, so the AI plays to win the
+          -- objective rather than to be a fight the player can defend against. See AI.spared.
+          versus = (opts.draft or opts.session) and true or nil })
 
     -- The battle purse: the pot the greed (rogue) money kit spends in-fight (fx.spendPurse ->
     -- Combat.spendPurse), and the pot the debug "Add gold" tool funds. EVERY battle gets one now, so a

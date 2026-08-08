@@ -397,6 +397,92 @@ return {
                 "a map that merely NAMES the driver does not outrank the run")
         end,
     },
+    -- ---------------------------------------------------------------------
+    -- Sparing the escortee
+    -- ---------------------------------------------------------------------
+    {
+        name = "the escorted charge is spared while the party still has a body in the way",
+        fn = function()
+            -- The whole escort problem in one board: the survivor is the softest thing standing, so
+            -- the scorer priced a blow on it above one that scrapes a knight's armour and every demon
+            -- walked past the wall the player had just built. Two knights at gap 1 and 2, the charge
+            -- four tiles off behind them.
+            local function board()
+                return Combat.new(arena(14, 14, { type = "defend", protect = "character_survivor" }),
+                    { unit("character_knight", 7, 7), unit("character_knight", 7, 8),
+                      unit("character_survivor", 10, 7) },
+                    { unit("character_demon_imp", 6, 7) })
+            end
+
+            local c = board()
+            local imp, survivor = c.units[4], c.units[3]
+            assert(AI.spared(c, imp) == survivor, "the charge is screened, so it is spared")
+            local plan = AI.plan(c, imp)
+            assert(plan.target ~= survivor, "and the imp does not walk past the wall to reach it")
+            assert(plan.target == c.units[1] or plan.target == c.units[2], "it takes the body in its way")
+
+            -- ...and a versus match is not handicapped. There is a person on the other side playing
+            -- to win, and the body that ends the match is the right thing to go for.
+            local pvp = board()
+            pvp.versus = true
+            assert(AI.spared(pvp, pvp.units[4]) == nil, "nothing is spared across a draft or a duel")
+            assert(AI.plan(pvp, pvp.units[4]).target == pvp.units[3], "the opponent goes for the win")
+        end,
+    },
+    {
+        name = "a gap left open still costs: nothing nearer, and the charge is fair game",
+        fn = function()
+            -- Sparing is "come through me first", not a shield. Pull the screen off and the escortee
+            -- is the nearest foe, which is exactly when it is supposed to be struck.
+            local c = Combat.new(arena(14, 14, { type = "defend", protect = "character_survivor" }),
+                { unit("character_knight", 1, 1), unit("character_survivor", 8, 7) },
+                { unit("character_demon_imp", 6, 7) })
+            local imp, survivor = c.units[3], c.units[2]
+            assert(AI.spared(c, imp) == nil, "with nobody nearer there is nothing to spare it from")
+            assert(AI.plan(c, imp).target == survivor, "so the demon takes the opening")
+        end,
+    },
+    {
+        name = "a rule that names the objective still means it",
+        fn = function()
+            -- Sparing is a default, not a veto over what an author wrote down. The `objective` posture
+            -- is a unit whose entire description is "plays the map rather than the bodies".
+            local imp = Character.instantiate("character_demon_imp")
+            imp.archetype = "objective"
+            local c = Combat.new(arena(14, 14, { type = "defend", protect = "character_survivor" }),
+                { unit("character_knight", 7, 7), unit("character_knight", 7, 8),
+                  unit("character_survivor", 10, 7) },
+                { unit(imp, 6, 7) })
+            assert(AI.spared(c, c.units[4]) == c.units[3], "it is screened like anything else")
+            assert(AI.plan(c, c.units[4]).target == c.units[3], "and it goes for the charge anyway")
+        end,
+    },
+    {
+        name = "a defend map's ground is the charge's own body, and is no post for the far side",
+        fn = function()
+            -- The same beeline through the movement layer: Combat.objectiveGround resolves a `defend`
+            -- to the protectee's tiles, so an enemy reading "hold the objective" used to march onto
+            -- the caravan. A node is ground either side can occupy; a body is not.
+            local imp = Character.instantiate("character_demon_imp")
+            imp.archetype = "defensive"
+            local c = Combat.new(arena(14, 14, { type = "defend", protect = "character_survivor" }),
+                { unit("character_knight", 7, 7), unit("character_survivor", 10, 7) },
+                { unit(imp, 6, 7) })
+            assert(AI.post(c, c.units[3]) == nil, "the far side holds nothing on an escort map")
+
+            -- A hold region is not a body, so it stays a post for whoever is standing on the map --
+            -- a protect clause riding along beside it changes nothing.
+            local held = Combat.new(arena(14, 14, {
+                    type = "hold", protect = "character_survivor", tiles = { { x = 4, y = 4 } },
+                }),
+                { unit("character_knight", 7, 7), unit("character_survivor", 10, 7) },
+                { unit(Character.instantiate("character_demon_imp"), 6, 7, function(ch)
+                    ch.archetype = "defensive"
+                end) })
+            local post = AI.post(held, held.units[3])
+            assert(post and post.tiles[1].x == 4 and post.tiles[1].y == 4, "the region is still held")
+        end,
+    },
     {
         name = "with no player on the board the ranking falls to the healer, then to the fragile",
         fn = function()

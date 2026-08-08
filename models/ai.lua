@@ -524,6 +524,75 @@ function AI.objectiveUnit(combat, unit)
     return nil
 end
 
+-- ---------------------------------------------------------------------------
+-- Sparing the escortee
+-- ---------------------------------------------------------------------------
+--
+-- The body a `protect` clause names is the softest thing on the board by construction -- a survivor
+-- with 24 health and no armour, a wagon that cannot swing back -- and the scorer prices a soft body
+-- exactly the way it should: a blow that lands 10 through a villager's coat beats one that scrapes 2
+-- off a knight's, and STEPS is a quarter-point a tile, so four tiles of walking buys that trade
+-- outright. Every demon on the board therefore ignores the wall the player just built and converges on
+-- the one body the player cannot move, which is the best play available and an unreadable fight to be
+-- on the wrong side of. The escort maps of the flight leg and the relief of Highwatch all played that
+-- way, and the encounters' own comments describe the behavior they were authored for -- "aggressive
+-- demons walk for the nearest enemy" -- rather than the behavior they got.
+--
+-- So the escortee is SPARED: it is not a mark this unit may walk past somebody to reach. Not a weight,
+-- because a weight is a knob that has to be re-guessed every time a protectee's health changes, and
+-- because what is wanted here is not "the caravan is worth less" -- it is worth the whole battle --
+-- but "you have to come through me first", which is a statement about geometry and reads as one.
+-- Nothing nearer than the escortee, and it is fair game again: screening it is the player's job, and a
+-- gap left open is supposed to cost.
+--
+-- ...IN THE CAMPAIGN ONLY. Across a draft or a duel there is a person on the other side playing to
+-- win, and going for the body that ends the match is simply the right move -- handicapping the
+-- opponent because their win condition is fragile would be the game cheating on the player's behalf.
+-- `combat.versus` is what tells the two apart (see Combat.new).
+
+-- The body the map's `protect` clause names, seen from `unit`'s side of the board: the escortee whose
+-- death ends the battle outright (Combat.resolveObjective). Deliberately narrower than
+-- AI.objectiveUnit, which also answers to an assassination's `target` -- a mark is a foe like any
+-- other and nobody is asking the AI to spare one.
+function AI.protectee(combat, unit)
+    local id = combat.objective and combat.objective.protect
+    if not id then return nil end
+    for _, u in ipairs(combat.units) do
+        if u.alive and u.char.id == id and not u.summoned and u.side ~= unit.side then return u end
+    end
+    return nil
+end
+
+-- The body `unit` leaves alone this turn, or nil -- which is the answer on almost every board, since
+-- most maps protect nobody. Read ONCE per plan and carried on the ctx: it is a fact about where the
+-- unit is standing at the top of its turn, and re-asking it per candidate would let a unit walk two
+-- tiles toward the caravan, find the caravan nearest from there, and hit it after all.
+function AI.spared(combat, unit)
+    if combat.versus then return nil end
+    local body = AI.protectee(combat, unit)
+    if not body then return nil end
+
+    local Combat = require("models.combat")
+    -- Body to body, the same measure `nearest_foe` is resolved by, so "the nearest foe" means one
+    -- thing across the module and a wide body is judged by its closest cell either way.
+    local gap = Combat.unitGap(unit, body)
+    for _, u in ipairs(combat.units) do
+        if u.alive and u ~= body and u.side ~= unit.side and not Status.untargetable(u)
+            and Combat.unitGap(unit, u) < gap then
+            return body -- somebody is standing closer: the escortee is screened
+        end
+    end
+    return nil -- nothing nearer, so the escortee IS the nearest foe and there is nothing to spare it from
+end
+
+-- A rule that NAMES the objective means it. `targetPref = "objective"` and the `objective_unit`
+-- subject are both an author writing down "go for the thing this map is about" -- the `objective`
+-- posture is nothing else -- and sparing is a default, not a veto over what somebody wrote.
+local function namesObjective(rule)
+    return rule.targetPref == "objective"
+        or (rule.when ~= nil and rule.when.subject == "objective_unit")
+end
+
 -- The nearest tile of the ground the objective names. Read through Combat.objectiveGround rather
 -- than off `obj.tiles` directly, because the ground an objective is decided on is not always the
 -- authored region: a `control` node follows its own moving waypoint and a `defend` follows the body
@@ -782,8 +851,16 @@ end
 function AI.post(combat, unit)
     local body = AI.postedUnit(combat, unit)
     if body then return bodyPost(body) end
+    -- ...with one piece of ground that is nobody's post but its owner's. A `defend` objective's ground
+    -- IS the protectee's own tiles (Combat.objectiveGround), so on an escort map the far side reads
+    -- "hold the objective" as "go and stand on the caravan" -- the very beeline AI.spared exists to
+    -- stop, arriving through the movement layer instead of the targeting one. A node or a hold region
+    -- is ground either side can occupy; a body is not. Falls through to the charge ranking below, so a
+    -- defensive attacker on an escort map guards its own the way it would on a killAll.
     local ground = require("models.combat").objectiveGround(combat)
-    if #ground > 0 then
+    local theirCharge = combat.objective and combat.objective.type == "defend"
+        and AI.protectee(combat, unit) ~= nil
+    if #ground > 0 and not theirCharge then
         -- Radius 0, not a ring: this ground is held by STANDING on it. A control node only banks its
         -- tick for the side actually occupying it and a `hold` counts the same way, so a defender
         -- who parks one tile short of the post has not taken the post, however defensive it looks.
@@ -1559,7 +1636,12 @@ function AI.plan(combat, unit)
     -- and carried on the ctx, because the engage test, the stand-tile leash and the movement fallback
     -- all have to agree about where the post is or the unit oscillates between taking it and leaving.
     local post = posture.defends and AI.post(combat, unit) or nil
-    local ctx = { combat = combat, unit = unit, items = items, posture = posture, post = post }
+    -- Who this unit will not walk past somebody to reach: the escorted charge, while the party still
+    -- has a body between it and here. Nil in a versus match and on every map that protects nobody.
+    -- See AI.spared for why it is read here, once, rather than per candidate.
+    local spared = AI.spared(combat, unit)
+    local ctx = { combat = combat, unit = unit, items = items, posture = posture, post = post,
+                  spared = spared }
 
     -- Stand tiles: always where I am, plus everywhere I could walk to unless the posture is rooted.
     --
@@ -1630,11 +1712,18 @@ function AI.plan(combat, unit)
                 -- the gate's own comment says it does not want. (A Bomblet walking three tiles to burst
                 -- on an armoured knight is exactly that shape, and it is a real action -- it is the
                 -- only one that unit has.)
+                -- ...and throw out the escorted charge along with them, unless this rule is one that
+                -- named the objective outright. Dropped BEFORE scoring rather than penalised after it,
+                -- because "come through me first" is a hard statement and a bias would be re-argued by
+                -- the first soft body the scorer met. A rule left with nothing else to hit takes no
+                -- action and the turn falls through to the approach below -- which walks at the nearest
+                -- foe, which is the body doing the screening.
+                local spare = (not namesObjective(rule)) and ctx.spared or nil
                 local scored = {}
                 for _, c in ipairs(pool) do
                     c.score = AI.scoreCandidate(combat, unit, c, w, previews)
                     c.score = c.score + prefBonus(ctx, rule, c, w)
-                    if c.outcome > 0 then scored[#scored + 1] = c end
+                    if c.outcome > 0 and c.target ~= spare then scored[#scored + 1] = c end
                 end
                 pool = scored
 

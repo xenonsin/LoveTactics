@@ -1133,6 +1133,13 @@ function Combat.new(arena, partyUnits, enemyUnits, opts)
         -- Always the party in campaign play; a duel sets it per machine, which is how one board
         -- reads as a victory to one player and a defeat to the other.
         playerSide = "party",
+        -- Is there a PERSON on the other side of this board? True for a draft match and a duel, nil
+        -- for every campaign fight. Only the AI reads it, and only to decide how hard to play: an
+        -- opponent going for the body that ends the match is right, and a campaign enemy that walks
+        -- past the party to swarm the one body the player cannot move is a fight nobody can defend
+        -- (models/ai.lua, AI.spared). Set by whoever starts the fight -- states/battle.lua from
+        -- `opts.draft` / `opts.session` -- because the combat model has no way to know on its own.
+        versus = opts.versus or nil,
         -- This battle's own draw sequence, a function of the seed that built the board. Absent for
         -- a combat with no seeded arena (a scripted layout), which falls back to Combat.random.
         rng = (arena and arena.seed) and Combat.newRandom(arena.seed) or nil,

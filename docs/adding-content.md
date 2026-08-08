@@ -763,6 +763,25 @@ simply stays put; any other `defensive` ally on the map is posted to the charge 
 of wandering. On the other side, an enemy with `archetype = "objective"` hunts the charge specifically
 rather than the nearest body, which is what makes an escort map play like one.
 
+**Every other enemy spares the charge while it is screened** (`AI.spared`). A protectee is the softest
+body on any board by construction, so the scorer would otherwise price a blow on it above one that
+scrapes a knight's armour, and the whole field would walk past the wall the player just built to
+converge on the one body the player cannot move. So the charge is not a mark an enemy may walk past
+somebody to reach: leave a foe standing nearer and it takes that foe instead. It is a statement about
+geometry, not a shield — with nothing nearer, the charge is the nearest foe and is struck. Screening it
+is the player's job, and a gap left open still costs.
+
+Two things opt out. A rule that names the objective outright — `targetPref = "objective"`, or a `when`
+on the `objective_unit` subject, which is the whole of the `objective` posture — means it, and hunts
+the charge regardless. And a **versus match** (a draft or a duel; `combat.versus`, set from
+`opts.draft` / `opts.session` in `states/battle.lua`) spares nobody: there is a person on the other
+side playing to win, and going for the body that ends the match is simply the right move.
+
+For the same reason, a `defend` objective's *ground* — which resolves to the protectee's own tiles, so
+it walks with the charge — is no post for the far side. A `defensive` enemy on an escort map falls
+through to guarding its own side's charge, exactly as it would on a `killAll`. A `hold` region or a
+`control` node is ground either side can occupy, and stays a post for both.
+
 True "escort to an exit tile" is not implemented; it would need exit tiles in `models/arena.lua`.
 
 ## Add a curated battle arena
