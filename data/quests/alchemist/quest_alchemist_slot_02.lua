@@ -13,7 +13,7 @@
 -- Saber (data/quests/colosseum/quest_colosseum_slot_01.lua). The reward IS the companion.
 return {
     name = "The Counterfeiter",
-    description = "The Crucible has branded one of its own a heretic -- she gives the Work away for free " ..
+    description = "The Crucible has branded one of its own a heretic. She gives the Work away for free " ..
         "and hides what it discards. Bring her in.",
     difficulty = "Normal",
     sponsor = "alchemist",

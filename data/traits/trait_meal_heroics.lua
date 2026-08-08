@@ -21,7 +21,7 @@
 -- docs/classes.md exists to stop.
 return {
     name = "Heroics",
-    description = "Below half health, strikes far harder -- with steel and with magic alike.",
+    description = "Below half health, strikes far harder. With steel and with magic alike.",
     live = function(ctx)
         if ctx.missing() < 0.5 then return nil end
         return { damage = 6, magicDamage = 6 }

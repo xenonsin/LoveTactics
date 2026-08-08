@@ -15,9 +15,9 @@ return {
     cast  = { "character_avatar", { id = "character_saber", when = { has = "character_saber" } } },
 
     script = {
-        { "character_avatar", "BEAT: the avatar, still standing at the bell, takes in what just happened -- there was no one to reach.", tag = 1 },
+        { "character_avatar", "BEAT: the avatar, still standing at the bell, takes in what just happened. There was no one to reach.", tag = 1 },
         { when = { has = "character_saber" }, script = {
-            { "character_saber", "BEAT: Saber says the quiet thing -- she came in believing there was somewhere else Ira could be put, and there is not.", tag = 2 },
+            { "character_saber", "BEAT: Saber says the quiet thing. She came in believing there was somewhere else Ira could be put, and there is not.", tag = 2 },
             { "character_saber", "BEAT: the hope goes out of her; from here she is not hoping to save Ira, she is deciding what she owes her.", tag = 3 },
         } },
     },

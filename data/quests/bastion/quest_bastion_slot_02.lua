@@ -32,7 +32,7 @@
 -- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "The Ones Who Would Not",
-    description = "A crew has been taking wagons on the eastern road -- too clean, too disciplined, " ..
+    description = "A crew has been taking wagons on the eastern road. Too clean, too disciplined, " ..
         "and nobody killed. The Bastion wants it ended and will not say why.",
     difficulty = "Easy",
     sponsor = "bastion",

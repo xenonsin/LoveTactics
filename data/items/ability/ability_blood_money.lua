@@ -24,7 +24,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Blood Money",
-    description = "A modest strike -- but it spends gold from your purse, and every coin lands as extra damage.",
+    description = "A modest strike, but it spends gold from your purse, and every coin lands as extra damage.",
     flavor = "He counted it out onto the table between them. Then he collected the table.",
     sprite = "assets/items/ability_blood_money.png",
     type = "ability",

@@ -7,12 +7,12 @@ return {
     script = {
         { "bastion", "Highwatch. Mountain post, top of the pass, warded on all four faces. It has been under siege for six weeks and without supply for twelve days.", tag = 1 },
         { "bastion", "The column carrying its winter stores and its ward-salt is sitting at the bottom of that mountain and cannot get up it.", tag = 2 },
-        { "character_rowan", "Then they are still standing. Hold until relieved -- that is the order they were issued, and they will be keeping it.", tag = 3 },
+        { "character_rowan", "Then they are still standing. They were told to hold until relieved. They will be holding.", tag = 3 },
         { "bastion", "Twelve days, Sworn. On a rock, in winter.", tag = 4 },
         { "character_rowan", "I have met men who held forty on a well that had gone dry.", tag = 5 },
         { "bastion", "...That is the assumption the order makes, yes.", tag = 6 },
-        { "character_rowan", "The doctrine is hers. Acedia's. Everything I know about how to stand still and do nothing but wait, I learned off a woman who has been dead fifteen years.", tag = 7 },
-        { "character_rowan", "{name}. This isn't your line and it isn't your order. There is no shame in leaving it to people who swore to it.", tag = 8 },
-        { "character_rowan", "But I gave you two words in the ash, and I meant both of them. So.", tag = 9 },
+        { "character_rowan", "The doctrine is hers. Acedia's. Everything I know about holding a post I learned from her, and she has been dead fifteen years.", tag = 7 },
+        { "character_rowan", "This is not your line, {name}, and it is not your order.", tag = 8 },
+        { "character_rowan", "But I gave you two words in the ash and I meant them both. Come on.", tag = 9 },
     },
 }

@@ -10,7 +10,7 @@
 -- See docs/disciplines-plan.md.
 return {
     name    = "Elementalist",
-    description = "The sigil-adept. Lays aura tiles that reshape any spell cast beside them -- careful, twinned, farther, faster.",
+    description = "The sigil-adept. Lays aura tiles that reshape any spell cast beside them. Careful, twinned, farther, faster.",
     classes = { "mage" },
     exemplar = "character_elementalist", -- was character_mage (the generic root body); dedicated exemplar authored
     requiredQuests = { "quest_arcanum_slot_03" },

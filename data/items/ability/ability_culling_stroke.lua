@@ -23,7 +23,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Culling Stroke",
-    description = "Kills outright below a health threshold -- and a kill hands the turn straight back.",
+    description = "Kills outright below a health threshold, and a kill hands the turn straight back.",
     flavor = "The crowd does not cheer the first one. They have worked out what the first one means.",
     sprite = "assets/items/ability_culling_stroke.png",
     type = "ability",

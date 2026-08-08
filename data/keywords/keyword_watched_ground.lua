@@ -7,5 +7,5 @@
 -- and put them further down the timeline for it.
 return {
     name = "Watched Ground",
-    description = "While the watch holds, tiles beside it cost N more for enemies to enter -- passable, but slow, and slow means further down the order.",
+    description = "While the watch holds, tiles beside it cost N more for enemies to enter. Passable, but slow, and slow means further down the order.",
 }

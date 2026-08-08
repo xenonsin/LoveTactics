@@ -15,10 +15,10 @@ return {
     cast  = { "character_avatar", { id = "character_saber", when = { has = "character_saber" } } },
 
     script = {
-        { "character_avatar", "BEAT: the avatar says the hard thing plainly -- killing Ira ends Ira, and nothing else; the Perennial trains again within a year.", tag = 1 },
+        { "character_avatar", "BEAT: the avatar says the hard thing plainly. Killing Ira ends Ira, and nothing else; the Perennial trains again within a year.", tag = 1 },
         { when = { has = "character_saber" }, script = {
-            { "character_saber", "BEAT: Saber does not argue it -- she knows -- and reframes what they are actually going down there to do, and for whom.", tag = 2 },
-            { "character_saber", "BEAT: the last quiet before slot 10 -- she is done deferring and done hoping; what is left is what she owes Ira.", tag = 3 },
+            { "character_saber", "BEAT: Saber does not argue it. She knows, and reframes what they are actually going down there to do, and for whom.", tag = 2 },
+            { "character_saber", "BEAT: the last quiet before slot 10. She is done deferring and done hoping; what is left is what she owes Ira.", tag = 3 },
         } },
     },
 }

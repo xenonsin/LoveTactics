@@ -24,7 +24,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Ledger",
-    description = "Take four actions, then release what you kept back -- one strike, scaled by your practice.",
+    description = "Take four actions, then release what you kept back. One strike, scaled by your practice.",
     flavor = "A book she is always writing and never finishes. She would tell you she has a great deal left to learn.",
     sprite = "assets/items/sig_ledger.png",
     type = "utility",

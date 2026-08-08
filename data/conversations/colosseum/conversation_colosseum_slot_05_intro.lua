@@ -15,10 +15,10 @@ return {
     cast  = { "colosseum", "character_avatar", { id = "character_saber", when = { has = "character_saber" } } },
 
     script = {
-        { "colosseum", "BEAT: the vendor points them at the intake hall -- get in and read the ledger; the stewards are in the way.", tag = 1 },
-        { "character_avatar", "BEAT: the avatar registers what the ledger actually records -- children received by year, wins on the facing page, kept with pride.", tag = 2 },
+        { "colosseum", "BEAT: the vendor points them at the intake hall. Get in and read the ledger; the stewards are in the way.", tag = 1 },
+        { "character_avatar", "BEAT: the avatar registers what the ledger actually records. Children received by year, wins on the facing page, kept with pride.", tag = 2 },
         { when = { has = "character_saber" }, script = {
-            { "character_saber", "BEAT: Saber has gone very still -- she has worked out what this ledger is before they reach it, and says nothing on the way in.", tag = 3 },
+            { "character_saber", "BEAT: Saber has gone very still. She has worked out what this ledger is before they reach it, and says nothing on the way in.", tag = 3 },
         } },
     },
 }

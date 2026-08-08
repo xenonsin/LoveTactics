@@ -12,7 +12,7 @@
 return {
     name = "Physical Barrier",
     description = "Wards yourself or an ally against the next physical blow.",
-    flavor = "A negation has no size to grow, only a count -- and the count is what you are buying.",
+    flavor = "A negation has no size to grow, only a count, and the count is what you are buying.",
     sprite = "assets/items/ability_physical_barrier.png",
     type = "ability",
     tags = { "holy", "protective" },

@@ -16,10 +16,10 @@ return {
     cast  = { "colosseum", "character_avatar", { id = "character_saber", when = { has = "character_saber" } } },
 
     script = {
-        { "colosseum", "BEAT: the house, cornered, has scheduled its own trainers onto a disposal card -- framed as ordinary sport, so by morning there is nothing left to ask about.", tag = 1 },
-        { "character_avatar", "BEAT: the avatar clocks the move -- the house will spend anyone, including its own architects, before it says one true sentence; the player is the only one trying to stop it.", tag = 2 },
+        { "colosseum", "BEAT: the house, cornered, has scheduled its own trainers onto a disposal card. Framed as ordinary sport, so by morning there is nothing left to ask about.", tag = 1 },
+        { "character_avatar", "BEAT: the avatar clocks the move. The house will spend anyone, including its own architects, before it says one true sentence; the player is the only one trying to stop it.", tag = 2 },
         { when = { has = "character_saber" }, script = {
-            { "character_saber", "BEAT: Saber goes because it is the same crime one more time -- the house feeding the sand people who never chose to be there -- and she will not let it be a show. The last quiet before the sand.", tag = 3 },
+            { "character_saber", "BEAT: Saber goes because it is the same crime one more time. The house feeding the sand people who never chose to be there, and she will not let it be a show. The last quiet before the sand.", tag = 3 },
         } },
     },
 }

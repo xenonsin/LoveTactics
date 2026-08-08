@@ -5,7 +5,7 @@
 -- supports. A PASSIVE, so it attaches to a grid charm (docs/classes.md).
 return {
     name = "Brawler's Bandolier",
-    description = "When you drink a draught, you gain Haste -- nearly buying back the turn it cost.",
+    description = "When you drink a draught, you gain Haste. Nearly buying back the turn it cost.",
     flavor = "The Crucible sells the potion. The bandolier is for people who did not plan to stop moving to use it.",
     sprite = "assets/items/utility_brawlers_bandolier.png",
     type = "utility",

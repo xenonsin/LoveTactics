@@ -19,7 +19,7 @@
 -- Splitglass is a build that has stopped optimising its knives.
 return {
     name = "Splitglass",
-    description = "Turns aside the next few hits of any kind -- one more for each item beside it.",
+    description = "Turns aside the next few hits of any kind. One more for each item beside it.",
     flavor = "The Undercroft's first lesson: never be where they are looking. The second is for when you are.",
     sprite = "assets/items/ability_splitglass.png",
     type = "ability",

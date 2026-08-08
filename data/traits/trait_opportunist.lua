@@ -5,7 +5,7 @@
 -- than shave an initiative that isn't there yet.
 return {
     name = "Opportunist",
-    description = "When you afflict a foe with a debuff, seize the moment -- you gain Haste. Then it goes on cooldown.",
+    description = "When you afflict a foe with a debuff, seize the moment. You gain Haste. Then it goes on cooldown.",
     cooldown = 14, -- ticks between triggers
     onStatusApplied = function(ctx)
         if ctx.role ~= "applier" then return end

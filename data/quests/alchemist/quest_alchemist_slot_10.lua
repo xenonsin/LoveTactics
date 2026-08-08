@@ -10,7 +10,7 @@
 -- party's own answer.
 return {
     name = "The Unborn",
-    description = "The college's masterpiece has no shape of its own -- so it opens every fight wearing " ..
+    description = "The college's masterpiece has no shape of its own, so it opens every fight wearing " ..
         "your best. Win with a party that has no single tower to covet.",
     difficulty = "Hard",
     sponsor = "alchemist",

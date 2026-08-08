@@ -15,8 +15,8 @@ return {
 
     script = {
         { when = { has = "character_saber" }, script = {
-            { "character_saber", "BEAT: Saber asks it straight -- do you mean to keep taking the top billing? -- and makes clear she wants a real answer, not a shrug.", tag = 1 },
+            { "character_saber", "BEAT: Saber asks it straight. Do you mean to keep taking the top billing?, and makes clear she wants a real answer, not a shrug.", tag = 1 },
         } },
-        { "character_avatar", "BEAT: the choice is the player's, and the scene leaves it standing rather than resolving it -- the billing is how they get to Ira at all.", tag = 2 },
+        { "character_avatar", "BEAT: the choice is the player's, and the scene leaves it standing rather than resolving it. The billing is how they get to Ira at all.", tag = 2 },
     },
 }

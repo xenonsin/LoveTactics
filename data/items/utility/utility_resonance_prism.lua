@@ -23,7 +23,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Resonance Prism",
-    description = "Adjacent magic -- spells and enchanted arms alike -- strikes harder.",
+    description = "Adjacent magic. Spells and enchanted arms alike. Strikes harder.",
     flavor = "The Arcanum tunes it by ear, and will not say to what.",
     sprite = "assets/items/resonance_prism.png",
     type = "utility",

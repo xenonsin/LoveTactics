@@ -19,7 +19,7 @@
 return {
     name = "Riven Ground",
     description = "Splits the field with a five-tile ridge of stone that blocks movement and sight.",
-    flavor = "Not a wall. The Arcanum did not build anything -- it merely stopped agreeing that the ground was flat.",
+    flavor = "Not a wall. The Arcanum did not build anything. It merely stopped agreeing that the ground was flat.",
     sprite = "assets/items/ability_riven_ground.png",
     type = "ability",
     tags = { "earth", "magical" },

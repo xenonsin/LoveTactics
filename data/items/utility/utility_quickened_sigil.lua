@@ -21,7 +21,7 @@
 -- point of a mage who has decided that going first is the only thing that matters.
 return {
     name = "Quickened Sigil",
-    description = "Adjacent magic costs less time -- the caster comes back around sooner.",
+    description = "Adjacent magic costs less time. The caster comes back around sooner.",
     flavor = "The incantation is the same length. She has simply stopped waiting for it to finish.",
     sprite = "assets/items/utility_quickened_sigil.png",
     type = "utility",

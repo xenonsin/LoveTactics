@@ -20,7 +20,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Reach of the Second Rank",
-    description = "Skewers the two tiles ahead -- three, while an ally stands directly at your back.",
+    description = "Skewers the two tiles ahead. Three, while an ally stands directly at your back.",
     flavor = "A pike is not long because of the pole. It is long because of the man behind you, who is also holding one.",
     sprite = "assets/items/second_rank.png",
     type = "weapon",

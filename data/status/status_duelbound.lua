@@ -21,7 +21,7 @@
 return {
     name = "Duelbound",
     abbr = "Duel",
-    description = "Duelbound: cannot move -- and the survivor keeps something of the other.",
+    description = "Duelbound: cannot move, and the survivor keeps something of the other.",
     color = { 0.767, 0.579, 0.280 }, -- badge tint (challenge amber)
     duration = 15,                -- ~3 turns to settle it
     magnitude = 3,                -- the damage the survivor keeps

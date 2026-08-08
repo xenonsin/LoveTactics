@@ -14,10 +14,10 @@ return {
     cast  = { "colosseum", "character_avatar", { id = "character_saber", when = { has = "character_saber" } } },
 
     script = {
-        { "character_avatar", "BEAT: the avatar marks it -- that was a real bout, the best kind, fought clean.", tag = 1 },
+        { "character_avatar", "BEAT: the avatar marks it. That was a real bout, the best kind, fought clean.", tag = 1 },
         { when = { has = "character_saber" }, script = {
-            { "character_saber", "BEAT: Saber is happier than the player has seen her -- the craft, the read, the moment; this is the whole reason she never left the sand.", tag = 2 },
-            { "character_saber", "BEAT: a beat of pure, unguarded trust in the sport -- she has no idea yet what the arena she loves is built on, and the player is about to.", tag = 3 },
+            { "character_saber", "BEAT: Saber is happier than the player has seen her. The craft, the read, the moment; this is the whole reason she never left the sand.", tag = 2 },
+            { "character_saber", "BEAT: a beat of pure, unguarded trust in the sport. She has no idea yet what the arena she loves is built on, and the player is about to.", tag = 3 },
         } },
     },
 }

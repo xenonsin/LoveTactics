@@ -20,7 +20,7 @@
 
 return {
     name = "The Gilded Wound",
-    description = "Pay gold to carve a wound -- ten gold per point of damage, dialed at the swing.",
+    description = "Pay gold to carve a wound. Ten gold per point of damage, dialed at the swing.",
     flavor = "She never lifted a blade. She simply named what it would cost you, and you paid.",
     sprite = "assets/items/ability_gilded_wound.png",
     type = "ability",

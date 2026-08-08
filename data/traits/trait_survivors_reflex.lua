@@ -19,7 +19,7 @@
 -- measured against the health it actually has rather than the health it used to have.
 return {
     name = "Survivor's Reflex",
-    description = "Bloodied by a blow, you drink a healing potion at once -- no turn spent.",
+    description = "Bloodied by a blow, you drink a healing potion at once. No turn spent.",
     cooldown = 6, -- ticks before the reflex can fire again
     threshold = 0.4, -- fires when the blow leaves the bearer below this share of max health
     onDamaged = function(ctx)

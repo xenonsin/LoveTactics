@@ -32,15 +32,10 @@ return {
     cast  = { "character_avatar", "character_rowan" },
 
     script = {
-        { "character_avatar", "I can still see the smoke from here. That's not just our roofs, is it.", tag = 1 },
-        { "character_rowan", "No. Look past the fords -- every steading down the valley is burning, and the ones that aren't are already cold. They came through the whole of it in a night.", tag = 2 },
-        { "character_avatar", "Then there are others. People who ran, like we ran.", tag = 3 },
-        { "character_rowan", "Almost certainly. Scattered, hiding, no idea which way is safe.", tag = 4 },
-        { "character_avatar", "We find them. I'm not walking past someone who's still out there.", tag = 5 },
-        { "character_rowan", "Good. That is the right instinct, and I would have argued you into it if you hadn't got there first. We take who we find, and we keep moving while we do it.", tag = 6 },
-        { "character_avatar", "Moving where? There's nothing left behind us.", tag = 7 },
-        { "character_rowan", "The capital. Its walls are the last ones standing between here and the sea, and they hold a great deal more than a village gate.", tag = 8 },
-        { "character_avatar", "You don't sound certain.", tag = 9 },
-        { "character_rowan", "I am certain of the walls. I am less certain of the road -- the army that did this is walking it too, and it is not in a hurry. Stay close, {name}, and we will get there before they do.", tag = 10 },
+        { "character_avatar", "It's all gone. I don't know who made it out.", tag = 1 },
+        { "character_rowan", "Many did. We held that gate long enough for them to run.", tag = 2 },
+        { "character_rowan", "Look down the valley, {name}. Those villages burned too, with no one to hold a gate. Survivors will be hiding in the hills.", tag = 3 },
+        { "character_avatar", "Then let's find them.", tag = 4 },
+        { "character_rowan", "Good! We take the king's road to the capital, {name}. We'll be safe behind its walls, and we save anyone we can along the way.", tag = 5 },
     },
 }

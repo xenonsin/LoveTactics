@@ -6,7 +6,7 @@
 return {
     name = "Fury",
     description = "Drops you to 1 HP and makes you unkillable, then heals half the damage you dealt.",
-    flavor = "Burn the candle at both ends. The more you spend, the more comes back -- if you last long enough to collect.",
+    flavor = "Burn the candle at both ends. The more you spend, the more comes back. If you last long enough to collect.",
     sprite = "assets/items/ability_fury.png",
     type = "ability",
     tags = { "physical" },

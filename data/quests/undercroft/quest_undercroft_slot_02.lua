@@ -15,7 +15,7 @@
 -- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "The Retired Blade",
-    description = "The Bank's own quiet hand has turned on it -- burning notes, freeing the ruined. The " ..
+    description = "The Bank's own quiet hand has turned on it. Burning notes, freeing the ruined. The " ..
         "house wants her collected. Bring her in.",
     difficulty = "Normal",
     sponsor = "undercroft",

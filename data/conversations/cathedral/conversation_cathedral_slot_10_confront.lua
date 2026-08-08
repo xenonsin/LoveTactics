@@ -10,10 +10,10 @@ return {
     cast  = { "character_general_lust", "character_amana" },
 
     script = {
-        { "character_general_lust", "The little witness -- come back in their colors, a blade at your back. You saw the pits and could not look away, and here you are anyway. I never once feared you would come.", tag = 1 },
+        { "character_general_lust", "The little witness. Come back in their colors, a blade at your back. You saw the pits and could not look away, and here you are anyway. I never once feared you would come.", tag = 1 },
         { "character_general_lust", "I can take the blade. I can take every soul in these colors. But not you. There was never any of me put in you to call.", tag = 2 },
         { "character_general_lust", "You were the one we kept clean. No blooding, no leash. I used to think that a waste. Today I find it a mercy I can still spend.", tag = 3 },
-        { "character_general_lust", "So let me give, for once -- the one thing this house took from you and never gave back.", tag = 4 },
+        { "character_general_lust", "So let me give, for once. The one thing this house took from you and never gave back.", tag = 4 },
         { "character_general_lust", "I keep every name that was traded for the cloth. Yours among them: the child you were, before they wrote a virtue over her and worked her to the bone inside it. Kneel, and it is yours again.", tag = 5 },
         { "character_amana", "...", tag = 6 },
         { "character_amana", "That name is not yours to give. Taking it back from your hand would only be one more theft.", tag = 7 },

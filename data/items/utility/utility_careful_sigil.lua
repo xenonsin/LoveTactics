@@ -20,7 +20,7 @@
 -- the blast, and they will be standing in a fire.
 return {
     name = "Careful Sigil",
-    description = "Adjacent magic spares your own side -- though not the ground it leaves behind.",
+    description = "Adjacent magic spares your own side. Though not the ground it leaves behind.",
     flavor = "The Arcanum grades third-years on it. Nobody is graded on the floor.",
     sprite = "assets/items/utility_careful_sigil.png",
     type = "utility",

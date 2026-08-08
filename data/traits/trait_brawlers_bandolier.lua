@@ -5,7 +5,7 @@
 -- free action" that the turn economy actually supports: not free, but paid straight back.
 return {
     name = "Brawler's Bandolier",
-    description = "When you drink a draught, you gain Haste -- the tempo the drink cost, handed back.",
+    description = "When you drink a draught, you gain Haste. The tempo the drink cost, handed back.",
     onCast = function(ctx)
         local item = ctx.item
         local tags = (item and item.tags) or {}

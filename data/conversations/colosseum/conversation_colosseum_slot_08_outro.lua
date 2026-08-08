@@ -15,10 +15,10 @@ return {
     cast  = { "character_avatar", { id = "character_saber", when = { has = "character_saber" } } },
 
     script = {
-        { "character_avatar", "BEAT: the avatar names what changed -- for seven quests she waited; tonight she picked the moment, and that is not the same thing.", tag = 1 },
+        { "character_avatar", "BEAT: the avatar names what changed. For seven quests she waited; tonight she picked the moment, and that is not the same thing.", tag = 1 },
         { when = { has = "character_saber" }, script = {
-            { "character_saber", "BEAT: Saber owns the distinction -- waiting was never the virtue; choosing when to commit is; and she has decided to commit.", tag = 2 },
-            { "character_saber", "BEAT: the second-relic beat -- she takes / is handed the thing that lets her choose her one moment outright, instead of leaving it to the odds. (Owes Saber's 2nd relic item.)", tag = 3 },
+            { "character_saber", "BEAT: Saber owns the distinction. Waiting was never the virtue; choosing when to commit is; and she has decided to commit.", tag = 2 },
+            { "character_saber", "BEAT: the second-relic beat. She takes / is handed the thing that lets her choose her one moment outright, instead of leaving it to the odds. (Owes Saber's 2nd relic item.)", tag = 3 },
         } },
     },
 }

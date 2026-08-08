@@ -43,7 +43,7 @@
 return {
     name = "Safeguard",
     description = "Trade places with an ally. Both of you brace, by a share of your own defense.",
-    flavor = "Move. No -- move where I am. That part is not the favour.",
+    flavor = "Move. No. Move where I am. That part is not the favour.",
     sprite = "assets/items/ability_safeguard.png",
     type = "ability",
     tags = { "impact" },

@@ -9,7 +9,7 @@ return {
         { "character_forsworn_captain", "Whose name do you carry, then?", tag = 2 },
         { "character_rowan", "Acedia's.", tag = 3 },
         { "character_forsworn_captain", "Of course it is. They are still handing her out.", tag = 4 },
-        { "character_forsworn_captain", "Ask them where she is buried. Go on. Not what she did -- where she is buried.", tag = 5 },
+        { "character_forsworn_captain", "Ask them where she is buried. Go on. Not what she did. Where she is buried.", tag = 5 },
         { "character_rowan", "At Greywatch. Under the gate she died holding.", tag = 6 },
         { "character_forsworn_captain", "Is she.", tag = 7 },
     },

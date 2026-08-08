@@ -46,7 +46,7 @@ local Curve = require("models.curve")
 return {
     name = "Heave",
     description = "Grabs an adjacent body, banner, barrel or trap, then throws it to a tile up to three away. A collision hurts both sides.",
-    flavor = "The strong have always known the shortest way to move a problem is to pick it up -- and where to set it down.",
+    flavor = "The strong have always known the shortest way to move a problem is to pick it up, and where to set it down.",
     sprite = "assets/items/ability_push.png", -- placeholder until its own art exists
     type = "ability",
     tags = { "impact", "physical" },

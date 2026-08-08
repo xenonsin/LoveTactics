@@ -15,10 +15,10 @@ return {
     cast  = { "colosseum", "character_avatar", { id = "character_saber", when = { has = "character_saber" } } },
 
     script = {
-        { "colosseum", "BEAT: the house books them onto the patron's card -- you are not expected to win; stay standing until the bell.", tag = 1 },
+        { "colosseum", "BEAT: the house books them onto the patron's card. You are not expected to win; stay standing until the bell.", tag = 1 },
         { "character_avatar", "BEAT: the avatar asks what she actually IS, since nobody in the building will say it plainly.", tag = 2 },
         { when = { has = "character_saber" }, script = {
-            { "character_saber", "BEAT: Saber warns the player how the fight goes -- do not trade with her; every blow you land only wakes her -- and she is sure because she has watched the patron eat challengers who tried to grind her down.", tag = 3 },
+            { "character_saber", "BEAT: Saber warns the player how the fight goes. Do not trade with her; every blow you land only wakes her, and she is sure because she has watched the patron eat challengers who tried to grind her down.", tag = 3 },
         } },
     },
 }

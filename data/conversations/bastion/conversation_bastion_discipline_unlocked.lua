@@ -5,7 +5,7 @@ return {
     cast  = { "bastion", "character_avatar", { id = "character_rowan", when = { has = "character_rowan" } } },
 
     script = {
-        { "bastion", "You have earned the {discipline} road, {name}. The quartermaster has moved its gear onto your rack -- kit the Watch keeps for the ones who prove they can carry it.", tag = 1 },
+        { "bastion", "You have earned the {discipline} road, {name}. The quartermaster has moved its gear onto your rack. The Watch keeps that kit for the ones who prove they can carry it.", tag = 1 },
         { "character_avatar", "Then it's earned. Show me.", tag = 2 },
         { when = { has = "character_rowan" }, script = {
             { "character_rowan", "I trained beside a few who took that road. It is a good one. Do not let the rack outgrow the arm.", tag = 3 },

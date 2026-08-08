@@ -22,7 +22,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Quietus",
-    description = "Inflicts Bleed. A foe it kills cannot be revived this battle -- it leaves a corpse at once, not a downed body.",
+    description = "Inflicts Bleed. A foe it kills cannot be revived this battle. It leaves a corpse at once, not a downed body.",
     flavor = "The Undercroft prices two things separately: the death, and the guarantee it stays one.",
     sprite = "assets/items/quietus.png",
     type = "weapon",

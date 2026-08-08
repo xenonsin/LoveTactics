@@ -24,7 +24,7 @@
 -- at range and the blow never reaches you; kill one in your own teeth and you wear it.
 return {
     name = "Volatile",
-    description = "When it falls, it bursts -- everything nearby takes the blast.",
+    description = "When it falls, it bursts. Everything nearby takes the blast.",
     magnitude = 12, -- blast power before mitigation
     radius = 1,     -- the ring the burst covers
     onDeath = function(ctx)

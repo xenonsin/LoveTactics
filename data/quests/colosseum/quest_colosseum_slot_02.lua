@@ -34,7 +34,7 @@
 -- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "The Padded Card",
-    description = "The house has carded the capital's newest refugees against its own killers -- the " ..
+    description = "The house has carded the capital's newest refugees against its own killers. The " ..
         "crowd paid to watch them die. Take their side.",
     difficulty = "Normal",
     sponsor = "colosseum",

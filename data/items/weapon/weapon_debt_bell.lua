@@ -18,7 +18,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Debt-Bell",
-    description = "Knockback 2 -- and everything standing around where they land shares the impact.",
+    description = "Knockback 2, and everything standing around where they land shares the impact.",
     flavor = "The Undercroft's phrase, borrowed by the Bastion's armourers without permission: it is not settled until everyone has paid.",
     sprite = "assets/items/debt_bell.png",
     type = "weapon",

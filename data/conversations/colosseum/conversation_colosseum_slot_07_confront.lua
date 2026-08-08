@@ -25,11 +25,11 @@ return {
 
     script = {
         { "character_general_wrath", "BEAT: Ira reads them by weight on the sand; notes this bout is on the schedule like any other, and it ends at the bell whatever happens.", tag = 1 },
-        { "character_avatar", "BEAT: the avatar tries to speak TO her -- to reach the person, to find a grievance or a name, some way to get her out of this.", tag = 2 },
-        { "character_general_wrath", "BEAT: she gives them nothing to bargain with -- not cruelty, there is simply no door to offer her; the house lets her win or kill, and there was never a third thing.", tag = 3 },
+        { "character_avatar", "BEAT: the avatar tries to speak TO her. To reach the person, to find a grievance or a name, some way to get her out of this.", tag = 2 },
+        { "character_general_wrath", "BEAT: she gives them nothing to bargain with, not cruelty, there is simply no door to offer her; the house lets her win or kill, and there was never a third thing.", tag = 3 },
         { when = { has = "character_saber" }, script = {
-            { "character_saber", "BEAT: Saber tries once, in the plainest terms she has, to reach her -- offers to get her out, somewhere else to be.", tag = 4 },
-            { "character_general_wrath", "BEAT: Ira closes the door, gently and completely -- she already found the only other door, and it shut behind her; there is nowhere left to put her. Saber hears it land. (Hold the finale's biggest lines back.)", tag = 5 },
+            { "character_saber", "BEAT: Saber tries once, in the plainest terms she has, to reach her. Offers to get her out, somewhere else to be.", tag = 4 },
+            { "character_general_wrath", "BEAT: Ira closes the door, gently and completely. She already found the only other door, and it shut behind her; there is nowhere left to put her. Saber hears it land. (Hold the finale's biggest lines back.)", tag = 5 },
         } },
     },
 }

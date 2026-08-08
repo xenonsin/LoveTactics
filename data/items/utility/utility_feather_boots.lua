@@ -4,7 +4,7 @@
 -- (fire, quicksand) still bite: the boots dodge blades, not the ground itself.
 return {
     name = "Feather Boots",
-    description = "Traps never spring underfoot -- yours or the enemy's.",
+    description = "Traps never spring underfoot. Yours or the enemy's.",
     flavor = "They dodge blades, not the ground itself. Quicksand remains unimpressed.",
     sprite = "assets/items/feather_boots.png",
     type = "utility",

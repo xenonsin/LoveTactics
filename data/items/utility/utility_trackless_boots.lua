@@ -30,7 +30,7 @@
 -- the trail boots are named for what they do.
 return {
     name = "Trackless Boots",
-    description = "Rough ground -- forest, sand, snow, rubble -- costs you no more than open field.",
+    description = "Rough ground. Forest, sand, snow, rubble. Costs you no more than open field.",
     flavor = "Two days behind her and the dogs were still casting about the treeline, insulted.",
     sprite = "assets/items/trackless_boots.png",
     type = "utility",

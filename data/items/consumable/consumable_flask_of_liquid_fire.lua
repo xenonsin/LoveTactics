@@ -9,7 +9,7 @@ local Curve = require("models.curve")
 return {
     name = "Flask of Liquid Fire",
     description = "Leaves Fire in area.",
-    flavor = "Cheap, loud, and no substitute for a mage -- which the Crucible tells you before it takes your gold.",
+    flavor = "Cheap, loud, and no substitute for a mage. Which the Crucible tells you before it takes your gold.",
     sprite = "assets/items/flask_of_liquid_fire.png",
     type = "consumable",
     tags = { "fire" }, -- no "magical": the fire is chemistry, and cares nothing for magic defense

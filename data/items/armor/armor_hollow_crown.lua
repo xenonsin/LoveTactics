@@ -14,7 +14,7 @@ local Curve = require("models.curve")
 return {
     name = "The Hollow Crown",
     description = "At 75%, 50%, and 25% health: summon a fallen general.",
-    flavor = "As it fails, it wears the dead. It had no sin of its own -- the seven were its appetites.",
+    flavor = "As it fails, it wears the dead. It had no sin of its own. The seven were its appetites.",
     sprite = "assets/items/sig_hollow_crown.png",
     type = "armor", -- a crown: `bound` (not the type) is what locks it in place
     tags = { "signature", "relic" },

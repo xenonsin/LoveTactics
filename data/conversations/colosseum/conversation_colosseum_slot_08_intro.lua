@@ -20,9 +20,9 @@ return {
 
     script = {
         { when = { has = "character_saber" }, script = {
-            { "character_saber", "BEAT: Saber stops waiting -- in front of people, she asks the house for the match with Ira and names the day, out loud.", tag = 1 },
+            { "character_saber", "BEAT: Saber stops waiting. In front of people, she asks the house for the match with Ira and names the day, out loud.", tag = 1 },
         } },
-        { "colosseum", "BEAT: the house cannot say yes and cannot say what Ira is, so it answers the only way it has -- it matches her, against the fighter it keeps for people who ask questions in public.", tag = 2 },
+        { "colosseum", "BEAT: the house cannot say yes and cannot say what Ira is, so it answers the only way it has. It matches her, against the fighter it keeps for people who ask questions in public.", tag = 2 },
         { "character_avatar", "BEAT: the avatar registers that a question just got answered with a bout, and that Saber chose this moment on purpose.", tag = 3 },
     },
 }

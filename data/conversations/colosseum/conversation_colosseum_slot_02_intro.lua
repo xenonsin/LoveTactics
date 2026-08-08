@@ -20,16 +20,16 @@ return {
     cast  = { "colosseum", "character_avatar", { id = "character_saber", when = { has = "character_saber" } }, { id = "character_rowan", when = { has = "character_rowan" } } },
 
     script = {
-        { "colosseum", "BEAT: the promoter frames tonight's opener as a warm-up -- and lets slip what the crowd is really here to see: the road's newest arrivals put down.", tag = 1 },
-        { "character_avatar", "BEAT: the avatar reads the far side of the sand -- these people were not brought here to fight; they are refugees, off the same road we came in on.", tag = 2 },
+        { "colosseum", "BEAT: the promoter frames tonight's opener as a warm-up, and lets slip what the crowd is really here to see: the road's newest arrivals put down.", tag = 1 },
+        { "character_avatar", "BEAT: the avatar reads the far side of the sand. These people were not brought here to fight; they are refugees, off the same road we came in on.", tag = 2 },
         { when = { has = "character_rowan" }, script = {
-            { "character_rowan", "BEAT: Rowan recognizes the village elder among them -- one of the people they carried out of the fire in the prologue -- swept off the bread line and onto the sand.", tag = 3 },
+            { "character_rowan", "BEAT: Rowan recognizes the village elder among them. One of the people they carried out of the fire in the prologue. Swept off the bread line and onto the sand.", tag = 3 },
         } },
         { "colosseum", "BEAT: the crowd hates them and paid to watch them bleed; the house only prints what sells, and the card is already set.", tag = 4 },
         { when = { has = "character_saber" }, script = {
-            { "character_saber", "BEAT: Saber already knows what this is -- she has watched promoters run it for years -- and does not look away.", tag = 5 },
-            { "character_saber", "BEAT: she is going down onto the sand first -- between the killers and the refugees -- before anyone asks her to; everyone gets to walk off it.", tag = 6 },
+            { "character_saber", "BEAT: Saber already knows what this is. She has watched promoters run it for years, and does not look away.", tag = 5 },
+            { "character_saber", "BEAT: she is going down onto the sand first. Between the killers and the refugees. Before anyone asks her to; everyone gets to walk off it.", tag = 6 },
         } },
-        { "character_avatar", "BEAT: the choice lands on the player -- hold the line for these people, or let the house have its slaughter.", tag = 7 },
+        { "character_avatar", "BEAT: the choice lands on the player. Hold the line for these people, or let the house have its slaughter.", tag = 7 },
     },
 }

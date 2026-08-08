@@ -23,13 +23,13 @@ return {
     script = {
         { "character_demon_lord", "You came a long way down to meet me, and there is no me to meet.", tag = 1 },
         { "character_demon_lord", "Seven appetites. That was the whole of it. Seven wants, and seven people who agreed to carry one each, because a want cannot walk about on its own.", tag = 2 },
-        { "character_demon_lord", "You took them off me one at a time. Careful work. I felt every one go the way you feel a tooth go -- not pain. An absence, with an edge on it.", tag = 3 },
+        { "character_demon_lord", "You took them off me one at a time. Careful work. I felt every one go the way you feel a tooth go, not pain. An absence, with an edge on it.", tag = 3 },
         { "character_avatar", "Then there is nothing left of you.", tag = 4 },
         { "character_demon_lord", "Nothing is not the same as harmless.", tag = 5 },
         { "character_demon_lord", "I kept nothing of their souls. Souls are not food, and I was never sentimental. What I keep is the SHAPE a person makes when they say yes.", tag = 6 },
         { when = { has = "character_saber" }, script = {
             { "character_demon_lord", "Come and be measured, little card-filler. You were always going to lose to somebody the house had already paid.", tag = 7 },
-            { "character_saber", "That is her mouth and it is not her. She never once said a thing she had been paid to say -- that was the whole trouble with her.", tag = 8 },
+            { "character_saber", "That is her mouth and it is not her. She never once said a thing she had been paid to say. That was the whole trouble with her.", tag = 8 },
         } },
         { when = { has = "character_rowan" }, script = {
             { "character_demon_lord", "Hold until relieved. Nobody is coming, girl. Nobody was ever coming.", tag = 9 },
@@ -37,7 +37,7 @@ return {
         } },
         { when = { has = "character_gyeom" }, script = {
             { "character_demon_lord", "There is nothing in you I have not already surpassed.", tag = 11 },
-            { "character_gyeom", "You are reciting. She meant it -- that was what was wrong with her. You are just holding the sound.", tag = 12 },
+            { "character_gyeom", "You are reciting. She meant it. That was what was wrong with her. You are just holding the sound.", tag = 12 },
         } },
         { when = { has = "character_amana" }, script = {
             { "character_demon_lord", "Kneel, and I will give you back the name they took.", tag = 13 },

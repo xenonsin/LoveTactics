@@ -21,7 +21,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Tempo Debt",
-    description = "No stun -- the swing re-opens your own turn instead. You act twice now and arrive late afterwards.",
+    description = "No stun. The swing re-opens your own turn instead. You act twice now and arrive late afterwards.",
     flavor = "The Colosseum's bookmakers refuse bets on anyone carrying one. Not because it wins. Because it is difficult to time.",
     sprite = "assets/items/tempo_debt.png",
     type = "weapon",

@@ -5,7 +5,7 @@ return {
     cast  = { "bastion", "character_rowan" },
 
     script = {
-        { "bastion", "A watchpost east of the river. There is nothing behind it worth defending -- the villages moved off that land twenty years ago.", tag = 1 },
+        { "bastion", "A watchpost east of the river. There is nothing behind it worth defending. The villages moved off that land twenty years ago.", tag = 1 },
         { "bastion", "The garrison has been told, in writing, that they may stand down.", tag = 2 },
         { "character_rowan", "And they haven't.", tag = 3 },
         { "bastion", "They have not.", tag = 4 },

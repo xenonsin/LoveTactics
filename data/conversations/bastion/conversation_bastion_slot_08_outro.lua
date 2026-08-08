@@ -12,8 +12,9 @@ return {
         { "character_rowan", "...", tag = 5 },
         { "character_rowan", "{name}. Walk with me. Not far.", tag = 6 },
         { "character_rowan", "I swore to you in the ash and I never asked you whether you wanted it.", tag = 7 },
-        { "character_rowan", "I would have sworn it to anyone burning that night. Anyone at all. That is not devotion, that is a reflex with a nice sentence on it, and I have been calling it my honour for a year.", tag = 8 },
-        { "character_rowan", "So. Again, and properly this time. Not to an order. Not to a name off a shield. To you -- because I have looked at you and chosen, and I could have chosen otherwise.", tag = 9 },
+        { "character_rowan", "I would have sworn it to anyone burning that night. Anyone at all. That is not devotion. That is a reflex, and I have been calling it my honour for a year.", tag = 8 },
+        { "character_rowan", "So. Again, and properly this time. Not to an order. Not to a name off a shield.", tag = 9 },
+        { "character_rowan", "To you. I have looked at you and chosen, and I could have chosen otherwise.", tag = 11 },
         { "character_rowan", "We shall hold.", tag = 10 },
     },
 }

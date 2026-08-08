@@ -18,7 +18,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Long Fall",
-    description = "Knockback 4. Deals almost nothing -- what it sells is where they land.",
+    description = "Knockback 4. Deals almost nothing. What it sells is where they land.",
     flavor = "The Bastion does not teach it as a weapon. It is filed under groundskeeping.",
     sprite = "assets/items/long_fall.png",
     type = "weapon",

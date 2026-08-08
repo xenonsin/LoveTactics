@@ -24,7 +24,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Held Reaction",
-    description = "Mixes a blast that grows every turn it is held -- and goes off in hand if held too long.",
+    description = "Mixes a blast that grows every turn it is held, and goes off in hand if held too long.",
     flavor = "The Crucible measures its apprentices in fingers. It is not being cruel; it is being accurate.",
     sprite = "assets/items/ability_held_reaction.png",
     type = "ability",

@@ -18,9 +18,9 @@ return {
 
     script = {
         { when = { has = "character_saber" }, script = {
-            { "character_saber", "BEAT: Saber reads the facing pages aloud -- children in one column, wins in the other -- and names it flat: this is not an academy, it is a stockyard. They are bought, not schooled; kept, not trained.", tag = 1 },
-            { "character_saber", "BEAT: the thing she read in the roster, said at last -- those fighters move like people who are not allowed to leave, because they are not; the sport was never the wrong thing, but this is. She asks for nothing.", tag = 2 },
+            { "character_saber", "BEAT: Saber reads the facing pages aloud. Children in one column, wins in the other, and names it flat: this is not an academy, it is a stockyard. They are bought, not schooled; kept, not trained.", tag = 1 },
+            { "character_saber", "BEAT: the thing she read in the roster, said at last. Those fighters move like people who are not allowed to leave, because they are not; the sport was never the wrong thing, but this is. She asks for nothing.", tag = 2 },
         } },
-        { "character_avatar", "BEAT: the avatar lets it stand -- does not push, having just understood what the whole line was circling: the patron under the sand is what this ledger makes.", tag = 3 },
+        { "character_avatar", "BEAT: the avatar lets it stand. Does not push, having just understood what the whole line was circling: the patron under the sand is what this ledger makes.", tag = 3 },
     },
 }

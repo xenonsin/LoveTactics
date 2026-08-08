@@ -10,7 +10,7 @@ local Curve = require("models.curve")
 return {
     name = "Acid Bomb",
     description = "Inflicts Acid in area.",
-    flavor = "The Crucible's answer to armor: not taking the plate off a body -- that is Greed -- but making it stop working.",
+    flavor = "The Crucible's answer to armor: not taking the plate off a body. That is Greed, but making it stop working.",
     sprite = "assets/items/acid_bomb.png",
     type = "consumable",
     tags = { "acid" },

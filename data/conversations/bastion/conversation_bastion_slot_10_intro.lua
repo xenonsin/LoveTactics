@@ -6,9 +6,9 @@ return {
 
     script = {
         { "bastion", "Past the gate that was opened from within.", tag = 1 },
-        { "bastion", "Sworn -- the order does not require this of you.", tag = 2 },
+        { "bastion", "Sworn. The order does not require this of you.", tag = 2 },
         { "character_rowan", "No. It wouldn't.", tag = 3 },
-        { "character_rowan", "{name}. Whatever she says to me in there, I have already said it to myself on every mile of the road here. Don't worry about me.", tag = 4 },
+        { "character_rowan", "{name}. Whatever she says to me in there, I have already said it to myself. Every mile of the road here. Don't worry about me.", tag = 4 },
         { "character_rowan", "...Worry a little. But keep it to yourself.", tag = 5 },
     },
 }

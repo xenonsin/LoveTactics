@@ -27,7 +27,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Aqua Vitae",
-    description = "Heal three times, then grant the party a copy of your strongest -- a gift, kept for no one.",
+    description = "Heal three times, then grant the party a copy of your strongest. A gift, kept for no one.",
     flavor = "The water of life. She has poured out a great deal of it, and asked for none back.",
     sprite = "assets/items/sig_aqua_vitae.png",
     type = "utility",

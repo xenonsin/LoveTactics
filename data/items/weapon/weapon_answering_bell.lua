@@ -21,7 +21,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Answering Bell",
-    description = "Knockback 2 -- and any melee attacker takes Knockback 2 too.",
+    description = "Knockback 2, and any melee attacker takes Knockback 2 too.",
     flavor = "It is not that it hits back. It is that there is, quite suddenly, more room.",
     sprite = "assets/items/answering_bell.png",
     type = "weapon",

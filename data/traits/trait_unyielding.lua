@@ -23,7 +23,7 @@
 -- not a cleanse.
 return {
     name = "Unyielding",
-    description = "Spend mana to shrug off any debuff the moment it lands. No cooldown -- only the pool.",
+    description = "Spend mana to shrug off any debuff the moment it lands. No cooldown. Only the pool.",
     cost = { stat = "mana", amount = 8 },
     onStatusApplied = function(ctx)
         if ctx.role ~= "recipient" then return end

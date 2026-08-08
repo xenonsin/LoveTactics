@@ -5,7 +5,7 @@ return {
     cast  = { "character_rowan" },
 
     script = {
-        { "character_rowan", "He was forsworn. Forsworn men lie -- that is very nearly the definition of the word.", tag = 1 },
+        { "character_rowan", "He was forsworn. Forsworn men lie. That is very nearly the definition of the word.", tag = 1 },
         { "character_rowan", "You don't get to set your shield down and then be believed about the woman who didn't.", tag = 2 },
         { "character_rowan", "...", tag = 3 },
         { "character_rowan", "He wasn't lying about a fact, though, was he. He asked me a question.", tag = 4 },

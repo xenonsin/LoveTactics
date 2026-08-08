@@ -23,7 +23,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Unyielding Harness",
-    description = "Spend mana to shrug off any debuff the moment it lands. No cooldown -- only the pool.",
+    description = "Spend mana to shrug off any debuff the moment it lands. No cooldown. Only the pool.",
     flavor = "The Bastion's drill for it is a single word, repeated, until the recruit stops treating it as an answer.",
     sprite = "assets/items/armor_unyielding_harness.png",
     type = "armor",

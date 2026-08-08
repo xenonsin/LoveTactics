@@ -19,6 +19,6 @@ return {
         { "character_rowan", "{select} on your own tile to spin.", tag = 12, id = "clear_hint" },
         { "character_rowan", "{select} on Jolt to ready it. Its cost is purple: that is mana, not stamina.", tag = 13, id = "spark_hint" },
         { "character_rowan", "{select} on the grunt to jolt it.", tag = 14, id = "jolt_hint" },
-        { "character_rowan", "{select} on the grunt to strike it -- its card slid down the order, so you act before it does.", tag = 15, id = "finish_hint" },
+        { "character_rowan", "{select} on the grunt to strike it. Its card slid down the order, so you act before it does.", tag = 15, id = "finish_hint" },
     },
 }

@@ -6,7 +6,7 @@
 return {
     name = "Demonic Essence",
     description = "Its wearer takes extra holy damage.",
-    flavor = "Not gear at all -- the stuff a demon is made of, and it comes off nothing living.",
+    flavor = "Not gear at all. The stuff a demon is made of, and it comes off nothing living.",
     sprite = "assets/items/demonic_essence.png",
     type = "utility",
     tags = { "demon" },

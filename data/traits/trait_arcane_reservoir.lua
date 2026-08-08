@@ -5,5 +5,5 @@
 -- Trait.has "trait_arcane_reservoir"), so the def carries no hook.
 return {
     name = "Arcane Reservoir",
-    description = "Your mana slowly regenerates -- the one pool that does.",
+    description = "Your mana slowly regenerates. The one pool that does.",
 }

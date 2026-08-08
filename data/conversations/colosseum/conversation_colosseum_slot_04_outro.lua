@@ -15,10 +15,10 @@ return {
     cast  = { "colosseum", "character_avatar", { id = "character_saber", when = { has = "character_saber" } } },
 
     script = {
-        { "character_avatar", "BEAT: the avatar notes it aloud -- they fought identically, none flinched, none celebrated.", tag = 1 },
+        { "character_avatar", "BEAT: the avatar notes it aloud. They fought identically, none flinched, none celebrated.", tag = 1 },
         { when = { has = "character_saber" }, script = {
             { "character_saber", "BEAT: Saber called all four openings before they came; the player asks how she knew.", tag = 2 },
-            { "character_saber", "BEAT: she deflects -- circling something she is not ready to say -- and the not-answering is louder than an answer.", tag = 3 },
+            { "character_saber", "BEAT: she deflects. Circling something she is not ready to say, and the not-answering is louder than an answer.", tag = 3 },
         } },
     },
 }

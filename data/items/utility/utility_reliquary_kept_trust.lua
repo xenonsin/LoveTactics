@@ -29,7 +29,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Reliquary of the Kept Trust",
-    description = "Once you have healed thrice, ward the whole company -- and keep none of it for yourself.",
+    description = "Once you have healed thrice, ward the whole company, and keep none of it for yourself.",
     flavor = "A trust is a thing you hold and hand back whole. She has never once opened it for herself.",
     sprite = "assets/items/sig_reliquary_kept_trust.png",
     type = "utility",
@@ -39,7 +39,7 @@ return {
     traits = { "trait_sanctified_presence", "trait_devotion_unbidden" },
     bonus = { magicDefense = Curve.ramp(2, 12) },
     activeAbility = {
-        description = "Wards every nearby ally -- but not you -- with Aegis and Regeneration.",
+        description = "Wards every nearby ally, but not you. With Aegis and Regeneration.",
         target = "self", -- centred on her; the aoe catches the company around her
         support = true,  -- friendly cast: preview green
         range = 1,

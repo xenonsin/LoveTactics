@@ -27,7 +27,7 @@
 return {
     name = "Pilgrim's Sandals",
     description = "Every tile you leave is hallowed: your allies heal in your footsteps, and the walking heals you.",
-    flavor = "The road is consecrated by the walking -- the only theology the Cathedral has never charged for.",
+    flavor = "The road is consecrated by the walking. The only theology the Cathedral has never charged for.",
     sprite = "assets/items/pilgrims_sandals.png",
     type = "utility",
     tags = { "boots", "holy" },

@@ -15,10 +15,10 @@ return {
     cast  = { "colosseum", "character_avatar", { id = "character_saber", when = { has = "character_saber" } } },
 
     script = {
-        { "colosseum", "BEAT: the vendor puts the reigning house's four on the card -- the stable that wins, and has for longer than anyone finds strange.", tag = 1 },
-        { "character_avatar", "BEAT: the avatar sizes them up -- watch how they fight; watch how they do not celebrate.", tag = 2 },
+        { "colosseum", "BEAT: the vendor puts the reigning house's four on the card. The stable that wins, and has for longer than anyone finds strange.", tag = 1 },
+        { "character_avatar", "BEAT: the avatar sizes them up. Watch how they fight; watch how they do not celebrate.", tag = 2 },
         { when = { has = "character_saber" }, script = {
-            { "character_saber", "BEAT: Saber goes quiet the moment she sees them -- she reads the house style cold, but it is HOW they move that unsettles her: like people not allowed to want anything. She will not name it yet.", tag = 3 },
+            { "character_saber", "BEAT: Saber goes quiet the moment she sees them. She reads the house style cold, but it is HOW they move that unsettles her: like people not allowed to want anything. She will not name it yet.", tag = 3 },
         } },
     },
 }

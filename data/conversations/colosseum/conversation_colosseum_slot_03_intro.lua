@@ -14,10 +14,10 @@ return {
     cast  = { "colosseum", "character_avatar", { id = "character_saber", when = { has = "character_saber" } } },
 
     script = {
-        { "colosseum", "BEAT: the vendor gives the job -- the Warlord fought under our banner once; bring him back, or bring him down.", tag = 1 },
+        { "colosseum", "BEAT: the vendor gives the job. The Warlord fought under our banner once; bring him back, or bring him down.", tag = 1 },
         { "character_avatar", "BEAT: the avatar clocks that this one is a genuine bout, a named fighter on the other side, not a culling.", tag = 2 },
         { when = { has = "character_saber" }, script = {
-            { "character_saber", "BEAT: Saber is alight -- THIS is the thing she loves: house against a fighter with a name, honest, no padding.", tag = 3 },
+            { "character_saber", "BEAT: Saber is alight. THIS is the thing she loves: house against a fighter with a name, honest, no padding.", tag = 3 },
         } },
     },
 }

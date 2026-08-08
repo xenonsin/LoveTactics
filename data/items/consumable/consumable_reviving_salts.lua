@@ -19,7 +19,7 @@ local Curve = require("models.curve")
 return {
     name = "Reviving Salts",
     description = "Revives an adjacent fallen ally at low health, while its body can still be saved.",
-    flavor = "The Alchemist swears they wake the dead. The Alchemist is, as ever, exaggerating -- but only just.",
+    flavor = "The Alchemist swears they wake the dead. The Alchemist is, as ever, exaggerating, but only just.",
     sprite = "assets/items/reviving_salts.png",
     type = "consumable",
     tags = { "salts", "restorative" },

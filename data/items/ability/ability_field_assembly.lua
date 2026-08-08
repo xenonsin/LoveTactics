@@ -17,7 +17,7 @@
 -- both its items on the alchemist shelf, so the mage vendor announced a discipline and sold nothing.
 return {
     name = "Field Assembly",
-    description = "Consumes a draught from your grid to build a sentry -- the better the stock, the better the machine.",
+    description = "Consumes a draught from your grid to build a sentry. The better the stock, the better the machine.",
     flavor = "There is no schematic. There is a satchel, and there is a deadline.",
     sprite = "assets/items/ability_field_assembly.png",
     type = "ability",

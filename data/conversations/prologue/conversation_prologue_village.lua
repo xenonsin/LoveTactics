@@ -21,7 +21,7 @@ return {
     cast  = { "character_rowan" },
 
     script = {
-        { "character_rowan", "Look at it, {name}. The mill, the eastern row, the well we drew from this morning -- all of it, inside a night.", tag = 1 },
+        { "character_rowan", "Look at it, {name}. The mill, the eastern row, the well we drew from this morning. All of it, inside a night.", tag = 1 },
         { "character_rowan", "This is not a raid. The Demon Lord's army empties whole valleys like this and moves on before the ash is cold.", tag = 2 },
         { "character_rowan", "Two of them have seen us, and they will not come to you. Watch how I take mine.", tag = 3 },
     },
