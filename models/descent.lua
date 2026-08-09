@@ -27,10 +27,48 @@
 
 local Descent = {}
 
--- The seven biomes, which are also (from stage 2) the seven circles. Ordered so the id list is stable
--- for the hash below -- a run must lay out the same floors from the same seed on any machine, and
--- `pairs` over a registry is unspecified.
-Descent.BIOMES = { "forest", "swamp", "desert", "volcanic", "tundra", "castle", "underworld" }
+-- THE SEVEN CIRCLES. One per sin, and a sin is not decoration here -- it names the house whose stock
+-- the floor pays into, the ground it is fought on, and what stands on the stair.
+--
+-- The vendor is the JOIN, and it is the reason this table is small. `data/vendors/*.lua` already
+-- declares a `sin` and a `class`; states/game.lua already resolves `game.houseMaterial` from
+-- `quest.sponsor` through `Vendor.get(...).class`. So a floor naming its vendor gets its material
+-- tagging, its shelf and its standing for free, and this table only has to say which vendor is which
+-- circle. tests/descent_spec.lua asserts the pairing against the vendor blueprints rather than
+-- restating it, so a sin renamed in data cannot leave a stale copy here.
+--
+-- The BIOME is a reading of the sin rather than a lookup, so it is authored:
+--   gluttony  swamp       a place that swallows what walks into it
+--   lust      forest      overgrown, fertile, and hard to see out of
+--   greed     underworld  the vault below the vault
+--   envy      desert      barren ground with a view of somewhere green
+--   wrath     volcanic    the obvious one, and it has earned it
+--   sloth     tundra      the post nobody came back to
+--   pride     castle      a library that outlived every scholar who could read it
+--
+-- The GUARDIAN is what gates the stair: a lead body of that house's own cast, plus filler that
+-- thickens with depth. Named ids rather than an encounter blueprint because a guardian is not rollable
+-- content -- there is exactly one per floor and it is chosen by the circle, never by weight.
+--
+-- ORDERED, and the order is only a canonical listing -- a run reshuffles it (Descent.sinAt). `pairs`
+-- over a registry is unspecified, and a run must lay out the same floors from the same seed on any
+-- machine.
+Descent.SINS = {
+    { id = "gluttony", name = "Gluttony", vendor = "hunters_lodge", biome = "swamp",
+        guardian = { lead = "character_dire_bear", filler = "character_boar" } },
+    { id = "lust", name = "Lust", vendor = "cathedral", biome = "forest",
+        guardian = { lead = "character_inquisitor", filler = "character_crusader" } },
+    { id = "greed", name = "Greed", vendor = "undercroft", biome = "underworld",
+        guardian = { lead = "character_mammonite", filler = "character_thief" } },
+    { id = "envy", name = "Envy", vendor = "alchemist", biome = "desert",
+        guardian = { lead = "character_crucible_golem", filler = "character_homunculus" } },
+    { id = "wrath", name = "Wrath", vendor = "colosseum", biome = "volcanic",
+        guardian = { lead = "character_champion", filler = "character_barbarian" } },
+    { id = "sloth", name = "Sloth", vendor = "bastion", biome = "tundra",
+        guardian = { lead = "character_forsworn_captain", filler = "character_forsworn_knight" } },
+    { id = "pride", name = "Pride", vendor = "arcanum", biome = "castle",
+        guardian = { lead = "character_necromancer", filler = "character_battlemage" } },
+}
 
 -- How many STOPS a floor's board hosts -- not how many fights. models/overworld.lua's combatShare caps
 -- combat at a share of this and re-seats the rest as texture (a rest, a cache, a merchant), so the
@@ -41,14 +79,74 @@ Descent.BIOMES = { "forest", "swamp", "desert", "volcanic", "tundra", "castle", 
 -- (the skirmish tier). Raising this before that lands would produce a forty-minute floor. One constant,
 -- so that stage is a one-line change here.
 --
--- WHAT ELSE THAT ONE LINE MOVES, measured on a generated floor at both densities: caches are derived
--- from the stop count at about one per two stops (Overworld.generate), so twelve stops is six caches
--- rather than two, and a cache is the largest single source of forging material on the board. Craft
--- and house stock come out around three times what a rung costs instead of about one -- the rule the
--- stage-2 payout rebase was measured against (models/spoils.lua). So the density bump has to pin
--- `cacheCount` on the floor descriptor below rather than let it derive, or the material economy
--- inflates silently behind a change that looks like it is only about pacing.
-Descent.FLOOR_STOPS = { min = 3, max = 4 }
+-- The Dream Quest target, now that an ordinary stop is a skirmish rather than a set-piece: the
+-- generator's combat share (0.6) turns ten-to-twelve stops into roughly eight fights, and GUARANTEE
+-- seats the rests and the relic cache among the rest. About twenty-seven minutes of floor.
+Descent.FLOOR_STOPS = { min = 10, max = 12 }
+
+-- CACHES ARE PINNED, and this is the thing the density bump above would otherwise have moved in
+-- silence. Overworld.generate derives the cache count from the stop count at about one per two stops,
+-- so twelve stops is six caches where four was two -- and a cache is the largest single source of
+-- forging material on a board, well above what the fights leave. Measured, a derived twelve-stop floor
+-- pays around three Forge rungs of craft and house stock against the one the stage-2 payout rebase was
+-- calibrated to (models/spoils.lua). Two or three holds that line at the new density.
+Descent.FLOOR_CACHES = { min = 2, max = 3 }
+
+-- WHAT A FLOOR IS MADE OF, which is not what a quest board's leg is made of.
+--
+-- The generator draws its stops from a weighted pool, and the campaign's authored weights describe a
+-- ROADSIDE -- a long walk with fights among the texture. Measured over thirty generated floors, those
+-- weights hand a twelve-stop floor 5.2 fights, of which 2.8 are ELITES. The floor lands on its
+-- twenty-seven minutes, but by the wrong route: few long fights instead of many short ones, which is
+-- the exact trade the skirmish tier was built to reverse. A floor of five fights where three are
+-- six-body set-pieces is the old pacing wearing a new board.
+--
+-- So a floor reweights the same pool. Three rules, and each is a different kind of statement:
+--
+--   fights keep their authored weights relative to each other -- which wolf, which boar, is a question
+--   about the biome and this has no opinion on it;
+--
+--   an elite is pinned to a FLAT weight instead of the authored `weight = prestige`. That scaling was
+--   written for a campaign where prestige is the run's difficulty dial; on a descent it means elites
+--   crowd out ordinary fights without limit as the company grows, so by prestige 20 an "ordinary road
+--   stop" is a set-piece again. One or two elites a floor is the punctuation; more is the old problem;
+--
+--   texture is scaled DOWN hard, because a floor already gets its rests and its reliquary from the
+--   generator's own guarantees. Every free draw spent on a town is a skirmish the floor does not have.
+--
+-- Deliberately a transform over Encounter.pool rather than a second pool: eligibility, biome filtering
+-- and the ctx-driven weights are all decisions that table already makes correctly, and restating them
+-- here would be a second copy to drift.
+Descent.ELITE_WEIGHT = 1.5
+Descent.TEXTURE_SCALE = 0.2
+
+-- What share of a floor's stops may be fights. The generator's own cap (0.6) is a roadside's share; a
+-- floor wants nearly every stop that is not a guaranteed rest or reliquary to be one. Still a CAP -- it
+-- re-seats the overflow as texture and never invents fights -- so it works with the weights above
+-- rather than instead of them.
+Descent.COMBAT_SHARE = 0.75
+
+function Descent.floorPool(ctx)
+    local pool = require("models.encounter").pool(ctx)
+    local out = {}
+    for i, e in ipairs(pool) do
+        local weight = e.weight
+        if e.kind == "elite" then
+            weight = Descent.ELITE_WEIGHT
+        elseif e.kind ~= "combat" then
+            weight = weight * Descent.TEXTURE_SCALE
+        end
+        out[i] = { id = e.id, kind = e.kind, name = e.name, weight = weight }
+    end
+    return out
+end
+
+-- The board a floor is fought on, pinned rather than derived. Overworld.generate honours explicit
+-- cols/rows ahead of deriveDims, and deriveDims run at twelve stops reaches its 27x19 cap -- one stop
+-- per forty-odd tiles, which is the "marathon warren to shuffle a token through" that
+-- models/overworld.lua's own header warns against. 15x13 is one stop per sixteen tiles: dense and
+-- readable, and NO CHANGE to the generator.
+Descent.FLOOR_COLS, Descent.FLOOR_ROWS = 15, 13
 
 -- The enemy-level floor for a given depth: "a fight on this floor is never easier than this". Same
 -- meaning the authored `floorLevel` has everywhere else (models/growth.lua's combatantLevel), which is
@@ -114,12 +212,44 @@ function Descent.floorLevel(run)
     return 1 + (Descent.depth(run) - 1) * Descent.LEVEL_PER_FLOOR
 end
 
--- Which biome this floor wears. From stage 2 this becomes the SIN, drawn from a per-run shuffle of the
--- seven; for now it is a deterministic pick so consecutive floors visibly differ and a resume rebuilds
--- the same one.
+-- WHICH SIN THIS FLOOR IS, from a per-run shuffle of the seven.
+--
+-- A SHUFFLE, not a random pick per floor, and the difference is the whole feature: a pick would let a
+-- run draw Wrath three times and never reach Envy, so the first seven floors would stop being a tour
+-- of the circles and become a slot machine. Dealt as a permutation instead -- floors 1..7 are the seven
+-- sins in some order, exactly once each -- which is what makes re-treading the shallow floors tolerable
+-- (it is a different game each run) without making the deep ones a lottery.
+--
+-- PAST THE SEVENTH the deck is dealt again, salted by which time round it is, so an endless descent
+-- keeps recombining the circles at a rising floor level rather than running out of content. That falls
+-- out of the cycle arithmetic here and needs nothing of its own.
+--
+-- Derived, never stored. A run is a seed and a depth (Descent.snapshot), and a resume re-derives the
+-- whole layout from them; a stored order would be a second copy that could disagree with the seed.
+local function shuffledSins(seed, cycle)
+    local deck = {}
+    for i, sin in ipairs(Descent.SINS) do deck[i] = sin end
+    -- Fisher-Yates driven by the integer hash rather than by math.random: the RNG is shared with
+    -- everything else that draws in a frame, so seeding it here would both perturb them and be
+    -- perturbed BY them. Pure in, pure out, identical on every machine.
+    for i = #deck, 2, -1 do
+        local j = (hash(seed, cycle, i) % i) + 1
+        deck[i], deck[j] = deck[j], deck[i]
+    end
+    return deck
+end
+
+function Descent.sinAt(run, floor)
+    local n = #Descent.SINS
+    floor = math.max(1, floor or 1)
+    local cycle = math.floor((floor - 1) / n)
+    return shuffledSins(run and run.seed, cycle)[((floor - 1) % n) + 1]
+end
+
+-- Which biome this floor wears: its sin's, always. Kept as its own call because the overworld and the
+-- landing both ask for the ground by name and neither needs to know a circle decided it.
 function Descent.biomeAt(run, floor)
-    local n = #Descent.BIOMES
-    return Descent.BIOMES[(hash(run and run.seed, floor, 1) % n) + 1]
+    return Descent.sinAt(run, floor).biome
 end
 
 function Descent.floorId(floor)
@@ -141,29 +271,66 @@ end
 --
 -- From stage 3 this objective becomes a guardian fight instead, and on a sin floor whose house standing
 -- has topped out, that house's general. The branch goes here.
+-- WHAT STANDS ON THE STAIR. A set-piece drawn from the circle's own house: one lead body, and filler
+-- that thickens with depth so floor 7's guardian is a wall where floor 1's is a warning.
+--
+-- Deliberately NOT an encounter blueprint. The pool in `data/encounters/` is rollable content, weighted
+-- and drawn at random against a biome; a guardian is neither -- there is exactly one per floor and the
+-- circle chooses it outright. Routing it through the pool would mean authoring seven blueprints that
+-- exist only to be picked by a rule that already knows the answer.
+--
+-- Read as a quest objective's `composition`, so it opens through the unchanged EncounterBattle path at
+-- `kind = "objective"` -- which is what puts it at SET-PIECE scale: Arena.CAP_BY_KIND has no entry for
+-- an objective, so the cap falls through to the quest's difficulty (Arena.DEFAULT_ENEMY_CAP, nine) and
+-- the skirmish tier never touches it. That fall-through was written for the campaign's objectives and
+-- is doing the same job here for free.
+local function guardianComposition(sin, floorLevel)
+    return function()
+        local list = { sin.guardian.lead }
+        -- Two at the top of the descent, climbing to a full set-piece by the seventh floor. Read off
+        -- the floor rather than off prestige: this fight is a statement about how deep the party has
+        -- gone, not about how decorated they are (see models/spoils.lua's GOLD_DEPTH_SLOPE for the
+        -- same argument about the gold).
+        local n = 2 + math.floor((floorLevel or 1) / 3)
+        for _ = 1, n do list[#list + 1] = sin.guardian.filler end
+        return list
+    end
+end
+
 function Descent.floorQuest(run, player)
     local floor = Descent.depth(run)
+    local sin = Descent.sinAt(run, floor)
+    local floorLevel = Descent.floorLevel(run)
     return {
         id = Descent.floorId(floor),
-        name = "The Descent — Floor " .. floor,
+        name = "The Descent — " .. sin.name,
         description = "Down.",
-        -- No sponsor yet, so no house material is tagged on this run's caches and salvage
-        -- (states/game.lua resolves game.houseMaterial from this). Stage 2 sets it from the floor's sin.
-        sponsor = nil,
-        floorLevel = Descent.floorLevel(run),
+        -- The circle's house. states/game.lua resolves `game.houseMaterial` from this through
+        -- Vendor.get(...).class, so naming the vendor is the whole of the material tagging: the floor's
+        -- caches and every fight on it pay into that house's stock.
+        sponsor = sin.vendor,
+        -- Which circle this is, for anything that wants to say so without re-deriving the shuffle (the
+        -- landing names the one below, and from stage 4 extraction banks standing against it).
+        sin = sin.id,
+        floorLevel = floorLevel,
         -- The field states/game.lua keys the whole feature off. Carried by reference: the state reads it
         -- to know it is in a descent and to park it on player.activeRun.
         descent = run,
         map = {
-            biome = Descent.biomeAt(run, floor),
+            biome = sin.biome,
             ascent = true,
+            -- Pinned, all three of them, and each for its own reason -- see the constants.
+            cols = Descent.FLOOR_COLS,
+            rows = Descent.FLOOR_ROWS,
             encounters = { min = Descent.FLOOR_STOPS.min, max = Descent.FLOOR_STOPS.max },
-            -- cacheCount left nil so Overworld.generate derives it from the stop count, and keyCount 0
-            -- because a floor is not a lock puzzle -- the stair is always reachable.
+            cacheCount = { min = Descent.FLOOR_CACHES.min, max = Descent.FLOOR_CACHES.max },
+            -- keyCount 0 because a floor is not a lock puzzle: the stair is always reachable.
             keyCount = 0,
+            combatShare = Descent.COMBAT_SHARE,
             objective = {
                 name = "The Stair Down",
-                meet = true,
+                composition = guardianComposition(sin, floorLevel),
+                win = { type = "killAll" },
             },
         },
     }

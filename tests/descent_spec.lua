@@ -26,8 +26,11 @@ return {
         assert(type(q.id) == "string" and Descent.isFloorId(q.id), "a floor has a recognisable id")
         assert(type(q.name) == "string" and #q.name > 0, "and a name to put on screen")
         assert(type(q.map) == "table", "and a map block")
-        assert(q.map.objective and q.map.objective.meet == true,
-            "the stair is a `meet` objective -- the branch that ends a leg without a fight")
+        -- The stair opened as a `meet` while floors were procedural skeletons; from stage 3 it is a
+        -- guardian, which is a plain combat objective and takes states/game.lua's fought-objective
+        -- branch. What matters to THIS case is only that the descriptor carries one at all.
+        assert(q.map.objective and q.map.objective.composition,
+            "the stair is an objective with something standing on it")
         assert(q.descent == run, "the descriptor carries the run states/game.lua keys off")
         assert(type(q.floorLevel) == "number", "and the enemy-level floor for this depth")
     end },
@@ -168,5 +171,163 @@ return {
         local again = Descent.extract(player, shallow)
         assert(not again.record, "one floor is not a new record")
         assert(player.deepest == 2, "and the record stands")
+    end },
+
+    { name = "the circles agree with the vendor blueprints that define them", fn = function()
+        -- Descent.SINS says which vendor is which circle, and data/vendors/*.lua says which sin a
+        -- vendor faces. Two statements of one fact, so this asserts they are the same fact rather
+        -- than restating either -- a sin renamed in data fails here instead of silently leaving a
+        -- floor paying into a house it no longer faces.
+        local Vendor = require("models.vendor")
+        local seenSin, seenVendor = {}, {}
+        for _, sin in ipairs(Descent.SINS) do
+            local def = Vendor.get(sin.vendor)
+            assert(def, sin.id .. " names vendor '" .. tostring(sin.vendor) .. "', which does not exist")
+            assert(def.sin == sin.id, sin.vendor .. " faces " .. tostring(def.sin) ..
+                " in data, but Descent.SINS pairs it with " .. sin.id)
+            assert(not seenSin[sin.id], "two circles claim the sin " .. sin.id)
+            assert(not seenVendor[sin.vendor], "two circles claim the vendor " .. sin.vendor)
+            seenSin[sin.id], seenVendor[sin.vendor] = true, true
+        end
+        -- Every vendor that faces a sin must BE a circle. The Cafe sells suppers and faces nothing,
+        -- so it is not counted -- but a new house added to the game with a sin and no floor would be
+        -- a circle nobody can reach, which is exactly the silence worth failing on.
+        for id, def in pairs(Vendor.defs) do
+            if def.sin then
+                assert(seenVendor[id], "vendor '" .. id .. "' faces " .. def.sin ..
+                    " but no floor is that circle")
+            end
+        end
+    end },
+
+    { name = "a floor's ground and guardian are real content", fn = function()
+        -- Every biome resolves and every guardian body is a blueprint the arena can actually spawn.
+        -- Cheap, and it is the whole failure mode of a table of ids: a typo here is a floor that
+        -- generates fine and then cannot open its own stair.
+        local Character = require("models.character")
+        for _, sin in ipairs(Descent.SINS) do
+            assert(Biome.get(sin.biome), sin.id .. " is fought on '" .. tostring(sin.biome) ..
+                "', which is not a biome")
+            for _, key in ipairs({ "lead", "filler" }) do
+                local id = sin.guardian[key]
+                assert(Character.defs[id], sin.id .. "'s guardian " .. key .. " '" .. tostring(id) ..
+                    "' is not a character blueprint")
+            end
+        end
+    end },
+
+    { name = "the first seven floors are the seven circles, in some order", fn = function()
+        -- A SHUFFLE, not a per-floor pick. The distinction is the feature: a pick lets a run draw
+        -- Wrath three times and never reach Envy, and the first seven floors stop being a tour of the
+        -- circles. Checked across many seeds because a single one could be a lucky permutation.
+        for seed = 1, 40 do
+            local run = Descent.new(nil, seed)
+            local seen = {}
+            for floor = 1, #Descent.SINS do
+                local sin = Descent.sinAt(run, floor)
+                assert(not seen[sin.id], "seed " .. seed .. " deals " .. sin.id .. " twice in one cycle")
+                seen[sin.id] = true
+            end
+        end
+    end },
+
+    { name = "past the seventh the deck is dealt again, differently", fn = function()
+        -- The endless half, which falls out of the cycle arithmetic rather than needing its own rule.
+        -- Both halves are asserted: the second cycle is a full deck again, and it is not simply the
+        -- first one replayed -- otherwise floor 8 would be floor 1 with bigger numbers.
+        local run = Descent.new(nil, 4242)
+        local n = #Descent.SINS
+        local seen, sameSeat = {}, 0
+        for floor = n + 1, n * 2 do
+            local sin = Descent.sinAt(run, floor)
+            assert(not seen[sin.id], "the second cycle deals " .. sin.id .. " twice")
+            seen[sin.id] = true
+            if sin.id == Descent.sinAt(run, floor - n).id then sameSeat = sameSeat + 1 end
+        end
+        assert(sameSeat < n, "the second cycle repeated the first exactly -- the salt is not reaching the deal")
+    end },
+
+    { name = "a run lays out the same circles from the same seed, forever", fn = function()
+        -- The determinism the resume rests on: a run is saved as a seed and a depth, and everything
+        -- else is re-derived. Two runs on one seed must agree, and a run must still agree with itself
+        -- after a round trip through the serializer.
+        local a, b = Descent.new(nil, 777), Descent.new(nil, 777)
+        for floor = 1, 20 do
+            assert(Descent.sinAt(a, floor).id == Descent.sinAt(b, floor).id,
+                "two runs on seed 777 disagree about floor " .. floor)
+        end
+        local restored = Descent.restore(reserialize(Descent.snapshot(a)))
+        for floor = 1, 20 do
+            assert(Descent.sinAt(restored, floor).id == Descent.sinAt(a, floor).id,
+                "a resumed run disagrees about floor " .. floor)
+        end
+    end },
+
+    { name = "a floor is mostly fights, and its elites do not grow with the company", fn = function()
+        -- The pacing claim, checked on the pool rather than on a generated board so it is a statement
+        -- about the RULE and not about one lucky seed. Measured on real boards the transform takes a
+        -- twelve-stop floor from 5.2 fights (2.8 of them elites) to 7.4 (2.0) -- many short fights
+        -- instead of few long ones, which is the whole point of the skirmish tier.
+        local function shares(prestige)
+            local combat, elite, texture = 0, 0, 0
+            for _, e in ipairs(Descent.floorPool({ biome = "swamp", prestige = prestige })) do
+                if e.kind == "combat" then combat = combat + e.weight
+                elseif e.kind == "elite" then elite = elite + e.weight
+                else texture = texture + e.weight end
+            end
+            return combat, elite, texture
+        end
+
+        local combat, elite, texture = shares(6)
+        assert(combat > texture * 3, "a floor's free draws must be fights, not towns -- every stop " ..
+            "spent on texture is a skirmish the floor does not have")
+        assert(elite < combat / 2, "an elite is punctuation, not the sentence")
+
+        -- The runaway this pins shut: `weight = prestige` on the elite blueprint is a campaign dial,
+        -- and on a descent it would crowd ordinary fights out without limit as the company grows --
+        -- so by prestige 20 an "ordinary road stop" would be a set-piece again.
+        --
+        -- Asserted PER BLUEPRINT rather than on the family total, because the total legitimately moves
+        -- with prestige for a different reason: `minPrestige` gates whole blueprints in as the company
+        -- grows, and an elite that is not eligible at prestige 1 contributes nothing. That is
+        -- eligibility, which is the pool's business and correct; what must not move is the weight.
+        for _, prestige in ipairs({ 1, 6, 30 }) do
+            for _, e in ipairs(Descent.floorPool({ biome = "swamp", prestige = prestige })) do
+                if e.kind == "elite" then
+                    assert(e.weight == Descent.ELITE_WEIGHT, e.id .. " weighs " .. e.weight ..
+                        " at prestige " .. prestige .. " -- an elite's weight is pinned flat")
+                end
+            end
+        end
+    end },
+
+    { name = "a floor names its house, pins its board, and stands something on the stair", fn = function()
+        -- The four things stage 3 added to the descriptor, checked together because they are one
+        -- statement: this floor is a circle. The board size especially -- left to deriveDims, twelve
+        -- stops reaches the generator's 27x19 cap, which is the marathon warren its own header warns
+        -- against.
+        local run = Descent.new(nil, 31337)
+        local sin = Descent.sinAt(run, 1)
+        local quest = Descent.floorQuest(run)
+        assert(quest.sponsor == sin.vendor, "the floor must name its house, or nothing tags its materials")
+        assert(quest.sin == sin.id, "and say which circle it is")
+        assert(quest.map.biome == sin.biome, "and be fought on that circle's ground")
+        assert(quest.map.cols == Descent.FLOOR_COLS and quest.map.rows == Descent.FLOOR_ROWS,
+            "the board is pinned, never derived")
+        assert(quest.map.cacheCount, "the cache count is pinned too -- derived, it triples with density")
+
+        local obj = quest.map.objective
+        assert(not obj.meet, "the stair is fought now, not walked onto")
+        assert(obj.win and obj.win.type == "killAll", "and it is won by clearing it")
+        local bodies = obj.composition({})
+        assert(bodies[1] == sin.guardian.lead, "the guardian leads with its own house's body")
+        assert(#bodies >= 3, "a guardian is a set-piece, not a skirmish")
+
+        -- Deeper stairs are held harder. Read off the floor rather than off prestige, so this is a
+        -- statement about how far down the party went.
+        local deep = Descent.new(nil, 31337)
+        deep.floor = 7
+        local deepBodies = Descent.floorQuest(deep).map.objective.composition({})
+        assert(#deepBodies > #bodies, "floor 7's stair must be held harder than floor 1's")
     end },
 }

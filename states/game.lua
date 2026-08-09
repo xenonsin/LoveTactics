@@ -40,8 +40,7 @@ local Consumables = require("ui.panels.consumables")
 local PartyStatus = require("ui.party_status")
 local RelicStrip = require("ui.relic_strip")
 local OverworldAbility = require("models.overworld_ability")
-local Descent = require("models.descent") -- a run as a stack of floors; the landing between them
-local Biome = require("models.biome")     -- ...and what to call the one below, on the landing prompt
+local Descent = require("models.descent") -- a run as a stack of floors, their circles, the landing between
 local Relic = require("models.relic")
 local Meal = require("models.meal") -- the Cafe's supper: one platter, worn by the company all run
 local CoachBubble = require("ui.coach_bubble")
@@ -368,7 +367,10 @@ function game:openLanding()
     if not run then return end
     Descent.clearFloor(run)
 
-    local below = Biome.get(Descent.biomeAt(run, Descent.depth(run) + 1)).name
+    -- The CIRCLE below, not the ground below. A biome is where you will be standing; a sin is what you
+    -- are going down to face, whose house the floor pays into and whose own cast holds its stair. It is
+    -- also the thing the shuffle makes worth reading -- the ground is a consequence of it.
+    local below = Descent.sinAt(run, Descent.depth(run) + 1).name
     local carried = game:haulPhrase()
 
     game.activePanel = Choice.new({
@@ -379,9 +381,9 @@ function game:openLanding()
         options = {
             {
                 label = "Go deeper",
-                -- Phrased so the place NAMES itself rather than being slotted after an article: "the
-                -- Volcanic" is ungrammatical where "the Swamp" is fine, and from stage 2 this line
-                -- carries the sin instead ("The next floor is Wrath"), which takes no article either.
+                -- Phrased so the place NAMES itself rather than being slotted after an article: the
+                -- sin takes none ("The next floor is Wrath"), which is also why the line names the
+                -- circle rather than the ground it is fought on.
                 desc = "The next floor is " .. below .. ". Everything you carry stays at stake.",
                 -- The same amber the turn-back prompt gives "Keep going": pressing on with the haul
                 -- still unbanked. Note the landing INVERTS that prompt's morals -- there, walking out
@@ -503,7 +505,13 @@ function game.enter(self, quest, prestige, player, onComplete, resume)
             -- caches, rests and fights between them (guaranteed variety + a combat-share cap live in
             -- Overworld:placeEncounters). A quest still overrides via its own mp.encounters.min/max.
             encounterCount = { min = encSpec.min or 8, max = encSpec.max or encSpec.min or 11 },
-            encounters = EncounterModel.pool(ctx),
+            -- A descent floor reweights the same pool -- more fights, fewer set-pieces, almost no
+            -- texture -- because a floor is not a roadside. See Descent.floorPool for the argument;
+            -- this is the dispatch.
+            encounters = game.descent and Descent.floorPool(ctx) or EncounterModel.pool(ctx),
+            -- ...and raises the share cap to match. Absent (every campaign leg) the generator keeps
+            -- its own 0.6.
+            combatShare = mp.combatShare,
             alwaysEncounters = always,
             -- A climb rather than a region: guaranteed encounters laid out in authored order by distance
             -- from the start, and the objective on the farthest dead-end there is. See
@@ -906,6 +914,21 @@ function game:openEncounter(cell)
                     -- Quest.complete, not through spoils. Granted here so a skim earned in a quest
                     -- battle is still earned, and deliberately BELOW the prologue's early return
                     -- above: that leg pays nothing at all, and the takings go with it.
+                    -- A DESCENT FLOOR'S STAIR GUARDIAN. The same fork the `meet` branch above takes,
+                    -- and it is here as well because from stage 3 the stair is FOUGHT rather than
+                    -- walked onto -- the objective that ends a floor is a set-piece now, so this is the
+                    -- branch a cleared floor actually comes out of.
+                    --
+                    -- Above the payout rather than inside it: a floor has no Quest.defs entry to
+                    -- complete, and clearRun here would bank the very haul the landing is about to put
+                    -- back at stake. The guardian pays through grantSideSpoils -- the SAME call an
+                    -- ordinary road win takes -- so its gold, loot and salvage arrive by one route and
+                    -- the skim below never doubles it.
+                    if game.descent then
+                        grantSideSpoils(spoils)
+                        game:openLanding()
+                        return
+                    end
                     if game.player and spoils and (spoils.gold or 0) > 0 then
                         Player.addGold(game.player, spoils.gold)
                     end
