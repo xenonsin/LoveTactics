@@ -1310,6 +1310,7 @@ function game:openEncounter(cell)
         if not enc.offer then
             enc.offer = Relic.slate({
                 prestige = game.prestige,
+                sin = game.quest and game.quest.sin, -- this circle's shelf leans toward its own
                 tier = enc.tier or (def and def.tier) or nil,
                 exclude = game.relicState,
             }, 3)
@@ -1350,6 +1351,7 @@ function game:openEncounter(cell)
     if kind == "shrine" then
         local id = Relic.roll(Relic.pool({
             prestige = game.prestige, alignment = "vice", exclude = game.relicState,
+            sin = game.quest and game.quest.sin,
         }))
         if not id then cell.cleared = true; saveRun(); return end
         local price = 20 + game.prestige * 8
@@ -1431,7 +1433,8 @@ function game:openEncounter(cell)
                 end
             end,
             grantRelic = function(tier)
-                local id = Relic.roll(Relic.pool({ prestige = game.prestige, tier = tier, exclude = game.relicState }))
+                local id = Relic.roll(Relic.pool({ prestige = game.prestige, tier = tier, exclude = game.relicState,
+                    sin = game.quest and game.quest.sin }))
                 if not id then return nil end
                 Relic.grant(game.relicState, id)
                 game:pushToast("You gain: " .. (Relic.info(id).name or id))

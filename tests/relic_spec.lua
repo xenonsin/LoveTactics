@@ -276,4 +276,47 @@ return {
             assert(ctx.player.gold > start, "pushing into new ground still turns up coin")
         end,
     },
+
+    {
+        name = "a circle's shelf leans toward its own, without ever closing to the rest",
+        fn = function()
+            -- The cheapest way to make the shuffle change how a run PLAYS rather than only what it
+            -- looks like: a Wrath floor keeps offering things that reward hitting. A THUMB and not a
+            -- filter -- a floor that could only ever offer one flavour is a floor with no decision on
+            -- it -- so both halves are asserted.
+            local function weightOf(pool, id)
+                for _, e in ipairs(pool) do if e.id == id then return e.weight end end
+            end
+
+            -- Every sin-tagged relic must weigh more on its own circle than off it.
+            local tagged = 0
+            for id, def in pairs(Relic.defs) do
+                if def.sin then
+                    tagged = tagged + 1
+                    local home = weightOf(Relic.pool({ prestige = 20, sin = def.sin }), id)
+                    local away = weightOf(Relic.pool({ prestige = 20, sin = "not_a_sin" }), id)
+                    assert(home and away, id .. " fell out of the pool entirely")
+                    assert(home > away, id .. " is no likelier on a " .. def.sin .. " floor than off it")
+                end
+            end
+            assert(tagged >= 7, "every circle wants something of its own on the shelf; found " .. tagged)
+
+            -- ...and the off-circle stock is still there to be drawn.
+            local pool = Relic.pool({ prestige = 20, sin = "wrath" })
+            local offCircle = 0
+            for _, e in ipairs(pool) do
+                if e.def.sin ~= "wrath" then offCircle = offCircle + 1 end
+            end
+            assert(offCircle > 0, "a circle's floor must still be able to offer somebody else's relic")
+
+            -- And the campaign, which names no sin, is weighted exactly as it always was.
+            local plain = Relic.pool({ prestige = 20 })
+            for _, e in ipairs(plain) do
+                local w = e.def.weight
+                if type(w) ~= "function" then
+                    assert(e.weight == w, e.id .. " was reweighted on a floor that named no circle")
+                end
+            end
+        end,
+    },
 }

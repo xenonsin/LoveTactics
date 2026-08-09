@@ -53,10 +53,26 @@ local function eligible(def, ctx)
     return true
 end
 
+-- How much likelier a relic OF THIS CIRCLE is to turn up on this circle's floor.
+--
+-- The cheapest way to make the shuffle change how a run PLAYS rather than only what it looks like: a
+-- Wrath floor keeps offering things that reward hitting, a Greed floor things that reward taking, and
+-- two runs that drew their sins in a different order build differently even from the same shelf. Not
+-- exclusive -- an off-circle relic still turns up, because a floor that could only ever offer one
+-- flavour is a floor with no decision on it -- so this is a thumb on the scale and never a filter.
+Relic.SIN_AFFINITY_BONUS = 4
+
 local function weightOf(def, ctx)
     local w = def.weight or 1
     if type(w) == "function" then w = w(ctx) end
-    return w or 0
+    w = w or 0
+    -- A relic that names a circle is weighted up on that circle's floor. `ctx.sin` is set only by a
+    -- descent (states/game.lua reads it off the floor descriptor); the campaign passes none and every
+    -- weight here is exactly what it always was.
+    if w > 0 and ctx and ctx.sin and def.sin == ctx.sin then
+        w = w * Relic.SIN_AFFINITY_BONUS
+    end
+    return w
 end
 
 -- The relics eligible to drop for `ctx`, as { id, def, weight } entries (weight > 0). `ctx.alignment`
