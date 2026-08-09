@@ -473,6 +473,7 @@ local function finishBattle(result)
             encounter = battle.encounter,
             enemyUnits = battle.enemyUnits,
             prestige = battle.prestige,
+            floorLevel = battle.floorLevel, -- a descent floor pays by depth (models/spoils.lua)
             houseMaterial = battle.houseMaterial,
             combat = battle.combat,
         })
@@ -4521,7 +4522,11 @@ function battle.enter(self, opts)
     -- ordinary battle rolls a fresh one, a replayed bug report passes the one it recorded, and two
     -- players in the same duel are handed the same seed and build the same ground from it.
     local seed = opts.seed or Arena.randomSeed()
-    local ctx = { prestige = opts.prestige or 1, biome = opts.biome, quest = opts.quest }
+    -- `encounterKind` picks the fight TIER -- skirmish or set-piece (Arena.enemyCap). A field on the
+    -- existing ctx table rather than a new local: this file sits within a couple of declarations of
+    -- Lua 5.1's 200-local ceiling, and crossing it is a compile error naming an unrelated line.
+    local ctx = { prestige = opts.prestige or 1, biome = opts.biome, quest = opts.quest,
+        encounterKind = opts.encounter and opts.encounter.kind }
     battle.arena = Arena.build(ctx, specFor(opts, partyIds, seed))
 
     -- Combat unit lists: { char = <instance>, x, y }.

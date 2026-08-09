@@ -118,7 +118,13 @@ function Muster.encounter(def, ctx)
     if not def then return 0 end
     ctx = ctx or {}
     local ids = Arena.resolveComposition(def.composition, ctx)
-    ids = Arena.clampComposition(ids, Arena.enemyCap(ctx))
+    -- The blueprint's own kind decides the fight TIER, so a marker is rated at the size the fight will
+    -- actually open at (Arena.enemyCap). Taken from `def` rather than from `ctx` because the caller
+    -- hands this function the blueprint and would otherwise have to remember to copy one field across
+    -- -- and a muster that silently rated the wrong tier would mis-colour every marker on the board.
+    ids = Arena.clampComposition(ids, Arena.enemyCap({
+        quest = ctx.quest, encounterKind = def.kind,
+    }))
 
     local playerLevel = Growth.levelForPrestige(ctx.prestige or 1)
     local total = 0

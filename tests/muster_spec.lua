@@ -179,9 +179,15 @@ return {
             local def = Encounter.get("encounter_wolf")
             local ctx = { prestige = 200 }
             local raw = Arena.resolveComposition(def.composition, ctx)
-            local clamped = Arena.clampComposition(raw, Arena.enemyCap(ctx))
+            -- The cap is derived exactly as the real fight derives it, KIND INCLUDED. Reading it any
+            -- other way here would let this case pass while the marker and the board disagreed, which
+            -- is the one thing it exists to prevent. A wolf pack is an ordinary road stop, so it caps
+            -- at the skirmish tier rather than the old flat nine.
+            local cap = Arena.enemyCap({ quest = ctx.quest, encounterKind = def.kind })
+            local clamped = Arena.clampComposition(raw, cap)
+            assert(cap == Arena.SKIRMISH_CAP, "an ordinary road fight is a skirmish, not a set-piece")
             assert(#raw > #clamped, "at prestige 200 the pack is bigger than the board will field")
-            assert(#clamped <= Arena.DEFAULT_ENEMY_CAP, "and it clamps to the cap")
+            assert(#clamped <= cap, "and it clamps to the cap")
 
             -- Rate the clamped list by hand and demand the same answer: what the pip prices is the
             -- bodies that will stand on the board, not the composition the formula asked for.

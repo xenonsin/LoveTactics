@@ -14,6 +14,7 @@
 -- Headless-safe: love.filesystem only, no love.graphics at require time.
 
 local Character = require("models.character")
+local Descent = require("models.descent")
 local Growth = require("models.growth")
 local Item = require("models.item")
 local Material = require("models.material")
@@ -267,6 +268,11 @@ function Save.snapshotRun(run, player)
     return {
         questId = run.questId,
         prestige = run.prestige,
+        -- A DESCENT run: the floor stack and its seed, from which the whole board re-derives. Present
+        -- only for a descent; a legacy board quest stores nothing here and restores through questId
+        -- exactly as it always did. Plain data by contract -- see models/descent.lua's header on why a
+        -- floor descriptor is never allowed onto the run.
+        descent = run.descent and Descent.snapshot(run.descent) or nil,
         px = run.map.px,
         py = run.map.py,
         keysHeld = keysHeld,
@@ -286,13 +292,32 @@ end
 -- Plain data -> a resume descriptor states/game.lua can enter with, or nil (drop the run, resume at hub).
 function Save.restoreRun(snap)
     if type(snap) ~= "table" or not snap.questId or type(snap.grid) ~= "table" then return nil end
-    local quest = require("models.quest").get(snap.questId)
-    if not quest then return nil end -- quest content removed since the run was saved
+
+    -- A descent floor is not in Quest.defs and never will be -- its descriptor is synthesized. So the
+    -- descent branch is taken BEFORE the lookup, or every resumed descent would be discarded here as
+    -- "quest content removed since the run was saved". A legacy board quest falls through to the
+    -- original path untouched, which is what lets a player mid-quest at upgrade time finish it.
+    local descent, quest
+    if snap.descent then
+        descent = Descent.restore(snap.descent)
+        -- The rollback point is stored once, at the run level, and handed back to the descent here --
+        -- see Descent.snapshot on why it is not serialized twice. Without this the descent would resume
+        -- with no way back and the next floor's game.enter would mint a fresh snapshot, silently banking
+        -- everything the run had found so far.
+        if descent then descent.entry = snap.entry end
+        quest = descent and Descent.floorQuest(descent)
+        if not quest then return nil end -- unreadable descent: drop the run, keep the player
+    else
+        quest = require("models.quest").get(snap.questId)
+        if not quest then return nil end -- quest content removed since the run was saved
+    end
+
     local ok, grid = pcall(require("models.overworld").fromSnapshot, snap.grid)
     if not ok or not grid then return nil end
     return {
         questId = snap.questId,
         quest = quest,
+        descent = descent,
         prestige = snap.prestige or 1,
         px = snap.px, py = snap.py,
         keysHeld = snap.keysHeld or {},

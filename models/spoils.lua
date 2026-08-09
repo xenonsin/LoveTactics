@@ -41,8 +41,36 @@ local Material = require("models.material")
 
 local Spoils = {}
 
-local GOLD_PER_ENEMY = 8    -- base gold each defeated enemy is worth, before prestige/jitter
+-- WHAT A FIGHT PAYS, and why it is no longer mostly a head-count.
+--
+-- Gold used to be `GOLD_PER_ENEMY * count * prestige` -- purely linear in how many bodies stood there.
+-- That was survivable while every fight was a set-piece of nine, and became wrong the moment an
+-- ordinary road stop dropped to a skirmish of three (Arena.SKIRMISH_CAP): the same fight, taking the
+-- same health and the same consumables and carrying the same risk to the run, would have paid a third
+-- of what it used to. Cutting the bodies without moving this is not a rebalance, it is a pay cut.
+--
+-- So a fight pays for BEING a fight, plus a little for its size. The flat half is the larger half at
+-- skirmish scale, which is the point: what a stop costs the player is mostly the fact of stopping --
+-- the attrition, the turns, the risk -- and only partly how many bodies were on it.
+local GOLD_PER_FIGHT = 30   -- what clearing a stop is worth at all, before anything is counted
+local GOLD_PER_ENEMY = 8    -- ...and what each body standing on it adds
 local ELITE_GOLD_MULT = 1.8 -- an elite fight pays out richer than a like-sized common one
+
+-- HOW MUCH RICHER A FLOOR GETS FOR BEING DEEPER, per level of depth. Not the raw multiplier prestige
+-- is, and the difference is the whole reason this constant exists.
+--
+-- Prestige is FIXED for the length of a quest -- the company walks in at 13 and walks out at 13 -- so
+-- multiplying by it prices one run against another and nothing within a run compounds. A descent's
+-- floor level is not fixed: it climbs two per stair (Descent.LEVEL_PER_FLOOR), eight times in a long
+-- run. Reusing prestige's slope there would have the seventh floor paying thirteen times the first,
+-- and MEASURED -- the whole floor walked, caches included -- that is a floor handing over eleven
+-- thousand gold against a shelf whose dearest row is authored at a few hundred (Grade.priceFor). Gold
+-- would stop being a decision somewhere on floor three.
+--
+-- So depth pays a shallow slope instead: floor 1 pays flat, and each level after adds a fifth. Floor 7
+-- comes out around three and a half times floor 1 -- materially richer, which is the greed the landing
+-- question needs, and still inside the band where one cleared floor buys roughly one thing off a shelf.
+local GOLD_DEPTH_SLOPE = 0.2
 -- The chance a given drop is drawn off the beaten bodies rather than the generic price band, when
 -- both pools have something in them. Not 1.0: at 1.0 a fight against people who happened to carry
 -- no consumables can never pay a potion, and the band is the only thing that stocks the everyday
@@ -56,13 +84,18 @@ local function rnd(...)
     return math.random(...)
 end
 
--- Gold for beating `count` enemies at `prestige`, scaled by the encounter's difficulty tier (`scale`,
+-- Gold for beating `count` enemies at `depth`, scaled by the encounter's difficulty tier (`scale`,
 -- default 1) so a tougher side-fight pays materially more -- the risk/reward that makes engaging a
 -- fight before the boss worth the attrition. An override short-circuits the whole computation (it is
 -- an exact, authored payout and is never rescaled).
-local function rollGold(count, prestige, kind, override, scale)
+--
+-- `mult` is HOW FAR IN this fight is, already resolved to a multiplier by the caller (Spoils.roll),
+-- because the game has two shapes of run and they read depth differently -- prestige straight in the
+-- campaign, a shallow slope over the floor level in a descent. See GOLD_DEPTH_SLOPE for why they are
+-- not the same slope, and Spoils.roll for which one a given call gets.
+local function rollGold(count, mult, kind, override, scale)
     if override then return math.max(0, math.floor(override)) end
-    local base = GOLD_PER_ENEMY * math.max(1, count) * math.max(1, prestige)
+    local base = (GOLD_PER_FIGHT + GOLD_PER_ENEMY * math.max(1, count)) * math.max(1, mult)
     local jitter = 0.85 + rnd() * 0.30 -- +/-15% so two identical fights don't pay identically
     local gold = base * jitter * (scale or 1)
     if kind == "elite" then gold = gold * ELITE_GOLD_MULT end
@@ -221,6 +254,16 @@ end
 -- pays 1-4 craft and 1-3 house stock (Overworld:placeCaches) and leaving the path is meant to stay the
 -- thing that stocks the Forge (docs/progression.md, "Materials as a reason to leave the path"). This
 -- is a floor, not a rival: one ingot for clearing a stop, two for an elite or a general.
+--
+-- HELD, NOT MOVED, when the gold beside it was rebased for the skirmish tier -- and measured rather
+-- than assumed, because the arithmetic points the wrong way until the caches are counted. A whole
+-- descent floor walked stop by stop pays around six craft and six house, against a Forge rung billing
+-- four-to-six craft and two-to-three house (models/forge.lua): one floor, one rung, which is the rule
+-- the rebase was against. Head-count never fed this half, so shrinking the fights could not cut it.
+--
+-- What DOES move it is the number of caches, which is derived from the stop count (Overworld.generate,
+-- about one per two stops) and so triples the moment a floor gets dense. See Descent.FLOOR_STOPS,
+-- where that bump is a one-line change and this is the thing it has to be checked against.
 local SALVAGE_CRAFT = { combat = 1, elite = 2, objective = 2 }
 -- House stock -- the GATE half of the economy, the one that decides which house's bench a haul feeds
 -- -- is the reward for the fights you could have walked around, and for the one you came for. A common
@@ -266,6 +309,10 @@ end
 -- Roll the spoils for a won fight.
 --   opts.enemyUnits  the beaten roster (its length is the count); or pass opts.count directly
 --   opts.prestige    the company's prestige (default 1)
+--   opts.floorLevel  a descent floor's level, if this fight is on one. Its presence SWITCHES how the
+--                    gold reads depth -- a shallow slope over the floor instead of a straight multiple
+--                    of prestige (GOLD_DEPTH_SLOPE) -- so nothing moves in the campaign, which has
+--                    never passed one
 --   opts.kind        "combat" | "elite" (elite pays richer); anything else treated as common
 --   opts.rewardGold  encounter override: exact gold, skipping the computation
 --   opts.loot        encounter override: an explicit id list, skipping the roll
@@ -286,8 +333,20 @@ function Spoils.roll(opts)
     local prestige = opts.prestige or 1
     local kind = opts.kind or "combat"
     local scale = opts.rewardScale or 1
+    -- HOW FAR IN this fight is, as the multiplier the gold is scaled by. A BRANCH rather than a max of
+    -- the two, because the two numbers are not the same kind of thing (see GOLD_DEPTH_SLOPE): prestige
+    -- is a fixed per-run standing and scales straight, a floor level climbs within the run and scales
+    -- on a shallow slope. Taking the larger would let the descent inherit prestige's slope the moment a
+    -- strong company went down, which is precisely the compounding this avoids.
+    --
+    -- On a descent the company's prestige is deliberately NOT consulted: floor 1 pays what floor 1 is
+    -- worth however decorated the party that walks it, which is what stops a strong company farming the
+    -- shallows instead of descending.
+    local mult = opts.floorLevel
+        and (1 + GOLD_DEPTH_SLOPE * (math.max(1, opts.floorLevel) - 1))
+        or math.max(1, prestige)
     return {
-        gold = rollGold(count, prestige, kind, opts.rewardGold, scale),
+        gold = rollGold(count, mult, kind, opts.rewardGold, scale),
         loot = rollLoot(prestige, kind, opts.loot, opts.enemyUnits, scale),
         materials = Spoils.materials({
             kind = kind, tier = opts.tier, houseMaterial = opts.houseMaterial,

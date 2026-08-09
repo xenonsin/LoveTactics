@@ -130,7 +130,11 @@ function EncounterBattle.build(opts)
     for i, char in ipairs(party) do partyIds[i] = char.id end
 
     local seed = opts.seed or Arena.randomSeed()
-    local ctx = { prestige = opts.prestige or 1, biome = opts.biome, quest = opts.quest }
+    -- `encounterKind` picks the fight TIER (Arena.enemyCap): an ordinary road stop is a small skirmish,
+    -- a guardian or an objective a set-piece. It must be threaded here as well as in states/battle.lua
+    -- or the walk-off would resolve a differently sized fight from the one it stands in for.
+    local ctx = { prestige = opts.prestige or 1, biome = opts.biome, quest = opts.quest,
+        encounterKind = opts.encounter and opts.encounter.kind }
     local arena = Arena.build(ctx, EncounterBattle.spec(opts, partyIds, seed))
 
     local enemyLevel = Growth.levelForPrestige(opts.prestige or 1)
@@ -228,6 +232,9 @@ function EncounterBattle.spoils(opts)
         spoils = Spoils.roll({
             enemyUnits = opts.enemyUnits,
             prestige = opts.prestige,
+            -- How deep this stop is, on a descent. Nil in the campaign, where prestige carries the
+            -- same job -- see Spoils.roll, which takes the larger of the two.
+            floorLevel = opts.floorLevel,
             kind = kind,
             rewardGold = encounter.rewardGold,
             loot = encounter.loot,

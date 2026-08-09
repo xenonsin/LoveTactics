@@ -40,6 +40,8 @@ local Consumables = require("ui.panels.consumables")
 local PartyStatus = require("ui.party_status")
 local RelicStrip = require("ui.relic_strip")
 local OverworldAbility = require("models.overworld_ability")
+local Descent = require("models.descent") -- a run as a stack of floors; the landing between them
+local Biome = require("models.biome")     -- ...and what to call the one below, on the landing prompt
 local Relic = require("models.relic")
 local Meal = require("models.meal") -- the Cafe's supper: one platter, worn by the company all run
 local CoachBubble = require("ui.coach_bubble")
@@ -318,6 +320,102 @@ function game:haulPhrase()
     return table.concat(parts, ", ")
 end
 
+-- WHAT A STOP LEAVES BEHIND, as a phrase ("2 Iron Scrap, Salt Iron"), or nil for a stop that salvages
+-- nothing (everything that is not a fight).
+--
+-- Reads the same Spoils.materials the win will actually grant, with the same arguments, rather than
+-- reproducing its table here -- so the telegraph cannot drift from the payout. A floor that promised
+-- stock the fight then did not leave would be worse than promising nothing.
+--
+-- Ordered by name so two reads of the same marker never rearrange themselves under the cursor; `pairs`
+-- over the result is unspecified.
+function game:payoutPhrase(enc)
+    if not (enc and (enc.kind == "combat" or enc.kind == "elite" or enc.kind == "objective")) then
+        return nil
+    end
+    local got = Spoils.materials({
+        kind = enc.kind, tier = enc.tier, houseMaterial = game.houseMaterial,
+    })
+    local parts = {}
+    for id, n in pairs(got) do
+        local def = Material.get(id)
+        if def then parts[#parts + 1] = { name = def.name or id, n = n } end
+    end
+    if #parts == 0 then return nil end
+    table.sort(parts, function(a, b) return a.name < b.name end)
+    local out = {}
+    for i, p in ipairs(parts) do
+        out[i] = (p.n > 1 and (p.n .. " ") or "") .. p.name
+    end
+    return table.concat(out, ", ")
+end
+
+-- THE LANDING. A floor is cleared and the party is standing at the head of the next stair, which is the
+-- only place in the game that asks the question an extraction is actually about: is what you are carrying
+-- worth more than what is below?
+--
+-- Both answers are real, and that is the whole design. Extract banks the haul and ends the run; Descend
+-- keeps everything provisional for one more floor. Nothing about the board makes this decision for the
+-- player, so the prompt has to carry the two facts they weigh it on -- what a wipe would cost them
+-- (game:haulPhrase, the same words the turn-back prompt and the defeat panel use) and where they are
+-- being asked to go. A choice between two unlabelled doors is not a choice.
+--
+-- Deliberately NOT closeable: `onClose` is nil, so Esc and B do not dismiss it. There is nowhere to back
+-- out to -- the floor is over and the party is on the stair -- and a dismissable landing would strand the
+-- player on a cleared board with no way forward.
+function game:openLanding()
+    local run = game.descent
+    if not run then return end
+    Descent.clearFloor(run)
+
+    local below = Biome.get(Descent.biomeAt(run, Descent.depth(run) + 1)).name
+    local carried = game:haulPhrase()
+
+    game.activePanel = Choice.new({
+        title = "The stair goes down.",
+        prompt = carried
+            and ("You are carrying " .. carried .. ". It is yours only if you walk out with it.")
+            or "You are carrying nothing yet.",
+        options = {
+            {
+                label = "Go deeper",
+                -- Phrased so the place NAMES itself rather than being slotted after an article: "the
+                -- Volcanic" is ungrammatical where "the Swamp" is fine, and from stage 2 this line
+                -- carries the sin instead ("The next floor is Wrath"), which takes no article either.
+                desc = "The next floor is " .. below .. ". Everything you carry stays at stake.",
+                -- The same amber the turn-back prompt gives "Keep going": pressing on with the haul
+                -- still unbanked. Note the landing INVERTS that prompt's morals -- there, walking out
+                -- was the empty-handed answer; here it is the one that pays -- so the colours are
+                -- assigned by what the option does to your stake, never by which one continues.
+                accent = { 0.83, 0.73, 0.45 },
+                cb = function()
+                    game.activePanel = nil
+                    Descent.advance(run)
+                    State.switch(require("states.game"),
+                        Descent.floorQuest(run, game.player), game.prestige, game.player)
+                end,
+            },
+            {
+                label = "Climb out",
+                desc = carried and ("Bank " .. carried .. " and end the descent.")
+                    or "End the descent and return to the city.",
+                accent = { 0.42, 0.80, 0.62 }, -- green: the answer that makes the haul yours
+                cb = function()
+                    game.activePanel = nil
+                    -- THE EXTRACTION. Dropping the run drops the rollback point with it, and everything
+                    -- the descent found -- already live in the stash since the moment it was picked up --
+                    -- stops being provisional. Same rule the objective used to carry alone; the landing
+                    -- is simply where the player now gets to invoke it.
+                    Descent.extract(game.player, run)
+                    clearRun()
+                    if game.player then Player.save() end
+                    State.switch(require("states.hub"))
+                end,
+            },
+        },
+    })
+end
+
 -- Persist the run if one is active (a resumable board quest). No-op otherwise, so it is safe to sprinkle at
 -- every point the board changes -- entering the map, approaching an encounter, and resolving one. The
 -- resolution saves matter: a treasure collected or an event resolved marks its cell cleared, and without
@@ -350,6 +448,10 @@ function game.enter(self, quest, prestige, player, onComplete, resume)
     game.prestige = prestige or 1
     game.player = player -- kept so combat encounters can deploy the active party
     game.onComplete = onComplete
+    -- A DESCENT floor rather than a board quest. The descriptor is synthesized (models/descent.lua) and
+    -- carries the run itself, which is what makes one expedition out of a stack of floors: the same table
+    -- travels from floor to floor, so the rollback point taken at the top survives all of them.
+    game.descent = quest and quest.descent or nil
     local mp = quest and quest.map or {}
     -- Which house's stock this run pays out in: the quest's SPONSOR, not the party's needs. That is the
     -- whole point -- running the Bastion's line yields Bastion stock, which the Arcanum's gear will want
@@ -413,12 +515,21 @@ function game.enter(self, quest, prestige, player, onComplete, resume)
     end
     game.activePanel = nil
     game.complete = false
-    -- Per-run scratch for companion overworld abilities (banked vigils/doses/steps/forage). Reset each
-    -- quest, like the fog -- it is a fresh run, not a holiday.
-    game.abilityState = resume and resume.abilityState or {}
-    -- Per-run relic inventory + scratch (models/relic.lua), reset each quest exactly like abilityState and
-    -- the fog: relics are CARRIED, not kept -- picked up on the expedition, gone when it ends.
-    game.relicState = resume and resume.relicState or Relic.newState()
+    -- Per-run scratch for companion overworld abilities (banked vigils/doses/steps/forage) and the run's
+    -- relic inventory (models/relic.lua). Reset each run, like the fog -- relics are CARRIED, not kept.
+    --
+    -- "Each run" is the load-bearing word once a run is a stack of floors. Descending is not a fresh
+    -- expedition, so both ride on the descent between floors: without that, stepping down a stair would
+    -- silently strip every relic the party had picked up, and each floor would be a new holiday. Three
+    -- sources in priority order -- a quit-and-Continue (resume), the floor above (descent), or fresh.
+    game.abilityState = (resume and resume.abilityState)
+        or (game.descent and game.descent.abilityState) or {}
+    game.relicState = (resume and resume.relicState)
+        or (game.descent and game.descent.relicState) or Relic.newState()
+    if game.descent then
+        game.descent.abilityState = game.abilityState
+        game.descent.relicState = game.relicState
+    end
     game.toasts = {} -- transient ability feedback lines (see game:pushToast)
     -- Where the company stands against each fight on this board. The far side of every marker is
     -- priced lazily and once (game:cellMuster); the company's own worth is re-rated here and whenever
@@ -502,10 +613,21 @@ function game.enter(self, quest, prestige, player, onComplete, resume)
         -- inside the entry snapshot inside the next run -- growing the save on every quest. The hub
         -- clears it on the way through and so does every exit; this is the belt to that pair of braces.
         game.player.activeRun = nil
-        local entry = resume and resume.entry or Save.snapshot(game.player)
+        -- THE ROLLBACK POINT IS PER EXPEDITION, NOT PER BOARD. On a descent the second floor is a fresh
+        -- game.enter with no `resume`, so taking a new snapshot here would bank everything floor one
+        -- found -- turning a provisional haul permanent just by walking downstairs, and quietly making
+        -- the extraction rule meaningless. The descent carries the snapshot from the top of the run, so
+        -- the third source below is what makes a stack of floors one expedition.
+        local entry = (resume and resume.entry)
+            or (game.descent and game.descent.entry)
+            or Save.snapshot(game.player)
+        if game.descent then game.descent.entry = entry end
         game.player.activeRun = {
             questId = quest.id,
             prestige = game.prestige,
+            -- Serialized by Save.snapshotRun and taken by Save.restoreRun BEFORE it tries Quest.get,
+            -- since a floor id is never in Quest.defs.
+            descent = game.descent,
             grid = game.grid,
             map = game.map,
             abilityState = game.abilityState,
@@ -624,6 +746,15 @@ function game:openEncounter(cell)
         local function finish()
             if game.onComplete then
                 game.onComplete()
+                return
+            end
+            -- A DESCENT floor's stair. The leg is over but the RUN is not: instead of paying out and
+            -- going home, the landing asks whether there is a next floor. Extraction still happens
+            -- through exactly one seam -- it has just moved from "the objective cleared" to "the player
+            -- said so" (game:openLanding -> clearRun). Placed above the board-quest payout rather than
+            -- inside it so a descent never touches Quest.complete, which has no floor to complete.
+            if game.descent then
+                game:openLanding()
                 return
             end
             -- A `meet` objective extracts exactly as a fought one does: dropping the run drops the
@@ -979,6 +1110,9 @@ function game:openEncounter(cell)
                 encounter = cell.encounter,
                 enemyUnits = built.enemyUnits,
                 prestige = game.prestige,
+                -- The same depth the played fight is paid by, or a walked-off stop would be worth a
+                -- different amount from the one the player could have stood in.
+                floorLevel = game.quest and game.quest.floorLevel or nil,
                 houseMaterial = game.houseMaterial,
                 combat = combat,
             })
@@ -1549,6 +1683,22 @@ function game.drawHud()
         local line = fight.encounter.name or "A fight"
         if fight.encounter.tier then line = line .. "  -  Tier " .. fight.encounter.tier end
         if band then line = line .. "  -  " .. (Muster.BAND_LABEL[band] or band) end
+        -- ...AND WHAT IT LEAVES BEHIND. A stop is a proposition, and until now this line gave only
+        -- half of it: how dangerous, never how worthwhile. Naming the salvage is what turns eight
+        -- fights on a floor from a treadmill into eight routing decisions -- the Hades rule that the
+        -- source is telegraphed BEFORE you commit, which docs/progression.md already cites as the one
+        -- thing its material economy was missing.
+        --
+        -- Only the SALVAGE is named, and that is a correctness point rather than a shortcut: it is
+        -- computed and never rolled (models/spoils.lua -- "no RNG, no zero case"), so this is the exact
+        -- payout rather than an estimate of one. Gold carries +/-15% jitter and naming a figure the
+        -- fight then missed would teach the player to distrust the line.
+        --
+        -- Deliberately NOT a glyph on the marker: at a 32px tile a mark is under 2px across, which is
+        -- the lesson the muster pips already paid for (see models/muster.lua's notes). The marker is
+        -- the read across the whole board; this is the read at the moment of deciding.
+        local pays = game:payoutPhrase(fight.encounter)
+        if pays then line = line .. "  -  leaves " .. pays end
         love.graphics.setFont(hudFont)
         love.graphics.setColor(0.72, 0.72, 0.66)
         love.graphics.printf(line, 0, total > 0 and 72 or 52, Scale.WIDTH, "center")

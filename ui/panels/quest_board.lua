@@ -83,6 +83,20 @@ function QuestBoard:rebuild()
     -- no notion of a disabled row -- activation just calls `action` -- so the guard lives here, and it
     -- is the one thing standing between a one-key player and the Demon Lord.
     local items = {}
+
+    -- TEMPORARY LAUNCHER for the descent (models/descent.lua). The Gate that replaces this whole panel
+    -- is a later stage; until then the board is the only door in the city that starts a run, so the new
+    -- loop hangs off it rather than waiting for its own building. Delete this block when the Gate lands.
+    items[#items + 1] = {
+        label = "Descend",
+        action = function()
+            local Descent = require("models.descent")
+            local run = Descent.new(self.player)
+            State.switch(require("states.game"),
+                Descent.floorQuest(run, self.player), self.prestige, self.player)
+        end,
+    }
+
     for _, quest in ipairs(self.quests) do
         items[#items + 1] = {
             label = quest.locked and (quest.name .. " (Locked)") or quest.name,

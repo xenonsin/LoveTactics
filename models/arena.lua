@@ -180,7 +180,37 @@ end
 Arena.ENEMY_CAP = { Easy = 6, Normal = 9, Hard = 12 }
 Arena.DEFAULT_ENEMY_CAP = 9 -- an encounter with no quest behind it (a roadside fight) reads as Normal
 
+-- TWO FIGHT TIERS, and the ordinary one is small.
+--
+-- The caps above were sized when a run held eight or nine fights and every one of them was an event. A
+-- descent holds ten or twelve stops per FLOOR, which only works if an ordinary fight is a two-minute
+-- skirmish rather than a six-minute set-piece -- ten set-pieces is an evening, not a level. So the
+-- ceiling now depends on WHAT KIND of stop this is:
+--
+--   skirmish   an ordinary road fight     2-4 bodies    the texture between the things that matter
+--   set-piece  a guardian, a general,     6-12 bodies   the thing that matters
+--              a quest objective
+--
+-- Keyed on the encounter's `kind`, which every encounter blueprint already declares and which
+-- models/spoils.lua already keys its salvage table on (SALVAGE_CRAFT / SALVAGE_HOUSE) -- so this is the
+-- existing vocabulary rather than a second one. A kind with no entry here (`objective`, and anything
+-- authored later) falls through to the quest's difficulty exactly as before, which is what keeps every
+-- campaign objective fighting at the size it was balanced at.
+--
+-- Difficulty for the skirmish tier comes from Growth.ENEMY_LEVEL_LAG and from what is standing there,
+-- never from how many -- which is the argument the block above already makes, now actually applied to
+-- the fights the player spends most of their time in.
+Arena.SKIRMISH_CAP = 4
+Arena.ELITE_CAP = 6
+Arena.CAP_BY_KIND = { combat = Arena.SKIRMISH_CAP, elite = Arena.ELITE_CAP }
+
 function Arena.enemyCap(ctx)
+    -- The kind wins where it has an opinion. Read off ctx rather than off a blueprint so the two
+    -- callers that must agree -- the real fight (Arena.build) and the rating the overworld marker is
+    -- drawn from (Muster.encounter) -- cannot drift: a marker that priced a nine-body fight the player
+    -- then meets as four is worse than no marker at all.
+    local byKind = ctx and ctx.encounterKind and Arena.CAP_BY_KIND[ctx.encounterKind]
+    if byKind then return byKind end
     local quest = ctx and ctx.quest
     return (quest and Arena.ENEMY_CAP[quest.difficulty]) or Arena.DEFAULT_ENEMY_CAP
 end

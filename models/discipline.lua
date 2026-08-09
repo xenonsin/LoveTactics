@@ -185,9 +185,18 @@ Discipline.TECHNIQUE_PER_ACTION = 2
 -- reason this does not reopen the door models/growth.lua deliberately shut ("no way to grind away a
 -- bad roll"): a `free` ability does not end the turn, and a fight the player declines to finish is
 -- unbounded actions, so without a cap a single won encounter could be milked for a whole ladder.
--- Thirty actions of one discipline is a thoroughly committed battle and well past the point the
--- reward has been earned; everything after it is farming.
-Discipline.TECHNIQUE_PER_BATTLE = 60
+--
+-- SIZED AGAINST THE FIGHT IT IS CAPPING, which is what moved it. This was 60 -- thirty actions of one
+-- discipline -- when every fight was a set-piece of nine bodies running twenty-odd unit-turns. An
+-- ordinary stop is now a skirmish (Arena.SKIRMISH_CAP), measured at around twelve unit-turns end to
+-- end, of which the player's side takes half; committing every one of those to a single house banks
+-- about twelve. A cap of 60 sits five times past that, which is not a bound on anything -- it is a
+-- wide, quiet band in which refusing to finish a skirmish pays better than fighting it.
+--
+-- Fifteen actions of one house still comfortably clears an honestly played set-piece and leaves the
+-- milked fight nothing to milk. The cap has never been a target to play toward; it is the line past
+-- which the commitment has been demonstrated and the rest is farming.
+Discipline.TECHNIQUE_PER_BATTLE = 30
 
 -- What a rung costs in technique. Climbs with the target level exactly as the gold track it replaces
 -- did (Forge.GOLD_PER_LEVEL), so the shape of the ladder is unchanged and only the currency moved.
