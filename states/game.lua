@@ -43,6 +43,7 @@ local OverworldAbility = require("models.overworld_ability")
 local Descent = require("models.descent") -- a run as a stack of floors, their circles, the landing between
 local Relic = require("models.relic")
 local Meal = require("models.meal") -- the Cafe's supper: one platter, worn by the company all run
+local Wound = require("models.wound") -- what a body that went down carries out of the run
 local CoachBubble = require("ui.coach_bubble")
 local Locale = require("models.locale")
 local Theme = require("ui.theme")
@@ -247,7 +248,17 @@ local function rollbackRun()
     if not entry then clearRun() return false end
     local fresh = Save.restore(entry)
     if not fresh then clearRun() return false end -- unreadable snapshot: drop the run, keep the player
+    -- WOUNDS DO NOT ROLL BACK, and this is the one line in the file that has to know it.
+    --
+    -- The loop below is deliberately total -- it hands the player every key the entry snapshot holds,
+    -- which is what makes the rollback correct without a list of what a run can change. `wounds` is
+    -- the single exception, and it is an exception on purpose: the whole point of an injury is that it
+    -- outlives the run that caused it, and a wipe restoring the pre-run wound count would hand the
+    -- company back whole at the exact moment it was hurt worst. Held across the copy rather than
+    -- excluded from the snapshot, so a resume still reads its wounds from disk.
+    local wounds = game.player.wounds
     for k, v in pairs(fresh) do game.player[k] = v end
+    game.player.wounds = wounds
     clearRun()
     return true
 end
@@ -347,6 +358,31 @@ function game:payoutPhrase(enc)
         out[i] = (p.n > 1 and (p.n .. " ") or "") .. p.name
     end
     return table.concat(out, ", ")
+end
+
+-- WHAT THE LAST FIGHT COST THE BODIES IN IT. states/battle.lua records who ended a fight down --
+-- carried out on a win, simply down on a loss -- on `battle.fallen`, and this turns that into wounds
+-- that outlive the run (models/wound.lua).
+--
+-- Read off the battle state rather than handed through the callback because there is nowhere to hand
+-- it: onWin takes the spoils and onLoss takes nothing, and threading a second argument through both
+-- would mean touching every launcher in the file for one of them. The field is cleared on every
+-- battle.enter, so a stale list cannot be read twice.
+--
+-- The toast is the point of doing this here rather than silently in a model: an injury nobody is told
+-- about is a bug report about the hub's healing.
+function game:inflictWounds()
+    local fallen = require("states.battle").fallen
+    local hurt = Wound.inflict(game.player, fallen)
+    -- Named off the instances the battle handed back rather than looked up by id: these ARE the
+    -- roster's own tables, and a companion's name can be the one the player typed at creation.
+    local byId = {}
+    for _, char in ipairs(fallen or {}) do byId[char.id] = char end
+    for _, id in ipairs(hurt) do
+        local char = byId[id]
+        game:pushToast(((char and char.name) or "Someone") .. " is wounded")
+    end
+    return hurt
 end
 
 -- THE LANDING. A floor is cleared and the party is standing at the head of the next stair, which is the
@@ -899,6 +935,15 @@ function game:openEncounter(cell)
             onWin = function(spoils)
                 cell.cleared = true
                 game.activePanel = nil
+                -- WINNING IS NOT THE SAME AS COMING OUT WHOLE. A member who went down is carried out
+                -- alive (states/battle.lua's win) and keeps the wound anyway -- the free revive stands,
+                -- and the injury is the price rather than the loss of the body. Here at the top of the
+                -- callback rather than in either branch below, so the objective and an ordinary road
+                -- fight charge the same thing and neither can be given a fork that forgets to.
+                --
+                -- The tutorial is exempt: its flight leg is authored to be lost bodies and all, and a
+                -- lesson that permanently scars the company before the hub exists is not a lesson.
+                if not game.tutorial then game:inflictWounds() end
                 -- The flight leg's Use lesson: the party walks off the survivors' defence wounded,
                 -- with a pocket of draughts from the teaching chest and nowhere to spend them, so the
                 -- button appears the moment that need does. Revealed on the leg's FIRST combat win --
@@ -1037,6 +1082,12 @@ function game:openEncounter(cell)
             -- return to -- the prologue's flight leg (game.tutorial) has none yet, so there the panel
             -- shows Try Again alone.
             onLoss = (not game.tutorial) and function()
+                -- The one thing a wipe does NOT take back. Inflicted BEFORE the rollback, which is
+                -- the whole of the ordering rule: rollbackRun hands the player every key of the entry
+                -- snapshot, and wounds only survive it because that function holds this key across
+                -- the copy. Written here rather than after, so the two halves cannot drift into a
+                -- state where the wounds are recorded on a player about to be overwritten.
+                game:inflictWounds()
                 -- A wipe VOIDS the run. Everything this expedition found goes back with it: the chest
                 -- loot, the fights' spoils and salvage, the gold, and the gold spent along the way. The
                 -- company keeps exactly what it marched in with. See rollbackRun -- the objective is the
@@ -1159,6 +1210,11 @@ function game:openEncounter(cell)
                 actions = { { label = "Continue", onSelect = function()
                     game.activePanel = nil
                     grantSideSpoils(spoils)
+                    -- A walked-off fight wounds exactly as a played one does. Read off THIS combat
+                    -- object rather than states/battle.lua's field, because no battle state was ever
+                    -- entered here -- the fight was resolved with nobody watching, and the field would
+                    -- hold whatever the last real battle left in it.
+                    Wound.inflict(game.player, Combat.fallenParty(combat))
                     game:refreshMuster() -- the fight was paid for in health and potions; re-rate
                     saveRun()
                 end } },

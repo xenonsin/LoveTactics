@@ -524,7 +524,12 @@ local function win()
     Combat.logEvent(battle.combat, "system", "Victory!")
     -- A won fight is not a lost life: any party member who fell is carried out to the overworld at a
     -- sliver of health rather than staying down. Only on a win -- a defeat costs the run outright.
-    Combat.reviveFallenParty(battle.combat)
+    --
+    -- WHO WENT DOWN is kept for the launcher, which turns it into wounds (models/wound.lua): the free
+    -- revive stands, and the wound is the price rather than the loss of the body. A field on the
+    -- existing table and NOT a new file-scope local -- this chunk sits within a couple of declarations
+    -- of Lua 5.1's 200-local ceiling, and crossing it is a compile error naming an unrelated line.
+    battle.fallen = Combat.reviveFallenParty(battle.combat)
     releaseParty()
     Sound.play("battle.win")
     Sound.music("music.victory") -- the tactical bed gives way to the exhale under the spoils panel
@@ -536,6 +541,9 @@ local function lose()
     battle.walk = nil
     battle.heldObjects = nil
     Combat.logEvent(battle.combat, "system", "Defeat.")
+    -- Nobody is carried out of a lost fight, but everyone who fell in it is still hurt. Recorded on
+    -- the same field the win writes, so the launcher reads one thing however the fight ended.
+    battle.fallen = Combat.fallenParty(battle.combat)
     -- The colour drains out of the world as the defeat panel closes over it -- a grey that says the run
     -- is lost more plainly than any banner. Not motion, so it plays even under reduced effects; cleared
     -- when the next battle enters or the player retries (see battle.enter). See ui/screen_fx.lua.
@@ -4443,6 +4451,7 @@ function battle.enter(self, opts)
     -- `scaling = false` are honoured per unit inside Growth.combatantLevel.
     battle.enemyLevel = Growth.levelForPrestige(battle.prestige)
     battle.floorLevel = opts.floorLevel
+    battle.fallen = nil                  -- who went down in THIS fight, for the launcher's wounds
     battle.summary = nil                 -- the victory/defeat overlay, once the fight is decided
     battle.logReview = nil               -- the summary's "Review Combat Log" modal, when opened
     battle.settingsMenu = nil            -- the in-battle settings overlay, when opened

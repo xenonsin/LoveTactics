@@ -154,4 +154,76 @@ return {
         assert(restored.resumeRun, "the run still restores without an entry snapshot")
         assert(restored.resumeRun.entry == nil, "and it honestly reports having none")
     end },
+
+    { name = "a wipe takes back the finds and leaves the wounds", fn = function()
+        -- THE ONE DELICATE LINE, pinned. states/game.lua's rollbackRun copies EVERY key of the entry
+        -- snapshot onto the live player, which is exactly what makes it correct without a list of what
+        -- a run can change -- and the moment `wounds` became one of those keys, a wipe would have
+        -- handed the company back whole at the instant it was hurt worst. The state holds that one key
+        -- across the copy; this is the case that says why it has to.
+        --
+        -- Driven through the real serializer and then through the same total copy the state performs,
+        -- because the bug this guards against does not live in either half alone.
+        local Wound = require("models.wound")
+        local player = playerInRun()
+        player.wounds = {}
+
+        -- Marched in with one old wound...
+        Wound.inflict(player, { { id = "character_rowan" } })
+        local entry = reserialize(Save.snapshot(player))
+
+        -- ...and the run went badly: a find in the stash, and two more bodies down.
+        local found = anyItemId()
+        local carriedBefore = stashCount(player, found)
+        Player.grantItem(player, found)
+        Wound.inflict(player, { { id = "character_rowan" }, { id = "character_knight" } })
+        assert(Wound.count(player, "character_rowan") == 2, "two bad fights, two wounds")
+
+        local fresh = Save.restore(entry)
+        local held = player.wounds
+        for k, v in pairs(fresh) do player[k] = v end
+        player.wounds = held -- the line under test, as states/game.lua performs it
+
+        assert(Wound.count(player, "character_rowan") == 2,
+            "a wipe must not un-wound the company -- an injury outliving its run is the whole mechanic")
+        assert(Wound.count(player, "character_knight") == 1, "including one taken for the first time")
+
+        -- ...while everything else the run picked up is gone, which is the rule this sits inside.
+        assert(stashCount(player, found) == carriedBefore, "the run's finds still roll back")
+    end },
+
+    { name = "a wound caps the hub's free heal, and mending gives it back", fn = function()
+        -- The mechanic end to end, through the seam it actually uses: the hub heals by calling
+        -- Player.restore, and a wound is nothing but a ceiling on what that call hands back.
+        local Wound = require("models.wound")
+        local player = Player.new()
+        local char = player.roster[1]
+        local hp = char.stats.health
+
+        Player.restore(player)
+        assert(hp.current == hp.max, "an unhurt company comes back whole")
+
+        Wound.inflict(player, { char })
+        hp.current = 1 -- walked out of the fight on their back
+        Player.restore(player)
+        assert(hp.current < hp.max, "a wounded body does not come back whole...")
+        assert(hp.current == math.floor(hp.max * Wound.healShare(player, char.id)),
+            "...it comes back to exactly the share the wound leaves")
+
+        -- The floor: however many times they fall, they stay fieldable.
+        for _ = 1, 20 do Wound.inflict(player, { char }) end
+        assert(Wound.healShare(player, char.id) == Wound.FLOOR,
+            "wounds stop biting at the floor -- a body nobody can field is not a decision")
+
+        -- And gold sets one. Paid at the Cafe (ui/panels/cafe.lua), but the rule is here.
+        player.wounds[char.id] = 1
+        player.gold = Wound.MEND_COST - 1
+        local ok, why = Wound.mend(player, char.id)
+        assert(not ok and why == "gold", "a mend that cannot be paid for does not happen")
+        player.gold = Wound.MEND_COST
+        assert(Wound.mend(player, char.id), "and one that can, does")
+        assert(Wound.count(player, char.id) == 0, "the wound is gone")
+        assert(player.wounds[char.id] == nil, "and left no zero behind to accumulate")
+        assert(hp.current == hp.max, "and the body is whole again at once, not at the next hub entry")
+    end },
 }

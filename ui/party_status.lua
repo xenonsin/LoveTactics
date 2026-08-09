@@ -15,6 +15,7 @@ local Scale = require("scale")
 local Colors = require("ui.colors")
 local CloseButton = require("ui.close_button")
 local OverworldAbility = require("models.overworld_ability")
+local Wound = require("models.wound") -- the part of a health bar that will not fill again
 local Sprite = require("models.sprite")
 local Theme = require("ui.theme")
 
@@ -76,7 +77,7 @@ end
 
 -- One row: portrait, name, HP + mana bars, and (if the companion has an overworld ability) the star
 -- badge with its banked-count number. Returns the badge centre + info so the caller can hit-test hover.
-local function drawRow(char, x, y, stripFont, headFont, bucket)
+local function drawRow(char, x, y, stripFont, headFont, bucket, player)
     drawPortrait(char, x, y + 2, PORTRAIT, headFont)
 
     local textX = x + PORTRAIT + 6
@@ -97,7 +98,23 @@ local function drawRow(char, x, y, stripFont, headFont, bucket)
             love.graphics.rectangle("fill", barX, yy, barW * frac, h, 2, 2)
         end
     end
-    if type(hp) == "table" then bar(y + 15, hp.current or 0, hp.max or 0, Colors.PARTY, 6) end
+    if type(hp) == "table" then
+        bar(y + 15, hp.current or 0, hp.max or 0, Colors.PARTY, 6)
+        -- A WOUND, drawn as the part of the bar that will not fill again. The mechanic IS a cap on
+        -- the refill (models/wound.lua), so the honest picture is the missing top of the bar rather
+        -- than a badge somewhere else saying so -- the player reads "that much of them is not coming
+        -- back until I pay" off the same bar they already read health from.
+        local share = Wound.healShare(player, char.id)
+        if share < 1 then
+            local lostX = barX + barW * share
+            love.graphics.setColor(0.62, 0.22, 0.24, 0.85)
+            love.graphics.rectangle("fill", lostX, y + 15, barW - barW * share, 6, 2, 2)
+            -- A hard edge where the ceiling now sits, so the scar reads as a LIMIT and not as damage
+            -- that happens to reach that far.
+            love.graphics.setColor(0.95, 0.55, 0.5, 0.9)
+            love.graphics.rectangle("fill", lostX - 1, y + 14, 1.5, 8)
+        end
+    end
     if type(mp) == "table" and (mp.max or 0) > 0 then
         bar(y + 23, mp.current or 0, mp.max or 0, Colors.MANA, 4)
     end
@@ -165,7 +182,7 @@ function PartyStatus.drawStrip(player, x, y, mx, my, abilityState)
     local hover
     for i, char in ipairs(party) do
         local bucket = abilityState and abilityState[char.id]
-        local bcx, bcy, info = drawRow(char, x, y + (i - 1) * ROW_H, stripFont, stripHeadFont, bucket)
+        local bcx, bcy, info = drawRow(char, x, y + (i - 1) * ROW_H, stripFont, stripHeadFont, bucket, player)
         if info then
             local hot = mx and math.abs(mx - bcx) <= BADGE_R + 4 and math.abs(my - bcy) <= BADGE_R + 4
             drawBadge(bcx, bcy, BADGE_R, hot)
@@ -236,7 +253,7 @@ function PartyStatus:draw()
     for i, char in ipairs(party) do
         local bucket = self.abilityState and self.abilityState[char.id]
         local bcx, bcy, info = drawRow(char, rowX, rowY + (i - 1) * MODAL_ROW_H,
-            self.rowFont, self.rowHeadFont, bucket)
+            self.rowFont, self.rowHeadFont, bucket, self.player)
         if info then drawBadge(bcx, bcy, BADGE_R, false) end
     end
 

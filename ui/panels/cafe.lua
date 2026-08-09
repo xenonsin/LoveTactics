@@ -23,6 +23,7 @@ local Choice = require("ui.panels.choice") -- the generic yes/no modal, hosted h
 local CloseButton = require("ui.close_button")
 local ItemTooltip = require("ui.item_tooltip") -- printFlavor: the sheared italic story line, as everywhere else
 local Meal = require("models.meal")
+local Wound = require("models.wound") -- the other thing a kitchen is for: setting what a descent broke
 local Vendor = require("models.vendor") -- only for the shopkeeper's name, portrait and pitch
 local Player = require("models.player")
 local Sprite = require("models.sprite")
@@ -111,16 +112,51 @@ function Cafe:refresh()
     local scroll = self.menu and self.menu.scroll or 0
 
     self.held = Meal.held(self.player)
-    self.rows = Meal.menu(self.prestige)
+    self.rows = {}
+    for _, row in ipairs(Meal.menu(self.prestige)) do
+        row.kind = "meal"
+        self.rows[#self.rows + 1] = row
+    end
+
+    -- THE OTHER THING A KITCHEN IS FOR. A wounded body is mended here rather than at a bench of its
+    -- own, and the Cafe is the right counter for it on the game's own terms: it is already the one
+    -- door that sells a service to the WHOLE COMPANY rather than an item to one member, already
+    -- one-per-run consumption, and already the last stop before setting out. A separate infirmary
+    -- would be a second building teaching the same lesson.
+    --
+    -- Appended AFTER the menu, never interleaved: the dishes are the shelf and these are a repair, and
+    -- a list that sorted them together would put a broken arm between two suppers.
+    for _, hurt in ipairs(Wound.wounded(self.player)) do
+        self.rows[#self.rows + 1] = {
+            kind = "mend",
+            id = hurt.char.id,
+            char = hurt.char,
+            count = hurt.count,
+            -- Shaped like a menu row so the list, the detail column and the price line need no fork:
+            -- what they read off a dish, they read off this.
+            def = {
+                name = "Set " .. (hurt.char.name or "a wound"),
+                price = Wound.MEND_COST,
+                description = "Rest, splints and a week you do not have. Sets one wound; the company "
+                    .. "leaves whole again in that much.",
+            },
+        }
+    end
 
     local items = {}
     for i, row in ipairs(self.rows) do
         -- A dish the city has not grown into shows its rank instead of its price: naming a number you
-        -- cannot pay says nothing, and naming the prestige it opens at says when to come back.
+        -- cannot pay says nothing, and naming the prestige it opens at says when to come back. A mend
+        -- shows how many wounds are on that body instead, which is the number the player is deciding
+        -- against -- one of three is a different purchase from the only one.
         local right = row.locked and ("prestige " .. (row.def.unlockPrestige or 1))
             or (row.def.price .. "g")
+        local label = row.def.name .. "  -  " .. right
+        if row.kind == "mend" and row.count > 1 then
+            label = row.def.name .. " (" .. row.count .. ")  -  " .. right
+        end
         items[#items + 1] = {
-            label = row.def.name .. "  -  " .. right,
+            label = label,
             action = function() self:order(self.rows[i]) end,
         }
     end
@@ -162,6 +198,10 @@ end
 -- the question, so nobody is walked through a confirmation only to be told no at the end of it.
 function Cafe:order(row)
     if not row then return end
+    -- A mend asks nothing. The confirmation above exists because a meal cannot be un-eaten and takes
+    -- the whole quest with it; setting a bone is reversible in the only sense that matters -- the
+    -- worst a stray press costs is the gold, and the body is better for it either way.
+    if row.kind == "mend" then return self:commit(row) end
     local why = Meal.blockReason(self.player, row.id, self.prestige)
     if why then
         Sound.play("ui.denied")
@@ -182,6 +222,19 @@ function Cafe:order(row)
 end
 
 function Cafe:commit(row)
+    if row.kind == "mend" then
+        local done, why = Wound.mend(self.player, row.id)
+        if not done then
+            Sound.play("ui.denied")
+            self:setMsg(why == "gold" and "Not enough gold." or "Nothing to set.", false)
+            return
+        end
+        Player.save()
+        Sound.play("ui.confirm")
+        self:setMsg((row.char.name or "They") .. " walks out of here whole.", true)
+        self:refresh()
+        return
+    end
     local ok, why = Meal.eat(self.player, row.id, self.prestige)
     if not ok then
         Sound.play("ui.denied")
@@ -306,6 +359,28 @@ function Cafe:drawDetail()
 
     Theme.set(Theme.ink)
     ty = ty + printWrapped(def.description or "", self.bodyFont, x, ty, w) + 12
+
+    -- A MEND says what it undoes and stops. It has no courses and no kitchen skill, and running it
+    -- through the platter readouts below would ask Meal about a table that is not a meal.
+    if row.kind == "mend" then
+        Theme.set(Theme.muted)
+        ty = ty + printWrapped(row.count == 1 and "One wound." or (row.count .. " wounds."),
+            self.smallFont, x, ty, w) + 4
+        Theme.set(Theme.ink)
+        ty = ty + printWrapped("Wounded, they only ever recover to " ..
+            math.floor(Wound.healShare(self.player, row.id) * 100) ..
+            "% of their health between descents.", self.bodyFont, x, ty, w)
+
+        local footY = self.boxY + BOX_H - 96
+        love.graphics.setFont(self.bodyFont)
+        Theme.set(Theme.accentAmber)
+        love.graphics.printf(def.price .. " gold", x, footY, w, "left")
+        if (self.player.gold or 0) < def.price then
+            love.graphics.setColor(0.9, 0.6, 0.55)
+            printWrapped("Not enough gold.", self.smallFont, x, footY + 22, w)
+        end
+        return
+    end
 
     -- THE COURSES: the flat half of the platter, worn by every member. Worded by the model
     -- (Meal.courses), so this column and any future readout cannot describe one platter two ways.

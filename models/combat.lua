@@ -6630,8 +6630,26 @@ end
 -- restored on the shared char instance the overworld reads, so the recovery persists past the battle.
 -- HP is floored to 20% of the base max (`stats.health.max`), never below 1, since the battle-only
 -- ceiling bonuses (unreservedMax's maxBonus) are gone by the time the party is back on the map.
+-- Every party body that ENDED this fight down, as character instances, whether it is carried out or
+-- not. The same test Combat.reviveFallenParty applies, factored out because a defeat needs the list
+-- without the standing-up: a lost fight wounds everyone who fell (models/wound.lua) and revives
+-- nobody. Returns an empty list rather than nil -- the question is who, never whether.
+function Combat.fallenParty(combat)
+    local out = {}
+    for _, u in ipairs((combat and combat.units) or {}) do
+        if u.side == "party" and not u.alive and (u.incapacitated or u.corpse)
+            and not u.summoned and not u.decoyOf and u.char then
+            out[#out + 1] = u.char
+        end
+    end
+    return out
+end
+
+-- Returns the character instances it carried out, so the caller can charge them for it. Purely
+-- additive: every existing call ignores the value and behaves exactly as it did.
 function Combat.reviveFallenParty(combat, fraction)
     fraction = fraction or 0.2
+    local carried = {}
     for _, u in ipairs(combat.units) do
         if u.side == "party" and not u.alive and (u.incapacitated or u.corpse)
             and not u.summoned and not u.decoyOf
@@ -6647,8 +6665,10 @@ function Combat.reviveFallenParty(combat, fraction)
             u.incapacitated = false
             u.corpse = false
             u.statuses = {}
+            carried[#carried + 1] = u.char
         end
     end
+    return carried
 end
 
 -- Raise a corpse as a zombie: consume the body (it can't be revived or raised again) and put a fresh

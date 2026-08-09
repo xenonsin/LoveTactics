@@ -350,6 +350,10 @@ function Save.snapshot(player)
     for vendorId, n in pairs(player.standing or {}) do
         if (tonumber(n) or 0) > 0 then standing[vendorId] = n end
     end
+    local wounds = {}
+    for charId, n in pairs(player.wounds or {}) do
+        if (tonumber(n) or 0) > 0 then wounds[charId] = n end
+    end
     local completedQuests = {}
     for questId, done in pairs(player.completedQuests or {}) do
         if done then completedQuests[questId] = true end
@@ -441,6 +445,11 @@ function Save.snapshot(player)
         -- company that has never gone down, which is exactly what it is.
         standing = standing,
         deepest = player.deepest or 0,
+        -- What each body is still carrying from a fight it lost, as { [charId] = count }
+        -- (models/wound.lua). Persisted rather than derived because it is the one thing about a run
+        -- that outlives the run -- including a wipe, which states/game.lua's rollbackRun holds this
+        -- key across on purpose.
+        wounds = wounds,
         -- The supper bought at the Cafe and not yet eaten through (models/meal.lua) -- a bare meal id,
         -- nil when nobody has ordered. Purely additive, so Save.VERSION deliberately does NOT move: an
         -- older save loads with no meal held, which reads as a company that has not been to the counter
@@ -561,6 +570,12 @@ function Save.restore(snap)
         -- ever spend and no shop can ever show.
         if require("models.vendor").get(vendorId) then standing[vendorId] = tonumber(n) or 0 end
     end
+    local wounds = {}
+    for charId, n in pairs(snap.wounds or {}) do
+        -- A character blueprint that vanished from data drops its wounds with it, the same rule the
+        -- standing above follows: nothing should carry an injury that no body can be mended of.
+        if require("models.character").defs[charId] then wounds[charId] = tonumber(n) or 0 end
+    end
     local completedQuests = {}
     for questId in pairs(snap.completedQuests or {}) do completedQuests[questId] = true end
 
@@ -625,6 +640,7 @@ function Save.restore(snap)
         completedQuests = completedQuests,
         standing = standing,          -- absent on a save from before the descent; an empty table reads the same
         deepest = snap.deepest or 0,  -- ...and a company that has never been down has no record to beat
+        wounds = wounds,              -- ...nor any bones to set
         -- A meal id that vanished from data/ is dropped rather than crashing the load, exactly like a
         -- removed item or character -- and reads as a company that has not eaten.
         meal = known(require("models.meal").defs, snap.meal) and snap.meal or nil,

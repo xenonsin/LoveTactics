@@ -274,6 +274,10 @@ function Player.new()
         -- now (Descent.extract) -- a record cannot be re-earned without going further, which is what
         -- makes it unfarmable in a way a per-run payout never is.
         deepest = 0,
+        -- What each body is still carrying from a fight it went down in, as { [charId] = count }
+        -- (models/wound.lua). Caps the hub's free heal until somebody pays to set it, and is the one
+        -- thing a wipe does not roll back.
+        wounds = {},
         meal = nil,           -- the one supper bought at the Cafe and not yet eaten through (models/meal.lua)
         materials = {},       -- material id -> count; spent at the Blacksmith (see models/material.lua)
         recipes = {},         -- item id -> tier level; a consumable bought at its vendor comes at this level
@@ -453,10 +457,28 @@ end
 -- rests the whole company. Called from states/hub.lua on entry, so a quest won or lost always
 -- leaves the party whole, and this is why models/save.lua need not persist current resources.
 function Player.restore(player)
+    local Wound = require("models.wound")
     for _, char in ipairs(player.roster or {}) do
+        -- A WOUND IS A CAP ON THIS REFILL, and this is the only seam it has (models/wound.lua). The
+        -- hub still heals for free; a body that came out of a fight on its back is topped up to less
+        -- than full and walks into the next descent short. Health alone -- mana and stamina come back
+        -- whole, because a wound is an injury rather than exhaustion, and taking the caster's pool
+        -- would silently disarm them instead of hurting them.
+        local share = Wound.healShare(player, char.id)
         for _, stat in ipairs(Character.RESOURCE_STATS) do
             local resource = char.stats[stat]
-            if type(resource) == "table" then resource.current = resource.max end
+            if type(resource) == "table" then
+                -- A CEILING, not a floor -- it both fills up to the wounded line and clamps down to
+                -- it. Filling only was tried and is subtly wrong: a wounded body that happened to end
+                -- a run whole would sit at full health with a scar drawn across a bar it had already
+                -- filled past, which says the injury is real and then shows it is not. The wound is a
+                -- fact about the body, and the hub is where it gets looked at.
+                if stat == "health" and share < 1 then
+                    resource.current = math.max(1, math.floor((resource.max or 0) * share))
+                else
+                    resource.current = resource.max
+                end
+            end
         end
     end
 end
