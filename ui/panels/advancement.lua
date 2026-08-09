@@ -19,6 +19,7 @@ local ProgressBar = require("ui.progress_bar")
 local Growth = require("models.growth")
 local Discipline = require("models.discipline")
 local Material = require("models.material")
+local Vendor = require("models.vendor") -- shop names for the standing a descent banked (Descent.extract)
 
 local Advancement = {}
 Advancement.__index = Advancement
@@ -269,6 +270,20 @@ function Advancement:rewardLine()
     end
     table.sort(mats)
     if #mats > 0 then parts[#parts + 1] = table.concat(mats, ", ") end
+
+    -- STANDING EARNED WITH EACH HOUSE, on a descent. A quest advances exactly one sponsor and says so
+    -- in its own section below; a run clears several circles, and the houses it earned with are the
+    -- closest thing a descent has to "which shelf just moved". Named by SHOP rather than by vendor id,
+    -- and sorted, so the same run always reads the same way.
+    local houses = {}
+    for vendorId, n in pairs(r.standing or {}) do
+        if (n or 0) > 0 then
+            local def = Vendor.get(vendorId)
+            houses[#houses + 1] = ((def and def.name) or vendorId) .. " +" .. n
+        end
+    end
+    table.sort(houses)
+    if #houses > 0 then parts[#parts + 1] = table.concat(houses, ", ") end
     return table.concat(parts, "    ")
 end
 
@@ -283,7 +298,10 @@ function Advancement:draw()
 
     love.graphics.setFont(self.titleFont)
     Theme.set(Theme.accentAmber)
-    love.graphics.printf("Quest Complete", self.boxX, self.boxY + 22, BOX_W, "center")
+    -- Named by whatever earned the overlay. A descent is not a quest and must not announce itself as
+    -- one -- it walks out of a hole having cleared circles, not off a board having finished an errand
+    -- (models/descent.lua's extract). A quest passes no title and keeps the wording it always had.
+    love.graphics.printf(self.reward.title or "Quest Complete", self.boxX, self.boxY + 22, BOX_W, "center")
 
     -- Reward header. Fitted rather than drawn at a fixed size: a run that emptied four caches names
     -- four materials on this line, and the fix for that is a smaller native face, never a scaled one.
@@ -361,7 +379,10 @@ function Advancement:drawPrestigeBar()
     local earned = (self.prestigeTo or 0) - (self.prestigeFrom or 0)
     if earned > 0 then
         Theme.set(Theme.accentAmber)
-        love.graphics.printf("+" .. earned .. " this quest", x, y + 40, w, "right")
+        -- "this quest" only when it WAS one. A descent earns its levels by going deeper than the
+        -- company ever has, which is not a quest and does not read as one (models/descent.lua).
+        local occasion = self.reward.title and " this run" or " this quest"
+        love.graphics.printf("+" .. earned .. occasion, x, y + 40, w, "right")
     end
 end
 

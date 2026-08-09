@@ -266,6 +266,14 @@ function Player.new()
         lastDeployed = {}, -- char ids fielded last battle; the deployment phase's opening pick (Player.noteDeployed)
         stash = {}, -- unequipped items; unbounded (see Player.addToStash)
         completedQuests = {}, -- quest id -> true; keeps finished quests off the board AND is a vendor's standing (Quest.sponsorProgress)
+        -- Standing with each house, as { [vendorId] = circles cleared }: what a descent banks at
+        -- extraction, added to the completed-quest count by Quest.sponsorProgress. The shelf, the
+        -- forge's ceiling and the ability bench all open on the sum.
+        standing = {},
+        -- The deepest floor ever reached and walked out of. The ONLY thing that levels the company
+        -- now (Descent.extract) -- a record cannot be re-earned without going further, which is what
+        -- makes it unfarmable in a way a per-run payout never is.
+        deepest = 0,
         meal = nil,           -- the one supper bought at the Cafe and not yet eaten through (models/meal.lua)
         materials = {},       -- material id -> count; spent at the Blacksmith (see models/material.lua)
         recipes = {},         -- item id -> tier level; a consumable bought at its vendor comes at this level

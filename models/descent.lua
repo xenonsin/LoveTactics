@@ -200,6 +200,11 @@ function Descent.new(player, seed)
         -- The deepest floor this run has actually cleared, which is what a new depth record is measured
         -- against at extraction. Distinct from `floor`, which is where the party is standing.
         cleared = 0,
+        -- Standing earned this descent and not yet banked, as { [vendorId] = floors cleared }. Held on
+        -- the RUN rather than written straight to the player for the same reason the haul is: it is
+        -- provisional until somebody walks out with it. A wipe on floor four takes the three circles
+        -- below it with it, which is the whole of what a descent is about.
+        standing = {},
     }
 end
 
@@ -350,28 +355,84 @@ end
 -- prompt so both branches agree on what has been beaten.
 function Descent.clearFloor(run)
     if not run then return end
-    run.cleared = math.max(run.cleared or 0, run.floor or 1)
+    local floor = run.floor or 1
+    -- Credit the circle, once. Re-entering a floor cannot happen today (the stair is one-way) but the
+    -- guard is cheap and the alternative is a bug that pays double and is invisible in a save file.
+    if floor > (run.cleared or 0) then
+        local vendor = Descent.sinAt(run, floor).vendor
+        run.standing = run.standing or {}
+        run.standing[vendor] = (run.standing[vendor] or 0) + 1
+    end
+    run.cleared = math.max(run.cleared or 0, floor)
     return run.cleared
 end
 
 -- WALKING OUT WITH IT. Banks what the descent is owed to the player and returns a small summary the
 -- caller can put on screen.
 --
--- Stage 1 banks the depth record only. Standing per sin, the authored quests queued in `run.pending`
--- and the heroes bound this descent all drain through here in later stages -- one seam, so there is
--- never a second place that has to remember what extraction means.
+-- Standing per circle and the depth record bank here. The authored quests queued in `run.pending` and
+-- the heroes bound this descent drain through here too in later stages -- one seam, so there is never
+-- a second place that has to remember what extraction means.
 --
 -- The run's FINDS are not touched here and never will be: they have been live in the stash since the
 -- moment they were picked up. What extraction does is drop the rollback point, which is the caller's
 -- job (clearRun) because the snapshot lives on player.activeRun. See states/game.lua's rollbackRun for
 -- the other half of that rule.
+--
+-- LEVELS COME FROM DEPTH, AND ONLY FROM A RECORD. A prestige point per extraction would pay a player
+-- for re-walking floor 1 forever, which is the farm the whole depth curve exists to close (see
+-- models/spoils.lua's GOLD_DEPTH_SLOPE for the same argument about gold). Beating your own deepest
+-- floor is the one thing that cannot be repeated without going further, so it is the one thing that
+-- levels the company.
 function Descent.extract(player, run)
     if not (player and run) then return nil end
     local reached = run.cleared or 0
     local best = player.deepest or 0
     local record = reached > best
-    if record then player.deepest = reached end
-    return { floors = reached, deepest = player.deepest or 0, record = record }
+
+    -- Standing first, and it banks whether or not the depth was a record: clearing Wrath is worth the
+    -- same to the Colosseum on your tenth descent as on your first. It is the SHELF that opens on
+    -- this, and a shelf that only opened on record runs would stall the moment a player plateaued.
+    player.standing = player.standing or {}
+    local banked = {}
+    for vendorId, n in pairs(run.standing or {}) do
+        player.standing[vendorId] = (player.standing[vendorId] or 0) + n
+        banked[vendorId] = n
+    end
+
+    local prestigeBefore = player.prestige or 1
+    local advancement
+    if record then
+        player.deepest = reached
+        -- One level per floor of new record, so a run that beats the old mark by three pays three.
+        -- Required lazily, like models.encounter above: this module is loaded by models/save.lua on
+        -- the way in, and a top-level require of the player would put the two on a cycle.
+        --
+        -- addPrestige returns the roster members that levelled, which is exactly what the hub's
+        -- advancement overlay wants -- so walking out reports itself through the surface a completed
+        -- quest already reported through, rather than through a second one built for the occasion.
+        advancement = require("models.player").addPrestige(player, reached - best)
+    end
+    return {
+        floors = reached,
+        deepest = player.deepest or 0,
+        record = record,
+        levels = record and (reached - best) or 0,
+        standing = banked,
+        -- What the overlay puts at the top of the box and on its reward line. A descent is not a quest
+        -- and must not claim to be one, and `prestige` is spelled the way a quest spells it so the
+        -- line that already knows how to say "+3 prestige" needs no descent branch of its own.
+        title = "Climbed Out",
+        prestige = record and (reached - best) or 0,
+        -- Shaped for ui/panels/advancement.lua, which states/hub.lua opens off player.pendingSummary.
+        -- Only the fields a descent actually earns: no gold (it was banked fight by fight on the way
+        -- down), no sponsor (a run clears several houses, and saying which shelf moved is the Gate
+        -- panel's job). The bar still fills from one prestige to the other, so a descent that levelled
+        -- nobody still reads as progress rather than as nothing having happened.
+        advancement = advancement,
+        prestigeBefore = prestigeBefore,
+        prestigeAfter = player.prestige or 1,
+    }
 end
 
 -- ---------------------------------------------------------------------------
@@ -390,11 +451,16 @@ function Descent.snapshot(run)
     if type(run) ~= "table" then return nil end
     local pending = {}
     for i, id in ipairs(run.pending or {}) do pending[i] = id end
+    local standing = {}
+    for vendorId, n in pairs(run.standing or {}) do standing[vendorId] = n end
     return {
         floor = run.floor or 1,
         seed = run.seed or 0,
         cleared = run.cleared or 0,
         pending = pending,
+        -- Unbanked standing rides in the save, or quitting on floor four and resuming would hand the
+        -- three circles below back at zero -- a resume is not an extraction and must lose nothing.
+        standing = standing,
     }
 end
 
@@ -402,11 +468,14 @@ function Descent.restore(snap)
     if type(snap) ~= "table" then return nil end
     local pending = {}
     for i, id in ipairs(snap.pending or {}) do pending[i] = id end
+    local standing = {}
+    for vendorId, n in pairs(snap.standing or {}) do standing[vendorId] = n end
     return {
         floor = snap.floor or 1,
         seed = snap.seed or 0,
         cleared = snap.cleared or 0,
         pending = pending,
+        standing = standing, -- absent in a save written before circles had houses; an empty table reads the same
         entry = nil, -- re-attached by Save.restoreRun from the run-level copy; see above
     }
 end

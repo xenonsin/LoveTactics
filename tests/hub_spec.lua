@@ -97,21 +97,31 @@ return {
         end,
     },
     {
-        name = "Quest.available filters by requiredPrestige",
+        name = "Quest.available gates on STANDING, and no longer on prestige",
         fn = function()
-            local low = Quest.available(playerAt(1))
-            for _, q in ipairs(low) do
-                assert(q.requiredPrestige <= 1, q.id .. " should not appear at prestige 1")
+            -- This case used to assert the opposite, and the reversal is the point of the change.
+            -- Prestige was the campaign's single currency of progress; levels come from DEPTH now
+            -- (Descent.extract), earned in the descent rather than at this board. So a prestige gate
+            -- here asked a question the board could no longer help the player answer.
+            --
+            -- A chain HEAD is the thing to check -- every sin quest after the first chains off the one
+            -- before it, so a later slot would be testing the chain instead of the gate.
+            local function boardHas(player, id)
+                for _, q in ipairs(Quest.available(player)) do
+                    if q.id == id then return true end
+                end
+                return false
             end
 
-            -- Prestige now gates a LINE'S ENTRY rather than its running order (every sin quest chains
-            -- off the one before it), so this has to name a chain HEAD or it would be testing the
-            -- chain instead. `vault_heist` opens the Undercroft and has no prerequisite of its own.
-            local hasHard = false
-            for _, q in ipairs(Quest.available(playerAt(3))) do
-                if q.id == "quest_undercroft_slot_01" then hasHard = true end
-            end
-            assert(hasHard, "vault_heist should be available at prestige 3")
+            assert(boardHas(playerAt(1), "quest_undercroft_slot_01"),
+                "a line's opening leg is on the board from the start now -- nothing about the " ..
+                "company's level should hide it")
+
+            -- ...and the honest gate still holds: the SECOND leg wants the first one done. What
+            -- opens a house's work is how far in you are with that house, which is the one question
+            -- the board can still answer.
+            assert(not boardHas(playerAt(20), "quest_undercroft_slot_02"),
+                "slot 2 must stay off the board until slot 1 is done, whatever the company's level")
         end,
     },
     {

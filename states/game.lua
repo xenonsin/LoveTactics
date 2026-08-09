@@ -408,8 +408,13 @@ function game:openLanding()
                     -- the descent found -- already live in the stash since the moment it was picked up --
                     -- stops being provisional. Same rule the objective used to carry alone; the landing
                     -- is simply where the player now gets to invoke it.
-                    Descent.extract(game.player, run)
+                    local out = Descent.extract(game.player, run)
                     clearRun()
+                    -- Walking out is the descent's payout beat, so it reports itself through the
+                    -- overlay a completed quest reports through -- the hub opens this on entry. Without
+                    -- it the run's levels land in silence, which is the exact failure docs/progression
+                    -- names: every reward happening after the fighting, once, and unannounced.
+                    if game.player and out then game.player.pendingSummary = out end
                     if game.player then Player.save() end
                     State.switch(require("states.hub"))
                 end,

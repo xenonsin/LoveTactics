@@ -346,6 +346,10 @@ function Save.snapshot(player)
     local stash = {}
     for i, item in ipairs(player.stash or {}) do stash[i] = snapshotItem(item) end
 
+    local standing = {}
+    for vendorId, n in pairs(player.standing or {}) do
+        if (tonumber(n) or 0) > 0 then standing[vendorId] = n end
+    end
     local completedQuests = {}
     for questId, done in pairs(player.completedQuests or {}) do
         if done then completedQuests[questId] = true end
@@ -429,6 +433,14 @@ function Save.snapshot(player)
         -- build their own previous session published. Nil on a save that never needed one.
         authorId = player.authorId,
         completedQuests = completedQuests,
+        -- STANDING WITH EACH HOUSE, as { [vendorId] = circles cleared }, and the deepest floor ever
+        -- reached. What the descent banks at extraction (Descent.extract) in place of what a completed
+        -- quest used to bank: the shelf reads the first through Quest.sponsorProgress, and the second
+        -- is the only thing that levels the company. Both purely additive, so Save.VERSION does not
+        -- move -- an older save restores with no standing and a deepest of zero, which reads as a
+        -- company that has never gone down, which is exactly what it is.
+        standing = standing,
+        deepest = player.deepest or 0,
         -- The supper bought at the Cafe and not yet eaten through (models/meal.lua) -- a bare meal id,
         -- nil when nobody has ordered. Purely additive, so Save.VERSION deliberately does NOT move: an
         -- older save loads with no meal held, which reads as a company that has not been to the counter
@@ -542,6 +554,13 @@ function Save.restore(snap)
         end
     end
 
+    local standing = {}
+    for vendorId, n in pairs(snap.standing or {}) do
+        -- A house that no longer exists in data is dropped rather than restored, the same rule every
+        -- other id-keyed table here follows: a stale vendor would otherwise hold standing nothing can
+        -- ever spend and no shop can ever show.
+        if require("models.vendor").get(vendorId) then standing[vendorId] = tonumber(n) or 0 end
+    end
     local completedQuests = {}
     for questId in pairs(snap.completedQuests or {}) do completedQuests[questId] = true end
 
@@ -604,6 +623,8 @@ function Save.restore(snap)
         name = snap.name,
         authorId = snap.authorId, -- nil on an older save; Player.authorId mints one on demand
         completedQuests = completedQuests,
+        standing = standing,          -- absent on a save from before the descent; an empty table reads the same
+        deepest = snap.deepest or 0,  -- ...and a company that has never been down has no record to beat
         -- A meal id that vanished from data/ is dropped rather than crashing the load, exactly like a
         -- removed item or character -- and reads as a company that has not eaten.
         meal = known(require("models.meal").defs, snap.meal) and snap.meal or nil,

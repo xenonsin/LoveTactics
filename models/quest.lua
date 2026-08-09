@@ -80,14 +80,28 @@ function Quest.floorLevelFor(def, id)
     return slot and Quest.SLOT_FLOOR[slot] or nil
 end
 
--- How many of vendor `vendorId`'s quests this player has finished. This IS the player's standing
--- with that house: the shelf opens (Vendor.stock) and the ability bench's cap climbs
--- (Vendor.abilityLevelCap) as this number grows. Counts every completed quest whose blueprint names
--- the vendor as `sponsor` -- so it survives selling a relic or losing a save's reputation field, which
--- no longer exists.
+-- THE PLAYER'S STANDING WITH A HOUSE. The shelf opens (Vendor.stock) and the ability bench's cap
+-- climbs (Vendor.abilityLevelCap) as this number grows, and every surface that asks "how far in am I
+-- with these people" asks it here -- the shop, the forge's ceiling, the board, the reward diff. One
+-- function, which is why the descent could move what feeds it without touching any of them.
+--
+-- TWO SOURCES, ADDED, because the game is mid-migration and both are real.
+--
+--   quests finished   the campaign's answer: one per completed quest naming this vendor as sponsor.
+--   floors cleared    the descent's: one per extraction from that house's circle (Descent.extract).
+--
+-- Added rather than branched on, because a house does not have two standings. While the quest board
+-- still offers legs, a player who runs one and descends a circle has done two things for the same
+-- house and both should count; after stage 9 the board offers nothing new and the second term is the
+-- only one that moves. It also makes the migration free in both directions: an existing save has no
+-- `standing` at all and reads exactly as it did, and a save that has never touched the board still
+-- opens shelves.
+--
+-- Counting the quests rather than storing a number is deliberate and predates this: it survives
+-- selling a relic, or losing a save's reputation field, which no longer exists.
 function Quest.sponsorProgress(player, vendorId)
     if not vendorId then return 0 end
-    local done = 0
+    local done = (player.standing or {})[vendorId] or 0
     for id in pairs(player.completedQuests or {}) do
         local def = Quest.defs[id]
         if def and def.sponsor == vendorId then done = done + 1 end
@@ -223,8 +237,19 @@ function Quest.available(player)
 
     local list = {}
     for id, def in pairs(Quest.defs) do
-        local unlocked = prestige >= (def.requiredPrestige or 1)
-            and meetsSponsorQuestGate(player, def) and meetsSponsorGate(player, def)
+        -- WHAT OPENS A LEG IS STANDING, AND NOTHING ELSE NOW.
+        --
+        -- Two conjuncts came off here, and both were the same mistake wearing different clothes: they
+        -- gated a house's work on PRESTIGE, which used to be the campaign's one currency of progress
+        -- and no longer is. Levels come from depth now (Descent.extract), and depth is earned in the
+        -- descent rather than at this board -- so a `requiredPrestige` gate asked a question the board
+        -- can no longer help the player answer, and `meetsSponsorGate` deferred to a building's own
+        -- prestige unlock for the same reason. A player who has cleared Wrath four times has done four
+        -- things for the Colosseum, and its next leg should be on the board whatever their level.
+        --
+        -- What is left is the honest gate: how far in you are with these people
+        -- (meetsSponsorQuestGate -> Quest.sponsorProgress), which now counts circles as well as legs.
+        local unlocked = meetsSponsorQuestGate(player, def)
         local exhausted = Player.hasCompleted(player, id) and not def.repeatable
         local questsMet, keysHeld, keysNeeded = questGate(player, def)
         local locked = not questsMet

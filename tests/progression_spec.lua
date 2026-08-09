@@ -434,14 +434,14 @@ return {
         end,
     },
     {
-        name = "Quest.available hides a quest until its sponsor's shop has opened",
+        name = "a house's work is on the board whatever the company's level",
         fn = function()
-            local Building = require("models.building")
-            -- quest_bastion_slot_01 heads the Bastion's line, sponsored by the Bastion, whose building
-            -- does not open until prestige 2. A player at prestige 1 must not see it -- it would point
-            -- at a locked door.
-            assert(Quest.defs.quest_bastion_slot_01.sponsor == "bastion", "quest_bastion_slot_01 should be a Bastion quest")
-            assert(Building.vendorUnlockPrestige("bastion") == 2, "the Bastion should open at prestige 2")
+            -- The reverse of what this case used to assert. It gated a sponsor's legs behind the
+            -- prestige its BUILDING opens at, so a Bastion quest stayed hidden until prestige 2 --
+            -- sound while prestige was how a player progressed, and wrong now that levels come from
+            -- depth and are earned somewhere else entirely.
+            assert(Quest.defs.quest_bastion_slot_01.sponsor == "bastion",
+                "quest_bastion_slot_01 should be a Bastion quest")
 
             local function boardHas(player, id)
                 for _, q in ipairs(Quest.available(player)) do
@@ -450,10 +450,9 @@ return {
                 return false
             end
 
-            assert(not boardHas(playerAt(1), "quest_bastion_slot_01"),
-                "quest_bastion_slot_01 must stay hidden while the Bastion is still locked")
-            assert(boardHas(playerAt(2), "quest_bastion_slot_01"),
-                "quest_bastion_slot_01 should appear once the Bastion opens at prestige 2")
+            assert(boardHas(playerAt(1), "quest_bastion_slot_01"),
+                "a house's opening leg is offered from the start -- what gates the rest of its line " ..
+                "is standing with that house, not the company's level")
         end,
     },
     {
@@ -589,15 +588,27 @@ return {
         end,
     },
     {
-        name = "prestige stays a HARD gate: holding a key does not excuse the Gate's prestige requirement",
+        name = "one key does not open the Gate -- it is shown locked, and cannot be walked into",
         fn = function()
-            local p = playerAt(1) -- the Gate wants prestige 10
+            -- The Gate's prestige requirement is gone with every other prestige gate; what stands in
+            -- front of it is the seven generals, which is the gate the story actually describes.
+            --
+            -- It is the one quest that sets `showLocked`, so holding a single key SHOWS it -- a player
+            -- six keys short should see that they are six keys short. Shown and enterable are two
+            -- different things, and this pins the difference: the entry must be there AND be marked
+            -- locked, with its key count telling the truth about how far off it is.
+            local p = playerAt(1)
             p.completedQuests.quest_colosseum_slot_10 = true
 
+            local entry
             for _, q in ipairs(Quest.available(p)) do
-                assert(q.id ~= "quest_the_gate_below",
-                    "holding a key does not excuse you from the prestige gate")
+                if q.id == "quest_the_gate_below" then entry = q end
             end
+            assert(entry, "one key should SHOW the Gate -- that is what showLocked is for")
+            assert(entry.locked, "...but showing it is not opening it")
+            assert(entry.keysHeld == 1 and entry.keysNeeded > 1,
+                "and it must say how far off: held " .. tostring(entry.keysHeld) ..
+                " of " .. tostring(entry.keysNeeded))
         end,
     },
     {

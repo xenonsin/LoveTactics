@@ -173,6 +173,81 @@ return {
         assert(player.deepest == 2, "and the record stands")
     end },
 
+    { name = "clearing a circle banks standing with its house, and only at extraction", fn = function()
+        -- The extraction rule applied to progress rather than to loot: standing accrues on the RUN
+        -- while you are down there, and becomes yours only if you walk out. A wipe on floor four takes
+        -- the three circles below it with it.
+        local Quest = require("models.quest")
+        local player = Player.new()
+        local run = Descent.new(player, 5150)
+
+        local first = Descent.sinAt(run, 1).vendor
+        Descent.clearFloor(run)
+        assert(run.standing[first] == 1, "the cleared circle is credited on the run")
+        assert((player.standing[first] or 0) == 0, "...and not yet on the player")
+        assert(Quest.sponsorProgress(player, first) == 0, "so the shelf has not moved either")
+
+        Descent.advance(run)
+        Descent.clearFloor(run)
+        local second = Descent.sinAt(run, 2).vendor
+        Descent.extract(player, run)
+        assert(player.standing[first] == 1 and player.standing[second] == 1,
+            "extraction banks every circle the run cleared")
+        assert(Quest.sponsorProgress(player, first) == 1, "and the house's standing is what the shelf reads")
+
+        -- The other half: a run that never extracts pays nothing.
+        local lost = Descent.new(player, 99)
+        Descent.clearFloor(lost)
+        local wiped = Descent.sinAt(lost, 1).vendor
+        local before = player.standing[wiped] or 0
+        -- No Descent.extract call: this is what a wipe looks like from here.
+        assert((player.standing[wiped] or 0) == before, "a run that did not walk out banks nothing")
+    end },
+
+    { name = "standing survives a resume, because a resume is not an extraction", fn = function()
+        -- Quitting on floor four and continuing must not hand the three circles below back at zero.
+        -- The unbanked standing therefore rides in the run's snapshot with everything else.
+        local run = Descent.new(nil, 2024)
+        Descent.clearFloor(run)
+        Descent.advance(run)
+        Descent.clearFloor(run)
+        local restored = Descent.restore(reserialize(Descent.snapshot(run)))
+        for vendorId, n in pairs(run.standing) do
+            assert(restored.standing[vendorId] == n,
+                "a resumed run lost its unbanked standing with " .. vendorId)
+        end
+    end },
+
+    { name = "only a new depth record levels the company", fn = function()
+        -- The farm this closes: a prestige point per extraction would pay a player for re-walking
+        -- floor 1 forever. A record cannot be re-earned without going further, which is the only
+        -- unfarmable thing a descent has.
+        local player = Player.new()
+        local base = player.prestige
+
+        local deep = Descent.new(player, 1)
+        deep.floor = 3
+        Descent.clearFloor(deep)
+        local out = Descent.extract(player, deep)
+        assert(out.record and out.levels == 3, "three floors from nothing is three levels")
+        assert(player.prestige == base + 3, "and the company actually gains them")
+
+        -- Walk the same depth again: standing still accrues, levels do not.
+        local again = Descent.new(player, 2)
+        again.floor = 3
+        Descent.clearFloor(again)
+        local second = Descent.extract(player, again)
+        assert(not second.record and second.levels == 0, "re-walking your own record pays no levels")
+        assert(player.prestige == base + 3, "and the company does not grow for it")
+        assert(next(second.standing) ~= nil, "...but the house is still owed its standing")
+
+        -- And beating it by one pays exactly one.
+        local deeper = Descent.new(player, 3)
+        deeper.floor = 4
+        Descent.clearFloor(deeper)
+        assert(Descent.extract(player, deeper).levels == 1, "one floor past the record is one level")
+    end },
+
     { name = "the circles agree with the vendor blueprints that define them", fn = function()
         -- Descent.SINS says which vendor is which circle, and data/vendors/*.lua says which sin a
         -- vendor faces. Two statements of one fact, so this asserts they are the same fact rather
