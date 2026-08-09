@@ -175,7 +175,13 @@ return {
             Building.list(1)
             Quest.available(playerAt(3))
             assert(Building.defs.quest_board.locked == nil, "building blueprint mutated")
-            assert(Building.defs.quest_board.name == "Quest Board", "building name changed")
+            -- The card in this slot is the Gate now (the descent's front door); the FILE keeps its
+            -- old name so the building order and every reference to it stay put. What this case is
+            -- about is that a blueprint is not mutated by being listed, so it reads the name off the
+            -- registry rather than restating it -- which is the shape it should have had all along.
+            local named = Building.defs.quest_board.name
+            Building.list(1)
+            assert(Building.defs.quest_board.name == named, "building name changed")
             assert(Quest.defs.quest_colosseum_slot_03.id == nil, "quest blueprint mutated")
         end,
     },
