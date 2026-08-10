@@ -406,21 +406,31 @@ function game:openLanding()
     -- The CIRCLE below, not the ground below. A biome is where you will be standing; a sin is what you
     -- are going down to face, whose house the floor pays into and whose own cast holds its stair. It is
     -- also the thing the shuffle makes worth reading -- the ground is a consequence of it.
-    local below = Descent.sinAt(run, Descent.depth(run) + 1).name
+    --
+    -- Under the seventh there is no circle left, and the landing says so outright: naming the Hollow
+    -- Crown is the whole of the warning a player gets, and it is the one they most need. A descent has
+    -- a bottom, and this is the stair that reaches it.
+    local nextFloor = Descent.depth(run) + 1
+    local below = Descent.nameOf(run, nextFloor)
+    local last = Descent.isBottom(nextFloor)
     local carried = game:haulPhrase()
 
     game.activePanel = Choice.new({
-        title = "The stair goes down.",
+        title = last and "There is one stair left." or "The stair goes down.",
         prompt = carried
             and ("You are carrying " .. carried .. ". It is yours only if you walk out with it.")
             or "You are carrying nothing yet.",
         options = {
             {
-                label = "Go deeper",
+                label = last and "Go down to it" or "Go deeper",
                 -- Phrased so the place NAMES itself rather than being slotted after an article: the
                 -- sin takes none ("The next floor is Wrath"), which is also why the line names the
-                -- circle rather than the ground it is fought on.
-                desc = "The next floor is " .. below .. ". Everything you carry stays at stake.",
+                -- circle rather than the ground it is fought on. The bottom is the one exception and
+                -- takes its article, because it is a thing rather than a place.
+                desc = last
+                    and ("Below this there are no more circles. " .. below ..
+                        " is waiting, and beating it ends the descent with everything you are carrying.")
+                    or ("The next floor is " .. below .. ". Everything you carry stays at stake."),
                 -- The same amber the turn-back prompt gives "Keep going": pressing on with the haul
                 -- still unbanked. Note the landing INVERTS that prompt's morals -- there, walking out
                 -- was the empty-handed answer; here it is the one that pays -- so the colours are
@@ -976,6 +986,20 @@ function game:openEncounter(cell)
                     -- the skim below never doubles it.
                     if game.descent then
                         grantSideSpoils(spoils)
+                        -- THE BOTTOM. Clearing the last floor's objective is not another landing --
+                        -- there is nothing below it to be asked about. The run is WON, so it banks
+                        -- itself: extraction here rather than at a prompt, because the alternative is
+                        -- a player who beat the Hollow Crown and then had to press "climb out" to be
+                        -- allowed to keep it.
+                        if game.quest and game.quest.endsDescent then
+                            local out = Descent.extract(game.player, game.descent)
+                            if out then out.title = "The Crown Is Broken" end
+                            clearRun()
+                            if game.player and out then game.player.pendingSummary = out end
+                            if game.player then Player.save() end
+                            State.switch(require("states.credits"), { newGamePlus = true })
+                            return
+                        end
                         game:openLanding()
                         return
                     end

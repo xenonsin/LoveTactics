@@ -225,36 +225,55 @@ end
 -- sins in some order, exactly once each -- which is what makes re-treading the shallow floors tolerable
 -- (it is a different game each run) without making the deep ones a lottery.
 --
--- PAST THE SEVENTH the deck is dealt again, salted by which time round it is, so an endless descent
--- keeps recombining the circles at a rising floor level rather than running out of content. That falls
--- out of the cycle arithmetic here and needs nothing of its own.
+-- A DESCENT HAS A BOTTOM. Seven circles and then the thing at the end of them, which is what makes
+-- this a run rather than a treadmill -- the same shape Hades and Dream Quest use: a fixed way down, a
+-- boss that ends it, and a reason to go again that lives in the meta rather than in the depth.
 --
 -- Derived, never stored. A run is a seed and a depth (Descent.snapshot), and a resume re-derives the
 -- whole layout from them; a stored order would be a second copy that could disagree with the seed.
-local function shuffledSins(seed, cycle)
+local function shuffledSins(seed)
     local deck = {}
     for i, sin in ipairs(Descent.SINS) do deck[i] = sin end
     -- Fisher-Yates driven by the integer hash rather than by math.random: the RNG is shared with
     -- everything else that draws in a frame, so seeding it here would both perturb them and be
     -- perturbed BY them. Pure in, pure out, identical on every machine.
     for i = #deck, 2, -1 do
-        local j = (hash(seed, cycle, i) % i) + 1
+        local j = (hash(seed, 0, i) % i) + 1
         deck[i], deck[j] = deck[j], deck[i]
     end
     return deck
 end
 
-function Descent.sinAt(run, floor)
-    local n = #Descent.SINS
-    floor = math.max(1, floor or 1)
-    local cycle = math.floor((floor - 1) / n)
-    return shuffledSins(run and run.seed, cycle)[((floor - 1) % n) + 1]
+-- How many floors a whole descent is: the seven circles, and the bottom under them.
+Descent.FLOORS = #Descent.SINS + 1
+
+-- Is this the floor the Hollow Crown is standing on? Everything that behaves differently at the end of
+-- a run asks this rather than comparing against a number -- the floor count is one constant and this is
+-- one reading of it.
+function Descent.isBottom(floor)
+    return (floor or 1) > #Descent.SINS
 end
 
--- Which biome this floor wears: its sin's, always. Kept as its own call because the overworld and the
--- landing both ask for the ground by name and neither needs to know a circle decided it.
+-- Which circle this floor is. Nil at the bottom, which is not a sin -- it is what the seven of them
+-- were in front of.
+function Descent.sinAt(run, floor)
+    floor = math.max(1, floor or 1)
+    if Descent.isBottom(floor) then return nil end
+    return shuffledSins(run and run.seed)[floor]
+end
+
+-- Which biome this floor wears: its sin's, and the underworld at the bottom -- where the campaign's own
+-- ending was always fought (data/quests/quest_the_gate_below.lua). Kept as its own call because the
+-- overworld and the landing both ask for the ground by name and neither needs to know what decided it.
 function Descent.biomeAt(run, floor)
-    return Descent.sinAt(run, floor).biome
+    local sin = Descent.sinAt(run, floor)
+    return sin and sin.biome or "underworld"
+end
+
+-- What the landing calls the floor below it: the circle's name, or the thing waiting under all of them.
+function Descent.nameOf(run, floor)
+    local sin = Descent.sinAt(run, floor)
+    return sin and sin.name or "the Hollow Crown"
 end
 
 function Descent.floorId(floor)
@@ -302,10 +321,61 @@ local function guardianComposition(sin, floorLevel)
     end
 end
 
+-- THE BOTTOM. Lifted whole from data/quests/quest_the_gate_below.lua rather than reinvented: the
+-- Hollow Crown, its honour guard, its confrontation scene and the assassinate condition are all
+-- authored content that already works, and the campaign reaching the same body by a different road is
+-- not a reason to write it twice. What the descent changes is only the way in -- seven circles instead
+-- of seven generals' keys.
+--
+-- The guard thickens with the FLOOR rather than with prestige, like every other stair on the way down.
+local function crownComposition(floorLevel)
+    return function()
+        local list = { "character_demon_lord" }
+        for _ = 1, 2 + math.floor((floorLevel or 1) / 4) do list[#list + 1] = "character_champion" end
+        return list
+    end
+end
+
 function Descent.floorQuest(run, player)
     local floor = Descent.depth(run)
     local sin = Descent.sinAt(run, floor)
     local floorLevel = Descent.floorLevel(run)
+
+    if not sin then
+        return {
+            id = Descent.floorId(floor),
+            name = "The Descent — The Hollow Crown",
+            description = "The bottom.",
+            -- No house holds this floor, so nothing tags its materials. Deliberate: the last floor is
+            -- not anybody's errand.
+            sponsor = nil,
+            floorLevel = floorLevel,
+            descent = run,
+            -- What states/game.lua reads to know that clearing this objective ENDS the run rather than
+            -- opening another landing. Named on the descriptor rather than inferred from the depth, so
+            -- the state never has to learn how long a descent is.
+            endsDescent = true,
+            map = {
+                biome = "underworld",
+                ascent = true,
+                cols = Descent.FLOOR_COLS,
+                rows = Descent.FLOOR_ROWS,
+                encounters = { min = Descent.FLOOR_STOPS.min, max = Descent.FLOOR_STOPS.max },
+                cacheCount = { min = Descent.FLOOR_CACHES.min, max = Descent.FLOOR_CACHES.max },
+                keyCount = 0,
+                combatShare = Descent.COMBAT_SHARE,
+                objective = {
+                    name = "The Hollow Crown",
+                    -- The only seam the Crown can speak from: by the time an outro runs, an
+                    -- assassinate target is already dead.
+                    opening = "conversation_gate_below_confront",
+                    composition = crownComposition(floorLevel),
+                    win = { type = "assassinate", target = "character_demon_lord" },
+                },
+            },
+        }
+    end
+
     return {
         id = Descent.floorId(floor),
         name = "The Descent — " .. sin.name,

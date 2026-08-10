@@ -306,20 +306,49 @@ return {
         end
     end },
 
-    { name = "past the seventh the deck is dealt again, differently", fn = function()
-        -- The endless half, which falls out of the cycle arithmetic rather than needing its own rule.
-        -- Both halves are asserted: the second cycle is a full deck again, and it is not simply the
-        -- first one replayed -- otherwise floor 8 would be floor 1 with bigger numbers.
+    { name = "under the seventh circle there is a bottom, and it is not a sin", fn = function()
+        -- A DESCENT ENDS. This case replaced one that asserted the opposite -- that the deck was dealt
+        -- again past the seventh, forever -- which was the endless reading the design has since
+        -- dropped: the run ends by beating the thing the seven circles were in front of, the shape
+        -- Hades and Dream Quest both use.
         local run = Descent.new(nil, 4242)
         local n = #Descent.SINS
-        local seen, sameSeat = {}, 0
-        for floor = n + 1, n * 2 do
-            local sin = Descent.sinAt(run, floor)
-            assert(not seen[sin.id], "the second cycle deals " .. sin.id .. " twice")
-            seen[sin.id] = true
-            if sin.id == Descent.sinAt(run, floor - n).id then sameSeat = sameSeat + 1 end
+        assert(Descent.FLOORS == n + 1, "a descent is the seven circles and the bottom under them")
+        for floor = 1, n do
+            assert(not Descent.isBottom(floor), "floor " .. floor .. " is a circle, not the bottom")
+            assert(Descent.sinAt(run, floor), "and it has a sin")
         end
-        assert(sameSeat < n, "the second cycle repeated the first exactly -- the salt is not reaching the deal")
+        assert(Descent.isBottom(Descent.FLOORS), "the last floor is the bottom")
+        assert(Descent.sinAt(run, Descent.FLOORS) == nil, "which is not anybody's circle")
+        assert(Descent.biomeAt(run, Descent.FLOORS) == "underworld",
+            "and is fought where the campaign always fought its ending")
+        assert(Descent.nameOf(run, Descent.FLOORS):find("Hollow Crown"),
+            "the landing has to be able to name what is down there")
+    end },
+
+    { name = "the last floor stands the Hollow Crown on it, and says the run ends there", fn = function()
+        -- Lifted from data/quests/quest_the_gate_below.lua rather than reinvented: the campaign
+        -- reaching the same body by a different road is not a reason to author it twice. What must be
+        -- true is that the descriptor says the run ENDS -- states/game.lua reads that rather than
+        -- counting floors, so the state never has to learn how long a descent is.
+        local run = Descent.new(nil, 77)
+        run.floor = Descent.FLOORS
+        local quest = Descent.floorQuest(run)
+        assert(quest.endsDescent, "the bottom must announce itself as the end of the run")
+        assert(quest.sponsor == nil, "the last floor is not anybody's errand")
+
+        local obj = quest.map.objective
+        assert(obj.win and obj.win.type == "assassinate", "the Crown is killed, not cleared")
+        assert(obj.win.target == "character_demon_lord", "and it is the Crown that has to die")
+        assert(obj.opening, "it gets to speak first -- by the outro an assassinate target is dead")
+        local bodies = obj.composition({})
+        assert(bodies[1] == "character_demon_lord", "the Crown leads its own fight")
+        assert(#bodies >= 3, "with its honour guard around it")
+
+        -- Every circle above it still ends in an ordinary guardian and another landing.
+        local mid = Descent.new(nil, 77)
+        mid.floor = 3
+        assert(not Descent.floorQuest(mid).endsDescent, "a circle is not the bottom")
     end },
 
     { name = "a run lays out the same circles from the same seed, forever", fn = function()
@@ -327,12 +356,12 @@ return {
         -- else is re-derived. Two runs on one seed must agree, and a run must still agree with itself
         -- after a round trip through the serializer.
         local a, b = Descent.new(nil, 777), Descent.new(nil, 777)
-        for floor = 1, 20 do
+        for floor = 1, #Descent.SINS do
             assert(Descent.sinAt(a, floor).id == Descent.sinAt(b, floor).id,
                 "two runs on seed 777 disagree about floor " .. floor)
         end
         local restored = Descent.restore(reserialize(Descent.snapshot(a)))
-        for floor = 1, 20 do
+        for floor = 1, #Descent.SINS do
             assert(Descent.sinAt(restored, floor).id == Descent.sinAt(a, floor).id,
                 "a resumed run disagrees about floor " .. floor)
         end

@@ -89,8 +89,8 @@ function Gate:refresh()
         detail = resumable
             and "Give up the run below and open a fresh gate. Everything that company was carrying " ..
                 "goes back to where it stood before it walked in."
-            or "Seven circles, dealt in a different order every time. You go down until you decide " ..
-                "to stop, and what you are carrying is only yours once you climb out.",
+            or "Seven circles, dealt in a different order every time, and the Hollow Crown under " ..
+                "them. What you are carrying is only yours once you climb out -- or once it is dead.",
     }
     self.rows[#self.rows + 1] = {
         kind = "contracts",
@@ -230,7 +230,7 @@ function Gate:draw()
     love.graphics.printf("The Gate", self.boxX, self.boxY + 24, BOX_W, "center")
     love.graphics.setFont(self.smallFont)
     Theme.set(Theme.muted)
-    love.graphics.printf("There is no target and no contract. You just go down.",
+    love.graphics.printf("No target and no contract. Seven circles, and the thing under them.",
         self.boxX + 40, self.boxY + 66, BOX_W - 80, "center")
 
     self.menu:draw()
