@@ -35,6 +35,12 @@ return {
     name = "Ira, Unbound",
     kind = "demon",
     tier = 4,
+    -- WHAT LEVEL THESE NUMBERS WERE WRITTEN FOR. This body is authored as the fight it is at the end
+    -- of its line, and models/growth.lua scales it DOWN toward the shallows rather than growing it up
+    -- from a base -- so a descent that deals this circle as floor 1 meets a smaller version of the
+    -- same thing instead of an unkillable one. At this level the numbers below are exactly the
+    -- numbers. See Growth.spawn.
+    referenceLevel = 13,
     boss = true, -- still a quest objective: immune to execute (Coup de Grace) and Charm past the swap
     revivable = false, -- a demon does not go down and get up: no incapacitated window (docs, downed system)
     archetype = "aggressive", -- awake now, and hunting; explicit for readability

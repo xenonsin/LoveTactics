@@ -580,4 +580,60 @@ return {
             end
         end,
     },
+    {
+        name = "a boss is authored at its reference level and scales DOWN toward the shallows",
+        fn = function()
+            -- The descent deals its seven circles in a fresh order every run, so the same general has
+            -- to be a fair fight on floor 1 and on floor 7. The per-level blend cannot express that:
+            -- measured, the seven moved 240 -> 288 health across twelve levels while a party member
+            -- moved 70 -> 142. On floor 1 that is not a hard fight, it is an impossible one, because
+            -- mitigation is subtractive and a level-1 company cannot put damage through the armour.
+            local Growth = require("models.growth")
+            local Character = require("models.character")
+
+            -- Opted into by blueprint, through `referenceLevel`. NOT off `boss`, which means "immune
+            -- to execute and to Charm" and sits on thirty-nine bodies including every companion --
+            -- keying the curve to it rescaled half the bestiary and broke balance_spec's threat and
+            -- time-to-kill bands on bodies that were never set-pieces.
+            local id
+            for defId, def in pairs(Character.defs) do
+                if def.referenceLevel then id = id or defId end
+            end
+            assert(id, "at least one body declares the level it was authored at")
+            assert(Character.defs[id].referenceLevel == Growth.BOSS_REFERENCE_LEVEL,
+                "and it is the level the curve is written against")
+
+            local top = Growth.spawn(id, Growth.BOSS_REFERENCE_LEVEL, Growth.BOSS_REFERENCE_LEVEL)
+            local shallow = Growth.spawn(id, 1, 1)
+
+            -- THE AUTHORED NUMBERS ARE THE NUMBERS AT THE REFERENCE LEVEL. This is what keeps the
+            -- campaign's own capstone fights -- and the deepest floor of a descent -- untouched.
+            local plain = Character.instantiate(id)
+            local grown = Character.instantiate(id)
+            Growth.resolve(grown, Growth.BOSS_REFERENCE_LEVEL)
+            assert(top.stats.health.max == grown.stats.health.max,
+                "a boss at its reference level must be exactly what the blend made it")
+            assert(plain, "and the blueprint still instantiates unscaled")
+
+            assert(shallow.stats.health.max < top.stats.health.max,
+                "a shallow boss is smaller than the same boss at depth")
+
+            -- TWO SHARES, and this is the half that took a measurement to find. Cutting a 20-damage
+            -- blow by the same 60% as the health does not remove 60% of it -- the coat subtracts
+            -- first, so what is left is a scratch. Measured at one share, every boss needed SEVENTY
+            -- hits to drop a party member on floor 1. Durability scales; the blow barely can.
+            assert(Growth.bossHitShare(1) > Growth.bossShare(1),
+                "a shallow boss keeps more of its swing than of its health")
+            assert(Growth.bossShare(Growth.BOSS_REFERENCE_LEVEL) == 1
+                and Growth.bossHitShare(Growth.BOSS_REFERENCE_LEVEL) == 1,
+                "and neither share touches the level the numbers were written for")
+
+            -- Nothing that is not a boss is touched at all.
+            local ordinary = Character.instantiate("character_bandit")
+            Growth.resolve(ordinary, 1)
+            local spawned = Growth.spawn("character_bandit", 1, 1)
+            assert(spawned.stats.health.max == ordinary.stats.health.max,
+                "an ordinary body is spawned exactly as the blend leaves it")
+        end,
+    },
 }

@@ -215,9 +215,89 @@ end
 
 -- Mint a combatant already grown to the level this fight puts it at. The counterpart to
 -- Character.instantiate for everyone who is not on the player's roster.
+-- WHAT A BOSS IS AUTHORED AT. A named centrepiece is written as the fight it is at the END of its
+-- line -- Gula is 240 health, 20 damage and 15 defense because that is what she is at the bottom of
+-- the Hunter's Lodge, at level thirteen.
+--
+-- The per-level blend below cannot express that shape. It adds what a CLASS gains a level (four health
+-- for her house), which is right for the bodies it was built for and hopeless for a boss: measured,
+-- the seven generals move 240 -> 288 across twelve levels while a party member moves 70 -> 142. Flat
+-- against a company that doubles. That was survivable while each general appeared exactly once, at
+-- slot ten, at the level they were written for.
+--
+-- The descent broke that. The circles are dealt in a fresh order every run, so the SAME general has to
+-- be a fair fight on floor 1 and on floor 7 -- and on floor 1 a level-1 company cannot scratch fifteen
+-- defense, let alone chew 240 health. Not hard: arithmetically impossible, because mitigation is
+-- subtractive.
+--
+-- So such a body scales MULTIPLICATIVELY toward its reference level instead of additively away from
+-- base. The authored numbers stay the numbers at the level they were authored for -- the campaign's own
+-- capstone fights are untouched, and so is the deepest floor of a descent -- and everything shallower
+-- reads as a younger, smaller version of the same thing.
+--
+-- OPTED INTO BY BLUEPRINT, through `referenceLevel`, and NOT off `boss`. That was the first attempt and
+-- it was wrong: `boss` means "immune to execute and to Charm" here, and thirty-nine bodies carry it
+-- including every companion -- so keying the curve to it rescaled half the bestiary and broke
+-- balance_spec's threat and time-to-kill bands on bodies that were never set-pieces. A field that says
+-- WHAT LEVEL THE NUMBERS WERE WRITTEN FOR is also the more honest thing to write down than a boolean:
+-- a body authored for a different depth can simply say so.
+Growth.BOSS_REFERENCE_LEVEL = 13 -- what a body means by `referenceLevel = true`-ish authoring; the default
+
+-- What a boss keeps at level 1, as a share of its authored self -- and it is TWO shares, because
+-- mitigation here is subtractive and the two sides of a fight do not answer a multiplier the same way.
+--
+-- Measured with one share of 0.4 on everything: the party dropped every boss in three or four rounds
+-- at every depth (right), and every boss needed SEVENTY hits to drop a party member on floor 1
+-- (useless). Cutting a 20-damage blow to 8 does not remove 60% of it, it removes almost all of it,
+-- because the coat it lands on subtracts first -- eight against a starting company's armour is a
+-- scratch. Durability scales; the blow barely can.
+--
+-- So the shallow boss is a smaller, thinner version of itself that still hits like the thing it is.
+-- That is also the right read of what a younger Gula would be: less of her, not gentler.
+Growth.BOSS_FLOOR_SHARE = 0.4      -- health, and what it hides behind
+Growth.BOSS_FLOOR_SHARE_HIT = 0.75 -- ...and what it swings, which cannot be cut nearly as far
+
+-- Which stats a boss curve touches: the POWER ones, split by which side of the exchange they sit on.
+-- Movement, speed and the resource pools are the body's tactical shape rather than its strength, and
+-- scaling them would make a shallow boss slow and spell-less -- a different creature, not a younger one.
+local BOSS_DURABILITY = { "health", "defense", "magicDefense" }
+local BOSS_OFFENCE = { "damage", "magicDamage" }
+
+local function shareAt(level, floorShare, ref)
+    ref = ref or Growth.BOSS_REFERENCE_LEVEL
+    if (level or 1) >= ref then return 1 end
+    local t = ((level or 1) - 1) / math.max(1, ref - 1)
+    return floorShare + (1 - floorShare) * t
+end
+
+function Growth.bossShare(level, ref) return shareAt(level, Growth.BOSS_FLOOR_SHARE, ref) end
+function Growth.bossHitShare(level, ref) return shareAt(level, Growth.BOSS_FLOOR_SHARE_HIT, ref) end
+
 function Growth.spawn(id, playerLevel, battleFloor)
+    local def = Character.defs[id]
     local char = Character.instantiate(id)
-    Growth.resolve(char, Growth.combatantLevel(Character.defs[id], playerLevel, battleFloor))
+    local level = Growth.combatantLevel(def, playerLevel, battleFloor)
+    Growth.resolve(char, level)
+
+    -- Applied AFTER the blend, so a boss still gains what its levels gave it and the curve is a scale
+    -- over the result rather than a replacement for it.
+    local ref = def and def.referenceLevel
+    if ref and level < ref then
+        local function scale(stats, share)
+            for _, stat in ipairs(stats) do
+                local value = char.stats[stat]
+                if type(value) == "table" then
+                    -- A resource pool: scale the ceiling and open full, exactly as instantiate left it.
+                    value.max = math.max(1, math.floor((value.max or 0) * share))
+                    value.current = value.max
+                elseif type(value) == "number" then
+                    char.stats[stat] = math.max(0, math.floor(value * share))
+                end
+            end
+        end
+        scale(BOSS_DURABILITY, Growth.bossShare(level, ref))
+        scale(BOSS_OFFENCE, Growth.bossHitShare(level, ref))
+    end
     return char
 end
 

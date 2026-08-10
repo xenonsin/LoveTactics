@@ -46,28 +46,39 @@ local Descent = {}
 --   sloth     tundra      the post nobody came back to
 --   pride     castle      a library that outlived every scholar who could read it
 --
--- The GUARDIAN is what gates the stair: a lead body of that house's own cast, plus filler that
--- thickens with depth. Named ids rather than an encounter blueprint because a guardian is not rollable
--- content -- there is exactly one per floor and it is chosen by the circle, never by weight.
+-- THE SIN ITSELF STANDS ON THE STAIR. Not a strong body of that house's cast -- the general who IS
+-- that circle, by name, every time you walk it. Megaera is at the end of Tartarus on your first run
+-- and your fortieth; that is the shape.
+--
+-- This replaced a generic guardian (a dire bear for Gluttony, an inquisitor for Lust) and the
+-- difference is the whole reason a circle is worth recognising on a landing. "Below you: Wrath" means
+-- nothing if what is down there is a champion and some barbarians. It means everything if it is Ira.
+-- The seven are already written, named and statted -- Gula the Unsated, Ira the Unappeased, Luxuria
+-- the Unbidden -- each with a kit that reads its own sin as tactics, and each was reachable exactly
+-- once per save at the end of a quest line almost nobody finished.
+--
+-- The `filler` is their honour guard, drawn from the house's own cast and thickening with depth.
+-- Named ids rather than an encounter blueprint because none of this is rollable content: there is
+-- exactly one boss per circle and the circle chooses it, never a weight.
 --
 -- ORDERED, and the order is only a canonical listing -- a run reshuffles it (Descent.sinAt). `pairs`
 -- over a registry is unspecified, and a run must lay out the same floors from the same seed on any
 -- machine.
 Descent.SINS = {
     { id = "gluttony", name = "Gluttony", vendor = "hunters_lodge", biome = "swamp",
-        guardian = { lead = "character_dire_bear", filler = "character_boar" } },
+        guardian = { lead = "character_general_gluttony", filler = "character_dire_bear" } },
     { id = "lust", name = "Lust", vendor = "cathedral", biome = "forest",
-        guardian = { lead = "character_inquisitor", filler = "character_crusader" } },
+        guardian = { lead = "character_general_lust", filler = "character_inquisitor" } },
     { id = "greed", name = "Greed", vendor = "undercroft", biome = "underworld",
-        guardian = { lead = "character_mammonite", filler = "character_thief" } },
+        guardian = { lead = "character_general_greed", filler = "character_mammonite" } },
     { id = "envy", name = "Envy", vendor = "alchemist", biome = "desert",
-        guardian = { lead = "character_crucible_golem", filler = "character_homunculus" } },
+        guardian = { lead = "character_general_envy", filler = "character_homunculus" } },
     { id = "wrath", name = "Wrath", vendor = "colosseum", biome = "volcanic",
-        guardian = { lead = "character_champion", filler = "character_barbarian" } },
+        guardian = { lead = "character_general_wrath", filler = "character_champion" } },
     { id = "sloth", name = "Sloth", vendor = "bastion", biome = "tundra",
-        guardian = { lead = "character_forsworn_captain", filler = "character_forsworn_knight" } },
+        guardian = { lead = "character_general_sloth", filler = "character_forsworn_captain" } },
     { id = "pride", name = "Pride", vendor = "arcanum", biome = "castle",
-        guardian = { lead = "character_necromancer", filler = "character_battlemage" } },
+        guardian = { lead = "character_general_pride", filler = "character_battlemage" } },
 }
 
 -- How many STOPS a floor's board hosts -- not how many fights. models/overworld.lua's combatShare caps
