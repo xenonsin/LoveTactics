@@ -10123,6 +10123,28 @@ function Combat.protectedTiles(combat, charId)
     return tiles
 end
 
+-- How many of a `protect` objective's charges are still standing, and how many there were to begin
+-- with -- "one of two got out". The win condition itself is satisfied while ANY of them lives, so this
+-- is the finer question it deliberately does not ask: what the fight cost the people it was fought
+-- over. Summons are excluded on both counts, for the reason isProtectedAlive gives. `charId` defaults
+-- to the objective's own protectee, which is the only thing any caller has ever wanted.
+--
+-- READ IT BEFORE THE VICTORY SEAM'S MERCY REVIVE (Combat.reviveFallenParty, states/battle.lua's win):
+-- an escorted ally is party-side and revivable like anyone else, so a beat later the survivor who died
+-- is on their feet again and this would count them among the saved.
+function Combat.protectedCount(combat, charId)
+    charId = charId or (combat.objective and combat.objective.protect)
+    if not charId then return 0, 0 end
+    local alive, total = 0, 0
+    for _, u in ipairs(combat.units) do
+        if u.side == "party" and u.char and u.char.id == charId and not u.summoned then
+            total = total + 1
+            if u.alive then alive = alive + 1 end
+        end
+    end
+    return alive, total
+end
+
 -- Resolve the arena objective to "win" / "loss" / nil. A total party wipe is always a
 -- loss. Called after each action so the battle state can fire onWin/onLoss.
 --

@@ -19,6 +19,7 @@
 local Arena = require("models.arena")
 local Combat = require("models.combat")
 local Growth = require("models.growth")
+local Item = require("models.item")
 local Spoils = require("models.spoils")
 local EncounterModel = require("models.encounter")
 
@@ -222,7 +223,8 @@ EncounterBattle.TIER_GOLD = { [1] = 1.0, [2] = 1.6, [3] = 2.4 }
 -- pays nothing. Lifted from states/battle.lua's finishBattle so the walk-off path cannot pay a
 -- different number for the same fight.
 --
--- `opts`: encounter, enemyUnits, prestige, houseMaterial, combat (for the in-fight takings below).
+-- `opts`: encounter, enemyUnits, prestige, houseMaterial, combat (for the in-fight takings below),
+-- rescue (`{ saved, of }` -- how many of the fight's charges walked out; see the rescue pay below).
 function EncounterBattle.spoils(opts)
     local encounter = opts.encounter or {}
     local kind = encounter.kind
@@ -250,6 +252,41 @@ function EncounterBattle.spoils(opts)
         spoils = { gold = 0, loot = {}, materials = Spoils.materials({
             kind = kind, tier = encounter.tier, houseMaterial = opts.houseMaterial,
         }) }
+    end
+
+    -- WHAT WALKED OUT WITH YOU. A `defend` objective is satisfied while ANY of its charges still
+    -- stands, so a party that screens one survivor and lets the other go down wins exactly the fight a
+    -- party that got both out won -- and was paid exactly the same for it, which quietly says the
+    -- second one never mattered. An encounter may price the difference PER HEAD instead (`rescue` on
+    -- its blueprint, data/encounters/encounter_survivors_defend.lua): every charge still standing when
+    -- the last enemy fell pays its own purse and its own share of what they were carrying, ON TOP of
+    -- whatever the fight rolled. Authored gold, so the difficulty-tier scale never touches it -- the
+    -- same rule `rewardGold` follows. Nobody saved is not a case here: the objective already failed.
+    --
+    -- The count is the CALLER'S, and has to be: it is taken before the victory seam's mercy revive
+    -- stands the fallen back up (states/battle.lua's win), and counting it off `combat` down here would
+    -- pay for a survivor who died. A walked-off fight passes none and never needs to -- an escort is
+    -- not walk-off eligible (EncounterBattle.eligible refuses anything carrying `allies`).
+    local rescue = opts.rescue
+    local pay = encounter.id and EncounterModel.get(encounter.id)
+    pay = pay and pay.rescue
+    if spoils and pay and rescue and (rescue.saved or 0) > 0 then
+        spoils.gold = (spoils.gold or 0) + (pay.gold or 0) * rescue.saved
+        spoils.loot = spoils.loot or {}
+        for _ = 1, rescue.saved do
+            for _, id in ipairs(pay.loot or {}) do
+                -- An unknown id is dropped rather than granted, the same guard the loot override keeps:
+                -- a typo in a data file must not reach Item.instantiate.
+                if Item.defs[id] then spoils.loot[#spoils.loot + 1] = id end
+            end
+        end
+        -- What the victory panel says about the count that decided the purse -- otherwise the payout
+        -- moves and nothing on screen says why (ui/panels/battle_summary.lua). The words are authored
+        -- beside the payout they explain, because they belong to the stop: these are survivors on this
+        -- map and something else on the next.
+        if pay.note and (rescue.of or 0) > 0 then
+            spoils.note = string.format(pay.note, rescue.saved, rescue.of)
+        end
     end
 
     local combat = opts.combat

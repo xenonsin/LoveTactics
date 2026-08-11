@@ -159,6 +159,12 @@ local winButton = { x = 16, y = 324, w = 130, h = 36 }
 -- spec catches, because nothing headless requires a state that draws. Add module-level names here as
 -- `battle.*`, not `local`.
 battle.deploySettingsButton = { x = 16, y = 60, w = 130, h = 36 }
+-- The band the deployment phase stacks its own controls down (Loadout, Auto-Fill, Clear, Auto, the
+-- bell): straight under that lone drawer entry, at the entries' own width, so the column reads as one
+-- run of plates whether the drawer is open or shut. The phase lays the buttons out from here and docks
+-- its hover boxes below them (ui/deploy_phase.lua). Every fight before the bell has these controls, so
+-- unlike the drawer this band is not conditional on anything.
+battle.deployControlRect = { x = 16, y = 104, w = 130 }
 
 -- The y the docked tooltip stack may rise to: just under the hamburger while the menu is closed, or
 -- under its last visible entry while it is open, so the menu and the tooltips never draw over each
@@ -478,6 +484,10 @@ local function finishBattle(result)
             floorLevel = battle.floorLevel, -- a descent floor pays by depth (models/spoils.lua)
             houseMaterial = battle.houseMaterial,
             combat = battle.combat,
+            -- How many of the fight's charges walked out of it, for an encounter whose payout is
+            -- priced per head (models/encounter_battle.lua's rescue pay). Counted in win(), above the
+            -- mercy revive -- see the note there.
+            rescue = battle.rescue,
         })
     end
 
@@ -524,6 +534,14 @@ local function win()
     battle.heldObjects = nil -- and the final board shows every zone it holds, walk unfinished or not
     ScreenFx.vignette(0) -- a won fight is not a dying one: drop any low-HP edge before the panel opens
     Combat.logEvent(battle.combat, "system", "Victory!")
+    -- WHO WAS SAVED, counted HERE and not at the payout, because the very next line stands the fallen
+    -- back up: an escorted survivor is party-side and revivable like anyone else, so a beat from now
+    -- the one who died is walking out with everybody else and a per-head payout would pay for them
+    -- (models/encounter_battle.lua's rescue pay). A field on `battle` rather than a file-scope local,
+    -- for the reason the note below gives.
+    local saved, ofMany = Combat.protectedCount(battle.combat)
+    battle.rescue = { saved = saved, of = ofMany }
+
     -- A won fight is not a lost life: any party member who fell is carried out to the overworld at a
     -- sliver of health rather than staying down. Only on a win -- a defeat costs the run outright.
     --
@@ -4402,6 +4420,44 @@ local function commitDeploy(opts, deployed, front, placed)
     return true
 end
 
+-- The LOADOUT screen, opened over the deployment phase: the same panel the hub's Armory and the
+-- overworld's I key open (ui/panels/party.lua), on the same roster and the same stash.
+--
+-- Gear is the other half of the decision this phase exists for. Where a body should stand is answered
+-- against what it is carrying -- a spear wants the second rank, a dagger wants the flank -- and until
+-- now the last chance to move an item was a leg of overworld ago, before the player had seen the
+-- ground, the enemy line, or the objective. So the screen the answer is changed on is reachable from
+-- the screen the question is asked on.
+--
+-- Modal over the phase, exactly as the Settings overlay is, and required lazily: a fight that skips
+-- deployment (a duel, a draft, a scripted lesson) never pays to load the panel.
+function battle.openDeployLoadout(player)
+    if battle.deployLoadout or not battle.deploy then return end
+    local standing = battle.deploy:deployedChars()
+    battle.deployLoadout = require("ui.panels.party").new({
+        player = player,
+        -- The company standing right now wears the rail's amber dot, in the same gold the strip marks
+        -- them with a bar -- so "am I kitting someone who is actually in this fight?" is answered on
+        -- the screen the kit is changed on.
+        fielded = standing,
+        -- Rule lists are the city's lesson: before the flight tutorial has reached it, this screen is
+        -- the equip screen and nothing else -- the same line states/game.lua draws over the overworld.
+        tactics = not battle.tutorial,
+        onClose = function()
+            battle.deployLoadout = nil
+            -- A body snapshots what its gear decides at the moment it is stood up (its initiative is
+            -- the average speed of its ability items), so the line is stood back up now that the gear
+            -- may have changed. See DeployPhase:refreshPlacements.
+            if battle.deploy then battle.deploy:refreshPlacements() end
+        end,
+    })
+    -- Opened on someone who is actually going to fight, when there is one: the panel's first member is
+    -- the roster's first, who may well be on the bench.
+    for i, char in ipairs(player.roster or {}) do
+        if char == standing[1] then battle.deployLoadout:focusChar(i) break end
+    end
+end
+
 -- Open the phase, or commit straight through for a caller that already decided placement.
 local function openDeployPhase(opts)
     if opts.deploy == false then
@@ -4415,6 +4471,10 @@ local function openDeployPhase(opts)
     battle.deploy = DeployPhase.new({
         combat = battle.combat, map = battle.map, arena = battle.arena,
         roster = opts.party or {}, player = opts.player, gutter = gutterRect(),
+        column = battle.deployControlRect,
+        -- The Loadout screen, but only for a fight with a real player (and therefore a stash) behind
+        -- it: a probe or a debug board has nothing to open. See battle.openDeployLoadout.
+        onLoadout = opts.player and function() battle.openDeployLoadout(opts.player) end or nil,
         -- Whether the fight is played or watched is asked HERE, next to the bell, seeded from the
         -- standing preference (battle.autoAll carries across fights, like the playback speed) and
         -- handed back on the commit -- so the phase's switch and the drawer's Auto entry are one flag
@@ -4677,6 +4737,9 @@ function battle.enter(self, opts)
     -- and a battle that opened over its own tooltip column would be a worse first frame than one that
     -- didn't. See MENU_BUTTON / menuBottom.
     battle.menuOpen = false
+    -- Nothing is open over the deployment phase yet. Cleared here rather than trusted to have been
+    -- closed, so a fight retried out of the defeat panel cannot inherit the last one's Loadout screen.
+    battle.deployLoadout = nil
     -- Auto-battle playback speed carries across fights as a preference (like autoAll itself), so a
     -- player who likes 3x keeps it -- but seed it the first time so battle.update's multiply is safe.
     battle.autoSpeed = battle.autoSpeed or 1
@@ -4857,7 +4920,9 @@ function battle.update(dt)
     -- there is nothing to advance. Only the board ticks, so its cursor and hover still feel live while
     -- the player drags their company onto it.
     if battle.deploy then
-        battle.map:update(dt)
+        -- The Loadout screen is modal over the phase (openDeployLoadout): while it is up the board
+        -- behind it is not being pointed at, so only the panel ticks.
+        if battle.deployLoadout then battle.deployLoadout:update(dt) else battle.map:update(dt) end
         return
     end
 
@@ -5141,6 +5206,9 @@ function battle.draw()
         battle.drawEncounterLines(LEFT_W, Scale.WIDTH - LEFT_W - PANEL_W)
         battle.drawDeployMenu()
         battle.deploy:draw({ x = LEFT_W, w = Scale.WIDTH - LEFT_W - PANEL_W, dockTop = menuBottom() })
+        -- The Loadout screen, over the phase and under the settings overlay: gear is a decision about
+        -- this fight, so it is taken on this screen rather than a leg of overworld ago.
+        if battle.deployLoadout then battle.deployLoadout:draw() end
         -- Opened from that drawer, and modal over the phase exactly as it is over the fight.
         if battle.settingsMenu then battle.drawSettingsOverlay() end
         love.graphics.setColor(1, 1, 1)
@@ -5734,6 +5802,8 @@ function battle.keypressed(key)
     end
     -- The deployment phase owns every other input until the player commits their line. It is not a modal
     -- over the fight -- it is what the screen IS before the fight starts -- so it simply takes the key.
+    -- The Loadout screen IS a modal over it, and closes itself on Esc.
+    if battle.deployLoadout then battle.deployLoadout:keypressed(key); return end
     if battle.deploy then battle.deploy:keypressed(key); return end
     -- The bench chooser owns the keyboard while someone is being picked off the bench.
     if battle.benchChooser then battle.benchChooser:keypressed(key); return end
@@ -5833,6 +5903,7 @@ function battle.gamepadpressed(joystick, button)
         if button == "b" then closeSettings() else battle.settingsMenu:gamepadpressed(joystick, button) end
         return
     end
+    if battle.deployLoadout then battle.deployLoadout:gamepadpressed(joystick, button); return end
     if battle.deploy then battle.deploy:gamepadpressed(joystick, button); return end
     if battle.benchChooser then battle.benchChooser:gamepadpressed(joystick, button); return end
     -- The wind-up chooser owns the pad while a chargeable swing is being sized (D-pad / bumpers adjust,
@@ -5904,6 +5975,7 @@ function battle.mousemoved(x, y, dx, dy)
         battle.settingsClose:mousemoved(x, y)
         return
     end
+    if battle.deployLoadout then battle.deployLoadout:mousemoved(x, y); return end
     if battle.deploy then
         battle.menuHoverCue(x, y) -- the pre-bell drawer is hoverable like any other left-column button
         battle.deploy:mousemoved(x, y)
@@ -5937,6 +6009,7 @@ function battle.wheelmoved(dx, dy)
     if battle.settingsMenu then return end -- the short list needs no scroll; swallow it
     -- The deployment strip owns the wheel while the phase is up: the company is the whole roster and
     -- an unbounded one overflows the strip, which then pages sideways (ui/deploy_phase.lua).
+    if battle.deployLoadout then battle.deployLoadout:wheelmoved(dx, dy); return end
     if battle.deploy then battle.deploy:wheelmoved(dx, dy); return end
     if battle.benchChooser then battle.benchChooser:wheelmoved(dx, dy); return end
     -- The wind-up chooser owns the wheel while it is up: scrolling tunes the depth on the rung ladder.
@@ -5972,6 +6045,10 @@ end
 function battle.mousepressed(x, y, button)
     -- The settings overlay, opened from the pre-bell drawer, is modal over the deployment phase (see
     -- keypressed) -- so it is asked before the phase is, and the shared block below handles it.
+    if battle.deployLoadout and not battle.settingsMenu then
+        battle.deployLoadout:mousepressed(x, y, button)
+        return
+    end
     if battle.deploy and not battle.settingsMenu then
         -- The left column's hamburger works before the bell exactly as it does during the fight: it
         -- toggles the drawer, its one entry opens Settings, and a click that missed both folds the
@@ -6110,6 +6187,8 @@ end
 -- board is press-driven.
 function battle.mousereleased(x, y, button)
     if battle.settingsMenu then return end -- the modal took the press; the release is not the board's
+    -- The Loadout screen is drag-driven (stash to grid), so its release matters as much as the phase's.
+    if battle.deployLoadout then battle.deployLoadout:mousereleased(x, y, button); return end
     if battle.deploy then battle.deploy:mousereleased(x, y, button); return end
     if battle.spendChooser then battle.spendChooser:mousereleased(x, y, button); return end
     if battle.windupChooser then battle.windupChooser:mousereleased(x, y, button) end
@@ -6128,6 +6207,7 @@ function battle.cursorKind()
         if battle.settingsClose:contains(mx, my) then return "hand" end
         return battle.settingsMenu:mouseOverItem(mx, my) and "hand" or "arrow"
     end
+    if battle.deployLoadout then return battle.deployLoadout:cursorKind(mx, my) end
     if battle.deploy then
         -- The column's hamburger and its open entry are clickable before the bell too.
         if pointIn(MENU_BUTTON, mx, my) or overMenuEntry(mx, my) then return "hand" end

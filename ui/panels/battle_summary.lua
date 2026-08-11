@@ -12,6 +12,7 @@
 --           gold = 71,
 --           loot = { "consumable_healing_potion", ... },
 --           materials = { material_iron_scrap = 1 },                         -- the salvage floor
+--           note = "1 of 2 survivors walked out",                            -- why the purse is this size
 --       },
 --       technique = {                                                        -- banked this fight; wins only
 --           { name = "Rowan", houses = { { key = "ninja", amount = 14 } } }, -- grouped by whose hand
@@ -124,6 +125,12 @@ function BattleSummary.new(opts)
 
     local spoils = opts.spoils or {}
     self.gold = math.max(0, spoils.gold or 0)
+    -- One line under the encounter's name saying what this win was paid FOR, when the payout was not
+    -- simply the rate for clearing the board -- "1 of 2 survivors walked out"
+    -- (models/encounter_battle.lua's rescue pay). It is the reason the gold below it is the number it
+    -- is, and without it the payout moves between two plays of the same stop with nothing on screen
+    -- naming the difference. Wins only: a defeat pays nothing to explain.
+    self.note = self.win and spoils.note or nil
 
     -- Display-only instances, duplicate ids collapsed to one card carrying its count (three potions read
     -- as "Healing Potion x3"), just as loot_reveal does. Each card is { name, sprite, count, item } for
@@ -231,6 +238,9 @@ function BattleSummary.new(opts)
     local y = 34
     self.bannerRelY = y; y = y + 62
     if self.subtitle then self.subRelY = y; y = y + 26 end
+    -- Reserved rather than drawn into the gap under the subtitle (which is what the defeat's `lost`
+    -- line does, on a panel that has no gold line to collide with).
+    if self.note then self.noteRelY = y - 6; y = y + 20 end
     if hasGold then self.goldRelY = y; y = y + 46 end
     -- Between the takings and the loot: what the fight was worth, then what it built, then what it
     -- dropped. Reads top-down as the three different things a won fight hands over.
@@ -523,6 +533,14 @@ function BattleSummary:draw()
         love.graphics.setFont(self.subFont)
         love.graphics.setColor(0.75, 0.77, 0.85, alpha)
         love.graphics.printf(self.subtitle, bx, by + self.subRelY, self.boxW, "center")
+    end
+
+    -- What this win was paid for, under the encounter's name and above the gold it explains. The same
+    -- amber the technique rows carry, so it reads as part of the payout rather than as a second banner.
+    if self.note then
+        love.graphics.setFont(self.subFont)
+        love.graphics.setColor(0.93, 0.76, 0.35, alpha)
+        love.graphics.printf(self.note, bx, by + self.noteRelY, self.boxW, "center")
     end
 
     -- The haul that went down with the run, under the encounter's name. Same warm red as the Defeat

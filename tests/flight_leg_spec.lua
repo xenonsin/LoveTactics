@@ -8,6 +8,7 @@ local Arena = require("models.arena")
 local Combat = require("models.combat")
 local Overworld = require("models.overworld")
 local Encounter = require("models.encounter")
+local EncounterBattle = require("models.encounter_battle")
 local Character = require("models.character")
 
 -- A { char, x, y } spawn entry from a blueprint id.
@@ -134,6 +135,77 @@ return {
                 assert(wave.turn == nil, "no `turn` field survives on a wave")
                 assert(type(wave.at) == "number", "a wave arrives at a tick mark")
             end
+        end,
+    },
+
+    -- ----- what the rescue is worth (models/combat.lua + models/encounter_battle.lua) -----
+    {
+        name = "protectedCount reports the charges still standing and how many there were to begin with",
+        fn = function()
+            local obj = { type = "defend", protect = "character_survivor" }
+            local c = Combat.new(flatArena(8, 8, obj),
+                { unit("character_rowan", 1, 1), unit("character_survivor", 2, 2),
+                  unit("character_survivor", 3, 2) },
+                { unit("character_bandit", 6, 6) })
+
+            local saved, of = Combat.protectedCount(c)
+            assert(saved == 2 and of == 2, "both charges stand at the open, got " .. saved .. "/" .. of)
+
+            c.units[3].alive = false -- one survivor goes down; the objective is still satisfied
+            saved, of = Combat.protectedCount(c)
+            assert(saved == 1 and of == 2, "one of the two is left, got " .. saved .. "/" .. of)
+            assert(Combat.isProtectedAlive(c, "character_survivor"), "and the defend has not failed")
+
+            -- A summoned impersonator is not a charge, on either count (same rule isProtectedAlive keeps).
+            local fake = unit("character_survivor", 4, 2)
+            fake.side, fake.alive, fake.summoned = "party", true, true
+            c.units[#c.units + 1] = fake
+            saved, of = Combat.protectedCount(c)
+            assert(saved == 1 and of == 2, "a summon is neither saved nor counted, got " .. saved .. "/" .. of)
+
+            -- A fight with nothing to protect asks the question and gets a plain zero, not an error.
+            local plain = Combat.new(flatArena(6, 6), { unit("character_rowan", 1, 1) },
+                { unit("character_bandit", 5, 5) })
+            saved, of = Combat.protectedCount(plain)
+            assert(saved == 0 and of == 0, "no protectee, nothing counted")
+        end,
+    },
+    {
+        name = "the defend pays per head: each survivor who walks out adds their own purse and their own loot",
+        fn = function()
+            local def = Encounter.get("encounter_survivors_defend")
+            assert(def.rescue and (def.rescue.gold or 0) > 0, "the encounter prices a rescue per head")
+
+            -- `rewardGold` pins the base payout so the roll's jitter cannot blur the comparison; the
+            -- authored `loot` is an override, so the base drop is exactly the stop's class ability.
+            local cell = { kind = "combat", id = "encounter_survivors_defend",
+                           loot = { "ability_shout" }, rewardGold = 100 }
+            local function pay(saved, of)
+                return EncounterBattle.spoils({ encounter = cell, prestige = 1, enemyUnits = {},
+                    rescue = saved and { saved = saved, of = of } or nil })
+            end
+
+            local none, one, both = pay(nil), pay(1, 2), pay(2, 2)
+            assert(none.gold == 100, "an unpriced win pays the base alone, got " .. none.gold)
+            assert(one.gold == 100 + def.rescue.gold, "one head adds one purse, got " .. one.gold)
+            assert(both.gold == 100 + def.rescue.gold * 2, "two heads add two, got " .. both.gold)
+
+            -- The class ability the stop teaches lands whatever happened to the survivors; the rescue
+            -- loot is added on top of it, per head.
+            local per = #(def.rescue.loot or {})
+            local function has(spoils, id)
+                for _, got in ipairs(spoils.loot) do if got == id then return true end end
+                return false
+            end
+            assert(has(none, "ability_shout") and has(both, "ability_shout"),
+                "the stop's class ability is never at stake")
+            assert(#none.loot == 1, "nobody counted, nothing added, got " .. #none.loot)
+            assert(#one.loot == 1 + per, "one head's share, got " .. #one.loot)
+            assert(#both.loot == 1 + per * 2, "two heads' shares, got " .. #both.loot)
+
+            -- And the panel is told WHY the number moved (ui/panels/battle_summary.lua).
+            assert(one.note and one.note ~= both.note, "the panel names the count that decided the purse")
+            assert(none.note == nil, "with nothing counted there is nothing to explain")
         end,
     },
 

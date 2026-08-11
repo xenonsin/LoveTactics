@@ -34,6 +34,26 @@ return {
         return list
     end,
 
+    -- WHAT THE WIN IS WORTH is not one number here. The objective below is satisfied while ANY survivor
+    -- stands, so a party that screens one and lets the other go down still wins the fight -- and used to
+    -- be paid exactly what a party that got both out was paid, which says the second one never mattered.
+    -- That is the wrong lesson from the stop that teaches `defend`: the fight is not over the ground, it
+    -- is over the people standing on it.
+    --
+    -- So the purse is PER HEAD, on top of what the fight rolls (models/encounter_battle.lua): each
+    -- survivor still standing when the last wave falls presses what they got out of the valley with on
+    -- you. About what clearing the stop pays, apiece -- enough that one head against two is a difference
+    -- the player reads on the panel rather than one they would have to have played the stop twice to
+    -- notice. Flat, not prestige-scaled: what a fleeing villager has in their pockets is not a function
+    -- of the company's standing.
+    rescue = {
+        gold = 40,
+        loot = { "consumable_healing_potion" },
+        -- What the victory panel says about the count that decided it, in this stop's own words.
+        -- Formatted with (how many walked out, how many there were).
+        note = "%d of %d survivors walked out",
+    },
+
     objective = {
         type = "defend",
         anchor = "rally",           -- survivors stand just ahead of the party's line; models/arena.lua seats them there
