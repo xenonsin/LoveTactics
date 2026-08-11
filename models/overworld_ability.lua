@@ -5,6 +5,11 @@
 -- combat trait rides on an equipped item and fires in a fight; an overworld ability is keyed to the
 -- character and fires on the map.
 --
+-- CURRENTLY DETACHED. No character blueprint carries an `overworldAbility` field any more, so every
+-- dispatch below is a no-op and the party strip draws no badge -- the definitions are kept for now
+-- rather than deleted. The mapping, if it is reattached: Rowan/vigil, Saber/held_swing, Amana/
+-- kept_trust, Ren/aqua_vitae, Kaya/forage, Gyeom/ledger, Clem/jubilee.
+--
 -- This is a registry + dispatcher, headless-safe (no love.graphics at require-time; RNG falls back to
 -- math.random when love.math is absent). states/game.lua calls OverworldAbility.dispatch(event, ctx) on
 -- four traversal events:

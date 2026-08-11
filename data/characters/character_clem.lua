@@ -33,7 +33,6 @@ return {
     portrait = "assets/portraits/clem.png", -- large VN portrait for conversations (falls back if missing)
     class = "rogue",
     boss = true,
-    overworldAbility = "jubilee", -- clemency: mints a cut on top of every side-fight win
     archetype = "aggressive", -- a glass-cannon skirmisher; she opens the wound and takes the kill
     -- The rogue base (character_rogue.lua) with the fixer's edge: harder hand, thinner stamina, faster
     -- regen, a point more speed. The magic side is the base's UNTOUCHED, which is the companion

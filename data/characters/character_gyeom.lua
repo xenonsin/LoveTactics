@@ -37,7 +37,6 @@ return {
     portrait = "assets/portraits/gyeom.png", -- large VN portrait for conversations (falls back if missing)
     class = "mage",
     boss = true,
-    overworldAbility = "ledger", -- humility: reads the ground -- +1 vision, and lifts the fog off the quarry after study
     -- 56 health next to a swordsman is a body. Like every mage she keeps her distance (models/ai.lua),
     -- which is also how the single bolt she shows keeps finding range turn after turn.
     archetype = "skirmish",

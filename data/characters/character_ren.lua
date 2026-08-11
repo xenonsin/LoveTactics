@@ -29,7 +29,6 @@ return {
     portrait = "assets/portraits/ren.png", -- large VN portrait for conversations (falls back if missing)
     class = "alchemist",
     boss = true,
-    overworldAbility = "aqua_vitae", -- kindness: each side-win distils a dose, poured into the party at the boss
     archetype = "support", -- she heals before she strikes (models/ai.lua)
     stats = {
         health = 60, mana = 46, stamina = 11,

@@ -49,7 +49,6 @@ return {
     -- On a side of nothing but hitters the ranking names nobody, and she is a plain defender holding
     -- until the fight reaches her.
     guards = "priority",
-    overworldAbility = "vigil", -- guardian: clean wins bank a vigil; the front line opens the next fight ready
     stats = {
         health = 70, mana = 15, stamina = 15, -- resource stats
         staminaRegen = 2, -- stamina recovered per elapsed tick (a flat stat, not a resource)

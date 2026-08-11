@@ -33,7 +33,6 @@ return {
     sprite = "assets/chars/saber.png",
     portrait = "assets/portraits/saber.png", -- large VN portrait for conversations (falls back if missing)
     class = "fighter",
-    overworldAbility = "held_swing", -- patience: steps since her last fight bank into her next opening
     -- Above the fighter base (character_fighter.lua) on the physical side -- she is tier 3 and the
     -- greatsword's own body -- and EXACTLY the base on the magic side, which is the companion
     -- convention (Rowan holds the knight base's 15/4 untouched). The magic side used to read 0/0, and
