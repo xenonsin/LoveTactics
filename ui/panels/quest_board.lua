@@ -84,9 +84,10 @@ function QuestBoard:rebuild()
     -- is the one thing standing between a one-key player and the Demon Lord.
     local items = {}
 
-    -- The temporary "Descend" row that used to head this list is gone: the descent has its own door
-    -- now (ui/panels/descent.lua, the Gate), and this board is reached FROM it. What is left here is
-    -- the houses' own posted work, which is what a board was always for.
+    -- Nothing heads this list but the houses' own posted work, which is what a board was always for. A
+    -- "Descend" row lived here for a while and then became a Gate panel that owned this board as a
+    -- child; the descent is its own game mode now, entered from the title screen (states/descent.lua),
+    -- and the campaign's board answers to nothing but the campaign.
     for _, quest in ipairs(self.quests) do
         items[#items + 1] = {
             label = quest.locked and (quest.name .. " (Locked)") or quest.name,

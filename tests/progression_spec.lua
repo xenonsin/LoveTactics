@@ -5,6 +5,7 @@
 -- The save specs write to a throwaway filename so a developer's real save is never touched.
 
 local Player = require("models.player")
+local Building = require("models.building") -- vendorUnlockPrestige: when a house's door opens
 local Vendor = require("models.vendor")
 local Quest = require("models.quest")
 local Item = require("models.item")
@@ -434,12 +435,16 @@ return {
         end,
     },
     {
-        name = "a house's work is on the board whatever the company's level",
+        name = "a house's work waits for the house's door to open",
         fn = function()
-            -- The reverse of what this case used to assert. It gated a sponsor's legs behind the
-            -- prestige its BUILDING opens at, so a Bastion quest stayed hidden until prestige 2 --
-            -- sound while prestige was how a player progressed, and wrong now that levels come from
-            -- depth and are earned somewhere else entirely.
+            -- A sponsor's legs are gated behind the prestige its BUILDING opens at, so a Bastion quest
+            -- stays hidden until prestige 2: a quest that points at a locked door is an errand the
+            -- player cannot run, and the shop is where its reward is spent.
+            --
+            -- This case was inverted for a while, when the descent was the campaign's progression
+            -- engine and prestige had stopped being how a player advanced. The descent is a separate
+            -- game mode now and prestige is the campaign's currency again, so the gate -- and this
+            -- case -- point the way they originally did.
             assert(Quest.defs.quest_bastion_slot_01.sponsor == "bastion",
                 "quest_bastion_slot_01 should be a Bastion quest")
 
@@ -450,9 +455,12 @@ return {
                 return false
             end
 
-            assert(boardHas(playerAt(1), "quest_bastion_slot_01"),
-                "a house's opening leg is offered from the start -- what gates the rest of its line " ..
-                "is standing with that house, not the company's level")
+            local opensAt = Building.vendorUnlockPrestige("bastion")
+            assert(opensAt > 1, "this case needs a house that is not open from the start")
+            assert(not boardHas(playerAt(opensAt - 1), "quest_bastion_slot_01"),
+                "a house's work must not be posted before you can walk into the house")
+            assert(boardHas(playerAt(opensAt), "quest_bastion_slot_01"),
+                "...and must be posted as soon as you can")
         end,
     },
     {
@@ -597,7 +605,11 @@ return {
             -- six keys short should see that they are six keys short. Shown and enterable are two
             -- different things, and this pins the difference: the entry must be there AND be marked
             -- locked, with its key count telling the truth about how far off it is.
-            local p = playerAt(1)
+            -- Stood at the Gate's own entry prestige, because `showLocked` is about the KEY count and
+            -- nothing else: a quest still has to clear its prestige gate to be listed at all, and the
+            -- Gate asks for ten. Reading the requirement off the blueprint rather than typing it, so
+            -- retuning the finale's gate cannot leave this case quietly testing the wrong thing.
+            local p = playerAt(Quest.defs.quest_the_gate_below.requiredPrestige or 1)
             p.completedQuests.quest_colosseum_slot_10 = true
 
             local entry

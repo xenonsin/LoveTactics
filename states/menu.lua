@@ -230,8 +230,12 @@ local function buildMenu()
         end,
     }
 
-    -- Draft is NOT offered here. It lives in the city, as the Draft Yard (data/buildings/draft_yard.lua):
-    -- one door per mode, and the title screen is for starting or resuming a save, not a menu of modes.
+    -- Neither Descent nor Draft is offered on the shipped menu. Both used to be city cards -- the Gate on
+    -- the Quest Board's slot, the Draft Yard in the bottom row -- and neither is campaign content, so the
+    -- city was the wrong door for them; but the main menu is what a player meets first, and it is for
+    -- starting or resuming the campaign rather than for picking between three modes. They live in the
+    -- debug column below (buildDebugMenu) while they are still being built, which is also where a
+    -- shipping build stops offering them at all.
     items[#items + 1] = {
         label = "Settings",
         action = function() State.switch(require("states.settings"), menu) end,
@@ -253,6 +257,13 @@ local DEBUG_MARGIN = 16
 local function buildDebugMenu()
     if not DEBUG then return nil end
     return Menu.new({
+        -- THE OTHER TWO MODES. Both are whole games of their own -- a descent musters a company at the
+        -- gate and banks nothing (states/descent.lua); a draft run shares none of the campaign's
+        -- progression either -- and both were reached through the city until the city went back to being
+        -- the campaign's town alone. They sit here rather than on the main menu because they are still
+        -- being built: this column is where a mode lives until it is worth putting in front of a player.
+        { label = "Descent", action = function() State.switch(require("states.descent")) end },
+        { label = "Draft", action = function() State.switch(require("states.draft")) end },
         { label = "Mock Battle", action = function() startMockBattle() end },
         -- Every tile-field pattern on one board, for looking at the shader rather than arguing about
         -- it. See data/arenas/field_gallery.lua for what each row is arranged to prove.

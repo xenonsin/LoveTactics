@@ -211,12 +211,95 @@ function Descent.new(player, seed)
         -- The deepest floor this run has actually cleared, which is what a new depth record is measured
         -- against at extraction. Distinct from `floor`, which is where the party is standing.
         cleared = 0,
-        -- Standing earned this descent and not yet banked, as { [vendorId] = floors cleared }. Held on
-        -- the RUN rather than written straight to the player for the same reason the haul is: it is
-        -- provisional until somebody walks out with it. A wipe on floor four takes the three circles
-        -- below it with it, which is the whole of what a descent is about.
+        -- Which circles this run has cleared, as { [vendorId] = floors cleared }. It used to be standing
+        -- OWED to the houses, banked into the campaign player on the way out; there is no campaign player
+        -- to bank into now, so it is simply the run's own record of what it beat and the terminal card
+        -- reads it. Still held on the run rather than anywhere durable, and still lost with a wipe.
         standing = {},
     }
+end
+
+-- ---------------------------------------------------------------------------
+-- The run's company
+-- ---------------------------------------------------------------------------
+
+-- Where a descent in progress lives on disk. Its OWN file, never the campaign's -- a run banks nothing
+-- into a save and must not be able to touch one. Deleted the moment a run ends (Descent.clearSaved), so
+-- what persists here is one unfinished run and never a trace of a finished one.
+Descent.FILE = "descent_run.lua"
+
+-- The gold a mustered company walks in with, over and above what it spent at the muster. Small on
+-- purpose: the descent's economy is what its floors pay out -- spoils, caches and the overworld's own
+-- merchant stops -- and an opening purse that could buy its way past floor one would make the muster
+-- the run rather than its first decision.
+Descent.OPENING_GOLD = 50
+
+-- A PLAYER-SHAPED PROFILE FOR ONE RUN, and the reason this exists rather than a new shape.
+--
+-- states/game.lua, states/battle.lua, models/spoils.lua, models/wound.lua and the relic stack all take a
+-- `player` and read a dozen fields off it. A descent could have been given its own object and every one
+-- of them taught a second shape; instead it gets the shape they already know, built by Player.new and
+-- then overwritten where a clean run differs from a new campaign. The entire overworld/battle/spoils
+-- stack then runs a descent unchanged, which is the same trick Descent.floorQuest plays on the quest
+-- format one layer up.
+--
+-- WHAT MAKES IT A DESCENT'S rather than a campaign's is one field: `saveFile`. Player.save writes to it,
+-- so every existing save point in the game persists this company to the descent's file and none of them
+-- can reach `save.lua`. See Player.save for why that beats a per-call-site flag.
+--
+-- `chars` is the mustered company (models/descent_muster.lua), already instantiated with their authored
+-- kits. Required -- there is no default company, because choosing one is the mode's opening move.
+function Descent.newProfile(chars)
+    local Player = require("models.player")
+    local profile = Player.new()
+
+    profile.saveFile = Descent.FILE
+    profile.roster = {}
+    profile.lastDeployed = {}
+    for _, char in ipairs(chars or {}) do
+        profile.roster[#profile.roster + 1] = char
+        profile.lastDeployed[#profile.lastDeployed + 1] = char.id
+    end
+
+    -- A clean run carries in nothing a campaign would have accumulated. Player.new seeds an opening
+    -- stash, materials and recipes for a new GAME; a descent's company is the four-to-eight bodies it
+    -- was mustered with and whatever the floors hand them.
+    profile.stash = {}
+    profile.materials = {}
+    profile.recipes = {}
+    profile.newItems = {}
+    profile.gold = Descent.OPENING_GOLD
+
+    -- The campaign's meters, left at their zero. Nothing in a descent moves them any more -- levels come
+    -- from what each body does in the fighting now (models/experience.lua) rather than from prestige --
+    -- but the fields stay because the shape is Player.new's and Save.snapshot writes all of it.
+    profile.completedQuests = {}
+    profile.standing = {}
+    profile.deepest = 0
+    profile.wounds = {}
+
+    return profile
+end
+
+-- Is there an unfinished run on disk? Asked by states/descent.lua before it offers a muster.
+function Descent.hasRun()
+    return require("models.save").exists(Descent.FILE)
+end
+
+-- The saved run's company, or nil if there is none (or it is unreadable). The floor stack and board come
+-- back on `resumeRun`, exactly as the campaign's Continue reads them (models/save.lua Save.restoreRun);
+-- `saveFile` is re-stamped here because Save.snapshot does not write it -- where a file lives is not
+-- something to read out of the file.
+function Descent.loadProfile()
+    local profile = require("models.save").read(Descent.FILE)
+    if not profile then return nil end
+    profile.saveFile = Descent.FILE
+    return profile
+end
+
+-- The run is over -- climbed out, wiped, or abandoned. Nothing carries, so the file goes.
+function Descent.clearSaved()
+    require("models.save").clear(Descent.FILE)
 end
 
 -- How deep the party is standing, 1-based. The only number the difficulty ladder reads.
@@ -448,71 +531,50 @@ function Descent.clearFloor(run)
     return run.cleared
 end
 
--- WALKING OUT WITH IT. Banks what the descent is owed to the player and returns a small summary the
--- caller can put on screen.
+-- WALKING OUT WITH IT. Closes the run and returns the account of it that states/descent.lua's terminal
+-- card reads.
 --
--- Standing per circle and the depth record bank here. The authored quests queued in `run.pending` and
--- the heroes bound this descent drain through here too in later stages -- one seam, so there is never
--- a second place that has to remember what extraction means.
+-- THIS USED TO BANK, AND THE FACT THAT IT NO LONGER DOES IS THE MODE. It wrote standing per house and a
+-- new depth record onto the campaign player, and paid a prestige point per floor of record, so a descent
+-- was the campaign's progression engine wearing a stair. The descent is a separate game mode now: a run
+-- musters its own company at the mouth, and when it ends there is nothing on the other side of it to pay.
+-- Climbing out is still the only exit that is not a loss -- it is what makes the landing's question real
+-- -- but what it buys is the run finishing rather than a number somewhere getting bigger.
 --
--- The run's FINDS are not touched here and never will be: they have been live in the stash since the
--- moment they were picked up. What extraction does is drop the rollback point, which is the caller's
+-- So what became of the two things it used to bank:
+--
+--   the depth record   nothing outlives a run, so there is no record to beat. `floors` is reported and
+--                      then it is gone.
+--   levels             earned in the fighting now, body by body (models/experience.lua), which is what
+--                      lets a clean run start at level 1 and still reach the seventh circle.
+--
+-- The run's FINDS are not touched here and never were: they have been live in the company's stash since
+-- the moment they were picked up. What extraction does is drop the rollback point, which is the caller's
 -- job (clearRun) because the snapshot lives on player.activeRun. See states/game.lua's rollbackRun for
 -- the other half of that rule.
 --
--- LEVELS COME FROM DEPTH, AND ONLY FROM A RECORD. A prestige point per extraction would pay a player
--- for re-walking floor 1 forever, which is the farm the whole depth curve exists to close (see
--- models/spoils.lua's GOLD_DEPTH_SLOPE for the same argument about gold). Beating your own deepest
--- floor is the one thing that cannot be repeated without going further, so it is the one thing that
--- levels the company.
+-- `player` is still taken, and still only read: the terminal card names the company that walked out.
 function Descent.extract(player, run)
     if not (player and run) then return nil end
-    local reached = run.cleared or 0
-    local best = player.deepest or 0
-    local record = reached > best
 
-    -- Standing first, and it banks whether or not the depth was a record: clearing Wrath is worth the
-    -- same to the Colosseum on your tenth descent as on your first. It is the SHELF that opens on
-    -- this, and a shelf that only opened on record runs would stall the moment a player plateaued.
-    player.standing = player.standing or {}
-    local banked = {}
-    for vendorId, n in pairs(run.standing or {}) do
-        player.standing[vendorId] = (player.standing[vendorId] or 0) + n
-        banked[vendorId] = n
+    -- Which circles this run beat, copied out so the terminal reads a table the run cannot still be
+    -- mutating. Ordered by Descent.SINS at the point of display, never by `pairs`.
+    local circles = {}
+    for vendorId, n in pairs(run.standing or {}) do circles[vendorId] = n end
+
+    local survivors = {}
+    for _, char in ipairs(player.roster or {}) do
+        survivors[#survivors + 1] = char
     end
 
-    local prestigeBefore = player.prestige or 1
-    local advancement
-    if record then
-        player.deepest = reached
-        -- One level per floor of new record, so a run that beats the old mark by three pays three.
-        -- Required lazily, like models.encounter above: this module is loaded by models/save.lua on
-        -- the way in, and a top-level require of the player would put the two on a cycle.
-        --
-        -- addPrestige returns the roster members that levelled, which is exactly what the hub's
-        -- advancement overlay wants -- so walking out reports itself through the surface a completed
-        -- quest already reported through, rather than through a second one built for the occasion.
-        advancement = require("models.player").addPrestige(player, reached - best)
-    end
     return {
-        floors = reached,
-        deepest = player.deepest or 0,
-        record = record,
-        levels = record and (reached - best) or 0,
-        standing = banked,
-        -- What the overlay puts at the top of the box and on its reward line. A descent is not a quest
-        -- and must not claim to be one, and `prestige` is spelled the way a quest spells it so the
-        -- line that already knows how to say "+3 prestige" needs no descent branch of its own.
         title = "Climbed Out",
-        prestige = record and (reached - best) or 0,
-        -- Shaped for ui/panels/advancement.lua, which states/hub.lua opens off player.pendingSummary.
-        -- Only the fields a descent actually earns: no gold (it was banked fight by fight on the way
-        -- down), no sponsor (a run clears several houses, and saying which shelf moved is the Gate
-        -- panel's job). The bar still fills from one prestige to the other, so a descent that levelled
-        -- nobody still reads as progress rather than as nothing having happened.
-        advancement = advancement,
-        prestigeBefore = prestigeBefore,
-        prestigeAfter = player.prestige or 1,
+        floors = run.cleared or 0,
+        circles = circles,
+        gold = player.gold or 0,
+        -- The company as it walked out, levels and all -- the one place a run's growth is ever shown
+        -- whole, since there is no hub advancement overlay on the other side of this any more.
+        company = survivors,
     }
 end
 

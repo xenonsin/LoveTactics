@@ -237,19 +237,27 @@ function Quest.available(player)
 
     local list = {}
     for id, def in pairs(Quest.defs) do
-        -- WHAT OPENS A LEG IS STANDING, AND NOTHING ELSE NOW.
+        -- WHAT OPENS A LEG: three gates, ANDed, each answering a different question.
         --
-        -- Two conjuncts came off here, and both were the same mistake wearing different clothes: they
-        -- gated a house's work on PRESTIGE, which used to be the campaign's one currency of progress
-        -- and no longer is. Levels come from depth now (Descent.extract), and depth is earned in the
-        -- descent rather than at this board -- so a `requiredPrestige` gate asked a question the board
-        -- can no longer help the player answer, and `meetsSponsorGate` deferred to a building's own
-        -- prestige unlock for the same reason. A player who has cleared Wrath four times has done four
-        -- things for the Colosseum, and its next leg should be on the board whatever their level.
+        --   requiredPrestige      is the company far enough along for this LINE at all
+        --   meetsSponsorQuestGate how far in are you with these people (Quest.sponsorProgress)
+        --   meetsSponsorGate      is the house's door even open yet (Building.vendorUnlockPrestige)
         --
-        -- What is left is the honest gate: how far in you are with these people
-        -- (meetsSponsorQuestGate -> Quest.sponsorProgress), which now counts circles as well as legs.
-        local unlocked = meetsSponsorQuestGate(player, def)
+        -- THE FIRST AND THIRD WERE DELETED ONCE, AND THIS IS WHY THEY ARE BACK. They came off while the
+        -- descent was the campaign's progression engine: levels came from depth then, depth was earned
+        -- down the stair rather than at this board, so gating a house's work on prestige asked a question
+        -- the board could not help the player answer. Every word of that was true, and none of it is now
+        -- -- the descent is a separate game mode (states/descent.lua), it banks nothing, and the campaign
+        -- levels off Quest.PRESTIGE_PER_QUEST again exactly as it did before. The premise died; the gates
+        -- come back with it.
+        --
+        -- What it looked like without them: every house's opening leg on the board at once, on a brand
+        -- new save, with the Alchemist's `requiredPrestige = 4` line sitting beside the Colosseum's
+        -- first. The data never stopped saying so -- all 92 quests still author the field, and
+        -- models/balance.lua still reads it as the line's entry gate -- it was only this reader that
+        -- stopped listening.
+        local unlocked = prestige >= (def.requiredPrestige or 1)
+            and meetsSponsorQuestGate(player, def) and meetsSponsorGate(player, def)
         local exhausted = Player.hasCompleted(player, id) and not def.repeatable
         local questsMet, keysHeld, keysNeeded = questGate(player, def)
         local locked = not questsMet

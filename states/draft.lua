@@ -74,10 +74,6 @@ function draft.enter(self, opts)
     -- returning to the shop must open on full colour again rather than that defeat grey (ui/screen_fx.lua).
     ScreenFx.reset()
     draft.card = nil
-    -- Where leaving goes: whatever opened the mode, which in the shipped game is the city's Draft Yard
-    -- (data/buildings/draft_yard.lua). Only a fresh entry sets this -- a `resume` is the return from a
-    -- battle, which carries no opts of its own and must not forget the city it was entered from.
-    if not opts.resume then draft.returnTo = opts.returnTo end
     local askResume = false
     if not opts.resume then
         -- Opened fresh from the menu: load a saved run that is still in progress (the player is asked
@@ -331,11 +327,12 @@ local function fight()
     }))
 end
 
--- Leaving the mode: back to whatever opened it. The label says which, so "Back" never lies about where
--- it drops you. The title-screen fallback is for a caller that names no destination (a debug entry);
--- the city always names one.
-local function leave() State.switch(draft.returnTo or require("states.menu")) end
-local function leaveLabel() return draft.returnTo and "Back to City" or "Back to Menu" end
+-- Leaving the mode: back to the title screen, which is the one place Draft is entered from
+-- (states/menu.lua). It used to be opened by a city card as well and carried a `returnTo` so "Back"
+-- could name either destination; Draft is a title-screen mode now and the city has no door onto it, so
+-- there is one answer and the label states it plainly.
+local function leave() State.switch(require("states.menu")) end
+local function leaveLabel() return "Back to Menu" end
 
 -- ---------------------------------------------------------------------------
 -- Modal cards (resume the saved run / abandon it / the terminal)

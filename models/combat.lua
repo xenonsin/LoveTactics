@@ -53,6 +53,7 @@ local Prop = require("models.prop")
 local Character = require("models.character")
 local Item = require("models.item") -- for Item.costs: the one place an ability's costs are normalized
 local Discipline = require("models.discipline") -- growthClasses: which classes a use tallies
+local Experience = require("models.experience") -- what a body earns for acting; the descent spends it
 
 local Combat = {}
 
@@ -6171,6 +6172,13 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
             applyKnockback()
             target.mortallyWounded = nil
         end
+        -- The felling blow's experience, credited before the body drops -- `attacker` is in scope here
+        -- and nowhere inside killUnit, which is handed a target and no account of who put it down.
+        -- Gated exactly as the action award is (Combat.useItem): a player-controlled, unsummoned body.
+        -- A kill by an escortee, a summon or the enemy pays nobody.
+        if attacker and Combat.isPlayerControlled(attacker) and not attacker.summoned then
+            Experience.award(attacker.char, Experience.PER_FELLING)
+        end
         killUnit(combat, target)
     else
         -- Reaction traits are raised here and nowhere else: AFTER mitigation, so a hook reads the damage
@@ -9797,6 +9805,16 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
     -- use transient char instances that would never persist the ledger anyway).
     if Combat.isPlayerControlled(unit) and not unit.summoned then
         Combat.awardTechnique(combat, unit, item)
+        -- Experience for the ACTION, on the same gate and for the same reason: a body grows by what it
+        -- does, and an escortee or a summon is not a body the player is growing. Distinct from the
+        -- technique above rather than folded into it -- technique is capped per house per battle
+        -- (Discipline.TECHNIQUE_PER_BATTLE), because it is a specialization ledger and a long fight
+        -- should not let one house run away with a build; experience is not capped, because it measures
+        -- the fight itself. A body still acting on turn twelve is still earning.
+        --
+        -- Banked unconditionally, in every mode. Only a descent ever turns it into levels -- see
+        -- models/experience.lua's header on why that is a resolution-side decision and not a branch here.
+        Experience.award(unit.char, Experience.PER_ACTION)
     end
 
     -- Using an item ends the turn: advance by (this turn's move cost) + the ability speed (or the

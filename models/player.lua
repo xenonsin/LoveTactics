@@ -640,8 +640,19 @@ end
 
 -- Persist the active player. Called at the points progress is earned or spent -- quest
 -- completion and vendor purchases -- so a crash costs at most one battle.
+--
+-- WHERE IT WRITES IS THE PLAYER'S OWN BUSINESS. A campaign player has no `saveFile` and goes to
+-- Save.FILE, exactly as this always did. A descent's throwaway company carries one (models/descent.lua)
+-- and goes to its own file instead -- so all two dozen call sites of this function, spread across the
+-- game state, the shops, the forge and the cafe, route themselves correctly without one of them being
+-- edited or having to know which mode it is running under.
+--
+-- The alternative was a `persist` flag at each call site, which ui/panels/party.lua already carries for
+-- its synthetic player. That works for one panel and does not generalize: a descent does not want to
+-- SKIP saving, it wants to save somewhere else, and a boolean cannot say where.
 function Player.save()
-    if Player.active then Save.write(Player.active) end
+    local player = Player.active
+    if player then Save.write(player, player.saveFile) end
 end
 
 function Player.hasSave()

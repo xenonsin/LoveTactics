@@ -41,6 +41,7 @@ local PartyStatus = require("ui.party_status")
 local RelicStrip = require("ui.relic_strip")
 local OverworldAbility = require("models.overworld_ability")
 local Descent = require("models.descent") -- a run as a stack of floors, their circles, the landing between
+local Experience = require("models.experience") -- what levels a descent's company, since no prestige does
 local Relic = require("models.relic")
 local Meal = require("models.meal") -- the Cafe's supper: one platter, worn by the company all run
 local Wound = require("models.wound") -- what a body that went down carries out of the run
@@ -263,6 +264,31 @@ local function rollbackRun()
     return true
 end
 
+-- WHERE A DESCENT GOES WHEN IT ENDS, which is not where a quest goes.
+--
+-- A campaign quest ends at the city: the company lives there, the reward is banked there, and the
+-- advancement overlay opens on the way in. A descent has no city. It is a separate game mode with its own
+-- front screen (states/descent.lua), it banks nothing, and the company it musters at the gate does not
+-- outlive the run -- so the account this hands over is the ONLY report the player gets, and after it the
+-- run is gone.
+--
+-- `outcome` is how it ended -- "extracted", "wiped" or "left" -- and it is passed rather than inferred
+-- because the three are indistinguishable by the time they arrive here: all three have dropped the run,
+-- and only the caller knows whether that was a victory, a defeat or a decision.
+--
+-- The saved run goes with it. That is what "each run is clean" means in one line: there is no file left
+-- for the next entry to find, so the next entry musters.
+local function endDescent(outcome, result)
+    result = result or {}
+    result.outcome = outcome
+    Descent.clearSaved()
+    -- The throwaway company stops being the active player. Nothing would ask it for anything -- both
+    -- doors into the hub call Player.start first -- but leaving a spent descent profile sitting in the
+    -- global is exactly the sort of thing that is only ever discovered by a bug.
+    Player.active = nil
+    State.switch(require("states.descent"), { result = result })
+end
+
 -- WHAT THIS RUN IS CARRYING, and would lose by leaving any way but through the objective.
 --
 -- Read by DIFFING the live company against the entry snapshot rather than by tallying at each grant.
@@ -445,24 +471,19 @@ function game:openLanding()
             },
             {
                 label = "Climb out",
-                desc = carried and ("Bank " .. carried .. " and end the descent.")
-                    or "End the descent and return to the city.",
-                accent = { 0.42, 0.80, 0.62 }, -- green: the answer that makes the haul yours
+                desc = carried and ("Walk out with " .. carried .. " and end the descent.")
+                    or "End the descent and go back up.",
+                accent = { 0.42, 0.80, 0.62 }, -- green: the answer that ends the run on your terms
                 cb = function()
                     game.activePanel = nil
-                    -- THE EXTRACTION. Dropping the run drops the rollback point with it, and everything
-                    -- the descent found -- already live in the stash since the moment it was picked up --
-                    -- stops being provisional. Same rule the objective used to carry alone; the landing
-                    -- is simply where the player now gets to invoke it.
+                    -- THE EXTRACTION. Dropping the run drops the rollback point with it, so the floors
+                    -- below stop being able to take the haul back. What it no longer does is BANK: there
+                    -- is nothing on the other side of a descent to bank into, and the company that
+                    -- carried it out does not outlive the run either. See Descent.extract on what that
+                    -- changed and why the landing's question is still a real one without it.
                     local out = Descent.extract(game.player, run)
                     clearRun()
-                    -- Walking out is the descent's payout beat, so it reports itself through the
-                    -- overlay a completed quest reports through -- the hub opens this on entry. Without
-                    -- it the run's levels land in silence, which is the exact failure docs/progression
-                    -- names: every reward happening after the fighting, once, and unannounced.
-                    if game.player and out then game.player.pendingSummary = out end
-                    if game.player then Player.save() end
-                    State.switch(require("states.hub"))
+                    endDescent("extracted", out)
                 end,
             },
         },
@@ -884,6 +905,25 @@ function game:openEncounter(cell)
             -- Alms Bowl heals, a Vice bites). Save so their effects persist.
             fireAbility("encounterCleared", { cell = cell, spoils = spoils })
             fireRelics("encounterCleared", { cell = cell, spoils = spoils })
+
+            -- THE DESCENT'S LEVEL-UPS, and the whole boundary between the two ladders in the game.
+            --
+            -- Combat banks experience on every body that acts, in every mode (models/experience.lua) --
+            -- but in the campaign it is a counter nobody reads, because a campaign roster levels off
+            -- prestige (Player.syncLevels) and always has. Here is the one place it is ever spent, and
+            -- the gate is `game.descent`: a clean run musters at level 1 with no prestige behind it, so
+            -- what it does in the fighting is the only thing that can grow it.
+            --
+            -- This seam rather than the battle's own end because it is ALREADY the single point every
+            -- won fight passes through, side-fight and stair guardian alike (see the header above), so
+            -- there is no second place that could forget. Growth.resolve is idempotent, so a body that
+            -- earned nothing this fight costs a comparison.
+            if game.descent and game.player then
+                for _, up in ipairs(Experience.resolveParty(game.player.roster)) do
+                    game:pushToast((up.char.name or up.char.id) .. " reaches level " .. up.toLevel)
+                end
+            end
+
             if game.player then Player.save() end
         end
 
@@ -915,6 +955,10 @@ function game:openEncounter(cell)
             -- Read at launch rather than at the loss, because by then the rollback has already put it
             -- back and there would be nothing left to count.
             lostHaul = game:haulPhrase(),
+            -- What the give-up button is called. A quest is abandoned back to the city; a descent has no
+            -- city, and its run simply ends -- so the button says that rather than naming somewhere the
+            -- player cannot go (states/battle.lua).
+            lossLabel = game.descent and "End the Run" or nil,
             -- The sponsor's stock, for the salvage every won fight leaves behind (models/spoils.lua).
             -- Same value the map's caches were laid out with, so a run's fights and its dead ends pay
             -- into the same house.
@@ -995,9 +1039,13 @@ function game:openEncounter(cell)
                             local out = Descent.extract(game.player, game.descent)
                             if out then out.title = "The Crown Is Broken" end
                             clearRun()
-                            if game.player and out then game.player.pendingSummary = out end
-                            if game.player then Player.save() end
-                            State.switch(require("states.credits"), { newGamePlus = true })
+                            -- The descent's own terminal, NOT the credits. Rolling the campaign's ending
+                            -- here was right while the descent was the campaign's spine; it is a separate
+                            -- mode now, and beating its bottom finishes that mode's run rather than the
+                            -- game. The credits still belong to the campaign's finale
+                            -- (data/quests/quest_the_gate_below.lua), which is reached from the board and
+                            -- has nothing to do with this stair.
+                            endDescent("extracted", out)
                             return
                         end
                         game:openLanding()
@@ -1106,6 +1154,18 @@ function game:openEncounter(cell)
             -- return to -- the prologue's flight leg (game.tutorial) has none yet, so there the panel
             -- shows Try Again alone.
             onLoss = (not game.tutorial) and function()
+                -- A DESCENT WIPE ENDS THE RUN, and there is nothing to put back. The rollback below
+                -- exists to hand a campaign company back the gear it marched in with; here the company
+                -- IS the run -- mustered at the gate, discarded with it -- so restoring it would be
+                -- rebuilding a table on its way to the bin. Wounds are not inflicted either: they outlive
+                -- a quest because the roster does, and this roster does not.
+                if game.descent then
+                    -- `floors` is where they were STANDING, not what they cleared: the account reads
+                    -- "went down on floor 4", and a company that dies on the fourth floor cleared three.
+                    endDescent("wiped", { floors = Descent.depth(game.descent),
+                                          circles = game.descent.standing })
+                    return
+                end
                 -- The one thing a wipe does NOT take back. Inflicted BEFORE the rollback, which is
                 -- the whole of the ordering rule: rollbackRun hands the player every key of the entry
                 -- snapshot, and wounds only survive it because that function holds this key across
@@ -1581,6 +1641,15 @@ function game:resolveNonCombat(cell)
 end
 
 local function toHub()
+    -- WALKING AWAY FROM A DESCENT ends the run where it stands. Same reading as the wipe above: there is
+    -- no company on the other side of this to hand anything back to, so there is nothing to roll back --
+    -- only a run to close and an account of it to give. It is still a real loss, and the landing's "climb
+    -- out" is still the exit that is not: leaving from the middle of a floor abandons what the floor was
+    -- worth, which is exactly what the prompt that reached here just named.
+    if game.descent then
+        endDescent("left", { floors = (game.descent.cleared or 0), circles = game.descent.standing })
+        return
+    end
     -- Abandoning a quest (Back / Esc) VOIDS the run, exactly as a wipe does -- the two differ only in how
     -- the player got here. The expedition's finds go back, the company's own gear does not move, and
     -- Continue has no map to drop them back into. Persist so disk agrees; the hub clears as a backstop.
@@ -1598,15 +1667,25 @@ end
 local function leaveQuest()
     local lost = game:haulPhrase()
     if not (game.player and game.player.activeRun and lost) then toHub() return end
+    -- The same decision in both modes, but not the same stakes, so not the same words. A quest's walk-out
+    -- gives up one expedition and the company goes home; a descent's gives up the company as well, since
+    -- there is no home on the other side of it to go to.
     game.activePanel = Choice.new({
         title = "Turn Back?",
-        prompt = "Nothing you have found is yours until the objective is cleared. Walk out now and "
-            .. lost .. " stay where you found them.",
+        prompt = game.descent
+            and ("Nothing you have found is yours until you climb out. Leave now and " .. lost ..
+                 " stay where you found them, and the run ends here.")
+            or ("Nothing you have found is yours until the objective is cleared. Walk out now and "
+                .. lost .. " stay where you found them."),
         options = {
-            { label = "Keep going", desc = "The objective is the only way home with any of it.",
+            { label = "Keep going",
+              desc = game.descent and "The stair is the only way out with any of it."
+                  or "The objective is the only way home with any of it.",
               accent = { 0.83, 0.73, 0.45 },
               cb = function() game.activePanel = nil end },
-            { label = "Walk out empty", desc = "Return to the city. The expedition counts for nothing.",
+            { label = game.descent and "End the run" or "Walk out empty",
+              desc = game.descent and "The company is left at the gate. The descent counts for nothing."
+                  or "Return to the city. The expedition counts for nothing.",
               accent = { 0.88, 0.45, 0.33 },
               cb = function() game.activePanel = nil; toHub() end },
         },
@@ -1822,7 +1901,12 @@ function game.drawHud()
     local items = game.itemsVisible and (InputMode.isGamepad() and "Y: items      " or "I: items      ") or ""
     local use = useVisible() and (InputMode.isGamepad() and "X: use      " or "U: use      ") or ""
     -- The "back to hub" hint is dropped alongside the button itself during the flight tutorial.
-    local back = backVisible() and (InputMode.isGamepad() and "Back: hub" or "Esc: hub") or ""
+    -- Where backing out actually goes, named honestly. A quest is abandoned to the city; a descent has no
+    -- city to be abandoned to -- the run simply ends (states/game.lua's toHub) -- and a hint that names a
+    -- place the player cannot reach teaches them the wrong thing about the mode they are in.
+    local backTo = game.descent and "end run" or "hub"
+    local back = backVisible() and (InputMode.isGamepad() and ("Back: " .. backTo)
+        or ("Esc: " .. backTo)) or ""
     local hint = InputMode.isGamepad()
         and ("Move: D-pad / Stick      " .. items .. use .. back)
         or ("Move: WASD / Arrows / click adjacent tile      " .. items .. use .. back)

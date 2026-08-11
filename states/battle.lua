@@ -494,7 +494,7 @@ local function finishBattle(result)
         actions[#actions + 1] = action("Continue", battle.onWin, spoils)
     else
         if battle.onRetry then actions[#actions + 1] = action("Try Again", battle.onRetry) end
-        if battle.onLoss then actions[#actions + 1] = action("Return to Hub", battle.onLoss) end
+        if battle.onLoss then actions[#actions + 1] = action(battle.lossLabel or "Return to Hub", battle.onLoss) end
         -- A decided fight must always offer a way out, even if a launcher wired neither exit.
         if #actions == 0 then actions[#actions + 1] = action("Continue", nil) end
     end
@@ -4436,6 +4436,11 @@ function battle.enter(self, opts)
     -- exist: an overworld fight has both, a tutorial fight has only onRetry (no hub to abandon to yet).
     -- See states/game.lua and states/prologue.lua.
     battle.onLoss = opts.onLoss
+    -- What that exit is CALLED. "Return to Hub" is right for a quest, which is abandoned back to the
+    -- city; a descent has no city to be returned to, and a button that names one the player cannot reach
+    -- is a button that lies about where it goes. The launcher names it (states/game.lua); the default
+    -- keeps every existing caller reading exactly as it did.
+    battle.lossLabel = opts.lossLabel
     battle.onRetry = opts.onRetry
     -- A phrase naming what the overworld run stands to lose here ("4 items, 210 gold"), shown on the
     -- defeat panel. Passed down rather than computed, since the fight knows nothing about the run.

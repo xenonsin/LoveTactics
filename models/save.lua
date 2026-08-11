@@ -138,6 +138,13 @@ local function snapshotCharacter(char)
     -- keep an early-game save diffing clean; the same for an empty tally / no accumulated growth.
     if char.level and char.level > 1 then snap.level = char.level end
 
+    -- Experience toward the next level (models/experience.lua). Written for EVERY character, not only a
+    -- descent's, because combat banks it in every mode and a snapshot that dropped it would quietly
+    -- reset a resumed descent's progress to the last whole level. Omitted at zero for the same reason
+    -- `level` is: an unfought body should not put a field in the file. Purely additive, so an older save
+    -- restores at zero, which is what a body that has never swung reads as anyway.
+    if char.xp and char.xp > 0 then snap.xp = char.xp end
+
     local growth = {}
     for stat, amount in pairs(char.growth or {}) do
         if amount and amount ~= 0 then growth[stat] = amount end
@@ -493,6 +500,12 @@ local function restoreCharacter(snap)
         techniqueAtLevel = snap.techniqueAtLevel,
     })
 
+    -- Experience toward the next level, restored onto the body rather than passed through instantiate:
+    -- it is a plain counter that nothing about building a character depends on (models/experience.lua
+    -- derives the level from it, and the level is already snapshotted), so there is no reason to widen
+    -- Character.instantiate's contract for it.
+    if snap.xp and snap.xp > 0 then char.xp = snap.xp end
+
     -- A save written before per-class level crediting existed carries no `growthBy`, so the ledger
     -- would read as a character that had never levelled at all. Seed it the way that save's stats were
     -- actually earned: under the old rule every level went to the single dominant class, so crediting
@@ -660,29 +673,39 @@ end
 -- Disk
 -- ---------------------------------------------------------------------------
 
-function Save.exists()
-    return love.filesystem.getInfo(Save.FILE) ~= nil
+-- EVERY DISK CALL TAKES AN OPTIONAL FILE, defaulting to the campaign's own. There is a second player-
+-- shaped thing in the game now -- a descent's throwaway company, drafted at the mouth of a run and
+-- deleted when the run ends (models/descent.lua) -- and it is the same shape all the way down, so it
+-- wants this serializer rather than a parallel one. What it must never do is land in `save.lua`.
+--
+-- Passing the path rather than swapping a module-level "current slot" is deliberate: a slot would be
+-- global mutable state that a crash mid-descent could leave pointing at the wrong file, and the failure
+-- mode of that is a descent overwriting a campaign. An argument cannot be left set.
+local function fileOf(file) return file or Save.FILE end
+
+function Save.exists(file)
+    return love.filesystem.getInfo(fileOf(file)) ~= nil
 end
 
 -- Returns true on success, or false plus a message.
-function Save.write(player)
+function Save.write(player, file)
     local source = "-- LoveTactics save. Generated file; edit at your own risk.\nreturn "
         .. encode(Save.snapshot(player), 0) .. "\n"
-    return love.filesystem.write(Save.FILE, source)
+    return love.filesystem.write(fileOf(file), source)
 end
 
 -- The restored player, or nil if there is no save (or it is unreadable).
-function Save.read()
-    if not Save.exists() then return nil end
-    local source = love.filesystem.read(Save.FILE)
+function Save.read(file)
+    if not Save.exists(file) then return nil end
+    local source = love.filesystem.read(fileOf(file))
     if not source then return nil end
     local snap = decode(source)
     if not snap then return nil end
     return Save.restore(snap)
 end
 
-function Save.clear()
-    if Save.exists() then love.filesystem.remove(Save.FILE) end
+function Save.clear(file)
+    if Save.exists(file) then love.filesystem.remove(fileOf(file)) end
 end
 
 return Save

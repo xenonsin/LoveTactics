@@ -75,18 +75,24 @@ return {
         end,
     },
     {
-        -- Building.list copies blueprint fields one at a time, so a field it forgets reads as nil at
-        -- runtime and the door silently opens the placeholder panel instead of the mode.
-        name = "a building that opens a whole screen carries its state through the list",
+        -- THE CITY IS THE CAMPAIGN'S TOWN AND NOTHING ELSE'S. The Draft Yard and the Gate both stood
+        -- here once, and both were doors onto modes that share none of the campaign's progression --
+        -- which made the town read as the place all three lived. Every card is a campaign door now, so
+        -- no building names a `state` and the hub has no branch for one (states/hub.lua): a card that
+        -- somehow carried one would open nothing at all.
+        name = "every door in the city is a campaign door, and opens a panel",
         fn = function()
-            local yard
+            local board
             for _, b in ipairs(Building.list(1)) do
-                if b.id == "draft_yard" then yard = b end
+                assert(b.state == nil,
+                    b.id .. " names a state, but the hub only opens panels now")
+                if b.id == "quest_board" then board = b end
             end
-            assert(yard, "draft_yard missing from the city")
-            assert(not yard.locked, "the Draft Yard is ungated")
-            assert(yard.state == "draft", "the Draft Yard should name states/draft.lua")
-            assert(yard.panel == nil, "a state door has no pop-up panel")
+            assert(board, "the Quest Board is the first card in the city")
+            assert(board.panel == "quest_board",
+                "the board's card opens the board -- it was the descent's Gate for a while")
+            assert(not board.locked, "and the campaign's front door is never gated")
+            assert(Building.defs.draft_yard == nil, "the Draft Yard left the city with Draft")
         end,
     },
     {
@@ -97,12 +103,14 @@ return {
         end,
     },
     {
-        name = "Quest.available gates on STANDING, and no longer on prestige",
+        name = "Quest.available gates on prestige AND standing, not one or the other",
         fn = function()
-            -- This case used to assert the opposite, and the reversal is the point of the change.
-            -- Prestige was the campaign's single currency of progress; levels come from DEPTH now
-            -- (Descent.extract), earned in the descent rather than at this board. So a prestige gate
-            -- here asked a question the board could no longer help the player answer.
+            -- THIS CASE HAS BEEN REVERSED TWICE, so it is worth saying which way it points and why.
+            -- The prestige gate came off while the descent was the campaign's progression engine:
+            -- levels came from depth then, so asking the board about prestige asked a question it could
+            -- not help the player answer. The descent is a separate game mode now (states/descent.lua),
+            -- it banks nothing, and the campaign levels off finished quests again -- so the gate is back,
+            -- and without it every house's opening leg sat on the board of a brand new save at once.
             --
             -- A chain HEAD is the thing to check -- every sin quest after the first chains off the one
             -- before it, so a later slot would be testing the chain instead of the gate.
@@ -113,13 +121,20 @@ return {
                 return false
             end
 
-            assert(boardHas(playerAt(1), "quest_undercroft_slot_01"),
-                "a line's opening leg is on the board from the start now -- nothing about the " ..
-                "company's level should hide it")
+            -- The Undercroft's line asks for prestige 3 and its door opens at 3. A starting company has
+            -- neither, and must not be shown work it cannot take.
+            assert(not boardHas(playerAt(1), "quest_undercroft_slot_01"),
+                "a line whose entry prestige is unmet must stay off the board")
+            assert(boardHas(playerAt(3), "quest_undercroft_slot_01"),
+                "...and appear once the company is far enough along for it")
 
-            -- ...and the honest gate still holds: the SECOND leg wants the first one done. What
-            -- opens a house's work is how far in you are with that house, which is the one question
-            -- the board can still answer.
+            -- The Colosseum opens at 1: the campaign has to start somewhere, and that somewhere is on
+            -- the board from the first visit.
+            assert(boardHas(playerAt(1), "quest_colosseum_slot_01"),
+                "the opening line must be available to a company that has done nothing yet")
+
+            -- The other gate still holds independently: the SECOND leg wants the first one done, at any
+            -- level. Prestige opens a line; standing walks it.
             assert(not boardHas(playerAt(20), "quest_undercroft_slot_02"),
                 "slot 2 must stay off the board until slot 1 is done, whatever the company's level")
         end,
@@ -175,10 +190,8 @@ return {
             Building.list(1)
             Quest.available(playerAt(3))
             assert(Building.defs.quest_board.locked == nil, "building blueprint mutated")
-            -- The card in this slot is the Gate now (the descent's front door); the FILE keeps its
-            -- old name so the building order and every reference to it stay put. What this case is
-            -- about is that a blueprint is not mutated by being listed, so it reads the name off the
-            -- registry rather than restating it -- which is the shape it should have had all along.
+            -- Read off the registry rather than restated: this case is about a blueprint not being
+            -- mutated by being listed, and it should not also be asserting what the card is called.
             local named = Building.defs.quest_board.name
             Building.list(1)
             assert(Building.defs.quest_board.name == named, "building name changed")

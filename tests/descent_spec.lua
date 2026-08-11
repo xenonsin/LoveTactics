@@ -154,29 +154,30 @@ return {
         assert(run.cleared == 1, "having cleared one")
     end },
 
-    { name = "extraction banks a depth record, and only a record", fn = function()
+    { name = "extraction accounts for the run and banks nothing", fn = function()
+        -- THE MODE, PINNED. The descent is a separate game from the campaign now: a run musters its own
+        -- company at the gate and nothing it does reaches a save. Extraction used to write a depth
+        -- record, per-house standing and a prestige point per floor onto the player; this asserts that
+        -- it no longer touches the player at all, which is the whole difference between a game mode and
+        -- a progression engine.
         local player = Player.new()
+        local prestige, deepest = player.prestige, player.deepest
+
         local run = Descent.new(player, 8)
         Descent.clearFloor(run)
         Descent.advance(run)
         Descent.clearFloor(run)
-        local out = Descent.extract(player, run)
-        assert(out.record, "two floors is a first record")
-        assert(player.deepest == 2, "and it is banked on the player")
 
-        -- A shallower second run must not walk the record backwards. This is what makes levels-from-depth
-        -- monotonic and unfarmable; without it, repeating floor 1 would pay forever.
-        local shallow = Descent.new(player, 9)
-        Descent.clearFloor(shallow)
-        local again = Descent.extract(player, shallow)
-        assert(not again.record, "one floor is not a new record")
-        assert(player.deepest == 2, "and the record stands")
+        local out = Descent.extract(player, run)
+        assert(out.floors == 2, "the account says how far the run got")
+        assert(player.deepest == deepest, "no depth record is written")
+        assert(player.prestige == prestige, "and no prestige: levels are earned in the fighting now")
+        assert(next(player.standing) == nil, "nor standing with any house")
     end },
 
-    { name = "clearing a circle banks standing with its house, and only at extraction", fn = function()
-        -- The extraction rule applied to progress rather than to loot: standing accrues on the RUN
-        -- while you are down there, and becomes yours only if you walk out. A wipe on floor four takes
-        -- the three circles below it with it.
+    { name = "the account names the circles the run beat", fn = function()
+        -- What a run has to show for itself, now that there is nowhere to bank it: which circles it
+        -- actually beat, reported once on the terminal card and then gone with the run.
         local Quest = require("models.quest")
         local player = Player.new()
         local run = Descent.new(player, 5150)
@@ -184,24 +185,22 @@ return {
         local first = Descent.sinAt(run, 1).vendor
         Descent.clearFloor(run)
         assert(run.standing[first] == 1, "the cleared circle is credited on the run")
-        assert((player.standing[first] or 0) == 0, "...and not yet on the player")
-        assert(Quest.sponsorProgress(player, first) == 0, "so the shelf has not moved either")
 
         Descent.advance(run)
         Descent.clearFloor(run)
         local second = Descent.sinAt(run, 2).vendor
-        Descent.extract(player, run)
-        assert(player.standing[first] == 1 and player.standing[second] == 1,
-            "extraction banks every circle the run cleared")
-        assert(Quest.sponsorProgress(player, first) == 1, "and the house's standing is what the shelf reads")
 
-        -- The other half: a run that never extracts pays nothing.
-        local lost = Descent.new(player, 99)
-        Descent.clearFloor(lost)
-        local wiped = Descent.sinAt(lost, 1).vendor
-        local before = player.standing[wiped] or 0
-        -- No Descent.extract call: this is what a wipe looks like from here.
-        assert((player.standing[wiped] or 0) == before, "a run that did not walk out banks nothing")
+        local out = Descent.extract(player, run)
+        assert(out.circles[first] == 1 and out.circles[second] == 1,
+            "the account names every circle the run cleared")
+        -- ...and the campaign's shelf is not among the things it moved. Quest.sponsorProgress still adds
+        -- a `standing` term, and it must read zero forever now that only completed quests feed it.
+        assert(Quest.sponsorProgress(player, first) == 0,
+            "a descent must not open a campaign shelf: the two modes share no progression")
+
+        -- The account is a COPY, not the run's own table -- the terminal reads it after the run is gone.
+        out.circles[first] = 99
+        assert(run.standing[first] == 1, "the account must not alias the run it describes")
     end },
 
     { name = "standing survives a resume, because a resume is not an extraction", fn = function()
@@ -218,34 +217,27 @@ return {
         end
     end },
 
-    { name = "only a new depth record levels the company", fn = function()
-        -- The farm this closes: a prestige point per extraction would pay a player for re-walking
-        -- floor 1 forever. A record cannot be re-earned without going further, which is the only
-        -- unfarmable thing a descent has.
-        local player = Player.new()
-        local base = player.prestige
+    { name = "a mustered profile is a player the whole stack can run, and writes its own file", fn = function()
+        -- The one thing that makes a descent's company safe: it is Player-shaped, so states/game.lua and
+        -- everything under it runs a descent unchanged -- and it carries `saveFile`, so every Player.save
+        -- in the game writes it to the descent's file instead of the campaign's.
+        local Muster = require("models.descent_muster")
+        local Save = require("models.save")
 
-        local deep = Descent.new(player, 1)
-        deep.floor = 3
-        Descent.clearFloor(deep)
-        local out = Descent.extract(player, deep)
-        assert(out.record and out.levels == 3, "three floors from nothing is three levels")
-        assert(player.prestige == base + 3, "and the company actually gains them")
+        local company = Muster.company({ "character_knight", "character_mage" })
+        local profile = Descent.newProfile(company)
 
-        -- Walk the same depth again: standing still accrues, levels do not.
-        local again = Descent.new(player, 2)
-        again.floor = 3
-        Descent.clearFloor(again)
-        local second = Descent.extract(player, again)
-        assert(not second.record and second.levels == 0, "re-walking your own record pays no levels")
-        assert(player.prestige == base + 3, "and the company does not grow for it")
-        assert(next(second.standing) ~= nil, "...but the house is still owed its standing")
+        assert(profile.saveFile == Descent.FILE, "a run's company must never write save.lua")
+        assert(profile.saveFile ~= Save.FILE, "...which means its file is not the campaign's")
+        assert(#profile.roster == 2, "the mustered bodies are the roster")
+        assert(profile.roster[1].id == "character_knight", "in the order they were taken")
+        assert(#profile.lastDeployed == 2, "and they open the first deployment already standing")
 
-        -- And beating it by one pays exactly one.
-        local deeper = Descent.new(player, 3)
-        deeper.floor = 4
-        Descent.clearFloor(deeper)
-        assert(Descent.extract(player, deeper).levels == 1, "one floor past the record is one level")
+        -- Nothing a campaign would have accumulated comes in with it.
+        assert(#profile.stash == 0, "a clean run carries no stash in")
+        assert(next(profile.materials) == nil, "nor forging stock")
+        assert(next(profile.completedQuests) == nil, "nor a campaign's finished quests")
+        assert(profile.deepest == 0 and next(profile.standing) == nil, "nor any record of a past run")
     end },
 
     { name = "the circles agree with the vendor blueprints that define them", fn = function()
