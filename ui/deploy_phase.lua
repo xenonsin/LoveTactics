@@ -17,6 +17,13 @@
 --     the log are never both wanted, and sitting there puts each portrait directly under the ground it
 --     is about to be dragged onto. The host passes that rect in (battle's gutterRect) so the two can
 --     never drift apart.
+--   THE CONTROLS -- Loadout, Auto-Fill, Clear, Auto and the bell -- stack down the LEFT COLUMN, under
+--     the hamburger, in the band the fight's own drawer entries occupy. They were once a row along the
+--     foot of the strip, split either side of the hint; a company strip is 480px on the standard eight
+--     column board, and five buttons plus a sentence do not fit across it. The column is where this
+--     screen already keeps its furniture, so the controls read as the screen's rather than the strip's,
+--     and the strip's bottom band is left to the hint alone -- which is why it can now say the long
+--     form instead of an abbreviation. The host passes the band in (battle's deployControlRect).
 --
 -- Drag-and-drop is the primary interaction -- card to tile deploys, tile to tile repositions, a drop on
 -- an occupied tile swaps, and a drag back off the board withdraws -- with the whole of it also reachable
@@ -38,8 +45,14 @@ DeployPhase.__index = DeployPhase
 -- grid and the old formation grid both used it), so a twitchy click means the same thing everywhere.
 local DRAG_THRESHOLD = 5
 
-local BUTTON_H = 22
+-- The strip's bottom band: the hint / refusal line, and nothing else since the controls moved to the
+-- column. Still reserved out of the cards' height, so the portraits sit where they always did.
+local HINT_H = 22
 local CARD_GAP = 6
+-- One control in the left column, sized to the drawer entries above it (battle's deploySettingsButton)
+-- so the column reads as one stack of plates rather than two kinds of button.
+local CTRL_H = 36
+local CTRL_GAP = 8
 -- The phase's headline takes the THIRD of the fight's three HUD lines -- the row the control hint
 -- occupies once the bell rings. The two above it are the host's and say the same thing before the
 -- fight as during it: the encounter's name (y 20) and its objective (y 52). This line is the one that
@@ -56,8 +69,12 @@ local COMPANY_MAX = 8
 --   player              for the opening pick (Player.wasDeployed); nil in a probe/test harness
 --   onCommit(chars, front, placed, auto)  what Begin means; the host rings the bell
 --   gutter              { x, y, w, h } -- the strip's rect (the combat log's)
+--   column              { x, y, w } -- the top of the left column's free band; the controls stack down it
 --   autoBattle          whether the fight should open handed to the AI (the host's standing preference)
 --   allowAuto           false where auto-battle is forbidden (a tutorial); hides the toggle outright
+--   onLoadout           opens the Loadout screen over the phase; nil hides the button outright (a
+--                       fight with no player behind it -- a probe, a debug board -- has no stash to
+--                       open). The host owns that modal, exactly as it owns the Settings one.
 function DeployPhase.new(opts)
     opts = opts or {}
     local self = setmetatable({}, DeployPhase)
@@ -67,7 +84,9 @@ function DeployPhase.new(opts)
     self.roster = opts.roster or {}
     self.player = opts.player
     self.onCommit = opts.onCommit
+    self.onLoadout = opts.onLoadout
     self.gutter = opts.gutter or { x = 0, y = 0, w = 0, h = 0 }
+    self.column = opts.column or { x = 16, y = 104, w = 130 }
 
     -- Whether the bell rings on a fight the player takes themselves or one handed straight to the AI.
     -- Decided HERE, on the same screen as the line, because "who plays this" is part of committing to a
@@ -88,6 +107,11 @@ function DeployPhase.new(opts)
 
     self.titleFont = Theme.display(16)
     self.font = Theme.body(13)
+    -- The column's plates are lettered in the same display face as the drawer entries they stack under
+    -- (states/battle.lua's hudFont), so the whole column reads as one set of controls -- but sized ONCE
+    -- against the longest label the stack can show, so every plate is lettered alike and the bell's two
+    -- words are not the one thing that overflows its plate.
+    self.buttonFont = Theme.fitText(Theme.display, "Begin Battle", self.column.w - 12, 16, 11)
 
     -- Open on last battle's four, already placed. A player happy with them presses Begin; anyone else
     -- drags. Nobody is made to re-solve a decision they already made.
@@ -208,6 +232,16 @@ function DeployPhase:reset()
     self.message = nil
 end
 
+-- Re-read what GEAR decides for every body already standing. Called after the player has been in the
+-- Loadout screen, because a deployed unit snapshots that at the moment it is stood up -- see
+-- Combat.restampDeployed, which is also where the reason this re-stamps instead of re-placing lives.
+-- Nobody is moved: where the company stands is the player's own answer and closing a screen is not a
+-- reason to revisit it.
+function DeployPhase:refreshPlacements()
+    for _, p in ipairs(self.placed) do Combat.restampDeployed(self.combat, p.unit) end
+    self.held, self.drag = nil, nil
+end
+
 -- The company members standing, in placement order.
 function DeployPhase:deployedChars()
     local out = {}
@@ -291,7 +325,7 @@ function DeployPhase:cardRect(i)
     local slot = i - self.scroll
     if slot < 1 or slot > self:cardsVisible() then return nil end
     local w = self:cardWidth()
-    return r.x + (slot - 1) * (w + CARD_GAP), r.y + 4, w, r.h - BUTTON_H - 8
+    return r.x + (slot - 1) * (w + CARD_GAP), r.y + 4, w, r.h - HINT_H - 8
 end
 
 function DeployPhase:cardAt(px, py)
@@ -302,33 +336,62 @@ function DeployPhase:cardAt(px, py)
     return nil
 end
 
-function DeployPhase:autoFillRect()
-    local r = self.gutter
-    return { x = r.x, y = r.y + r.h - BUTTON_H - 2, w = 70, h = BUTTON_H }
-end
-
-function DeployPhase:resetRect()
-    local r = self.gutter
-    return { x = r.x + 76, y = r.y + r.h - BUTTON_H - 2, w = 70, h = BUTTON_H }
-end
-
-function DeployPhase:beginRect()
-    local r = self.gutter
-    return { x = r.x + r.w - 130, y = r.y + r.h - BUTTON_H - 2, w = 130, h = BUTTON_H }
-end
-
--- The auto-battle switch, paired flush to the LEFT of Begin: it is a modifier on the button beside it
--- ("begin -- like this"), not a third placement tool, so it sits with the bell and not with Auto-Fill
--- and Clear at the other end of the strip. Kept narrow because the whole row has to fit the NARROWEST
--- gutter there is -- an eight-column board is 480px, and the hint between the clusters pays for every
--- pixel a button takes.
-function DeployPhase:autoRect()
-    local r = self.gutter
-    return { x = r.x + r.w - 220, y = r.y + r.h - BUTTON_H - 2, w = 84, h = BUTTON_H }
+-- The control stack, top to bottom, as { key, rect, label, enabled, on }. Built from ONE list so the
+-- draw, the hit-test and the hand cursor can never disagree about what is showing or where -- a button
+-- that is hidden here is hidden everywhere, which is what keeps a fight with no stash behind it from
+-- having an invisible Loadout you can still click.
+--
+-- The order is the order the decisions are made in: kit the company, stand them up, take it back, say
+-- who plays -- and the bell last, because it is the one that ends the phase.
+function DeployPhase:controls()
+    local out = {}
+    local function add(key, label, enabled, on)
+        local i = #out + 1
+        out[i] = { key = key, label = label, enabled = enabled ~= false, on = on,
+                   rect = { x = self.column.x, y = self.column.y + (i - 1) * (CTRL_H + CTRL_GAP),
+                            w = self.column.w, h = CTRL_H } }
+    end
+    if self.onLoadout then add("loadout", "Loadout") end
+    add("autofill", "Auto-Fill")
+    add("clear", "Clear", #self.placed > 0)
+    -- The auto-battle switch sits directly above the bell: it is a modifier on the button below it
+    -- ("begin -- like this"), not a third placement tool. Spelt out rather than ticked -- it has to
+    -- answer "played or watched?" on its own, from a glance, with no second control to compare against.
+    if self.allowAuto then add("auto", self.autoBattle and "Auto: On" or "Auto: Off", true, self.autoBattle) end
+    -- The bell says which fight it is ringing for. A player who armed auto and then pressed a button
+    -- reading "Begin Battle" would have been told nothing about the fight they were about to not play.
+    add("begin", self.autoBattle and "Begin (Auto)" or "Begin Battle", #self.placed > 0)
+    return out
 end
 
 local function rectHas(r, x, y)
     return x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
+end
+
+-- The control under (x, y), or nil. Only ENABLED ones answer: a Clear with nothing to clear is not a
+-- button that does nothing, it is not a button.
+function DeployPhase:controlAt(x, y)
+    for _, c in ipairs(self:controls()) do
+        if c.enabled and rectHas(c.rect, x, y) then return c.key end
+    end
+    return nil
+end
+
+-- What each control means, in one place, so a click and a key press cannot drift apart.
+function DeployPhase:press(key)
+    if key == "loadout" then if self.onLoadout then self.onLoadout() end
+    elseif key == "autofill" then self:autoFill()
+    elseif key == "clear" then self:reset()
+    elseif key == "auto" then self:toggleAuto()
+    elseif key == "begin" then self:begin() end
+end
+
+-- The foot of the control stack: what the docked hover boxes below may rise to. The column is shared,
+-- and a tooltip that grew up over the bell would cover the one control the phase cannot do without.
+function DeployPhase:controlsBottom()
+    local list = self:controls()
+    local last = list[#list]
+    return last and (last.rect.y + last.rect.h) or self.column.y
 end
 
 -- ---------------------------------------------------------------------------
@@ -401,20 +464,23 @@ function DeployPhase:drawCard(i, char)
     end
 end
 
--- `on` marks a SWITCH that is currently thrown (the auto-battle toggle). It wears the spotlight gold
--- the rest of the UI spends on what is live, so an armed auto-battle is legible from the far side of
--- the screen -- a fight that plays itself is not a thing to discover after the bell.
+-- One control plate, in the left column's own look (states/battle.lua's drawMenuEntry): a slate face
+-- with a quiet bronze frame and bone label, greyed when the control cannot be pressed. `on` marks a
+-- SWITCH that is currently thrown (the auto-battle toggle); it wears the spotlight gold the rest of the
+-- UI spends on what is live, so an armed auto-battle is legible from the far side of the screen -- a
+-- fight that plays itself is not a thing to discover after the bell.
 function DeployPhase:drawButton(r, label, enabled, on)
-    if on then love.graphics.setColor(0.26, 0.21, 0.12) -- a warm wash under the gold, against the row's cool slate
-    else love.graphics.setColor(enabled and 0.20 or 0.13, enabled and 0.24 or 0.14, enabled and 0.30 or 0.18) end
-    love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 4, 4)
+    Theme.set(on and Theme.panel or Theme.panel2, enabled and 1 or 0.7)
+    love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, Theme.R, Theme.R)
+    love.graphics.setLineWidth(on and 1.5 or 1)
+    if on then Theme.set(Theme.accentAmber) else Theme.set(Theme.frame, enabled and 1 or 0.5) end
+    love.graphics.rectangle("line", r.x, r.y, r.w, r.h, Theme.R, Theme.R)
+    love.graphics.setLineWidth(1)
+    love.graphics.setFont(self.buttonFont)
     if on then Theme.set(Theme.accentAmber)
-    else love.graphics.setColor(enabled and 0.72 or 0.34, enabled and 0.62 or 0.36, enabled and 0.40 or 0.44) end
-    love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 4, 4)
-    love.graphics.setFont(self.font)
-    if on then Theme.set(Theme.accentAmber)
-    else love.graphics.setColor(enabled and 0.95 or 0.52, enabled and 0.90 or 0.54, enabled and 0.70 or 0.58) end
-    love.graphics.printf(label, r.x, r.y + 4, r.w, "center")
+    elseif enabled then Theme.set(Theme.ink)
+    else Theme.set(Theme.muted, 0.6) end
+    love.graphics.printf(label, r.x, r.y + r.h / 2 - self.buttonFont:getHeight() / 2, r.w, "center")
 end
 
 -- `bounds` is the board region (left column .. combat panel), so the title centres over the board.
@@ -450,25 +516,17 @@ function DeployPhase:draw(bounds)
         end
     end
 
-    self:drawButton(self:autoFillRect(), "Auto-Fill", true)
-    self:drawButton(self:resetRect(), "Clear", #self.placed > 0)
-    -- The bell says which fight it is ringing for. A player who armed auto and then pressed a button
-    -- reading "Begin Battle" would have been told nothing about the fight they were about to not play.
-    -- Spelt out rather than ticked: the switch has to answer "played or watched?" on its own, from a
-    -- glance, with no second control to compare itself against.
-    if self.allowAuto then
-        self:drawButton(self:autoRect(), self.autoBattle and "Auto: On" or "Auto: Off",
-            true, self.autoBattle)
+    for _, c in ipairs(self:controls()) do
+        self:drawButton(c.rect, c.label, c.enabled, c.on)
     end
-    self:drawButton(self:beginRect(), self.autoBattle and "Begin (Auto)" or "Begin Battle",
-        #self.placed > 0)
 
-    -- One line, between the Clear and Begin buttons: either the last refusal, or how to work the phase.
+    -- One line along the foot of the strip: either the last refusal, or how to work the phase. It has
+    -- the strip's whole width now that the controls have left it, which is why it can say the long form.
     -- Ellipsized rather than wrapped -- a second line has nowhere to go in a strip this tall.
     local r = self.gutter
     love.graphics.setFont(self.font)
-    local hintX = r.x + 152
-    local hintW = (self.allowAuto and r.w - 380 or r.w - 290)
+    local hintX = r.x + 2
+    local hintW = r.w - 4
     local line, color = self.message, { 0.92, 0.62, 0.55 }
     if not line then
         color = { 0.55, 0.58, 0.68 }
@@ -476,7 +534,8 @@ function DeployPhase:draw(bounds)
         -- teaches nothing, so it says less rather than saying it truncated.
         local roomy = hintW >= 240
         if InputMode.isGamepad() then
-            line = roomy and "D-pad: choose   A: pick up / place   Y: auto   Start: begin"
+            line = roomy and ("D-pad: choose   A: pick up / place   "
+                    .. (self.onLoadout and "X: loadout   " or "") .. "Y: auto   Start: begin")
                 or "A: place   Y: auto   Start: begin"
         else
             line = roomy and "Drag onto the lit ground; drag back here to withdraw"
@@ -484,7 +543,7 @@ function DeployPhase:draw(bounds)
         end
     end
     love.graphics.setColor(color[1], color[2], color[3])
-    love.graphics.print(Theme.ellipsize(line, self.font, hintW), hintX, r.y + r.h - BUTTON_H + 3)
+    love.graphics.print(Theme.ellipsize(line, self.font, hintW), hintX, r.y + r.h - HINT_H + 3)
 
     self:drawHover(bounds)
 
@@ -548,7 +607,9 @@ function DeployPhase:drawHover(bounds)
     -- exactly as the fight's own boxes do, so the two never draw over each other.
     local W = math.max(180, ((bounds and bounds.x) or 0) - 32)
     local gap = 8
-    local dockTop = (bounds and bounds.dockTop) or 8
+    -- Under the host's ceiling AND under the phase's own control stack, which shares this column: a
+    -- readout that grew up over the bell would cover the one control the phase cannot do without.
+    local dockTop = math.max((bounds and bounds.dockTop) or 8, self:controlsBottom() + gap)
     local dock = { dock = true, dockX = 16, dockTop = dockTop, width = W }
 
     -- Terrain never yields; the OCCUPANT is the valve, exactly as in the fight -- losing it costs the
@@ -583,10 +644,8 @@ function DeployPhase:mousepressed(x, y, button)
     if button ~= 1 then return end
     self.mx, self.my = x, y
 
-    if rectHas(self:beginRect(), x, y) then self:begin() return end
-    if self.allowAuto and rectHas(self:autoRect(), x, y) then self:toggleAuto() return end
-    if rectHas(self:autoFillRect(), x, y) then self:autoFill() return end
-    if rectHas(self:resetRect(), x, y) then self:reset() return end
+    local control = self:controlAt(x, y)
+    if control then self:press(control) return end
 
     -- A member already in hand from the keyboard drops wherever the click lands.
     local cx, cy = self.map:cellAt(x, y)
@@ -693,6 +752,9 @@ function DeployPhase:keypressed(key)
     -- V, the same key that flips whole-side auto inside the fight (states/battle.lua): one binding for
     -- one idea, before the bell and after it.
     elseif key == "v" then self:toggleAuto()
+    -- I, the overworld's own Loadout key (states/game.lua): the screen it opens is the same screen,
+    -- so it answers to the same letter before a fight as on the road to it.
+    elseif key == "i" then self:press("loadout")
     elseif key == "left" or key == "a" then self:navigate(-1, 0)
     elseif key == "right" or key == "d" then self:navigate(1, 0)
     elseif key == "up" or key == "w" then self:navigate(0, -1)
@@ -706,6 +768,9 @@ function DeployPhase:gamepadpressed(_, button)
     elseif button == "a" then self:confirm()
     -- Y, not the fight's A: here A is already "pick up / place", and placement outranks a switch.
     elseif button == "y" then self:toggleAuto()
+    -- X for the Loadout, since the overworld's Y is spoken for here. The other face buttons are the
+    -- phase's own (place / drop), and the shoulder pair is not a place to hide a screen.
+    elseif button == "x" then self:press("loadout")
     elseif button == "dpleft" then self:navigate(-1, 0)
     elseif button == "dpright" then self:navigate(1, 0)
     elseif button == "dpup" then self:navigate(0, -1)
@@ -714,12 +779,10 @@ function DeployPhase:gamepadpressed(_, button)
 end
 
 -- A hand over anything that can be picked up or pressed: a company card, a member already standing on
--- the board, and the strip's buttons.
+-- the board, and the column's controls.
 function DeployPhase:cursorKind(x, y)
     if self:cardAt(x, y) then return "hand" end
-    if rectHas(self:beginRect(), x, y) or rectHas(self:autoFillRect(), x, y)
-        or rectHas(self:resetRect(), x, y) then return "hand" end
-    if self.allowAuto and rectHas(self:autoRect(), x, y) then return "hand" end
+    if self:controlAt(x, y) then return "hand" end
     local cx, cy = self.map:cellAt(x, y)
     if cx and (self.held or self:deployedAt(cx, cy)) then return "hand" end
     return "arrow"

@@ -12,6 +12,8 @@
 --     it the ordinary way is unchanged;
 --   * a unit placed by Combat.deployUnit is a battle-start body (unclamped initiative), and can be
 --     picked back up before the bell;
+--   * a body already standing re-reads what its GEAR decides when the phase's Loadout screen changes it
+--     under them (Combat.restampDeployed), and refuses to once the bell has rung;
 --   * a fight that skips the phase (deploy = false) still seats its party exactly as it always did.
 -- Pure model logic, so it runs headless.
 
@@ -177,6 +179,42 @@ return {
             for i, u in ipairs(c.units) do
                 assert(u.index == i, "the remaining units' indices still match their positions")
             end
+        end,
+    },
+    {
+        -- The deployment phase's Loadout screen (ui/deploy_phase.lua) can re-kit a body that is already
+        -- standing. Initiative is the average speed of the ability items it carries, snapshotted when it
+        -- was stood up, so a swap made afterwards has to be re-read or the fight opens on the tempo of a
+        -- weapon nobody is holding.
+        name = "a standing body re-reads its tempo when its gear changes under it",
+        fn = function()
+            local c = Combat.new(Fixture.new(6, 6), {},
+                { Fixture.unit("character_bandit", 3, 1) }, { deferOpen = true })
+            local char = Character.instantiate("character_knight")
+            local unit = Combat.deployUnit(c, char, 2, 5)
+            local before = unit.initiative
+
+            -- Take the whole kit off it: with no ability item left, its tempo falls back to the hidden
+            -- unarmed weapon's. A blunter edit than the screen would make, and it needs no particular
+            -- item to stay true as the shelf is retuned.
+            for i = 1, 9 do char.inventory[i] = nil end
+            assert(unit.initiative == before, "an untouched unit is not re-read by the swap itself")
+
+            assert(Combat.restampDeployed(c, unit), "an unopened board re-stamps")
+            assert(unit.initiative ~= before, "the tempo moved with the weapon")
+            assert(unit.initiative == Combat.initiative(char), "and is exactly what the new kit says")
+            assert(unit.x == 2 and unit.y == 5 and #c.units == 2,
+                "nobody moved and nobody was rebuilt -- only the snapshot was re-read")
+        end,
+    },
+    {
+        name = "re-stamping is refused once the battle has opened",
+        fn = function()
+            local c = Combat.new(Fixture.new(6, 6),
+                { Fixture.unit("character_knight", 2, 5) },
+                { Fixture.unit("character_bandit", 3, 1) })
+            assert(Combat.restampDeployed(c, c.units[1]) == false,
+                "an opened battle is past the point gear may be re-read this way")
         end,
     },
     {

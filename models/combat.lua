@@ -1098,6 +1098,24 @@ function Combat.deployUnit(combat, char, x, y, opts)
     }, opts.side or "party")
 end
 
+-- Re-take the snapshot Combat.deployUnit took, for a body already standing on an UNOPENED board whose
+-- GEAR has changed under it -- the deployment phase's Loadout screen (ui/deploy_phase.lua). Initiative
+-- is the average speed of a character's ability items, so a member who swapped a mace for a dagger
+-- between being stood up and the bell would otherwise open the fight on the mace's tempo.
+--
+-- Re-stamps rather than rebuilding: standing the line back up would hand the board a set of unit tables
+-- it has never seen, and the map knits a newly-arrived body in with the summon shader (ui/battle_map's
+-- trackArrivals) -- so the whole company would shimmer back into existence every time the player closed
+-- a screen. Nobody arrived. Only what their kit decides is re-read.
+function Combat.restampDeployed(combat, unit)
+    if not unit or (combat and combat.opened) then return false end
+    unit.initiative = Combat.initiative(unit.char)
+    unit.speed = Combat.speed(unit.char)
+    local fp = unit.char.footprint or { w = 1, h = 1 }
+    unit.w, unit.h = fp.w, fp.h
+    return true
+end
+
 -- Take a unit back OFF an unopened board -- the deployment phase's undo, when the player picks a placed
 -- member back up. Only legal before Combat.openBattle: `combat.units` is append-only once the fight is
 -- running (unit.index is a stable identity that AoE dedupe and the turn strip both key off), which is why

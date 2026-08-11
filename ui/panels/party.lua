@@ -287,12 +287,15 @@ function Party.new(opts)
     --            Tactics tab stays hidden until the player has reached the hub city and it is taught
     --   persist  false to skip the Player.save() on close -- a synthetic player must never be able
     --            to overwrite the real save
+    --   fielded  the members standing on the board right now, badged on the rail (see Party:isFielded);
+    --            the deployment phase passes its line, so a kit change is made against who is fighting
     --   filters  a chip strip above the stash; see Party:drawFilters. The stash's other header
     --            control, Sort, needs nothing from the host and is always offered (see SORTS)
     self.modes = { "loadout" }
     if opts.tactics ~= false then self.modes[#self.modes + 1] = "tactics" end
     if opts.stats then self.modes[#self.modes + 1] = "stats" end
     self.persist = opts.persist ~= false
+    self.fielded = opts.fielded
     self.filters = opts.filters
     self.onFilterChanged = opts.onFilterChanged
     self.filterCursor = 1
@@ -602,11 +605,13 @@ function Party:railContains(x, y)
 end
 
 -- Is `char` one of the units currently FIELDED, as opposed to merely owned? (Shown as a badge; not
--- editable here.) Only a caller that actually splits its units into a fielded set and a bench supplies
--- `player.party` -- in practice the draft's synthetic player (states/draft.lua). The campaign has no
--- such split: its roster IS its company and the field is picked per battle, so nothing is badged.
+-- editable here.) Only a caller that actually splits its units into a fielded set and a bench answers
+-- yes: the draft's synthetic player, which carries the split on `player.party` (states/draft.lua), and
+-- the deployment phase, which hands the line it is standing in as `fielded` (states/battle.lua). The
+-- campaign's own Loadout screens badge nothing -- the roster IS the company there, and the field is
+-- picked per battle.
 function Party:isFielded(char)
-    for _, m in ipairs(self.player and self.player.party or {}) do
+    for _, m in ipairs(self.fielded or (self.player and self.player.party) or {}) do
         if m == char then return true end
     end
     return false

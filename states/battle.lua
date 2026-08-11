@@ -4446,8 +4446,8 @@ function battle.openDeployLoadout(player)
         onClose = function()
             battle.deployLoadout = nil
             -- A body snapshots what its gear decides at the moment it is stood up (its initiative is
-            -- the average speed of its ability items), so the line is stood back up now that the gear
-            -- may have changed. See DeployPhase:refreshPlacements.
+            -- the average speed of its ability items), so that is re-read now the gear may have
+            -- changed. Nobody moves. See DeployPhase:refreshPlacements.
             if battle.deploy then battle.deploy:refreshPlacements() end
         end,
     })

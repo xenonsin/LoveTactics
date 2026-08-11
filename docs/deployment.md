@@ -87,10 +87,23 @@ takes its rect back the moment the fight starts.
 - The strip fits the whole company where it can. Past that, cards stop shrinking (`MIN_CARD_W`) and it
   **pages**: the wheel scrolls it, keyboard/pad navigation drags it along, and a small `<n` / `n>` tab
   at each end counts who is off-screen.
+- The phase's controls stack down the **left column**, under the hamburger, in the band the fight's own
+  drawer entries occupy (`battle.deployControlRect`) — the screen's furniture goes where the screen
+  already keeps it, and the strip's foot is left to the hint line alone. They read top to bottom in the
+  order the decisions are made in: **Loadout**, **Auto-Fill**, **Clear**, **Auto**, and the bell last.
 - **Auto-Fill** places the four who fought last battle (`Player.lastDeployed`, ids only — no tiles are
   ever persisted) on the board's own bound spawns: exactly where they would have stood before there was
   a phase to choose in. **Clear** empties the board. **Begin Battle** commits.
-- **Auto** (paired flush left of the bell; `V`, pad `Y`) decides whether the fight opens played or
+- **Loadout** (`I`, pad `X`) opens the Armory's own screen (`ui/panels/party.lua`) over the phase, on
+  the same roster and stash the hub and the overworld edit. Gear is the other half of the question this
+  phase asks: where a body should stand is answered against what it is carrying, and until this button
+  the last chance to move an item was a leg of overworld ago — before the player had seen the ground,
+  the enemy line or the objective. The company standing right now is badged on the panel's rail
+  (`fielded`). Closing it re-reads what gear decides for everyone placed (`Combat.restampDeployed`:
+  initiative is the average speed of a body's ability items, snapshotted when it was stood up). Nobody
+  is moved, and nothing is rebuilt — a re-placed body would knit back in through the summon shader, and
+  nobody arrived. A fight with no player behind it (a probe, a debug board) has no stash, so no button.
+- **Auto** (directly above the bell; `V`, pad `Y`) decides whether the fight opens played or
   watched — it is the same `battle.autoAll` flag the in-fight drawer's Auto entry flips, seeded from it
   and handed back on the commit, so the two can never disagree and the setting carries across fights
   like the playback speed does. Armed, the switch and the bell both wear the spotlight gold and the
@@ -225,11 +238,12 @@ everyone who marched, and a benched member has to arrive already wearing it.
 | File | What |
 | --- | --- |
 | `models/arena.lua` | `arena.deployZone`, `Arena.DEPLOY_COLS`/`DEPLOY_DEPTH`/`DEPLOY_MIN`, the authored `deployZone` field |
-| `models/combat.lua` | `deferOpen` / `Combat.openBattle`, `deployUnit`, `undeployUnit`, the bench section (`benchUnit`, `canRotate`, `rotate`, `withdraw`, `canReinforce`, `reinforceTiles`, `reinforce`, `fieldCount`, `benchCount`, `eliminated`), and the two rally-ground reads (`rallyGround`, `rallyTileInfo`) |
-| `ui/deploy_phase.lua` | the phase: the strip, the drag, the placement |
+| `models/combat.lua` | `deferOpen` / `Combat.openBattle`, `deployUnit`, `undeployUnit`, `restampDeployed`, the bench section (`benchUnit`, `canRotate`, `rotate`, `withdraw`, `canReinforce`, `reinforceTiles`, `reinforce`, `fieldCount`, `benchCount`, `eliminated`), and the two rally-ground reads (`rallyGround`, `rallyTileInfo`) |
+| `ui/deploy_phase.lua` | the phase: the strip, the drag, the placement, the column's control stack |
+| `ui/panels/party.lua` | the Loadout screen the phase opens (`fielded` badges the standing line) |
 | `ui/panels/bench_chooser.lua` | who comes on, for both routes |
 | `ui/battle_map.lua` | `drawDeployZone` (the phase), `drawRallyGround` (the fight) |
 | `ui/tile_tooltip.lua` | the Rally Ground box |
 | `ui/combat_panel.lua` | the Fall Back button (`canFallBack`, `drawFallBackButton`) |
-| `states/battle.lua` | `gutterRect`, `commitDeploy`, `openDeployPhase`, `rotateTurn`, `reinforceAt`, `offerLastStand`, the Reinforce drawer entry |
+| `states/battle.lua` | `gutterRect`, `deployControlRect`, `commitDeploy`, `openDeployPhase`, `openDeployLoadout`, `rotateTurn`, `reinforceAt`, `offerLastStand`, the Reinforce drawer entry |
 | `tests/deploy_spec.lua`, `tests/bench_spec.lua` | the rules above, headless |
