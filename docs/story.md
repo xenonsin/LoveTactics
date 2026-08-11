@@ -105,11 +105,37 @@ fragment you have earned. Watching that count climb is the last stretch of the g
 
 The seven-general arc above is the middle of a three-act shape, not the whole of it.
 
-- **Act 0 — the prologue.** A village on the capital's outskirts, and the demons that burn it. It
-  is the tutorial and the reason to care at once: the antagonist named, the first companion earned,
-  the road to the city walked. It ends when the hub opens and the Adventurers' Guild sets the board
-  in front of you. Linear by design — the overworld's locked doors and dead-end ambushes stay
-  holstered until Act 1.
+- **Act 0 — the prologue.** **Bellmere**, a walled market town on the eastern frontier, and the
+  demons that burn all of it. It is the tutorial and the reason to care at once: the antagonist
+  named, the first companion earned, the road to the city walked. It ends when the hub opens and the
+  Adventurers' Guild sets the board in front of you. Linear by design — the overworld's locked doors
+  and dead-end ambushes stay holstered until Act 1.
+
+  **The player is the baron of Bellmere's child.** The town is a small frontier holding: a stone
+  keep, a market row, a household of a dozen. The rank is deliberately low. A duke's seat falling is
+  a national event, heralds and mourning and a court hunting for surviving heirs, and that fights
+  everything Act 1 needs; a baron's holding falling is a line in a dispatch, so nobody is looking for
+  you at all. The family dies with the town — the father, **Ellis** the sibling, and **Odo** the
+  steward at the bell. Nothing is carried out of it. A small holding's seal and papers lived in its
+  keep and the keep burned in a night, so the avatar reaches the capital with no way to prove who
+  they are and no household left to say it for them. *Nobody at the gate disbelieves the claim.
+  Nobody bothers to check it* — see
+  `data/conversations/prologue/conversation_prologue_arrival.lua`, where the guard acknowledges the
+  town and walks straight past the claim, and the party gets through on the Bastion plate instead.
+
+  **Ellis is the body the player did not choose.** Character creation offers two bodies and only one
+  of them is you; the other is standing in the house when it burns. It costs no art — the portrait is
+  resolved in `Conversation.speaker`, beside the avatar's own runtime override — and it turns a menu
+  choice made before the first line of dialogue into something the player loses. Ellis is addressed
+  by name and never by relation: a body is a sprite set and never a gender label, so *sister* and
+  *brother* are both wrong here by construction.
+
+  The steward **cannot reach the capital**. A surviving member of the household is a witness, and
+  every scene where the city turns the avatar away becomes a scene the player argues with.
+
+  The one thing this owes the rest of the game: the avatar wants the name back, and that is **never a
+  quest line**. The spine is seven generals. It is paid off exactly once, on the Colosseum's sand,
+  when a crowd learns a name — which is what `arena_debut` already promises.
 - **Act 1 — the seven.** This document. Open-ended: seven vendor lines, seven companions, seven
   generals, in whatever order standing allows.
 - **Act 2 — the Gate Below.** `quest_the_gate_below` and the Hollow Crown.
@@ -120,14 +146,19 @@ to be spoken, or it isn't there.** Plant the Demon Lord as a named threat in the
 let the Guild say the rest aloud when it opens the board — the Crown is only ever as strong as its
 seven, and unmade one at a time it is hollow.
 
-You do not play one of the seven. The protagonist is a made character — a survivor of the village,
-no class of their own, growing into whatever they are cast as (`Growth.NEUTRAL_CLASS`). The player
+You do not play one of the seven. The protagonist is a made character — the surviving second child of
+a burned frontier holding, no class of their own, growing into whatever they are cast as
+(`Growth.NEUTRAL_CLASS`). The blank slate is *earned* by the rank rather than argued around it: a
+small holding's child was trained in its roads and its ledgers and nothing in particular, and the only
+reason they can hold a sword at all is that Rowan taught them. The player
 picks their **body** (1 or 2 — a sprite set, never a gender label) and types their **name** at
 character creation, before the first line is spoken (`states/character_creation.lua`).
 
 The name is asked there rather than on the sand because **Rowan is already sworn to you when the
-prologue opens** — she is the player's bodyguard and mentor, and she has to be able to say your
-name in the burning village. A companion who knows you cannot call you "stranger." The arena
+prologue opens** — the Order posted her to the holding Bellmere sits behind, and the baron's child is
+what that posting turned into. She is the player's bodyguard and mentor, she taught them the sword,
+and she has to be able to say your name in the burning town. A companion who knows you cannot call
+you "stranger." The arena
 therefore names nobody; `arena_debut` still promises *"win it, and they will remember your name"* —
 the crowd learning a name you already had is the promise, not the naming itself.
 
@@ -166,8 +197,10 @@ itself; *Kaya* is an ordinary name that in another tongue (*kifāya*) is *enough
 Companions are earned near the head of their vendor's line, each on its own — never behind another,
 so no ordering can strand the endgame. Two are earned in the prologue, one per pattern:
 
-- **Sworn beside you.** The knight fights at your shoulder in the burning village and stays when it
-  is ash. An oath abandoned is sloth's general; an oath re-sworn to a stranger is the knight. What
+- **Sworn beside you.** The knight fights at your shoulder in the burning town and stays when it
+  is ash. An oath abandoned is sloth's general; **an oath kept after the thing that issued it is gone**
+  is the knight — the baron is dead, the house that paid the Order is ash, the posting is formally
+  void, and she holds it anyway. What
   the oath makes her is the player's **bodyguard and mentor** — she guards the body she swore to and
   teaches the trade she already knows, so hers is the voice that warns, explains, and steps in front.
   That is a role, not a label: it shows in where she stands and what she says, never in a title.
@@ -257,9 +290,17 @@ walks into at slot 8.
 ### Rowan, the same wound answered the other way
 
 She was a squire on the relief column sent to Acedia's post, and it was ordered to turn back. She has
-spent her life since being the relief that comes — which is why she rallies to a burning village that
-is not hers, swears herself to a stranger, and stands in front of the body she swore to. She is
-compulsively the arrival that failed to happen.
+spent her life since being the relief that comes — which is why she took a forgotten frontier posting
+nobody at the Bastion wanted, held Bellmere's east gate until the town was empty, and stands in front
+of the body she swore to. She is compulsively the arrival that failed to happen.
+
+**The flaw is in how she took the duty, not in who she gave it to.** She was *assigned* the baron's
+child, and she never told the assignment from a vow — she was handed a duty roster and turned it into
+love without once checking whether the difference mattered, or whether you wanted it. That is the
+order's own named sin answered the other way round: Acedia cannot tell a regulation from a vow, so she
+sets the thing down; Rowan cannot tell them apart, so she sanctifies it. Same confusion, opposite
+direction. `data/traits/trait_oathward.lua` is the tell — it guards whatever ally happens to be
+adjacent, unconditionally, because oath one was never really about *you*.
 
 **She idolizes Acedia.** She swore on her name; every knight does. Her guilt is that she failed to
 reach *her*.
@@ -281,13 +322,22 @@ her. "Hold until relieved" reads as procedure, because that is what it is — an
 to tell a regulation from a vow *is* the sin. Rowan recites it flat at slot 1, the way you recite
 something you were handed.
 
-Her own is two words, sworn in the ash of the prologue village (`data/conversations/prologue_flee.lua`):
+Her own is two words, sworn in the ash of Bellmere
+(`data/conversations/prologue/conversation_prologue_flee.lua`):
 
 > **We shall hold.**
 
+**The scene exists to strip her of every order she has, and then let her speak.** She arrives in the
+ash carrying two things issued to her by institutions — the Bastion's *hold until relieved*, and the
+posting that made a baron's child her duty. The baron is dead, the house that paid the Order is ash,
+and the assignment has nobody standing behind it any more. She has no orders for the first time in
+fifteen years, and *We shall hold* lands in that gap. It is the first thing she has ever said
+uncommanded, which is the entire reason it is hers and *hold until relieved* is not.
+
 The whole load is on the **we**. She does not promise to protect the player; she promises they are not
 holding alone — the order's grammar, made plural. Its flaw is inside it: **she decided you were a "we"
-without asking.** She would have said it to anyone burning that night, and you were never consulted.
+without asking.** She says it *at* you, not to you; nobody in that scene is consulted, because she has
+been treating a duty roster as a bond for fifteen years and has never once had to notice the seam.
 It is also an apology aimed at the wrong person — she failed to reach Greywatch, so she is early for
 you forever.
 

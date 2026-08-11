@@ -32,7 +32,7 @@ return {
     cast  = { "character_avatar", "character_rowan" },
 
     script = {
-        { "character_avatar", "It's all gone. I don't know who made it out.", tag = 1 },
+        { "character_avatar", "Bellmere is gone. I don't know who else made it out.", tag = 6 },
         { "character_rowan", "Many did. We held that gate long enough for them to run.", tag = 2 },
         { "character_rowan", "Look down the valley, {name}. Those villages burned too, with no one to hold a gate. Survivors will be hiding in the hills.", tag = 3 },
         { "character_avatar", "Then let's find them.", tag = 4 },

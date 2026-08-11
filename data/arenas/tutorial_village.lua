@@ -39,8 +39,21 @@
 --
 -- The party stands two apart rather than shoulder to shoulder for a reason of its own: it splits the
 -- imps' approach down two lanes instead of bunching them, and leaves the middle tile free.
+-- The biome is ART ONLY on a curated board -- Arena.BIOME_TERRAIN is consulted by generateLayout and
+-- nothing else, so every cell above keeps the exact walkability, move cost and sight cost it was
+-- authored with. `castle` is here because Bellmere is a WALLED MARKET TOWN and this lane is paved:
+-- flagstone and cold stone rather than the forest's greens (data/tilesets/castle.lua). A `town` biome
+-- would be the honest name, but tests/biome_spec.lua requires every biome to be used by a QUEST and
+-- the prologue's map is inline in states/prologue.lua, so a new one would be dead weight on arrival.
+--
+-- The single `forest` tile at (2,3) is deliberately NOT retyped, and it still reads GREEN on the
+-- flagstone. That is not the tileset leaking: ui/battle_map.lua washes BattleMap.TERRAIN_TINT over
+-- any costly floor and that table is keyed by MOVE COST rather than by biome, on purpose -- the wash
+-- is how a player sees at a glance that a tile charges 2 and gives cover. So a forest tile is green
+-- on every board there is. Read it as the one tree in the market square, which is what a town square
+-- has; retyping the cell to chase the colour would move a load-bearing cell for a purely visual reason.
 return {
-    biome = "forest",
+    biome = "castle",
     fixed = true, -- addressable by name, never randomly rolled (see Arena.pickLayout)
     tiles = {
         { "ground", "ground",   "ground", "ground", "ground", "ground", "ground", "ground"   },

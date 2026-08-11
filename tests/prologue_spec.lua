@@ -117,4 +117,29 @@ return {
             end
         end,
     },
+    {
+        name = "the sibling in the burning town wears the body the player did not choose",
+        fn = function()
+            -- Ellis costs no art: whichever of the two creation bodies the avatar is not, the sibling
+            -- is. Nothing else in the game resolves a portrait off `player.body` except the avatar's
+            -- own override, so this pins the second one (models/conversation.lua, `speaker`).
+            local prev = Player.active
+            for body, other in pairs({ [1] = 2, [2] = 1 }) do
+                Player.active = Player.new()
+                Player.active.body = body
+                local who = Conversation.speaker("sibling", { name = "Ellis" })
+                assert(who.name == "Ellis", "the cast entry still names the sibling")
+                assert(who.portrait == "assets/portraits/avatar_" .. other .. ".png",
+                       "body " .. body .. " must leave the sibling wearing body " .. other)
+            end
+            -- The avatar keeps its own face: the two must never resolve to the same portrait.
+            Player.active = Player.new()
+            Player.active.body = 1
+            Player.applyAvatarBody(Player.active)
+            local me = Conversation.speaker("character_avatar")
+            local them = Conversation.speaker("sibling", { name = "Ellis" })
+            assert(me.portrait ~= them.portrait, "the sibling is the OTHER body, never a second you")
+            Player.active = prev
+        end,
+    },
 }

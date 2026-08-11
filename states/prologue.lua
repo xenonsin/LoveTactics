@@ -1,7 +1,8 @@
 -- The prologue: Act 0, the first-time experience (see docs/story.md, "The three acts"). A linear
 -- sequence of beats -- scenes, tutorial battles, an overworld leg -- that ends by opening the hub
 -- (Act 1) at the capital's gate. It builds the party through play: the created avatar starts alone,
--- and Rowan (the knight) is sworn in the burning village. The third companion, Saber, is NOT recruited
+-- and Rowan (the knight) is sworn in the ash of Bellmere -- the avatar's own town, and the family
+-- holding that burns with the whole household inside it. The third companion, Saber, is NOT recruited
 -- here: the Colosseum debut that bests her is now the hub's own first-visit beat, taken from the Quest
 -- Board like any other quest (data/quests/arena_debut.lua carries the recruit and the victory scene as
 -- its reward and `outro`). See states/hub.lua, which owns the arrival. The avatar's body and NAME are
@@ -42,7 +43,10 @@ local prologue = {}
 -- data/characters/character_demon_imp.lua, where those numbers are pinned. The grunt is the step up:
 -- it takes several blows, and the lesson deliberately ends with it still standing.
 local VILLAGE_MAP = {
-    biome = "forest",
+    -- Paved, not wooded: Bellmere is a walled market town and this is one of its lanes. Art only on a
+    -- curated board -- see the header of data/arenas/tutorial_village.lua, which carries the same
+    -- biome and the reason the authored cells are untouched by it.
+    biome = "castle",
     layout = "tutorial_village",
     tutorial = "village",
     objective = {
@@ -106,10 +110,10 @@ local FLIGHT_QUEST = {
                 { id = "encounter_event", conversation = "conversation_flight_event_shrine" },
                 -- Stop 3: knight (Shout/Taunt) -- won holding the line for the survivors.
                 { id = "encounter_survivors_defend", loot = { "ability_shout" } },
-                -- Stop 4: alchemist (Disarm) -- a vial of solvent the survivor presses on you (scene choices).
+                -- Stop 4: alchemist (Assayer's Eye) -- the apothecary's own lens, pressed on you (scene choices).
                 { id = "encounter_event", conversation = "conversation_flight_event_survivor" },
-                -- Stop 5: rogue (Pickpocket) -- lifted on the way out of the extraction.
-                { id = "encounter_survivors_extract", loot = { "ability_pickpocket" } },
+                -- Stop 5: rogue (Drain Mana) -- siphoned off the demons blocking the way out.
+                { id = "encounter_survivors_extract", loot = { "ability_drain_mana" } },
                 -- Stop 6: mage (Fire Bolt) + fighter (Power Strike) -- the last chest before the gate
                 -- rounds out the two classes the village opened with, one spell and one strike.
                 { id = "encounter_treasure", loot = { "ability_fire_bolt", "ability_power_strike" } },

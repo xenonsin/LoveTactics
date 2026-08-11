@@ -550,6 +550,8 @@ return {
     ["line.conversation_prologue_arrival.11"] = { en = "But coin still moves for those who can hold a blade. Register with the Adventurers' Guild. The quest board takes anyone who'll take a contract. Pays a good deal better than queuing for bread.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.12"] = { en = "Work that pays. That, we can do.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.13"] = { en = "The board, then. We'll want coin before we want anything else.", ja = "" },  -- TODO
+    ["line.conversation_prologue_arrival.14"] = { en = "I am the baron of Bellmere's child. The town burned four nights ago.", ja = "" },  -- TODO
+    ["line.conversation_prologue_arrival.15"] = { en = "Bellmere. That's the whole eastern line gone, then.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.2"] = { en = "The Bastion holds this wall. If anywhere is still holding, {name}, it is behind these stones.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.3"] = { en = "More of them. Third column through the gate since morning. Where are we meant to put them all?", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.4"] = { en = "Not under my roof, that's certain. Barely bread enough for the mouths already inside.", ja = "" },  -- TODO
@@ -558,25 +560,39 @@ return {
     ["line.conversation_prologue_arrival.7"] = { en = "...That plate. That's Bastion steel. You're a sworn knight of the Order?", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.8"] = { en = "I held the eastern wall. The wall is ash now. I brought out who I could.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.9"] = { en = "Forgive me, ser. We don't see many of the Order come through on foot these days. Pass. You, and the ones at your back.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.1"] = { en = "The village is ash. But the people are away, and you're still standing. That was all I was charged with.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.2"] = { en = "My oath was never to this ground, {name}. Not the walls, not the fields.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.3"] = { en = "It was always you. To keep you alive, whatever else burns.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.4"] = { en = "So we hold, and we go. To the capital, while its walls still stand.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.1"] = { en = "I can still see the hall from here. All of it is still burning.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.10"] = { en = "Not this ground. It was never the ground. We go to the capital while its walls are still standing.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.11"] = { en = "Your father. Ellis. Odo at the bell, where you would expect him. I could not reach that side of the town in time.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.2"] = { en = "I went back through the east quarter, {name}. There is nobody left to bring out.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.4"] = { en = "You were told to keep me alive. You kept me alive.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.5"] = { en = "I was charged with the body of a baron's child, and that is the whole of what I did tonight.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.6"] = { en = "The man who charged me is dead. The house that paid the Order is ash. There is nothing standing over me now.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.7"] = { en = "So I will say one of my own. It is two words.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.8"] = { en = "We shall hold.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.9"] = { en = "Hold what? There is nothing here left to hold.", ja = "" },  -- TODO
     ["line.conversation_prologue_flier.1"] = { en = "Bounties, escorts, standing contracts... half of these want a company three times our size.", ja = "" },  -- TODO
     ["line.conversation_prologue_flier.2"] = { en = "This one doesn't.", ja = "" },  -- TODO
     ["line.conversation_prologue_flier.3"] = { en = "The Colosseum. A debut bout, a single fight on the sand, in front of a crowd.", ja = "" },  -- TODO
     ["line.conversation_prologue_flier.4"] = { en = "A blood sport. Is this what we're reduced to?", ja = "" },  -- TODO
     ["line.conversation_prologue_flier.5"] = { en = "Pride has buried more soldiers than the demons have, {name}. I'll not let it bury us. We earn today, we eat tonight, and we choose our war when we can.", ja = "" },  -- TODO
-    ["line.conversation_prologue_intro.1"] = { en = "Fire on the eastern fields! Demons! The Demon Lord's army is here! Run for your lives!", ja = "" },  -- TODO
-    ["line.conversation_prologue_intro.2"] = { en = "To me, {name}, and stay close! We must hold and protect these people as they escape.", ja = "" },  -- TODO
-    ["line.conversation_prologue_ruins.1"] = { en = "It's all gone. I don't know who made it out.", ja = "" },  -- TODO
+    ["line.conversation_prologue_intro.1"] = { en = "Father wants the whole house at the table tonight, before the roads close.", ja = "" },  -- TODO
+    ["line.conversation_prologue_intro.10"] = { en = "Ellis will bring them out. Stay at my shoulder and do what I tell you.", ja = "" },  -- TODO
+    ["line.conversation_prologue_intro.2"] = { en = "He'll say that, and then he'll eat where he always eats. At his desk.", ja = "" },  -- TODO
+    ["line.conversation_prologue_intro.3"] = { en = "Then we sit and wait for him, {name}. Both of us. I am not doing it on my own.", ja = "" },  -- TODO
+    ["line.conversation_prologue_intro.4"] = { en = "Ser Rowan. {name}. There is fire on the eastern fields!", ja = "" },  -- TODO
+    ["line.conversation_prologue_intro.5"] = { en = "Not one rick burning. The whole line of them, from the mill road down to the east wall.", ja = "" },  -- TODO
+    ["line.conversation_prologue_intro.6"] = { en = "That is an army. The Demon Lord's people burn a valley from its edge inward.", ja = "" },  -- TODO
+    ["line.conversation_prologue_intro.7"] = { en = "I'll get father and the household onto the west road. Ring the bell, Odo, and keep ringing it.", ja = "" },  -- TODO
+    ["line.conversation_prologue_intro.8"] = { en = "The east wall is nearest and it is thinnest. {name}, with me. We hold the lane while the town empties.", ja = "" },  -- TODO
+    ["line.conversation_prologue_intro.9"] = { en = "And the house?", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.2"] = { en = "Many did. We held that gate long enough for them to run.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.3"] = { en = "Look down the valley, {name}. Those villages burned too, with no one to hold a gate. Survivors will be hiding in the hills.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.4"] = { en = "Then let's find them.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.5"] = { en = "Good! We take the king's road to the capital, {name}. We'll be safe behind its walls, and we save anyone we can along the way.", ja = "" },  -- TODO
-    ["line.conversation_prologue_village.1"] = { en = "Look at it, {name}. The mill, the eastern row, the well we drew from this morning. All of it, inside a night.", ja = "" },  -- TODO
+    ["line.conversation_prologue_ruins.6"] = { en = "Bellmere is gone. I don't know who else made it out.", ja = "" },  -- TODO
     ["line.conversation_prologue_village.2"] = { en = "This is not a raid. The Demon Lord's army empties whole valleys like this and moves on before the ash is cold.", ja = "" },  -- TODO
     ["line.conversation_prologue_village.3"] = { en = "Two of them have seen us, and they will not come to you. Watch how I take mine.", ja = "" },  -- TODO
+    ["line.conversation_prologue_village.4"] = { en = "Look at it, {name}. The market row, the bell tower, the gate your father set the first stone in. All of it, inside a night.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.1"] = { en = "Walk to the chest ahead. Use WASD, the arrow keys, or click a tile.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.2"] = { en = "Open your loadout to see what you found.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.3"] = { en = "{select} an item in your stash to equip it to a hero.", ja = "" },  -- TODO
@@ -727,7 +743,7 @@ return {
     ["title.conversation_prologue_arrival"] = { en = "The Capital", ja = "" },  -- TODO
     ["title.conversation_prologue_flee"] = { en = "Ashes", ja = "" },  -- TODO
     ["title.conversation_prologue_flier"] = { en = "The Board", ja = "" },  -- TODO
-    ["title.conversation_prologue_intro"] = { en = "The Village", ja = "" },  -- TODO
+    ["title.conversation_prologue_intro"] = { en = "Bellmere", ja = "" },  -- TODO
     ["title.conversation_prologue_ruins"] = { en = "The Road", ja = "" },  -- TODO
     ["title.conversation_prologue_village"] = { en = "The Lane", ja = "" },  -- TODO
     ["title.conversation_tutorial_flight"] = { en = "The Open Road", ja = "" },  -- TODO

@@ -116,6 +116,21 @@ function Conversation.speaker(id, override)
         end
     end
 
+    -- The prologue's sibling wears THE BODY THE PLAYER DID NOT CHOOSE. Character creation offers two
+    -- and only one of them is you; the other one is standing in the house that burns, which costs no
+    -- art at all and makes a menu choice made before the first line into something the player loses.
+    --
+    -- Resolved here rather than as a `portrait` on the cast entry for two reasons: it is a fact about
+    -- the SAVE (which body was picked) rather than about the scene, and tools/extract_strings.lua's
+    -- serializer only knows `id`/`name` on a cast entry, so a portrait written into the data would be
+    -- dropped the next time anybody stamped the file. Same carve-out the avatar gets directly above,
+    -- for the same underlying reason: no blueprint can name a body chosen at runtime.
+    if id == "sibling" and not override.portrait then
+        local ok, Player = pcall(require, "models.player")
+        local body = (ok and Player.active and Player.active.body == 2) and 2 or 1
+        portrait = "assets/portraits/avatar_" .. ((body == 2) and 1 or 2) .. ".png"
+    end
+
     local base = override.name or (def and def.name)
     return {
         name = base and Locale.get(Locale.key.name(id), base) or id,

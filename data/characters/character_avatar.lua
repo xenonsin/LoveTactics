@@ -1,6 +1,13 @@
--- The player's created avatar -- the survivor of the burning village the whole game is played as.
--- Not one of the seven (see docs/story.md); has no class of its own and grows into whatever the
--- player casts (Growth.NEUTRAL_CLASS is fighter, the class-less fallback). Starts with a sword and
+-- The player's created avatar -- the baron of Bellmere's child, the one who walks out of the burning
+-- town, and the body the whole game is played as. Not one of the seven (see docs/story.md); has no
+-- class of its own and grows into whatever the player casts (Growth.NEUTRAL_CLASS is fighter, the
+-- class-less fallback). The blank slate is what the rank buys: a small holding's child was trained in
+-- nothing in particular, and the only reason this body can hold a sword is that Rowan taught it.
+--
+-- THE BODY NOT CHOSEN IS NOT WASTED. Character creation offers two; the other one is Ellis, the
+-- sibling standing in the house the prologue burns, whose portrait is resolved off `player.body` in
+-- models/conversation.lua's `speaker`. Both sprite sets ship in every save.
+-- Starts with a sword and
 -- the coat off their own back -- the prologue's overworld leg introduces the remaining item types one
 -- at a time.
 --
