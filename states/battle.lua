@@ -143,8 +143,10 @@ local SPEED_STEPS = { 1, 2, 3 }
 -- follow-up (spoils screen, overworld onWin) without playing the encounter out. Gated on
 -- Debug.enabled -- it never renders or takes a click in a release build. There is deliberately no
 -- matching "Lose": Forfeit above is that button, in every build, and two ways to concede one fight is
--- one too many.
-local winButton = { x = 16, y = 280, w = 130, h = 36 }
+-- one too many. Sits BELOW Settings, in the drawer's last row: it once had Settings' own y, which drew
+-- "Win" over "Settings" while mousepressed still tested Settings first -- so the debug button silently
+-- opened the settings overlay instead of ending the fight.
+local winButton = { x = 16, y = 324, w = 130, h = 36 }
 -- The drawer's whole content BEFORE the bell (the deployment phase): Settings, and nothing else. Every
 -- other entry describes a fight that is not running yet -- there is nothing to forfeit, the log has no
 -- lines and its rect is the deployment strip's, and Threats / Auto / Reinforce all read a turn order
