@@ -162,6 +162,7 @@ local function serializeCastEntry(e)
     if e.name then parts[#parts + 1] = "name = " .. q(e.name) end
     if e.portrait then parts[#parts + 1] = "portrait = " .. q(e.portrait) end
     if e.slot then parts[#parts + 1] = "slot = " .. tostring(e.slot) end
+    if e.enters then parts[#parts + 1] = "enters = true" end
     if e.when then parts[#parts + 1] = "when = " .. serializeWhen(e.when) end
     return "{ " .. table.concat(parts, ", ") .. " }"
 end

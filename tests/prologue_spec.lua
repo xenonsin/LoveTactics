@@ -142,4 +142,28 @@ return {
             Player.active = prev
         end,
     },
+    {
+        name = "the steward is off stage until the fire, and walks on when he speaks",
+        fn = function()
+            -- The alarm is worth nothing said by a man who has been standing in the room since the
+            -- first line, so Odo is authored `enters` (ui/dialogue.lua). This pins the data end of
+            -- that -- the widget itself needs love.graphics and cannot be built headless.
+            local def = Conversation.defs["conversation_prologue_intro"]
+            local entering, firstLine = {}, {}
+            for _, raw in ipairs(def.cast) do
+                if type(raw) == "table" and raw.enters then entering[raw.id] = true end
+            end
+            assert(entering.steward, "Odo must enter rather than open the scene on stage")
+            for i, node in ipairs(def.script) do
+                local by = node.by or node[1]
+                if by and not firstLine[by] then firstLine[by] = i end
+            end
+            -- An entering member who never speaks would simply never appear, which is a silently
+            -- empty cast slot rather than an entrance.
+            for id in pairs(entering) do
+                assert(firstLine[id], id .. " enters but never speaks, so it never walks on")
+                assert(firstLine[id] > 1, id .. " enters on the very first line, which is just being present")
+            end
+        end,
+    },
 }

@@ -45,6 +45,20 @@ local BOX_MARGIN = 60
 local BOX_H = 150
 local BOX_BOTTOM_GAP = 24
 local PORTRAIT_H = 470 -- target portrait height; scaled down to fit its slot width if needed
+
+-- How a cast entrance moves (see Dialogue:relayout / :updateStage). STAGE_EASE is an exponential
+-- approach rate, so the slide is quick at the start and settles rather than stopping dead; the fade
+-- is a shade slower than the slide so an arrival is still resolving as it reaches its mark.
+--
+-- The newcomer RISES into its slot rather than walking in from the screen edge. Walking in was built
+-- first and is wrong: an arrival whose slot is anywhere but the end of the line has to cross the
+-- members already standing there, and since they are sliding the other way at that exact moment, the
+-- two pass straight through each other. A rise cannot collide with anything, and because the text box
+-- is drawn over the portraits it doubles as the thing the newcomer rises from -- they come up from
+-- behind it rather than appearing out of empty air.
+local STAGE_EASE = 9
+local STAGE_FADE = 4.5
+local STAGE_RISE = 110 -- pixels below the mark an arriving portrait starts, hidden behind the box
 local REVEAL_CPS = 45  -- typewriter speed, characters per second
 local TYPE_MIN_GAP = 0.055 -- min seconds between typewriter key-taps, so a fast reveal doesn't machine-gun the cue
 -- Over a live scene there is no room for a full VN cast, so the speaker is shown as a single small
@@ -169,20 +183,25 @@ function Dialogue.new(def, onComplete, convId)
     self.cast = {}
     self.castById = {}
     local entries = def.cast or {}
-    local n = #entries
     for i, raw in ipairs(entries) do
         local entry = castEntry(raw)
         local who = Conversation.speaker(entry.id, entry)
-        local slot = entry.slot or i
         local member = {
             id = entry.id,
             name = who.name,
             image = Sprite.load(who.portrait),
-            centerX = Scale.WIDTH * slot / (n + 1),
+            slot = entry.slot,
+            -- `enters` holds a member OFF STAGE until their first line, so somebody who arrives
+            -- partway through a scene arrives instead of having been standing there all along. The
+            -- alarm in the prologue is the case it was built for: a steward who is already on stage
+            -- has spent his entrance before he opens his mouth.
+            present = not entry.enters,
+            fade = entry.enters and 0 or 1,
         }
         self.cast[i] = member
         self.castById[entry.id] = member
     end
+    self:relayout(true)
 
     self.index = 1
     self:startNode()
@@ -233,8 +252,59 @@ end
 -- Begin (or restart) the current node: paginate its line, show the first page, and reset any choice
 -- selection. The typewriter and the visible slice work on the CURRENT page (self.pageText), not the
 -- whole line, so a multi-page node reveals and advances one page at a time (see :confirm).
+-- Spread the cast that is CURRENTLY on stage evenly across the width. Called once at construction
+-- (snapped) and again whenever somebody walks on, which is what makes the others move over for them.
+--
+-- The denominator is the members present, not the whole authored cast, so a scene nobody enters
+-- late in lays out exactly as it always did -- everyone is present on frame one and the two counts
+-- are the same number. Holding an empty gap for an absent member was the alternative and it reads
+-- worse: a hole in a four-person line is a missing portrait, not an anticipated one.
+function Dialogue:relayout(snap)
+    local present = {}
+    for _, m in ipairs(self.cast) do
+        if m.present then present[#present + 1] = m end
+    end
+    local n = #present
+    for i, m in ipairs(present) do
+        m.targetX = Scale.WIDTH * (m.slot or i) / (n + 1)
+        -- Anyone whose slot is being computed for the first time lands ON it; only members already
+        -- standing somewhere slide, which is what keeps an arrival from travelling sideways.
+        if snap or not m.centerX then m.centerX = m.targetX end
+    end
+end
+
+-- Ease every present member toward its slot and fade in anyone who just arrived. Runs on the real
+-- frame BEFORE update's typewriter early-out, so the stage keeps moving while a finished line waits
+-- for the player to advance it.
+function Dialogue:updateStage(dt)
+    local k = 1 - math.exp(-STAGE_EASE * dt)
+    for _, m in ipairs(self.cast) do
+        if m.present then
+            if m.targetX and m.centerX ~= m.targetX then
+                m.centerX = m.centerX + (m.targetX - m.centerX) * k
+                if math.abs(m.targetX - m.centerX) < 0.5 then m.centerX = m.targetX end
+            end
+            if (m.fade or 1) < 1 then m.fade = math.min(1, (m.fade or 1) + dt * STAGE_FADE) end
+            if (m.rise or 0) > 0 then
+                m.rise = m.rise * (1 - k)
+                if m.rise < 0.5 then m.rise = 0 end
+            end
+        end
+    end
+end
+
 function Dialogue:startNode()
     local node = self.script[self.index]
+    -- Whoever is speaking is on stage by definition: a member authored `enters` walks on here, the
+    -- first time they have a line. Keyed off SPEAKING rather than off a node index because an index
+    -- would rot the moment anyone reordered or inserted a line, and this file is rewritten wholesale
+    -- by tools/extract_strings.lua every time a new line is stamped.
+    local arriving = node and node.by and self.castById[node.by]
+    if arriving and not arriving.present then
+        arriving.present = true
+        self:relayout()
+        arriving.rise = STAGE_RISE -- comes up from behind the text box onto the mark relayout just gave them
+    end
     self.pages = self:paginate(self:textOf(node))
     self.page = 1
     self:startPage()
@@ -339,6 +409,7 @@ function Dialogue:tickTypewriter(fromChar, toChar, dt)
 end
 
 function Dialogue:update(dt)
+    self:updateStage(dt)
     if self.revealDone then return end
     local before = math.floor(self.reveal)
     self.reveal = self.reveal + dt * REVEAL_CPS
@@ -427,22 +498,27 @@ end
 -- One cast member's portrait, standing on the box's top edge. `active` draws it in full colour;
 -- otherwise it is greyed (a dark tint multiply on the image, a dim fill on the fallback box).
 function Dialogue:drawPortrait(member, active)
+    -- Nobody who has not walked on yet (see `enters`) is drawn at all; `fade` carries the arrival.
+    if not member.present then return end
+    local a = member.fade or 1
     local image = member.image
-    local baseY = self.boxY + 20 -- feet rest just inside the top of the text box
+    -- Feet rest just inside the top of the text box; `rise` sinks an arriving portrait below that
+    -- and eases back to 0, and since the box is drawn after the cast it hides the part still under it.
+    local baseY = self.boxY + 20 + (member.rise or 0)
     if type(image) == "userdata" then
         local sw, sh = image:getDimensions()
         local scale = math.min(PORTRAIT_H / sh, (self.boxW / (#self.cast + 1)) / sw * 1.4)
         local tint = active and ACTIVE_TINT or INACTIVE_TINT
-        love.graphics.setColor(tint[1], tint[2], tint[3])
+        love.graphics.setColor(tint[1], tint[2], tint[3], a)
         -- Origin at bottom-centre so the portrait hangs from baseY at its slot's centre.
         love.graphics.draw(image, member.centerX, baseY, 0, scale, scale, sw / 2, sh)
     else
         local w, h = 150, 300
         local fill = active and FALLBACK_ACTIVE or FALLBACK_INACTIVE
-        love.graphics.setColor(fill[1], fill[2], fill[3])
+        love.graphics.setColor(fill[1], fill[2], fill[3], a)
         love.graphics.rectangle("fill", member.centerX - w / 2, baseY - h, w, h, 8, 8)
         love.graphics.setFont(self.fallbackFont)
-        love.graphics.setColor(active and 0.92 or 0.5, active and 0.92 or 0.5, active and 0.96 or 0.55)
+        love.graphics.setColor(active and 0.92 or 0.5, active and 0.92 or 0.5, active and 0.96 or 0.55, a)
         -- First CHARACTER of the name (not first byte) -- a multibyte glyph must not be cut apart.
         local name = member.name or "?"
         local initial = name:sub(1, (utf8.offset(name, 2) or (#name + 1)) - 1)

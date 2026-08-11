@@ -12,9 +12,11 @@
 -- addressed by name and never by relation -- a body is a sprite set and never a gender label
 -- (docs/story.md), so "sister" and "brother" are both wrong here by construction.
 --
--- Odo is the household's steward, and he is the alarm. He does not survive the night (see
--- prologue_flee): a surviving member of the household is a witness, and every scene where the capital
--- turns the avatar away becomes a scene the player argues with.
+-- Odo is the household's steward, and he is the alarm. He is authored `enters`, so he is NOT on stage
+-- for the domestic opening and walks on with the fire (ui/dialogue.lua) -- a man already standing in
+-- the room has spent his entrance before he opens his mouth, which is the whole value of the beat.
+-- He does not survive the night (see prologue_flee): a surviving member of the household is a witness,
+-- and every scene where the capital turns the avatar away becomes a scene the player argues with.
 --
 -- Rowan is already sworn here -- she is the Order's knight on the post Bellmere sits behind, and the
 -- baron's child is what that posting turned into. She taught the avatar the sword, which is the only
@@ -22,7 +24,7 @@
 -- assignment; see prologue_flee for the difference, which is the whole of her line.
 return {
     title = "Bellmere",
-    cast  = { { id = "sibling", name = "Ellis" }, { id = "steward", name = "Odo" }, "character_rowan", "character_avatar" },
+    cast  = { { id = "sibling", name = "Ellis" }, { id = "steward", name = "Odo", enters = true }, "character_rowan", "character_avatar" },
 
     script = {
         { "sibling", "Father wants the whole house at the table tonight, before the roads close.", tag = 1 },

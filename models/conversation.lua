@@ -120,11 +120,12 @@ function Conversation.speaker(id, override)
     -- and only one of them is you; the other one is standing in the house that burns, which costs no
     -- art at all and makes a menu choice made before the first line into something the player loses.
     --
-    -- Resolved here rather than as a `portrait` on the cast entry for two reasons: it is a fact about
-    -- the SAVE (which body was picked) rather than about the scene, and tools/extract_strings.lua's
-    -- serializer only knows `id`/`name` on a cast entry, so a portrait written into the data would be
-    -- dropped the next time anybody stamped the file. Same carve-out the avatar gets directly above,
-    -- for the same underlying reason: no blueprint can name a body chosen at runtime.
+    -- Resolved here rather than as a `portrait` on the cast entry because it is a fact about the SAVE
+    -- -- which of the two bodies was picked -- and no static path written into data can say that. The
+    -- cast entry's own `portrait` override survives extraction perfectly well (see
+    -- tools/extract_strings.lua's serializeCastEntry, which carries name/portrait/slot/enters through);
+    -- it just cannot express "whichever one they are not". Same carve-out the avatar gets directly
+    -- above, for the same underlying reason: no blueprint can name a body chosen at runtime.
     if id == "sibling" and not override.portrait then
         local ok, Player = pcall(require, "models.player")
         local body = (ok and Player.active and Player.active.body == 2) and 2 or 1
