@@ -350,6 +350,24 @@ end
 -- double-payout guard as everything else, and so the advancement panel names it with the rest of the
 -- spoils. Abandoning a run therefore forfeits its haul, which is what keeps a cache from being farmed
 -- by restarting the quest.
+-- The seven line-enders, one per house, each of which is a general put down. Named here rather than
+-- read off the finale's `requiredQuests`, because that list is gone: under the calendar the last
+-- battle happens on the last day whether or not any of them are dead (models/calendar.lua), and what
+-- the count decides is who is standing beside him rather than whether the door opens.
+--
+-- A list rather than a derivation. "The tenth slot of each house" is true today and is exactly the kind
+-- of thing a renumbering would silently break, and the failure would be a finale quietly getting easier
+-- rather than anything red.
+Quest.GENERAL_QUESTS = {
+    "quest_colosseum_slot_10",
+    "quest_cathedral_slot_10",
+    "quest_hunters_lodge_slot_10",
+    "quest_bastion_slot_10",
+    "quest_arcanum_slot_10",
+    "quest_undercroft_slot_10",
+    "quest_alchemist_slot_10",
+}
+
 function Quest.complete(player, quest, carried)
     if Player.hasCompleted(player, quest.id) and not quest.repeatable then
         return nil
@@ -358,15 +376,20 @@ function Quest.complete(player, quest, carried)
     local gold = quest.rewardGold or 0
 
     Player.addGold(player, gold)
-    -- Prestige where it stood before this quest paid out. A level costs several prestige, so MOST
-    -- quests move the company forward without levelling anyone -- and an overlay that can only report
-    -- level-ups would answer half of all quests with silence. The pair below is what lets the
-    -- advancement panel show the step itself filling (ui/panels/advancement.lua).
-    local prestigeBefore = player.prestige
-    -- Prestige raises every roster member's level; the returned summary (who advanced, and their stat
-    -- gains from what they have been casting) rides out in the reward table for the advancement overlay.
-    local advancement = Player.addPrestige(player, Quest.PRESTIGE_PER_QUEST)
-    local prestigeAfter = player.prestige
+
+    -- NO LEVELS ARE HANDED OUT HERE ANY MORE, and the absence is the change rather than an omission.
+    --
+    -- Completing a quest used to be the only moment anyone levelled: it granted prestige, prestige set
+    -- every roster member's level, and the advancement overlay filled a bar from one prestige to the
+    -- next. All of that is gone. A body earns its level in the fighting now
+    -- (models/experience.lua), resolved at the end of every battle, so by the time the objective pays
+    -- out the levelling has already happened and been reported where it was earned.
+    --
+    -- What that costs is the overlay's best trick -- the bar that let a quest which levelled nobody
+    -- still read as progress. What replaces it is the calendar: the panel now says which day of how
+    -- many this was, which is a truer answer to "did that matter" than a prestige step ever was,
+    -- because under a deadline the day is the thing actually being spent.
+    local standingBefore = Player.questsCompleted(player)
 
     -- The sponsor's standing is its finished-quest count, so completing this quest is what advances it.
     -- Photograph the shelf BEFORE marking done, so the payout can name the wares this quest just put
@@ -446,21 +469,26 @@ function Quest.complete(player, quest, carried)
     Player.save()
 
     local sponsorQuests = quest.sponsor and Quest.sponsorProgress(player, quest.sponsor)
+    local Calendar = require("models.calendar")
     return {
         gold = gold,
-        prestige = Quest.PRESTIGE_PER_QUEST,
         received = received, -- item instances, for the reward panel to name
         materials = materials, -- { id = count } granted, for the reward panel to name
         -- The companion instance that just joined, or nil (including when they were already owned).
         -- The reward panel should announce this LOUDEST -- it is the only reward that changes who
         -- the player is fielding.
         recruited = recruited,
-        advancement = advancement, -- roster members that leveled up, for the advancement overlay
-        -- Where the company's prestige stood either side of this payout. The advancement overlay fills
-        -- its bar from one to the other, which is how a quest that levelled nobody still reads as
-        -- progress rather than as nothing happening.
-        prestigeBefore = prestigeBefore,
-        prestigeAfter = prestigeAfter,
+        -- WHERE THE COMPANY STANDS, in the two units that replaced prestige. `day` is what was spent
+        -- to be here and `days` what there is, so the panel can say "the eleventh of forty" -- the
+        -- reading that used to be a prestige bar. `standing` is quests finished, which is what the
+        -- town reads; it moves by exactly one here, and the pair is kept rather than the delta because
+        -- a repeatable quest moves it by none.
+        day = Calendar.day(player),
+        days = Calendar.DAYS,
+        standingBefore = standingBefore,
+        standing = Player.questsCompleted(player),
+        -- Level-ups are NOT reported here. They were earned and shown in the fighting
+        -- (models/experience.lua); see the note above where prestige used to be granted.
         sponsor = quest.sponsor,
         sponsorQuests = sponsorQuests, -- the sponsor's new finished-quest count (its standing), for the reward panel
         -- "held" | "left" | "caved" on a line's last quest, nil on every other. Not a reward and not

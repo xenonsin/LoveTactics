@@ -7,7 +7,9 @@ return {
     name = "The Forsworn",
     kind = "elite",
     minPrestige = 3,
-    weight = function(ctx) return math.max(1, math.floor((ctx.prestige or 1) / 2)) end,
+    -- Saturating, for the reason encounter_elite.lua gives at length: an elite weight that climbs with
+    -- prestige and never stops does not make elites more common, it makes them the only fight there is.
+    weight = function(ctx) return math.min(2, math.max(1, math.floor((ctx.prestige or 1) / 2))) end,
     composition = function(ctx)
         local list = { "character_forsworn_captain" }
         for i = 1, 1 + math.floor((ctx.prestige or 1) / 3) do

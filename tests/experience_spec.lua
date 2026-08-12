@@ -128,18 +128,67 @@ return {
         assert(back.level == char.level, "with the level it already resolved to intact")
     end },
 
-    { name = "the campaign never spends what combat banks for it", fn = function()
-        -- THE BOUNDARY. Combat awards experience in every mode, because a mode check in the middle of a
-        -- swing is a branch that can be wrong; what keeps the two ladders apart is that only the descent
-        -- ever RESOLVES it. A campaign roster carrying experience must still level off prestige alone.
+    { name = "the campaign spends what combat banks for it -- there is one ladder now", fn = function()
+        -- THE BOUNDARY IS GONE, AND ITS REMOVAL IS THE POINT. This case used to assert the opposite:
+        -- combat awarded experience in every mode, and only the descent ever resolved it, because a
+        -- campaign roster levelled off the player's global prestige instead. Prestige no longer sets
+        -- anybody's level, so the gate came out and this is now the only ladder in the game.
         local player = Player.new()
         local char = player.roster[1]
         assert(char, "the opening roster has a body to test with")
 
         Experience.award(char, Experience.totalFor(9))
-        local before = char.level or 1
-        Player.syncLevels(player)
-        assert((char.level or 1) == before,
-            "a campaign sync must not read xp: levels there come from prestige (Growth.levelForPrestige)")
+        local advanced = Player.resolveLevels(player)
+        assert(char.level == 9,
+            "a campaign body levels off what it earned, got " .. tostring(char.level))
+        assert(#advanced == 1 and advanced[1].char == char,
+            "and the member that advanced is reported, for the toast that announces it")
+
+        -- Idempotent, which is what lets the overworld call it after every fight.
+        assert(#Player.resolveLevels(player) == 0, "a second resolve on the same bank advances nobody")
+    end },
+
+    { name = "a body that never fights never levels", fn = function()
+        -- The other half of the same rule, and the one that makes the bench share necessary: nothing
+        -- but experience moves a level now, so a member who sat out the whole campaign sits at 1.
+        local player = Player.new()
+        local char = player.roster[1]
+        Player.resolveLevels(player)
+        assert((char.level or 1) == 1, "no experience, no level")
+    end },
+
+    { name = "the bench is paid a share of what the field earned, and the field is not paid twice", fn = function()
+        local a, b, c = { xp = 0 }, { xp = 0 }, { xp = 0 }
+        local roster = { a, b, c }
+        local earned = { [a] = 40, [b] = 20 } -- a and b stood on the board; c did not
+        local share = Experience.payBench(roster, { a, b }, earned)
+
+        assert(share == math.floor(30 * Experience.BENCH_SHARE),
+            "the share is taken off the FIELD's average (30), got " .. share)
+        assert(a.xp == 0 and b.xp == 0,
+            "combat already paid the field as it acted -- paying again here would double it")
+        assert(c.xp == share, "the benched body is paid, got " .. c.xp)
+
+        -- Averaged over the field rather than the roster, so a tenth companion does not quietly
+        -- halve what everybody on the bench is paid.
+        local d = { xp = 0 }
+        Experience.payBench({ a, b, c, d }, { a, b }, earned)
+        assert(d.xp == share, "growing the company must not shrink the share")
+    end },
+
+    { name = "a fight nobody stood in pays no bench", fn = function()
+        local c = { xp = 0 }
+        assert(Experience.payBench({ c }, {}, {}) == 0, "no field, no average, no share")
+        assert(c.xp == 0)
+    end },
+
+    { name = "a recruit joins on the company's median, so it is fieldable but not a free ride", fn = function()
+        local roster = { { xp = 0 }, { xp = 600 }, { xp = 1200 } }
+        assert(Experience.medianOf(roster) == 600, "the middle body, not the mean and not the best")
+        assert(Experience.medianOf({}) == 0, "joining nobody earns nothing -- the avatar's case")
+        -- An even company takes the LOWER middle: a recruit should arrive a shade behind the company
+        -- rather than a shade ahead of half of it.
+        assert(Experience.medianOf({ { xp = 90 }, { xp = 10 } }) == 10,
+            "an even company takes the lower middle rather than failing to pick")
     end },
 }

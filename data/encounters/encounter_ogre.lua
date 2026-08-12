@@ -6,7 +6,7 @@
 return {
     name = "Ogre",
     kind = "combat",
-    weight = 2,
+    weight = 4, -- see encounter_boar.lua: the four road fights were doubled together
     minPrestige = 2,
     composition = function(ctx)
         local list = { "character_ogre" }

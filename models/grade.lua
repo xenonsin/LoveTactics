@@ -1159,6 +1159,16 @@ Grade.SLOT_PINS = {
     -- walking.
     consumable_throwing_stone = { at = 0, why = "a rock: the cheapest ware in the arena, and gated by nothing" },
 
+    -- THE ONE ITEM WHOSE WORTH IS NOT IN A FIGHT. It grades 0.0 and always will: it has no damage, no
+    -- status, no target and no ability at all. What it buys is the run's entire haul, which happens on
+    -- the overworld where nothing this ranking measures takes place (docs/overworld.md).
+    --
+    -- Left to the grade it lands at slot 1 and fifty-five gold, and at fifty-five gold a player carries
+    -- three of them permanently -- which makes walking out of a bad run free, which is precisely the
+    -- exploit the extraction rule was written to close. The pin is the price: mid-line, where a company
+    -- has a haul worth protecting and the coin is a real decision.
+    consumable_smoke_bolt = { at = 6, why = "grades 0 because its worth is off the board: the way out of a bad run" },
+
     -- THE PROLOGUE'S TEACHING SPELL. The first working the player ever casts, and the lesson's closing
     -- beat is built on its exact weight -- data/characters/character_demon_grunt.lua's health is "the
     -- SUM of five authored blows" and this is one of them.

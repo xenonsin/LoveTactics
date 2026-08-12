@@ -465,12 +465,27 @@ return {
             assert(opensAt > 1, "this case needs a house that is not open from the start")
             assert(not boardHas(playerAt(opensAt - 1), "quest_bastion_slot_01"),
                 "a house's work must not be posted before you can walk into the house")
-            assert(boardHas(playerAt(opensAt), "quest_bastion_slot_01"),
-                "...and must be posted as soon as you can")
+
+            -- A door can carry a SECOND gate. The Bastion, the Lodge and the Cathedral also wait on
+            -- the padded card (data/buildings/bastion.lua), so meeting the prestige is no longer the
+            -- whole of "you can walk in" and this case must ask the building what its gate is rather
+            -- than assume the number is all of it. The two halves are enforced in different places --
+            -- Quest.available reads only the prestige (models/quest.lua), so the line head repeats the
+            -- quest requirement itself -- which is exactly the seam worth pinning here.
+            local gateQuest = Building.defs["bastion"].unlockQuest
+            assert(gateQuest, "the Bastion's door is quest-gated; if that changed, so should this case")
+            local held = playerAt(opensAt)
+            assert(not boardHas(held, "quest_bastion_slot_01"),
+                "prestige alone must not post the work of a house whose door is still shut")
+
+            local open = playerAt(opensAt)
+            open.completedQuests[gateQuest] = true
+            assert(boardHas(open, "quest_bastion_slot_01"),
+                "...and it must be posted as soon as you can actually walk in")
         end,
     },
     {
-        name = "Quest.complete grants gold and prestige, and advances the sponsor's standing, exactly once",
+        name = "Quest.complete grants gold and standing, and advances the sponsor, exactly once",
         fn = function()
             local p = playerAt(1)
             p.gold = 0
@@ -485,16 +500,22 @@ return {
             local reward = Quest.complete(p, quest)
             assert(reward, "completing a fresh quest should pay out")
             assert(p.gold == quest.rewardGold, "gold should be granted")
-            assert(p.prestige == 1 + Quest.PRESTIGE_PER_QUEST, "prestige should be granted")
+            -- Campaign standing is a count of finished quests now. Prestige is gone: it was one number
+            -- doing two jobs, and both moved -- standing here, the world's difficulty onto the calendar
+            -- (models/calendar.lua).
+            assert(Player.questsCompleted(p) == 1, "finishing a quest is what advances standing")
+            assert(reward.standing == 1 and reward.standingBefore == 0,
+                "the reward reports standing either side, for the panel that used to draw a prestige bar")
             assert(Player.hasCompleted(p, "quest_colosseum_slot_01"), "the quest should be marked completed")
             assert(Quest.sponsorProgress(p, "colosseum") == before + 1,
                 "finishing the quest is what advances the Colosseum's standing")
             assert(reward.sponsorQuests == before + 1, "the reward should report the sponsor's new quest count")
 
             -- A second payout is refused: the objective tile could otherwise be re-cleared.
-            local gold, prestige = p.gold, p.prestige
+            local gold, standing = p.gold, Player.questsCompleted(p)
             assert(Quest.complete(p, quest) == nil, "a completed quest must not pay twice")
-            assert(p.gold == gold and p.prestige == prestige, "the refused payout must grant nothing")
+            assert(p.gold == gold and Player.questsCompleted(p) == standing,
+                "the refused payout must grant nothing")
         end,
     },
 
@@ -976,23 +997,26 @@ return {
 
     -- --------------------------------------------------- character progression (levels/growth)
     {
-        name = "syncLevels catches every roster member up to prestige and reports who advanced",
+        name = "resolveLevels catches every roster member up to what it banked, and reports who advanced",
         fn = function()
-            local p = Player.new() -- roster at level 1, prestige 1
-            p.prestige = 10
+            -- Was "syncLevels catches every roster member up to prestige". Prestige no longer levels
+            -- anybody -- a body earns its own level by acting and by felling (models/experience.lua) --
+            -- so what this case now guards is the CATCH-UP: banked experience that has not been
+            -- resolved yet must be resolved on demand, which is what makes it safe to call on load and
+            -- after every fight.
+            local Experience = require("models.experience")
+            local p = Player.new() -- roster at level 1
+            local expected = 7
+            for _, char in ipairs(p.roster) do Experience.award(char, Experience.totalFor(expected)) end
 
-            -- Read the level off the curve rather than hardcoding it: prestige is NOT the level (several
-            -- prestige buy one, and it caps), so a retune of Growth.PRESTIGE_PER_LEVEL should not turn
-            -- this red. What is being asserted is that everyone catches up, not what the number is.
-            local expected = Growth.levelForPrestige(p.prestige)
-            assert(expected > 2, "the fixture must span more than one level for the climb to mean anything")
-
-            -- A recruit added mid-campaign starts at level 1 and must be caught up too.
+            -- A recruit added mid-campaign by hand (rather than through Player.recruit, which seeds the
+            -- company median) starts at level 1 and must be caught up too.
             local recruit = Character.instantiate("character_mage")
+            Experience.award(recruit, Experience.totalFor(expected))
             p.roster[#p.roster + 1] = recruit
-            assert(recruit.level == 1, "a fresh recruit starts at level 1")
+            assert(recruit.level == 1, "a fresh instance starts at level 1 whatever it is holding")
 
-            local summary = Player.syncLevels(p)
+            local summary = Player.resolveLevels(p)
             assert(#summary == #p.roster, "every roster member advanced from level 1")
             for _, char in ipairs(p.roster) do
                 assert(char.level == expected, char.name .. " should be caught up to level " .. expected)
@@ -1003,47 +1027,57 @@ return {
             assert(entry.char and entry.fromLevel == 1 and entry.toLevel == expected, "summary spans the climb")
             assert(entry.class and next(entry.gains), "summary names the growth class and its gains")
 
-            -- Already caught up: a second sync reports nothing.
-            assert(#Player.syncLevels(p) == 0, "a re-sync at the same prestige advances no one")
+            -- Already caught up: a second resolve reports nothing.
+            assert(#Player.resolveLevels(p) == 0, "a re-resolve on the same bank advances no one")
         end,
     },
     {
-        name = "Quest.complete folds the roster's advancement into its reward table",
+        name = "a companion joins on the company's median rather than at level 1",
         fn = function()
-            -- A level costs several prestige, so most quests grant prestige WITHOUT crossing a
-            -- threshold and level nobody. (That is the ordinary case, and what the advancement bar
-            -- exists to show.) This test is about the hand-off when a level DOES land, so the fixture is
-            -- parked exactly one quest short of a threshold -- DERIVED from the curve rather than
-            -- written out, because a hardcoded prestige silently stops testing the level-up branch the
-            -- moment PRESTIGE_PER_LEVEL is retuned. It already moved once, from 3 to 2.
-            local parked = 1
-            while parked < 100
-                and Growth.levelForPrestige(parked + Quest.PRESTIGE_PER_QUEST)
-                    <= Growth.levelForPrestige(parked) do
-                parked = parked + 1
-            end
-            local p = playerAt(parked)
+            -- Under prestige every recruit arrived at the company's level for free. Under experience a
+            -- fresh instance is level 1, which is a body nobody would ever field -- so Player.recruit
+            -- seeds the newcomer with the median of the company they are joining.
+            local Experience = require("models.experience")
+            local p = Player.new()
+            for _, char in ipairs(p.roster) do Experience.award(char, Experience.totalFor(9)) end
+            Player.resolveLevels(p)
+
+            local joined = Player.recruit(p, "character_mage")
+            assert(joined, "the recruit should be added")
+            assert(joined.level > 1, "a recruit nobody can field is not a reward, got level " .. joined.level)
+            assert(joined.level <= 9, "and it is not a free ride past the company either")
+        end,
+    },
+    {
+        name = "Quest.complete reports where the company stands, and hands out no levels",
+        fn = function()
+            -- WAS "folds the roster's advancement into its reward table", and the absence is now the
+            -- contract. Completing a quest used to grant prestige, prestige levelled the whole roster
+            -- at once, and this table carried the list. A body earns its own level in the fighting now
+            -- (models/experience.lua), resolved at the end of every battle -- so by the time the
+            -- objective pays out, the levelling has happened and been announced where it was earned.
+            --
+            -- What the panel reads instead is the calendar and the standing, which is why both are
+            -- asserted here: they are what replaced the prestige bar.
+            local Calendar = require("models.calendar")
+            local p = playerAt(1)
             local quest
             for _, q in ipairs(Quest.available(p)) do
                 if q.id == "quest_colosseum_slot_01" then quest = q end
             end
-            assert(quest, "arena_debut should be available at prestige " .. parked)
-            assert(Growth.levelForPrestige(p.prestige + Quest.PRESTIGE_PER_QUEST)
-                > Growth.levelForPrestige(p.prestige),
-                "the fixture must sit where this quest's prestige actually buys a level")
-
-            -- The company as it stood when the prestige landed. arena_debut also carries a
-            -- `rewardCharacter` (Saber is bested and kept), and she joins AFTER the level-ups are
-            -- computed -- she did not earn this quest's prestige, and Player.recruit syncs her to the
-            -- new level on the way in. So advancement covers the roster that fought, not the roster
-            -- that walks home.
+            assert(quest, "arena_debut should be available on the first day")
             local fought = #p.roster
 
             local reward = Quest.complete(p, quest)
-            assert(reward.advancement, "the reward carries an advancement list")
-            assert(#reward.advancement == fought, "prestige leveled the whole company")
+            assert(reward.advancement == nil,
+                "a quest hands out no levels -- they were earned in the fight and reported there")
+            assert(reward.prestige == nil, "and prestige is gone entirely, not merely unused")
+            assert(reward.day == Calendar.day(p) and reward.days == Calendar.DAYS,
+                "the panel needs which day of how many this was")
+            assert(reward.standing == reward.standingBefore + 1,
+                "finishing one quest advances standing by exactly one")
             assert(reward.recruited and #p.roster == fought + 1,
-                "and the bout's real reward joined on top of it")
+                "and the bout's real reward still joined")
         end,
     },
     {
@@ -1055,12 +1089,12 @@ return {
                 -- One ledger, read as the career title AND as what the next level-up apportions
                 -- (models/growth.lua). Nothing is checkpointed yet, so all of it is outstanding.
                 knight.technique = { mage = 12 }
-                -- Prestige 13, which is level 5 on the curve -- prestige is not the level (see
-                -- Growth.levelForPrestige). Read back through the curve so a retune moves the fixture
-                -- rather than breaking it.
-                p.prestige = 13
-                local expected = Growth.levelForPrestige(p.prestige)
-                Player.syncLevels(p) -- knight climbs 1 -> `expected` as a mage; stats baked
+                -- Banked experience rather than prestige: a body earns its own level now
+                -- (models/experience.lua), so the fixture buys the level it wants outright.
+                local Experience = require("models.experience")
+                local expected = 5
+                Experience.award(knight, Experience.totalFor(expected))
+                Player.resolveLevels(p) -- knight climbs 1 -> `expected` as a mage; stats baked
 
                 local grownMagic = knight.stats.magicDamage
                 local grownHealthMax = knight.stats.health.max
@@ -1115,12 +1149,13 @@ return {
     },
 
     {
-        -- The advancement overlay fills a bar from one prestige to the other, and that is the ONLY
-        -- feedback most quests produce: a level costs several prestige while a quest pays one or two,
-        -- so a quest that levels nobody is the ordinary case, not an edge case. If this pair ever stops
-        -- riding out on the reward, half of all quests silently go back to reporting nothing.
-        name = "Quest.complete reports the prestige step, even when nobody levels",
+        -- A quest that levels nobody is the ORDINARY case, and always was -- so the reward table has to
+        -- carry something that moved, or half of all quests report nothing at all. That used to be a
+        -- prestige step filling a bar. Under the calendar it is the day: an expedition always spends
+        -- one, whatever it found, which makes it the one reading that can never come back empty.
+        name = "Quest.complete always reports something that moved, even when nobody levels",
         fn = function()
+            local Calendar = require("models.calendar")
             local p = playerAt(1)
             local quest
             for _, q in ipairs(Quest.available(p)) do
@@ -1128,22 +1163,17 @@ return {
             end
             assert(quest, "the fixture quest should be available")
 
-            local before = p.prestige
             local reward = Quest.complete(p, quest)
 
-            assert(reward.prestigeBefore == before, "the step starts where the company stood")
-            assert(reward.prestigeAfter == p.prestige, "and ends where it now stands")
-            assert(reward.prestigeAfter > reward.prestigeBefore, "and actually moved")
-
-            -- This particular quest pays too little to cross a threshold from prestige 1 -- which is
-            -- exactly the case the bar exists for, so assert it rather than assume it.
-            assert(Growth.levelForPrestige(reward.prestigeAfter)
-                == Growth.levelForPrestige(reward.prestigeBefore),
-                "fixture check: this quest is meant NOT to level anyone")
-            assert(#(reward.advancement or {}) == 0, "so no one levelled...")
-            assert(Growth.prestigeIntoLevel(reward.prestigeAfter)
-                > Growth.prestigeIntoLevel(reward.prestigeBefore),
-                "...but the bar has visibly moved, which is the whole point")
+            assert(reward.day and reward.days, "the panel is told which day of how many this was")
+            assert(reward.day >= 1 and reward.day <= reward.days, "and it is a day on the calendar")
+            assert(reward.standing == reward.standingBefore + 1,
+                "standing moved by one, which is what the town reads")
+            assert(#(reward.advancement or {}) == 0,
+                "nobody levelled here -- levels are earned in the fighting, not at the payout")
+            -- The property that matters, stated plainly: there is always a reading that changed.
+            assert(reward.standing ~= reward.standingBefore,
+                "a completed quest must never report a company that stood entirely still")
         end,
     },
 

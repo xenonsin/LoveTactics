@@ -31,6 +31,7 @@ local Discipline = require("models.discipline")
 local Growth = require("models.growth")
 local Item = require("models.item")
 local Combat = require("models.combat")
+local Experience = require("models.experience") -- the bench's share of a won fight (finishBattle)
 local Command = require("models.command") -- the vocabulary a live duel speaks (models/netplay.lua)
 local Trap = require("models.trap")
 local Hazard = require("models.hazard")
@@ -489,6 +490,27 @@ local function finishBattle(result)
             -- mercy revive -- see the note there.
             rescue = battle.rescue,
         })
+    end
+
+    -- THE BENCH'S SHARE OF THE FIGHT. Paid here, and here rather than at either of the overworld's
+    -- grant seams, because this is the only point that has all three things the share needs at once:
+    -- the whole company, the four who actually stood on the board, and what each of those four banked
+    -- (`combat.xpByChar`, tallied by Experience.credit as combat awarded it). The overworld sees a
+    -- spoils table and a cell; it never sees the fight.
+    --
+    -- ON A WIN ONLY. A lost fight banks the experience its actions earned -- that is between combat and
+    -- the bodies that swung -- but it does not pay people who were not there.
+    --
+    -- Awarding only; the levels themselves resolve on the overworld side, which is where a level-up has
+    -- somewhere to be announced. Experience.resolve is idempotent, so nothing is lost by the gap.
+    if result == "win" and battle.player and battle.combat and battle.combat.xpByChar then
+        local fielded = {}
+        for _, u in ipairs(battle.combat.units or {}) do
+            if u.char and Combat.isPlayerControlled(u) and not u.summoned then
+                fielded[#fielded + 1] = u.char
+            end
+        end
+        Experience.payBench(battle.player.roster, fielded, battle.combat.xpByChar)
     end
 
     -- Wrap each state callback so pressing its button clears the overlay before handing control on.
@@ -4507,6 +4529,10 @@ function battle.enter(self, opts)
     battle.lostHaul = opts.lostHaul
     battle.encounter = opts.encounter or { kind = "combat", name = "Battle" }
     battle.prestige = opts.prestige or 1 -- the company's prestige, used to roll the victory spoils
+    -- The campaign player, kept so a won fight can pay the bench its share of the experience
+    -- (finishBattle -> Experience.payBench). Nil for a mock battle, a draft and a netplay duel, all of
+    -- which have no roster behind the four on the board and nobody to pay.
+    battle.player = opts.player
     -- Which house's stock this run's fights salvage in: the quest's SPONSOR, the same resolution the
     -- map's caches use (states/game.lua). Nil on an unsponsored leg -- the prologue -- where a fight
     -- pays craft stock and nothing else.

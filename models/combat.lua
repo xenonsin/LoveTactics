@@ -6195,7 +6195,7 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         -- Gated exactly as the action award is (Combat.useItem): a player-controlled, unsummoned body.
         -- A kill by an escortee, a summon or the enemy pays nobody.
         if attacker and Combat.isPlayerControlled(attacker) and not attacker.summoned then
-            Experience.award(attacker.char, Experience.PER_FELLING)
+            Experience.credit(combat, attacker.char, Experience.PER_FELLING)
         end
         killUnit(combat, target)
     else
@@ -9832,7 +9832,7 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         --
         -- Banked unconditionally, in every mode. Only a descent ever turns it into levels -- see
         -- models/experience.lua's header on why that is a resolution-side decision and not a branch here.
-        Experience.award(unit.char, Experience.PER_ACTION)
+        Experience.credit(combat, unit.char, Experience.PER_ACTION)
     end
 
     -- Using an item ends the turn: advance by (this turn's move cost) + the ability speed (or the

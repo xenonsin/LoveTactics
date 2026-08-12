@@ -76,6 +76,16 @@ function love.load(args)
         return
     end
 
+    -- Board ledger: `& "E:\LOVE\lovec.exe" . board-report [n] [tiers]`
+    -- Rolls n overworld boards and reports what the generator laid down -- boons per fight, how many
+    -- of them ended up guarded, rest density, and the tier arc by fifth of the board. The instrument
+    -- behind docs/overworld.md's composition knobs. See tools/board_report.
+    if args and args[1] == "board-report" then
+        require("tools.board_report").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
     -- Curve migration: `& "E:\LOVE\lovec.exe" . curve-migrate [apply | snapshot PATH]`
     -- Rewrites hand-typed per-level rows in data/items as models/curve.lua generator calls, and dumps
     -- every resolved magnitude for before/after diffing. Dry run by default. See tools/curve_migrate.

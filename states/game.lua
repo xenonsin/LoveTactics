@@ -913,19 +913,20 @@ function game:openEncounter(cell)
             fireAbility("encounterCleared", { cell = cell, spoils = spoils })
             fireRelics("encounterCleared", { cell = cell, spoils = spoils })
 
-            -- THE DESCENT'S LEVEL-UPS, and the whole boundary between the two ladders in the game.
-            --
-            -- Combat banks experience on every body that acts, in every mode (models/experience.lua) --
-            -- but in the campaign it is a counter nobody reads, because a campaign roster levels off
-            -- prestige (Player.syncLevels) and always has. Here is the one place it is ever spent, and
-            -- the gate is `game.descent`: a clean run musters at level 1 with no prestige behind it, so
-            -- what it does in the fighting is the only thing that can grow it.
+            -- LEVEL-UPS, in every mode. This used to be gated on `game.descent`, because a campaign
+            -- roster levelled off prestige and the experience combat banked was a counter nobody read.
+            -- Prestige no longer sets anybody's level (models/player.lua), so the gate is gone and this
+            -- is now the single place in the game where experience becomes a level.
             --
             -- This seam rather than the battle's own end because it is ALREADY the single point every
-            -- won fight passes through, side-fight and stair guardian alike (see the header above), so
-            -- there is no second place that could forget. Growth.resolve is idempotent, so a body that
-            -- earned nothing this fight costs a comparison.
-            if game.descent and game.player then
+            -- won fight passes through, side-fight, stair guardian and objective alike (see the header
+            -- above), so there is no second place that could forget. Growth.resolve is idempotent, so a
+            -- body that earned nothing this fight costs a comparison.
+            --
+            -- The bench's share was already awarded where the fight ended (states/battle.lua's
+            -- finishBattle, the only place that knows who stood on the board); this turns everybody's
+            -- banked experience into levels.
+            if game.player then
                 for _, up in ipairs(Experience.resolveParty(game.player.roster)) do
                     game:pushToast((up.char.name or up.char.id) .. " reaches level " .. up.toLevel)
                 end
@@ -1125,6 +1126,13 @@ function game:openEncounter(cell)
                         -- so this state never learns which file is the ending and a second one costs
                         -- no engine edit. New Game+ is offered because the run is, by definition, over.
                         if game.quest and game.quest.endsCampaign then
+                            -- Banked HERE, not on the credits screen, because finishing the campaign
+                            -- and choosing to play it again are different acts and only the first one
+                            -- is what the post-game is owed to. `ngPlus` records the second and is
+                            -- incremented from the credits' New Game+ button; a player who watches the
+                            -- roll and goes back to the menu has still beaten the game, and the Descent
+                            -- has to open for them. See Player.finishCampaign.
+                            Player.finishCampaign(game.player)
                             State.switch(require("states.credits"), { newGamePlus = true })
                         elseif followUp then
                             State.switch(require("states.game"), followUp, game.prestige, game.player,
@@ -1624,15 +1632,22 @@ function game:openEncounter(cell)
     })
 end
 
--- HEAL (a rest's first choice): refill every resource on the roster to full (Player.restore), then replay
--- the heal on a reveal panel so the player SEES what it did -- each party member's HP bar sweeps up to
--- full (ui/panels/rest.lua). Factored out of the rest resolution so RestChoice's Heal option and any
--- back-compat non-combat path both reach the same code.
+-- HEAL (a rest's first choice): give back a share of every roster member's missing resources
+-- (Player.camp), then replay it on a reveal panel so the player SEES what it did -- each party member's
+-- HP bar sweeps from the wound they walked in with to where the camp left them (ui/panels/rest.lua).
+-- Factored out of the rest resolution so RestChoice's Heal option and any back-compat non-combat path
+-- both reach the same code.
+--
+-- A CAMP IS NOT THE HUB. This called Player.restore -- the hub's full refill -- until the board's
+-- attrition was measured: one guaranteed rest per two and a half fights, each erasing everything the
+-- fights before it cost, which left a won fight costing nothing durable and made every optional fight
+-- on the board a free yes. Player.CAMP_SHARE carries the reasoning; the hub still heals whole, because
+-- going home is supposed to be the thing that makes you whole.
 function game:restHeal()
     if not game.player then return end
-    -- Snapshot each shown member's wound BEFORE the refill: the reveal animates from it, and once
-    -- Player.restore runs the live stat is already at max, so this is the only place the "before"
-    -- exists. The whole roster marches, so the whole roster is healed and shown.
+    -- Snapshot each shown member's wound BEFORE the heal: the reveal animates from it, and once
+    -- Player.camp runs the live stat has already moved, so this is the only place the "before" exists.
+    -- The whole roster marches, so the whole roster is healed and shown.
     local shown = game.player.roster or {}
     local entries = {}
     for _, char in ipairs(shown) do
@@ -1641,7 +1656,14 @@ function game:restHeal()
             entries[#entries + 1] = { char = char, from = hp.current or hp.max, max = hp.max or 0 }
         end
     end
-    Player.restore(game.player)
+    Player.camp(game.player)
+    -- ...and the "after", read back off the same live stat the camp just moved. Taken here rather than
+    -- computed from CAMP_SHARE so the bar cannot disagree with the roster: a wound cap, a rounding rule
+    -- or a later change to what a camp restores all land on this line for free.
+    for _, e in ipairs(entries) do
+        local hp = e.char.stats and e.char.stats.health
+        e.to = (type(hp) == "table" and hp.current) or e.max
+    end
     if #entries > 0 then
         game.activePanel = RestReveal.new({
             entries = entries,
@@ -1695,35 +1717,74 @@ local function toHub()
     State.switch(require("states.hub"))
 end
 
--- Back / Esc / pad-Back. Walking out now costs the whole haul, so it asks first -- and the asking names
--- the price in items and coin rather than saying "are you sure", which tells the player nothing they
--- did not already know. A run carrying nothing leaves without ceremony: there is no decision to put in
--- front of someone who has found nothing yet.
+-- Leave the board WITHOUT voiding the run, by spending a Smoke Bolt (data/items/consumable). The one
+-- exception to "the objective is the only extract", and the charge is what makes it affordable to have
+-- one: see the blueprint's header for why a walk-out and a wipe were otherwise the same event.
+--
+-- Drops the run exactly as clearing an objective does, so the finds already in the stash simply stay
+-- there and the rollback point goes with the run. That is the whole implementation -- there is no
+-- second grant path to keep in step, because a find has been live in the company's hands since the
+-- moment it was picked up and only the way out was ever in question.
+local function extractQuest()
+    if not Player.spendExtract(game.player) then return end -- gone since the option was drawn
+    game.player.activeRun = nil
+    Player.save()
+    State.switch(require("states.hub"))
+end
+
+-- Back / Esc / pad-Back. Walking out costs the whole haul unless the company is carrying a way out, so
+-- it asks first -- and the asking names the price in items and coin rather than saying "are you sure",
+-- which tells the player nothing they did not already know. A run carrying nothing leaves without
+-- ceremony: there is no decision to put in front of someone who has found nothing yet.
 local function leaveQuest()
     local lost = game:haulPhrase()
     if not (game.player and game.player.activeRun and lost) then toHub() return end
-    -- The same decision in both modes, but not the same stakes, so not the same words. A quest's walk-out
-    -- gives up one expedition and the company goes home; a descent's gives up the company as well, since
-    -- there is no home on the other side of it to go to.
+
+    -- THE OPTION IS DRAWN ONLY WHERE IT IS LEGAL, never as a greyed plate advertising an item the
+    -- player does not have. A company with no charge sees the two-option prompt it always saw.
+    -- Descents are excluded outright: a descent's exit is the stair, and its walk-out gives up the
+    -- company itself rather than a haul, which is not a thing a bolt of smoke has any answer to.
+    local charge = (not game.descent) and Player.extractCharge(game.player) or nil
+
+    local options = {
+        { label = "Keep going",
+          desc = game.descent and "The stair is the only way out with any of it."
+              or "The objective is the only way home with any of it.",
+          accent = { 0.83, 0.73, 0.45 },
+          cb = function() game.activePanel = nil end },
+    }
+    if charge then
+        -- Named for the deed and priced in the same breath, so the player reads what it costs without
+        -- opening anything: this is the row that decides the run.
+        options[#options + 1] = {
+            label = "Break off (Smoke Bolt)",
+            desc = "Spend the bolt and walk out with " .. lost .. ".",
+            accent = { 0.55, 0.75, 0.58 },
+            cb = function() game.activePanel = nil; extractQuest() end,
+        }
+    end
+    options[#options + 1] = {
+        label = game.descent and "End the run" or "Walk out empty",
+        desc = game.descent and "The company is left at the gate. The descent counts for nothing."
+            or "Return to the city. The expedition counts for nothing.",
+        accent = { 0.88, 0.45, 0.33 },
+        cb = function() game.activePanel = nil; toHub() end,
+    }
+
+    -- The same decision in both modes, but not the same stakes, so not the same words. A quest's
+    -- walk-out gives up one expedition and the company goes home; a descent's gives up the company as
+    -- well, since there is no home on the other side of it to go to.
     game.activePanel = Choice.new({
         title = "Turn Back?",
         prompt = game.descent
             and ("Nothing you have found is yours until you climb out. Leave now and " .. lost ..
                  " stay where you found them, and the run ends here.")
-            or ("Nothing you have found is yours until the objective is cleared. Walk out now and "
-                .. lost .. " stay where you found them."),
-        options = {
-            { label = "Keep going",
-              desc = game.descent and "The stair is the only way out with any of it."
-                  or "The objective is the only way home with any of it.",
-              accent = { 0.83, 0.73, 0.45 },
-              cb = function() game.activePanel = nil end },
-            { label = game.descent and "End the run" or "Walk out empty",
-              desc = game.descent and "The company is left at the gate. The descent counts for nothing."
-                  or "Return to the city. The expedition counts for nothing.",
-              accent = { 0.88, 0.45, 0.33 },
-              cb = function() game.activePanel = nil; toHub() end },
-        },
+            or (charge
+                and ("Nothing you have found is yours until the objective is cleared -- unless you "
+                     .. "buy your way off the road. You are carrying one bolt.")
+                or ("Nothing you have found is yours until the objective is cleared. Walk out now and "
+                    .. lost .. " stay where you found them.")),
+        options = options,
     })
 end
 

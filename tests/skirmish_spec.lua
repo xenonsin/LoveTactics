@@ -207,9 +207,16 @@ return {
         -- set-piece, not a tuning target to be nudged whenever it fails.
         local BUDGET = SKIRMISH_TURN_BUDGET
 
+        -- A company that has actually reached this depth, not a fresh one. Levelled by BANKING the
+        -- experience it would have earned getting here rather than by setting prestige -- prestige no
+        -- longer moves anybody's level (models/experience.lua is the only ladder now).
+        local Experience = require("models.experience")
         local player = Player.new()
-        player.prestige = 20
-        Player.syncLevels(player) -- a company that has actually reached this depth, not a fresh one
+        player.day = 20
+        for _, char in ipairs(player.roster) do
+            Experience.award(char, Experience.totalFor(11))
+        end
+        Player.resolveLevels(player)
         local worst, worstId = 0, nil
         for _, e in ipairs(weightedByKind("combat")) do
             -- The encounter is passed in CELL shape -- `{ id, kind }` -- because that is what the

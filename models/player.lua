@@ -195,20 +195,27 @@ end
 -- Gain a companion. The one path by which the player ADDS a character to the roster after the
 -- starting roster -- a prologue recruit (the knight sworn in the village, the gladiator bested on the
 -- sand), and how a class line's main companion joins. Instantiates a fresh copy from the blueprint,
--- refuses a duplicate of one already owned, and levels the newcomer up to the company's current
--- prestige so a late recruit is not a level-1 liability (Player.syncLevels is idempotent for the
--- rest). Joining the roster IS joining the company -- there is no cap to be turned away by and no
--- second list to be added to. Returns the instance, or nil if the id was already on the roster.
+-- refuses a duplicate of one already owned, and hands the newcomer the company's MEDIAN experience so
+-- a late recruit is not a level-1 liability -- see Experience.medianOf for why the median and not
+-- either extreme. Joining the roster IS joining the company -- there is no cap to be turned away by and
+-- no second list to be added to. Returns the instance, or nil if the id was already on the roster.
 -- Persistence is the caller's call (unlike Quest.complete), so a recruit granted mid-prologue is
 -- saved at the next real save point.
+--
+-- The median is taken BEFORE the newcomer is on the roster, or they would be counted in the company
+-- they are being measured against -- which on a one-member company reads their own zero and hands a
+-- recruit joining a veteran avatar nothing at all.
 function Player.recruit(player, charId)
+    local Experience = require("models.experience")
     player.roster = player.roster or {}
     for _, char in ipairs(player.roster) do
         if char.id == charId then return nil end
     end
+    local joining = Experience.medianOf(player.roster)
     local char = Character.instantiate(charId)
+    char.xp = joining
     player.roster[#player.roster + 1] = char
-    Player.syncLevels(player)
+    Experience.resolve(char)
     -- Announce the newcomer in the next conversation to play: "[<name> has joined your Party]" folded
     -- onto the end of that scene (models/conversation.lua). Required lazily so this stays the low-level
     -- model it is -- the queue is display-only data, and a scene always follows a recruit.
@@ -382,28 +389,29 @@ function Player.spendGold(player, amount)
     return true
 end
 
--- Grant prestige and level the roster to match. Returns the advancement summary from Player.syncLevels
--- (the leveled members and their gains), which Quest.complete folds into its reward table.
-function Player.addPrestige(player, amount)
-    player.prestige = player.prestige + amount
-    return Player.syncLevels(player)
-end
-
--- Character level tracks the player's global prestige, through Growth.levelForPrestige -- SEVERAL
--- prestige per level, and capped. Not `level == prestige`: prestige is also the campaign's unlock
--- currency (buildings, encounter gating, vendor standing) and it never stops climbing, least of all
--- across New Game+, so reading it as a level directly gave characters no ceiling at all.
+-- LEVELS ARE EARNED PER BODY NOW, and this is what is left of the function that used to hand them out.
 --
--- Resolves each pending level-up through models/growth (stat gains from what the member has been
--- casting since it last levelled). Idempotent -- a member already at the current level is left alone --
--- so it is safe to call on every prestige change AND on load (a freshly recruited or migrated member
--- catches up here). Returns a summary list of the members that actually advanced, each
--- { char, fromLevel, toLevel, class, classes, gains }, for the post-quest advancement overlay.
-function Player.syncLevels(player)
-    local level = Growth.levelForPrestige(player.prestige)
+-- `Player.addPrestige` and `Player.syncLevels` are gone. Prestige was one number doing two jobs -- it
+-- set every roster member's level AND measured campaign standing -- and both halves have moved:
+--
+--     level     -> models/experience.lua. A body earns it by acting and by felling, resolved at the
+--                  end of every fight (states/game.lua), so two members of the same company can and do
+--                  differ. That is the point; it is why the bench share and the recruit rule exist.
+--     standing  -> Player.questsCompleted. What buildings, quest gates and conversations read.
+--     danger    -> models/calendar.lua's day. What the world scales on.
+--
+-- What survives is the CATCH-UP: `Growth.resolve` still has to run over the roster on load, because a
+-- body whose xp was banked by a version that did not resolve it -- or a member migrated in from an
+-- older save -- would otherwise sit at level 1 holding a thousand experience. Idempotent, so it costs a
+-- comparison per member on a company already up to date.
+--
+-- Returns the members that actually advanced, in the same shape the advancement overlay has always
+-- read: { char, fromLevel, toLevel, class, classes, gains }.
+function Player.resolveLevels(player)
+    local Experience = require("models.experience")
     local summaries = {}
-    for _, char in ipairs(player.roster or {}) do
-        local summary = Growth.resolve(char, level)
+    for _, char in ipairs((player and player.roster) or {}) do
+        local summary = Experience.resolve(char)
         if summary then summaries[#summaries + 1] = summary end
     end
     return summaries
@@ -411,6 +419,23 @@ end
 
 function Player.hasCompleted(player, questId)
     return (player.completedQuests or {})[questId] == true
+end
+
+-- How many quests this save has finished. CAMPAIGN STANDING, and the replacement for the half of
+-- `player.prestige` that was never about power: building unlocks, quest gates and the conversation
+-- predicate all ask this now (models/calendar.lua explains the split).
+--
+-- Numerically it is what prestige already was minus one -- prestige started at 1 and rose by 1 a quest
+-- -- so every authored gate shifted by one when it moved across, and the values in data now mean
+-- exactly what they say: `unlockQuests = 2` is two finished quests.
+--
+-- Counted rather than cached. The ledger is a set keyed by id (it has to be, since order is the
+-- player's and a quest may be repeatable), and a parallel counter is one more thing New Game+ could
+-- forget to reset.
+function Player.questsCompleted(player)
+    local n = 0
+    for _ in pairs((player and player.completedQuests) or {}) do n = n + 1 end
+    return n
 end
 
 -- ---------------------------------------------------------------------------
@@ -544,6 +569,59 @@ function Player.restore(player)
     end
 end
 
+-- What a CAMP on the road gives back, as a share of what is missing. Deliberately not 1: a full refill
+-- every six stops is what made a board's attrition free, and free attrition is what made every offer on
+-- the board a yes.
+--
+-- THE HISTORY MATTERS HERE, because this constant has been at both ends and both were wrong. The rest
+-- guarantee first shipped no-opping entirely (it read a random-draw weight as a density floor, see
+-- Overworld's guaranteedEntry), so a run's attrition was one-way and no board ever offered a refund.
+-- Fixing that was right; it landed on a FULL refund at a guaranteed density, which is the other end --
+-- one camp per two and a half fights, each one erasing everything the fights before it cost. The only
+-- durable price of an overworld fight was then a body actually going down (models/wound.lua), so any
+-- fight the company could win was free, and "should I take this detour" had one answer.
+--
+-- A SHARE OF MISSING rather than a flat amount, for two reasons. It scales with the company without
+-- reading a level: a fresh party and a maxed one both get half their losses back, so the camp never
+-- needs retuning against the growth curve. And it COMPOUNDS -- halving the gap twice leaves a quarter --
+-- so a long board grinds the company down even though every camp is generous, which is exactly the
+-- shape a run wants: the sixth fight costs more than the first.
+Player.CAMP_SHARE = 0.5
+
+-- Give back `Player.CAMP_SHARE` of every roster member's missing resources. The road's refund, as
+-- against Player.restore's hub refill.
+--
+-- Wounds cap this the same way they cap the hub, and for the same reason -- a wounded body's ceiling is
+-- the wounded line, not its max -- so a camp can never top someone past what the hub itself would give
+-- them. Health alone answers to the wound; mana and stamina refill against their true max, because a
+-- wound is an injury rather than exhaustion (see Player.restore).
+--
+-- Rounds UP, so a camp always moves a bar it is shown moving. The rest reveal animates from a snapshot
+-- taken before this runs (states/game.lua's restHeal), and a member one point down who healed zero would
+-- watch a bar sit still while the game told them they had rested.
+--
+-- Returns nothing: the caller reads the live stats, and the panel took its "before" already.
+function Player.camp(player, share)
+    local Wound = require("models.wound")
+    share = share or Player.CAMP_SHARE
+    for _, char in ipairs(player.roster or {}) do
+        local wound = Wound.healShare(player, char.id)
+        for _, stat in ipairs(Character.RESOURCE_STATS) do
+            local resource = char.stats[stat]
+            if type(resource) == "table" then
+                local ceiling = resource.max or 0
+                if stat == "health" and wound < 1 then
+                    ceiling = math.max(1, math.floor(ceiling * wound))
+                end
+                local cur = resource.current or ceiling
+                if cur < ceiling then
+                    resource.current = math.min(ceiling, cur + math.ceil((ceiling - cur) * share))
+                end
+            end
+        end
+    end
+end
+
 -- ---------------------------------------------------------------------------
 -- Consumables (out-of-combat use; the overworld "Use Items" panel)
 -- ---------------------------------------------------------------------------
@@ -638,6 +716,70 @@ function Player.consumeRestorative(player, entry, char)
 end
 
 -- ---------------------------------------------------------------------------
+-- Overworld items
+-- ---------------------------------------------------------------------------
+--
+-- A small and deliberately open category: items whose whole effect is on the BOARD rather than in a
+-- fight. There are two shapes so far and the difference between them is the shape, not the field:
+--
+--     PASSIVE   a carried thing that changes the board while it is carried, spent by nothing.
+--               `visionRadius` (utility_torch) is the one -- see Player.visionRadius above.
+--     SPENT     a carried thing consumed to take one board action that is otherwise impossible.
+--               `extract` (consumable_signal_horn) is the one, below.
+--
+-- Both are read off the roster's grids AND the stash, because a board item is the company's rather
+-- than a body's -- nothing here asks who is carrying it, unlike a combat item, which always does.
+
+-- The company's first unspent extraction charge, as { item, where, char } (the shape
+-- Player.partyRestoratives uses), or nil. Grid before stash, roster order, so which horn gets spent is
+-- stable rather than whichever the table iterator reached first.
+--
+-- WHY THIS EXISTS AT ALL: a walk-out and a wipe are otherwise the same event (states/game.lua's
+-- toHub), which is correct as a default -- it is what stops "forfeit before the objective" being the
+-- optimal way to bank a good haul -- but it also deletes the one decision an expedition ought to have,
+-- which is knowing when to stop. The charge is the price that lets the decision exist without
+-- reopening the exploit: cutting your losses is available, and it costs a thing you had to buy, carry,
+-- and not use for something else.
+function Player.extractCharge(player)
+    -- Depletion is read off the stack directly rather than through Combat.isDepleted, which answers a
+    -- different question: it asks whether an ABILITY that consumes its item has run out, and returns
+    -- false for anything carrying no activeAbility at all. A board item has none by construction --
+    -- there is nothing to aim and no turn to spend -- so routing this through it would report a spent
+    -- bolt as usable forever, and the one-charge rule would silently not exist.
+    local function usable(item)
+        return item and item.extract and (item.quantity or 1) > 0
+    end
+    for _, char in ipairs(player and player.roster or {}) do
+        for _, item in ipairs(Character.eachItem(char)) do
+            if usable(item) then return { item = item, where = "grid", char = char } end
+        end
+    end
+    for _, item in ipairs(player and player.stash or {}) do
+        if usable(item) then return { item = item, where = "stash" } end
+    end
+    return nil
+end
+
+-- Spend one extraction charge. Returns true if one was actually spent, so a caller can never let the
+-- board action happen for free on a company that no longer has the item -- the check and the spend are
+-- one call rather than a query the caller is trusted to re-ask.
+--
+-- Clears an emptied STASH stack the way Player.consumeRestorative does, and leaves an emptied grid
+-- stack in place for the same reason it does: a restock merges back into the cell, and the Loadout is
+-- where a player clears one out.
+function Player.spendExtract(player)
+    local entry = Player.extractCharge(player)
+    if not entry then return false end
+    entry.item.quantity = math.max(0, (entry.item.quantity or 1) - 1)
+    if entry.item.quantity <= 0 and entry.where == "stash" then
+        for i, it in ipairs(player.stash or {}) do
+            if it == entry.item then table.remove(player.stash, i) break end
+        end
+    end
+    return true
+end
+
+-- ---------------------------------------------------------------------------
 -- Session lifecycle
 -- ---------------------------------------------------------------------------
 
@@ -673,6 +815,39 @@ end
 -- Recruits are left in the roster rather than un-recruited. Their quests return to the board, and
 -- Player.recruit refuses a duplicate by design, so a re-run of a recruit quest pays its gold and its
 -- scene and mints nobody -- which is the correct reading of meeting someone you already travel with.
+-- Record that the campaign has been finished. Called from states/game.lua the moment the quest flagged
+-- `endsCampaign` clears its objective, BEFORE the credits roll.
+--
+-- WHY NOT `ngPlus`, WHICH LOOKS LIKE THE SAME NUMBER. It is not: `ngPlus` counts campaigns finished AND
+-- CARRIED FORWARD, and it is only incremented if the player accepts the offer on the credits screen. A
+-- player who finishes the game and goes back to the menu -- the ordinary way to finish a game -- never
+-- touches it. Anything gated on "have you beaten this" has to read a flag set by BEATING it, not by
+-- choosing to play again.
+--
+-- Survives New Game+ on purpose, unlike the quest ledger, the flags and the temptation record, all of
+-- which reset there so the campaign is a campaign again. What the player has done cannot un-happen: a
+-- post-game door that closed when you started a second run would be the game taking a reward back.
+function Player.finishCampaign(player)
+    player = player or Player.active
+    if not player then return nil end
+    player.campaignsFinished = (player.campaignsFinished or 0) + 1
+    Player.save()
+    return player.campaignsFinished
+end
+
+-- Has this save ever reached the end? The gate on the post-game (states/menu.lua's Descent door).
+--
+-- Answers from the live player when there is one, and from the SAVE ON DISK when there is not -- which
+-- is the case that actually matters, since the main menu asks this before anything has been started.
+-- Save.peek reads the snapshot without instantiating a roster, so asking is cheap enough to do every
+-- time the menu is rebuilt.
+function Player.hasFinishedCampaign(player)
+    player = player or Player.active
+    if player then return (player.campaignsFinished or 0) > 0 end
+    local snap = Save.peek()
+    return ((snap and snap.campaignsFinished) or 0) > 0
+end
+
 function Player.newGamePlus(player)
     player = player or Player.active
     if not player then return nil end

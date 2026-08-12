@@ -3,7 +3,7 @@
 return {
     name = "Ancient Stag",
     kind = "combat",
-    weight = 2,
+    weight = 4, -- see encounter_boar.lua: the four road fights were doubled together
     minPrestige = 1,
     condition = function(ctx) return ctx.biome ~= "castle" end,
     -- A lone beast, joined by a second at high prestige.

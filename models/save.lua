@@ -431,6 +431,19 @@ function Save.snapshot(player)
     -- Omitted while zero so a save that has never finished the game diffs clean.
     local ngPlus = (player.ngPlus or 0) > 0 and player.ngPlus or nil
 
+    -- How many times the campaign has been FINISHED, which is a different question from how many times
+    -- it has been carried forward -- see Player.finishCampaign. This is what the post-game is gated on,
+    -- so it has to be persisted separately from ngPlus rather than inferred from it. Same additive
+    -- rule: no VERSION bump, and an older save loads as never-finished, which is what it is.
+    local campaignsFinished = (player.campaignsFinished or 0) > 0 and player.campaignsFinished or nil
+
+    -- WHICH DAY THE COMPANY IS STANDING ON (models/calendar.lua). The campaign's clock, and the thing
+    -- the whole difficulty curve now reads -- so unlike most of the additive fields here it is not
+    -- optional in spirit, only in encoding: omitted while it is 1 so a fresh save diffs clean, and any
+    -- save without it loads on the first morning, which is what a save written before the calendar
+    -- existed effectively was.
+    local day = (player.day or 1) > 1 and player.day or nil
+
     -- Who took the field last battle, by charId -- the deployment phase's opening pick, a convenience
     -- and never a rule (models/player.lua's Player.noteDeployed). Placement itself is decided per battle
     -- and is deliberately not saved. Purely additive, so Save.VERSION does not move: an older save loads
@@ -459,6 +472,8 @@ function Save.snapshot(player)
         prestige = player.prestige,
         run = run,
         ngPlus = ngPlus,
+        campaignsFinished = campaignsFinished,
+        day = day,
         body = player.body, -- the created avatar's body (1/2); nil before character creation
         name = player.name, -- the name typed at creation (also on the avatar instance)
         -- Who this player is to other players (Player.authorId). Persisted rather than re-minted,
@@ -691,6 +706,8 @@ function Save.restore(snap)
         prestige = snap.prestige or 1,
         resumeRun = resumeRun,
         ngPlus = snap.ngPlus or 0, -- absent on a save from before New Game+, and on any first run
+        campaignsFinished = snap.campaignsFinished or 0, -- absent until the campaign has been beaten once
+        day = snap.day or 1, -- the calendar; absent on a fresh save and on any save older than it
         body = snap.body, -- nil for a save made before character creation set it
         name = snap.name,
         authorId = snap.authorId, -- nil on an older save; Player.authorId mints one on demand
@@ -738,6 +755,21 @@ function Save.write(player, file)
     local source = "-- LoveTactics save. Generated file; edit at your own risk.\nreturn "
         .. encode(Save.snapshot(player), 0) .. "\n"
     return love.filesystem.write(fileOf(file), source)
+end
+
+-- The raw decoded snapshot, WITHOUT restoring it into a player. For the handful of questions a caller
+-- wants answered about a save it is not about to load -- the main menu asking whether the campaign has
+-- ever been finished, so it knows whether to draw the post-game door. Save.read would answer the same
+-- question by instantiating the whole roster from blueprints, which is a lot of work to read one
+-- integer, and it would do it every time the menu is rebuilt.
+--
+-- Returns plain saved data, so a caller must treat every field as optional: an older save simply has
+-- not got the newer ones. nil if there is no save or it will not decode.
+function Save.peek(file)
+    if not Save.exists(file) then return nil end
+    local source = love.filesystem.read(fileOf(file))
+    if not source then return nil end
+    return decode(source)
 end
 
 -- The restored player, or nil if there is no save (or it is unreadable).

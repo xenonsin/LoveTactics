@@ -2,7 +2,7 @@
 return {
     name = "Dire Wolf",
     kind = "combat",
-    weight = 3,
+    weight = 6, -- see encounter_boar.lua: the four road fights were doubled together
     minPrestige = 1,
     -- A pack that grows with prestige and gains an alpha at higher renown.
     composition = function(ctx)

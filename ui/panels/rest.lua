@@ -1,19 +1,28 @@
--- The rest payoff, made visible. "A Moment's Rest" refills every resource on the roster
--- (Player.restore), but a silent refill teaches the player nothing about what a rest tile IS.
--- So the restore is banked UP FRONT (states/game.lua, before this opens) and this panel replays
--- it: each party member's HP bar animates from the wound they walked in with up to full, so the
--- one thing a rest does reads at a glance.
+-- The rest payoff, made visible. Making camp gives back a share of what the road took
+-- (Player.camp), but a silent refill teaches the player nothing about what a rest tile IS.
+-- So the heal is banked UP FRONT (states/game.lua, before this opens) and this panel replays
+-- it: each party member's HP bar animates from the wound they walked in with up to where the
+-- camp left them, so the one thing a rest does reads at a glance.
 --
--- The bar values are DISPLAY-ONLY -- the live stats are already at max when this opens, so the
--- panel carries its own `from` snapshot and lerps from it. Dismissing early (close X, Continue,
--- Esc, gamepad B) can never cost the heal because the heal already happened; it only snaps the
--- bars to where they were always going. Mouse + keyboard + gamepad, and a clickable close for the
--- mouse-only player (ui/close_button.lua), like every other modal.
+-- IT ANIMATES TO `to`, NOT TO `max`, and that distinction is the whole panel now. A camp used to
+-- refill to full, so "where the bar ends" and "the top of the bar" were the same pixel and the
+-- panel simply drew to the end. Player.CAMP_SHARE made them different, and a reveal that still
+-- swept to full would tell the player they were whole while the roster said otherwise -- the
+-- single most expensive kind of lie a UI can tell, because the next fight is picked on it. The
+-- gap left unfilled is the point: it is the attrition the run is carrying forward.
+--
+-- The bar values are DISPLAY-ONLY -- the live stats are already healed when this opens, so the
+-- panel carries its own `from`/`to` snapshot and lerps between them. Dismissing early (close X,
+-- Continue, Esc, gamepad B) can never cost the heal because the heal already happened; it only
+-- snaps the bars to where they were always going. Mouse + keyboard + gamepad, and a clickable
+-- close for the mouse-only player (ui/close_button.lua), like every other modal.
 --
 --   local panel = Rest.new({
---       entries = { { char = c, from = 12, max = 40 }, ... },  -- per party member, pre-rest HP
---       onDone  = function() ... end,                          -- Continue / close / Esc / B
+--       entries = { { char = c, from = 12, to = 26, max = 40 }, ... },  -- per member, pre/post HP
+--       onDone  = function() ... end,                                   -- Continue / close / Esc / B
 --   })
+--
+-- `to` defaults to `max` when a caller omits it, so a full-refill path still reads correctly.
 
 local CloseButton = require("ui.close_button")
 local Scale = require("scale")
@@ -105,7 +114,7 @@ function Rest:draw()
     love.graphics.printf("A Moment's Rest", self.boxX, self.boxY + 22, self.boxW, "center")
     love.graphics.setFont(self.smallFont)
     Theme.set(Theme.muted)
-    love.graphics.printf("The party makes camp -- wounds heal and reserves return.",
+    love.graphics.printf("The party makes camp -- some of what the road took comes back.",
         self.boxX + 30, self.boxY + 58, self.boxW - 60, "center")
 
     local p = self:progress()
@@ -131,6 +140,7 @@ end
 
 function Rest:drawRow(e, rowY, p)
     local char, from, max = e.char, e.from, e.max
+    local to = e.to or max -- a caller that heals to full need not say so
     local px = self.boxX + 30
     local py = rowY + (ROW_H - PORTRAIT) / 2
 
@@ -150,8 +160,8 @@ function Rest:drawRow(e, rowY, p)
     Theme.set(Theme.ink)
     love.graphics.print(char and char.name or "?", barX, rowY + 6)
 
-    -- The animated HP value: from the wound walked in with, up to full.
-    local shown = from + (max - from) * p
+    -- The animated HP value: from the wound walked in with, up to where the camp left them.
+    local shown = from + (to - from) * p
     local fillFrac = max > 0 and shown / max or 1
     local startFrac = max > 0 and from / max or 1
 

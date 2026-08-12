@@ -49,10 +49,17 @@ local ROW_H, ROW_SPACING, MAX_VISIBLE = 38, 6, 9
 -- prints on the other side of the same row.
 local HEADER_PAD = 18
 
--- Two modes, not three: a vendor sells and buys back, and nothing here upgrades. Every ladder in the
--- game is climbed at The Forge (ui/panels/forge.lua), which is also the only screen that spends
--- materials -- see the header of models/vendor.lua for why the second door was closed.
-local MODES = { "buy", "sell" }
+-- Buy and Sell, and nothing here upgrades: every ladder in the game is climbed at The Forge
+-- (ui/panels/forge.lua), which is also the only screen that spends materials -- see the header of
+-- models/vendor.lua for why that second door was closed, and note that a SERVICE is not it. A service
+-- does not touch `item.level` and bills no materials; it is a house's own verb, which is a different
+-- thing from a second bench.
+--
+-- Every house does these two. A house that declares a `service` gets a third tab after them, labelled
+-- by the service itself -- see models/vendor.lua's Services block for why a city of identical shelves
+-- is the thing that needed fixing. Per instance rather than a file constant, because which tabs exist
+-- is now a property of the vendor rather than of the panel.
+local BASE_MODES = { "buy", "sell" }
 local MODE_LABEL = { buy = "Buy", sell = "Sell" }
 
 -- Detail accent per item type (matches ui/item_tooltip.lua).
@@ -118,12 +125,20 @@ function Shop.new(opts)
     self.detailY = self.boxY + 112
     self.detailW = self.boxX + BOX_W - 24 - self.detailX
 
+    -- This house's tabs: Buy, Sell, and its service if it has one.
+    self.modes = { BASE_MODES[1], BASE_MODES[2] }
+    self.service = self.def.service
+    if self.service then
+        self.modes[#self.modes + 1] = self.service.id
+        MODE_LABEL[self.service.id] = self.service.label or "Service"
+    end
+
     -- Mode selector segments above the list.
     self.modeY = self.boxY + 66
     self.modeH = 30
     self.segRects = {}
-    local segW = self.listW / #MODES
-    for i, m in ipairs(MODES) do
+    local segW = self.listW / #self.modes
+    for i, m in ipairs(self.modes) do
         self.segRects[m] = { x = self.listLeft + (i - 1) * segW, y = self.modeY, w = segW, h = self.modeH }
     end
 
@@ -323,6 +338,8 @@ function Shop:refresh()
 
     if self.mode == "buy" then
         self:buildBuyRows()
+    elseif self.mode == "fence" then
+        self:buildFenceRows()
     else -- sell
         for i, item in ipairs(self.player.stash or {}) do
             local value = Vendor.sellValue(item)
@@ -381,14 +398,100 @@ function Shop:hasRows() return self.rows and #self.rows > 0 end
 
 function Shop:setMode(mode)
     self.mode = mode
+    self.swapFrom = nil -- leaving the fence puts down whatever was being traded
     self.menu = nil
     self:refresh()
 end
 
 function Shop:cycleMode(delta)
     local idx = 1
-    for i, m in ipairs(MODES) do if m == self.mode then idx = i end end
-    self:setMode(MODES[(idx - 1 + delta) % #MODES + 1])
+    for i, m in ipairs(self.modes) do if m == self.mode then idx = i end end
+    self:setMode(self.modes[(idx - 1 + delta) % #self.modes + 1])
+end
+
+-- ---------------------------------------------------------------------------
+-- The Fence (the Undercroft's service)
+-- ---------------------------------------------------------------------------
+
+-- TWO STEPS IN ONE LIST, rather than a modal over a modal. Step one lists what the fence will take;
+-- picking a row swaps the same list for what it will give back, with a Back row at the top. The
+-- alternative -- a chooser popup -- was rejected because the number of offers is not small or fixed
+-- (ui/panels/choice.lua tops out at a handful of options) and because the detail column is the whole
+-- reason this reads: the player needs to compare what they are giving up against what they would get,
+-- and both are ordinary item rows with ordinary tooltips when they live in the same list.
+function Shop:buildFenceRows()
+    local recipes = self.player.recipes
+    local unlocked, levels = Discipline.unlockedSet(self.player), Discipline.levelSet(self.player)
+
+    if not self.swapFrom then
+        for i, item in ipairs(self.player.stash or {}) do
+            local offers = Vendor.swapOffers(self.vendorId, item, self.questsDone, recipes, unlocked, levels)
+            local fee = Vendor.swapFee(item)
+            -- An item with nothing to trade for is LISTED AND GREYED rather than hidden, for the same
+            -- reason the shelf greys a locked row: a stash entry that silently vanishes from a tab reads
+            -- as a bug, and "nothing of its worth is on this shelf yet" is a real answer that points at
+            -- the quest ladder. The reason lands in the detail column via fenceLockReason.
+            self.rows[#self.rows + 1] = {
+                item = item, index = i, offers = offers, fee = fee,
+                label = (item.name or "?") .. "  -  " .. (#offers > 0 and (fee .. "g") or "--"),
+                locked = #offers == 0 or not fee,
+            }
+        end
+        return
+    end
+
+    -- Step two: what the fence will hand back for the piece already on the counter.
+    self.rows[#self.rows + 1] = { back = true, label = "< Back" }
+    for _, entry in ipairs(self.swapFrom.offers or {}) do
+        -- `item` is the blueprint, as on a Buy row: it is what the detail column, the sprite and the
+        -- glossary all read, so an offer row must carry it or picking one shows a blank pane.
+        self.rows[#self.rows + 1] = {
+            item = Item.defs[entry.id], entry = entry, swapTo = entry,
+            label = (entry.name or "?") .. "  -  " .. (entry.price or 0) .. "g",
+        }
+    end
+end
+
+-- Why the fence will not take this piece. Read by the detail column, so a greyed row explains itself
+-- rather than merely refusing.
+function Shop:fenceLockReason(row)
+    local item = row.item
+    if not item then return "Nothing to trade." end
+    if Item.isBound(item) then return "Bound to its bearer. Not yours to trade, whatever it is worth." end
+    if not item.price then return "Never had a price. Nobody will take it, here least of all." end
+    return "Nothing of its worth on this shelf yet -- run more of this house's line and come back."
+end
+
+-- Do the trade: the piece on the counter leaves the stash, its replacement arrives, the fee is paid.
+--
+-- The fee is checked BEFORE anything moves, so a player short of coin is told no rather than walked
+-- through a swap that half-happens. Nothing else can fail after that point: the offer list was built
+-- from unlocked stock, and Item.instantiate cannot decline.
+function Shop:swap(row)
+    local from, to = self.swapFrom, row.swapTo
+    if not (from and to) then return end
+    local fee = from.fee or 0
+    if (self.player.gold or 0) < fee then
+        self:setMsg("The fee is " .. fee .. "g. You have " .. (self.player.gold or 0) .. "g.", false)
+        return
+    end
+
+    self.player.gold = (self.player.gold or 0) - fee
+    -- Remove the traded piece by IDENTITY, not by the index the row was built with: the stash can be
+    -- reordered by anything that ran since (a sale on the other tab, a stack merging), and an index
+    -- that has gone stale would quietly fence the wrong item.
+    for i, it in ipairs(self.player.stash or {}) do
+        if it == from.item then table.remove(self.player.stash, i) break end
+    end
+    local got = Item.instantiate(to.id, 1, to.level or 0)
+    table.insert(self.player.stash, got)
+    Player.save()
+
+    self.swapFrom = nil
+    self.menu = nil
+    self:refresh()
+    self:setMsg("Traded " .. (from.item.name or "?") .. " for " .. (got.name or "?")
+        .. "  (-" .. fee .. "g)", true)
 end
 
 function Shop:setMsg(text, ok) self.message, self.messageOk = text, ok end
@@ -403,7 +506,32 @@ end
 
 function Shop:activateRow(row)
     if not row then return end
-    if self.mode == "buy" then self:buy(row) else self:sell(row) end
+    if self.mode == "buy" then
+        self:buy(row)
+    elseif self.mode == "fence" then
+        if row.back then
+            self.swapFrom = nil; self.menu = nil; self:refresh()
+        elseif row.swapTo then
+            self:swap(row)
+        elseif row.locked then
+            self:setMsg(self:fenceLockReason(row), false)
+        else
+            self.swapFrom = row
+            self.menu = nil
+            self:refresh()
+            -- Land on the first OFFER, not on the Back row that leads the list. Back is a way out
+            -- rather than a thing, so it has no detail card -- opening step two with the cursor on it
+            -- shows an empty pane at the exact moment the player most wants to compare what they are
+            -- giving up against what they would get.
+            if self.rows[2] then
+                self.menu.selected = 2
+                self.menu:scrollToSelection()
+            end
+            self:setMsg("For " .. (row.item.name or "?") .. ", the fence offers:", true)
+        end
+    else
+        self:sell(row)
+    end
 end
 
 -- Why a greyed shelf row is not yet buyable. A discipline row is held by its own gate quest, which no
@@ -586,7 +714,14 @@ function Shop:draw()
     else
         love.graphics.setFont(self.bodyFont)
         Theme.set(Theme.muted)
-        local empty = (self.mode == "buy") and "Nothing for sale." or "Your stash is empty."
+        local empty = "Your stash is empty."
+        if self.mode == "buy" then
+            empty = "Nothing for sale."
+        elseif self.mode == "fence" then
+            -- Two different emptinesses, and saying "your stash is empty" for the second would be a
+            -- lie: a company can be carrying plenty and simply have nothing this shelf can match.
+            empty = self.swapFrom and "Nothing of its worth on this shelf." or "Nothing here to trade."
+        end
         love.graphics.printf(empty, self.listLeft, self.boxY + 200, self.listW, "center")
     end
 
@@ -641,7 +776,7 @@ end
 
 function Shop:drawModeSelector()
     love.graphics.setFont(self.bodyFont)
-    for _, m in ipairs(MODES) do
+    for _, m in ipairs(self.modes) do
         local r = self.segRects[m]
         local active = (self.mode == m)
         Theme.set(active and Theme.panel or Theme.panel2)
@@ -744,7 +879,12 @@ function Shop:drawDetail()
     local row = self.rows[self.menu.selected]
     if not row then return end
     if row.header then self:drawSectionDetail(row) return end
+    -- The fence's Back row is a navigation control rather than a thing, so it has no item and nothing
+    -- to describe. Guarded here rather than by giving it a dummy item, which would put a blank card in
+    -- the detail column and read as a broken row.
+    if row.back then return end
     local item = row.item
+    if not item then return end
     local x, y, w = self.detailX, self.detailY, self.detailW
     local accent = TYPE_COLOR[item.type] or DEFAULT_COLOR
 
@@ -854,6 +994,21 @@ function Shop:drawDetail()
             love.graphics.setColor(0.95, 0.85, 0.55)
             love.graphics.printf("Price: " .. row.entry.price .. " gold", x, ty, w, "left")
         end
+    elseif self.mode == "fence" then
+        -- Step one names the FEE, step two names what the trade actually costs and gives, because
+        -- those are the two different questions the player is asking at those two moments.
+        if row.swapTo then
+            love.graphics.setColor(0.7, 0.85, 0.7)
+            love.graphics.printf("Trade " .. (self.swapFrom.item.name or "?") .. " for this  -  "
+                .. (self.swapFrom.fee or 0) .. " gold", x, ty, w, "left")
+        elseif row.locked then
+            love.graphics.setColor(0.9, 0.6, 0.55)
+            love.graphics.printf(self:fenceLockReason(row), x, ty, w, "left")
+        else
+            love.graphics.setColor(0.95, 0.85, 0.55)
+            love.graphics.printf("Fee: " .. (row.fee or 0) .. " gold  -  "
+                .. #(row.offers or {}) .. " on offer", x, ty, w, "left")
+        end
     else
         if row.value > 0 then
             love.graphics.setColor(0.7, 0.85, 0.7)
@@ -874,9 +1029,13 @@ function Shop:drawFooter()
     end
     Theme.set(Theme.muted)
     -- Show the glyphs for the device last used: pad buttons only in gamepad mode, keyboard/mouse otherwise.
+    -- The tab-cycle key is named after what it actually cycles: at a house with a service the strip has
+    -- three tabs, and a hint reading "Buy/Sell" tells the player the third one is unreachable from the
+    -- keyboard, which it is not.
+    local cycle = self.service and "switch list" or "Buy/Sell"
     local hint = InputMode.isGamepad()
-        and "A: confirm    LB/RB: Buy/Sell    D-pad: scroll    B: close"
-        or "Enter: confirm    Tab: Buy/Sell    Wheel: scroll    Esc: close"
+        and ("A: confirm    LB/RB: " .. cycle .. "    D-pad: scroll    B: close")
+        or ("Enter: confirm    Tab: " .. cycle .. "    Wheel: scroll    Esc: close")
     love.graphics.printf(hint, self.boxX, self.boxY + BOX_H - 30, BOX_W, "center")
 end
 
@@ -897,7 +1056,7 @@ function Shop:cursorKind(x, y)
     if self.confirm then return self.confirm:cursorKind(x, y) end
     if self.quantityPopup then return self.quantityPopup:cursorKind(x, y) end
     if self.closeButton:contains(x, y) then return "hand" end
-    for _, m in ipairs(MODES) do
+    for _, m in ipairs(self.modes) do
         if pointIn(self.segRects[m], x, y) then return "hand" end
     end
     if self:hasRows() and self.menu:mouseOverItem(x, y) then return "hand" end
@@ -915,7 +1074,7 @@ function Shop:mousepressed(x, y, button)
     if self.quantityPopup then self.quantityPopup:mousepressed(x, y, button) return end
     if button ~= 1 then return end
     if self.closeButton:mousepressed(x, y, button) then self:close() return end
-    for _, m in ipairs(MODES) do
+    for _, m in ipairs(self.modes) do
         if pointIn(self.segRects[m], x, y) then self:setMode(m) return end
     end
     if self:hasRows() then

@@ -85,6 +85,78 @@ function Experience.award(char, amount)
     char.xp = (char.xp or 0) + amount
 end
 
+-- Award, and keep a per-character tally of what THIS fight paid, on the combat object. Combat's own
+-- call sites use this rather than Experience.award directly.
+--
+-- The tally exists for one reader -- Experience.payBench, which cannot know what the field earned
+-- without it -- and it lives on `combat` beside `techniqueByActor`, which is there for the same kind of
+-- reason. Keyed by the CHARACTER rather than the unit: a body that rotates off the board and back on is
+-- one earner, and units are per-battle objects while characters are the thing that persists.
+function Experience.credit(combat, char, amount)
+    Experience.award(char, amount)
+    if not (combat and char) or not amount or amount <= 0 then return end
+    combat.xpByChar = combat.xpByChar or {}
+    combat.xpByChar[char] = (combat.xpByChar[char] or 0) + amount
+end
+
+-- What a body that did not take the field earns for the fight, as a share of what the average member
+-- who DID earned.
+--
+-- Not zero, and the reason is a rule that predates this: the roster IS the company, it travels whole,
+-- and Combat.rotate makes swapping the bench in a live tactical decision mid-fight (docs/deployment.md).
+-- Bodies that rot on the bench make that mechanic decorative -- nobody rotates in a member four levels
+-- behind -- and they push the player toward fielding the same four all campaign, which is the exact
+-- shape the rotating field was built to break.
+--
+-- Not one, either. Standing on the board is where the risk is: a fielded body spends health, spends
+-- consumables, and can be the one that goes down and takes a wound out of the run. Paying the bench the
+-- same as the field would price that risk at nothing.
+Experience.BENCH_SHARE = 0.5
+
+-- Pay the bench. `fielded` is the list of characters that actually stood on the board, `roster` the
+-- whole company; `earned` maps a character to what it banked in the fight just finished.
+--
+-- Averaged over the FIELD rather than over the roster, so the share does not shrink as the company
+-- grows -- a tenth companion should not quietly halve what everyone on the bench is paid.
+--
+-- Returns the amount each benched body received, for a caller that wants to report it.
+function Experience.payBench(roster, fielded, earned)
+    local onField = {}
+    local total, n = 0, 0
+    for _, char in ipairs(fielded or {}) do
+        onField[char] = true
+        total = total + ((earned and earned[char]) or 0)
+        n = n + 1
+    end
+    if n == 0 then return 0 end
+    local share = math.floor(total / n * Experience.BENCH_SHARE)
+    if share <= 0 then return 0 end
+    for _, char in ipairs(roster or {}) do
+        if not onField[char] then Experience.award(char, share) end
+    end
+    return share
+end
+
+-- The experience a body joining the company mid-campaign arrives with: the MEDIAN of the company it is
+-- joining. Player.recruit's rule, kept here beside the curve it is expressed in.
+--
+-- Median rather than either extreme, and both extremes were considered. Level 1 is what the character
+-- would naturally be, and it is a body nobody ever fields -- a companion who arrives unusable is a
+-- reward the player cannot take, and under a deadline they will never get the spare days to fix it.
+-- Matching the best member is a free ride that makes a late recruit strictly better than an early one.
+-- The median is the company as it actually is: the newcomer is immediately fieldable and still behind
+-- the veterans who earned their place.
+--
+-- An empty company returns 0, which is level 1 -- correct for the avatar, who joins nothing.
+function Experience.medianOf(roster)
+    local xs = {}
+    for _, char in ipairs(roster or {}) do xs[#xs + 1] = char.xp or 0 end
+    if #xs == 0 then return 0 end
+    table.sort(xs)
+    local mid = math.floor((#xs + 1) / 2)
+    return xs[mid]
+end
+
 -- Turn banked experience into levels, through Growth. Returns Growth.resolve's summary
 -- ({ char, fromLevel, toLevel, class, gains, ... }) when the body actually advanced, else nil -- the same
 -- shape the post-quest advancement overlay already reads, so a descent's level-up needs no second

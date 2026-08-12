@@ -16,11 +16,17 @@ local function typeWalkable(tile)
 end
 
 -- A pathTo-capable stand-in positioned at the grid's start with the given keys.
+-- A minimal stand-in for OverworldMap.new: enough state to drive movement, without the fonts and
+-- layout the real constructor builds. It has to carry every field :step writes THROUGH, though --
+-- `cacheHaul` is one, and it was missing here until a generation change moved a cache onto the tile
+-- beside the start on this seed and :step tried to bank into nil. A fixture that lists a subset of the
+-- constructor's fields is only ever as correct as the board it happens to be handed.
 local function walker(grid, keysHeld)
     return setmetatable({
         grid = grid,
         px = grid.start.x, py = grid.start.y,
         keysHeld = keysHeld or {},
+        cacheHaul = {},
     }, { __index = OverworldMap })
 end
 

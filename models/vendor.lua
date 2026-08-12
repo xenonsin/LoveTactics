@@ -191,6 +191,71 @@ function Vendor.hasMarkedStock(vendorId, marked)
     return false
 end
 
+-- ---------------------------------------------------------------------------
+-- Services: what a house does besides sell
+-- ---------------------------------------------------------------------------
+--
+-- A shelf is the same verb at every door. Seven houses that all Buy and Sell means the city has two
+-- verbs in it however many buildings get built, which is the whole of why the town stops changing once
+-- the last door opens -- a new shop is only ever more rows. So a vendor may declare a SERVICE: one
+-- thing only that house does, named on its own tab beside Buy and Sell.
+--
+-- One is authored (the Undercroft's Fence, below). The seam is what matters: a service is a data
+-- field, so the other six are an authoring job rather than an engine one, and each house's
+-- specialisation can be argued about in its own blueprint. Sketches, deliberately unbuilt --
+-- the Crucible appraising a sealed find, the Arcanum reading an unknown discipline off a piece, the
+-- Cafe standing a round -- are notes for that pass and not promises.
+--
+-- WHY THE UNDERCROFT GOT THE FIRST ONE. Greed's house, and the swap is greed's verb: nothing is
+-- created, nothing is destroyed, and the fence takes a cut of the difference. It is also the service
+-- an extraction game most obviously needs -- a run that pays out in gear produces duplicates by
+-- construction, and until now the only thing to do with a second Iron Sword was sell it for half.
+
+-- What the fence charges to turn one piece into another, as a share of the shelf price of the thing
+-- handed over. Deliberately above the 50% a plain sell-back pays, because a swap is strictly better
+-- than selling: it returns an ITEM rather than coin, at the grade you gave up, with no second trip to
+-- the shelf and no waiting for a gate to open. Under 50% and selling would be strictly dominated,
+-- which would make the Sell tab decorative at the one house that has both.
+Vendor.SWAP_FEE = 0.6
+
+-- The gold a swap costs, given the item being handed in. Rounded up, so no swap is ever free -- a
+-- worthless trinket still costs a coin to launder, which is the fence's whole personality.
+function Vendor.swapFee(item)
+    if not item or not item.price then return nil end
+    return math.max(1, math.ceil(Vendor.priceFor(item.price, item.level or 0) * Vendor.SWAP_FEE))
+end
+
+-- How far apart two prices may sit and still count as the same grade. A band rather than an exact
+-- match because prices are derived from grade (docs/shelf.md) and land on arbitrary numbers: an exact
+-- rule would make most items unswappable and the ones that were swappable a lookup table.
+Vendor.SWAP_BAND = 0.35
+
+-- What `vendorId` will hand over in exchange for `item`: every ware on its shelf of about the same
+-- worth, minus the thing being traded in. The caller picks from the list, so the swap is a CHOICE and
+-- not a roll -- a random return would make this a slot machine, and the player already has a slot
+-- machine on the board in the shape of loot.
+--
+-- Locked stock is excluded outright, unlike the Buy list which shows it greyed: a shelf shows what you
+-- are working toward, but a service that dangles a reward the fence cannot actually hand over is just
+-- a worse error message. Takes the same bare `questsDone` / `recipes` / `unlocked` / `levels` the stock
+-- call does, for the same player-free reason.
+function Vendor.swapOffers(vendorId, item, questsDone, recipes, unlocked, levels)
+    local def = Vendor.defs[vendorId]
+    if not (def and def.service and def.service.id == "fence") then return {} end
+    local worth = item and item.price and Vendor.priceFor(item.price, item.level or 0)
+    if not worth or Item.isBound(item) then return {} end
+
+    local lo, hi = worth * (1 - Vendor.SWAP_BAND), worth * (1 + Vendor.SWAP_BAND)
+    local out = {}
+    for _, entry in ipairs(Vendor.stock(vendorId, questsDone, recipes, unlocked, levels)) do
+        if not entry.locked and entry.id ~= item.id
+            and entry.price and entry.price >= lo and entry.price <= hi then
+            out[#out + 1] = entry
+        end
+    end
+    return out
+end
+
 -- What a vendor pays to buy `item` back: half its shelf price at the item's own level, rounded down --
 -- so a refined consumable sells for more than a base one, matching what it cost. An item with no
 -- `price` was never for sale and so can't be sold (returns 0) -- the Party screen refuses those

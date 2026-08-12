@@ -103,25 +103,32 @@ return {
     },
 
     {
-        name = "syncLevels is idempotent and stops advancing at the cap",
+        name = "resolving levels is idempotent and stops advancing at the cap",
         fn = function()
+            -- Was `syncLevels`, which levelled the whole roster off the player's global prestige. That
+            -- function is gone: a body earns its own level now (models/experience.lua), so the same two
+            -- properties are asserted against the bank rather than against prestige.
+            local Experience = require("models.experience")
             local p = Player.new()
-            p.prestige = 10
-            local first = Player.syncLevels(p)
-            assert(#first > 0, "the roster should advance the first time")
-            assert(#Player.syncLevels(p) == 0, "a re-sync at the same prestige advances nobody")
+            for _, char in ipairs(p.roster) do Experience.award(char, Experience.totalFor(10)) end
 
-            -- Push prestige far past what the cap can absorb: everyone lands ON the cap, and further
-            -- prestige (a New Game+ run, say) moves nobody.
-            p.prestige = Growth.PRESTIGE_PER_LEVEL * Growth.LEVEL_CAP * 2
-            Player.syncLevels(p)
+            local first = Player.resolveLevels(p)
+            assert(#first > 0, "the roster should advance the first time")
+            assert(#Player.resolveLevels(p) == 0, "a re-resolve on the same bank advances nobody")
+
+            -- Bank far past what the cap can absorb: everyone lands ON the cap, and further earnings
+            -- (a New Game+ run, say -- experience carries) move nobody.
+            for _, char in ipairs(p.roster) do
+                Experience.award(char, Experience.totalFor(Growth.LEVEL_CAP) * 4)
+            end
+            Player.resolveLevels(p)
             for _, char in ipairs(p.roster) do
                 assert(char.level == Growth.LEVEL_CAP,
                     char.name .. " should sit exactly on the cap, not past it")
             end
 
-            p.prestige = p.prestige * 2
-            assert(#Player.syncLevels(p) == 0, "prestige beyond the cap advances no one")
+            for _, char in ipairs(p.roster) do Experience.award(char, 100000) end
+            assert(#Player.resolveLevels(p) == 0, "experience beyond the cap advances no one")
         end,
     },
 }

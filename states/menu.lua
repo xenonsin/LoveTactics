@@ -230,12 +230,33 @@ local function buildMenu()
         end,
     }
 
-    -- Neither Descent nor Draft is offered on the shipped menu. Both used to be city cards -- the Gate on
-    -- the Quest Board's slot, the Draft Yard in the bottom row -- and neither is campaign content, so the
-    -- city was the wrong door for them; but the main menu is what a player meets first, and it is for
-    -- starting or resuming the campaign rather than for picking between three modes. They live in the
-    -- debug column below (buildDebugMenu) while they are still being built, which is also where a
-    -- shipping build stops offering them at all.
+    -- THE DESCENT IS THE POST-GAME, and this is the door. It appears once the campaign has actually been
+    -- beaten (Player.hasFinishedCampaign, banked at the `endsCampaign` seam rather than at New Game+),
+    -- and not before.
+    --
+    -- That placement is the whole point rather than a convenience. A descent musters its own company off
+    -- a tiered shelf, banks nothing back, and levels on its own per-character XP -- so it is not campaign
+    -- progression and the city was rightly the wrong door for it. But "not campaign progression" is not
+    -- the same as "not for players": an endless, self-contained run that strips you back to nothing is
+    -- exactly what a finished campaign should open onto, and while it sat in the debug column the ending
+    -- had nowhere to land. The gate also means a first-time player still meets a menu that only knows how
+    -- to start or resume the campaign, which is what the reasoning below was protecting.
+    --
+    -- Draft stays in the debug column: it is a separate competitive mode rather than the far end of this
+    -- one, so finishing the campaign is not what earns it.
+    if Player.hasSave() and Player.hasFinishedCampaign() then
+        items[#items + 1] = {
+            label = "The Descent",
+            action = function()
+                Player.start()
+                State.switch(require("states.descent"))
+            end,
+        }
+    end
+
+    -- The main menu is otherwise what a player meets first, and it is for starting or resuming the
+    -- campaign rather than for picking between modes. Anything still being built lives in the debug
+    -- column below (buildDebugMenu), which is also where a shipping build stops offering it at all.
     items[#items + 1] = {
         label = "Settings",
         action = function() State.switch(require("states.settings"), menu) end,

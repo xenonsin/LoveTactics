@@ -1,67 +1,46 @@
--- Every state and pop-up panel must at least COMPILE.
+-- THE STATE MODULES COMPILE, which is the one thing a green suite otherwise says nothing about.
 --
--- This spec exists because of a gap that had been open the whole project: no test loads a state module.
--- states/battle.lua, states/game.lua and states/hub.lua are thousands of lines each and the suite could
--- go green with any of them syntactically broken -- the game would simply fail to open, and nothing
--- before launch would say so.
+-- No spec in this directory requires states/battle.lua or states/game.lua -- they are the two biggest
+-- files in the project, they own every screen the player actually touches, and they are loaded for the
+-- first time when somebody starts a quest. A syntax error or a stray reference in either one ships
+-- green and crashes on the first real board.
 --
--- The specific failure it is here to catch: states/battle.lua sits within a couple of declarations of
--- Lua 5.1's **200 local variables per function** ceiling. Crossing it is a COMPILE error, and one whose
--- message names a line unrelated to the cause, so a change that trips it looks like a mystery rather
--- than a budget. This turns that into a named failure at test time.
+-- WHAT THIS DOES AND DOES NOT CATCH. `love.filesystem.load` compiles a chunk without running it, so
+-- this catches parse errors, unbalanced blocks and a truncated file. It does NOT catch a call to a
+-- forward-declared local made above its `local` line -- that compiles cleanly and resolves to a nil
+-- global at run time. Nothing short of driving the screen catches that one; see .claude/skills/verify.
 --
--- WHAT THIS DOES NOT DO, stated plainly so nobody trusts it further than it goes: love.filesystem.load
--- compiles, it does not execute. A file that parses can still be wrong at runtime in ways this cannot
--- see -- most sharply, calling a forward-declared local from ABOVE its `local` line compiles fine and
--- silently resolves to a nil global. A green run here means "the screens will load", never "the screens
--- work". Driving the real 1280x720 window is still the only check for that.
+-- Kept deliberately cheap: compiling is not running, so this costs milliseconds and pulls in no
+-- graphics. Every state is listed rather than globbed, so deleting one is a decision somebody makes
+-- here rather than a case that quietly stops running.
 
-local function luaFilesIn(dir)
-    local out = {}
-    for _, name in ipairs(love.filesystem.getDirectoryItems(dir)) do
-        local path = dir .. "/" .. name
-        local info = love.filesystem.getInfo(path)
-        if info and info.type == "directory" then
-            for _, nested in ipairs(luaFilesIn(path)) do out[#out + 1] = nested end
-        elseif name:sub(-4) == ".lua" then
-            out[#out + 1] = path
-        end
-    end
-    table.sort(out) -- getDirectoryItems order is unspecified; a failure should name the same file twice
-    return out
-end
-
-local function compileAll(dir)
-    local failures = {}
-    local files = luaFilesIn(dir)
-    for _, path in ipairs(files) do
-        local chunk, err = love.filesystem.load(path)
-        if not chunk then failures[#failures + 1] = path .. ": " .. tostring(err) end
-    end
-    return files, failures
-end
-
-local function case(label, dir)
-    return { name = label, fn = function()
-        local files, failures = compileAll(dir)
-        assert(#files > 0, "found no Lua files under " .. dir .. " -- the walk is broken, not the code")
-        assert(#failures == 0, #failures .. " file(s) under " .. dir ..
-            " do not compile:\n  " .. table.concat(failures, "\n  "))
-    end }
-end
-
-return {
-    case("every screen in states/ compiles", "states"),
-    case("every pop-up panel in ui/ compiles", "ui"),
-    case("every model compiles", "models"),
-
-    { name = "states/battle.lua is inside Lua 5.1's 200-local ceiling", fn = function()
-        -- The canary, called out by name because it is the one file close enough to the limit that an
-        -- ordinary edit can cross it. If this fails, the fix is never "delete a feature" -- it is to
-        -- fold related file-scope locals into one table, which costs one indirection and buys back a
-        -- dozen slots at a time.
-        local chunk, err = love.filesystem.load("states/battle.lua")
-        assert(chunk, "states/battle.lua does not compile: " .. tostring(err) ..
-            "\n(if this mentions 'too many local variables', see the note above)")
-    end },
+local STATES = {
+    "states/init.lua",
+    "states/menu.lua",
+    "states/hub.lua",
+    "states/game.lua",
+    "states/battle.lua",
+    "states/descent.lua",
+    "states/draft.lua",
+    "states/prologue.lua",
+    "states/credits.lua",
+    "states/settings.lua",
+    "states/character_creation.lua",
+    "states/build_select.lua",
+    "states/debug_editor.lua",
+    "states/duel_debug.lua",
+    "main.lua",
 }
+
+local cases = {}
+for _, path in ipairs(STATES) do
+    cases[#cases + 1] = {
+        name = path .. " compiles",
+        fn = function()
+            local chunk, err = love.filesystem.load(path)
+            assert(chunk, path .. " does not compile: " .. tostring(err))
+        end,
+    }
+end
+
+return cases

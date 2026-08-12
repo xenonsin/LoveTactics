@@ -154,7 +154,7 @@ function Overworld.generate(params)
     end
 
     self:carveMaze()
-    self:braid(params.braid or 0.55)
+    self:braid(params.braid or Overworld.BRAID)
     local riverSpec = params.riverCount
     if riverSpec == nil then riverSpec = biomeDef.rivers end
     self:placeRivers(resolveCount(riverSpec, self.rng))
@@ -328,6 +328,27 @@ end
 
 -- Add loops: for each node that is a dead-end (<=1 open passage), sometimes
 -- carve a corridor through to a neighbouring node.
+--
+-- BRAIDING DESTROYS EXACTLY THE GEOMETRY THE OFFER RULE NEEDS, which is why the rate is low and has to
+-- stay low. A dead end is what a boon sits on and a cut vertex is what a guard stands on, so every
+-- braid is one fewer place the board can make "the fight in the corridor to the reward" (guardBoons).
+-- Measured with `. board-report`, at the old 0.55: two dead ends a board against four and a half
+-- caches, 33% of boons gateable at all, and 30% actually guarded against a target of 80%. The pairing
+-- pass was achieving 92% of what the geometry allowed and the geometry allowed almost nothing -- so
+-- the knob was misread for a whole pass as a shortage of FIGHTS, when three loose fights a board were
+-- standing around with nowhere to be seated.
+--
+-- The slog this rate exists to prevent is handled by pruneDeadStubs instead, and better: braiding
+-- prevents spur-and-return walking by removing spurs, while the prune removes only the spurs with
+-- NOTHING AT THE END -- which is the actual complaint. Every surviving dead end is now a spur that
+-- pays. Lowering the rate also makes the board slightly tighter rather than larger, since a braid
+-- carves wall into path and deriveDims fixes the footprint either way.
+--
+-- At 0.20: 3.6 dead ends, 73% gateable, 60% guarded, and material income UP (12.5 -> 14.1 craft stock
+-- a board) because a guarded cache pays a bonus and far more of them are now guarded. Do not raise
+-- this without re-running the report.
+Overworld.BRAID = 0.20
+
 function Overworld:braid(prob)
     local S = self.spacing
     local dirs = { { S, 0 }, { -S, 0 }, { 0, S }, { 0, -S } }
@@ -847,6 +868,24 @@ local GUARDABLE_KINDS = { treasure = true, relic_cache = true }
 -- PRICE and not a tax. Capped by the same ceilings the detour scale honours (see placeCaches).
 local GUARD_CRAFT_BONUS, GUARD_HOUSE_BONUS = 1, 1
 
+-- The board's difficulty arc, as two rules. Applied in placeEncounters' fill loop, and RESPECTED again
+-- by guardBoons below, which is free to pick a seated fight up and put it down somewhere else.
+--
+-- ELITE_SHARE is to rank what `combatShare` is to kind: a ceiling the pool's weights cannot argue with.
+-- It exists because a blueprint weight is authored per encounter with no view of the others, so one
+-- entry written as "grows with prestige" silently became 76% of every board's fights.
+--
+-- ELITE_MIN_DEPTH is the arc itself: an elite is a thing you meet once the road has gone on a while.
+-- Half is deliberately not two-thirds -- the deep half of a board is only two or three stops, and a
+-- rule that fires on one tile is a coin flip rather than a curve.
+--
+-- Declared HERE, above the first function that reads them, and not beside GUARANTEE where the rest of
+-- the placement knobs live. A file-local declared further down would be invisible to guardBoons and
+-- would resolve to a nil global instead -- which compiles, loads, and only fails on the board where
+-- the branch is finally taken.
+local ELITE_SHARE = 0.25
+local ELITE_MIN_DEPTH = 0.5
+
 -- Stand a fight in front of the reward, so a spur is one offer made of two tiles rather than a fight OR
 -- a payout. This is the tile-level shape of the whole overworld decision: the objective is the only
 -- fight the player MUST take, every other fight is optional, and an optional fight should be attached to
@@ -868,6 +907,11 @@ function Overworld:guardBoons(params)
     if params and params.ascent then return end
     if not self.spineKeys then return end
     local spineDist = self:spineDistances()
+    -- Depth from the start, on the same scale placeEncounters seated by and assignEncounterTiers will
+    -- report with, so all three passes agree about where the deep half of the road begins.
+    local startDist = self:bfsDistances(self:startCell())
+    local farthest = 1
+    for _, d in pairs(startDist) do if d > farthest then farthest = d end end
 
     local function shuffle(t)
         for i = #t, 2, -1 do
@@ -980,14 +1024,37 @@ function Overworld:guardBoons(params)
             else
                 -- Walk the shuffled supply for a fight that is not already guarding something, and move
                 -- it here. Moving rather than minting is what keeps the encounter count honest.
+                --
+                -- RANK IS RESPECTED WHILE MOVING, or this pass quietly undoes the board's arc: an elite
+                -- seated on the deep half by placeEncounters' depth rule can be picked up here and set
+                -- down beside a boon on the doorstep, which is the exact placement that rule exists to
+                -- prevent. So a shallow approach takes an ORDINARY fight if the loose supply has one,
+                -- and falls back to whatever is left rather than leaving the boon unguarded -- a guard
+                -- of the wrong rank is a smaller failure than a reward with nothing in front of it, and
+                -- assignEncounterTiers runs after this either way, so the pips stay honest about
+                -- wherever the fight actually ended up.
+                local shallow = ((startDist[cellKey(app)] or 0) / farthest) < ELITE_MIN_DEPTH
+                local src
+                for j = next_, #guards do
+                    local g = guards[j]
+                    if g.encounter and not g.guards
+                        and not (shallow and g.encounter.kind == "elite") then
+                        src = g
+                        break
+                    end
+                end
+                if not src then -- nothing of the right rank: take the first loose fight of any
+                    while next_ <= #guards and (guards[next_].guards or not guards[next_].encounter) do
+                        next_ = next_ + 1
+                    end
+                    src = guards[next_]
+                end
+                if not src then break end -- no loose fights left; the rest of the boons stay in the open
+                app.encounter = src.encounter
+                src.encounter = nil
                 while next_ <= #guards and (guards[next_].guards or not guards[next_].encounter) do
                     next_ = next_ + 1
                 end
-                local src = guards[next_]
-                if not src then break end -- no loose fights left; the rest of the boons stay in the open
-                next_ = next_ + 1
-                app.encounter = src.encounter
-                src.encounter = nil
                 app.guards = { x = boon.x, y = boon.y }
                 payGuarded(boon)
                 placed = placed + 1
@@ -1012,6 +1079,7 @@ end
 local GUARANTEE = {
     rest = { per = 6, spine = 1 }, -- one rest per 6 stops, on or beside the road
 }
+
 
 -- Resolve a guaranteed KIND to a placeable { kind, id, name }.
 --
@@ -1261,6 +1329,28 @@ function Overworld:placeEncounters(params)
     local combatCap = math.floor(target * (params.combatShare or 0.6))
     local combatPlaced = 0
     for _, p in ipairs(placed) do if isFight(p.encounter.kind) then combatPlaced = combatPlaced + 1 end end
+
+    -- THE BOARD'S ARC LIVES HERE, not in assignEncounterTiers. That pass runs after every placement and
+    -- only stamps a number on what is already down, so for as long as elites were seated uniformly the
+    -- "difficulty ramp" was a label on a flat board -- an elite was as likely on the doorstep as at the
+    -- gate, and measured mean tier by fifth ran 2.66 / 2.62 / 2.50 / 2.70 / 2.85, which is noise.
+    --
+    -- Two rules, both expressed as a DEMOTION so the encounter count and the quest's own pool are
+    -- untouched (the same move the spine and combat-share rules already make):
+    --   depth  an elite on the near half of the road is re-seated as an ordinary fight. The far half is
+    --          measured from the START rather than off the spine, because this is about how deep the
+    --          player has walked, not how far they strayed -- caches already own the other axis.
+    --   share  elites are capped as a fraction of the stops, so no pool weight can make them the
+    --          ordinary case again however a blueprint is authored (see encounter_elite.lua).
+    local eliteCap = math.floor(target * (params.eliteShare or ELITE_SHARE))
+    local elitePlaced = 0
+    for _, p in ipairs(placed) do if p.encounter.kind == "elite" then elitePlaced = elitePlaced + 1 end end
+    -- Depth is normalised against the far corner, the same denominator assignEncounterTiers uses, so
+    -- "the deep half" means the same thing to the seating rule and to the pips that report it.
+    local startDist = self:bfsDistances(self:startCell())
+    local farthest = 1
+    for _, d in pairs(startDist) do if d > farthest then farthest = d end end
+
     for i = next_, #cands do
         if #placed >= target then break end
         local c = cands[i]
@@ -1276,6 +1366,15 @@ function Overworld:placeEncounters(params)
             if isFight(pick.kind) and (onSpine or combatPlaced >= combatCap) then
                 pick = self:pickNonCombat(pool) or pick
             end
+            -- Then the rank rule, after the kind rule: a stop demoted to texture above is no longer a
+            -- fight and must not spend the elite budget on its way past.
+            if pick.kind == "elite" then
+                local depth = (startDist[cellKey(c)] or 0) / farthest
+                if depth < ELITE_MIN_DEPTH or elitePlaced >= eliteCap then
+                    pick = self:pickOrdinaryCombat(pool) or pick
+                end
+            end
+            if pick.kind == "elite" then elitePlaced = elitePlaced + 1 end
             -- NOTE: steering spur ends toward rewards was tried here and removed. It reads well -- a
             -- find belongs at the end of a corridor -- but placeCaches already claims the dead ends one
             -- pass earlier, so the only thing left for the steer to do was convert fights into boons. On
@@ -1297,6 +1396,18 @@ function Overworld:pickNonCombat(pool)
     local sub = {}
     for _, e in ipairs(pool) do
         if e.kind ~= "combat" and e.kind ~= "elite" then sub[#sub + 1] = e end
+    end
+    if #sub == 0 then return nil end
+    return self:pickEncounter(sub)
+end
+
+-- Weighted pick restricted to ORDINARY fights, or nil if the pool has none. The demotion partner to
+-- pickNonCombat: an elite rolled onto shallow ground is re-seated as a plain fight rather than dropped,
+-- so the board keeps the fight and loses only its rank.
+function Overworld:pickOrdinaryCombat(pool)
+    local sub = {}
+    for _, e in ipairs(pool) do
+        if e.kind == "combat" then sub[#sub + 1] = e end
     end
     if #sub == 0 then return nil end
     return self:pickEncounter(sub)
@@ -1344,11 +1455,28 @@ function Overworld:pruneDeadStubs()
     end
 end
 
+-- How often a fight reads one pip above what its depth and rank earn it. Low on purpose: the spike is
+-- meant to stop the arc being perfectly predictable, and at the old 0.25 it was as strong as the depth
+-- term it was decorating -- a third of the board's fights carried a tier their position did not explain,
+-- which is not a surprise, it is a fog.
+local TIER_SPIKE = 0.12
+
 -- Difficulty tell for the fog: every combat/elite encounter gets a `tier` (1..3) the renderer shows as
 -- pips so the player can read a fight's danger BEFORE committing to the tile (reveal-then-choose), and
 -- #5 scales its reward by the same tier. Deeper on the board reads tougher. Drawn from self.rng LAST --
 -- after every placement pass -- so it never shifts the seeded geometry, yet stays deterministic. Walked
 -- in a stable grid order so the rng draws reproduce. Non-combat stops (treasure/rest/event) get no tier.
+--
+-- DEPTH IS THE WHOLE SCALE NOW, and rank rides on top of it. It used to be the other way round: `base`
+-- was 3 for an elite and 1 for a fight, so an elite clamped to 3 wherever it stood and an ordinary
+-- fight could only ever read 1 or 2. Rank was the tier and depth was a rounding error on it. That was
+-- survivable only while elites were rare; once one blueprint's weight made them 76% of all fights the
+-- board reported a flat 2.6 everywhere, which is the same as reporting nothing.
+--
+-- Reading depth in THIRDS gives all three pips to position, so a fight's mark says where on the road it
+-- stands, and an elite is that plus one -- the deep-half seating rule (ELITE_MIN_DEPTH) means an elite
+-- therefore lands on 3 nearly always, which is what an elite should be. Same denominator as the seating
+-- rule, so the pips and the placement agree about where the deep half starts.
 function Overworld:assignEncounterTiers()
     local dist = self:bfsDistances(self:startCell())
     local maxD = 1
@@ -1357,10 +1485,12 @@ function Overworld:assignEncounterTiers()
         for x = 1, self.cols do
             local e = self.cells[y][x].encounter
             if e and (e.kind == "combat" or e.kind == "elite") then
-                local base = (e.kind == "elite") and 3 or 1
                 local depth = (dist[cellKey(self.cells[y][x])] or 0) / maxD -- 0..1
-                local t = base + (depth >= 0.66 and 1 or 0)
-                if self.rng:random() < 0.25 then t = t + 1 end -- the occasional spike
+                -- min(2, ...) rather than a clamp after the fact: depth is exactly 1.0 at the far
+                -- corner, and floor(1.0 * 3) is 3, which would put the whole last tile in a fourth band.
+                local t = 1 + math.min(2, math.floor(depth * 3))
+                if e.kind == "elite" then t = t + 1 end
+                if self.rng:random() < TIER_SPIKE then t = t + 1 end
                 e.tier = math.max(1, math.min(3, t))
             end
         end
