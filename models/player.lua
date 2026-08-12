@@ -877,6 +877,21 @@ function Player.newGamePlus(player)
     -- stash's own marks carry, along with the stash.
     player.newStock = {}
 
+    -- THE CALENDAR STARTS OVER, and without this New Game+ would be a campaign zero days long: the
+    -- clock is spent, `Calendar.isOver` is already true, and the player would arrive at a hub that
+    -- offers one expedition -- the finale -- against a board full of quests they can never reach.
+    --
+    -- It resets rather than carrying, unlike almost everything else here, because a deadline is not a
+    -- possession. What New Game+ carries is the company and what it has learned; what it gives back is
+    -- the time to use it, and the campaign is worth replaying precisely because forty days was never
+    -- enough to see all of it.
+    --
+    -- `campaignsFinished` is deliberately NOT reset (see Player.finishCampaign): the post-game door it
+    -- opens is a thing the player did, and doing it again cannot un-do it.
+    player.day = 1
+    -- A supper is bought for one expedition. The last run's is not owed to the first day of the next.
+    require("models.meal").clear(player)
+
     Player.save()
     return player
 end

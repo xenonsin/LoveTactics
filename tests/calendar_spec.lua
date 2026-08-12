@@ -137,6 +137,33 @@ return {
     },
 
     {
+        name = "New Game+ gives the time back, because a deadline is not a possession",
+        fn = function()
+            local Player = require("models.player")
+            local p = { roster = {}, stash = {}, gold = 0, completedQuests = { a = true },
+                        day = Calendar.DAYS + 1, meal = "meal_hunters_stew" }
+            assert(Calendar.isOver(p), "the fixture is a finished campaign")
+
+            Player.finishCampaign(p)
+            Player.newGamePlus(p)
+
+            -- WITHOUT THIS, NEW GAME+ IS A CAMPAIGN ZERO DAYS LONG: the clock is spent, the deadline
+            -- has already passed, and the player arrives at a hub offering one expedition -- the
+            -- finale -- against a board full of quests they can never reach.
+            assert(Calendar.day(p) == 1, "the calendar starts over")
+            assert(Calendar.remaining(p) == Calendar.DAYS, "with every expedition back on the table")
+            assert(not Calendar.isOver(p) and not Calendar.isFinalDay(p))
+
+            -- A supper is bought for one expedition; the last run's is not owed to the first day of
+            -- the next.
+            assert(p.meal == nil, "the meal does not carry across a new campaign")
+
+            -- And what the player DID still stands. The post-game door is not taken back.
+            assert(Player.hasFinishedCampaign(p),
+                "beating the game once cannot be undone by playing it again")
+        end,
+    },
+    {
         name = "the day survives a save round trip, and an older save opens on the first morning",
         fn = function()
             local p = { roster = { Character.instantiate("character_knight") }, stash = {},
