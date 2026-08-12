@@ -834,6 +834,26 @@ function Overworld:placeCaches(params)
         return lo + math.floor(ratio * (hi - lo) + 0.5)
     end
 
+    -- WHOSE STOCK THE CACHES CARRY. One house, or several, and the several is the interesting case.
+    --
+    -- `houseMaterial` was a single id -- the sponsoring house of the one quest being run. A day can now
+    -- carry requests from several houses at once (models/request.lua), and this is where that becomes a
+    -- decision rather than a list: the caches are DEALT ROUND-ROBIN across the houses asking, over the
+    -- caches the board already has.
+    --
+    -- The board does not grow to fit them. That is the whole tension. Three houses against four or five
+    -- caches means no single trip fills every quota, so "which spur do I still have the health for" is
+    -- a real question with several partial answers -- which is what the deadline needed and what one
+    -- house per board could never produce.
+    --
+    -- Dealt in cache order, and the caches are already sorted by detour depth (dead ends first, then
+    -- off-spine), so the houses take turns at the near ones and the far ones alike rather than one
+    -- house owning the easy end of the board.
+    local houses = params.houseMaterials
+    if not houses or #houses == 0 then
+        houses = params.houseMaterial and { params.houseMaterial } or {}
+    end
+
     local grades = Material.craftGrades()
     for i = 1, math.min(count, #cands) do
         local c = cands[i]
@@ -841,11 +861,11 @@ function Overworld:placeCaches(params)
 
         local materials = {}
         materials[grades[scaled(ratio, 1, #grades)]] = scaled(ratio, CACHE_CRAFT_MIN, CACHE_CRAFT_MAX)
-        if params.houseMaterial then
-            materials[params.houseMaterial] = (materials[params.houseMaterial] or 0)
-                + scaled(ratio, CACHE_HOUSE_MIN, CACHE_HOUSE_MAX)
+        local house = houses[((i - 1) % math.max(1, #houses)) + 1]
+        if house then
+            materials[house] = (materials[house] or 0) + scaled(ratio, CACHE_HOUSE_MIN, CACHE_HOUSE_MAX)
         end
-        c.cache = { materials = materials }
+        c.cache = { materials = materials, house = house }
     end
 end
 
@@ -986,9 +1006,12 @@ function Overworld:guardBoons(params)
                 break
             end
         end
-        if params and params.houseMaterial and c.cache.materials[params.houseMaterial] then
-            c.cache.materials[params.houseMaterial] =
-                math.min(CACHE_HOUSE_MAX, c.cache.materials[params.houseMaterial] + GUARD_HOUSE_BONUS)
+        -- Whichever house's stock this cache carries, read off the cache rather than off `params`.
+        -- With several houses dealt across a board (placeCaches) there is no single "the" house here,
+        -- and asking params for one would have paid the bonus to a cache that does not hold it.
+        local house = c.cache.house
+        if house and c.cache.materials[house] then
+            c.cache.materials[house] = math.min(CACHE_HOUSE_MAX, c.cache.materials[house] + GUARD_HOUSE_BONUS)
         end
     end
 

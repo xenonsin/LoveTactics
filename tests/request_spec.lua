@@ -107,6 +107,123 @@ return {
             assert(#reward.received == 0, "so there is nothing for the panel to announce")
         end,
     },
+    -- -----------------------------------------------------------------------
+    -- Several requests, one board, partial completion
+    -- -----------------------------------------------------------------------
+    {
+        name = "the day's postings are fixed by the day, so a player can plan around them",
+        fn = function()
+            local p = company()
+            local a = Request.offer(p, 12)
+            local b = Request.offer(p, 12)
+            assert(#a == 7, "one posting per house that holds stock, got " .. #a)
+            for i, req in ipairs(a) do
+                assert(req.id == b[i].id and req.quota == b[i].quota,
+                    "the same day must post the same work -- rolling it fresh on every open makes the "
+                    .. "offer a slot machine and 'I will come back for that tomorrow' meaningless")
+                assert(Request.KINDS[req.kind], req.house .. " asks in a shape nothing can build")
+            end
+            -- A different day is different work, and later work is heavier.
+            assert(Request.offer(p, 38)[1].quota > a[1].quota, "a late request is a real trip")
+        end,
+    },
+    {
+        name = "a house asks in the shape its sin implies",
+        fn = function()
+            -- Not decoration: the shape is what the board has to carry, so a house whose kind changes
+            -- changes what its day looks like. Stated as a claim rather than derived, and checked so a
+            -- new house cannot be added without somebody deciding what it wants.
+            for _, house in ipairs(Request.houses()) do
+                local kind = Request.KIND_BY_HOUSE[house.id]
+                assert(kind and Request.KINDS[kind],
+                    house.id .. " has no request shape -- what does this house actually want?")
+            end
+            assert(Request.KIND_BY_HOUSE.bastion == "rescue", "sloth guards: people brought out alive")
+            assert(Request.KIND_BY_HOUSE.colosseum == "fell", "wrath: a named thing, dead")
+        end,
+    },
+    {
+        name = "an expedition is assembled from what was accepted, and the board does not grow for it",
+        fn = function()
+            local p = company()
+            local offer = Request.offer(p, 10)
+            local byHouse = {}
+            for _, r in ipairs(offer) do byHouse[r.house] = r end
+
+            local accepted = { byHouse.bastion, byHouse.alchemist, byHouse.colosseum }
+            local quest = Request.expedition(accepted)
+            assert(quest and quest.request, "the day is one expedition, flagged as a request")
+            assert(#quest.requests == 3, "carrying all three, so the payout can ask each one")
+
+            -- EVERY HOUSE ASKING GETS STOCK DEALT ACROSS THE CACHES THE BOARD ALREADY HAS. No cache
+            -- count is passed, which is the point: three houses share four or five caches rather than
+            -- the board growing to give each of them their own.
+            assert(#quest.map.houseMaterials == 3, "three houses' stock on one board")
+            assert(quest.map.cacheCount == nil,
+                "the board must NOT be told to grow -- sharing the caches is the whole tension")
+
+            -- The kinds that need content on the board seeded it; harvest needed none.
+            local always = quest.map.encounters.always
+            assert(#always >= 2, "rescue and fell each put something on the board, got " .. #always)
+        end,
+    },
+    {
+        name = "each request is paid on its own, so two of three is a real outcome",
+        fn = function()
+            local p = company()
+            local offer = Request.offer(p, 1)
+            local byHouse = {}
+            for _, r in ipairs(offer) do byHouse[r.house] = r end
+            local quest = Request.expedition({ byHouse.alchemist, byHouse.arcanum, byHouse.bastion })
+
+            -- The run brought back the Crucible's quota and none of the Arcanum's, and saved nobody.
+            local run = { haul = { [byHouse.alchemist.material] = byHouse.alchemist.quota } }
+            local met, missed, gold = Request.settle(p, quest, run)
+
+            assert(#met == 1 and met[1].house == "alchemist", "the filled one pays")
+            assert(#missed == 2, "and the other two simply do not")
+            assert(gold == byHouse.alchemist.gold, "paid per request, never per trip")
+            assert(p.gold == gold, "and that is all the coin the day handed over")
+        end,
+    },
+    {
+        name = "turning back early and clearing the board go through the same arithmetic",
+        fn = function()
+            -- THE PROPERTY PARTIAL COMPLETION RESTS ON. There is no "the expedition succeeded" flag
+            -- anywhere -- what was carried out is asked against each quota at the payout, so a player
+            -- who left at the fourth stop is not on a different path from one who cleared it.
+            local p = company()
+            local req -- a HARVEST request: the kind whose progress is a count of what came home
+            for _, r in ipairs(Request.offer(p, 1)) do
+                if r.kind == "harvest" then req = r break end
+            end
+            assert(req, "at least one house asks for stock")
+
+            assert(not Request.met({ haul = { [req.material] = req.quota - 1 } }, req),
+                "one short of the quota is not met")
+            assert(Request.met({ haul = { [req.material] = req.quota } }, req), "exactly the quota is")
+            assert(Request.met({ haul = { [req.material] = req.quota + 5 } }, req), "and more is too")
+            assert(not Request.met({}, req), "and a run that found nothing meets nothing")
+        end,
+    },
+    {
+        name = "three requests cannot all be filled by a board's caches without taking every one",
+        fn = function()
+            -- THE ARITHMETIC THE WHOLE DESIGN RESTS ON, checked rather than asserted in prose. A board
+            -- carries about four and a half caches (`. board-report`), each paying 1-3 of its house's
+            -- stock; three houses each wanting `quota` cannot all be satisfied unless the company takes
+            -- essentially everything, including the guarded spurs.
+            local CACHES, HOUSE_MAX = 4, 3 -- Overworld's CACHE_HOUSE_MAX at the deepest detour
+            local offer = Request.offer(company(), 1)
+            local quota = offer[1].quota
+            local perHouse = math.floor(CACHES / 3) * HOUSE_MAX -- best case, dealt round-robin
+            assert(perHouse < quota * 3,
+                "if three quotas fit comfortably on one board there is no decision to make")
+            assert(perHouse >= quota,
+                "...but one of them must be fillable, or accepting three is never worth doing")
+        end,
+    },
+
     {
         name = "foraging is worth less coin than the work the houses post",
         fn = function()

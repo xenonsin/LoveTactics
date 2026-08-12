@@ -53,6 +53,85 @@ Request.ID_PREFIX = "request_"
 -- re-pricing any quest downward fails there rather than quietly inverting this.
 Request.GOLD = 50
 
+-- ---------------------------------------------------------------------------
+-- What a house asks for
+-- ---------------------------------------------------------------------------
+--
+-- THE VOCABULARY, and it is deliberately small. A request has to be an OBJECTIVE THAT SHARES A BOARD:
+-- several of them are accepted for one expedition, so none of them may own the map, dictate its biome,
+-- or need a set-piece at the end of it. That rules out most of what an authored quest currently is and
+-- is exactly why the story beats have to change shape to fit -- a Bastion beat becomes "bring these
+-- people out", which can be one of three things you are doing today and can be half-done.
+--
+-- THE SHAPE FALLS OUT OF THE SIN, which is the project's own organising principle rather than a new
+-- one: what a house wants is a property of what that house IS (docs/story.md). Sloth guards, so the
+-- Bastion wants people brought out; envy covets, so the Crucible wants reagents; wrath is what is in
+-- front of you, so the Colosseum wants a named thing dead.
+--
+-- Each kind declares two things and nothing else:
+--   seed(board, req)   what it puts on the board, in the board's own terms
+--   progress(run, req) how much of it has been done, counted off the run
+--
+-- Anything a kind cannot express in those two is a set-piece rather than a request, and belongs on a
+-- day of its own -- which is where the seven generals stayed.
+Request.KINDS = {
+    -- GLUTTONY / ENVY / anything that wants stock out of the ground. The cheapest kind, because the
+    -- board already grows caches and already tags them by house: a harvest request is a QUOTA over
+    -- content that would have been there anyway.
+    harvest = {
+        label = "Harvest",
+        -- Nothing to seed. The caches exist; what the request adds is somebody counting.
+        seed = nil,
+        progress = function(run, req)
+            return (run.haul and run.haul[req.material]) or 0
+        end,
+    },
+
+    -- SLOTH. The Bastion's shape: people who have to be walked off the board alive. Seeds a real
+    -- encounter (data/encounters/encounter_survivors_extract.lua), which already exists because the
+    -- prologue's flight leg taught this exact lesson.
+    rescue = {
+        label = "Rescue",
+        seed = function(board, req)
+            for _ = 1, (req.quota or 1) do
+                board.always[#board.always + 1] = "encounter_survivors_extract"
+            end
+        end,
+        progress = function(run, req)
+            return (run.rescued and run.rescued[req.house]) or 0
+        end,
+    },
+
+    -- WRATH. A named thing, dead. The only kind that names a specific body, which is what keeps it
+    -- from being interchangeable with an ordinary fight on the way past.
+    fell = {
+        label = "Fell",
+        seed = function(board, req)
+            board.always[#board.always + 1] = req.encounter or "encounter_elite"
+        end,
+        progress = function(run, req)
+            return (run.felled and run.felled[req.encounter or "encounter_elite"]) or 0
+        end,
+    },
+}
+
+-- How many requests one expedition may carry. Three, because the tension is arithmetic: a board holds
+-- four or five caches (docs/overworld.md), so three houses asking cannot all be satisfied by a trip
+-- that does not take every one of them -- including the guarded ones at the ends of the deep spurs.
+--
+-- Two would nearly always be fillable and four would nearly never be; three is the count at which
+-- "which of these do I give up" is the ordinary outcome rather than the failure case.
+Request.MAX_ACCEPTED = 3
+
+-- Is `req` satisfied by what the run did? Read at the payout, and read the same way whether the player
+-- cleared the board or turned back at the fourth stop -- partial completion is the point, so this is
+-- asked per request rather than once for the expedition.
+function Request.met(run, req)
+    local kind = req and Request.KINDS[req.kind]
+    if not kind then return false end
+    return kind.progress(run or {}, req) >= (req.quota or 1)
+end
+
 function Request.isRequest(questId)
     return type(questId) == "string" and questId:sub(1, #Request.ID_PREFIX) == Request.ID_PREFIX
 end
@@ -91,7 +170,111 @@ function Request.biomeFor(vendorId)
     return ids[(n % #ids) + 1]
 end
 
+-- WHAT THE HOUSES HAVE POSTED TODAY. One per house that holds stock, of the shape that house asks in.
+--
+-- Deterministic from the DAY rather than rolled, which is what lets a player plan: the board you see on
+-- day 12 is the board day 12 has, so "I will come back for the Crucible's ore tomorrow" is a sentence
+-- that means something. Rolling it fresh on every open would make the offer a slot machine and the
+-- decision meaningless.
+--
+-- The quota rises with the calendar, gently. A day-1 request wants two of something and a day-38 one
+-- wants four -- enough that a late request is a real trip, not so much that it outgrows a board.
+function Request.offer(player, day)
+    day = day or 1
+    local out = {}
+    for _, house in ipairs(Request.houses()) do
+        local kind = Request.KIND_BY_HOUSE[house.id] or "harvest"
+        local quota = 2 + math.floor(day / 14)
+        out[#out + 1] = {
+            id = "req_" .. house.id .. "_" .. day,
+            house = house.id,
+            houseName = house.name,
+            kind = kind,
+            material = house.material,
+            quota = quota,
+            gold = Request.GOLD,
+            label = (Request.KINDS[kind] and Request.KINDS[kind].label or "Fetch")
+                .. " for " .. house.name,
+        }
+    end
+    return out
+end
+
+-- Which shape each house asks in. Derived from the sin, and stated as a table rather than computed
+-- because the mapping is an authorial claim about what these houses ARE, not an algorithm.
+--
+-- Four of seven are `harvest` today, which is honest rather than finished: harvest is the kind that
+-- needed no new board content, so it is where the unbuilt ones sit until their shape is authored. The
+-- three that differ are the three whose encounters already exist.
+Request.KIND_BY_HOUSE = {
+    bastion = "rescue",     -- sloth guards; what it wants is people brought out alive
+    colosseum = "fell",     -- wrath is what is in front of you: a named thing, dead
+    alchemist = "harvest",  -- envy covets: reagents, by the sackful
+    hunters_lodge = "fell", -- gluttony takes the quarry
+    arcanum = "harvest",    -- pride wants leyglass; `survey` is its real shape, unbuilt
+    undercroft = "harvest", -- greed wants it carried home; `retrieve` is its real shape, unbuilt
+    cathedral = "harvest",  -- lust holds ground; `hold` is its real shape, unbuilt
+}
+
 -- The synthesized quest descriptor for a day foraging on `vendorId`'s behalf.
+-- THE DAY'S EXPEDITION, assembled from the requests accepted for it.
+--
+-- This is the answer to "how is the quest populated": it is not authored and not picked, it is BUILT
+-- from what the player took on. Each accepted request seeds its own content onto one shared board
+-- (Request.KINDS), the caches are dealt round-robin across every house asking (Overworld:placeCaches),
+-- and the board does not grow to fit them -- which is what makes three requests a choice rather than a
+-- checklist.
+--
+-- The biome is the FIRST accepted request's house country, so the day has a place and the player chose
+-- it by choosing who to work for first. A destination picked separately, with the day's postings
+-- attached to it, is the fuller version of this and is not built.
+function Request.expedition(accepted, opts)
+    opts = opts or {}
+    if not accepted or #accepted == 0 then return nil end
+
+    local lead = accepted[1]
+    local board = { always = {} }
+    local houseMaterials = {}
+    for _, req in ipairs(accepted) do
+        local kind = Request.KINDS[req.kind]
+        if kind and kind.seed then kind.seed(board, req) end
+        if req.material then houseMaterials[#houseMaterials + 1] = req.material end
+    end
+
+    local names = {}
+    for _, req in ipairs(accepted) do names[#names + 1] = req.houseName or req.house end
+
+    return {
+        id = Request.ID_PREFIX .. "day",
+        name = #accepted == 1 and (accepted[1].label or "A Day's Work")
+            or ("Work for " .. table.concat(names, ", ")),
+        description = "What the houses have posted, and one road to do it on. Bring back what you can.",
+        difficulty = "Normal",
+        sponsor = lead.house,
+        rewardGold = 0, -- each request pays its own; the expedition itself pays nothing
+        request = true,
+        -- Carried onto the run so the payout can ask each one whether it was met.
+        requests = accepted,
+        map = {
+            biome = opts.biome or Request.biomeFor(lead.house),
+            keyCount = 0,
+            -- Every house asking gets its stock dealt across the caches the board already has.
+            houseMaterials = houseMaterials,
+            encounters = { always = board.always },
+            objective = {
+                name = "The Long Way Back",
+                composition = function(ctx)
+                    local list = {}
+                    for _ = 1, 2 + math.floor((ctx.day or 1) / 8) do
+                        list[#list + 1] = "character_bandit"
+                    end
+                    return list
+                end,
+            },
+        },
+    }
+end
+
 function Request.quest(vendorId, opts)
     opts = opts or {}
     local def = Vendor.get(vendorId)
@@ -138,6 +321,30 @@ end
 --
 -- `carried` is the run's cache haul, exactly as Quest.complete takes it -- the extraction rule is what
 -- makes it provisional until this point, and this is the point.
+-- PAID PER REQUEST, NOT PER TRIP, which is the whole of "complete them all or only a few".
+--
+-- `run` is what the expedition actually did -- the haul it carried, who it rescued, what it felled --
+-- and each accepted request is asked separately whether that met its quota. Two of three filled pays
+-- two of three, and the third is simply not paid; there is no all-or-nothing anywhere in here.
+--
+-- Read at the payout rather than tracked as a running "complete" flag, so turning back early and
+-- clearing the board go through the same arithmetic. The player who leaves at the fourth stop is not on
+-- a different code path from the one who cleared it; they just carried less.
+function Request.settle(player, quest, run)
+    local Player = require("models.player")
+    local met, missed, gold = {}, {}, 0
+    for _, req in ipairs((quest and quest.requests) or {}) do
+        if Request.met(run, req) then
+            met[#met + 1] = req
+            gold = gold + (req.gold or Request.GOLD)
+        else
+            missed[#missed + 1] = req
+        end
+    end
+    if gold > 0 then Player.addGold(player, gold) end
+    return met, missed, gold
+end
+
 function Request.payout(player, quest, carried, day, days)
     local Player = require("models.player")
     local gold = (quest and quest.rewardGold) or Request.GOLD
