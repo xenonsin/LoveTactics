@@ -83,8 +83,12 @@ return {
             local target = endings[1]
 
             local player = Player.new()
-            player.prestige = 20
-            -- Clear its gate: every prerequisite done, so the quest is offered rather than locked.
+            -- Clear its gate. For the finale that is the CALENDAR, not a set of keys: he arrives on the
+            -- last day whichever generals are still alive (models/calendar.lua). Any other
+            -- `endsCampaign` quest still clears its prerequisites the old way.
+            if target.def.finale then
+                player.day = require("models.calendar").DAYS
+            end
             for _, questId in ipairs(target.def.requiredQuests or {}) do
                 player.completedQuests[questId] = true
             end

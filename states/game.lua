@@ -544,7 +544,11 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
 
     -- Dynamic encounter selection: build the eligible weighted pool for this
     -- player's prestige + the quest's biome, plus any guaranteed "always" picks.
-    local ctx = { day = game.day, biome = mp.biome, quest = quest }
+    -- `generalsStanding` rides on the ctx every composition function reads, so the finale can size
+    -- itself by who is left alive without the state learning which quest is the finale
+    -- (models/calendar.lua). Nil-safe everywhere else: no other blueprint asks for it.
+    local ctx = { day = game.day, biome = mp.biome, quest = quest,
+        generalsStanding = Calendar.generalsStanding(player) }
     -- A guaranteed encounter is either a bare id string or a table carrying a per-placement payload:
     -- `loot` for a treasure (the exact kit a chest hands over) or `conversation` for an `event` (which
     -- "Choose..." scene this stop plays). The payload rides onto the placed cell in
@@ -990,6 +994,9 @@ function game:openEncounter(cell)
             -- time `outro` runs the target of an `assassinate` is dead.
             opening = kind == "objective" and mp.objective and mp.objective.opening or nil,
             day = game.day,
+            -- Who is still standing when the last door opens; read only by the finale's composition
+            -- (data/quests/quest_the_gate_below.lua) and nil-safe everywhere else.
+            generalsStanding = Calendar.generalsStanding(game.player),
             -- What this run stands to lose here, named on the defeat panel (ui/panels/battle_summary).
             -- Read at launch rather than at the loss, because by then the rollback has already put it
             -- back and there would be nothing left to count.
@@ -1282,6 +1289,10 @@ function game:openEncounter(cell)
                 ground = game.grid and game.grid.groundAt and game.grid:groundAt(cell.x, cell.y) or nil,
                 quest = game.quest,
                 day = game.day,
+                -- Who is still standing when the last door opens; read only by the finale's
+                -- composition and nil-safe everywhere else. Threaded onto the walk-off path as well as
+                -- the played one, or the two would build different fights from the same tile.
+                generalsStanding = Calendar.generalsStanding(game.player),
                 floorLevel = game.quest and game.quest.floorLevel or nil,
                 party = game.player and game.player.roster or {},
             })

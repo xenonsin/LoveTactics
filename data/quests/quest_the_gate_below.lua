@@ -1,11 +1,15 @@
--- The finale. Seven generals dead, seven relics taken, seven fragments of a location -- and only then
--- does the board admit where the last door is.
+-- The finale. He comes on the last day whether anyone is ready or not, and every general still alive
+-- comes with him.
 --
--- `requiredQuests` is the gate: every one of the seven general quests must be complete. Unlike the
--- prestige and reputation gates, this one is SOFT -- kill a single general and the quest appears on the
--- board `locked`, counting your keys and reciting the hints you have earned (see questGate and
--- gateHints in models/quest.lua, and the locked detail pane in ui/panels/quest_board.lua). Watching the
--- count climb from 1 of 7 is the last stretch of the game.
+-- IT IS NO LONGER A LOCK, AND THAT IS THE WHOLE CHANGE. This quest used to require all seven generals
+-- dead -- seven keys, a count climbing from 1 of 7 that was the last stretch of the game. A calendar
+-- cannot carry that: seven lines to their slot 10 is about seventy expeditions and there are forty
+-- (models/calendar.lua), so the ending would have been unreachable by construction.
+--
+-- Deleting the lock without replacing it would have made the seven lines decorative in the other
+-- direction, so the count changed JOB rather than going away. It was PERMISSION; it is CONSEQUENCE.
+-- A player who spent forty days on one house arrives having felled one general and faces six. A player
+-- who felled all seven faces the Crown alone. Both get an ending; neither gets the same one.
 --
 -- `showLocked` is what asks for that, and this is the only file that sets it. The board used to infer
 -- it from holding one key of several, which swept in every discipline capstone -- they name two
@@ -37,11 +41,29 @@ return {
     -- (Player.standing), so seven felled generals already imply far more than ten -- the second gate
     -- could never bite, and a gate that cannot bite misleads whoever reads it next.
     endsCampaign = true,
-    showLocked = true, -- show on the board from the first key, counting the rest; see the header
+    -- THE CALENDAR IS THE GATE. He arrives on the last day whether or not a single general is dead
+    -- (models/calendar.lua), so this is not a lock and there are no keys to collect. `showLocked` still
+    -- puts it on the board from the first day -- but what the count beside it now says is how many
+    -- generals will be standing WITH him, which is a warning rather than a tally of permission.
+    finale = true,
+    showLocked = true,
+    -- THE DEEPEST FIGHT IN THE GAME, SAID OUT LOUD. It never needed saying before: the seven-key chain
+    -- implied about seventy finished quests, so everything that asks "how far in is this fight" --
+    -- Quest.floorLevelFor, Balance.prestigeFor, the time-to-kill bands -- could read the depth off the
+    -- prerequisites. With the keys gone that inference collapses to nothing and the finale measures as
+    -- an opening skirmish, which is how the balance suite noticed.
+    --
+    -- 22 is Calendar.FINAL_DANGER: the level the world closes at. Written as a literal rather than
+    -- required from the model because a blueprint is data, and duplicated deliberately -- if the
+    -- calendar's endpoint moves, this is one of the things that has to be re-read against it.
+    floorLevel = 22,
 
     -- The last scene in the game, played over the frozen final frame before the credits roll.
     outro = "conversation_gate_below_ending",
-    requiredQuests = {
+    -- The seven line-enders. Read for their location fragments (Quest.gateHints) and for the count that
+    -- sizes the last fight -- never as a requirement. Renamed from `requiredQuests` precisely so that
+    -- nothing can mistake it for one again.
+    hintQuests = {
         "quest_colosseum_slot_10",
         "quest_cathedral_slot_10",
         "quest_hunters_lodge_slot_10",
@@ -58,11 +80,20 @@ return {
             -- The only seam the Crown can speak from: `intro` plays over the hub before the party is
             -- picked, and by the time `outro` runs an assassinate target is already dead.
             opening = "conversation_gate_below_confront",
+            -- THE GENERALS ARE THE VARIABLE, AND THE GUARD IS FIXED SMALL SO THAT THEY CAN BE.
+            --
+            -- The escort used to be `2 + prestige/4`, which reached twenty-five bodies and was cut to
+            -- twelve by Arena.clampComposition every single time -- so the last fight was the same
+            -- twelve bodies whatever the player had done, and adding the standing generals on top
+            -- changed nothing at all. (Measured: 0, 3 and 7 felled all fielded twelve.) A formula
+            -- permanently past its own ceiling is a formula that does not exist.
+            --
+            -- Two guards and one champion per general still breathing tops out at ten -- under the
+            -- Hard cap -- so every general put down is one body fewer on the board, which is the whole
+            -- point of felling them.
             composition = function(ctx)
-                local list = { "character_demon_lord" }
-                -- Its honour guard, not its arsenal -- the arsenal is what it summons out of your
-                -- own past as it fails (data/traits/trait_hollow_crown.lua).
-                for i = 1, 2 + math.floor((ctx.day or 1) / 4) do list[#list + 1] = "character_champion" end
+                local list = { "character_demon_lord", "character_champion", "character_champion" }
+                for _ = 1, (ctx.generalsStanding or 0) do list[#list + 1] = "character_champion" end
                 return list
             end,
             win = { type = "assassinate", target = "character_demon_lord" },

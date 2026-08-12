@@ -235,12 +235,15 @@ return {
         fn = function()
             local gate = Quest.defs.quest_the_gate_below
             assert(gate, "quest_the_gate_below is missing")
-            local req = gate.requiredQuests or {}
-            assert(#req == 7, "the Gate Below wants seven keys, not " .. #req)
+            -- `hintQuests`, not `requiredQuests`: the calendar gates the finale now, and the seven are
+            -- read for their fragments and for the size of the last fight rather than as keys
+            -- (data/quests/quest_the_gate_below.lua). Renamed precisely so nothing mistakes them again.
+            local req = gate.hintQuests or {}
+            assert(#req == 7, "the Gate Below names seven generals, not " .. #req)
             for _, id in ipairs(req) do
                 local def = Quest.defs[id]
-                assert(def, "the Gate Below requires '" .. id .. "', which does not exist")
-                assert(def.gateHint, id .. " is a Gate Below prerequisite with no gateHint")
+                assert(def, "the Gate Below names '" .. id .. "', which does not exist")
+                assert(def.gateHint, id .. " is a Gate Below general with no gateHint")
                 assert(def.rewardItems and #def.rewardItems > 0, id .. " is a general that drops nothing")
             end
         end,

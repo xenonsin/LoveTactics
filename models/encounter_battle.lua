@@ -136,6 +136,7 @@ function EncounterBattle.build(opts)
     -- a guardian or an objective a set-piece. It must be threaded here as well as in states/battle.lua
     -- or the walk-off would resolve a differently sized fight from the one it stands in for.
     local ctx = { day = opts.day or 1, biome = opts.biome, quest = opts.quest,
+        generalsStanding = opts.generalsStanding,
         encounterKind = opts.encounter and opts.encounter.kind }
     local arena = Arena.build(ctx, EncounterBattle.spec(opts, partyIds, seed))
 

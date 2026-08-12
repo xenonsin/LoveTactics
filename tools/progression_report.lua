@@ -179,8 +179,27 @@ function M.walk(policy)
     local prevDisc = disciplineSet(player)
     local level = Growth.levelForPrestige(player.prestige)
 
+    -- THE WALK IS A REACHABILITY PROOF, NOT A PLAYTHROUGH, and the distinction became load-bearing when
+    -- the campaign got a deadline. What this measures is "can every authored quest be reached at all" --
+    -- i.e. is any of them orphaned behind a gate its own line cannot satisfy. It has never modelled how
+    -- many quests a player has TIME for, and should not start: the calendar's budget is a tuning
+    -- question (Calendar.DAYS) and this is a content-integrity question.
+    --
+    -- The one place the clock has to exist here is the finale, which is gated on the last day rather
+    -- than on keys. So the walk runs the board dry first and only then advances to the last day, which
+    -- is exactly the order a real campaign meets them in -- and keeps the Gate walked LAST rather than
+    -- taken the moment the clock is mentioned.
+    local Calendar = require("models.calendar")
+    player.day = 1
+    local dayAdvanced = false
+
     while true do
         local entry = chooseQuest(policy, player, Quest.available(player))
+        if not entry and not dayAdvanced then
+            dayAdvanced = true
+            player.day = Calendar.DAYS
+            entry = chooseQuest(policy, player, Quest.available(player))
+        end
         if not entry then break end
 
         -- The two lines of Quest.complete this measures. See newPlayer above for why not the function.

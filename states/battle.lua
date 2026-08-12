@@ -4528,6 +4528,7 @@ function battle.enter(self, opts)
     -- defeat panel. Passed down rather than computed, since the fight knows nothing about the run.
     battle.lostHaul = opts.lostHaul
     battle.encounter = opts.encounter or { kind = "combat", name = "Battle" }
+    battle.generalsStanding = opts.generalsStanding
     battle.day = opts.day or 1 -- the campaign day, which sets the far side's level and the spoils band
     -- The campaign player, kept so a won fight can pay the bench its share of the experience
     -- (finishBattle -> Experience.payBench). Nil for a mock battle, a draft and a netplay duel, all of
@@ -4630,6 +4631,7 @@ function battle.enter(self, opts)
     -- existing ctx table rather than a new local: this file sits within a couple of declarations of
     -- Lua 5.1's 200-local ceiling, and crossing it is a compile error naming an unrelated line.
     local ctx = { day = opts.day or 1, biome = opts.biome, quest = opts.quest,
+        generalsStanding = opts.generalsStanding,
         encounterKind = opts.encounter and opts.encounter.kind }
     battle.arena = Arena.build(ctx, specFor(opts, partyIds, seed))
 

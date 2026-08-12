@@ -68,10 +68,9 @@ Quest.PRESTIGE_PER_QUEST = 1
 -- These are a first pass and want playtesting. They are in one table so that is a five-minute job.
 Quest.SLOT_FLOOR = { [4] = 5, [5] = 6, [6] = 8, [7] = 9, [8] = 11, [9] = 12, [10] = 13 }
 
--- The level floor for `def`, whose blueprint key is `id`. An authored `floorLevel` wins; otherwise the
 -- ladder above applies to a numbered slot quest. Returns nil for anything with no floor -- the early
--- slots, the named capstones (which are crossings and already cost a second line), and the Gate Below
--- (which requires all seven slot 10s, so nobody arrives at it green).
+-- slots and the named capstones (which are crossings and already cost a second line). The Gate Below
+-- pins its own, since the key chain that used to imply its depth is gone.
 function Quest.floorLevelFor(def, id)
     if not def then return nil end
     if def.floorLevel then return def.floorLevel end
@@ -170,6 +169,18 @@ end
 -- hiding: a player two keys short of the Gate should see that they are two keys short. Quest.available
 -- surfaces it as a `locked` entry.
 local function questGate(player, def)
+    -- THE FINALE IS GATED BY THE CALENDAR, not by keys. He arrives on the last day whichever generals
+    -- are still breathing (models/calendar.lua), so the only question here is whether it is that day.
+    --
+    -- The count still comes back, because the board draws it -- but it now reads as a warning about the
+    -- size of the last fight rather than as a tally of permission, which is why `hintQuests` is not
+    -- called `requiredQuests` any more.
+    if def.finale then
+        local Calendar = require("models.calendar")
+        local keys = def.hintQuests or {}
+        return Calendar.isFinalDay(player), #keys - Calendar.generalsStanding(player), #keys
+    end
+
     local req = def.requiredQuests
     if not req then return true, 0, 0 end
 
@@ -188,7 +199,7 @@ end
 -- can never cost you the hint, nor the key it stands for.
 local function gateHints(player, def)
     local hints = {}
-    for _, questId in ipairs(def.requiredQuests or {}) do
+    for _, questId in ipairs(def.hintQuests or def.requiredQuests or {}) do
         local prereq = Quest.defs[questId]
         if prereq and prereq.gateHint and Player.hasCompleted(player, questId) then
             hints[#hints + 1] = prereq.gateHint
@@ -265,7 +276,13 @@ function Quest.available(player)
         local locked = not questsMet
         if showAll then unlocked, exhausted, locked = true, false, false end
 
-        if unlocked and not exhausted and (questsMet or (def.showLocked and keysHeld >= 1) or showAll) then
+        -- `keysHeld >= 1` was the rule for showing a locked quest: hold one key of several and the
+        -- board admits the thing exists. The finale has no keys to hold now -- it is gated on the day
+        -- -- and it should be visible from the first morning, because a deadline nobody can see is not
+        -- a deadline. So a finale shows on `showLocked` alone; everything else still has to have
+        -- started earning it.
+        local showable = def.showLocked and (def.finale or keysHeld >= 1)
+        if unlocked and not exhausted and (questsMet or showable or showAll) then
             local sponsor = def.sponsor and Vendor.get(def.sponsor)
             list[#list + 1] = {
                 id = id,
@@ -285,6 +302,10 @@ function Quest.available(player)
                 repeatable = def.repeatable,
                 requiredPrestige = def.requiredPrestige or 1,
                 requiredQuests = def.requiredQuests,
+                -- The finale carries both: the flag that says the calendar gates it, and the seven line-enders it
+                -- reads for hints and for the size of the last fight (data/quests/quest_the_gate_below.lua).
+                finale = def.finale,
+                hintQuests = def.hintQuests,
                 -- Locked entries are shown, not started. keysHeld/keysNeeded drive the board's
                 -- "3 of 7 keys"; hints are the fragments the finished prerequisites gave up.
                 locked = locked,

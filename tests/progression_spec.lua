@@ -575,8 +575,8 @@ return {
             end
 
             assert(gate, "the Gate should be on the board once one general is dead")
-            assert(gate.requiredQuests and #gate.requiredQuests == 7,
-                "the Gate must carry its seven prerequisites")
+            assert(gate.hintQuests and #gate.hintQuests == 7,
+                "the Gate must carry the seven generals it names")
 
             -- general_wrath is completed above, so read rewardItems off the blueprint's own copy.
             assert(Quest.defs.quest_colosseum_slot_10.rewardItems[1] == "armor_mail_of_the_unappeased",
@@ -596,24 +596,31 @@ return {
                 return nil
             end
 
-            assert(gateEntry() == nil, "with no generals dead, the Gate is not even rumoured")
+            -- THE COUNT IS A WARNING NOW, NOT A KEYRING. It used to gate the Gate: seven completed
+            -- generals and not one fewer. The calendar gates it instead (models/calendar.lua), because
+            -- seven lines to their slot 10 is about seventy expeditions against a budget of forty --
+            -- so the old rule made the ending unreachable by construction. What the seven decide is how
+            -- many of them are standing beside him when you arrive.
+            local Calendar = require("models.calendar")
+
+            -- Before the last day, it is on the board and unstartable, whatever has been killed.
+            local gate = gateEntry()
+            assert(gate, "the Gate is rumoured from the start -- he is coming either way")
+            assert(gate.locked, "but not before the day he arrives")
+            assert(gate.keysHeld == 0 and gate.keysNeeded == 7,
+                "and it says how many generals are still standing")
 
             p.completedQuests.quest_colosseum_slot_10 = true
-            local gate = gateEntry()
-            assert(gate, "one key reveals it")
-            assert(gate.locked, "but it cannot be entered")
-            assert(gate.keysHeld == 1 and gate.keysNeeded == 7, "and it counts what is missing")
-
-            p.completedQuests.quest_undercroft_slot_10 = true
             gate = gateEntry()
-            assert(gate.keysHeld == 2 and gate.locked, "two of seven is still short")
+            assert(gate.locked, "felling one changes nothing about WHEN he comes")
+            assert(gate.keysHeld == 1, "...only about who comes with him")
 
-            for _, id in ipairs(Quest.defs.quest_the_gate_below.requiredQuests) do
-                p.completedQuests[id] = true
-            end
+            -- The last day opens it, with any number of generals left alive.
+            p.day = Calendar.DAYS
             gate = gateEntry()
-            assert(gate and not gate.locked, "seven keys open it")
-            assert(gate.keysHeld == 7, "and the count is full")
+            assert(gate and not gate.locked, "on the last day it is the work that is on offer")
+            assert(gate.keysHeld == 1,
+                "and it still reports the six who will be waiting, rather than refusing the fight")
         end,
     },
     {
@@ -703,7 +710,7 @@ return {
         name = "the Gate is keyed off the completed quest, not off holding the relic",
         fn = function()
             local p = playerAt(10)
-            for _, id in ipairs(Quest.defs.quest_the_gate_below.requiredQuests) do
+            for _, id in ipairs(Quest.defs.quest_the_gate_below.hintQuests) do
                 p.completedQuests[id] = true
             end
             Player.grantItem(p, "armor_mail_of_the_unappeased")
@@ -714,7 +721,12 @@ return {
                 end
                 return false
             end
-            assert(gateOpen(), "seven completed generals open the Gate")
+            -- The day is what opens it now, not the seven kills (models/calendar.lua). This case is
+            -- about the RELIC -- that carrying or selling the trophy a general dropped can never change
+            -- the ending's availability -- so it puts the player on the last day and then proves the
+            -- item moving around does nothing.
+            p.day = require("models.calendar").DAYS
+            assert(gateOpen(), "the last day opens the Gate")
 
             -- Wear it: it leaves the stash for a character's 3x3 grid.
             local mail = Player.takeFromStash(p, #p.stash)

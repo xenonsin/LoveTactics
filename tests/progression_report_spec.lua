@@ -162,12 +162,18 @@ return {
             local slot1 = Quest.floorLevelFor(Quest.defs.quest_bastion_slot_01, "quest_bastion_slot_01")
             assert(slot1 == nil, "slot 1 carries no floor")
 
-            -- A capstone is a crossing and already costs a second line; the Gate needs all seven slot
-            -- 10s, so nobody arrives at it green. Neither wants a floor on top.
+            -- A capstone is a crossing and already costs a second line, so it wants no floor on top.
             local capstone = "quest_bastion_the_border_watch"
             assert(Quest.floorLevelFor(Quest.defs[capstone], capstone) == nil, "a capstone has no floor")
-            assert(Quest.floorLevelFor(Quest.defs.quest_the_gate_below, "quest_the_gate_below") == nil,
-                "the Gate Below has no floor")
+
+            -- THE GATE PINS ITS OWN NOW, and did not use to. Its depth was implied by the seven-key
+            -- chain -- about seventy finished quests -- so everything asking "how far in is this" could
+            -- read it off the prerequisites. The calendar gates it instead, that inference collapsed to
+            -- nothing, and the finale started measuring as an opening skirmish (which is how the
+            -- time-to-kill bands noticed). Anchored on the level the world closes at.
+            local gateFloor = Quest.floorLevelFor(Quest.defs.quest_the_gate_below, "quest_the_gate_below")
+            assert(gateFloor and gateFloor >= require("models.calendar").FINAL_DANGER,
+                "the finale must be pinned at least as deep as the world it ends, got " .. tostring(gateFloor))
 
             -- An authored floor outranks the ladder, so a single beat can be made heavier.
             assert(Quest.floorLevelFor({ floorLevel = 40 }, "quest_bastion_slot_04") == 40,
