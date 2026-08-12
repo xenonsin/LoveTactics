@@ -1,23 +1,27 @@
--- EXPERIENCE: what levels a body in the descent, one action at a time.
+-- EXPERIENCE: what levels a body, one action at a time. THE ONLY LADDER IN THE GAME.
 --
--- models/growth.lua opens by stating that characters do not carry individual XP -- every roster member's
--- level tracks the player's global prestige (Player.syncLevels). That is still true of THE CAMPAIGN, and
--- nothing here changes it. It stopped being true of the descent, which is a separate game mode now: a run
--- musters a company at the mouth and banks nothing on the way out (models/descent.lua), so there is no
--- prestige climbing behind it to hang a level on. A clean run walks in at level 1 and has to grow on the
--- way down or not at all.
+-- It was not always. This file was written for the descent alone -- a separate mode that musters a
+-- company at the mouth and banks nothing on the way out, so there was no prestige climbing behind it to
+-- hang a level on. The campaign levelled off the player's global prestige instead (Player.syncLevels):
+-- every roster member pinned to one number, all advancing together the moment a quest paid out.
+--
+-- That is gone. Prestige was one number doing two jobs and it did neither well -- it made every body in
+-- the company interchangeable at a given moment, so a fresh recruit carrying a veteran's kit was the
+-- same unit, and it meant a day spent anywhere but on a quest grew nobody. Under a deadline
+-- (models/calendar.lua) the second half is fatal: an expedition that forages has to still be worth
+-- taking. So the gate came out, `Player.syncLevels` and `Player.addPrestige` went with it, and this is
+-- now what moves every level in the game, in both modes.
 --
 -- WHAT THIS OWNS IS THE TRIGGER, AND ONLY THE TRIGGER. Growth still decides what a level is worth and
 -- who a body becomes -- Growth.resolve levels a character to a target and apportions the stat gains
 -- across everything it has been casting since the last one, so a knight who keeps throwing Fireball still
 -- grows into a battlemage. This file answers the one question Growth does not: when.
 --
--- HOW IT STAYS OUT OF THE CAMPAIGN'S WAY, without a mode flag threaded through combat. Combat awards XP
--- unconditionally (Combat.awardTechnique's call site, and the felling blow in dealFlatDamage) -- but
--- awarding is just a counter going up on a character. Only the descent ever RESOLVES that counter into
--- levels (Experience.resolveParty, called from states/game.lua's battle end when a run is under way). In
--- the campaign `char.xp` is a number nobody reads. So the two ladders cannot collide: there is no branch
--- in combat that could be wrong, because combat does not know which mode it is in and does not need to.
+-- THE ONE SEAM THAT RESOLVES. Combat awards experience as it happens (Experience.credit, from
+-- Combat.useItem and the felling blow in dealFlatDamage), which is only a counter going up. Turning
+-- that counter into levels happens in exactly one place -- states/game.lua's post-fight seam, which
+-- every won fight already passes through -- plus a catch-up on load (Player.resolveLevels). Keeping
+-- resolution to one seam is what lets combat stay ignorant of modes and of rosters.
 --
 -- Pure model -- no love.graphics -- so it loads under the headless runner.
 

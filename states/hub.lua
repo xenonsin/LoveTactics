@@ -20,10 +20,15 @@ local Scale = require("scale")
 local ScreenFx = require("ui.screen_fx")
 local Sound = require("models.sound")
 local Theme = require("ui.theme")
+local Calendar = require("models.calendar") -- the days-remaining line under the title
 
 local hub = {}
 
 local titleFont = Theme.display(28)
+-- The days-remaining line. Theme.body rather than Theme.display: it is a standalone numeral, and the
+-- display face is Alegreya with OLD-STYLE figures, so its digits sit at x-height and "3" hangs below
+-- the baseline (see ui/theme.lua).
+local dayFont = Theme.body(16)
 
 local map           -- BuildingMap widget
 local background    -- love Image, or a path string if the asset is missing
@@ -314,6 +319,24 @@ function hub.draw()
     love.graphics.setFont(titleFont)
     Theme.set(Theme.accentAmber)
     love.graphics.printf("The Hub", 0, 24, screenW, "center")
+
+    -- THE CLOCK, under the title. A cost the player cannot see is not a cost they can weigh, and the
+    -- day is now the scarcest thing they have -- every expedition spends one whether it goes well or
+    -- badly (models/calendar.lua), so it belongs on the screen where expeditions are chosen from.
+    --
+    -- Phrased as what is LEFT rather than as what has been used. "Day 12 of 40" is a progress bar and
+    -- reads as accomplishment; "28 days remain" is a deadline and reads as pressure, which is the
+    -- thing this number is for. The last week turns amber, and the final day says so in words.
+    do
+        local left = Calendar.remaining(hub.player)
+        local text
+        if Calendar.isOver(hub.player) then text = "He has come"
+        elseif left <= 1 then text = "The last day"
+        else text = left .. " days remain" end
+        love.graphics.setFont(dayFont)
+        Theme.set(left <= 7 and Theme.accentWeapon or Theme.muted)
+        love.graphics.printf(text, 0, 62, screenW, "center")
+    end
 
     map:draw()
 

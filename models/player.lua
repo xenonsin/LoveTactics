@@ -873,10 +873,11 @@ function Player.start(fresh)
     else
         Player.active = Save.read() or Player.new()
     end
-    -- Catch every roster member's level up to the current prestige. A no-op for a fresh game at
-    -- prestige 1, but a loaded save whose stored levels lag (a schema migration, a recruit granted at
-    -- higher prestige) is squared away here before anything reads the roster.
-    Player.syncLevels(Player.active)
+    -- Catch every roster member's level up to what it has banked. A no-op for a fresh game and for any
+    -- save written since experience became the ladder, but a save whose stored levels lag its
+    -- experience -- a schema migration, or a body carried across the change from prestige-levelling --
+    -- is squared away here before anything reads the roster.
+    Player.resolveLevels(Player.active)
     -- Re-stamp the avatar's chosen body art. restoreCharacter rebuilds the avatar from its blueprint
     -- (body 1's default), so a loaded body-2 avatar would otherwise show body 1; a fresh game has no
     -- avatar in the roster yet (the prologue builds it and applies the body itself), so this no-ops there.

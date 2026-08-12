@@ -14,6 +14,7 @@ local Overworld = require("models.overworld")
 local OverworldMap = require("ui.overworld_map")
 local Player = require("models.player")
 local Save = require("models.save")
+local Calendar = require("models.calendar") -- the campaign clock; a fresh expedition spends a day
 local Quest = require("models.quest")
 local Vendor = require("models.vendor")   -- the sponsoring house behind a quest, for its cache stock
 local Material = require("models.material")
@@ -687,6 +688,25 @@ function game.enter(self, quest, prestige, player, onComplete, resume)
     -- board quest is resumable (runResumable) -- a scripted/tutorial leg has no hub to return to. The live
     -- grid + map widget are parked on the player so ANY later Player.save (a won fight's spoils, the next
     -- encounter) re-snapshots the current board; cleared on the way out (clearRun / hub.enter backstop).
+    -- THE DAY IS SPENT HERE, and "here" is load-bearing: at the top of a FRESH expedition, before the
+    -- board is walked and before anything on it is found (models/calendar.lua).
+    --
+    -- Entering is what costs, not clearing. Take the objective, break off with a Smoke Bolt, or get
+    -- wiped -- the day is gone all three ways, which is the whole of "push on or go home with what I
+    -- have". Charging on the way out instead would make a run that went badly free, and a player who
+    -- turned back at the first bad fight would have spent nothing.
+    --
+    -- THREE THINGS THIS MUST NOT DO, each of which is a way of getting a day back for nothing:
+    --   a RESUME must not re-charge. Quitting to the menu mid-quest and pressing Continue is the same
+    --     expedition, and the day was spent when it began.
+    --   a DESCENT must not charge at all. It is a separate mode with its own company and no calendar
+    --     behind it -- and its second floor is a fresh game.enter, so it would bill a day per floor.
+    --   the PROLOGUE must not charge. It runs before the campaign the calendar measures; `runResumable`
+    --     is already false for a scripted leg, which is why the spend sits inside that branch.
+    if runResumable() and quest and quest.id and not resume and not game.descent then
+        Calendar.spend(game.player)
+    end
+
     if runResumable() and quest and quest.id then
         -- Take the rollback point with NO run parked on the player. Save.snapshot folds the active run
         -- into what it writes, so snapshotting while a stale one is still attached would nest a run
