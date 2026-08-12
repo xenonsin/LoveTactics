@@ -159,7 +159,7 @@ end
 -- door still locked until prestige 2. Unsponsored quests (the Gate Below) are never gated.
 local function meetsSponsorGate(player, def)
     if not def.sponsor then return true end
-    return (player.prestige or 1) >= Building.vendorUnlockPrestige(def.sponsor)
+    return Player.standing(player) >= Building.vendorUnlockPrestige(def.sponsor)
 end
 
 -- Does the player hold every quest this one names as a prerequisite? `requiredQuests` is a list of
@@ -227,7 +227,9 @@ end
 -- vendor's shelf instead, where Discipline.missingParents turns the lock into a direction. A future
 -- quest naming several prerequisites now stays hidden unless it says otherwise.
 function Quest.available(player)
-    local prestige = player.prestige or 1
+    -- Campaign standing: quests finished, on the scale the blueprints are authored in
+    -- (Player.standing). Was `player.prestige`, which nothing increments any more.
+    local prestige = Player.standing(player)
 
     -- Debug "show all quests": drop every gate so a locked or prerequisite-gated line can be run
     -- without progressing to it naturally, and let a finished quest be re-run to test it again. Never

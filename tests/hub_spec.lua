@@ -6,11 +6,25 @@ local Building = require("models.building")
 local Quest = require("models.quest")
 local Player = require("models.player")
 
--- Quest.available filters on the whole player (prestige, sponsor-quest gates, completed quests),
--- so specs build a throwaway player pinned to the prestige under test.
-local function playerAt(prestige)
+-- Quest.available filters on the whole player (standing, sponsor-quest gates, completed quests), so
+-- specs build a throwaway player pinned to the standing under test.
+--
+-- Standing is a COUNT of finished quests now (Player.standing) rather than a stored number, so it is
+-- built rather than assigned. Synthetic ids: one that is not in Quest.defs moves the count and nothing
+-- else, where a real id would drag its sponsor into Quest.sponsorProgress and open a shelf.
+local function standingOf(n, ...)
+    local done = {}
+    for i = 1, math.max(0, (n or 1) - 1) do done["_standing_filler_" .. i] = true end
+    -- Real quest ids on top of the filler, for a case that needs BOTH a standing and a specific quest
+    -- finished (a quest-gated door). Passed separately because the two do different jobs: the filler
+    -- only moves the count, these are looked up.
+    for _, id in ipairs({ ... }) do done[id] = true end
+    return done
+end
+
+local function playerAt(standing)
     local p = Player.new()
-    p.prestige = prestige
+    p.completedQuests = standingOf(standing)
     return p
 end
 
@@ -59,12 +73,12 @@ return {
                 end
             end
 
-            local before = findIn(Building.list({ prestige = 9, completedQuests = {} }), "dueling_grounds")
+            local before = findIn(Building.list({ completedQuests = standingOf(9) }), "dueling_grounds")
             assert(before, "the dueling grounds should be listed even while shut")
             assert(before.locked, "no amount of prestige should open a quest-gated door")
 
             local after = findIn(
-                Building.list({ prestige = 1, completedQuests = { quest_colosseum_slot_01 = true } }),
+                Building.list({ completedQuests = standingOf(1, "quest_colosseum_slot_01") }),
                 "dueling_grounds")
             assert(not after.locked, "finishing the debut should open it, at any prestige")
 
@@ -72,6 +86,61 @@ return {
             -- because it has no way to know.
             assert(findIn(Building.list(9), "dueling_grounds").locked,
                 "a prestige number alone should never open a quest gate")
+        end,
+    },
+    {
+        -- THE OPENING FUNNEL IS TWO QUESTS WIDE. Finishing the debut pays a prestige, and prestige 2
+        -- used to be the whole gate on three shops -- so one quest into the campaign the player was
+        -- handed the Cathedral, the Bastion and the Lodge at once, before they had run anything. All
+        -- three now wait on the padded card as well (data/buildings/cathedral.lua and its neighbours).
+        -- Everything at prestige 3 and up is untouched on purpose; this pins the two-quest funnel and
+        -- nothing beyond it, so a later re-tier of the upper doors does not have to argue with it.
+        name = "the debut alone opens no house; the padded card opens three",
+        fn = function()
+            local FUNNELLED = { "cathedral", "bastion", "hunters_lodge" }
+
+            local function lockedIn(ctx, id)
+                for _, b in ipairs(Building.list(ctx)) do
+                    if b.id == id then return b.locked end
+                end
+                error("no such building listed: " .. id)
+            end
+
+            -- The state the player is actually in after the debut: one quest done, so standing 2.
+            -- Standing is DERIVED from the ledger now, so these fixtures state the ledger and let the
+            -- count fall out of it rather than asserting the two agree.
+            local afterDebut = { completedQuests = standingOf(2, "quest_colosseum_slot_01") }
+            for _, id in ipairs(FUNNELLED) do
+                assert(lockedIn(afterDebut, id),
+                    id .. " should still be shut one quest into the campaign")
+            end
+
+            local afterCard = { completedQuests = standingOf(3,
+                "quest_colosseum_slot_01", "quest_colosseum_slot_02") }
+            for _, id in ipairs(FUNNELLED) do
+                assert(not lockedIn(afterCard, id), id .. " should open on the padded card")
+            end
+
+            -- THE QUEST HALF STILL BITES ON ITS OWN: standing far past the door's threshold, the card
+            -- unplayed, and the Bastion stays shut.
+            local standingOnly = { completedQuests = standingOf(20) }
+            assert(lockedIn(standingOnly, "bastion"),
+                "no amount of standing should open a door a story is supposed to open")
+
+            -- THE STANDING HALF NO LONGER CAN, and that is a real consequence of standing becoming the
+            -- quest count rather than a number a save holds independently. This case used to assert the
+            -- opposite -- two quests done at prestige 1 -- which was a state a player could be in when
+            -- the two gates read different sources and is now unreachable by construction: finishing
+            -- the padded card IS two quests, so it necessarily carries standing 3, past the Bastion's
+            -- threshold of 2. The door's two gates are no longer independent, so the AND is only doing
+            -- one gate's work here. That is worth knowing rather than papering over: if the funnel is
+            -- ever meant to bite in both directions again, the door needs a threshold ABOVE the quest
+            -- count its own `unlockQuest` implies.
+            local Building2 = require("models.building")
+            local afterCardStanding = 3 -- slot_01 + slot_02
+            assert(afterCardStanding >= (Building2.defs.bastion.unlockPrestige or 1),
+                "fixture check: the padded card already clears the Bastion's standing threshold, which "
+                .. "is why the standing half cannot be tested in isolation any more")
         end,
     },
     {

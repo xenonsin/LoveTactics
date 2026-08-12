@@ -171,7 +171,7 @@ PREDICATES.has = function(ctx, id) return ctx.roster[id] == true end
 PREDICATES.notHas = function(ctx, id) return ctx.roster[id] ~= true end
 PREDICATES.done = function(ctx, id) return ctx.quests[id] == true end
 PREDICATES.notDone = function(ctx, id) return ctx.quests[id] ~= true end
-PREDICATES.prestige = function(ctx, n) return (ctx.prestige or 1) >= n end
+PREDICATES.prestige = function(ctx, n) return (ctx.standing or 1) >= n end
 PREDICATES.flag = function(ctx, id) return ctx.flags[id] == true end
 PREDICATES.notFlag = function(ctx, id) return ctx.flags[id] ~= true end
 PREDICATES.all = function(ctx, list)
@@ -223,7 +223,7 @@ function Conversation.context(player)
         roster = roster,
         quests = quests,
         flags = flags,
-        prestige = (player and player.prestige) or 1,
+        standing = require("models.player").standing(player),
     }
 end
 

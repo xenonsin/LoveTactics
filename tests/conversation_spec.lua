@@ -197,7 +197,8 @@ return {
     {
         name = "test evaluates the condition grammar against a context",
         fn = function()
-            local ctx = { roster = { character_priest = true }, quests = { quest_undercroft_slot_01 = true }, prestige = 2 }
+            local ctx = { roster = { character_priest = true },
+                quests = { quest_undercroft_slot_01 = true }, standing = 2 }
             assert(Conversation.test(nil, ctx), "no condition is unconditional")
             assert(Conversation.test({ has = "character_priest" }, ctx), "priest is on the roster")
             assert(not Conversation.test({ has = "character_mage" }, ctx), "mage is not")
@@ -308,18 +309,21 @@ return {
         end,
     },
     {
-        name = "context reads roster, completed quests and prestige off a player",
+        name = "context reads roster, completed quests and standing off a player",
         fn = function()
             local ctx = Conversation.context({
                 roster = { { id = "character_rowan" }, { id = "character_priest" } },
-                completedQuests = { quest_undercroft_slot_01 = true },
-                prestige = 4,
+                -- Standing is derived from this ledger now (Player.standing), so the fixture states
+                -- what was finished and lets the count fall out of it: four quests is standing 5.
+                completedQuests = { quest_undercroft_slot_01 = true, _filler_1 = true,
+                    _filler_2 = true, _filler_3 = true },
             })
             assert(ctx.roster.character_rowan and ctx.roster.character_priest, "roster ids are flattened to a set")
             assert(ctx.roster.character_mage == nil, "an absent character is absent")
-            assert(ctx.quests.quest_undercroft_slot_01 == true and ctx.prestige == 4, "quests and prestige carry over")
+            assert(ctx.quests.quest_undercroft_slot_01 == true and ctx.standing == 5,
+                "quests carry over, and standing is counted off them")
             local empty = Conversation.context(nil)
-            assert(next(empty.roster) == nil and empty.prestige == 1, "no player is an empty context")
+            assert(next(empty.roster) == nil and empty.standing == 1, "no player is an empty context")
         end,
     },
     {

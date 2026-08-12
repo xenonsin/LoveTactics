@@ -438,6 +438,21 @@ function Player.questsCompleted(player)
     return n
 end
 
+-- CAMPAIGN STANDING ON THE SCALE THE DATA IS AUTHORED IN, which is one more than the quest count.
+--
+-- Prestige started at 1 and rose by 1 a quest, so `requiredPrestige = 4` on a quest blueprint has
+-- always meant "three quests finished" -- and 91 quests, 12 buildings and a conversation predicate are
+-- authored against that scale. Reading it back as `questsCompleted + 1` moves every one of those gates
+-- onto the new source WITHOUT touching a single authored number, which is worth more than the tidier
+-- name: a 91-file rename that subtracts one is 91 chances to be off by one, and the failure would be a
+-- quest line that opens a beat early forever.
+--
+-- The field's NAME is now the only thing left of prestige in the data, and renaming it is a cosmetic
+-- pass for later, not part of this change.
+function Player.standing(player)
+    return Player.questsCompleted(player) + 1
+end
+
 -- ---------------------------------------------------------------------------
 -- Vendor first-visit (the greeting scene each shop plays once; states/hub.lua)
 -- ---------------------------------------------------------------------------

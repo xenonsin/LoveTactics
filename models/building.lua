@@ -23,7 +23,9 @@ Building.defs = Registry.load("data/buildings", "data.buildings")
 -- got richer, they appear because you fought on the sand once.
 function Building.list(playerOrPrestige)
     local player = type(playerOrPrestige) == "table" and playerOrPrestige or nil
-    local prestige = player and player.prestige or playerOrPrestige or 1
+    -- Quests finished, on the authored scale (Player.standing). A bare number still works for the
+    -- callers that pass one directly.
+    local prestige = player and require("models.player").standing(player) or playerOrPrestige or 1
 
     local list = {}
     for id, def in pairs(Building.defs) do

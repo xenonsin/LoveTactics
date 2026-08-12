@@ -42,9 +42,19 @@ local function unit(id, x, y, control)
     return { char = Character.instantiate(id), x = x, y = y, control = control }
 end
 
-local function playerAt(prestige)
+-- A player whose CAMPAIGN STANDING is `standing`. Standing is a count of finished quests now
+-- (Player.standing) rather than a stored number, so it has to be built rather than assigned -- and the
+-- authored gates are still on the old scale, where standing 1 is a fresh save with nothing done.
+--
+-- Filled with SYNTHETIC ids on purpose. A real quest id would drag its sponsor into
+-- Quest.sponsorProgress and quietly open a shelf the case never asked for; an id that is not in
+-- Quest.defs is skipped by every reader that resolves one, so this moves the count and nothing else.
+local function playerAt(standing)
     local p = Player.new()
-    p.prestige = prestige
+    p.completedQuests = {}
+    for i = 1, math.max(0, (standing or 1) - 1) do
+        p.completedQuests["_standing_filler_" .. i] = true
+    end
     return p
 end
 

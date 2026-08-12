@@ -32,7 +32,10 @@ return {
     difficulty = "Hard",
     sponsor = nil, -- no vendor sends you here; the seven of them together did
     rewardGold = 2000,
-    requiredPrestige = 10,
+    -- NO STANDING GATE. It asked for prestige 10 as well as the seven keys, from back when standing was
+    -- a number a save could hold independently of what it had done. Standing is the quest count now
+    -- (Player.standing), so seven felled generals already imply far more than ten -- the second gate
+    -- could never bite, and a gate that cannot bite misleads whoever reads it next.
     endsCampaign = true,
     showLocked = true, -- show on the board from the first key, counting the rest; see the header
 
