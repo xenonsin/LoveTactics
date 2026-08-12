@@ -198,20 +198,43 @@ Legend: **N** narrative beat · **S** what it costs Saber · **Scenes** the scaf
   wordless, obedient, the house's final answer. The first thing the player ever sees Ira do is take the
   walk-off away. (She does not speak; slot 7 is her first word, and the elder's death is scripted, not a
   fail-state — the player cannot save them here.)
+  **And then she kills the party**, and the house *meant* her to. The crowd paid for a night of blood,
+  the player's win threatened to send them home short, so the house put its patron on the sand to
+  finish the card — and the card is whoever is still standing on it. The promoter is not surprised and
+  does not try to call her off; his lines are the coldest in the scene. That is the lesson of the slot:
+  the Colosseum will spend anyone in front of it, including its own new draw, because what it actually
+  sells is the killing. The objective is already won when this plays, so what is lost is not the run,
+  it is the company's lives *after* winning.
+- **N (epilogue)** The venue and the stables are not the same people (*The league and the stables*),
+  and the gap is what lets the story continue: the house spent a new draw for one night's crowd, and
+  the stables with money on that draw did not agree. The party wakes in the **Cathedral**, raised
+  because four of them paid the church's price the same night. The acolyte who performed the rite is **Amana**, and she
+  is this slot's `rewardCharacter` — the priest's recruit moved off her own house's second slot (see
+  *The other seven → Raised, then kept* and *The Cathedral* in `docs/story.md`). She leaves with them
+  over the eleven refugees who came in on the same cart with nobody paying for **them**: she is the
+  hand that writes the intake register, what she entered beside their names is *ascended to the Light*,
+  and she carried them to the unmarked pit herself. The party is the only living witness to what
+  happened out there. This slot is also the gate on the Cathedral itself — the building does not exist
+  in the hub until this scene, so the first time the player sees the place is from a slab.
 - **S** Saber knows this play cold — a veteran of the sand who has watched promoters run it for years —
   and is first down between the killers and the refugees, because everyone gets to walk off it. She
   holds her side, and wins it, and then watches Ira erase it. Her one law breaks in front of her for the
   first time, and it is the exact shape of the thing that broke her once already (slot 10, tags 30–32:
   *"they died anyway; someone else did it while she stood there"*) — done now by the fighter the line
-  will end on. This is the seed slot 10 pays off.
-- **Scenes** `colosseum_padded_card_intro`, `colosseum_padded_card_outro`.
+  will end on. Then it breaks a second time, under her own feet. This is the seed slot 10 pays off.
+- **Scenes** `conversation_colosseum_slot_02_intro` (scaffolded), `_outro` and `_join` (**written**).
   - *intro:* the promoter frames the "warm-up" and what the crowd is really here for; the player reads
     the far side — refugees, not fighters — and clocks the village elder among them; the house prints
     only what sells; Saber goes down first, between killers and refugees; the choice lands (hold the
     line, or let the slaughter run).
-  - *outro:* the carded killers are down and the refugees are still standing — and *because* of that the
-    house sends its patron; Ira cuts them down without a word; the player's win is overruled; Saber names
-    what she just watched.
+  - *outro:* the carded killers are down and the refugees are still standing, and *because* of that the
+    house sends its patron; Ira cuts them down without a word and keeps walking; the promoter says the
+    crowd wanted blood and the house does not send them home short; the scene ends on the avatar on
+    their back, hearing the crowd cheer.
+  - *join (`epilogue`):* the waking, the sponsors' coin, the eleven, the register, the pit; Amana asks
+    to come. Played through the new `epilogue` seam on the quest (`states/game.lua`), which runs a
+    second scene straight after the outro and holds the join banner across the first one — a recruit
+    has no business in a scene where everyone dies.
 
 ### Slot 3 — Siege of Warlord's Keep · `assassinate` the Warlord
 - **N** The Warlord once fought under the Colosseum's banner; they want him back or down. This is the
@@ -311,6 +334,10 @@ Legend: **N** narrative beat · **S** what it costs Saber · **Scenes** the scaf
   `ability_run_you_down` (anti-kite pull), beside her lifesteal greataxe cleave. Rage rule continues via
   `utility_unbound_heart` in the demon grid.
 - Covered by `tests/general_wrath_spec.lua`.
+- **Quest `epilogue`** — a second scene played straight after a quest's `outro`, before the hub or any
+  follow-up leg (`states/game.lua`). Slot 2 needs it because the killing and the waking are one beat
+  across two places, with no leg between them: more lines on the end of the outro would keep the party
+  on the sand they just died on. Like `followUp` it defers the join banner to the second scene.
 
 ## Open threads
 - Saber's **second relic** (slot 8) — not written.
@@ -322,7 +349,12 @@ Legend: **N** narrative beat · **S** what it costs Saber · **Scenes** the scaf
   `character_survivor` placeholders, flagged in each quest header.
 - Slot 2 **village elder** — reuses the prologue's `elder` cast id in dialogue; wants a bespoke
   board/protect blueprint (`character_village_elder`) so the person the player saved in the prologue is
-  the one Ira cuts down. `character_survivor` stands in for him and the other refugees until then.
+  the one Ira cuts down. `character_survivor` stands in for them and the other refugees until then.
+  **The elder has no settled gender**: nothing in `data/` or the prologue ever gives one, so the slot-2
+  scenes are written around the pronoun rather than picking it. Decide it with the blueprint.
+- Slot 2's **revival** raises four dead fighters at an altar whose power is Luxuria's blood. Whether
+  the party owes the demon their lives from here on is unanswered on purpose; see *The Cathedral →
+  What is built, and what is not* in `docs/story.md`.
 
 ## Companion coverage
 Every scene should let recruited companions speak (companions-speak-in-every-scene standard). The

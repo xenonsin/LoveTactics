@@ -8,11 +8,12 @@ return {
     sponsor = "cathedral",
     rewardItems = { "weapon_drowned_censer", "armor_censer_cloth_habit" },
     rewardGold = 120,
-    -- Prestige 2, not 1: the Cathedral opens with the city (unlockPrestige 1), but the first-visit
-    -- board must show ONLY the Colosseum debut (data/quests/colosseum/quest_colosseum_slot_01.lua), the quest the arrival
-    -- coaching points at. The debut pays +1 prestige, so this Mill surfaces the moment it is done --
-    -- the tutorial stays a single unambiguous choice, and the Cathedral's line opens right after it.
-    requiredQuests = { "quest_colosseum_slot_01" }, -- slot 1: the line runs in order
+    -- Gated on the PADDED CARD, not the debut. Two reasons and they are the same reason: the
+    -- first-visit board must show only the Colosseum debut (the quest the arrival coaching points at),
+    -- and this house is not open to the player until they have been carried into it dead
+    -- (data/quests/colosseum/quest_colosseum_slot_02.lua, and the building's own comment). The Mill
+    -- surfaces the morning after the revival, with the acolyte who performed it already on the roster.
+    requiredQuests = { "quest_colosseum_slot_02" }, -- opens the morning after the revival
     requiredPrestige = 1,
     -- Overworld map generated when the quest starts (see models/overworld.lua).
     map = {

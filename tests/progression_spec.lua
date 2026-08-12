@@ -375,10 +375,16 @@ return {
 
             p.completedQuests.quest_colosseum_slot_01 = true
             assert(not boardHas("quest_colosseum_slot_01"), "a completed quest leaves the board")
-            -- ...and the slot behind it arrives, which is the whole point of the chain: the debut is
-            -- what opens the Colosseum's second card AND the Cathedral's first (docs/story.md).
+            -- ...and the slot behind it arrives, which is the whole point of the chain.
             assert(boardHas("quest_colosseum_slot_02"), "clearing slot 1 opens slot 2")
-            assert(boardHas("quest_cathedral_slot_01"), "the debut opens the Cathedral's line")
+            -- The Cathedral is NOT among them. Its line opens on the PADDED CARD, not the debut: the
+            -- player is carried into that building dead at the end of slot 2 and wakes up in it
+            -- (data/quests/colosseum/quest_colosseum_slot_02.lua, data/buildings/cathedral.lua). Being
+            -- offered its work before that scene would sell a shop the story has not opened yet.
+            assert(not boardHas("quest_cathedral_slot_01"), "the debut alone does not open the Cathedral")
+
+            p.completedQuests.quest_colosseum_slot_02 = true
+            assert(boardHas("quest_cathedral_slot_01"), "the padded card opens the Cathedral's line")
         end,
     },
     {

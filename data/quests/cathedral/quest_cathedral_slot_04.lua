@@ -7,9 +7,12 @@
 -- blooding"): children the rite took wrong, feral and half-made, hunted by the institution that made
 -- them under a name that keeps anyone from asking a second question.
 --
--- Amana's plea at slot 2 told the player WHAT is happening. This is the slot that makes them see it,
--- and the sight is deliberately withheld until now: they have already run one purge for this church
--- without knowing, and slot 6 will have them run more.
+-- THIS IS THE SLOT THAT TELLS THE PLAYER. It used to be the slot that confirmed something Amana's
+-- recruit plea had already told them at slot 2; her recruit moved to the Colosseum's padded card and
+-- the plea moved here with the sight it describes (`outro` below). What she gave them at the revival
+-- was only the book: the register, the wording, the pit. This is what the wording covers, said while
+-- they are standing over it, and the sight is deliberately withheld until now: they have already run
+-- one purge for this church without knowing, and slot 6 will have them run more.
 --
 -- What it costs Amana: she was kept back as an acolyte -- clergy, never blooded -- and these are the
 -- other track. She knows some of these by name and says the names out loud while the party fights,
@@ -18,8 +21,9 @@
 -- `killAll`: there is no mark and no room to reach. The horror of the slot is that clearing the board
 -- IS the job, and the job is what the church wanted.
 --
--- FIRST PASS. Scenes are not authored, so no `intro` / `outro` / `opening` is named (Conversation.play
--- asserts on an unknown id). `character_anointed_failed` is the blueprint this slot actually wants
+-- FIRST PASS. The `outro` is authored (it is the line's first reveal and could not stay scaffolded);
+-- no `intro` / `opening` is named yet, and Conversation.play asserts on an unknown id, so do not name
+-- one before it exists. `character_anointed_failed` is the blueprint this slot actually wants
 -- (story.md's not-built list); `character_demon_imp` and `character_demon_grunt` stand in, which is
 -- itself the church's lie wearing the engine's clothes and should not survive the art pass.
 --
@@ -36,6 +40,9 @@ return {
     requiredQuests = { "quest_cathedral_slot_03" }, -- slot 4: the line runs in order
     requiredPrestige = 1,
     requiredSponsorQuests = { vendor = "cathedral", count = 3 }, -- 3 of this house's quests done
+    -- The reveal, played over the cleared fold: Amana names what the party has just killed, and the
+    -- rite that made them. Moved here from her old slot-2 recruit plea.
+    outro = "conversation_cathedral_slot_04_outro",
     map = {
         biome = "forest",
         encounters = { min = 6, max = 8, always = { "encounter_elite" } },

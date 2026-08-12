@@ -88,4 +88,70 @@ return {
             clearJoins()
         end,
     },
+
+    -- THE PADDED CARD'S AFTERMATH. Slot 2 uses the other seam: an `epilogue`, a second scene played
+    -- straight after the outro with no leg between them. The outro ends with the whole company dead on
+    -- the sand and the epilogue opens in the Cathedral, where the acolyte who raised them asks to come
+    -- along. Same shape as the debut's meeting, different machinery, and the same rule underneath:
+    -- the recruit is announced in the scene the author put her in, never the one before it.
+    {
+        name = "the padded card earns Amana, and hands off to an epilogue scene",
+        fn = function()
+            local def = Quest.defs["quest_colosseum_slot_02"]
+            assert(def, "the padded card exists")
+            assert(def.rewardCharacter == "character_amana",
+                "Amana is recruited at the revival, not in the Cathedral's own line")
+            assert(def.outro == "conversation_colosseum_slot_02_outro", "the killing is the outro")
+            assert(def.epilogue == "conversation_colosseum_slot_02_join", "the waking is the epilogue")
+            assert(def.followUp == nil, "there is no overworld leg between the two scenes")
+            assert(Conversation.defs[def.epilogue], "the epilogue scene is defined")
+        end,
+    },
+    {
+        name = "Amana's banner is held across the death scene and lands on the waking",
+        fn = function()
+            clearJoins()
+            local p = Player.new()
+            p.roster = { Character.instantiate("character_avatar") }
+            local amana = Player.recruit(p, "character_amana")
+            assert(amana, "Amana recruited")
+
+            -- states/game.lua plays the outro with deferJoins whenever a quest has an epilogue, which
+            -- is what keeps a recruit out of the scene where everyone dies.
+            local outro = Conversation.resolve(Conversation.defs["conversation_colosseum_slot_02_outro"],
+                Conversation.context(p))
+            local outroLines = #outro.script
+            assert(#Conversation.pendingJoins == 1, "the join is still waiting after the outro resolves")
+
+            local waking = Conversation.resolve(Conversation.defs["conversation_colosseum_slot_02_join"],
+                Conversation.context(p))
+            local before = #waking.script
+            Conversation.drainJoins(waking)
+            assert(#waking.script == before + 1, "the banner is appended to the waking scene")
+            assert(waking.script[#waking.script].text == "[" .. amana.name .. " has joined your Party]",
+                "the banner names her")
+            assert(outroLines > 0, "the death scene still has its own lines")
+            clearJoins()
+        end,
+    },
+    {
+        name = "the Cathedral's door and its line both wait on the padded card",
+        fn = function()
+            -- The player is carried into that building; they do not walk into it. Both gates read the
+            -- same quest so the shop and the work arrive on the scene that opens them.
+            local Building = require("models.building")
+            local cathedral = Building.defs["cathedral"]
+            assert(cathedral.unlockQuest == "quest_colosseum_slot_02", "the door waits on the revival")
+            assert(Quest.defs["quest_cathedral_slot_01"].requiredQuests[1] == "quest_colosseum_slot_02",
+                "so does the first job behind it")
+            -- And she is no longer recruited inside her own line, which would hand the player a second
+            -- copy of a companion they already have.
+            for id, q in pairs(Quest.defs) do
+                if id ~= "quest_colosseum_slot_02" then
+                    assert(q.rewardCharacter ~= "character_amana",
+                        "only the padded card recruits Amana, found another: " .. id)
+                end
+            end
+        end,
+    },
 }

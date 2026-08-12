@@ -1,20 +1,29 @@
 -- Conversation authored inline (English); localization ids (`tag`) are stamped by
 -- tools/extract_strings.lua and must not be hand-edited. See models/conversation.lua.
--- The opening of data/quests/fallen_confessor.lua: the Cathedral names its own accused, Amana answers.
--- Canon (docs/story.md, "The Cathedral"): Amana is a clergy CONFESSOR on the acolyte track -- never
--- blooded -- who hid children from the consecration rite. The church voice here is SINCERE and does not
--- know the rite's true horror; it truly believes she is a thief. Amana withholds the truth on purpose --
--- the full reveal is her post-battle plea (the recruit `outro`), not this opening.
+--
+-- The `opening` of data/quests/cathedral/quest_cathedral_slot_02.lua, RE-PREMISED with the slot. It
+-- was the Cathedral naming Amana its accused and Amana answering the charge; she is a companion three
+-- quests earlier now (the padded card's epilogue), so the scene is what it says on the road instead.
+--
+-- The press-gang is a Colosseum crew working the king's road for bodies to card, and the chief is not
+-- ashamed of it: he is doing openly what the cart behind him is doing with a blessing on it, and he
+-- says so. That is the whole scene. Amana does not hear it, because she cannot yet.
+--
+-- KEEP THE CHIEF SINCERE. He is not taunting her about the rite; he does not know there is a rite. He
+-- knows both houses come out here for the same reason and that only one of them gets thanked for it,
+-- and he is annoyed about the competition, not making a point. The point is the player's to make.
 return {
-    title = "The Fallen Confessor",
-    cast  = { "cathedral", "character_amana" },
+    title = "The Intake Road",
+    cast  = { "character_bandit_chief", "character_amana", "character_avatar" },
 
     script = {
-        { "cathedral", "The one before you wore our cloth. A Confessor, no less. She knows the charge.", tag = 1 },
-        { "cathedral", "She stole children promised to the Light and hid them from the rite. That is theft from the faith. Purge her, and be paid.", tag = 2 },
-        { "character_amana", "Children. The faith did not ask them, and it did not ask me. It has never once asked.", tag = 3 },
-        { "character_amana", "And now it sends a stranger to take me back. I understand. Take is the only verb they were ever taught.", tag = 4 },
-        { "character_amana", "You have been told what I am. You have not been told what they are. What waits for those children past that rite. Not yet.", tag = 5 },
-        { "character_amana", "I will not step aside, and I will not strike first. Beat me, then, and before you collect your coin, you will hear me out.", tag = 6 },
+        { "character_bandit_chief", "Far enough. Stand off the cart and nobody on it gets a scratch.", tag = 1 },
+        { "character_bandit_chief", "We only want the ones who can stand up. The house is short a card and the road is full.", tag = 2 },
+        { "character_amana", "This cart is the Cathedral's. These people came to it on their own feet.", tag = 3 },
+        { "character_bandit_chief", "So did ours, sister. We work the same mile you do and we get here first some nights.", tag = 4 },
+        { "character_bandit_chief", "Nobody hands you a wagon and a blessing for it, that is the only difference I can find.", tag = 5 },
+        { "character_amana", "Then find a better one. Nothing on this road is yours to take.", tag = 6 },
+        { "character_avatar", "Nets down. Now.", tag = 7 },
+        { "character_bandit_chief", "Take them alive if you can, lads. Dead ones fill nothing.", tag = 8 },
     },
 }
