@@ -149,11 +149,12 @@ function M.run(args)
     args = args or {}
     local n = tonumber(args[1]) or 200
     local wantTiers, braid, cacheDiv, combatWeight = false, nil, nil, nil
-    local wantContracts = false
+    local wantContracts, wantXp = false, false
     local perBoard = {} -- one row per board, for the distribution questions a mean cannot answer
     for _, a in ipairs(args) do
         if a == "tiers" then wantTiers = true end
         if a == "contracts" then wantContracts = true end
+        if a == "xp" then wantXp = true end
         -- Override knobs for a tuning sweep, so a candidate value is measured before it is committed to
         -- the model: `. board-report 200 braid=0.25 cachediv=3`.
         local b = tostring(a):match("^braid=([%d%.]+)$"); if b then braid = tonumber(b) end
@@ -282,6 +283,99 @@ function M.run(args)
             end
             print(string.format("    %-16s %s", a[1], table.concat(cells, " ")))
         end
+    end
+
+    -- WHAT A DAY IS WORTH IN EXPERIENCE, measured by actually fighting the board rather than estimated
+    -- from a guess about how often a body swings. This is the input Experience.STEP has to be anchored
+    -- on, and the last time a number like it was hand-derived (the guarded-boon knob) the boards said
+    -- something else entirely.
+    --
+    -- Resolves every combat/elite stop on a sample of boards through models/autobattle.lua -- the same
+    -- loop the walk-off path uses, so the plan, the ordering and the free-action handling are the real
+    -- ones -- and reads what combat actually banked (`combat.xpByChar`). A fresh company is minted per
+    -- board so attrition does not compound across boards the player would have camped between.
+    if wantXp then
+        local Autobattle = require("models.autobattle")
+        local Combat = require("models.combat")
+        local EncounterBattle = require("models.encounter_battle")
+        local Muster = require("models.muster")
+        local Player = require("models.player")
+        local Experience = require("models.experience")
+        local Calendar = require("models.calendar")
+
+        local Character = require("models.character")
+        local Growth = require("models.growth")
+
+        -- THE COMPANY HAS TO BE AT PARITY OR THE MEASUREMENT IS OF A MASSACRE. The opening roster is
+        -- one body at level 1, and a lone level-1 Rowan against day-20 stock is dead in two turns --
+        -- which reads as four experience a day and is a measurement of losing, not of playing.
+        --
+        -- There is a circularity here worth naming: to know what level a company reaches by day N you
+        -- need the curve this measurement is meant to anchor. It is resolved by ASSUMING PARITY --
+        -- level the company to what the calendar says the world is worth on that day, then ask what a
+        -- day pays them. That is the fixed point the curve should hold: a company keeping pace earns
+        -- enough to keep pacing.
+        local FIELD = 4
+        local function parityCompany(day)
+            local player = Player.new()
+            player.day = day
+            for _, id in ipairs({ "character_knight", "character_mage", "character_hunter" }) do
+                if #player.roster < FIELD and Character.defs[id] then
+                    player.roster[#player.roster + 1] = Character.instantiate(id)
+                end
+            end
+            local target = Calendar.dangerLevel(day)
+            for _, char in ipairs(player.roster) do
+                Experience.award(char, Experience.totalFor(target))
+                Growth.resolve(char, target)
+            end
+            return player
+        end
+
+        local BOARDS = math.min(n, 12) -- fighting is dear; a dozen boards is plenty for a mean
+        local totalXp, bodies, fought, refused = 0, 0, 0, 0
+        for i = 1, BOARDS do
+            local player = parityCompany(DEFAULT_DAY)
+            local grid = Overworld.generate({
+                biome = "forest", encounterCount = DEFAULT_ENCOUNTERS, encounters = pool,
+                houseMaterial = "material_salt_iron", seed = SEED_BASE + i,
+            })
+            local boardXp = 0
+            for y = 1, grid.rows do
+                for x = 1, grid.cols do
+                    local e = grid.cells[y][x].encounter
+                    if e and FIGHT[e.kind] then
+                        local ok, built = pcall(EncounterBattle.build, {
+                            encounter = e, day = DEFAULT_DAY, party = player.roster, biome = "forest",
+                        })
+                        if ok and built and built.combat then
+                            EncounterBattle.autoDeploy(built.combat, built.arena, Muster.fielded(player))
+                            Combat.openBattle(built.combat)
+                            Autobattle.run(built.combat, { maxTurns = 400 })
+                            for _, got in pairs(built.combat.xpByChar or {}) do boardXp = boardXp + got end
+                            fought = fought + 1
+                        else
+                            refused = refused + 1
+                        end
+                    end
+                end
+            end
+            totalXp = totalXp + boardXp
+            bodies = bodies + math.max(1, #player.roster)
+        end
+
+        -- Per BODY per BOARD. `bodies` accumulated the company size once per board, so dividing the
+        -- whole haul by it gives what one member banked on one board -- which is one day.
+        local perDay = totalXp / math.max(1, bodies)
+        print("")
+        print(string.format("  EXPERIENCE A DAY -- %d boards fought, %d fights resolved, %d refused",
+            BOARDS, fought, refused))
+        print(string.format("    %-24s %8.1f", "xp a body a day", perDay))
+        print(string.format("    %-24s %8d", "over the campaign", math.floor(perDay * Calendar.DAYS)))
+        print(string.format("    %-24s %8d  %s", "which reaches level",
+            Experience.levelFor(perDay * Calendar.DAYS),
+            "against a world ending at " .. Calendar.FINAL_DANGER))
+        print(string.format("    %-24s %8d", "at Experience.STEP", Experience.STEP))
     end
 
     if wantTiers then

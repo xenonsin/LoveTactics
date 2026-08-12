@@ -107,10 +107,32 @@ return {
         local earned = floors * fightsPerFloor *
             (actionsPerFight * Experience.PER_ACTION + killsPerFight * Experience.PER_FELLING)
 
-        local reached = Experience.levelFor(earned)
+        -- ON THE DESCENT'S OWN STEP, which is the point of the case now. The two modes stopped sharing
+        -- a curve when the campaign re-anchored against a forty-day budget the descent has not got;
+        -- reading Experience.STEP here would make every campaign retune fail this case, which is
+        -- exactly the coupling the split was made to remove.
+        local reached = Experience.levelFor(earned, Experience.DESCENT_STEP)
         assert(math.abs(reached - wanted) <= 2,
             "a company that fights its way down should arrive near level " .. wanted ..
             ", not " .. reached)
+
+        -- And the campaign's step must NOT satisfy this ladder -- if it did, the two constants would be
+        -- interchangeable and the split would be decoration.
+        assert(Experience.levelFor(earned) > wanted + 2,
+            "the campaign curve is deliberately faster; if it fits the descent's ladder too, the two "
+            .. "steps are not actually doing different jobs")
+    end },
+
+    { name = "the two curves are independent, and each is named where it is used", fn = function()
+        -- The campaign's step is measured against a forty-day budget (`. board-report 12 xp`); the
+        -- descent's against its seven-floor ladder. Nothing should ever make one a function of the other.
+        assert(Experience.STEP ~= Experience.DESCENT_STEP, "two ladders, two anchors")
+        -- Defaulting: an unqualified call is the CAMPAIGN's, because that is the mode almost every
+        -- caller is in. The descent is the one that has to say so.
+        assert(Experience.totalFor(10) == Experience.totalFor(10, Experience.STEP),
+            "an unqualified curve reading is the campaign's")
+        assert(Experience.totalFor(10, Experience.DESCENT_STEP) > Experience.totalFor(10),
+            "and the descent's is the dearer of the two")
     end },
 
     { name = "banked experience survives a save, so a resumed run keeps its progress", fn = function()

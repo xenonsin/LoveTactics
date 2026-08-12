@@ -42,27 +42,55 @@ Experience.PER_FELLING = 4
 -- THE CURVE. Experience to climb one level is STEP x the level being left, so the cost of a level rises
 -- linearly and the cumulative cost of reaching level L is triangular: STEP x L x (L-1) / 2.
 --
--- STEP is anchored on the descent's own ladder rather than picked. Descent.floorLevel fights the seventh
--- circle at level 13 (LEVEL_PER_FLOOR = 2, floor 7 -> 13), and a floor is roughly six or seven fights in
--- which a body acts about seven times and takes something over one kill -- call it 70 experience per body
--- per floor, 490 across a full run. Reaching level 13 on the triangle costs STEP x 78, so STEP = 6 puts
--- the seventh circle at 468: a company that fights its way down arrives at the bottom at about the level
--- the bottom is built for, and one that skips fights arrives under it. tests/experience_spec.lua pins the
--- arithmetic; models/balance.lua is where the claim about what a floor pays gets re-measured.
-Experience.STEP = 6
+-- STEP IS ANCHORED ON A MEASUREMENT, and it had to be re-anchored when this file stopped being the
+-- descent's private ladder and became the campaign's. `. board-report 12 xp` fights every combat and
+-- elite on a dozen rolled boards through models/autobattle.lua -- the real loop, the real plan, the
+-- real ordering -- with a company held at parity with the day, and reads what combat actually banked:
+--
+--     22.1 experience a body a day, i.e. per expedition
+--     x 40 days (Calendar.DAYS) = 882 over a campaign that fights everything it meets
+--
+-- The old value of 6 was anchored on the descent's seven-floor ladder and says so in the note it
+-- replaced. Carried into the campaign it put that 882 at level 17, five short of the world's closing
+-- level of 22 -- so a player who fought every fight on every board still arrived at the last day
+-- outmatched, which is not a deadline, it is a wall.
+--
+-- STEP = 3 puts the same 882 at level 24. That is the CEILING, reached only by clearing every board
+-- entire; a player who takes the seventy percent of fights a real run takes lands near 20 -- above the
+-- ordinary road (which spawns around 19 after Growth's lag) and a shade under the finale. Which is the
+-- shape the whole calendar is for: keeping pace is possible, and squandering days is felt.
+--
+-- ESTIMATING THIS WOULD HAVE BEEN A DISASTER, and nearly was: the figure carried in the design notes
+-- was 44 a day, twice the truth. tests/experience_spec.lua pins the arithmetic, and the number above is
+-- reproducible rather than remembered.
+Experience.STEP = 3
+
+-- THE DESCENT KEEPS ITS OWN, and the two are separate constants because the modes are separate games.
+--
+-- The descent's ladder is anchored on Descent.LEVEL_PER_FLOOR: the seventh circle fights at level 13,
+-- and a floor is six or seven fights paying about 70 a body, so 490 across a run. Six puts level 13 at
+-- 468 -- a company that fights its way down arrives at about the level the bottom is built for.
+--
+-- Nothing about that reasoning changed when the campaign's did, and it must not be dragged along: the
+-- campaign re-anchored because it acquired a deadline and a forty-day budget, which the descent has
+-- neither of. Sharing one constant meant every campaign retune silently re-tuned the post-game too --
+-- which is the "second master" the decision to leave the descent alone was made to avoid. So the step
+-- is a PARAMETER on everything below, defaulting to the campaign's, and models/descent.lua names this
+-- one at its own resolve.
+Experience.DESCENT_STEP = 6
 
 -- Total experience needed to have REACHED `level`. Level 1 costs nothing -- everybody starts there.
-function Experience.totalFor(level)
+function Experience.totalFor(level, step)
     local l = math.max(1, math.min(Growth.LEVEL_CAP, level or 1))
-    return Experience.STEP * l * (l - 1) / 2
+    return (step or Experience.STEP) * l * (l - 1) / 2
 end
 
 -- The level `xp` entitles a body to, capped by Growth.LEVEL_CAP -- the same ceiling the prestige ladder
 -- respects, so neither mode can produce a character the growth tables have no row for.
-function Experience.levelFor(xp)
+function Experience.levelFor(xp, step)
     local total = xp or 0
     local level = 1
-    while level < Growth.LEVEL_CAP and total >= Experience.totalFor(level + 1) do
+    while level < Growth.LEVEL_CAP and total >= Experience.totalFor(level + 1, step) do
         level = level + 1
     end
     return level
@@ -71,11 +99,11 @@ end
 -- How much further to the next level, as `into, span` -- what a bar fills. Nil at the cap, which has no
 -- next level and must not render as a bar frozen just short of full (Growth.prestigeIntoLevel returns
 -- nil for the same reason, and a readout that reads one should be able to read the other).
-function Experience.intoLevel(xp)
-    local level = Experience.levelFor(xp)
+function Experience.intoLevel(xp, step)
+    local level = Experience.levelFor(xp, step)
     if level >= Growth.LEVEL_CAP then return nil end
-    local base = Experience.totalFor(level)
-    return (xp or 0) - base, Experience.totalFor(level + 1) - base
+    local base = Experience.totalFor(level, step)
+    return (xp or 0) - base, Experience.totalFor(level + 1, step) - base
 end
 
 -- Bank experience on a body. Total lifetime, never a per-level remainder: the level is a pure function
@@ -168,18 +196,18 @@ end
 --
 -- Idempotent: Growth.resolve is a no-op on a character already at its target, so calling this after every
 -- battle costs nothing on a body that has not earned a level since the last one.
-function Experience.resolve(char)
+function Experience.resolve(char, step)
     if not char then return nil end
-    return Growth.resolve(char, Experience.levelFor(char.xp))
+    return Growth.resolve(char, Experience.levelFor(char.xp, step))
 end
 
 -- Resolve a whole company, returning the list of members that advanced. THE DESCENT'S ONLY CALL SITE
 -- (states/game.lua, at the end of a battle in a run) and therefore the entire boundary between "the
 -- campaign counts experience it never spends" and "the descent spends it".
-function Experience.resolveParty(chars)
+function Experience.resolveParty(chars, step)
     local advanced = {}
     for _, char in ipairs(chars or {}) do
-        local summary = Experience.resolve(char)
+        local summary = Experience.resolve(char, step)
         if summary then advanced[#advanced + 1] = summary end
     end
     return advanced

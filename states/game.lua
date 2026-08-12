@@ -955,7 +955,10 @@ function game:openEncounter(cell)
             -- finishBattle, the only place that knows who stood on the board); this turns everybody's
             -- banked experience into levels.
             if game.player then
-                for _, up in ipairs(Experience.resolveParty(game.player.roster)) do
+                -- The descent names its own curve step: it is a separate mode with its own ladder, and sharing
+                -- one constant meant a campaign retune silently re-tuned the post-game (models/experience.lua).
+                local step = game.descent and Experience.DESCENT_STEP or nil
+                for _, up in ipairs(Experience.resolveParty(game.player.roster, step)) do
                     game:pushToast((up.char.name or up.char.id) .. " reaches level " .. up.toLevel)
                 end
             end
