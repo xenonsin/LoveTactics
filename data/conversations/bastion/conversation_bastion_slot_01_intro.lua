@@ -1,5 +1,9 @@
 -- Conversation authored inline (English); localization ids (`tag`) are stamped by
 -- tools/extract_strings.lua and must not be hand-edited. See models/conversation.lua.
+--
+-- No offer in this scene. The Bastion's ten each carry one (docs/temptation.md) and this line's first
+-- is in the OUTRO, after the column is through the gate -- there is nothing to be offered on the way
+-- out of the city, and a bargain proposed before the job has a shape is a bargain about nothing.
 return {
     title = "Twelve Days Without Supply",
     cast  = { "bastion", "character_rowan" },

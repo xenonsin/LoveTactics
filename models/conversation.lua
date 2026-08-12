@@ -156,15 +156,24 @@ end
 --   { done = "vault_heist" }  the quest is completed
 --   { notDone = "..." }
 --   { prestige = 3 }          player prestige is AT LEAST 3
+--   { flag = "caved_bastion" } a story flag is set (models/story_effect.lua's `effect = { flag = ... }`)
+--   { notFlag = "..." }
 --   { all = { c1, c2 } }      every sub-condition holds
 --   { any = { c1, c2 } }      at least one holds
 -- Several keys in one table AND together: { has = "character_priest", done = "vault_heist" }.
+--
+-- `flag` is the one predicate whose subject is a CHOICE rather than a state of the world. The other
+-- five ask what the player has: who is on the roster, what is finished, how far along they are. This
+-- one asks what they answered. It is what makes a branching scene able to remember itself, and it is
+-- how held / left / caved reach every scene downstream of a line (models/temptation.lua).
 local PREDICATES = {}
 PREDICATES.has = function(ctx, id) return ctx.roster[id] == true end
 PREDICATES.notHas = function(ctx, id) return ctx.roster[id] ~= true end
 PREDICATES.done = function(ctx, id) return ctx.quests[id] == true end
 PREDICATES.notDone = function(ctx, id) return ctx.quests[id] ~= true end
 PREDICATES.prestige = function(ctx, n) return (ctx.prestige or 1) >= n end
+PREDICATES.flag = function(ctx, id) return ctx.flags[id] == true end
+PREDICATES.notFlag = function(ctx, id) return ctx.flags[id] ~= true end
 PREDICATES.all = function(ctx, list)
     for _, sub in ipairs(list) do
         if not Conversation.test(sub, ctx) then return false end
@@ -198,7 +207,7 @@ end
 -- The evaluation context for `test`, read off a player (models/player.lua). Roster membership is
 -- flattened to an id set so `has` is a lookup rather than a scan.
 function Conversation.context(player)
-    local roster, quests = {}, {}
+    local roster, quests, flags = {}, {}, {}
     if player then
         for _, char in ipairs(player.roster or {}) do
             if char.id then roster[char.id] = true end
@@ -206,10 +215,14 @@ function Conversation.context(player)
         for questId, done in pairs(player.completedQuests or {}) do
             quests[questId] = done == true
         end
+        for flagId, set in pairs(player.flags or {}) do
+            flags[flagId] = set == true
+        end
     end
     return {
         roster = roster,
         quests = quests,
+        flags = flags,
         prestige = (player and player.prestige) or 1,
     }
 end

@@ -29,6 +29,32 @@ local KNOWN_KINDS = {
     construct = true, demon = true, undead = true, object = true,
 }
 
+-- The deliberate duplicates: the SAME character in two blueprints, which must read the same on the
+-- board. Both uniqueness cases below consult it, and it is shared rather than copied into each so the
+-- two can never disagree about who is allowed to look like whom.
+--
+--   * saber_bout -- Saber as the debut bout fields her.
+--   * *_caved    -- a companion the player spoiled across her own class line, fighting for the Hollow
+--                   Crown at the Gate (models/temptation.lua). Reading as herself IS the beat: what
+--                   tells the player is her side and her name, never a costume.
+local ALIAS = {
+    character_saber_bout = "character_saber",
+    character_rowan_caved = "character_rowan",
+    character_saber_caved = "character_saber",
+    character_amana_caved = "character_amana",
+    character_kaya_caved = "character_kaya",
+    character_gyeom_caved = "character_gyeom",
+    character_clem_caved = "character_clem",
+    character_ren_caved = "character_ren",
+}
+
+-- Are these two blueprints allowed to converge? The relation is symmetric, and it composes through the
+-- alias target -- character_saber_bout and character_saber_caved are both Saber, so they may share with
+-- each other as well as with her, which a bare one-hop lookup would have failed on.
+local function aliased(a, b)
+    return (ALIAS[a] or a) == (ALIAS[b] or b)
+end
+
 return {
     {
         name = "tokenId strips the character_ prefix (so the token lands at the sprite's path)",
@@ -225,15 +251,14 @@ return {
         -- The fix is one line in CHARACTER_SILHOUETTE, never art.
         name = "no two characters resolve to the same silhouette",
         fn = function()
-            -- The deliberate exceptions: the same character in two blueprints, which must READ the same.
-            local ALIAS = { character_saber_bout = "character_saber" }
+            -- The deliberate exceptions are the shared ALIAS table at the top of this file.
             local owner, clashes = {}, {}
             for key, def in pairs(defs) do
                 local s = Char.slugFor(def, Char.tokenId(key))
                 local held = owner[s]
                 if not held then
                     owner[s] = key
-                elseif ALIAS[key] ~= held and ALIAS[held] ~= key then
+                elseif not aliased(key, held) then
                     clashes[#clashes + 1] = string.format("%s and %s both wear %s", held, key, s)
                 end
             end
@@ -247,7 +272,6 @@ return {
         -- what they resolve to -- the Trapper wore the Bandit's art that way, which is where this started.
         name = "no two characters share a sprite file",
         fn = function()
-            local ALIAS = { character_saber_bout = "character_saber" }
             local owner, clashes = {}, {}
             for key, def in pairs(defs) do
                 local path = def.sprite
@@ -255,7 +279,7 @@ return {
                     local held = owner[path]
                     if not held then
                         owner[path] = key
-                    elseif ALIAS[key] ~= held and ALIAS[held] ~= key then
+                    elseif not aliased(key, held) then
                         clashes[#clashes + 1] = string.format("%s and %s both load %s", held, key, path)
                     end
                 end

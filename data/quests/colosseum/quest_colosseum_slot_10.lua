@@ -15,6 +15,10 @@ return {
     sponsor = "colosseum",
     rewardGold = 500,
     rewardItems = { "armor_mail_of_the_unappeased" },
+    -- The line's last quest: completing it settles what its ten offers came to, and decides whether
+    -- Saber held, left, or caved (models/temptation.lua, docs/temptation.md). A data flag rather than
+    -- a quest id the engine knows, exactly like `endsCampaign` on the finale.
+    endsLine = true,
     requiredQuests = { "quest_colosseum_slot_09" }, -- slot 10: the line runs in order
     requiredPrestige = 1,
     gateHint = "beneath the sand, where the roaring was loudest",

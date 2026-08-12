@@ -216,6 +216,56 @@ function Player.recruit(player, charId)
     return char
 end
 
+-- Lose a companion. The counterpart to Player.recruit, and for most of this game's life it did not
+-- exist -- the roster was strictly append-only, on the reasoning that a party member is earned and
+-- never taken away. What changed that is models/temptation.lua: a companion whose line ends in `left`
+-- has decided she will not follow the player any further, and a refusal that leaves her standing in
+-- the party is not a refusal.
+--
+-- WHAT SHE LEAVES AND WHAT SHE TAKES. Ordinary equipment out of her grid goes back to the stash --
+-- that gear was bought with the company's gold and she is not a thief. Her BOUND items do not: a bound
+-- item is a signature relic, welded to its holder by every other path in the game (Item.isBound --
+-- never moved, stowed, sold, or stolen), and the one unique object her whole line was written around
+-- walking out on her body is the point rather than an oversight. It is the thing you lost by being who
+-- you were.
+--
+-- Also scrubs the two ledgers that name a body by id and would otherwise keep naming a body that is
+-- gone: `lastDeployed` (the deployment phase's opening pick) and `wounds`. `completedQuests` is
+-- deliberately untouched -- her recruit quest still happened.
+--
+-- Returns true if she was there to lose. Persistence is the caller's call, like Player.recruit.
+function Player.release(player, charId)
+    if not (player and charId) then return false end
+
+    local index
+    for i, char in ipairs(player.roster or {}) do
+        if char.id == charId then index = i break end
+    end
+    if not index then return false end
+
+    local char = table.remove(player.roster, index)
+
+    -- Indexed 1..MAX_INVENTORY, never `pairs`: the grid is a SPARSE array (any cell may be nil) and
+    -- models/character.lua says so at the top of the file -- pairs would skip past a hole and stop.
+    for cell = 1, Character.MAX_INVENTORY do
+        local item = char.inventory and char.inventory[cell]
+        if item and not Item.isBound(item) then
+            Player.addToStash(player, item)
+            char.inventory[cell] = nil
+        end
+    end
+
+    local kept = {}
+    for _, id in ipairs(player.lastDeployed or {}) do
+        if id ~= charId then kept[#kept + 1] = id end
+    end
+    player.lastDeployed = kept
+
+    if player.wounds then player.wounds[charId] = nil end
+
+    return true
+end
+
 -- The created avatar wears one of two bodies (`player.body`, 1 or 2 -- which sprite set, chosen at
 -- character creation; body 1 is the default when creation was skipped). That choice lives on the player,
 -- NOT the avatar blueprint, so it has to be re-stamped onto the avatar instance every time one is built:
@@ -285,6 +335,17 @@ function Player.new()
         newStock = {},        -- item id -> true; put on a vendor's shelf by a quest and not yet looked at
         visitedVendors = {},  -- vendor id -> true; a shop plays its intro scene the first time only (states/hub.lua)
         announcedDisciplines = {}, -- discipline id -> true; a vendor announces a newly unlocked discipline once (states/hub.lua)
+        -- Story flags, as a plain set of id -> true. Written by a conversation choice's
+        -- `effect = { flag = ... }` (models/story_effect.lua) and read back by a scene's
+        -- `when = { flag = ... }` (models/conversation.lua). This is the general-purpose "something
+        -- happened once" ledger; the three above are older, narrower versions of the same idea that
+        -- predate it and are left alone rather than folded in.
+        flags = {},
+        -- The temptation ledger, as { [vendorId] = { taken = n, pressed = n } } -- how many of a
+        -- line's ten offers were accepted, and how many of those the line's companion was argued into
+        -- rather than overruled on. Resolved to held/left/caved when the line's slot 10 completes;
+        -- see models/temptation.lua and docs/temptation.md.
+        temptation = {},
         ngPlus = 0,           -- completed campaigns carried forward; see Player.newGamePlus
     }
 
@@ -601,6 +662,14 @@ end
 --   PERSISTS DELIBERATELY -- visited-vendor and discipline-announcement flags. Those exist to make a
 --   one-time scene play once; replaying eight shop introductions is not a reward.
 --
+--   RESETS, for the same reason the quest ledger does -- the story flags and the temptation ledger
+--   (models/temptation.lua). Every one of the seventy offers is back on the board, so the counts they
+--   feed have to start from nothing or a second run would resolve every line on the first run's
+--   answers. A companion who LEFT is not restored by this: she is off the roster, her recruit quest is
+--   back on the board, and re-earning her is the intended way back. A companion who CAVED is still
+--   carrying the relic she put on, which is the correct reading -- New Game+ carries the company as it
+--   finished, and that is what it finished as.
+--
 -- Recruits are left in the roster rather than un-recruited. Their quests return to the board, and
 -- Player.recruit refuses a duplicate by design, so a re-run of a recruit quest pays its gold and its
 -- scene and mints nobody -- which is the correct reading of meeting someone you already travel with.
@@ -610,6 +679,8 @@ function Player.newGamePlus(player)
 
     player.ngPlus = (player.ngPlus or 0) + 1
     player.completedQuests = {}
+    player.flags = {}
+    player.temptation = {}
     -- The post-quest advancement overlay is owed to the run that just ended, not to the new one.
     player.pendingSummary = nil
     -- Every shelf just dropped back to its opening stock, so nothing on one is new any more. The

@@ -54,9 +54,36 @@ return {
             { "character_clem", "The house is a hole in the ground and I am walking out of it. Let it stay owed.", tag = 17 },
             { "character_clem", "...including mine. Fine. Especially mine.", tag = 18 },
         } },
+        { when = { flag = "caved_bastion" }, script = {
+            { "character_avatar", "It wore Rowan at three quarters. It did not even reach very far.", tag = 23 },
+        } },
+        { when = { flag = "caved_colosseum" }, script = {
+            { "character_avatar", "Saber went over without breaking stride. She had been ready for a while.", tag = 24 },
+        } },
+        { when = { flag = "caved_cathedral" }, script = {
+            { "character_avatar", "Amana asked me for nothing at the end. She just took it.", tag = 25 },
+        } },
+        { when = { flag = "caved_hunters_lodge" }, script = {
+            { "character_avatar", "Kaya did not stop. I do not think she could have by then.", tag = 26 },
+        } },
+        { when = { flag = "caved_arcanum" }, script = {
+            { "character_avatar", "Gyeom had an answer ready for everything I did. She always had one. That was new.", tag = 27 },
+        } },
+        { when = { flag = "caved_undercroft" }, script = {
+            { "character_avatar", "Clem collected. After everything, at the very end, she collected.", tag = 28 },
+        } },
+        { when = { flag = "caved_alchemist" }, script = {
+            { "character_avatar", "Ren took a shape off me and wore it at me. She was so pleased with it.", tag = 29 },
+        } },
         { "character_avatar", "Nobody up there is going to know what this was.", tag = 19 },
         { "character_avatar", "The board will post work in the morning. The shops will open. Somebody will complain about the price of steel.", tag = 20 },
         { "character_avatar", "That is the whole of what we were for. That it stays boring up there.", tag = 21 },
+        { when = { any = { { flag = "caved_bastion" }, { flag = "caved_colosseum" }, { flag = "caved_cathedral" }, { flag = "caved_hunters_lodge" }, { flag = "caved_arcanum" }, { flag = "caved_undercroft" }, { flag = "caved_alchemist" } } }, script = {
+            { "character_avatar", "...", tag = 30 },
+            { "character_avatar", "It emptied out like a coat coming off a hook. That is what I keep saying.", tag = 31 },
+            { "character_avatar", "A hook is not a thing that is finished with. A hook is a thing that is waiting.", tag = 32 },
+            { "character_avatar", "And I hung them on it myself, one at a time, and every single time I thought I was being kind.", tag = 33 },
+        } },
         { "character_avatar", "Come on. It is a long stair and I would like to see the sky do the thing it does.", tag = 22 },
     },
 }

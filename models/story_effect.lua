@@ -9,9 +9,16 @@
 --   effect = { heal = 12 }                                    -- +HP to the active party (capped)
 --   effect = { maxHpCost = 7, grant = "utility_torch" }       -- a cost/benefit tradeoff
 --   effect = { flag = "met_the_survivor" }                    -- a story flag for later gating
+--   effect = { take = "bastion" }                             -- the Crown's offer, accepted
+--   effect = { press = "bastion" }                            -- ...and the companion argued into it
 --
 -- Fields compose: a single effect may cost, grant, and flag at once (the tradeoff shape). Pure
 -- logic, no love.graphics -- headless-testable. See tests/story_effect_spec.lua.
+--
+-- `take` and `press` are the temptation ledger's two axes and are the only keys here that name a
+-- VENDOR rather than an item, a number, or a flag id. They exist as a pair because accepting a bargain
+-- and talking your companion into it are different acts with different consequences -- see
+-- models/temptation.lua and docs/temptation.md for what the counts come to.
 
 local StoryEffect = {}
 
@@ -60,6 +67,12 @@ function StoryEffect.apply(effect, player)
         player.flags = player.flags or {}
         player.flags[effect.flag] = true
     end
+
+    -- The temptation ledger. Both keys name the VENDOR whose line the offer belongs to, and a single
+    -- choice commonly sets both -- taking a bargain your companion came along for is one act with two
+    -- consequences, so it records twice rather than needing a third key for the combination.
+    if effect.take then require("models.temptation").record(player, effect.take, "take") end
+    if effect.press then require("models.temptation").record(player, effect.press, "press") end
 end
 
 return StoryEffect

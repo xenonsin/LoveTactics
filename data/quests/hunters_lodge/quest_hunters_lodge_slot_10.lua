@@ -15,6 +15,10 @@ return {
     sponsor = "hunters_lodge",
     rewardGold = 500,
     rewardItems = { "utility_maw_of_the_unfed" },
+    -- The line's last quest: completing it settles what its ten offers came to, and decides whether
+    -- Kaya held, left, or caved (models/temptation.lua, docs/temptation.md). A data flag rather than
+    -- a quest id the engine knows, exactly like `endsCampaign` on the finale.
+    endsLine = true,
     requiredQuests = { "quest_hunters_lodge_slot_09" }, -- slot 10: the line runs in order
     requiredPrestige = 2,
     gateHint = "at the heart of the wood the hunt hollowed out",

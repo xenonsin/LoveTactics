@@ -61,6 +61,11 @@ return {
     ["line.conversation_bastion_slot_01_intro.8"] = { en = "This is not your line, {name}, and it is not your order.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_01_intro.9"] = { en = "But I gave you two words in the ash and I meant them both. Come on.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_01_outro.1"] = { en = "Twelve days. We'd stopped counting somewhere around the eighth.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_01_outro.10"] = { en = "One thing before you go. Sixth wagon had a driver on it at the start and didn't at the end. Denhold. No people that I ever heard of.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_01_outro.11"] = { en = "His share is sitting in my book with nowhere to go, and I am not carrying it back down that road to hand to nobody. You want it, it's yours. Choose...", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_01_outro.12"] = { en = "...", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_01_outro.13"] = { en = "\"Put it in the Bastion's poor-box at Highwatch.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_01_outro.14"] = { en = "\"We'll take it.\"", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_01_outro.2"] = { en = "And they opened the gate to you.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_01_outro.3"] = { en = "Opened it? The sergeant came down the road on foot to meet the lead wagon. Wouldn't touch the flour. Went straight past me to the salt.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_01_outro.4"] = { en = "Their wards were four days from going out. Four days, and then that mountain is just a wall with tired men on it.", ja = "" },  -- TODO
@@ -107,7 +112,18 @@ return {
     ["line.conversation_bastion_slot_02_outro.11"] = { en = "Let's go back. I want to read that contract.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_02_outro.12"] = { en = "I do not know what we did tonight.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_02_outro.13"] = { en = "My whole duty was the water. Four skins on a mule. I checked them at every halt like they were relics.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_02_outro.14"] = { en = "...Their kit is still on them. Bastion steel, every piece, with the maker's marks filed off.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_02_outro.15"] = { en = "The contract says ended. It does not say returned. Nobody is coming out here to count it.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_02_outro.16"] = { en = "...", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_02_outro.17"] = { en = "\"Leave them what they died in.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_02_outro.18"] = { en = "\"Strip it. We can sell it in the city.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_02_outro.19"] = { en = "\"Fifteen years of water, Rowan. Let the order buy you one drink.\"", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_02_outro.2"] = { en = "I have buried knights who did it worse and been told to write commendations over them.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_02_outro.20"] = { en = "Good. I would not have argued, but I am glad you said it first.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_02_outro.21"] = { en = "You'll do what you'll do. I'm not touching it.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_02_outro.22"] = { en = "...", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_02_outro.23"] = { en = "That is the first time anybody has put it that way to me.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_02_outro.24"] = { en = "All right. Hand me the pry bar.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_02_outro.3"] = { en = "{name}. I want to say this now, while I can still say it honestly.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_02_outro.4"] = { en = "The order said end them. So they are ended. That is the entire paperwork.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_02_outro.5"] = { en = "...", ja = "" },  -- TODO
@@ -122,18 +138,43 @@ return {
     ["line.conversation_bastion_slot_03_intro.5"] = { en = "Good.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_03_intro.6"] = { en = "Come and stand with them, {name}. You have been taking my word for what the order is. Today you can watch it done properly.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_03_outro.1"] = { en = "The sergeant asked me when the relief was due. I told him I didn't know.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_03_outro.10"] = { en = "\"He needs it more than we do.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_03_outro.11"] = { en = "\"Take it. He's right.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_03_outro.12"] = { en = "\"Rowan. You tell him. He'll believe a knight.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_03_outro.13"] = { en = "Then he keeps it. Four days is four days.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_03_outro.14"] = { en = "He is right. I hate that he is right.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_03_outro.15"] = { en = "...He handed it over the moment I asked.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_03_outro.16"] = { en = "He would not have, for you. I want you to know that.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_03_outro.2"] = { en = "He said that was fine.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_03_outro.3"] = { en = "He said it the way you'd say the weather was fine, {name}. Not bravely. It had just stopped being a question a long time ago.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_03_outro.4"] = { en = "There is nothing behind that post. There has not been for twenty years. They know it better than the archive does. They can see the empty fields from the wall.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_03_outro.5"] = { en = "It is what we teach. It is what I would have done.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_03_outro.6"] = { en = "I have never watched it from outside before, and I do not know what I watched.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_03_outro.7"] = { en = "He put his warding stores in front of me before we left. All of it. Four days' worth.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_03_outro.8"] = { en = "He said it does more good on a road than on a wall nobody is coming to.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_03_outro.9"] = { en = "...", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_04_confront.1"] = { en = "You've the look. Bastion. Sworn, by the shield.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_04_confront.10"] = { en = "Hold until relieved. Nobody is coming. Nobody was ever coming, for her or for me or for you.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_04_confront.11"] = { en = "So set it down. That is all it has ever been. You set it down and nothing happens.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_04_confront.12"] = { en = "That is not my line. Somebody put it to her in that order, word for word, and she is under a gate now and I am out here on a road, and the difference between us is four days.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_04_confront.13"] = { en = "...", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_04_confront.14"] = { en = "\"Keep your list.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_04_confront.15"] = { en = "\"I'll take the list. Say what you like.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_04_confront.16"] = { en = "\"Rowan. Answer him.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_04_confront.17"] = { en = "No. Of course not. Neither did I, the first four times.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_04_confront.18"] = { en = "Written down and paid for. You are easier than she was.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_04_confront.19"] = { en = "...Nobody came.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_04_confront.2"] = { en = "Whose name do you carry, then?", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_04_confront.20"] = { en = "I was on that road. I know exactly how far we got.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_04_confront.21"] = { en = "There. That was not so hard, and it did not cost you anything at all.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_04_confront.22"] = { en = "It never does. That is what nobody tells you about it.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_04_confront.3"] = { en = "Acedia's.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_04_confront.4"] = { en = "Of course it is. They are still handing her out.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_04_confront.5"] = { en = "Ask them where she is buried. Go on. Not what she did. Where she is buried.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_04_confront.6"] = { en = "At Greywatch. Under the gate she died holding.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_04_confront.7"] = { en = "Is she.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_04_confront.8"] = { en = "I have the rest of the list. Where all of us went, what names we took. It is worth more to your order than my head is.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_04_confront.9"] = { en = "You can have it. I want one thing said back to me first, and I want it said by her.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_04_intro.1"] = { en = "The list. Knights who set their shields down. It is long, and we read it aloud.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_04_intro.2"] = { en = "Every Oathkeeper shield in the order carries a name off that list. We read them so they are not forgotten.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_04_intro.3"] = { en = "We read them so the entries can be closed.", ja = "" },  -- TODO
@@ -149,21 +190,58 @@ return {
     ["line.conversation_bastion_slot_05_intro.3"] = { en = "Then it won't mind me walking it.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_05_intro.4"] = { en = "I want to see the ground she chose to die on. That is all. Humour me, {name}.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_05_outro.1"] = { en = "{name}. The bar. Look at the bar.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_05_outro.10"] = { en = "\"Then it stays here.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_05_outro.11"] = { en = "\"Load it up.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_05_outro.12"] = { en = "\"They didn't want it, Rowan. You should have it.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_05_outro.13"] = { en = "It stays. It is a grave, and that is grave goods.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_05_outro.14"] = { en = "...Fine. It is only steel. She is not in it.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_05_outro.15"] = { en = "...", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_05_outro.16"] = { en = "I trained on this rack. I know the spacing of it in the dark.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_05_outro.17"] = { en = "All right. One. I will carry one of them, and I will carry it properly.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_05_outro.2"] = { en = "It's on the ground. On the INSIDE. You cannot lift a gate-bar from the wrong side of a gate. That is the entire point of a bar.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_05_outro.3"] = { en = "Someone in this fort opened it.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_05_outro.4"] = { en = "She died holding a gateway that was already standing open behind her. Fifteen years and nobody in the order has said that out loud.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_05_outro.5"] = { en = "They let her name carry a doctrine and they never told a single one of us she was betrayed.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_05_outro.6"] = { en = "I want the file. Whatever the archive kept on Greywatch, I want it in my hands.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_05_outro.7"] = { en = "The armoury is still full, {name}. Racked and oiled and sixty spears deep.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_05_outro.8"] = { en = "Forty-one people walked out of this fort and not one of them took a weapon with them.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_05_outro.9"] = { en = "...", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_06_intro.1"] = { en = "Another name off the roll. There is always another.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_06_intro.2"] = { en = "How long is the roll?", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_06_intro.3"] = { en = "Longer than last season.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_06_outro.1"] = { en = "Shorter line at the muster tent this time.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_06_outro.10"] = { en = "Forty-four. He can explain the gap to somebody above him.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_06_outro.11"] = { en = "Sixty on paper and forty-four on the line. I have seen where that ends.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_06_outro.12"] = { en = "...I have been a name on a roll that was short.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_06_outro.13"] = { en = "Nobody meant anything by it. It is how a season gets started.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_06_outro.14"] = { en = "Give me the pen.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_06_outro.2"] = { en = "That's the third season running.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_06_outro.3"] = { en = "Don't say anything about it, {name}. I have already heard what I would say.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_06_outro.4"] = { en = "The quartermaster wants the roll closed at sixty and he has forty-four.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_06_outro.5"] = { en = "He is not asking us to lie. He is asking us to write down sixty and let the season start.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_06_outro.6"] = { en = "...", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_06_outro.7"] = { en = "\"Forty-four is what he has.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_06_outro.8"] = { en = "\"Write sixty.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_06_outro.9"] = { en = "\"You've been on a roll like that, Rowan. Sign it.\"", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_07_intro.1"] = { en = "The archive keeps everything. Including what it stopped reading.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_07_intro.10"] = { en = "The archivist takes forty for a shelf he is not watching. He has taken it before.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_07_intro.11"] = { en = "There is more on that shelf than one relief order. Muster rolls. Pay books. Fifteen years of the eastern posts.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_07_intro.12"] = { en = "...", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_07_intro.13"] = { en = "\"We take the Greywatch file. Nothing else.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_07_intro.14"] = { en = "\"Take the shelf.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_07_intro.15"] = { en = "\"Rowan. You know what's worth taking. Pick.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_07_intro.16"] = { en = "One file. I came for one file.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_07_intro.17"] = { en = "All of it, then. It is only paper and it is already forgotten.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_07_intro.18"] = { en = "...", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_07_intro.19"] = { en = "The pay books. Those are the ones worth having.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_07_intro.2"] = { en = "Greywatch. The relief order that was cut for it. I want the date on the seal.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_07_intro.3"] = { en = "The archivist will not give you that.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_07_intro.4"] = { en = "I know. That's why I'm bringing {name} and not a requisition.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_07_intro.5"] = { en = "{name}. Before we go in there.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_07_intro.6"] = { en = "I have gone along with you a number of times now and I would like to say that out loud, because I do not think either of us has been counting.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_07_intro.7"] = { en = "I am not accusing you of anything. Every one of them was reasonable. I checked. That is what is bothering me.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_07_intro.8"] = { en = "There used to be a point where I said no to you, and I cannot find where it went.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_07_intro.9"] = { en = "Ask me again and I do not think I will find it this time either.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_07_outro.1"] = { en = "Here. The relief order cut for Greywatch. Sealed, dated, countersigned by two hands.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_07_outro.10"] = { en = "I would rather have been late.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_07_outro.11"] = { en = "Late is a thing a person can carry. Late means there was a door. I did not reach it in time, and a woman was holding on the other side of it.", ja = "" },  -- TODO
@@ -186,7 +264,19 @@ return {
     ["line.conversation_bastion_slot_08_outro.1"] = { en = "We knew. The terms are under seal in the second vault and they have been since the year it happened.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_08_outro.10"] = { en = "We shall hold.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_08_outro.11"] = { en = "To you. I have looked at you and chosen, and I could have chosen otherwise.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_08_outro.12"] = { en = "You have not answered me, and I notice you have not left either.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_08_outro.13"] = { en = "The seal holds or it does not, and that is a decision somebody in this room is going to make today.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_08_outro.14"] = { en = "A Lord Commander's stipend is four hundred a season and it is paid to people who understand the difference between a hard truth and a useful one.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_08_outro.15"] = { en = "...", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_08_outro.16"] = { en = "\"Keep your stipend.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_08_outro.17"] = { en = "\"We understand each other.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_08_outro.18"] = { en = "\"Rowan holds the Aegis. Offer it to her.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_08_outro.19"] = { en = "Then you will find the second vault is not the only thing that stays shut to you.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_08_outro.2"] = { en = "She negotiated. Her life and her company's lives, for the gate. There was no siege. There was no desperate hour. It was a transaction and she got her price.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_08_outro.20"] = { en = "Sensible. It changes nothing about what she did and it keeps four hundred posts manned.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_08_outro.21"] = { en = "...The knights on that line do not need to know.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_08_outro.22"] = { en = "Knowing would not put one more of them on a wall. It would take them off.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_08_outro.23"] = { en = "Spoken like the commander you are going to be.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_08_outro.3"] = { en = "We weighed a hard truth against a useful saint, knight, and we took the one that keeps the posts manned.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_08_outro.4"] = { en = "Every man on that line holds because he can say her name. What would you have had us do?", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_08_outro.5"] = { en = "...", ja = "" },  -- TODO
@@ -206,16 +296,41 @@ return {
     ["line.conversation_bastion_slot_09_intro.3"] = { en = "They kept every part of the oath except the part that cost anything.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_09_intro.4"] = { en = "Then they will be between her and us, and they will be very good at it.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_09_outro.1"] = { en = "Forty-one people said it in the same breath and then walked out through the gate.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_09_outro.10"] = { en = "...", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_09_outro.11"] = { en = "\"Forty-one. It stays forty-one.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_09_outro.12"] = { en = "\"What's the fee?\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_09_outro.13"] = { en = "\"Rowan. Ask her what she put down.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_09_outro.14"] = { en = "As you like. We are four miles up that road when you change your mind.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_09_outro.15"] = { en = "There is no fee. That is the part nobody believes until afterwards.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_09_outro.16"] = { en = "What did you put down. Say it plainly.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_09_outro.17"] = { en = "Nothing, knight. That is what I have been telling you.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_09_outro.18"] = { en = "I set down a thing that was already not doing anything, and I have been warm every winter since.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_09_outro.19"] = { en = "...", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_09_outro.2"] = { en = "It is the same sentence, {name}. Word for word. There is nothing you can do to a sentence to stop that happening to it.", ja = "" },  -- TODO
-    ["line.conversation_bastion_slot_09_outro.3"] = { en = "...", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_09_outro.4"] = { en = "No. There is one thing.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_09_outro.5"] = { en = "You can be somewhere the day it costs something.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_09_outro.6"] = { en = "Let's go. She is four miles up that road and she has been waiting fifteen years to be told she was right.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_09_outro.7"] = { en = "Forty-two, if you want it. She has never once closed the roll.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_09_outro.8"] = { en = "It is not a trick and there is no small print. You keep your name, your company and your kit. You keep her.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_09_outro.9"] = { en = "You put down the one thing you are carrying that is costing you something, and you go on exactly as you are.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_10_confront.1"] = { en = "Fifteen years of knights have held that line because they can say my name over their shields.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_10_confront.10"] = { en = "I know what mine is worth.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_10_confront.11"] = { en = "I chose it.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_10_confront.12"] = { en = "Then you spent fifteen years making that the truth about every post there has ever been. So that yours would stop being a thing you did.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_confront.13"] = { en = "You have been letting her put things down for a while now. I can hear it in how she is standing.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_confront.14"] = { en = "So finish it. Relieve her. She has done enough and there was never anybody coming, and you have known that longer than she has.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_confront.15"] = { en = "...", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_confront.16"] = { en = "\"She's not yours to relieve.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_confront.17"] = { en = "\"You're not wrong. It changes nothing here.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_confront.18"] = { en = "\"Rowan. You've done enough.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_confront.19"] = { en = "No. Nobody's ever is. That is what makes it so easy.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_10_confront.2"] = { en = "Take it from them and the Watch empties tonight. Not in a year. Tonight.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_confront.20"] = { en = "Then you have agreed with me and come anyway. How very much like the order.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_confront.21"] = { en = "...There it is.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_confront.22"] = { en = "...", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_confront.23"] = { en = "Yes.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_confront.24"] = { en = "All right.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_confront.25"] = { en = "Come and stand over here, child. You have been on that road a very long time.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_10_confront.3"] = { en = "I have done more for that line as a lie than I ever did with a shield in my hands. Put your weapon down and think about it honestly, which is more than the order ever managed.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_10_confront.4"] = { en = "...You're right.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_10_confront.5"] = { en = "Yes.", ja = "" },  -- TODO
@@ -229,13 +344,35 @@ return {
     ["line.conversation_bastion_slot_10_intro.4"] = { en = "{name}. Whatever she says to me in there, I have already said it to myself. Every mile of the road here. Don't worry about me.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_10_intro.5"] = { en = "...Worry a little. But keep it to yourself.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_10_outro.1"] = { en = "She was smaller than the shield made her.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_outro.10"] = { en = "I have been trying to find a way to say this that is fair to you and I do not think there is one, so I am going to say it badly.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_outro.11"] = { en = "I watched you decide, over and over, and every time I told myself it was the road and not the person.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_outro.12"] = { en = "She said no post is worth holding. You did not argue with her. You have not argued with her for a long time.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_outro.13"] = { en = "...", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_outro.14"] = { en = "\"Rowan. Stay.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_outro.15"] = { en = "\"...\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_outro.16"] = { en = "I know. I believe you mean it.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_outro.17"] = { en = "I swore to you in the ash and I meant that too, and I am still going to be somewhere the day it costs something.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_outro.18"] = { en = "It is not going to be here.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_outro.19"] = { en = "Do not follow me down that road. I will not stop.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_10_outro.2"] = { en = "They will read her name at muster tomorrow. Nobody there will know. I am not going to be the one who tells them. Not this month.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_outro.20"] = { en = "{name}. Come here. Sit down for a minute.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_outro.21"] = { en = "I have not felt like this since I was sixteen years old.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_outro.22"] = { en = "Fifteen years I have been carrying a full waterskin around asking people if they needed it, and nobody ever did, and I never once put it down.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_outro.23"] = { en = "You put it down for me. You did it so gently I did not notice you doing it.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_outro.24"] = { en = "The pike is hers. I am going to carry it. It is a good weapon and she has no further use for it.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_outro.25"] = { en = "...", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_outro.26"] = { en = "\"You've earned it.\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_outro.27"] = { en = "\"...\"", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_outro.28"] = { en = "There is nothing waiting for me at the muster tent and there never was.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_outro.29"] = { en = "Wherever you are going next, I am coming. Not because I swore anything.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_10_outro.3"] = { en = "Maybe the line empties. She may have been right about that. I will find out with everybody else.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_outro.30"] = { en = "Because I have got nothing else to do, and you are the only thing I like.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_10_outro.4"] = { en = "{name}.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_10_outro.5"] = { en = "Fifteen years the order taught me to hold until relieved. I never once noticed what that means. You wait for somebody else to decide you may stop.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_10_outro.6"] = { en = "I am not waiting to be relieved. I am not the relief either. I tried that, and it only meant running everywhere and arriving nowhere.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_10_outro.7"] = { en = "I am here, and it is you, and I picked it.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_10_outro.8"] = { en = "We shall hold.", ja = "" },  -- TODO
+    ["line.conversation_bastion_slot_10_outro.9"] = { en = "{name}.", ja = "" },  -- TODO
     ["line.conversation_bastion_vendor_intro.1"] = { en = "The Watch outfits those who hold. Shields that outlast the arm behind them. Mail a knight can be found standing in. We do not arm those who run. State your post, or your reason for having none.", ja = "" },  -- TODO
     ["line.conversation_bastion_vendor_intro.2"] = { en = "I hold what's mine. That's post enough.", ja = "" },  -- TODO
     ["line.conversation_bastion_vendor_intro.3"] = { en = "I held a post on this order's line before I ever held a sword for {name}. Greywatch. The quartermaster knows the face, if not the years on it.", ja = "" },  -- TODO
@@ -248,48 +385,49 @@ return {
     ["line.conversation_cathedral_discipline_unlocked.1"] = { en = "The {discipline}'s calling is open to you, {name}. What the Cathedral kept back for that path is on the shelf. Take what serves.", ja = "" },  -- TODO
     ["line.conversation_cathedral_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_cathedral_discipline_unlocked.3"] = { en = "The Light gives what is earned, and you earned this. Carry it gently.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_confront.1"] = { en = "The one before you wore our cloth. A Confessor, no less. She knows the charge.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_confront.2"] = { en = "She stole children promised to the Light and hid them from the rite. That is theft from the faith. Purge her, and be paid.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_confront.3"] = { en = "Children. The faith did not ask them, and it did not ask me. It has never once asked.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_confront.4"] = { en = "And now it sends a stranger to take me back. I understand. Take is the only verb they were ever taught.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_confront.5"] = { en = "You have been told what I am. You have not been told what they are. What waits for those children past that rite. Not yet.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_confront.6"] = { en = "I will not step aside, and I will not strike first. Beat me, then, and before you collect your coin, you will hear me out.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.1"] = { en = "Enough. You have me. The coin is yours whatever happens next. I am not asking you to give that up.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.10"] = { en = "Those. The corruption you are paid to purge. Every one of them was a child in that hall a season ago.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.11"] = { en = "I have put down three of those this year and been thanked for it.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.12"] = { en = "And it kills. Most often, it simply kills. The body goes out the back and into a pit with no marker on it, and the register writes the child down as ascended to the Light.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.13"] = { en = "The roll of our glorious dead is a casualty list. Everyone reads it aloud on the feast day. Nobody has ever once counted it.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.14"] = { en = "...Say that last part again.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.15"] = { en = "The register writes them down as ascended.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.16"] = { en = "My order carves a mark for each of its dead and teaches children the marks are days held. Same trick. Different stone.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.17"] = { en = "I am sorry. Go on. I did not mean to make this mine.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.18"] = { en = "How old are they when they take them?", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.19"] = { en = "Six. Seven. Young enough not to remember being asked, because they were not.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.2"] = { en = "I am asking for the walk back. That is all. Hear it, and then take me in if you still mean to.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.20"] = { en = "Mm. Then I know the shape of your house, priest, and I have never set foot in it.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.21"] = { en = "I hid nine of them. I would have hidden ninety. That is the whole of my crime and I will not pretend to regret it in front of you.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.22"] = { en = "Then why is a Confessor standing in a wood alone? Why has nobody in that building said a word?", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.23"] = { en = "Because almost nobody in that building knows. That is what I need you to understand, and it is the part that sounds like an excuse.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.24"] = { en = "The faith is real. The people in it are good. I have knelt beside them my whole life. It is a small circle around the rite, and they have kept it from the rest of us for a generation.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.25"] = { en = "If the Saint herself were told, plainly, with proof she could not put aside. It would end that afternoon. I believe that. I have to; it is the last thing I have that is not on fire.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.26"] = { en = "That is a great deal of weight on one woman's ignorance.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.27"] = { en = "Yes. It is.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.28"] = { en = "A rite that kills most of the ones it is done to is not a rite. It is a yield. Somebody is running it as a yield.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.29"] = { en = "...I have not let myself put it that way.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.3"] = { en = "Say it.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.30"] = { en = "Somebody keeps that register. Ledgers don't write themselves, and the hand that keeps one always knows what it's for.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.31"] = { en = "So. I cannot walk back in. I am fallen, and the word is theirs to give, and they have given it.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.32"] = { en = "But you are not the faith's hand. You were hired by it once and you did not finish the job, which makes you the only outfit in this country I can say any of this to.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.33"] = { en = "Take me with you. I will not ask you for a wage, or a share, or a say in where we go. I have never been much good at wanting things for myself. They were thorough about that.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.34"] = { en = "I only want to be standing somewhere the truth can still be carried. Let me carry it.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.35"] = { en = "You can want a wage too. We'll start there.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.36"] = { en = "...I will think about it.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.4"] = { en = "The children the faith takes in are sorted. Most are made anointed. The holy warriors you have cheered in the street. A few of us are kept back as clergy, and never blooded.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.5"] = { en = "Blooded. That is the word for it. There is a rite, and the rite puts something into a child, and what it puts in is not the Light.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.6"] = { en = "It is demon's blood.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.7"] = { en = "...You are certain.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.8"] = { en = "I stood close enough to be certain. Three things happen at that altar.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_02_join.9"] = { en = "It takes, and you get a soldier who will die gladly and never know what is in him. It takes wrong, and you get a thing that is hunted afterwards, and called a demon out of the wild.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_02_confront.1"] = { en = "Far enough. Stand off the cart and nobody on it gets a scratch.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_02_confront.2"] = { en = "We only want the ones who can stand up. The house is short a card and the road is full.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_02_confront.3"] = { en = "This cart is the Cathedral's. These people came to it on their own feet.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_02_confront.4"] = { en = "So did ours, sister. We work the same mile you do and we get here first some nights.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_02_confront.5"] = { en = "Nobody hands you a wagon and a blessing for it, that is the only difference I can find.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_02_confront.6"] = { en = "Then find a better one. Nothing on this road is yours to take.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_02_confront.7"] = { en = "Nets down. Now.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_02_confront.8"] = { en = "Take them alive if you can, lads. Dead ones fill nothing.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.1"] = { en = "The fold is clear. That is what the Cathedral hired us for.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.10"] = { en = "I stood close enough to be certain. Three things happen at that altar.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.11"] = { en = "It takes, and you get a soldier who will die gladly and never know what is in him. It takes wrong, and you get a thing that is hunted afterwards, and called a demon out of the wild.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.12"] = { en = "Those. On the ground. In front of you. Every one of them was a child in that hall a season ago.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.13"] = { en = "I have put down three of those this year and been thanked for it.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.14"] = { en = "And it kills. Most often, it simply kills. The body goes out the back and into the pit I showed you, and the register writes the child down as ascended to the Light.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.15"] = { en = "The roll of our glorious dead is a casualty list. Everyone reads it aloud on the feast day. Nobody has ever once counted it.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.16"] = { en = "You knew this on the night you raised us. You held it a month.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.17"] = { en = "I held it until you could see it. Words would not have done this, and I would not have been believed.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.18"] = { en = "You are believed. Go on.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.19"] = { en = "How old are they when they take them?", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.2"] = { en = "Do not put your sword away yet. Look at them first. Properly, all of them.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.20"] = { en = "Six. Seven. Young enough not to remember being asked, because they were not.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.21"] = { en = "Mm. Then I know the shape of your house, priest, and I have never set foot in it.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.22"] = { en = "I hid nine of them, before any of you knew me. I would have hidden ninety. That is the whole of my crime and I will not pretend to regret it in front of you.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.23"] = { en = "Then why has nobody in that building said a word?", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.24"] = { en = "Because almost nobody in that building knows. That is what I need you to understand, and it is the part that sounds like an excuse.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.25"] = { en = "The faith is real. The people in it are good. I have knelt beside them my whole life. It is a small circle around the rite, and they have kept it from the rest of us for a generation.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.26"] = { en = "If the Saint herself were told, plainly, with proof she could not put aside. It would end that afternoon. I believe that. I have to; it is the last thing I have that is not on fire.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.27"] = { en = "That is a great deal of weight on one woman's ignorance.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.28"] = { en = "Yes. It is.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.29"] = { en = "A rite that kills most of the ones it is done to is not a rite. It is a yield. Somebody is running it as a yield.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.3"] = { en = "They are small.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.30"] = { en = "...I have not let myself put it that way.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.31"] = { en = "Somebody keeps that register. Ledgers don't write themselves, and the hand that keeps one always knows what it's for.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.32"] = { en = "Then we go and read it ourselves.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.33"] = { en = "You will not be let near it, and I cannot walk back in to fetch it. I am fallen, and the word is theirs to give, and they gave it the day I did not come home.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.34"] = { en = "But you were never the faith's hand. You were hired by it and you are still standing here counting bodies, which makes you the only outfit in this country I could have said any of this to.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.35"] = { en = "Take me to that room. I only want to be standing somewhere the truth can still be carried.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.4"] = { en = "Yes.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.5"] = { en = "I have been carrying this since the night I brought you back, and I told you there were older names in the book. Sit down. I will give you the rest of it.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.6"] = { en = "The children the faith takes in are sorted. Most are made anointed. The holy warriors you have cheered in the street. A few of us are kept back as clergy, and never blooded.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.7"] = { en = "Blooded. That is the word for it. There is a rite, and the rite puts something into a child, and what it puts in is not the Light.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.8"] = { en = "It is demon's blood.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_04_outro.9"] = { en = "...You are certain.", ja = "" },  -- TODO
     ["line.conversation_cathedral_slot_10_confront.1"] = { en = "The little witness. Come back in their colors, a blade at your back. You saw the pits and could not look away, and here you are anyway. I never once feared you would come.", ja = "" },  -- TODO
     ["line.conversation_cathedral_slot_10_confront.2"] = { en = "I can take the blade. I can take every soul in these colors. But not you. There was never any of me put in you to call.", ja = "" },  -- TODO
     ["line.conversation_cathedral_slot_10_confront.3"] = { en = "You were the one we kept clean. No blooding, no leash. I used to think that a waste. Today I find it a mercy I can still spend.", ja = "" },  -- TODO
@@ -358,14 +496,61 @@ return {
     ["line.conversation_colosseum_slot_02_intro.5"] = { en = "BEAT: Saber already knows what this is. She has watched promoters run it for years, and does not look away.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_intro.6"] = { en = "BEAT: she is going down onto the sand first. Between the killers and the refugees. Before anyone asks her to; everyone gets to walk off it.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_intro.7"] = { en = "BEAT: the choice lands on the player. Hold the line for these people, or let the house have its slaughter.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.1"] = { en = "BEAT: it is done. The house's killers are down and the refugees, the elder among them, are still on their feet; the player held the line.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.2"] = { en = "BEAT: the promoter is unbothered. The crowd was promised a night, and the house always keeps its promises; watch.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.3"] = { en = "BEAT: the patron is sent down onto the sand; the avatar reads what is about to happen and cannot reach it in time.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.4"] = { en = "BEAT: Ira cuts the refugees down without a word. Wordless, unhurried, obedient. The house's final answer to a card that would not fill itself. The player's win is overruled.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.5"] = { en = "BEAT: Rowan. The elder they carried out of the fire, dead on the sand anyway; her oath was to bring people out, and this house exists to put them back in.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.6"] = { en = "BEAT: Saber, quiet. Everyone gets to walk off the sand; that is her one law, and she just watched it broken in front of her.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.7"] = { en = "BEAT: she has seen this exact thing before. She put her sword down once and someone else finished it while she stood there; she does not say so yet, but the recognition is on her face.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.8"] = { en = "BEAT: the avatar marks who did it, not a nameless enforcer, the patron herself, and the line's real question opens: what is she.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.1"] = { en = "This is not the arena. Where am I?", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.10"] = { en = "Of course they did. A dead draw earns nobody anything.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.11"] = { en = "Hear it plainly, {name}. We are owned by four men we have never met until we win it back.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.12"] = { en = "What about the people on the sand with us?", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.13"] = { en = "...They came in on the same cart. Eleven of them.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.14"] = { en = "No one paid for them.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.15"] = { en = "There was an elder among them. Grey, small, a burn across one hand. Tell me where they are.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.16"] = { en = "I can tell you exactly where. I carried them there myself.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.17"] = { en = "There is a book in this house. Every soul the Cathedral receives goes into it, and I am one of the hands that writes it.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.18"] = { en = "I wrote all eleven of them in this morning. Ascended to the Light. That is the wording. It is the only wording there is.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.19"] = { en = "Then I took them out the back to the pit behind the almshouse, and there is no marker on it, and there never has been.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.2"] = { en = "Lie still a moment. You have been dead since the third bell.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.20"] = { en = "Ascended. They were butchered on a sand floor for a crowd.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.21"] = { en = "I know what they were. I am the only one in this building who does.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.22"] = { en = "That book has other names in it. Older ones. I will not talk about those tonight and I am asking you not to make me.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.23"] = { en = "Then talk about the eleven.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.24"] = { en = "There is nobody left to. Everyone who stood on that sand and saw it is in the pit, and you are lying in front of me.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.25"] = { en = "You are the last people alive who know what actually happened out there. By the feast day this house will have read those names aloud as saints and meant it.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.26"] = { en = "My order carves a mark for every one of its dead and teaches children the marks are days held. Same trick. Different stone.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.27"] = { en = "So I am not staying here. Take me with you.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.28"] = { en = "You just gave us our lives back. Why ask?", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.29"] = { en = "Because a thing given is not a thing owed. You are free of me the moment you stand up.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.3"] = { en = "Dead.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.30"] = { en = "I want to be standing somewhere the truth can still be carried, and there is one outfit in this city that is not the house or the faith or the stables. It is you.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.31"] = { en = "I will not ask you for a wage, or a share, or a say in where we go. I have never been much good at wanting things for myself. They were thorough about that.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.32"] = { en = "You can want a wage too. We will start there.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.33"] = { en = "...I will think about it.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.34"] = { en = "Then get your boots, priest. And keep close to me on the road.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.4"] = { en = "All of you. They brought you in on the cart with the rest. I have had my hands on your heart for an hour.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.5"] = { en = "I remember the sand. I remember standing in front of you and then nothing at all.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.6"] = { en = "This is the Cathedral. I am Amana. I am an acolyte here, and the rite that brought you back is the most expensive thing this house owns.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.7"] = { en = "We have no money for that.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.8"] = { en = "You did not pay for it. Four stables did, before your bodies were cold.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.9"] = { en = "They watched you fight twice and they had coin on you, and the house they book with destroyed you in front of them. So they bought you back to fight again.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_outro.1"] = { en = "The killers are down. Every refugee is still standing.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_outro.10"] = { en = "They are down. All of them are down.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_outro.11"] = { en = "The elder is dead. Dead on the floor of a sport.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_outro.12"] = { en = "Everyone walks off the sand. That is the one law this place ever kept.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_outro.13"] = { en = "She has not stopped. She is coming to us.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_outro.14"] = { en = "The crowd wanted blood tonight. The house does not send them home short.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_outro.15"] = { en = "They sent her for this. She was always taking the whole card.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_outro.16"] = { en = "Then we put her down. Weapons up.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_outro.17"] = { en = "Do not. Run for the gate, {name}. Run!", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_outro.18"] = { en = "The card is filled. That is all the house ever promised anyone.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_outro.19"] = { en = "Behind me, {name}. Behind me!", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_outro.2"] = { en = "The elder is up, {name}. We have carried that one out of two fires now.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_outro.20"] = { en = "I am on my back. I cannot get up.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_outro.21"] = { en = "The crowd is standing. They are cheering.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_outro.3"] = { en = "Well fought. The house has no complaint with you.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_outro.4"] = { en = "The crowd paid for a night, though. The house always gives them the night. Watch the far gate.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_outro.5"] = { en = "Someone is coming out onto the sand.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_outro.6"] = { en = "That is the patron. Get behind me and do not raise your sword to her.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_outro.7"] = { en = "Her own hand, and on an opener. You will not see that twice in a life.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_outro.8"] = { en = "She is walking at the refugees.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_outro.9"] = { en = "Get in front of them! All of you, in front of them!", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_03_intro.1"] = { en = "BEAT: the vendor gives the job. The Warlord fought under our banner once; bring him back, or bring him down.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_03_intro.2"] = { en = "BEAT: the avatar clocks that this one is a genuine bout, a named fighter on the other side, not a culling.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_03_intro.3"] = { en = "BEAT: Saber is alight. THIS is the thing she loves: house against a fighter with a name, honest, no padding.", ja = "" },  -- TODO
@@ -475,7 +660,7 @@ return {
     ["line.conversation_flight_event_survivor.3"] = { en = "Ask which way the demons went.", ja = "" },  -- TODO
     ["line.conversation_flight_event_survivor.4"] = { en = "Share what little we carry, and press on.", ja = "" },  -- TODO
     ["line.conversation_flight_event_survivor.5"] = { en = "...north, along the ridge, in numbers. Good. We take the low road. And she gave you the tell: where a demon's guard runs thin, if you mark it before the strike.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_survivor.6"] = { en = "Nothing to spare but thanks, and she gave that freely. A vial of solvent, pressed on you in kind: splash it and a demon cannot grip its blade.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_survivor.6"] = { en = "Nothing to spare but thanks, and she gave that freely. An assayer's lens, pressed on you in kind: look through it and a demon's satchel keeps nothing back.", ja = "" },  -- TODO
     ["line.conversation_flight_event_survivor.7"] = { en = "An apothecary, before the fires. Then the capital: reach the walls.", ja = "" },  -- TODO
     ["line.conversation_gate_below_confront.1"] = { en = "You came a long way down to meet me, and there is no me to meet.", ja = "" },  -- TODO
     ["line.conversation_gate_below_confront.10"] = { en = "I know. I stopped waiting. You are forty-one days too late to frighten me with it.", ja = "" },  -- TODO
@@ -516,7 +701,18 @@ return {
     ["line.conversation_gate_below_ending.20"] = { en = "The board will post work in the morning. The shops will open. Somebody will complain about the price of steel.", ja = "" },  -- TODO
     ["line.conversation_gate_below_ending.21"] = { en = "That is the whole of what we were for. That it stays boring up there.", ja = "" },  -- TODO
     ["line.conversation_gate_below_ending.22"] = { en = "Come on. It is a long stair and I would like to see the sky do the thing it does.", ja = "" },  -- TODO
+    ["line.conversation_gate_below_ending.23"] = { en = "It wore Rowan at three quarters. It did not even reach very far.", ja = "" },  -- TODO
+    ["line.conversation_gate_below_ending.24"] = { en = "Saber went over without breaking stride. She had been ready for a while.", ja = "" },  -- TODO
+    ["line.conversation_gate_below_ending.25"] = { en = "Amana asked me for nothing at the end. She just took it.", ja = "" },  -- TODO
+    ["line.conversation_gate_below_ending.26"] = { en = "Kaya did not stop. I do not think she could have by then.", ja = "" },  -- TODO
+    ["line.conversation_gate_below_ending.27"] = { en = "Gyeom had an answer ready for everything I did. She always had one. That was new.", ja = "" },  -- TODO
+    ["line.conversation_gate_below_ending.28"] = { en = "Clem collected. After everything, at the very end, she collected.", ja = "" },  -- TODO
+    ["line.conversation_gate_below_ending.29"] = { en = "Ren took a shape off me and wore it at me. She was so pleased with it.", ja = "" },  -- TODO
     ["line.conversation_gate_below_ending.3"] = { en = "No shape on the floor. No last word. It emptied out like a coat coming off a hook.", ja = "" },  -- TODO
+    ["line.conversation_gate_below_ending.30"] = { en = "...", ja = "" },  -- TODO
+    ["line.conversation_gate_below_ending.31"] = { en = "It emptied out like a coat coming off a hook. That is what I keep saying.", ja = "" },  -- TODO
+    ["line.conversation_gate_below_ending.32"] = { en = "A hook is not a thing that is finished with. A hook is a thing that is waiting.", ja = "" },  -- TODO
+    ["line.conversation_gate_below_ending.33"] = { en = "And I hung them on it myself, one at a time, and every single time I thought I was being kind.", ja = "" },  -- TODO
     ["line.conversation_gate_below_ending.4"] = { en = "Because that is what it was. We kept expecting a thing wearing seven appetites. It was seven appetites wearing a thing.", ja = "" },  -- TODO
     ["line.conversation_gate_below_ending.5"] = { en = "Take them off and you are not left with a monster. You are left with the hook.", ja = "" },  -- TODO
     ["line.conversation_gate_below_ending.6"] = { en = "Seven people said yes to it.", ja = "" },  -- TODO
@@ -640,6 +836,7 @@ return {
     ["name.cathedral"] = { en = "The Cathedral", ja = "" },  -- TODO
     ["name.character_amana"] = { en = "Amana", ja = "" },  -- TODO
     ["name.character_avatar"] = { en = "Stranger", ja = "" },  -- TODO
+    ["name.character_bandit_chief"] = { en = "Bandit Chief", ja = "" },  -- TODO
     ["name.character_caravan_master"] = { en = "Caravan Master", ja = "" },  -- TODO
     ["name.character_clem"] = { en = "Clem", ja = "" },  -- TODO
     ["name.character_demon_lord"] = { en = "The Hollow Crown", ja = "" },  -- TODO
@@ -700,8 +897,8 @@ return {
     ["title.conversation_bastion_vendor_intro"] = { en = "Those Who Hold", ja = "" },  -- TODO
     ["title.conversation_cafe_vendor_intro"] = { en = "One Before the Road", ja = "" },  -- TODO
     ["title.conversation_cathedral_discipline_unlocked"] = { en = "What the Faith Keeps", ja = "" },  -- TODO
-    ["title.conversation_cathedral_slot_02_confront"] = { en = "The Fallen Confessor", ja = "" },  -- TODO
-    ["title.conversation_cathedral_slot_02_join"] = { en = "A Trust Returned", ja = "" },  -- TODO
+    ["title.conversation_cathedral_slot_02_confront"] = { en = "The Intake Road", ja = "" },  -- TODO
+    ["title.conversation_cathedral_slot_04_outro"] = { en = "The Purge in the Fold", ja = "" },  -- TODO
     ["title.conversation_cathedral_slot_10_confront"] = { en = "Luxuria, the Unbidden", ja = "" },  -- TODO
     ["title.conversation_cathedral_vendor_intro"] = { en = "Arm Those Who Purge", ja = "" },  -- TODO
     ["title.conversation_colosseum_discipline_unlocked"] = { en = "A New Card", ja = "" },  -- TODO
@@ -712,6 +909,7 @@ return {
     ["title.conversation_colosseum_slot_01_kit"] = { en = "An Unclaimed Kit", ja = "" },  -- TODO
     ["title.conversation_colosseum_slot_01_outro"] = { en = "The Gatekeeper", ja = "" },  -- TODO
     ["title.conversation_colosseum_slot_02_intro"] = { en = "The Padded Card", ja = "" },  -- TODO
+    ["title.conversation_colosseum_slot_02_join"] = { en = "Ascended to the Light", ja = "" },  -- TODO
     ["title.conversation_colosseum_slot_02_outro"] = { en = "The Padded Card", ja = "" },  -- TODO
     ["title.conversation_colosseum_slot_03_intro"] = { en = "Siege of Warlord's Keep", ja = "" },  -- TODO
     ["title.conversation_colosseum_slot_03_outro"] = { en = "Siege of Warlord's Keep", ja = "" },  -- TODO

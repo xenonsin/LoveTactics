@@ -39,6 +39,11 @@ return {
     outro = "conversation_bastion_slot_10_outro",
     rewardGold = 500,
     rewardItems = { "weapon_forsworn_pike" },
+    -- The line's last quest: completing it settles what its ten offers came to, and decides whether
+    -- Rowan held, left, or caved (models/temptation.lua, docs/temptation.md). A data flag rather than
+    -- a quest id the engine knows, exactly like `endsCampaign` on the finale. Acedia's offer in the
+    -- header above is the tenth and last of them, and the only one made in a general's own voice.
+    endsLine = true,
     requiredQuests = { "quest_bastion_slot_09" }, -- slot 10: the line runs in order
     requiredPrestige = 2,
     gateHint = "past the gate that was opened from within",

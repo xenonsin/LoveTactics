@@ -73,9 +73,12 @@ already killed back on as its health falls past 75%, 50%, and 25%.
 The shades are summons, bound to the Crown. Kill it and they go with it, which is what keeps the
 `assassinate` objective resolvable.
 
-> **Authoring note:** `data/traits/trait_hollow_crown.lua` has a `shades` list. Today it names
-> `general_wrath` and falls back on `warlord` / `champion` for the six generals that do not exist yet.
-> **That list is the fight.** As each general is written, put it there.
+> **Authoring note — SUPERSEDED.** `data/traits/trait_hollow_crown.lua` used to hold a static `shades`
+> list, and this note used to say "that list is the fight; as each general is written, put it there."
+> All seven generals exist now, and the list is no longer static: `Temptation.shades` resolves it off
+> the live save, putting **the companions the player spoiled** ahead of the Crown's own dead. The
+> curated general trio (wrath, sloth, pride) is the fallback for a clean run. See
+> [docs/temptation.md](temptation.md).
 
 ## The seven keys
 
@@ -183,6 +186,13 @@ general refused.
 | priest | lust | devotion — gives what is offered, refuses what is not |
 | alchemist | envy | kindness — grants others' power instead of coveting it |
 
+**A companion can refuse you, and a companion can be talked out of her own virtue.** Each of the seven
+lines asks the player, once per quest, whether they will take the Crown's offer — and separately,
+whether they will bring their companion along when they do. Take enough over her objection and she
+leaves the roster for good; take enough *with* her and she stays, wears the dead general's relic, is
+stronger for it, and is what the Hollow Crown puts on at the Gate. The seat a general vacates does not
+stay empty. See [docs/temptation.md](temptation.md); the Bastion is the worked line.
+
 **The virtue is the spine, never the label.** A sin gets to be a personified abstraction — *Ira,
 the Unappeased*. A virtue does not; it is a person with an ordinary name, and the virtue shows in
 how they fight and what they will not do, never in what they are called. A companion named for her
@@ -195,7 +205,12 @@ the name, not stamped on it: *Saber* is a blade, and in another tongue (*ṣabr*
 itself; *Kaya* is an ordinary name that in another tongue (*kifāya*) is *enough* — temperance itself.
 
 Companions are earned near the head of their vendor's line, each on its own — never behind another,
-so no ordering can strand the endgame. Two are earned in the prologue, one per pattern:
+so no ordering can strand the endgame. **One companion is deliberately exempt**: the priest is earned
+in the *Colosseum's* second slot rather than her own house's, because her house is shut until that
+quest ends and the player is carried into it (see *Raised, then kept*, below). That is behind another
+companion's quest, and it strands nothing — the two quests it sits behind are the campaign's first
+two, the ones every route runs through. Two are earned in the prologue and the third on the beat
+straight after it, one per pattern:
 
 - **Sworn beside you.** The knight fights at your shoulder in the burning town and stays when it
   is ash. An oath abandoned is sloth's general; **an oath kept after the thing that issued it is gone**
@@ -211,6 +226,16 @@ so no ordering can strand the endgame. Two are earned in the prologue, one per p
   — the patron beneath the sand — is the Colosseum line you are standing at the foot of. You best a
   fighter in sport at the start of that line and kill one in earnest at its end; that rhyme is the
   point.
+- **Raised, then kept.** The priest. The Colosseum's second card ends with *Ira* killing the carded
+  refugees and then the whole company, and the party wakes in the Cathedral because four stables paid
+  the church's price for fighters they had money on. The acolyte who performed the rite walks out with
+  them, and the reason is the eleven bodies that came in on the same cart with nobody paying for
+  **them**: she is the hand that enters the Cathedral's dead in its intake register, and what she
+  wrote beside those eleven names is *ascended to the Light*. She carried them to the unmarked pit
+  herself. The party is the only living witness to what actually happened on that sand, so she goes
+  where the truth can still be carried. She does **not** tell them about the blooding; that is her own
+  line's to give, three slots later, standing over it. The first time the player ever sees the
+  Cathedral is from a slab, and its door does not exist in the hub before that scene.
 
 All seven companions now have blueprints on disk — Rowan (knight), Saber (gladiator), Amana (priest),
 Gyeom (mage), Kaya (hunter), Ren (alchemist) and Clem (rogue) — each with its signature relic and its
@@ -618,7 +643,7 @@ the **second relic is still new work** — the chosen strike of slot 8.
 | # | Slot | Rank | The Colosseum's ten | What it costs Saber |
 |---|---|---|---|---|
 | 1 | Introduction | 1 | **Debut on the Sand** — beat the hired veteran; she signs with the only house that isn't one | nothing yet; she is enjoying herself |
-| 2 | The recruit | 1 | **The Padded Card** — `killAll`+`protect`; the card padded with slaughter | the first crack in "the sport is clean" |
+| 2 | The recruit | 1 | **The Padded Card** — `killAll`+`protect`; the card padded with slaughter. Won, then overruled: Ira kills the refugees **and the party**, and the epilogue wakes them in the Cathedral with **Amana** recruited | the first crack in "the sport is clean", and her one law broken twice, the second time under her own feet |
 | 3 | Complication | 1 | stable against stable, the sport at its best | the player learns why she loves it |
 | 4 | Escalation | 2 | **The Perennial's Roster** — `killAll`; met as opponents | reads them cold; they move like people not allowed to choose |
 | 5 | The discovery | 2 | **The Intake** — `reach`; the house, not its output | names it aloud — bought, not schooled; kept, not trained |
@@ -755,7 +780,9 @@ without it being a theft. The answer is her birth-name, and the finale is where 
 ### The line's rhyme, and the finale
 
 Every line has a rhyme; the Cathedral **opens and closes on "refuses what is not offered."** At the
-head Amana refuses to let the faith **take** a stranger (the recruit fight). At the end Luxuria — who
+head, on the intake road, Amana and the party refuse to let a house **take** people who were not
+offered — a Colosseum press-gang working the same road for the same reason, with the same nets the
+debut taught the player to read. At the end Luxuria — who
 holds the intake rolls and knows the birth-name behind the cloth — offers Amana **her own self back,**
 *"Kneel, and it is yours again."* It is a taking dressed as a gift: to accept the name from the hand
 that dumps children in pits is to let the monster be the one who *gives* Amana a self, and so be owed.
@@ -768,16 +795,24 @@ Luxuria as Amana's emptied cohort-sister, which the *outside demon* decision abo
 
 Ten against the four-rank ladder (`ranks = { 0, 40, 100, 200 }`; Penitent → Acolyte → Confessor →
 Saint), the general behind rank 4 — the same standing that puts the **Censer of Dawn** on the shelf,
-whose file comment is the spec. Reuses four shipped quests; six are new. Amana's plea at slot 2 tells
-the player *what* is happening; the middle makes them **see it** and trace it upward, to the one fact
-Amana cannot yet face (slot 7): the Saint she still believes in is the demon.
+whose file comment is the spec. Reuses four shipped quests; six are new.
+
+**Amana is not recruited in this line.** She joins in the Colosseum's second slot, at the revival that
+opens this building at all (*Raised, then kept*, above), and she arrives carrying exactly one fact:
+the intake register says *ascended to the Light* and the pit behind the almshouse says otherwise. So
+the line no longer opens by proving her honest; it opens with her already trusted and the player not
+yet knowing what the wording covers. The plea that used to be her recruit scene is now slot 4's
+`outro`, said over the failed bloodings themselves rather than over her own defeat — the player learns
+the **lie** first and only then **what it hides**, which is the better order and was not available
+while the reveal had to double as a job interview. The middle traces it upward to the one fact Amana
+cannot yet face (slot 7): the Saint she still believes in is the demon.
 
 | # | Slot | Rank | The Cathedral's ten | What it costs / reveals |
 |---|---|---|---|---|
 | 1 | Introduction | 1 | **The Haunted Mill** — `assassinate` | child ghosts scream clues about the church's sins; horror planted before it is understood |
-| 2 | The recruit | 1 | **The Fallen Confessor** — `killAll` | bested, Amana stays your hand and her **plea reveals the truth**; she joins |
+| 2 | The taking | 1 | **The Intake Road** — `killAll`+`protect` | walk the Cathedral's charity cart home past a Colosseum press-gang working the same road; the player **delivers** it, and slots 4–5 are what send them back to count who they delivered |
 | 3 | Complication | 1 | **The Rite of Ashes** — `survive` | hold consecrated ground; why must the censer burn throughout? |
-| 4 | Escalation | 2 | **The Purge in the Fold** — `killAll` | the "corrupted" are **failed bloodings** — the church's own children |
+| 4 | Escalation | 2 | **The Purge in the Fold** — `killAll` | the "corrupted" are **failed bloodings** — the church's own children; **Amana's plea plays here** as the `outro`, over the bodies |
 | 5 | The discovery | 2 | **The Roll of the Given** — `reach`/`killAll` | the register of "ascended saints" set against the **pit** — it is a casualty list |
 | 6 | Complicity | 2 | **Cleansing Work** — `killAll`; the diocese tidied before the Feast of the Ascended | purge the failed bloodings; the player becomes the hand that buries the evidence |
 | 7 | **The turn** | 3 | *(no fight)* | **the Saint knew; the Saint is the demon** — Amana's last belief falls |
@@ -785,8 +820,9 @@ Amana cannot yet face (slot 7): the Saint she still believes in is the demon.
 | 9 | The approach | 3 | **The Saint Unmasked** — `assassinate` | the scale of what her death will **not** stop |
 | 10 | The general | 4 | **Luxuria, the Unbidden** — `assassinate` | two-phase (human Saint → demon); she turns your anointed escort; the sleepers remain |
 
-`haunted_mill`, `rite_of_ashes`, `fallen_confessor` and `general_lust` exist; slots 4–9, the recruit
-**plea** scene (a post-battle `outro`), and every mid-line scene are new. Slot 7 needs the antagonist
+All ten slots exist on disk. The **plea** is written and now hangs off slot 4; slot 2 was re-premised
+around it (`The Fallen Confessor` is retired — the church cannot hire you to purge a woman standing in
+your own party) and every other mid-line scene is still new. Slot 7 needs the antagonist
 to **speak without a fight** — the same seam flagged for Wrath's slot 7. The rep-ladder soft-lock is
 gone with the ten slots on disk (the nine pay 305 against a 200-point rank 4); what is left is the
 ladder's *shape*, which still wants standing as a **count of distinct completed quests**
@@ -801,15 +837,22 @@ adjacent allies, à la the Muster Roll) and one from slot 8. All carry `class = 
 
 ### What is built, and what is not
 
-**Built:** both ends — `fallen_confessor` (recruit, `rewardCharacter = character_amana`) and
-`general_lust` (finale, rank-4, drops the Reliquary + `gateHint`); the characters; Amana's signature
-`utility_reliquary_kept_trust`; the traits `trait_rapture` / `trait_devotion_unbidden`; the two
-confront scenes; `tests/devotion_spec.lua`.
+**Built:** all ten slots; `general_lust` (finale, rank-4, drops the Reliquary + `gateHint`); the
+characters; Amana's signature `utility_reliquary_kept_trust`; the traits `trait_rapture` /
+`trait_devotion_unbidden`; `tests/devotion_spec.lua`. Written scenes: the **plea** (slot 4's `outro`),
+slot 2's road opening, and the two general confronts. Her recruit itself is the Colosseum's
+(`quest_colosseum_slot_02.lua`, `rewardCharacter = character_amana`).
 
-**Not built:** slots 4–9 (six quests) and their scenes; the recruit **plea** `outro`; the
-`character_anointed` / `character_anointed_failed` / `character_child_ghost` blueprints; the
-finale kit rework (**drain-and-turn**, and the **two-phase transform**); and the finale-scene
-rewrite. See the plan for the authoring order.
+**Not built:** every mid-line scene except the plea; the `character_anointed` /
+`character_anointed_failed` / `character_child_ghost` blueprints, and bespoke **oblate** bodies for
+slot 2's cart (`character_survivor` stands in); the finale kit rework (**drain-and-turn**, and the
+**two-phase transform**); and the finale-scene rewrite. See the plan for the authoring order.
+
+**Open, and deliberately unanswered:** the revival that opens this line raises four dead fighters, and
+this church's "holy" power is Luxuria's blood. Either the rite is the demon's own work and the party
+are her creditors from slot 2 onward, or the Cathedral has something else at that altar. The scene
+does not say (`conversation_colosseum_slot_02_join.lua` calls it *the rite* and stops), so the line
+can take it either way. Taking it is a real decision, not a gap to be tidied.
 
 ## The Hunter's Lodge: gluttony, designed
 
@@ -1863,6 +1906,15 @@ men-at-arms) as gold-cost abilities and their blueprints; Clem's fully-passive h
 **keep-the-tempo** slot-8 upgrade; the **Common Purse** unbuyable; and the six mid-line quests and scenes
 — slots 3, 4, 6, 7, 8, 9 (slot 7 is the *speak-without-a-fight* seam). Aurea is **not** in
 `trait_hollow_crown` `shades` (the curated firing trio stays Wrath, Sloth, Pride — see that trait).
+
+## The player is the eighth person asked
+
+The two rules below say every general was a human who said yes. The campaign now asks the player the
+same question seventy times, in the same words, through whatever mouth each chapter supplies — and the
+finale's own closing lines ("*seven people said yes to it... it was asked of them, and every one of
+them answered*") are written to be heard as being about the party. What a companion is worth is
+settled by what the player answered on the way to her general. See
+[docs/temptation.md](temptation.md).
 
 ## Every general is a fallen human, and every general fight has two phases
 

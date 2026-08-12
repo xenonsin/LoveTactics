@@ -54,7 +54,7 @@ end
 -- Serialize a `when` condition table. These are pure data (that is WHY conditions are data and not
 -- predicate functions -- a closure could not survive this round trip and would be erased here).
 -- Keys are emitted in a stable order so re-stamping a file produces no spurious diff.
-local WHEN_KEYS = { "has", "notHas", "done", "notDone", "prestige", "all", "any" }
+local WHEN_KEYS = { "has", "notHas", "done", "notDone", "prestige", "flag", "notFlag", "all", "any" }
 local function serializeWhen(when)
     local parts = {}
     for _, key in ipairs(WHEN_KEYS) do
@@ -83,7 +83,7 @@ end
 -- (models/story_effect.lua). Pure data, like `when`, which is what lets it survive this round trip.
 -- Keys emitted in a stable order so re-stamping a file produces no spurious diff; an unknown key is a
 -- loud error rather than a silent drop.
-local EFFECT_KEYS = { "grant", "gold", "heal", "maxHpCost", "restore", "flag" }
+local EFFECT_KEYS = { "grant", "gold", "heal", "maxHpCost", "restore", "flag", "take", "press" }
 local function serializeEffect(effect)
     local parts = {}
     for _, key in ipairs(EFFECT_KEYS) do

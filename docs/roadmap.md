@@ -66,15 +66,23 @@ The bulk of the remaining authoring. 72 of 94 quests have no `intro`, `outro`, o
 
 9. **Scenes for the 72.** The Bastion is the worked example — 20 conversations, intro and outro on
    every slot. Copy its shape per line. Companions get `when = { has = ... }` blocks so every scene
-   is authored for the full roster.
+   is authored for the full roster. **These now have a spine to be written along:** every quest
+   carries one of the Crown's offers, and what the player answers decides whether that line's
+   companion holds, leaves, or caves — see [docs/temptation.md](temptation.md). The Bastion's ten
+   offers are built; the other six lines' sixty are the work.
 10. **Slot 5 unbuyables.** Each line's slot 5 owes a register-style reward item; none are written,
     which is why those quests set no `rewardItems`.
 11. **Slot 8 second relics** for Saber, Kaya, Ren, Gyeom and Clem. Rowan's and Amana's exist.
 12. **Stand-in enemy blueprints.** Where a slot wanted a body that does not exist — the Perennial's
     fighters, the anointed, the turning wardens, the Bank's chartered security — the quest stands in
     with a shipped blueprint and says so in its header. Each is a named, findable debt.
-13. **The slot-7 no-fight seam.** Every line's slot 7 was designed as a scene without a battle; the
-    engine has no such thing, so all six ship as fights. Either build the seam or ratify the fights.
+13. **The slot-7 no-fight seam — the engine part was never missing.** `data/encounters/encounter_event.lua`
+    (`kind = "event"`, `weight = 0`) is exactly a no-fight stop: a quest's `map.encounters.always` names
+    it with a `conversation`, and `states/game.lua` plays that scene as the whole encounter, choices and
+    `effect` included. It predates this item. What is left is a content decision — whether each line's
+    slot 7 becomes an event stop or stays the fight it currently ships as. The Bastion's slot 7 stays a
+    fight and carries its turn in the `intro` instead, where the temptation warning also lands
+    ([docs/temptation.md](temptation.md)).
 
 ## Phase 4 — the seven finales
 

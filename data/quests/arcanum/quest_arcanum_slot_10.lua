@@ -15,6 +15,10 @@ return {
     sponsor = "arcanum",
     rewardGold = 500,
     rewardItems = { "utility_codex_unanswered" },
+    -- The line's last quest: completing it settles what its ten offers came to, and decides whether
+    -- Gyeom held, left, or caved (models/temptation.lua, docs/temptation.md). A data flag rather than
+    -- a quest id the engine knows, exactly like `endsCampaign` on the finale.
+    endsLine = true,
     requiredQuests = { "quest_arcanum_slot_09" }, -- slot 10: the line runs in order
     requiredPrestige = 3,
     gateHint = "where the shelves answer only themselves",

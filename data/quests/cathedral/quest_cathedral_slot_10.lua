@@ -15,6 +15,10 @@ return {
     sponsor = "cathedral",
     rewardGold = 500,
     rewardItems = { "utility_reliquary_unbidden" },
+    -- The line's last quest: completing it settles what its ten offers came to, and decides whether
+    -- Amana held, left, or caved (models/temptation.lua, docs/temptation.md). A data flag rather than
+    -- a quest id the engine knows, exactly like `endsCampaign` on the finale.
+    endsLine = true,
     requiredQuests = { "quest_cathedral_slot_09" }, -- slot 10: the line runs in order
     requiredPrestige = 1,
     gateHint = "under the nave, where the faithful were unmade",

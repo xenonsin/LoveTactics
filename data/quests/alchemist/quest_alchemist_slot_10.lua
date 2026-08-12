@@ -16,6 +16,10 @@ return {
     sponsor = "alchemist",
     rewardGold = 500,
     rewardItems = { "utility_envious_glass" },
+    -- The line's last quest: completing it settles what its ten offers came to, and decides whether
+    -- Ren held, left, or caved (models/temptation.lua, docs/temptation.md). A data flag rather than
+    -- a quest id the engine knows, exactly like `endsCampaign` on the finale.
+    endsLine = true,
     requiredQuests = { "quest_alchemist_slot_09" }, -- slot 10: the line runs in order
     requiredPrestige = 4,
     gateHint = "below the vats, where the shapeless envy the shaped",

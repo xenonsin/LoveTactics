@@ -841,6 +841,13 @@ function game:openEncounter(cell)
             -- rollback point with it, so the leg's finds stand. See the combat objective's branch below.
             clearRun() -- the quest is over; Quest.complete's save below then writes no run to resume
             game.reward = Quest.complete(game.player, game.quest, game.map and game.map.cacheHaul)
+            -- Same settle the fought path takes below: a line's tenth quest can release a companion, and
+            -- this branch is the one where the farewell has ALREADY played (`meet` puts its scene before
+            -- the payout, not after it), so the roster catches up immediately.
+            if game.reward and game.reward.temptation then
+                require("models.temptation").settle(game.player)
+                require("models.player").save()
+            end
             if game.player and game.reward then game.player.pendingSummary = game.reward end
             State.switch(require("states.hub"))
         end
@@ -1091,8 +1098,28 @@ function game:openEncounter(cell)
                     -- its own onComplete back to the hub), so it never lands on the board and pays out
                     -- nothing itself. When there is a followUp the outro DEFERS its join banner: the
                     -- recruit belongs to the meeting the leg ends on, not to the arena scene before it.
+                    --
+                    -- A quest may also name an `epilogue`: a SECOND scene played straight after the
+                    -- outro, before anything else. The seam exists because one beat can need two
+                    -- scenes with a hard cut between them and no leg in between -- the padded card
+                    -- (data/quests/colosseum/quest_colosseum_slot_02.lua) ends with the party dead on
+                    -- the sand, and the next thing they see is a ceiling they do not know. That is a
+                    -- change of place and cast, not a change of subject, so it cannot be more lines
+                    -- on the end of the outro. Like a followUp it DEFERS the join banner: whoever was
+                    -- recruited belongs to the scene the author put them in, which is the second one.
                     local followUp = game.quest and game.quest.followUp
+                    local epilogue = game.quest and game.quest.epilogue
                     local function goNext()
+                        -- A class line's last quest settles its temptation ledger, and a companion whose
+                        -- line ended in `left` walks HERE rather than in Quest.complete -- she has to
+                        -- still be on the roster for the outro above to give her a farewell, and
+                        -- `when = { has = ... }` would have dropped her own goodbye out of her own
+                        -- scene. The flag was stamped at completion; this is where the roster catches up
+                        -- with it. A no-op on every quest that is not a line's tenth.
+                        if game.reward and game.reward.temptation then
+                            require("models.temptation").settle(game.player)
+                            require("models.player").save()
+                        end
                         -- The campaign's last quest does not go home. `endsCampaign` is carried on the
                         -- quest (data/quests/quest_the_gate_below.lua) rather than a quest id compared here,
                         -- so this state never learns which file is the ending and a second one costs
@@ -1106,11 +1133,19 @@ function game:openEncounter(cell)
                             State.switch(require("states.hub"))
                         end
                     end
+                    -- The scene chain home: outro, then epilogue, then goNext. Either may be absent.
+                    local function playEpilogue()
+                        if epilogue then
+                            require("models.conversation").play(epilogue, goNext)
+                        else
+                            goNext()
+                        end
+                    end
                     if game.quest and game.quest.outro then
-                        require("models.conversation").play(game.quest.outro, goNext, nil,
-                            followUp and { deferJoins = true } or nil)
+                        require("models.conversation").play(game.quest.outro, playEpilogue, nil,
+                            (followUp or epilogue) and { deferJoins = true } or nil)
                     else
-                        goNext()
+                        playEpilogue()
                     end
                 else
                     -- A combat/elite win: grant the spoils the battle summary just revealed, then

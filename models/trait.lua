@@ -925,6 +925,33 @@ local function ctxFor(combat, unit, trait, event)
         transform = function(charId, opts)
             return Transform.apply(combat, unit, charId, opts)
         end,
+        -- Turn SOMEBODY ELSE. `transform` above re-bodies the bearer; this re-bodies another unit that
+        -- is already on the board AND moves it onto the bearer's side, for good. The Hollow Crown's
+        -- rule is what wants it (data/traits/trait_hollow_crown.lua): a companion the player spoiled
+        -- across her own line is standing on the party's side when the Crown reaches for her name, and
+        -- summoning a second copy of a woman who is right there would read as a bug rather than a
+        -- betrayal.
+        --
+        -- Three things it deliberately is not:
+        --   * not a SUMMON -- it adds no body and creates no lien, so it does not vanish when the
+        --     bearer dies (Summon's cleanup only walks what it spawned). Correct here: the objective is
+        --     `assassinate`, so the fight ends on the Crown regardless of who else is still standing.
+        --   * not a CHARM -- Charm stashes `_charmSide`/`_charmControl` because its status owns a
+        --     revert (data/status/status_charm.lua). This one is permanent and stashes nothing; there
+        --     is no coming back from it and nothing should look like there might be.
+        --   * not a REVERSIBLE transform -- no reservation, no status, worn until death, exactly like
+        --     a general's phase change.
+        --
+        -- Refuses (returns nil) a unit that is absent, dead, or already wearing a shape, so a caller can
+        -- fall back to putting the body on the board some other way.
+        defect = function(target, charId, opts)
+            if not (target and target.alive) then return nil end
+            local shape = Transform.apply(combat, target, charId, opts)
+            if not shape then return nil end
+            target.side = unit.side
+            target.control = "ai"
+            return shape
+        end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
         -- A cooldown keyed on the bearer, so a triggered reaction (a counter) can gate its own
