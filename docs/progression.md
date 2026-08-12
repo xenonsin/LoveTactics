@@ -35,9 +35,12 @@ being *finish everything* and becomes *choose what to finish* — which is the d
 built to offer and never got to ask.
 
 **A day is an expedition, and ENTERING spends it.** Not clearing the objective — entering. Take the
-boss, break off with a Smoke Bolt, or get wiped, and the day is gone all three ways. That is the whole
-greed dial: "push on or go home with what I have" only means something if going home costs the same
-day that pushing on would have.
+boss, turn back with your pockets full, or get wiped, and the day is gone all three ways.
+
+**Walking out is free**, and losing a fight is the whole of the risk — a wipe takes three quarters of
+the run's coin and ore ([docs/overworld.md](overworld.md)). That is where the greed lives: pushing one
+more spur is a bet against the *fight*, not against the walk home, and the answer changes with how much
+you are already carrying.
 
 **There is no fail state.** The last day is not a loss screen, it is the last battle, fought with
 whatever company you assembled.

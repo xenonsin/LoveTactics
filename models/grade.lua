@@ -1167,7 +1167,6 @@ Grade.SLOT_PINS = {
     -- three of them permanently -- which makes walking out of a bad run free, which is precisely the
     -- exploit the extraction rule was written to close. The pin is the price: mid-line, where a company
     -- has a haul worth protecting and the coin is a real decision.
-    consumable_smoke_bolt = { at = 6, why = "grades 0 because its worth is off the board: the way out of a bad run" },
 
     -- THE PROLOGUE'S TEACHING SPELL. The first working the player ever casts, and the lesson's closing
     -- beat is built on its exact weight -- data/characters/character_demon_grunt.lua's health is "the

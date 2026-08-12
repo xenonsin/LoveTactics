@@ -1,12 +1,20 @@
--- Tests for the EXTRACTION rule: an overworld run's finds are live and usable the moment they are
--- picked up, but they are not the player's until the objective banks them. Any other way out -- a wipe,
--- a walk-out -- puts the company back exactly as it marched in.
+-- Tests for WHAT A RUN COSTS: an overworld run's finds are live the moment they are picked up, the
+-- company keeps them by walking home, and a WIPE takes most of the coin and ore back.
 --
--- The rule lives in states/game.lua (rollbackRun / the objective's clearRun), which cannot be driven
--- headlessly. What CAN be pinned, and what the whole thing actually rests on, is the pair underneath it:
--- the entry snapshot survives a save, and restoring it takes back what the run added while leaving what
--- the run brought alone. Everything is driven through the real serializer, so a value the encoder cannot
--- handle fails here rather than in a player's save.
+-- THE RULE INVERTED, and this file is the record of it. It used to be that the objective was the only
+-- exit that banked anything -- a wipe and a walk-out were the same event, and both restored the company
+-- from an entry snapshot. That was right while the board was a one-way trip. It is wrong now that a day
+-- is the unit and leaving is free: with a voluntary exit keeping everything, a total wipe penalty makes
+-- the last fight before you turn back an all-or-nothing coin flip, and the sensible play is to leave
+-- after the first cache.
+--
+-- So: walking out keeps everything, and losing takes Player.WIPE_LOSS of what the run FOUND -- gold and
+-- forging stock, never the items, never the wounds, never what was carried in.
+--
+-- These cases used to drive `Save.restore(entry)` and copy it over the player, which was the state's
+-- own rollback spelled out by hand. That is why they kept passing after the rule changed: they were
+-- testing the SNAPSHOT, which still works, while the rule above it had been replaced. The arithmetic
+-- moved to Player.loseHaul so it can be driven directly, and these drive that.
 
 local Overworld = require("models.overworld")
 local Save = require("models.save")
@@ -83,30 +91,53 @@ return {
         Player.addMaterial(player, "material_iron_scrap", 4)
         assert(stashCount(player, id) == before + 2, "the finds are real while the run is under way")
 
-        -- ...and the run ends any way but through the objective.
-        local rolled = Save.restore(player.activeRun.entry)
-        assert(rolled, "the entry snapshot restores")
-        for k, v in pairs(rolled) do player[k] = v end
+        -- ...and then the company loses a fight.
+        local entry = Save.restore(player.activeRun.entry)
+        assert(entry, "the entry snapshot restores")
+        local taken = Player.loseHaul(player, entry)
 
-        assert(stashCount(player, id) == before, "found items went back")
-        assert((player.gold or 0) == goldBefore, "found gold went back")
-        assert(Player.materialCount(player, "material_iron_scrap") == stockBefore,
-            "found materials went back")
+        -- THREE QUARTERS OF THE GAIN, and the quarter that survives is the point: a wipe deep in a good
+        -- run is a bad day rather than a wasted one.
+        assert(taken.gold == 187, "expected 187 of the 250 found, got " .. taken.gold)
+        assert((player.gold or 0) == goldBefore + 63, "and the rest comes home")
+        assert(Player.materialCount(player, "material_iron_scrap") == stockBefore + 1,
+            "one of the four scrap survives the rout")
+
+        -- THE ITEMS STAY. A sword out of a chest is carried by a body, and the bodies came home. It is
+        -- also what keeps a wipe from undoing the one reward a player can see and name.
+        assert(stashCount(player, id) == before + 2,
+            "a wipe drops coin and ore, never the gear")
     end },
 
-    { name = "gold SPENT mid-run comes back too", fn = function()
-        -- Otherwise a forfeit launders run gold into permanent hub goods: buy a blade at the Merchant,
-        -- walk out, keep the blade on the books while the coin is refunded by the next run. Same hole as
-        -- keeping the loot, entered from the other side.
+    { name = "a run that spent more than it found is not billed the difference", fn = function()
+        -- Only GAINS are at risk. A company that bought a blade at the Merchant and then lost the fight
+        -- keeps the blade and keeps what is left of its purse: there is no negative haul to confiscate,
+        -- and reaching into the money they walked in with would make the Merchant a trap.
         local player = playerInRun()
-        local goldBefore = player.gold or 0
         Player.addGold(player, 100)
-        assert(Player.spendGold(player, 120), "the run spends at the Merchant")
-        assert((player.gold or 0) < goldBefore, "the company is out of pocket mid-run")
+        assert(Player.spendGold(player, 220), "the run spends at the Merchant")
+        local pocket = player.gold or 0
 
-        local rolled = Save.restore(player.activeRun.entry)
-        for k, v in pairs(rolled) do player[k] = v end
-        assert((player.gold or 0) == goldBefore, "the purse is back where it started")
+        local before = Save.restore(player.activeRun.entry)
+        local taken = Player.loseHaul(player, before)
+        assert(taken.gold == 0, "nothing was gained, so nothing is taken")
+        assert((player.gold or 0) == pocket, "and the purse is left exactly where the run left it")
+    end },
+
+    { name = "walking out costs nothing but the day", fn = function()
+        -- The other half of the rule, and the reason the wipe penalty can afford to be partial. There
+        -- is no function to call here: leaving simply drops the run (states/game.lua's toHub), so what
+        -- this pins is that nothing in the model reaches for the entry snapshot on the way out.
+        local player = playerInRun()
+        local id = anyItemId()
+        local goldBefore, itemsBefore = player.gold or 0, stashCount(player, id)
+        Player.grantItem(player, id)
+        Player.addGold(player, 500)
+
+        player.activeRun = nil -- the whole of what walking out does
+
+        assert((player.gold or 0) == goldBefore + 500, "the coin is the company's")
+        assert(stashCount(player, id) == itemsBefore + 1, "and so is the find")
     end },
 
     { name = "what the company MARCHED IN WITH is never at stake", fn = function()
@@ -124,11 +155,10 @@ return {
         local entry = Save.snapshot(player)
         player.activeRun = { questId = "quest_bastion_slot_01", prestige = 1, entry = entry }
 
-        Player.grantItem(player, id) -- and then this run finds one more
-        local rolled = Save.restore(player.activeRun.entry)
-        for k, v in pairs(rolled) do player[k] = v end
+        Player.grantItem(player, id) -- and then this run finds one more, and loses the fight
+        Player.loseHaul(player, Save.restore(player.activeRun.entry))
 
-        assert(stashCount(player, id) == owned, "the item brought in is still owned; only the find went")
+        assert(stashCount(player, id) == owned + 1, "the find stays -- a wipe never takes gear")
         assert((player.gold or 0) == goldBefore, "the purse brought in is untouched")
         assert(#player.roster == rosterBefore, "the company is intact")
         assert(Player.materialCount(player, "material_iron_scrap") == stockOwned,
@@ -155,15 +185,15 @@ return {
         assert(restored.resumeRun.entry == nil, "and it honestly reports having none")
     end },
 
-    { name = "a wipe takes back the finds and leaves the wounds", fn = function()
-        -- THE ONE DELICATE LINE, pinned. states/game.lua's rollbackRun copies EVERY key of the entry
-        -- snapshot onto the live player, which is exactly what makes it correct without a list of what
-        -- a run can change -- and the moment `wounds` became one of those keys, a wipe would have
-        -- handed the company back whole at the instant it was hurt worst. The state holds that one key
-        -- across the copy; this is the case that says why it has to.
+    { name = "a wipe takes the coin and leaves the wounds", fn = function()
+        -- WOUNDS OUTLIVE THE RUN THAT CAUSED THEM -- the whole point of an injury -- and this used to be
+        -- delicate: the old rollback copied EVERY key of the entry snapshot onto the live player, so
+        -- `wounds` had to be held across the copy by hand or a wipe handed the company back whole at
+        -- the instant it was hurt worst.
         --
-        -- Driven through the real serializer and then through the same total copy the state performs,
-        -- because the bug this guards against does not live in either half alone.
+        -- Player.loseHaul touches two fields by name instead of copying a whole snapshot, so the danger
+        -- is gone by construction rather than by a line somebody has to remember. The case stays,
+        -- because "a wipe does not un-wound you" is a rule worth pinning however it is implemented.
         local Wound = require("models.wound")
         local player = playerInRun()
         player.wounds = {}
@@ -172,24 +202,18 @@ return {
         Wound.inflict(player, { { id = "character_rowan" } })
         local entry = reserialize(Save.snapshot(player))
 
-        -- ...and the run went badly: a find in the stash, and two more bodies down.
-        local found = anyItemId()
-        local carriedBefore = stashCount(player, found)
-        Player.grantItem(player, found)
+        -- ...and the run went badly: coin found, and two more bodies down.
+        local goldBefore = player.gold or 0
+        Player.addGold(player, 200)
         Wound.inflict(player, { { id = "character_rowan" }, { id = "character_knight" } })
         assert(Wound.count(player, "character_rowan") == 2, "two bad fights, two wounds")
 
-        local fresh = Save.restore(entry)
-        local held = player.wounds
-        for k, v in pairs(fresh) do player[k] = v end
-        player.wounds = held -- the line under test, as states/game.lua performs it
+        Player.loseHaul(player, Save.restore(entry))
 
         assert(Wound.count(player, "character_rowan") == 2,
             "a wipe must not un-wound the company -- an injury outliving its run is the whole mechanic")
         assert(Wound.count(player, "character_knight") == 1, "including one taken for the first time")
-
-        -- ...while everything else the run picked up is gone, which is the rule this sits inside.
-        assert(stashCount(player, found) == carriedBefore, "the run's finds still roll back")
+        assert((player.gold or 0) == goldBefore + 50, "while most of the coin it found is gone")
     end },
 
     { name = "a wound caps the hub's free heal, and mending gives it back", fn = function()

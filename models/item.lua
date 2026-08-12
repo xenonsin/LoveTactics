@@ -639,7 +639,6 @@ function Item.instantiate(id, quantity, level)
         trail = deepCopy(def.trail),           -- { hazard, duration } | { trap }: ground left behind every tile walked
         incense = deepCopy(def.incense),       -- { hazard, radius, amount }: ground that follows the bearer (a censer)
         visionRadius = def.visionRadius,       -- overworld vision boost (e.g. torch); nil for most
-        extract = def.extract,                 -- overworld: spend to leave a run with its haul (smoke bolt)
         detectRadius = def.detectRadius,       -- combat: reveals traps within this radius (detectors)
         maxStack = def.maxStack,               -- stackable (consumable) items: per-slot cap override
         noSteal = def.noSteal,                 -- a pickpocket can never lift this (a beast's fangs)

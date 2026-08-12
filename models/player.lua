@@ -735,63 +735,69 @@ end
 -- ---------------------------------------------------------------------------
 --
 -- A small and deliberately open category: items whose whole effect is on the BOARD rather than in a
--- fight. There are two shapes so far and the difference between them is the shape, not the field:
+-- fight. One shape so far: PASSIVE -- a carried thing that changes the board while it is carried and
+-- is spent by nothing. `visionRadius` (utility_torch) is the one; see Player.visionRadius above.
 --
---     PASSIVE   a carried thing that changes the board while it is carried, spent by nothing.
---               `visionRadius` (utility_torch) is the one -- see Player.visionRadius above.
---     SPENT     a carried thing consumed to take one board action that is otherwise impossible.
---               `extract` (consumable_signal_horn) is the one, below.
+-- Read off the roster's grids AND the stash, because a board item belongs to the company rather than to
+-- a body -- nothing here asks who is carrying it, unlike a combat item, which always does.
 --
--- Both are read off the roster's grids AND the stash, because a board item is the company's rather
--- than a body's -- nothing here asks who is carrying it, unlike a combat item, which always does.
+-- A SPENT shape lived here briefly and is worth recording rather than merely deleting: `extract`, on a
+-- Smoke Bolt, bought a walk-out that kept the haul -- back when every exit but the objective voided it.
+-- Walking out is free now (states/game.lua's toHub), so the charge had nothing left to buy and went
+-- with the rule that justified it. A future spent item wants its own field and its own reason.
 
--- The company's first unspent extraction charge, as { item, where, char } (the shape
--- Player.partyRestoratives uses), or nil. Grid before stash, roster order, so which horn gets spent is
--- stable rather than whichever the table iterator reached first.
+-- ---------------------------------------------------------------------------
+-- What a lost fight costs
+-- ---------------------------------------------------------------------------
+
+-- The share of a run's gold and forging stock that does NOT come home from a wipe.
 --
--- WHY THIS EXISTS AT ALL: a walk-out and a wipe are otherwise the same event (states/game.lua's
--- toHub), which is correct as a default -- it is what stops "forfeit before the objective" being the
--- optimal way to bank a good haul -- but it also deletes the one decision an expedition ought to have,
--- which is knowing when to stop. The charge is the price that lets the decision exist without
--- reopening the exploit: cutting your losses is available, and it costs a thing you had to buy, carry,
--- and not use for something else.
-function Player.extractCharge(player)
-    -- Depletion is read off the stack directly rather than through Combat.isDepleted, which answers a
-    -- different question: it asks whether an ABILITY that consumes its item has run out, and returns
-    -- false for anything carrying no activeAbility at all. A board item has none by construction --
-    -- there is nothing to aim and no turn to spend -- so routing this through it would report a spent
-    -- bolt as usable forever, and the one-charge rule would silently not exist.
-    local function usable(item)
-        return item and item.extract and (item.quantity or 1) > 0
-    end
-    for _, char in ipairs(player and player.roster or {}) do
-        for _, item in ipairs(Character.eachItem(char)) do
-            if usable(item) then return { item = item, where = "grid", char = char } end
+-- Not all of it, and the change from "all" is the whole of the current risk model. The old rule voided
+-- the run outright -- a wipe restored the company from its entry snapshot, so a lost expedition was
+-- worth exactly nothing -- and that was correct while the objective was the only exit. It stopped being
+-- correct when walking out became free: with a voluntary exit keeping everything, a total wipe penalty
+-- turns the last fight before you turn back into an all-or-nothing coin flip, and the sensible play is
+-- to leave after the first cache and never risk a second.
+--
+-- A majority loss keeps the bet live in both directions. One more spur risks most of what you are
+-- carrying rather than all of it, so a bad roll is a bad day rather than a wasted one -- and the
+-- quarter that survives is what stops a wipe deep in a good run feeling like the game took the run back.
+Player.WIPE_LOSS = 0.75
+
+-- Take a wipe's cut. `before` is the entry snapshot -- the company as it walked in -- and everything
+-- the run gained on top of it is what is at risk.
+--
+-- MEASURED AGAINST THE SNAPSHOT rather than tracked as a running tally, so no grant seam on the way in
+-- had to learn a new rule: whatever is held now, minus whatever was held then, is what this run found.
+--
+-- THREE THINGS IT DELIBERATELY DOES NOT TOUCH:
+--   items    A sword out of a chest is a thing a body is carrying, and the bodies came home. Coin and
+--            ore are what get dropped in a rout. (It is also what keeps a wipe from undoing the one
+--            reward a player can see and name.)
+--   wounds   The whole point of an injury is that it outlives the run that caused it.
+--   what was brought   Only GAINS are at risk. A company that spent more on the road than it found
+--            walks home with its purse untouched rather than being billed the difference.
+--
+-- Returns what was actually taken, as { gold = n, materials = { id = n } }, so a caller can name it.
+function Player.loseHaul(player, before, share)
+    share = share or Player.WIPE_LOSS
+    local taken = { gold = 0, materials = {} }
+    if not (player and before) then return taken end
+
+    local goldGained = math.max(0, (player.gold or 0) - (before.gold or 0))
+    taken.gold = math.floor(goldGained * share)
+    player.gold = (player.gold or 0) - taken.gold
+
+    player.materials = player.materials or {}
+    for id, count in pairs(player.materials) do
+        local gained = math.max(0, (count or 0) - ((before.materials or {})[id] or 0))
+        local lost = math.floor(gained * share)
+        if lost > 0 then
+            player.materials[id] = math.max(0, count - lost)
+            taken.materials[id] = lost
         end
     end
-    for _, item in ipairs(player and player.stash or {}) do
-        if usable(item) then return { item = item, where = "stash" } end
-    end
-    return nil
-end
-
--- Spend one extraction charge. Returns true if one was actually spent, so a caller can never let the
--- board action happen for free on a company that no longer has the item -- the check and the spend are
--- one call rather than a query the caller is trusted to re-ask.
---
--- Clears an emptied STASH stack the way Player.consumeRestorative does, and leaves an emptied grid
--- stack in place for the same reason it does: a restock merges back into the cell, and the Loadout is
--- where a player clears one out.
-function Player.spendExtract(player)
-    local entry = Player.extractCharge(player)
-    if not entry then return false end
-    entry.item.quantity = math.max(0, (entry.item.quantity or 1) - 1)
-    if entry.item.quantity <= 0 and entry.where == "stash" then
-        for i, it in ipairs(player.stash or {}) do
-            if it == entry.item then table.remove(player.stash, i) break end
-        end
-    end
-    return true
+    return taken
 end
 
 -- ---------------------------------------------------------------------------

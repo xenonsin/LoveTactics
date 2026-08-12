@@ -227,41 +227,24 @@ local function clearRun()
     if game.player then game.player.activeRun = nil end
 end
 
--- LEAVING WITHOUT THE OBJECTIVE. Put the company back exactly as it walked in, then drop the run.
+-- LOSING A FIGHT, which is now the only thing on the board that costs anything.
 --
--- This is the whole extraction rule in one function. A run's finds are granted the moment they are
--- picked up -- a chest's sword is in the stash and equippable at the next fight -- but they are not the
--- player's until the objective banks them. Both ways out that are not the objective come through here:
--- a wipe (the defeat panel's Return to Hub) and a walk-out (Back / Esc). They differ only in how the
--- player arrived; neither pays.
+-- The rule inverted. It used to be that the objective was the only exit that banked: a wipe AND a
+-- walk-out both restored the company from its entry snapshot, and they differed only in how the player
+-- arrived. That was right while the board was a one-way trip. It is wrong now that a day is the unit --
+-- with a voluntary exit keeping everything (toHub), a total wipe penalty makes the last fight before
+-- you turn back an all-or-nothing coin flip, and the sensible play is to leave after the first cache.
 --
--- What comes back: items found, gold gained, gold SPENT (a Merchant's ware, a Sin's Altar toll), materials
--- picked, recipes, story flags. Reversing the spending is not generosity -- without it a forfeit would
--- launder run gold into permanent hub goods, which is the same hole from the other side.
---
--- What is NEVER at stake: the gear the company walked in with, its forge levels, the stash, the roster.
--- The snapshot IS that state, so restoring it can only take back what the run added.
---
--- Restored IN PLACE (field by field onto the existing table) so `game.player` and `Player.active` -- the
--- same table -- both carry the rolled-back company, exactly as the prologue's Try Again does. Returns
--- true when a rollback actually happened, so a caller can say so on screen.
-local function rollbackRun()
+-- So a wipe takes wounds (already inflicted by the battle) plus most of the run's gold and forging
+-- stock, and leaves the items. The arithmetic and the argument live in Player.loseHaul, where they can
+-- be driven by a spec; this is the seam that hands it the entry snapshot and drops the run.
+local function wipeRun()
     local run = game.player and game.player.activeRun
     local entry = run and run.entry
     if not entry then clearRun() return false end
-    local fresh = Save.restore(entry)
-    if not fresh then clearRun() return false end -- unreadable snapshot: drop the run, keep the player
-    -- WOUNDS DO NOT ROLL BACK, and this is the one line in the file that has to know it.
-    --
-    -- The loop below is deliberately total -- it hands the player every key the entry snapshot holds,
-    -- which is what makes the rollback correct without a list of what a run can change. `wounds` is
-    -- the single exception, and it is an exception on purpose: the whole point of an injury is that it
-    -- outlives the run that caused it, and a wipe restoring the pre-run wound count would hand the
-    -- company back whole at the exact moment it was hurt worst. Held across the copy rather than
-    -- excluded from the snapshot, so a resume still reads its wounds from disk.
-    local wounds = game.player.wounds
-    for k, v in pairs(fresh) do game.player[k] = v end
-    game.player.wounds = wounds
+    local before = Save.restore(entry)
+    if not before then clearRun() return false end -- unreadable snapshot: keep everything, drop the run
+    Player.loseHaul(game.player, before)
     clearRun()
     return true
 end
@@ -704,7 +687,7 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- THE DAY IS SPENT HERE, and "here" is load-bearing: at the top of a FRESH expedition, before the
     -- board is walked and before anything on it is found (models/calendar.lua).
     --
-    -- Entering is what costs, not clearing. Take the objective, break off with a Smoke Bolt, or get
+    -- Entering is what costs, not clearing. Take the objective, turn back with your pockets full, or get
     -- wiped -- the day is gone all three ways, which is the whole of "push on or go home with what I
     -- have". Charging on the way out instead would make a run that went badly free, and a player who
     -- turned back at the first bad fight would have spent nothing.
@@ -749,7 +732,7 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
             -- loot, a fight's spoils, salvage, an event's gift -- still lands in the stash the instant it
             -- is picked up and equips at the Loadout like any other gear. What this makes it is
             -- PROVISIONAL: the objective banks it (clearRun drops this snapshot and the gains stand),
-            -- and any other way out puts it all back (rollbackRun). The gear the player walked in with is
+            -- and losing a fight takes most of the coin and ore back (wipeRun). The gear the player walked in with is
             -- never at stake -- a lost run costs what it found, never what it brought.
             --
             -- Taken ONCE, above, and carried by reference: a re-snapshot mid-run would quietly bank
@@ -1128,7 +1111,7 @@ function game:openEncounter(cell)
                     -- live, equippable, spendable -- but provisional: the entry snapshot on the run could
                     -- put it all back. Dropping the run here drops that snapshot, and the finds become
                     -- permanent. The objective is the ONLY exit that does this; a wipe and a walk-out both
-                    -- roll back instead (see rollbackRun). So the haul comes home through the boss or it
+                    -- lose most of it instead (see wipeRun). So the haul comes home whichever way you leave, unless it
                     -- does not come home.
                     clearRun() -- quest cleared; Quest.complete's save (and the endsCampaign->credits path) writes no run
                     -- A REQUEST RUN never reaches Quest.complete: that function writes the quest ledger and advances
@@ -1269,16 +1252,16 @@ function game:openEncounter(cell)
                     return
                 end
                 -- The one thing a wipe does NOT take back. Inflicted BEFORE the rollback, which is
-                -- the whole of the ordering rule: rollbackRun hands the player every key of the entry
+                -- the whole of the ordering rule: the wipe reads the entry snapshot to price what the run
                 -- snapshot, and wounds only survive it because that function holds this key across
                 -- the copy. Written here rather than after, so the two halves cannot drift into a
                 -- state where the wounds are recorded on a player about to be overwritten.
                 game:inflictWounds()
-                -- A wipe VOIDS the run. Everything this expedition found goes back with it: the chest
-                -- loot, the fights' spoils and salvage, the gold, and the gold spent along the way. The
-                -- company keeps exactly what it marched in with. See rollbackRun -- the objective is the
-                -- only exit that banks, and this is the other side of that rule.
-                rollbackRun()
+                -- A WIPE IS THE ONLY THING THAT COSTS YOU ANYTHING. Walking out is free -- the company
+                -- goes home with everything it picked up -- so losing the fight is the whole of the
+                -- risk, and it takes most of the run's coin and ore with it (wipeRun). The items
+                -- stay: a sword out of a chest is carried by a body, and the bodies came home.
+                wipeRun()
                 if game.player then Player.save() end
                 State.switch(require("states.hub"))
             end or nil,
@@ -1770,84 +1753,48 @@ local function toHub()
         endDescent("left", { floors = (game.descent.cleared or 0), circles = game.descent.standing })
         return
     end
-    -- Abandoning a quest (Back / Esc) VOIDS the run, exactly as a wipe does -- the two differ only in how
-    -- the player got here. The expedition's finds go back, the company's own gear does not move, and
-    -- Continue has no map to drop them back into. Persist so disk agrees; the hub clears as a backstop.
+    -- WALKING OUT IS FREE, and this is the line that says so. It used to void the run exactly as a
+    -- wipe does -- the two differed only in how the player got there -- which made the objective the
+    -- only exit that banked anything. It is the other way round now: the company comes home with
+    -- everything it found, and the only thing the day cost is the day.
+    --
+    -- That is what puts the decision back where it belongs. "Do I take one more spur" is a bet against
+    -- the FIGHT rather than against the walk home, and the answer changes with how much you are
+    -- already carrying.
     if game.player and game.player.activeRun then
-        rollbackRun()
+        clearRun()
         Player.save()
     end
     State.switch(require("states.hub"))
 end
 
--- Leave the board WITHOUT voiding the run, by spending a Smoke Bolt (data/items/consumable). The one
--- exception to "the objective is the only extract", and the charge is what makes it affordable to have
--- one: see the blueprint's header for why a walk-out and a wipe were otherwise the same event.
+-- Back / Esc / pad-Back. Walking out of a QUEST is free now -- the company goes home with everything
+-- it picked up and the only thing spent is the day -- so there is nothing to warn about and nothing to
+-- ask. It just leaves.
 --
--- Drops the run exactly as clearing an objective does, so the finds already in the stash simply stay
--- there and the rollback point goes with the run. That is the whole implementation -- there is no
--- second grant path to keep in step, because a find has been live in the company's hands since the
--- moment it was picked up and only the way out was ever in question.
-local function extractQuest()
-    if not Player.spendExtract(game.player) then return end -- gone since the option was drawn
-    game.player.activeRun = nil
-    Player.save()
-    State.switch(require("states.hub"))
-end
-
--- Back / Esc / pad-Back. Walking out costs the whole haul unless the company is carrying a way out, so
--- it asks first -- and the asking names the price in items and coin rather than saying "are you sure",
--- which tells the player nothing they did not already know. A run carrying nothing leaves without
--- ceremony: there is no decision to put in front of someone who has found nothing yet.
+-- A DESCENT still asks, and still means it: there is no city on the other side of a descent, so
+-- climbing out early gives up the company as well as the haul (models/descent.lua). Two modes, two
+-- rules, and the prompt exists for exactly one of them.
 local function leaveQuest()
+    if not game.descent then toHub() return end
+
     local lost = game:haulPhrase()
     if not (game.player and game.player.activeRun and lost) then toHub() return end
 
-    -- THE OPTION IS DRAWN ONLY WHERE IT IS LEGAL, never as a greyed plate advertising an item the
-    -- player does not have. A company with no charge sees the two-option prompt it always saw.
-    -- Descents are excluded outright: a descent's exit is the stair, and its walk-out gives up the
-    -- company itself rather than a haul, which is not a thing a bolt of smoke has any answer to.
-    local charge = (not game.descent) and Player.extractCharge(game.player) or nil
-
-    local options = {
-        { label = "Keep going",
-          desc = game.descent and "The stair is the only way out with any of it."
-              or "The objective is the only way home with any of it.",
-          accent = { 0.83, 0.73, 0.45 },
-          cb = function() game.activePanel = nil end },
-    }
-    if charge then
-        -- Named for the deed and priced in the same breath, so the player reads what it costs without
-        -- opening anything: this is the row that decides the run.
-        options[#options + 1] = {
-            label = "Break off (Smoke Bolt)",
-            desc = "Spend the bolt and walk out with " .. lost .. ".",
-            accent = { 0.55, 0.75, 0.58 },
-            cb = function() game.activePanel = nil; extractQuest() end,
-        }
-    end
-    options[#options + 1] = {
-        label = game.descent and "End the run" or "Walk out empty",
-        desc = game.descent and "The company is left at the gate. The descent counts for nothing."
-            or "Return to the city. The expedition counts for nothing.",
-        accent = { 0.88, 0.45, 0.33 },
-        cb = function() game.activePanel = nil; toHub() end,
-    }
-
-    -- The same decision in both modes, but not the same stakes, so not the same words. A quest's
-    -- walk-out gives up one expedition and the company goes home; a descent's gives up the company as
-    -- well, since there is no home on the other side of it to go to.
     game.activePanel = Choice.new({
-        title = "Turn Back?",
-        prompt = game.descent
-            and ("Nothing you have found is yours until you climb out. Leave now and " .. lost ..
-                 " stay where you found them, and the run ends here.")
-            or (charge
-                and ("Nothing you have found is yours until the objective is cleared -- unless you "
-                     .. "buy your way off the road. You are carrying one bolt.")
-                or ("Nothing you have found is yours until the objective is cleared. Walk out now and "
-                    .. lost .. " stay where you found them.")),
-        options = options,
+        title = "Climb Out?",
+        prompt = "Nothing you have found is yours until you climb out. Leave now and " .. lost ..
+            " stay where you found them, and the run ends here.",
+        options = {
+            { label = "Keep going",
+              desc = "The stair is the only way out with any of it.",
+              accent = { 0.83, 0.73, 0.45 },
+              cb = function() game.activePanel = nil end },
+            { label = "End the run",
+              desc = "The company is left at the gate. The descent counts for nothing.",
+              accent = { 0.88, 0.45, 0.33 },
+              cb = function() game.activePanel = nil; toHub() end },
+        },
     })
 end
 

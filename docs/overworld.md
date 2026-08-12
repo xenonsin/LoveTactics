@@ -66,34 +66,52 @@ that was right. It landed on a full refund at a guaranteed density, which is the
 
 ## Getting out
 
-**The objective is the only extract.** Clearing it drops the run and its finds become permanent; every
-other exit — a wipe, a walk-out — rolls the company back to what it marched in with
-(`states/game.lua`'s `rollbackRun`, pinned by `tests/extraction_spec.lua`). Without that rule,
-forfeiting the moment a run had paid out was the optimal way to bank a haul.
+**Walking out is free.** The company goes home with everything it picked up, and the only thing the day
+cost is the day. **Losing a fight is the whole of the risk**: a wipe takes `Player.WIPE_LOSS` — three
+quarters — of the run's gold and forging stock, and leaves the items, the wounds, and everything carried
+in (`Player.loseHaul`, pinned by `tests/extraction_spec.lua`).
 
-**One exception, and it costs an item.** A wipe and a walk-out being the same event also deleted the
-oldest decision in the genre — knowing when to stop. `consumable_smoke_bolt` restores it: spend the
-bolt and leave with everything found. The charge is what keeps the exploit shut. Leaving early with the
-haul is available, and it costs a thing the player had to buy, carry in a grid cell that could have
-held something else, and not spend on the last three occasions they wanted to. That is a price paid
-before the moment of weakness rather than at it.
+**This rule inverted, and the old one is worth recording.** It used to be that *the objective was the
+only extract*: a wipe and a walk-out were the same event and both restored the company from an entry
+snapshot, so a lost run was worth exactly nothing. That was correct while the board was a one-way trip —
+without it, forfeiting the moment a run had paid out was the optimal way to bank a haul.
 
-The option is drawn on the turn-back prompt **only when a charge is actually held** — never as a greyed
-plate advertising an item the player has not got. Descents are excluded: a descent's walk-out gives up
-the company, not a haul, which is not something a bolt of smoke answers.
+It stopped being correct when the day became the unit. With a voluntary exit keeping everything, a total
+wipe penalty turns the last fight before you turn back into an all-or-nothing coin flip, and the
+sensible play is to leave after the first cache and never risk a second. A **majority** loss keeps the
+bet live in both directions: one more spur risks most of what you are carrying rather than all of it, so
+a bad roll is a bad day rather than a wasted one.
+
+Three things a wipe deliberately does not touch:
+
+- **The items.** A sword out of a chest is carried by a body, and the bodies came home. It is also what
+  keeps a wipe from undoing the one reward the player can see and name.
+- **The wounds.** An injury outliving the run that caused it is the whole mechanic (`models/wound.lua`).
+- **What was brought in, and anything spent.** Only *gains* are at risk, so a company that spent more at
+  the Merchant than it found walks home with its purse intact rather than being billed the difference.
+
+The entry snapshot survives, because it is still how the loss is *measured* — whatever is held now minus
+whatever was held then is what this run found. It is no longer what the company is restored to.
+
+A **descent** still asks before you leave, and still means it: there is no city on the other side of one,
+so climbing out early gives up the company as well as the haul.
 
 ### Overworld items
 
-A small, deliberately open category: items whose whole effect is on the board. Two shapes, and the
-difference is the shape rather than the field (`models/player.lua`, Overworld items):
+A small, deliberately open category: items whose whole effect is on the board. One shape so far
+(`models/player.lua`, Overworld items):
 
 | Shape | Field | Item | What it does |
 |---|---|---|---|
 | **Passive** | `visionRadius` | `utility_torch` | widens the fog while carried, spent by nothing |
-| **Spent** | `extract` | `consumable_smoke_bolt` | consumed for one board action otherwise impossible |
 
-Both are read off the roster's grids **and** the stash, because a board item is the company's rather
-than a body's. A future third has to pick a side — `tests/board_economy_spec.lua` says so.
+Read off the roster's grids **and** the stash, because a board item belongs to the company rather than
+to a body.
+
+A **spent** shape lived here briefly: `extract`, on a Smoke Bolt, bought a walk-out that kept the haul
+back when every exit but the objective voided it. Walking out is free now, so the charge had nothing
+left to buy and went with the rule that justified it. A future spent item wants its own field and its
+own reason.
 
 ## The arc
 
