@@ -15,6 +15,7 @@ local OverworldMap = require("ui.overworld_map")
 local Player = require("models.player")
 local Save = require("models.save")
 local Calendar = require("models.calendar") -- the campaign clock; a fresh expedition spends a day
+local Request = require("models.request") -- a day foraging for a house, with no story attached
 local Quest = require("models.quest")
 local Vendor = require("models.vendor")   -- the sponsoring house behind a quest, for its cache stock
 local Material = require("models.material")
@@ -872,7 +873,17 @@ function game:openEncounter(cell)
             -- A `meet` objective extracts exactly as a fought one does: dropping the run drops the
             -- rollback point with it, so the leg's finds stand. See the combat objective's branch below.
             clearRun() -- the quest is over; Quest.complete's save below then writes no run to resume
-            game.reward = Quest.complete(game.player, game.quest, game.map and game.map.cacheHaul)
+            -- A REQUEST RUN never reaches Quest.complete: that function writes the quest ledger and advances
+
+            -- the sponsor's standing, neither of which a day of foraging has earned (models/request.lua).
+
+            -- The extraction rule is identical either way -- the haul was provisional until this line.
+
+            game.reward = game.quest and game.quest.request
+
+                and Request.payout(game.player, game.quest, game.map and game.map.cacheHaul, game.day, Calendar.DAYS)
+
+                or Quest.complete(game.player, game.quest, game.map and game.map.cacheHaul)
             -- Same settle the fought path takes below: a line's tenth quest can release a companion, and
             -- this branch is the one where the farewell has ALREADY played (`meet` puts its scene before
             -- the payout, not after it), so the roster catches up immediately.
@@ -1120,7 +1131,17 @@ function game:openEncounter(cell)
                     -- roll back instead (see rollbackRun). So the haul comes home through the boss or it
                     -- does not come home.
                     clearRun() -- quest cleared; Quest.complete's save (and the endsCampaign->credits path) writes no run
-                    game.reward = Quest.complete(game.player, game.quest, haul)
+                    -- A REQUEST RUN never reaches Quest.complete: that function writes the quest ledger and advances
+
+                    -- the sponsor's standing, neither of which a day of foraging has earned (models/request.lua).
+
+                    -- The extraction rule is identical either way -- the haul was provisional until this line.
+
+                    game.reward = game.quest and game.quest.request
+
+                        and Request.payout(game.player, game.quest, haul, game.day, Calendar.DAYS)
+
+                        or Quest.complete(game.player, game.quest, haul)
                     -- The sting that marks a quest actually ending. Until now the single loudest
                     -- silence in the game was here: the objective clears, the board goes quiet, and
                     -- nothing at all says the run is over.

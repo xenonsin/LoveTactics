@@ -8,6 +8,8 @@
 local State = require("states")
 local Menu = require("ui.menu")
 local Quest = require("models.quest")
+local Request = require("models.request") -- the foraging rows under the posted work
+local Calendar = require("models.calendar") -- the last day belongs to the Gate alone
 local Player = require("models.player")
 local Growth = require("models.growth")
 local Item = require("models.item")
@@ -108,6 +110,29 @@ function QuestBoard:rebuild()
                 end
             end,
         }
+    end
+
+    -- FORAGING, one row per house, under the posted work. A day has to be spendable on something other
+    -- than somebody's errand or the calendar has one hand: forty expeditions against ninety-two quests
+    -- means constantly choosing which house to advance, and a day you do not want to give to a story is
+    -- currently a day you cannot give to anything (models/request.lua).
+    --
+    -- Below the quests rather than above them, and never selected by default: this is the fallback a
+    -- player reaches for, not the campaign. It pays that house's stock and gold, and no standing --
+    -- foraging finishes no quest, so it opens no shelf.
+    --
+    -- Not offered on the LAST DAY. The only thing that day is for is the Gate, and a row that let a
+    -- player spend it on ore would be the game quietly hiding its own ending.
+    if not Calendar.isFinalDay(self.player) then
+        for _, house in ipairs(Request.houses()) do
+            items[#items + 1] = {
+                label = "Forage for " .. house.name,
+                action = function()
+                    local quest = Request.quest(house.id)
+                    if quest then State.switch(require("states.game"), quest, nil, self.player) end
+                end,
+            }
+        end
     end
 
     -- Left column: narrow buttons anchored under the title, scrolling past MAX_VISIBLE.
