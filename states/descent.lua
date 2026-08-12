@@ -173,7 +173,7 @@ function beginRun()
     local profile = Descent.newProfile(Muster.company(picks))
     Player.active = profile
     local run = Descent.new(profile)
-    State.switch(require("states.game"), Descent.floorQuest(run, profile), 1, profile)
+    State.switch(require("states.game"), Descent.floorQuest(run, profile), nil, profile)
 end
 
 -- ---------------------------------------------------------------------------
@@ -212,7 +212,7 @@ local function promptResume()
                     -- nothing is rebuilt here. Same shape the campaign's Continue hands states/game.lua.
                     profile.resumeRun = nil
                     Player.active = profile
-                    State.switch(require("states.game"), run.quest, run.prestige, profile, nil, run)
+                    State.switch(require("states.game"), run.quest, nil, profile, nil, run)
                 end,
             },
             {

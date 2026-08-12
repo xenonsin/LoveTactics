@@ -76,7 +76,7 @@ return {
             g:objectiveCell().cleared = true
             local run = {
                 questId = "quest_bastion_slot_01",
-                prestige = 3,
+                day = 3,
                 grid = g,
                 -- snapshotRun only reads px/py/keysHeld off the map widget; a stand-in table is enough.
                 map = { px = g.start.x + 1, py = g.start.y, keysHeld = { key1 = true } },
@@ -88,7 +88,7 @@ return {
             assert(restored.quest and restored.quest.id == "quest_bastion_slot_01",
                 "the quest is rehydrated from its id")
             assert(restored.quest.map and restored.quest.map.objective, "the rehydrated quest carries its map")
-            assert(restored.prestige == 3, "the launch prestige survives")
+            assert(restored.day == 3, "the launch day survives -- a resumed run must not re-read the clock")
             assert(restored.px == g.start.x + 1 and restored.py == g.start.y, "the token position survives")
             assert(restored.keysHeld.key1 == true, "a held key survives")
             assert(restored.abilityState.character_rowan.vigils == 2, "banked overworld scratch survives")
@@ -106,7 +106,7 @@ return {
 
             local g = genGrid()
             player.activeRun = {
-                questId = "quest_bastion_slot_01", prestige = 1, grid = g,
+                questId = "quest_bastion_slot_01", day = 1, grid = g,
                 map = { px = g.start.x, py = g.start.y, keysHeld = {} }, abilityState = {},
             }
 
@@ -145,7 +145,7 @@ return {
             local g = genGrid()
             player.activeRun = {
                 questId = "quest_bastion_slot_01",
-                prestige = 2,
+                day = 2,
                 grid = g,
                 map = { px = g.start.x, py = g.start.y, keysHeld = {} },
                 abilityState = {},

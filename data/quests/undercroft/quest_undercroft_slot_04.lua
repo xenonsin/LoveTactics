@@ -48,7 +48,7 @@ return {
             name = "The Clearing House",
             composition = function(ctx)
                 local list = { "character_champion" }
-                for i = 1, 3 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_bandit_chief" end
+                for i = 1, 3 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_bandit_chief" end
                 return list
             end,
             win = { type = "killAll" },

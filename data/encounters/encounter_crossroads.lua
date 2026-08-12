@@ -5,5 +5,5 @@ return {
     name = "Crossroads",
     kind = "crossroads",
     weight = 2,
-    minPrestige = 1,
+    minDay = 1,
 }

@@ -48,7 +48,7 @@ return {
             name = "The Consignment",
             composition = function(ctx)
                 local list = { "character_bandit_chief" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_bandit" end
+                for i = 1, 2 + math.floor((ctx.day or 1) / 2) do list[#list + 1] = "character_bandit" end
                 return list
             end,
             -- The reagent. It stands where it is put and does not fight, and the quest is lost if it

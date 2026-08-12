@@ -47,7 +47,7 @@ return {
             name = "The Order's Own",
             composition = function(ctx)
                 local list = { "character_champion" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 3) do
+                for i = 1, 2 + math.floor((ctx.day or 1) / 3) do
                     list[#list + 1] = "character_bastion_sworn"
                 end
                 return list

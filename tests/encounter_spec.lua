@@ -19,10 +19,10 @@ return {
         end,
     },
     {
-        name = "prestige gates encounters below their minPrestige",
+        name = "prestige gates encounters below their minDay",
         fn = function()
-            local p1 = Encounter.pool({ prestige = 1, biome = "forest" })
-            assert(not has(p1, "encounter_elite"), "elite (minPrestige 2) should be gated at prestige 1")
+            local p1 = Encounter.pool({ day = 1, biome = "forest" })
+            assert(not has(p1, "encounter_elite"), "elite (minDay 2) should be gated at prestige 1")
             assert(has(p1, "encounter_boar"), "boar should be available at prestige 1")
         end,
     },
@@ -30,7 +30,7 @@ return {
         name = "dynamic weight scales with prestige, and then stops",
         fn = function()
             local function eliteAt(p)
-                return has(Encounter.pool({ prestige = p, biome = "forest" }), "encounter_elite")
+                return has(Encounter.pool({ day = p, biome = "forest" }), "encounter_elite")
             end
             local e2, e3 = eliteAt(2), eliteAt(3)
             assert(e2 and e2.weight == 2, "elite weight should track prestige while it climbs (2)")
@@ -49,7 +49,7 @@ return {
             -- The saturated elite must stay a MINORITY of the pool's fight weight, which is the
             -- property the tier arc actually depends on. Asserted against the ordinary fights rather
             -- than against a literal, so retuning either side keeps this honest.
-            local pool = Encounter.pool({ prestige = 20, biome = "forest" })
+            local pool = Encounter.pool({ day = 20, biome = "forest" })
             local ordinary, elite = 0, 0
             for _, e in ipairs(pool) do
                 if e.kind == "combat" then ordinary = ordinary + e.weight
@@ -63,8 +63,8 @@ return {
     {
         name = "conditional encounter respects biome",
         fn = function()
-            local forest = Encounter.pool({ prestige = 3, biome = "forest" })
-            local castle = Encounter.pool({ prestige = 3, biome = "castle" })
+            local forest = Encounter.pool({ day = 3, biome = "forest" })
+            local castle = Encounter.pool({ day = 3, biome = "castle" })
             assert(has(forest, "encounter_stag"), "stag should roam the forest")
             assert(not has(castle, "encounter_stag"), "stag should not appear in the castle")
         end,

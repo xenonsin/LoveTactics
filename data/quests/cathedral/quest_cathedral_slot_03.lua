@@ -28,7 +28,7 @@ return {
             name = "The Consecration",
             composition = function(ctx)
                 local list = { "character_miller_ghost" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_wolf_grunt" end
+                for i = 1, 2 + math.floor((ctx.day or 1) / 2) do list[#list + 1] = "character_wolf_grunt" end
                 return list
             end,
             win = { type = "survive", duration = 40 }, -- TICKS to outlast, not turns (the clock's unit)

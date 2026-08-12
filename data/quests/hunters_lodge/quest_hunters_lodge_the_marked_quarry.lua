@@ -35,7 +35,7 @@ return {
             name = "The Jumped Bounty",
             composition = function(ctx)
                 local list = { "character_bandit_chief" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_archer" end
+                for i = 1, 2 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_archer" end
                 list[#list + 1] = "character_dire_bear"
                 return list
             end,

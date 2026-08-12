@@ -212,7 +212,7 @@ local function buildMenu()
                 local run = Player.active and Player.active.resumeRun
                 if run then
                     Player.active.resumeRun = nil
-                    State.switch(require("states.game"), run.quest, run.prestige, Player.active, nil, run)
+                    State.switch(require("states.game"), run.quest, nil, Player.active, nil, run)
                 else
                     State.switch(require("states.hub"))
                 end

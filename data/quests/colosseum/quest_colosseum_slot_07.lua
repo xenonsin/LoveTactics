@@ -52,7 +52,7 @@ return {
                 -- line's thesis is that she cannot be talked to, and the only way to say that is to
                 -- put her in front of the player and give them nothing to say it with.
                 local list = { "character_general_wrath" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_bandit_chief" end
+                for i = 1, 2 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_bandit_chief" end
                 return list
             end,
             -- TICKS to outlast (the unit the clock counts and the HUD quotes), not turns.

@@ -12,13 +12,13 @@
 return {
     name = "Break for the Tree Line",
     kind = "combat",
-    minPrestige = 1,
+    minDay = 1,
     weight = 0,
 
     allies = { "character_caravan_driver" },
 
     composition = function(ctx)
-        local p = ctx.prestige or 1
+        local p = ctx.day or 1
         local list = { "character_demon_imp", "character_demon_imp" }
         for i = 1, 1 + math.floor((p - 1) / 3) do list[#list + 1] = "character_demon_grunt" end
         return list

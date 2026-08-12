@@ -29,7 +29,7 @@ return {
             name = "Gula, the Unsated",
             composition = function(ctx)
                 local list = { "character_general_gluttony" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_wolf_alpha" end
+                for i = 1, 2 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_wolf_alpha" end
                 return list
             end,
             opening = "conversation_hunters_lodge_slot_10_confront",

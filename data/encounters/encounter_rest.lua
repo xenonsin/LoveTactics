@@ -9,5 +9,5 @@ return {
     name = "A Moment's Rest",
     kind = "rest",
     weight = 0,
-    minPrestige = 1,
+    minDay = 1,
 }

@@ -59,7 +59,7 @@ return {
                 local list = { "character_demon_lord" }
                 -- Its honour guard, not its arsenal -- the arsenal is what it summons out of your
                 -- own past as it fails (data/traits/trait_hollow_crown.lua).
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 4) do list[#list + 1] = "character_champion" end
+                for i = 1, 2 + math.floor((ctx.day or 1) / 4) do list[#list + 1] = "character_champion" end
                 return list
             end,
             win = { type = "assassinate", target = "character_demon_lord" },

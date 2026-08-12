@@ -204,7 +204,7 @@ end
 function prologue.runOverworld(quest)
     local p = Player.active
     Player.restore(p)
-    State.switch(require("states.game"), quest, p.prestige, p, prologue.resume)
+    State.switch(require("states.game"), quest, nil, p, prologue.resume)
 end
 
 -- ---------------------------------------------------------------------------

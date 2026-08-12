@@ -84,7 +84,7 @@ return {
                 -- The house's carded killers. Ira is NOT among them -- she is a scripted outro force,
                 -- not a board unit this slot.
                 local list = { "character_champion" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_bandit_chief" end
+                for i = 1, 2 + math.floor((ctx.day or 1) / 2) do list[#list + 1] = "character_bandit_chief" end
                 return list
             end,
             -- The refugees, the village elder among them. `character_survivor` is defensive and will not

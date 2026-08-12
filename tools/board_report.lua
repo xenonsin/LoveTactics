@@ -39,7 +39,7 @@ local M = {}
 -- The campaign's default board, lifted from states/game.lua's `enter`. Kept in one place here so a
 -- change to the real defaults shows up as a diff in this file rather than as a silently stale report.
 local DEFAULT_ENCOUNTERS = { min = 8, max = 11 }
-local DEFAULT_PRESTIGE = 20 -- mid-campaign: past every encounter's minPrestige gate, so the pool is full
+local DEFAULT_DAY = 20 -- mid-campaign: past every encounter's minDay gate, so the pool is full
 local SEED_BASE = 20260811
 
 local FIGHT = { combat = true, elite = true }
@@ -161,7 +161,7 @@ function M.run(args)
         local w = tostring(a):match("^cw=([%d%.]+)$"); if w then combatWeight = tonumber(w) end
     end
 
-    local pool = Encounter.pool({ prestige = DEFAULT_PRESTIGE })
+    local pool = Encounter.pool({ day = DEFAULT_DAY })
     -- Sweep the ordinary-fight weights without editing four blueprints per candidate value. The pool is
     -- meant to be fight-heavy so that Overworld's combat-share CAP is what decides the mix; when it is
     -- not, the cap stops binding and the guarantee pass's non-combat stops set the ratio by accident.
@@ -213,8 +213,8 @@ function M.run(args)
     local function per(v) return v / n end
     local function ratio(a, b) return b > 0 and (a / b) or 0 end
 
-    print(string.format("BOARD REPORT -- %d rolled boards, forest, %d-%d stops, prestige %d",
-        n, DEFAULT_ENCOUNTERS.min, DEFAULT_ENCOUNTERS.max, DEFAULT_PRESTIGE))
+    print(string.format("BOARD REPORT -- %d rolled boards, forest, %d-%d stops, day %d",
+        n, DEFAULT_ENCOUNTERS.min, DEFAULT_ENCOUNTERS.max, DEFAULT_DAY))
     print("")
     print(string.format("  %-22s %8s  %s", "", "per board", "note"))
     print(string.format("  %-22s %8.2f", "stops", per(tot.stops)))

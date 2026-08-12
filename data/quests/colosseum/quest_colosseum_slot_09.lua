@@ -41,7 +41,7 @@ return {
             name = "The Disposal Card",
             composition = function(ctx)
                 local list = { "character_champion" }
-                for i = 1, 3 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_bandit_chief" end
+                for i = 1, 3 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_bandit_chief" end
                 return list
             end,
             -- The trainers, on the sand and not fighting back. Losing them costs the run: the whole

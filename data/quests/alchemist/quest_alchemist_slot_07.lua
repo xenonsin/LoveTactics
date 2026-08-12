@@ -43,7 +43,7 @@ return {
             name = "The Counterfeit Host",
             composition = function(ctx)
                 local list = { "character_crucible_golem" }
-                for i = 1, 4 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_homunculus" end
+                for i = 1, 4 + math.floor((ctx.day or 1) / 2) do list[#list + 1] = "character_homunculus" end
                 return list
             end,
             -- TICKS to outlast (the unit the clock counts and the HUD quotes), not turns.

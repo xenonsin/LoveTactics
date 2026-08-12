@@ -45,7 +45,7 @@ return {
             name = "The Working Chamber",
             composition = function(ctx)
                 local list = { "character_mage", "character_priest" }
-                for i = 1, 3 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_zombie" end
+                for i = 1, 3 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_zombie" end
                 list[#list + 1] = "character_gaunt_vigil"
                 return list
             end,

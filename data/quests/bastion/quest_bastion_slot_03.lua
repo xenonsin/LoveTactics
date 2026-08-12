@@ -47,7 +47,7 @@ return {
             name = "The Post With Nothing Behind It",
             composition = function(ctx)
                 local list = { "character_demon_grunt", "character_demon_grunt" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_demon_imp" end
+                for i = 1, 2 + math.floor((ctx.day or 1) / 2) do list[#list + 1] = "character_demon_imp" end
                 return list
             end,
             -- `region` defaults to "center" for a hold; named here because this board IS the post.

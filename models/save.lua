@@ -274,7 +274,7 @@ function Save.snapshotRun(run, player)
     end
     return {
         questId = run.questId,
-        prestige = run.prestige,
+        day = run.day,
         -- A DESCENT run: the floor stack and its seed, from which the whole board re-derives. Present
         -- only for a descent; a legacy board quest stores nothing here and restores through questId
         -- exactly as it always did. Plain data by contract -- see models/descent.lua's header on why a
@@ -325,7 +325,10 @@ function Save.restoreRun(snap)
         questId = snap.questId,
         quest = quest,
         descent = descent,
-        prestige = snap.prestige or 1,
+        -- The day the run was ENTERED on, carried with it rather than re-read from the clock on
+        -- resume. A resumed expedition is the same expedition: it already spent its day, and a board
+        -- that re-read the calendar would scale to a different depth halfway through itself.
+        day = snap.day or 1,
         px = snap.px, py = snap.py,
         keysHeld = snap.keysHeld or {},
         cacheHaul = snap.cacheHaul or {},

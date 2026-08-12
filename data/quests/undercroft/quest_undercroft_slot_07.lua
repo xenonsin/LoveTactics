@@ -51,7 +51,7 @@ return {
             name = "The Ledger Room",
             composition = function(ctx)
                 local list = { "character_champion" }
-                for i = 1, 3 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_bandit_chief" end
+                for i = 1, 3 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_bandit_chief" end
                 return list
             end,
             -- `region` defaults to "center" for a hold; named because this board IS the room.

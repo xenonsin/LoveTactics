@@ -8,11 +8,11 @@
 return {
     name = "The Breach Camp",
     kind = "elite",
-    minPrestige = 1,
+    minDay = 1,
     weight = 0,
     composition = function(ctx)
         local list = {}
-        for i = 1, 2 + math.floor((ctx.prestige or 1) / 2) do
+        for i = 1, 2 + math.floor((ctx.day or 1) / 2) do
             list[#list + 1] = "character_demon_grunt"
         end
         for i = 1, 2 do list[#list + 1] = "character_demon_imp" end

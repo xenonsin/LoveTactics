@@ -23,7 +23,7 @@ return {
             name = "The Decanting Wing",
             composition = function(ctx)
                 local list = { "character_homunculus" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_champion" end
+                for i = 1, 2 + math.floor((ctx.day or 1) / 2) do list[#list + 1] = "character_champion" end
                 return list
             end,
             win = { type = "killAll" },

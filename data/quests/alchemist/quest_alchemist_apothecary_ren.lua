@@ -47,7 +47,7 @@ return {
             name = "The Ward",
             composition = function(ctx)
                 local list = { "character_bandit_chief" }
-                for i = 1, 3 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_bandit" end
+                for i = 1, 3 + math.floor((ctx.day or 1) / 2) do list[#list + 1] = "character_bandit" end
                 return list
             end,
             allies = { "character_ren", "character_survivor", "character_survivor" },

@@ -40,7 +40,7 @@ return {
             name = "The Camp",
             composition = function(ctx)
                 local list = { "character_wolf_alpha" }
-                for i = 1, 3 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_wolf_grunt" end
+                for i = 1, 3 + math.floor((ctx.day or 1) / 2) do list[#list + 1] = "character_wolf_grunt" end
                 list[#list + 1] = "character_boar"
                 return list
             end,

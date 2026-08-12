@@ -36,7 +36,7 @@ return {
             name = "The Table at the Back",
             composition = function(ctx)
                 local list = { "character_bandit_chief" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_bandit" end
+                for i = 1, 2 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_bandit" end
                 return list
             end,
             win = { type = "assassinate", target = "character_bandit_chief" },

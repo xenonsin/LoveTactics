@@ -40,7 +40,7 @@ return {
             name = "The Proctor's Writ",
             composition = function(ctx)
                 local list = { "character_mage" }
-                for i = 1, 3 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_crucible_golem" end
+                for i = 1, 3 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_crucible_golem" end
                 return list
             end,
             -- The discards in the shelter. Losing them all loses the quest: the raid is only a raid if

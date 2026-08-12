@@ -59,7 +59,7 @@ return {
             -- is built on. Count scales with prestige, as every carded roster does.
             composition = function(ctx)
                 local list = { "character_bandit_chief", "character_trapper" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_bandit" end
+                for i = 1, 2 + math.floor((ctx.day or 1) / 2) do list[#list + 1] = "character_bandit" end
                 return list
             end,
             -- The cart's people. `character_survivor` is defensive and will not walk into a fight,

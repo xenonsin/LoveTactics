@@ -43,7 +43,7 @@ return {
             name = "The Collection Point",
             composition = function(ctx)
                 local list = { "character_gaunt_vigil" }
-                for i = 1, 3 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_zombie" end
+                for i = 1, 3 + math.floor((ctx.day or 1) / 2) do list[#list + 1] = "character_zombie" end
                 return list
             end,
             win = { type = "reach", region = "far" },

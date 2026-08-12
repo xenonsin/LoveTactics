@@ -3,5 +3,5 @@ return {
     name = "Waystation",
     kind = "town",
     weight = 2,
-    minPrestige = 1,
+    minDay = 1,
 }

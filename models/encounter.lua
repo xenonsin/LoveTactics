@@ -17,7 +17,10 @@ function Encounter.get(id) return Encounter.defs[id] end
 -- Is `def` eligible in this context? Gated by minPrestige and an optional
 -- condition(ctx) predicate on the blueprint.
 local function eligible(def, ctx)
-    if def.minPrestige and (ctx.prestige or 1) < def.minPrestige then return false end
+    -- Gated on the DAY rather than on the company's standing: an encounter that "only turns up once the
+    -- player has some renown" is really about how deep into the campaign the road is, and under the
+    -- calendar that is what the day measures (models/calendar.lua).
+    if def.minDay and (ctx.day or 1) < def.minDay then return false end
     if def.condition and not def.condition(ctx) then return false end
     return true
 end

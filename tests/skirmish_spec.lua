@@ -37,8 +37,8 @@ end
 -- because a fight's length is the one number both of those claims are really about.
 local SKIRMISH_TURN_BUDGET = 22
 
-local function openedBodies(def, prestige)
-    local ctx = { prestige = prestige, encounterKind = def.kind }
+local function openedBodies(def, day)
+    local ctx = { day = day, encounterKind = def.kind }
     return #Arena.clampComposition(Arena.resolveComposition(def.composition, ctx), Arena.enemyCap(ctx))
 end
 
@@ -83,16 +83,16 @@ return {
         -- a nine-body fight the board then fielded as four, every marker on the map would be wrong in
         -- the same direction -- and the walk-off would refuse fights it should have offered.
         local def = Encounter.get("encounter_wolf")
-        local ctx = { prestige = 200 }
+        local ctx = { day = 200 }
         local rated = Muster.encounter(def, ctx)
 
         local Growth = require("models.growth")
         local ids = Arena.clampComposition(
-            Arena.resolveComposition(def.composition, { prestige = 200, encounterKind = def.kind }),
+            Arena.resolveComposition(def.composition, { day = 200, encounterKind = def.kind }),
             Arena.SKIRMISH_CAP)
         local byHand = 0
         for _, id in ipairs(ids) do
-            byHand = byHand + Muster.rate(Growth.spawn(id, Growth.levelForPrestige(200), nil))
+            byHand = byHand + Muster.rate(Growth.spawn(id, require("models.calendar").dangerLevel(200), nil))
         end
         assert(rated == byHand, "the marker's rating is the skirmish's, not the raw composition's")
     end },
@@ -114,8 +114,8 @@ return {
         local N = 40 -- the roll carries +/-15% jitter, so compare averages rather than single rolls
         local nowSkirmish, nowNineBody = 0, 0
         for _ = 1, N do
-            nowSkirmish = nowSkirmish + Spoils.roll({ count = 4, prestige = PRESTIGE, kind = "combat" }).gold
-            nowNineBody = nowNineBody + Spoils.roll({ count = 9, prestige = PRESTIGE, kind = "combat" }).gold
+            nowSkirmish = nowSkirmish + Spoils.roll({ count = 4, day = PRESTIGE, kind = "combat" }).gold
+            nowNineBody = nowNineBody + Spoils.roll({ count = 9, day = PRESTIGE, kind = "combat" }).gold
         end
         nowSkirmish, nowNineBody = nowSkirmish / N, nowNineBody / N
 
@@ -138,9 +138,9 @@ return {
         local shallow, deep, campaign = 0, 0, 0
         local N = 40
         for _ = 1, N do
-            shallow = shallow + Spoils.roll({ count = 4, prestige = 1, kind = "combat", floorLevel = 1 }).gold
-            deep = deep + Spoils.roll({ count = 4, prestige = 1, kind = "combat", floorLevel = 13 }).gold
-            campaign = campaign + Spoils.roll({ count = 4, prestige = 13, kind = "combat" }).gold
+            shallow = shallow + Spoils.roll({ count = 4, day = 1, kind = "combat", floorLevel = 1 }).gold
+            deep = deep + Spoils.roll({ count = 4, day = 1, kind = "combat", floorLevel = 13 }).gold
+            campaign = campaign + Spoils.roll({ count = 4, day = 13, kind = "combat" }).gold
         end
         assert(deep > shallow * 2.5, "floor 13 pays " .. math.floor(deep / shallow * 10) / 10 ..
             "x floor 1 -- descending has to be visibly worth more than staying shallow")
@@ -183,8 +183,8 @@ return {
         local fresh, veteran = 0, 0
         local N = 40
         for _ = 1, N do
-            fresh = fresh + Spoils.roll({ count = 4, prestige = 1, kind = "combat", floorLevel = 1 }).gold
-            veteran = veteran + Spoils.roll({ count = 4, prestige = 20, kind = "combat", floorLevel = 1 }).gold
+            fresh = fresh + Spoils.roll({ count = 4, day = 1, kind = "combat", floorLevel = 1 }).gold
+            veteran = veteran + Spoils.roll({ count = 4, day = 20, kind = "combat", floorLevel = 1 }).gold
         end
         assert(math.abs(fresh - veteran) / fresh < 0.15,
             "floor 1 paid a prestige-20 company " .. math.floor(veteran / fresh * 100) ..
@@ -225,7 +225,7 @@ return {
             -- and silently builds a one-bandit default fight, which is a measurement of nothing.
             local built = EncounterBattle.build({
                 encounter = { id = e.id, kind = e.def.kind },
-                biome = "forest", prestige = 20,
+                biome = "forest", day = 20,
                 party = player.roster, seed = 20260809,
             })
             -- Guard the harness itself: if the composition ever stops reaching the arena, every number

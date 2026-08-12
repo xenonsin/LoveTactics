@@ -5,5 +5,5 @@ return {
     name = "Sin's Altar",
     kind = "shrine",
     weight = 1,
-    minPrestige = 1,
+    minDay = 1,
 }

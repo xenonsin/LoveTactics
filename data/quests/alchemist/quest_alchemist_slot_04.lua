@@ -44,7 +44,7 @@ return {
             name = "The Salon",
             composition = function(ctx)
                 local list = { "character_champion", "character_mage" }
-                for i = 1, 3 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_homunculus" end
+                for i = 1, 3 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_homunculus" end
                 return list
             end,
             win = { type = "killAll" },

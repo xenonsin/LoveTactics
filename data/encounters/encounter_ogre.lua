@@ -7,11 +7,11 @@ return {
     name = "Ogre",
     kind = "combat",
     weight = 4, -- see encounter_boar.lua: the four road fights were doubled together
-    minPrestige = 2,
+    minDay = 2,
     composition = function(ctx)
         local list = { "character_ogre" }
-        -- One extra escort per two prestige, so the brute is never entirely alone late on.
-        local escorts = 1 + math.floor((ctx.prestige or 1) / 2)
+        -- One extra escort every two days, so the brute is never entirely alone late on.
+        local escorts = 1 + math.floor((ctx.day or 1) / 2)
         for _ = 1, escorts do list[#list + 1] = "character_bandit" end
         return list
     end,

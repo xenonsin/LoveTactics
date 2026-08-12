@@ -34,7 +34,7 @@ return {
             name = "The Outrider Captain",
             composition = function(ctx)
                 local list = { "character_bandit_chief" }
-                for i = 1, 3 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_archer" end
+                for i = 1, 3 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_archer" end
                 return list
             end,
             win = { type = "assassinate", target = "character_bandit_chief" },

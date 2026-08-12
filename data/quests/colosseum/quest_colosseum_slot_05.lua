@@ -43,7 +43,7 @@ return {
             name = "The Intake Hall",
             composition = function(ctx)
                 local list = { "character_warlord" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_bandit_chief" end
+                for i = 1, 2 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_bandit_chief" end
                 return list
             end,
             win = { type = "reach", region = "far" },

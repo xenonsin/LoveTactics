@@ -18,7 +18,7 @@ return {
             name = "The Reading Room",
             composition = function(ctx)
                 local list = { "character_champion" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_bandit" end
+                for i = 1, 2 + math.floor((ctx.day or 1) / 2) do list[#list + 1] = "character_bandit" end
                 return list
             end,
             win = { type = "killAll" },

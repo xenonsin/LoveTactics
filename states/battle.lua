@@ -481,7 +481,7 @@ local function finishBattle(result)
         spoils = EncounterBattle.spoils({
             encounter = battle.encounter,
             enemyUnits = battle.enemyUnits,
-            prestige = battle.prestige,
+            day = battle.day,
             floorLevel = battle.floorLevel, -- a descent floor pays by depth (models/spoils.lua)
             houseMaterial = battle.houseMaterial,
             combat = battle.combat,
@@ -4528,7 +4528,7 @@ function battle.enter(self, opts)
     -- defeat panel. Passed down rather than computed, since the fight knows nothing about the run.
     battle.lostHaul = opts.lostHaul
     battle.encounter = opts.encounter or { kind = "combat", name = "Battle" }
-    battle.prestige = opts.prestige or 1 -- the company's prestige, used to roll the victory spoils
+    battle.day = opts.day or 1 -- the campaign day, which sets the far side's level and the spoils band
     -- The campaign player, kept so a won fight can pay the bench its share of the experience
     -- (finishBattle -> Experience.payBench). Nil for a mock battle, a draft and a netplay duel, all of
     -- which have no roster behind the four on the board and nobody to pay.
@@ -4542,7 +4542,9 @@ function battle.enter(self, opts)
     -- instead of staying pinned at blueprint level 1. `floorLevel` is this fight's authored minimum --
     -- the difficulty it may never drop below, however green the party is; a blueprint's own floor and
     -- `scaling = false` are honoured per unit inside Growth.combatantLevel.
-    battle.enemyLevel = Growth.levelForPrestige(battle.prestige)
+    -- Required inline, not at file scope: this file sits ON Lua 5.1's 200-local ceiling and one more
+    -- top-level local is a compile error naming an unrelated line six hundred lines away.
+    battle.enemyLevel = require("models.calendar").dangerLevel(battle.day)
     battle.floorLevel = opts.floorLevel
     battle.fallen = nil                  -- who went down in THIS fight, for the launcher's wounds
     battle.summary = nil                 -- the victory/defeat overlay, once the fight is decided
@@ -4627,7 +4629,7 @@ function battle.enter(self, opts)
     -- `encounterKind` picks the fight TIER -- skirmish or set-piece (Arena.enemyCap). A field on the
     -- existing ctx table rather than a new local: this file sits within a couple of declarations of
     -- Lua 5.1's 200-local ceiling, and crossing it is a compile error naming an unrelated line.
-    local ctx = { prestige = opts.prestige or 1, biome = opts.biome, quest = opts.quest,
+    local ctx = { day = opts.day or 1, biome = opts.biome, quest = opts.quest,
         encounterKind = opts.encounter and opts.encounter.kind }
     battle.arena = Arena.build(ctx, specFor(opts, partyIds, seed))
 

@@ -44,7 +44,7 @@ return {
             name = "The Card Nobody Advertised",
             composition = function(ctx)
                 local list = { "character_warlord" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_champion" end
+                for i = 1, 2 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_champion" end
                 return list
             end,
             win = { type = "assassinate", target = "character_warlord" },

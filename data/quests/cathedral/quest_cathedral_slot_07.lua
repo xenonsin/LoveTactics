@@ -45,7 +45,7 @@ return {
             name = "The Escort",
             composition = function(ctx)
                 local list = { "character_champion" }
-                for i = 1, 3 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_rowan" end
+                for i = 1, 3 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_rowan" end
                 return list
             end,
             -- TICKS to outlast (the unit the clock counts and the HUD quotes). Outlasting, not

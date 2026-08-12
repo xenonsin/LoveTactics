@@ -163,8 +163,8 @@ return {
             local def = Encounter.get("encounter_wolf")
             assert(def, "the wolf pack is still an encounter")
 
-            local small = Muster.encounter(def, { prestige = 1 })
-            local large = Muster.encounter(def, { prestige = 8 })
+            local small = Muster.encounter(def, { day = 1 })
+            local large = Muster.encounter(def, { day = 8 })
             assert(small > 0, "a pack of wolves is worth something")
             assert(large > small, "the pack grows with prestige and the rating grows with it")
         end,
@@ -177,7 +177,7 @@ return {
             -- at seventy wolves the board will only ever field nine of, and every late-game marker
             -- would read as hopeless.
             local def = Encounter.get("encounter_wolf")
-            local ctx = { prestige = 200 }
+            local ctx = { day = 200 }
             local raw = Arena.resolveComposition(def.composition, ctx)
             -- The cap is derived exactly as the real fight derives it, KIND INCLUDED. Reading it any
             -- other way here would let this case pass while the marker and the board disagreed, which
@@ -194,7 +194,7 @@ return {
             local Growth = require("models.growth")
             local byHand = 0
             for _, id in ipairs(clamped) do
-                byHand = byHand + Muster.rate(Growth.spawn(id, Growth.levelForPrestige(200), nil))
+                byHand = byHand + Muster.rate(Growth.spawn(id, require("models.calendar").dangerLevel(200), nil))
             end
             assert(Muster.encounter(def, ctx) == byHand,
                 "the rating is the clamped list's, not the raw composition's")
@@ -203,8 +203,8 @@ return {
     {
         name = "a missing encounter rates nothing rather than raising",
         fn = function()
-            assert(Muster.encounter(nil, { prestige = 1 }) == 0)
-            assert(Muster.encounter({ composition = {} }, { prestige = 1 }) == 0,
+            assert(Muster.encounter(nil, { day = 1 }) == 0)
+            assert(Muster.encounter({ composition = {} }, { day = 1 }) == 0,
                 "an empty composition is worth zero")
         end,
     },

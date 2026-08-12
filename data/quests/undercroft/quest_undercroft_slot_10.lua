@@ -29,7 +29,7 @@ return {
             name = "Aurea, the Ever-Owed",
             composition = function(ctx)
                 local list = { "character_general_greed" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_bandit_chief" end
+                for i = 1, 2 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_bandit_chief" end
                 return list
             end,
             opening = "conversation_undercroft_slot_10_confront",

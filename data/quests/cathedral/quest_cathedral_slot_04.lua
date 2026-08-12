@@ -50,7 +50,7 @@ return {
             name = "The Fold",
             composition = function(ctx)
                 local list = { "character_demon_grunt" }
-                for i = 1, 3 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_demon_imp" end
+                for i = 1, 3 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_demon_imp" end
                 return list
             end,
             win = { type = "killAll" },

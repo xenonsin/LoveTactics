@@ -53,7 +53,7 @@ return {
             -- men who held when the icon didn't, and the party is here on the order's coin.
             composition = function(ctx)
                 local list = { "character_greywatch_captain" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 2) do
+                for i = 1, 2 + math.floor((ctx.day or 1) / 2) do
                     list[#list + 1] = "character_greywatch_refuser"
                 end
                 return list

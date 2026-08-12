@@ -76,6 +76,16 @@ function love.load(args)
         return
     end
 
+    -- Day migration: `& "E:\LOVE\lovec.exe" . day-migrate [apply]`
+    -- Rewrites the difficulty half of prestige onto the calendar across the data layer -- `ctx.prestige`
+    -- in composition functions and `minPrestige` gates. Dry run by default. See tools/day_migrate and
+    -- models/calendar.lua on the two jobs prestige was doing.
+    if args and args[1] == "day-migrate" then
+        require("tools.day_migrate").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
     -- Board ledger: `& "E:\LOVE\lovec.exe" . board-report [n] [tiers]`
     -- Rolls n overworld boards and reports what the generator laid down -- boons per fight, how many
     -- of them ended up guarded, rest density, and the tier arc by fifth of the board. The instrument

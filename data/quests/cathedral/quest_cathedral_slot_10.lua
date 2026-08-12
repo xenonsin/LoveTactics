@@ -29,7 +29,7 @@ return {
             name = "Luxuria, the Unbidden",
             composition = function(ctx)
                 local list = { "character_general_lust" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_champion" end
+                for i = 1, 2 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_champion" end
                 return list
             end,
             opening = "conversation_cathedral_slot_10_confront",

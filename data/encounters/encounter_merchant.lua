@@ -6,5 +6,5 @@ return {
     name = "Merchant",
     kind = "merchant",
     weight = 1,
-    minPrestige = 2,
+    minDay = 2,
 }

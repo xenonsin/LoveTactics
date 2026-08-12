@@ -97,7 +97,7 @@ function QuestBoard:rebuild()
                 -- marches, and which of them take the field is chosen per battle in the deployment
                 -- phase, over the actual board (docs/deployment.md).
                 local function begin()
-                    State.switch(require("states.game"), quest, self.prestige, self.player)
+                    State.switch(require("states.game"), quest, nil, self.player)
                 end
                 -- An intro scene plays first (over the hub, which stays frozen behind it); once it
                 -- concludes we set out. No intro -> straight through.

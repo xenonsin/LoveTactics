@@ -29,7 +29,7 @@ return {
             name = "The Beast That Wore a Name",
             composition = function(ctx)
                 local list = { "character_dire_bear" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_wolf_alpha" end
+                for i = 1, 2 + math.floor((ctx.day or 1) / 2) do list[#list + 1] = "character_wolf_alpha" end
                 return list
             end,
             win = { type = "killAll" },

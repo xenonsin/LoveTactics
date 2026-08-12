@@ -23,6 +23,7 @@
 
 local Character = require("models.character")
 local Growth = require("models.growth")
+local Calendar = require("models.calendar") -- the far side is minted at the DAY's level, not the party's
 local Arena = require("models.arena")
 local Player = require("models.player")
 
@@ -126,10 +127,17 @@ function Muster.encounter(def, ctx)
         quest = ctx.quest, encounterKind = def.kind,
     }))
 
-    local playerLevel = Growth.levelForPrestige(ctx.prestige or 1)
+    -- The level the fight will ACTUALLY spawn at, which is now a property of the calendar rather than
+    -- of the company (models/calendar.lua). It used to be derived from the player's prestige, back when
+    -- every roster member sat on one prestige-given level and "the party's level" was a single number
+    -- that existed. It is not one number any more -- bodies earn their own -- and more to the point the
+    -- world no longer scales to the party at all, which is the whole of what makes a spent day cost
+    -- something. So the far side is minted at the day's danger level, and the near side is rated from
+    -- the company's real stats (Muster.companyScore), which is where the comparison belongs.
+    local danger = Calendar.dangerLevel(ctx.day or 1)
     local total = 0
     for _, id in ipairs(ids) do
-        local ok, char = pcall(Growth.spawn, id, playerLevel, ctx.floorLevel)
+        local ok, char = pcall(Growth.spawn, id, danger, ctx.floorLevel)
         if ok and char then total = total + Muster.rate(char) end
     end
     return total

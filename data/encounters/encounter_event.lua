@@ -10,5 +10,5 @@ return {
     name = "A Fork in the Road",
     kind = "event",
     weight = 0,
-    minPrestige = 1,
+    minDay = 1,
 }

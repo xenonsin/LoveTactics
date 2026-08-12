@@ -47,7 +47,7 @@ return {
     {
         name = "a won combat fight pays out gold",
         fn = function()
-            local s = Spoils.roll({ enemyUnits = roster(3), prestige = 2, kind = "combat" })
+            local s = Spoils.roll({ enemyUnits = roster(3), day = 2, kind = "combat" })
             assert(type(s.gold) == "number" and s.gold > 0, "gold should be a positive number")
             assert(type(s.loot) == "table", "loot should be a list")
         end,
@@ -55,9 +55,9 @@ return {
     {
         name = "gold scales with roster size and prestige",
         fn = function()
-            local small = Spoils.roll({ enemyUnits = roster(1), prestige = 1, kind = "combat",
+            local small = Spoils.roll({ enemyUnits = roster(1), day = 1, kind = "combat",
                 loot = {} })
-            local big = Spoils.roll({ enemyUnits = roster(6), prestige = 5, kind = "combat",
+            local big = Spoils.roll({ enemyUnits = roster(6), day = 5, kind = "combat",
                 loot = {} })
             -- The jitter is +/-15%, far smaller than a 6x roster and 5x prestige gap, so this holds.
             assert(big.gold > small.gold, "a bigger, deeper fight should pay more")
@@ -66,9 +66,9 @@ return {
     {
         name = "an elite fight pays richer than a like-sized common one",
         fn = function()
-            local common = Spoils.roll({ enemyUnits = roster(3), prestige = 3, kind = "combat",
+            local common = Spoils.roll({ enemyUnits = roster(3), day = 3, kind = "combat",
                 loot = {} })
-            local elite = Spoils.roll({ enemyUnits = roster(3), prestige = 3, kind = "elite",
+            local elite = Spoils.roll({ enemyUnits = roster(3), day = 3, kind = "elite",
                 loot = {} })
             assert(elite.gold > common.gold, "an elite fight of the same size should pay more")
         end,
@@ -82,7 +82,7 @@ return {
             local function avgGold(scale)
                 local sum = 0
                 for _ = 1, 300 do
-                    sum = sum + Spoils.roll({ enemyUnits = roster(3), prestige = 3, kind = "combat",
+                    sum = sum + Spoils.roll({ enemyUnits = roster(3), day = 3, kind = "combat",
                         loot = {}, rewardScale = scale }).gold
                 end
                 return sum / 300
@@ -104,9 +104,9 @@ return {
             end
             -- loot = {} short-circuits the loot roll, so only gold's single jitter draw consumes RNG.
             seed(42)
-            local a = Spoils.roll({ count = 3, prestige = 3, kind = "combat", loot = {} }).gold
+            local a = Spoils.roll({ count = 3, day = 3, kind = "combat", loot = {} }).gold
             seed(42)
-            local b = Spoils.roll({ count = 3, prestige = 3, kind = "combat", loot = {},
+            local b = Spoils.roll({ count = 3, day = 3, kind = "combat", loot = {},
                 rewardScale = 1 }).gold
             assert(a == b, "rewardScale=1 must equal the absent case, got " .. a .. " vs " .. b)
         end,
@@ -114,7 +114,7 @@ return {
     {
         name = "rewardGold overrides the computation exactly",
         fn = function()
-            local s = Spoils.roll({ enemyUnits = roster(4), prestige = 4, kind = "elite",
+            local s = Spoils.roll({ enemyUnits = roster(4), day = 4, kind = "elite",
                 rewardGold = 77, loot = {} })
             assert(s.gold == 77, "an explicit rewardGold should be used verbatim")
         end,
@@ -122,7 +122,7 @@ return {
     {
         name = "a loot override is used verbatim",
         fn = function()
-            local s = Spoils.roll({ enemyUnits = roster(2), prestige = 2, kind = "combat",
+            local s = Spoils.roll({ enemyUnits = roster(2), day = 2, kind = "combat",
                 loot = { "consumable_healing_potion", "consumable_healing_potion" } })
             assert(#s.loot == 2, "both override ids should come through")
             assert(s.loot[1] == "consumable_healing_potion", "the override id should be preserved")
@@ -131,7 +131,7 @@ return {
     {
         name = "an unknown override id is dropped, not emitted",
         fn = function()
-            local s = Spoils.roll({ enemyUnits = roster(1), prestige = 1, kind = "combat",
+            local s = Spoils.roll({ enemyUnits = roster(1), day = 1, kind = "combat",
                 loot = { "consumable_healing_potion", "not_a_real_item" } })
             for _, id in ipairs(s.loot) do
                 assert(id ~= "not_a_real_item", "an unknown id must never survive the roll")
@@ -143,7 +143,7 @@ return {
         fn = function()
             -- Roll many times so the weighted draw covers a good spread of the pool.
             for _ = 1, 200 do
-                local s = Spoils.roll({ enemyUnits = roster(3), prestige = 4, kind = "elite" })
+                local s = Spoils.roll({ enemyUnits = roster(3), day = 4, kind = "elite" })
                 for _, id in ipairs(s.loot) do
                     assert(Item.defs[id], "rolled loot id must exist in Item.defs: " .. tostring(id))
                     -- Instantiation is the real crash site a bad id would hit; prove it survives.
@@ -155,7 +155,7 @@ return {
     {
         name = "a fight with no enemyUnits still rolls without erroring",
         fn = function()
-            local s = Spoils.roll({ prestige = 1, kind = "combat" })
+            local s = Spoils.roll({ day = 1, kind = "combat" })
             assert(s.gold > 0, "gold falls back to a single-enemy computation")
         end,
     },
@@ -168,7 +168,7 @@ return {
             assert(next(carried), "the bandit must carry something priced for this test to mean anything")
             local fromBody, total = 0, 0
             for _ = 1, 400 do
-                local s = Spoils.roll({ enemyUnits = units, prestige = 3, kind = "combat" })
+                local s = Spoils.roll({ enemyUnits = units, day = 3, kind = "combat" })
                 for _, id in ipairs(s.loot) do
                     total = total + 1
                     if carried[id] then fromBody = fromBody + 1 end
@@ -190,7 +190,7 @@ return {
             assert(not next(carriedIds(units)), "a wolf should carry nothing priced")
             local drops = 0
             for _ = 1, 200 do
-                local s = Spoils.roll({ enemyUnits = units, prestige = 3, kind = "elite" })
+                local s = Spoils.roll({ enemyUnits = units, day = 3, kind = "elite" })
                 drops = drops + #s.loot
             end
             assert(drops > 0, "an empty carried pool must fall back to the band, not pay nothing")
@@ -212,7 +212,7 @@ return {
                 end
             end
             -- ...and it rides out on a full roll too, not just the helper.
-            local s = Spoils.roll({ enemyUnits = roster(2), prestige = 1, kind = "combat", loot = {} })
+            local s = Spoils.roll({ enemyUnits = roster(2), day = 1, kind = "combat", loot = {} })
             assert(totalMaterials(s.materials) >= 1, "a rolled fight must carry its salvage")
         end,
     },
@@ -294,7 +294,7 @@ return {
         fn = function()
             local units = realRoster("character_demon_champion", 1)
             for _ = 1, 300 do
-                local s = Spoils.roll({ enemyUnits = units, prestige = 5, kind = "elite" })
+                local s = Spoils.roll({ enemyUnits = units, day = 5, kind = "elite" })
                 for _, id in ipairs(s.loot) do
                     local def = Item.defs[id]
                     assert(def, "rolled loot id must exist: " .. tostring(id))
@@ -313,7 +313,7 @@ return {
         name = "a shelf stocks real, priced, unbound items and no duplicates",
         fn = function()
             for _ = 1, 100 do
-                local ids = Spoils.shelf({ prestige = 3, count = 3 })
+                local ids = Spoils.shelf({ day = 3, count = 3 })
                 assert(#ids == 3, "the band at prestige 3 is deep enough to fill three rows")
                 local seen = {}
                 for _, id in ipairs(ids) do
@@ -331,12 +331,12 @@ return {
     {
         -- The shelf and the drop table are one band, so what the road sells climbs with the run exactly
         -- as what it drops does -- and a low-prestige company can never be offered top-shelf gear.
-        name = "the shelf's price band widens with prestige",
+        name = "the shelf's price band widens as the campaign runs on",
         fn = function()
-            local function dearest(prestige)
+            local function dearest(day)
                 local best = 0
                 for _ = 1, 200 do
-                    for _, id in ipairs(Spoils.shelf({ prestige = prestige, count = 3 })) do
+                    for _, id in ipairs(Spoils.shelf({ day = day, count = 3 })) do
                         best = math.max(best, Item.defs[id].price)
                     end
                 end
@@ -344,17 +344,17 @@ return {
             end
             local low, high = dearest(1), dearest(6)
             assert(high > low, "a deeper run should see dearer stock, got " .. low .. " vs " .. high)
-            -- The band's own ceiling, quoted from bandPrice: 40 + prestige * 60.
-            assert(low <= 40 + 1 * 60, "prestige 1 must never be offered past its band, got " .. low)
+            -- The band's own ceiling, quoted from bandPrice: 40 + day * 60.
+            assert(low <= 40 + 1 * 60, "day 1 must never be offered past its band, got " .. low)
         end,
     },
     {
         name = "an excluded id is kept off the shelf",
         fn = function()
-            local ids = Spoils.shelf({ prestige = 3, count = 3 })
+            local ids = Spoils.shelf({ day = 3, count = 3 })
             local banned = ids[1]
             for _ = 1, 100 do
-                for _, id in ipairs(Spoils.shelf({ prestige = 3, count = 3, exclude = { [banned] = true } })) do
+                for _, id in ipairs(Spoils.shelf({ day = 3, count = 3, exclude = { [banned] = true } })) do
                     assert(id ~= banned, "an excluded ware was stocked anyway: " .. tostring(banned))
                 end
             end
@@ -365,8 +365,8 @@ return {
         -- so the empty case has to come back as an empty list rather than an error.
         name = "a shelf that cannot be filled returns what it could, without erroring",
         fn = function()
-            assert(#Spoils.shelf({ prestige = 3, count = 0 }) == 0, "a zero-row shelf is empty")
-            local huge = Spoils.shelf({ prestige = 1, count = 10000 })
+            assert(#Spoils.shelf({ day = 3, count = 0 }) == 0, "a zero-row shelf is empty")
+            local huge = Spoils.shelf({ day = 1, count = 10000 })
             assert(type(huge) == "table", "an unfillable shelf still returns a list")
             local seen = {}
             for _, id in ipairs(huge) do

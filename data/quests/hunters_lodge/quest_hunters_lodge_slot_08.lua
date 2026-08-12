@@ -44,7 +44,7 @@ return {
             name = "The Master Who Made the Offer",
             composition = function(ctx)
                 local list = { "character_warlord" }
-                for i = 1, 3 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_archer" end
+                for i = 1, 3 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_archer" end
                 return list
             end,
             win = { type = "assassinate", target = "character_warlord" },

@@ -102,12 +102,18 @@ local function rollGold(count, mult, kind, override, scale)
     return math.max(1, math.floor(gold + 0.5))
 end
 
--- The ceiling of the ROAD BAND at `prestige`: how dear a thing a run can turn up at all. One number,
+-- The ceiling of the ROAD BAND on `day`: how dear a thing a run can turn up at all. One number,
 -- because the road turns goods up two ways -- off a beaten body and off the Merchant's shelf
 -- (Spoils.shelf) -- and a market carrying gear the same road could never drop would be a second,
 -- silent answer to a question this already answers.
-local function bandPrice(prestige)
-    return 40 + math.max(1, prestige or 1) * 60
+--
+-- IT USED TO READ PRESTIGE, and the band got narrower when it moved. Prestige ran to 93 over a
+-- campaign, so the deepest road could drop a 5,620-gold piece; the calendar runs to 40, which tops out
+-- near 2,440. That is a real cut to what the road can hand over and it is the right one -- a campaign
+-- with a deadline is shorter, the shelves are shallower for the same reason (docs/overworld.md), and a
+-- road that out-dropped the shops it is supposed to feed was already the wrong shape.
+local function bandPrice(day)
+    return 40 + math.max(1, day or 1) * 60
 end
 
 -- The drop pool: every PRICED item within a prestige-scaled price band. Price is the "shoppable"
@@ -169,7 +175,7 @@ end
 -- `scale` (default 1) is the difficulty-tier bump. A gentler curve than gold uses -- sqrt(scale) --
 -- widens the price band and lifts both drop chances, so a tier-3 fight tends to pay a richer, likelier
 -- drop without a low-prestige map suddenly raining top-shelf gear.
-local function rollLoot(prestige, kind, override, enemyUnits, scale)
+local function rollLoot(day, kind, override, enemyUnits, scale)
     if override then
         local out = {}
         for _, id in ipairs(override) do
@@ -179,7 +185,7 @@ local function rollLoot(prestige, kind, override, enemyUnits, scale)
     end
     local bump = math.sqrt(scale or 1)
     local elite = kind == "elite"
-    local maxPrice = bandPrice(prestige)
+    local maxPrice = bandPrice(day)
     if elite then maxPrice = maxPrice * 1.5 end
     maxPrice = maxPrice * bump
     local band = lootCandidates(maxPrice)
@@ -224,7 +230,7 @@ function Spoils.shelf(opts)
     local taken = {}
     for id in pairs(opts.exclude or {}) do taken[id] = true end
 
-    local pool = lootCandidates(bandPrice(opts.prestige))
+    local pool = lootCandidates(bandPrice(opts.day))
     local out = {}
     for _ = 1, count do
         local available = {}
@@ -308,7 +314,7 @@ end
 
 -- Roll the spoils for a won fight.
 --   opts.enemyUnits  the beaten roster (its length is the count); or pass opts.count directly
---   opts.prestige    the company's prestige (default 1)
+--   opts.day    the company's prestige (default 1)
 --   opts.floorLevel  a descent floor's level, if this fight is on one. Its presence SWITCHES how the
 --                    gold reads depth -- a shallow slope over the floor instead of a straight multiple
 --                    of prestige (GOLD_DEPTH_SLOPE) -- so nothing moves in the campaign, which has
@@ -330,7 +336,7 @@ end
 function Spoils.roll(opts)
     opts = opts or {}
     local count = opts.count or (opts.enemyUnits and #opts.enemyUnits) or 1
-    local prestige = opts.prestige or 1
+    local day = opts.day or 1
     local kind = opts.kind or "combat"
     local scale = opts.rewardScale or 1
     -- HOW FAR IN this fight is, as the multiplier the gold is scaled by. A BRANCH rather than a max of
@@ -344,10 +350,10 @@ function Spoils.roll(opts)
     -- shallows instead of descending.
     local mult = opts.floorLevel
         and (1 + GOLD_DEPTH_SLOPE * (math.max(1, opts.floorLevel) - 1))
-        or math.max(1, prestige)
+        or math.max(1, day)
     return {
         gold = rollGold(count, mult, kind, opts.rewardGold, scale),
-        loot = rollLoot(prestige, kind, opts.loot, opts.enemyUnits, scale),
+        loot = rollLoot(day, kind, opts.loot, opts.enemyUnits, scale),
         materials = Spoils.materials({
             kind = kind, tier = opts.tier, houseMaterial = opts.houseMaterial,
         }),

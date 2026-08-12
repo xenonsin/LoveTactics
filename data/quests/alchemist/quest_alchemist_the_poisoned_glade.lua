@@ -36,7 +36,7 @@ return {
             name = "The Glade",
             composition = function(ctx)
                 local list = { "character_blightstake" }
-                for i = 1, 3 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_boar" end
+                for i = 1, 3 + math.floor((ctx.day or 1) / 2) do list[#list + 1] = "character_boar" end
                 return list
             end,
             win = { type = "killAll" },

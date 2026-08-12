@@ -49,7 +49,7 @@ return {
             name = "The Card With Your Name On It",
             composition = function(ctx)
                 local list = { "character_champion" }
-                for i = 1, 3 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_bandit_chief" end
+                for i = 1, 3 + math.floor((ctx.day or 1) / 2) do list[#list + 1] = "character_bandit_chief" end
                 return list
             end,
             allies = { "character_survivor", "character_survivor", "character_survivor" },

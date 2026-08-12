@@ -19,7 +19,7 @@ return {
     name = "Undercard: House Sparring",
     kind = "combat",
     weight = 0,
-    minPrestige = 1,
+    minDay = 1,
 
     -- One netter, one bruiser. The Trapper pins; the bandit makes standing still cost something, so the
     -- player has to solve the pin rather than wait it out. Deliberately small -- this is the sparring

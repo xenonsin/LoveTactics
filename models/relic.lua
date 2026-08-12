@@ -45,10 +45,10 @@ local function rnd(...)
     return math.random(...)
 end
 
--- Is `def` eligible to DROP in this context? Gated by minPrestige and an optional condition(ctx), the
+-- Is `def` eligible to DROP in this context? Gated by minDay and an optional condition(ctx), the
 -- same contract encounters use (models/encounter.lua), so the two selection systems read alike.
 local function eligible(def, ctx)
-    if def.minPrestige and (ctx.prestige or 1) < def.minPrestige then return false end
+    if def.minDay and (ctx.day or 1) < def.minDay then return false end
     if def.condition and not def.condition(ctx) then return false end
     return true
 end

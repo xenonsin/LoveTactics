@@ -44,8 +44,8 @@ return {
             name = "The Lecture Hall",
             composition = function(ctx)
                 local list = { "character_mage" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_champion" end
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_homunculus" end
+                for i = 1, 2 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_champion" end
+                for i = 1, 2 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_homunculus" end
                 return list
             end,
             win = { type = "assassinate", target = "character_mage" },

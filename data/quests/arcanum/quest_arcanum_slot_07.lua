@@ -52,7 +52,7 @@ return {
                 -- that she cannot be argued with, and the only way to say that is to put her in front
                 -- of the player and give them nothing to say it with.
                 local list = { "character_general_pride" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_zombie" end
+                for i = 1, 2 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_zombie" end
                 return list
             end,
             -- TICKS to outlast (the unit the clock counts and the HUD quotes), not turns.

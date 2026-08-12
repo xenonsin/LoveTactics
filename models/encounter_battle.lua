@@ -19,6 +19,7 @@
 local Arena = require("models.arena")
 local Combat = require("models.combat")
 local Growth = require("models.growth")
+local Calendar = require("models.calendar") -- the world fights at the day's level
 local Item = require("models.item")
 local Spoils = require("models.spoils")
 local EncounterModel = require("models.encounter")
@@ -134,11 +135,13 @@ function EncounterBattle.build(opts)
     -- `encounterKind` picks the fight TIER (Arena.enemyCap): an ordinary road stop is a small skirmish,
     -- a guardian or an objective a set-piece. It must be threaded here as well as in states/battle.lua
     -- or the walk-off would resolve a differently sized fight from the one it stands in for.
-    local ctx = { prestige = opts.prestige or 1, biome = opts.biome, quest = opts.quest,
+    local ctx = { day = opts.day or 1, biome = opts.biome, quest = opts.quest,
         encounterKind = opts.encounter and opts.encounter.kind }
     local arena = Arena.build(ctx, EncounterBattle.spec(opts, partyIds, seed))
 
-    local enemyLevel = Growth.levelForPrestige(opts.prestige or 1)
+    -- The world fights at the level the CALENDAR sets, not at one derived from the company: that is
+    -- what makes a squandered day a day the world pulled ahead (models/calendar.lua).
+    local enemyLevel = Calendar.dangerLevel(opts.day or 1)
     local partyUnits, enemyUnits = {}, {}
     -- Escorted allies fight on the party's side but are not the player's characters, so they get
     -- fresh instances and run themselves -- scaled like the far side, not left at level 1.
@@ -233,8 +236,8 @@ function EncounterBattle.spoils(opts)
     if kind == "combat" or kind == "elite" then
         spoils = Spoils.roll({
             enemyUnits = opts.enemyUnits,
-            prestige = opts.prestige,
-            -- How deep this stop is, on a descent. Nil in the campaign, where prestige carries the
+            day = opts.day,
+            -- How deep this stop is, on a descent. Nil in the campaign, where the day carries the
             -- same job -- see Spoils.roll, which takes the larger of the two.
             floorLevel = opts.floorLevel,
             kind = kind,

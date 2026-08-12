@@ -39,7 +39,7 @@ return {
             name = "The Way Out",
             composition = function(ctx)
                 local list = { "character_crucible_golem" }
-                for i = 1, 3 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_bandit" end
+                for i = 1, 3 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_bandit" end
                 return list
             end,
             win = { type = "reach", region = "far" },

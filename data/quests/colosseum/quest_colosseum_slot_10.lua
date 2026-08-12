@@ -31,7 +31,7 @@ return {
             opening = "conversation_colosseum_slot_10_confront",
             composition = function(ctx)
                 local list = { "character_general_wrath" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_champion" end
+                for i = 1, 2 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_champion" end
                 return list
             end,
             win = { type = "assassinate", target = "character_general_wrath" },

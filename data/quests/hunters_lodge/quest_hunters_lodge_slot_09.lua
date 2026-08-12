@@ -44,7 +44,7 @@ return {
             name = "The Shut Trail",
             composition = function(ctx)
                 local list = { "character_ogre" }
-                for i = 1, 3 + math.floor((ctx.prestige or 1) / 3) do list[#list + 1] = "character_dire_bear" end
+                for i = 1, 3 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_dire_bear" end
                 list[#list + 1] = "character_wolf_alpha"
                 return list
             end,

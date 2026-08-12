@@ -55,9 +55,12 @@ Calendar.DAYS = 40
 -- shade under that, so a player who spends their days fighting walks into the finale with an edge they
 -- earned, and one who squandered them does not.
 --
--- Growth.ENEMY_LEVEL_LAG is NOT applied on top of this. That constant exists to hold ordinary stock
--- just behind a party whose level was a global given; here the whole point is that the world's level is
--- independent of the party's, so lagging it against a number it no longer reads would be meaningless.
+-- THIS IS THE HEADLINE NUMBER, NOT WHAT ORDINARY STOCK FIGHTS AT. Growth.combatantLevel still applies
+-- ENEMY_LEVEL_LAG (0.9) underneath, so a common body on the last day spawns around 19 rather than 22 --
+-- measured, not assumed. The lag has lost its original meaning (it held enemies just behind a party
+-- whose level was a global given, and no such number exists now) but it has kept a useful one: it is
+-- the gap between the road's ordinary traffic and what the calendar says the world is capable of, which
+-- is what leaves room for an elite or a floorLevel to reach the headline and mean something by it.
 Calendar.FINAL_DANGER = 22
 
 -- The world's level on `day`. Linear from 1 on the first morning to FINAL_DANGER on the last, so the

@@ -19,7 +19,7 @@
 return {
     name = "Survivors Beset",
     kind = "combat",
-    minPrestige = 1,
+    minDay = 1,
     weight = 0,
 
     allies = { "character_survivor", "character_survivor" },
@@ -28,7 +28,7 @@ return {
     -- grunt already in reach of a survivor before anyone can screen. The grunt walks on as an early wave
     -- (below). Prestige still stacks extra imps for a later-game bite.
     composition = function(ctx)
-        local p = ctx.prestige or 1
+        local p = ctx.day or 1
         local list = { "character_demon_imp", "character_demon_imp" }
         for i = 1, math.floor((p - 1) / 3) do list[#list + 1] = "character_demon_imp" end
         return list
@@ -79,14 +79,14 @@ return {
             -- two, beside the Shout (Taunt) this stop grants, so the lesson reads without swamping the board.
             { at = 14, from = "surround", composition = function(ctx)
                 local list = { "character_demon_bomblet", "character_demon_bomblet", "character_demon_bomblet"  }
-                if (ctx.prestige or 1) >= 2 then list[#list + 1] = "character_demon_bomblet" end
+                if (ctx.day or 1) >= 2 then list[#list + 1] = "character_demon_bomblet" end
                 return list
             end },
             -- The encirclement closes: the late wave fans in from every open side at once.
             { at = 20, from = "surround", composition = function(ctx)
                 local list = { "character_demon_imp", "character_demon_imp", "character_demon_imp",
                                "character_demon_imp", "character_demon_imp" }
-                if (ctx.prestige or 1) >= 2 then list[#list + 1] = "character_demon_grunt" end
+                if (ctx.day or 1) >= 2 then list[#list + 1] = "character_demon_grunt" end
                 return list
             end },
         },

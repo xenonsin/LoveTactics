@@ -36,7 +36,7 @@ return {
             name = "The Shrine",
             composition = function(ctx)
                 local list = { "character_demon_champion" }
-                for i = 1, 3 + math.floor((ctx.prestige or 1) / 2) do list[#list + 1] = "character_demon_grunt" end
+                for i = 1, 3 + math.floor((ctx.day or 1) / 2) do list[#list + 1] = "character_demon_grunt" end
                 return list
             end,
             allies = { "character_rowan", "character_survivor", "character_survivor" },

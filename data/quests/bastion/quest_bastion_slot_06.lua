@@ -52,7 +52,7 @@ return {
             name = "The Last Names on the Roll",
             composition = function(ctx)
                 local list = { "character_forsworn_captain" }
-                for i = 1, 2 + math.floor((ctx.prestige or 1) / 3) do
+                for i = 1, 2 + math.floor((ctx.day or 1) / 3) do
                     list[#list + 1] = "character_forsworn_knight"
                 end
                 return list

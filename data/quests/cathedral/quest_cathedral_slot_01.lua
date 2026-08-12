@@ -23,7 +23,7 @@ return {
             name = "The Miller's Ghost",
             composition = function(ctx)
                 local list = { "character_miller_ghost" }
-                if (ctx.prestige or 1) >= 2 then list[#list + 1] = "character_wolf_grunt" end
+                if (ctx.day or 1) >= 2 then list[#list + 1] = "character_wolf_grunt" end
                 return list
             end,
             win = { type = "assassinate", target = "character_miller_ghost" },

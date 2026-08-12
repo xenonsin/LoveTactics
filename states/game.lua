@@ -183,7 +183,7 @@ local function fireRelics(event, extra)
         party = game.player and game.player.roster,
         grid = game.grid,
         state = game.relicState,
-        prestige = game.prestige,
+        day = game.day,
         notify = function(text) game:pushToast(text) end,
     }
     if extra then for k, v in pairs(extra) do ctx[k] = v end end
@@ -467,7 +467,7 @@ function game:openLanding()
                     game.activePanel = nil
                     Descent.advance(run)
                     State.switch(require("states.game"),
-                        Descent.floorQuest(run, game.player), game.prestige, game.player)
+                        Descent.floorQuest(run, game.player), game.day, game.player)
                 end,
             },
             {
@@ -515,12 +515,20 @@ end
 -- INSTEAD of the normal pay-out-and-return-to-hub flow. The prologue uses this to run its flight leg
 -- as a real overworld traversal and then hand control back to its own sequencer (states/prologue.lua)
 -- rather than ending at the hub. A normal board quest passes no onComplete and behaves as before.
-function game.enter(self, quest, prestige, player, onComplete, resume)
+-- The `_legacyPrestige` slot is dead and kept only so the positional signature does not shift under
+-- half a dozen callers in one commit. The day is read off the PLAYER now (Calendar.day) rather than
+-- handed in, which is the correct source: it is the campaign's clock, not a per-launch argument, and a
+-- caller passing a stale one was exactly how a resumed run could scale to the wrong depth.
+function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     require("models.sound").music("music.overworld")
     ScreenFx.reset() -- the map opens on full colour, whatever the last screen left ringing
 
     game.quest = quest
-    game.prestige = prestige or 1
+    -- A RESUME KEEPS THE DAY IT WAS ENTERED ON. Reading the clock afresh would be right today and
+    -- wrong the moment anything else can move it, and the failure would be a board that quietly
+    -- re-scales halfway through itself -- the enemy level, the encounter pool and the loot band all
+    -- hang off this one number.
+    game.day = (resume and resume.day) or Calendar.day(player)
     game.player = player -- kept so combat encounters can deploy the active party
     game.onComplete = onComplete
     -- A DESCENT floor rather than a board quest. The descriptor is synthesized (models/descent.lua) and
@@ -536,7 +544,7 @@ function game.enter(self, quest, prestige, player, onComplete, resume)
 
     -- Dynamic encounter selection: build the eligible weighted pool for this
     -- player's prestige + the quest's biome, plus any guaranteed "always" picks.
-    local ctx = { prestige = game.prestige, biome = mp.biome, quest = quest }
+    local ctx = { day = game.day, biome = mp.biome, quest = quest }
     -- A guaranteed encounter is either a bare id string or a table carrying a per-placement payload:
     -- `loot` for a treasure (the exact kit a chest hands over) or `conversation` for an `event` (which
     -- "Choose..." scene this stop plays). The payload rides onto the placed cell in
@@ -724,7 +732,7 @@ function game.enter(self, quest, prestige, player, onComplete, resume)
         if game.descent then game.descent.entry = entry end
         game.player.activeRun = {
             questId = quest.id,
-            prestige = game.prestige,
+            day = game.day,
             -- Serialized by Save.snapshotRun and taken by Save.restoreRun BEFORE it tries Quest.get,
             -- since a floor id is never in Quest.defs.
             descent = game.descent,
@@ -801,7 +809,7 @@ function game:cellMuster(cell)
         local enc = cell.encounter
         local def = enc and enc.id and EncounterModel.get(enc.id)
         cached = def and Muster.encounter(def, {
-            prestige = game.prestige,
+            day = game.day,
             quest = game.quest,
             floorLevel = game.quest and game.quest.floorLevel,
         }) or false
@@ -978,7 +986,7 @@ function game:openEncounter(cell)
             -- speak from: `intro` plays over the hub before the party is even picked, and by the
             -- time `outro` runs the target of an `assassinate` is dead.
             opening = kind == "objective" and mp.objective and mp.objective.opening or nil,
-            prestige = game.prestige,
+            day = game.day,
             -- What this run stands to lose here, named on the defeat panel (ui/panels/battle_summary).
             -- Read at launch rather than at the loss, because by then the rollback has already put it
             -- back and there would be nothing left to count.
@@ -1155,7 +1163,7 @@ function game:openEncounter(cell)
                             Player.finishCampaign(game.player)
                             State.switch(require("states.credits"), { newGamePlus = true })
                         elseif followUp then
-                            State.switch(require("states.game"), followUp, game.prestige, game.player,
+                            State.switch(require("states.game"), followUp, game.day, game.player,
                                 function() State.switch(require("states.hub")) end)
                         else
                             State.switch(require("states.hub"))
@@ -1270,7 +1278,7 @@ function game:openEncounter(cell)
                 -- the board the player could have fought, not a different one (see EncounterBattle.spec).
                 ground = game.grid and game.grid.groundAt and game.grid:groundAt(cell.x, cell.y) or nil,
                 quest = game.quest,
-                prestige = game.prestige,
+                day = game.day,
                 floorLevel = game.quest and game.quest.floorLevel or nil,
                 party = game.player and game.player.roster or {},
             })
@@ -1335,7 +1343,7 @@ function game:openEncounter(cell)
             local spoils = EncounterBattle.spoils({
                 encounter = cell.encounter,
                 enemyUnits = built.enemyUnits,
-                prestige = game.prestige,
+                day = game.day,
                 -- The same depth the played fight is paid by, or a walked-off stop would be worth a
                 -- different amount from the one the player could have stood in.
                 floorLevel = game.quest and game.quest.floorLevel or nil,
@@ -1456,7 +1464,7 @@ function game:openEncounter(cell)
         local def = enc.id and EncounterModel.get(enc.id)
         if not enc.offer then
             enc.offer = Relic.slate({
-                prestige = game.prestige,
+                day = game.day,
                 sin = game.quest and game.quest.sin, -- this circle's shelf leans toward its own
                 tier = enc.tier or (def and def.tier) or nil,
                 exclude = game.relicState,
@@ -1497,11 +1505,11 @@ function game:openEncounter(cell)
     -- greed gamble made into a stop. An empty vice-shelf just clears (nothing to tempt with).
     if kind == "shrine" then
         local id = Relic.roll(Relic.pool({
-            prestige = game.prestige, alignment = "vice", exclude = game.relicState,
+            day = game.day, alignment = "vice", exclude = game.relicState,
             sin = game.quest and game.quest.sin,
         }))
         if not id then cell.cleared = true; saveRun(); return end
-        local price = 20 + game.prestige * 8
+        local price = 20 + game.day * 8
         local canPay = game.player and (game.player.gold or 0) >= price
         game.activePanel = RelicReveal.new({
             title = cell.encounter.name or "Sin's Altar",
@@ -1529,7 +1537,7 @@ function game:openEncounter(cell)
         local enc = cell.encounter
         if not enc.stock then
             enc.stock = {}
-            for _, id in ipairs(Spoils.shelf({ prestige = game.prestige, count = 3 })) do
+            for _, id in ipairs(Spoils.shelf({ prestige = game.day, count = 3 })) do
                 enc.stock[#enc.stock + 1] = { id = id, price = Item.defs[id].price, bought = false }
             end
         end
@@ -1580,7 +1588,7 @@ function game:openEncounter(cell)
                 end
             end,
             grantRelic = function(tier)
-                local id = Relic.roll(Relic.pool({ prestige = game.prestige, tier = tier, exclude = game.relicState,
+                local id = Relic.roll(Relic.pool({ prestige = game.day, tier = tier, exclude = game.relicState,
                     sin = game.quest and game.quest.sin }))
                 if not id then return nil end
                 Relic.grant(game.relicState, id)

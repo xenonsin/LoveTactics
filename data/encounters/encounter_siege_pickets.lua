@@ -9,11 +9,11 @@
 return {
     name = "Siege Pickets",
     kind = "combat",
-    minPrestige = 1,
+    minDay = 1,
     weight = 0,
     composition = function(ctx)
         local list = {}
-        for i = 1, 3 + math.floor((ctx.prestige or 1) / 2) do
+        for i = 1, 3 + math.floor((ctx.day or 1) / 2) do
             list[#list + 1] = "character_demon_imp"
         end
         return list
