@@ -801,6 +801,30 @@ function Overworld:placeCaches(params)
     shuffle(deadEnds)
     shuffle(spare)
 
+    -- A BOON PREFERS GROUND THAT CAN BE GATED.
+    --
+    -- The shuffle alone was right while every board was a maze, because there a boon's home is a spur end
+    -- and the dead-end list did all the work. A board of rooms has NO degree-1 tiles at all -- the castle
+    -- measures 0.00 dead ends -- so every cache comes out of this list, and a flat shuffle drops most of
+    -- them in whichever chamber the road already runs through, where nothing gates them. Measured: 18.3%
+    -- of the castle's boons guarded, on a carve that offers a doorway for every one of them.
+    --
+    -- Depth off the critical path is the cheap proxy for "behind something", and it is already computed
+    -- for the payout scale, which wants the same thing: the far chamber is the one you reach through a
+    -- door. The shuffle survives as the tie-break, so boons at equal depth still move between seeds.
+    --
+    -- Not to be confused with an earlier attempt at this that made things WORSE (6.1%): that one ran while
+    -- a guard could only be seated within eight tiles of what it protected, so pushing caches deeper
+    -- pushed them out of every guard's reach. The reach is a room-crossing now and depth is free to help.
+    local spineDist = self:spineDistances()
+    local shuffled = {}
+    for i, c in ipairs(spare) do shuffled[c] = i end
+    table.sort(spare, function(a, b)
+        local da, db = spineDist[cellKey(a)] or 0, spineDist[cellKey(b)] or 0
+        if da ~= db then return da > db end
+        return shuffled[a] < shuffled[b]
+    end)
+
     -- Dead ends first, then off-spine tiles: a board that braided all its spurs away still pays, it
     -- just pays somewhere the player was more likely to pass anyway.
     local cands = {}

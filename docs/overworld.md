@@ -1,14 +1,60 @@
 # The Overworld
 
-The board a quest is run on: a carved maze with an objective at the far end, stops scattered through
-it, and one rule about how you get home. [docs/progression.md](progression.md) owns the campaign's
-economy — what a run pays and what a level buys. This owns the run itself.
+The board a quest is run on: ground carved to suit its biome, an objective at the far end, stops
+scattered through it, and one rule about how you get home. [docs/progression.md](progression.md) owns
+the campaign's economy — what a run pays and what a level buys. This owns the run itself.
 
-Every number below is reproducible with `& "E:\LOVE\lovec.exe" . board-report [n] [tiers]`, which rolls
-`n` boards with the campaign's default map params and reports what the generator actually laid down.
-The rule from [docs/roadmap.md](roadmap.md) applies with force here: **do not hand-derive a count from
-the constants, roll the boards and read what they say.** This document exists partly because that was
-not done once, and the wrong number was carried for a whole pass.
+Every number below is reproducible with `& "E:\LOVE\lovec.exe" . board-report [n] [all | biome=ID]`,
+which rolls `n` boards with the campaign's default map params and reports what the generator actually
+laid down. `& "E:\LOVE\lovec.exe" . board-render <biome> [seed]` draws a single board twice — as ground,
+and as fightability — because a mean cannot show you a shape. The rule from [docs/roadmap.md](roadmap.md)
+applies with force here: **do not hand-derive a count from the constants, roll the boards and read what
+they say.** This document exists partly because that was not done once, and the wrong number was carried
+for a whole pass.
+
+## One map
+
+**A fight is taken on the tiles the company walked over.** There is no separate arena. When one begins
+the board locks an 8×8 window of the map, walls close on the ring around it, and the company unfurls
+onto ground that was already there.
+
+That is possible because the two grids were already the same grid: 32 logical pixels a cell on the map,
+64 in the arena, and eight tiles at double scale is the 512-pixel board battles have always occupied. So
+the lock is a camera transform rather than a second board, and no ability range, TTK or AI weight had to
+be re-tuned to allow it.
+
+| Piece | Where | What it does |
+|---|---|---|
+| `models/terrain.lua` | one table | The ground, for both layers. Neither may hold a second opinion. |
+| `Overworld:bestBox` | `models/overworld.lua` | Of every window containing the tile, the one with the most walkable ground. |
+| `Arena.fromGrid` | `models/arena.lua` | Cuts that window and hands it back as an ordinary layout. |
+| `BattleMap:drawSurround` | `ui/battle_map.lua` | The rest of the map, dark and stopped, and the walls. |
+
+Three consequences worth stating on their own:
+
+- **The window is chosen, not centred.** Meet something at the mouth of a clearing and the board pulls
+  into the clearing; get cornered in a corridor and it stays a corridor, because there was nothing
+  better within reach.
+- **Your side is the side you arrived from.** A rolled board had no outside and so no "your side";
+  `deployZoneFor`'s fixed block at the bottom centre existed because there was no better answer.
+- **Two words became two tiles.** The map's `forest` was impassable wood and the board's was a tree you
+  walk through for cover, so `thicket` is the wall and `forest` is the cover — and a glade wants both at
+  once. The map's `water` was a barrier and the board's a wadeable ford, so `river` is the barrier and
+  `water` stays the ford. Merge either pair the other way and something good dies: every river becomes
+  crossable and bridges stop being doors, or the shallows become walls and take conduction with them.
+
+### What that deleted
+
+`Overworld:groundAt` voted over a 5×5 neighbourhood to *guess* what the ground was, and
+`Arena.GROUND_PROFILES` picked scatter ranges so a rolled board would resemble it. The resemblance is
+the thing now — the channel down the flank **is** the river, in the place it runs — so both are gone.
+
+One guarantee went with them and was rehomed rather than lost: `band = "cross"` promised a crossing
+exactly one free ford, tuned so water could never cut a board in half. That promise belongs to whichever
+layout lays the water, and moving it immediately found a bug the old spec could not see, because it was
+testing a board that no longer gets built — the tundra's leads sealed lobes off, 454 of 752 walkable
+tiles unreachable on a board that passed every other check. `Floes.ford` repairs the crossings after all
+the water is down.
 
 ## The generation pipeline
 
@@ -16,28 +62,137 @@ not done once, and the wrong number was carried for a whole pass.
 
 | Pass | What it does |
 |---|---|
-| `carveMaze` | recursive backtracker over a spaced node lattice → 1-tile corridors |
-| `braid` | re-connects some dead ends into loops. **See the braid rate below** |
-| `placeRivers` → `thinBridges` | wandering water; a river over a path becomes a one-tile bridge |
+| `layout.carve` | **per biome** — see The seven grounds below |
+| `placeRivers` → `thinBridges` | wandering water; a river over a path becomes a one-tile bridge. Skipped for a layout that lays its own (`ownsWater`) |
 | `placeObjectiveAndGates` | objective on a far dead end (~80% of max distance), gates + keys before it |
-| `placeCaches` | material caches take the spur ends **first** |
-| `placeEncounters` | fights and texture fill the corridors between them |
+| `placeCaches` | material caches take the spur ends **first**, then the deepest ground off the road |
+| `placeEncounters` | fights and texture fill the ground between them |
 | `guardBoons` | re-seats fights so most rewards stand behind one |
 | `pruneDeadStubs` | trims spurs that ended in nothing (no RNG) |
 | `assignEncounterTiers` | the pips the fog shows, drawn last so geometry never shifts |
+| `placePatrols` | lifts a share of the fights off their cells onto beats (opt-in) |
 
-`deriveDims` sizes the grid to the content, so a short errand does not sprawl. An authored board
-(`Overworld.fromLayout`, `data/overworld/*.lua`) skips the lot.
+**Swap the carve, keep the pipeline.** Everything below the carve works on an arbitrary walkable graph
+— it is all BFS over `pathNeighbors` — which is why seven grounds is a tractable amount of work rather
+than seven generators. `deriveDims` sizes the grid to the content and to the layout's own `density`. An
+authored board (`Overworld.fromLayout`, `data/overworld/*.lua`) skips the lot.
 
 ## The board's contract
 
 - **The objective is the only fight you must take.** `placeEncounters` keeps combat off the
-  objective→start spine, so a wounded company can always route to the boss.
+  objective→start spine, and a loose patrol's beat never touches it either, so a wounded company can
+  always route to the boss.
 - **Every other fight is optional, and an optional fight should be attached to something worth
-  having.** That is `guardBoons`: the boon at the end of the spur, the fight in the corridor to it.
+  having.** That is `guardBoons`: the boon behind, the fight in the way.
+- **A fight is never seated where a fight cannot happen.** See the fightability floor below.
 - **The finds are guarded, never the services.** A shop behind a fight is friction; a rest behind one
   compounds exactly the wrong way.
-- **Ascent maps opt out of both.** There combat *is* the route.
+- **Ascent maps opt out.** There combat *is* the route.
+
+## Can a battle happen here
+
+The floor nothing used to check, because nothing used to need it. A locked board is 64 tiles of the map,
+and what matters is how much of that is standing room.
+
+| Term | Constant | What it means |
+|---|---|---|
+| **space** | `Overworld.BOX_OK = 32` | walkable tiles in the best window containing this one. A fight is never *seated* below it |
+| **shape** | `Overworld:isOpen` | a tile with a full 3×3 of walkable around it. A corridor scores zero however long it runs |
+| **floor** | `Overworld.BOX_MIN = 20` | below this there is nowhere to stand at all |
+
+**Space is not shape, and the second number is the one that matters.** Before the layout pass, *open
+ground read 0.0 on every ground in the game* — not one tile on any board had a full 3×3 around it,
+because every layout was 1-wide corridors. And the failure had two faces: the loose grounds seated their
+fights at ~20 of 64, at or below the bare minimum, while the tight ones scored 34 and were unfightable
+anyway. Room for four bodies; no room for a decision.
+
+Two rules that had to be learned by breaking them:
+
+- **A demotion that empties the board is worse than a thin fight.** Refusing every seat on a ground that
+  clears nothing does not produce careful placement, it produces a board with no fights on it — which is
+  what the desert and the tundra did the first time the rule ran.
+- **Corridor contact stays legal.** The floor governs what the *generator* chooses, which is a different
+  question from what the player walks into. Being caught mid-hall is the price of a mistake.
+
+## The seven grounds
+
+Each biome names a `layout` (`data/biomes/<id>.lua` → `models/layouts/<id>.lua`).
+
+| Ground | Layout | What it is |
+|---|---|---|
+| forest | `glades` | the maze, opened into clearings where trails meet |
+| swamp | `drowned` | the forest's carve, a third of the trail under shallows |
+| castle | `rooms` | chambers and halls, cut by recursive splits, joined as a tree |
+| underworld | `caverns` | cellular automata: wide bellies, pinched necks |
+| volcanic | `rifts` | wide fractures meeting at fallen-in chambers |
+| desert | `open` | a plain with ridges, and one walled ruin |
+| tundra | `floes` | open flats quartered by meltwater, fords for doors |
+
+Measured across 20 boards a ground:
+
+| ground | fightable | sites | seat | open | under | guarded |
+|---|---|---|---|---|---|---|
+| castle | 100.0% | 4.5 | 57.0 | 40.2 | 0.00 | 38.0% |
+| desert | 100.0% | 4.8 | 51.8 | 24.9 | 0.10 | 65.2% |
+| forest | 91.6% | 5.6 | 41.0 | 12.3 | 0.60 | 62.4% |
+| swamp | 86.8% | 3.4 | 36.1 | 7.3 | 1.30 | 65.6% |
+| tundra | 100.0% | 5.5 | 55.1 | 25.2 | 0.00 | 65.6% |
+| underworld | 100.0% | 5.9 | 62.5 | 51.5 | 0.00 | 71.4% |
+| volcanic | 99.9% | 2.9 | 57.4 | 39.1 | 0.00 | 21.8% |
+
+Three things a layout keeps being taught, each learned by getting it wrong first:
+
+1. **A room over a dead end deletes the dead end.** Carving clearings at any lattice node took the
+   forest's guarded share from 60% to 27%, which is the braid rate's failure reached from another
+   direction. A glade opens a *through*-node and shrinks its radius to spare any spur end.
+2. **A chain makes every room spine.** The castle's halls were a chain first, and guarded 1.6% of its
+   boons — one route through every chamber means every doorway is on the objective road, and combat is
+   kept off it. A tree branches, and the leaves are dead ends.
+3. **A carve that has to be repaired afterwards is usually carved wrong.** The volcanic fractures each
+   started at a random point and were stitched together after; the stitching corridors were then peeled
+   back one tile per pass by `pruneDeadStubs`, which read as a hang. Each fracture starts on an existing
+   one now, so the network is connected by construction.
+
+**The size cap grew, 27×19 → 37×25 of play area.** The old reasoning was right for the board it was
+written for — *every tile a choice, not a marathon warren* — but a stop was a marker then. A board
+seating four or five fights has to contain four or five rooms with trail between them, and at the old
+cap the compactness rule and the fightability floor were in direct conflict. Most of the added area is
+room, which is crossed in three steps, rather than corridor, which was the marathon the cap guarded
+against.
+
+## The fights that walk
+
+`models/patrol.lua`. A share of the board's combat lifts off its cell onto a beat.
+
+**One player step is one patrol step.** Not `dt`. It keeps the board a thing you can stand still and
+read, it keeps a run reproducible enough to spec and to resume, and it prices the walk in the board's own
+currency — sweeping a spur costs six steps, and six steps is six patrol moves somewhere else. It also
+means "the map locks during combat" needed no code: nothing ticks except on your step, and during a fight
+you are not stepping.
+
+- **Beat → Alert → Return.** Alert fires on line of sight down a corridor; the leash runs out and it
+  walks home.
+- **Never faster than the party.** Pace is a divisor on the tick, so rank buys *reach* rather than speed.
+  That single cap is what keeps the contract: a company that keeps walking away cannot be caught in open
+  corridor, so the only place a patrol can corner you is a dead end you chose to enter.
+- **A guard's beat is its cut set** — exactly the tiles whose removal puts its boon out of reach. A long
+  corridor gives it a real beat; a single-tile cut set gives a sentry that stands still. The guarantee
+  survives by construction, and `tests/patrol_spec.lua` walks the board to prove it.
+- **A loose beat never touches the spine.** Alert may cross it, because you can outwalk a patrol and a
+  chase that stops at an invisible line is worse than no chase.
+- **The circuit is drawn**, with the tile it occupies next. A moving fight you cannot predict is a
+  punishment; one whose circuit you can read is a puzzle.
+
+**Where it touched you is where it deploys.** A fight the company walks into opens as two lines facing
+each other; one that caught them opens with the enemy on the side it arrived from — so being caught deep
+in a spur puts it between the company and the way out. Same composition, at the same tier, as a
+completely different problem, decided by how the approach was handled rather than by a roll. That is what
+makes a moving fight worth having at all.
+
+Patrols are **opt-in at the generator** (`params.patrols`). Lifting a fight off its cell changes what
+`cell.encounter` means, and many specs read exactly that to assert what *placement* did; switching it on
+underneath them would have every one read low, which is a change in the instrument rather than in the
+board.
 
 ## What a run costs
 
@@ -220,10 +375,16 @@ the Arcanum reading an unknown discipline off a piece, the Cafe standing a round
   generation one.
 - **No adjacency rule between stops of the same kind.** The only spacing is Manhattan ≥ 2 between any
   two encounters, so two crossroads in a row or a merchant beside a rest are both legal.
-- **Nothing prices time on the board.** Once the fights are cleared there is no cost to sweeping every
-  spur. PMD answers this with a hunger clock; that is the wrong shape for a 45-minute tactics run, and
-  escalating reinforcement pressure is the version that would fit. Unbuilt, and not obviously needed
-  now that attrition compounds.
+- ~~**Nothing prices time on the board.**~~ **Closed by the step clock.** Every step the company takes
+  is a step something else takes, so sweeping every spur costs patrol moves. The hunger clock this entry
+  used to reach for was the wrong shape; the board's own currency turned out to be the right one.
+- **The castle and the volcanic guard ~20-38% of their boons** against 62-71% everywhere else. Both
+  carve wide connected ground, so the spine runs through most of it and combat is kept off the spine.
+  Preferring deeper ground for caches took the castle from 18% to 38%; the rest is layout tuning
+  (branchier halls, more leaf chambers), not a rule change. **Raising the guard's reach does not help** —
+  measured flat at 28 tiles, so the limit is that no *off-spine* gating tile exists, and the beat-guard
+  idea would have to seat a guard on the spine, which breaks the one contract the board cannot lose.
+- **The swamp still seats ~1.3 fights a board under the fightability floor**, the worst of the seven.
 - **Every offer on the board pays the same currency.** Materials from a cache, materials and gold from
   a fight — so the board is N copies of one offer at different prices, and route *choice* cannot really
   exist until two boons can differ in kind. The largest open item here, and it is a content question

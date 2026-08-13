@@ -1461,3 +1461,32 @@ only ever shrinks — write a case naming the id, then delete its line.
 Naming an id is a low bar on purpose (it can't tell a real case from an id in a spawn list). It
 exists to put you in the spec file, where writing the real assertion is the obvious next move. The
 sweep proves your item doesn't crash; only a case of its own proves it does what it's *for*.
+
+## Adding a ground (a map layout)
+
+A biome names how its board is carved. Everything after the carve is shared, so a new ground is one
+file plus one line.
+
+1. `models/layouts/<id>.lua` returning `{ name, carve(grid), density(grid), ownsWater? }`.
+   `carve` writes walkable tiles through the grid's small API — `carveCorridor`, `carveElbow`,
+   `carveBlob`, `isNode`, `cellKey`, and `grid.rng` for anything random, so a seed still reproduces the
+   board. `density` is the walkable share of the rectangle and is used for sizing only; a lattice layout
+   answers `1 / spacing`. Declare `ownsWater` if the carve lays its own channels, which scopes the
+   shared river pass off it.
+2. `layout = "<id>"` in `data/biomes/<biome>.lua`.
+3. Measure, do not eyeball: `& "E:\LOVE\lovec.exe" . board-report 20 biome=<biome>` for the numbers and
+   `. board-render <biome> [seed]` for the shape.
+
+The board it produces has to clear the fightability floor, because a fight is taken on these very tiles
+(see [docs/overworld.md](overworld.md)): **fights seated under the floor must read 0**, and the board
+must offer at least as many arena sites as it seats fights. A layout can be connected, well-braided,
+correctly gated and completely unable to host a battle — nothing but that figure will say so.
+
+Two failures every layout so far has had to be taught out of:
+
+- a room carved over a dead end **deletes** the dead end, and a dead end is what a boon sits on;
+- a carve that has to be repaired for connectivity afterwards is usually carved wrong — connect it by
+  construction instead.
+
+Add the ground's walkability fingerprint to `tests/terrain_spec.lua` so a later refactor is provably a
+no-op.
