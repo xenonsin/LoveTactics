@@ -213,6 +213,11 @@ return {
             -- Growth is sub-linear and hard-capped: even an absurd encounter/key
             -- count must not produce a marathon maze. Play area (grid minus the
             -- margin ring) stays within the deriveDims ceiling.
+            --
+            -- The ceiling rose from 27x19 when a stop became a BATTLEFIELD rather than a marker: a
+            -- board seating four or five fights has to contain four or five rooms big enough to fight
+            -- in. What this spec protects is unchanged -- that the cap binds at all, so no roll can
+            -- sprawl -- and most of the added area is room rather than corridor. See deriveDims.
             for seed = 1, 15 do
                 local grid = Overworld.generate({
                     seed = seed, biome = "forest", encounterCount = 40, keyCount = 4,
@@ -221,8 +226,8 @@ return {
                 })
                 local playCols = grid.cols - 2 * grid.margin
                 local playRows = grid.rows - 2 * grid.margin
-                assert(playCols <= 27, "play cols exceeded cap: " .. playCols)
-                assert(playRows <= 19, "play rows exceeded cap: " .. playRows)
+                assert(playCols <= 37, "play cols exceeded cap: " .. playCols)
+                assert(playRows <= 25, "play rows exceeded cap: " .. playRows)
             end
         end,
     },

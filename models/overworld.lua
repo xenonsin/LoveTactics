@@ -63,11 +63,25 @@ end
 -- made heavy quests feel like a slog. A sqrt span keeps encounter density roughly
 -- constant while the map stays traversable, and both sides are hard-capped so no
 -- roll can produce a marathon maze. Dimensions are kept odd for a centred lattice
--- and floored at a playable minimum. Play-area caps of 27x19 become ~31x23 once
--- the margin ring is added -- deliberately compact: a Dream Quest board is dense
--- and readable, every tile a choice, not a marathon warren to shuffle a token
--- through (see the plan / docs on the overworld redesign).
-local DIM_MAX_COLS, DIM_MAX_ROWS = 27, 19
+-- and floored at a playable minimum.
+--
+-- THE CAP GREW BECAUSE A STOP GREW. It was 27x19 of play area, and the reasoning was sound for the
+-- board it was written for: "a Dream Quest board is dense and readable, every tile a choice, not a
+-- marathon warren to shuffle a token through". But a stop was a marker you stepped onto and the fight
+-- happened somewhere else. A stop is a BATTLEFIELD now -- an 8x8 window of these tiles, walled and
+-- fought over -- so a board seating four or five fights has to physically contain four or five rooms
+-- big enough to fight in, with trail between them.
+--
+-- Measured, at the old cap: a forest board with clearings opened into it reached 37% fightable trail
+-- and 0.55 arena sites against 4.6 fights, because 31x23 holds about thirty-five lattice nodes and
+-- there is nowhere to put four rooms without eating the maze that connects them. The compactness rule
+-- and the fightability floor were in direct conflict, and the rectangle was the thing that had to give.
+--
+-- It is still capped, and the walk is still sub-linear in content. What changed is the constant, and
+-- what justifies it is that most of the added area is ROOM rather than corridor -- a glade is crossed
+-- in three steps and is somewhere you stop, where thirty more tiles of 1-wide trail would have been
+-- exactly the marathon the old cap was guarding against.
+local DIM_MAX_COLS, DIM_MAX_ROWS = 37, 25
 -- Tight biomes need a physically smaller footprint. A biome's node `spacing` sets how much of the
 -- area is trail: a castle/underworld (spacing 2, 1-tile walls) packs roughly twice the corridor into
 -- the same rectangle as a forest (spacing 4, 3-tile-thick fill). Sizing on encounter count alone --
@@ -82,7 +96,9 @@ local BASELINE_SPACING = 4
 local function deriveDims(encounters, keyCount, cacheCount, spacing)
     local content = (encounters or 0) + (keyCount or 0) + (cacheCount or 0)
     local tightness = math.sqrt((spacing or BASELINE_SPACING) / BASELINE_SPACING)
-    local span = math.floor(4.0 * math.sqrt(content) * tightness) -- ~8 at content=4 (forest)
+    -- The coefficient rose with the cap, or the span would never reach it and every board would sit at
+    -- the old size wearing a larger ceiling.
+    local span = math.floor(6.5 * math.sqrt(content) * tightness) -- ~13 at content=4 (forest)
     local cols = math.max(13, math.min(DIM_MAX_COLS, 13 + span))
     local rows = math.max(11, math.min(DIM_MAX_ROWS, 11 + math.floor(span * 0.6)))
     if cols % 2 == 0 then cols = cols + 1 end
@@ -972,11 +988,20 @@ function Overworld:guardBoons(params)
     -- one -- any cut vertex on the corridor would do -- but standing the fight right beside what it
     -- guards is what makes the offer readable from the mouth of the spur. Ties are broken in grid order
     -- so a seed still reproduces its board exactly.
+    -- Where several tiles all gate the boon, take the one with the most room to fight on. Gating is the
+    -- requirement and is checked exactly; among tiles that all satisfy it, the box score is what decides,
+    -- because a guard is a fight and a fight now happens where it stands. Grid order still breaks a true
+    -- tie, so a seed reproduces its board.
+    local boxSums = self:walkableSums()
     local function approachTo(boon)
-        local best
+        local best, bestScore
         for _, n in ipairs(self:pathNeighbors(boon.x, boon.y)) do
             if seatable(n) and not n.guards and not reachableWithout(boon, n) then
-                if not best or n.y < best.y or (n.y == best.y and n.x < best.x) then best = n end
+                local score = select(3, self:bestBox(n.x, n.y, boxSums))
+                if not best or score > bestScore
+                    or (score == bestScore and (n.y < best.y or (n.y == best.y and n.x < best.x))) then
+                    best, bestScore = n, score
+                end
             end
         end
         return best
@@ -1327,6 +1352,10 @@ function Overworld:placeEncounters(params)
     local farthest = 1
     for _, d in pairs(startDist) do if d > farthest then farthest = d end end
 
+    -- Built once for the whole fill: every candidate asks whether there is room to fight here, and the
+    -- integral image makes each answer a handful of lookups instead of a 64-tile count.
+    local boxSums = self:walkableSums()
+
     for i = next_, #cands do
         if #placed >= target then break end
         local c = cands[i]
@@ -1338,8 +1367,39 @@ function Overworld:placeEncounters(params)
             local pick = self:pickEncounter(pool)
             -- Re-seat a fight as a non-combat stop when it cannot stand here: on the walkable spine, or
             -- once the combat-share cap is full. Keep the fight only if the pool has no texture left.
+            -- A FIGHT IS NEVER SEATED WHERE A FIGHT CANNOT HAPPEN. The board locks an 8x8 window of
+            -- these tiles and walls it, so a stop dealt onto a 1-wide corridor is not a hard fight, it
+            -- is four bodies in a queue. Demoted like the two rules beside it rather than moved, so the
+            -- stop count and the quest's authored pool are untouched -- the tile keeps its marker and
+            -- the marker stops being a fight.
+            --
+            -- Corridor contact is still perfectly legal: a patrol that catches the party mid-hall gets
+            -- exactly that fight, and it should. This rule only governs what the GENERATOR chooses to
+            -- put somewhere, which is a different question from what the player walks into.
+            local thin = select(3, self:bestBox(c.x, c.y, boxSums)) < Overworld.BOX_OK
             local onSpine = self.spineKeys and not params.ascent and self.spineKeys[cellKey(c)]
-            if isFight(pick.kind) and (onSpine or combatPlaced >= combatCap) then
+
+            -- LOOK FOR ROOM BEFORE GIVING UP THE FIGHT. Demoting outright was tried and it bought
+            -- almost nothing at a real price: thin seats fell 0.88 -> 0.70 a board while the fights
+            -- themselves fell 4.3 -> 3.9, because most thin seats are guardBoons standing a guard in a
+            -- spur mouth later, not this loop. So a fight dealt onto a corridor goes looking for a
+            -- clearing among the candidates still free, and only demotes if the board has none.
+            if isFight(pick.kind) and thin and not onSpine then
+                for j = i + 1, #cands do
+                    local alt = cands[j]
+                    if not alt.encounter
+                        and not (self.spineKeys and not params.ascent and self.spineKeys[cellKey(alt)])
+                        and select(3, self:bestBox(alt.x, alt.y, boxSums)) >= Overworld.BOX_OK then
+                        local spaced = true
+                        for _, p in ipairs(placed) do
+                            if math.abs(p.x - alt.x) + math.abs(p.y - alt.y) < 2 then spaced = false; break end
+                        end
+                        if spaced then c, thin = alt, false; break end
+                    end
+                end
+            end
+
+            if isFight(pick.kind) and (onSpine or thin or combatPlaced >= combatCap) then
                 pick = self:pickNonCombat(pool) or pick
             end
             -- Then the rank rule, after the kind rule: a stop demoted to texture above is no longer a

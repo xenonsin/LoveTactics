@@ -4,6 +4,7 @@
 return {
     name = "Forest",
     tileset = "forest", -- data/tilesets/forest.lua (art for this biome)
+    layout = "glades", -- trails through thick wood that open into clearings (models/layouts/glades.lua)
     spacing = 4, -- 1-wide trails, (spacing - 1) = 3-tile-thick fill
     rivers = { min = 1, max = 2 }, -- number (or {min,max} range) of rivers
 }

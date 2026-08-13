@@ -129,7 +129,7 @@ return {
             -- meant". Content is switched off (no encounters, caches or keys) so nothing here depends on
             -- the encounter pool's unspecified order.
             local EXPECTED = {
-                forest = { 88389, 173 },
+                forest = { 172012, 359 }, -- glades: the maze, opened (models/layouts/glades.lua)
                 castle = { 169722, 313 },
                 tundra = { 110993, 199 },
                 desert = { 66031, 134 },
