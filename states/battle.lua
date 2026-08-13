@@ -5236,8 +5236,8 @@ function battle.draw()
     -- strip (nobody is acting), no combat log (nothing has happened), and a drawer holding only what
     -- means anything before the bell (drawDeployMenu).
     if battle.deploy then
-        battle.drawLeftColumn()
         battle.map:draw()
+        battle.drawLeftColumn()
         battle.drawEncounterLines(LEFT_W, Scale.WIDTH - LEFT_W - PANEL_W)
         battle.drawDeployMenu()
         battle.deploy:draw({ x = LEFT_W, w = Scale.WIDTH - LEFT_W - PANEL_W, dockTop = menuBottom() })
@@ -5251,8 +5251,8 @@ function battle.draw()
     end
 
     battle.updatePeekFocus()
-    battle.drawLeftColumn()
     battle.map:draw()
+    battle.drawLeftColumn()
     -- Keyboard / pad aiming: the OS pointer is idle, so the context-cursor glyph (sword / wand /
     -- heal / boots / reticle -- whatever a confirm would do) is drawn CENTRED on the aimed tile, so
     -- the same intent the mouse reads under its pointer rides the board cursor. Only when the player
@@ -5589,6 +5589,10 @@ end
 
 -- Backdrop for the left column (mirrors the right combat panel). The buttons and the docked
 -- tile/action tooltips render on top of it; the board is centred in the gap to its right.
+--
+-- Drawn AFTER the map, like the right panel is. The locked overworld around the board runs the full
+-- width of the screen (BattleMap:drawSurround), so a column laid down first is simply painted over --
+-- the two columns are the walls of the window the fight is seen through, and sit on top of it.
 function battle.drawLeftColumn()
     Theme.set(Theme.panel)
     love.graphics.rectangle("fill", 0, 0, LEFT_W, Scale.HEIGHT)
