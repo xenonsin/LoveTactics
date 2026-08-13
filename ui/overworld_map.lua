@@ -803,6 +803,26 @@ function OverworldMap:drawPatrols()
             local icon = MarkerIcon[kind]
             if icon then icon(wx + 3, wy + 3, s - 6, s - 6, 1, 1, 1, 1) end
 
+            -- HOW FAR ABOVE THE COMPANY THIS ONE STANDS, in the same pips a seated fight wears. The
+            -- readout is keyed by cell everywhere else and a patrol is not on a cell, so without this the
+            -- fights that MOVE -- the ones you most need to decide about -- would be the only fights on
+            -- the board with no reading at all. Same mark, same place, same meaning.
+            local band = self.musterBand and self.musterBand({ x = p.x, y = p.y, encounter = p.encounter })
+            local steps = band and Muster.PIPS[band] or 0
+            if steps > 0 then
+                local pipR = math.max(2.5, s * 0.09)
+                local gap = pipR * 2 + 2
+                local w = steps * gap - 2
+                local cy = wy + s - pipR - 3
+                love.graphics.setColor(0.05, 0.05, 0.07, 0.85)
+                love.graphics.rectangle("fill", wx + s / 2 - w / 2 - 3, cy - pipR - 1.5,
+                    w + 6, pipR * 2 + 3, pipR + 1.5, pipR + 1.5)
+                love.graphics.setColor(PIP_COLOR[1], PIP_COLOR[2], PIP_COLOR[3], 1)
+                for i = 1, steps do
+                    love.graphics.circle("fill", wx + s / 2 - w / 2 + pipR + (i - 1) * gap, cy, pipR)
+                end
+            end
+
             -- A slow patrol wears its pace, so "I can get past this one" is readable rather than
             -- learned by being caught.
             if (p.pace or 1) > 1 then
