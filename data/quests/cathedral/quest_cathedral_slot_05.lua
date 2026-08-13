@@ -37,7 +37,7 @@ return {
     requiredPrestige = 1,
     requiredSponsorQuests = { vendor = "cathedral", count = 3 }, -- 3 of this house's quests done
     map = {
-        biome = "castle",
+        biomes = { "castle", "swamp" },
         encounters = { min = 6, max = 9, always = { "encounter_elite" } },
         objective = {
             name = "The Register Room",

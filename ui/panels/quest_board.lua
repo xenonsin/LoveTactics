@@ -10,6 +10,7 @@ local Menu = require("ui.menu")
 local Quest = require("models.quest")
 local Request = require("models.request") -- the foraging rows under the posted work
 local Calendar = require("models.calendar") -- the last day belongs to the Gate alone
+local Biome = require("models.biome") -- a ground's display name for its tab
 local Player = require("models.player")
 local Growth = require("models.growth")
 local Item = require("models.item")
@@ -28,8 +29,11 @@ QuestBoard.__index = QuestBoard
 -- fit -- six rows at a time, with carets marking what is out of sight.
 local BOX_W, BOX_H = 760, 520
 
-local LIST_TOP = 96
-local ROW_H, ROW_SPACING, MAX_VISIBLE = 44, 8, 6
+-- The tab row sits between the title and the list: one plate per ground the company can travel to
+-- this morning. The list drops to five rows to pay for it.
+local TAB_TOP, TAB_H, TAB_GAP = 64, 40, 6
+local LIST_TOP = 116
+local ROW_H, ROW_SPACING, MAX_VISIBLE = 44, 8, 5
 
 -- The reward relics read as ITEM ICONS rather than a comma-joined list of names: a relic is the
 -- reason to take one quest over another, and a name alone says nothing about what it does. Each
@@ -44,6 +48,9 @@ function QuestBoard.new(opts)
     self.titleFont = Theme.display(30)
     self.headFont = Theme.display(20)
     self.bodyFont = Theme.body(16)
+    -- The tab countdown sits under the ground's name on a 40px plate, so it gets its own smaller
+    -- face rather than a scaled one -- printed text is never scaled in this project, it blurs.
+    self.capFont = Theme.body(12)
 
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
     self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
@@ -70,8 +77,61 @@ end
 --
 -- The board is filtered by the whole player, not just prestige: finished quests drop off it, and a
 -- sponsor's later quests only appear once you have finished enough of that sponsor's earlier ones.
+-- THE GROUNDS ON OFFER THIS MORNING, each with the work that can be reached from it. Quest.board does
+-- the season-table half (models/biome_window.lua); this adds the panel's own foraging rows and then
+-- drops any ground left holding nothing.
+--
+-- A GROUND WITH NOTHING IN IT DRAWS NO TAB. Not a greyed plate -- a control appears where it can be
+-- used, and a tab you can travel to and find empty is a control that does nothing. It also keeps the
+-- debut clean: on the first morning four grounds are open, the player has finished no quest so no
+-- house is posting errands, and exactly one tab is drawn with exactly one quest under it. The tutorial
+-- goes on teaching by being the only thing there.
+function QuestBoard:buildGrounds()
+    local board = Quest.board(self.player)
+    -- Foraging is a fallback, not the campaign, and it is not offered on the first morning (see
+    -- above) or on the last -- the only thing the last day is for is the Gate, and a row that let a
+    -- player spend it on ore would be the game quietly hiding its own ending.
+    local forageOk = Player.questsCompleted(self.player) > 0 and not Calendar.isFinalDay(self.player)
+
+    self.grounds = {}
+    for _, ground in ipairs(board.grounds) do
+        local def = Biome.get(ground.id)
+        ground.name = def and def.name or ground.id
+        ground.forage = forageOk and Request.housesIn(ground.id) or {}
+        -- `startable` rather than #quests: a ground carrying only the Gate's locked countdown has
+        -- nothing you can actually do on it, and a tab you can travel to and find nothing at is a
+        -- control that does nothing.
+        if (ground.startable or #ground.quests) > 0 or #ground.forage > 0 then
+            self.grounds[#self.grounds + 1] = ground
+        end
+    end
+
+    -- Keep the player standing where they were if that ground is still on offer -- rebuild() is called
+    -- by the debug toggle mid-session, and having the board jump back to the first tab under you is
+    -- the kind of small betrayal that makes a panel feel broken.
+    -- Failing that, open on the first ground with POSTED WORK on it rather than on whichever sorts
+    -- first. Foraging is the fallback a player reaches for, not the campaign, and a board that opens
+    -- looking at a ground offering nothing but ore has led with the fallback.
+    local wanted = self.groundId
+    self.ground = 1
+    for i, ground in ipairs(self.grounds) do
+        if (ground.startable or #ground.quests) > 0 then
+            self.ground = i
+            break
+        end
+    end
+    for i, ground in ipairs(self.grounds) do
+        if ground.id == wanted then self.ground = i end
+    end
+    self.groundId = self.grounds[self.ground] and self.grounds[self.ground].id
+end
+
 function QuestBoard:rebuild()
-    self.quests = Quest.available(self.player)
+    self:buildGrounds()
+    -- The quests of the ground currently being looked at. The detail pane indexes this by menu row,
+    -- so it must stay in step with the menu built below -- quests first, foraging after.
+    local here = self.grounds[self.ground]
+    self.quests = here and here.quests or {}
     -- The relic plates belong to whichever quest was selected; a rebuilt board has none until the
     -- detail pane draws again.
     self.relicRects, self.relicFocus = nil, nil
@@ -99,7 +159,11 @@ function QuestBoard:rebuild()
                 -- marches, and which of them take the field is chosen per battle in the deployment
                 -- phase, over the actual board (docs/deployment.md).
                 local function begin()
-                    State.switch(require("states.game"), quest, nil, self.player)
+                    -- The ground the player travelled to is what the run is fought on. Quest.start
+                    -- collapses the quest's set of possible grounds down to this one, which is the
+                    -- single `map.biome` everything downstream has always read.
+                    State.switch(require("states.game"),
+                        Quest.start(quest, self.groundId), nil, self.player)
                 end
                 -- An intro scene plays first (over the hub, which stays frozen behind it); once it
                 -- concludes we set out. No intro -> straight through.
@@ -132,17 +196,17 @@ function QuestBoard:rebuild()
     --
     -- Not offered on the LAST DAY either. The only thing that day is for is the Gate, and a row that
     -- let a player spend it on ore would be the game quietly hiding its own ending.
-    local worked = Player.questsCompleted(self.player) > 0
-    if worked and not Calendar.isFinalDay(self.player) then
-        for _, house in ipairs(Request.houses()) do
-            items[#items + 1] = {
-                label = "Forage for " .. house.name,
-                action = function()
-                    local quest = Request.quest(house.id)
-                    if quest then State.switch(require("states.game"), quest, nil, self.player) end
-                end,
-            }
-        end
+    -- Only the houses that work THIS ground (Request.housesIn). The seven-row block that used to sit
+    -- here regardless is what a destination costs: a house forages where its own quests are, so
+    -- travelling to the tundra offers you the Bastion's ore and nobody else's.
+    for _, house in ipairs(here and here.forage or {}) do
+        items[#items + 1] = {
+            label = "Forage for " .. house.name,
+            action = function()
+                local quest = Request.quest(house.id, { biome = self.groundId })
+                if quest then State.switch(require("states.game"), quest, nil, self.player) end
+            end,
+        }
     end
 
     -- Left column: narrow buttons anchored under the title, scrolling past MAX_VISIBLE.
@@ -194,25 +258,27 @@ function QuestBoard:draw()
     Theme.set(Theme.accentAmber)
     love.graphics.printf("Quest Board", self.boxX, self.boxY + 24, BOX_W, "center")
 
-    if #self.quests == 0 then
+    self:drawTabs()
+
+    if #self.grounds == 0 then
         love.graphics.setFont(self.bodyFont)
         Theme.set(Theme.ink)
-        love.graphics.printf("No quests available.", self.boxX, self.boxY + BOX_H / 2,
+        love.graphics.printf("Nowhere to go today.", self.boxX, self.boxY + BOX_H / 2,
             BOX_W, "center")
     else
-        -- Left: the quest list.
+        -- Left: the quest list for the ground being looked at.
         self.menu:draw()
 
         -- Right: details for the highlighted quest.
-        self:drawDetail()
+        if #self.quests > 0 then self:drawDetail() end
     end
 
     love.graphics.setFont(self.bodyFont)
     Theme.set(Theme.muted)
     -- Show the glyphs for the device last used: pad buttons only in gamepad mode, keyboard/mouse otherwise.
     local hint = InputMode.isGamepad()
-        and "A: Start    D-pad: Scroll / Relics    B: Close"
-        or "Click a quest / Enter: Start    Wheel / PgUp / PgDn: Scroll    Click X / Esc: Close"
+        and "A: Start    LB/RB: Travel    D-pad: Scroll / Relics    B: Close"
+        or "Click a quest / Enter: Start    Q/E: Travel    Wheel: Scroll    Click X / Esc: Close"
     love.graphics.printf(hint, self.boxX, self.boxY + BOX_H - 34, BOX_W, "center")
 
     self:drawDebugToggle()
@@ -231,6 +297,81 @@ function QuestBoard:draw()
     end
 
     love.graphics.setColor(1, 1, 1)
+end
+
+-- THE TAB ROW: where the company can go this morning, and how long each of them stays open.
+--
+-- The countdown is the whole point of the panel now. A ground with sixteen days left is a shelf you
+-- can come back to; one with two is a decision being forced, and the difference has to be readable
+-- without opening anything. It says what the number is OF -- "4 days left", never a bare 4 -- because
+-- a figure whose unit the player has to infer is a figure they will read wrong once and stop trusting.
+--
+-- Plates are laid out over the grounds that are actually on offer (buildGrounds), so the row is one
+-- plate wide on the first morning and four in the thick of the campaign.
+function QuestBoard:drawTabs()
+    self.tabRects = {}
+    local n = #self.grounds
+    if n == 0 then return end
+
+    local inset = 16
+    local w = (BOX_W - inset * 2 - TAB_GAP * (n - 1)) / n
+    love.graphics.setFont(self.bodyFont)
+
+    for i, ground in ipairs(self.grounds) do
+        local x = self.boxX + inset + (i - 1) * (w + TAB_GAP)
+        local y = self.boxY + TAB_TOP
+        self.tabRects[i] = { x = x, y = y, w = w, h = TAB_H }
+
+        local here = (i == self.ground)
+        local hovered = self:tabHit(i)
+        Theme.set(here and Theme.panel2 or Theme.panel)
+        love.graphics.rectangle("fill", x, y, w, TAB_H, 5, 5)
+        if here then Theme.set(Theme.accentAmber)
+        elseif hovered then Theme.set(Theme.cursor)
+        else Theme.set(Theme.frame, 0.7) end
+        love.graphics.setLineWidth(here and 2 or 1)
+        love.graphics.rectangle("line", x, y, w, TAB_H, 5, 5)
+        love.graphics.setLineWidth(1)
+
+        love.graphics.setFont(self.bodyFont)
+        Theme.set(here and Theme.ink or Theme.muted)
+        love.graphics.printf(Theme.ellipsize(ground.name, self.bodyFont, w - 10),
+            x, y + 3, w, "center")
+
+        -- The countdown reads RED on the last two mornings: at that point it is not information about
+        -- the ground any more, it is a deadline on everything filed under it.
+        local left = ground.daysLeft
+        if left then
+            love.graphics.setFont(self.capFont)
+            Theme.set(left <= 2 and Theme.accentWeapon or Theme.muted)
+            love.graphics.printf(left == 1 and "last day" or (left .. " days left"),
+                x, y + 23, w, "center")
+        end
+    end
+end
+
+function QuestBoard:tabHit(i)
+    local r = self.tabRects and self.tabRects[i]
+    if not (r and self.mx) then return false end
+    return self.mx >= r.x and self.mx <= r.x + r.w and self.my >= r.y and self.my <= r.y + r.h
+end
+
+-- Travel to another ground. Wraps, and rebuilds the list under it -- the menu, the detail pane and
+-- the relic plates are all derived from the selected ground, so they go together.
+function QuestBoard:travel(dir)
+    local n = #self.grounds
+    if n <= 1 then return false end
+    local i = self.ground + dir
+    if i < 1 then i = n elseif i > n then i = 1 end
+    self:selectGround(i)
+    return true
+end
+
+function QuestBoard:selectGround(i)
+    if not self.grounds[i] or i == self.ground then return end
+    self.ground = i
+    self.groundId = self.grounds[i].id
+    self:rebuild()
 end
 
 -- The development-only "show all quests" pill in the bottom-left corner. Lit when the gate is
@@ -453,6 +594,15 @@ function QuestBoard:drawKeys(quest, x, y, w)
     love.graphics.printf(table.concat(hints, "\n"), x, y + 240, w, "left")
 end
 
+-- The tab index under (x, y), or nil. Takes explicit coordinates rather than reading self.mx, because
+-- a click can land on a frame where the pointer has not moved since the panel opened.
+function QuestBoard:tabAt(x, y)
+    for i, r in ipairs(self.tabRects or {}) do
+        if x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h then return i end
+    end
+    return nil
+end
+
 local function isInsideBox(self, x, y)
     return x >= self.boxX and x <= self.boxX + BOX_W
         and y >= self.boxY and y <= self.boxY + BOX_H
@@ -466,7 +616,8 @@ end
 
 -- Hand over the close X or any quest row; arrow elsewhere. See ui/cursor.lua.
 function QuestBoard:cursorKind(x, y)
-    if self.closeButton:contains(x, y) or self.menu:mouseOverItem(x, y) or self:debugHit(x, y) then
+    if self.closeButton:contains(x, y) or self.menu:mouseOverItem(x, y)
+        or self:debugHit(x, y) or self:tabAt(x, y) then
         return "hand"
     end
     return "arrow"
@@ -482,6 +633,8 @@ function QuestBoard:mousepressed(x, y, button)
         self:close()
     elseif self:debugHit(x, y) then
         self:toggleDebug()
+    elseif self:tabAt(x, y) then
+        self:selectGround(self:tabAt(x, y))
     elseif not isInsideBox(self, x, y) then
         -- A click outside the panel dismisses the modal.
         self:close()
@@ -495,6 +648,12 @@ function QuestBoard:keypressed(key)
         self:close()
     elseif key == "f1" then
         self:toggleDebug()
+    -- Travel. Q/E rather than left/right, which already walk the relic plates -- the only way a player
+    -- without a mouse can read a reward's tooltip -- and rather than tab, which the menu may want.
+    elseif key == "q" then
+        self:travel(-1)
+    elseif key == "e" then
+        self:travel(1)
     -- Left/right walks the relic plates -- the only way a player without a mouse can read a reward's
     -- tooltip. It falls through to the menu when the quest grants no relic, where the pair is a no-op
     -- anyway (a quest row carries no `adjust`).
@@ -508,6 +667,11 @@ end
 function QuestBoard:gamepadpressed(joystick, button)
     if button == "b" then
         self:close()
+    -- The shoulders travel between grounds, which leaves the d-pad doing what it already did.
+    elseif button == "leftshoulder" then
+        self:travel(-1)
+    elseif button == "rightshoulder" then
+        self:travel(1)
     elseif button == "dpleft" and self:moveRelicFocus(-1) then
     elseif button == "dpright" and self:moveRelicFocus(1) then
     else

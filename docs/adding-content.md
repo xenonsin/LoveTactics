@@ -135,8 +135,25 @@ return {
     -- optional rewards:
     rewardItems = { "mail_of_the_unappeased" },  -- granted into the stash on completion
     gateHint = "beneath the sand",               -- a fragment shown on a quest that requires this one
+    map = {
+        -- WHERE IT CAN BE RUN, as a list. The quest is on the board while ANY of these grounds is
+        -- open (data/biome_windows.lua), and the one the player travels to is the one it is fought
+        -- on. Name every ground the fiction genuinely allows -- two is the norm -- because a house
+        -- has only ever one live quest, so a quest pinned to a single ground is off the board for
+        -- most of the campaign. The older `biome = "forest"` still reads, as a one-element list.
+        biomes = { "forest", "tundra" },
+    },
 }
 ```
+
+**Give a quest with a curated arena exactly one ground.** Arenas in `data/arenas/` are tagged by
+biome, so a quest listing two will fall through to a procedural board in whichever of them has no
+curated map — which quietly costs a set-piece fight its set piece.
+
+After adding or re-siting a quest, run `& "E:\LOVE\lovec.exe" . biome-report`. It walks all forty days
+under both play policies and names any day on which an open ground held nothing, plus the quests that
+were stranded — which is the list of what to widen. `tests/biome_window_spec.lua` fails on a blocked
+day.
 
 It shows up automatically on the Quest Board once the player meets every gate and has not
 already finished it (`Quest.available` in `models/quest.lua`). `Quest.complete` pays it out from

@@ -151,23 +151,52 @@ function Request.houses()
     return out
 end
 
--- Where a house's foragers go. Every biome except the UNDERWORLD, which is where the last door is and
+-- WHERE A HOUSE'S FORAGERS GO. Every biome except the UNDERWORLD, which is where the last door is and
 -- is not somewhere anyone runs an errand.
 --
--- Assigned per house rather than rolled, and stable: the Lodge's country is the Lodge's country every
--- time, so a player learns what a foraging day for them looks like. Derived from the id's own
--- characters so adding a house needs no table -- the exact mapping does not matter, only that it holds
--- still.
+-- AUTHORED, AND IT DID NOT USED TO BE. This was a hash of the vendor id's own bytes -- stable, which
+-- was the only property it needed while nothing displayed it. "The exact mapping does not matter, only
+-- that it holds still" was true right up until the biome windows landed: the board now files a
+-- foraging offer under the ground it is run on (ui/panels/quest_board.lua), so the mapping is a thing
+-- the player reads, plans around, and finds shut some mornings. An arbitrary answer to a question the
+-- player can see is just a wrong answer that happens to be consistent.
+--
+-- Each house's country is where its own quests are, read off data/quests (`. biome-report`'s census)
+-- rather than off the sin table in models/descent.lua -- those are the descent's circles, and two of
+-- them name ground their house has never once been sent to (the Alchemist has no desert quest, the
+-- Undercroft no underworld one). The descent keeps its mapping; this is the campaign's.
+Request.BIOMES = {
+    alchemist = "swamp", -- 4 swamp quests, and the only house with a real swamp presence
+    -- The Arcanum's own quests are castle-heaviest, and it is sent to the volcanic waste anyway: the
+    -- Undercroft already works the castle, and a ground with no house foraging it would draw no tab on
+    -- the mornings its quests happen to be elsewhere. Every ground but the underworld owes the player
+    -- SOMETHING, or an open window is just a shut one that lies. The Arcanum has two volcanic quests
+    -- and the fewest reasons to be underground, so it is the one that moves.
+    arcanum = "volcanic",
+    bastion = "tundra", -- 6 of its 10 slots, and sloth's own ground
+    cathedral = "forest",
+    colosseum = "desert", -- 8 of its 10, the sand the debut stands on
+    hunters_lodge = "forest", -- 8 of its 10
+    undercroft = "castle",
+}
+
+-- A house's country. Falls back to the forest for a house with no row, so adding a vendor cannot
+-- crash a foraging run before its ground has been decided.
 function Request.biomeFor(vendorId)
-    local ids = {}
-    for id in pairs(Biome.defs or {}) do
-        if id ~= "underworld" then ids[#ids + 1] = id end
+    local id = Request.BIOMES[vendorId]
+    if id and Biome.defs[id] then return id end
+    return Biome.defs.forest and "forest" or nil
+end
+
+-- The houses that forage in `biomeId`, in the order Request.houses returns them. The board draws one
+-- row per house under the ground's own tab, so a day of ore costs the same travel decision a quest
+-- does -- and an open ground is never a dead end, because somebody always works it.
+function Request.housesIn(biomeId)
+    local out = {}
+    for _, house in ipairs(Request.houses()) do
+        if Request.biomeFor(house.id) == biomeId then out[#out + 1] = house end
     end
-    table.sort(ids)
-    if #ids == 0 then return "forest" end
-    local n = 0
-    for i = 1, #tostring(vendorId or "") do n = n + tostring(vendorId):byte(i) end
-    return ids[(n % #ids) + 1]
+    return out
 end
 
 -- WHAT THE HOUSES HAVE POSTED TODAY. One per house that holds stock, of the shape that house asks in.

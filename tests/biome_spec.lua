@@ -245,10 +245,18 @@ return {
         name = "every quest names a biome that exists",
         fn = function()
             local Quest = require("models.quest")
+            -- Read through BiomeWindow.biomesOf rather than off `map.biome`: a quest may now name a
+            -- SET of grounds it can be run on (models/biome_window.lua), and the old single field is
+            -- one of the two shapes that reads. Every ground in the set has to exist, not just the
+            -- first -- a typo in the second entry would otherwise sit there silently until the day
+            -- its window opened.
+            local BiomeWindow = require("models.biome_window")
             for id, def in pairs(Quest.defs) do
-                local biome = def.map and def.map.biome
-                assert(biome, id .. " names no biome")
-                assert(Biome.defs[biome], id .. " names an unknown biome: " .. tostring(biome))
+                local named = BiomeWindow.biomesOf(def)
+                assert(#named > 0, id .. " names no biome")
+                for _, biome in ipairs(named) do
+                    assert(Biome.defs[biome], id .. " names an unknown biome: " .. tostring(biome))
+                end
                 -- An inline follow-up leg (a scripted walk after the bout) carries its own map, and it
                 -- is easy to retune the outer one and leave this behind on the biome it used to be.
                 local follow = def.followUp and def.followUp.map and def.followUp.map.biome
@@ -264,13 +272,15 @@ return {
             -- The Colosseum was 13/13 castle and the Lodge 13/13 forest before the biome pass; a line
             -- that never changes ground is the monotony this whole layer exists to fix.
             local Quest = require("models.quest")
+            local BiomeWindow = require("models.biome_window")
             local byLine = {}
             for _, def in pairs(Quest.defs) do
                 local sponsor = def.sponsor
-                local biome = def.map and def.map.biome
-                if sponsor and biome then
+                if sponsor then
                     byLine[sponsor] = byLine[sponsor] or {}
-                    byLine[sponsor][biome] = true
+                    for _, biome in ipairs(BiomeWindow.biomesOf(def)) do
+                        byLine[sponsor][biome] = true
+                    end
                 end
             end
             for sponsor, biomes in pairs(byLine) do
@@ -285,10 +295,12 @@ return {
         fn = function()
             -- A biome nothing uses is dead weight carrying an art debt: 6 tiles nobody will ever see.
             local Quest = require("models.quest")
+            local BiomeWindow = require("models.biome_window")
             local used = {}
             for _, def in pairs(Quest.defs) do
-                local biome = def.map and def.map.biome
-                if biome then used[biome] = (used[biome] or 0) + 1 end
+                for _, biome in ipairs(BiomeWindow.biomesOf(def)) do
+                    used[biome] = (used[biome] or 0) + 1
+                end
             end
             for id in pairs(Biome.defs) do
                 assert(used[id], "no quest is set in the " .. id .. " biome")

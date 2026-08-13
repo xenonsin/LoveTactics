@@ -29,7 +29,7 @@ return {
     requiredQuests = { "quest_arcanum_slot_03", "quest_cathedral_slot_03" },
     requiredPrestige = 1,
     map = {
-        biome = "castle",
+        biomes = { "castle", "swamp" },
         encounters = { min = 6, max = 9, always = { "encounter_elite" } },
         objective = {
             name = "The Channel",

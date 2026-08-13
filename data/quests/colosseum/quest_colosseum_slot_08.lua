@@ -38,7 +38,7 @@ return {
     requiredPrestige = 1,
     requiredSponsorQuests = { vendor = "colosseum", count = 6 }, -- 6 of this house's quests done
     map = {
-        biome = "desert",
+        biomes = { "desert", "volcanic" },
         encounters = { min = 9, max = 12, always = { "encounter_elite" } },
         objective = {
             name = "The Card Nobody Advertised",

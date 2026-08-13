@@ -38,7 +38,7 @@ return {
     requiredQuests = { "quest_undercroft_slot_02" }, -- slot 3: the line runs in order
     requiredPrestige = 3,
     map = {
-        biome = "forest",
+        biomes = { "forest", "castle" },
         encounters = { min = 5, max = 7 },
         objective = {
             name = "The Collection Party",

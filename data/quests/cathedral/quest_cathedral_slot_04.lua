@@ -44,7 +44,7 @@ return {
     -- rite that made them. Moved here from her old slot-2 recruit plea.
     outro = "conversation_cathedral_slot_04_outro",
     map = {
-        biome = "forest",
+        biomes = { "forest", "swamp" },
         encounters = { min = 6, max = 8, always = { "encounter_elite" } },
         objective = {
             name = "The Fold",

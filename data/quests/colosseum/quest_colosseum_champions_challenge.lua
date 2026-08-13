@@ -43,7 +43,7 @@ return {
     requiredQuests = { "quest_colosseum_slot_03", "quest_bastion_slot_03" },
     requiredPrestige = 1,
     map = {
-        biome = "desert",
+        biomes = { "desert", "volcanic" },
         encounters = { min = 7, max = 10, always = { "encounter_elite" } },
         objective = {
             name = "The Standing Challenge",

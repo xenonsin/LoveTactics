@@ -42,7 +42,7 @@ return {
     rewardGold = 80,
     requiredPrestige = 4,
     map = {
-        biome = "forest",
+        biomes = { "forest", "swamp" },
         encounters = { min = 4, max = 6 },
         objective = {
             name = "The Consignment",

@@ -26,7 +26,7 @@ return {
     rewardCharacter = "character_clem",
     outro = "conversation_undercroft_slot_02_join",
     map = {
-        biome = "castle",
+        biomes = { "castle", "desert" },
         encounters = { min = 3, max = 5 },
         objective = {
             name = "The Jubilee",

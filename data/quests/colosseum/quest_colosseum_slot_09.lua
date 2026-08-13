@@ -35,7 +35,7 @@ return {
     requiredPrestige = 1,
     requiredSponsorQuests = { vendor = "colosseum", count = 6 }, -- 6 of this house's quests done
     map = {
-        biome = "castle",
+        biomes = { "castle", "volcanic" },
         encounters = { min = 10, max = 13, always = { "encounter_elite", "encounter_elite" } },
         objective = {
             name = "The Disposal Card",

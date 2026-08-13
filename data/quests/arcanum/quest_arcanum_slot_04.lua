@@ -39,7 +39,7 @@ return {
     requiredPrestige = 3,
     requiredSponsorQuests = { vendor = "arcanum", count = 3 }, -- 3 of this house's quests done
     map = {
-        biome = "castle",
+        biomes = { "castle", "tundra" },
         encounters = { min = 6, max = 8, always = { "encounter_elite" } },
         objective = {
             name = "The Working Chamber",

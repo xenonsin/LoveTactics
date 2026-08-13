@@ -96,6 +96,16 @@ function love.load(args)
         return
     end
 
+    -- Biome-window ledger: `& "E:\LOVE\lovec.exe" . biome-report [full]`
+    -- Walks all forty days under two play policies and reports whether every OPEN ground held live
+    -- work, plus the static census of authored ground against scheduled days. The instrument the
+    -- season table (data/biome_windows.lua) is tuned against. See tools/biome_report.
+    if args and args[1] == "biome-report" then
+        require("tools.biome_report").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
     -- Curve migration: `& "E:\LOVE\lovec.exe" . curve-migrate [apply | snapshot PATH]`
     -- Rewrites hand-typed per-level rows in data/items as models/curve.lua generator calls, and dumps
     -- every resolved magnitude for before/after diffing. Dry run by default. See tools/curve_migrate.

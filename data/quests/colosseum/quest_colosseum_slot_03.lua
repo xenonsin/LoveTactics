@@ -14,7 +14,7 @@ return {
     requiredPrestige = 1,
     -- Overworld map generated when the quest starts (see models/overworld.lua).
     map = {
-        biome = "castle",
+        biomes = { "castle", "volcanic" },
         encounters = { min = 10, max = 14, always = { "encounter_elite", "encounter_elite" } },
         objective = {
             name = "The Warlord",

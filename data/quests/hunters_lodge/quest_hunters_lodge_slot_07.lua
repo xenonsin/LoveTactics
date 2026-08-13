@@ -43,7 +43,7 @@ return {
     requiredPrestige = 2,
     requiredSponsorQuests = { vendor = "hunters_lodge", count = 6 }, -- 6 of this house's quests done
     map = {
-        biome = "forest",
+        biomes = { "forest", "tundra" },
         encounters = { min = 8, max = 11, always = { "encounter_wolf", "encounter_elite" } },
         objective = {
             name = "The Warden That Had a Name",

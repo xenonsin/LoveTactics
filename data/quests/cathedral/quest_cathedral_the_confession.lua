@@ -33,7 +33,7 @@ return {
     requiredQuests = { "quest_undercroft_slot_04", "quest_cathedral_slot_03" },
     requiredPrestige = 1,
     map = {
-        biome = "castle",
+        biomes = { "castle", "swamp" },
         encounters = { min = 7, max = 10, always = { "encounter_elite" } },
         objective = {
             name = "The Witch-Finder",

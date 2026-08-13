@@ -29,7 +29,7 @@ return {
     requiredQuests = { "quest_undercroft_slot_04", "quest_hunters_lodge_slot_03" },
     requiredPrestige = 2,
     map = {
-        biome = "forest",
+        biomes = { "forest", "swamp" },
         encounters = { min = 7, max = 10, always = { "encounter_wolf" } },
         objective = {
             name = "The Jumped Bounty",

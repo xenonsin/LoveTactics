@@ -38,7 +38,7 @@ return {
     requiredQuests = { "quest_undercroft_slot_05" }, -- slot 6: the line runs in order
     requiredPrestige = 3,
     map = {
-        biome = "castle",
+        biomes = { "castle", "desert" },
         encounters = { min = 7, max = 10, always = { "encounter_elite" } },
         objective = {
             name = "The Last Address on the List",

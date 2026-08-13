@@ -29,7 +29,7 @@ return {
     requiredQuests = { "quest_hunters_lodge_slot_03", "quest_arcanum_slot_03" },
     requiredPrestige = 2,
     map = {
-        biome = "forest",
+        biomes = { "forest", "swamp" },
         encounters = { min = 6, max = 9, always = { "encounter_wolf" } },
         objective = {
             name = "The Wood, Roused",

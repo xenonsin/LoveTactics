@@ -198,6 +198,44 @@ because a deadline is not a possession; it carries the company and its experienc
 is deliberately *not* reset — beating the game once cannot be undone by playing it again, and it is
 what opens the Descent on the main menu.
 
+## Where you can go this morning
+
+`data/biome_windows.lua`, read through `models/biome_window.lua`. Each of the seven grounds is open for
+an authored stretch of the forty days, three or four of them at once. The board's tab row is those
+grounds, each wearing what the number is *of* — "3 days left", never a bare 3.
+
+**The calendar made a day a choice of *what*; this makes it a choice of *where*.** With ninety-two
+quests permanently on offer, which house to advance was a preference and never a deadline. A window is
+a deadline: the swamp shuts on day 22 and the Crucible's leg sitting in it goes with it until day 32,
+so wanting that leg costs today.
+
+**A quest names a *set* of grounds, not one.** `map.biomes = { "tundra", "castle" }`; the older single
+`map.biome` still reads, as a one-element set, so files widen a house at a time. This is forced by the
+chain structure — a house's line is strict (`slot_05` names `slot_04`), so a house has exactly one live
+quest and the whole board is seven to twelve quests wide. Pin each to one ground and a day's swamp
+holds whichever houses' next slot happened to be swamp, which is usually none. `Quest.start` collapses
+the set to the one ground the player travelled to, which is the single `map.biome` everything
+downstream has always read.
+
+**Two exemptions, both fail-open**, because the failure mode of a window system is a quest that
+silently stops existing, and a quest that has vanished from the board is unfindable from inside the
+game. The finale ignores the schedule outright — it is gated on the day and nothing else — and a quest
+naming no ground at all is reachable from every open one.
+
+**Measured, not guessed.** `& "E:\LOVE\lovec.exe" . biome-report` walks all forty days under both play
+policies and reports whether every open ground held live work; `[full]` prints the day-by-day grid, and
+a blocked day names the quests that were stranded and the grounds they were pinned to, which is the
+widening pass's worklist. The first draft of the table was perfectly well formed — three grounds open
+every day, no overlaps — and left **days 1 through 9 unplayable**, because the debut stands on the sand
+and the desert did not open until day 10. `tests/biome_window_spec.lua` walks the same route and fails
+on any blocked day, since nothing about the table's own shape can catch that.
+
+> **Castle is deliberately the narrowest window** (18 days, fewer than any other ground) against
+> **35 of the 92 quests authored there**. A schedule wide enough to carry that share would have propped
+> the imbalance up instead of exposing it. Reading the names, "castle" has been doing duty as *indoors
+> in town* — wards, vaults, towers, cellars, a tavern — so re-siting most of them is a fiction problem
+> rather than a data one. Unfinished: the census in `. biome-report` is the ledger for it.
+
 ## A day you do not want to give to a story
 
 `models/request.lua`. A rolled board with no story attached, taken on behalf of a house you name, which
@@ -210,8 +248,16 @@ shelf; paying it for foraging buys the catalogue without running a line), no que
 relic, no companion, no discipline. 50 gold against the cheapest posted quest's 60, pinned against the
 real minimum so the campaign can never become the inefficient way to earn.
 
-Each house forages in its own country, fixed rather than rolled: the Bastion a forest, the Arcanum a
-volcanic waste, the Lodge a swamp. Never the underworld. The rows do not appear on the last day.
+Each house forages in its own country, **authored** in `Request.BIOMES`: the Bastion a tundra, the
+Arcanum a volcanic waste, the Lodge and the Cathedral a forest, the Crucible a swamp, the Colosseum the
+sand, the Undercroft the castle. Never the underworld. The rows do not appear on the last day, and they
+now appear only under the ground that house works — see the windows below.
+
+> **This used to be a hash of the vendor id.** Stable, which was the only property it needed while
+> nothing displayed it. The windows made the mapping something the player reads and plans around, and
+> an arbitrary answer to a visible question is just a wrong answer that happens to be consistent.
+> Every ground but the underworld has at least one house foraging it, so an open window is never a
+> place with nothing on it.
 
 > **This is the degenerate case of what was designed.** The intent was several requests on one
 > expedition, with partial completion as the greed dial — *return any time to complete them all or only

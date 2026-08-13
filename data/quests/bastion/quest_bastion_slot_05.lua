@@ -42,7 +42,7 @@ return {
     requiredSponsorQuests = { vendor = "bastion", count = 3 }, -- 3 of this house's quests done
     rewardItems = { "utility_greywatch_muster_roll", "weapon_answering_bell", "weapon_rimebell" },
     map = {
-        biome = "castle",
+        biomes = { "castle", "tundra" },
         encounters = { min = 8, max = 11, always = { "encounter_forsworn" } },
         objective = {
             name = "The Gate, Opened From Within",

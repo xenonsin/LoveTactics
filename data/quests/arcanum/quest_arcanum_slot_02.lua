@@ -32,7 +32,7 @@ return {
     -- the cost the realm excuses, and joins. Player.recruit has already added her by the time it runs.
     outro = "conversation_arcanum_slot_02_join",
     map = {
-        biome = "forest",
+        biomes = { "forest", "tundra" },
         encounters = { min = 3, max = 5 }, -- map size scales with this (models/overworld.lua)
         objective = {
             name = "The Branded Mage",

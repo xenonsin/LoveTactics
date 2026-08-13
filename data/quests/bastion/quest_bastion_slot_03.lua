@@ -41,7 +41,7 @@ return {
     requiredQuests = { "quest_bastion_slot_02" }, -- slot 3: the line runs in order
     requiredPrestige = 2,
     map = {
-        biome = "castle",
+        biomes = { "castle", "tundra" },
         encounters = { min = 6, max = 8 },
         objective = {
             name = "The Post With Nothing Behind It",

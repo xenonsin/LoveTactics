@@ -353,6 +353,112 @@ function Quest.available(player)
     return list
 end
 
+-- ---------------------------------------------------------------------------
+-- The board: what is on offer, and where you would have to go for it
+-- ---------------------------------------------------------------------------
+
+-- WHAT THE BOARD OFFERS TODAY, grouped by the ground each expedition would be run on.
+--
+-- DELIBERATELY NOT FOLDED INTO Quest.available, which answers a different question and must keep
+-- answering it. `available` is "what has this company unlocked" -- standing, the sponsor chain, the
+-- house's door, keys -- and roughly forty specs ask it exactly that. The season table
+-- (models/biome_window.lua) asks "and can you get there this morning", which is a property of the DAY
+-- rather than of the player's progress: a quest filtered out by a shut window is not locked, it is
+-- somewhere you cannot currently walk to, and it comes back untouched when the ground reopens.
+--
+-- tests/quest_board_spec.lua already draws this line for foraging ("what the QUEST BOARD offers, which
+-- is not the same question as what Quest.available returns"), and it draws it for the same reason.
+--
+-- Returns:
+--     { day = n, grounds = { { id, daysLeft, quests = { <available entry>, ... } }, ... } }
+--
+-- Grounds come back in schedule order and INCLUDE EMPTY ONES. The panel drops those after it has added
+-- its own foraging rows -- a ground holding nothing but ore is still somewhere worth going, and only
+-- the panel knows whether it put a row there.
+--
+-- A quest appears under EVERY open ground it names, because it can genuinely be run in any of them;
+-- the ground the player picks is stamped onto the run (Quest.start).
+function Quest.board(player)
+    local BiomeWindow = require("models.biome_window")
+    local Calendar = require("models.calendar")
+    local day = Calendar.day(player)
+
+    local grounds, byId = {}, {}
+    for _, id in ipairs(BiomeWindow.openOn(day)) do
+        local ground = { id = id, daysLeft = BiomeWindow.daysLeft(id, day), quests = {} }
+        grounds[#grounds + 1] = ground
+        byId[id] = ground
+    end
+
+    local locked = {}
+    for _, entry in ipairs(Quest.available(player)) do
+        local def = Quest.defs[entry.id]
+
+        -- A LOCKED ENTRY IS A WARNING, NOT A DESTINATION, so it rides along with every ground rather
+        -- than claiming one -- held back to a second pass below, once every ground exists. Only the
+        -- finale is ever shown locked (Quest.available's `showLocked`), and it is on the board for one
+        -- reason: a deadline nobody can see is not a deadline. But it names the underworld, which is
+        -- open for the last three days only, so filing it by ground put a permanent "The Underworld"
+        -- tab in the travel row from the second morning of the campaign -- a place you cannot go,
+        -- wearing a countdown that read blank. Wherever the company travels, the Gate is what is
+        -- coming; that is what this says instead.
+        if entry.locked then
+            locked[#locked + 1] = entry
+        else
+            for _, groundId in ipairs(BiomeWindow.destinations(def, day)) do
+                -- The finale is exempt from the schedule (BiomeWindow.destinations), so once it
+                -- unlocks it can in principle name a ground with no tab. Give it one rather than
+                -- dropping it: a last battle nobody can reach is the one failure this whole system
+                -- must not be able to produce. In the shipped data this never fires -- the underworld
+                -- is open on the last day, which is the only day the Gate is startable -- and it is
+                -- here so that a mis-edited season table degrades into an odd tab rather than into a
+                -- campaign with no ending.
+                if not byId[groundId] then
+                    local ground = { id = groundId, daysLeft = BiomeWindow.daysLeft(groundId, day), quests = {} }
+                    grounds[#grounds + 1] = ground
+                    byId[groundId] = ground
+                end
+                local into = byId[groundId].quests
+                into[#into + 1] = entry
+            end
+        end
+    end
+
+    -- The warnings, after every ground is known. `startable` is what the panel counts when it decides
+    -- whether a ground is worth a tab at all -- a ground holding nothing but the Gate's countdown is
+    -- still a ground with nothing to do on it.
+    for _, ground in ipairs(grounds) do
+        ground.startable = #ground.quests
+        for _, entry in ipairs(locked) do
+            ground.quests[#ground.quests + 1] = entry
+        end
+    end
+
+    return { day = day, grounds = grounds }
+end
+
+-- Stamp the ground the player chose onto a runtime quest copy, so everything downstream
+-- (models/overworld.lua, models/arena.lua, the encounter pool and the prop scatter) reads the single
+-- `map.biome` it has always read. THE ONE PLACE a set of grounds collapses back to one.
+--
+-- The map table is copied rather than written through: Quest.available hands out the BLUEPRINT's own
+-- `map` (the field copy is one level deep), and stamping into that would pin every future run of the
+-- quest to whichever ground was picked first -- a save-corrupting bug that no spec asking about a
+-- single run would ever see.
+function Quest.start(entry, groundId)
+    if not entry then return nil end
+    local q = {}
+    for k, v in pairs(entry) do q[k] = v end
+    if q.map then
+        local map = {}
+        for k, v in pairs(q.map) do map[k] = v end
+        map.biome = groundId or map.biome or (map.biomes and map.biomes[1])
+        map.biomes = nil -- resolved; nothing downstream should ever see the set again
+        q.map = map
+    end
+    return q
+end
+
 -- A single quest by id, as a fresh runtime copy (like the board entries in Quest.available) with its id
 -- stamped on. Used to rehydrate the quest behind a RESUMED overworld run (models/save.lua): the run stores
 -- only the quest id, and this rebuilds the object states/game.lua needs (map, name, opening, outro, ...).

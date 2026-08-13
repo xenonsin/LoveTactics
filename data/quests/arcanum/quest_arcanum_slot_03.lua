@@ -38,7 +38,7 @@ return {
     requiredQuests = { "quest_arcanum_slot_02" }, -- slot 3: the line runs in order
     requiredPrestige = 3,
     map = {
-        biome = "forest",
+        biomes = { "forest", "swamp" },
         encounters = { min = 5, max = 7 },
         objective = {
             name = "What Comes Up at Night",

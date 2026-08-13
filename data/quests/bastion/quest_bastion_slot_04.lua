@@ -40,7 +40,7 @@ return {
     requiredPrestige = 2,
     requiredSponsorQuests = { vendor = "bastion", count = 3 }, -- 3 of this house's quests done
     map = {
-        biome = "forest",
+        biomes = { "forest", "tundra" },
         encounters = { min = 7, max = 9, always = { "encounter_forsworn" } },
         objective = {
             name = "An Entry on the List",

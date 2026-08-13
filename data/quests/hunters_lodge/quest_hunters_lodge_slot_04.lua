@@ -40,7 +40,7 @@ return {
     requiredPrestige = 2,
     requiredSponsorQuests = { vendor = "hunters_lodge", count = 3 }, -- 3 of this house's quests done
     map = {
-        biome = "forest",
+        biomes = { "forest", "swamp" },
         encounters = { min = 6, max = 8, always = { "encounter_wolf" } },
         objective = {
             name = "The Posted Entry",

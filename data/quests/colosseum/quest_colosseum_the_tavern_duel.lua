@@ -30,7 +30,7 @@ return {
     requiredQuests = { "quest_colosseum_slot_03", "quest_undercroft_slot_04" },
     requiredPrestige = 1,
     map = {
-        biome = "castle",
+        biomes = { "castle", "desert" },
         encounters = { min = 6, max = 8 },
         objective = {
             name = "The Table at the Back",
