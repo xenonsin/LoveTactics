@@ -49,6 +49,75 @@ function Floes.carve(grid)
     for _ = 1, grid.rng:random(LEADS_MIN, LEADS_MAX) do
         Floes.lead(grid)
     end
+
+    Floes.ford(grid)
+end
+
+-- EVERY LOBE KEEPS A WAY OUT.
+--
+-- Each lead picks its own crossings, which is enough while leads are the only thing on the board -- and
+-- is not enough once they cross each other. A second lead laid over another's ford seals it; two leads
+-- meeting in a corner cut it off entirely. Measured on the first tundra boards ever rolled: 454 of 752
+-- walkable tiles unreachable from the start, on a board that passed every other check, because nothing
+-- downstream asks whether the water it was handed left the map in one piece.
+--
+-- So the crossings are repaired after all the water is down rather than promised while it is going in.
+-- A river tile touching two separate pieces of land becomes a ford, which is both the cheapest repair
+-- and the right-looking one: the crossing appears where the channel is narrow enough to have one.
+--
+-- This is where `band = "cross"` went (docs/overworld.md, U6). The arena used to promise a rolled
+-- crossing exactly one free ford so the board could never be cut in half; the promise now lives where
+-- the water is drawn, and means the same thing about real water.
+function Floes.ford(grid)
+    local Caverns = require("models.layouts.caverns")
+    for _ = 1, 8 do
+        local pockets = Caverns.pockets(grid)
+        if #pockets <= 1 then return end
+
+        -- Label every walkable tile with the piece of land it belongs to.
+        local piece = {}
+        for i, pocket in ipairs(pockets) do
+            for _, c in ipairs(pocket) do piece[grid:cellKey(c.x, c.y)] = i end
+        end
+
+        -- A river tile with land of two different pieces on either side is exactly a place a ford
+        -- belongs. EVERY such tile in the pass, not the first: a board cut into six lobes needs five
+        -- crossings, and opening one per pass would need as many passes as there are pieces. Walked in a
+        -- fixed order so a seed reproduces its crossings.
+        local opened = false
+        for y = 1, grid.rows do
+            for x = 1, grid.cols do
+                if grid.cells[y][x].tile == "river" then
+                    local seen = {}
+                    for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+                        local p = piece[grid:cellKey(x + d[1], y + d[2])]
+                        if p then seen[p] = true end
+                    end
+                    local n = 0
+                    for _ in pairs(seen) do n = n + 1 end
+                    if n >= 2 then
+                        grid.cells[y][x].tile = "bridge"
+                        opened = true
+                    end
+                end
+            end
+        end
+
+        -- Nothing narrow enough to ford: cut a channel through to the largest piece instead. A board in
+        -- two halves is not a board, and this is the backstop that guarantees it never ships as one.
+        if not opened then
+            table.sort(pockets, function(a, b) return #a > #b end)
+            local a, b = pockets[2][1], pockets[1][1]
+            local bd = math.huge
+            for _, p in ipairs(pockets[2]) do
+                for _, q in ipairs(pockets[1]) do
+                    local d = math.abs(p.x - q.x) + math.abs(p.y - q.y)
+                    if d < bd then bd, a, b = d, p, q end
+                end
+            end
+            grid:carveElbow(a.x, a.y, b.x, b.y)
+        end
+    end
 end
 
 -- One meltwater channel, edge to edge, crossed once or twice.

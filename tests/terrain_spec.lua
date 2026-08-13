@@ -131,7 +131,7 @@ return {
             local EXPECTED = {
                 forest = { 172012, 359 }, -- glades: the maze, opened (models/layouts/glades.lua)
                 castle = { 212536, 401 }, -- rooms: chambers and halls (models/layouts/rooms.lua)
-                tundra = { 299251, 540 }, -- floes: open flats quartered by meltwater
+                tundra = { 329877, 598 }, -- floes: open flats quartered by meltwater, every lobe forded
                 desert = { 322034, 577 }, -- open: a plain with ridges and one ruin
             }
             local bad = {}
@@ -144,6 +144,50 @@ return {
             -- Report EVERY ground that moved, not just the first: a carve change usually touches
             -- several, and one-at-a-time is four runs to learn what one run could have said.
             assert(#bad == 0, "carved geometry moved -- actual: " .. table.concat(bad, ", "))
+        end,
+    },
+    {
+        name = "a crossing is crossable: every meltwater lead keeps a ford",
+        fn = function()
+            -- REHOMED, not lost. Arena.GROUND_PROFILES' `band = "cross"` used to promise a rolled board
+            -- exactly one free ford across its channel, tuned so the water could never cut the board in
+            -- half. The profiles are gone with U6 -- a fight is taken on the map's own tiles, so nothing
+            -- guesses at the ground any more -- and the promise moved to whichever layout lays the water.
+            --
+            -- The tundra is where it bites: floes cuts the flats into lobes with channels, and a lead
+            -- with no crossing would strand the objective behind impassable water. Asserted the way the
+            -- old spec was, on the TILE TYPE rather than on reachability, because water elsewhere is
+            -- wadeable and a board can pass a connectivity check while its designed crossing is a wall.
+            for seed = 1, 20 do
+                local grid = Overworld.generate({
+                    biome = "tundra", seed = seed * 91, cols = 37, rows = 25,
+                    encounterCount = 6, keyCount = 1, objective = { name = "Boss" },
+                    houseMaterial = "material_iron",
+                })
+                local rivers, bridges = 0, 0
+                for y = 1, grid.rows do
+                    for x = 1, grid.cols do
+                        local t = grid.cells[y][x].tile
+                        if t == "river" then rivers = rivers + 1 end
+                        if t == "bridge" then bridges = bridges + 1 end
+                    end
+                end
+                if rivers > 0 then
+                    assert(bridges > 0, string.format(
+                        "seed %d: %d tiles of meltwater and not one ford", seed * 91, rivers))
+                end
+                -- ...and the board is still one piece: every walkable tile reachable from the start.
+                local reached, walkable = grid:reachable(), 0
+                local seen = 0
+                for y = 1, grid.rows do
+                    for x = 1, grid.cols do
+                        if grid:typeWalkable(grid.cells[y][x].tile) then walkable = walkable + 1 end
+                    end
+                end
+                for _ in pairs(reached) do seen = seen + 1 end
+                assert(seen == walkable, string.format(
+                    "seed %d: %d of %d walkable tiles are cut off", seed * 91, walkable - seen, walkable))
+            end
         end,
     },
 }

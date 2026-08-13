@@ -203,6 +203,10 @@ function Overworld.generate(params)
     self:assignEncounterTiers() -- difficulty tell for the fog (drawn from rng LAST)
     self:placePatrols(params)  -- ...and the fights that walk lift off their cells onto beats
 
+    -- The board is finished: no pass after this rewrites a tile, so the box lookups it will be asked for
+    -- thousands of times over a run can be cached (see walkableSums).
+    self.sealed = true
+
     return self
 end
 
@@ -1801,6 +1805,7 @@ function Overworld.fromSnapshot(data)
     self.gateCells = {}
     -- A save written before patrols existed restores with none and plays exactly as it did.
     self.patrols = data.patrols or {}
+    self.sealed = true -- a restored board is finished by definition
     self.cells = {}
     for y = 1, self.rows do
         self.cells[y] = {}
@@ -1876,57 +1881,6 @@ end
 function Overworld:startCell() return self:get(self.start.x, self.start.y) end
 function Overworld:objectiveCell() return self:get(self.objective.x, self.objective.y) end
 
--- WHAT THE GROUND AT (x, y) IS MADE OF, as one of this model's own tile-type names. The battle reads it
--- to decide how a generated arena is laid out (models/arena.lua's GROUND_PROFILES), so a fight taken on
--- a river crossing is a chokepoint and one taken in open grass is a long ranged exchange -- the marker
--- you chose to walk onto is the board you fight on.
---
--- Answers in overworld vocabulary, deliberately. This model knows what its own tiles are; naming arena
--- scatter profiles here would put battle concepts in the map layer. Arena owns that mapping.
---
--- A bridge decides outright -- a crossing is a crossing, however much forest is around it. Otherwise the
--- 5x5 neighbourhood votes, so "beside a river" and "in a rock field" read as themselves rather than
--- needing the party to be standing exactly on the feature. Below the threshold nothing has a claim and
--- the answer is plain trail, which is the common case and the one that changes nothing.
---
--- Pure and RNG-free: the same tile always answers the same way, which is what lets the arena stay
--- reproducible from its seed once this is threaded into it.
--- Each voter is a TILE that votes for a PROFILE, and the two are no longer the same word: the map's
--- impassable water is `river` now (models/terrain.lua), while the scatter profile it asks for is still
--- called `water`. Fixed order, so a tie breaks the same way every time.
---
--- Both this function and the profiles it names are scheduled for deletion -- once a fight is fought on
--- the map's own tiles there is nothing left to guess, because the channel down the flank IS the river
--- (docs/overworld.md, U6). Kept correct in the meantime rather than left to rot: a pass on its way out
--- that quietly starts answering wrong is worse than one that is simply still here.
-local GROUND_VOTERS = {
-    { tile = "river", profile = "water" },
-    { tile = "rock",  profile = "rock" },
-    { tile = "grass", profile = "grass" },
-}
-local GROUND_MIN = 3 -- of the 24 neighbours, how many it takes for the surroundings to name the board
-function Overworld:groundAt(x, y)
-    local cell = self:get(x, y)
-    if not cell then return "path" end
-    if cell.tile == "bridge" then return "bridge" end
-
-    local tally = {}
-    for _, v in ipairs(GROUND_VOTERS) do tally[v.tile] = 0 end
-    for dy = -2, 2 do
-        for dx = -2, 2 do
-            local c = self:get(x + dx, y + dy)
-            local t = c and c.tile
-            if t and tally[t] then tally[t] = tally[t] + 1 end
-        end
-    end
-
-    local best, bestN = "path", GROUND_MIN - 1
-    for _, v in ipairs(GROUND_VOTERS) do
-        if tally[v.tile] > bestN then best, bestN = v.profile, tally[v.tile] end
-    end
-    return best
-end
-
 -- ---------------------------------------------------------------------------
 -- The arena box
 -- ---------------------------------------------------------------------------
@@ -1968,6 +1922,17 @@ Overworld.BOX_MIN = 20
 -- same. So a second measure counts OPEN ground (see Overworld.isOpen) over the same machinery.
 function Overworld:walkableSums(pred)
     local B = Overworld.BOX
+    -- CACHED ONCE THE BOARD IS FINISHED, and never before. While generation is running the tiles are
+    -- still being carved -- pruneDeadStubs rewrites them after placeEncounters -- and a cached integral
+    -- image would silently describe a board that no longer exists. Once `sealed` is set nothing mutates
+    -- a tile again, so the table can be kept.
+    --
+    -- It is kept because the cost turned out to be real rather than theoretical: every fight asks for
+    -- the box twice (once to size the opposition, once to cut the board) and every marker asks again to
+    -- price itself, and rebuilding a rows x cols table of tables each time took the headless suite from
+    -- about a minute to several. Only the default predicate is cached; a caller asking a different
+    -- question is rare and pays for it.
+    if pred == nil and self.sealed and self._sums then return self._sums end
     pred = pred or function(cell) return self:typeWalkable(cell.tile) end
     local sum = {}
     for y = 0, self.rows do
@@ -1982,11 +1947,13 @@ function Overworld:walkableSums(pred)
         end
     end
     -- Walkable count of the BOX x BOX window whose top-left corner is (x, y), 1-indexed.
-    return function(x, y)
+    local query = function(x, y)
         local x2, y2 = x + B - 1, y + B - 1
         if x < 1 or y < 1 or x2 > self.cols or y2 > self.rows then return 0 end
         return sum[y2][x2] - sum[y - 1][x2] - sum[y2][x - 1] + sum[y - 1][x - 1]
     end
+    if pred == nil and self.sealed then self._sums = query end
+    return query
 end
 
 -- IS THIS TILE OPEN GROUND, meaning its whole 3x3 neighbourhood is walkable. A corridor tile is not,

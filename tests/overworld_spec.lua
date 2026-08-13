@@ -870,48 +870,4 @@ return {
         end,
     },
 
-    -- The tile a fight is TAKEN ON, which models/arena.lua lays the board out from.
-    {
-        name = "groundAt: a crossing names itself, and open trail stays plain",
-        fn = function()
-            local grid = gen()
-            -- Author a small patch directly: the census is pure and RNG-free, so it can be tested by
-            -- writing tiles rather than by hunting a seed that happens to roll one.
-            local function paint(cx, cy, tile, r)
-                for dy = -r, r do
-                    for dx = -r, r do
-                        local c = grid:get(cx + dx, cy + dy)
-                        if c then c.tile = tile end
-                    end
-                end
-            end
-            local cx, cy = 12, 10
-
-            paint(cx, cy, "path", 2)
-            assert(grid:groundAt(cx, cy) == "path", "bare trail should name no feature")
-
-            -- A bridge decides outright, however much plain trail surrounds it.
-            grid:get(cx, cy).tile = "bridge"
-            assert(grid:groundAt(cx, cy) == "bridge", "a crossing is a crossing")
-
-            -- Otherwise the neighbourhood votes, and the party need not stand on the feature itself.
-            paint(cx, cy, "path", 2)
-            -- The TILE is `river` and the scatter profile it names is still `water`: the two stopped
-            -- being one word when the map's terrain and the board's became one table (models/terrain).
-            for i = -2, 1 do grid:get(cx + i, cy - 2).tile = "river" end
-            assert(grid:groundAt(cx, cy) == "water", "a fight beside a river should read as one")
-
-            paint(cx, cy, "path", 2)
-            for i = -2, 2 do grid:get(cx + i, cy + 2).tile = "rock" end
-            assert(grid:groundAt(cx, cy) == "rock", "a fight in a rock field should read as one")
-
-            -- One stray tile is not a feature.
-            paint(cx, cy, "path", 2)
-            grid:get(cx + 1, cy).tile = "water"
-            assert(grid:groundAt(cx, cy) == "path", "a single tile should not name the board")
-
-            -- Off the map answers, rather than erroring.
-            assert(grid:groundAt(-5, -5) == "path", "an off-board tile should answer plain trail")
-        end,
-    },
 }
