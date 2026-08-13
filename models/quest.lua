@@ -278,10 +278,14 @@ function Quest.available(player)
 
         -- `keysHeld >= 1` was the rule for showing a locked quest: hold one key of several and the
         -- board admits the thing exists. The finale has no keys to hold now -- it is gated on the day
-        -- -- and it should be visible from the first morning, because a deadline nobody can see is not
-        -- a deadline. So a finale shows on `showLocked` alone; everything else still has to have
-        -- started earning it.
-        local showable = def.showLocked and (def.finale or keysHeld >= 1)
+        -- -- so it shows on `showLocked` alone, because a deadline nobody can see is not a deadline.
+        --
+        -- EXCEPT ON THE VERY FIRST BOARD. The debut on the sand is the tutorial and it teaches by being
+        -- the only thing there; a newcomer who opens this panel and finds the demon lord listed beside
+        -- their first errand has been handed the end of the game as their second option. One finished
+        -- quest is enough -- the deadline is visible from the second morning, which is early.
+        local worked = Player.questsCompleted(player) > 0
+        local showable = def.showLocked and ((def.finale and worked) or keysHeld >= 1)
         if unlocked and not exhausted and (questsMet or showable or showAll) then
             local sponsor = def.sponsor and Vendor.get(def.sponsor)
             list[#list + 1] = {

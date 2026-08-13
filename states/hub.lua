@@ -327,7 +327,12 @@ function hub.draw()
     -- Phrased as what is LEFT rather than as what has been used. "Day 12 of 40" is a progress bar and
     -- reads as accomplishment; "28 days remain" is a deadline and reads as pressure, which is the
     -- thing this number is for. The last week turns amber, and the final day says so in words.
-    do
+    --
+    -- NOT DURING THE COACHING. On the very first visit the city refuses every door but the Quest Board
+    -- (openPanel), because the newcomer is being taught one thing; a deadline counting down over that
+    -- lesson is a second thing, and the player has not yet learned what a day is for. It appears from
+    -- the moment they have run something, which is also when it starts being true of them.
+    if not (hub.player and hub.player.hubIntro == "coach") then
         local left = Calendar.remaining(hub.player)
         local text
         if Calendar.isOver(hub.player) then text = "He has come"

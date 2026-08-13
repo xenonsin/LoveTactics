@@ -121,9 +121,19 @@ function QuestBoard:rebuild()
     -- player reaches for, not the campaign. It pays that house's stock and gold, and no standing --
     -- foraging finishes no quest, so it opens no shelf.
     --
-    -- Not offered on the LAST DAY. The only thing that day is for is the Gate, and a row that let a
-    -- player spend it on ore would be the game quietly hiding its own ending.
-    if not Calendar.isFinalDay(self.player) then
+    -- NOT ON THE FIRST MORNING. The debut on the sand is the tutorial, and the tutorial teaches by
+    -- being the only thing on the board -- a newcomer who opens this panel must see one row and know
+    -- what to press. Seven foraging offers beside it is a menu, and a menu is not a lesson.
+    --
+    -- Gated on having finished ANY quest rather than on the debut's id: the debut is the only thing
+    -- available at standing 1, so the two are the same test today, and the generic one cannot be
+    -- silently reopened by renaming or renumbering that quest. It also reads as the truer rule --
+    -- the houses do not post errands to somebody who has never worked for them.
+    --
+    -- Not offered on the LAST DAY either. The only thing that day is for is the Gate, and a row that
+    -- let a player spend it on ore would be the game quietly hiding its own ending.
+    local worked = Player.questsCompleted(self.player) > 0
+    if worked and not Calendar.isFinalDay(self.player) then
         for _, house in ipairs(Request.houses()) do
             items[#items + 1] = {
                 label = "Forage for " .. house.name,
