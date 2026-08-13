@@ -167,8 +167,15 @@ function Overworld.generate(params)
     local dCols, dRows = deriveDims(self.encounterTarget, params.keyCount, self.cacheTarget, density)
     local playCols = params.cols or dCols
     local playRows = params.rows or dRows
-    self.cols = playCols + 2 * self.margin
-    self.rows = playRows + 2 * self.margin
+    -- The coastline is padding too, for exactly the margin's reason: weatherEdges eats a wandering
+    -- couple of tiles off every side, and a play area sized to hold eight stops that then has a third of
+    -- itself weathered away is not the play area the sizing rule asked for. So the surplus the coast
+    -- will take is added first and eaten back, which is measurable: without it `. board-report` puts the
+    -- desert's walkable share at 40% against the 55% it was built to hold, and the places a fight can
+    -- actually go drop from 4.7 a board to 2.8.
+    self.coast = layout.ownsEdge and 0 or Overworld.EDGE_SURPLUS
+    self.cols = playCols + 2 * (self.margin + self.coast)
+    self.rows = playRows + 2 * (self.margin + self.coast)
     self.tilesetId = biomeDef.tileset      -- which data/tilesets/<id> draws this map
     self.tilesetDef = Tileset.get(self.tilesetId) -- merged types + this biome's art
     self.originX = 0
@@ -186,6 +193,10 @@ function Overworld.generate(params)
 
     -- The carve itself. Everything below it works on whatever walkable graph comes out.
     layout.carve(self)
+    -- ...and then the frame it stopped against is weathered off, unless the ground means to be square
+    -- (see weatherEdges and `ownsEdge`). Run first of the shared passes, so the rivers, the objective and
+    -- every stop after them are placed on the coastline the board actually ends up with.
+    if not layout.ownsEdge then self:weatherEdges() end
 
     local riverSpec = params.riverCount
     -- A layout that lays its own channels keeps them: the shared river pass assumes a lattice to run
@@ -293,6 +304,139 @@ end
 
 function Overworld:inBounds(x, y)
     return x >= 1 and y >= 1 and x <= self.cols and y <= self.rows
+end
+
+-- ---------------------------------------------------------------------------
+-- Weathering the edge
+-- ---------------------------------------------------------------------------
+--
+-- A carve fills the rectangle it is handed and stops at the margin, so every board came out framed by a
+-- wall of exactly even thickness with four right angles in it. On a plain that frame is the most
+-- prominent thing on the screen, and what it says is ARCHITECTURE -- somebody built this, and squarely.
+-- Six of the seven grounds mean the opposite: ground ends where it happens to end.
+--
+-- So the frame is given a COASTLINE: the wall's inner face wanders in and out along its whole length,
+-- in headlands and bays, and the four corners stop being corners. THE TILES STAY SQUARE -- what stops
+-- being square is the line they make.
+--
+-- The wander is a walk rather than noise, and that is the whole of why it reads as landform. The first
+-- version of this pass was the cavern carve's own rule -- fill the band with noise, smooth it with the
+-- 5-neighbour test -- and on a plain it ate the entire band and handed back a smaller rectangle. Noise
+-- smoothed against a straight wall does not make a coast; it makes the wall thicker, because every tile
+-- against the frame already has three solid neighbours before the noise says anything. A depth that
+-- walks up and down carries its own history instead, so the wall is two thick here and five there and
+-- neither is where the last one was.
+--
+-- NOTHING IS EVER CUT OFF, which is what lets one pass run over every layout instead of seven. A bite is
+-- taken only where the trail can still get around it, so the same rule reads as a deep bay on a plain
+-- (where almost every border tile is spare) and as barely a nibble in a maze (where a 1-wide corridor is
+-- all cut vertices). A dead end is spared outright: it is the thing a boon sits on, and the pass is here
+-- to eat redundancy and nothing else.
+--
+-- Skipped by a layout that means its outline -- see `ownsEdge`. A fortress wall was built square.
+
+-- How many tiles out of the play area the coast takes, at its shallowest and at its deepest. It never
+-- takes NONE: a stretch at depth 0 is a stretch of the original frame, straight and square and exactly
+-- as long as the walk happened to hold there, which is the one shape this pass exists to prevent.
+local EDGE_SHALLOW, EDGE_DEEPEST = 1, 4
+local EDGE_RUN = 6     -- how many tiles it holds one depth before it may step again: the size of a headland
+local EDGE_NICK = 0.16 -- chance a single tile is taken one deeper than the run it sits in
+-- What the coast costs a side, on average, and therefore what generate() adds to the rectangle before
+-- handing it to the carve so the pass can eat it back (see the sizing in Overworld.generate, and
+-- `grid.coast`, which is this or 0 for a ground that keeps its square outline). A field rather than a
+-- local because it is read up there, where a local declared down here would be a nil global. Measured
+-- off `. board-report`, not derived: the walk's mean depth is a shade over two.
+Overworld.EDGE_SURPLUS = 2
+-- Which way the next step goes. Weighted shallow, or a walk that is free to climb spends most of its
+-- length at the deep end and the pass becomes a uniform trim again -- which is the rectangle it is here
+-- to get rid of, one ring further in.
+local EDGE_INWARD = 0.36   -- chance the coast steps one deeper
+local EDGE_OUTWARD = 0.46  -- chance it steps one back toward the frame (the rest holds)
+-- How far a detour may run for a bite to count as safe. Connectivity is checked in a window rather than
+-- over the whole board because this is asked a few hundred times per map: a route found inside the
+-- window is a real route, so the check is conservative in the only direction that matters -- a tile the
+-- trail can only get around by a longer way than this is left alone rather than wrongly eaten.
+local EDGE_REACH = 5
+
+-- Can (x, y) be filled in without stranding anything? Its walkable neighbours have to still reach each
+-- other with it gone, looked for inside a EDGE_REACH window.
+function Overworld:biteSafe(x, y)
+    local from = self:pathNeighbors(x, y)
+    if #from < 2 then return false end -- a dead end (or an island): never eaten, see above
+    local blocked = self:cellKey(x, y)
+    local seen = { [blocked] = true, [self:cellKey(from[1].x, from[1].y)] = true }
+    local q, qi, found = { from[1] }, 1, 1
+    while qi <= #q do
+        local cur = q[qi]; qi = qi + 1
+        for _, n in ipairs(self:pathNeighbors(cur.x, cur.y)) do
+            local k = self:cellKey(n.x, n.y)
+            if not seen[k] and math.abs(n.x - x) <= EDGE_REACH and math.abs(n.y - y) <= EDGE_REACH then
+                seen[k] = true
+                q[#q + 1] = n
+                for i = 2, #from do
+                    if n == from[i] then found = found + 1 end
+                end
+                if found == #from then return true end
+            end
+        end
+    end
+    return false
+end
+
+-- One side's coastline: how many tiles of ground the wall takes at each step along its length. Two
+-- scales at once, because one alone is not a landform:
+--
+--   the WALK    a depth that holds for a run of tiles and then steps, which is the headland-and-bay
+--               shape, and the reason the wall is two thick here and five there;
+--   the NICK    a single tile taken here and there off whatever the walk said, which is what keeps a
+--               long run from arriving as a drawn straight line.
+function Overworld:coastDepths(len)
+    local out = {}
+    local d = self.rng:random(EDGE_SHALLOW, EDGE_DEEPEST)
+    local run = 0
+    for i = 1, len do
+        if run <= 0 then
+            local roll = self.rng:random()
+            if roll < EDGE_INWARD then
+                d = math.min(EDGE_DEEPEST, d + 1)
+            elseif roll < EDGE_INWARD + EDGE_OUTWARD then
+                d = math.max(EDGE_SHALLOW, d - 1)
+            end
+            run = self.rng:random(2, EDGE_RUN)
+        end
+        run = run - 1
+        out[i] = (self.rng:random() < EDGE_NICK) and math.min(EDGE_DEEPEST, d + 1) or d
+    end
+    return out
+end
+
+function Overworld:weatherEdges()
+    local m = self.margin
+    local x0, x1 = 1 + m, self.cols - m
+    local y0, y1 = 1 + m, self.rows - m
+    -- A play area with no middle left is not weathered: the coast would meet itself.
+    if x1 - x0 < EDGE_DEEPEST * 2 + 2 or y1 - y0 < EDGE_DEEPEST * 2 + 2 then return end
+
+    -- Fill in one tile of coast, unless the trail needs it (see biteSafe).
+    local function bite(x, y)
+        if self:typeWalkable(self.cells[y][x].tile) and self:biteSafe(x, y) then
+            self.cells[y][x].tile = "thicket"
+        end
+    end
+
+    -- Each side eats inward from the frame, so a bite is always taken from ground that has wall already
+    -- against it and the coast recedes rather than opening holes behind itself. The corners are where two
+    -- of these walks overlap, which is exactly why they stop reading as corners.
+    local top, bottom = self:coastDepths(x1 - x0 + 1), self:coastDepths(x1 - x0 + 1)
+    for x = x0, x1 do
+        for k = 0, top[x - x0 + 1] - 1 do bite(x, y0 + k) end
+        for k = 0, bottom[x - x0 + 1] - 1 do bite(x, y1 - k) end
+    end
+    local left, right = self:coastDepths(y1 - y0 + 1), self:coastDepths(y1 - y0 + 1)
+    for y = y0, y1 do
+        for k = 0, left[y - y0 + 1] - 1 do bite(x0 + k, y) end
+        for k = 0, right[y - y0 + 1] - 1 do bite(x1 - k, y) end
+    end
 end
 
 -- Maze nodes sit on a lattice inset from the map edge by `margin` and spaced
@@ -578,7 +722,13 @@ end
 -- strictly inside the region reachable *before* the first gate, so they are
 -- always collectible in order and the objective is always reachable once held.
 function Overworld:placeObjectiveAndGates(params)
-    local start = self:computeStart()
+    -- A layout may name both ends itself (see models/layout.lua's `anchors`). The rules below find them
+    -- by shape, which is the right question on ground you are crossing and the wrong one in a room.
+    local named, namedObjective
+    local layout = Layout.get(self.layoutId)
+    if layout.anchors then named, namedObjective = layout.anchors(self) end
+
+    local start = named or self:computeStart()
     self.start = { x = start.x, y = start.y }
 
     local dist, parent = self:bfsDistances(start)
@@ -629,7 +779,7 @@ function Overworld:placeObjectiveAndGates(params)
     for _, e in ipairs(deadEnds) do
         if not farDeadD or e.d > farDeadD then farDeadD = e.d; farDeadEnd = e.cell end
     end
-    objective = pick or farDeadEnd or objective
+    objective = namedObjective or pick or farDeadEnd or objective
     self.objective = { x = objective.x, y = objective.y }
     objective.encounter = {
         kind = "objective",
@@ -656,6 +806,13 @@ function Overworld:placeObjectiveAndGates(params)
 
     local K = params.keyCount or 0
     if K <= 0 then return end
+    -- A GATE ON OPEN GROUND IS NOT A GATE. The objective is meant to land on a strict dead end so the
+    -- tiles before it genuinely lock it, and the fallbacks above will accept a through-tile rather than
+    -- fail -- on a board that has no dead end at all, or on one whose layout names its own objective and
+    -- puts it in the middle of the floor (models/layouts/sands.lua). Locking a tile you can walk around
+    -- there costs the player a key hunt and gates nothing, so the chain is skipped instead. The board
+    -- keeps its spine, its caches and its guards; what it does not get is a door that is not one.
+    if #self:pathNeighbors(objective.x, objective.y) > 1 then return end
 
     -- Gate the tiles right before the objective; each needs a distinct key.
     local firstGateDist = objd
@@ -1101,11 +1258,16 @@ function Overworld:guardBoons(params)
                 -- RANK IS RESPECTED WHILE MOVING, or this pass quietly undoes the board's arc: an elite
                 -- seated on the deep half by placeEncounters' depth rule can be picked up here and set
                 -- down beside a boon on the doorstep, which is the exact placement that rule exists to
-                -- prevent. So a shallow approach takes an ORDINARY fight if the loose supply has one,
-                -- and falls back to whatever is left rather than leaving the boon unguarded -- a guard
-                -- of the wrong rank is a smaller failure than a reward with nothing in front of it, and
-                -- assignEncounterTiers runs after this either way, so the pips stay honest about
-                -- wherever the fight actually ended up.
+                -- prevent. So a shallow approach takes an ORDINARY fight, and if the loose supply has
+                -- none left it takes NOTHING -- this boon is left in the open and the next one is tried,
+                -- because the elite may well be exactly the right guard for a deeper reward further on.
+                --
+                -- That last clause was a fallback to "whatever is left" once, on the argument that a
+                -- guard of the wrong rank beats a reward with nothing in front of it. It is the wrong
+                -- trade and only ever fired on the boards where it did most harm: an unguarded cache
+                -- costs the player nothing but a free pickup, while a tier-3 elite four steps from the
+                -- start is the doorstep wall ELITE_MIN_DEPTH exists to forbid. Leaving the boon open is
+                -- also not a loss to the pass -- the fight stays in the supply for the boon after it.
                 local shallow = ((startDist[cellKey(app)] or 0) / farthest) < ELITE_MIN_DEPTH
                 local src
                 for j = next_, #guards do
@@ -1116,21 +1278,16 @@ function Overworld:guardBoons(params)
                         break
                     end
                 end
-                if not src then -- nothing of the right rank: take the first loose fight of any
+                if src then
+                    app.encounter = src.encounter
+                    src.encounter = nil
                     while next_ <= #guards and (guards[next_].guards or not guards[next_].encounter) do
                         next_ = next_ + 1
                     end
-                    src = guards[next_]
+                    app.guards = { x = boon.x, y = boon.y }
+                    payGuarded(boon)
+                    placed = placed + 1
                 end
-                if not src then break end -- no loose fights left; the rest of the boons stay in the open
-                app.encounter = src.encounter
-                src.encounter = nil
-                while next_ <= #guards and (guards[next_].guards or not guards[next_].encounter) do
-                    next_ = next_ + 1
-                end
-                app.guards = { x = boon.x, y = boon.y }
-                payGuarded(boon)
-                placed = placed + 1
             end
         end
     end

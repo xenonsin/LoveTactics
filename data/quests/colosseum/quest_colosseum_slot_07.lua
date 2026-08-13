@@ -41,7 +41,7 @@ return {
     requiredPrestige = 1,
     requiredSponsorQuests = { vendor = "colosseum", count = 6 }, -- 6 of this house's quests done
     map = {
-        biome = "volcanic",
+        biome = "colosseum", -- the patron is on the card, and a card is fought in the bowl
         encounters = { min = 8, max = 11, always = { "encounter_elite" } },
         objective = {
             name = "The Patron on the Card",

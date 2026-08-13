@@ -11,7 +11,7 @@ local Biome = require("models.biome")
 local Overworld = require("models.overworld")
 local Tileset = require("models.tileset")
 
-local NEW_BIOMES = { "desert", "tundra", "volcanic", "swamp" }
+local NEW_BIOMES = { "desert", "tundra", "volcanic", "swamp", "colosseum" }
 
 -- Flatten a generated arena layout's tiles to a comparable string.
 local function tileSignature(layout)

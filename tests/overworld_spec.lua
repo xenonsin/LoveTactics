@@ -224,8 +224,10 @@ return {
                     encounters = { { kind = "combat", weight = 1 } },
                     objective = { name = "Boss" },
                 })
-                local playCols = grid.cols - 2 * grid.margin
-                local playRows = grid.rows - 2 * grid.margin
+                -- Padding is the margin ring PLUS the surplus the coastline eats (grid.coast), both of
+                -- which are added around the play area rather than taken out of it.
+                local playCols = grid.cols - 2 * (grid.margin + grid.coast)
+                local playRows = grid.rows - 2 * (grid.margin + grid.coast)
                 assert(playCols <= 37, "play cols exceeded cap: " .. playCols)
                 assert(playRows <= 25, "play rows exceeded cap: " .. playRows)
             end
@@ -253,8 +255,9 @@ return {
                 cols = 41, rows = 29, seed = 7, biome = "forest", encounterCount = 3,
                 encounters = { { kind = "combat", weight = 1 } },
             })
-            assert(grid.cols == 41 + 2 * grid.margin, "explicit cols should win over auto-size")
-            assert(grid.rows == 29 + 2 * grid.margin, "explicit rows should win over auto-size")
+            local pad = grid.margin + grid.coast
+            assert(grid.cols == 41 + 2 * pad, "explicit cols should win over auto-size")
+            assert(grid.rows == 29 + 2 * pad, "explicit rows should win over auto-size")
         end,
     },
     {
@@ -344,16 +347,18 @@ return {
     {
         name = "a fill buffer frames the map without shrinking the play area",
         fn = function()
-            -- The grid is inflated by 2*margin so the trail region keeps the
-            -- requested cols/rows; the margin is pure padding around it.
+            -- The grid is inflated by 2*margin so the trail region keeps the requested cols/rows; the
+            -- margin is pure padding around it. The coastline weatherEdges eats is padding by the same
+            -- argument and is added on top of it, so the play area survives being weathered.
             local C, R = 31, 21
             local grid = Overworld.generate({
                 cols = C, rows = R, seed = 42, biome = "forest", keyCount = 1,
             })
-            local m = grid.margin
-            assert(m and m > 0, "expected a positive margin")
-            assert(grid.cols == C + 2 * m, "grid width should be play cols + 2*margin")
-            assert(grid.rows == R + 2 * m, "grid height should be play rows + 2*margin")
+            local m = grid.margin + grid.coast
+            assert(grid.margin and grid.margin > 0, "expected a positive margin")
+            assert(grid.cols == C + 2 * m, "grid width should be play cols + 2*(margin + coast)")
+            assert(grid.rows == R + 2 * m, "grid height should be play rows + 2*(margin + coast)")
+            m = grid.margin
 
             -- No walkable tile (path/bridge) may land in the buffer ring.
             for y = 1, grid.rows do
@@ -364,6 +369,45 @@ return {
                     end
                 end
             end
+        end,
+    },
+    {
+        name = "the frame is weathered into a coastline, and a stronghold's is not",
+        fn = function()
+            -- The desert's carve fills its whole rectangle, so before weatherEdges the first walkable
+            -- row was the same row in every column -- a wall of even thickness with four right angles in
+            -- it, which is the thing that looked built rather than found. What is asserted is only that
+            -- the line WANDERS; how far is the walk's business (Overworld:coastDepths).
+            local grid = Overworld.generate({
+                cols = 31, rows = 21, seed = 8, biome = "desert",
+                encounterCount = 4, keyCount = 0, objective = { name = "Boss" },
+            })
+            local depths, span = {}, { min = math.huge, max = 0 }
+            for x = 1, grid.cols do
+                for y = 1, grid.rows do
+                    if typeWalkable(grid:get(x, y).tile) then
+                        depths[#depths + 1] = y
+                        span.min = math.min(span.min, y)
+                        span.max = math.max(span.max, y)
+                        break
+                    end
+                end
+            end
+            local distinct = {}
+            for _, d in ipairs(depths) do distinct[d] = true end
+            local kinds = 0
+            for _ in pairs(distinct) do kinds = kinds + 1 end
+            assert(kinds >= 3, "the top of the plain still arrives as one straight line")
+            assert(span.max - span.min >= 2, "the coast wanders by less than two tiles: still a frame")
+
+            -- ...and the one ground that means its outline keeps it, which is also the check that the
+            -- pass is scoped to the edge rather than loose on the board: a stronghold is not padded for a
+            -- coast it will never be given.
+            local keep = Overworld.generate({
+                cols = 31, rows = 21, seed = 8, biome = "castle",
+                encounterCount = 4, keyCount = 0, objective = { name = "Warlord" },
+            })
+            assert(keep.cols == 31 + 2 * keep.margin, "the castle was padded for a coastline it never gets")
         end,
     },
     {

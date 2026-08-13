@@ -43,7 +43,8 @@ return {
     requiredQuests = { "quest_colosseum_slot_03", "quest_bastion_slot_03" },
     requiredPrestige = 1,
     map = {
-        biomes = { "desert", "volcanic" },
+        -- A standing challenge is answered where it was posted: on the sand, in front of the house.
+        biome = "colosseum",
         encounters = { min = 7, max = 10, always = { "encounter_elite" } },
         objective = {
             name = "The Standing Challenge",

@@ -75,7 +75,8 @@ return {
     followUp = {
         name = "Off the Sand",
         map = {
-            biome = "desert",
+            biome = "colosseum", -- still inside the building: the walk out is the tunnel under it
+
             scripted = true, -- a cutscene walk, not a board quest: no Back button, no abandon
             -- One quiet breather on the way out, then the gate. No random bouts -- the climax was the
             -- bout; this leg is the walk down from it.
@@ -95,7 +96,7 @@ return {
         },
     },
     map = {
-        biome = "desert",
+        biome = "colosseum", -- the bowl itself (data/biomes/colosseum.lua): concourse, sand, gate
         -- The walk to the tunnel mouth is the undercard, not a maze to survive. A curated stop list
         -- rather than a bare roll, and it TEACHES THE BOUT before the bout: the concourse scene sells
         -- the mismatch, a house sparring pair (encounter_arena_undercard) introduces the Trapper's Root

@@ -23,7 +23,9 @@ return {
     requiredPrestige = 1,
     gateHint = "beneath the sand, where the roaring was loudest",
     map = {
-        biome = "volcanic",
+        -- "Beneath the sand, where the roaring was loudest" -- the gate hint above names this ground,
+        -- and the pens the layout cuts under the stands are literally where it points.
+        biome = "colosseum",
         encounters = { min = 10, max = 14, always = { "encounter_elite", "encounter_elite" } },
         objective = {
             name = "Ira, the Unappeased",

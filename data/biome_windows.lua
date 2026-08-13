@@ -37,11 +37,24 @@ return {
     -- id            windows, inclusive day ranges     open days
     castle     = { { 1, 9 },   { 23, 31 } }, --          18
     forest     = { { 1, 16 },  { 30, 37 } }, --          24
-    tundra     = { { 1, 7 },   { 17, 31 } }, --          22
+    -- THE ONLY GROUND WITH THREE WINDOWS, and the third one is a hole being closed rather than a shape
+    -- being drawn. The tundra used to shut for good on day 31, and `. biome-report`'s committed walk ran
+    -- into the consequence the moment the Colosseum's re-homing shifted its route: on day 39 it held
+    -- eight live quests and five of them were tundra, with nothing reachable anywhere. The last three
+    -- days were three grounds wide while a third of the board's remaining work sat on a fourth.
+    tundra     = { { 1, 7 },   { 17, 31 }, { 38, 40 } }, -- 25
     swamp      = { { 8, 22 },  { 32, 40 } }, --          24
     -- The sand is open on the first morning because the debut stands on it. See above.
     desert     = { { 1, 12 },  { 30, 38 } }, --          21
     volcanic   = { { 13, 29 }, { 36, 40 } }, --          22
+
+    -- THE BOWL, and the one row that is a schedule in the fiction as well as in the table: a colosseum
+    -- is not a country that becomes unreachable, it is a venue that is either running a card or dark.
+    -- Open on the first morning because the debut is fought on it (quest_colosseum_slot_01), dark
+    -- through the middle season while the house re-cards, and open again for the run at the patron that
+    -- the line ends on. Shut over the last six days on purpose: by then the Gate is what the calendar is
+    -- for, and a house still printing cards while the world ends is a house nobody believes in.
+    colosseum  = { { 1, 11 },  { 22, 34 } }, --          24
 
     -- The Gate's own ground, and the only biome that is not a destination on the board. It opens for
     -- the last three days because the finale stands on it -- and the finale does not consult this

@@ -37,7 +37,7 @@ return {
     requiredPrestige = 1,
     requiredSponsorQuests = { vendor = "colosseum", count = 3 }, -- 3 of this house's quests done
     map = {
-        biome = "desert",
+        biome = "colosseum", -- the house's own four, on the house's own floor
         encounters = { min = 6, max = 8, always = { "encounter_elite" } },
         objective = {
             name = "Four of the House's Own",

@@ -66,6 +66,10 @@ Arena.BIOME_TERRAIN = {
     tundra   = { fill = "ice",    rise = "mountain", block = "obstacle" },
     volcanic = { fill = "rough",  rise = "mountain", block = "lava" },
     swamp    = { fill = "mire",   rise = "forest",   block = "obstacle" },
+    -- The bowl. Sand underfoot like the desert, but the rise is an `obstacle` rather than a mountain
+    -- and so is the blocker: there is no high ground in an arena and no landform of any kind --
+    -- everything standing on this floor was carried in and set down for the card.
+    colosseum = { fill = "sand",  rise = "obstacle", block = "obstacle" },
 }
 
 -- The terrain palette for `biome`, always a complete table (see Arena.BIOME_TERRAIN).

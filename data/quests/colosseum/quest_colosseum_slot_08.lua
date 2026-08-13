@@ -38,7 +38,9 @@ return {
     requiredPrestige = 1,
     requiredSponsorQuests = { vendor = "colosseum", count = 6 }, -- 6 of this house's quests done
     map = {
-        biomes = { "desert", "volcanic" },
+        -- The card nobody advertised is still a card. One ground rather than a pair, because there is
+        -- exactly one floor this bout can be fought on.
+        biome = "colosseum",
         encounters = { min = 9, max = 12, always = { "encounter_elite" } },
         objective = {
             name = "The Card Nobody Advertised",

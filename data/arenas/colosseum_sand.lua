@@ -28,8 +28,11 @@
 -- channelAfflict, a Cowering debuff) lands at COMBAT time, on commit -- it is not authored here. This
 -- board is the standing terrain; her wind-up works on whoever is caught standing in it.
 return {
-    biome = "castle",
-    fixed = true, -- addressable by name (spec.layout); never rolled by an ordinary castle fight
+    -- Its own ground now (data/biomes/colosseum.lua). It was tagged `castle` for as long as the bowl had
+    -- no biome to be -- which drew the debut's floor as flagstone, in a scene whose every line is about
+    -- the sand.
+    biome = "colosseum",
+    fixed = true, -- addressable by name (spec.layout); never rolled by an ordinary fight of its ground
     -- x:  1          2         3         4         5         6         7         8
     tiles = {
         { "ground",   "ground", "ground", "ground", "ground", "ground", "ground",   "ground" }, -- y1 enemy back line / gate

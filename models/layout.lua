@@ -18,6 +18,13 @@
 --                    existed, so those boards keep their footprint exactly.
 --   ownsWater        true if the carve lays its own channels, which scopes the shared river pass off
 --                    it (see Overworld.generate and docs/overworld.md's C2).
+--   ownsEdge         true if the outline is MEANT to be square, which scopes the shared weathering pass
+--                    off it (Overworld:weatherEdges). Masonry was built; ground merely ended.
+--   anchors(grid)    optional; returns the cell the company STARTS on and the cell the OBJECTIVE stands
+--                    on, either of which may be nil to keep the shared rule. The shared rules find both
+--                    by shape -- the start is the walkable tile nearest the middle, the objective is a
+--                    far dead end -- which is right for a country you are crossing and exactly backwards
+--                    for a room you were let into. See models/layouts/sands.lua.
 --
 -- The carve reaches the board through a small API on the grid -- carveCorridor, carveBlob, isNode,
 -- cellKey, rng -- rather than through its internals, so a layout stays a description of a SHAPE.

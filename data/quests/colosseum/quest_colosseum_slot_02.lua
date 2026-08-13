@@ -76,7 +76,7 @@ return {
     requiredQuests = { "quest_colosseum_slot_01" }, -- slot 2: the line runs in order
     requiredPrestige = 1,
     map = {
-        biome = "desert",
+        biome = "colosseum", -- a padded card is a card: it is fought on the house's own sand
         encounters = { min = 4, max = 6 },
         objective = {
             name = "The Warm-Up Bout",

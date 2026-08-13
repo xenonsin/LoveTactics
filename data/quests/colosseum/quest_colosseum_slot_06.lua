@@ -43,7 +43,7 @@ return {
     requiredQuests = { "quest_colosseum_slot_05" }, -- slot 6: the line runs in order
     requiredPrestige = 1,
     map = {
-        biome = "desert",
+        biome = "colosseum", -- "Blood in the Sand": the sand is this one, and it is named in the title
         encounters = { min = 8, max = 12, always = { "encounter_elite" } },
         objective = {
             name = "The Card With Your Name On It",

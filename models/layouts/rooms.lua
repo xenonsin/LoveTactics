@@ -18,6 +18,11 @@ local Rooms = {}
 
 Rooms.name = "Rooms"
 
+-- The one ground whose outline is not weathered (Overworld:weatherEdges). Everywhere else a straight
+-- wall a whole board long is the generator showing through; here it is the curtain wall, and a stronghold
+-- with a coastline for a perimeter is not a stronghold.
+Rooms.ownsEdge = true
+
 -- Walkable share, for sizing only. Chambers fill most of their leaf and the halls are thin, so a little
 -- over a third of the rectangle ends up floor -- measured, not derived.
 function Rooms.density() return 0.38 end

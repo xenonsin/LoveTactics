@@ -63,6 +63,7 @@ the water is down.
 | Pass | What it does |
 |---|---|
 | `layout.carve` | **per biome** — see The seven grounds below |
+| `weatherEdges` | eats a wandering coastline out of the rectangle the carve stopped against. Skipped for a layout that means its outline square (`ownsEdge`) |
 | `placeRivers` → `thinBridges` | wandering water; a river over a path becomes a one-tile bridge. Skipped for a layout that lays its own (`ownsWater`) |
 | `placeObjectiveAndGates` | objective on a far dead end (~80% of max distance), gates + keys before it |
 | `placeCaches` | material caches take the spur ends **first**, then the deepest ground off the road |
@@ -76,6 +77,33 @@ the water is down.
 — it is all BFS over `pathNeighbors` — which is why seven grounds is a tractable amount of work rather
 than seven generators. `deriveDims` sizes the grid to the content and to the layout's own `density`. An
 authored board (`Overworld.fromLayout`, `data/overworld/*.lua`) skips the lot.
+
+### The coastline
+
+A carve fills the rectangle it is handed and stops at the margin, so every board used to come out framed
+by a wall of exactly even thickness with four right angles in it — which on the open grounds is the most
+prominent thing on the screen, and what it says is *architecture*. Six of the seven mean the opposite.
+
+`weatherEdges` gives that frame a **coastline**: the wall's inner face wanders in and out along its whole
+length, one to four tiles deep, in headlands and bays. The tiles stay square; the line they make does not.
+
+- **A walk, not noise.** The first version was the cavern carve's own rule — fill the band with noise,
+  smooth it with the 5-neighbour test — and on a plain it ate the entire band and handed back a smaller
+  rectangle. Noise smoothed against a straight wall does not make a coast, it makes the wall thicker,
+  because every tile against the frame already has three solid neighbours before the noise says anything.
+  A depth that *walks* carries its own history: two thick here, five there, and neither where the last was.
+- **It never sits at 0.** A stretch at depth 0 is a stretch of the original frame, straight and square
+  and as long as the walk happened to hold there.
+- **Nothing is ever cut off.** A bite is taken only where the trail can still get around it
+  (`biteSafe`), and a dead end is spared outright — so the same rule reads as a deep bay on a plain and
+  as barely a nibble in a maze, where a 1-wide corridor is all cut vertices. That is what lets one pass
+  run over every layout instead of seven.
+- **The coast is padding, like the margin.** `generate` adds `EDGE_SURPLUS` tiles to every side before
+  handing the rectangle to the carve, so the pass eats surplus rather than play area. Without it
+  `. board-report` put the desert's walkable share at 40% against the 55% it was sized to hold, and the
+  places a fight can actually go dropped from 4.7 a board to 2.8.
+- **The castle keeps its corners** (`Rooms.ownsEdge`). A curtain wall was built square, and a stronghold
+  with a coastline for a perimeter is not a stronghold.
 
 ## The board's contract
 
@@ -114,7 +142,7 @@ Two rules that had to be learned by breaking them:
 - **Corridor contact stays legal.** The floor governs what the *generator* chooses, which is a different
   question from what the player walks into. Being caught mid-hall is the price of a mistake.
 
-## The seven grounds
+## The eight grounds
 
 Each biome names a `layout` (`data/biomes/<id>.lua` → `models/layouts/<id>.lua`).
 
@@ -127,18 +155,44 @@ Each biome names a `layout` (`data/biomes/<id>.lua` → `models/layouts/<id>.lua
 | volcanic | `rifts` | wide fractures meeting at fallen-in chambers |
 | desert | `open` | a plain with ridges, and one walled ruin |
 | tundra | `floes` | open flats quartered by meltwater, fords for doors |
+| colosseum | `sands` | one oval of floor, the house's furniture on it, the pens beneath |
+
+**Seven of them are countries and one is a building.** The colosseum is the Colosseum's own bowl — the
+ground eight of that house's ten slots are fought on — and it is the only board with no route on it at
+all: no corridor, no branch, no long way round. What a bout costs is decided by what is standing on the
+sand with you and where you were when it started. It needs the same thing `open` needed and gets it
+from the fiction rather than from a patch: `placeObjectiveAndGates` insists on a strict dead end, an
+oval has no cut vertex anywhere, and the cells under the stands are dead ends that mean something.
+
+It is also the one ground that names its own two ends, through the layout hook `anchors`. Found by
+shape, the start is the walkable tile nearest the middle and the objective is a far dead end — which
+here means beginning in the centre of the sand and holding the bout in a cage underneath, the arena
+exactly inside out. So **the card is fought in the middle and the company walks in from the bottom**,
+through the gate at the near edge, which is the longest approach the oval has. The gate chain goes with
+it: a lock on the road to an objective standing in the open is walked around, so a board whose objective
+is not a strict dead end places no keys at all. There are no locked doors in an arena.
 
 Measured across 20 boards a ground:
 
 | ground | fightable | sites | seat | open | under | guarded |
 |---|---|---|---|---|---|---|
-| castle | 100.0% | 4.5 | 57.0 | 40.2 | 0.00 | 38.0% |
-| desert | 100.0% | 4.8 | 51.8 | 24.9 | 0.10 | 65.2% |
-| forest | 91.6% | 5.6 | 41.0 | 12.3 | 0.60 | 62.4% |
-| swamp | 86.8% | 3.4 | 36.1 | 7.3 | 1.30 | 65.6% |
-| tundra | 100.0% | 5.5 | 55.1 | 25.2 | 0.00 | 65.6% |
-| underworld | 100.0% | 5.9 | 62.5 | 51.5 | 0.00 | 71.4% |
-| volcanic | 99.9% | 2.9 | 57.4 | 39.1 | 0.00 | 21.8% |
+| castle | 100.0% | 4.5 | 57.1 | 40.2 | 0.00 | 37.2% |
+| colosseum | 100.0% | 3.9 | 59.4 | 37.1 | 0.00 | 68.0% |
+| desert | 99.1% | 5.0 | 50.0 | 23.9 | 0.10 | 68.3% |
+| forest | 89.9% | 4.1 | 40.0 | 12.4 | 0.70 | 68.1% |
+| swamp | 89.5% | 5.2 | 39.6 | 10.9 | 1.10 | 75.0% |
+| tundra | 99.7% | 5.4 | 48.3 | 18.0 | 0.10 | 68.3% |
+| underworld | 100.0% | 6.6 | 57.4 | 41.7 | 0.00 | 70.7% |
+| volcanic | 99.7% | 2.8 | 53.0 | 29.4 | 0.10 | 66.9% |
+
+The colosseum seats its fights higher than any other ground and has the fewest distinct sites to seat
+them on, which is the same fact twice: there is one room, it is all standing space, and a bout is
+fought wherever on it you happened to meet.
+
+The coastline is what moved these off their pre-weathering numbers: a wandering wall touches more of the
+ground beside it, so **open** is a few points down on the wide grounds (the tundra most, 25.2 → 18.0)
+while **sites** — how many distinct places a fight can actually go — is where it was, which is the one
+that decides whether a board is playable.
 
 Three things a layout keeps being taught, each learned by getting it wrong first:
 

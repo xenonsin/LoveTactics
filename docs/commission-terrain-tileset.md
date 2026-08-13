@@ -38,7 +38,7 @@ Game Boy Advance *Fire Emblem*. We need terrain tiles that dress that grid.
 
 ## Tiles needed
 
-**7 biomes × 6 tile types = 42 tiles.** Every biome supplies the same six *roles*; what changes is
+**8 biomes × 6 tile types = 48 tiles.** Every biome supplies the same six *roles*; what changes is
 what that role is made of in that place. The engine's index order is the row order below.
 
 | # | role | what it does |
@@ -64,6 +64,7 @@ what that role is made of in that place. The engine's index order is the row ord
 | **tundra** | snow drift | frozen tussock | frost-split stone | trodden snow | a span of ice | meltwater lead |
 | **volcanic** | basalt block, **sunlit** | cooled slag | broken stone, bleached | ash underfoot | fused span | lava flow |
 | **swamp** | mangrove thicket | sedge and reed, yellowed | mossed-over boulder | churned mud / boardwalk | old timber | brackish standing water |
+| **colosseum** | the stands, in shadow | worn seating stone | barrier / pillar block, set on the sand | raked sand | timber gate ramp | the drain |
 
 Each biome must read as a **different place** at a glance. Two pairs need deliberate separation:
 
@@ -74,6 +75,12 @@ Each biome must read as a **different place** at a glance. Two pairs need delibe
   should read as somewhere you *wade*. Push its greens toward yellow-grey, and its standing water is
   the murkiest in the game — barely lighter than its own fill.
 
+**The colosseum is the odd one and the cheapest.** It is the only biome that is a *building* rather
+than a country, so it has no landform in it at all: two materials, raked sand and grey stone, and every
+piece of stone on the floor was carried there and set down. Nothing weathers, nothing grows, nothing
+wanders. Its fill is the stands seen from inside the bowl — dark, because the crowd is in shadow and
+the floor is the thing that is lit. Its "water" is the drain, and it is not water.
+
 Two roles carry an unusual burden and are worth calling out:
 
 - **tundra path.** Snow wants to be white and so does the trail. The trodden path must read as a
@@ -81,7 +88,7 @@ Two roles carry an unusual burden and are worth calling out:
 - **desert path.** The reverse problem: everything is already pale, so the packed track is the
   **lightest** value on the board and the dune fill sits a clear step darker.
 
-Reference fallback colours for every one of the 42 are already in the repo at
+Reference fallback colours for every one of the 48 are already in the repo at
 `data/tilesets/<biome>.lua` — the game currently renders flat rects in those values, so they show the
 intended relative values and the separations above.
 
@@ -94,6 +101,8 @@ Ordered by how much play each biome actually carries.
 - **Phase 3 — bridge/water (5–6) for forest + castle** — the world map for the two shipped biomes.
 - **Phase 4 — Desert, Tundra, Volcanic, Swamp, tiles 1–4** — the four new battlefields, in that
   order. Each is a distinct tactical floor, not a reskin, so each needs to read as its own place.
+- **Phase 4b — Colosseum, tiles 1–4** — small, and worth pulling forward if the schedule allows: the
+  prologue's climax is fought on it, so it is the first floor a new player ever looks at.
 - **Phase 5 — bridge/water (5–6) for those four + the full Underworld biome.**
 
 ## Licensing

@@ -165,19 +165,27 @@ end
 -- rather than off the sin table in models/descent.lua -- those are the descent's circles, and two of
 -- them name ground their house has never once been sent to (the Alchemist has no desert quest, the
 -- Undercroft no underworld one). The descent keeps its mapping; this is the campaign's.
+--
+-- THE COLOSSEUM GETTING ITS OWN GROUND RE-DEALT THREE OF THESE, and the re-deal is what the rule above
+-- reads like when it is applied twice. The bowl (data/biomes/colosseum.lua) took nine of that house's
+-- quests off the sand, so the Colosseum forages in it -- which left the desert with nobody. The
+-- Undercroft is the only other house with any desert presence at all (three quests), so it moves there,
+-- and the castle it was holding goes to the Cathedral, whose eight castle quests were always its
+-- heaviest ground and which only ever sat in the forest because the castle was taken. Nobody was moved
+-- to fill a hole who had no business in the hole.
 Request.BIOMES = {
     alchemist = "swamp", -- 4 swamp quests, and the only house with a real swamp presence
     -- The Arcanum's own quests are castle-heaviest, and it is sent to the volcanic waste anyway: the
-    -- Undercroft already works the castle, and a ground with no house foraging it would draw no tab on
+    -- Cathedral now works the castle, and a ground with no house foraging it would draw no tab on
     -- the mornings its quests happen to be elsewhere. Every ground but the underworld owes the player
     -- SOMETHING, or an open window is just a shut one that lies. The Arcanum has two volcanic quests
     -- and the fewest reasons to be underground, so it is the one that moves.
     arcanum = "volcanic",
     bastion = "tundra", -- 6 of its 10 slots, and sloth's own ground
-    cathedral = "forest",
-    colosseum = "desert", -- 8 of its 10, the sand the debut stands on
+    cathedral = "castle", -- 8 of its 10, and the ground it always worked
+    colosseum = "colosseum", -- 9 of its 10: its errand is a card, and a card is fought in the bowl
     hunters_lodge = "forest", -- 8 of its 10
-    undercroft = "castle",
+    undercroft = "desert", -- 3, the most of anyone now the Colosseum has gone indoors
 }
 
 -- A house's country. Falls back to the forest for a house with no row, so adding a vendor cannot

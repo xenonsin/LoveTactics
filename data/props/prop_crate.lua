@@ -20,6 +20,7 @@ return {
     sightCost = 1, -- soft cover: it lowers a line of sight without blocking it outright
     tags = { "prop", "flammable" },
     -- Which biomes stack their supplies in the open: a forest camp and a castle's yard, never the
-    -- underworld -- nothing down there ships anything.
-    biomes = { forest = 4, castle = 3, desert = 3, tundra = 3, swamp = 1 },
+    -- underworld -- nothing down there ships anything. The colosseum is the heaviest of the lot,
+    -- because a crate is what the house sets out for the card and the crowd came to watch it used.
+    biomes = { colosseum = 5, forest = 4, castle = 3, desert = 3, tundra = 3, swamp = 1 },
 }

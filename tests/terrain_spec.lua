@@ -67,7 +67,7 @@ return {
                     name .. ": the tileset disagrees with the terrain table")
             end
             -- ...and a biome may restyle a tile but never re-rule it.
-            for _, id in ipairs({ "forest", "castle", "tundra", "swamp", "desert", "volcanic", "underworld" }) do
+            for _, id in ipairs({ "forest", "castle", "tundra", "swamp", "desert", "volcanic", "underworld", "colosseum" }) do
                 local def = Tileset.get(id)
                 for name, base in pairs(Terrain.TYPES) do
                     assert(def.tiles[name], id .. " tileset is missing " .. name)
@@ -105,7 +105,7 @@ return {
         fn = function()
             -- A tile the table has never heard of reads as solid (Terrain.get's fallback), which on a
             -- generated map would silently wall off a trail. Catch it here instead.
-            for _, biome in ipairs({ "forest", "castle", "tundra", "swamp", "desert", "volcanic", "underworld" }) do
+            for _, biome in ipairs({ "forest", "castle", "tundra", "swamp", "desert", "volcanic", "underworld", "colosseum" }) do
                 local grid = bareBoard(biome, 555)
                 for y = 1, grid.rows do
                     for x = 1, grid.cols do
@@ -128,11 +128,17 @@ return {
             -- "what should it be" -- it is "which pass started laying different ground, and was that
             -- meant". Content is switched off (no encounters, caches or keys) so nothing here depends on
             -- the encounter pool's unspecified order.
+            --
+            -- MOVED ONCE, DELIBERATELY: Overworld:weatherEdges now eats a wandering coastline out of the
+            -- rectangle each carve stops against, and generate() hands the carve a rectangle two tiles
+            -- larger on every side to pay for it -- so these boards are both bigger and more chewed than
+            -- they were, by different amounts on each ground. The castle is untouched to the digit
+            -- (Rooms.ownsEdge), which is the check that the pass really is scoped to the edge.
             local EXPECTED = {
-                forest = { 172012, 359 }, -- glades: the maze, opened (models/layouts/glades.lua)
+                forest = { 249403, 389 }, -- glades: the maze, opened (models/layouts/glades.lua)
                 castle = { 212536, 401 }, -- rooms: chambers and halls (models/layouts/rooms.lua)
-                tundra = { 329877, 598 }, -- floes: open flats quartered by meltwater, every lobe forded
-                desert = { 322034, 577 }, -- open: a plain with ridges and one ruin
+                tundra = { 349875, 568 }, -- floes: open flats quartered by meltwater, every lobe forded
+                desert = { 413779, 624 }, -- open: a plain with ridges and one ruin
             }
             local bad = {}
             for biome, want in pairs(EXPECTED) do

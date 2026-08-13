@@ -41,7 +41,7 @@ characters share a token** (the sin generals were one picture between the seven 
 | `portraits/` | 0 | 17 | 470px tall standing figure | **commission** |
 | `vendors/` | 0 | 8 | shop panel | **commission** |
 | `traps/` | 6 | 6 | 64px tile | game-icons.net ✅ |
-| `overworld/` | 0 | 8 | one tilesheet per biome, see [Terrain](#terrain) | **commission** — [brief](commission-terrain-tileset.md) |
+| `overworld/` | 0 | 9 | one tilesheet per biome, see [Terrain](#terrain) | **commission** — [brief](commission-terrain-tileset.md) |
 | `materials/` | 3 | 3 | 64px cell | game-icons.net ✅ |
 | `props/` | 2 | 2 | 64px tile | game-icons.net ✅ |
 | `hub/` | 0 | 1 | 1280×720 | **commission** |
@@ -232,8 +232,10 @@ map's "water" is the flow. **Every arena type must have an entry**: the draw sit
 `path`, so a missing one never crashes, it just paints that floor as the trail. Pinned by
 `tests/biome_spec.lua`.
 
-7 biomes (`forest`, `castle`, `underworld`, `desert`, `tundra`, `volcanic`, `swamp`) × 6 types
-(`forest`, `grass`, `rock`, `path`, `bridge`, `water`) = **42 tiles**. The board only ever shows 4
+8 biomes (`forest`, `castle`, `underworld`, `desert`, `tundra`, `volcanic`, `swamp`, `colosseum`) × 6
+types (`forest`, `grass`, `rock`, `path`, `bridge`, `water`) = **48 tiles**. The colosseum is the one
+that is a building rather than a country, and the cheapest of the eight to draw: two materials, raked
+sand and grey stone, and no landform of any kind. The board only ever shows 4
 of the 6 — `bridge` and `water` are overworld-only — but the map needs all six. Full per-biome
 breakdown and the art direction for each is in
 [commission-terrain-tileset.md](commission-terrain-tileset.md).
