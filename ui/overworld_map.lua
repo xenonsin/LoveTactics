@@ -165,8 +165,9 @@ end
 -- always been handed a cell -- needs no fork. The proxy exists for one field: marking the stop cleared
 -- has to clear the PATROL, because the patrol is what carries the fight now and the tile it happens to
 -- be standing on carries nothing. Without that a beaten patrol would come back the moment it moved.
-local function patrolCell(p)
-    return setmetatable({ x = p.x, y = p.y, encounter = p.encounter, patrol = p }, {
+local function patrolCell(p, from, foeFrom)
+    return setmetatable({ x = p.x, y = p.y, encounter = p.encounter, patrol = p,
+                          from = from, foeFrom = foeFrom }, {
         __newindex = function(t, k, v)
             if k == "cleared" and v then p.cleared = true end
             rawset(t, k, v)
@@ -174,12 +175,19 @@ local function patrolCell(p)
     })
 end
 
--- CONTACT, from either side. Opens the fight and reports that movement must stop.
-function OverworldMap:engage(p)
+-- CONTACT, from either side.
+--
+-- `from` is the tile the COMPANY was standing on when it happened, which decides which edge of the
+-- locked board is theirs (Arena.fromGrid). Walk into something head-on and you meet it head-on; let it
+-- catch you while you are deep in a spur and it is between you and the way out. Same composition, same
+-- tier, completely different problem -- and decided by how you handled the approach rather than by a
+-- roll. That is what makes a moving fight worth having at all.
+function OverworldMap:engage(p, from, foeFrom)
     self.heldDir = nil
     self.autoPath = nil
-    if self.onApproach then self.onApproach(patrolCell(p)) end
-    if self.onEncounter then self.onEncounter(patrolCell(p)) end
+    local cell = patrolCell(p, from or { x = self.px, y = self.py }, foeFrom)
+    if self.onApproach then self.onApproach(cell) end
+    if self.onEncounter then self.onEncounter(cell) end
     return true
 end
 
@@ -190,7 +198,8 @@ function OverworldMap:step(dx, dy)
     -- Walking INTO something. A swap is caught here too: the tile it stands on is the tile it is about
     -- to leave, and stepping onto it is contact either way (P4).
     local blocking = Patrol.at(self.grid, nx, ny)
-    if blocking then return not self:engage(blocking) end
+    -- Walking into it: the company is still on the tile it is stepping FROM, which is its side.
+    if blocking then return not self:engage(blocking, { x = self.px, y = self.py }) end
     -- About to walk into an un-engaged stop: hand the caller this moment FIRST, before the token moves,
     -- the fog lifts, or :arrive fires anything. states/game.lua autosaves here, so a run saved on the
     -- brink of a fight resumes standing one tile shy of it -- in the overworld, free to open the Loadout
@@ -215,7 +224,13 @@ function OverworldMap:step(dx, dy)
     -- Ticked AFTER arriving, so a stop you walked onto opens before anything walks into you: meeting two
     -- fights on one step is a state the encounter panel has no way to show.
     local caught = Patrol.tick(self.grid, { x = self.px, y = self.py })
-    if caught then return not self:engage(caught) end
+    -- It walked into US. The company stands where it stands, and the patrol is arriving from its own
+    -- tile -- so the side it touched from is the side it deploys on.
+    if caught then
+        return not self:engage(caught,
+            (self.slidePrevX and { x = self.slidePrevX, y = self.slidePrevY }) or { x = self.px, y = self.py },
+            { x = caught.prevX or caught.x, y = caught.prevY or caught.y })
+    end
     return true
 end
 

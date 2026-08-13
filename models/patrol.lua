@@ -112,6 +112,10 @@ function Patrol.tick(grid, party, onContact)
                 local nx, ny = Patrol.nextTile(grid, p, party)
                 -- Contact from its side. The party stepping onto IT is handled at the walking seam,
                 -- which is the same event told from the other end.
+                -- Remember where it came FROM before it moves. That tile is the side it deploys on when
+                -- it catches the party (P10, Arena.fromGrid): caught from behind, it stands between the
+                -- company and the way out.
+                p.prevX, p.prevY = p.x, p.y
                 if nx == party.x and ny == party.y then
                     if onContact then onContact(p) end
                     return p

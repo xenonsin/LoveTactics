@@ -998,8 +998,9 @@ function game:openEncounter(cell)
             -- Arena.fromGrid; `ground` above is on its way out with the profiles it feeds (U6).
             grid = game.grid,
             at = { x = cell.x, y = cell.y },
-            from = game.map and game.map.slidePrevX
-                and { x = game.map.slidePrevX, y = game.map.slidePrevY } or nil,
+            from = cell.from or (game.map and game.map.slidePrevX
+                and { x = game.map.slidePrevX, y = game.map.slidePrevY }) or nil,
+            foeFrom = cell.foeFrom,
             quest = game.quest,
             -- The objective's own scene, played over the board with the general standing on it
             -- (states/battle.lua's openingConversation). This is the ONLY seam an antagonist can
@@ -1315,8 +1316,9 @@ function game:openEncounter(cell)
                 -- Arena.fromGrid; `ground` above is on its way out with the profiles it feeds (U6).
                 grid = game.grid,
                 at = { x = cell.x, y = cell.y },
-                from = game.map and game.map.slidePrevX
-                    and { x = game.map.slidePrevX, y = game.map.slidePrevY } or nil,
+                from = cell.from or (game.map and game.map.slidePrevX
+                    and { x = game.map.slidePrevX, y = game.map.slidePrevY }) or nil,
+                foeFrom = cell.foeFrom,
                 quest = game.quest,
                 day = game.day,
                 -- Who is still standing when the last door opens; read only by the finale's

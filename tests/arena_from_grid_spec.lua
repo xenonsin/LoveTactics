@@ -126,6 +126,53 @@ return {
         end,
     },
     {
+        name = "caught from behind, the enemy is between you and the way out",
+        fn = function()
+            -- P10, and the reason the patrol layer is tactical rather than decorative. A fight the
+            -- company WALKED INTO opens as two lines facing each other; one that caught them opens with
+            -- the enemy on the side it actually came from -- which, if you were deep in a spur walking
+            -- back out, is the side you were walking toward.
+            local grid = board(21)
+            local at = someTrail(grid)
+
+            -- Walked into, head-on: the company came from below, so the enemy is above.
+            local head = Arena.fromGrid(grid, {
+                x = at.x, y = at.y, from = { x = at.x, y = at.y + 1 },
+                party = 4, enemies = 3,
+            })
+            assert(head.box.entry == "bottom", "the company should hold the edge it walked in from")
+
+            -- Caught from behind: the company was still walking up (from below), and the patrol arrived
+            -- from below too -- so the enemy takes the company's own side rather than the far one.
+            local ambush = Arena.fromGrid(grid, {
+                x = at.x, y = at.y, from = { x = at.x, y = at.y + 1 },
+                foeFrom = { x = at.x, y = at.y + 1 },
+                party = 4, enemies = 3,
+            })
+            -- Same edge for both is the one case that cannot be honoured -- two lines would open the
+            -- fight standing on each other -- so it falls back to opposite rather than overlapping.
+            assert(ambush.box.entry == "bottom", "the company's own side does not move")
+            assert(#ambush.enemySpawns > 0, "an ambush still fields its enemies")
+
+            -- Caught from the flank: the enemy takes that flank, not the far edge.
+            local flank = Arena.fromGrid(grid, {
+                x = at.x, y = at.y, from = { x = at.x, y = at.y + 1 },
+                foeFrom = { x = at.x - 1, y = at.y },
+                party = 4, enemies = 3,
+            })
+            local function meanX(list)
+                local s = 0
+                for _, u in ipairs(list) do s = s + u.x end
+                return s / math.max(1, #list)
+            end
+            if #flank.enemySpawns > 0 and #head.enemySpawns > 0 then
+                assert(meanX(flank.enemySpawns) < meanX(head.enemySpawns) + 0.001
+                    or flank.box.entry ~= head.box.entry,
+                    "an enemy arriving from the left should come in on the left")
+            end
+        end,
+    },
+    {
         name = "nobody is ever seated inside a wall",
         fn = function()
             for seed = 1, 8 do

@@ -50,6 +50,7 @@ function EncounterBattle.spec(opts, partyIds, seed)
     spec.grid = opts.grid
     spec.at = opts.at
     spec.from = opts.from
+    spec.foeFrom = opts.foeFrom -- the tile a patrol arrived from, when one caught the company (P10)
     -- A marching formation, as a list of {col,row} slots parallel to partyIds, so Arena.build's bindUnits
     -- seats each member on their chosen tile. DRAFT MODE only: it keeps a 4x2 grid in its shop UI
     -- (models/draft_run.lua) and hands it over pre-resolved, because its un-merged duplicate ids would

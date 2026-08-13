@@ -642,7 +642,23 @@ function Arena.fromGrid(grid, opts)
 
     local occupied = {}
     local entry = entryEdge({ x = opts.x, y = opts.y }, opts.from)
+
+    -- WHICH SIDE THE ENEMY COMES IN ON. Opposite the company by default, which is what a fight the
+    -- player walked into looks like: two lines facing each other.
+    --
+    -- `foeFrom` overrides it with the tile the enemy actually arrived from, and that is the whole payoff
+    -- of the patrol layer (P10). Let something catch you while you are deep in a spur and it comes in on
+    -- the side you were walking back toward -- between the company and the way out. Same composition, at
+    -- the same tier, as a completely different problem, decided by how the approach was handled rather
+    -- than by a roll.
+    --
+    -- Falls back to opposite when the two resolve to the same edge, or the two lines would open the
+    -- fight standing on each other.
     local far = oppositeEdge(entry)
+    if opts.foeFrom then
+        local side = entryEdge({ x = opts.x, y = opts.y }, opts.foeFrom)
+        if side ~= entry then far = side end
+    end
 
     -- The party takes the edge it walked in from; whatever it met takes the far side. When patrols land,
     -- the far side becomes the side the patrol touched from -- walk into something head-on and you meet
@@ -1064,7 +1080,7 @@ function Arena.build(ctx, spec)
     local layout
     if spec.grid and spec.at then
         layout = Arena.fromGrid(spec.grid, {
-            x = spec.at.x, y = spec.at.y, from = spec.from,
+            x = spec.at.x, y = spec.at.y, from = spec.from, foeFrom = spec.foeFrom,
             party = #partyIds + #allyIds, enemies = #enemyIds,
             biome = spec.biome,
         })
