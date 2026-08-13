@@ -130,7 +130,7 @@ return {
             -- the encounter pool's unspecified order.
             local EXPECTED = {
                 forest = { 172012, 359 }, -- glades: the maze, opened (models/layouts/glades.lua)
-                castle = { 169722, 313 },
+                castle = { 212536, 401 }, -- rooms: chambers and halls (models/layouts/rooms.lua)
                 tundra = { 110993, 199 },
                 desert = { 66031, 134 },
             }

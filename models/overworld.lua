@@ -92,10 +92,15 @@ local DIM_MAX_COLS, DIM_MAX_ROWS = 37, 25
 --
 -- `caches` counts toward the content the same way keys do: a cache is a stop the player walks to, so
 -- leaving it out of this sum would make maps DENSER rather than larger and quietly undo the sizing.
-local BASELINE_SPACING = 4
-local function deriveDims(encounters, keyCount, cacheCount, spacing)
+-- SIZED ON DENSITY, NOT ON SPACING. The reasoning above is right and its old proxy was wrong: what the
+-- rule wants to know is how much of the rectangle ends up trail, and `spacing` is only a lattice's way
+-- of saying that. A cave or an open plain has no spacing to report, and a board of rooms packs its floor
+-- quite differently from a maze at any spacing. So a layout declares its own density and the lattice
+-- ones answer 1/spacing -- arithmetically the old rule exactly, so no maze board moves by a tile.
+local BASELINE_DENSITY = 1 / 4 -- the forest's, so it is the ground everything else is measured against
+local function deriveDims(encounters, keyCount, cacheCount, density)
     local content = (encounters or 0) + (keyCount or 0) + (cacheCount or 0)
-    local tightness = math.sqrt((spacing or BASELINE_SPACING) / BASELINE_SPACING)
+    local tightness = math.sqrt(BASELINE_DENSITY / math.max(0.01, density or BASELINE_DENSITY))
     -- The coefficient rose with the cap, or the span would never reach it and every board would sit at
     -- the old size wearing a larger ceiling.
     local span = math.floor(6.5 * math.sqrt(content) * tightness) -- ~13 at content=4 (forest)
@@ -148,9 +153,18 @@ function Overworld.generate(params)
     -- torch still widens whatever this is -- states/game.lua maxes the two.
     self.visionRadius = params.visionRadius or 3
 
+    -- WHICH CARVE, resolved here rather than at the carve itself: how much of a rectangle a layout turns
+    -- into trail is the thing the sizing rule scales on, so the layout has to be known before the
+    -- rectangle is. An unnamed or unknown biome falls back to the maze, so a half-written blueprint
+    -- still produces the board the game has always had (models/layout.lua).
+    self.braidRate = params.braid or Overworld.BRAID
+    self.layoutId = params.layout or biomeDef.layout or "maze"
+    local layout = Layout.get(self.layoutId)
+
     -- Play area: honour explicit cols/rows, otherwise scale with the encounters
     -- (and keys) so the map never sprawls into empty wandering. See deriveDims.
-    local dCols, dRows = deriveDims(self.encounterTarget, params.keyCount, self.cacheTarget, self.spacing)
+    local density = layout.density and layout.density(self) or nil
+    local dCols, dRows = deriveDims(self.encounterTarget, params.keyCount, self.cacheTarget, density)
     local playCols = params.cols or dCols
     local playRows = params.rows or dRows
     self.cols = playCols + 2 * self.margin
@@ -170,12 +184,7 @@ function Overworld.generate(params)
         end
     end
 
-    -- WHICH CARVE. The biome names a layout and the layout owns this pass alone; everything below it
-    -- works on whatever walkable graph comes out (models/layout.lua). An unnamed or unknown biome falls
-    -- back to the maze, so a half-written blueprint still produces the board the game has always had.
-    self.braidRate = params.braid or Overworld.BRAID
-    self.layoutId = params.layout or biomeDef.layout or "maze"
-    local layout = Layout.get(self.layoutId)
+    -- The carve itself. Everything below it works on whatever walkable graph comes out.
     layout.carve(self)
 
     local riverSpec = params.riverCount
@@ -847,6 +856,12 @@ end
 -- of the board. The loose remainder is what keeps a find on the road feeling like a find.
 local GUARDED_BOON_SHARE = 0.8
 
+-- How far back from a boon a guard may stand and still read as guarding it. Generous enough to cross a
+-- chamber, because on a board of rooms the gate is the DOOR and a cache in the far corner of a hall is
+-- ten tiles from it -- and you can see the door from there, which is what makes it an offer. Short of a
+-- room-crossing it stops being one: a cut vertex twenty tiles back is just a fight somewhere else.
+local GUARD_REACH = 16
+
 -- What can be guarded: the FINDS, never the services. A shop behind a fight is friction rather than
 -- tension, and a rest is the pressure valve the attrition model needs -- gating the one stop that gives
 -- resources back would compound exactly the wrong way. A `cache` is a tile property, not an encounter,
@@ -898,7 +913,7 @@ function Overworld:guardBoons(params)
     local spineDist = self:spineDistances()
     -- Depth from the start, on the same scale placeEncounters seated by and assignEncounterTiers will
     -- report with, so all three passes agree about where the deep half of the road begins.
-    local startDist = self:bfsDistances(self:startCell())
+    local startDist, startParent = self:bfsDistances(self:startCell())
     local farthest = 1
     for _, d in pairs(startDist) do if d > farthest then farthest = d end end
 
@@ -1004,7 +1019,24 @@ function Overworld:guardBoons(params)
                 end
             end
         end
-        return best
+        if best then return best end
+
+        -- ON A BOARD OF ROOMS THE GATE IS THE DOOR, and a door is rarely adjacent to what it protects.
+        -- Adjacency was only ever a legibility preference -- the original note said as much, "any cut
+        -- vertex on the corridor would do" -- and it silently assumed every boon sits at the end of a
+        -- 1-wide spur. It does on a maze. It does not in a chamber: a cache in the middle of a hall has
+        -- four open neighbours and none of them gates anything, so the castle's first measured board
+        -- guarded 1.6% of its boons while offering a doorway for every single one.
+        --
+        -- So walk back toward the start and take the FIRST tile that genuinely gates the boon. Nearest
+        -- first, so the guard still stands as close to what it protects as the geometry allows.
+        local steps, cur = 0, startParent[cellKey(boon)]
+        while cur and steps < GUARD_REACH do
+            if seatable(cur) and not cur.guards and not reachableWithout(boon, cur) then return cur end
+            cur = startParent[cellKey(cur)]
+            steps = steps + 1
+        end
+        return nil
     end
 
     local target = math.floor(#boons * GUARDED_BOON_SHARE + 0.5)
@@ -1348,13 +1380,30 @@ function Overworld:placeEncounters(params)
     for _, p in ipairs(placed) do if p.encounter.kind == "elite" then elitePlaced = elitePlaced + 1 end end
     -- Depth is normalised against the far corner, the same denominator assignEncounterTiers uses, so
     -- "the deep half" means the same thing to the seating rule and to the pips that report it.
-    local startDist = self:bfsDistances(self:startCell())
+    local startDist, startParent = self:bfsDistances(self:startCell())
     local farthest = 1
     for _, d in pairs(startDist) do if d > farthest then farthest = d end end
 
     -- Built once for the whole fill: every candidate asks whether there is room to fight here, and the
     -- integral image makes each answer a handful of lookups instead of a 64-tile count.
     local boxSums = self:walkableSums()
+
+    -- ...and whether this board has ANY ground worth fighting on. A DEMOTION THAT EMPTIES THE BOARD IS
+    -- WORSE THAN A THIN FIGHT: on a ground whose carve offers nothing above the floor, refusing every
+    -- seat does not produce careful placement, it produces a board with no fights on it at all. That is
+    -- not hypothetical -- it is what the desert and the tundra did the first time this rule ran, and the
+    -- report read `seat 0.0` across both rows before anyone had to play one.
+    --
+    -- So the floor governs CHOICE, and only where there is a choice to make. A ground that cannot clear
+    -- it is a layout that has not been written yet, and it says so in the report's `under` column rather
+    -- than by quietly serving an empty run.
+    local anyFightable = false
+    for _, c in ipairs(cands) do
+        if select(3, self:bestBox(c.x, c.y, boxSums)) >= Overworld.BOX_OK then
+            anyFightable = true
+            break
+        end
+    end
 
     for i = next_, #cands do
         if #placed >= target then break end
@@ -1376,7 +1425,8 @@ function Overworld:placeEncounters(params)
             -- Corridor contact is still perfectly legal: a patrol that catches the party mid-hall gets
             -- exactly that fight, and it should. This rule only governs what the GENERATOR chooses to
             -- put somewhere, which is a different question from what the player walks into.
-            local thin = select(3, self:bestBox(c.x, c.y, boxSums)) < Overworld.BOX_OK
+            local thin = anyFightable
+                and select(3, self:bestBox(c.x, c.y, boxSums)) < Overworld.BOX_OK
             local onSpine = self.spineKeys and not params.ascent and self.spineKeys[cellKey(c)]
 
             -- LOOK FOR ROOM BEFORE GIVING UP THE FIGHT. Demoting outright was tried and it bought

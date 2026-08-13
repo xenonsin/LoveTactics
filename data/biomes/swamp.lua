@@ -13,6 +13,7 @@
 return {
     name = "Swamp",
     tileset = "swamp", -- data/tilesets/swamp.lua (art for this biome)
+    layout = "drowned", -- the forest carve, a third of it under shallows (models/layouts/drowned.lua)
     spacing = 4, -- loose, like the forest it drowned
     rivers = { min = 2, max = 4 }, -- the wettest surface biome; water is the default, not a feature
     hazard = { id = "hazard_grasping_hollow", min = 1, max = 2 },

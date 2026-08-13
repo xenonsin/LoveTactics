@@ -3,6 +3,7 @@
 return {
     name = "Castle",
     tileset = "castle", -- data/tilesets/castle.lua (art for this biome)
-    spacing = 2, -- 1-wide corridors, 1-tile-thick walls (a classic tight maze)
+    layout = "rooms", -- chambers and halls, cut by recursive splits (models/layouts/rooms.lua)
+    spacing = 2, -- kept for the river band; the carve no longer reads it
     rivers = 0,  -- no rivers indoors
 }
