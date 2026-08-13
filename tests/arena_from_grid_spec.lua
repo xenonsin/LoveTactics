@@ -1,0 +1,163 @@
+-- The board carved out of the map (Arena.fromGrid). A fight is taken on the tiles the company walked
+-- over, so these pin the three claims that makes: the ground is the SAME ground, the window is the one
+-- the lock would close around, and the side you deploy on is the side you arrived from.
+
+local Arena = require("models.arena")
+local Overworld = require("models.overworld")
+local Terrain = require("models.terrain")
+
+local function board(seed)
+    return Overworld.generate({
+        biome = "forest", seed = seed or 4242,
+        encounterCount = 6, keyCount = 1,
+        objective = { name = "Boss" },
+        houseMaterial = "material_iron",
+    })
+end
+
+-- A walkable tile somewhere in the middle of the board, to start a fight on.
+local function someTrail(grid)
+    local best
+    for y = 1, grid.rows do
+        for x = 1, grid.cols do
+            if grid:typeWalkable(grid.cells[y][x].tile) then
+                local d = math.abs(x - grid.cols / 2) + math.abs(y - grid.rows / 2)
+                if not best or d < best.d then best = { x = x, y = y, d = d } end
+            end
+        end
+    end
+    return best
+end
+
+return {
+    {
+        name = "one map: the arena box is exactly the battle board",
+        fn = function()
+            -- The whole design rests on these two numbers being the same number. If either moves, a
+            -- locked board stops being a window on the map and starts being a crop of one.
+            assert(Overworld.BOX == Arena.COLS, string.format(
+                "Overworld.BOX (%d) must equal Arena.COLS (%d)", Overworld.BOX, Arena.COLS))
+            assert(Overworld.BOX == Arena.ROWS, string.format(
+                "Overworld.BOX (%d) must equal Arena.ROWS (%d)", Overworld.BOX, Arena.ROWS))
+        end,
+    },
+    {
+        name = "the ground you fight on is the ground you walked on, tile for tile",
+        fn = function()
+            local grid = board()
+            local at = someTrail(grid)
+            local layout = Arena.fromGrid(grid, { x = at.x, y = at.y, party = 4, enemies = 3 })
+            local ox, oy = layout.box.x, layout.box.y
+            for j = 1, layout.rows do
+                for i = 1, layout.cols do
+                    local c = grid:get(ox + i - 1, oy + j - 1)
+                    local want = c and c.tile or "obstacle"
+                    assert(layout.tiles[j][i] == want, string.format(
+                        "board tile (%d,%d) is %s, map says %s", i, j, layout.tiles[j][i], want))
+                end
+            end
+            -- ...and every one of them is a terrain the battle layer knows how to stand on or not.
+            for j = 1, layout.rows do
+                for i = 1, layout.cols do
+                    assert(Terrain.TYPES[layout.tiles[j][i]],
+                        "carved an unknown terrain: " .. tostring(layout.tiles[j][i]))
+                end
+            end
+        end,
+    },
+    {
+        name = "the window contains the tile the fight began on",
+        fn = function()
+            local grid = board(77)
+            for y = 1, grid.rows do
+                for x = 1, grid.cols do
+                    if grid:typeWalkable(grid.cells[y][x].tile) then
+                        local l = Arena.fromGrid(grid, { x = x, y = y, party = 4, enemies = 3 })
+                        assert(x >= l.box.x and x < l.box.x + l.cols
+                            and y >= l.box.y and y < l.box.y + l.rows,
+                            string.format("fight at (%d,%d) fell outside its own board", x, y))
+                    end
+                end
+            end
+        end,
+    },
+    {
+        name = "you deploy on the edge you arrived from, and meet what you met on the far one",
+        fn = function()
+            local grid = board(31)
+            local at = someTrail(grid)
+            -- Four approaches onto the same tile. `from` is the tile stepped off, so the edge nearest it
+            -- is the company's -- which is the whole of U5: a rolled board has no outside and therefore
+            -- no "your side", and a carved one does.
+            local cases = {
+                { from = { x = at.x, y = at.y + 6 }, side = "bottom" },
+                { from = { x = at.x, y = at.y - 6 }, side = "top" },
+                { from = { x = at.x - 6, y = at.y }, side = "left" },
+                { from = { x = at.x + 6, y = at.y }, side = "right" },
+            }
+            local opposite = { bottom = "top", top = "bottom", left = "right", right = "left" }
+            for _, case in ipairs(cases) do
+                local l = Arena.fromGrid(grid, {
+                    x = at.x, y = at.y, from = case.from, party = 4, enemies = 3,
+                })
+                assert(l.box.entry == case.side, string.format(
+                    "approached from the %s, deployed on the %s", case.side, tostring(l.box.entry)))
+
+                -- The party's own spawns sit on that edge's half of the board, and the enemy's on the
+                -- other. Checked as a comparison of means rather than tile by tile, because a cramped
+                -- board is allowed to spill (a fight with nowhere to stand still has to be fielded).
+                local function meanAlong(list)
+                    local sum = 0
+                    for _, s in ipairs(list) do
+                        sum = sum + ((case.side == "left" or case.side == "right") and s.x or s.y)
+                    end
+                    return sum / math.max(1, #list)
+                end
+                local ours, theirs = meanAlong(l.partySpawns), meanAlong(l.enemySpawns)
+                if #l.partySpawns > 0 and #l.enemySpawns > 0 then
+                    if case.side == "bottom" or case.side == "right" then
+                        assert(ours > theirs, case.side .. ": the company should be the far side of the enemy")
+                    else
+                        assert(ours < theirs, case.side .. ": the company should be the near side of the enemy")
+                    end
+                end
+                assert(opposite[l.box.entry], "every entry edge has an opposite")
+            end
+        end,
+    },
+    {
+        name = "nobody is ever seated inside a wall",
+        fn = function()
+            for seed = 1, 8 do
+                local grid = board(seed * 13)
+                local at = someTrail(grid)
+                local l = Arena.fromGrid(grid, { x = at.x, y = at.y, party = 4, enemies = 4 })
+                for _, list in ipairs({ l.partySpawns, l.enemySpawns, l.deployZone }) do
+                    for _, s in ipairs(list) do
+                        local t = l.tiles[s.y][s.x]
+                        assert(Terrain.walkable(t), string.format(
+                            "seed %d: a body was seated on %s at (%d,%d)", seed, t, s.x, s.y))
+                    end
+                end
+                assert(#l.deployZone > 0, "seed " .. seed .. ": nowhere to deploy")
+            end
+        end,
+    },
+    {
+        name = "the enemy cap reads the board, and only when there is a board",
+        fn = function()
+            -- No map under the fight: exactly the cap it has always been. Every boardless caller --
+            -- draft, duel, the menu's mock, the debug harness -- takes this path.
+            local base = Arena.enemyCap({})
+            assert(Arena.enemyCap({}, nil) == base, "a boardless fight must keep its old cap")
+            -- A hall fields what it always did; a defile fields fewer.
+            assert(Arena.enemyCap({}, 64) == base, "a full board should not lower the cap")
+            local thin = Arena.enemyCap({}, 24)
+            assert(thin < base, "a cramped board should field fewer bodies, got " .. thin)
+            assert(thin >= 2, "an encounter must never resolve to a single body, got " .. thin)
+            -- ...and it can only ever lower it. A big box does not license a bigger fight than the
+            -- quest's own difficulty allows.
+            assert(Arena.enemyCap({}, 999) <= base, "the box may cap a fight, never inflate one")
+        end,
+    },
+}

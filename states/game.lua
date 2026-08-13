@@ -800,6 +800,13 @@ function game:cellMuster(cell)
             day = game.day,
             quest = game.quest,
             floorLevel = game.quest and game.quest.floorLevel,
+            -- The ground this marker's fight would be taken on, so the pips price the fight the player
+            -- will actually meet: the same 8x8 window Arena.build will cut, and the same enemy cap that
+            -- window imposes. A marker that priced a nine-body fight the player then meets as four is
+            -- worse than no marker at all -- which is the argument Arena.enemyCap already makes, and it
+            -- now has a second thing to agree about.
+            grid = game.grid,
+            at = { x = cell.x, y = cell.y },
         }) or false
         game.encounterMuster[cell] = cached
     end
@@ -981,6 +988,13 @@ function game:openEncounter(cell)
             -- ranged exchange (Overworld:groundAt -> Arena.GROUND_PROFILES). Read off the cell rather than
             -- the quest, because it is the tile the player chose to walk onto that decides it.
             ground = game.grid and game.grid.groundAt and game.grid:groundAt(cell.x, cell.y) or nil,
+            -- THE BOARD IS THE MAP: the grid, the tile the fight began on, and the tile the company
+            -- stepped off it from -- which is the edge of the locked box that is theirs. See
+            -- Arena.fromGrid; `ground` above is on its way out with the profiles it feeds (U6).
+            grid = game.grid,
+            at = { x = cell.x, y = cell.y },
+            from = game.map and game.map.slidePrevX
+                and { x = game.map.slidePrevX, y = game.map.slidePrevY } or nil,
             quest = game.quest,
             -- The objective's own scene, played over the board with the general standing on it
             -- (states/battle.lua's openingConversation). This is the ONLY seam an antagonist can
@@ -1291,6 +1305,13 @@ function game:openEncounter(cell)
                 -- The same ground the played fight would have been laid out on: a walk-off must resolve
                 -- the board the player could have fought, not a different one (see EncounterBattle.spec).
                 ground = game.grid and game.grid.groundAt and game.grid:groundAt(cell.x, cell.y) or nil,
+                -- THE BOARD IS THE MAP: the grid, the tile the fight began on, and the tile the company
+                -- stepped off it from -- which is the edge of the locked box that is theirs. See
+                -- Arena.fromGrid; `ground` above is on its way out with the profiles it feeds (U6).
+                grid = game.grid,
+                at = { x = cell.x, y = cell.y },
+                from = game.map and game.map.slidePrevX
+                    and { x = game.map.slidePrevX, y = game.map.slidePrevY } or nil,
                 quest = game.quest,
                 day = game.day,
                 -- Who is still standing when the last door opens; read only by the finale's

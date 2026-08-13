@@ -123,9 +123,15 @@ function Muster.encounter(def, ctx)
     -- actually open at (Arena.enemyCap). Taken from `def` rather than from `ctx` because the caller
     -- hands this function the blueprint and would otherwise have to remember to copy one field across
     -- -- and a muster that silently rated the wrong tier would mis-colour every marker on the board.
+    -- ...AND AT THE SIZE THE GROUND WILL ALLOW. The cap is a property of the board now, not only of the
+    -- kind: a fight taken in a defile fields fewer bodies than the same encounter in a hall
+    -- (Arena.enemyCap). The marker has to price the fight the player will actually meet, so it reads the
+    -- same box the fight will be cut from -- ctx carries the grid and the tile where the caller has one,
+    -- and where it does not this is nil and the rating is exactly what it always was.
+    local usable = ctx.grid and ctx.at and Arena.boxUsable(ctx.grid, ctx.at.x, ctx.at.y) or nil
     ids = Arena.clampComposition(ids, Arena.enemyCap({
         quest = ctx.quest, encounterKind = def.kind,
-    }))
+    }, usable))
 
     -- The level the fight will ACTUALLY spawn at, which is now a property of the calendar rather than
     -- of the company (models/calendar.lua). It used to be derived from the player's prestige, back when

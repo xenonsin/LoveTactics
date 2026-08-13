@@ -177,15 +177,27 @@ Arena.SKIRMISH_CAP = 4
 Arena.ELITE_CAP = 6
 Arena.CAP_BY_KIND = { combat = Arena.SKIRMISH_CAP, elite = Arena.ELITE_CAP }
 
-function Arena.enemyCap(ctx)
+-- How many tiles of standing room one enemy is worth. The board a fight is now taken on is a window of
+-- the map rather than a fixed rectangle, so a defile and a hall no longer field the same number: this
+-- converts the walkable ground the box actually holds into a ceiling. Floored at 2, because an encounter
+-- that resolves to a single body is not a fight the player can lose, and a board too thin to hold two is
+-- a board the generator was told not to seat a fight on anyway (Overworld.BOX_OK).
+local TILES_PER_ENEMY = 6
+local MIN_CAP_ON_THIN_GROUND = 2
+
+function Arena.enemyCap(ctx, usable)
     -- The kind wins where it has an opinion. Read off ctx rather than off a blueprint so the two
     -- callers that must agree -- the real fight (Arena.build) and the rating the overworld marker is
     -- drawn from (Muster.encounter) -- cannot drift: a marker that priced a nine-body fight the player
     -- then meets as four is worse than no marker at all.
     local byKind = ctx and ctx.encounterKind and Arena.CAP_BY_KIND[ctx.encounterKind]
-    if byKind then return byKind end
     local quest = ctx and ctx.quest
-    return (quest and Arena.ENEMY_CAP[quest.difficulty]) or Arena.DEFAULT_ENEMY_CAP
+    local cap = byKind or (quest and Arena.ENEMY_CAP[quest.difficulty]) or Arena.DEFAULT_ENEMY_CAP
+    -- `usable` is nil for every caller with no map under it, which keeps their cap exactly what it was.
+    if usable then
+        cap = math.min(cap, math.max(MIN_CAP_ON_THIN_GROUND, math.floor(usable / TILES_PER_ENEMY)))
+    end
+    return cap
 end
 
 -- Cut `ids` down to `cap`, keeping the NAMED CAST first: one of every distinct id, in authored order,
@@ -519,6 +531,167 @@ local function deployZoneFor(layout, taken, minTiles)
         if not taken[key(sp.x, sp.y)] then fallback[#fallback + 1] = { x = sp.x, y = sp.y } end
     end
     return #fallback > 0 and fallback or zone
+end
+
+-- ---------------------------------------------------------------------------
+-- The board carved out of the map
+-- ---------------------------------------------------------------------------
+
+-- WHICH SIDE OF THE BOARD IS YOURS. The party deploys on the edge it arrived from, which a rolled board
+-- could never say because a rolled board has no outside.
+--
+-- Read as a DIRECTION -- where the company came FROM, relative to where it met the fight -- and not as a
+-- distance to the box's edges. The distance version was written first and it is subtly wrong: the window
+-- is chosen for the ground it holds, not centred on the contact tile, so it can sit hard against the
+-- approach and leave "the edge you came in by" measuring nearer to some other side. The direction is
+-- unambiguous and is what the player experienced.
+--
+-- The dominant axis wins, so a diagonal approach (which the 4-neighbour grid never actually produces,
+-- but a scripted fight might hand over) still resolves to one side. Ties go to the vertical, which is
+-- the home edge a board has always used.
+local function entryEdge(at, from)
+    if not from then return "bottom" end -- nothing recorded: the board's old home edge
+    local dx, dy = at.x - from.x, at.y - from.y
+    if math.abs(dx) > math.abs(dy) then
+        return dx > 0 and "left" or "right"
+    end
+    if dy ~= 0 then return dy > 0 and "top" or "bottom" end
+    return "bottom"
+end
+
+local function oppositeEdge(e)
+    if e == "top" then return "bottom" end
+    if e == "bottom" then return "top" end
+    if e == "left" then return "right" end
+    return "left"
+end
+
+-- The tiles of a band `depth` deep along one edge, walkable only, ordered from the middle of the band
+-- outwards -- so a short line seats centred, exactly as placeUnits does on a rolled board.
+local function bandTiles(tiles, cols, rows, edge, depth, occupied)
+    local out = {}
+    local function add(x, y)
+        if x < 1 or y < 1 or x > cols or y > rows then return end
+        local p = Arena.TILE_PROPS[tiles[y][x]]
+        if not (p and p.walkable) then return end
+        if occupied and occupied[key(x, y)] then return end
+        out[#out + 1] = { x = x, y = y }
+    end
+    for d = 0, depth - 1 do
+        if edge == "bottom" then
+            for x = 1, cols do add(x, rows - d) end
+        elseif edge == "top" then
+            for x = 1, cols do add(x, 1 + d) end
+        elseif edge == "left" then
+            for y = 1, rows do add(1 + d, y) end
+        else
+            for y = 1, rows do add(cols - d, y) end
+        end
+    end
+    -- Middle-out, so four bodies on a wide band stand together rather than at the corners.
+    local mid = (edge == "left" or edge == "right") and (rows + 1) / 2 or (cols + 1) / 2
+    table.sort(out, function(a, b)
+        local ka = (edge == "left" or edge == "right") and a.y or a.x
+        local kb = (edge == "left" or edge == "right") and b.y or b.x
+        local da, db = math.abs(ka - mid), math.abs(kb - mid)
+        if da ~= db then return da < db end
+        return ka < kb
+    end)
+    return out
+end
+
+-- How much walkable ground the board a fight at (x, y) would lock actually holds, of COLS*ROWS. Read
+-- before the opposition is resolved, because the cap on how many bodies a fight fields has to know how
+-- much floor there is to field them on (Arena.enemyCap).
+function Arena.boxUsable(grid, x, y)
+    if not (grid and grid.bestBox) then return nil end
+    return select(3, grid:bestBox(x, y))
+end
+
+-- THE BOARD IS A WINDOW ON THE MAP. Given the overworld grid and the tile a fight began on, cut the
+-- COLS x ROWS window the lock would close around and hand it back as an ordinary layout -- same shape
+-- Arena.generateLayout returns, so nothing downstream of here learns anything new.
+--
+-- The window is CHOSEN, not centred: of every window containing the contact tile, the one holding the
+-- most walkable ground (Overworld:bestBox). Meet something at the mouth of a clearing and the board
+-- pulls into the clearing; get cornered in a corridor and it stays a corridor, because there was
+-- nothing better within reach.
+--
+-- Tiles carry over VERBATIM. That is the whole point of merging the two terrain tables
+-- (models/terrain.lua): the thicket that walled the trail is the thicket you fight around, the river is
+-- the river, and the biome floor the layout scattered is the floor underfoot. No profile, no scatter,
+-- no resemblance -- the ground you chose to walk onto is the ground you fight on.
+--
+-- The box's edge is the wall, so nothing has to be drawn to make one: outside the window there is no
+-- board. What the ring looks like is the renderer's business.
+function Arena.fromGrid(grid, opts)
+    opts = opts or {}
+    local cols, rows = Arena.COLS, Arena.ROWS
+    local ox, oy = grid:bestBox(opts.x, opts.y)
+
+    local tiles = {}
+    for j = 1, rows do
+        tiles[j] = {}
+        for i = 1, cols do
+            local c = grid:get(ox + i - 1, oy + j - 1)
+            -- Off the map reads as solid rather than as open field: a board that runs off the edge of
+            -- the world should be walled by it, not floored by it.
+            tiles[j][i] = (c and c.tile) or "obstacle"
+        end
+    end
+
+    local occupied = {}
+    local entry = entryEdge({ x = opts.x, y = opts.y }, opts.from)
+    local far = oppositeEdge(entry)
+
+    -- The party takes the edge it walked in from; whatever it met takes the far side. When patrols land,
+    -- the far side becomes the side the patrol touched from -- walk into something head-on and you meet
+    -- it head-on, let it catch you in a spur and it is between you and the way out.
+    local partyBand = bandTiles(tiles, cols, rows, entry, Arena.DEPLOY_DEPTH, occupied)
+    local partySpawns = {}
+    for i = 1, math.min(opts.party or 0, #partyBand) do
+        partySpawns[#partySpawns + 1] = partyBand[i]
+        occupied[key(partyBand[i].x, partyBand[i].y)] = true
+    end
+
+    local enemyBand = bandTiles(tiles, cols, rows, far, Arena.DEPLOY_DEPTH, occupied)
+    local enemySpawns = {}
+    for i = 1, math.min(opts.enemies or 0, #enemyBand) do
+        enemySpawns[#enemySpawns + 1] = enemyBand[i]
+        occupied[key(enemyBand[i].x, enemyBand[i].y)] = true
+    end
+
+    -- A cramped board may not have offered enough standing room on either band. Spill onto any walkable
+    -- tile rather than fielding fewer bodies than the fight was priced for -- the same graceful partial
+    -- every placement pass on the map takes.
+    local function spill(list, want)
+        if #list >= want then return end
+        for y = 1, rows do
+            for x = 1, cols do
+                if #list >= want then return end
+                local p = Arena.TILE_PROPS[tiles[y][x]]
+                if p and p.walkable and not occupied[key(x, y)] then
+                    list[#list + 1] = { x = x, y = y }
+                    occupied[key(x, y)] = true
+                end
+            end
+        end
+    end
+    spill(partySpawns, opts.party or 0)
+    spill(enemySpawns, opts.enemies or 0)
+
+    return {
+        cols = cols, rows = rows, tiles = tiles,
+        partySpawns = partySpawns, enemySpawns = enemySpawns,
+        props = {}, hazards = {}, traps = {},
+        biome = opts.biome,
+        -- Authored, so deployZoneFor uses it outright: the eight tiles of the edge you arrived on,
+        -- which is what docs/deployment.md's fixed block becomes once the board has an outside.
+        deployZone = bandTiles(tiles, cols, rows, entry, Arena.DEPLOY_DEPTH, nil),
+        -- Where on the map this board was cut from, so the renderer can put the camera over it and the
+        -- run's save can restore the same eight tiles (docs/overworld.md, C5).
+        box = { x = ox, y = oy, w = cols, h = rows, entry = entry },
+    }
 end
 
 -- A deliberately fresh seed, for a caller that wants a board it has never seen. The one place the
@@ -876,10 +1049,28 @@ function Arena.build(ctx, spec)
     -- The ceiling is applied HERE rather than inside resolveComposition, because that resolver also
     -- serves `allies` one line up -- and an escort is a hand-authored cast (usually one body a
     -- `protect` objective is pointed at), never a prestige formula, so it has nothing to be saved from.
+    -- HOW MUCH FLOOR THERE IS TO FIELD THEM ON, read before the opposition is resolved. A rolled board
+    -- was always the same 64 tiles of mostly-open ground, so a fixed cap was a fair description of it. A
+    -- board carved out of the map might be 55 tiles in a hall or 24 in a defile, and eight bodies in a
+    -- defile is not a hard fight, it is a queue. Nil for every caller without a map (draft, duel, the
+    -- menu's mock), which keeps their cap exactly what it has always been.
+    local usable = spec.grid and spec.at and Arena.boxUsable(spec.grid, spec.at.x, spec.at.y) or nil
     local enemyIds = Arena.clampComposition(
-        Arena.resolveComposition(spec.composition, ctx), Arena.enemyCap(ctx))
+        Arena.resolveComposition(spec.composition, ctx), Arena.enemyCap(ctx, usable))
 
-    local layout = Arena.pickLayout(spec, #partyIds + #allyIds, #enemyIds)
+    -- THE BOARD IS THE MAP, where there is a map. A campaign fight and a descent floor carve their 8x8
+    -- out of the tiles the company walked over; a draft match, a duel, the menu's mock and the debug
+    -- harness have no overworld under them and still roll one (Arena.pickLayout).
+    local layout
+    if spec.grid and spec.at then
+        layout = Arena.fromGrid(spec.grid, {
+            x = spec.at.x, y = spec.at.y, from = spec.from,
+            party = #partyIds + #allyIds, enemies = #enemyIds,
+            biome = spec.biome,
+        })
+    else
+        layout = Arena.pickLayout(spec, #partyIds + #allyIds, #enemyIds)
+    end
 
     -- A curated layout may not have authored enough party spawns for the party *and* its
     -- escort. Dropping the escortee would instantly fail a `protect` objective, so fall
@@ -927,6 +1118,11 @@ function Arena.build(ctx, spec)
         -- ever stand at once -- a nine-strong company must not be what makes an eight-tile block read
         -- as "too cramped". See docs/deployment.md.
         deployZone = deployZoneFor(layout, taken, math.min(math.max(#partyIds, 1), Arena.DEPLOY_MIN)),
+        -- WHERE ON THE MAP THIS BOARD WAS CUT FROM: { x, y, w, h, entry }, or nil for a rolled board
+        -- that was cut from nowhere. The camera needs it to put the fight over the ground it belongs to,
+        -- and a resumed run needs it to lock the same eight tiles it locked before (docs/overworld.md,
+        -- U4 and C5) -- so it has to survive Arena.build rather than stopping at the layout.
+        box = layout.box,
         traps = layout.traps or {}, -- authored traps carried into combat (side defaults to enemy)
         hazards = layout.hazards or {}, -- authored hazards (fire/rain/sanctuary) carried into combat (Combat.new places them)
         props = layout.props or {}, -- scattered/authored props (barrels, crates) carried into combat (Combat.new places them)

@@ -40,6 +40,16 @@ function EncounterBattle.spec(opts, partyIds, seed)
     -- rather than read at either call site, so the walk-off (models/autobattle.lua) fights the same board
     -- the battle state would have built -- which is the whole reason this function exists.
     local spec = { biome = opts.biome, ground = opts.ground, party = partyIds, seed = seed }
+    -- THE BOARD IS THE MAP. `grid` plus the tile the fight began on is all Arena.build needs to cut the
+    -- 8x8 window the lock closes around, and `from` is the tile the company stepped off, which decides
+    -- which edge of that window is theirs (docs/overworld.md, U5). Threaded through the SPEC rather than
+    -- read at either call site, for the same reason `ground` was: the walk-off (models/autobattle.lua)
+    -- has to resolve the fight the battle state would have shown, on the same tiles, or the two paths
+    -- are two economies. Absent for every caller with no overworld -- draft, duel, the menu's mock --
+    -- and those keep rolling a board.
+    spec.grid = opts.grid
+    spec.at = opts.at
+    spec.from = opts.from
     -- A marching formation, as a list of {col,row} slots parallel to partyIds, so Arena.build's bindUnits
     -- seats each member on their chosen tile. DRAFT MODE only: it keeps a 4x2 grid in its shop UI
     -- (models/draft_run.lua) and hands it over pre-resolved, because its un-merged duplicate ids would
