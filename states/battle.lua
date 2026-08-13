@@ -4781,7 +4781,12 @@ function battle.enter(self, opts)
     battle.encounterCtx = ctx
     battle.map = BattleMap.new(battle.arena,
         { combat = battle.combat, leftMargin = LEFT_W, rightMargin = PANEL_W,
-          tileSize = BOARD_TILE, topMargin = BOARD_TOP })
+          tileSize = BOARD_TILE, topMargin = BOARD_TOP,
+          -- THE MAP, LOCKED. A campaign fight is taken on eight tiles of the overworld, so the rest of
+          -- the overworld is still out there -- drawn around the board, dark and stopped, with the
+          -- walls closed on the ring between. Absent for every fight with no map under it (draft,
+          -- duel, the menu's mock), which simply draws the board on its own as it always has.
+          grid = opts.grid, box = battle.arena.box })
     battle.map.fx = battle.fx
     -- The board's point-effect controller (impact bursts, spell blooms, bolts in flight) is shared into
     -- the animation controller, which spawns from it as it plays out each blow. See ui/burst_fx.lua.

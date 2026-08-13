@@ -121,6 +121,11 @@ function BattleMap.new(arena, opts)
         y = (first and first.y) or math.floor(arena.rows / 2),
     }
 
+    -- The map this board was cut out of, and where in it (see Arena.fromGrid). Both nil for a rolled
+    -- board, which was cut from nowhere and draws alone.
+    self.grid = opts.grid
+    self.box = opts.box
+
     self.tilesetDef = Tileset.get(Biome.get(arena.biome).tileset)
     self:buildTiles()
     -- The shader-driven ground: hazards, the auras they hold open, the statuses units carry, and the
@@ -295,7 +300,76 @@ end
 -- Draw
 -- ---------------------------------------------------------------------------
 
+-- How dark the rest of the world goes while a fight is on. Heavy on purpose: the map has to read as
+-- STOPPED and out of reach, not as more board. What it buys is that the eight tiles you are fighting on
+-- are visibly a place -- the corridor you came down is still there behind you, the spur you were headed
+-- for is still there ahead -- which is the whole of what "one map" is worth at the moment it matters.
+local LOCKED_DIM = 0.80
+
+-- The ring. Drawn one tile thick just outside the board, in the ground's own fill colour lifted clear of
+-- the darkness behind it, so it reads as something that CLOSED rather than as more scenery. This is the
+-- board's edge made visible: outside it there is no arena, and the wall says so.
+local WALL_LIFT = 0.30
+
+function BattleMap:drawSurround()
+    local grid, box = self.grid, self.box
+    if not (grid and box) then return end
+    local s = self.size
+
+    -- Only what the screen can show. The map is bigger than the window at this scale and every tile
+    -- outside it is a wasted draw.
+    local x0 = box.x - math.ceil(self.originX / s) - 1
+    local y0 = box.y - math.ceil(self.originY / s) - 1
+    local x1 = box.x + box.w + math.ceil((Scale.WIDTH - self.originX) / s) + 1
+    local y1 = box.y + box.h + math.ceil((Scale.HEIGHT - self.originY) / s) + 1
+
+    for gy = y0, y1 do
+        for gx = x0, x1 do
+            local inBox = gx >= box.x and gy >= box.y and gx < box.x + box.w and gy < box.y + box.h
+            if not inBox then
+                local wx = self.originX + (gx - box.x) * s
+                local wy = self.originY + (gy - box.y) * s
+                local cell = grid:get(gx, gy)
+                local artType = cell and (BattleMap.ART[cell.tile] or "path") or "thicket"
+                local col = self.tilesetDef.tiles[artType]
+                col = col and col.color or { 0.1, 0.1, 0.1 }
+                love.graphics.setColor(col[1], col[2], col[3])
+                love.graphics.rectangle("fill", wx, wy, s, s)
+                love.graphics.setColor(0, 0, 0, LOCKED_DIM)
+                love.graphics.rectangle("fill", wx, wy, s, s)
+            end
+        end
+    end
+
+    -- ...and the walls, on the ring immediately outside the board.
+    local fill = self.tilesetDef.tiles.thicket
+    fill = fill and fill.color or { 0.2, 0.2, 0.2 }
+    love.graphics.setColor(fill[1] * WALL_LIFT + 0.06, fill[2] * WALL_LIFT + 0.06, fill[3] * WALL_LIFT + 0.06)
+    local rx, ry = self.originX - s, self.originY - s
+    local rw, rh = (box.w + 2) * s, (box.h + 2) * s
+    for i = 0, box.w + 1 do
+        love.graphics.rectangle("fill", rx + i * s, ry, s, s)
+        love.graphics.rectangle("fill", rx + i * s, ry + (box.h + 1) * s, s, s)
+    end
+    for j = 0, box.h + 1 do
+        love.graphics.rectangle("fill", rx, ry + j * s, s, s)
+        love.graphics.rectangle("fill", rx + (box.w + 1) * s, ry + j * s, s, s)
+    end
+    -- The seam where the wall meets the board: a bright inner edge over a dark backing, so the boundary
+    -- reads as something that CLOSED and not as the edge of a picture. Warm, because it is the one thing
+    -- on screen that is about the fight being inescapable rather than about the ground.
+    love.graphics.setColor(0, 0, 0, 0.6)
+    love.graphics.setLineWidth(4)
+    love.graphics.rectangle("line", self.originX, self.originY, box.w * s, box.h * s)
+    love.graphics.setColor(0.82, 0.66, 0.34, 0.55)
+    love.graphics.setLineWidth(2)
+    love.graphics.rectangle("line", self.originX, self.originY, box.w * s, box.h * s)
+    love.graphics.setLineWidth(1)
+    love.graphics.setColor(1, 1, 1)
+end
+
 function BattleMap:draw()
+    self:drawSurround() -- the locked map and the walls that closed on it, under everything
     self:drawTiles()
     self:drawObjective() -- the ground a reach/hold objective is won on, under everything else
     self:drawFields() -- hazards, auras and carried statuses wash the ground under the highlights
