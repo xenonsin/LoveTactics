@@ -54,6 +54,15 @@ local BOON_KINDS = { treasure = true, relic_cache = true }
 -- where the branch is finally taken.
 local SITE_SCORE = 44
 
+-- Is a patrol standing here? Walked rather than indexed: a board holds a handful of them, and a lookup
+-- table would have to be rebuilt every time one moves.
+local function patrolAt(grid, x, y)
+    for _, p in ipairs(grid.patrols or {}) do
+        if not p.cleared and p.x == x and p.y == y then return p end
+    end
+    return nil
+end
+
 -- One board's worth of counts. Walks every cell once; the tier arc needs a BFS, which Overworld
 -- already exposes for its own placement passes.
 local function measure(grid)
@@ -152,6 +161,32 @@ local function measure(grid)
         end
     end
 
+    -- THE FIGHTS THAT WALK. A patrol carries its encounter off the cell (Overworld:placePatrols), so a
+    -- census that only reads `cell.encounter` stops seeing most of the board's combat -- measured at 1.85
+    -- fights a board against 4.25, which is not a change in the board, it is a change in the instrument.
+    -- Counted here at wherever the patrol currently stands, which is where a report on a freshly rolled
+    -- board means: its beat has not run yet.
+    r.patrols, r.beatSum = 0, 0
+    for _, p in ipairs(grid.patrols or {}) do
+        if not p.cleared then
+            local e = p.encounter or {}
+            r.stops = r.stops + 1
+            r.fights = r.fights + 1
+            r.patrols = r.patrols + 1
+            r.beatSum = r.beatSum + #(p.beat or {})
+            r.byKind[e.kind] = (r.byKind[e.kind] or 0) + 1
+            if p.guards then r.guarded = r.guarded + 1 end
+            if e.tier then
+                r.tierSum = r.tierSum + e.tier
+                r.tierN = r.tierN + 1
+                local d = dist[p.y * 100000 + p.x] or 0
+                local b = math.max(1, math.min(5, math.floor(d / maxD * 5) + 1))
+                r.depthTierSum[b] = r.depthTierSum[b] + e.tier
+                r.depthTierN[b] = r.depthTierN[b] + 1
+            end
+        end
+    end
+
     -- ---------------------------------------------------------------------
     -- FIGHTABILITY: can a battle actually happen here?
     -- ---------------------------------------------------------------------
@@ -180,7 +215,11 @@ local function measure(grid)
                 r.walkTiles = r.walkTiles + 1
                 local ox, oy, score = grid:bestBox(x, y, sums)
                 if score >= Overworld.BOX_OK then r.fightTiles = r.fightTiles + 1 end
-                if c.encounter and FIGHT[c.encounter.kind] then
+                -- A tile holds a fight if a stop was seated on it OR a patrol is standing on it: the
+                -- fightability floor governs both, and a beat that walks its fight onto ground too thin
+                -- to fight on is the same failure as seating one there.
+                local fightHere = (c.encounter and FIGHT[c.encounter.kind]) or patrolAt(grid, x, y)
+                if fightHere then
                     r.seatSum, r.seatN = r.seatSum + score, r.seatN + 1
                     r.openSum = r.openSum + openSums(ox, oy)
                     if score < r.seatMin then r.seatMin = score end
@@ -270,7 +309,8 @@ function M.compare(biomes, n, pool)
                 encounterCount = DEFAULT_ENCOUNTERS,
                 encounters = pool,
                 houseMaterial = "material_salt_iron",
-                seed = SEED_BASE + i,
+                patrols = true, -- the board as the campaign actually rolls it
+            seed = SEED_BASE + i,
             })
             local r = measure(grid)
             t.walk = t.walk + r.walkTiles
@@ -371,13 +411,15 @@ function M.run(args)
             -- Mirrors Overworld.generate's own derivation so a sweep can try a different divisor
             -- without editing the model. nil leaves the model's own rule in charge.
             cacheCount = cacheDiv and math.max(1, math.floor(((encN.min + encN.max) / 2) / cacheDiv)) or nil,
+            patrols = true, -- the board as the campaign actually rolls it
             seed = SEED_BASE + i,
         })
         local r = measure(grid)
         for _, k in ipairs({ "fights", "boons", "guarded", "rest", "stops", "caches", "services",
                              "tierSum", "tierN", "deadEnds", "cacheOnDeadEnd", "boonsWithApproach",
                              "craftStock", "houseStock",
-                             "walkTiles", "fightTiles", "sites", "seatSum", "seatN", "seatBelow" }) do
+                             "walkTiles", "fightTiles", "sites", "seatSum", "seatN", "seatBelow",
+                             "patrols", "beatSum" }) do
             tot[k] = (tot[k] or 0) + r[k]
         end
         if r.seatN > 0 and r.seatMin < tot.seatMin then tot.seatMin = r.seatMin end
@@ -443,6 +485,9 @@ function M.run(args)
             tot.seatMin == math.huge and 0 or tot.seatMin)))
     print(string.format("    %-20s %8.2f  %s", "seated under floor", per(tot.seatBelow),
         string.format("fights a board below %d -- must reach 0", Overworld.BOX_OK)))
+    print(string.format("    %-20s %8.2f  %s", "patrols", per(tot.patrols),
+        string.format("of %.2f fights, mean beat %.1f tiles", per(tot.fights),
+            tot.patrols > 0 and (tot.beatSum / tot.patrols) or 0)))
     print("")
     print(string.format("  %-22s %8.2f  %s", "cache craft stock", per(tot.craftStock),
         "material income -- the thing a ratio change must not quietly gut"))

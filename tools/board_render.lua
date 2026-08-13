@@ -61,6 +61,7 @@ function M.run(args)
         houseMaterial = "material_salt_iron",
         keyCount = 1,
         objective = { name = "Boss" },
+        patrols = true,
         seed = seed,
     })
 

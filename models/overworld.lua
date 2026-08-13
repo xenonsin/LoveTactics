@@ -201,6 +201,7 @@ function Overworld.generate(params)
     self:guardBoons(params)     -- stand a fight in front of most of the rewards
     self:pruneDeadStubs()       -- trim barren spur-and-return corridors (no RNG)
     self:assignEncounterTiers() -- difficulty tell for the fog (drawn from rng LAST)
+    self:placePatrols(params)  -- ...and the fights that walk lift off their cells onto beats
 
     return self
 end
@@ -1109,6 +1110,131 @@ function Overworld:guardBoons(params)
 end
 
 -- ---------------------------------------------------------------------------
+-- Patrols
+-- ---------------------------------------------------------------------------
+
+-- What share of a board's fights walk a beat rather than standing still. A board of nothing but movers
+-- is as uniform as a board of nothing but statues, and the still ones are what make the moving ones
+-- read. Tuned against `. board-report`, like everything else here.
+local PATROL_SHARE = 0.6
+
+-- How long a loose patrol's beat may be. Short: a beat you cannot hold in your head is not a schedule,
+-- it is noise, and the whole point of drawing it is that the player can time it.
+local BEAT_MAX = 6
+
+-- LIFT THE FIGHTS THAT MOVE OFF THEIR CELLS AND ONTO BEATS.
+--
+-- Runs last, after every placement pass has had its say -- so what patrols is exactly what the board
+-- decided to seat, and the counts the map was sized around do not move. A patrol carries its encounter
+-- away with it; the cell keeps only what genuinely stays put (Patrol's header on why).
+--
+-- TWO RULES DECIDE A BEAT, and both are the offer rule wearing different hats:
+--
+--   A GUARD'S BEAT IS ITS CUT SET. guardBoons seats a fight on a tile that provably gates a reward,
+--   checked by flooding the board with that tile blocked. Let that fight wander and the guarantee
+--   evaporates -- it strolls two tiles down the corridor and the reward is free. So a guard's beat is
+--   exactly the set of tiles that gate its boon: a long corridor gives it a real beat and it is
+--   genuinely pacing what it protects, and a single-tile cut set gives a sentry that stands still. The
+--   invariant survives BY CONSTRUCTION rather than by tuning.
+--
+--   A LOOSE PATROL'S BEAT NEVER TOUCHES THE SPINE. Combat is kept off the objective road so a wounded
+--   company can always route to the boss; a patrol that wandered onto it would undo that silently.
+--   Alert is allowed to cross it -- a patrol that has SEEN you may step onto the road to reach you --
+--   because you can outwalk it, and a chase that stops at an invisible line is worse than no chase.
+--
+-- Ascent maps opt out, as they do for every spine rule: there combat is the route.
+-- OPT-IN, and deliberately so. Lifting a fight off its cell changes what `cell.encounter` means, and a
+-- great many specs read exactly that field to assert what PLACEMENT did -- how many stops were seated,
+-- whether guards were moved rather than minted, that an ascent's climb runs in order. Those specs are
+-- testing the pass upstream of this one and are right to count cells; switching this on underneath them
+-- would have every one of them read low, which is a change in the instrument rather than in the board.
+--
+-- So the campaign board asks for patrols (states/game.lua), the report asks for them, and a spec that
+-- means to exercise them asks too (tests/patrol_spec.lua). Everything else generates the board it
+-- always generated.
+function Overworld:placePatrols(params)
+    self.patrols = {}
+    if not (params and params.patrols) then return end
+
+    local Patrol = require("models.patrol")
+    local spine = self.spineKeys or {}
+
+    -- Which tiles gate `boon`: exactly the ones whose removal puts it out of reach. This is the same
+    -- question guardBoons asked to seat the guard, asked again over a neighbourhood to grow its beat.
+    local function gatesBoon(boon, tile)
+        local start = self:startCell()
+        if not start or start == boon or tile == boon then return false end
+        local seen = { [cellKey(start)] = true }
+        local q, qi = { start }, 1
+        while qi <= #q do
+            local c = q[qi]; qi = qi + 1
+            for _, n in ipairs(self:pathNeighbors(c.x, c.y)) do
+                if n == boon then return false end
+                if not seen[cellKey(n)] and n ~= tile then
+                    seen[cellKey(n)] = true
+                    q[#q + 1] = n
+                end
+            end
+        end
+        return true
+    end
+
+    -- Grow a beat outward from `cell` by breadth-first walk, taking only tiles `accept` allows, up to
+    -- BEAT_MAX. Walked in a fixed order so a seed reproduces its beats.
+    local function growBeat(cell, accept)
+        local beat = { { x = cell.x, y = cell.y } }
+        local seen = { [cellKey(cell)] = true }
+        local q, qi = { cell }, 1
+        while qi <= #q and #beat < BEAT_MAX do
+            local c = q[qi]; qi = qi + 1
+            for _, n in ipairs(self:pathNeighbors(c.x, c.y)) do
+                if #beat >= BEAT_MAX then break end
+                if not seen[cellKey(n)] and accept(n) then
+                    seen[cellKey(n)] = true
+                    beat[#beat + 1] = { x = n.x, y = n.y }
+                    q[#q + 1] = n
+                end
+            end
+        end
+        return beat
+    end
+
+    local movers, seated = 0, {}
+    for y = 1, self.rows do
+        for x = 1, self.cols do
+            local c = self.cells[y][x]
+            local e = c.encounter
+            if e and (e.kind == "combat" or e.kind == "elite") then seated[#seated + 1] = c end
+        end
+    end
+
+    local target = math.floor(#seated * PATROL_SHARE + 0.5)
+    for _, c in ipairs(seated) do
+        if movers >= target then break end
+        local kind = c.encounter and c.encounter.kind
+        local beat
+        if c.guards then
+            local boon = self:get(c.guards.x, c.guards.y)
+            -- Only the tiles that still gate it. On a 1-wide corridor this grows along the corridor; at
+            -- a spur mouth it is one tile and the guard stands.
+            beat = boon and growBeat(c, function(n) return gatesBoon(boon, n) end) or { { x = c.x, y = c.y } }
+        elseif not (params and params.ascent) then
+            beat = growBeat(c, function(n)
+                return not spine[cellKey(n)] and not n.encounter and not n.cache and not n.gate and not n.key
+            end)
+        else
+            beat = growBeat(c, function(n) return not n.encounter end)
+        end
+        if #beat > 1 then
+            self.patrols[#self.patrols + 1] = Patrol.new(c, beat, { kind = kind, guards = c.guards })
+            c.encounter = nil -- the fight walks now; the cell keeps nothing
+            c.guards = nil
+            movers = movers + 1
+        end
+    end
+end
+
+-- ---------------------------------------------------------------------------
 -- Guaranteed stops
 -- ---------------------------------------------------------------------------
 
@@ -1626,9 +1752,24 @@ function Overworld:snapshot()
         end
         cells[y] = row
     end
+    -- THE FIGHTS THAT WALK, and where they had got to. A patrol is an actor rather than a property of a
+    -- cell (models/patrol.lua), so it does not ride out in `cells` with everything else -- and a resumed
+    -- run that forgot them would put every patrolling fight back on the tile it was generated on, which
+    -- is not where the player left it. Plain data throughout: ids, names, tiers, a beat of {x,y}.
+    local patrols = {}
+    for _, p in ipairs(self.patrols or {}) do
+        patrols[#patrols + 1] = {
+            encounter = p.encounter, x = p.x, y = p.y, beat = p.beat,
+            i = p.i, dir = p.dir, tick = p.tick, state = p.state, alert = p.alert,
+            home = p.home, guards = p.guards, pace = p.pace, sight = p.sight,
+            leash = p.leash, cleared = p.cleared,
+        }
+    end
+
     return {
         cols = self.cols, rows = self.rows, size = self.size,
         margin = self.margin, spacing = self.spacing,
+        patrols = patrols,
         tilesetId = self.tilesetId, biome = self.biome,
         originX = self.originX, originY = self.originY,
         visionRadius = self.visionRadius,
@@ -1658,6 +1799,8 @@ function Overworld.fromSnapshot(data)
     self.objective = data.objective and { x = data.objective.x, y = data.objective.y } or nil
     self.keyIds = data.keyIds or {}
     self.gateCells = {}
+    -- A save written before patrols existed restores with none and plays exactly as it did.
+    self.patrols = data.patrols or {}
     self.cells = {}
     for y = 1, self.rows do
         self.cells[y] = {}

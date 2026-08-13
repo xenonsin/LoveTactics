@@ -586,6 +586,11 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
             -- from the start, and the objective on the farthest dead-end there is. See
             -- Overworld:placeEncounters and :placeObjectiveAndGates.
             ascent = mp.ascent,
+            -- THE FIGHTS THAT WALK. Some of the board's combat lifts off its cell onto a beat and
+            -- moves one tile for every step the company takes (models/patrol.lua). Asked for here
+            -- rather than defaulted on, because lifting a fight off a cell changes what cell.encounter
+            -- means and every placement spec reads exactly that.
+            patrols = true,
             seed = os.time() + math.floor(((love.timer and love.timer.getTime()) or 0) * 1000) % 100000,
         }
         game.grid = Overworld.generate(params)

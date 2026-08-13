@@ -20,6 +20,7 @@ local InputMode = require("input_mode") -- which device is live, for the hovered
 local Sprite = require("models.sprite")
 local Tileset = require("models.tileset")
 local Muster = require("models.muster") -- for BAND -> pip count; the comparison itself is the caller's
+local Patrol = require("models.patrol") -- the fights that walk their beat (models/patrol.lua)
 local Theme = require("ui.theme")
 
 local OverworldMap = {}
@@ -160,9 +161,36 @@ end
 -- Move one tile if the target is walkable. Returns true when the step landed and
 -- movement may continue, false when blocked (wall/gate) or when arriving opened an
 -- encounter panel -- so a held direction stops instead of walking through it.
+-- A patrol dressed as the cell its fight is on, so states/game.lua's encounter plumbing -- which has
+-- always been handed a cell -- needs no fork. The proxy exists for one field: marking the stop cleared
+-- has to clear the PATROL, because the patrol is what carries the fight now and the tile it happens to
+-- be standing on carries nothing. Without that a beaten patrol would come back the moment it moved.
+local function patrolCell(p)
+    return setmetatable({ x = p.x, y = p.y, encounter = p.encounter, patrol = p }, {
+        __newindex = function(t, k, v)
+            if k == "cleared" and v then p.cleared = true end
+            rawset(t, k, v)
+        end,
+    })
+end
+
+-- CONTACT, from either side. Opens the fight and reports that movement must stop.
+function OverworldMap:engage(p)
+    self.heldDir = nil
+    self.autoPath = nil
+    if self.onApproach then self.onApproach(patrolCell(p)) end
+    if self.onEncounter then self.onEncounter(patrolCell(p)) end
+    return true
+end
+
 function OverworldMap:step(dx, dy)
     local nx, ny = self.px + dx, self.py + dy
     if not self.grid:isWalkable(nx, ny, self.keysHeld) then return false end
+
+    -- Walking INTO something. A swap is caught here too: the tile it stands on is the tile it is about
+    -- to leave, and stepping onto it is contact either way (P4).
+    local blocking = Patrol.at(self.grid, nx, ny)
+    if blocking then return not self:engage(blocking) end
     -- About to walk into an un-engaged stop: hand the caller this moment FIRST, before the token moves,
     -- the fog lifts, or :arrive fires anything. states/game.lua autosaves here, so a run saved on the
     -- brink of a fight resumes standing one tile shy of it -- in the overworld, free to open the Loadout
@@ -178,7 +206,17 @@ function OverworldMap:step(dx, dy)
     -- which this was (see onArrive) so an explore-for-coin reward can't be farmed by pacing a cleared map.
     local revealed = self.grid:reveal(self.px, self.py, self.visionRadius)
     self:updateCamera()
-    return not self:arrive(revealed)
+    if self:arrive(revealed) then return false end
+
+    -- THE STEP CLOCK. The party moved, so everything else on the board moves once -- which is the whole
+    -- of P1, and also the whole of "the map locks during combat": nothing here ticks except on your
+    -- step, and during a fight you are not stepping.
+    --
+    -- Ticked AFTER arriving, so a stop you walked onto opens before anything walks into you: meeting two
+    -- fights on one step is a state the encounter panel has no way to show.
+    local caught = Patrol.tick(self.grid, { x = self.px, y = self.py })
+    if caught then return not self:engage(caught) end
+    return true
 end
 
 -- React to landing on a tile: pick up keys, trigger encounters. Returns true when
@@ -514,6 +552,7 @@ function OverworldMap:draw()
     end
 
     self:drawMarkers()
+    self:drawPatrols() -- the fights that walk: their circuit, their next tile, and what they are doing
     self:drawFog() -- covers undiscovered tiles + their markers; player stays on top
     self:drawPlayer()
 
@@ -687,6 +726,78 @@ function OverworldMap:drawMarkers()
             end
         end
     end
+end
+
+-- A patrol's state, as the marker's colour. Beat keeps the hostile red every fight has always worn;
+-- Alert is the warm gold the board already uses for "live, act now"; Return is a cool slate.
+--
+-- The slate is deliberately DARKER than the outgrown-fight slate (CALM_MARKER): those two must not be
+-- confused, because one means "beneath your notice" and the other means "has just lost you and is
+-- walking home", which are opposite invitations.
+local PATROL_STATE = {
+    beat = { 0.86, 0.28, 0.22 },
+    alert = { 0.95, 0.72, 0.24 },
+    return_ = { 0.42, 0.48, 0.55 },
+}
+
+-- WHERE IT WILL BE, drawn before you commit your own step. A moving fight you cannot predict is a
+-- punishment; one whose circuit you can read is a puzzle. Three marks, on revealed ground only:
+--
+--   the beat    a faint dotted circuit -- the schedule, on ground you have already mapped
+--   the pip     the tile it occupies NEXT, so the exchange is legible before you move
+--   the colour  what it is doing (see PATROL_STATE)
+--
+-- The preview is side-effect free: Patrol.preview walks a copy, because a telegraph that advanced the
+-- thing it was describing would be a bug the player could farm -- the same rule the battle's enemy
+-- intent telegraph already follows.
+function OverworldMap:drawPatrols()
+    local grid = self.grid
+    if not grid.patrols then return end
+    local s = grid.size
+    for _, p in ipairs(grid.patrols) do
+        local here = grid:get(p.x, p.y)
+        if not p.cleared and here and here.seen then
+            -- The circuit, on mapped ground only.
+            love.graphics.setColor(0.86, 0.28, 0.22, 0.16)
+            for _, b in ipairs(p.beat or {}) do
+                local c = grid:get(b.x, b.y)
+                if c and c.seen then
+                    local wx, wy = grid:cellToPixel(b.x, b.y)
+                    love.graphics.rectangle("fill", wx + 4, wy + 4, s - 8, s - 8, 2)
+                end
+            end
+
+            local nx, ny = Patrol.preview(grid, p, { x = self.px, y = self.py })
+            if nx and (nx ~= p.x or ny ~= p.y) then
+                local c = grid:get(nx, ny)
+                if c and c.seen then
+                    local wx, wy = grid:cellToPixel(nx, ny)
+                    love.graphics.setColor(0.95, 0.72, 0.24, 0.55)
+                    love.graphics.circle("fill", wx + s / 2, wy + s / 2, 3)
+                end
+            end
+
+            local col = PATROL_STATE[p.state] or PATROL_STATE.beat
+            local wx, wy = grid:cellToPixel(p.x, p.y)
+            love.graphics.setColor(col[1], col[2], col[3], 0.95)
+            love.graphics.rectangle("fill", wx + 3, wy + 3, s - 6, s - 6, 3)
+            love.graphics.setColor(0, 0, 0, 0.55)
+            love.graphics.rectangle("line", wx + 3, wy + 3, s - 6, s - 6, 3)
+
+            local kind = p.encounter and p.encounter.kind
+            local icon = MarkerIcon[kind]
+            if icon then icon(wx + 3, wy + 3, s - 6, s - 6, 1, 1, 1, 1) end
+
+            -- A slow patrol wears its pace, so "I can get past this one" is readable rather than
+            -- learned by being caught.
+            if (p.pace or 1) > 1 then
+                love.graphics.setColor(0, 0, 0, 0.5)
+                love.graphics.rectangle("fill", wx + 5, wy + s - 9, 3, 3)
+                love.graphics.rectangle("fill", wx + 10, wy + s - 9, 3, 3)
+            end
+        end
+    end
+    love.graphics.setColor(1, 1, 1)
 end
 
 function OverworldMap:drawPlayer()
