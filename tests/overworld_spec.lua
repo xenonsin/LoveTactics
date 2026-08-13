@@ -120,8 +120,13 @@ return {
                 assert(ft.tiles[tile].walkable == ct.tiles[tile].walkable,
                     "walkability of '" .. tile .. "' must match across biomes")
             end
-            assert(ft.tiles.path.walkable and not ft.tiles.water.walkable,
-                "path walkable, water blocked, in every tileset")
+            -- `river`, not `water`: the two meanings of water were split when the map's tiles and the
+            -- board's became one table (models/terrain.lua). A river is the barrier you cross at a
+            -- bridge; `water` is now the wadeable ford, and asserting THAT is blocked would pin the
+            -- wrong half of the split.
+            assert(ft.tiles.path.walkable and not ft.tiles.river.walkable,
+                "path walkable, river blocked, in every tileset")
+            assert(ft.tiles.water.walkable, "a ford is wadeable -- see models/terrain.lua")
         end,
     },
     {
@@ -886,7 +891,9 @@ return {
 
             -- Otherwise the neighbourhood votes, and the party need not stand on the feature itself.
             paint(cx, cy, "path", 2)
-            for i = -2, 1 do grid:get(cx + i, cy - 2).tile = "water" end
+            -- The TILE is `river` and the scatter profile it names is still `water`: the two stopped
+            -- being one word when the map's terrain and the board's became one table (models/terrain).
+            for i = -2, 1 do grid:get(cx + i, cy - 2).tile = "river" end
             assert(grid:groundAt(cx, cy) == "water", "a fight beside a river should read as one")
 
             paint(cx, cy, "path", 2)

@@ -86,10 +86,21 @@ function love.load(args)
         return
     end
 
-    -- Board ledger: `& "E:\LOVE\lovec.exe" . board-report [n] [tiers]`
-    -- Rolls n overworld boards and reports what the generator laid down -- boons per fight, how many
-    -- of them ended up guarded, rest density, and the tier arc by fifth of the board. The instrument
-    -- behind docs/overworld.md's composition knobs. See tools/board_report.
+    -- One board, drawn: `& "E:\LOVE\lovec.exe" . board-render [biome] [seed]`
+    -- Dumps a single rolled board as ground and again as fightability, because the layout work is six
+    -- carve algorithms that will be wrong in a SHAPE, and a mean cannot show you a shape. See
+    -- tools/board_render.
+    if args and args[1] == "board-render" then
+        require("tools.board_render").run({ select(2, unpack(args)) })
+        if love.event then love.event.quit(0) end
+        return
+    end
+
+    -- Board ledger: `& "E:\LOVE\lovec.exe" . board-report [n] [all | biome=ID] [tiers]`
+    -- Rolls n overworld boards and reports what the generator laid down -- whether a fight can even
+    -- happen on the ground it was seated on, boons per fight, how many ended up guarded, rest density,
+    -- and the tier arc by fifth. `all` prints one row per ground. The instrument behind
+    -- docs/overworld.md's composition knobs. See tools/board_report.
     if args and args[1] == "board-report" then
         require("tools.board_report").run({ select(2, unpack(args)) })
         love.event.quit(0)

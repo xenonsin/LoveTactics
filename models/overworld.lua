@@ -25,6 +25,7 @@
 local Tileset = require("models.tileset")
 local Biome = require("models.biome")
 local Material = require("models.material") -- cache payloads: craft grades + the sponsoring house's stock
+local Layout = require("models.layout") -- which carve this ground uses (models/layouts/)
 local Encounter = require("models.encounter") -- guaranteed stops resolve by kind off the blueprints (see guaranteedEntry)
 
 local Overworld = {}
@@ -149,13 +150,22 @@ function Overworld.generate(params)
     for y = 1, self.rows do
         self.cells[y] = {}
         for x = 1, self.cols do
-            self.cells[y][x] = { x = x, y = y, tile = "forest" }
+            self.cells[y][x] = { x = x, y = y, tile = "thicket" }
         end
     end
 
-    self:carveMaze()
-    self:braid(params.braid or Overworld.BRAID)
+    -- WHICH CARVE. The biome names a layout and the layout owns this pass alone; everything below it
+    -- works on whatever walkable graph comes out (models/layout.lua). An unnamed or unknown biome falls
+    -- back to the maze, so a half-written blueprint still produces the board the game has always had.
+    self.braidRate = params.braid or Overworld.BRAID
+    self.layoutId = params.layout or biomeDef.layout or "maze"
+    local layout = Layout.get(self.layoutId)
+    layout.carve(self)
+
     local riverSpec = params.riverCount
+    -- A layout that lays its own channels keeps them: the shared river pass assumes a lattice to run
+    -- between, and thinBridges would demote a wide crossing back to trail. See docs/overworld.md's C2.
+    if layout.ownsWater then riverSpec = 0 end
     if riverSpec == nil then riverSpec = biomeDef.rivers end
     self:placeRivers(resolveCount(riverSpec, self.rng))
     self:thinBridges() -- guarantee every bridge is exactly one tile
@@ -177,7 +187,7 @@ end
 -- Char -> tile type for an authored map's ASCII `map`. The role chars (S / X / 1..9)
 -- all stand on trail, so they are resolved to "path" below rather than listed here.
 local LAYOUT_TILE = {
-    ["#"] = "forest", ["."] = "path", ["="] = "bridge", ["~"] = "water",
+    ["#"] = "thicket", ["."] = "path", ["="] = "bridge", ["~"] = "river",
     [","] = "grass",  ["^"] = "rock",
 }
 
@@ -257,13 +267,36 @@ end
 
 -- Maze nodes sit on a lattice inset from the map edge by `margin` and spaced
 -- `spacing` apart, so no corridor endpoint (and thus no path) ever lands in the
--- buffer ring.
-local function isNode(self, x, y)
+-- buffer ring. A method rather than a file-local because the lattice layouts live
+-- outside this file now (models/layouts/) and carve through this API.
+function Overworld:isNode(x, y)
     local m = self.margin
     return x >= 1 + m and y >= 1 + m
         and x <= self.cols - m and y <= self.rows - m
         and (x - (1 + m)) % self.spacing == 0
         and (y - (1 + m)) % self.spacing == 0
+end
+
+-- Stable integer key for a position, exposed for the same reason: a layout wants a set of visited
+-- nodes and should not have to know how this file indexes cells.
+function Overworld:cellKey(x, y) return y * 100000 + x end
+
+-- Open a rough disc of `tile` around (cx, cy). The clearing primitive: a maze carves corridors, and a
+-- ground that means to hold a battle carves rooms. Jittered off the grid's own rng so a clearing has a
+-- ragged edge rather than reading as a stamped circle -- and so it stays reproducible from the seed.
+function Overworld:carveBlob(cx, cy, radius, tile)
+    tile = tile or "path"
+    for dy = -radius, radius do
+        for dx = -radius, radius do
+            if dx * dx + dy * dy <= radius * radius + self.rng:random() * radius then
+                local c = self.cells[cy + dy] and self.cells[cy + dy][cx + dx]
+                if c and cx + dx > self.margin and cy + dy > self.margin
+                    and cx + dx <= self.cols - self.margin and cy + dy <= self.rows - self.margin then
+                    c.tile = tile
+                end
+            end
+        end
+    end
 end
 
 -- Per-axis form of `isNode`: is this column / row one of the trail lattice lines?
@@ -292,91 +325,11 @@ function Overworld:carveCorridor(ax, ay, bx, by)
     end
 end
 
--- Recursive backtracker over the spaced node grid. Each carved passage is a
--- single-tile corridor; walls between corridors are (spacing - 1) tiles thick.
-function Overworld:carveMaze()
-    local S = self.spacing
-    local dirs = { { S, 0 }, { -S, 0 }, { 0, S }, { 0, -S } }
-    local visited = {}
-    local sx, sy = 1 + self.margin, 1 + self.margin
-    self.cells[sy][sx].tile = "path"
-    visited[cellKey(self.cells[sy][sx])] = true
-
-    local stack = { { sx, sy } }
-    while #stack > 0 do
-        local cur = stack[#stack]
-        local cx, cy = cur[1], cur[2]
-
-        local cand = {}
-        for _, d in ipairs(dirs) do
-            local nx, ny = cx + d[1], cy + d[2]
-            if isNode(self, nx, ny) and not visited[cellKey(self.cells[ny][nx])] then
-                cand[#cand + 1] = { nx, ny }
-            end
-        end
-
-        if #cand > 0 then
-            local pick = cand[self.rng:random(#cand)]
-            self:carveCorridor(cx, cy, pick[1], pick[2])
-            visited[cellKey(self.cells[pick[2]][pick[1]])] = true
-            stack[#stack + 1] = { pick[1], pick[2] }
-        else
-            stack[#stack] = nil
-        end
-    end
-end
-
--- Add loops: for each node that is a dead-end (<=1 open passage), sometimes
--- carve a corridor through to a neighbouring node.
---
--- BRAIDING DESTROYS EXACTLY THE GEOMETRY THE OFFER RULE NEEDS, which is why the rate is low and has to
--- stay low. A dead end is what a boon sits on and a cut vertex is what a guard stands on, so every
--- braid is one fewer place the board can make "the fight in the corridor to the reward" (guardBoons).
--- Measured with `. board-report`, at the old 0.55: two dead ends a board against four and a half
--- caches, 33% of boons gateable at all, and 30% actually guarded against a target of 80%. The pairing
--- pass was achieving 92% of what the geometry allowed and the geometry allowed almost nothing -- so
--- the knob was misread for a whole pass as a shortage of FIGHTS, when three loose fights a board were
--- standing around with nowhere to be seated.
---
--- The slog this rate exists to prevent is handled by pruneDeadStubs instead, and better: braiding
--- prevents spur-and-return walking by removing spurs, while the prune removes only the spurs with
--- NOTHING AT THE END -- which is the actual complaint. Every surviving dead end is now a spur that
--- pays. Lowering the rate also makes the board slightly tighter rather than larger, since a braid
--- carves wall into path and deriveDims fixes the footprint either way.
---
--- At 0.20: 3.6 dead ends, 73% gateable, 60% guarded, and material income UP (12.5 -> 14.1 craft stock
--- a board) because a guarded cache pays a bonus and far more of them are now guarded. Do not raise
--- this without re-running the report.
+-- How much of a dead-end lattice gets a loop carved back through it. Lives here rather than in
+-- models/layouts/maze.lua because docs/overworld.md names it as the board's most load-bearing constant
+-- and every lattice layout is tuned against the same value; the maze reads it off the grid as
+-- `braidRate`. See that file's header for the measurement behind 0.20 and why raising it is expensive.
 Overworld.BRAID = 0.20
-
-function Overworld:braid(prob)
-    local S = self.spacing
-    local dirs = { { S, 0 }, { -S, 0 }, { 0, S }, { 0, -S } }
-    for y = 1 + self.margin, self.rows - self.margin, S do
-        for x = 1 + self.margin, self.cols - self.margin, S do
-            local c = self.cells[y] and self.cells[y][x]
-            if c and c.tile == "path" then
-                local open, walls = 0, {}
-                for _, d in ipairs(dirs) do
-                    local nx, ny = x + d[1], y + d[2]
-                    if isNode(self, nx, ny) then
-                        local ux = (d[1] > 0 and 1) or (d[1] < 0 and -1) or 0
-                        local uy = (d[2] > 0 and 1) or (d[2] < 0 and -1) or 0
-                        if self.cells[y + uy][x + ux].tile == "path" then
-                            open = open + 1
-                        else
-                            walls[#walls + 1] = { nx, ny }
-                        end
-                    end
-                end
-                if open <= 1 and #walls > 0 and self.rng:random() < prob then
-                    local w = walls[self.rng:random(#walls)]
-                    self:carveCorridor(x, y, w[1], w[2])
-                end
-            end
-        end
-    end
-end
 
 -- Pick a river's constant coordinate (row for a horizontal river, col for a
 -- vertical one) inside a *forest band* — never on a trail lattice line — so the
@@ -460,7 +413,7 @@ function Overworld:markRiver(x, y)
         c.tile = "bridge"
         c.bridge = true
     else
-        c.tile = "water"
+        c.tile = "river"
     end
 end
 
@@ -522,7 +475,7 @@ function Overworld:decorate()
     for y = 1, self.rows do
         for x = 1, self.cols do
             local c = self.cells[y][x]
-            if c.tile == "forest" then
+            if c.tile == "thicket" then
                 local n = love.math.noise(x * d.scale, y * d.scale)
                 if n > d.rock then
                     c.tile = "rock"
@@ -1469,7 +1422,7 @@ function Overworld:pruneDeadStubs()
             for x = 1, self.cols do
                 local c = self.cells[y][x]
                 if c.tile == "path" and not protected(c) and #self:pathNeighbors(x, y) <= 1 then
-                    c.tile = "forest"
+                    c.tile = "thicket"
                     c.river = nil
                     changed = true
                 end
@@ -1586,7 +1539,7 @@ function Overworld.fromSnapshot(data)
         local row = (data.cells and data.cells[y]) or {}
         for x = 1, self.cols do
             local src = row[x] or {}
-            local cell = { x = x, y = y, tile = src.tile or "forest" }
+            local cell = { x = x, y = y, tile = src.tile or "thicket" }
             for _, f in ipairs(CELL_FIELDS) do
                 if f ~= "tile" then cell[f] = src[f] end
             end
@@ -1670,14 +1623,27 @@ function Overworld:objectiveCell() return self:get(self.objective.x, self.object
 --
 -- Pure and RNG-free: the same tile always answers the same way, which is what lets the arena stay
 -- reproducible from its seed once this is threaded into it.
-local GROUND_VOTERS = { "water", "rock", "grass" } -- fixed order, so a tie breaks the same way every time
+-- Each voter is a TILE that votes for a PROFILE, and the two are no longer the same word: the map's
+-- impassable water is `river` now (models/terrain.lua), while the scatter profile it asks for is still
+-- called `water`. Fixed order, so a tie breaks the same way every time.
+--
+-- Both this function and the profiles it names are scheduled for deletion -- once a fight is fought on
+-- the map's own tiles there is nothing left to guess, because the channel down the flank IS the river
+-- (docs/overworld.md, U6). Kept correct in the meantime rather than left to rot: a pass on its way out
+-- that quietly starts answering wrong is worse than one that is simply still here.
+local GROUND_VOTERS = {
+    { tile = "river", profile = "water" },
+    { tile = "rock",  profile = "rock" },
+    { tile = "grass", profile = "grass" },
+}
 local GROUND_MIN = 3 -- of the 24 neighbours, how many it takes for the surroundings to name the board
 function Overworld:groundAt(x, y)
     local cell = self:get(x, y)
     if not cell then return "path" end
     if cell.tile == "bridge" then return "bridge" end
 
-    local tally = { water = 0, rock = 0, grass = 0 }
+    local tally = {}
+    for _, v in ipairs(GROUND_VOTERS) do tally[v.tile] = 0 end
     for dy = -2, 2 do
         for dx = -2, 2 do
             local c = self:get(x + dx, y + dy)
@@ -1687,10 +1653,121 @@ function Overworld:groundAt(x, y)
     end
 
     local best, bestN = "path", GROUND_MIN - 1
-    for _, t in ipairs(GROUND_VOTERS) do
-        if tally[t] > bestN then best, bestN = t, tally[t] end
+    for _, v in ipairs(GROUND_VOTERS) do
+        if tally[v.tile] > bestN then best, bestN = v.profile, tally[v.tile] end
     end
     return best
+end
+
+-- ---------------------------------------------------------------------------
+-- The arena box
+-- ---------------------------------------------------------------------------
+
+-- A FIGHT IS TAKEN ON THIS MAP. When one begins the board locks a window of these very tiles, walls its
+-- ring and doubles the camera; the company unfurls onto ground that was already there. So the window is
+-- 8x8 because models/arena.lua is 8x8 (Arena.COLS/ROWS) and the two grids are the same grid at 2x -- 32
+-- logical pixels a cell here, 64 there -- which is the coincidence that lets a lock be a camera
+-- transform rather than a second board.
+--
+-- The generator therefore has to answer a question it never had to before: IS THERE A BATTLE HERE. It
+-- answers by counting walkable ground inside the window, which is all "can four bodies deploy and still
+-- have somewhere to go" reduces to on a grid.
+Overworld.BOX = 8
+
+-- What a window has to hold, in walkable tiles out of BOX*BOX:
+--
+--   BOX_OK   an encounter is never SEATED below this. Half the box is where a fight stops being a fight
+--            and becomes a queue: four bodies, a front, and room to go round it.
+--   BOX_MIN  the floor for a fight that happens ANYWAY -- a patrol catching the party mid-corridor. That
+--            is a real consequence of a real mistake and it should hurt, but below this there is nowhere
+--            to stand at all, which is not a hard fight, it is an unplayable one.
+--
+-- Both are read by the report before they are read by anything else: do not tune them from here, roll
+-- the boards (`. board-report 200 all`) and read what they say.
+Overworld.BOX_OK = 32
+Overworld.BOX_MIN = 20
+
+-- Summed-area table over walkable tiles, returned as a closure answering any window in constant time.
+--
+-- Built FRESH on each call rather than memoized onto the grid, deliberately. Tiles are still being
+-- carved while the placement passes run -- pruneDeadStubs rewrites them after placeEncounters -- so a
+-- cached integral image would silently disagree with the board it describes, and that disagreement
+-- surfaces six passes later as a wrong number in a report rather than as a crash.
+-- `pred(cell)` chooses what is being counted; it defaults to walkable ground. The generalisation exists
+-- because COUNTING WALKABLE TILES IS NOT THE SAME AS ASKING WHETHER THERE IS A BATTLE HERE, and the
+-- boards said so the first time they were rolled: a tight warren scores 34 of 64 while being a lattice
+-- of 1-wide corridors with no line, no flank and nothing to stand behind, and a real chamber scores the
+-- same. So a second measure counts OPEN ground (see Overworld.isOpen) over the same machinery.
+function Overworld:walkableSums(pred)
+    local B = Overworld.BOX
+    pred = pred or function(cell) return self:typeWalkable(cell.tile) end
+    local sum = {}
+    for y = 0, self.rows do
+        sum[y] = {}
+        sum[y][0] = 0
+    end
+    for x = 0, self.cols do sum[0][x] = 0 end
+    for y = 1, self.rows do
+        for x = 1, self.cols do
+            local w = pred(self.cells[y][x], x, y) and 1 or 0
+            sum[y][x] = w + sum[y - 1][x] + sum[y][x - 1] - sum[y - 1][x - 1]
+        end
+    end
+    -- Walkable count of the BOX x BOX window whose top-left corner is (x, y), 1-indexed.
+    return function(x, y)
+        local x2, y2 = x + B - 1, y + B - 1
+        if x < 1 or y < 1 or x2 > self.cols or y2 > self.rows then return 0 end
+        return sum[y2][x2] - sum[y - 1][x2] - sum[y2][x - 1] + sum[y - 1][x - 1]
+    end
+end
+
+-- IS THIS TILE OPEN GROUND, meaning its whole 3x3 neighbourhood is walkable. A corridor tile is not,
+-- however long the corridor; a junction is not; only the interior of something at least three wide is.
+--
+-- This is the shape measure the plain walkable count cannot be. Rolled boards say a spacing-2 warren
+-- holds 34 walkable tiles in an 8x8 window -- comfortably past the floor -- with ZERO open tiles in it,
+-- because every tile it holds is a corridor with wall on both sides. A board like that has room for four
+-- bodies and no room for a decision: nothing can be flanked, nothing has a line, and the fight resolves
+-- as whoever is at the front of the queue. So a seat wants both numbers, and the second one is the one
+-- that says "room" rather than "space".
+function Overworld:isOpen(x, y)
+    for dy = -1, 1 do
+        for dx = -1, 1 do
+            local c = self:get(x + dx, y + dy)
+            if not (c and self:typeWalkable(c.tile)) then return false end
+        end
+    end
+    return true
+end
+
+-- THE WINDOW A FIGHT AT (x, y) WOULD BE FOUGHT IN: of every window CONTAINING that tile, the one
+-- holding the most walkable ground. Returns its top-left (ox, oy) and its score.
+--
+-- Chosen rather than centred, and that is the whole rule. Meet something at the mouth of a clearing and
+-- the box pulls into the clearing, so you fight in the room and not in the doorway. Get cornered in a
+-- true corridor and it stays a corridor, because there was nothing better within reach -- which is the
+-- price of having walked in there, not a failure of the generator.
+--
+-- Ties break toward the top-left because the walk is ordered, so a seed reproduces its lock exactly --
+-- the same reason every other placement pass here walks in a fixed grid order.
+--
+-- `sums` is optional and exists for callers asking about many tiles (the report walks every cell on the
+-- board): build it once with walkableSums() and hand it in, or pay for one per query.
+function Overworld:bestBox(x, y, sums)
+    sums = sums or self:walkableSums()
+    local B = Overworld.BOX
+    local bx, by, best = nil, nil, -1
+    for oy = math.max(1, y - B + 1), math.min(self.rows - B + 1, y) do
+        for ox = math.max(1, x - B + 1), math.min(self.cols - B + 1, x) do
+            local s = sums(ox, oy)
+            if s > best then best, bx, by = s, ox, oy end
+        end
+    end
+    -- A board smaller than the box in either axis has no window at all. Clamp rather than return nil:
+    -- every caller here wants a rectangle to draw or to count, and a degenerate map is a test fixture,
+    -- not a state the campaign can reach.
+    if not bx then return 1, 1, 0 end
+    return bx, by, math.max(0, best)
 end
 
 -- Walkable for an actor holding `keysHeld` (a set of keyId -> true). A gate is

@@ -11,11 +11,11 @@ return {
     image = "assets/overworld/tundra.png",
     tileSize = 16,
     tiles = {
-        forest = { color = { 0.86, 0.89, 0.93 } }, -- drift: bright, impassable
+        thicket = { color = { 0.86, 0.89, 0.93 } }, -- drift: bright, impassable
         grass  = { color = { 0.72, 0.77, 0.80 } }, -- frozen tussock breaking the snow
         rock   = { color = { 0.48, 0.52, 0.58 } }, -- frost-split stone
         path   = { color = { 0.56, 0.66, 0.78 } }, -- trodden snow, shadowed blue so the route reads
         bridge = { color = { 0.66, 0.80, 0.88 } }, -- a span of ice
-        water  = { color = { 0.20, 0.38, 0.52 } }, -- meltwater: the cold that never set
+        river  = { color = { 0.20, 0.38, 0.52 } }, -- meltwater: the cold that never set
     },
 }

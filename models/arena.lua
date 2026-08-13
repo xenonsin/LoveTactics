@@ -24,6 +24,7 @@
 
 local Registry = require("models.registry")
 local Prop = require("models.prop")
+local Terrain = require("models.terrain") -- the one terrain table, shared with models/overworld.lua
 local Biome = require("models.biome") -- signature ground a generated board seeds (Biome.hazardFor)
 
 local Arena = {}
@@ -32,9 +33,13 @@ Arena.COLS = 8
 Arena.ROWS = 8
 Arena.TILE_SIZE = 64 -- logical pixels per cell (8*64 = 512, centered in 1280x720)
 
--- Arena tile palette. Deliberately small; "special properties" (hazards, cover,
--- bonuses) are fleshed out with the turn system. Distinct from models/tileset.lua's
--- overworld TYPES, but the renderer still pulls *art* from the biome's tileset.
+-- Arena tile palette. NO LONGER DISTINCT from the overworld's types -- both are views onto
+-- models/terrain.lua, because a fight is taken on an 8x8 window of the map's own tiles and the two
+-- layers cannot hold different opinions about the same ground (docs/overworld.md, one map). Kept under
+-- this name because a dozen callers, four curated arenas and three specs read `Arena.TILE_PROPS`, and
+-- the merge should not also be a rename of everything that consumed the merged thing.
+--
+-- The property documentation now lives with the table, in models/terrain.lua. In summary:
 --   * moveCost  -- terrain-weighted enter cost (Dijkstra reach + timeline; see models/combat.lua)
 --   * walkable  -- may a unit occupy the tile at all
 --   * sightCost -- how much this tile obstructs a line of sight that passes THROUGH it. Combat
@@ -49,39 +54,7 @@ Arena.TILE_SIZE = 64 -- logical pixels per cell (8*64 = 512, centered in 1280x72
 --     arcs in -- Combat.conductLightning). A hazard on the tile or a status on whoever stands there
 --     can carry the same tags, and Combat.tileHasTag answers across all three -- so a Rain cloud, a
 --     Wet unit and a river are one thing to a lightning bolt. Add a tag, not a branch.
-Arena.TILE_PROPS = {
-    ground   = { moveCost = 1, walkable = true,  sightCost = 0 },  -- open field
-    forest   = { moveCost = 2, walkable = true,  sightCost = 1, tags = { "burnable" } }, -- slow; soft cover; catches fire
-    -- A ford / shallow pool: wadeable but slow, and it carries a charge to whatever stands in it.
-    water    = { moveCost = 2, walkable = true,  sightCost = 0, tags = { "conductable" } },
-    -- Steep high ground: blocks the view behind it, but a unit atop it sees + strikes one tile further.
-    mountain = { moveCost = 3, walkable = true,  sightCost = 2, bonus = { range = 1 } },
-    rough    = { moveCost = 2, walkable = true,  sightCost = 0 },  -- legacy penalty tile (curated arenas)
-    obstacle = { moveCost = math.huge, walkable = false, sightCost = math.huge }, -- solid: blocks tile + sight
-
-    -- The biome floors below are each the deliberate INVERSE of one above, so a board built on them
-    -- plays differently rather than merely looking different. None of them grants cover: every one is
-    -- sightCost 0, because the thing that makes a strange floor interesting is what it does to feet
-    -- and to reach, not what it hides behind.
-
-    -- Loose sand: heavy going with nothing to stand behind -- forest's cost without forest's cover, so
-    -- a desert board is a long ranged exchange nobody can cross quickly or safely.
-    sand     = { moveCost = 2, walkable = true,  sightCost = 0 },
-    -- Frozen ground: the ONLY terrain feature that does not tax a step. Every other floor here costs
-    -- more than open field; ice costs exactly the same, so a board scattered with it is a board with no
-    -- movement obstacles at all. What it charges instead is conduction -- a lightning line that would
-    -- clip one body on grass sweeps a whole frozen front. Free to cross, expensive to stand on.
-    ice      = { moveCost = 1, walkable = true,  sightCost = 0, tags = { "conductable" } },
-    -- A lava flow: impassable, but UNLIKE an obstacle it does not block a line of sight. A wall you can
-    -- shoot straight over and never cross -- the one barrier that separates two lines without also
-    -- hiding them from each other.
-    lava     = { moveCost = math.huge, walkable = false, sightCost = 0 },
-    -- Sucking bog: it ties the mountain for the heaviest walkable floor and gives back nothing at all --
-    -- no reach, no cover, no sight. The strictly-worse-than-high-ground tile, which is a real thing for
-    -- a floor to be: it makes crossing expensive without ever being worth holding. Wet through, so it
-    -- conducts.
-    mire     = { moveCost = 3, walkable = true,  sightCost = 0, tags = { "conductable" } },
-}
+Arena.TILE_PROPS = Terrain.TYPES
 
 -- What a generated board scatters for a given biome. `Arena.generateLayout` makes exactly three
 -- scatter calls (a fill, a rise, a blocker) and this only chooses WHICH tile each one lays down -- the

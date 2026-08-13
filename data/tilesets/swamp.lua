@@ -11,11 +11,11 @@ return {
     image = "assets/overworld/swamp.png",
     tileSize = 16,
     tiles = {
-        forest = { color = { 0.16, 0.22, 0.15 } }, -- mangrove thicket: the impassable fill
+        thicket = { color = { 0.16, 0.22, 0.15 } }, -- mangrove thicket: the impassable fill
         grass  = { color = { 0.28, 0.32, 0.18 } }, -- sedge and reed, yellowed
         rock   = { color = { 0.30, 0.33, 0.28 } }, -- a mossed-over boulder
         path   = { color = { 0.36, 0.31, 0.20 } }, -- churned mud and boardwalk
         bridge = { color = { 0.48, 0.38, 0.24 } }, -- old timber over the channel
-        water  = { color = { 0.22, 0.26, 0.20 } }, -- brackish standing water, barely lighter than fill
+        river  = { color = { 0.22, 0.26, 0.20 } }, -- brackish standing water, barely lighter than fill
     },
 }

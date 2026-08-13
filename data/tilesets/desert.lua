@@ -11,11 +11,11 @@ return {
     image = "assets/overworld/desert.png",
     tileSize = 16,
     tiles = {
-        forest = { color = { 0.76, 0.62, 0.38 } }, -- dune crest: the impassable fill
+        thicket = { color = { 0.76, 0.62, 0.38 } }, -- dune crest: the impassable fill
         grass  = { color = { 0.70, 0.66, 0.44 } }, -- dry scrub
         rock   = { color = { 0.55, 0.46, 0.36 } }, -- weathered sandstone
         path   = { color = { 0.86, 0.76, 0.54 } }, -- packed track, the lightest thing on the board
         bridge = { color = { 0.60, 0.45, 0.28 } }, -- planks over the wadi
-        water  = { color = { 0.30, 0.52, 0.52 } }, -- the pool at its bottom: the only cool note here
+        river  = { color = { 0.30, 0.52, 0.52 } }, -- the pool at its bottom: the only cool note here
     },
 }

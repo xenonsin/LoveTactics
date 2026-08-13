@@ -45,6 +45,15 @@ local SEED_BASE = 20260811
 local FIGHT = { combat = true, elite = true }
 local BOON_KINDS = { treasure = true, relic_cache = true }
 
+-- WHAT COUNTS AS A PLACE A FIGHT COULD BE SEATED, for the `sites` count only. Deliberately above
+-- Overworld.BOX_OK: BOX_OK is the floor a seat must CLEAR, while a *site* is somewhere a fight would be
+-- good rather than merely legal, and the gap between the two is what tells a cramped board from a
+-- comfortable one. Report-only, so it lives here rather than on the model. Declared with the other
+-- constants and not beside the pass that reads it: a local declared further down would be invisible to
+-- `measure` and resolve to a nil global instead, which compiles and loads and only fails on the board
+-- where the branch is finally taken.
+local SITE_SCORE = 44
+
 -- One board's worth of counts. Walks every cell once; the tier arc needs a BFS, which Overworld
 -- already exposes for its own placement passes.
 local function measure(grid)
@@ -142,7 +151,164 @@ local function measure(grid)
             end
         end
     end
+
+    -- ---------------------------------------------------------------------
+    -- FIGHTABILITY: can a battle actually happen here?
+    -- ---------------------------------------------------------------------
+    --
+    -- A fight is taken on THIS MAP -- the board locks an 8x8 window of these tiles and walls its ring
+    -- (Overworld.BOX) -- so "is there room to fight" becomes a property of the generator, and a silent
+    -- one. A layout can be connected, well-braided, correctly gated and completely unable to host a
+    -- battle, and nothing but this figure will say so. It is measured here first precisely because it
+    -- is the number most likely to be assumed rather than read.
+    --
+    --   fightable  share of trail standing in a window with at least BOX_OK walkable tiles
+    --   seat score what the fights ACTUALLY got: mean, worst, and how many were seated under the floor
+    --   sites      distinct non-overlapping windows good enough to be a board, which is the number the
+    --              board's fight count has to fit inside
+    local sums = grid:walkableSums()
+    -- ...and the same window measured for SHAPE rather than for space (Overworld.isOpen). A warren and a
+    -- chamber score alike on the first and nothing alike on the second.
+    local openSums = grid:walkableSums(function(_, x, y) return grid:isOpen(x, y) end)
+    r.walkTiles, r.fightTiles = 0, 0
+    r.seatSum, r.seatN, r.seatMin, r.seatBelow = 0, 0, math.huge, 0
+    r.openSum = 0
+    for y = 1, grid.rows do
+        for x = 1, grid.cols do
+            local c = grid.cells[y][x]
+            if grid:typeWalkable(c.tile) then
+                r.walkTiles = r.walkTiles + 1
+                local ox, oy, score = grid:bestBox(x, y, sums)
+                if score >= Overworld.BOX_OK then r.fightTiles = r.fightTiles + 1 end
+                if c.encounter and FIGHT[c.encounter.kind] then
+                    r.seatSum, r.seatN = r.seatSum + score, r.seatN + 1
+                    r.openSum = r.openSum + openSums(ox, oy)
+                    if score < r.seatMin then r.seatMin = score end
+                    if score < Overworld.BOX_OK then r.seatBelow = r.seatBelow + 1 end
+                end
+            end
+        end
+    end
+    if r.seatMin == math.huge then r.seatMin = 0 end
+
+    -- Greedy, highest-scoring first, suppressing anything that overlaps one already taken. Walked in a
+    -- fixed order with ties broken by position so the count reproduces from the seed like everything
+    -- else here.
+    local cands = {}
+    for y = 1, grid.rows - Overworld.BOX + 1 do
+        for x = 1, grid.cols - Overworld.BOX + 1 do
+            local s = sums(x, y)
+            if s >= SITE_SCORE then cands[#cands + 1] = { s, x, y } end
+        end
+    end
+    table.sort(cands, function(a, b)
+        if a[1] ~= b[1] then return a[1] > b[1] end
+        if a[3] ~= b[3] then return a[3] < b[3] end
+        return a[2] < b[2]
+    end)
+    local taken = {}
+    r.sites = 0
+    for _, c in ipairs(cands) do
+        local clear = true
+        for _, t in ipairs(taken) do
+            if math.abs(t[1] - c[2]) < Overworld.BOX and math.abs(t[2] - c[3]) < Overworld.BOX then
+                clear = false
+                break
+            end
+        end
+        if clear then
+            taken[#taken + 1] = { c[2], c[3] }
+            r.sites = r.sites + 1
+        end
+    end
+
     return r
+end
+
+-- THE POOL, IN A FIXED ORDER -- without which this whole tool is untrustworthy.
+--
+-- `Encounter.pool` builds its list with `pairs` over the registry, and `Overworld:pickEncounter` walks
+-- that list to turn a random draw into an encounter. So the SEED fixes the number and the TABLE ORDER
+-- fixes which entry the number lands on, and two runs of this report at the same seeds were quietly
+-- disagreeing about where the fights went -- which moved every figure that depends on which tile got a
+-- fight (seat scores, guarded share) while the pure-geometry ones stayed put.
+--
+-- That is a bad failure for an instrument whose entire justification is "do not hand-derive a count,
+-- roll the boards and read what they say": a number that will not reproduce cannot be read. Sorting by
+-- id fixes it here. It does NOT fix it for the game -- models/overworld.lua's own header notes the same
+-- unspecified order is why a board cannot be regenerated from its seed on load, and the save serializes
+-- every cell to work around it. Sorting inside Encounter.pool would close that too, and would change
+-- which boards players get, so it is a decision rather than a cleanup.
+function M.stablePool(day)
+    local pool = Encounter.pool({ day = day })
+    table.sort(pool, function(a, b) return tostring(a.id) < tostring(b.id) end)
+    return pool
+end
+
+-- EVERY GROUND, SIDE BY SIDE. One row per biome, holding only the columns that decide whether a layout
+-- can carry a run at all -- fightability first, because it is the new contract and the one a beautiful
+-- board can fail silently.
+--
+-- Rolls its own boards rather than sharing the full ledger's loop, deliberately: the ledger below prints
+-- a dozen framings of one ground and this prints one framing of every ground, and folding them together
+-- would make each harder to read than it is apart. The seeds are the same sequence, so a biome's row
+-- here and its ledger below describe the same boards.
+function M.compare(biomes, n, pool)
+    print(string.format("BOARD REPORT -- %d boards per ground, %d-%d stops, day %d",
+        n, DEFAULT_ENCOUNTERS.min, DEFAULT_ENCOUNTERS.max, DEFAULT_DAY))
+    print("")
+    print(string.format("  %-11s %9s %7s %6s %6s %7s %7s %7s %8s",
+        "ground", "fightable", "sites", "seat", "open", "worst", "under", "walk", "guarded"))
+    print("  " .. string.rep("-", 78))
+    for _, biome in ipairs(biomes) do
+        local t = { walk = 0, fight = 0, sites = 0, seatSum = 0, seatN = 0, below = 0,
+                    dead = 0, guarded = 0, boons = 0, cells = 0, openSum = 0 }
+        local worst = math.huge
+        for i = 1, n do
+            local grid = Overworld.generate({
+                biome = biome,
+                encounterCount = DEFAULT_ENCOUNTERS,
+                encounters = pool,
+                houseMaterial = "material_salt_iron",
+                seed = SEED_BASE + i,
+            })
+            local r = measure(grid)
+            t.walk = t.walk + r.walkTiles
+            t.cells = t.cells + grid.cols * grid.rows
+            t.fight = t.fight + r.fightTiles
+            t.sites = t.sites + r.sites
+            t.seatSum, t.seatN = t.seatSum + r.seatSum, t.seatN + r.seatN
+            t.below = t.below + r.seatBelow
+            t.openSum = t.openSum + r.openSum
+            t.dead = t.dead + r.deadEnds
+            t.guarded, t.boons = t.guarded + r.guarded, t.boons + r.boons
+            if r.seatN > 0 and r.seatMin < worst then worst = r.seatMin end
+        end
+        if worst == math.huge then worst = 0 end
+        local function ratio(a, b) return b > 0 and (a / b) or 0 end
+        print(string.format("  %-11s %8.1f%% %7.1f %6.1f %6.1f %7d %7.1f %6.1f%% %7.1f%%",
+            biome,
+            100 * ratio(t.fight, t.walk),
+            t.sites / n,
+            ratio(t.seatSum, t.seatN),
+            ratio(t.openSum, t.seatN),
+            worst,
+            t.below / n,
+            100 * ratio(t.walk, t.cells),
+            100 * ratio(t.guarded, t.boons)))
+    end
+    print("")
+    print(string.format("  fightable  share of trail in an %dx%d window holding >= %d walkable tiles",
+        Overworld.BOX, Overworld.BOX, Overworld.BOX_OK))
+    print(string.format("  sites      distinct non-overlapping windows scoring >= %d -- places a fight could go",
+        SITE_SCORE))
+    print(string.format("  seat       mean box score the fights were ACTUALLY seated on, of %d",
+        Overworld.BOX * Overworld.BOX))
+    print("  open       ...and how much of that was OPEN ground (a full 3x3 of trail around it).")
+    print("             This is the column that matters: space is not shape. A warren scores well on")
+    print("             `seat` and zero on `open` -- room for four bodies, no room for a decision.")
+    print(string.format("  under      fights a board seated below the floor of %d -- these must reach 0",
+        Overworld.BOX_OK))
 end
 
 function M.run(args)
@@ -150,11 +316,16 @@ function M.run(args)
     local n = tonumber(args[1]) or 200
     local wantTiers, braid, cacheDiv, combatWeight = false, nil, nil, nil
     local wantContracts, wantXp = false, false
+    -- Which ground(s). `all` walks every blueprint in data/biomes; `biome=x` reports one; the bare
+    -- default stays forest, so every figure recorded in docs/overworld.md still reproduces exactly.
+    local biome, wantAll = "forest", false
     local perBoard = {} -- one row per board, for the distribution questions a mean cannot answer
     for _, a in ipairs(args) do
         if a == "tiers" then wantTiers = true end
         if a == "contracts" then wantContracts = true end
         if a == "xp" then wantXp = true end
+        if a == "all" then wantAll = true end
+        local bi = tostring(a):match("^biome=(%w+)$"); if bi then biome = bi end
         -- Override knobs for a tuning sweep, so a candidate value is measured before it is committed to
         -- the model: `. board-report 200 braid=0.25 cachediv=3`.
         local b = tostring(a):match("^braid=([%d%.]+)$"); if b then braid = tonumber(b) end
@@ -162,7 +333,7 @@ function M.run(args)
         local w = tostring(a):match("^cw=([%d%.]+)$"); if w then combatWeight = tonumber(w) end
     end
 
-    local pool = Encounter.pool({ day = DEFAULT_DAY })
+    local pool = M.stablePool(DEFAULT_DAY)
     -- Sweep the ordinary-fight weights without editing four blueprints per candidate value. The pool is
     -- meant to be fight-heavy so that Overworld's combat-share CAP is what decides the mix; when it is
     -- not, the cap stops binding and the guarantee pass's non-combat stops set the ratio by accident.
@@ -172,9 +343,19 @@ function M.run(args)
         end
     end
 
+    if wantAll then
+        local Biome = require("models.biome")
+        local ids = {}
+        for id in pairs(Biome.defs) do ids[#ids + 1] = id end
+        table.sort(ids) -- `pairs` over the registry is unspecified; the table has to reproduce
+        M.compare(ids, n, pool)
+        return
+    end
+
     local tot = {
         fights = 0, boons = 0, guarded = 0, rest = 0, stops = 0, caches = 0, services = 0,
-        tierSum = 0, tierN = 0,
+        tierSum = 0, tierN = 0, walkTiles = 0, fightTiles = 0, sites = 0,
+        seatSum = 0, seatN = 0, seatBelow = 0, seatMin = math.huge,
         depthTierSum = { 0, 0, 0, 0, 0 }, depthTierN = { 0, 0, 0, 0, 0 },
         byKind = {},
     }
@@ -182,7 +363,7 @@ function M.run(args)
     for i = 1, n do
         local encN = DEFAULT_ENCOUNTERS
         local grid = Overworld.generate({
-            biome = "forest",
+            biome = biome,
             encounterCount = encN,
             encounters = pool,
             houseMaterial = "material_salt_iron",
@@ -195,9 +376,11 @@ function M.run(args)
         local r = measure(grid)
         for _, k in ipairs({ "fights", "boons", "guarded", "rest", "stops", "caches", "services",
                              "tierSum", "tierN", "deadEnds", "cacheOnDeadEnd", "boonsWithApproach",
-                             "craftStock", "houseStock" }) do
+                             "craftStock", "houseStock",
+                             "walkTiles", "fightTiles", "sites", "seatSum", "seatN", "seatBelow" }) do
             tot[k] = (tot[k] or 0) + r[k]
         end
+        if r.seatN > 0 and r.seatMin < tot.seatMin then tot.seatMin = r.seatMin end
         for b = 1, 5 do
             tot.depthTierSum[b] = tot.depthTierSum[b] + r.depthTierSum[b]
             tot.depthTierN[b] = tot.depthTierN[b] + r.depthTierN[b]
@@ -214,8 +397,8 @@ function M.run(args)
     local function per(v) return v / n end
     local function ratio(a, b) return b > 0 and (a / b) or 0 end
 
-    print(string.format("BOARD REPORT -- %d rolled boards, forest, %d-%d stops, day %d",
-        n, DEFAULT_ENCOUNTERS.min, DEFAULT_ENCOUNTERS.max, DEFAULT_DAY))
+    print(string.format("BOARD REPORT -- %d rolled boards, %s, %d-%d stops, day %d",
+        n, biome, DEFAULT_ENCOUNTERS.min, DEFAULT_ENCOUNTERS.max, DEFAULT_DAY))
     print("")
     print(string.format("  %-22s %8s  %s", "", "per board", "note"))
     print(string.format("  %-22s %8.2f", "stops", per(tot.stops)))
@@ -244,6 +427,22 @@ function M.run(args)
         "have a neighbour that is a real cut vertex"))
     print(string.format("    %-20s %8.2f  %s", "loose fights", per(tot.fights - tot.guarded),
         "available to move onto an approach"))
+    print("")
+    -- CAN A BATTLE HAPPEN HERE. Printed above the economy rows because it now gates them: a board whose
+    -- fights are seated on ground too thin to fight on pays nothing, whatever the cache maths says.
+    print("")
+    print(string.format("  can a fight happen here -- an %dx%d window of these tiles:",
+        Overworld.BOX, Overworld.BOX))
+    print(string.format("    %-20s %8.1f%%  %s", "fightable trail",
+        100 * ratio(tot.fightTiles, tot.walkTiles),
+        string.format("of %.0f walkable tiles a board", per(tot.walkTiles))))
+    print(string.format("    %-20s %8.2f  %s", "arena sites", per(tot.sites),
+        string.format("against %.2f fights to seat", per(tot.fights))))
+    print(string.format("    %-20s %8.1f  %s", "mean seat score", ratio(tot.seatSum, tot.seatN),
+        string.format("of %d; worst seen %d", Overworld.BOX * Overworld.BOX,
+            tot.seatMin == math.huge and 0 or tot.seatMin)))
+    print(string.format("    %-20s %8.2f  %s", "seated under floor", per(tot.seatBelow),
+        string.format("fights a board below %d -- must reach 0", Overworld.BOX_OK)))
     print("")
     print(string.format("  %-22s %8.2f  %s", "cache craft stock", per(tot.craftStock),
         "material income -- the thing a ratio change must not quietly gut"))

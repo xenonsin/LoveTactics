@@ -9,11 +9,11 @@ return {
     image = "assets/overworld/forest.png",
     tileSize = 16,
     tiles = {
-        forest = { color = { 0.10, 0.24, 0.12 } }, -- dense canopy fill
+        thicket = { color = { 0.10, 0.24, 0.12 } }, -- dense canopy fill
         grass  = { color = { 0.16, 0.32, 0.16 } },
         rock   = { color = { 0.34, 0.32, 0.30 } },
         path   = { color = { 0.42, 0.30, 0.18 } }, -- dirt trail
         bridge = { color = { 0.55, 0.40, 0.22 } },
-        water  = { color = { 0.18, 0.34, 0.55 } }, -- river
+        river  = { color = { 0.18, 0.34, 0.55 } }, -- river
     },
 }

@@ -54,10 +54,21 @@ BattleMap.__index = BattleMap
 -- already means the right thing. Every arena type must appear here -- the `or "path"` fallback at the
 -- draw site keeps a missing entry from crashing, but it would paint that floor as the trail, which on a
 -- desert board makes sand and open ground indistinguishable.
+-- The art ROLE each terrain draws as. The roles are the six the biome tilesets actually paint
+-- (data/tilesets/<id>.lua): `thicket` is a biome's dense fill -- canopy, drift, dune, cooled rock --
+-- and `river` is its water, whatever that water is made of.
+--
+-- Every walkable floor borrows the fill's art rather than owning its own, which is why sand draws as
+-- the desert's dune and ice as the tundra's drift: one authored palette per ground, used twice.
+--
+-- The map's own tiles are listed too, now that a board is carved out of them and both layers read one
+-- terrain table (models/terrain.lua). They map to themselves.
 BattleMap.ART = {
-    ground = "path", forest = "forest", mountain = "rock",
-    rough = "grass", obstacle = "rock", water = "water",
-    sand = "forest", ice = "forest", mire = "water", lava = "water",
+    ground = "path", forest = "thicket", mountain = "rock",
+    rough = "grass", obstacle = "rock", water = "river",
+    sand = "thicket", ice = "thicket", mire = "river", lava = "river",
+    path = "path", bridge = "bridge", thicket = "thicket",
+    grass = "grass", rock = "rock", river = "river",
 }
 
 -- Translucent wash over costly terrain (drawn on walkable tiles) so a tile's move penalty

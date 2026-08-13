@@ -10,21 +10,18 @@
 --   def.image / def.tileSize / def.tiles[type].{index,walkable,color}
 
 local Registry = require("models.registry")
+local Terrain = require("models.terrain") -- the one terrain table, shared with the battle board
 
 local Tileset = {}
 
--- Canonical tile types: walkability (owned here, never per-biome) plus the default
--- 1-based sheet index and a pre-art fallback colour. A biome tileset may override
--- `index`/`color` per type; `walkable` is fixed.
-Tileset.TYPES = {
-    -- type      index  walkable  fallback color (RGB 0..1) used pre-art
-    forest = { index = 1, walkable = false, color = { 0.10, 0.24, 0.12 } },
-    grass  = { index = 2, walkable = false, color = { 0.16, 0.32, 0.16 } },
-    rock   = { index = 3, walkable = false, color = { 0.34, 0.32, 0.30 } },
-    path   = { index = 4, walkable = true,  color = { 0.42, 0.30, 0.18 } },
-    bridge = { index = 5, walkable = true,  color = { 0.55, 0.40, 0.22 } },
-    water  = { index = 6, walkable = false, color = { 0.18, 0.34, 0.55 } },
-}
+-- Canonical tile types: walkability plus the default 1-based sheet index and a pre-art fallback colour.
+-- A biome tileset may override `index`/`color` per type; behaviour is fixed.
+--
+-- READ OFF models/terrain.lua RATHER THAN DECLARED HERE, because the map and the board are the same
+-- ground now (docs/overworld.md, one map): a fight is fought on an 8x8 window of these very tiles, so a
+-- second opinion about whether one is walkable would be a second opinion about the battlefield. This
+-- table used to hold six types and one fact about each; it is now a view of every type there is.
+Tileset.TYPES = Terrain.tilesetTypes()
 
 Tileset.defs = Registry.load("data/tilesets", "data.tilesets")
 
