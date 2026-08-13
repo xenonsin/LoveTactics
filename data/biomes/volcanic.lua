@@ -13,7 +13,8 @@
 return {
     name = "Volcanic",
     tileset = "volcanic", -- data/tilesets/volcanic.lua (art for this biome)
-    spacing = 2, -- 1-wide corridors, 1-tile walls: as tight as the castle, and hotter
+    layout = "rifts", -- wide fractures meeting at chambers (models/layouts/rifts.lua)
+    spacing = 2, -- kept for the river band; the carve no longer reads it
     rivers = { min = 2, max = 3 }, -- flows, not water; the bridges over them are the map's real doors
     hazard = { id = "hazard_fire", min = 1, max = 2 },
 }

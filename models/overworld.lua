@@ -339,6 +339,17 @@ end
 
 -- Carve a 1-tile-wide corridor between two nodes `spacing` apart. Only the line
 -- of tiles is turned into "path"; the surrounding forest blocks stay thick.
+-- Carve an L from (ax, ay) to (bx, by): along x, then along y. THE STRAIGHT-LINE VERSION BELOW IS NOT
+-- SAFE FOR ARBITRARY PAIRS -- it steps both axes at once and only stops when both match, so a pair that
+-- is not axis-aligned walks off the grid diagonally and indexes nil. That was fine while the only caller
+-- was a lattice maze joining neighbouring nodes; it is not fine for a layout stitching two pockets
+-- together, which is exactly how the volcanic ground first failed (and failed as an apparent HANG,
+-- because LÖVE draws the error and waits for a window that a headless tool never shows).
+function Overworld:carveElbow(ax, ay, bx, by)
+    self:carveCorridor(ax, ay, bx, ay)
+    self:carveCorridor(bx, ay, bx, by)
+end
+
 function Overworld:carveCorridor(ax, ay, bx, by)
     local ux = (bx > ax and 1) or (bx < ax and -1) or 0
     local uy = (by > ay and 1) or (by < ay and -1) or 0
@@ -1397,12 +1408,17 @@ function Overworld:placeEncounters(params)
     -- So the floor governs CHOICE, and only where there is a choice to make. A ground that cannot clear
     -- it is a layout that has not been written yet, and it says so in the report's `under` column rather
     -- than by quietly serving an empty run.
+    -- Scored ONCE per candidate, into a table keyed by cell. The look-ahead below scans forward through
+    -- the candidate list for open ground, so asking bestBox inside it made the pass quadratic and each
+    -- of those steps cost 64 window lookups -- board generation went from imperceptible to several
+    -- seconds a board, which is a stall at the start of every quest. The scores do not change while this
+    -- loop runs, so there is no reason to ask twice.
+    local boxScore = {}
     local anyFightable = false
     for _, c in ipairs(cands) do
-        if select(3, self:bestBox(c.x, c.y, boxSums)) >= Overworld.BOX_OK then
-            anyFightable = true
-            break
-        end
+        local s = select(3, self:bestBox(c.x, c.y, boxSums))
+        boxScore[c] = s
+        if s >= Overworld.BOX_OK then anyFightable = true end
     end
 
     for i = next_, #cands do
@@ -1425,8 +1441,7 @@ function Overworld:placeEncounters(params)
             -- Corridor contact is still perfectly legal: a patrol that catches the party mid-hall gets
             -- exactly that fight, and it should. This rule only governs what the GENERATOR chooses to
             -- put somewhere, which is a different question from what the player walks into.
-            local thin = anyFightable
-                and select(3, self:bestBox(c.x, c.y, boxSums)) < Overworld.BOX_OK
+            local thin = anyFightable and (boxScore[c] or 0) < Overworld.BOX_OK
             local onSpine = self.spineKeys and not params.ascent and self.spineKeys[cellKey(c)]
 
             -- LOOK FOR ROOM BEFORE GIVING UP THE FIGHT. Demoting outright was tried and it bought
@@ -1439,7 +1454,7 @@ function Overworld:placeEncounters(params)
                     local alt = cands[j]
                     if not alt.encounter
                         and not (self.spineKeys and not params.ascent and self.spineKeys[cellKey(alt)])
-                        and select(3, self:bestBox(alt.x, alt.y, boxSums)) >= Overworld.BOX_OK then
+                        and (boxScore[alt] or 0) >= Overworld.BOX_OK then
                         local spaced = true
                         for _, p in ipairs(placed) do
                             if math.abs(p.x - alt.x) + math.abs(p.y - alt.y) < 2 then spaced = false; break end

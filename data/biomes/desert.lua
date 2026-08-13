@@ -10,6 +10,7 @@
 return {
     name = "Desert",
     tileset = "desert", -- data/tilesets/desert.lua (art for this biome)
+    layout = "open", -- a plain with ridges and one walled ruin (models/layouts/open.lua)
     spacing = 5, -- 1-wide tracks, 4-tile-thick dune fill: the loosest maze, longest sightlines
     rivers = { min = 0, max = 1 }, -- a wadi at most; water here is the exception, not the terrain
     hazard = { id = "hazard_quicksand", min = 1, max = 2 },

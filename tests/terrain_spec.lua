@@ -131,8 +131,8 @@ return {
             local EXPECTED = {
                 forest = { 172012, 359 }, -- glades: the maze, opened (models/layouts/glades.lua)
                 castle = { 212536, 401 }, -- rooms: chambers and halls (models/layouts/rooms.lua)
-                tundra = { 110993, 199 },
-                desert = { 66031, 134 },
+                tundra = { 299251, 540 }, -- floes: open flats quartered by meltwater
+                desert = { 322034, 577 }, -- open: a plain with ridges and one ruin
             }
             local bad = {}
             for biome, want in pairs(EXPECTED) do
