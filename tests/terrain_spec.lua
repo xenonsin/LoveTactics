@@ -138,7 +138,10 @@ return {
                 forest = { 249403, 389 }, -- glades: the maze, opened (models/layouts/glades.lua)
                 castle = { 212536, 401 }, -- rooms: chambers and halls (models/layouts/rooms.lua)
                 tundra = { 349875, 568 }, -- floes: open flats quartered by meltwater, every lobe forded
-                desert = { 413779, 624 }, -- open: a plain with ridges and one ruin
+                -- MOVED, DELIBERATELY, by two tiles: the open carve now owns its own connectivity
+                -- (models/layouts/open.lua's stitch), so a ridge that closed a loop gets a gap and the
+                -- ruin's mouth is guaranteed ground outside it. This seed only needed a gap.
+                desert = { 414974, 626 }, -- open: a plain with ridges and one ruin
             }
             local bad = {}
             for biome, want in pairs(EXPECTED) do

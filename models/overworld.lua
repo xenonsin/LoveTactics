@@ -590,11 +590,20 @@ function Overworld:onTrailTile(x, y)
     return c ~= nil and (c.tile == "path" or c.tile == "bridge")
 end
 
+-- A CHANNEL LAID ACROSS WALKABLE GROUND IS A CROSSING, whatever that ground is made of. The test used to
+-- name the two tiles a carve was known to lay a trail out of, `path` and `bridge`, and that was the same
+-- statement while those were the only walkable types a map ever held. The swamp broke it: drowned trail
+-- stands under shallows (models/layouts/drowned.lua lays `water`, wadeable at double cost), so a river
+-- crossing a pool fell through to the else and turned a walkable tile into an impassable one. It is the
+-- wettest ground in the game -- two to four rivers over a third of the trail flooded -- and EVERY swamp
+-- board came out in pieces, four in ten of its walkable tiles stranded behind water that should have been
+-- a plank. Asking walkability instead says the rule the comment above always claimed, and changes nothing
+-- anywhere else: no other layout that runs the shared river pass lays a walkable tile that is not trail.
 function Overworld:markRiver(x, y)
     local c = self.cells[y] and self.cells[y][x]
     if not c then return end
     c.river = true
-    if c.tile == "path" or c.tile == "bridge" then
+    if self:typeWalkable(c.tile) then
         c.tile = "bridge"
         c.bridge = true
     else
