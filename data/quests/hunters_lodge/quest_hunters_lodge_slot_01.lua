@@ -10,6 +10,11 @@ return {
     rewardItems = { "weapon_deadfall_bow", "armor_quarryhide" },
     rewardGold = 130,
     requiredPrestige = 2,
+    -- The head of the line waits on the padded card, the same quest that puts the Lodge's door in the
+    -- hub (data/buildings/hunters_lodge.lua). Both gates are needed: a building's `unlockQuest` closes
+    -- the shop, and Quest.available checks only the vendor's `unlockPrestige`, so without this the
+    -- board would offer work at a house the player cannot walk into.
+    requiredQuests = { "quest_colosseum_slot_02" },
     map = {
         biome = "forest",
         encounters = { min = 6, max = 9 },
