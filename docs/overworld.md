@@ -131,6 +131,12 @@ length, one to four tiles deep, in headlands and bays. The tiles stay square; th
   board that keeps doing it is a sizing rule falling behind what a ground can hold. It sits around 8%
   today, concentrated in the room-carve grounds that have almost no degree-1 tiles at all.
 - **A fight is never seated where a fight cannot happen.** See the fightability floor below.
+- **The map remembers ground, never what is standing on it.** Every mark the board draws — a fight, a
+  patrol and its circuit, a cache, a gate, the objective pennant, and the hovered-fight readout with
+  them — is gated on the tile being lit *right now* (`OverworldMap:lit`, the same `inVision` test that
+  reveal lit it with). Walk away and mapped country comes back as bare terrain: you know the shape of
+  where you have been, and nothing about who is in it. Routing is the one thing that still runs on
+  memory — `pathTo` crosses any `seen` tile, so you can walk home through the dark.
 - **The finds are guarded, never the services.** A shop behind a fight is friction; a rest behind one
   compounds exactly the wrong way.
 - **Ascent maps opt out.** There combat *is* the route.
@@ -255,7 +261,9 @@ you are not stepping.
 - **A loose beat never touches the spine.** Alert may cross it, because you can outwalk a patrol and a
   chase that stops at an invisible line is worse than no chase.
 - **The circuit is drawn**, with the tile it occupies next. A moving fight you cannot predict is a
-  punishment; one whose circuit you can read is a puzzle.
+  punishment; one whose circuit you can read is a puzzle. Both are drawn **in sight only**, like every
+  other mark: a body that walks is the last thing a map could honestly remember, so the read is a thing
+  you take while you can see it rather than a tracker you keep across the board.
 
 **Where it touched you is where it deploys.** A fight the company walks into opens as two lines facing
 each other; one that caught them opens with the enemy on the side it arrived from — so being caught deep

@@ -58,7 +58,7 @@ function OverworldMap.new(grid, opts)
     -- comparison itself (it owns no roster); it only colours what it is told. See the pips in :draw.
     self.musterBand = opts.musterBand
     self.font = opts.font or Theme.body(16)
-    self.hoverCell = nil -- the cell under the mouse, for the HUD's fight readout (see hoveredFight)
+    self.hoverX, self.hoverY = nil, nil -- the tile under the mouse, for the HUD's fight readout
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
     self.heldDir = nil   -- { dx, dy } of the direction currently held (any input)
     self.moveTimer = 0   -- seconds until the next auto-repeat step
@@ -647,97 +647,122 @@ function OverworldMap:drawFog()
     love.graphics.setColor(1, 1, 1)
 end
 
+-- WHAT IS ON THE GROUND IS SEEN, NEVER REMEMBERED. A marker draws only on a tile that is lit RIGHT
+-- NOW (see :lit) -- mapped-but-dark ground comes back as bare terrain, the same as it looked before
+-- anything stood on it. The map is a record of where you have walked, not a list of what is out there.
+--
+-- The loop therefore walks the vision box rather than the whole board: everything outside it fails the
+-- test anyway, and a marker pass that touches nine tiles instead of a few thousand is the cheaper half
+-- of the same rule. `pathTo`, which routes across mapped ground, is deliberately NOT gated this way --
+-- you can still walk back through country you have already crossed, you just cannot see what is
+-- standing in it.
+-- The cell at (x, y) if it is lit RIGHT NOW -- discovered *and* inside the current vision disc -- or
+-- nil. The single test every drawn mark asks, so what the fog hides and what the markers skip can never
+-- drift apart: it is the same `inVision` reveal itself lit the tile with.
+--
+-- `seen` alone is not enough for anything but terrain. A tile you mapped an hour ago is ground you
+-- remember; whatever is standing on it now is not something you can know.
+function OverworldMap:lit(x, y)
+    local c = self.grid:get(x, y)
+    if not (c and c.seen) then return nil end
+    if not self.grid:inVision(self.px, self.py, x, y, self.visionRadius) then return nil end
+    return c
+end
+
 function OverworldMap:drawMarkers()
     local s = self.grid.size
+    local radius = self.visionRadius
     love.graphics.setFont(self.font)
-    for y = 1, self.grid.rows do
-        for x = 1, self.grid.cols do
-            local c = self.grid:get(x, y)
-            local wx, wy = self.grid:cellToPixel(x, y)
+    for y = self.py - radius, self.py + radius do
+        for x = self.px - radius, self.px + radius do
+            local c = self:lit(x, y)
+            if c then
+                local wx, wy = self.grid:cellToPixel(x, y)
 
-            if c.gate then
-                -- Locked gate marker: greyed if still locked, faded once opened.
-                local held = self.keysHeld[c.gate.keyId]
-                love.graphics.setColor(held and 0.45 or 0.75, held and 0.45 or 0.65, 0.25,
-                    held and 0.4 or 1)
-                love.graphics.rectangle("line", wx + 3, wy + 3, s - 6, s - 6, 4, 4)
-                love.graphics.printf(held and "" or "L", wx, wy + s / 2 - 8, s, "center")
-            end
-
-            if c.key and not c.picked then
-                love.graphics.setColor(0.95, 0.85, 0.35)
-                love.graphics.printf("K", wx, wy + s / 2 - 8, s, "center")
-            end
-
-            -- Material cache: the reason a dead end is worth the walk. An ingot wedge rather than a
-            -- letter, so it never reads as another kind of encounter -- it costs no fight and opens no
-            -- panel, it is simply picked up on arrival. Copper against the key's gold: the same "walk
-            -- here and take it" family, a different thing in it. Sized and darkly outlined to carry at
-            -- 32px over a pale trail, because it is visible through the fog like every other marker,
-            -- and that is the whole point -- the detour has to be a decision made in advance.
-            if c.cache and not c.picked then
-                local pad = s * 0.22
-                local x1, y1 = wx + s / 2, wy + pad
-                local x2, y2 = wx + s - pad, wy + s - pad
-                local x3, y3 = wx + pad, wy + s - pad
-                love.graphics.setColor(0.12, 0.09, 0.06, 0.75)
-                love.graphics.polygon("fill", x1, y1 - 1, x2 + 1, y2 + 1, x3 - 1, y3 + 1)
-                love.graphics.setColor(0.90, 0.62, 0.30)
-                love.graphics.polygon("fill", x1, y1, x2, y2, x3, y3)
-                love.graphics.setColor(1, 0.86, 0.62)
-                love.graphics.setLineWidth(1.5)
-                love.graphics.polygon("line", x1, y1, x2, y2, x3, y3)
-                love.graphics.setLineWidth(1)
-            end
-
-            if c.encounter then
-                local kind = c.encounter.kind
-                local r, g, b = markerColor(kind)
-                -- How this fight stands against the company, asked once and spent twice below: on the
-                -- box colour and on the pips. Nil for a stop there is no comparison to make about --
-                -- a treasure, a rest, an escort fight the muster cannot price -- which keeps its
-                -- ordinary hostile colour and draws no pips, exactly as before any of this existed.
-                local band = self.musterBand and self.musterBand(c) or nil
-                if band == "beneath" then r, g, b = CALM_MARKER[1], CALM_MARKER[2], CALM_MARKER[3] end
-                local a = c.cleared and 0.3 or 1
-                love.graphics.setColor(r, g, b, a)
-                love.graphics.rectangle("line", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
-                love.graphics.setColor(r, g, b, a * 0.35)
-                love.graphics.rectangle("fill", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
-                -- Colour still encodes the kind on the box; the icon draws it in white on top so the
-                -- SHAPE reads even where two kinds sit close in hue (event violet vs a red combat).
-                local icon = MarkerIcon[kind] or MarkerIcon.combat
-                local pad = s * 0.28
-                icon(wx + pad, wy + pad, s - pad * 2, s - pad * 2, 1, 1, 1, a)
-
-                -- How far above the company this fight stands: one pip per step, along the marker's
-                -- bottom edge. None at all when it is even or beneath them -- the box colour above has
-                -- already said which of those two it is.
-                --
-                -- Sized to be COUNTED, which the old tier pips were not: they were `s * 0.06`, under 2px
-                -- across at a 32px tile, and three of them could not be told from two. They got away
-                -- with it only because their colour ALSO encoded the tier (green -> amber -> red), so
-                -- nobody was counting -- they were reading "red". Now that the count carries a fact of
-                -- its own, it has to survive being read.
-                local steps = band and Muster.PIPS[band] or 0
-                if steps > 0 and (kind == "combat" or kind == "elite") then
-                    local pipR = math.max(2.5, s * 0.09)
-                    local gap = pipR * 2 + 2
-                    local w = steps * gap - 2
-                    local cy = wy + s - pipR - 2
-
-                    -- A dark seat behind the row, because the pips land on the marker's own hostile red
-                    -- and a warning mark that needs good luck with the background is not a warning.
-                    love.graphics.setColor(0.05, 0.05, 0.07, a * 0.85)
-                    love.graphics.rectangle("fill", wx + s / 2 - w / 2 - 3, cy - pipR - 1.5,
-                        w + 6, pipR * 2 + 3, pipR + 1.5, pipR + 1.5)
-
-                    love.graphics.setColor(PIP_COLOR[1], PIP_COLOR[2], PIP_COLOR[3], a)
-                    for i = 1, steps do
-                        love.graphics.circle("fill", wx + s / 2 - w / 2 + pipR + (i - 1) * gap, cy, pipR)
-                    end
+                if c.gate then
+                    -- Locked gate marker: greyed if still locked, faded once opened.
+                    local held = self.keysHeld[c.gate.keyId]
+                    love.graphics.setColor(held and 0.45 or 0.75, held and 0.45 or 0.65, 0.25,
+                        held and 0.4 or 1)
+                    love.graphics.rectangle("line", wx + 3, wy + 3, s - 6, s - 6, 4, 4)
+                    love.graphics.printf(held and "" or "L", wx, wy + s / 2 - 8, s, "center")
                 end
-                love.graphics.setColor(1, 1, 1)
+
+                if c.key and not c.picked then
+                    love.graphics.setColor(0.95, 0.85, 0.35)
+                    love.graphics.printf("K", wx, wy + s / 2 - 8, s, "center")
+                end
+
+                -- Material cache: the reason a dead end is worth the walk. An ingot wedge rather than a
+                -- letter, so it never reads as another kind of encounter -- it costs no fight and opens
+                -- no panel, it is simply picked up on arrival. Copper against the key's gold: the same
+                -- "walk here and take it" family, a different thing in it. Sized and darkly outlined to
+                -- carry at 32px over a pale trail, because the tile it stands on may be lit for one step
+                -- of a walk past the mouth of a spur, and a detour has to be decidable in that step.
+                if c.cache and not c.picked then
+                    local pad = s * 0.22
+                    local x1, y1 = wx + s / 2, wy + pad
+                    local x2, y2 = wx + s - pad, wy + s - pad
+                    local x3, y3 = wx + pad, wy + s - pad
+                    love.graphics.setColor(0.12, 0.09, 0.06, 0.75)
+                    love.graphics.polygon("fill", x1, y1 - 1, x2 + 1, y2 + 1, x3 - 1, y3 + 1)
+                    love.graphics.setColor(0.90, 0.62, 0.30)
+                    love.graphics.polygon("fill", x1, y1, x2, y2, x3, y3)
+                    love.graphics.setColor(1, 0.86, 0.62)
+                    love.graphics.setLineWidth(1.5)
+                    love.graphics.polygon("line", x1, y1, x2, y2, x3, y3)
+                    love.graphics.setLineWidth(1)
+                end
+
+                if c.encounter then
+                    local kind = c.encounter.kind
+                    local r, g, b = markerColor(kind)
+                    -- How this fight stands against the company, asked once and spent twice below: on
+                    -- the box colour and on the pips. Nil for a stop there is no comparison to make
+                    -- about -- a treasure, a rest, an escort fight the muster cannot price -- which
+                    -- keeps its ordinary hostile colour and draws no pips, as before any of this existed.
+                    local band = self.musterBand and self.musterBand(c) or nil
+                    if band == "beneath" then r, g, b = CALM_MARKER[1], CALM_MARKER[2], CALM_MARKER[3] end
+                    local a = c.cleared and 0.3 or 1
+                    love.graphics.setColor(r, g, b, a)
+                    love.graphics.rectangle("line", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
+                    love.graphics.setColor(r, g, b, a * 0.35)
+                    love.graphics.rectangle("fill", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
+                    -- Colour still encodes the kind on the box; the icon draws it in white on top so the
+                    -- SHAPE reads even where two kinds sit close in hue (event violet vs a red combat).
+                    local icon = MarkerIcon[kind] or MarkerIcon.combat
+                    local pad = s * 0.28
+                    icon(wx + pad, wy + pad, s - pad * 2, s - pad * 2, 1, 1, 1, a)
+
+                    -- How far above the company this fight stands: one pip per step, along the marker's
+                    -- bottom edge. None at all when it is even or beneath them -- the box colour above
+                    -- has already said which of those two it is.
+                    --
+                    -- Sized to be COUNTED, which the old tier pips were not: they were `s * 0.06`, under
+                    -- 2px across at a 32px tile, and three of them could not be told from two. They got
+                    -- away with it only because their colour ALSO encoded the tier (green -> amber ->
+                    -- red), so nobody was counting -- they were reading "red". Now that the count carries
+                    -- a fact of its own, it has to survive being read.
+                    local steps = band and Muster.PIPS[band] or 0
+                    if steps > 0 and (kind == "combat" or kind == "elite") then
+                        local pipR = math.max(2.5, s * 0.09)
+                        local gap = pipR * 2 + 2
+                        local w = steps * gap - 2
+                        local cy = wy + s - pipR - 2
+
+                        -- A dark seat behind the row, because the pips land on the marker's own hostile
+                        -- red and a warning mark that needs good luck with the background is no warning.
+                        love.graphics.setColor(0.05, 0.05, 0.07, a * 0.85)
+                        love.graphics.rectangle("fill", wx + s / 2 - w / 2 - 3, cy - pipR - 1.5,
+                            w + 6, pipR * 2 + 3, pipR + 1.5, pipR + 1.5)
+
+                        love.graphics.setColor(PIP_COLOR[1], PIP_COLOR[2], PIP_COLOR[3], a)
+                        for i = 1, steps do
+                            love.graphics.circle("fill", wx + s / 2 - w / 2 + pipR + (i - 1) * gap, cy, pipR)
+                        end
+                    end
+                    love.graphics.setColor(1, 1, 1)
+                end
             end
         end
     end
@@ -758,9 +783,14 @@ local PATROL_STATE = {
 -- WHERE IT WILL BE, drawn before you commit your own step. A moving fight you cannot predict is a
 -- punishment; one whose circuit you can read is a puzzle. Three marks, on revealed ground only:
 --
---   the beat    a faint dotted circuit -- the schedule, on ground you have already mapped
+--   the beat    a faint dotted circuit -- the schedule, on the ground you can currently see
 --   the pip     the tile it occupies NEXT, so the exchange is legible before you move
 --   the colour  what it is doing (see PATROL_STATE)
+--
+-- All three are gated on :lit rather than on `seen`, and so is the patrol itself: a body that walks is
+-- the last thing a map should be able to remember. It is in sight or it is gone, and where it went is
+-- the question the fog is for. Within the lit disc nothing about the telegraph changes -- the step you
+-- are about to take is still one you can read before you take it.
 --
 -- The preview is side-effect free: Patrol.preview walks a copy, because a telegraph that advanced the
 -- thing it was describing would be a bug the player could farm -- the same rule the battle's enemy
@@ -770,13 +800,11 @@ function OverworldMap:drawPatrols()
     if not grid.patrols then return end
     local s = grid.size
     for _, p in ipairs(grid.patrols) do
-        local here = grid:get(p.x, p.y)
-        if not p.cleared and here and here.seen then
-            -- The circuit, on mapped ground only.
+        if not p.cleared and self:lit(p.x, p.y) then
+            -- The circuit, on lit ground only.
             love.graphics.setColor(0.86, 0.28, 0.22, 0.16)
             for _, b in ipairs(p.beat or {}) do
-                local c = grid:get(b.x, b.y)
-                if c and c.seen then
+                if self:lit(b.x, b.y) then
                     local wx, wy = grid:cellToPixel(b.x, b.y)
                     love.graphics.rectangle("fill", wx + 4, wy + 4, s - 8, s - 8, 2)
                 end
@@ -784,8 +812,7 @@ function OverworldMap:drawPatrols()
 
             local nx, ny = Patrol.preview(grid, p, { x = self.px, y = self.py })
             if nx and (nx ~= p.x or ny ~= p.y) then
-                local c = grid:get(nx, ny)
-                if c and c.seen then
+                if self:lit(nx, ny) then
                     local wx, wy = grid:cellToPixel(nx, ny)
                     love.graphics.setColor(0.95, 0.72, 0.24, 0.55)
                     love.graphics.circle("fill", wx + s / 2, wy + s / 2, 3)
@@ -911,12 +938,14 @@ function OverworldMap:pathTo(tx, ty)
 end
 
 -- Track the tile under the pointer, so the HUD can name the fight the player is weighing up
--- (states/game.lua's drawHud). Only a SEEN tile counts -- naming a marker still under fog would hand
--- over the very thing the fog is keeping back.
+-- (states/game.lua's drawHud). Only a LIT tile counts -- naming a marker the fog is holding back would
+-- hand over the very thing it is keeping, and a readout that answers where nothing is drawn is worse
+-- than the marker: it turns the pointer into a probe you sweep across the dark.
+-- The pointer's TILE is stored rather than the cell it resolved to, because the lit disc now moves
+-- under a stationary mouse: walk away from a marker the pointer is still sitting on and the readout has
+-- to go out with the marker, which a cell captured at hover time could not do.
 function OverworldMap:mousemoved(x, y)
-    local cx, cy = self.grid:pixelToCell(x + self.camX, y + self.camY)
-    local c = self.grid:get(cx, cy)
-    self.hoverCell = (c and c.seen) and c or nil
+    self.hoverX, self.hoverY = self.grid:pixelToCell(x + self.camX, y + self.camY)
 end
 
 -- The encounter the player is weighing up, or nil. Two answers, because there are two ways to be
@@ -927,14 +956,14 @@ end
 -- A cleared stop answers nothing: there is no fight left on it to weigh.
 function OverworldMap:hoveredFight()
     local function fightAt(c)
-        if not (c and c.seen and c.encounter and not c.cleared) then return nil end
+        if not (c and c.encounter and not c.cleared) then return nil end
         local kind = c.encounter.kind
         return (kind == "combat" or kind == "elite") and c or nil
     end
 
-    if InputMode.isMouse() then return fightAt(self.hoverCell) end
+    if InputMode.isMouse() then return fightAt(self:lit(self.hoverX, self.hoverY)) end
     for _, d in ipairs({ { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } }) do
-        local c = fightAt(self.grid:get(self.px + d[1], self.py + d[2]))
+        local c = fightAt(self:lit(self.px + d[1], self.py + d[2]))
         if c then return c end
     end
     return nil

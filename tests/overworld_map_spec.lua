@@ -9,6 +9,7 @@
 local OverworldMap = require("ui.overworld_map")
 local Overworld = require("models.overworld")
 local Tileset = require("models.tileset")
+local InputMode = require("input_mode")
 
 local function typeWalkable(tile)
     local def = Tileset.get().tiles[tile]
@@ -46,6 +47,22 @@ local function walk(grid, keysHeld, steps)
         assert(grid:isWalkable(x, y, keysHeld), "step routed onto a blocked tile at " .. x .. "," .. y)
     end
     return x, y
+end
+
+-- A revealed, walkable cell well outside the walker's vision disc -- the "mapped but dark" ground the
+-- fog rule is about. Asked of the grid rather than hardcoded, because which tiles are trail moves with
+-- every generation change.
+local function farCell(grid, w)
+    for y = 1, grid.rows do
+        for x = 1, grid.cols do
+            local c = grid:get(x, y)
+            if c.seen and typeWalkable(c.tile)
+                and not grid:inVision(w.px, w.py, x, y, w.visionRadius) then
+                return c
+            end
+        end
+    end
+    error("no revealed tile outside vision on this board")
 end
 
 local function genOpen(seed)
@@ -212,6 +229,50 @@ return {
             dest.encounter, dest.cleared = { kind = "treasure" }, true
             run(function() end)
             assert(approaches == 0, "a stop already resolved is not an approach")
+        end,
+    },
+    {
+        name = "a mapped tile outside the vision disc is not lit (markers hang off :lit)",
+        fn = function()
+            local grid = genOpen(3)
+            revealAll(grid)
+            local w = walker(grid)
+            w.visionRadius = 2
+
+            assert(w:lit(grid.start.x, grid.start.y), "the tile under the token is lit")
+            local far = farCell(grid, w)
+            assert(w:lit(far.x, far.y) == nil,
+                "a tile mapped an hour ago is remembered ground, not something you can see")
+
+            -- Unmapped ground is not lit either, even standing on top of it: the two tests are AND-ed,
+            -- so nothing can slip through by being near without having been discovered.
+            local here = grid:get(grid.start.x, grid.start.y)
+            here.seen = false
+            assert(w:lit(grid.start.x, grid.start.y) == nil, "an undiscovered tile is never lit")
+            here.seen = true
+        end,
+    },
+    {
+        name = "the hovered-fight readout goes dark with the marker it names",
+        fn = function()
+            local grid = genOpen(3)
+            revealAll(grid)
+            local w = walker(grid)
+            w.visionRadius = 2
+            local far = farCell(grid, w)
+            far.encounter, far.cleared = { kind = "combat", name = "Ambush" }, nil
+
+            local restore = InputMode.current
+            InputMode.set("mouse")
+            w.hoverX, w.hoverY = far.x, far.y
+            assert(w:hoveredFight() == nil,
+                "naming a fight the fog is holding back turns the pointer into a probe")
+
+            -- Stand on it and the same pointer names it again -- the readout follows the light, not the
+            -- mouse, which is why the hover is stored as a TILE rather than as the cell it resolved to.
+            w.px, w.py = far.x, far.y
+            assert(w:hoveredFight() == far, "a lit fight still reads under the pointer")
+            InputMode.set(restore)
         end,
     },
     {
