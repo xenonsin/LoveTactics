@@ -1,7 +1,7 @@
 # Meals
 
 The Cafe sells one thing: **one meal before the road**. You may hold one at a time, the whole company
-eats it, and it lasts until the quest is done.
+eats it, and it lasts the whole day out.
 
 Names are café fare on purpose — a pot, a plate, a board, a cup. The building is a café, not a
 roadhouse, and a menu of stews and suppers was quietly writing it as one.
@@ -37,18 +37,21 @@ this counter by acquiring or losing a class.
 
 ## The one-ration rule
 
-> **You hold one meal. Buying is refused while one is held. The quest eats it through.**
+> **You hold one meal. Buying is refused while one is held. The day eats it through.**
 
-`player.meal` is a single meal id. `Meal.eat` refuses a second, `Quest.complete` clears it at the
-objective, and `Meal.blockReason` names which of the three refusals applies — already eaten, not on
-the menu yet, not enough gold — so the counter can say it in words rather than greying a row.
+`player.meal` is a single meal id. `Meal.eat` refuses a second, the day's exit clears it
+(`game:bankHaul`), and `Meal.blockReason` names which of the three refusals applies — already eaten, not
+on the menu yet, not enough gold — so the counter can say it in words rather than greying a row.
 
-**A run that ends any other way keeps it.** A wipe or a walk-out rolls the company back to exactly how
-it marched in (`states/game.lua`), supper and gold together. That is not generosity, it is the
-extraction rule already written: a run only banks — and only spends — through the objective.
+**It is spent by the DAY, not by a fight won.** `Quest.complete` used to clear it at the objective, which
+was the same thing while a run was one piece of work. A day's ground can now carry three — so the first
+one cleared ate the supper and the other two fights went hungry. `Quest.complete` takes a `keepMeal`
+option for exactly this, and the caller that knows when the day ends is the one that spends it.
 
-The point of all this is that the decision is **once per quest, made before you know the ground**. It
-is a wager on what the run will ask for, not a knob to retune between fights. That is the whole reason
+A wipe still keeps it, alongside everything else the rollback puts back (`states/game.lua`).
+
+The point of all this is that the decision is **once per day, made before you know the ground**. It
+is a wager on what the day will ask for, not a knob to retune between fights. That is the whole reason
 this is a menu rather than a shelf: a shelf is a thing you own afterwards, and a menu is a thing you
 choose today.
 
@@ -92,7 +95,7 @@ and neither is a new code path:
 - `Trait.attach` instantiates the `skill` **item-less**, exactly as it does a relic's granted traits.
 
 Nothing about a meal survives the battle: `unit.bonus` is rebuilt from scratch at every setup, so the
-supper is re-eaten at each bell of the quest and never compounds across its fights.
+supper is re-eaten at each bell of the day and never compounds across its fights.
 
 ## Magnitudes: one rung below a shelf
 

@@ -234,23 +234,35 @@ return {
         end,
     },
     {
-        name = "the Gate Below still counts its keys on the board from the first general down",
+        name = "the Gate Below waits for all seven generals before it takes a row on the board",
         fn = function()
             local p = playerAt(10)
             p.completedQuests.quest_colosseum_slot_10 = true
 
-            local gate
-            for _, q in ipairs(Quest.available(p)) do
-                if q.id == "quest_the_gate_below" then gate = q end
+            local function gate()
+                for _, q in ipairs(Quest.available(p)) do
+                    if q.id == "quest_the_gate_below" then return q end
+                end
+                return nil
             end
-            assert(gate, "one general down must put the Gate Below on the board")
-            assert(gate.locked, "and it is locked -- six keys are still missing")
-            assert(gate.keysHeld == 1 and gate.keysNeeded == 7,
-                string.format("the count reads 1 of 7, got %s of %s",
-                    tostring(gate.keysHeld), tostring(gate.keysNeeded)))
-            -- The dead general's fragment, so the pane has something to recite instead of the fallback.
-            assert(gate.hints and #gate.hints == 1,
-                "the finished prerequisite owes the board its location fragment")
+
+            -- A locked entry rides along under EVERY ground (Quest.board), so a card shown early is a
+            -- row the player cannot press repeated across the whole travel row, every morning. One
+            -- general down does not earn that; the fragments do, and it takes seven to name a place.
+            assert(not gate(), "one general down must not put the Gate Below on the board")
+
+            for _, id in ipairs(Quest.defs.quest_the_gate_below.hintQuests) do
+                p.completedQuests[id] = true
+            end
+            local entry = gate()
+            assert(entry, "seven generals down must put it there")
+            assert(entry.locked, "and it is locked -- the day he lands is what opens it")
+            assert(entry.keysHeld == 7 and entry.keysNeeded == 7,
+                string.format("the count reads 7 of 7, got %s of %s",
+                    tostring(entry.keysHeld), tostring(entry.keysNeeded)))
+            -- The dead generals' fragments, so the pane recites a place instead of the fallback.
+            assert(entry.hints and #entry.hints == 7,
+                "the finished prerequisites owe the board their location fragments")
         end,
     },
     {

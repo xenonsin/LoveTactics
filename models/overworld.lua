@@ -97,9 +97,15 @@ local DIM_MAX_COLS, DIM_MAX_ROWS = 37, 25
 -- of saying that. A cave or an open plain has no spacing to report, and a board of rooms packs its floor
 -- quite differently from a maze at any spacing. So a layout declares its own density and the lattice
 -- ones answer 1/spacing -- arithmetically the old rule exactly, so no maze board moves by a tile.
+--
+-- `ends` is how many objectives the board carries beyond the first. A ground offering three quests has
+-- to hold three dead ends far enough apart to read as three places, and sizing as if it held one is
+-- what produces the crowded fallback in placeObjectiveAndGates -- the board runs out of spurs and an
+-- objective lands on open trail. Counted like a key or a cache: it is one more stop to walk to.
 local BASELINE_DENSITY = 1 / 4 -- the forest's, so it is the ground everything else is measured against
-local function deriveDims(encounters, keyCount, cacheCount, density)
+local function deriveDims(encounters, keyCount, cacheCount, density, ends)
     local content = (encounters or 0) + (keyCount or 0) + (cacheCount or 0)
+        + math.max(0, (ends or 1) - 1)
     local tightness = math.sqrt(BASELINE_DENSITY / math.max(0.01, density or BASELINE_DENSITY))
     -- The coefficient rose with the cap, or the span would never reach it and every board would sit at
     -- the old size wearing a larger ceiling.
@@ -164,7 +170,8 @@ function Overworld.generate(params)
     -- Play area: honour explicit cols/rows, otherwise scale with the encounters
     -- (and keys) so the map never sprawls into empty wandering. See deriveDims.
     local density = layout.density and layout.density(self) or nil
-    local dCols, dRows = deriveDims(self.encounterTarget, params.keyCount, self.cacheTarget, density)
+    local dCols, dRows = deriveDims(self.encounterTarget, params.keyCount, self.cacheTarget, density,
+        params.objectives and #params.objectives or 1)
     local playCols = params.cols or dCols
     local playRows = params.rows or dRows
     -- The coastline is padding too, for exactly the margin's reason: weatherEdges eats a wandering
@@ -276,9 +283,14 @@ function Overworld.fromLayout(params)
             if ch == "S" then
                 self.start = { x = x, y = y }
             elseif ch == "X" then
-                self.objective = { x = x, y = y }
-                cell.encounter = { kind = "objective",
-                    name = params.objective and params.objective.name or "Objective" }
+                -- An authored leg has exactly one end -- the geometry IS the choreography -- so it
+                -- reports a one-entry list rather than opting out of the shape everything downstream
+                -- now reads (states/game.lua's checklist walks self.objectives).
+                local spec = (params.objectives and params.objectives[1]) or params.objective or {}
+                self.objective = { x = x, y = y, questId = spec.questId }
+                self.objectives = { self.objective }
+                cell.encounter = { kind = "objective", name = spec.name or "Objective",
+                    questId = spec.questId }
             elseif ch:match("%d") then
                 routeCells[tonumber(ch)] = cell
             end
@@ -727,9 +739,24 @@ function Overworld:computeStart()
     return best
 end
 
--- Objective (usually a boss) + the lock/key chain that gates it. Keys are placed
+-- Manhattan distance between two cells. Used to keep a board's several ends apart; the walking
+-- distance would be truer and costs a BFS per candidate, and what this is guarding against -- two
+-- objectives on adjacent spurs off the same corridor -- is a thing straight-line distance already sees.
+local function apart(a, b)
+    return math.abs(a.x - b.x) + math.abs(a.y - b.y)
+end
+
+-- Objectives (usually bosses) + the lock/key chain that gates the deepest of them. Keys are placed
 -- strictly inside the region reachable *before* the first gate, so they are
 -- always collectible in order and the objective is always reachable once held.
+--
+-- A BOARD CARRIES AS MANY ENDS AS THE DAY HAS WORK IN IT. `params.objectives` is a list -- one entry
+-- per quest the ground is offering (models/quest.lua's Quest.trip) -- and a lone `params.objective` is
+-- read as a one-entry list, which is what every authored leg and every descent floor still passes.
+--
+-- Each end takes its own strict dead end, deepest first and spread apart, because a dead end is what
+-- makes an objective gateable and what stops it being stumbled over on the way somewhere else. Two
+-- objectives on neighbouring spurs would read as one place with two doors.
 function Overworld:placeObjectiveAndGates(params)
     -- A layout may name both ends itself (see models/layout.lua's `anchors`). The rules below find them
     -- by shape, which is the right question on ground you are crossing and the wrong one in a room.
@@ -789,27 +816,96 @@ function Overworld:placeObjectiveAndGates(params)
         if not farDeadD or e.d > farDeadD then farDeadD = e.d; farDeadEnd = e.cell end
     end
     objective = namedObjective or pick or farDeadEnd or objective
-    self.objective = { x = objective.x, y = objective.y }
-    objective.encounter = {
-        kind = "objective",
-        name = params.objective and params.objective.name or "Objective",
-    }
 
-    -- Spine: objective -> ... -> start (via BFS parents) = the critical path. Persist it as a set of
-    -- cell keys so encounter placement can keep skippable combats OFF it -- a wounded party must always
-    -- be able to route around to the boss. Built unconditionally, even with no keys.
-    local spine = {}
-    self.spineKeys = {}
-    local cur = objective
-    while cur do
-        spine[#spine + 1] = cur
-        self.spineKeys[cellKey(cur)] = true
-        cur = parent[cellKey(cur)]
+    -- THE ENDS TO PLACE. One spec per piece of work on this ground; the single-objective callers
+    -- (every authored leg, every descent floor) come through here as a list of one, so the deepest end
+    -- is chosen by exactly the rule above and nothing about those boards moves.
+    local specs = params.objectives
+    if not (specs and #specs > 0) then specs = { params.objective or {} } end
+
+    local chosen, claimed = { objective }, { [cellKey(objective)] = true }
+
+    -- The rest, in descending depth, each held away from the ends already placed. The spread starts at
+    -- a quarter of the board's reach and halves until something qualifies -- a relaxing threshold
+    -- rather than a fixed one, because a compact braided board may genuinely have no far-apart pair and
+    -- a crowded end still beats no end at all.
+    for i = 2, #specs do
+        local best, bestD
+        local spread = maxDist * 0.25
+        while not best and spread >= 1 do
+            for _, e in ipairs(deadEnds) do
+                if not claimed[cellKey(e.cell)] then
+                    local ok = true
+                    for _, c in ipairs(chosen) do
+                        if apart(e.cell, c) < spread then ok = false break end
+                    end
+                    if ok and (not bestD or e.d > bestD) then best, bestD = e.cell, e.d end
+                end
+            end
+            spread = spread / 2
+        end
+        -- NO DEAD END LEFT. Rather than dropping the quest -- a piece of work the player travelled for,
+        -- silently absent from the board -- it takes the farthest unclaimed walkable tile there is, and
+        -- says so: `. board-report` counts these, because a board that keeps doing it is a board whose
+        -- sizing rule has stopped keeping up with what a ground can hold (see deriveDims).
+        if not best then
+            self.crowdedEnds = (self.crowdedEnds or 0) + 1
+            local farD
+            for y = 1, self.rows do
+                for x = 1, self.cols do
+                    local c = self.cells[y][x]
+                    local d = dist[cellKey(c)]
+                    if self:typeWalkable(c.tile) and d and not claimed[cellKey(c)]
+                        and c ~= start and (not farD or d > farD) then
+                        farD, best = d, c
+                    end
+                end
+            end
+        end
+        if best then
+            chosen[#chosen + 1] = best
+            claimed[cellKey(best)] = true
+        end
     end
 
-    -- The same path as an ORDERED walk, start -> objective: `spineKeys` answers "is this tile on the
+    -- Stamp them. The cell carries the quest ID and nothing else of the spec: a spec may hold a
+    -- composition FUNCTION (the finale sizes itself by how many generals are still standing) and the
+    -- board is serialized whole into the save, which has to stay plain data. states/game.lua looks the
+    -- spec back up by this id when the tile is engaged.
+    self.objectives = {}
+    for i, cell in ipairs(chosen) do
+        local spec = specs[i] or {}
+        cell.encounter = { kind = "objective", name = spec.name or "Objective", questId = spec.questId }
+        self.objectives[i] = { x = cell.x, y = cell.y, questId = spec.questId }
+    end
+    -- The deepest end, still under its old name. Everything that wants "the far end of this board" as a
+    -- single tile -- the camera's opening pan, the report tools, an authored layout's own anchor --
+    -- reads this, and on a one-quest board it is the only end there is.
+    self.objective = self.objectives[1]
+
+    -- Spine: each objective -> ... -> start (via BFS parents) = the critical paths, unioned. Persisted
+    -- as a set of cell keys so encounter placement can keep skippable combats OFF them -- a wounded
+    -- party must always be able to route around to any of the ends. Built unconditionally, even with no
+    -- keys. The road home is a road NETWORK now, and the rule reads the same across all of it.
+    local spine = {}
+    self.spineKeys = {}
+    for i, endCell in ipairs(chosen) do
+        local path = {}
+        local cur = endCell
+        while cur do
+            path[#path + 1] = cur
+            self.spineKeys[cellKey(cur)] = true
+            cur = parent[cellKey(cur)]
+        end
+        -- The deepest end's own path is the one an ascent measures itself along (below), so it is the
+        -- one kept ordered.
+        if i == 1 then spine = path end
+    end
+
+    -- The deepest path as an ORDERED walk, start -> objective: `spineKeys` answers "is this tile on the
     -- road", which is all the skippable-combat rule needs, but an ascent has to answer "how far ALONG
-    -- the road is this" to space a climb out over its length (see placeEncounters' ascent branch).
+    -- the road is this" to space a climb out over its length (see placeEncounters' ascent branch). An
+    -- ascent is a climb to ONE peak by construction, so the deepest end is the right one to measure.
     self.spineCells = {}
     for i = #spine, 1, -1 do self.spineCells[#self.spineCells + 1] = spine[i] end
 
@@ -1969,6 +2065,10 @@ function Overworld:snapshot()
         visionRadius = self.visionRadius,
         start = { x = self.start.x, y = self.start.y },
         objective = self.objective and { x = self.objective.x, y = self.objective.y } or nil,
+        -- EVERY end this board carries, with the quest each belongs to. The cells already hold the same
+        -- ids on their encounters; this is the index the checklist reads, and without it a resumed trip
+        -- would come back with an empty list of work and no way to tick anything off.
+        objectives = self.objectives,
         keyIds = self.keyIds,
         cells = cells,
     }
@@ -1991,6 +2091,9 @@ function Overworld.fromSnapshot(data)
     self.visionRadius = data.visionRadius or 2
     self.start = { x = data.start.x, y = data.start.y }
     self.objective = data.objective and { x = data.objective.x, y = data.objective.y } or nil
+    -- A save written before a board could have several ends restores with just the one it had, so an
+    -- expedition in flight at upgrade time finishes rather than resuming onto a board with no work on it.
+    self.objectives = data.objectives or (self.objective and { self.objective }) or {}
     self.keyIds = data.keyIds or {}
     self.gateCells = {}
     -- A save written before patrols existed restores with none and plays exactly as it did.

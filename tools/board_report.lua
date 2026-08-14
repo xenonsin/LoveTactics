@@ -86,6 +86,13 @@ local function measure(grid)
     -- Recomputed here rather than exported from the generator: this is a diagnostic, and threading a
     -- reason code through a placement pass to serve a report would be the report leaking into the model.
     r.deadEnds, r.cacheOnDeadEnd, r.boonsWithApproach = 0, 0, 0
+    -- ENDS THE BOARD COULD NOT SEAT ON A SPUR. A day buys a whole ground now and every piece of work
+    -- posted there wants its own dead end (models/overworld.lua). When the board runs out, the extra
+    -- end takes the farthest open tile instead -- which still WORKS, and still reads as one place with
+    -- two doors rather than two places. Counted rather than left silent because a board that keeps
+    -- doing it is a board whose sizing rule has stopped keeping up with what a ground can hold.
+    r.crowdedEnds = grid.crowdedEnds or 0
+    r.ends = grid.objectives and #grid.objectives or (grid.objective and 1 or 0)
     local function reachableWithout(goal, blocked)
         local start = grid:startCell()
         if not start or start == goal then return true end
@@ -299,6 +306,12 @@ function M.compare(biomes, n, pool)
     print(string.format("  %-11s %9s %7s %6s %6s %7s %7s %7s %8s",
         "ground", "fightable", "sites", "seat", "open", "worst", "under", "walk", "guarded"))
     print("  " .. string.rep("-", 78))
+    -- A DAY'S GROUND, AS THE CAMPAIGN ACTUALLY ROLLS IT. Three pieces of work is the middle of the
+    -- range a ground carries (models/quest.lua's Quest.trip), and it is what this has to measure --
+    -- with one end the board is smaller and every fight has more room than it will really get. The
+    -- specs are bare: nothing here fights them, they exist so three dead ends are asked for.
+    local trip = { { name = "end 1" }, { name = "end 2" }, { name = "end 3" } }
+    local crowded = 0
     for _, biome in ipairs(biomes) do
         local t = { walk = 0, fight = 0, sites = 0, seatSum = 0, seatN = 0, below = 0,
                     dead = 0, guarded = 0, boons = 0, cells = 0, openSum = 0 }
@@ -308,10 +321,12 @@ function M.compare(biomes, n, pool)
                 biome = biome,
                 encounterCount = DEFAULT_ENCOUNTERS,
                 encounters = pool,
+                objectives = trip,
                 houseMaterial = "material_salt_iron",
                 patrols = true, -- the board as the campaign actually rolls it
             seed = SEED_BASE + i,
             })
+            crowded = crowded + (grid.crowdedEnds or 0)
             local r = measure(grid)
             t.walk = t.walk + r.walkTiles
             t.cells = t.cells + grid.cols * grid.rows
@@ -338,6 +353,14 @@ function M.compare(biomes, n, pool)
             100 * ratio(t.guarded, t.boons)))
     end
     print("")
+    -- SAID OUT LOUD RATHER THAN LEFT IN THE ARITHMETIC. Every board above was asked for three ends;
+    -- this is how often one of them could not be given a spur of its own and took open trail instead.
+    -- A rising number here is the sizing rule falling behind what a ground can hold.
+    if crowded > 0 then
+        print(string.format("  NOTE  %d of %d ends had no dead end left and took open trail (%.1f%%)",
+            crowded, #biomes * n * #trip, 100 * crowded / (#biomes * n * #trip)))
+        print("")
+    end
     print(string.format("  fightable  share of trail in an %dx%d window holding >= %d walkable tiles",
         Overworld.BOX, Overworld.BOX, Overworld.BOX_OK))
     print(string.format("  sites      distinct non-overlapping windows scoring >= %d -- places a fight could go",

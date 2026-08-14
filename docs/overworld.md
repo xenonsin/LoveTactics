@@ -1,8 +1,16 @@
 # The Overworld
 
-The board a quest is run on: ground carved to suit its biome, an objective at the far end, stops
-scattered through it, and one rule about how you get home. [docs/progression.md](progression.md) owns
-the campaign's economy — what a run pays and what a level buys. This owns the run itself.
+The board a **day** is run on: ground carved to suit its biome, one objective at the far end of a spur
+for every piece of work posted there, stops scattered through it, and one rule about how you get home.
+[docs/progression.md](progression.md) owns the campaign's economy — what a run pays and what a level
+buys. This owns the run itself.
+
+**A run is a ground, not a quest.** The player chooses *where* to spend the day; every quest the houses
+have posted on that ground is standing on the board when the company arrives, each on its own dead end,
+ticked off a checklist as they are taken. `Quest.trip` (`models/quest.lua`) is what builds that
+descriptor, and the only thing it changes down here is that `map.objective` became `map.objectives`, a
+list. A single-quest leg — the prologue's flight, the debut's walk, every descent floor — passes one and
+comes through the generator as a list of one, so nothing about those boards moved.
 
 Every number below is reproducible with `& "E:\LOVE\lovec.exe" . board-report [n] [all | biome=ID]`,
 which rolls `n` boards with the campaign's default map params and reports what the generator actually
@@ -65,7 +73,7 @@ the water is down.
 | `layout.carve` | **per biome** — see The seven grounds below |
 | `weatherEdges` | eats a wandering coastline out of the rectangle the carve stopped against. Skipped for a layout that means its outline square (`ownsEdge`) |
 | `placeRivers` → `thinBridges` | wandering water; a river over a path becomes a one-tile bridge. Skipped for a layout that lays its own (`ownsWater`) |
-| `placeObjectiveAndGates` | objective on a far dead end (~80% of max distance), gates + keys before it |
+| `placeObjectiveAndGates` | one objective per piece of work: the deepest on a far dead end (~80% of max distance) with the gates + keys before it, the rest on the farthest remaining dead ends, held apart |
 | `placeCaches` | material caches take the spur ends **first**, then the deepest ground off the road |
 | `placeEncounters` | fights and texture fill the ground between them |
 | `guardBoons` | re-seats fights so most rewards stand behind one |
@@ -107,11 +115,21 @@ length, one to four tiles deep, in headlands and bays. The tiles stay square; th
 
 ## The board's contract
 
-- **The objective is the only fight you must take.** `placeEncounters` keeps combat off the
-  objective→start spine, and a loose patrol's beat never touches it either, so a wounded company can
-  always route to the boss.
+- **The objectives are the only fights you must take, and you need not take any of them.**
+  `placeEncounters` keeps combat off the spine, and a loose patrol's beat never touches it either, so a
+  wounded company can always route to a boss — or past one, to another. The spine is the **union** of
+  the paths back from every end, so the road home is a road *network* and the rule reads the same across
+  all of it.
 - **Every other fight is optional, and an optional fight should be attached to something worth
   having.** That is `guardBoons`: the boon behind, the fight in the way.
+- **Only the deepest approach is gated.** `keyCount` is authored per quest, so summing them across a
+  ground would have a player hunting six keys to spend one day. The deepest end keeps its lock and the
+  rest stand open — a door that cannot be opened is the one failure a day's ground must not produce.
+- **An end that cannot get a spur still gets a tile, and says so.** When the board runs out of dead
+  ends, the extra objective takes the farthest unclaimed walkable tile rather than being dropped: work
+  the player travelled for must never be silently absent. `. board-report` counts these, because a
+  board that keeps doing it is a sizing rule falling behind what a ground can hold. It sits around 8%
+  today, concentrated in the room-carve grounds that have almost no degree-1 tiles at all.
 - **A fight is never seated where a fight cannot happen.** See the fightability floor below.
 - **The finds are guarded, never the services.** A shop behind a fight is friction; a rest behind one
   compounds exactly the wrong way.
@@ -164,7 +182,9 @@ sand with you and where you were when it started. It needs the same thing `open`
 from the fiction rather than from a patch: `placeObjectiveAndGates` insists on a strict dead end, an
 oval has no cut vertex anywhere, and the cells under the stands are dead ends that mean something.
 
-It is also the one ground that names its own two ends, through the layout hook `anchors`. Found by
+It is also the one ground that names its own two ends, through the layout hook `anchors` — the start,
+and the *deepest* objective. Anything else the day has posted here takes a cell under the stands, which
+is what those dead ends were always for. Found by
 shape, the start is the walkable tile nearest the middle and the objective is a far dead end — which
 here means beginning in the centre of the sand and holding the bout in a cage underneath, the arena
 exactly inside out. So **the card is fought in the middle and the company walks in from the bottom**,
@@ -280,10 +300,18 @@ cost is the day. **Losing a fight is the whole of the risk**: a wipe takes `Play
 quarters — of the run's gold and forging stock, and leaves the items, the wounds, and everything carried
 in (`Player.loseHaul`, pinned by `tests/extraction_spec.lua`).
 
-**This rule inverted, and the old one is worth recording.** It used to be that *the objective was the
-only extract*: a wipe and a walk-out were the same event and both restored the company from an entry
-snapshot, so a lost run was worth exactly nothing. That was correct while the board was a one-way trip —
+**This rule inverted twice, and both old ones are worth recording.** First: *the objective was the only
+extract*, a wipe and a walk-out were the same event, and both restored the company from an entry
+snapshot — so a lost run was worth exactly nothing. That was correct while the board was a one-way trip;
 without it, forfeiting the moment a run had paid out was the optimal way to bank a haul.
+
+Then the objective stopped being an exit at all. A day's ground carries several of them, and a player
+may clear none — so extraction moved to **leaving**, whichever way you leave. What that fixed on the way
+past: the caches' ore was banked by `Quest.complete`, so walking out with a full pack paid nothing,
+which said the exact opposite of the line above it. The ore and the Cafe's supper are the day's rather
+than any one quest's, and both settle at the exit (`game:bankHaul`). Clearing one piece of work pays
+*that* work — its gold, its relic, its house's standing — and leaves you on the map with the rest still
+out there.
 
 It stopped being correct when the day became the unit. With a voluntary exit keeping everything, a total
 wipe penalty turns the last fight before you turn back into an all-or-nothing coin flip, and the

@@ -19,14 +19,14 @@ be confused because they are not even the same kind of thing:
 
 | | What it is | Where |
 |---|---|---|
-| **The day** | How long there is. Spent by *entering* an expedition, never given back | `models/calendar.lua` |
+| **The day** | How long there is. Spent by *entering a ground*, never given back | `models/calendar.lua` |
 | **Experience** | How strong a body is. Earned by acting and by felling, per character | `models/experience.lua` |
 | **Standing** | How far into the story you are. A count of finished quests | `Player.standing` |
 
 The split is the whole re-premise. Under prestige, *how far in* and *how strong* were the same number,
 so every roster member was interchangeable at a given moment and a day spent anywhere but on a quest
-grew nobody. Under a deadline the second half is fatal: an expedition that forages has to still be
-worth taking.
+grew nobody. Under a deadline the second half is fatal: a day that clears no objective — one spent
+walking a ground for its caches and turning back — has to still be worth taking.
 
 ## The clock
 
@@ -34,8 +34,22 @@ worth taking.
 being *finish everything* and becomes *choose what to finish* — which is the decision seven houses were
 built to offer and never got to ask.
 
-**A day is an expedition, and ENTERING spends it.** Not clearing the objective — entering. Take the
-boss, turn back with your pockets full, or get wiped, and the day is gone all three ways.
+**A day buys a GROUND, and ENTERING spends it.** Not clearing an objective — entering. Take everything
+posted there, take one thing and turn back with your pockets full, or get wiped, and the day is gone all
+three ways.
+
+**The expedition is a place, not a piece of work.** The board lists where the company can travel today;
+the quests every house has posted on that ground are all standing on the map when you arrive, each at
+the end of its own spur, ticked off a checklist as they are taken (`Quest.trip`,
+[docs/overworld.md](overworld.md)). Clearing one pays *that* quest — gold, relic, that house's standing —
+and leaves you on the map with the others still out there. So the greed dial is inside the day now as
+well as across it: not only *which ground*, but *how much of it* before the company is too worn to
+continue.
+
+> **This replaced one quest, one run.** A quest was the expedition and the ground was a consequence of
+> it, which meant the board asked its question the wrong way round — you picked a piece of work and were
+> told where it happened. It also meant a house whose live quest sat on a shut ground was simply
+> unavailable, and a day could only ever advance one house.
 
 **Walking out is free**, and losing a fight is the whole of the risk — a wipe takes three quarters of
 the run's coin and ore ([docs/overworld.md](overworld.md)). That is where the greed lives: pushing one
@@ -63,6 +77,16 @@ which is not a constraint at all.
 
 **`Calendar.FINAL_DANGER` and `Experience.STEP` are both anchored against forty days of income.**
 Moving the day count means re-reading both, and `. board-report 12 xp` is the instrument.
+
+> **The second bullet is out of date and the arithmetic behind it has to be redone.** It was written
+> when a day bought one quest, so days and quests were the same number. A day buys a ground now, and a
+> ground can carry several houses' live work — so a day a player spends well is worth two or three
+> quests, and forty days reaches far more than thirty. That is a consequence of the change rather than
+> an argument against it (the alternative, a day per objective, would have made a whole ground of work
+> just a queue), but every number in this section is downstream of it: whether the target is still 2.7
+> lines, whether forty is still the right span, and what the solo-line rule costs when spreading is
+> cheaper per day than it used to be. `. progression-report` is the instrument and it has not been
+> re-read. **This is the largest open item in the document.**
 
 ### The solo-line rule, which finally costs something
 
@@ -209,8 +233,10 @@ what opens the Descent on the main menu.
 ## Where you can go this morning
 
 `data/biome_windows.lua`, read through `models/biome_window.lua`. Each of the seven grounds is open for
-an authored stretch of the forty days, three or four of them at once. The board's tab row is those
-grounds, each wearing what the number is *of* — "3 days left", never a bare 3.
+an authored stretch of the forty days, three or four of them at once. **The board's rows are those
+grounds** — travel is the only choice the panel offers now — each wearing what the number is *of*,
+"3 days left", never a bare 3, with the last two mornings marked by a red edge on the row. A ground with
+nothing posted on it draws no row at all: you cannot spend a day travelling somewhere purely to dig.
 
 **The calendar made a day a choice of *what*; this makes it a choice of *where*.** With ninety-two
 quests permanently on offer, which house to advance was a preference and never a deadline. A window is
@@ -244,36 +270,37 @@ on any blocked day, since nothing about the table's own shape can catch that.
 > in town* — wards, vaults, towers, cellars, a tavern — so re-siting most of them is a fiction problem
 > rather than a data one. Unfinished: the census in `. biome-report` is the ledger for it.
 
-## A day you do not want to give to a story
+## Foraging, which is now what you carry off the ground
 
-`models/request.lua`. A rolled board with no story attached, taken on behalf of a house you name, which
-tags that house's stock on every cache and every fight's salvage. Without it the clock has one hand:
-forty expeditions against ninety-two quests means constantly choosing which house to advance, and a day
-you did not want to give to somebody's errand was a day you could not give to anything.
+**There is no separate day of ore.** The caches on whatever ground you travelled to *are* the day's
+foraging, and they bank when you leave (`game:bankHaul`). Each house's stock rides the caches of the
+ground that house works, dealt round-robin across every house with a claim on it (`placeCaches`), so
+travelling somewhere three houses are working pays all three — partially. The board does not grow to
+fit them: `deriveDims` is content-sized, so three houses against four or five caches means no single
+trip fills every quota, and "which spur do I still have the health for" is a real question with several
+partial answers.
 
-What it deliberately does not pay is most of the design — **no standing** (a house's standing drives its
-shelf; paying it for foraging buys the catalogue without running a line), no quest ledger entry, no
-relic, no companion, no discipline. 50 gold against the cheapest posted quest's 60, pinned against the
-real minimum so the campaign can never become the inefficient way to earn.
-
-Each house forages in its own country, **authored** in `Request.BIOMES`: the Bastion a tundra, the
-Arcanum a volcanic waste, the Lodge and the Cathedral a forest, the Crucible a swamp, the Colosseum the
-sand, the Undercroft the castle. Never the underworld. The rows do not appear on the last day, and they
-now appear only under the ground that house works — see the windows below.
+Which house works which ground is **authored** in `Request.BIOMES`: the Bastion a tundra, the Arcanum a
+volcanic waste, the Lodge and the Cathedral a forest, the Crucible a swamp, the Colosseum the sand, the
+Undercroft the castle. Never the underworld.
 
 > **This used to be a hash of the vendor id.** Stable, which was the only property it needed while
 > nothing displayed it. The windows made the mapping something the player reads and plans around, and
 > an arbitrary answer to a visible question is just a wrong answer that happens to be consistent.
-> Every ground but the underworld has at least one house foraging it, so an open window is never a
-> place with nothing on it.
 
-> **This is the degenerate case of what was designed.** The intent was several requests on one
-> expedition, with partial completion as the greed dial — *return any time to complete them all or only
-> a few*. What exists is one request, one house, all-or-nothing. The multi-request version needs
-> `params.houseMaterial` to become a LIST distributed across the caches a board already has (the board
-> must not grow — `deriveDims` is content-sized), plus a per-request quota. Three requests against four
-> or five caches is precisely the tension: you cannot fill them all without taking every cache,
-> including the guarded ones at the ends of the deep spurs. Unbuilt.
+> **It also used to be a whole expedition.** `models/request.lua` offered a rolled board with no story
+> on it, taken for one named house, and the quest board drew a "Forage for the Bastion" row per house.
+> That was right when a day bought one quest: a day you did not want to give to somebody's errand was
+> otherwise a day you could not give to anything. It cannot survive a day that buys a whole ground —
+> against a trip clearing three quests *and* hauling the same caches, nobody would ever choose it again.
+> So the rows are gone and the design's own stated intent arrived instead: the multi-house distribution
+> was written up here as unbuilt, needing "`params.houseMaterial` to become a LIST distributed across
+> the caches a board already has". `placeCaches` had grown exactly that and nothing ever passed it one.
+>
+> What went with the rows: no board row can pay **standing** — a house's standing drives its shelf, and
+> buying the catalogue without running a line was always the thing foraging must not do. That is now
+> true by construction rather than by a carve-out in the payout, since the only thing that writes the
+> quest ledger is a quest.
 
 ## What survives from the old campaign, unchanged
 
@@ -286,10 +313,11 @@ is in the code.
 - **One bench, The Forge.** The only thing that raises an `item.level` and the only thing that spends
   materials. A vendor sells and buys back, nothing else.
 - **Technique is earmarked.** Banked per house per character by playing that house's gear, spent at the
-  Forge to buy depth. Gold buys breadth. *This is why a request run cannot pay technique* — the earmark
-  ("ninja technique comes only from ninja play") is the entire justification for a second currency.
-- **Materials tag where you went.** Craft stock by the item's own quality, house stock by the sponsoring
-  house of the run — so running one house's line stocks the bench another house's gear will empty.
+  Forge to buy depth. Gold buys breadth. *This is why walking a ground cannot pay technique* — the
+  earmark ("ninja technique comes only from ninja play") is the entire justification for a second
+  currency, so a day of hauling ore pays ore.
+- **Materials tag where you went.** Craft stock by the item's own quality, house stock by the houses
+  working the ground you walked — so a day out stocks the bench another house's gear will empty.
 - **A level credits everything you cast.** `Growth.shares` apportions across every house cast since the
   last level, with per-stat remainders carried, so nothing is thrown away.
 - **The disciplines are a complete lattice.** 21 crossings = C(7,2), every pair of houses. The shop's
@@ -303,8 +331,13 @@ is in the code.
 - **The tuning is first-pass and wants play, not more measurement.** `Calendar.DAYS = 40`,
   `FINAL_DANGER = 22`, `Experience.STEP = 3`, `Player.CAMP_SHARE = 0.5`. The instruments exist; whether
   forty days *feels* like pressure or like a leash is the one question none of them answer.
-- **The multi-request version of foraging is unbuilt** — see the note above. What ships is its
-  one-request case.
+- **The day's span has not been re-priced against a ground buying several quests.** See
+  *Where forty came from*. Everything downstream of "forty days is about thirty quests" needs walking
+  again with `. progression-report`, and this is the one item that could move `Calendar.DAYS` itself.
+- **A ground can hold seven houses' live work at once**, and `. board-report` says roughly 8% of ends
+  already land on open trail instead of a spur because the board ran out of dead ends. It degrades
+  gracefully and it is counted, but if a full board reads as a slog the honest fix is a cap on how many
+  ends one day may carry, and there is no cap today.
 - **`requiredPrestige` and `unlockPrestige` still carry the old name** in 91 quests and 12 buildings.
   They read `Player.standing` and mean exactly what they always meant; the rename is cosmetic and was
   deliberately not bundled with a behaviour change.

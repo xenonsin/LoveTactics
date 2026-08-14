@@ -155,15 +155,31 @@ under both play policies and names any day on which an open ground held nothing,
 were stranded — which is the list of what to widen. `tests/biome_window_spec.lua` fails on a blocked
 day.
 
-It shows up automatically on the Quest Board once the player meets every gate and has not
-already finished it (`Quest.available` in `models/quest.lua`). `Quest.complete` pays it out from
-the objective-win branch in `states/game.lua` and saves.
+It shows up automatically once the player meets every gate and has not already finished it
+(`Quest.available` in `models/quest.lua`). `Quest.complete` pays it out from the objective-win branch in
+`states/game.lua` and saves.
+
+**It does not get a row of its own.** The Quest Board lists the grounds the company can travel to today;
+a quest appears in the dossier of every open ground it names, and travelling there puts **all** of that
+ground's work on the map at once, each at the end of its own spur (`Quest.trip`, and
+[docs/overworld.md](overworld.md) for what that does to the board). So a new quest needs nothing from
+the panel — name its grounds and it is there. Two consequences worth authoring around:
+
+- **Its `intro` plays before the company sets out**, chained after the intros of anything else posted on
+  the same ground. Its `opening` still plays over the board with the fight standing on it, and its
+  `outro` over the frozen final frame — after which the company is back on the map, not at the city,
+  unless that was the last thing standing.
+- **A `followUp` or `epilogue` ends the day early**, since both hand off to another state and there is
+  no map to come back to. Fine for a quest that is alone on its ground (the debut, the finale); a real
+  cost for one that is not.
 
 Prestige and the sponsor-quest count are **hard** gates — fail one and the quest is not on the board at
-all. `requiredQuests` is a **soft** lock: hold at least one prerequisite and the quest appears `locked`,
-showing "3 of 7 keys" and the `gateHint` of every prerequisite already finished. The board must refuse
-to start a locked quest (`ui/panels/quest_board.lua`). Seeing what you have not yet earned is the point
-of a ladder — the same reason `Vendor.stock` flags quest-locked items rather than hiding them.
+all. `requiredQuests` is a **soft** lock, opted into with `showLocked`: the quest appears in every
+ground's dossier as a warning that cannot be started, carrying the `gateHint` of each prerequisite
+already finished. Only the finale sets it, and only once every general is down — a locked entry rides
+along with *every* ground, so one shown early is an unpressable row under every heading for most of the
+campaign. Seeing what you have not yet earned is still the point of a ladder; seeing it forty mornings
+running is wallpaper.
 
 ## Add a conversation
 
@@ -727,7 +743,9 @@ end,
 
 A quest's **objective** battle is authored on `map.objective` — its own `composition` plus a win
 condition `win = { type = "killAll" | "survive" | "assassinate", turns = N, target = "<id>" }`
-(`win` omitted ⇒ `killAll`):
+(`win` omitted ⇒ `killAll`). Still exactly one per quest: the *run* now carries several of them, one per
+quest posted on the ground (`Quest.trip` collects them into `map.objectives` and stamps each with the
+quest it belongs to), but that is assembled for you and no blueprint ever authors the list.
 
 ```lua
 objective = {

@@ -142,27 +142,54 @@ return {
         end,
     },
     {
-        name = "Quest.start resolves the set to one ground without touching the blueprint",
+        name = "the last morning offers the Gate and nothing else, on one ground",
         fn = function()
-            local entry = { id = "_synthetic", map = { biomes = { "swamp", "castle" }, keyCount = 1 } }
-            local run = Quest.start(entry, "castle")
-            assert(run.map.biome == "castle", "the chosen ground was not stamped")
-            assert(run.map.biomes == nil, "the set survived into the run")
-            assert(run.map.keyCount == 1, "the rest of the map spec was dropped")
-            -- The blueprint's map is shared by every future run of the quest.
-            assert(entry.map.biomes and #entry.map.biomes == 2, "Quest.start wrote through to the blueprint")
-            assert(entry.map.biome == nil, "Quest.start stamped the blueprint's own map")
-            -- A second run may pick the other ground.
-            assert(Quest.start(entry, "swamp").map.biome == "swamp", "the set was pinned by the first run")
+            -- THE DAY BELONGS TO HIM. Every other ground is still open and still listed -- the schedule
+            -- says so and the panel's tab row is laid out over what it is given -- but nothing is filed
+            -- under them, which is what collapses the travel row to a single plate (the panel drops a
+            -- ground holding nothing). A board still offering the Bastion's next errand on day forty
+            -- would be the game hiding its own ending behind a tab.
+            local board = Quest.board(playerOn(Calendar.DAYS, standing(20)))
+            local offered, ground = 0, nil
+            for _, g in ipairs(board.grounds) do
+                offered = offered + #g.quests
+                if #g.quests > 0 then ground = g end
+            end
+            assert(offered == 1, "the last day offered " .. offered .. " expeditions, not just the Gate")
+            assert(Quest.defs[ground.quests[1].id].finale, "and the one on offer is not the finale")
+
+            -- The day before, the board is an ordinary board.
+            local before = Quest.board(playerOn(Calendar.DAYS - 1, standing(20)))
+            local ordinary = 0
+            for _, g in ipairs(before.grounds) do ordinary = ordinary + #g.quests end
+            assert(ordinary > 1, "day " .. (Calendar.DAYS - 1) .. " must still be a day of choices")
         end,
     },
     {
-        name = "Quest.start falls back to the quest's own ground when none is named",
+        -- What Quest.start used to guard, asked of the thing that replaced it. Its job was to collapse
+        -- a quest's SET of grounds down to the one travelled to, without writing through to the shared
+        -- blueprint -- a save-corrupting bug no single-run spec would ever have seen. The trip names
+        -- the ground once, at the top, for everything standing on it; the blueprint must still come
+        -- out of it untouched.
+        name = "a trip names one ground and leaves the blueprints alone",
         fn = function()
-            local legacy = { id = "_legacy", map = { biome = "forest" } }
-            assert(Quest.start(legacy, nil).map.biome == "forest", "the old single field was lost")
-            local set = { id = "_set", map = { biomes = { "tundra" } } }
-            assert(Quest.start(set, nil).map.biome == "tundra", "no ground resolved from the set")
+            local blueprint = { biomes = { "swamp", "castle" }, keyCount = 1,
+                objective = { name = "boss" } }
+            local entry = { id = "_synthetic", name = "Synthetic", map = blueprint }
+
+            local castle = Quest.trip("castle", { entry })
+            assert(castle.map.biome == "castle", "the chosen ground was not stamped")
+            assert(castle.map.biomes == nil, "the set survived into the run")
+            assert(castle.map.keyCount == 1, "the rest of the map spec was dropped")
+
+            assert(blueprint.biomes and #blueprint.biomes == 2, "the trip wrote through to the blueprint")
+            assert(blueprint.biome == nil, "the trip stamped the blueprint's own map")
+            assert(blueprint.objective.questId == nil,
+                "the trip stamped its quest id onto the blueprint's objective")
+
+            -- A second trip may pick the other ground; nothing was pinned by the first.
+            assert(Quest.trip("swamp", { entry }).map.biome == "swamp",
+                "the ground was pinned by the first trip")
         end,
     },
 }

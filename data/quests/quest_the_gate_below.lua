@@ -42,9 +42,15 @@ return {
     -- could never bite, and a gate that cannot bite misleads whoever reads it next.
     endsCampaign = true,
     -- THE CALENDAR IS THE GATE. He arrives on the last day whether or not a single general is dead
-    -- (models/calendar.lua), so this is not a lock and there are no keys to collect. `showLocked` still
-    -- puts it on the board from the first day -- but what the count beside it now says is how many
-    -- generals will be standing WITH him, which is a warning rather than a tally of permission.
+    -- (models/calendar.lua), so this is not a lock and there are no keys to collect. What the count
+    -- beside it says is how many generals will be standing WITH him -- a warning, not a tally of
+    -- permission.
+    --
+    -- `showLocked` is what puts the card on the board BEFORE that day, and it is spent on one thing:
+    -- the seven fragments, once all seven are in hand. It used to show from the second morning, which
+    -- meant a row nobody could press under every tab for thirty-nine days; the deadline itself is the
+    -- hub's day counter's job and always was. Fell seven and the place names itself; fell fewer and you
+    -- meet him on day forty regardless, having simply never been shown the map.
     finale = true,
     showLocked = true,
     -- THE DEEPEST FIGHT IN THE GAME, SAID OUT LOUD. It never needed saying before: the seven-key chain

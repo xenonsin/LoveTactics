@@ -566,7 +566,11 @@ return {
         name = "Quest.available carries requiredQuests and rewardItems through the field copy",
         fn = function()
             local p = playerAt(10)
-            p.completedQuests.quest_colosseum_slot_10 = true
+            -- All seven, because that is what SHOWS the Gate now: the card is the fragments, and the
+            -- fragments are only worth a pane once they name a place (models/quest.lua).
+            for _, id in ipairs(Quest.defs.quest_the_gate_below.hintQuests) do
+                p.completedQuests[id] = true
+            end
 
             local gate, general
             for _, q in ipairs(Quest.available(p)) do
@@ -574,7 +578,7 @@ return {
                 if q.id == "quest_colosseum_slot_10" then general = q end
             end
 
-            assert(gate, "the Gate should be on the board once one general is dead")
+            assert(gate, "the Gate should be on the board once every general is dead")
             assert(gate.hintQuests and #gate.hintQuests == 7,
                 "the Gate must carry the seven generals it names")
 
@@ -585,7 +589,7 @@ return {
         end,
     },
     {
-        name = "the Gate Below is hidden at zero keys, locked while short, and startable at seven",
+        name = "the Gate Below is hidden until every general is down, then locked until the day he lands",
         fn = function()
             local p = playerAt(10)
 
@@ -596,75 +600,70 @@ return {
                 return nil
             end
 
-            -- THE COUNT IS A WARNING NOW, NOT A KEYRING. It used to gate the Gate: seven completed
-            -- generals and not one fewer. The calendar gates it instead (models/calendar.lua), because
-            -- seven lines to their slot 10 is about seventy expeditions against a budget of forty --
-            -- so the old rule made the ending unreachable by construction. What the seven decide is how
-            -- many of them are standing beside him when you arrive.
+            -- THE COUNT IS A WARNING, NOT A KEYRING. It used to gate the Gate: seven completed generals
+            -- and not one fewer. The calendar gates it instead (models/calendar.lua), because seven
+            -- lines to their slot 10 is about seventy expeditions against a budget of forty -- so the
+            -- old rule made the ending unreachable by construction. What the seven decide is how many
+            -- of them are standing beside him when you arrive.
+            --
+            -- What they ALSO decide is whether the card is on the board early, which is what this case
+            -- pins. A locked entry rides along under every ground (Quest.board), so showing it from the
+            -- first general down put an unpressable row under every tab for most of the campaign. It is
+            -- the fragments that earn the pane, and six fragments name nowhere.
             local Calendar = require("models.calendar")
+            local keys = Quest.defs.quest_the_gate_below.hintQuests
 
-            -- Before the last day, it is on the board and unstartable, whatever has been killed.
+            assert(not gateEntry(), "nothing killed: he is coming, but the board has nothing to say yet")
+
+            for i = 1, #keys - 1 do p.completedQuests[keys[i]] = true end
+            assert(not gateEntry(), "six fragments are not a map -- the card is still off the board")
+
+            p.completedQuests[keys[#keys]] = true
             local gate = gateEntry()
-            assert(gate, "the Gate is rumoured from the start -- he is coming either way")
-            assert(gate.locked, "but not before the day he arrives")
-            assert(gate.keysHeld == 0 and gate.keysNeeded == 7,
-                "and it says how many generals are still standing")
+            assert(gate, "the seventh fragment names the place, and the place goes on the board")
+            assert(gate.locked, "but showing it is not opening it -- the day does that")
+            assert(gate.keysHeld == 7 and gate.keysNeeded == 7,
+                "and every general is accounted for: held " .. tostring(gate.keysHeld) ..
+                " of " .. tostring(gate.keysNeeded))
+            -- Each fragment is the one its own general gave up -- the pane is a map assembled from the
+            -- dead, never a canned riddle.
+            assert(gate.hints and #gate.hints == 7, "all seven fragments are recited")
+            local said = {}
+            for _, hint in ipairs(gate.hints) do said[hint] = true end
+            for _, id in ipairs(keys) do
+                assert(said[Quest.defs[id].gateHint], id .. "'s fragment is missing from the pane")
+            end
 
-            p.completedQuests.quest_colosseum_slot_10 = true
-            gate = gateEntry()
-            assert(gate.locked, "felling one changes nothing about WHEN he comes")
-            assert(gate.keysHeld == 1, "...only about who comes with him")
-
-            -- The last day opens it, with any number of generals left alive.
+            -- The last day opens it.
             p.day = Calendar.DAYS
             gate = gateEntry()
             assert(gate and not gate.locked, "on the last day it is the work that is on offer")
-            assert(gate.keysHeld == 1,
-                "and it still reports the six who will be waiting, rather than refusing the fight")
         end,
     },
     {
-        name = "a locked Gate recites only the hints of the generals already killed",
+        name = "a player who felled one general still meets him on the last day, unwarned",
         fn = function()
+            -- THE ENDING IS NOT BEHIND THE FRAGMENTS. Hiding the card until seven keys is about what
+            -- the board says beforehand; it must not become the old seven-of-seven lock by the back
+            -- door. A company that spent forty days on one house arrives at the same fight -- with six
+            -- generals standing beside him, which is the whole consequence (Calendar.generalsStanding).
             local p = playerAt(10)
             p.completedQuests.quest_colosseum_slot_10 = true
 
-            local gate
-            for _, q in ipairs(Quest.available(p)) do
-                if q.id == "quest_the_gate_below" then gate = q end
+            local function gateEntry()
+                for _, q in ipairs(Quest.available(p)) do
+                    if q.id == "quest_the_gate_below" then return q end
+                end
+                return nil
             end
 
-            assert(gate.hints and #gate.hints == 1, "one dead general gives up one fragment")
-            assert(gate.hints[1] == Quest.defs.quest_colosseum_slot_10.gateHint,
-                "and it is that general's own fragment")
-        end,
-    },
-    {
-        name = "one key does not open the Gate -- it is shown locked, and cannot be walked into",
-        fn = function()
-            -- The Gate's prestige requirement is gone with every other prestige gate; what stands in
-            -- front of it is the seven generals, which is the gate the story actually describes.
-            --
-            -- It is the one quest that sets `showLocked`, so holding a single key SHOWS it -- a player
-            -- six keys short should see that they are six keys short. Shown and enterable are two
-            -- different things, and this pins the difference: the entry must be there AND be marked
-            -- locked, with its key count telling the truth about how far off it is.
-            -- Stood at the Gate's own entry prestige, because `showLocked` is about the KEY count and
-            -- nothing else: a quest still has to clear its prestige gate to be listed at all, and the
-            -- Gate asks for ten. Reading the requirement off the blueprint rather than typing it, so
-            -- retuning the finale's gate cannot leave this case quietly testing the wrong thing.
-            local p = playerAt(Quest.defs.quest_the_gate_below.requiredPrestige or 1)
-            p.completedQuests.quest_colosseum_slot_10 = true
+            assert(not gateEntry(), "one fragment buys no pane")
 
-            local entry
-            for _, q in ipairs(Quest.available(p)) do
-                if q.id == "quest_the_gate_below" then entry = q end
-            end
-            assert(entry, "one key should SHOW the Gate -- that is what showLocked is for")
-            assert(entry.locked, "...but showing it is not opening it")
-            assert(entry.keysHeld == 1 and entry.keysNeeded > 1,
-                "and it must say how far off: held " .. tostring(entry.keysHeld) ..
-                " of " .. tostring(entry.keysNeeded))
+            p.day = require("models.calendar").DAYS
+            local gate = gateEntry()
+            assert(gate and not gate.locked, "the last day offers the fight to whoever shows up")
+            assert(gate.keysHeld == 1,
+                "and it still reports the six who will be waiting, rather than refusing the fight")
         end,
     },
     {

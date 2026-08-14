@@ -272,9 +272,27 @@ function Save.snapshotRun(run, player)
         end
         if pools and char.id then resources[char.id] = pools end
     end
+    -- THE DAY'S WORK, so a resume comes back with the same boxes ticked. The ids are stored rather than
+    -- re-derived from the board on load: clearing a piece of work takes it OFF the board, so asking the
+    -- board again mid-expedition would hand back a shorter list than the player is standing on
+    -- (models/quest.lua's Quest.tripFromIds).
+    local trip, tripDone
+    if run.trip then
+        trip = { groundId = run.trip.groundId, questIds = {} }
+        for _, id in ipairs(run.trip.questIds or {}) do
+            trip.questIds[#trip.questIds + 1] = id
+        end
+        tripDone = {}
+        for id, done in pairs(run.tripDone or {}) do
+            if done then tripDone[id] = true end
+        end
+    end
+
     return {
         questId = run.questId,
         day = run.day,
+        trip = trip,
+        tripDone = tripDone,
         -- A DESCENT run: the floor stack and its seed, from which the whole board re-derives. Present
         -- only for a descent; a legacy board quest stores nothing here and restores through questId
         -- exactly as it always did. Plain data by contract -- see models/descent.lua's header on why a
@@ -305,7 +323,14 @@ function Save.restoreRun(snap)
     -- "quest content removed since the run was saved". A legacy board quest falls through to the
     -- original path untouched, which is what lets a player mid-quest at upgrade time finish it.
     local descent, quest
-    if snap.descent then
+    if snap.trip and snap.trip.groundId then
+        -- A GROUND the company was walking, rather than a single piece of work. Rebuilt from the ids
+        -- the run carried, exactly like the descent branch below rebuilds a floor: the synthesized id
+        -- (`trip:tundra`) is not in Quest.defs and never will be, so the lookup further down would
+        -- discard a perfectly good expedition as "content removed since the run was saved".
+        quest = require("models.quest").tripFromIds(snap.trip.groundId, snap.trip.questIds)
+        if not quest then return nil end -- every quest on it is gone: nothing left to resume onto
+    elseif snap.descent then
         descent = Descent.restore(snap.descent)
         -- The rollback point is stored once, at the run level, and handed back to the descent here --
         -- see Descent.snapshot on why it is not serialized twice. Without this the descent would resume
@@ -329,6 +354,9 @@ function Save.restoreRun(snap)
         -- resume. A resumed expedition is the same expedition: it already spent its day, and a board
         -- that re-read the calendar would scale to a different depth halfway through itself.
         day = snap.day or 1,
+        -- The ground and which of its work is already taken, so the checklist comes back ticked.
+        trip = snap.trip,
+        tripDone = snap.tripDone or {},
         px = snap.px, py = snap.py,
         keysHeld = snap.keysHeld or {},
         cacheHaul = snap.cacheHaul or {},

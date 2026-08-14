@@ -41,9 +41,11 @@ State.switch(require("states.hub"))
 
 There is no built-in `leave` hook; do any teardown before calling `State.switch`.
 
-Screen flow: **menu → hub → (Quest Board → game → battle)**. `states/game.lua` is the
-overworld a started quest transitions into; engaging a combat encounter there switches to
-`states/battle.lua` (see *Combat: battle arenas* below).
+Screen flow: **menu → hub → (Quest Board → game → battle)**. The Quest Board offers **grounds**, not
+quests: choosing one builds a *trip* (`Quest.trip`) carrying every quest posted there, and
+`states/game.lua` is the overworld it transitions into — one objective tile per piece of work, ticked
+off a checklist as they are taken. Engaging a combat encounter switches to `states/battle.lua` (see
+*Combat: battle arenas* below).
 
 ## Three-input UI (project standard)
 
@@ -120,8 +122,8 @@ roster, so attrition lasts a quest rather than a campaign and a loaded party is 
 The economy is one direction of dependency: `Quest` → `Player` → `Vendor` → `Item`. `Vendor` gates a
 shelf from a **plain count of completed quests, not a player** (`Quest.sponsorProgress` supplies the
 number), which is what keeps `Player` free to depend on it without a require cycle. Progress is written
-at the two points it changes — `Quest.complete` (the objective-win branch of `states/game.lua`) and a
-vendor purchase.
+at the two points it changes — `Quest.complete` (the objective-win branch of `states/game.lua`, called
+once per objective cleared rather than once per run) and a vendor purchase.
 
 ## Combat: battle arenas
 
@@ -144,8 +146,9 @@ the same three-layer split as the overworld:
   quest's biome tileset (each arena tile type maps to an overworld tileset type for art, with a
   colored-rect fallback), overlays party/enemy tokens, and tracks a cursor.
 - **`states/battle.lua`** — wires them together and owns the transitions. Victory resumes the
-  *same* overworld (the tile is marked cleared; the objective completes the quest to the hub);
-  a total party wipe or forfeit fails the quest back to the hub. These are supplied as
+  *same* overworld, an objective included: clearing one completes **that** quest, reports it over the
+  frozen board, and puts the company back on the map with whatever work is still standing there. Only
+  the last box ticked goes home. A wipe or forfeit ends the day at the hub. These are supplied as
   `onWin`/`onLoss` closures from `game:openEncounter`, so `states/game.lua` owns the flow.
 
 **Every ordinary battle opens on a deployment phase** (`ui/deploy_phase.lua`): the board is built and
@@ -161,8 +164,12 @@ Scripted, duel and draft fights pass `deploy = false` and keep their authored pl
 **Enemy composition** is authored per encounter as `composition = function(ctx)` (mirroring the
 existing dynamic `weight`), returning a list of `data/characters/` ids that **scales with
 `ctx.prestige`** — more foes, tougher rosters at higher renown. Enemies reuse the party-character
-schema (`Character.instantiate`). The objective tile reads its roster + win condition from the
-quest's `map.objective` (`composition` + `win = { type, target }`).
+schema (`Character.instantiate`). An objective tile reads its roster + win condition from **its own**
+quest's objective spec (`composition` + `win = { type, target }`) — a day's ground carries one per piece
+of work in `map.objectives`, and the tile stores only the quest id, so `states/game.lua` resolves which
+spec the fight belongs to and hands it to `EncounterBattle.spec` as `opts.objective`. (The tile holds an
+id rather than the spec because a spec can hold a *function* and the whole board is serialized into the
+save.) A single-quest leg still passes one `map.objective` and reads exactly as it always did.
 
 **Two decisions are not `states/battle.lua`'s to own alone** — *who* you fight and *what the win is
 worth* — because a fight can now also be resolved without the board ever loading (the walk-off, below).

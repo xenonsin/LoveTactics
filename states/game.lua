@@ -475,6 +475,119 @@ function game:openLanding()
     })
 end
 
+-- ---------------------------------------------------------------------------
+-- A trip: the ground, and the several pieces of work standing on it
+-- ---------------------------------------------------------------------------
+--
+-- A run used to BE a quest -- one objective, one payout, one trip home. It is a place now: the player
+-- travels to a ground and everything the houses have posted there is on the board at once, each on its
+-- own dead end (models/quest.lua's Quest.trip). The day is spent on entering, whatever you come home
+-- with, and clearing one piece of work leaves you standing on the map with the others still out there.
+--
+-- Everything below reads through these three, so the single-quest legs -- the prologue's flight, the
+-- debut's walk, every descent floor -- come through unchanged as a trip of one.
+
+-- The board entry behind an objective cell, or nil. A cell carries only the quest ID (the spec can hold
+-- a composition function and the board is serialized whole into the save), so this is the lookup back.
+local function questAt(cell)
+    local id = cell and cell.encounter and cell.encounter.questId
+    if not id then return game.quest end
+    for _, q in ipairs((game.quest and game.quest.quests) or {}) do
+        if q.id == id then return q end
+    end
+    return game.quest
+end
+
+-- ...and its objective spec: what is fought there, what scene it opens with, how deep it is.
+local function objectiveAt(cell)
+    local mp = (game.quest and game.quest.map) or {}
+    local id = cell and cell.encounter and cell.encounter.questId
+    if id then
+        for _, spec in ipairs(mp.objectives or {}) do
+            if spec.questId == id then return spec end
+        end
+    end
+    return (mp.objectives and mp.objectives[1]) or mp.objective
+end
+
+-- What is left to do on this ground: one row per piece of work, in board order, each with whether it
+-- has been taken. THE run's title now (game:drawChecklist) and the thing that decides when the day is
+-- over. Cleared rows keep their place -- what you did not take is read against what you did.
+function game:worklist()
+    local out = {}
+    for _, q in ipairs((game.quest and game.quest.quests) or {}) do
+        out[#out + 1] = { id = q.id, name = q.name, done = (game.tripDone or {})[q.id] == true }
+    end
+    return out
+end
+
+-- Is there anything left on this ground? False the moment one box is unticked, so a trip of one
+-- behaves exactly as a quest always did: clear the objective and the day is over.
+function game:tripCleared()
+    local rows = game:worklist()
+    if #rows == 0 then return true end
+    for _, row in ipairs(rows) do
+        if not row.done then return false end
+    end
+    return true
+end
+
+-- PAYING FOR ONE PIECE OF WORK, without ending the day.
+--
+-- Quest.complete is the single payout seam and stays that -- gold, the relic, the companion, the
+-- sponsor's standing, the shelf it opens -- but it is called once per objective now rather than once
+-- per run. Two things were moved OFF it and onto the exit (game:bankHaul), because they belong to the
+-- DAY rather than to a piece of work: the cache haul, which would otherwise be banked by whichever
+-- objective happened to be cleared first and then again by the next one, and the supper, which is worn
+-- by the company from the moment they set out.
+--
+-- Returns the reward summary (nil if this quest had already been paid -- the double-payout guard lives
+-- in Quest.complete and is what makes a re-cleared tile worth nothing).
+function game:payObjective(cell, materials)
+    local quest = questAt(cell)
+    if not quest then return nil end
+    local reward = quest.request
+        and Request.payout(game.player, quest, materials, game.day, Calendar.DAYS)
+        or Quest.complete(game.player, quest, materials, { keepMeal = true })
+    if quest.id then game.tripDone[quest.id] = true end
+    return reward, quest
+end
+
+-- A class line's last quest settles its temptation ledger, and a companion whose line ended in `left`
+-- walks HERE rather than inside Quest.complete -- she has to still be on the roster for the outro to
+-- give her a farewell, and `when = { has = ... }` would have dropped her own goodbye out of her own
+-- scene. The flag was stamped at completion; this is where the roster catches up with it. A no-op on
+-- every quest that is not a line's tenth, which is why both completion paths can just call it.
+function game:settleTemptation(reward)
+    if reward and reward.temptation then
+        require("models.temptation").settle(game.player)
+        Player.save()
+    end
+end
+
+-- THE DAY ENDS HERE, and this is the only place it does.
+--
+-- Everything the run found has been in the stash all along -- live, equippable, spendable -- but
+-- provisional: the entry snapshot on the run could put it all back. Dropping the run drops that
+-- snapshot and the finds become permanent. What is banked here rather than earlier is what the DAY
+-- earned rather than what a quest did: the ore out of the caches (foraging is this now -- there is no
+-- separate errand for it), and the supper, which is eaten whether or not the ground was cleared.
+--
+-- Reached three ways -- the last box ticked, the player walking out, or the ground beaten -- and a wipe
+-- deliberately does NOT come through here: an unbanked haul is simply lost, which is what wipeRun's
+-- penalty already says about gold and stock.
+function game:bankHaul()
+    local haul = game.map and game.map.cacheHaul
+    if haul and game.player then
+        for id, n in pairs(haul) do
+            if (n or 0) > 0 then Player.addMaterial(game.player, id, n) end
+        end
+        game.map.cacheHaul = {}
+    end
+    -- The supper is spent by the day, not by the first fight that ends well.
+    if game.player then Meal.clear(game.player) end
+end
+
 -- Persist the run if one is active (a resumable board quest). No-op otherwise, so it is safe to sprinkle at
 -- every point the board changes -- entering the map, approaching an encounter, and resolving one. The
 -- resolution saves matter: a treasure collected or an event resolved marks its cell cleared, and without
@@ -524,7 +637,17 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- whole point -- running the Bastion's line yields Bastion stock, which the Arcanum's gear will want
     -- at the Forge, so the seven lines feed one economy. Resolved once here because BOTH payers need it:
     -- the map's caches (below) and every fight's salvage (models/spoils.lua, via the battle state).
+    -- A TRIP HAS NO ONE SPONSOR. Several houses can have work on the same ground, so the run's own
+    -- salvage house is the first of them and the CACHES are dealt across all of them
+    -- (map.houseMaterials, below). An objective fight still salvages in its own quest's house -- see
+    -- the battle launch -- so the piece of work you took pays in the stock of whoever posted it.
     game.houseMaterial = Material.houseFor((Vendor.get(quest and quest.sponsor) or {}).class)
+        or (mp.houseMaterials and mp.houseMaterials[1])
+
+    -- WHAT IS STILL STANDING ON THIS GROUND. Keyed by quest id, carried through a quit-and-Continue
+    -- (models/save.lua) so a resumed day comes back with the same boxes already ticked. A single-quest
+    -- leg has one entry and nothing about it changes.
+    game.tripDone = (resume and resume.tripDone) or {}
 
     -- Dynamic encounter selection: build the eligible weighted pool for this
     -- player's prestige + the quest's biome, plus any guaranteed "always" picks.
@@ -569,7 +692,14 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
             keyCount = mp.keyCount,
             cacheCount = mp.cacheCount, -- nil -> derived from the encounter count (Overworld.generate)
             houseMaterial = game.houseMaterial, -- the sponsor's stock; resolved once at the top of enter
+            -- ...and every house working this ground, for the caches to be dealt across (placeCaches).
+            -- A one-house run leaves this nil and pays out exactly as it always did.
+            houseMaterials = mp.houseMaterials,
             objective = mp.objective,
+            -- ONE END PER PIECE OF WORK. A ground offering three quests puts three objectives on the
+            -- board, each on its own dead end; a single-quest leg passes `objective` above and comes
+            -- through the generator as a list of one (models/overworld.lua).
+            objectives = mp.objectives,
             -- Denser default boards (~8-11 stops) so a rolled run has room for the roguelike texture --
             -- caches, rests and fights between them (guaranteed variety + a combat-share cap live in
             -- Overworld:placeEncounters). A quest still overrides via its own mp.encounters.min/max.
@@ -723,9 +853,21 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
             or (game.descent and game.descent.entry)
             or Save.snapshot(game.player)
         if game.descent then game.descent.entry = entry end
+        -- The day's work as plain ids, and which of it is already taken. Rebuilt into the trip on the
+        -- way back in (models/save.lua -> Quest.tripFromIds); nil for every single-quest leg, which
+        -- resumes through `questId` exactly as it always did.
+        local trip
+        if quest.trip then
+            trip = { groundId = quest.groundId, questIds = {} }
+            for _, q in ipairs(quest.quests or {}) do
+                trip.questIds[#trip.questIds + 1] = q.id
+            end
+        end
         game.player.activeRun = {
             questId = quest.id,
             day = game.day,
+            trip = trip,
+            tripDone = game.tripDone,
             -- Serialized by Save.snapshotRun and taken by Save.restoreRun BEFORE it tries Quest.get,
             -- since a floor id is never in Quest.defs.
             descent = game.descent,
@@ -848,7 +990,8 @@ function game:openEncounter(cell)
     -- roster (the debut's rewardCharacter), and the join banner the arena outro held for this scene
     -- folds onto it when it plays (Conversation.drainJoins). Completion routes exactly like a cleared
     -- combat objective: a scripted caller's onComplete goes home, a board quest pays out and returns.
-    if kind == "objective" and mp.objective and mp.objective.meet then
+    local objSpec = kind == "objective" and objectiveAt(cell) or nil
+    if objSpec and objSpec.meet then
         cell.cleared = true
         game.complete = true
         local function finish()
@@ -865,27 +1008,19 @@ function game:openEncounter(cell)
                 game:openLanding()
                 return
             end
-            -- A `meet` objective extracts exactly as a fought one does: dropping the run drops the
-            -- rollback point with it, so the leg's finds stand. See the combat objective's branch below.
-            clearRun() -- the quest is over; Quest.complete's save below then writes no run to resume
-            -- A REQUEST RUN never reaches Quest.complete: that function writes the quest ledger and advances
-
-            -- the sponsor's standing, neither of which a day of foraging has earned (models/request.lua).
-
-            -- The extraction rule is identical either way -- the haul was provisional until this line.
-
-            game.reward = game.quest and game.quest.request
-
-                and Request.payout(game.player, game.quest, game.map and game.map.cacheHaul, game.day, Calendar.DAYS)
-
-                or Quest.complete(game.player, game.quest, game.map and game.map.cacheHaul)
-            -- Same settle the fought path takes below: a line's tenth quest can release a companion, and
-            -- this branch is the one where the farewell has ALREADY played (`meet` puts its scene before
-            -- the payout, not after it), so the roster catches up immediately.
-            if game.reward and game.reward.temptation then
-                require("models.temptation").settle(game.player)
-                require("models.player").save()
+            -- A `meet` objective pays exactly as a fought one does -- the settle for a line's last
+            -- quest included, and it happens immediately here because `meet` puts its scene BEFORE the
+            -- payout rather than after it, so the farewell has already played.
+            game.reward = game:payObjective(cell, nil)
+            game:settleTemptation(game.reward)
+            -- ...and leaves the day open if the ground still has work on it. A meeting is a piece of
+            -- work like any other now; only the last one ends the expedition.
+            if not game:tripCleared() then
+                saveRun()
+                return
             end
+            game:bankHaul()
+            clearRun() -- the day is over; the save below then writes no run to resume
             if game.player and game.reward then game.player.pendingSummary = game.reward end
             State.switch(require("states.hub"))
         end
@@ -1001,7 +1136,11 @@ function game:openEncounter(cell)
             -- (states/battle.lua's openingConversation). This is the ONLY seam an antagonist can
             -- speak from: `intro` plays over the hub before the party is even picked, and by the
             -- time `outro` runs the target of an `assassinate` is dead.
-            opening = kind == "objective" and mp.objective and mp.objective.opening or nil,
+            opening = objSpec and objSpec.opening or nil,
+            -- WHICH end this is, resolved from the tile rather than looked up from the run: the
+            -- composition, the escorts, the win condition and the board all come off this one spec
+            -- (models/encounter_battle.lua), and a ground carrying three quests has three of them.
+            objective = objSpec,
             day = game.day,
             -- Who is still standing when the last door opens; read only by the finale's composition
             -- (data/quests/quest_the_gate_below.lua) and nil-safe everywhere else.
@@ -1017,13 +1156,16 @@ function game:openEncounter(cell)
             -- The sponsor's stock, for the salvage every won fight leaves behind (models/spoils.lua).
             -- Same value the map's caches were laid out with, so a run's fights and its dead ends pay
             -- into the same house.
-            houseMaterial = game.houseMaterial,
+            -- ...and an OBJECTIVE fight salvages in the house that posted it rather than in the run's:
+            -- a ground can carry three houses' work, and the piece of work you took should pay in the
+            -- stock of whoever asked for it.
+            houseMaterial = (objSpec and objSpec.houseMaterial) or game.houseMaterial,
             -- This fight's authored difficulty FLOOR: the level its enemies may never drop below,
             -- however green the company walking in is. Scaling takes over above it (models/growth.lua,
             -- Growth.combatantLevel), so a floor stops a beat being walked on a replay or in New Game+
             -- without freezing it at a level the party has long outgrown. Read off the objective first,
             -- then the quest, so a line can set one floor for all its fights and a single beat can raise it.
-            floorLevel = (kind == "objective" and mp.objective and mp.objective.floorLevel)
+            floorLevel = (objSpec and objSpec.floorLevel)
                 or (game.quest and game.quest.floorLevel) or nil,
             -- The whole marching company. Battle's deployment phase decides which of them take the field
             -- and where; the rest wait on the bench and can be rotated in (docs/deployment.md).
@@ -1113,46 +1255,48 @@ function game:openEncounter(cell)
                     if game.player and spoils and (spoils.gold or 0) > 0 then
                         Player.addGold(game.player, spoils.gold)
                     end
-                    -- The objective's own salvage (models/spoils.lua) rides in on the run's cache haul
-                    -- rather than being granted here. Same reason the caches bank at the objective: it
-                    -- inherits Quest.complete's double-payout guard, and it is named in the quest's
-                    -- reward table with the rest of the materials instead of arriving as a silent
-                    -- number. The battle summary only DISPLAYED it a moment ago; this is the grant.
-                    local haul = {}
-                    for id, n in pairs(game.map and game.map.cacheHaul or {}) do haul[id] = n end
-                    for id, n in pairs(spoils and spoils.materials or {}) do
-                        haul[id] = (haul[id] or 0) + n
-                    end
-                    -- The single payout seam: gold and prestige are granted here, once, the quest is
-                    -- marked done (which is what advances the sponsor's standing), and the game saves.
-                    --
-                    -- THIS IS THE EXTRACTION. Everything the run found has been in the stash all along --
-                    -- live, equippable, spendable -- but provisional: the entry snapshot on the run could
-                    -- put it all back. Dropping the run here drops that snapshot, and the finds become
-                    -- permanent. The objective is the ONLY exit that does this; a wipe and a walk-out both
-                    -- lose most of it instead (see wipeRun). So the haul comes home whichever way you leave, unless it
-                    -- does not come home.
-                    clearRun() -- quest cleared; Quest.complete's save (and the endsCampaign->credits path) writes no run
-                    -- A REQUEST RUN never reaches Quest.complete: that function writes the quest ledger and advances
+                    -- The objective fight's OWN salvage (models/spoils.lua) is paid through the quest
+                    -- rather than granted here, so it inherits Quest.complete's double-payout guard and
+                    -- is named in the reward table with the rest of the materials instead of arriving
+                    -- as a silent number. The battle summary only DISPLAYED it a moment ago; this is
+                    -- the grant. The run's CACHE haul is no longer folded in: that belongs to the day
+                    -- rather than to this piece of work, and it banks at the exit (game:bankHaul) --
+                    -- otherwise the first of three objectives would bank it and the second would bank
+                    -- whatever had been picked up since, under a different quest's name.
+                    local salvage = {}
+                    for id, n in pairs(spoils and spoils.materials or {}) do salvage[id] = n end
 
-                    -- the sponsor's standing, neither of which a day of foraging has earned (models/request.lua).
-
-                    -- The extraction rule is identical either way -- the haul was provisional until this line.
-
-                    game.reward = game.quest and game.quest.request
-
-                        and Request.payout(game.player, game.quest, haul, game.day, Calendar.DAYS)
-
-                        or Quest.complete(game.player, game.quest, haul)
-                    -- The sting that marks a quest actually ending. Until now the single loudest
-                    -- silence in the game was here: the objective clears, the board goes quiet, and
-                    -- nothing at all says the run is over.
+                    -- THE PAYOUT SEAM, once per piece of work: gold, the relic, the companion, and the
+                    -- sponsor's standing, which is what opens their shelf. The temptation settle is
+                    -- deliberately NOT here -- it waits for the outro below, which needs the companion
+                    -- it may be about to take away.
+                    local doneQuest
+                    game.reward, doneQuest = game:payObjective(cell, salvage)
+                    -- The sting that marks a piece of work actually ending.
                     require("models.sound").play("quest.complete")
-                    -- Hand the reward (gold/prestige/rep + the roster's level-ups) to the hub, which
-                    -- opens the Company Advancement overlay on entry and clears this once shown.
-                    if game.player and game.reward then game.player.pendingSummary = game.reward end
-                    -- An outro scene plays over the (frozen) final battle frame before returning to
-                    -- the hub; the hub then opens the reward summary. No outro -> straight home.
+
+                    -- IS THE DAY OVER? Only if the ground has nothing left on it. A trip carries every
+                    -- quest that could be run here (models/quest.lua's Quest.trip), so clearing one
+                    -- leaves the others standing and the run goes back to the map -- after the outro,
+                    -- which still plays over the frozen final frame where it always did.
+                    --
+                    -- The campaign's ending is the exception and takes itself home regardless: there is
+                    -- no map to walk back onto once the credits have rolled.
+                    local staying = not game:tripCleared()
+                        and not (doneQuest and doneQuest.endsCampaign)
+                    if not staying then
+                        -- THIS IS THE EXTRACTION. Everything the run found has been in the stash all
+                        -- along -- live, equippable, spendable -- but provisional: the entry snapshot
+                        -- on the run could put it all back. Dropping the run here drops that snapshot
+                        -- and the finds become permanent, the day's ore and supper with them.
+                        game:bankHaul()
+                        clearRun()
+                    else
+                        saveRun() -- the box is ticked; a resume must come back with it ticked
+                    end
+                    -- An outro scene plays over the (frozen) final battle frame, then the reward panel
+                    -- opens over the board, and only then does the run go anywhere. No outro -> the
+                    -- panel comes straight up.
                     --
                     -- A quest may also hand off to a short follow-up overworld leg BEFORE the hub -- the
                     -- debut walks the party off the sand, where Saber catches them and asks in
@@ -1169,24 +1313,18 @@ function game:openEncounter(cell)
                     -- change of place and cast, not a change of subject, so it cannot be more lines
                     -- on the end of the outro. Like a followUp it DEFERS the join banner: whoever was
                     -- recruited belongs to the scene the author put them in, which is the second one.
-                    local followUp = game.quest and game.quest.followUp
-                    local epilogue = game.quest and game.quest.epilogue
-                    local function goNext()
-                        -- A class line's last quest settles its temptation ledger, and a companion whose
-                        -- line ended in `left` walks HERE rather than in Quest.complete -- she has to
-                        -- still be on the roster for the outro above to give her a farewell, and
-                        -- `when = { has = ... }` would have dropped her own goodbye out of her own
-                        -- scene. The flag was stamped at completion; this is where the roster catches up
-                        -- with it. A no-op on every quest that is not a line's tenth.
-                        if game.reward and game.reward.temptation then
-                            require("models.temptation").settle(game.player)
-                            require("models.player").save()
-                        end
+                    -- ALL THREE ARE READ OFF THE QUEST THAT WAS JUST CLEARED, not off the run: a day on
+                    -- one ground can carry three quests and only one of them has been finished here.
+                    local followUp = doneQuest and doneQuest.followUp
+                    local epilogue = doneQuest and doneQuest.epilogue
+                    -- WHERE THE REPORT GOES ONCE THE SCENES HAVE PLAYED. Split out from goNext so the
+                    -- reward panel can sit between the two.
+                    local function route()
                         -- The campaign's last quest does not go home. `endsCampaign` is carried on the
                         -- quest (data/quests/quest_the_gate_below.lua) rather than a quest id compared here,
                         -- so this state never learns which file is the ending and a second one costs
                         -- no engine edit. New Game+ is offered because the run is, by definition, over.
-                        if game.quest and game.quest.endsCampaign then
+                        if doneQuest and doneQuest.endsCampaign then
                             -- Banked HERE, not on the credits screen, because finishing the campaign
                             -- and choosing to play it again are different acts and only the first one
                             -- is what the post-game is owed to. `ngPlus` records the second and is
@@ -1196,13 +1334,55 @@ function game:openEncounter(cell)
                             Player.finishCampaign(game.player)
                             State.switch(require("states.credits"), { newGamePlus = true })
                         elseif followUp then
+                            -- A follow-up leg is its own traversal and ends at the city, so taking one
+                            -- ENDS THE DAY even if the ground still had work on it. Only the debut uses
+                            -- it, and the debut is alone on its ground; a quest that ever shares a
+                            -- ground with others and wants a follow-up would be giving up the rest of
+                            -- the day to have it, which is at least a decision the author can see.
                             State.switch(require("states.game"), followUp, game.day, game.player,
                                 function() State.switch(require("states.hub")) end)
+                        elseif staying then
+                            -- BACK TO THE GROUND. The day is not over -- the other ends are still out
+                            -- there -- so this returns to the map exactly as a won road fight does:
+                            -- re-rate the company against what is left, restore the overworld bed the
+                            -- battle swapped out, and resume without re-running enter (which would roll
+                            -- a fresh board and lose the run).
+                            game:refreshMuster()
+                            require("models.sound").music("music.overworld")
+                            State.current = game
                         else
                             State.switch(require("states.hub"))
                         end
                     end
-                    -- The scene chain home: outro, then epilogue, then goNext. Either may be absent.
+
+                    -- THE REPORT IS GIVEN WHERE THE WORK WAS DONE. It used to be handed to the hub
+                    -- (`pendingSummary`), which opened the Company Advancement overlay on the way in --
+                    -- right while a day was one piece of work and the walk home was the next thing that
+                    -- happened. A day can clear three now, and three reports queued behind a walk home
+                    -- would arrive as a stack of panels about fights the player finished an hour ago.
+                    -- So it opens here, over the frozen board, as part of the victory: the fight, its
+                    -- outro, then what it paid.
+                    --
+                    -- The `meet` objective keeps the old route deliberately -- it has no victory screen
+                    -- to be part of, being a scene walked into rather than a fight won.
+                    local function goNext()
+                        game:settleTemptation(game.reward)
+                        if not (game.player and game.reward) then route() return end
+                        -- The map has to be back on screen for the panel to sit over: the battle state
+                        -- is still current at this point, frozen on its last frame.
+                        require("models.sound").music("music.overworld")
+                        State.current = game
+                        game.activePanel = require("ui.panels.advancement").new({
+                            reward = game.reward,
+                            onClose = function()
+                                game.activePanel = nil
+                                route()
+                            end,
+                        })
+                    end
+
+                    -- The scene chain: outro, then epilogue, then goNext. Either may be absent. The
+                    -- outro belongs to the QUEST that was cleared, not to the day.
                     local function playEpilogue()
                         if epilogue then
                             require("models.conversation").play(epilogue, goNext)
@@ -1210,8 +1390,8 @@ function game:openEncounter(cell)
                             goNext()
                         end
                     end
-                    if game.quest and game.quest.outro then
-                        require("models.conversation").play(game.quest.outro, playEpilogue, nil,
+                    if doneQuest and doneQuest.outro then
+                        require("models.conversation").play(doneQuest.outro, playEpilogue, nil,
                             (followUp or epilogue) and { deferJoins = true } or nil)
                     else
                         playEpilogue()
@@ -1786,6 +1966,11 @@ local function toHub()
     -- the FIGHT rather than against the walk home, and the answer changes with how much you are
     -- already carrying.
     if game.player and game.player.activeRun then
+        -- THE DAY IS BANKED ON THE WAY OUT. The ore in the caches used to be paid in by whichever
+        -- objective was cleared, which meant walking out with a full pack and nothing to show for it --
+        -- the exact opposite of the line above. It banks here instead, alongside the supper being
+        -- eaten, so a day spent entirely on foraging comes home with what it carried.
+        game:bankHaul()
         clearRun()
         Player.save()
     end
@@ -1888,6 +2073,61 @@ function game.drawCoach()
     end
 end
 
+-- The line at the top of the board. A ground and a day for a campaign trip; a scripted or descent leg
+-- keeps naming itself, because those are one authored place and the day means nothing to them.
+function game:runTitle()
+    local name = (game.quest and game.quest.name) or "Quest"
+    if not (game.quest and game.quest.trip) then return name end
+    return name .. "  ·  day " .. tostring(game.day or 1)
+end
+
+-- THE CHECKLIST: what the houses have posted on this ground, and what is still standing.
+--
+-- Top-left, starting below the Back / Items / Use row, which owns the first 52 pixels. A cleared line
+-- keeps its exact place and greys out rather than dropping off: a list that re-flows as you tick it
+-- makes you re-find your place every time, and what you did NOT take is the information -- it is read
+-- against what you did.
+--
+-- Drawn only for a trip carrying more than one piece of work. One quest on a ground is the title, and
+-- a one-line checklist under it would be the same words twice.
+--
+-- It sits UNDER the party strip rather than above it, which is the top-left corner's other tenant. The
+-- strip is read every time a fight is weighed up and this is read once a spur; the one consulted more
+-- keeps the corner.
+function game:checklistTop()
+    return 60 + PartyStatus.stripHeight(#(game.player and game.player.roster or {})) + 8
+end
+
+function game:checklistHeight()
+    local rows = #game:worklist()
+    return rows >= 2 and rows * 20 + 6 or 0
+end
+
+function game:drawChecklist()
+    local rows = game:worklist()
+    if #rows < 2 then return end
+
+    love.graphics.setFont(hudFont)
+    local x, y = 16, game:checklistTop()
+    for _, row in ipairs(rows) do
+        if row.done then
+            love.graphics.setColor(0.45, 0.48, 0.44)
+        else
+            love.graphics.setColor(Theme.ink)
+        end
+        -- The box is what makes this a list of work rather than a caption, so it is drawn as a box
+        -- rather than typed as a character -- a glyph would depend on the font having it.
+        love.graphics.rectangle("line", x + 1, y + 4, 10, 10)
+        if row.done then
+            love.graphics.line(x + 3, y + 9, x + 6, y + 12)
+            love.graphics.line(x + 6, y + 12, x + 10, y + 6)
+        end
+        love.graphics.print(Theme.ellipsize(row.name, hudFont, 250), x + 18, y)
+        y = y + 20
+    end
+    love.graphics.setColor(1, 1, 1)
+end
+
 function game.drawHud()
     -- Back button. Hidden during the flight tutorial (see backVisible).
     if backVisible() then
@@ -1967,7 +2207,8 @@ function game.drawHud()
     -- party it comes from. Newest on top; each fades over its life.
     if game.toasts and #game.toasts > 0 then
         love.graphics.setFont(hudFont)
-        local baseY = 60 + PartyStatus.stripHeight(#(game.player and game.player.roster or {})) + 6
+        -- Under the checklist when there is one, so a toast never lands on top of the day's work list.
+        local baseY = game:checklistTop() + game:checklistHeight()
         for i, toast in ipairs(game.toasts) do
             local a = math.min(1, toast.t / 0.6) -- fade out over the last 0.6s
             love.graphics.setColor(0.85, 0.9, 0.7, a)
@@ -1976,10 +2217,15 @@ function game.drawHud()
         love.graphics.setColor(1, 1, 1)
     end
 
-    -- Quest name + objective hint.
+    -- WHERE THE COMPANY IS AND WHAT DAY IT IS. The run used to be named after a quest, which was right
+    -- while it was one; a day on the tundra can carry three of them and picking one of the three to
+    -- print would be arbitrary. The ground is what is true of the whole run, and the checklist below
+    -- says which pieces of work are standing on it.
     love.graphics.setFont(titleFont)
     love.graphics.setColor(0.95, 0.85, 0.55)
-    love.graphics.printf(game.quest and game.quest.name or "Quest", 0, 20, Scale.WIDTH, "center")
+    love.graphics.printf(game:runTitle(), 0, 20, Scale.WIDTH, "center")
+
+    game:drawChecklist()
 
     -- Keys held (only shown when the map has locks).
     local total = #game.grid.keyIds

@@ -276,16 +276,27 @@ function Quest.available(player)
         local locked = not questsMet
         if showAll then unlocked, exhausted, locked = true, false, false end
 
-        -- `keysHeld >= 1` was the rule for showing a locked quest: hold one key of several and the
-        -- board admits the thing exists. The finale has no keys to hold now -- it is gated on the day
-        -- -- so it shows on `showLocked` alone, because a deadline nobody can see is not a deadline.
+        -- `keysHeld >= 1` is the rule for showing an ordinary locked quest: hold one key of several and
+        -- the board admits the thing exists.
         --
-        -- EXCEPT ON THE VERY FIRST BOARD. The debut on the sand is the tutorial and it teaches by being
-        -- the only thing there; a newcomer who opens this panel and finds the demon lord listed beside
-        -- their first errand has been handed the end of the game as their second option. One finished
-        -- quest is enough -- the deadline is visible from the second morning, which is early.
-        local worked = Player.questsCompleted(player) > 0
-        local showable = def.showLocked and ((def.finale and worked) or keysHeld >= 1)
+        -- THE FINALE IS THE EXCEPTION, AND IT ASKS FOR ALL SEVEN. It was shown from the second morning
+        -- for a while, on the reasoning that a deadline nobody can see is not a deadline. What that
+        -- actually produced was a locked card riding along under every tab on the board for thirty-nine
+        -- mornings -- a row the player cannot press, cannot travel to, and has already read. A warning
+        -- repeated every day is wallpaper, and the deadline it was meant to carry is said better by the
+        -- thing that says it already: the hub's own day counter, which is on screen the whole time.
+        --
+        -- So the card comes back to meaning something. Seven generals down and the fragments name the
+        -- place: THAT is when the Gate is a thing you have found rather than a thing you were told
+        -- about, and it stands on the board from then until the day he lands. A player who felled fewer
+        -- meets him on day forty all the same (questsMet, above, is the calendar) -- they simply never
+        -- had the pane, because they never had the fragments that fill it.
+        local showable
+        if def.finale then
+            showable = def.showLocked and keysNeeded > 0 and keysHeld >= keysNeeded
+        else
+            showable = def.showLocked and keysHeld >= 1
+        end
         if unlocked and not exhausted and (questsMet or showable or showAll) then
             local sponsor = def.sponsor and Vendor.get(def.sponsor)
             list[#list + 1] = {
@@ -378,6 +389,13 @@ end
 --
 -- A quest appears under EVERY open ground it names, because it can genuinely be run in any of them;
 -- the ground the player picks is stamped onto the run (Quest.start).
+--
+-- THE LAST MORNING IS THE ONE EXCEPTION, and it belongs to the Gate alone. Every other ground stays in
+-- the returned list -- they are open, the schedule says so -- but nothing is filed under them, so the
+-- panel's own rule (a ground with nothing in it draws no tab) collapses the travel row to a single
+-- plate over a single quest. There is no expedition to weigh on day forty; he is here, and a board
+-- still offering the Bastion's next errand beside him would be the game hiding its own ending behind a
+-- tab. Foraging is already off on this day for the same reason (ui/panels/quest_board.lua).
 function Quest.board(player)
     local BiomeWindow = require("models.biome_window")
     local Calendar = require("models.calendar")
@@ -390,8 +408,20 @@ function Quest.board(player)
         byId[id] = ground
     end
 
+    local entries = Quest.available(player)
+    if Calendar.isFinalDay(player) then
+        local only = {}
+        for _, entry in ipairs(entries) do
+            if entry.finale then only[#only + 1] = entry end
+        end
+        -- Guarded on there BEING a finale to offer. Past the deadline the Gate is completed and drops
+        -- off `available` entirely (New Game+ rewinds the clock, models/player.lua); emptying the board
+        -- on a day that has no ending left to protect would just be a blank panel.
+        if #only > 0 then entries = only end
+    end
+
     local locked = {}
-    for _, entry in ipairs(Quest.available(player)) do
+    for _, entry in ipairs(entries) do
         local def = Quest.defs[entry.id]
 
         -- A LOCKED ENTRY IS A WARNING, NOT A DESTINATION, so it rides along with every ground rather
@@ -437,26 +467,198 @@ function Quest.board(player)
     return { day = day, grounds = grounds }
 end
 
--- Stamp the ground the player chose onto a runtime quest copy, so everything downstream
--- (models/overworld.lua, models/arena.lua, the encounter pool and the prop scatter) reads the single
--- `map.biome` it has always read. THE ONE PLACE a set of grounds collapses back to one.
+-- `Quest.start` LIVED HERE, and Quest.trip below is what replaced it.
 --
--- The map table is copied rather than written through: Quest.available hands out the BLUEPRINT's own
--- `map` (the field copy is one level deep), and stamping into that would pin every future run of the
--- quest to whichever ground was picked first -- a save-corrupting bug that no spec asking about a
--- single run would ever see.
-function Quest.start(entry, groundId)
-    if not entry then return nil end
-    local q = {}
-    for k, v in pairs(entry) do q[k] = v end
-    if q.map then
-        local map = {}
-        for k, v in pairs(q.map) do map[k] = v end
-        map.biome = groundId or map.biome or (map.biomes and map.biomes[1])
-        map.biomes = nil -- resolved; nothing downstream should ever see the set again
-        q.map = map
+-- Its whole job was to collapse a quest's SET of possible grounds down to the one the player travelled
+-- to -- stamping `map.biome` onto a runtime copy so that models/overworld.lua, models/arena.lua, the
+-- encounter pool and the prop scatter could go on reading the single field they always had. That is
+-- still exactly what has to happen; it is just no longer a property of a quest. The ground is chosen
+-- FIRST now, and the trip built for it names the ground once, at the top, for everything standing on
+-- it (Quest.trip's `map.biome`).
+--
+-- Deleted rather than kept beside the new path: it had no callers left, and a function nothing calls
+-- with two specs pointed at it reads as covered ground when it is a dead end.
+
+-- ---------------------------------------------------------------------------
+-- The trip: a ground, and everything that can be done on it in one day
+-- ---------------------------------------------------------------------------
+
+-- THE EXPEDITION IS A PLACE NOW, NOT A QUEST. The board used to hand states/game.lua a single quest and
+-- the map was built to it: one objective, one spine, one payout, one trip home. A player picked a piece
+-- of work and the ground was a consequence of it.
+--
+-- It is the other way round. The player picks WHERE to spend the day, and every piece of work that
+-- ground can carry is standing on the board when they get there -- each on its own dead end, each its
+-- own tickable objective (states/game.lua's checklist). Clearing one pays it and leaves you on the map
+-- with the others still out there; the day is spent on entering, once, whatever you come home with.
+--
+-- What this function makes is an ORDINARY QUEST OBJECT as far as everything downstream is concerned: it
+-- has an id, a name, and a `map` table, so models/overworld.lua, the encounter pool, the arena and the
+-- save all read exactly what they always read. The only new field is `map.objectives`, a list where
+-- there used to be one `map.objective`.
+--
+-- The id is synthesized (`trip:tundra`) and deliberately not a Quest.defs key: the run stores it
+-- (models/save.lua), and a resume has to be able to tell "a ground I was walking" from "a quest that
+-- has since been deleted from the data". The descent already resumes this way through a floor id that
+-- is not in Quest.defs either.
+Quest.TRIP_ID_PREFIX = "trip:"
+
+-- The most fights one day's ground may roll, however many quests are standing on it. Three quests
+-- authored at "12 to 16 encounters" apiece would ask for forty-odd stops, which is not a long day, it
+-- is a different genre. The board's own sizing rule is sub-linear in content for the same reason
+-- (models/overworld.lua's deriveDims) and its widest board holds about this many.
+Quest.TRIP_ENCOUNTER_CAP = 16
+
+-- Is this id a ground trip rather than a piece of authored work?
+function Quest.isTripId(id)
+    return type(id) == "string" and id:sub(1, #Quest.TRIP_ID_PREFIX) == Quest.TRIP_ID_PREFIX
+end
+
+-- Merge the encounter specs of every quest on the ground into one. The counts are SUMMED, because each
+-- quest genuinely brings its own road, then capped at both ends -- and the cap is applied to the floor
+-- as well, or a ground carrying four heavy quests would roll a board whose MINIMUM was past the ceiling.
+--
+-- The `always` lists concatenate uncapped: a guaranteed encounter is a set piece the quest is built
+-- around (the finale's three elites), and dropping one silently would take a fight the author placed on
+-- purpose out of the run. They are placed first and count against the total (Overworld:placeEncounters).
+local function mergeEncounters(quests)
+    local lo, hi, always = 0, 0, {}
+    for _, q in ipairs(quests) do
+        local spec = (q.map or {}).encounters
+        if type(spec) == "table" then
+            lo = lo + (spec.min or 0)
+            hi = hi + (spec.max or spec.min or 0)
+            for _, entry in ipairs(spec.always or {}) do always[#always + 1] = entry end
+        else
+            lo = lo + (spec or 0)
+            hi = hi + (spec or 0)
+        end
     end
-    return q
+    if hi < lo then hi = lo end
+    lo = math.min(lo, Quest.TRIP_ENCOUNTER_CAP)
+    hi = math.min(hi, Quest.TRIP_ENCOUNTER_CAP)
+    -- Never fewer stops than the set pieces that must be on the board.
+    lo, hi = math.max(lo, #always), math.max(hi, #always)
+    return { min = lo, max = hi, always = #always > 0 and always or nil }
+end
+
+-- THE TRIP TO `groundId`, or nil when there is nothing to go there for.
+--
+-- `entries` are board entries (Quest.available's shape, as filed by Quest.board) and they arrive here
+-- ALREADY FILTERED: a locked entry is a warning that rides along with every ground, and warnings do not
+-- get an objective node. The caller passes the ground's startable work and nothing else.
+function Quest.trip(groundId, entries)
+    if not groundId then return nil end
+
+    local quests = {}
+    for _, entry in ipairs(entries or {}) do
+        if not entry.locked and entry.map then quests[#quests + 1] = entry end
+    end
+    if #quests == 0 then return nil end
+
+    -- One objective spec per quest, each stamped with the quest it belongs to. The cell the generator
+    -- puts it on carries only the ID (models/overworld.lua) -- a spec can hold a composition FUNCTION
+    -- (the finale sizes itself by who is still standing), and a run snapshot has to stay plain data.
+    local objectives, keyCount, sponsors = {}, 0, {}
+    for _, quest in ipairs(quests) do
+        local map = quest.map or {}
+        local spec = {}
+        for k, v in pairs(map.objective or {}) do spec[k] = v end
+        spec.questId = quest.id
+        spec.name = spec.name or quest.name
+        -- How deep this particular fight is, carried per objective rather than per run: three quests on
+        -- one ground can sit at three different depths down three different lines, and the board no
+        -- longer has a single answer to "how hard is today".
+        spec.floorLevel = spec.floorLevel or quest.floorLevel
+        -- ...and whose stock this particular fight salvages in. A run used to have one sponsor and one
+        -- answer; the piece of work you actually took is the truer one now (states/game.lua).
+        spec.houseMaterial = require("models.material")
+            .houseFor((Vendor.get(quest.sponsor) or {}).class)
+        objectives[#objectives + 1] = spec
+        -- THE DEEPEST APPROACH KEEPS ITS LOCK, and it is the only one that does (models/overworld.lua).
+        -- Key counts are authored per quest; summing them would have a player hunting six keys to spend
+        -- one day, and a door you cannot open is the one failure a trip must not be able to produce.
+        keyCount = math.max(keyCount, map.keyCount or 0)
+        if quest.sponsor then sponsors[#sponsors + 1] = quest.sponsor end
+    end
+
+    -- WHOSE STOCK THE GROUND PAYS OUT IN, one entry per house with work here. This is where foraging
+    -- went: a day used to be spendable on ore for one house instead of on a story, and against a trip
+    -- that can clear three quests for the same day nobody would ever have chosen it again. The ore is
+    -- what you carry off the ground now -- the caches are dealt round-robin across these houses
+    -- (models/overworld.lua's placeCaches), so travelling somewhere three houses are working pays all
+    -- three, partially, and no single trip fills every quota.
+    --
+    -- Two sources, in this order and deduped. The houses with WORK here take the near caches, because
+    -- they are the reason the company travelled; the houses that merely FORAGE here (Request.housesIn --
+    -- the same table that used to decide which forage rows the board drew) take what is left. A ground
+    -- nobody has posted work on still pays somebody's stock, which is what keeps an open ground from
+    -- ever being a dead end.
+    local Material = require("models.material")
+    local Request = require("models.request")
+    local houseMaterials, seenMat = {}, {}
+    local function offerStock(mat)
+        if mat and not seenMat[mat] then
+            seenMat[mat] = true
+            houseMaterials[#houseMaterials + 1] = mat
+        end
+    end
+    for _, vendorId in ipairs(sponsors) do
+        offerStock(Material.houseFor((Vendor.get(vendorId) or {}).class))
+    end
+    for _, house in ipairs(Request.housesIn(groundId)) do offerStock(house.material) end
+
+    local biome = require("models.biome").get(groundId)
+    return {
+        id = Quest.TRIP_ID_PREFIX .. groundId,
+        trip = true,
+        groundId = groundId,
+        name = biome and biome.name or groundId,
+        -- The work itself, in board order, for the checklist and for the payout. Held as the board
+        -- entries rather than as ids so states/game.lua can complete one without a second lookup.
+        quests = quests,
+        -- EVERY HOUSE WITH WORK HERE, in board order. A run used to pay its caches in one house's stock
+        -- because it belonged to one house; a ground belongs to whoever is working it, so the caches
+        -- pay round-robin across them (models/overworld.lua's placeCaches). This is also where
+        -- foraging went: the day's ore is what you carry off the ground rather than a separate errand.
+        sponsors = sponsors,
+        map = {
+            biome = groundId,
+            encounters = mergeEncounters(quests),
+            objectives = objectives,
+            keyCount = keyCount,
+            houseMaterials = #houseMaterials > 0 and houseMaterials or nil,
+        },
+    }
+end
+
+-- The trip for a ground the player is standing in front of, built off the live board. The one call the
+-- quest board panel makes: it knows the ground, and everything else about what is on offer there is a
+-- question for this file.
+function Quest.tripFor(player, groundId)
+    for _, ground in ipairs(Quest.board(player).grounds) do
+        if ground.id == groundId then return Quest.trip(groundId, ground.quests) end
+    end
+    return nil
+end
+
+-- THE SAME TRIP, REBUILT FROM WHAT IT WAS -- for a run resumed off disk (models/save.lua).
+--
+-- Deliberately NOT rebuilt off the live board. Half the point of a trip is that clearing one piece of
+-- work takes it off the board, so asking the board again mid-expedition would hand back a shorter list
+-- than the one the player is standing on, and the checklist would lose the very rows it had just
+-- ticked. The ids travel with the run; this turns them back into work.
+--
+-- An id that has left the data since the run was saved is skipped rather than fatal: its end is still
+-- on the stored board and will simply pay nothing, which is a strictly better outcome than dropping a
+-- whole expedition because one quest file was renamed.
+function Quest.tripFromIds(groundId, ids)
+    local entries = {}
+    for _, id in ipairs(ids or {}) do
+        local q = Quest.get(id)
+        if q then entries[#entries + 1] = q end
+    end
+    return Quest.trip(groundId, entries)
 end
 
 -- A single quest by id, as a fresh runtime copy (like the board entries in Quest.available) with its id
@@ -501,7 +703,11 @@ Quest.GENERAL_QUESTS = {
     "quest_alchemist_slot_10",
 }
 
-function Quest.complete(player, quest, carried)
+-- `opts.keepMeal` leaves the supper on the company. A day's expedition can now clear several pieces of
+-- work on one ground (Quest.trip), and the Cafe's platter is bought for the DAY -- so the caller that
+-- knows when the day ends is the one that spends it (states/game.lua's bankHaul). Without this the
+-- first objective of three ate the supper and the other two fights went hungry.
+function Quest.complete(player, quest, carried, opts)
     if Player.hasCompleted(player, quest.id) and not quest.repeatable then
         return nil
     end
@@ -574,8 +780,11 @@ function Quest.complete(player, quest, carried)
     -- decision at the counter rather than a buff that quietly renews itself. Cleared here rather than
     -- at the run's start so a quest walked away from keeps it, alongside everything else the rollback
     -- puts back. Named in the reward table below, since a thing that just ran out should say so.
-    local mealSpent = player.meal
-    require("models.meal").clear(player)
+    local mealSpent
+    if not (opts and opts.keepMeal) then
+        mealSpent = player.meal
+        require("models.meal").clear(player)
+    end
 
     -- What this quest put on its sponsor's shelf. Marked UNSEEN as well as reported, so the shop
     -- itself dots the new rows (Player.markNew) -- the reward panel names three of them, and the

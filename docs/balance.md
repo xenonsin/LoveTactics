@@ -307,6 +307,13 @@ and four road fights, counting no caches. One item keeps pace comfortably: **1 r
 3 at the top of the ladder**, against a house line of 12–14 quests. The bill grows with depth
 (`t+1` craft, `ceil(t/2)` house) while the payout per run is flat, which is the right shape.
 
+> **The floor this measures is now a floor on a *day*, and a day can clear more than one objective.**
+> A run is a ground carrying every quest posted on it ([docs/progression.md](progression.md)), so a
+> well-spent day pays two or three objectives plus a longer road, and the "1 run per early rung" figure
+> is a lower bound rather than the expected case. Re-measuring it is part of the same re-pricing the
+> deadline needs; the shape of the argument — flat income against a bill that grows with depth — is
+> unaffected.
+
 The real constraint is **breadth, not depth**: a run funds about two early rungs, so a company of
 four carrying two forgeables each cannot be kept level across the board. That is a choice about who
 gets the good gear, and is the intended shape of the decision.

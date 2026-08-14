@@ -64,7 +64,9 @@ The codebase is organized into layers loaded via `require()`. See
 - **`states/`** — screens as plain tables with optional LÖVE callbacks (`enter`, `update`,
   `draw`, `keypressed`, `mousepressed`, `gamepadpressed`, …). `states/init.lua` is the
   minimal manager: `State.switch(state, ...)` sets the current state and calls its `enter`.
-  Flow: `menu → hub → (Quest Board → game)`.
+  Flow: `menu → hub → (Quest Board → game)`. The Quest Board offers **grounds**, not quests: a day
+  buys a whole ground and every quest posted there stands on the map at once (`Quest.trip`) — see
+  [docs/progression.md](docs/progression.md) and [docs/overworld.md](docs/overworld.md).
 - **`ui/`** — reusable widgets that support **mouse + keyboard + gamepad** (project standard;
   see `ui/menu.lua`, `ui/building_map.lua`). Pop-up panels live in `ui/panels/`.
 - **`models/`** — logic + instantiation over the data layer. `models/registry.lua` auto-loads
@@ -79,7 +81,7 @@ The codebase is organized into layers loaded via `require()`. See
   `tests/class_spec.lua`. An item's `unlockQuests` and `price` are **derived, not authored**: what a
   thing is worth sets the slot it unlocks from, and the slot sets the price — see
   [docs/shelf.md](docs/shelf.md) (`models/grade.lua`, `. grade-report`). `data/meals/` is the one
-  content type that is *not* an item: the Cafe's supper, one per quest, worn by the whole company —
+  content type that is *not* an item: the Cafe's supper, one per day out, worn by the whole company —
   see [docs/meals.md](docs/meals.md).
 - **`assets/`** — images/audio/maps referenced by path from data files (e.g.
   `assets/hub/city.png`), loaded lazily through `models/sprite.lua`. A missing file resolves to its

@@ -63,7 +63,12 @@ function EncounterBattle.spec(opts, partyIds, seed)
     spec.layout = opts.quest and opts.quest.map and opts.quest.map.layout
     local enc = opts.encounter or {}
     if enc.kind == "objective" then
-        local obj = (opts.quest and opts.quest.map and opts.quest.map.objective) or {}
+        -- `opts.objective` is the spec the LAUNCHER resolved, and it wins outright. A day's ground can
+        -- carry several pieces of work, each with its own end (models/quest.lua's Quest.trip), so
+        -- "the quest's objective" stopped being a single thing the fight could look up for itself --
+        -- states/game.lua knows which tile was stepped on and hands over that one's spec. The old
+        -- lookup stays underneath it for every caller that still has exactly one.
+        local obj = opts.objective or (opts.quest and opts.quest.map and opts.quest.map.objective) or {}
         spec.layout = obj.layout or spec.layout -- a boss may name its own board; else keep quest.map.layout
         spec.composition = obj.composition
         spec.allies = obj.allies -- AI-run escorts fighting on the party's side
