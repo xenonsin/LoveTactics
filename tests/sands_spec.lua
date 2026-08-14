@@ -61,18 +61,59 @@ return {
         end,
     },
     {
-        name = "the floor is one room, and most of it is standing space",
+        name = "no fight on the sand is cut from an empty room",
         fn = function()
-            -- OPEN ground -- a tile with a full 3x3 of floor around it -- is what a bowl is for. Every
-            -- other ground in the game is mostly edge; this one has to be mostly middle, or the carve
-            -- has quietly become a plain with walls in it.
+            -- THE UNIT IS THE FIGHT, not the board. A bout is taken on an 8x8 window of these tiles
+            -- (Arena.fromGrid), so what the furnishing rate has to be judged on is what stands in one of
+            -- those sixty-four -- and the first two attempts at it, both tuned on whole-board numbers,
+            -- put about two tiles of stone in a window and left a quarter of the bowl bare. A floor with
+            -- nothing on it is a floor with no decisions on it.
             --
-            -- Half the floor is the bar, taken across the eight boards rather than on each: an oval's
-            -- rim is never open ground and a small board is nearly all rim, so a single tight seed
-            -- reading 50% is the shape working, not failing. The per-board floor below is the guard
-            -- against the shape actually going -- a bowl that fell to a third would be a board of
-            -- corridors wearing sand.
-            local walkAll, openAll = 0, 0
+            -- So: every window a fight could be seated in has SOMETHING in it, and a typical one has
+            -- enough to hold a lane behind. The lattice in Sands.carve is what makes the first of those
+            -- true by construction rather than by luck.
+            local BOX = 8
+            for seed = 1, 8 do
+                local grid = bowl(seed)
+                local m = grid.margin
+                local windows, blockedSum, barest = 0, 0, math.huge
+                for y = 1 + m, grid.rows - m - BOX + 1 do
+                    for x = 1 + m, grid.cols - m - BOX + 1 do
+                        local walk, blocked = 0, 0
+                        for j = y, y + BOX - 1 do
+                            for i = x, x + BOX - 1 do
+                                if typeWalkable(grid.cells[j][i].tile) then walk = walk + 1
+                                else blocked = blocked + 1 end
+                            end
+                        end
+                        -- Only windows a fight could actually be seated in (Overworld.BOX_OK = 32).
+                        if walk >= 32 then
+                            windows = windows + 1
+                            blockedSum = blockedSum + blocked
+                            if blocked < barest then barest = blocked end
+                        end
+                    end
+                end
+                assert(windows > 0, "seed " .. seed .. " has nowhere a fight could be seated")
+                assert(barest >= 1, "seed " .. seed .. " can cut a fight from 64 tiles of bare sand")
+                assert(blockedSum / windows >= 6, string.format(
+                    "seed %d: a fight averages %.1f tiles of stone in it, which is an empty room",
+                    seed, blockedSum / windows))
+            end
+        end,
+    },
+    {
+        name = "the floor is still one room, and still mostly standing space",
+        fn = function()
+            -- The other side of the case above, and the reason the furnishing rate has a ceiling as well
+            -- as a floor: a bowl you cannot cross is a warren wearing sand. Two guards, one for each
+            -- failure -- the sand stays one room whatever is set down on it (Sands.place takes a piece
+            -- straight back up if it ever splits the floor), and enough of it stays OPEN ground, a tile
+            -- with a full 3x3 of floor around it, that a company can form up somewhere.
+            --
+            -- The bar is deliberately low and it used to be high. It read "most of the floor is open" --
+            -- half of it, per board -- which was a whole-board claim tuned before anyone looked at what
+            -- a FIGHT cut out of this ground contained, and it was the thing keeping the arena empty.
             for seed = 1, 8 do
                 local grid = bowl(seed)
                 local walk, open = 0, 0
@@ -85,13 +126,17 @@ return {
                     end
                 end
                 assert(walk > 0, "seed " .. seed .. " carved no floor at all")
-                assert(open / walk > 0.45, string.format(
-                    "seed %d: only %.0f%% of the sand is open ground -- this is a plain, not a bowl",
+                -- A sixth, measured: the tightest of the eight boards reads 18%, because a small bowl is
+                -- proportionally more rim and the rim is never open ground.
+                assert(open / walk > 0.15, string.format(
+                    "seed %d: only %.0f%% of the sand is open ground -- this is a warren, not a bowl",
                     seed, 100 * open / walk))
-                walkAll, openAll = walkAll + walk, openAll + open
+                local seen = grid:reachable(grid:startCell())
+                local reached = 0
+                for _ in pairs(seen) do reached = reached + 1 end
+                assert(reached == walk, string.format(
+                    "seed %d: the furniture cut the floor in two (%d of %d reachable)", seed, reached, walk))
             end
-            assert(openAll / walkAll > 0.5, string.format(
-                "the bowl averages %.0f%% open ground across eight boards", 100 * openAll / walkAll))
         end,
     },
     {

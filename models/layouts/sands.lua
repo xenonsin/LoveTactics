@@ -39,17 +39,28 @@ function Sands.density() return 0.74 end
 -- (Overworld:weatherEdges). A bowl was built, and built round.
 Sands.ownsEdge = true
 
--- HOW MUCH FURNITURE, and why it is measured off the floor rather than rolled. A block does not only
--- take its own tile: every tile around it stops being OPEN ground -- a full 3x3 of floor, which is what
--- the fightability floor actually counts (docs/overworld.md) -- so one pillar costs nine. A flat roll of
--- six pieces put a quarter of a small bowl's sand out of that count and took it to 43% open, which is a
--- board of cover wearing sand. One barrier per 110 tiles of floor and one pillar per 180 holds the same
--- clutter at any size the sizing rule hands over.
-local BARRIER_PER, PILLAR_PER = 110, 180
-local BARRIERS_MIN, BARRIERS_MAX = 2, 6 -- short blocks set out for the card
-local PILLARS_MIN, PILLARS_MAX = 1, 4   -- single blocks
-local BARRIER_MIN, BARRIER_MAX = 2, 4   -- how long a barrier runs
-local FURNITURE_GAP = 3                 -- tiles between two pieces, so they can never fuse into a wall
+-- HOW MUCH FURNITURE, AND WHERE. The unit this is tuned in is not the map, it is the FIGHT: a bout is
+-- taken on an 8x8 window of these tiles (Arena.fromGrid), so the only question worth asking is what is
+-- standing in one of those sixty-four.
+--
+-- Both earlier answers were wrong in the same direction. The first was tuned to keep the share of OPEN
+-- ground high -- a claim about the board seen whole -- and put about two tiles of stone in a window: a
+-- card fought in an empty room. The second raised the count and threw the pieces at random, which
+-- clumps, so a quarter of the bowl still came out bare and a fight cut from it had nothing in it at
+-- all. A floor with nothing on it is not a neutral floor; it is a floor with no decisions on it, and
+-- this is the one ground where the terrain is the ONLY thing there is to use.
+--
+-- So the pieces sit on a lattice with a stride shorter than a board is wide, jittered off it. Every
+-- window a fight can be cut from holds at least one lattice cell, so every fight has a lane to hold, a
+-- corner to break a charge on, or a body to shoot past. It still cannot close the room: each piece is
+-- laid and taken straight back up if the sand stops being one room with it there (see `place`), so how
+-- dense this gets is bounded by the shape rather than by the count.
+local FURNITURE_STEP = 4   -- a piece every four tiles each way: half the 8 a fight is cut at
+local FURNITURE_JITTER = 2 -- ...moved off the lattice by up to this, so it never reads as a grid
+local PILLAR_SHARE = 0.34  -- single blocks
+local BARRIER_SHARE = 0.40 -- runs; the rest are two-deep stands
+local BARRIER_MIN, BARRIER_MAX = 2, 5 -- how long a barrier runs
+local FURNITURE_GAP = 2    -- tiles between two pieces, so they can never fuse into a wall
 local PEN_W, PEN_H = 3, 2               -- a cell under the stands
 local PENS_MIN, PENS_MAX = 3, 4         -- ...and how many of the four corners hold one
 
@@ -105,22 +116,18 @@ function Sands.carve(grid)
         return dx * dx + dy * dy <= 1
     end
 
-    local floor = 0
     for y = y0, y1 do
         for x = x0, x1 do
-            if onSand(x, y) then
-                grid.cells[y][x].tile = "path"
-                floor = floor + 1
-            end
+            if onSand(x, y) then grid.cells[y][x].tile = "path" end
         end
     end
 
     -- Kept clear of the furniture already down, and of the wall -- a barrier laid against the stands
     -- is a pocket rather than a piece of cover, and the pens are the only pockets this floor wants.
     local taken = {}
-    local function free(x, y, len, dx, dy)
-        for i = 0, len - 1 do
-            local px, py = x + dx * i, y + dy * i
+    local function free(x, y, shape)
+        for _, o in ipairs(shape) do
+            local px, py = x + o[1], y + o[2]
             -- One tile of sand all round it, so nothing is set flush against the wall.
             for oy = -1, 1 do
                 for ox = -1, 1 do
@@ -136,15 +143,41 @@ function Sands.carve(grid)
         return true
     end
 
-    local function furnish(len)
-        local horiz = grid.rng:random() < 0.5
-        local dx, dy = horiz and 1 or 0, horiz and 0 or 1
-        for _ = 1, 24 do -- a few throws, then give up: a board with one barrel fewer is not a problem
-            local x = grid.rng:random(x0 + 1, x1 - 1)
-            local y = grid.rng:random(y0 + 1, y1 - 1)
-            if free(x, y, len, dx, dy) then
+    -- WHAT GETS SET DOWN. Three things, because one repeated shape is scenery and three read as a card
+    -- somebody laid out: a single BLOCK to break a charge on, a RUN to hold a lane behind, and a
+    -- two-deep STAND that a body can be lost behind entirely.
+    local function shapeFor()
+        local roll = grid.rng:random()
+        if roll < PILLAR_SHARE then
+            return { { 0, 0 } }
+        elseif roll < PILLAR_SHARE + BARRIER_SHARE then
+            local len = grid.rng:random(BARRIER_MIN, BARRIER_MAX)
+            local horiz = grid.rng:random() < 0.5
+            local out = {}
+            for i = 0, len - 1 do out[#out + 1] = horiz and { i, 0 } or { 0, i } end
+            return out
+        end
+        -- Two deep, never three by three: a square that size is a building, and it takes nine tiles of
+        -- standing room out of a board that only has sixty-four.
+        local w = grid.rng:random(2, 3)
+        local h = (w == 3) and 2 or grid.rng:random(2, 3)
+        local out = {}
+        for j = 0, h - 1 do
+            for i = 0, w - 1 do out[#out + 1] = { i, j } end
+        end
+        return out
+    end
+
+    -- Lay one piece near (ax, ay), trying a few nudges before giving up: a board with one piece fewer
+    -- is not a problem, and a piece jammed anywhere it fits would be a grid.
+    local function furnish(ax, ay)
+        local shape = shapeFor()
+        for _ = 1, 8 do
+            local x = math.max(x0 + 1, math.min(x1 - 1, ax + grid.rng:random(-FURNITURE_JITTER, FURNITURE_JITTER)))
+            local y = math.max(y0 + 1, math.min(y1 - 1, ay + grid.rng:random(-FURNITURE_JITTER, FURNITURE_JITTER)))
+            if free(x, y, shape) then
                 local cells = {}
-                for i = 0, len - 1 do cells[#cells + 1] = grid.cells[y + dy * i][x + dx * i] end
+                for _, o in ipairs(shape) do cells[#cells + 1] = grid.cells[y + o[2]][x + o[1]] end
                 if place(grid, cells) then
                     for _, c in ipairs(cells) do taken[#taken + 1] = c end
                 end
@@ -153,14 +186,16 @@ function Sands.carve(grid)
         end
     end
 
-    local function count(per, lo, hi)
-        return math.max(lo, math.min(hi, math.floor(floor / per)))
-    end
-    for _ = 1, count(BARRIER_PER, BARRIERS_MIN, BARRIERS_MAX) do
-        furnish(grid.rng:random(BARRIER_MIN, BARRIER_MAX))
-    end
-    for _ = 1, count(PILLAR_PER, PILLARS_MIN, PILLARS_MAX) do
-        furnish(1)
+    -- WALKED, NOT THROWN. The count was right and the SPREAD was not: darts thrown at the floor clump,
+    -- and what a clump leaves behind is the thing this is here to prevent -- a quarter of the bowl with
+    -- nothing on it, which is an 8x8 window that is sixty-four tiles of nothing to think about. So the
+    -- pieces sit on a lattice a stride shorter than a board is wide, jittered off it so it never reads
+    -- as a grid: every window a fight can be cut from contains at least one lattice cell, so every fight
+    -- has something in it.
+    for ay = y0 + math.floor(FURNITURE_STEP / 2), y1, FURNITURE_STEP do
+        for ax = x0 + math.floor(FURNITURE_STEP / 2), x1, FURNITURE_STEP do
+            furnish(ax, ay)
+        end
     end
 
     Sands.cutPens(grid, x0, x1, y0, y1, cx, cy, rx, ry, onSand)
