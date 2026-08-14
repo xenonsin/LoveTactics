@@ -1277,6 +1277,42 @@ Grade.SLOT_PINS = {
     ability_seal_slash = { at = 9, why = "the seal line is placed at 9" },
     ability_seal_impact = { at = 9, why = "the seal line is placed at 9" },
     ability_seal_pierce = { at = 9, why = "the seal line is placed at 9" },
+
+    -- THE BACKFILL FOR THE RUNGS THE WARD LINE VACATED, and it is the second half of the pin block
+    -- above rather than nine separate decisions.
+    --
+    -- Moving the eleven wards to slot 3 took eleven rows off slots 0-2, and five houses came out with
+    -- an early quest that opened one plain row or none at all -- the Bastion and the Undercroft at
+    -- quest 1, the Cathedral at quest 2, the Colosseum and the Hunter's Lodge at quest 1 with nothing
+    -- whatever. A gate that opens nothing is a quest whose reward the player cannot see
+    -- (tests/balance_spec.lua's fair-share rule), and the Undercroft and the Lodge are the two
+    -- thinnest shelves in the game and the two that can least afford it.
+    --
+    -- WHY THESE ARE PINNED AND NOT REGRADED. Handing the hole back to the ranking was tried when the
+    -- wards moved and reverted: every candidate the grade offers drags its own magnitude rescale along
+    -- and VACATES the rung it came from, so the hole walks a gate down per round instead of closing.
+    -- Which stock rises into 0-2 is an authoring decision, so it is authored -- here, where the next
+    -- `grade-report apply` will read it, and not left for the pass to undo.
+    --
+    -- WHAT WAS PICKED, and the rule is the same at all five houses: take from a rung that still opens
+    -- two plain rows without it, and prefer a piece that carries no graded magnitude, so a backfill
+    -- costs a slot and a price and nothing else. Eight of the nine cost exactly that. The ninth is
+    -- Penetrating Strike, which grades on its damage and is retuned to the rung it now sits on
+    -- (Balance.slotTarget: 9 -> 7 unforged), because the Colosseum's slot 3 holds two wards and one
+    -- other thing, and the one other thing had to be it.
+    --
+    -- Each reads as the house's own first lesson, which is what a quest-1 shelf is for: the Bastion
+    -- sells refusing to fall, the Colosseum finding the gap in the plate, the Lodge the deeper wind
+    -- and the killing eye, the Undercroft crossing the ground nobody else can.
+    utility_second_wind = { at = 1, why = "the Bastion's quest 1: what the ward line left it short of" },
+    consumable_wine = { at = 2, why = "the Cathedral's quest 2: what the ward line left it short of" },
+    utility_duelists_reflex = { at = 1, why = "the Colosseum's quest 1, which opened nothing at all" },
+    ability_penetrating_strike = { at = 1, why = "the Colosseum's quest 1: retuned to the rung, not just moved to it" },
+    utility_endurance = { at = 1, why = "the Lodge's quest 1, which opened nothing at all" },
+    utility_executioners_eye = { at = 1, why = "the Lodge's quest 1" },
+    weapon_hornbow_of_the_hunt = { at = 2, why = "the Lodge's quest 2, vacated by the eye above it" },
+    utility_feather_boots = { at = 1, why = "the Undercroft's quest 1: the thinnest shelf in the game" },
+    consumable_smoke_bomb = { at = 2, why = "the Undercroft's quest 2" },
 }
 
 Grade.PRICE_BASE = 80   -- what the opening rung costs

@@ -11,7 +11,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "knight",
-    price = 260,
-    unlockQuests = 3,
+    price = 140,
+    unlockQuests = 1,
     traits = { "trait_second_wind" },
 }

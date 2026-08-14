@@ -159,17 +159,34 @@ tell them apart.
 | **legality** | `armor_iron_plate` | its resist bag only fits the cap from slot 7 up |
 | **hand-placed** | items the dry run cannot see | a human supplying the missing information |
 | **reach** | `ability_polymorph` | what the verb *is*, not what it is worth |
+| **family shape** | the eleven wards at 3, the eleven seals at 9 | a house teaches you to take the blow before it teaches you to refuse it |
+| **cadence** | nine pieces backfilling slots 0–2 at five houses | the rungs the ward line vacated, and a gate that opens nothing is a reward nobody sees |
 
 Read the anchors off `Balance` rather than typing them, so the pin list and the magnitude ladder can
 never name different items.
 
-The last row is the only one that overrules a grade the tool can read perfectly well, so it carries the
-heaviest burden of proof. Polymorph takes a body out of the fight outright, deterministically, with no
+The last three rows overrule a grade the tool can read perfectly well, so they carry the heaviest
+burden of proof. Polymorph takes a body out of the fight outright, deterministically, with no
 roll to survive — and *when a line hands that verb over* is a question about the shape of the line
 rather than about power. Note what it is not: it is not a correction to a number. The number was
 wrong too, and that was fixed where it was wrong — `status_polymorph` had no authored weight, so the
 grader could only see the two flags the badge carries and read the strongest removal spell on the
 shelf at half a turn. Fixing the misread moved it five rungs on merit; the pin holds the sixth.
+
+The ward line is the same argument made about a whole family. The grade reads both halves LOW — a turn
+spent to prevent less than a swing — and that is honest about the average turn and wrong about the
+family, which does not exist for the average turn. A ward is bought for the one telegraphed blow the
+fight turns on, and a dry run against a reference body has no telegraph in it. Left to the ranking the
+line pooled at slot 0, which prices refusing a dragon's breath as opening-rack stock.
+
+The **cadence** pins are what that placement cost. Eleven wards moving to slot 3 took eleven rows off
+slots 0–2, and five houses came out with an early quest that opened one plain row or none — the
+Colosseum and the Hunter's Lodge opened nothing whatever at quest 1. Handing the hole back to the
+ranking does not close it: every candidate the grade offers drags its own magnitude rescale along and
+vacates the rung it came from, so the hole walks a gate down per round. Which stock rises into 0–2 is
+an authoring decision, so it is authored. Each backfill is taken from a rung that still opens two plain
+rows without it, and eight of the nine carry no graded magnitude, so the move costs a slot and a price
+and nothing else; the ninth is retuned to the rung it lands on.
 
 ### Pin the anchors before the first apply
 

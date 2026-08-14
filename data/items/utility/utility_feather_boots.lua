@@ -10,6 +10,6 @@ return {
     type = "utility",
     tags = { "boots", "ignore traps" },
     class = "rogue",
-    price = 260,
-    unlockQuests = 3,
+    price = 140,
+    unlockQuests = 1,
 }
