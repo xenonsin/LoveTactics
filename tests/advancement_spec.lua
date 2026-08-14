@@ -119,6 +119,14 @@ return {
             stubFonts(function()
                 local panel = panelFor(r)
                 assert(panel.hasBar, "and the panel must recognise it")
+
+                -- THE HEADER IS BUILT, not just the bar. This is the half the coupling case missed:
+                -- the reward line read `standing` as a table of vendor -> circles, a descent's shape,
+                -- while Quest.complete returns it as a number -- so `pairs` over an integer took the
+                -- panel down the moment a quest paid out. Draw-free, so it runs headless.
+                local line = panel:rewardLine()
+                assert(type(line) == "string" and line:find("gold"),
+                    "the header names the gold a quest paid, got " .. tostring(line))
             end)
         end,
     },

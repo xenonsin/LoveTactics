@@ -30,7 +30,6 @@ local ProgressBar = require("ui.progress_bar")
 local Growth = require("models.growth")
 local Discipline = require("models.discipline")
 local Material = require("models.material")
-local Vendor = require("models.vendor") -- shop names for the standing a descent banked (Descent.extract)
 
 local Advancement = {}
 Advancement.__index = Advancement
@@ -270,7 +269,7 @@ function Advancement:update(dt)
     self.shownDay = self.dayFrom + (self.dayTo - self.dayFrom) * eased
 end
 
--- The one-line reward header: gold, prestige, and the forging stock the run banked -- the caches the
+-- The one-line reward header: gold and the forging stock the run banked -- the caches the
 -- party walked to, plus the salvage the objective itself left behind (models/spoils.lua). The
 -- materials used to be granted in silence here, which made the whole detour economy a number that
 -- changed somewhere off screen; naming them is the only place a finished run says what it mined.
@@ -290,19 +289,13 @@ function Advancement:rewardLine()
     table.sort(mats)
     if #mats > 0 then parts[#parts + 1] = table.concat(mats, ", ") end
 
-    -- STANDING EARNED WITH EACH HOUSE, on a descent. A quest advances exactly one sponsor and says so
-    -- in its own section below; a run clears several circles, and the houses it earned with are the
-    -- closest thing a descent has to "which shelf just moved". Named by SHOP rather than by vendor id,
-    -- and sorted, so the same run always reads the same way.
-    local houses = {}
-    for vendorId, n in pairs(r.standing or {}) do
-        if (n or 0) > 0 then
-            local def = Vendor.get(vendorId)
-            houses[#houses + 1] = ((def and def.name) or vendorId) .. " +" .. n
-        end
-    end
-    table.sort(houses)
-    if #houses > 0 then parts[#parts + 1] = table.concat(houses, ", ") end
+    -- NOTHING ELSE GOES ON THIS LINE. It used to also name the houses a DESCENT banked standing with,
+    -- from a `standing` table of vendor -> circles that Descent.extract once returned into this panel.
+    -- Two things ended that. A run's account is drawn by states/descent.lua off its own `circles` field
+    -- and never reaches this overlay, and `standing` on a quest reward is a NUMBER -- the company's
+    -- finished-quest count (models/quest.lua) -- so the surviving loop was walking `pairs` over an
+    -- integer and taking the panel down on every completed quest. The sponsor this quest advanced is
+    -- named in its own section below, which is the only standing a quest earns.
     return table.concat(parts, "    ")
 end
 
