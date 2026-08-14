@@ -46,6 +46,27 @@ local ROW_H, ROW_SPACING, MAX_VISIBLE = 48, 8, 6
 -- left/right along the row), so the full stat block is one gesture away without leaving the board.
 local ICON, ICON_GAP = 46, 8
 
+-- The air under a block in the dossier column. One number rather than a per-call literal because the
+-- pane MEASURES itself before it draws -- what the gap costs and what the fit assumes it costs have to
+-- be the same value or the block runs past the panel's bottom edge.
+local GAP = 8
+
+-- The plates are the LAST block in the column and the work is the first, so a ground promising a wall
+-- of them must not be able to push the list of work out of the pane -- which is exactly what the debug
+-- toggle's thirty-nine-relic tundra did. Two rows is twelve plates: more than any real ground offers
+-- (four pieces of work, two relics apiece is the far end), and a ceiling past that point.
+local RELIC_ROWS = 2
+
+-- How wide a row of relic plates packs, how tall the block ends up, and how many plates that leaves
+-- room for, at column width `w`. Read twice: once by the measure that decides how many lines of prose
+-- the work may have, and once by the drawing itself -- so the two can never disagree about how far
+-- down the pane the icons reach.
+local function relicBlock(n, w)
+    local perRow = math.max(1, math.floor((w + ICON_GAP) / (ICON + ICON_GAP)))
+    local rows = math.min(math.ceil(n / perRow), RELIC_ROWS)
+    return perRow, rows * ICON + (rows - 1) * ICON_GAP, math.min(n, rows * perRow)
+end
+
 function QuestBoard.new(opts)
     opts = opts or {}
     local self = setmetatable({}, QuestBoard)
@@ -320,6 +341,16 @@ end
 -- It has to argue for a PLACE, which is a different job from the old card's. A quest card described one
 -- piece of work; this lists all of them, warns about the deepest fight among them (the one most likely
 -- to end the day badly), and shows every relic the ground could pay out.
+--
+-- EACH PIECE OF WORK SAYS WHAT IT IS. It used to give a title and a house -- "The Haunted Mill / The
+-- Cathedral" -- which names a thing without describing it, so two grounds offering three titles each
+-- were six words the player could not choose between. The blueprints have carried a `description` the
+-- whole time -- all 92 of them author one -- and that sentence is what makes the row a decision;
+-- printing the title alone was simply leaving it on the floor.
+--
+-- The count that stood at the top of this pane -- "2 pieces of work here" -- is gone with it. It was
+-- reporting the length of the list directly under it, which the list already says by being that long,
+-- and it cost a line the prose now has better use for.
 function QuestBoard:drawDossier()
     local ground, work = self:here()
     if not ground then return end
@@ -332,26 +363,36 @@ function QuestBoard:drawDossier()
     Theme.set(Theme.ink)
     love.graphics.printf(ground.name, x, y, w, "left")
 
-    local cy = y + 34
-    local function row(text, colour, gap)
-        Theme.set(colour or Theme.muted)
-        love.graphics.printf(text, x, cy, w, "left")
-        -- Advance by what the text ACTUALLY occupied, not by a fixed step. These lines wrap -- the
-        -- floor warning names two levels and runs to two lines in the pane's width -- and a fixed
-        -- step drew the next row straight through it.
-        local _, wrapped = self.bodyFont:getWrap(text, w)
-        cy = cy + math.max(1, #wrapped) * self.bodyFont:getHeight() + (gap or 4)
-    end
-
     love.graphics.setFont(self.bodyFont)
-    row(#work == 1 and "One piece of work here"
-        or (#work .. " pieces of work here"), Theme.accentAmber, 10)
+    local lineH = self.bodyFont:getHeight()
+    local cy = y + 34
 
-    -- The work itself, by name and by who posted it. This is the list that will be standing on the
-    -- board as a checklist an hour from now, so it is the same list in the same order.
-    for _, quest in ipairs(work) do
-        row("- " .. quest.name, Theme.ink, 0)
-        if quest.sponsorName then row("   " .. quest.sponsorName, Theme.muted, 6) end
+    -- `maxLines` clamps a run of prose to the height the pane can spare and says so with an ellipsis;
+    -- `indent` steps a block in under the title it belongs to.
+    local function row(text, colour, gap, maxLines, indent)
+        Theme.set(colour or Theme.muted)
+        indent = indent or 0
+        -- Wrap by hand and print line by line, rather than letting printf do it, because the clamp
+        -- needs the line count BEFORE anything is drawn. Advancing by what the text actually occupied
+        -- is the same reason it was measured before: these lines wrap -- the floor warning names two
+        -- levels and runs to two lines in the pane's width -- and a fixed step drew the next row
+        -- straight through it.
+        local _, lines = self.bodyFont:getWrap(text, w - indent)
+        if #lines == 0 then lines = { text } end
+        if maxLines and #lines > maxLines then
+            local kept = {}
+            for i = 1, maxLines do kept[i] = lines[i] end
+            -- Theme.ellipsize cannot do this one: it trims only what OVERFLOWS, and the last kept
+            -- line already fits by construction, so the "..." has to be trimmed back into instead.
+            local tail = kept[maxLines]
+            while #tail > 1 and self.bodyFont:getWidth(tail .. "...") > w - indent do
+                tail = tail:sub(1, #tail - 1)
+            end
+            kept[maxLines] = tail:gsub("%s+$", "") .. "..."
+            lines = kept
+        end
+        for i, line in ipairs(lines) do love.graphics.print(line, x + indent, cy + (i - 1) * lineH) end
+        cy = cy + #lines * lineH + (gap or 4)
     end
 
     -- THE DEEPEST FIGHT ON THE GROUND, AS A WARNING RATHER THAN AN AMBUSH. A day can now be spent on
@@ -361,14 +402,85 @@ function QuestBoard:drawDossier()
     for _, quest in ipairs(work) do
         if quest.floorLevel and (not floor or quest.floorLevel > floor) then floor = quest.floorLevel end
     end
+    local relics = self:groundRelics(work)
+
+    -- WHAT THE PANE HAS ALREADY SPOKEN FOR, measured before a word of prose is drawn. The warning and
+    -- the relic plates are fixed -- neither can be shortened without deleting something the player
+    -- needs -- so the descriptions are what gives when a ground is busy.
+    local reserved = 0
+    if floor then reserved = reserved + 6 + 2 * lineH + GAP end
+    if #relics > 0 then
+        local _, iconsH = relicBlock(#relics, w)
+        reserved = reserved + 2 + lineH + 2 + iconsH + 6
+    end
+    -- The footer hint is the floor of this column, not the box's edge.
+    local room = (self.boxY + BOX_H - 46) - cy - reserved
+
+    -- HOW DEEP A RUN OF PROSE THE COLUMN CAN AFFORD EVERY PIECE OF WORK EQUALLY. Six is a ceiling on
+    -- the SEARCH rather than on the prose: the longest description in the data wraps to four lines in
+    -- this column, so a ground quiet enough to be offered six is simply printing all of them whole.
+    -- The same number for all of them, because a ground whose first quest is described and whose last
+    -- is a bare name reads as a rendering fault rather than as a list.
+    --
+    -- Zero is the floor, and it spends the column on HEADS: every quest keeps its title and its house
+    -- whatever else has to be cut, because a piece of work the panel never mentioned is one the player
+    -- will still walk into on the ground (see `here` -- the dossier and the trip are the same list).
+    -- One to four pieces of work is what a real morning offers and all of those describe themselves;
+    -- only the debug toggle's eight-on-one-ground reaches the floor.
+    local allowance = 0
+    for a = 6, 1, -1 do
+        if #work * (lineH * (1 + a) + GAP) <= room then
+            allowance = a
+            break
+        end
+    end
+
+    -- WHEN EVEN THE TITLES DO NOT FIT. Only the debug toggle reaches this: it drops every gate, so a
+    -- house's whole ten-quest line stands on its ground at once and the tundra ends up holding
+    -- nineteen. A real morning posts one live quest per house. What the column does about it is keep
+    -- what fits and COUNT the rest -- painting past the panel's own bottom edge tells the player
+    -- nothing, and silently stopping short would have the pane understating what is out there, which
+    -- is the one thing it may never do.
+    local shown = #work
+    local maxHeads = math.max(1, math.floor(room / (lineH + GAP)))
+    if shown > maxHeads then shown = math.max(1, maxHeads - 1) end
+
+    -- The work itself: what it is, and who posted it. This is the list that will be standing on the
+    -- board as a checklist an hour from now, so it is the same list in the same order.
+    for i = 1, shown do
+        local quest = work[i]
+        -- The title and the house share ONE baseline -- the same label-left / value-right shape the
+        -- ground rows wear on the other side of this panel -- so the house costs no line of its own.
+        -- A long title yields to it rather than overprinting; nothing here runs past about 30
+        -- characters, so the trim is a backstop rather than a regular event.
+        local house = quest.sponsorName
+        local houseW = house and (self.bodyFont:getWidth(house) + 14) or 0
+        Theme.set(Theme.ink)
+        love.graphics.print(Theme.ellipsize(quest.name, self.bodyFont, w - houseW), x, cy)
+        if house then
+            Theme.set(Theme.muted)
+            love.graphics.printf(house, x, cy, w, "right")
+        end
+        cy = cy + lineH
+
+        if allowance > 0 and quest.description then
+            row(quest.description, Theme.muted, GAP, allowance, 12)
+        else
+            cy = cy + GAP
+        end
+    end
+    if shown < #work then
+        row(string.format("and %d more posted here", #work - shown), Theme.muted, GAP)
+    end
+
     if floor then
         cy = cy + 6
         local ours = Growth.levelForPrestige(self.player and self.player.prestige or 1)
         if ours < floor then
             row(string.format("The hardest fight here is level %d -- your company is %d", floor, ours),
-                Theme.accentWeapon, 8)
+                Theme.accentWeapon, GAP)
         else
-            row(string.format("The hardest fight here is level %d", floor), Theme.muted, 8)
+            row(string.format("The hardest fight here is level %d", floor), Theme.muted, GAP)
         end
     end
 
@@ -376,7 +488,6 @@ function QuestBoard:drawDossier()
     -- read before the work, and printing "Clem joins your party" hands you the ending of a scene whose
     -- whole job is to earn her. A companion arrives through the outro and the join banner
     -- (Conversation.pendingJoins), which is where the surprise belongs -- the board promises gear.
-    local relics = self:groundRelics(work)
     if #relics > 0 then
         cy = cy + 2
         row(#relics == 1 and "Relic" or "Relics", Theme.muted, 2)
@@ -404,14 +515,16 @@ function QuestBoard:groundRelics(work)
     return relics
 end
 
--- Draw the relic plates in a row at (x, cy), wrapping into further rows if a ground ever promises more
--- than the column fits. Records each plate's rect in self.relicRects so the hover test and the
--- keyboard/gamepad focus ring both read the same geometry. Returns the height consumed.
+-- Draw the relic plates in a row at (x, cy), wrapping into a second row when a ground promises more
+-- than one holds, and stopping at RELIC_ROWS. Records each plate's rect in self.relicRects so the hover
+-- test and the keyboard/gamepad focus ring both read the same geometry -- and so a plate the cap left
+-- undrawn cannot be focused into. Returns the height consumed.
 function QuestBoard:drawRelicIcons(relics, x, cy, w)
-    local perRow = math.max(1, math.floor((w + ICON_GAP) / (ICON + ICON_GAP)))
+    local perRow, blockH, plates = relicBlock(#relics, w)
     local rects = {}
 
-    for i, relic in ipairs(relics) do
+    for i = 1, plates do
+        local relic = relics[i]
         local col, rowIndex = (i - 1) % perRow, math.floor((i - 1) / perRow)
         local ix = x + col * (ICON + ICON_GAP)
         local iy = cy + rowIndex * (ICON + ICON_GAP)
@@ -444,8 +557,7 @@ function QuestBoard:drawRelicIcons(relics, x, cy, w)
     end
 
     self.relicRects = rects
-    local rows = math.ceil(#relics / perRow)
-    return rows * ICON + (rows - 1) * ICON_GAP
+    return blockH
 end
 
 -- True when the mouse is over relic plate `i`. Nil-safe both ways: the pointer may not have moved

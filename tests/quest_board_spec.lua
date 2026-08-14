@@ -98,6 +98,24 @@ return {
         end,
     },
     {
+        name = "every piece of work on the board says what it is",
+        fn = function()
+            -- The dossier prints a title with the quest's own sentence under it, and a title alone
+            -- names a thing without describing it -- three of those on one ground is a choice the
+            -- player cannot make. The pane reads whatever the day's grounds happen to hold, so the
+            -- only place this can be checked is the whole set at once.
+            local missing = {}
+            for id, def in pairs(Quest.defs) do
+                if type(def.description) ~= "string" or def.description == "" then
+                    missing[#missing + 1] = id
+                end
+            end
+            table.sort(missing)
+            assert(#missing == 0,
+                "quests with nothing said about them: " .. table.concat(missing, ", "))
+        end,
+    },
+    {
         name = "the last day offers the Gate's ground and nothing else",
         fn = function()
             stubFonts(function()
