@@ -194,17 +194,25 @@ Legend: **N** narrative beat · **S** what it costs Saber · **Scenes** the scaf
   off the bread line and onto the sand. The player fights on the refugees' side and *wins*: puts the
   carded killers down, every refugee still standing at the bell. And that is exactly why the horror
   lands — because they held, the crowd was denied its death the cheap way, so the house sends the one
-  thing that never fails to fill a card. **Ira walks onto the sand and kills the refugees anyway** —
-  wordless, obedient, the house's final answer. The first thing the player ever sees Ira do is take the
-  walk-off away. (She does not speak; slot 7 is her first word, and the elder's death is scripted, not a
-  fail-state — the player cannot save them here.)
-  **And then she kills the party**, and the house *meant* her to. The crowd paid for a night of blood,
-  the player's win threatened to send them home short, so the house put its patron on the sand to
-  finish the card — and the card is whoever is still standing on it. The promoter is not surprised and
-  does not try to call her off; his lines are the coldest in the scene. That is the lesson of the slot:
-  the Colosseum will spend anyone in front of it, including its own new draw, because what it actually
-  sells is the killing. The objective is already won when this plays, so what is lost is not the run,
-  it is the company's lives *after* winning.
+  thing that never fails to fill a card. **Ira walks onto the sand**, and she is a body on the board when
+  she does it. The first thing the player ever sees Ira do is take the walk-off away. (She does not
+  speak; slot 7 is her first word.)
+  **It is played, not narrated.** The win is *overruled*: `objective.win.overrule` fires at the exact
+  moment the last carded killer falls (`states/battle.lua`'s `battle.fireOverrule`), the far gate opens,
+  a scene runs over the board with her standing on it, the refugees drop as it closes, and then the
+  player takes a turn against her like against anyone else. It ends one way. She arrives blueprint-exact
+  off her own reference level — the body from the end of this line, on a slot-2 board — and is stamped
+  `unkillable` for this fielding alone, so a party that fights her superbly only gets to find out how
+  little that is worth. The wipe is the ending: no defeat panel, no Try Again, the screen fades to black
+  and the epilogue plays over it.
+  **And the house *meant* her to.** The crowd paid for a night of blood, the player's win threatened to
+  send them home short, so the house put its patron on the sand to finish the card — and the card is
+  whoever is still standing on it. The promoter is not surprised and does not try to call her off; his
+  lines are the coldest in the scene. That is the lesson of the slot: the Colosseum will spend anyone in
+  front of it, including its own new draw, because what it actually sells is the killing. The objective
+  is already won when she walks out, so what is lost is not the run, it is the company's lives *after*
+  winning. (Losing a refugee *before* that is an ordinary defeat with an ordinary Try Again — the ending
+  below is only reachable by winning the bout.)
 - **N (epilogue)** The venue and the stables are not the same people (*The league and the stables*),
   and the gap is what lets the story continue: the house spent a new draw for one night's crowd, and
   the stables with money on that draw did not agree. The party wakes in the **Cathedral**, raised
@@ -222,19 +230,23 @@ Legend: **N** narrative beat · **S** what it costs Saber · **Scenes** the scaf
   first time, and it is the exact shape of the thing that broke her once already (slot 10, tags 30–32:
   *"they died anyway; someone else did it while she stood there"*) — done now by the fighter the line
   will end on. Then it breaks a second time, under her own feet. This is the seed slot 10 pays off.
-- **Scenes** `conversation_colosseum_slot_02_intro` (scaffolded), `_outro` and `_join` (**written**).
+- **Scenes** `conversation_colosseum_slot_02_intro` (scaffolded), `_overrule` and `_join` (**written**).
+  There is no `_outro`: the fight's own ending is the scene before the waking.
   - *intro:* the promoter frames the "warm-up" and what the crowd is really here for; the player reads
     the far side — refugees, not fighters — and clocks the village elder among them; the house prints
     only what sells; Saber goes down first, between killers and refugees; the choice lands (hold the
     line, or let the slaughter run).
-  - *outro:* the carded killers are down and the refugees are still standing, and *because* of that the
-    house sends its patron; Ira cuts them down without a word and keeps walking; the promoter says the
-    crowd wanted blood and the house does not send them home short; the scene ends on the avatar on
-    their back, hearing the crowd cheer.
-  - *join (`epilogue`):* the waking, the sponsors' coin, the eleven, the register, the pit; Amana asks
-    to come. Played through the new `epilogue` seam on the quest (`states/game.lua`), which runs a
-    second scene straight after the outro and holds the join banner across the first one — a recruit
-    has no business in a scene where everyone dies.
+  - *overrule (mid-fight, over the board):* the carded killers are down and the refugees are still
+    standing, and *because* of that the promoter has the far gate opened; Saber names the patron and
+    tells the player to put their sword down; Rowan shouts an order that cannot be obeyed in time. It
+    says only what the board cannot — who she is, that she is not an opponent, that the house sent her
+    on purpose — because the player is about to watch the rest of it happen and then fight her. The old
+    version of this scene had the avatar calling the action from a window ("She is walking at the
+    refugees", "I am on my back"); none of that survives contact with her being a real unit.
+  - *join (`epilogue`):* the waking, the sponsors' coin, the refugees, the register, the pit; Amana asks
+    to come. It is the quest's only post-fight scene and it plays over the black the fight faded to. The
+    join banner is held across the overrule scene for it (`deferJoins`) — a recruit has no business in
+    the scene before everyone dies.
 
 ### Slot 3 — Siege of Warlord's Keep · `assassinate` the Warlord
 - **N** The Warlord once fought under the Colosseum's banner; they want him back or down. This is the
@@ -335,9 +347,18 @@ Legend: **N** narrative beat · **S** what it costs Saber · **Scenes** the scaf
   `utility_unbound_heart` in the demon grid.
 - Covered by `tests/general_wrath_spec.lua`.
 - **Quest `epilogue`** — a second scene played straight after a quest's `outro`, before the hub or any
-  follow-up leg (`states/game.lua`). Slot 2 needs it because the killing and the waking are one beat
-  across two places, with no leg between them: more lines on the end of the outro would keep the party
-  on the sand they just died on. Like `followUp` it defers the join banner to the second scene.
+  follow-up leg (`states/game.lua`). Slot 2 uses it as its *only* post-fight scene: the waking is a
+  change of place and cast rather than a change of subject, and it plays over the black the fight faded
+  to. Like `followUp` it defers the join banner to the second scene.
+- **Objective `overrule`** — a second act for a fight whose first act the player won
+  (`states/battle.lua`'s `battle.fireOverrule`). Asked once, at the moment the win would be declared: a
+  force walks on from a named edge, a scene plays over the board with it standing there, named bodies
+  are swept off as that scene closes, and the satisfied objective is replaced by the one the second act
+  is judged under. Once it has fired the party's wipe is the *ending* — no defeat panel, no retry — and
+  the fight fades to black and routes to the quest's payout, because the work was finished before the
+  overrule ever landed. `unkillable` on the arrival (`models/combat.lua`, the same 1-HP hold Fury's
+  `preventsDeath` uses) is what keeps a scripted loss scripted. Pinned by `tests/overrule_spec.lua` and
+  `tests/arena_aftermath_spec.lua`.
 
 ## Open threads
 - Saber's **second relic** (slot 8) — not written.

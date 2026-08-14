@@ -1,12 +1,14 @@
 -- Conversation authored inline (English); localization ids (`tag`) are stamped by
 -- tools/extract_strings.lua and must not be hand-edited. See models/conversation.lua.
 --
--- The `epilogue` of data/quests/colosseum/quest_colosseum_slot_02.lua, played straight after the outro
--- (states/game.lua's epilogue seam). The outro ended with the whole company dead on the sand. This
--- scene opens on a ceiling in the Cathedral, and it is where AMANA is recruited: her join, moved off
--- the Cathedral's second slot, where the church used to brand her fallen and hire the player to purge
--- her (docs/story.md, "The Cathedral"). Player.recruit has already run by the time this plays and the
--- banner was held across the outro for it (`deferJoins`), so the join lands here.
+-- The `epilogue` of data/quests/colosseum/quest_colosseum_slot_02.lua, and the first thing the player
+-- sees after the screen goes black. There is no outro before it: the fight itself ended with the whole
+-- company down on the sand and the lights going out over them (states/battle.lua's battle.endOverruled),
+-- and this scene plays over that black frame. It opens on a ceiling in the Cathedral, and it is where
+-- AMANA is recruited: her join, moved off the Cathedral's second slot, where the church used to brand
+-- her fallen and hire the player to purge her (docs/story.md, "The Cathedral"). Player.recruit has
+-- already run by the time this plays and the banner was held across the overrule scene for it
+-- (`deferJoins`), so the join lands here.
 --
 -- WHO PAID. The stables. They watched the debut and they watched the padded card, and what the house
 -- destroyed on that sand was a draw they had money on, so they bought it back. The Cathedral sells the
@@ -15,7 +17,7 @@
 --
 -- WHY SHE LEAVES WITH THEM, and this is the payload of the scene: the refugees came in on the same
 -- cart and nobody paid for them. Amana is the acolyte who enters the Cathedral's dead in the intake
--- register, and what she wrote beside eleven names off that sand is ASCENDED TO THE LIGHT. She carried
+-- register, and what she wrote beside every name off that sand is ASCENDED TO THE LIGHT. She carried
 -- them to the pit behind the almshouse herself. The party is the only living witness to what actually
 -- happened out there, so she goes where the truth can still be carried. That is her rule read forward:
 -- she gives what is offered and refuses what is not, and she will not let the book be the last word on
@@ -58,25 +60,25 @@ return {
             { "character_saber", "Hear it plainly, {name}. We are owned by four men we have never met until we win it back.", tag = 11 },
         } },
         { "character_avatar", "What about the people on the sand with us?", tag = 12 },
-        { "character_amana", "...They came in on the same cart. Eleven of them.", tag = 13 },
+        { "character_amana", "...They came in on the same cart. Every one of them.", tag = 13 },
         { "character_amana", "No one paid for them.", tag = 14 },
         { when = { has = "character_rowan" }, script = {
             { "character_rowan", "There was an elder among them. Grey, small, a burn across one hand. Tell me where they are.", tag = 15 },
             { "character_amana", "I can tell you exactly where. I carried them there myself.", tag = 16 },
         } },
         { "character_amana", "There is a book in this house. Every soul the Cathedral receives goes into it, and I am one of the hands that writes it.", tag = 17 },
-        { "character_amana", "I wrote all eleven of them in this morning. Ascended to the Light. That is the wording. It is the only wording there is.", tag = 18 },
+        { "character_amana", "I wrote every one of them in this morning. Ascended to the Light. That is the wording. It is the only wording there is.", tag = 18 },
         { "character_amana", "Then I took them out the back to the pit behind the almshouse, and there is no marker on it, and there never has been.", tag = 19 },
         { when = { has = "character_saber" }, script = {
             { "character_saber", "Ascended. They were butchered on a sand floor for a crowd.", tag = 20 },
             { "character_amana", "I know what they were. I am the only one in this building who does.", tag = 21 },
         } },
         { "character_amana", "That book has other names in it. Older ones. I will not talk about those tonight and I am asking you not to make me.", tag = 22 },
-        { "character_avatar", "Then talk about the eleven.", tag = 23 },
+        { "character_avatar", "Then talk about them.", tag = 23 },
         { "character_amana", "There is nobody left to. Everyone who stood on that sand and saw it is in the pit, and you are lying in front of me.", tag = 24 },
         { "character_amana", "You are the last people alive who know what actually happened out there. By the feast day this house will have read those names aloud as saints and meant it.", tag = 25 },
         { when = { has = "character_rowan" }, script = {
-            { "character_rowan", "My order carves a mark for every one of its dead and teaches children the marks are days held. Same trick. Different stone.", tag = 26 },
+            { "character_rowan", "My order does the same with its own dead. We carve a mark for each of them and teach the children the marks are days held.", tag = 35 },
         } },
         { "character_amana", "So I am not staying here. Take me with you.", tag = 27 },
         { "character_avatar", "You just gave us our lives back. Why ask?", tag = 28 },

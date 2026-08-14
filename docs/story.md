@@ -227,12 +227,12 @@ straight after it, one per pattern:
   fighter in sport at the start of that line and kill one in earnest at its end; that rhyme is the
   point.
 - **Raised, then kept.** The priest. The Colosseum's second card ends with *Ira* killing the carded
-  refugees and then the whole company, and the party wakes in the Cathedral because four stables paid
-  the church's price for fighters they had money on. The acolyte who performed the rite walks out with
-  them, and the reason is the eleven bodies that came in on the same cart with nobody paying for
-  **them**: she is the hand that enters the Cathedral's dead in its intake register, and what she
-  wrote beside those eleven names is *ascended to the Light*. She carried them to the unmarked pit
-  herself. The party is the only living witness to what actually happened on that sand, so she goes
+  refugees and then the whole company — fought, not narrated, and lost because she cannot be beaten
+  there — and the party wakes in the Cathedral because four stables paid the church's price for
+  fighters they had money on. The acolyte who performed the rite walks out with them, and the reason is
+  the bodies that came in on the same cart with nobody paying for **them**: she is the hand that enters
+  the Cathedral's dead in its intake register, and what she wrote beside every one of those names is
+  *ascended to the Light*. She carried them to the unmarked pit herself. The party is the only living witness to what actually happened on that sand, so she goes
   where the truth can still be carried. She does **not** tell them about the blooding; that is her own
   line's to give, three slots later, standing over it. The first time the player ever sees the
   Cathedral is from a slab, and its door does not exist in the hub before that scene.
@@ -643,7 +643,7 @@ the **second relic is still new work** — the chosen strike of slot 8.
 | # | Slot | Rank | The Colosseum's ten | What it costs Saber |
 |---|---|---|---|---|
 | 1 | Introduction | 1 | **Debut on the Sand** — beat the hired veteran; she signs with the only house that isn't one | nothing yet; she is enjoying herself |
-| 2 | The recruit | 1 | **The Padded Card** — `killAll`+`protect`; the card padded with slaughter. Won, then overruled: Ira kills the refugees **and the party**, and the epilogue wakes them in the Cathedral with **Amana** recruited | the first crack in "the sport is clean", and her one law broken twice, the second time under her own feet |
+| 2 | The recruit | 1 | **The Padded Card** — `killAll`+`protect`; the card padded with slaughter. Won, then **overruled on the board**: Ira walks on as the win is declared, cuts the refugees down and is then fought — a scripted loss she cannot be killed out of. The wipe fades to black and the epilogue wakes them in the Cathedral with **Amana** recruited | the first crack in "the sport is clean", and her one law broken twice, the second time under her own feet |
 | 3 | Complication | 1 | stable against stable, the sport at its best | the player learns why she loves it |
 | 4 | Escalation | 2 | **The Perennial's Roster** — `killAll`; met as opponents | reads them cold; they move like people not allowed to choose |
 | 5 | The discovery | 2 | **The Intake** — `reach`; the house, not its output | names it aloud — bought, not schooled; kept, not trained |

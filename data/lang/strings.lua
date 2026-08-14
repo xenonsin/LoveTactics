@@ -500,21 +500,20 @@ return {
     ["line.conversation_colosseum_slot_02_join.10"] = { en = "Of course they did. A dead draw earns nobody anything.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_join.11"] = { en = "Hear it plainly, {name}. We are owned by four men we have never met until we win it back.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_join.12"] = { en = "What about the people on the sand with us?", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_join.13"] = { en = "...They came in on the same cart. Eleven of them.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.13"] = { en = "...They came in on the same cart. Every one of them.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_join.14"] = { en = "No one paid for them.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_join.15"] = { en = "There was an elder among them. Grey, small, a burn across one hand. Tell me where they are.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_join.16"] = { en = "I can tell you exactly where. I carried them there myself.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_join.17"] = { en = "There is a book in this house. Every soul the Cathedral receives goes into it, and I am one of the hands that writes it.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_join.18"] = { en = "I wrote all eleven of them in this morning. Ascended to the Light. That is the wording. It is the only wording there is.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.18"] = { en = "I wrote every one of them in this morning. Ascended to the Light. That is the wording. It is the only wording there is.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_join.19"] = { en = "Then I took them out the back to the pit behind the almshouse, and there is no marker on it, and there never has been.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_join.2"] = { en = "Lie still a moment. You have been dead since the third bell.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_join.20"] = { en = "Ascended. They were butchered on a sand floor for a crowd.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_join.21"] = { en = "I know what they were. I am the only one in this building who does.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_join.22"] = { en = "That book has other names in it. Older ones. I will not talk about those tonight and I am asking you not to make me.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_join.23"] = { en = "Then talk about the eleven.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.23"] = { en = "Then talk about them.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_join.24"] = { en = "There is nobody left to. Everyone who stood on that sand and saw it is in the pit, and you are lying in front of me.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_join.25"] = { en = "You are the last people alive who know what actually happened out there. By the feast day this house will have read those names aloud as saints and meant it.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_join.26"] = { en = "My order carves a mark for every one of its dead and teaches children the marks are days held. Same trick. Different stone.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_join.27"] = { en = "So I am not staying here. Take me with you.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_join.28"] = { en = "You just gave us our lives back. Why ask?", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_join.29"] = { en = "Because a thing given is not a thing owed. You are free of me the moment you stand up.", ja = "" },  -- TODO
@@ -524,33 +523,24 @@ return {
     ["line.conversation_colosseum_slot_02_join.32"] = { en = "You can want a wage too. We will start there.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_join.33"] = { en = "...I will think about it.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_join.34"] = { en = "Then get your boots, priest. And keep close to me on the road.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_join.35"] = { en = "My order does the same with its own dead. We carve a mark for each of them and teach the children the marks are days held.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_join.4"] = { en = "All of you. They brought you in on the cart with the rest. I have had my hands on your heart for an hour.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_join.5"] = { en = "I remember the sand. I remember standing in front of you and then nothing at all.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_join.6"] = { en = "This is the Cathedral. I am Amana. I am an acolyte here, and the rite that brought you back is the most expensive thing this house owns.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_join.7"] = { en = "We have no money for that.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_join.8"] = { en = "You did not pay for it. Four stables did, before your bodies were cold.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_02_join.9"] = { en = "They watched you fight twice and they had coin on you, and the house they book with destroyed you in front of them. So they bought you back to fight again.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.1"] = { en = "The killers are down. Every refugee is still standing.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.10"] = { en = "They are down. All of them are down.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.11"] = { en = "The elder is dead. Dead on the floor of a sport.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.12"] = { en = "Everyone walks off the sand. That is the one law this place ever kept.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.13"] = { en = "She has not stopped. She is coming to us.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.14"] = { en = "The crowd wanted blood tonight. The house does not send them home short.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.15"] = { en = "They sent her for this. She was always taking the whole card.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.16"] = { en = "Then we put her down. Weapons up.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.17"] = { en = "Do not. Run for the gate, {name}. Run!", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.18"] = { en = "The card is filled. That is all the house ever promised anyone.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.19"] = { en = "Behind me, {name}. Behind me!", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.2"] = { en = "The elder is up, {name}. We have carried that one out of two fires now.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.20"] = { en = "I am on my back. I cannot get up.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.21"] = { en = "The crowd is standing. They are cheering.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.3"] = { en = "Well fought. The house has no complaint with you.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.4"] = { en = "The crowd paid for a night, though. The house always gives them the night. Watch the far gate.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.5"] = { en = "Someone is coming out onto the sand.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.6"] = { en = "That is the patron. Get behind me and do not raise your sword to her.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.7"] = { en = "Her own hand, and on an opener. You will not see that twice in a life.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.8"] = { en = "She is walking at the refugees.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_02_outro.9"] = { en = "Get in front of them! All of you, in front of them!", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_overrule.1"] = { en = "The killers are down. Every one of these people is still standing.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_overrule.10"] = { en = "Everyone walks off the sand. That is the one law this place has ever kept.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_overrule.11"] = { en = "She is going for them. Get in front of them, all of you!", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_overrule.2"] = { en = "The elder is up, {name}. We have carried that one out of two fires now.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_overrule.3"] = { en = "Well fought. The house has no complaint with you.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_overrule.4"] = { en = "The crowd paid for a night, though. The house always gives them the night.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_overrule.5"] = { en = "Open the far gate.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_overrule.6"] = { en = "Who is that?", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_overrule.7"] = { en = "That is the patron of this house. Put your sword down, {name}.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_overrule.8"] = { en = "She is not an opponent. Nobody cards her against anyone.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_02_overrule.9"] = { en = "Her own hand, and on an opener. You will not see that twice in a life.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_03_intro.1"] = { en = "BEAT: the vendor gives the job. The Warlord fought under our banner once; bring him back, or bring him down.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_03_intro.2"] = { en = "BEAT: the avatar clocks that this one is a genuine bout, a named fighter on the other side, not a culling.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_03_intro.3"] = { en = "BEAT: Saber is alight. THIS is the thing she loves: house against a fighter with a name, honest, no padding.", ja = "" },  -- TODO
@@ -910,7 +900,7 @@ return {
     ["title.conversation_colosseum_slot_01_outro"] = { en = "The Gatekeeper", ja = "" },  -- TODO
     ["title.conversation_colosseum_slot_02_intro"] = { en = "The Padded Card", ja = "" },  -- TODO
     ["title.conversation_colosseum_slot_02_join"] = { en = "Ascended to the Light", ja = "" },  -- TODO
-    ["title.conversation_colosseum_slot_02_outro"] = { en = "The Padded Card", ja = "" },  -- TODO
+    ["title.conversation_colosseum_slot_02_overrule"] = { en = "The Padded Card", ja = "" },  -- TODO
     ["title.conversation_colosseum_slot_03_intro"] = { en = "Siege of Warlord's Keep", ja = "" },  -- TODO
     ["title.conversation_colosseum_slot_03_outro"] = { en = "Siege of Warlord's Keep", ja = "" },  -- TODO
     ["title.conversation_colosseum_slot_04_intro"] = { en = "The Perennial's Roster", ja = "" },  -- TODO

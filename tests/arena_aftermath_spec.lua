@@ -89,11 +89,12 @@ return {
         end,
     },
 
-    -- THE PADDED CARD'S AFTERMATH. Slot 2 uses the other seam: an `epilogue`, a second scene played
-    -- straight after the outro with no leg between them. The outro ends with the whole company dead on
-    -- the sand and the epilogue opens in the Cathedral, where the acolyte who raised them asks to come
-    -- along. Same shape as the debut's meeting, different machinery, and the same rule underneath:
-    -- the recruit is announced in the scene the author put her in, never the one before it.
+    -- THE PADDED CARD'S AFTERMATH. Slot 2 has no outro at all: its killing is not narrated after the
+    -- fight, it IS the fight (the objective's `overrule` walks Ira onto the board the moment the win
+    -- would be declared, and the party is wiped by her). So the only scene on the far side is the
+    -- `epilogue`, which plays over the black frame the fight fades to and opens in the Cathedral, where
+    -- the acolyte who raised them asks to come along. Same rule underneath as the debut's meeting: the
+    -- recruit is announced in the scene the author put her in, never the one before it.
     {
         name = "the padded card earns Amana, and hands off to an epilogue scene",
         fn = function()
@@ -101,14 +102,38 @@ return {
             assert(def, "the padded card exists")
             assert(def.rewardCharacter == "character_amana",
                 "Amana is recruited at the revival, not in the Cathedral's own line")
-            assert(def.outro == "conversation_colosseum_slot_02_outro", "the killing is the outro")
+            assert(def.outro == nil, "there is no outro: the fight's own ending is the scene before it")
             assert(def.epilogue == "conversation_colosseum_slot_02_join", "the waking is the epilogue")
-            assert(def.followUp == nil, "there is no overworld leg between the two scenes")
+            assert(def.followUp == nil, "there is no overworld leg before it")
             assert(Conversation.defs[def.epilogue], "the epilogue scene is defined")
         end,
     },
+    -- THE OVERRULE, as data. The whole beat hangs off this block: without it the last carded killer
+    -- falling is an ordinary victory and Ira never walks out at all. Pinned here rather than trusted to
+    -- a pair of ids typed into two files -- states/battle.lua's battle.fireOverrule reads every field
+    -- below by name, and a rename on either side is silent otherwise.
     {
-        name = "Amana's banner is held across the death scene and lands on the waking",
+        name = "the padded card's win is overruled by Ira, who cannot be killed",
+        fn = function()
+            local def = Quest.defs["quest_colosseum_slot_02"]
+            local win = def.map.objective.win
+            assert(win.protect == "character_survivor", "the refugees are the protect while it is a bout")
+            local ov = win.overrule
+            assert(ov, "the win is overruled")
+            assert(ov.composition[1] == "character_general_wrath", "the house sends its patron")
+            assert(Character.defs[ov.composition[1]], "and she is a real blueprint")
+            assert(ov.scene == "conversation_colosseum_slot_02_overrule", "she is announced over the board")
+            assert(Conversation.defs[ov.scene], "the overrule scene is defined")
+            assert(ov.fell == "character_survivor", "the refugees go down as that scene closes")
+            assert(ov.unkillable == "character_general_wrath",
+                "a scripted loss the party can fight their way out of is not a scripted loss")
+            assert(ov.win and ov.win.protect == nil,
+                "the protect goes with the objective it belonged to, or felling the refugees reads as a defeat")
+            assert(ov.win.text, "the banner says what is on the sand rather than naming a target")
+        end,
+    },
+    {
+        name = "Amana's banner is held across the overrule scene and lands on the waking",
         fn = function()
             clearJoins()
             local p = Player.new()
@@ -116,12 +141,12 @@ return {
             local amana = Player.recruit(p, "character_amana")
             assert(amana, "Amana recruited")
 
-            -- states/game.lua plays the outro with deferJoins whenever a quest has an epilogue, which
-            -- is what keeps a recruit out of the scene where everyone dies.
-            local outro = Conversation.resolve(Conversation.defs["conversation_colosseum_slot_02_outro"],
+            -- states/battle.lua plays the overrule scene with deferJoins, which is what keeps a recruit
+            -- out of the scene before everyone dies.
+            local ov = Conversation.resolve(Conversation.defs["conversation_colosseum_slot_02_overrule"],
                 Conversation.context(p))
-            local outroLines = #outro.script
-            assert(#Conversation.pendingJoins == 1, "the join is still waiting after the outro resolves")
+            local ovLines = #ov.script
+            assert(#Conversation.pendingJoins == 1, "the join is still waiting after that scene resolves")
 
             local waking = Conversation.resolve(Conversation.defs["conversation_colosseum_slot_02_join"],
                 Conversation.context(p))
@@ -130,7 +155,7 @@ return {
             assert(#waking.script == before + 1, "the banner is appended to the waking scene")
             assert(waking.script[#waking.script].text == "[" .. amana.name .. " has joined your Party]",
                 "the banner names her")
-            assert(outroLines > 0, "the death scene still has its own lines")
+            assert(ovLines > 0, "the overrule scene still has its own lines")
             clearJoins()
         end,
     },

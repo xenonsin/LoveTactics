@@ -62,6 +62,13 @@ local Player = require("models.player")
 
 local battle = {}
 
+-- How long the overruled ending takes to put the lights out (battle.endOverruled). Long enough to
+-- read as the world going away rather than as a cut, short enough that nobody presses a key at it.
+-- A field on the module rather than a file-scope local: this chunk sits within a couple of
+-- declarations of Lua 5.1's 200-local ceiling, and crossing it is a compile error naming an
+-- unrelated line.
+battle.FADE_SECONDS = 1.8
+
 local titleFont = Theme.display(22)
 local hudFont = Theme.display(16)
 local hintFont = Theme.body(13) -- control hint: dense, so it keeps the plain body face and fits one line
@@ -288,10 +295,15 @@ end
 -- whatever the win type is, so it reads as a second clause rather than replacing the first.
 local function objectiveText(obj)
     local text
+    -- An objective may state its own line, and exactly one thing does: the second act of an OVERRULED
+    -- fight (battle.fireOverrule). Its win type is a fiction the player will never satisfy, so the
+    -- banner says what is actually standing on the board instead of naming a body they cannot fell.
+    if obj.text then
+        text = obj.text
     -- Timed objectives (survive/defend/hold) name the GOAL only; the remaining time is drawn as a
     -- live tick countdown beside the hourglass glyph (drawObjectiveClock), because "ticks" is the unit
     -- the whole game is quoted in and "turns" is not a thing the player is ever shown.
-    if obj.type == "survive" then
+    elseif obj.type == "survive" then
         text = "Objective: survive"
     elseif obj.type == "defend" then
         text = "Objective: clear every wave"
@@ -1533,6 +1545,126 @@ local function spawnWaves()
     end
 end
 
+-- ---------------------------------------------------------------------------
+-- The overrule: a second act for a fight whose first act the player WON
+-- ---------------------------------------------------------------------------
+--
+-- `objective.overrule` is asked for once, at the exact moment the win would be declared, and if it is
+-- there the win does not happen. Something walks onto the board instead, and the fight the player just
+-- finished becomes the first half of a different one. Authored by
+-- data/quests/colosseum/quest_colosseum_slot_02.lua, which is the beat this exists for: the house
+-- carded refugees against its own killers, the player held them to the bell, and the crowd was denied
+-- its blood -- so the house sends its patron to finish the card, and the card includes whoever is still
+-- standing on it. The player does not lose the QUEST here (the objective is already satisfied when this
+-- fires); they lose their lives after winning, which is a different and worse lesson.
+--
+-- The block, and every field is optional but `composition`:
+--
+--   composition / from  -- who overrules it and which edge they walk in from, read by the same
+--                          Combat.previewWaveArrival a reinforcement wave uses. Blueprint-exact and
+--                          deliberately NOT grown to the party's level (Growth.spawn is not in this
+--                          path): the point of the beat is a body from the end of the line standing on
+--                          a slot-2 board.
+--   scene               -- played over the board the instant they land, before anything moves. The
+--                          board is frozen under it (a conversation is a global overlay, main.lua), so
+--                          the thing being talked about is standing there while it is talked about.
+--   fell                -- a char id swept off the board when the scene ends. She kills the refugees
+--                          on the way in; the party watches it and cannot answer it.
+--   win                 -- the objective that REPLACES the satisfied one, protect clause and all. It
+--                          carries its own `text` for the banner.
+--   unkillable          -- a char id the arrivals are stamped with (models/combat.lua): a scripted
+--                          force cannot be put down, so the second act can only end one way.
+--
+-- WHY THE KILLING WAITS FOR THE SCENE. Order of appearance is the whole staging: the far gate opens,
+-- she is standing there while the scene runs, and the bodies drop as it closes. Felling them first
+-- would open the scene on an aftermath and describe something the player already watched happen.
+--
+-- The objective swap has to go with it rather than come earlier, because the refugees are the thing
+-- the standing objective protects: drop them while `protect` is still live and the fight is judged a
+-- defeat between one line of dialogue and the next.
+function battle.fireOverrule()
+    local obj = battle.combat and battle.combat.objective
+    local ov = obj and obj.overrule
+    if not ov or battle.overruled then return false end
+    battle.overruled = true
+
+    local plan = Combat.previewWaveArrival(battle.combat, ov, battle.encounterCtx or {})
+    fireWave(plan)
+    if ov.unkillable then
+        for _, u in ipairs(battle.combat.units) do
+            if u.alive and u.char and u.char.id == ov.unkillable then u.unkillable = true end
+        end
+    end
+    refreshView()
+
+    if ov.scene then
+        -- Never fold a queued join banner onto it, for the reason the opening gives: a recruit has no
+        -- business in the scene where everyone dies. It falls through to the next authored scene, which
+        -- for this beat is the waking afterwards.
+        Conversation.play(ov.scene, function() battle.landOverrule(ov) end, nil, { deferJoins = true })
+    else
+        battle.landOverrule(ov)
+    end
+    return true
+end
+
+-- The other half, run once the scene has been dismissed: the sweep, the new objective, and the turn
+-- the overruled fight resumes on. Split out because everything in it has to happen AFTER the player has
+-- read the scene, and a conversation hands control back through a callback.
+function battle.landOverrule(ov)
+    if ov.fell then
+        for _, u in ipairs(battle.combat.units) do
+            if u.alive and u.char and u.char.id == ov.fell then
+                -- Through the ordinary damage funnel, so they drop with the death cues and the log
+                -- lines any other body gets, and billed to a NAMED source so the line reads as the axe
+                -- stroke it is rather than as an act of the engine.
+                --
+                -- Twice the body's whole pool, rather than a huge round number: it is certain past any
+                -- armour (mitigation is subtractive and floors at 1, so nothing halves a bar) and the
+                -- figure that lands in the combat log is one a player can read as a killing blow. A
+                -- 9999 in that log is the engine talking.
+                local pool = u.char.stats and u.char.stats.health
+                local whole = (pool and (pool.max or pool.current)) or 1
+                Combat.dealFlatDamage(battle.combat, u, whole * 2, { "physical", "slash" }, "the patron")
+            end
+        end
+    end
+    -- Copied, not aliased: the block hangs off an immutable quest blueprint, and the arena and the
+    -- combat have to be handed the same table (the HUD reads one, the win rules the other).
+    local win = { type = "killAll" }
+    for k, v in pairs(ov.win or {}) do win[k] = v end
+    battle.combat.objective = win
+    battle.arena.objective = win
+    refreshView()
+    -- Let the sweep PLAY. The bodies were felled through the ordinary funnel, so they raised the
+    -- ordinary death cues; drain them into the fx controller and hold the hand-off exactly as a landed
+    -- blow does (advanceTurn), so the player watches the refugees go down instead of finding them
+    -- already gone when the board comes back. The hold expiring runs resolveAdvance, which starts the
+    -- next turn -- so the fight resumes on its own seam rather than on one written here.
+    local events = Combat.drainFx(battle.combat)
+    if events then battle.fx:ingest(events, nil) end
+    battle.pendingAdvance = { hold = IMPACT_PAUSE }
+end
+
+-- How the overruled fight actually ends, and it is not the defeat panel. The party is wiped, which is
+-- what the beat was always for, so there is nothing to retry and nothing to abandon to: the screen
+-- fades to black and the quest's own scenes take it from there (states/game.lua's onWin plays the outro
+-- over this very frame, which is by then a black one). Routed to onWin because the piece of WORK was
+-- finished a minute ago -- the payout, the companion and the scenes are all owed -- and the company is
+-- stood back up because the scene that follows is the church doing exactly that.
+function battle.endOverruled()
+    battle.over = true
+    battle.walk = nil
+    battle.heldObjects = nil
+    ScreenFx.vignette(0)
+    Combat.logEvent(battle.combat, "system", "Defeat.")
+    battle.fallen = Combat.reviveFallenParty(battle.combat)
+    releaseParty()
+    Sound.play("battle.loss")
+    Sound.music("music.defeat")
+    battle.fadeOut = 0 -- battle.update carries it to 1 and then hands the fight on
+end
+
 -- Charge `unit`'s just-ended turn what the LESSON says it costs, rather than the move-plus-action
 -- total the combat model already billed. A guided fight's turn order is authored (see `pace` in
 -- data/tutorials/village.lua), and this is the half that holds it: without it the order drifts apart
@@ -1571,6 +1703,14 @@ local function resolveAdvance()
     -- side with a bench is not eliminated), so this is the UI half of one rule, not a second rule.
     if offerLastStand() then return end
     local result = Combat.evaluate(battle.combat)
+    -- THE WIN MAY BE OVERRULED, once, by the objective itself. Asked here rather than anywhere else
+    -- because this is the only place a win is declared, and the whole point is that it is not: the
+    -- objective is satisfied, something walks onto the sand, and the fight carries on into its second
+    -- act. Firing it hands the turn on itself (the scene has to be read first), so this returns.
+    if result == "win" and battle.fireOverrule() then return end
+    -- ...and once it HAS fired, the wipe that follows is the ending the beat was written for, not a
+    -- defeat to be retried. See battle.endOverruled.
+    if result == "loss" and battle.overruled then battle.endOverruled() return end
     if result == "win" then win() return
     elseif result == "loss" then lose() return end
     -- A body of the player's fell and the fight goes on: offer the free reinforcement now, where the
@@ -4567,6 +4707,9 @@ function battle.enter(self, opts)
     battle.floorLevel = opts.floorLevel
     battle.fallen = nil                  -- who went down in THIS fight, for the launcher's wounds
     battle.summary = nil                 -- the victory/defeat overlay, once the fight is decided
+    battle.overruled = nil               -- has the objective's `overrule` already fired (once a fight)
+    battle.fadeOut = nil                 -- the overruled ending's fade, 0..1 while the lights go out
+    battle.faded = nil                   -- ...and whether it has already handed the fight on
     battle.logReview = nil               -- the summary's "Review Combat Log" modal, when opened
     battle.settingsMenu = nil            -- the in-battle settings overlay, when opened
     battle.windupChooser = nil           -- the chargeable-swing depth chooser, while a swing is sized
@@ -4966,6 +5109,21 @@ function battle.update(dt)
     -- was, and closing the overlay resumes from there. Nothing below runs while it is up.
     if battle.settingsMenu then
         battle.settingsMenu:update(dt)
+        return
+    end
+
+    -- The overruled fight's ending (battle.endOverruled): the world goes out. Nothing else advances --
+    -- the board holds on its last frame under the black, which is what the scenes that follow play
+    -- over -- and the fight is handed on the moment the frame is fully dark. Real dt, ahead of the
+    -- hit-stop and fast-forward scaling below, so neither can stretch or skip it.
+    if battle.fadeOut then
+        battle.fadeOut = math.min(1, battle.fadeOut + dt / battle.FADE_SECONDS)
+        if battle.fadeOut >= 1 and not battle.faded then
+            battle.faded = true
+            -- No spoils: nobody looted a sand floor they were carried off. What the piece of work
+            -- pays is the quest's own reward, granted on the far side of this call.
+            if battle.onWin then battle.onWin() end
+        end
         return
     end
 
@@ -5374,6 +5532,15 @@ function battle.draw()
     if battle.benchChooser then battle.benchChooser:draw() end
     -- The right-click debug menu (debug builds only) sits on top of every board overlay.
     if battle.debugMenu then battle.debugMenu:draw() end
+    -- The overruled ending's fade, over absolutely everything -- board, HUD, tooltips, panels -- and it
+    -- STAYS at full black once it gets there. The scenes that follow (states/game.lua plays them over
+    -- the frozen final frame of the fight) are meant to land on nothing at all, which is what the frozen
+    -- final frame of this fight now is. See battle.endOverruled.
+    if battle.fadeOut then
+        love.graphics.setColor(0, 0, 0, math.min(1, battle.fadeOut))
+        love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
+        love.graphics.setColor(1, 1, 1)
+    end
     -- While the debug "Move to tile" picker is armed, a banner tells the player the next click lands it.
     if Debug.enabled and battle.debugPickTile then
         local f = Theme.body(16)
@@ -5850,6 +6017,10 @@ local function cycleAutoSpeed()
 end
 
 function battle.keypressed(key)
+    -- The lights are going out (battle.endOverruled). Nothing is interactive while they do, and there
+    -- is no panel underneath waiting to be dismissed -- the fight hands itself on when the frame is
+    -- dark. Stated on each input verb rather than once, because there is no single funnel they share.
+    if battle.fadeOut then return end
     -- The settings overlay is the top-most modal: it eats every key while it is up. Esc closes it
     -- (never forfeits the fight underneath), the rest work the list. Above the deployment phase too,
     -- since the phase's own drawer opens it -- a modal a screen raised is a modal over that screen.
@@ -5955,6 +6126,7 @@ function battle.textinput(t)
 end
 
 function battle.gamepadpressed(joystick, button)
+    if battle.fadeOut then return end -- see keypressed: the ending takes no input
     -- The settings overlay first, on the deployment phase as in the fight (see keypressed).
     if battle.settingsMenu then
         if button == "b" then closeSettings() else battle.settingsMenu:gamepadpressed(joystick, button) end
@@ -6100,6 +6272,7 @@ local function openDebugMenu(x, y)
 end
 
 function battle.mousepressed(x, y, button)
+    if battle.fadeOut then return end -- see keypressed: the ending takes no input
     -- The settings overlay, opened from the pre-bell drawer, is modal over the deployment phase (see
     -- keypressed) -- so it is asked before the phase is, and the shared block below handles it.
     if battle.deployLoadout and not battle.settingsMenu then
