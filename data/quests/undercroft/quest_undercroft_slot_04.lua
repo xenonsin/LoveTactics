@@ -51,7 +51,7 @@ return {
                 for i = 1, 3 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_bandit_chief" end
                 return list
             end,
-            win = { type = "killAll" },
+            win = { type = "killAll", enemy = "the clearing house's men" },
         },
         keyCount = 1,
     },

@@ -54,7 +54,8 @@ return {
                 end
                 return list
             end,
-            win = { type = "assassinate", target = "character_forsworn_captain" },
+            win = { type = "assassinate", target = "character_forsworn_captain",
+                enemy = "the archivist's guard" },
         },
         keyCount = 2,
     },

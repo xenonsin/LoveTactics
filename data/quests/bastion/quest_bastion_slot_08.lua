@@ -52,7 +52,8 @@ return {
                 end
                 return list
             end,
-            win = { type = "assassinate", target = "character_champion" },
+            win = { type = "assassinate", target = "character_champion",
+                enemy = "the order's own" },
         },
         keyCount = 2,
     },

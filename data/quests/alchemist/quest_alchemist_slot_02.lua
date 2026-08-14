@@ -29,7 +29,7 @@ return {
             name = "The Heretic Alchemist",
             composition = function() return { "character_ren", "character_homunculus" } end,
             opening = "conversation_alchemist_slot_02_confront",
-            win = { type = "killAll" },
+            win = { type = "killAll", enemy = "Ren and her work" },
         },
         keyCount = 1,
     },

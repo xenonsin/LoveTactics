@@ -38,7 +38,7 @@ return {
             name = "The Branded Mage",
             composition = function() return { "character_gyeom" } end,
             opening = "conversation_arcanum_slot_02_confront",
-            win = { type = "killAll" },
+            win = { type = "killAll", enemy = "the branded mage" },
         },
         keyCount = 1,
     },

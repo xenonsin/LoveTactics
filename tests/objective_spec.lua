@@ -469,4 +469,131 @@ return {
                 "the defended tile names the body being kept alive")
         end,
     },
+    -- WHAT THE WORK IS, in one phrase (Combat.objectiveGoal). Two surfaces read it and they must agree:
+    -- the battle HUD's objective line and the day's checklist over the overworld map, which lists one row
+    -- per piece of work standing on the ground.
+    {
+        name = "every win type phrases its work, and a protect clause rides on top of it",
+        fn = function()
+            assert(Combat.objectiveGoal({ type = "killAll" }) == "Defeat every enemy",
+                "a fight that names no enemy falls back to the line that is at least still true")
+            assert(Combat.objectiveGoal(nil) == "Defeat every enemy", "no spec at all is still a killAll")
+            assert(Combat.objectiveGoal({ type = "hold" }) == "Hold the marked ground")
+            assert(Combat.objectiveGoal({ type = "control" }) == "Hold the moving node")
+            assert(Combat.objectiveGoal({ type = "defend" }) == "Clear every wave")
+            assert(Combat.objectiveGoal({ type = "survive" }) == "Survive")
+            assert(Combat.objectiveGoal({ type = "reach" }) == "Get anyone to the far side")
+
+            -- A body is named by its blueprint's name, never by its id.
+            local hunt = Combat.objectiveGoal({ type = "assassinate", target = "character_miller_ghost" })
+            assert(hunt == "Defeat The Miller's Ghost", "got " .. hunt)
+
+            -- The rescue: clear the board WITHOUT losing the body you came for. Both halves are on the
+            -- line, because either one alone is a different fight.
+            local rescue = Combat.objectiveGoal({ type = "killAll", protect = "character_survivor" })
+            assert(rescue == "Defeat every enemy, keep Survivor alive", "got " .. rescue)
+
+            -- ...and when the body that must cross is the body that must live, the clause folds instead
+            -- of naming it twice.
+            local escort = Combat.objectiveGoal({
+                type = "reach", who = "character_survivor", protect = "character_survivor",
+            })
+            assert(escort == "Get Survivor to the far side, alive", "got " .. escort)
+
+            -- An objective that states its own line keeps it (the overruled fight's second act).
+            assert(Combat.objectiveGoal({ type = "killAll", text = "The house has sent its patron" })
+                == "The house has sent its patron")
+        end,
+    },
+    -- WHO THE ENEMY IS. killAll and survive are the two win types that name nothing on their own, so each
+    -- carries an authored collective for what is standing there -- and every campaign fight of either
+    -- kind must author one, or the checklist is back to telling the player nothing.
+    {
+        name = "a killAll or survive says who it is against",
+        fn = function()
+            assert(Combat.objectiveGoal({ type = "killAll", enemy = "the collection party" })
+                == "Defeat the collection party")
+            assert(Combat.objectiveGoal({ type = "survive", enemy = "the roused wood" })
+                == "Survive the roused wood")
+            -- ...and the loss condition still rides on top of it.
+            local goal = Combat.objectiveGoal({ type = "killAll", enemy = "the Lodge's runners",
+                protect = "character_dire_bear" })
+            assert(goal == "Defeat the Lodge's runners, keep Dire Bear alive", "got " .. goal)
+        end,
+    },
+    {
+        name = "every campaign fight with nothing else to name names its enemy",
+        fn = function()
+            local Quest = require("models.quest")
+            for id, def in pairs(Quest.defs) do
+                local spec = (def.map or {}).objective
+                local win = spec and spec.win or {}
+                local kind = win.type or "killAll"
+                if spec and not spec.meet and (kind == "killAll" or kind == "survive") then
+                    local enemy = win.enemy
+                    assert(type(enemy) == "string" and #enemy > 0,
+                        id .. " is a " .. kind .. " and names no enemy: it would read \"Defeat every " ..
+                        "enemy\", which names nobody. Give its win an `enemy` collective")
+                    -- The phrase supplies the verb; the collective must not bring its own.
+                    assert(not enemy:find("^[DdSs]efeat") and not enemy:find("^[Ss]urvive"),
+                        id .. "'s enemy repeats the verb: " .. enemy)
+                end
+            end
+        end,
+    },
+    {
+        name = "a mark two quests share is named by what it is doing, not by its blueprint",
+        fn = function()
+            local Quest = require("models.quest")
+            -- An assassinate usually needs no `enemy`: "Defeat Luxuria, the Unbidden" is already a
+            -- person. A GENERIC mark is not -- the same `character_mage` is the target of five different
+            -- quests, so five rows all read "Defeat Mage" and two of them can stand on one ground at
+            -- once. Sharing a blueprint is the test for it, because that is exactly when the rows
+            -- collide.
+            local uses = {}
+            for id, def in pairs(Quest.defs) do
+                local win = ((def.map or {}).objective or {}).win or {}
+                if win.type == "assassinate" and win.target then
+                    uses[win.target] = uses[win.target] or {}
+                    table.insert(uses[win.target], { id = id, enemy = win.enemy })
+                end
+            end
+            for target, list in pairs(uses) do
+                if #list > 1 then
+                    for _, use in ipairs(list) do
+                        assert(type(use.enemy) == "string" and #use.enemy > 0,
+                            use.id .. " marks " .. target .. ", which " .. #list .. " quests share: it " ..
+                            "would read \"Defeat " .. Combat.charName(target) .. "\", the same line as " ..
+                            "the others. Give its win an `enemy` epithet")
+                    end
+                end
+            end
+        end,
+    },
+    {
+        name = "every authored quest objective says what is to be done there",
+        fn = function()
+            local Quest = require("models.quest")
+            local Character = require("models.character")
+            for id, def in pairs(Quest.defs) do
+                local spec = (def.map or {}).objective
+                if spec and not spec.meet then
+                    local goal = Combat.objectiveGoal(spec.win)
+                    assert(type(goal) == "string" and #goal > 0, id .. " phrases no work at all")
+                    assert(goal ~= def.name,
+                        id .. " names itself instead of its work -- a title is not an objective")
+                    -- A phrase that quotes a blueprint id is one whose character was renamed or deleted:
+                    -- the checklist would print "Defeat character_miller_ghost" and mean it. Listed by
+                    -- key rather than packed into an array, which ipairs would cut short at the first
+                    -- absent one (most objectives name no body at all).
+                    local win = spec.win or {}
+                    for _, key in ipairs({ "target", "who", "protect" }) do
+                        local who = win[key]
+                        assert(not who or Character.defs[who],
+                            id .. "'s " .. key .. " points at a body that does not exist: " .. tostring(who))
+                    end
+                end
+            end
+        end,
+    },
 }

@@ -35,7 +35,8 @@ return {
                 return list
             end,
             opening = "conversation_hunters_lodge_slot_02_confront",
-            win = { type = "survive", duration = 36 }, -- TICKS to outlast (the clock's unit)
+            -- `duration` is TICKS to outlast (the clock's unit).
+            win = { type = "survive", duration = 36, enemy = "the maddened wood" },
         },
         keyCount = 0,
     },

@@ -107,7 +107,7 @@ return {
             -- in until `character_village_elder` and bespoke refugee blueprints exist.
             allies = { "character_survivor", "character_survivor", "character_survivor" },
             win = {
-                type = "killAll", protect = "character_survivor",
+                type = "killAll", enemy = "the house's killers", protect = "character_survivor",
                 -- THE HOUSE OVERRULES THE WIN. Read once, at the moment the last carded killer falls,
                 -- by states/battle.lua's battle.fireOverrule -- see the header there for the block's
                 -- shape and the header above for what it is doing to the player.

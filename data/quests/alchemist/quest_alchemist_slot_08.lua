@@ -49,6 +49,7 @@ return {
             win = {
                 type = "assassinate",
                 target = "character_mage",
+                enemy = "the proctor with the writ",
                 protect = "character_homunculus_discard",
             },
         },

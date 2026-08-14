@@ -32,7 +32,7 @@ return {
             name = "The Jubilee",
             composition = function() return { "character_clem" } end,
             opening = "conversation_undercroft_slot_02_confront",
-            win = { type = "killAll" },
+            win = { type = "killAll", enemy = "the Bank's retired blade" },
         },
         keyCount = 1,
     },

@@ -50,7 +50,7 @@ return {
                 return list
             end,
             allies = { "character_dire_bear" },
-            win = { type = "killAll", protect = "character_dire_bear" },
+            win = { type = "killAll", enemy = "the Lodge's runners", protect = "character_dire_bear" },
         },
         keyCount = 1,
     },

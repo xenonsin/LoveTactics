@@ -31,7 +31,8 @@ return {
                 for i = 1, 2 + math.floor((ctx.day or 1) / 2) do list[#list + 1] = "character_wolf_grunt" end
                 return list
             end,
-            win = { type = "survive", duration = 40 }, -- TICKS to outlast, not turns (the clock's unit)
+            -- `duration` is TICKS to outlast, not turns (the clock's unit).
+            win = { type = "survive", duration = 40, enemy = "what the dark sends" },
         },
         keyCount = 1,
     },

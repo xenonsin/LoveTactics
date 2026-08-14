@@ -49,7 +49,7 @@ return {
                 list[#list + 1] = "character_gaunt_vigil"
                 return list
             end,
-            win = { type = "killAll" },
+            win = { type = "killAll", enemy = "the Adepts and their work" },
         },
         keyCount = 1,
     },

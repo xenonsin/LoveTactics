@@ -50,7 +50,7 @@ return {
                 return list
             end,
             allies = { "character_survivor" },
-            win = { type = "killAll", protect = "character_survivor" },
+            win = { type = "killAll", enemy = "the patron's own", protect = "character_survivor" },
         },
         keyCount = 1,
     },

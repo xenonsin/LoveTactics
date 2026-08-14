@@ -66,7 +66,8 @@ return {
             -- which is what forty frightened people on a road actually do.
             allies = { "character_survivor", "character_survivor", "character_survivor" },
             opening = "conversation_cathedral_slot_02_confront",
-            win = { type = "killAll", protect = "character_survivor" },
+            win = { type = "killAll", enemy = "whatever works that road",
+                protect = "character_survivor" },
         },
         keyCount = 1,
     },

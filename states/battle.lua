@@ -286,52 +286,17 @@ local function itemHasTag(item, want)
     return false
 end
 
-local function charName(id)
-    local def = id and Character.defs[id]
-    return (def and def.name) or id or "the target"
-end
-
--- Human-readable objective line for the HUD. `protect` is a loss condition layered over
--- whatever the win type is, so it reads as a second clause rather than replacing the first.
+-- Human-readable objective line for the HUD: the label, and then the one phrase that says what the work
+-- is. The phrase itself is written by Combat.objectiveGoal and not here, because the overworld
+-- checklist names the same piece of work on the same day (states/game.lua's drawChecklist) and the two
+-- have to be the same sentence -- a list promising "Defeat every enemy, keep Survivor alive" over a HUD
+-- that then said something else would read as two different jobs.
+--
+-- Timed objectives (survive/defend/hold) name the GOAL only; the remaining time is drawn as a live tick
+-- countdown beside the hourglass glyph (drawObjectiveClock), because "ticks" is the unit the whole game
+-- is quoted in and "turns" is not a thing the player is ever shown.
 local function objectiveText(obj)
-    local text
-    -- An objective may state its own line, and exactly one thing does: the second act of an OVERRULED
-    -- fight (battle.fireOverrule). Its win type is a fiction the player will never satisfy, so the
-    -- banner says what is actually standing on the board instead of naming a body they cannot fell.
-    if obj.text then
-        text = obj.text
-    -- Timed objectives (survive/defend/hold) name the GOAL only; the remaining time is drawn as a
-    -- live tick countdown beside the hourglass glyph (drawObjectiveClock), because "ticks" is the unit
-    -- the whole game is quoted in and "turns" is not a thing the player is ever shown.
-    elseif obj.type == "survive" then
-        text = "Objective: survive"
-    elseif obj.type == "defend" then
-        text = "Objective: clear every wave"
-    elseif obj.type == "reach" then
-        -- `who` names the ONE body that has to cross (an escort/extraction), so the line has to say
-        -- which body -- "get anyone" is only true for the open footrace with no `who`.
-        if obj.who then
-            text = "Objective: get " .. charName(obj.who) .. " to the far side"
-        else
-            text = "Objective: get anyone to the far side"
-        end
-    elseif obj.type == "hold" then
-        text = "Objective: hold the marked ground"
-    elseif obj.type == "control" then
-        text = "Objective: hold the moving node"
-    elseif obj.type == "assassinate" then
-        text = "Objective: defeat " .. charName(obj.target)
-    else
-        text = "Objective: defeat all enemies"
-    end
-    -- When the body that must cross is also the one that must live (the usual escort), fold the two
-    -- clauses so it doesn't read "get the Driver across -- the Driver must survive".
-    if obj.protect and obj.protect ~= obj.who then
-        text = text .. " -- " .. charName(obj.protect) .. " must survive"
-    elseif obj.protect then
-        text = text .. " -- alive"
-    end
-    return text
+    return "Objective: " .. Combat.objectiveGoal(obj)
 end
 
 -- Wave progress for a wave-based `defend`: how many waves have walked on out of the total the fight

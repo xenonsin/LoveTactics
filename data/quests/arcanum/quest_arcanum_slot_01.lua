@@ -21,7 +21,7 @@ return {
                 for i = 1, 2 + math.floor((ctx.day or 1) / 2) do list[#list + 1] = "character_bandit" end
                 return list
             end,
-            win = { type = "killAll" },
+            win = { type = "killAll", enemy = "the other diggers" },
         },
         keyCount = 2,
     },

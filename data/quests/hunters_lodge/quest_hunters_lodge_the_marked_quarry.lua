@@ -39,7 +39,8 @@ return {
                 list[#list + 1] = "character_dire_bear"
                 return list
             end,
-            win = { type = "assassinate", target = "character_bandit_chief" },
+            win = { type = "assassinate", target = "character_bandit_chief",
+                enemy = "the one who got there first" },
         },
         keyCount = 1,
     },

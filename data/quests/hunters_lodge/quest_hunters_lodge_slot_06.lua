@@ -48,7 +48,7 @@ return {
                 list[#list + 1] = "character_wolf_alpha"
                 return list
             end,
-            win = { type = "killAll" },
+            win = { type = "killAll", enemy = "every open entry on the book" },
         },
         keyCount = 1,
     },

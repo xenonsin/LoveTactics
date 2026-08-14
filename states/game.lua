@@ -513,10 +513,34 @@ end
 -- What is left to do on this ground: one row per piece of work, in board order, each with whether it
 -- has been taken. THE run's title now (game:drawChecklist) and the thing that decides when the day is
 -- over. Cleared rows keep their place -- what you did not take is read against what you did.
+--
+-- EACH ROW SAYS WHAT THE WORK IS, not what it is called. A quest's title -- "The Haunted Mill", "The
+-- Sunken Sanctum" -- names a place without saying a thing about what the company is meant to do when it
+-- gets there, and a checklist of titles is a list of nouns the player cannot act on. `work` is the
+-- objective's own sentence, written by the same hand the battle HUD's objective line is
+-- (Combat.objectiveGoal), so the promise made on the map is word for word the one the fight opens with.
+-- The title stays on the row as `name` -- the map marker and the battle's own header still use it.
 function game:worklist()
     local out = {}
     for _, q in ipairs((game.quest and game.quest.quests) or {}) do
-        out[#out + 1] = { id = q.id, name = q.name, done = (game.tripDone or {})[q.id] == true }
+        local spec = (q.map or {}).objective or {}
+        -- A `meet` objective has no win condition to phrase: nothing is fought there, the company just
+        -- has to arrive and the scene plays (see the meet branch in game:openEncounter).
+        local work = spec.meet and "Reach the meeting" or Combat.objectiveGoal(spec.win)
+        out[#out + 1] = {
+            id = q.id, name = q.name, work = work,
+            done = (game.tripDone or {})[q.id] == true,
+        }
+    end
+    -- ...and the title comes BACK on any row a second row reads identically to. A fight names who it is
+    -- against and no two of those agree, but the ground objectives do not name anything of their own:
+    -- two quests posted here that both want a post held are two rows reading "Hold the marked ground",
+    -- which is true of each and tells the player nothing about either -- least of all which of the two
+    -- the tick belongs to. The name is the only thing that separates them, so it is spent here.
+    local seen = {}
+    for _, row in ipairs(out) do seen[row.work] = (seen[row.work] or 0) + 1 end
+    for _, row in ipairs(out) do
+        if seen[row.work] > 1 then row.work = row.work .. "  ·  " .. row.name end
     end
     return out
 end
@@ -2088,8 +2112,10 @@ end
 -- makes you re-find your place every time, and what you did NOT take is the information -- it is read
 -- against what you did.
 --
--- Drawn only for a trip carrying more than one piece of work. One quest on a ground is the title, and
--- a one-line checklist under it would be the same words twice.
+-- Drawn for a trip carrying ANY work at all, one row included. It used to want two, because a row was
+-- the quest's title and a ground with one quest already had that title over the map -- the same words
+-- twice. A row states the WORK now, which the title never did, so a single piece of work is exactly the
+-- case that needs the line: the header says where the company is, and this says what it came to do.
 --
 -- It sits UNDER the party strip rather than above it, which is the top-left corner's other tenant. The
 -- strip is read every time a fight is weighed up and this is read once a spur; the one consulted more
@@ -2098,14 +2124,45 @@ function game:checklistTop()
     return 60 + PartyStatus.stripHeight(#(game.player and game.player.roster or {})) + 8
 end
 
+-- A ROW IS A SENTENCE NOW, so it is allowed to wrap. It used to be a title, which always fitted on one
+-- line at any width worth giving it; "Defeat the crew that took the crate, keep Reagent alive" only just
+-- does, and the half a single line would have cut is the `protect` clause -- the loss condition, the one
+-- part of the row a player must not miss. Two lines is the cap: past that the column is a paragraph
+-- sitting on the board, and nothing in the data reaches even the second line by much.
+local CHECKLIST_W = 330    -- the text column, right of the tick box
+local CHECKLIST_LINE = 20
+local CHECKLIST_MAX_LINES = 2
+
+local function checklistLines(text)
+    local _, lines = hudFont:getWrap(text, CHECKLIST_W)
+    if #lines == 0 then return { text } end
+    if #lines > CHECKLIST_MAX_LINES then
+        local kept = {}
+        for i = 1, CHECKLIST_MAX_LINES - 1 do kept[i] = lines[i] end
+        -- Everything that did not fit, folded back onto the last line and trimmed there, so the row ends
+        -- in an ellipsis rather than stopping mid-clause with no sign that it was cut.
+        local tail = lines[CHECKLIST_MAX_LINES]
+        for i = CHECKLIST_MAX_LINES + 1, #lines do tail = tail .. " " .. lines[i] end
+        kept[CHECKLIST_MAX_LINES] = Theme.ellipsize(tail, hudFont, CHECKLIST_W)
+        lines = kept
+    end
+    return lines
+end
+
+-- ...which makes the block's height a question about the text rather than about the row count.
 function game:checklistHeight()
-    local rows = #game:worklist()
-    return rows >= 2 and rows * 20 + 6 or 0
+    local rows = game:worklist()
+    if #rows == 0 then return 0 end
+    local h = 6
+    for _, row in ipairs(rows) do
+        h = h + #checklistLines(row.work or row.name) * CHECKLIST_LINE
+    end
+    return h
 end
 
 function game:drawChecklist()
     local rows = game:worklist()
-    if #rows < 2 then return end
+    if #rows == 0 then return end
 
     love.graphics.setFont(hudFont)
     local x, y = 16, game:checklistTop()
@@ -2116,14 +2173,18 @@ function game:drawChecklist()
             love.graphics.setColor(Theme.ink)
         end
         -- The box is what makes this a list of work rather than a caption, so it is drawn as a box
-        -- rather than typed as a character -- a glyph would depend on the font having it.
+        -- rather than typed as a character -- a glyph would depend on the font having it. It sits on the
+        -- row's FIRST line; a wrapped continuation is indented under the text, not under the box.
         love.graphics.rectangle("line", x + 1, y + 4, 10, 10)
         if row.done then
             love.graphics.line(x + 3, y + 9, x + 6, y + 12)
             love.graphics.line(x + 6, y + 12, x + 10, y + 6)
         end
-        love.graphics.print(Theme.ellipsize(row.name, hudFont, 250), x + 18, y)
-        y = y + 20
+        -- The work, not the title (game:worklist).
+        for _, line in ipairs(checklistLines(row.work or row.name)) do
+            love.graphics.print(line, x + 18, y)
+            y = y + CHECKLIST_LINE
+        end
     end
     love.graphics.setColor(1, 1, 1)
 end

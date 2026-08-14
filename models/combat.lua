@@ -10326,6 +10326,84 @@ end
 -- The objective, read for the UI
 -- ---------------------------------------------------------------------------
 
+-- WHAT THE WORK IS, in one imperative phrase: "Defeat The Miller's Ghost", "Hold the marked ground",
+-- "Defeat every enemy, keep Survivor alive".
+--
+-- Written from a WIN SPEC ({ type, target, who, protect, ... }) rather than from a live combat, so the
+-- same sentence can be asked for before the fight exists. Two surfaces need it and they need to agree:
+-- the battle HUD prints it under the encounter's name (states/battle.lua), and the day's checklist names
+-- each piece of work standing on the ground by it (states/game.lua). The checklist used to print quest
+-- TITLES -- "The Haunted Mill", "The Sunken Sanctum" -- which name a thing without saying what is to be
+-- done with it, so a list of the day's work told the player nothing about any of it.
+--
+-- Sentence case and no trailing stop: it is a line item as often as it is a sentence. The clock a timed
+-- objective runs on is deliberately NOT in here -- the HUD draws it live beside the hourglass, and a
+-- number frozen at the moment the phrase was written would be wrong everywhere else it was read.
+--
+-- WHO THE ENEMY IS COMES FROM `win.enemy`, AND IT IS AUTHORED. "Defeat every enemy" names no enemy, and
+-- killAll and survive are the two win types with nothing else to say -- the others name a body or a
+-- piece of ground. So each of them carries a COLLECTIVE for what is standing there: "the collection
+-- party", "the Lodge's runners", "the incursion". The fight becomes "Defeat the collection party",
+-- "Survive the roused wood".
+--
+-- Written rather than derived, and that was tried the other way first. Reading the composition and
+-- listing what it held gave "Defeat Bandit Chief and every Bandit" -- a roster, not an objective, and
+-- one that had to invent grammar (when to say "every", how to pluralise a Wolf) for names the data has
+-- no opinion about. A house knows what to call the crew it is sending you against; the writer does not.
+-- tests/objective_spec.lua holds every campaign fight to authoring one.
+--
+-- The phrase carries its own article ("the collection party", "Ira's undercard"), because whether a
+-- collective takes one is a fact about that collective and not about this sentence.
+function Combat.objectiveGoal(obj)
+    obj = obj or {}
+    -- An objective may state its own line, and exactly one thing does: the second act of an OVERRULED
+    -- fight (states/battle.lua's fireOverrule). Its win type is a fiction the player will never satisfy,
+    -- so the banner says what is actually standing on the board instead of naming a body they cannot fell.
+    local text = obj.text
+    if not text then
+        if obj.type == "survive" then
+            -- Outlast WHAT. The same hole killAll has, and the same answer: the fight's own name for
+            -- what is coming at it.
+            text = obj.enemy and ("Survive " .. obj.enemy) or "Survive"
+        elseif obj.type == "defend" then
+            text = "Clear every wave"
+        elseif obj.type == "reach" then
+            -- `who` names the ONE body that has to cross (an escort/extraction), so the line has to say
+            -- which body -- "get anyone" is only true for the open footrace with no `who`.
+            text = obj.who and ("Get " .. Combat.charName(obj.who) .. " to the far side")
+                or "Get anyone to the far side"
+        elseif obj.type == "hold" then
+            text = "Hold the marked ground"
+        elseif obj.type == "control" then
+            text = "Hold the moving node"
+        elseif obj.type == "assassinate" then
+            -- A named body says who it is by existing -- "Defeat The Miller's Ghost". A GENERIC one does
+            -- not: four quests in the Arcanum's line all field a `character_mage` as their mark, and all
+            -- four read "Defeat Mage", which is neither a person nor a promise. Those author an epithet
+            -- and it wins here, the same field and for the same reason as killAll's collective.
+            text = "Defeat " .. (obj.enemy or Combat.charName(obj.target))
+        else
+            text = "Defeat " .. (obj.enemy or "every enemy")
+        end
+    end
+    -- `protect` is a loss condition layered over whatever the win type is, so it reads as a second clause
+    -- rather than replacing the first. When the body that must cross is also the one that must live (the
+    -- usual escort), fold the two so it doesn't read "Get the Driver across, keep the Driver alive".
+    if obj.protect and obj.protect ~= obj.who then
+        text = text .. ", keep " .. Combat.charName(obj.protect) .. " alive"
+    elseif obj.protect then
+        text = text .. ", alive"
+    end
+    return text
+end
+
+-- The name to call a body by in that phrase: what the blueprint calls it, falling back to the raw id so
+-- a renamed character reads as a mistake rather than vanishing from the sentence.
+function Combat.charName(id)
+    local def = id and Character.defs[id]
+    return (def and def.name) or id or "the target"
+end
+
 -- The marked ground the objective is currently decided on: the tiles the board washes amber/green
 -- (ui/battle_map.lua drawObjective) and the tooltip describes. `control` follows its moving node, a
 -- `defend` with a charge follows the body it is fought over (which walks), and the authored tile

@@ -51,7 +51,8 @@ return {
                 return list
             end,
             allies = { "character_ren", "character_survivor", "character_survivor" },
-            win = { type = "killAll", protect = "character_survivor" },
+            win = { type = "killAll", enemy = "the crew outside the ward",
+                protect = "character_survivor" },
         },
         keyCount = 1,
     },

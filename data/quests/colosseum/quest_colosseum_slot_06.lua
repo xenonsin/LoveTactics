@@ -53,7 +53,7 @@ return {
                 return list
             end,
             allies = { "character_survivor", "character_survivor", "character_survivor" },
-            win = { type = "killAll", protect = "character_survivor" },
+            win = { type = "killAll", enemy = "the padded undercard", protect = "character_survivor" },
         },
         keyCount = 1,
     },

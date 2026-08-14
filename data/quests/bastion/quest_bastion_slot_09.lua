@@ -57,7 +57,7 @@ return {
                 end
                 return list
             end,
-            win = { type = "killAll" },
+            win = { type = "killAll", enemy = "the company that left with her" },
             opening = "conversation_bastion_slot_09_confront",
         },
         keyCount = 2,

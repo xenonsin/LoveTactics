@@ -48,7 +48,8 @@ return {
                 list[#list + 1] = "character_wolf_alpha"
                 return list
             end,
-            win = { type = "assassinate", target = "character_ogre" },
+            win = { type = "assassinate", target = "character_ogre",
+                enemy = "what eats the shut trail" },
         },
         keyCount = 2,
     },

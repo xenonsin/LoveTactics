@@ -51,7 +51,8 @@ return {
                 end
                 return list
             end,
-            win = { type = "assassinate", target = "character_forsworn_captain" },
+            win = { type = "assassinate", target = "character_forsworn_captain",
+                enemy = "the entry on the list" },
             -- Played over the board with the captain standing on it. He cannot speak from `intro`
             -- (that runs over the hub) or `outro` (by then he is the assassinate target, dead).
             opening = "conversation_bastion_slot_04_confront",

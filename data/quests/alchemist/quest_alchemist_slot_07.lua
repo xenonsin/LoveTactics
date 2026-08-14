@@ -47,7 +47,7 @@ return {
                 return list
             end,
             -- TICKS to outlast (the unit the clock counts and the HUD quotes), not turns.
-            win = { type = "survive", duration = 32 },
+            win = { type = "survive", duration = 32, enemy = "the counterfeit host" },
         },
         keyCount = 2,
     },

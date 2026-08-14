@@ -51,7 +51,7 @@ return {
             -- TICKS to outlast (the unit the clock counts and the HUD quotes). Outlasting, not
             -- clearing: they are not enemies, they are people being used, and the fight ends when the
             -- word does.
-            win = { type = "survive", duration = 32 },
+            win = { type = "survive", duration = 32, enemy = "the anointed escort" },
         },
         keyCount = 2,
     },

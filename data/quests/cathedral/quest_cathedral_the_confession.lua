@@ -46,6 +46,7 @@ return {
             win = {
                 type = "assassinate",
                 target = "character_priest",
+                enemy = "the confessor",
                 protect = "character_survivor",
             },
         },

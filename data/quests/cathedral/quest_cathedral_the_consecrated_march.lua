@@ -42,7 +42,7 @@ return {
             -- The zealot marches with you. Losing her does not fail the quest -- she would not accept
             -- being the objective, and the discipline is watching her fight, not escorting her.
             allies = { "character_priest" },
-            win = { type = "killAll" },
+            win = { type = "killAll", enemy = "the incursion" },
         },
         keyCount = 1,
     },

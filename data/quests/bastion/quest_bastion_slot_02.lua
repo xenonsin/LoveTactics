@@ -59,7 +59,7 @@ return {
                 return list
             end,
             opening = "conversation_bastion_slot_02_confront",
-            win = { type = "killAll" },
+            win = { type = "killAll", enemy = "the road-captain's crew" },
         },
         keyCount = 1,
     },

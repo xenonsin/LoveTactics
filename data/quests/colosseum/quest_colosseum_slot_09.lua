@@ -48,7 +48,8 @@ return {
             -- point of the slot is that the house is destroying its own evidence, and the player is
             -- the only one in the building trying to stop it.
             allies = { "character_survivor", "character_survivor" },
-            win = { type = "assassinate", target = "character_champion", protect = "character_survivor" },
+            win = { type = "assassinate", target = "character_champion",
+                enemy = "the stable's own trainers", protect = "character_survivor" },
         },
         keyCount = 2,
     },

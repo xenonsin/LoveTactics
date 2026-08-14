@@ -57,6 +57,7 @@ return {
             win = {
                 type = "assassinate",
                 target = "character_bandit_chief",
+                enemy = "the crew that took the crate",
                 protect = "character_homunculus_discard",
             },
         },

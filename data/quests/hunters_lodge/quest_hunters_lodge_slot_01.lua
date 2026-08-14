@@ -26,7 +26,7 @@ return {
                 if (ctx.day or 1) >= 3 then list[#list + 1] = "character_wolf_alpha" end
                 return list
             end,
-            win = { type = "assassinate", target = "character_stag_beast" },
+            win = { type = "assassinate", target = "character_stag_beast", enemy = "the white stag" },
         },
         keyCount = 0,
     },

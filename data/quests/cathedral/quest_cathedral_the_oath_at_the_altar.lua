@@ -40,7 +40,7 @@ return {
                 return list
             end,
             allies = { "character_rowan", "character_survivor", "character_survivor" },
-            win = { type = "killAll", protect = "character_survivor" },
+            win = { type = "killAll", enemy = "the wave at the door", protect = "character_survivor" },
         },
         keyCount = 1,
     },

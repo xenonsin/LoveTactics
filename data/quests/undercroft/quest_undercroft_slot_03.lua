@@ -48,7 +48,7 @@ return {
                 return list
             end,
             allies = { "character_survivor" },
-            win = { type = "killAll", protect = "character_survivor" },
+            win = { type = "killAll", enemy = "the collection party", protect = "character_survivor" },
         },
         keyCount = 1,
     },

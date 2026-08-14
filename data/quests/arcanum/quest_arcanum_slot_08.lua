@@ -48,7 +48,8 @@ return {
                 for i = 1, 2 + math.floor((ctx.day or 1) / 3) do list[#list + 1] = "character_zombie" end
                 return list
             end,
-            win = { type = "assassinate", target = "character_mage" },
+            win = { type = "assassinate", target = "character_mage",
+                enemy = "the magus who made the offer" },
         },
         keyCount = 2,
     },
