@@ -131,12 +131,15 @@ length, one to four tiles deep, in headlands and bays. The tiles stay square; th
   board that keeps doing it is a sizing rule falling behind what a ground can hold. It sits around 8%
   today, concentrated in the room-carve grounds that have almost no degree-1 tiles at all.
 - **A fight is never seated where a fight cannot happen.** See the fightability floor below.
-- **The map remembers ground, never what is standing on it.** Every mark the board draws — a fight, a
-  patrol and its circuit, a cache, a gate, the objective pennant, and the hovered-fight readout with
-  them — is gated on the tile being lit *right now* (`OverworldMap:lit`, the same `inVision` test that
-  reveal lit it with). Walk away and mapped country comes back as bare terrain: you know the shape of
-  where you have been, and nothing about who is in it. Routing is the one thing that still runs on
-  memory — `pathTo` crosses any `seen` tile, so you can walk home through the dark.
+- **The map remembers a place; it never remembers a body.** A landmark — a cache, a key, a gate, the
+  objective pennant, a camp, a shop, a shrine, a scene — is a fact about the country, so once it has
+  been found it stays on the map (`OverworldMap:mapped`, i.e. `seen`) and a detour can be planned from
+  across the board. A live fight — combat or elite, un-cleared — draws only while its tile is lit *right
+  now* (`OverworldMap:lit`, the same `inVision` test reveal lit it with), and so do patrols, their
+  circuits and the hovered-fight readout: where a fight is standing is the question the fog is asked
+  for, and a board that listed every one of them ahead would answer it. Put a fight down and its marker
+  joins the remembered ground — it is no longer a body, it is a thing that happened here. Routing is
+  gated by neither: `pathTo` crosses any `seen` tile, so you can walk home through the dark.
 - **The finds are guarded, never the services.** A shop behind a fight is friction; a rest behind one
   compounds exactly the wrong way.
 - **Ascent maps opt out.** There combat *is* the route.

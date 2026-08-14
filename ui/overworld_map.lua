@@ -647,35 +647,67 @@ function OverworldMap:drawFog()
     love.graphics.setColor(1, 1, 1)
 end
 
--- WHAT IS ON THE GROUND IS SEEN, NEVER REMEMBERED. A marker draws only on a tile that is lit RIGHT
--- NOW (see :lit) -- mapped-but-dark ground comes back as bare terrain, the same as it looked before
--- anything stood on it. The map is a record of where you have walked, not a list of what is out there.
+-- A PLACE IS REMEMBERED; A BODY IS ONLY EVER SEEN. Two rules, split by what the mark is a fact about:
 --
--- The loop therefore walks the vision box rather than the whole board: everything outside it fails the
--- test anyway, and a marker pass that touches nine tiles instead of a few thousand is the cheaper half
--- of the same rule. `pathTo`, which routes across mapped ground, is deliberately NOT gated this way --
--- you can still walk back through country you have already crossed, you just cannot see what is
--- standing in it.
--- The cell at (x, y) if it is lit RIGHT NOW -- discovered *and* inside the current vision disc -- or
--- nil. The single test every drawn mark asks, so what the fog hides and what the markers skip can never
--- drift apart: it is the same `inVision` reveal itself lit the tile with.
+--   * a LANDMARK -- a gate, a key, a cache, the objective's pennant, a camp, a shop, a shrine, a scene
+--     to talk through -- is a feature of the country. It does not walk off and it does not turn into
+--     something else, so once you have found it the map keeps it: mapped-but-dark ground still shows
+--     what you found standing in it. That is what makes a map worth having, and it is what lets a
+--     detour be planned from across the board instead of stumbled into twice.
+--   * a LIVE FIGHT -- combat or elite, un-cleared -- draws only on a tile that is lit RIGHT NOW (see
+--     :lit) and goes out with the light. Where it is now is not something you can know from a map, and
+--     a board that listed every fight ahead would answer the question the fog is asked for. Patrols,
+--     which actually walk, are held to the same rule in :drawPatrols.
 --
--- `seen` alone is not enough for anything but terrain. A tile you mapped an hour ago is ground you
--- remember; whatever is standing on it now is not something you can know.
-function OverworldMap:lit(x, y)
+-- A fight you have already put down stops being a body and becomes a thing that happened here, so a
+-- cleared marker is remembered with the rest of the ground.
+--
+-- `pathTo`, which routes across mapped ground, is gated by neither -- you can walk home through the
+-- dark, past what you remember and past what you cannot see.
+
+-- A live fight: the one mark that is a body rather than a place. Shared by the marker pass and by the
+-- hovered-fight readout, so what is drawn and what is named can never disagree about what a fight is.
+local function isFight(c)
+    local e = c and c.encounter
+    return e ~= nil and not c.cleared and (e.kind == "combat" or e.kind == "elite")
+end
+
+-- The cell at (x, y) if it has been discovered, or nil. The memory test: every landmark hangs off it,
+-- and so does the fog's first tier, so a mark can never surface under mist that is hiding its tile.
+function OverworldMap:mapped(x, y)
     local c = self.grid:get(x, y)
     if not (c and c.seen) then return nil end
+    return c
+end
+
+-- The cell at (x, y) if it is lit RIGHT NOW -- discovered *and* inside the current vision disc -- or
+-- nil. The test every fight asks, so what the fog veils and what a fight marker skips can never drift
+-- apart: it is the same `inVision` reveal itself lit the tile with.
+function OverworldMap:lit(x, y)
+    local c = self:mapped(x, y)
+    if not c then return nil end
     if not self.grid:inVision(self.px, self.py, x, y, self.visionRadius) then return nil end
     return c
 end
 
+-- The cell at (x, y) whose encounter marker should draw, or nil: a live fight needs the tile lit, and
+-- every other stop needs only to have been found. One function rather than a condition spelled out in
+-- the draw loop, because it is the rule above and a spec has to be able to ask it.
+function OverworldMap:markedStop(x, y)
+    local c = self:mapped(x, y)
+    if not (c and c.encounter) then return nil end
+    if isFight(c) and not self:lit(x, y) then return nil end
+    return c
+end
+
+-- Walks the whole board, as the fog pass does: the landmarks it keeps can stand anywhere the player has
+-- ever been, so there is no window to shrink this to.
 function OverworldMap:drawMarkers()
     local s = self.grid.size
-    local radius = self.visionRadius
     love.graphics.setFont(self.font)
-    for y = self.py - radius, self.py + radius do
-        for x = self.px - radius, self.px + radius do
-            local c = self:lit(x, y)
+    for y = 1, self.grid.rows do
+        for x = 1, self.grid.cols do
+            local c = self:mapped(x, y)
             if c then
                 local wx, wy = self.grid:cellToPixel(x, y)
 
@@ -714,7 +746,7 @@ function OverworldMap:drawMarkers()
                     love.graphics.setLineWidth(1)
                 end
 
-                if c.encounter then
+                if self:markedStop(x, y) then
                     local kind = c.encounter.kind
                     local r, g, b = markerColor(kind)
                     -- How this fight stands against the company, asked once and spent twice below: on
@@ -956,9 +988,7 @@ end
 -- A cleared stop answers nothing: there is no fight left on it to weigh.
 function OverworldMap:hoveredFight()
     local function fightAt(c)
-        if not (c and c.encounter and not c.cleared) then return nil end
-        local kind = c.encounter.kind
-        return (kind == "combat" or kind == "elite") and c or nil
+        return isFight(c) and c or nil
     end
 
     if InputMode.isMouse() then return fightAt(self:lit(self.hoverX, self.hoverY)) end

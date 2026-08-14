@@ -232,7 +232,7 @@ return {
         end,
     },
     {
-        name = "a mapped tile outside the vision disc is not lit (markers hang off :lit)",
+        name = "a mapped tile outside the vision disc is not lit (fights hang off :lit)",
         fn = function()
             local grid = genOpen(3)
             revealAll(grid)
@@ -250,6 +250,43 @@ return {
             here.seen = false
             assert(w:lit(grid.start.x, grid.start.y) == nil, "an undiscovered tile is never lit")
             here.seen = true
+        end,
+    },
+    {
+        name = "a landmark is remembered on dark ground; a live fight is not",
+        fn = function()
+            local grid = genOpen(3)
+            revealAll(grid)
+            local w = walker(grid)
+            w.visionRadius = 2
+            local far = farCell(grid, w)
+            assert(w:lit(far.x, far.y) == nil, "the fixture tile must be mapped but dark")
+
+            -- A place stays put and stays known: found once, it is on the map from then on. This is the
+            -- half that makes a detour plannable from across the board.
+            for _, kind in ipairs({ "treasure", "rest", "merchant", "shrine", "relic_cache",
+                "crossroads", "event", "town", "objective" }) do
+                far.encounter, far.cleared = { kind = kind }, nil
+                assert(w:markedStop(far.x, far.y) == far, kind .. " is a place, and a place is remembered")
+            end
+
+            -- A body is not. Combat and elite go out with the light.
+            for _, kind in ipairs({ "combat", "elite" }) do
+                far.encounter, far.cleared = { kind = kind }, nil
+                assert(w:markedStop(far.x, far.y) == nil,
+                    kind .. " on dark ground would hand over the very thing the fog is keeping")
+
+                -- Until it is put down: then it is no longer a body, it is a thing that happened here.
+                far.cleared = true
+                assert(w:markedStop(far.x, far.y) == far, "a cleared " .. kind .. " is remembered ground")
+            end
+
+            -- Undiscovered ground remembers nothing at all -- the landmark rule reaches back to `seen`,
+            -- never past it, so nothing can surface under mist that is hiding its tile.
+            far.encounter, far.cleared, far.seen = { kind = "treasure" }, nil, false
+            assert(w:markedStop(far.x, far.y) == nil, "a stop on unmapped ground has not been found yet")
+            assert(w:mapped(far.x, far.y) == nil, "unmapped ground is not remembered")
+            far.seen = true
         end,
     },
     {
