@@ -503,6 +503,7 @@ local function finishBattle(result)
     --
     -- Awarding only; the levels themselves resolve on the overworld side, which is where a level-up has
     -- somewhere to be announced. Experience.resolve is idempotent, so nothing is lost by the gap.
+    local benchShare = 0
     if result == "win" and battle.player and battle.combat and battle.combat.xpByChar then
         local fielded = {}
         for _, u in ipairs(battle.combat.units or {}) do
@@ -510,7 +511,7 @@ local function finishBattle(result)
                 fielded[#fielded + 1] = u.char
             end
         end
-        Experience.payBench(battle.player.roster, fielded, battle.combat.xpByChar)
+        benchShare = Experience.payBench(battle.player.roster, fielded, battle.combat.xpByChar)
     end
 
     -- Wrap each state callback so pressing its button clears the overlay before handing control on.
@@ -539,6 +540,20 @@ local function finishBattle(result)
         -- rolls the party back to its pre-fight snapshot anyway, so naming a number there would be
         -- naming one about to be undone.
         technique = result == "win" and battle.combat and battle.combat.techniqueByActor or nil,
+        -- What each body on the board banked toward its next level, as the bar it fills. Read AFTER the
+        -- bench was paid above, which touches nobody on this list: these rows are the fielded earners
+        -- (`combat.xpByChar`), and the bench's share is reported as its own line rather than as four
+        -- more bars for bodies the player never watched swing.
+        --
+        -- Wins only, for the reason the technique note gives -- "Try Again" restores the party from its
+        -- pre-fight snapshot, so a bar drawn on a defeat would be filling with experience about to be
+        -- taken back. And a campaign player only, the same gate the bench share takes: a draft team is
+        -- drafted at the level it fights at and nothing resolves its experience into anything, so a bar
+        -- there would be filling toward a level that never arrives.
+        experience = result == "win" and battle.player and battle.combat
+            and Experience.report(battle.combat.xpByChar, battle.xpStep) or nil,
+        xpStep = battle.xpStep,
+        benchShare = benchShare,
         encounter = battle.encounter,
         actions = actions,
         -- What the overworld run was carrying, named on a defeat so the cost of the loss is on the panel
@@ -4534,6 +4549,9 @@ function battle.enter(self, opts)
     -- (finishBattle -> Experience.payBench). Nil for a mock battle, a draft and a netplay duel, all of
     -- which have no roster behind the four on the board and nobody to pay.
     battle.player = opts.player
+    -- The curve the victory panel's experience bars fill on. The descent runs its own ladder and names
+    -- its own step (models/experience.lua); nil is the campaign's, which is every other caller.
+    battle.xpStep = opts.xpStep
     -- Which house's stock this run's fights salvage in: the quest's SPONSOR, the same resolution the
     -- map's caches use (states/game.lua). Nil on an unsponsored leg -- the prologue -- where a fight
     -- pays craft stock and nothing else.

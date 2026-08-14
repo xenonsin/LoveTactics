@@ -1029,6 +1029,10 @@ function game:openEncounter(cell)
             -- and where; the rest wait on the bench and can be rotated in (docs/deployment.md).
             party = game.player and game.player.roster or {},
             player = game.player, -- so the phase can remember who was fielded (Player.noteDeployed)
+            -- Which ladder the victory panel's experience bars fill on -- the same branch the resolve
+            -- above takes, so the bar a player watches fill and the level it resolves into cannot
+            -- disagree about the curve.
+            xpStep = game.descent and Experience.DESCENT_STEP or nil,
             -- The supper bought at the Cafe before this quest (models/meal.lua): one platter, worn by
             -- the whole company at every fight of the run, and cleared when the run resolves. Read live
             -- off the player rather than snapshotted at launch, so a resumed run picks it up too.

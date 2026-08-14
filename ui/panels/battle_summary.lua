@@ -17,12 +17,22 @@
 --       technique = {                                                        -- banked this fight; wins only
 --           { name = "Rowan", houses = { { key = "ninja", amount = 14 } } }, -- grouped by whose hand
 --       },
+--       experience = Experience.report(combat.xpByChar, step),               -- one row per body; wins only
+--       xpStep = nil,                                                        -- the curve the bars fill on
+--       benchShare = 12,                                                     -- what everyone who sat out got
 --       encounter = battle.encounter,                                        -- { name, ... } (optional)
 --       actions = {                                                          -- 1 button (win) or 1-2 (loss)
 --           { label = "Try Again",     onSelect = function() ... end },      -- fired when chosen; each
 --           { label = "Return to Hub", onSelect = function() ... end },      -- callback dismisses the panel
 --       },
 --   })
+--
+-- Between the gold and the loot stands what the fight built rather than what it paid: a block per body,
+-- headed by the experience bar that body just filled (models/experience.lua) and followed by the
+-- technique its actions banked. One block rather than two sections, because both are answers about the
+-- same body and two sections would print every name on the panel twice. This is where a level-up is
+-- SEEN -- the bar rolls over and the level turns gold as it goes; the overworld's toast, a beat later,
+-- only confirms what the panel already showed.
 --
 -- Loot and salvage share one card grid, items first, because they are one answer to one question --
 -- what came off this fight. They differ in where they go afterwards (a grid slot vs the Forge's stock),
@@ -38,8 +48,10 @@
 local CloseButton = require("ui.close_button")
 local ItemTooltip = require("ui.item_tooltip")
 local MaterialTooltip = require("ui.material_tooltip")
+local ProgressBar = require("ui.progress_bar")
 local InputMode = require("input_mode")
 local Discipline = require("models.discipline")
+local Experience = require("models.experience")
 local Item = require("models.item")
 local Material = require("models.material")
 local Sprite = require("models.sprite")
@@ -61,12 +73,21 @@ local REVIEW_H = 30   -- the slim "Review Combat Log" button under the action ro
 local TECH_ROW_H = 22    -- one "Ninja  +14" technique line
 local TECH_HEAD_H = 21   -- the name of the body those lines were earned by, above them
 local TECH_GROUP_GAP = 8 -- breathing room between one body's block and the next
--- How many lines of that (names AND their rows together) the panel will show. Keys are classes as well
--- as disciplines now, so a fight in which the company ranged across its whole kit can bank a dozen;
--- the panel grows its box per line and would otherwise run off the screen on a battle that was merely
--- varied. Budgeted as one figure rather than a per-body cap because it is the panel's HEIGHT that is
--- scarce, and a fight where one body did everything spends it differently from one where four did.
-local MAX_TECH_LINES = 9
+-- The head of a body's block once it has an experience bar: the name, the level, the bar and what this
+-- fight put into it, all on one line -- so the bar costs the block five pixels over the bare name it
+-- replaces rather than a row of its own.
+local XP_ROW_H = 26
+local XP_BAR_H = 10
+local XP_LEVEL_W = 52    -- the "Lv 12" column, right-aligned into the panel's midline
+local XP_GAIN_W = 54     -- the "+38" the bar just took, left-aligned out of it
+local XP_HEAD_H = 22     -- the "Experience earned" caption over the whole section
+local XP_MARGIN = 34     -- clearance from the box edge on either side of the row
+-- How much HEIGHT the per-body section may spend, bars and technique rows together. It is the panel's
+-- height that is scarce -- a fight in which the company ranged across its whole kit banks a dozen
+-- technique lines, and the box grows per line until it runs off the screen -- so the budget is stated
+-- in the unit that is actually short. Spent heads first and rows after (see the trim below): the bar
+-- is the headline, and a talkative first body must not push the fourth body's bar off the panel.
+local MAX_SECTION_H = 216
 
 -- Pacing (seconds), timed off `elapsed`. The banner lands, then gold counts up, then loot cards rise.
 local BANNER_IN  = 0.50   -- title fades + scales in over this
@@ -75,10 +96,17 @@ local GOLD_COUNT = 0.60   -- ...and runs for this long
 local CARD_GAP_T = 0.10   -- pause between the gold finishing and the first card
 local REVEAL_GAP = 0.22   -- stagger between successive loot cards
 local CARD_RISE  = 0.40   -- one card's rise from source to slot
+local XP_FILL_T  = 0.85   -- how long the experience bars take to run out to what the fight paid
 local GRAVITY    = 420     -- px/s^2 pulling the victory-burst particles back down
 
 local GOLD  = { 0.96, 0.80, 0.34 }
 local SPARK = { 1.00, 0.95, 0.78 }
+-- The experience bar is the STEEL family (ui/colors.lua's "ours"), deliberately not the technique
+-- amber sitting a row under it: two "+N" figures stacked in one colour is one figure the player has to
+-- read twice to tell apart. Colors.PARTY fills the bar, and the lighter steel is the figure that just
+-- landed in it.
+local XP_FILL = Colors.PARTY
+local XP_TINT = { 0.62, 0.76, 0.98 }
 
 local function easeOut(t) return 1 - (1 - t) * (1 - t) end
 local function clamp01(t) return t < 0 and 0 or (t > 1 and 1 or t) end
@@ -88,12 +116,18 @@ local function inRect(r, x, y)
     return x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
 end
 
--- The height a technique block occupies: each body's name line, its house rows, and the gaps between.
-local function techHeight(groups)
+-- The head of one body's block: the experience row when the fight paid it any, else the bare name the
+-- technique rows used to hang off on their own.
+local function headHeight(block)
+    return block.xp and XP_ROW_H or TECH_HEAD_H
+end
+
+-- The height the per-body section occupies: each body's head, its house rows, and the gaps between.
+local function blockHeight(blocks)
     local h = 0
-    for i, g in ipairs(groups) do
+    for i, b in ipairs(blocks) do
         if i > 1 then h = h + TECH_GROUP_GAP end
-        h = h + TECH_HEAD_H + #g.rows * TECH_ROW_H
+        h = h + headHeight(b) + #b.rows * TECH_ROW_H
     end
     return h
 end
@@ -180,7 +214,26 @@ function BattleSummary.new(opts)
     -- the field finally reports something here; it used to bank nothing and show nothing. A discipline
     -- name is used when the key names one, and title-casing covers the seven classes -- "plague_knight"
     -- is "Plague Knight", which title-casing alone would render "Plague_knight".
-    self.technique = nil
+    -- ONE BLOCK PER BODY, in the order the fight paid them: the experience it banked, and under that
+    -- the technique it banked. Merged rather than stacked as two sections because they are two answers
+    -- about the SAME body -- two sections would print every name on the panel twice, and the second
+    -- copy would tell the player nothing they had not read six lines above.
+    --
+    -- The step is the ladder these bars fill on. The descent runs its own (models/experience.lua), so
+    -- it is passed rather than assumed; nil is the campaign's.
+    self.xpStep = opts.xpStep
+    -- What everyone who did not take the field was paid for the fight (Experience.BENCH_SHARE, awarded
+    -- in states/battle.lua). One line rather than a bar apiece: the bench did not earn it action by
+    -- action, and four more bars for bodies the player did not watch would bury the four they did.
+    self.benchShare = self.win and (opts.benchShare or 0) > 0 and opts.benchShare or nil
+    local blocks, byChar = {}, {}
+    for _, row in ipairs(opts.experience or {}) do
+        local block = { name = row.name, xp = row, rows = {} }
+        blocks[#blocks + 1] = block
+        if row.char then byChar[row.char] = block end
+    end
+
+    local techOnly = {}
     for _, actor in ipairs(opts.technique or {}) do
         local rows, total = {}, 0
         for _, house in ipairs(actor.houses or {}) do
@@ -193,26 +246,48 @@ function BattleSummary.new(opts)
         end
         if #rows > 0 then
             table.sort(rows, byAmount)
-            self.technique = self.technique or {}
-            self.technique[#self.technique + 1] = { name = actor.name or "?", rows = rows, amount = total }
+            -- Keyed by the CHARACTER, not the name: two bodies can share a name, and the fight already
+            -- knows which of them swung (models/combat.lua stamps `char` on every actor it tallies).
+            local block = actor.char and byChar[actor.char]
+            if block then
+                block.rows = rows
+            else
+                techOnly[#techOnly + 1] = { name = actor.name or "?", rows = rows, amount = total }
+            end
         end
     end
-    if self.technique then
-        table.sort(self.technique, byAmount)
-        -- A fight that ranged widely can bank more lines than the panel has height for. Spend the
-        -- budget top-down: a body's rows are trimmed before the body below it is dropped, and a body
-        -- that cannot fit its name AND at least one row is dropped whole rather than left as a bare
-        -- name. Either way the tail is the small change -- the committed bodies are already at the top.
-        local budget, kept = MAX_TECH_LINES, {}
-        for _, group in ipairs(self.technique) do
-            if budget < 2 then break end
-            local room = math.min(#group.rows, budget - 1)
-            while #group.rows > room do table.remove(group.rows) end
-            budget = budget - (1 + #group.rows)
-            kept[#kept + 1] = group
+    -- A body that banked technique but no experience is only reachable where the panel was handed no
+    -- experience at all (a mock fight, a draft), so these sort by their own total and follow the bars.
+    table.sort(techOnly, byAmount)
+    for _, block in ipairs(techOnly) do blocks[#blocks + 1] = block end
+
+    -- A fight that ranged widely banks more than the panel has height for. Reserve every body's HEAD
+    -- first and spend what is left on technique rows, top-down: the bar is the headline -- it is the
+    -- whole of what that body took out of the fight -- so a talkative first block must not push the
+    -- fourth body's bar off the panel. A technique-only block has to fit its name AND a row to be
+    -- worth keeping; a bare name says nothing.
+    local budget, kept = MAX_SECTION_H, {}
+    for i, block in ipairs(blocks) do
+        local head = (i > 1 and TECH_GROUP_GAP or 0) + headHeight(block)
+        if budget < head + (block.xp and 0 or TECH_ROW_H) then break end
+        budget = budget - head
+        kept[#kept + 1] = block
+    end
+    for _, block in ipairs(kept) do
+        local room = math.max(0, math.floor(budget / TECH_ROW_H))
+        while #block.rows > room do table.remove(block.rows) end
+        budget = budget - #block.rows * TECH_ROW_H
+    end
+    self.blocks = nil
+    for _, block in ipairs(kept) do
+        if block.xp or #block.rows > 0 then
+            self.blocks = self.blocks or {}
+            self.blocks[#self.blocks + 1] = block
         end
-        self.technique = kept
-        if #self.technique == 0 then self.technique = nil end
+    end
+    self.hasXp = false
+    for _, block in ipairs(self.blocks or {}) do
+        if block.xp then self.hasXp = true; break end
     end
 
     self.bannerFont = Theme.display(44)
@@ -223,10 +298,13 @@ function BattleSummary.new(opts)
     self.titleFont = Theme.display(30) -- the card icon-letter fallback font
     self.techFont = Theme.body(15)
     self.techNameFont = Theme.body(16) -- the body a block of technique rows was earned by
+    self.capFont = Theme.body(14)      -- the section caption, and the bench's line under it
 
     local hasGold = self.gold > 0
     local hasCards = self.n > 0
-    local techH = self.technique and techHeight(self.technique) or 0
+    local techH = self.blocks and blockHeight(self.blocks) or 0
+    if self.hasXp then techH = techH + XP_HEAD_H end
+    if self.benchShare then techH = techH + TECH_ROW_H end
 
     -- Box width tracks the card row; a spoils-less panel (a defeat) stays compact.
     local cols = math.min(math.max(1, self.n), MAX_PER_ROW)
@@ -317,9 +395,15 @@ function BattleSummary.new(opts)
 
     -- When the first card starts, and when everything has finished revealing.
     self.cardsStart = hasGold and (GOLD_START + GOLD_COUNT + CARD_GAP_T) or BANNER_IN
+    -- The bars run out from where the fight found them at the same moment the first card rises. Not
+    -- after it: they sit in their own band of the panel, nothing about one reveal reads as the cause of
+    -- the other, and staging them end to end would make the player wait through two animations to
+    -- reach the Continue button they can already see.
+    self.xpStart = self.cardsStart
     local reveal = BANNER_IN
     if hasGold then reveal = math.max(reveal, GOLD_START + GOLD_COUNT) end
     if hasCards then reveal = self.cardsStart + (self.n - 1) * REVEAL_GAP + CARD_RISE end
+    if self.hasXp then reveal = math.max(reveal, self.xpStart + XP_FILL_T) end
     self.fullyRevealedAt = reveal
     return self
 end
@@ -402,6 +486,15 @@ function BattleSummary:goldShown()
     if self.gold <= 0 then return 0 end
     local t = clamp01((self.elapsed - GOLD_START) / GOLD_COUNT)
     return math.floor(self.gold * easeOut(t) + 0.5)
+end
+
+-- Where a body's bar has run to right now: the experience it walked into the fight with, easing out to
+-- what it walked out with. Deliberately ONE fractional number, because the level, the fill and the
+-- figure beside it are all read off it -- so nothing on the row can disagree with the bar next to it,
+-- and a body that crossed a level while the bar was running crosses it in the reading too.
+function BattleSummary:xpShown(row)
+    local t = clamp01((self.elapsed - self.xpStart) / XP_FILL_T)
+    return row.from + (row.to - row.from) * easeOut(t)
 end
 
 -- Draw state for card `i`: nil until it starts, else { cx, cy, alpha, scale }. Mirrors loot_reveal.
@@ -576,15 +669,65 @@ function BattleSummary:draw()
     -- the floater that showed each of these landing during the fight. The name is the brighter ink and
     -- the houses sit a shade back from it, so the grouping reads as a heading over its rows without
     -- needing a rule to say so.
-    if self.technique then
+    if self.blocks then
         local ty = by + self.techRelY
         local half = self.boxW / 2
-        for i, group in ipairs(self.technique) do
+        -- The caption names the mechanic once, so the "+38" on the rows below says what it is OF -- the
+        -- technique amount a line under it is a different currency wearing the same plus sign, and the
+        -- house name is the only thing labelling that one.
+        if self.hasXp then
+            love.graphics.setFont(self.capFont)
+            Theme.set(Theme.muted, alpha)
+            love.graphics.printf("Experience earned", bx, ty, self.boxW, "center")
+            ty = ty + XP_HEAD_H
+        end
+        for i, group in ipairs(self.blocks) do
             if i > 1 then ty = ty + TECH_GROUP_GAP end
-            love.graphics.setFont(self.techNameFont)
-            Theme.set(Theme.ink, alpha)
-            love.graphics.printf(group.name, bx, ty, self.boxW, "center")
-            ty = ty + TECH_HEAD_H
+            if group.xp then
+                -- Everything hangs off the panel's midline, the same one the technique rows below use:
+                -- who and what level on the left of it, the bar and what the fight put in it on the
+                -- right. The level is read off the RUNNING number rather than off the row's endpoints,
+                -- so a body that levels does it as the bar wraps -- and it turns gold when it has,
+                -- which is the whole announcement (the overworld's toast confirms it a beat later).
+                local row = group.xp
+                local xpAt = self:xpShown(row)
+                local level = Experience.levelFor(xpAt, self.xpStep)
+                local into, span = Experience.intoLevel(xpAt, self.xpStep)
+                local barW = half - 10 - 8 - XP_GAIN_W - XP_MARGIN
+                local nameW = half - 10 - XP_LEVEL_W - 6 - XP_MARGIN
+
+                love.graphics.setFont(self.techNameFont)
+                Theme.set(Theme.ink, alpha)
+                love.graphics.printf(Theme.ellipsize(group.name, self.techNameFont, nameW),
+                    bx + XP_MARGIN, ty + 2, nameW, "right")
+
+                love.graphics.setFont(self.techFont)
+                if level > row.fromLevel then
+                    love.graphics.setColor(GOLD[1], GOLD[2], GOLD[3], alpha)
+                else
+                    Theme.set(Theme.muted, alpha)
+                end
+                love.graphics.printf("Lv " .. level, bx + half - 10 - XP_LEVEL_W, ty + 3, XP_LEVEL_W, "right")
+
+                -- The slice that just landed is lit brighter than what was already banked (the bar's own
+                -- `gain`), and a body that has just rolled over shows its whole new level as that slice.
+                local base = Experience.totalFor(level, self.xpStep)
+                local settled = math.max(0, math.min(into or 0, row.from - base))
+                ProgressBar.draw(bx + half + 10, ty + 7, barW, XP_BAR_H, into or 0, span or 0, {
+                    gain = (into or 0) - settled, color = XP_FILL, alpha = alpha,
+                    full = into == nil, -- at the level cap: filled flat, never frozen a hair short
+                })
+
+                love.graphics.setColor(XP_TINT[1], XP_TINT[2], XP_TINT[3], alpha)
+                love.graphics.printf("+" .. math.floor(xpAt - row.from + 0.5),
+                    bx + half + 10 + barW + 8, ty + 3, XP_GAIN_W, "left")
+                ty = ty + XP_ROW_H
+            else
+                love.graphics.setFont(self.techNameFont)
+                Theme.set(Theme.ink, alpha)
+                love.graphics.printf(group.name, bx, ty, self.boxW, "center")
+                ty = ty + TECH_HEAD_H
+            end
             love.graphics.setFont(self.techFont)
             for _, row in ipairs(group.rows) do
                 love.graphics.setColor(0.60, 0.64, 0.74, alpha)
@@ -593,6 +736,15 @@ function BattleSummary:draw()
                 love.graphics.printf("+" .. row.amount, bx + half + 10, ty, half - 10, "left")
                 ty = ty + TECH_ROW_H
             end
+        end
+        -- What the company that did NOT stand on the board was paid. Without it the panel reads as
+        -- though a benched member earned nothing, which is the reading that makes a player field the
+        -- same four all campaign -- the exact habit the rotating field was built to break.
+        if self.benchShare then
+            love.graphics.setFont(self.capFont)
+            Theme.set(Theme.muted, alpha)
+            love.graphics.printf("The bench earns +" .. self.benchShare .. " each",
+                bx, ty + 4, self.boxW, "center")
         end
     end
 

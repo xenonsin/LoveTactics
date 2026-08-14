@@ -204,6 +204,31 @@ return {
         assert(c.xp == 0)
     end },
 
+    { name = "the fight's report says where each bar starts, ends and crosses a level", fn = function()
+        -- The victory panel's bars fill from these rows (ui/panels/battle_summary.lua). Everything a
+        -- bar needs has to come out of the report, because the panel has no other view of the fight.
+        local rowan = { name = "Rowan", xp = Experience.totalFor(4) + 9 }
+        local amana = { name = "Amana", xp = 40 }
+        local rows = Experience.report({ [rowan] = 5, [amana] = 40 })
+
+        assert(#rows == 2, "one row per body that banked something, got " .. #rows)
+        assert(rows[1].char == amana, "the body that took the most heads the list")
+        assert(rows[1].from == 0 and rows[1].to == 40, "a bar fills from where the fight found it")
+        assert(rows[2].from == rowan.xp - 5,
+            "the start is the total MINUS the fight, since combat already banked it")
+        assert(rows[2].fromLevel == 4 and rows[2].toLevel == 4,
+            "a body that gained without crossing stays on its level")
+
+        -- A crossing is the whole reason the bar animates rather than jumping, so the report has to
+        -- report it rather than leaving the panel to compare two totals it was not given.
+        local leveller = { name = "Clem", xp = Experience.totalFor(5) }
+        local crossed = Experience.report({ [leveller] = 5 })[1]
+        assert(crossed.fromLevel == 4 and crossed.toLevel == 5, "the row names both ends of the climb")
+
+        assert(#Experience.report(nil) == 0, "a fight that paid nobody reports nothing")
+        assert(#Experience.report({ [rowan] = 0 }) == 0, "and a body that banked nothing is not a row")
+    end },
+
     { name = "a recruit joins on the company's median, so it is fieldable but not a free ride", fn = function()
         local roster = { { xp = 0 }, { xp = 600 }, { xp = 1200 } }
         assert(Experience.medianOf(roster) == 600, "the middle body, not the mean and not the best")

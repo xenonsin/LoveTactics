@@ -118,6 +118,14 @@ risk is.
 cannot take, and under a deadline they will never get the spare days to fix it; matching the best member
 is a free ride that makes a late recruit strictly better than an early one.
 
+### Where a player reads it
+
+**The victory panel** (`ui/panels/battle_summary.lua`) draws a bar per body that fought — the level it
+walked in on, filling with what the fight paid it, rolling over and turning gold on a level-up.
+`Experience.report` builds those rows off `combat.xpByChar`. The bench's share is named there too, as a
+line under the bars: a panel that showed four bodies growing and said nothing about the other four
+would teach exactly the habit the rotating field exists to break.
+
 ## What the world does
 
 **The world hardens on the calendar, not on the company.** `Calendar.dangerLevel` ramps 1 → 22 across

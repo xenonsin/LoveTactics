@@ -169,6 +169,42 @@ function Experience.payBench(roster, fielded, earned)
     return share
 end
 
+-- WHAT THE FIGHT PAID, per body, as the rows a victory readout draws its bars from. `earned` is
+-- `combat.xpByChar` -- what each character banked in the fight just finished -- and `char.xp` is
+-- already the total AFTER those awards (Experience.credit awards as it tallies), so the fight's
+-- starting point is the difference. Both ends are reported because a bar has to fill from somewhere.
+--
+-- Here rather than in the panel, and here rather than in states/battle.lua, for two reasons: the
+-- arithmetic is the curve's (a level is a pure function of the total, and only this file knows the
+-- function), and a spec can read this while it cannot construct a panel -- ui modules pull fonts at
+-- load and the headless runner has no love.graphics.
+--
+-- Sorted by what each body took, biggest first, ties broken by name: `pairs` over a character-keyed
+-- table would otherwise reshuffle the same four bodies between two plays of the same fight.
+function Experience.report(earned, step)
+    local rows = {}
+    for char, gain in pairs(earned or {}) do
+        if char and (gain or 0) > 0 then
+            local to = char.xp or 0
+            local from = math.max(0, to - gain)
+            rows[#rows + 1] = {
+                char = char,
+                name = char.name or char.id or "?",
+                gain = gain,
+                from = from,
+                to = to,
+                fromLevel = Experience.levelFor(from, step),
+                toLevel = Experience.levelFor(to, step),
+            }
+        end
+    end
+    table.sort(rows, function(a, b)
+        if a.gain ~= b.gain then return a.gain > b.gain end
+        return a.name < b.name
+    end)
+    return rows
+end
+
 -- The experience a body joining the company mid-campaign arrives with: the MEDIAN of the company it is
 -- joining. Player.recruit's rule, kept here beside the curve it is expressed in.
 --
