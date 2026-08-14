@@ -40,7 +40,14 @@ does not say otherwise it is a **fixed block**, so every board offers the same s
    those across the full board width, which lit the whole bottom of the board and made the zone
    indistinguishable from "your half";
 3. tiles the board itself seated somebody on — an escorted survivor, an enemy authored deep — are
-   excluded, so the phase never offers a cell that is already taken.
+   excluded, so the phase never offers a cell that is already taken. A body is excluded by its whole
+   **footprint**: an ogre is a 2×2 block, and marking only the corner it is anchored on left the other
+   three lit for the player to stand a knight inside.
+
+`Combat.deployUnit` refuses such a tile as well, returning `nil` for ground that is off the board,
+unwalkable, or somebody else's — judged over the footprint of the body being stood up. Every caller
+already reads that `nil` as *there is no room there*, so the rule holds for the phase, for its
+auto-fill, and for the walk-off path that skips the phase entirely.
 
 Bottom is the party's edge everywhere in `models/arena.lua` — enemies muster on the low rows, the
 draft's marching grid faces them — so a board that wants the party entering from elsewhere authors its

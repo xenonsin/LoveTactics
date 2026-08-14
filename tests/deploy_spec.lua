@@ -7,7 +7,9 @@
 --   * every board offers a zone, it is standable, and it is WIDER than the field (a placement you have
 --     no choice in is not a decision) -- by default the fixed bottom-centre block, on every board;
 --   * an authored `deployZone` on a curated map wins outright;
---   * the zone never offers a tile the board itself already seated somebody on;
+--   * the zone never offers a tile the board itself already seated somebody on -- a wide body by its
+--     whole footprint and not merely the corner it is anchored on, and Combat.deployUnit refuses such a
+--     tile anyway, so a phase that somehow offers one still cannot stack two bodies on it;
 --   * Combat.new's `deferOpen` builds the world but fires no opener until Combat.openBattle, and doing
 --     it the ordinary way is unchanged;
 --   * a unit placed by Combat.deployUnit is a battle-start body (unclamped initiative), and can be
@@ -100,6 +102,60 @@ return {
             for _, t in ipairs(arena.deployZone) do
                 assert(not taken[key(t)], "the zone excludes a tile somebody is already on: " .. key(t))
             end
+        end,
+    },
+    {
+        name = "a wide body takes the zone off every cell it covers, not just its anchor",
+        fn = function()
+            -- An ogre is a 2x2 block (data/characters/character_ogre.lua). One authored into the party's
+            -- own near rows has to take all four of its cells out of the zone: marking only the corner
+            -- it is anchored on left the other three lit, which is how a knight ended up standing inside
+            -- one at the opening bell.
+            local id = "test_wide_body_zone"
+            local tiles = {}
+            for y = 1, 8 do
+                tiles[y] = {}
+                for x = 1, 8 do tiles[y][x] = "ground" end
+            end
+            Arena.defs[id] = {
+                biome = "forest", fixed = true, tiles = tiles,
+                partySpawns = { { x = 6, y = 8 }, { x = 7, y = 8 } },
+                enemySpawns = { { x = 3, y = 7 } },
+            }
+            local ok, arena = pcall(build,
+                { layout = id, composition = function() return { "character_ogre" } end })
+            Arena.defs[id] = nil
+            assert(ok, "the board builds: " .. tostring(arena))
+
+            local foe = arena.enemies[1]
+            assert(foe and foe.x == 3 and foe.y == 7, "the ogre stands where the board seated it")
+            local offered = {}
+            for _, t in ipairs(arena.deployZone) do offered[key(t)] = true end
+            for _, c in ipairs({ { x = 3, y = 7 }, { x = 4, y = 7 }, { x = 3, y = 8 }, { x = 4, y = 8 } }) do
+                assert(not offered[key(c)], "the zone offers a cell the ogre's body covers: " .. key(c))
+            end
+            assert(#arena.deployZone > 0, "and there is still ground left to stand the company on")
+        end,
+    },
+    {
+        name = "nobody is stood inside a body that is already on the board",
+        fn = function()
+            local c = Combat.new(Fixture.new(6, 6), {},
+                { Fixture.unit("character_ogre", 3, 3) }, { deferOpen = true })
+            assert(c.units[1].w == 2 and c.units[1].h == 2, "the ogre covers a 2x2 block")
+            for _, cell in ipairs({ { 3, 3 }, { 4, 3 }, { 3, 4 }, { 4, 4 } }) do
+                assert(Combat.deployUnit(c, Character.instantiate("character_knight"), cell[1], cell[2]) == nil,
+                    string.format("(%d,%d) is under the ogre and refuses a body", cell[1], cell[2]))
+            end
+            assert(#c.units == 1, "and no refused body was left on the board")
+
+            assert(Combat.deployUnit(c, Character.instantiate("character_knight"), 2, 6),
+                "clear ground still takes one")
+            assert(Combat.deployUnit(c, Character.instantiate("character_mage"), 2, 6) == nil,
+                "the tile it is standing on refuses the next")
+            assert(Combat.deployUnit(c, Character.instantiate("character_mage"), 7, 6) == nil,
+                "as does ground off the board")
+            assert(#c.units == 2, "one ogre, one knight")
         end,
     },
     {

@@ -125,9 +125,12 @@ end
 -- Placement
 -- ---------------------------------------------------------------------------
 
+-- The placed member whose BODY covers (x, y) -- any cell of it, not just the anchor it was dropped on,
+-- so a wide body is picked back up (and swapped with) from wherever the player clicked it.
 function DeployPhase:deployedAt(x, y)
     for _, p in ipairs(self.placed) do
-        if p.x == x and p.y == y then return p end
+        local w, h = (p.unit and p.unit.w) or 1, (p.unit and p.unit.h) or 1
+        if x >= p.x and x < p.x + w and y >= p.y and y < p.y + h then return p end
     end
     return nil
 end
@@ -168,6 +171,18 @@ function DeployPhase:deployAt(char, x, y)
     local mine = self:deployedOf(char)
     if not mine and not occupant and #self.placed >= Combat.MAX_FIELD then
         self.message = "Only " .. Combat.MAX_FIELD .. " take the field. The rest wait on the bench."
+        return false
+    end
+
+    -- Is the ground free for THIS body? Asked before anyone is lifted, so a refusal leaves the line
+    -- exactly as it stood rather than taking the mover off the board on its way to a tile it cannot
+    -- have. The two bodies this drag lifts do not count against it: the mover is leaving its own cells,
+    -- and a swap's occupant is leaving theirs. Anybody else standing there -- an enemy whose 2x2 body
+    -- reaches into the zone -- does.
+    local fp = char.footprint or { w = 1, h = 1 }
+    if not Combat.footprintFree(self.combat, fp.w or 1, fp.h or 1, x, y,
+            mine and mine.unit, occupant and occupant.unit) then
+        self.message = "There is no room there."
         return false
     end
 

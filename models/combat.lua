@@ -242,7 +242,11 @@ end
 -- unit tests tiles it already stands on as free for itself). This is the "footing" predicate shared
 -- by placement finders and the forced-movement / stop checks; a flier's PATH crossing non-walkable
 -- ground is moveGraph's business, but where it finally stops still answers to this.
-function Combat.footprintFree(combat, w, h, ax, ay, ignoreUnit)
+--
+-- `alsoIgnore` is a SECOND body to treat as already gone, for the one move that lifts two at once: the
+-- deployment phase's swap trades a placed member with whoever is standing where they were dropped, and
+-- has to judge the ground as it will be once both are off it.
+function Combat.footprintFree(combat, w, h, ax, ay, ignoreUnit, alsoIgnore)
     local arena = combat.arena
     for _, c in ipairs(Combat.cellsAt(w, h, ax, ay)) do
         local row = arena and arena.tiles and arena.tiles[c.y]
@@ -250,7 +254,7 @@ function Combat.footprintFree(combat, w, h, ax, ay, ignoreUnit)
         if not (cell and cell.walkable) then return false end
         if Combat.objectBlocksAt(combat, c.x, c.y) then return false end
         local occ = Combat.unitAt(combat, c.x, c.y)
-        if occ and occ ~= ignoreUnit then return false end
+        if occ and occ ~= ignoreUnit and occ ~= alsoIgnore then return false end
     end
     return true
 end
@@ -1087,8 +1091,15 @@ end
 -- Deliberately NOT Combat.addUnit: that one is for a body arriving into a fight already under way (a
 -- summon, a reinforcement, a rotation), and it clamps initiative and skips the battle opener for exactly
 -- that reason. A unit placed at the opening bell is not arriving; it is starting.
+-- Refuses, with nil, ground this body cannot stand on -- off the board, unwalkable, or somebody else's.
+-- Judged over the WHOLE footprint (Combat.footprintFree), which is the part that was missing: an enemy
+-- authored deep in the party's half is a 2x2 ogre often enough, and only its anchor cell was ever
+-- treated as taken, so the phase happily stood a member inside the other three. Answered here rather
+-- than in each caller because every one of them already reads a nil as "there is no room there".
 function Combat.deployUnit(combat, char, x, y, opts)
     opts = opts or {}
+    local fp = (char and char.footprint) or { w = 1, h = 1 }
+    if not Combat.footprintFree(combat, fp.w or 1, fp.h or 1, x, y) then return nil end
     return buildOpeningUnit(combat, {
         char = char, x = x, y = y,
         control = opts.control,
@@ -6146,7 +6157,15 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     end
     -- A berserk window (Fury's `preventsDeath` status) holds the bearer up at 1 HP through a blow
     -- that would fell it -- but never a `fragile` shape (a decoy/doppelganger is unmade by any hit).
-    if hp.current <= 0 and not target.fragile and Status.preventsDeath(target) then
+    --
+    -- `unkillable` is the same hold granted by the FIGHT rather than by a status: a body walked on as a
+    -- scripted force (states/battle.lua's overrule) cannot be put down by anyone. It is stamped on the
+    -- unit as it arrives and never on a blueprint, so the same character is mortal in the fight that is
+    -- actually about killing her. It exists for the one beat whose ending is the party's defeat, where a
+    -- party that fought well enough to fell the thing would break the scene rather than win anything --
+    -- and it holds at 1 rather than voiding the blow so the fight still reads as a fight: everything
+    -- they land on her is real, and none of it is ever enough.
+    if hp.current <= 0 and not target.fragile and (target.unkillable or Status.preventsDeath(target)) then
         hp.current = 1
         Combat.logEvent(combat, "action",
             string.format("%s refuses to fall!", unitName(target)), target)

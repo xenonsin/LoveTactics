@@ -914,6 +914,16 @@ local function hydrateTiles(layout)
     return tiles
 end
 
+-- The w×h block a blueprint's body covers, read from the id alone -- no instance needed. Both places
+-- that care (seating a body on the board, and marking the ground it takes up) go through the one
+-- normalizer, so they can never disagree about how big an ogre is.
+local function footprintOf(id)
+    local Character = require("models.character") -- lazily: character.lua never requires us back
+    local def = Character.defs and Character.defs[id]
+    local fp = Character.normalizeFootprint(def and def.footprint)
+    return fp.w, fp.h
+end
+
 -- Bind unit id lists onto a layout's spawn points (zipping to the shorter length).
 -- `offset` skips spawn points already claimed by an earlier bind.
 --
@@ -922,18 +932,14 @@ end
 -- far cells off the board. `layout` supplies cols/rows so the anchor is pulled back just far enough
 -- for the whole body to sit on the grid; a 1×1 unit, which is nearly all of them, never moves.
 local function bindUnits(ids, spawns, offset, layout)
-    local Character = require("models.character") -- lazily: character.lua never requires us back
     offset = offset or 0
     local units = {}
     for i, id in ipairs(ids) do
         local sp = spawns[i + offset]
         if not sp then break end
         local x, y = sp.x, sp.y
-        local def = Character.defs and Character.defs[id]
-        local fp = def and def.footprint
-        if fp and layout and layout.cols and layout.rows then
-            local w = math.max(1, math.floor((type(fp) == "number" and fp) or fp.w or 1))
-            local h = math.max(1, math.floor((type(fp) == "number" and fp) or fp.h or 1))
+        if layout and layout.cols and layout.rows then
+            local w, h = footprintOf(id)
             x = math.max(1, math.min(x, layout.cols - w + 1))
             y = math.max(1, math.min(y, layout.rows - h + 1))
         end
@@ -1059,10 +1065,19 @@ function Arena.build(ctx, spec)
     -- escorted survivor, an enemy authored deep in the party's half -- so the phase never offers a tile
     -- that is already somebody's. The party's own bound spawns are NOT excluded: those are exactly the
     -- tiles the player is choosing among (and they double as the phase's auto-fill).
+    --
+    -- A body is excluded by its whole FOOTPRINT, not by its anchor cell: an ogre is a 2x2 block, and
+    -- marking only the corner it is anchored on offered the player the other three -- which is exactly
+    -- how a knight ended up standing inside one.
     local taken = {}
-    for _, u in ipairs(allies) do taken[key(u.x, u.y)] = true end
-    for _, u in ipairs(enemies) do taken[key(u.x, u.y)] = true end
-    for _, p in ipairs(layout.props or {}) do taken[key(p.x, p.y)] = true end
+    local function claim(x, y, w, h)
+        for j = 0, (h or 1) - 1 do
+            for i = 0, (w or 1) - 1 do taken[key(x + i, y + j)] = true end
+        end
+    end
+    for _, u in ipairs(allies) do claim(u.x, u.y, footprintOf(u.id)) end
+    for _, u in ipairs(enemies) do claim(u.x, u.y, footprintOf(u.id)) end
+    for _, p in ipairs(layout.props or {}) do claim(p.x, p.y, 1, 1) end
 
     return {
         cols = layout.cols, rows = layout.rows,
