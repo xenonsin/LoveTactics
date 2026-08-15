@@ -234,9 +234,17 @@ end
 
 -- Char -> tile type for an authored map's ASCII `map`. The role chars (S / X / 1..9)
 -- all stand on trail, so they are resolved to "path" below rather than listed here.
+--
+-- The lower-case half is WALKABLE ground, and it is here because a fight is now taken on an 8x8 window
+-- of these tiles (models/arena.lua's Arena.fromGrid). Until that was true an authored map only ever had
+-- to say where the trail went, and six solid fills said it; now the same characters have to describe a
+-- battlefield -- cover to fight behind, high ground to shoot from, a floor that slows a crossing -- and
+-- a map that can only spell "wall" can only author a corridor. See data/overworld/tutorial_flight.lua,
+-- which is the first map to need them, and models/terrain.lua for what each one costs.
 local LAYOUT_TILE = {
     ["#"] = "thicket", ["."] = "path", ["="] = "bridge", ["~"] = "river",
     [","] = "grass",  ["^"] = "rock",
+    ["f"] = "forest", ["m"] = "mountain", ["w"] = "water", ["r"] = "rough",
 }
 
 -- Build a HAND-AUTHORED overworld from data/overworld/<id>.lua instead of carving a maze. The layout is
@@ -244,6 +252,12 @@ local LAYOUT_TILE = {
 -- the legend. `S` fixes the start, `X` the objective, and each digit `1..9` is a route stop: the Nth
 -- stop is handed the Nth `params.alwaysEncounters` entry, so the geometry fixes WHERE each stop sits
 -- while the quest stays the single source of WHAT it is (id / loot / conversation).
+--
+-- A layout may also carry a `hazards` list -- { { id, x, y, duration }, ... } in MAP coordinates --
+-- which is stamped onto the cells named. Whichever of them fall inside a locked window ride into that
+-- fight (Arena.fromGrid), so an authored board can open in a state rather than merely on a shape: the
+-- Champion's treeline is already burning when you reach it. This is the seam data/arenas/*.lua's own
+-- `hazards` used to serve, restored on the side the fight is actually cut from now.
 --
 -- The result is an ordinary Overworld: same object shape and methods as generate(), so states/game.lua,
 -- the renderer, fog and movement are none the wiser. Used by the prologue's flight leg, whose tutorial
@@ -299,6 +313,14 @@ function Overworld.fromLayout(params)
 
     assert(self.start, "authored layout has no start (S)")
     assert(self.objective, "authored layout has no objective (X)")
+
+    -- The authored opening state, stamped onto the cells it names (see the header). Out-of-bounds
+    -- entries are dropped rather than asserted on: a hazard is decoration on the fight it lands in, and
+    -- a typo in one must not take the whole leg down with it.
+    for _, h in ipairs(layout.hazards or {}) do
+        local cell = self:inBounds(h.x, h.y) and self.cells[h.y][h.x]
+        if cell then cell.hazard = { id = h.id, duration = h.duration } end
+    end
 
     -- Zip the quest's guaranteed encounters onto the numbered route cells, in order.
     local always = params.alwaysEncounters or {}

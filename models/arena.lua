@@ -619,6 +619,12 @@ function Arena.fromGrid(grid, opts)
     local ox, oy = grid:bestBox(opts.x, opts.y)
 
     local tiles = {}
+    -- What is already burning (or blessed, or falling) on this ground when the lock closes. A map cell
+    -- may carry an authored `hazard` (models/overworld.lua's fromLayout), and the ones inside the window
+    -- are the ones this fight opens with -- rebased to board coordinates, since nothing past here knows
+    -- where on the map it is standing. The same list an authored arena hands over, on the side a
+    -- campaign fight is actually cut from now.
+    local hazards = {}
     for j = 1, rows do
         tiles[j] = {}
         for i = 1, cols do
@@ -626,6 +632,9 @@ function Arena.fromGrid(grid, opts)
             -- Off the map reads as solid rather than as open field: a board that runs off the edge of
             -- the world should be walled by it, not floored by it.
             tiles[j][i] = (c and c.tile) or "obstacle"
+            if c and c.hazard then
+                hazards[#hazards + 1] = { id = c.hazard.id, x = i, y = j, duration = c.hazard.duration }
+            end
         end
     end
 
@@ -688,7 +697,7 @@ function Arena.fromGrid(grid, opts)
     return {
         cols = cols, rows = rows, tiles = tiles,
         partySpawns = partySpawns, enemySpawns = enemySpawns,
-        props = {}, hazards = {}, traps = {},
+        props = {}, hazards = hazards, traps = {},
         biome = opts.biome,
         -- Authored, so deployZoneFor uses it outright: the eight tiles of the edge you arrived on,
         -- which is what docs/deployment.md's fixed block becomes once the board has an outside.

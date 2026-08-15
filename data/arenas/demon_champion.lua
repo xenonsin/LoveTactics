@@ -1,7 +1,19 @@
--- The Demon Champion's battlefield: the capstone arena the flight leg ends on. Bound to the objective
--- by name (states/prologue.lua's FLIGHT_QUEST.map.objective.layout = "demon_champion", read by
--- states/battle.lua's specFor), and `fixed = true` so it is never rolled into an ordinary forest
--- fight's pool -- it is addressable only when something names it.
+-- The Demon Champion's battlefield. Still named by the objective (states/prologue.lua's
+-- FLIGHT_QUEST.map.objective.layout = "demon_champion"), and `fixed = true` so it is never rolled into
+-- an ordinary forest fight's pool -- it is addressable only when something names it.
+--
+-- IT IS NO LONGER WHAT THE FLIGHT ACTUALLY FIGHTS ON, and saying so here is the point of this
+-- paragraph. A campaign fight is now taken on an 8x8 window of the overworld's own tiles, and that
+-- board wins over `spec.layout` outright (models/arena.lua's Arena.build: `if spec.grid and spec.at`
+-- comes first). So the live copy of this board is the chamber authored into the map at the Champion's
+-- tile -- data/overworld/tutorial_flight.lua, flipped, because descending into it seats the party at
+-- the top rather than the bottom -- and what survives here is the fallback for a caller with no map
+-- under it, plus the fixture tests/demon_champion_spec.lua reads.
+--
+-- The two are pinned to each other by tests/flight_board_spec.lua rather than trusted to have been
+-- copied carefully, which is the only honest way to keep two descriptions of one battlefield: every
+-- lever below answers a stage of the boss fight, and one that drifted out of the live copy would take
+-- that stage with it and nothing would say so. Edit either and the spec names the cell that disagrees.
 --
 -- Every cell is load-bearing (like data/arenas/tutorial_village.lua), and each terrain lever answers a
 -- stage of the fight (see data/characters/character_demon_champion.lua):
