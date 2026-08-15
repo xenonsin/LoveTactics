@@ -381,7 +381,15 @@ function FieldFx:paint(map, ordered, presence, quiet)
             curBlend = style.blend
             love.graphics.setBlendMode(curBlend == "add" and "add" or "alpha")
         end
+        -- The boundary mask is read off GRID neighbours and spent on SCREEN sides, so a turned board
+        -- has to roll it: the grid-left side of a patch is the screen-top side once the picture is a
+        -- quarter turn clockwise, and feathering the un-turned side would open a seam mid-patch.
         local l, r, t, b = FieldFx.edgeMask(presence[e.group], e.x, e.y)
+        if map.rotation and map.rotation ~= 0 then
+            local turn = { [1] = { b, t, l, r }, [2] = { r, l, b, t }, [3] = { t, b, r, l } }
+            local m = turn[map.rotation]
+            l, r, t, b = m[1], m[2], m[3], m[4]
+        end
         local c = e.color
         sh:send("uCell", { e.x, e.y })
         sh:send("uEdge", { l, r, t, b })

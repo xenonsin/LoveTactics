@@ -106,13 +106,11 @@ function BattleMap.new(arena, opts)
     -- geometry (cell<->pixel, overlays, units, traps, hit-testing) derives from self.size, so they
     -- scale together.
     self.size = opts.tileSize or arena.tileSize
-    -- Centre the board in the space *between* the two side columns (leftMargin, rightMargin),
-    -- not the whole window, so neither the panel nor the left tooltip column covers it.
-    self.originX = self.leftMargin +
-        math.floor((Scale.WIDTH - self.leftMargin - self.rightMargin - arena.cols * self.size) / 2)
-    -- Anchor the board's top when a topMargin is given (so shrinking the board frees room BELOW
-    -- it for the combat-log strip), otherwise centre it vertically.
-    self.originY = opts.topMargin or math.floor((Scale.HEIGHT - arena.rows * self.size) / 2)
+    self.topMargin = opts.topMargin
+    -- Which way the board is FACING, in quarter turns clockwise (0..3). See the rotation section
+    -- below; layout() places the board for whichever facing it is on.
+    self.rotation = (opts.rotation or 0) % 4
+    self:layout()
 
     -- Cursor starts on the first living party unit (or the grid centre).
     local first = self:firstPartyUnit()
@@ -201,13 +199,162 @@ function BattleMap:buildTiles()
     self.tileScale = self.size / ts
 end
 
+-- ---------------------------------------------------------------------------
+-- Rotation  (which way the board FACES)
+-- ---------------------------------------------------------------------------
+--
+-- A board is cut out of the overworld wherever the party walked in from -- models/arena.lua seats the
+-- deploy zone on the ENTRY edge -- so a campaign fight is as likely to open with your own company
+-- along the top of the screen as along the bottom, and the far line is the one you are steering.
+-- Turning the picture fixes that without touching the ground: Settings' "Party at the bottom" faces
+-- every board that way at the opening bell, and the drawer's two turn buttons do it by hand.
+--
+-- Nothing in the MODEL moves. A body on grid (3, 1) is on grid (3, 1) whichever way the picture is
+-- facing, every rule still reads the grid, and a saved arena is unaffected. The whole turn lives in
+-- cellToPixel / pixelToCell, which every overlay, unit, badge, tooltip and hit-test already goes
+-- through -- plus the handful of things that are about DIRECTION rather than position, and so have to
+-- be turned by hand: which way a cursor key steps (moveCursor), which side a muster arrow points in
+-- from (screenEdge), the pixel offsets an in-flight walk or lunge rides (syncFx), and the locked
+-- overworld drawn around the board (drawSurround).
+--
+-- `rotation` is quarter turns CLOCKWISE, 0..3: at 1 the top of the grid is against the right of the
+-- screen, at 2 the board is upside down.
+
+-- Grid cell -> screen cell, both 1-indexed. Deliberately plain arithmetic rather than a lookup: the
+-- locked surround is drawn through it at cells OUTSIDE the board, where a table would have no entry.
+function BattleMap:rotateCell(x, y)
+    local r = self.rotation
+    if r == 1 then return self.arena.rows - y + 1, x end
+    if r == 2 then return self.arena.cols - x + 1, self.arena.rows - y + 1 end
+    if r == 3 then return y, self.arena.cols - x + 1 end
+    return x, y
+end
+
+function BattleMap:unrotateCell(u, v)
+    local r = self.rotation
+    if r == 1 then return v, self.arena.rows - u + 1 end
+    if r == 2 then return self.arena.cols - u + 1, self.arena.rows - v + 1 end
+    if r == 3 then return self.arena.cols - v + 1, u end
+    return u, v
+end
+
+-- The same turn applied to a DELTA -- a step, a lunge, a slide -- which carries no origin and so
+-- drops the board's width and height out of the arithmetic entirely.
+function BattleMap:rotateVec(dx, dy)
+    local r = self.rotation
+    if r == 1 then return -dy, dx end
+    if r == 2 then return -dx, -dy end
+    if r == 3 then return dy, -dx end
+    return dx, dy
+end
+
+function BattleMap:unrotateVec(du, dv)
+    local r = self.rotation
+    if r == 1 then return dv, -du end
+    if r == 2 then return -du, -dv end
+    if r == 3 then return -dv, du end
+    return du, dv
+end
+
+-- The board's on-screen extent in TILES. A quarter turn swaps them: a board eight wide and ten deep
+-- lies ten wide and eight deep once it is on its side.
+function BattleMap:span()
+    if (self.rotation or 0) % 2 == 1 then return self.arena.rows, self.arena.cols end
+    return self.arena.cols, self.arena.rows
+end
+
+-- ...and the same swap for a footprint measured in pixels.
+function BattleMap:spanPixels(w, h)
+    w, h = w or 1, h or 1
+    if (self.rotation or 0) % 2 == 1 then return h * self.size, w * self.size end
+    return w * self.size, h * self.size
+end
+
+-- Place the board for its current facing. Centred in the space *between* the two side columns
+-- (leftMargin, rightMargin) rather than in the whole window, so neither the combat panel nor the left
+-- tooltip column covers it; anchored at topMargin when one is given (which is what frees the room
+-- BELOW it for the combat-log strip), otherwise centred vertically.
+function BattleMap:layout()
+    local sc, sr = self:span()
+    self.originX = self.leftMargin +
+        math.floor((Scale.WIDTH - self.leftMargin - self.rightMargin - sc * self.size) / 2)
+    self.originY = self.topMargin or math.floor((Scale.HEIGHT - sr * self.size) / 2)
+end
+
+-- Face the board a quarter turn `dir` from where it is (1 clockwise, -1 counter-clockwise).
+function BattleMap:turn(dir)
+    self:setRotation(self.rotation + (dir or 1))
+end
+
+function BattleMap:setRotation(r)
+    self.rotation = (r or 0) % 4
+    self:layout()
+    self:syncFx()
+end
+
+-- Keep the animation controller's DIRECTIONS pointed the same way as the board. A walk slide, an
+-- attack lunge and a cast lean are authored as grid deltas and drawn as pixel offsets, so they have
+-- to be turned with everything else. states/battle.lua calls this once when it shares the controller
+-- in; setRotation calls it again on every turn, so the two can never drift apart.
+function BattleMap:syncFx()
+    if not self.fx then return end
+    local map = self
+    self.fx.rotate = function(_, dx, dy) return map:rotateVec(dx, dy) end
+end
+
+-- A grid edge name as the SCREEN now sees it: on a board turned a quarter clockwise, the muster
+-- marching in from the top of the grid marches in from the right of the picture.
+local EDGE_CLOCKWISE = { "top", "right", "bottom", "left" }
+local EDGE_INDEX = { top = 1, right = 2, bottom = 3, left = 4 }
+
+function BattleMap:screenEdge(edge)
+    local i = EDGE_INDEX[edge]
+    if not i then return edge end
+    return EDGE_CLOCKWISE[(i - 1 + self.rotation) % 4 + 1]
+end
+
+-- ...and the question the other way round: the facing that brings a given GRID edge round to the
+-- bottom of the screen. This is what "party at the bottom" resolves to -- states/battle.lua reads the
+-- edge the deploy zone sits on and asks for the facing that puts it nearest the player. A module
+-- function rather than a method: it is asked before any turn is made, about a board that is still
+-- facing whichever way it was built.
+function BattleMap.rotationForBottom(edge)
+    local i = EDGE_INDEX[edge]
+    if not i then return 0 end
+    return (EDGE_INDEX.bottom - i) % 4
+end
+
 function BattleMap:cellToPixel(x, y)
-    return self.originX + (x - 1) * self.size, self.originY + (y - 1) * self.size
+    local u, v = self:rotateCell(x, y)
+    return self.originX + (u - 1) * self.size, self.originY + (v - 1) * self.size
 end
 
 function BattleMap:pixelToCell(px, py)
-    return math.floor((px - self.originX) / self.size) + 1,
-        math.floor((py - self.originY) / self.size) + 1
+    return self:unrotateCell(math.floor((px - self.originX) / self.size) + 1,
+        math.floor((py - self.originY) / self.size) + 1)
+end
+
+-- The screen box a footprint covers: its top-left pixel AND its pixel size, asked for together
+-- because a turn moves them together -- a 2x1 body lies across the screen at a quarter turn, and the
+-- cell the model anchors it by is then the box's top-RIGHT corner rather than its top-left.
+function BattleMap:cellBox(x, y, w, h)
+    w, h = w or 1, h or 1
+    local ax, ay = self:cellToPixel(x, y)
+    local bx, by = self:cellToPixel(x + w - 1, y + h - 1)
+    local bw, bh = self:spanPixels(w, h)
+    return math.min(ax, bx), math.min(ay, by), bw, bh
+end
+
+-- The centre of one tile, and the whole board's screen rect. states/battle.lua hangs things off both
+-- -- a floating card on a body, the gutter under the board -- and a turn moves them.
+function BattleMap:cellCenter(x, y)
+    local wx, wy = self:cellToPixel(x, y)
+    return wx + self.size / 2, wy + self.size / 2
+end
+
+function BattleMap:boardRect()
+    local sc, sr = self:span()
+    return self.originX, self.originY, sc * self.size, sr * self.size
 end
 
 -- The grid cell (x, y) under a pixel, or nil if the pixel is off the board. Lets the battle
@@ -284,9 +431,14 @@ function BattleMap:trackArrivals(dt)
     end
 end
 
+-- `dx, dy` are SCREEN directions: "left" means the tile to the left of the lit one, whichever way the
+-- board is facing. They are turned back into a grid step here, so no caller has to know about the
+-- rotation -- and a player who has turned the board still steers it with the keys pointing where they
+-- are looking.
 function BattleMap:moveCursor(dx, dy)
-    self.cursor.x = math.max(1, math.min(self.arena.cols, self.cursor.x + dx))
-    self.cursor.y = math.max(1, math.min(self.arena.rows, self.cursor.y + dy))
+    local gx, gy = self:unrotateVec(dx, dy)
+    self.cursor.x = math.max(1, math.min(self.arena.cols, self.cursor.x + gx))
+    self.cursor.y = math.max(1, math.min(self.arena.rows, self.cursor.y + gy))
 end
 
 -- Kick off the turn-start flourish on `unit` -- rings burst outward from its body over TURN_FLARE_TIME
@@ -318,17 +470,24 @@ function BattleMap:drawSurround()
 
     -- Only what the screen can show. The map is bigger than the window at this scale and every tile
     -- outside it is a wasted draw.
-    local x0 = box.x - math.ceil(self.originX / s) - 1
-    local y0 = box.y - math.ceil(self.originY / s) - 1
-    local x1 = box.x + box.w + math.ceil((Scale.WIDTH - self.originX) / s) + 1
-    local y1 = box.y + box.h + math.ceil((Scale.HEIGHT - self.originY) / s) + 1
+    --
+    -- Walked in SCREEN cells rather than grid ones, so the sweep covers the window whichever way the
+    -- board is facing; each is turned back to find the map cell that lands there. The board's own tile
+    -- (1, 1) is the map's (box.x, box.y), so an arena-space cell `a` is the map cell box + a - 1 --
+    -- and unrotateCell is happy off the board, which is the whole reason it is arithmetic.
+    local u0 = 1 - math.ceil(self.originX / s) - 1
+    local v0 = 1 - math.ceil(self.originY / s) - 1
+    local u1 = 1 + math.ceil((Scale.WIDTH - self.originX) / s) + 1
+    local v1 = 1 + math.ceil((Scale.HEIGHT - self.originY) / s) + 1
 
-    for gy = y0, y1 do
-        for gx = x0, x1 do
-            local inBox = gx >= box.x and gy >= box.y and gx < box.x + box.w and gy < box.y + box.h
+    for v = v0, v1 do
+        for u = u0, u1 do
+            local ax, ay = self:unrotateCell(u, v)
+            local inBox = ax >= 1 and ay >= 1 and ax <= box.w and ay <= box.h
             if not inBox then
-                local wx = self.originX + (gx - box.x) * s
-                local wy = self.originY + (gy - box.y) * s
+                local gx, gy = box.x + ax - 1, box.y + ay - 1
+                local wx = self.originX + (u - 1) * s
+                local wy = self.originY + (v - 1) * s
                 local cell = grid:get(gx, gy)
                 local artType = cell and (BattleMap.ART[cell.tile] or "path") or "thicket"
                 local col = self.tilesetDef.tiles[artType]
@@ -341,29 +500,30 @@ function BattleMap:drawSurround()
         end
     end
 
-    -- ...and the walls, on the ring immediately outside the board.
+    -- ...and the walls, on the ring immediately outside the board. Measured in the board's SCREEN
+    -- extent, not box.w/box.h, so the ring still closes on a board that is lying on its side.
+    local bw, bh = self:span()
     local fill = self.tilesetDef.tiles.thicket
     fill = fill and fill.color or { 0.2, 0.2, 0.2 }
     love.graphics.setColor(fill[1] * WALL_LIFT + 0.06, fill[2] * WALL_LIFT + 0.06, fill[3] * WALL_LIFT + 0.06)
     local rx, ry = self.originX - s, self.originY - s
-    local rw, rh = (box.w + 2) * s, (box.h + 2) * s
-    for i = 0, box.w + 1 do
+    for i = 0, bw + 1 do
         love.graphics.rectangle("fill", rx + i * s, ry, s, s)
-        love.graphics.rectangle("fill", rx + i * s, ry + (box.h + 1) * s, s, s)
+        love.graphics.rectangle("fill", rx + i * s, ry + (bh + 1) * s, s, s)
     end
-    for j = 0, box.h + 1 do
+    for j = 0, bh + 1 do
         love.graphics.rectangle("fill", rx, ry + j * s, s, s)
-        love.graphics.rectangle("fill", rx + (box.w + 1) * s, ry + j * s, s, s)
+        love.graphics.rectangle("fill", rx + (bw + 1) * s, ry + j * s, s, s)
     end
     -- The seam where the wall meets the board: a bright inner edge over a dark backing, so the boundary
     -- reads as something that CLOSED and not as the edge of a picture. Warm, because it is the one thing
     -- on screen that is about the fight being inescapable rather than about the ground.
     love.graphics.setColor(0, 0, 0, 0.6)
     love.graphics.setLineWidth(4)
-    love.graphics.rectangle("line", self.originX, self.originY, box.w * s, box.h * s)
+    love.graphics.rectangle("line", self.originX, self.originY, bw * s, bh * s)
     love.graphics.setColor(0.82, 0.66, 0.34, 0.55)
     love.graphics.setLineWidth(2)
-    love.graphics.rectangle("line", self.originX, self.originY, box.w * s, box.h * s)
+    love.graphics.rectangle("line", self.originX, self.originY, bw * s, bh * s)
     love.graphics.setLineWidth(1)
     love.graphics.setColor(1, 1, 1)
 end
@@ -505,8 +665,10 @@ function BattleMap:drawReinforcements()
         local key = m.tile.x .. "," .. m.tile.y
         if not seen[key] then
             seen[key] = true
-            local wx, wy = self:cellToPixel(m.tile.x, m.tile.y)
-            local tw, th = (m.tile.w or 1) * s, (m.tile.h or 1) * s
+            local wx, wy, tw, th = self:cellBox(m.tile.x, m.tile.y, m.tile.w, m.tile.h)
+            -- The side the wave marches in from is a GRID fact; the arrow and the countdown are drawn
+            -- on the screen, so it is read through the board's facing (screenEdge).
+            local edge = self:screenEdge(m.edge)
             -- Fill + outline, inset 3px so nothing ever touches -- let alone overlaps -- a neighbour tile.
             love.graphics.setColor(MUSTER[1], MUSTER[2], MUSTER[3], 0.12 + 0.10 * pulse)
             love.graphics.rectangle("fill", wx + 3, wy + 3, tw - 6, th - 6, 4, 4)
@@ -514,7 +676,7 @@ function BattleMap:drawReinforcements()
             love.graphics.setLineWidth(2)
             love.graphics.rectangle("line", wx + 3, wy + 3, tw - 6, th - 6, 4, 4)
             love.graphics.setLineWidth(1)
-            self:drawMusterArrow(wx, wy, tw, th, m.edge, 0.6 + 0.4 * pulse)
+            self:drawMusterArrow(wx, wy, tw, th, edge, 0.6 + 0.4 * pulse)
             -- The numeric countdown is whole ticks (ceil, so it reads 5..1 and hits 0 at arrival). The
             -- whole telegraph only surfaces once the muster is one turn out -- states/battle.lua gates the
             -- overlay to <= TICKS_PER_TURN ticks -- so WHERE and WHEN land together, and the board never
@@ -524,7 +686,7 @@ function BattleMap:drawReinforcements()
             -- on the clock, and inventing a countdown for it would quote a number nothing can honour.
             -- The tile keeps its outline and its arrow, which are the WHERE and the WHENCE it does know.
             if m.ticks then
-                self:drawMusterCount(wx, wy, tw, th, m.edge, tostring(math.ceil(m.ticks)), font)
+                self:drawMusterCount(wx, wy, tw, th, edge, tostring(math.ceil(m.ticks)), font)
             end
         end
     end
@@ -1122,8 +1284,7 @@ function BattleMap:drawUnits()
     -- Dead, subtle enough not to clutter the board with bodies no one is going to act on.
     for _, u in ipairs(self.combat.units) do
         if self:corpseVisible(u) then
-            local wx, wy = self:cellToPixel(u.x, u.y)
-            local bw, bh = (u.w or 1) * s, (u.h or 1) * s
+            local wx, wy, bw, bh = self:cellBox(u.x, u.y, u.w, u.h)
             local cx, cy = wx + bw / 2, wy + bh / 2
             local drew = false
             if u.incapacitated then
@@ -1159,11 +1320,10 @@ function BattleMap:drawUnits()
             awaiting = self.fx:awaiting(u)
         end
         if u.alive or fade > 0 or awaiting then
-            local wx, wy = self:cellToPixel(u.x, u.y)
-            wx, wy = wx + offX, wy + offY
             -- The body fills its whole footprint box (one cell for a 1×1 unit). Sprite and token are
             -- sized to and centred in the box, so a 2×2 ogre draws twice as tall and wide as a man.
-            local bw, bh = (u.w or 1) * s, (u.h or 1) * s
+            local wx, wy, bw, bh = self:cellBox(u.x, u.y, u.w, u.h)
+            wx, wy = wx + offX, wy + offY
             local cx, cy = wx + bw / 2, wy + bh / 2
             local disc = math.min(bw, bh) * 0.32
             local a = fade > 0 and (1 - fade) or (Status.untargetable(u) and 0.40 or 1)
@@ -1264,11 +1424,13 @@ end
 --
 -- Shared by the readout draws and the badge hover hit-test (statusAt), so a tooltip lands on the badge
 -- actually under the cursor rather than on where it will eventually come to rest.
+-- Returns the body's whole box (top-left px, then its pixel width and height), so a caller that needs
+-- the footprint too does not have to work it out from u.w/u.h -- which a turned board would swap.
 function BattleMap:unitOrigin(u)
-    local wx, wy = self:cellToPixel(u.x, u.y)
-    if not self.fx then return wx, wy end
+    local wx, wy, bw, bh = self:cellBox(u.x, u.y, u.w, u.h)
+    if not self.fx then return wx, wy, bw, bh end
     local sx, sy = self.fx:slideOffset(u, self.size)
-    return wx + sx, wy + sy
+    return wx + sx, wy + sy, bw, bh
 end
 
 -- HP bars + turn-order numbers, drawn last (above highlights) so they're never tinted.
@@ -1316,8 +1478,7 @@ function BattleMap:drawUnitInfo()
         elseif Status.get(u, "status_downed") and self:corpseVisible(u) then
             -- A fallen but revivable body: its rescue clock stands in for the HP bar it no longer has,
             -- on the same bottom-of-tile line, above the highlights so it reads like the bar it replaces.
-            local wx, wy = self:unitOrigin(u)
-            local boxW, boxH = (u.w or 1) * s, (u.h or 1) * s
+            local wx, wy, boxW, boxH = self:unitOrigin(u)
             self:drawDownedClock(u, wx + boxW / 2, wy + boxH - 10)
             if self.lastOrderIndex[u] then self.lastOrderIndex[u] = nil end
         elseif self.lastOrderIndex[u] then
@@ -1335,8 +1496,7 @@ function BattleMap:drawTurnCue()
     local u = cur and cur.unit
     if not u or not self.combat or not Combat.isPlayerControlled(u) then return end
     local s = self.size
-    local wx, wy = self:cellToPixel(cur.x, cur.y)
-    local bw, bh = (u.w or 1) * s, (u.h or 1) * s
+    local wx, wy, bw, bh = self:cellBox(cur.x, cur.y, u.w, u.h)
     local cx = wx + bw / 2
 
     -- One-shot ring burst from the body centre: two staggered rings that expand and fade out. Only while
@@ -1394,10 +1554,11 @@ function BattleMap:statusBadgeRects(u, wx, wy)
         list = shown or {}
     end
     if not list or #list == 0 then return {} end
-    local s = self.size
     -- Lay the badge row along the bottom of the body's whole footprint (its one cell for a 1×1 unit),
     -- so a wide body's badges spread across its width and sit just above its footprint-wide HP bar.
-    local boxW, boxH = (u.w or 1) * s, (u.h or 1) * s
+    -- Taken through spanPixels, so on a turned board the row runs along whichever way the body is now
+    -- lying rather than off the side of it.
+    local boxW, boxH = self:spanPixels(u.w, u.h)
     local inner = boxW - BADGE_INSET * 2
     local gap = BADGE_GAP
 
@@ -1460,7 +1621,6 @@ end
 -- Colors.drain rather than shifting hue.
 -- `alpha` (default 1) fades the whole bar out with the body as a felled unit dies (drawUnitInfo).
 function BattleMap:drawHpBar(u, wx, wy, alpha)
-    local s = self.size
     local al = alpha or 1
     local hp = u.char.stats.health
     local side = Colors.unit(u)
@@ -1471,7 +1631,7 @@ function BattleMap:drawHpBar(u, wx, wy, alpha)
     if hp and hp.max and hp.max > 0 then ratio = math.max(0, math.min(1, shown / hp.max)) end
     -- Span the bar across the body's whole footprint and sit it along the box's bottom edge, so a
     -- wide unit gets a wide bar rather than one hugging its top-left cell. 1×1 is the original geometry.
-    local boxW, boxH = (u.w or 1) * s, (u.h or 1) * s
+    local boxW, boxH = self:spanPixels(u.w, u.h)
     local bx, by, bw, bh = wx + 4, wy + boxH - 8, boxW - 8, 5
     love.graphics.setColor(0, 0, 0, 0.6 * al)
     love.graphics.rectangle("fill", bx - 1, by - 1, bw + 2, bh + 2, 2, 2)
@@ -1530,11 +1690,10 @@ function BattleMap:drawHighlights()
     end
     local current = self.overlays.current
     if current then
-        local wx, wy = self:cellToPixel(current.x, current.y)
         -- Ring the acting unit's whole footprint (it carries its own unit, so its size is known here),
         -- so a 2×2 body gets a 2×2 gold ring rather than one framing only its anchor cell.
-        local cw = (current.unit and current.unit.w or 1) * s
-        local ch = (current.unit and current.unit.h or 1) * s
+        local wx, wy, cw, ch = self:cellBox(current.x, current.y,
+            current.unit and current.unit.w, current.unit and current.unit.h)
         local pulse = 0.65 + 0.35 * math.sin((self.time or 0) * 4)
         love.graphics.setColor(0.98, 0.82, 0.35, 0.13)
         love.graphics.rectangle("fill", wx + 2, wy + 2, cw - 4, ch - 4, 5, 5)
@@ -1552,15 +1711,13 @@ function BattleMap:drawHighlights()
     -- approach arrow stopped, so a walk-then-blink reads as one plan with two legs.
     local landing = self.overlays.landing
     if landing then
-        local wx, wy = self:cellToPixel(landing.x, landing.y)
-        local lw = (landing.unit and landing.unit.w or 1) * s
-        local lh = (landing.unit and landing.unit.h or 1) * s
+        local wx, wy, lw, lh = self:cellBox(landing.x, landing.y,
+            landing.unit and landing.unit.w, landing.unit and landing.unit.h)
         local pulse = 0.65 + 0.35 * math.sin((self.time or 0) * 4)
         if landing.fromX then
             -- Dashes rather than a solid line: the actor does not travel this ground, it is put down at
             -- the far end of it, and a solid stroke here would read as the walk route above.
-            local fwx, fwy = self:cellToPixel(landing.fromX, landing.fromY)
-            local ax, ay = fwx + s / 2, fwy + s / 2
+            local ax, ay = self:cellCenter(landing.fromX, landing.fromY)
             local bx, by = wx + lw / 2, wy + lh / 2
             local dist = math.sqrt((bx - ax) ^ 2 + (by - ay) ^ 2)
             local ux, uy = (bx - ax) / math.max(dist, 1), (by - ay) / math.max(dist, 1)
@@ -1666,12 +1823,11 @@ end
 function BattleMap:drawIntentBadges()
     local intents = self.overlays and self.overlays.intentBadges
     if not intents or not self.combat then return end
-    local s = self.size
     for _, u in ipairs(self.combat.units) do
         local intent = u.alive and not self:heldUnit(u) and intents[u]
         if intent then
-            local wx, wy = self:unitOrigin(u)
-            self:drawIntentBadge(intent, wx + (u.w or 1) * s / 2, wy + (u.h or 1) * s / 2)
+            local wx, wy, bw, bh = self:unitOrigin(u)
+            self:drawIntentBadge(intent, wx + bw / 2, wy + bh / 2)
         end
     end
 end

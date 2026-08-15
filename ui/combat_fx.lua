@@ -214,11 +214,14 @@ end
 -- The direction a blow came from, attacker -> victim, in radians (board space, +y down). A slash
 -- sweeps across it and a stab drives along it; 0 for a wound with no striker (a toll, a poison tick),
 -- which the radially-symmetric default burst does not read anyway.
-local function strikeAngle(attacker, victim)
+-- Turned into a SCREEN angle before it leaves (see CombatFx:rotate): the two cells are grid cells, and
+-- on a rotated board a sweep that kept its grid heading would cut across the blow that caused it.
+local function strikeAngle(fx, attacker, victim)
     if not (attacker and victim) then return 0 end
     local dx, dy = victim.x - attacker.x, victim.y - attacker.y
     if dx == 0 and dy == 0 then return 0 end
-    return math.atan2(dy, dx)
+    local rdx, rdy = fx:rotate(dx, dy)
+    return math.atan2(rdy, rdx)
 end
 
 -- A blow that THROWS something becomes a projectile: the shooter leans and its shot fires NOW, but the
@@ -332,7 +335,7 @@ function CombatFx:playBeat(events, actor)
             end
             if self.bursts then
                 self.bursts:strike(cell.x, cell.y, e.tags,
-                    { angle = strikeAngle(e.attacker, cell), lethal = e.lethal, vulnerable = e.vulnerable })
+                    { angle = strikeAngle(self, e.attacker, cell), lethal = e.lethal, vulnerable = e.vulnerable })
             end
             -- A blow struck by someone other than the acting unit -- a counter, a riposte, a thorns
             -- answer -- leans off its own cue, since the actor fallback below can't speak for it. On a
@@ -588,6 +591,16 @@ end
 -- travelling. Split out from spriteState because the damage numbers need this ONE part of the sprite's
 -- displacement and none of the rest: a floater rides along with a shoved body, but must not inherit
 -- the hit shake or the attack lunge (a number that jitters is a number you can't read).
+-- Turn a GRID delta into the screen delta that draws it. Identity here, and replaced by the board with
+-- its own facing (ui/battle_map.lua's syncFx) whenever the picture is rotated -- a step to grid-east
+-- has to slide toward whichever screen edge grid-east is currently pointing at. Everything in this file
+-- that displaces a sprite along the board's axes goes through it; the flourishes that are about the
+-- SCREEN rather than the board -- the hit shake, the little upward hop of a self-cast -- deliberately
+-- do not, because "up" means up to the player whichever way the board is facing.
+function CombatFx:rotate(dx, dy)
+    return dx, dy
+end
+
 function CombatFx:slideOffset(unit, size)
     local r = self.units[unit]
     if not (r and r.slideT and r.slideDur) then return 0, 0 end
@@ -599,8 +612,8 @@ function CombatFx:slideOffset(unit, size)
     -- exactly the old (from - unit.x) * (1 - e).
     local toX = r.slideToX or unit.x
     local toY = r.slideToY or unit.y
-    return ((r.slideFromX - toX) * (1 - e) + (toX - unit.x)) * size,
-           ((r.slideFromY - toY) * (1 - e) + (toY - unit.y)) * size
+    return self:rotate(((r.slideFromX - toX) * (1 - e) + (toX - unit.x)) * size,
+                       ((r.slideFromY - toY) * (1 - e) + (toY - unit.y)) * size)
 end
 
 function CombatFx:spriteState(unit, size)
@@ -609,14 +622,14 @@ function CombatFx:spriteState(unit, size)
     local offX, offY = self:slideOffset(unit, size)
     if r.lungeT then
         local s = math.sin((1 - r.lungeT / LUNGE_TIME) * math.pi) -- 0 at ends, 1 mid: out and back
-        offX = offX + r.lungeDx * LUNGE_DIST * size * s
-        offY = offY + r.lungeDy * LUNGE_DIST * size * s
+        local lx, ly = self:rotate(r.lungeDx * LUNGE_DIST * size * s, r.lungeDy * LUNGE_DIST * size * s)
+        offX, offY = offX + lx, offY + ly
     end
     if r.castT then
         local s = math.sin((1 - r.castT / CAST_TIME) * math.pi) -- 0 at ends, 1 mid: out and back
         if r.castDx then -- aimed cast: thrust toward the target and settle
-            offX = offX + r.castDx * CAST_LEAN * size * s
-            offY = offY + r.castDy * CAST_LEAN * size * s
+            local cx, cy = self:rotate(r.castDx * CAST_LEAN * size * s, r.castDy * CAST_LEAN * size * s)
+            offX, offY = offX + cx, offY + cy
         else -- self/tile cast: a little upward hop instead
             offY = offY - CAST_BOB * size * s
         end

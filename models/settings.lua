@@ -98,6 +98,20 @@ Settings.defs = {
         kind = "toggle",
     },
     {
+        key = "party_at_bottom",
+        name = "Party at the bottom",
+        -- OFF by default because the board is cut out of the ground the party crossed, and which way
+        -- that ground faces is a fact the map already told the player -- walking in from the north and
+        -- then fighting from the south of the screen is a small lie about where they are. What it costs
+        -- is that half of all fights open with your own line along the top, which is the harder read.
+        -- So: offered, explained, and left to the player. The board can also be turned by hand at any
+        -- point from the fight's own menu, whichever way this is set.
+        description = "Turns the battlefield at the opening bell so your own company is on the near "
+            .. "side of the screen, whichever direction you entered the map from.",
+        default = false,
+        kind = "toggle",
+    },
+    {
         key = "danger_vignette",
         name = "Low-health screen edge",
         -- OFF by default, unlike every other option here: a red wash creeping in from the edges of

@@ -103,8 +103,13 @@ return {
             fx:ingest({ { type = "slide", unit = u, fromX = fromX, fromY = 1, hold = true, beat = 0 } }, nil)
 
             -- unitOrigin is pure geometry over cellToPixel + the fx slide, so it can be exercised on a
-            -- stand-in rather than a real (graphics-owning) map.
-            local map = { size = 32, fx = fx, cellToPixel = function(_, x, y) return x * 32, y * 32 end }
+            -- stand-in rather than a real (graphics-owning) map. The BattleMap metatable behind it
+            -- supplies the footprint arithmetic; only cellToPixel is stubbed, and only because a real
+            -- one would want an arena.
+            local map = setmetatable(
+                { size = 32, rotation = 0, fx = fx,
+                  cellToPixel = function(_, x, y) return x * 32, y * 32 end },
+                BattleMap)
             local function originX() return (BattleMap.unitOrigin(map, u)) end
 
             -- Mid-shove the bar must hang off the tile the body is still on, not the one it is headed for.

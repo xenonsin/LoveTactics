@@ -122,11 +122,23 @@ local logButton = { x = 16, y = 104, w = 130, h = 36 }
 -- Toggles the danger overlay that paints EVERY enemy's reach-and-strike range purple across the
 -- whole board (also T / gamepad left-stick), so the player can survey all threats at once.
 local rangesButton = { x = 16, y = 148, w = 130, h = 36 }
+-- Turn the BOARD a quarter, left or right (also Q / E). Declared as `battle.*` rather than as two more
+-- file locals for the reason spelled out at deploySettingsButton below: this chunk is close enough to
+-- Lua 5.1's 200-local ceiling that the overflow would be a syntax error at load, which nothing headless
+-- catches.
+--
+-- A pair of half-width plates sharing the Threats row's width, because they are one control with two
+-- directions -- the same shape the speed cycler takes beside Auto. Sat directly under Threats: both are
+-- about what the player can SEE rather than about what anyone on the field does, and neither costs a
+-- turn. Marked with a drawn rotation arrow rather than a word (ui/glyphs.lua): the chrome face carries
+-- no such character, and 62px has no room for "Turn left" anyway.
+battle.turnLeftButton = { x = 16, y = 192, w = 62, h = 36 }
+battle.turnRightButton = { x = 84, y = 192, w = 62, h = 36 }
 -- Hands the WHOLE player side to the AI (also V / gamepad A): sets battle.autoAll, which arms auto-battle for
 -- every player-controlled unit on its turn -- the same think-pause the Tactics-tab switch grants a
 -- single unit. Any input still takes the current turn straight back (reclaimAutoTurn); the flag then
 -- re-arms the next unit, so "auto" holds across the side until the button is pressed off.
-local autoButton = { x = 16, y = 192, w = 130, h = 36 }
+local autoButton = { x = 16, y = 236, w = 130, h = 36 }
 -- Sends a body from the bench onto an OPEN slot (models/combat.lua's Combat.reinforce). A drawer entry
 -- rather than a button under the item grid, because it is not a turn action -- nobody spends anything for
 -- it, and it can be taken while any of the player's units is in hand. Drawn only when the fight has a
@@ -136,16 +148,16 @@ local autoButton = { x = 16, y = 192, w = 130, h = 36 }
 -- which is the only beat at which a slot opens. This is the way back to it -- after a prompt was
 -- declined, or in a fight that deployed under the cap and so never had a body fall to announce one.
 -- That is the right job for a menu entry, and the wrong one for a play the player has to notice.
-local reinforceButton = { x = 16, y = 236, w = 130, h = 36 }
+local reinforceButton = { x = 16, y = 280, w = 130, h = 36 }
 -- Opens the settings overlay (volumes, tooltips, effects) over the paused fight -- so a player can
 -- turn the music down mid-battle without abandoning the encounter.
-local settingsButton = { x = 16, y = 280, w = 130, h = 36 }
+local settingsButton = { x = 16, y = 324, w = 130, h = 36 }
 -- Playback-speed cycler, drawn only while whole-side auto is ON (it is meaningless otherwise -- the
 -- player sets the pace of their own turns by taking them). Sits flush to the right of the Auto
 -- button as a paired control. Clicking it -- or F / gamepad right-stick -- steps battle.autoSpeed
 -- through SPEED_STEPS, which scales the gameplay clock in battle.update. Unlike every other input,
 -- adjusting speed does NOT reclaim the auto turn: changing how fast the AI plays is not taking over.
-local speedButton = { x = 150, y = 192, w = 56, h = 36 }
+local speedButton = { x = 150, y = 236, w = 56, h = 36 }
 local SPEED_STEPS = { 1, 2, 3 }
 -- Debug-only shortcut that decides the fight instantly, so a developer can jump straight to the win
 -- follow-up (spoils screen, overworld onWin) without playing the encounter out. Gated on
@@ -154,7 +166,7 @@ local SPEED_STEPS = { 1, 2, 3 }
 -- one too many. Sits BELOW Settings, in the drawer's last row: it once had Settings' own y, which drew
 -- "Win" over "Settings" while mousepressed still tested Settings first -- so the debug button silently
 -- opened the settings overlay instead of ending the fight.
-local winButton = { x = 16, y = 324, w = 130, h = 36 }
+local winButton = { x = 16, y = 368, w = 130, h = 36 }
 -- The drawer's whole content BEFORE the bell (the deployment phase): Settings, and nothing else. Every
 -- other entry describes a fight that is not running yet -- there is nothing to forfeit, the log has no
 -- lines and its rect is the deployment strip's, and Threats / Auto / Reinforce all read a turn order
@@ -213,6 +225,7 @@ local function overMenuEntry(x, y)
     if not battle.menuOpen then return false end
     if battle.deploy then return pointIn(battle.deploySettingsButton, x, y) end
     return pointIn(forfeitButton, x, y) or pointIn(logButton, x, y) or pointIn(rangesButton, x, y)
+        or pointIn(battle.turnLeftButton, x, y) or pointIn(battle.turnRightButton, x, y)
         or (autoAllowed() and pointIn(autoButton, x, y)) or pointIn(settingsButton, x, y)
         or (autoAllowed() and battle.autoAll and pointIn(speedButton, x, y))
         or (battle.hasBench and pointIn(reinforceButton, x, y))
@@ -233,6 +246,8 @@ local function hoveredMenuButton(x, y)
     if pointIn(forfeitButton, x, y) then return "forfeit" end
     if pointIn(logButton, x, y) then return "log" end
     if pointIn(rangesButton, x, y) then return "threats" end
+    if pointIn(battle.turnLeftButton, x, y) then return "turnleft" end
+    if pointIn(battle.turnRightButton, x, y) then return "turnright" end
     if autoAllowed() and pointIn(autoButton, x, y) then return "auto" end
     if battle.hasBench and pointIn(reinforceButton, x, y) then return "reinforce" end
     if pointIn(settingsButton, x, y) then return "settings" end
@@ -3239,11 +3254,9 @@ openBenchChooser = function(mode, mandatory, title, at)
     -- middle of the board, which is where the eye already is.
     local ax, ay = Scale.WIDTH / 2, Scale.HEIGHT / 2
     if at then
-        ax = m.originX + (at.x - 0.5) * m.size
-        ay = m.originY + (at.y - 0.5) * m.size
+        ax, ay = m:cellCenter(at.x, at.y)
     elseif anchorUnit and anchorUnit.alive then
-        ax = m.originX + (anchorUnit.x - 0.5) * m.size
-        ay = m.originY + (anchorUnit.y - 0.5) * m.size
+        ax, ay = m:cellCenter(anchorUnit.x, anchorUnit.y)
     end
 
     title = title or (mode == "rotate" and "Fall Back  --  costs this turn" or "Reinforce  --  free")
@@ -4433,8 +4446,48 @@ end
 local function gutterRect()
     local m = battle.map
     if not m then return { x = 0, y = 0, w = 0, h = 0 } end
-    local y = m.originY + battle.arena.rows * m.size + 8
-    return { x = m.originX, y = y, w = battle.arena.cols * m.size, h = Scale.HEIGHT - y - 8 }
+    -- Off the board's SCREEN rect, not off arena.rows/cols: a turned board that is not square lies a
+    -- different way round, and the gutter has to stay under the picture rather than under the grid.
+    local bx, by, bw, bh = m:boardRect()
+    local y = by + bh + 8
+    return { x = bx, y = y, w = bw, h = Scale.HEIGHT - y - 8 }
+end
+
+-- Turn the board a quarter turn -- `dir` is -1 counter-clockwise, 1 clockwise. Purely a view control:
+-- it costs nothing, takes no turn, moves nobody, and is allowed while it is anyone's move and after the
+-- fight is decided. See ui/battle_map.lua's rotation section for what actually turns.
+--
+-- Whatever hangs off the board's screen rect is RE-STAMPED onto the live object rather than rebuilt, so
+-- the log keeps its scroll and the deployment phase keeps whoever is already standing. On the 8x8 boards
+-- a campaign cuts the rect does not move at all; an authored arena wider than it is deep does move it,
+-- and this is what keeps the gutter under the board it belongs to.
+--
+-- A field on `battle` rather than a file local, for the local-ceiling reason at deploySettingsButton.
+function battle.turnBoard(dir)
+    if not battle.map then return end
+    battle.map:turn(dir)
+    local g = gutterRect()
+    if battle.log then
+        battle.log.x, battle.log.y, battle.log.w, battle.log.h = g.x, g.y, g.w, g.h
+    end
+    if battle.deploy then battle.deploy.gutter = g end
+end
+
+-- Face the board so the ground the player's own line stands on is the near side of the screen, for a
+-- player who asked for that (Settings' "party_at_bottom"). Read off the DEPLOY ZONE rather than off the
+-- live party: the zone is where the company will be standing, it is decided before anybody is placed,
+-- and it does not drift as the fight advances -- so the picture is settled once, at the bell, and the
+-- board never turns under the player mid-fight. A combat built without a zone (a duel, a probe) has no
+-- claim to make and is left facing as it was.
+function battle.faceParty()
+    if not (battle.map and battle.combat) then return end
+    if Settings.get("party_at_bottom") ~= true then return end
+    local zone = battle.combat.deployZone
+    if not (zone and #zone > 0) then return end
+    local sx, sy = 0, 0
+    for _, t in ipairs(zone) do sx, sy = sx + t.x, sy + t.y end
+    local edge = Combat.nearestEdge(battle.combat, sx / #zone, sy / #zone)
+    battle.turnBoard(BattleMap.rotationForBottom(edge) - battle.map.rotation)
 end
 
 -- Everything that used to happen at the bottom of battle.enter, now gated behind the player committing
@@ -4914,6 +4967,12 @@ function battle.enter(self, opts)
           -- duel, the menu's mock), which simply draws the board on its own as it always has.
           grid = opts.grid, box = battle.arena.box })
     battle.map.fx = battle.fx
+    -- ...and the board's facing is pushed into it, so a walk slide and an attack lunge travel the way
+    -- the picture is pointed rather than the way the grid is (see BattleMap:syncFx).
+    battle.map:syncFx()
+    -- Face the board before anything is laid out against it -- the gutter below, and the deployment
+    -- phase's own lit zone -- so a player who asked for their line to be at the bottom places it there.
+    battle.faceParty()
     -- The board's point-effect controller (impact bursts, spell blooms, bolts in flight) is shared into
     -- the animation controller, which spawns from it as it plays out each blow. See ui/burst_fx.lua.
     battle.fx.bursts = battle.map.bursts
@@ -4967,7 +5026,8 @@ function battle.enter(self, opts)
         -- "Ashes" after it (models/conversation.lua's drainJoins).
         local stage = { deferJoins = true }
         if battle.tutorial then
-            local boardBottom = battle.map.originY + battle.arena.rows * battle.map.size
+            local _, by, _, bh = battle.map:boardRect()
+            local boardBottom = by + bh
             local x = LEFT_W + GUTTER_PAD
             local y = boardBottom + GUTTER_GAP
             stage.overScene = true
@@ -5360,9 +5420,7 @@ end
 function battle.drawPeek()
     local u = battle.peekUnit
     if not (u and u.alive) then return end
-    local m = battle.map
-    local ax = m.originX + (u.x - 0.5) * m.size
-    local ay = m.originY + (u.y - 0.5) * m.size
+    local ax, ay = battle.map:cellCenter(u.x, u.y)
     battle.peek:draw(u, ax, ay, LEFT_W, Scale.WIDTH - PANEL_W)
 end
 
@@ -5402,9 +5460,7 @@ function battle.draw()
         and battle.current and Combat.isPlayerControlled(battle.current) then
         local kind = battle.boardCursorKind()
         if kind then
-            local tx, ty = battle.map:cellToPixel(battle.map.cursor.x, battle.map.cursor.y)
-            local half = battle.map.size / 2
-            Cursor.draw(kind, tx + half, ty + half)
+            Cursor.draw(kind, battle.map:cellCenter(battle.map.cursor.x, battle.map.cursor.y))
         end
     end
     battle.fx:drawFloaters(battle.map) -- damage / heal numbers, above the board
@@ -5423,9 +5479,10 @@ function battle.draw()
         if prompt and battle.tutorialNudge then
             prompt = { speaker = prompt.speaker, text = battle.tutorialNudge.text, alert = true }
         end
+        local _, by, _, bh = battle.map:boardRect()
         TutorialPrompt.draw(battle.combat, prompt, {
             leftMargin = LEFT_W, rightMargin = PANEL_W,
-            boardBottom = battle.map.originY + battle.arena.rows * battle.map.size,
+            boardBottom = by + bh,
         })
         battle.drawCoach()
     end
@@ -5786,6 +5843,26 @@ function battle.drawMenuEntry(btn, label, on, accent)
     love.graphics.printf(label, btn.x, btn.y + btn.h / 2 - 8, btn.w, "center")
 end
 
+-- The two board-turn plates, drawn as the drawer's fourth row. They take the plate from drawMenuEntry
+-- with no label and then wear a drawn arrow instead of a word, so they sit in the same slate-and-frame
+-- run as every other entry and only their mark differs. Lit while the board is off its default facing,
+-- in the same accent both wear -- the board being turned is one state, not two, so lighting only the
+-- button last pressed would say something untrue about the other.
+--
+-- A field on `battle` rather than a file local, for the local-ceiling reason at deploySettingsButton.
+function battle.drawTurnEntries()
+    local turned = battle.map and battle.map.rotation ~= 0
+    local accent = { 0.58, 0.72, 0.92 }
+    for _, e in ipairs({ { battle.turnLeftButton, false }, { battle.turnRightButton, true } }) do
+        local btn = e[1]
+        battle.drawMenuEntry(btn, "", turned, accent)
+        local c = turned and accent or Theme.ink
+        local g = 22
+        Glyphs.turn(btn.x + btn.w / 2 - g / 2, btn.y + btn.h / 2 - g / 2, g, g, c[1], c[2], c[3], 1, e[2])
+    end
+    love.graphics.setColor(1, 1, 1)
+end
+
 -- The drawer as the DEPLOYMENT phase wears it: the same hamburger in the same corner, opening on the
 -- one entry that means something before the bell (see deploySettingsButton). The column's controls are
 -- part of the screen's furniture, not the fight's, so they stand before the first turn as after it.
@@ -5818,6 +5895,8 @@ function battle.drawHud()
 
     local rangesOn = battle.showEnemyRanges
     battle.drawMenuEntry(rangesButton, rangesOn and "Threats ✓" or "Threats", rangesOn, { 0.72, 0.45, 0.92 })
+
+    battle.drawTurnEntries()
 
     -- Auto is hidden entirely during a tutorial fight -- the student must take their own turns.
     local autoOn = battle.autoAll
@@ -5997,6 +6076,14 @@ function battle.keypressed(key)
     -- over the fight -- it is what the screen IS before the fight starts -- so it simply takes the key.
     -- The Loadout screen IS a modal over it, and closes itself on Esc.
     if battle.deployLoadout then battle.deployLoadout:keypressed(key); return end
+    -- Turning the board (Q / E) is answered above every owner below it, because it is a fact about the
+    -- PICTURE and not about whatever is being decided on it: it means the same thing while a line is
+    -- being deployed, while a body is being picked off the bench, and after the fight is over. Only the
+    -- two screens that cover the board -- the settings overlay and the Loadout -- take it first. The
+    -- drawer's two plates are the mouse's way to the same pair. Q and E because WASD is the board
+    -- cursor, so the keys that turn the view sit either side of the hand already steering it.
+    if key == "q" then battle.turnBoard(-1); return end
+    if key == "e" then battle.turnBoard(1); return end
     if battle.deploy then battle.deploy:keypressed(key); return end
     -- The bench chooser owns the keyboard while someone is being picked off the bench.
     if battle.benchChooser then battle.benchChooser:keypressed(key); return end
@@ -6335,6 +6422,14 @@ function battle.mousepressed(x, y, button)
         end
         if pointIn(rangesButton, x, y) then
             battle.showEnemyRanges = not battle.showEnemyRanges
+            return
+        end
+        if pointIn(battle.turnLeftButton, x, y) then
+            battle.turnBoard(-1)
+            return
+        end
+        if pointIn(battle.turnRightButton, x, y) then
+            battle.turnBoard(1)
             return
         end
         if autoAllowed() and pointIn(autoButton, x, y) then

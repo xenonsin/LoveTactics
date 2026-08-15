@@ -718,7 +718,12 @@ end
 -- two-regions idiom the Loadout panel uses.
 function DeployPhase:navigate(dx, dy)
     if self.boardFocus then
-        if dy > 0 and self.map.cursor.y >= self.arena.rows then
+        -- "The board's bottom row" is a fact about the PICTURE, not the grid: a board turned to put the
+        -- party at the bottom has some other grid row against the strip. Ask the map where the cursor
+        -- is on screen, and cross when it is on the last screen row.
+        local _, cv = self.map:rotateCell(self.map.cursor.x, self.map.cursor.y)
+        local _, screenRows = self.map:span()
+        if dy > 0 and cv >= screenRows then
             self.boardFocus = false
             return
         end

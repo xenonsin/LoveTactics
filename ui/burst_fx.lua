@@ -396,7 +396,10 @@ function BurstFx:draw(map)
         local alpha = math.min(1, p * 8) * math.min(1, (1 - p) * 8 + 0.2)
         -- The travel direction, given both ways: as `uAim` (the streak's own tail) and as the shape
         -- angle every other family reads. A frozen age holds a borrowed body at full bloom (FLIGHT_AGE).
+        -- Turned into screen directions first: the flight is measured between two GRID cells, and on a
+        -- rotated board a streak that kept its grid heading would lie across its own path.
         local dx, dy = f.toX - f.fromX, f.toY - f.fromY
+        if map.rotateVec then dx, dy = map:rotateVec(dx, dy) end
         drawQuad(cx, cy, f.radius, f.pattern, f.color, alpha, BurstFx.FLIGHT_AGE, f.seed,
             math.atan2(dy, dx), dx, dy, 1)
     end

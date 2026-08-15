@@ -7,11 +7,14 @@ local BattleMap = require("ui.battle_map")
 
 local TILE = 60 -- states/battle.lua BOARD_TILE
 
--- A stand-in for a real map: statusBadgeRects only reads self.size.
+-- A stand-in for a real map: statusBadgeRects reads self.size and the board's facing (spanPixels), and
+-- nothing else. Given the BattleMap metatable so those come off the real module rather than being
+-- stubbed -- a stand-in that reimplements the geometry it is here to check would prove nothing.
 local function rects(n, wx, wy)
     local statuses = {}
     for i = 1, n do statuses[i] = { name = "s" .. i, def = { abbr = "Ab" .. i } } end
-    return BattleMap.statusBadgeRects({ size = TILE }, { statuses = statuses }, wx or 0, wy or 0)
+    local map = setmetatable({ size = TILE, rotation = 0 }, BattleMap)
+    return BattleMap.statusBadgeRects(map, { statuses = statuses }, wx or 0, wy or 0)
 end
 
 local function bounds(rs)

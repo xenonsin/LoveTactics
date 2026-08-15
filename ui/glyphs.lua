@@ -176,6 +176,42 @@ function Glyphs.intentWait(x, y, w, h, r, g, b, a)
     love.graphics.setLineWidth(lw)
 end
 
+-- Turn: three quarters of a ring with an arrowhead on the open end, the mark every photo viewer and
+-- phone camera wears for "rotate this". Drawn rather than typed, because the chrome faces (Alegreya)
+-- carry no rotation arrow and a control whose label falls back to a tofu box says nothing at all.
+-- `clockwise` picks the direction the head points; the arc opens at the top either way, so the pair
+-- read as mirror images of one another.
+function Glyphs.turn(x, y, w, h, r, g, b, a, clockwise)
+    love.graphics.setColor(r, g, b, a or 1)
+    local cx, cy = x + w / 2, y + h / 2
+    -- Sized so the head has room to be a HEAD: the ring is a little under a third of the box, leaving
+    -- the rest to a triangle wide enough to read the direction at the 18px the drawer draws it.
+    local rad = math.min(w, h) * 0.30
+    local dir = clockwise and 1 or -1
+    -- The break sits at the top of the ring, so the head points across the top -- right for a clockwise
+    -- turn, left for a counter-clockwise one. Any other clock position and the two marks read as the
+    -- same open ring, which is exactly what happens when the head is too small to see.
+    local gap = -math.pi / 2
+    local head = 0.62 -- radians of ring the head spans
+
+    local lw = love.graphics.getLineWidth()
+    love.graphics.setLineWidth(math.max(1.8, math.min(w, h) * 0.13))
+    -- The arc covers the whole ring except the head's sector, drawn from the head round the long way.
+    local from = gap + dir * head
+    love.graphics.arc("line", "open", cx, cy,
+        rad, math.min(from, from + dir * (2 * math.pi - head - 0.12)),
+        math.max(from, from + dir * (2 * math.pi - head - 0.12)))
+    love.graphics.setLineWidth(lw)
+
+    -- The head: base straddling the ring at the break, tip a little further round the way it turns.
+    local tip = gap + dir * head
+    local half = rad * 0.52
+    love.graphics.polygon("fill",
+        cx + rad * math.cos(tip), cy + rad * math.sin(tip),
+        cx + (rad + half) * math.cos(gap), cy + (rad + half) * math.sin(gap),
+        cx + (rad - half) * math.cos(gap), cy + (rad - half) * math.sin(gap))
+end
+
 -- Which mark speaks for which intent kind, so a caller maps a kind straight to a glyph.
 Glyphs.INTENT = {
     attack  = Glyphs.intentAttack,
