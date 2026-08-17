@@ -240,6 +240,11 @@ Balance.MAGNITUDE_WAIVERS = {
     weapon_swineherds_wand = "polymorph removes the body from the fight outright (status_polymorph:"
         .. " it can move and do nothing else). Its header says the damage is 'nearly nothing on"
         .. " purpose' -- a weapon that both removed a body AND hurt it would be two purchases.",
+    weapon_long_bout = "a BOUND signature relic (Elio's), so it is not on any ladder to be a rung of:"
+        .. " nobody buys it, nobody unlocks it, and its slot reads 0 only because an unpriced item has"
+        .. " no gate to derive one from. It is priced as a duelling sword because that is what it is --"
+        .. " see docs/weapons.md's sword contract, which it also keeps (trait_parry). The hall's other"
+        .. " thirty-seven relics escape this check by not being weapons; this one cannot.",
     ability_self_destruct = "the same 12 trait_bomblet throws, and it has to stay the same 12: the"
         .. " Bomblet promises the damage only ever comes from the burst however the burst is triggered,"
         .. " so a player who learned the number off one they shot is not surprised by one that jumped"

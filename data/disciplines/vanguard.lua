@@ -9,5 +9,6 @@ return {
     description = "The breach. Knockback that strips guard and armor, opening a hole in the line for the rest to pour through.",
     classes = { "knight", "rogue" },
     exemplar = "character_vanguard", -- NEW, pending
+    hire = "character_dray",
     requiredQuests = { "quest_bastion_the_salted_gate" }, -- pending
 }

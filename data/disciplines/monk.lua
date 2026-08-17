@@ -11,5 +11,6 @@ return {
     description = "The ascetic. Unarmed strikes bank chi, and the bank is spent whole on a single burst.",
     classes = { "priest" },
     exemplar = "character_monk", -- NEW, pending
+    hire = "character_sunho",
     requiredQuests = { "quest_cathedral_slot_04" },
 }

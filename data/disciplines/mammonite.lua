@@ -34,5 +34,6 @@ return {
     description = "The purse as a weapon. Gold is a combat resource in both directions: coin buys damage, tempo and your own skin, and every blow you land banks more of it.",
     classes = { "rogue" },
     exemplar = "character_mammonite",
+    hire = "character_cass",
     requiredQuests = { "quest_undercroft_slot_06" },
 }

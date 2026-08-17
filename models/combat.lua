@@ -1437,6 +1437,12 @@ end
 --   answered                -- turned a blow aside / countered    (Trait's tallyAnswer)
 --   foeDown                 -- an enemy of this unit fell         (killUnit)
 --   allyHealed              -- someone on its side was healed     (Combat.applyHeal)
+--   tilesMoved              -- tiles crossed on its own feet      (Combat.moveUnit)
+--   tilesBlinked            -- tiles crossed WITHOUT walking      (Combat.teleportUnit)
+--   goldSpent               -- coin actually taken from the purse (Combat.spendPurse)
+--   consumed                -- a drink committed to               (Combat.useItem)
+--   stolen                  -- an item lifted off somebody        (Combat.steal)
+--   shifted                 -- took a new shape ITSELF            (fx.transform)
 -- ---------------------------------------------------------------------------
 
 -- Add `n` (default 1) to `unit`'s running count of `event`. Nil-safe on both the unit and its
@@ -1710,6 +1716,10 @@ function Combat.spendPurse(combat, unit, n)
         end
         Combat.logEvent(combat, "system",
             string.format("%s spends %dg.", unitName(unit), take), unit)
+        -- Bank the OUTLAY toward any signature gated on spending (Combat.tally). The Mammonite's is
+        -- the one that reads it, and it reads what actually left the purse rather than what was
+        -- asked for: a broke party's last coppers buy a smaller blow, which is the honest amount.
+        Combat.tally(unit, "goldSpent", take)
     end
     return take
 end
@@ -1718,7 +1728,107 @@ end
 local UNLOCK_LABELS = {
     hitDealt = "Land", damageDealt = "Deal", hitTaken = "Weather", damageTaken = "Soak",
     kill = "Fell", allyDown = "Lose", healDone = "Heal", cast = "Cast", turnTaken = "Hold",
+    tilesMoved = "Cross", tilesBlinked = "Blink", goldSpent = "Spend", consumed = "Drink",
+    stolen = "Take", shifted = "Change",
 }
+
+-- ---------------------------------------------------------------------------
+-- THE CENSUS: what the BOARD looks like right now, counted.
+--
+-- A tally (above) counts what a unit has DONE -- blows landed, casts committed, turns held. It only
+-- ever climbs, so a signature gated on one is a chore with a countdown on it. A census counts what is
+-- STANDING: five foes carrying poison, three of your totems in the ground, three clones on their
+-- feet. Two things follow from that difference, and both are why the signatures want it:
+--
+--   * it can be LOST. Kill the poisoned, and a Poisoner's gate falls back open. A gate you can drop is
+--     a board state you are keeping, which is the difference between a build and a wait.
+--   * it can be reached from BEHIND. A tally gate fills fastest when you are already winning, which is
+--     what makes a tallied ultimate a "win more" button; a census asks only that you have set up.
+--
+-- `unlock.when` has always been able to READ the board -- it is handed the whole combat -- but it
+-- returns a bare yes/no, so a slot gated on one shows "Not ready" and nothing else. There is no
+-- progress to steer by, which for a state you are supposed to be building toward is exactly the
+-- number the player needs. That is the whole reason this is a field of its own rather than another
+-- predicate: `Combat.census` returns a COUNT, so the badge can say 3/5.
+--
+-- `Combat.census` and not `Combat.fieldCount`, though `field` is what the authored clause is called:
+-- Combat.fieldCount is already taken, and means something else entirely -- how many bodies a side has
+-- deployed against MAX_FIELD. Defined later in this file, it silently overwrote the census and every
+-- test failed inside the deployment counter. The same near-miss Combat.chargePool records, caught the
+-- same way, and the fix is the same: the newcomer takes a distinct name rather than shadow a working
+-- function.
+--
+-- Every clause is optional and they AND together:
+--
+--   field = {
+--     of = "unit",              -- "unit" (default) | "hazard" | "trap"
+--     count = 5,                -- how many must match
+--     side = "foe",             -- "foe" | "ally" (same side, not you) | "party" (with you) | "self"
+--     status = "status_poison", -- carries this status
+--     within = 2,               -- no further than N tiles from the bearer (Combat.unitGap)
+--     hpBelow = 0.5,            -- health under this fraction of its own maximum
+--     summoned = true,          -- something THIS unit put on the board (u.summoner)
+--     test = function(entry, unit, combat) return true end,  -- the escape hatch, checked last
+--   }
+--
+-- PURE, and it has to be: Combat.itemBlockReason runs over every grid item on every redraw, the
+-- damage preview runs it against an inert context, and the AI asks it while planning. Nothing here
+-- writes -- it reads three lists and counts. `test` is authored code and the one place that rule can
+-- be broken, which is why it is documented as a predicate rather than a hook.
+-- ---------------------------------------------------------------------------
+
+-- A body's health as a fraction of its own maximum, 0 when it has no ceiling to measure against.
+-- Resource stats instantiate as { max, current } (models/character.lua), so both halves are here.
+local function healthFraction(u)
+    local h = u and u.char and u.char.stats and u.char.stats.health
+    local max = h and h.max or 0
+    if max <= 0 then return 0 end
+    return (h.current or 0) / max
+end
+
+-- Does one candidate satisfy `spec`? `entry` is a unit, a hazard or a trap depending on `spec.of`;
+-- the side clauses read the same `side` field off all three.
+local function fieldMatches(entry, spec, unit, combat)
+    if spec.side == "self" then
+        if entry ~= unit then return false end
+    elseif spec.side == "foe" then
+        if not unit or entry.side == unit.side then return false end
+    elseif spec.side == "ally" then
+        if not unit or entry.side ~= unit.side or entry == unit then return false end
+    elseif spec.side == "party" then
+        if not unit or entry.side ~= unit.side then return false end
+    end
+    if spec.status and not Status.has(entry, spec.status) then return false end
+    if spec.summoned and entry.summoner ~= unit then return false end
+    if spec.hpBelow and healthFraction(entry) >= spec.hpBelow then return false end
+    -- Distance is measured from the BEARER, so a census with no unit to measure from cannot pass it
+    -- rather than silently counting the whole board.
+    if spec.within then
+        if not unit or not entry.x or not entry.y then return false end
+        if Combat.unitGap(unit, entry) > spec.within then return false end
+    end
+    if spec.test and not spec.test(entry, unit, combat) then return false end
+    return true
+end
+
+-- How many things on the board satisfy `spec`. Zero when there is no board to look at, which is the
+-- honest answer for the item scan running outside a battle (the Loadout screen) -- a census gate
+-- reads as unmet there rather than as met-by-default.
+function Combat.census(unit, spec, combat)
+    if not spec or not combat then return 0 end
+    local list, aliveOnly
+    if spec.of == "hazard" then list = combat.hazards
+    elseif spec.of == "trap" then list = combat.traps
+    else list = combat.units; aliveOnly = true end
+
+    local n = 0
+    for _, entry in ipairs(list or {}) do
+        if (not aliveOnly or entry.alive) and fieldMatches(entry, spec, unit, combat) then
+            n = n + 1
+        end
+    end
+    return n
+end
 
 -- Evaluate a raw `unlock` descriptor for `unit`, with per-`key` baseline bookkeeping. `key` is
 -- whatever OWNS the unlock -- an item instance for an active signature (gated through
@@ -1726,13 +1836,21 @@ local UNLOCK_LABELS = {
 -- -- so the two never share a baseline. Returns `met`, plus the current/target counts for a progress
 -- badge (nil counts for a board-state `when` predicate, which is a yes/no rather than a tally). Pure:
 -- safe for the item scan, previews and the AI. A nil unlock is always met. `combat` is optional --
--- only a `when` predicate reading the board needs it; count-based unlocks ignore it.
+-- only a `when` predicate or a `field` census reading the board needs it; count-based unlocks ignore it.
 function Combat.unlockReady(unit, unlock, key, combat)
     if not unlock then return true end
     -- A `once` signature that has already opened stays open the rest of the battle.
     if unlock.once and unit and unit.unlockOpen and unit.unlockOpen[key] then return true, 1, 1 end
     -- A board-state predicate (HP threshold, an adjacent foe, a living companion) gates the ability.
     local gateOk = (not unlock.when) or (unlock.when(unit, combat) and true or false)
+    -- A CENSUS gate: progress is what is standing on the board, not what has been banked. No baseline
+    -- and no rebaselining -- a repeatable census simply asks the board again, and Combat.unlockSpend
+    -- leaves it alone for exactly that reason. A `when` alongside it still has to pass.
+    if unlock.field then
+        local target = unlock.field.count or 1
+        local held = Combat.census(unit, unlock.field, combat)
+        return (gateOk and held >= target), math.min(held, target), target
+    end
     -- A pure `when` (no count) is the whole yes/no test. Alongside a `count` the gate must ALSO pass
     -- for the charge to fire -- the Wolfsong Horn is charged by the wolf's blows AND only while the
     -- wolf still stands.
@@ -1761,7 +1879,11 @@ function Combat.unlockLabel(unit, item, combat)
     local met, cur, total = Combat.unlockMet(unit, item, combat)
     local base = unlock.text
     if not base then
-        if unlock.when then base = "Not ready"
+        -- A census has no single verb to build a sentence from -- "5 foes carrying poison" and "3 of
+        -- your totems standing" share no grammar -- so it asks for its own `text` and falls back to
+        -- something honest rather than guessing. The progress half below still reads correctly.
+        if unlock.field then base = "On the field"
+        elseif unlock.when then base = "Not ready"
         else base = string.format("%s %d", UNLOCK_LABELS[unlock.event] or unlock.event, unlock.count or 1) end
     end
     if total then return string.format("%s (%d/%d)", base, cur or 0, total), met end
@@ -1777,7 +1899,11 @@ function Combat.unlockSpend(unit, unlock, key)
     if unlock.once then
         unit.unlockOpen = unit.unlockOpen or {}
         unit.unlockOpen[key] = true
-    else
+    elseif not unlock.field then
+        -- A CENSUS never rebaselines. There is no running total to take a slice out of -- the gate is
+        -- the board, so a repeatable one re-locks the moment the board stops looking that way and
+        -- opens again the moment it does. Writing a baseline here would bank a tally that does not
+        -- exist (`unlock.event` is nil on a census) and quietly pin the progress readout at zero.
         unit.unlockBase = unit.unlockBase or {}
         unit.unlockBase[key] = Combat.tallyCount(unit, unlock.event)
     end
@@ -3829,6 +3955,12 @@ function Combat.moveUnit(combat, unit, x, y)
     local plan, reason = Combat.planMove(combat, unit, x, y)
     if not plan then return false, reason end
     local _, cost = walkOut(combat, plan, false)
+    -- Bank the GROUND COVERED toward any signature gated on moving (Combat.tally). Tiles walked, not
+    -- move points paid, because a skirmisher's relic is about distance rather than terrain -- crossing
+    -- four tiles of mud is the same four tiles as crossing four of road, and pricing it in cost would
+    -- quietly make rough ground fill the gate faster. `path` carries the origin on the front, so the
+    -- step count is one less than its length.
+    Combat.tally(unit, "tilesMoved", math.max(0, #plan.path - 1))
     return true, cost
 end
 
@@ -4434,6 +4566,11 @@ end
 -- teleport, not a walk. Returns true once placed (false for a dead/nil unit).
 function Combat.teleportUnit(combat, unit, x, y)
     if not (unit and unit.alive) then return false end
+    -- Bank the DISTANCE CROSSED WITHOUT WALKING toward any signature gated on it (Combat.tally). The
+    -- Assassin's relic is built on this and nothing else: her damage is the ground she did not cover
+    -- on foot, which makes every blink in her grid a purchase of damage. Measured before the move,
+    -- and in the same Chebyshev tiles the board reasons in everywhere else.
+    Combat.tally(unit, "tilesBlinked", math.max(math.abs((unit.x or x) - x), math.abs((unit.y or y) - y)))
     unit.x, unit.y = x, y
     Combat.logEvent(combat, "move",
         string.format("%s leaps to (%d, %d).", unitName(unit), x, y), unit)
@@ -6690,19 +6827,28 @@ function Combat.fallenParty(combat)
     return out
 end
 
--- Returns the character instances it carried out, so the caller can charge them for it. Purely
--- additive: every existing call ignores the value and behaves exactly as it did.
+-- Returns the character instances it carried out, so the caller can charge them for it with a wound.
+--
+-- EVERY FALLEN BODY COMES OUT OF A FIGHT THE COMPANY WON, in every mode, and there is deliberately no
+-- exception. A descent briefly had one -- a body whose downed window ran out was left on the floor and
+-- lost -- and it is gone: losing a member outright to one bad turn in a fight you WON is the harshest
+-- possible reading of a countdown, and it made the countdown the whole game rather than a beat in it.
+--
+-- WHAT CARRIES THE STAKE INSTEAD IS THE WOUND (models/wound.lua), which now reserves a share of the
+-- body's health and stacks debuffs as they accumulate. A body that keeps going down keeps getting
+-- harder to field, which degrades a company across a whole expedition rather than deleting a quarter of
+-- it in one turn -- and the only thing that ever costs you a body is a WIPE, where the whole company is
+-- left on the floor together and a fresh one goes down to fetch them (states/game.lua's onLoss).
 function Combat.reviveFallenParty(combat, fraction)
     fraction = fraction or 0.2
     local carried = {}
     for _, u in ipairs(combat.units) do
         if u.side == "party" and not u.alive and (u.incapacitated or u.corpse)
             and not u.summoned and not u.decoyOf
-            -- Either fallen state is carried out: a member still INCAPACITATED when the fight ended, and
-            -- one whose window ran out and TURNED TO A CORPSE alike (the closed in-battle window is a
-            -- fight-length penalty, and the company still carries its own out once the fight is won). A
-            -- body that never comes back stays down even in victory (a recruited demon would be lost for
-            -- good), and one already spent -- consumed or raised -- left no `corpse` to carry.
+            -- Either fallen state is carried out: still INCAPACITATED when the fight ended, or gone
+            -- cold when the count ran out. A body that never comes back stays down even in victory (a
+            -- recruited demon is lost for good), and one already spent -- consumed or raised -- left no
+            -- `corpse` to carry.
             and u.char.revivable ~= false then
             local hp = u.char.stats.health
             hp.current = math.max(1, math.floor((hp.max or 0) * fraction))
@@ -8111,6 +8257,19 @@ function Combat.unreservedMax(char, stat)
     -- the base `max`. `char.maxBonus` is rebuilt from the grid every setup (applyUnitPassives), so it
     -- never compounds; it is nil outside a battle, where these items have no effect anyway.
     max = max + ((char.maxBonus and char.maxBonus[stat]) or 0)
+    -- A WOUND RESERVES PART OF THE BODY (models/wound.lua). `char.woundShare` is stamped by Wound.stamp
+    -- from the player's ledger, because wounds are keyed by char id on the PLAYER and this function is
+    -- asked about summons, enemies and duel rosters that have no player behind them at all -- so the
+    -- share arrives on the character the same way `maxBonus` does, and nothing here learns what a wound
+    -- is. Health only: a wound is an injury, not exhaustion, so stamina and mana refill against their
+    -- true ceiling (the same split Player.restore makes).
+    --
+    -- Applied to the CEILING rather than to `max`, which is never modified: a wounded body's pool is
+    -- the size it always was and part of it is simply not available -- so nothing has to be un-written
+    -- when the bone is set, and every recomputation of max from level and gear stays untouched.
+    if stat == "health" and (char.woundShare or 0) > 0 then
+        max = math.max(1, math.floor(max * (1 - char.woundShare)))
+    end
     return math.max(0, max - Combat.reservedAmount(char, stat))
 end
 
@@ -8625,9 +8784,22 @@ function Combat.steal(combat, thief, victim)
     Character.removeItem(victim.char, item)
     Combat.logEvent(combat, "action", string.format("%s steals %s from %s.",
         unitName(thief), item.name or "an item", unitName(victim)), { thief, victim })
+    -- Bank the LIFT toward any signature gated on theft (Combat.tally). Counted here, on the item
+    -- leaving its owner, rather than below on where it lands: a thief whose grid is full has still
+    -- stolen the thing, and a gate that disagreed with the log line above it would be a bug the
+    -- player could read.
+    Combat.tally(thief, "stolen", 1)
 
     if not Character.addItem(thief.char, item) then
-        if thief.side == "party" and combat.stash then
+        -- THE BAG, before the stash: a thief carrying one keeps what the grid had no cell for, and
+        -- keeps it IN THE FIGHT (Item.bagIn / docs the block above Item.bagRoom). Checked in this
+        -- order deliberately -- the grid is still first, because a cell you can reach beats a cell you
+        -- have to open a panel for, and the bag is the overflow that used to be the stash.
+        local bag = Item.bagIn(thief.char)
+        if bag and Item.bagPut(bag, item) then
+            Combat.logEvent(combat, "system",
+                string.format("%s goes into the %s.", item.name or "The item", bag.name or "bag"))
+        elseif thief.side == "party" and combat.stash then
             combat.stash[#combat.stash + 1] = item
             Combat.logEvent(combat, "system",
                 string.format("%s goes to the stash.", item.name or "The item"))
@@ -8871,6 +9043,11 @@ function Combat.useItem(combat, unit, item, tx, ty, windup, dest, spend)
     -- one to the current tally, or latching a `once` one open. Both run at commit, so a channel that
     -- winds up now (and lands later) still counts and re-locks exactly once.
     Combat.tally(unit, "cast", 1)
+    -- ...and, if what was committed to was a DRINK, bank that separately. A warbrewer's signature
+    -- gates on how much she has put away, not on how many actions she has taken, and the two diverge
+    -- the moment she swings a weapon. Counted at commit like `cast` above, so a draught poured into a
+    -- channel still counts.
+    if item and item.type == "consumable" then Combat.tally(unit, "consumed", 1) end
     Combat.unlockConsume(unit, item)
 
     -- A channeled ability (a large AOE spell) doesn't resolve now: the caster winds up for its
@@ -9577,7 +9754,13 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
             if not tgt then return nil end
             opts = opts or {}
             if opts.reserve == nil and tgt == unit then opts.reserve = reserve end
-            return Transform.apply(combat, tgt, charId, opts)
+            local shaped = Transform.apply(combat, tgt, charId, opts)
+            -- Bank a SELF-transform toward any signature gated on shapeshifting (Combat.tally). Only
+            -- a self one: the Druid's relic asks how many times she has changed, and a Polymorph cast
+            -- on somebody else is a debuff she applied rather than a shape she took. Same split the
+            -- reservation above draws, for the same reason.
+            if shaped and tgt == unit then Combat.tally(unit, "shifted", 1) end
+            return shaped
         end,
         -- Shove a unit `distance` tiles straight away from the caster; a collision hurts everyone.
         knockback = function(tgt, distance, opts)

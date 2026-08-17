@@ -9,5 +9,6 @@ return {
     description = "The field brewer. Harvests the ground's own hazards and growth into consumables mid-fight; the same stem poisons and cures.",
     classes = { "hunter", "alchemist" },
     exemplar = "character_herbalist", -- NEW, pending
+    hire = "character_sorrel",
     requiredQuests = { "quest_alchemist_the_poisoned_glade" }, -- pending
 }

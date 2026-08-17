@@ -99,6 +99,21 @@ function Trap.place(combat, x, y, id, side, opts)
     }
     combat.traps = combat.traps or {}
     combat.traps[#combat.traps + 1] = trap
+
+    -- THE PATIENT LINE (Sela's bound relic): a trapper carrying `trapSpread` lays wider ground than she
+    -- aims at -- every trap she sets also takes the four tiles around it, for the rest of the fight.
+    -- The flag lives on the PLACER rather than on the relic so it survives the relic being put away,
+    -- and is read here rather than in the relic so it reaches traps set long after it was pressed --
+    -- which is the half the design specifically asked for.
+    --
+    -- `opts.spread` marks the copies. Without it each neighbour would lay four more and the board would
+    -- fill with one press; with it the spread is exactly one tile deep, always.
+    if not opts.spread and opts.placer and opts.placer.trapSpread then
+        for _, step in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+            Trap.place(combat, x + step[1], y + step[2], id, side,
+                { amount = opts.amount, placer = opts.placer, spread = true })
+        end
+    end
     return trap
 end
 

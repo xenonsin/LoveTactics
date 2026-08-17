@@ -69,6 +69,12 @@ local battle = {}
 -- unrelated line.
 battle.FADE_SECONDS = 1.8
 
+-- The bag panel (ui/panels/bag.lua), reached by clicking a bag item in the grid. A field on the
+-- module for the same reason FADE_SECONDS is one -- this chunk is two declarations under Lua 5.1's
+-- 200-local ceiling, and a `local BagPanel = require(...)` here is a compile error naming some
+-- unrelated line halfway down the file.
+battle.BagPanel = require("ui.panels.bag")
+
 local titleFont = Theme.display(22)
 local hudFont = Theme.display(16)
 local hintFont = Theme.body(13) -- control hint: dense, so it keeps the plain body face and fits one line
@@ -2184,10 +2190,34 @@ end
 
 -- Arm an ability item (or toggle it off if already armed). A Blink item toggles teleport movement
 -- instead of arming a cast (it has a moveBehavior, not an activeAbility).
+-- Open a bag item's contents (ui/panels/bag.lua). Taking something out puts it in the bearer's grid,
+-- which is what makes a stolen thing usable this turn rather than a note for after the battle.
+local function openBag(unit, item)
+    battle.bagPanel = battle.BagPanel.new({
+        bag = item,
+        onTake = function(held)
+            -- Character.addItem is the one path into a grid, and it answers the only question the
+            -- panel needs to ask: was there a free cell. A refusal comes back as a line the player
+            -- can act on rather than a click that does nothing.
+            if not Character.addItem(unit.char, held) then return false end
+            return true
+        end,
+        onClose = function() battle.bagPanel = nil end,
+    })
+end
+
 local function armItem(item)
     local current = battle.current
     if battle.over or busy() or not current or not Combat.isPlayerControlled(current) then return end
     if tutorialRefuses("arm") then return end
+    -- A BAG opens rather than arming, but only while its signature is still locked. Clicking a greyed
+    -- slot is otherwise a refusal message, so the bag is strictly the better answer there; once the
+    -- gate is met the same press casts, because at that point emptying the bag IS the item's verb.
+    -- One control, and it always does the useful half of what the item is for.
+    if item and item.bag and not Combat.unlockMet(current, item, battle.combat) then
+        openBag(current, item)
+        return
+    end
     -- A step that names an item admits only that one: "ready your sword" is not satisfied by the
     -- torch. Same nudge, same banner-free path as the coarse refusal above.
     if battle.tutorial and item and not Tutorial.allowsItem(battle.tutorial, item.id) then
@@ -4731,6 +4761,7 @@ function battle.enter(self, opts)
     battle.logReview = nil               -- the summary's "Review Combat Log" modal, when opened
     battle.settingsMenu = nil            -- the in-battle settings overlay, when opened
     battle.windupChooser = nil           -- the chargeable-swing depth chooser, while a swing is sized
+    battle.bagPanel = nil                -- and an open bag, which belongs to the turn that opened it
     battle.spendChooser = nil            -- the purchasable-blow money slider, while a swing is priced
     battle.debugMenu = nil               -- the right-click debug context menu (debug builds only)
     battle.debugPickTile = nil           -- while the debug "Move to tile" is awaiting a destination click
@@ -5495,6 +5526,7 @@ function battle.draw()
     -- When the cursor is over the open combat log, that panel owns the hover: it draws its own
     -- item/status/breakdown tooltip during its draw pass, so the board's tile tooltip must not also
     -- fire here and stack on top of it.
+    if battle.bagPanel then return end
     if battle.windupChooser or battle.spendChooser then
         -- The wind-up / spend modal owns the frame: no board / panel tooltip bleeds behind it.
     elseif not InputMode.isMouse() and battle.keySlot then
@@ -5548,6 +5580,7 @@ function battle.draw()
     if battle.settingsMenu then battle.drawSettingsOverlay() end
     -- The wind-up chooser, when a chargeable swing is being sized, sits above the frozen board too.
     if battle.windupChooser then battle.windupChooser:draw() end
+    if battle.bagPanel then battle.bagPanel:draw() end
     -- The spend chooser is the same kind of modal for a purchasable blow (The Gilded Wound).
     if battle.spendChooser then battle.spendChooser:draw() end
     -- The bench chooser, while a rotation or a reinforcement is picking who comes on.
@@ -6090,6 +6123,7 @@ function battle.keypressed(key)
     -- The wind-up chooser eats every key while a chargeable swing is being sized (arrows/+- adjust,
     -- Enter commits the blow, Esc backs out and leaves it armed).
     if battle.spendChooser then battle.spendChooser:keypressed(key); return end
+    if battle.bagPanel then battle.bagPanel:keypressed(key); return end
     if battle.windupChooser then battle.windupChooser:keypressed(key); return end
     if battle.debugMenu then battle.debugMenu:keypressed(key); return end
     if battle.debugPickTile and key == "escape" then battle.debugPickTile = nil; return end
@@ -6190,6 +6224,7 @@ function battle.gamepadpressed(joystick, button)
     -- The wind-up chooser owns the pad while a chargeable swing is being sized (D-pad / bumpers adjust,
     -- A commits, B backs out).
     if battle.spendChooser then battle.spendChooser:gamepadpressed(joystick, button); return end
+    if battle.bagPanel then battle.bagPanel:gamepadpressed(joystick, button); return end
     if battle.windupChooser then battle.windupChooser:gamepadpressed(joystick, button); return end
     if battle.debugMenu then battle.debugMenu:gamepadpressed(joystick, button); return end
     if battle.logReview then
@@ -6264,6 +6299,7 @@ function battle.mousemoved(x, y, dx, dy)
     end
     if battle.benchChooser then battle.benchChooser:mousemoved(x, y); return end
     if battle.spendChooser then battle.spendChooser:mousemoved(x, y); return end
+    if battle.bagPanel then battle.bagPanel:mousemoved(x, y); return end
     if battle.windupChooser then battle.windupChooser:mousemoved(x, y); return end
     if battle.debugMenu then battle.debugMenu:mousemoved(x, y); return end
     battle.menuHoverCue(x, y)
@@ -6377,6 +6413,7 @@ function battle.mousepressed(x, y, button)
     -- The wind-up chooser is the top-most modal while a chargeable swing is sized: a rung, the steppers,
     -- Confirm, the X, or a click on the dim backdrop all work it; nothing reaches the board beneath.
     if battle.spendChooser then battle.spendChooser:mousepressed(x, y, button); return end
+    if battle.bagPanel then battle.bagPanel:mousepressed(x, y, button); return end
     if battle.windupChooser then battle.windupChooser:mousepressed(x, y, button); return end
     -- The debug context menu (debug builds only) is modal over the board while it is up.
     if battle.debugMenu then battle.debugMenu:mousepressed(x, y, button); return end
@@ -6508,6 +6545,7 @@ function battle.cursorKind()
     end
     if battle.benchChooser then return battle.benchChooser:cursorKind(mx, my) end
     if battle.spendChooser then return battle.spendChooser:cursorKind(mx, my) end
+    if battle.bagPanel then return battle.bagPanel:cursorKind(mx, my) end
     if battle.windupChooser then return battle.windupChooser:cursorKind(mx, my) end
     if battle.debugMenu then return battle.debugMenu:cursorKind(mx, my) end
     if battle.summary then return battle.summary:cursorKind(mx, my) end

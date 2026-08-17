@@ -13,5 +13,6 @@ return {
     description = "The sigil-adept. Lays aura tiles that reshape any spell cast beside them. Careful, twinned, farther, faster.",
     classes = { "mage" },
     exemplar = "character_elementalist", -- was character_mage (the generic root body); dedicated exemplar authored
+    hire = "character_nio",
     requiredQuests = { "quest_arcanum_slot_03" },
 }

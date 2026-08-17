@@ -9,5 +9,6 @@ return {
     description = "Stealth plus smite. Mark a heretic, and the execute that follows lands as holy damage and strips their blessings.",
     classes = { "rogue", "priest" },
     exemplar = "character_inquisitor", -- NEW, pending
+    hire = "character_calla",
     requiredQuests = { "quest_cathedral_the_confession" }, -- pending
 }

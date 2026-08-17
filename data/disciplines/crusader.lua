@@ -9,5 +9,6 @@ return {
     description = "The armed faithful. Holy bonus damage on demons and undead, and a kill that heals the one who dealt it.",
     classes = { "fighter", "priest" },
     exemplar = "character_crusader", -- NEW, pending
+    hire = "character_osric",
     requiredQuests = { "quest_cathedral_the_consecrated_march" }, -- pending
 }

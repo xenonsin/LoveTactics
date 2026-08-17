@@ -51,6 +51,9 @@ local CREATURE_MATCH = {
     { "boar", "caro-asercion/boar" },
     { "dire_bear", "delapouite/bear-head" },
     { "bear", "delapouite/bear-head" },
+    -- Before "wolf" only because it must be before the `beast` KIND fallback, which is the wolf's head:
+    -- a wyrm matching nothing here fell through to it and came out pixel-identical to a wolf grunt.
+    { "wyrm", "delapouite/spiked-dragon-head" },
     { "wolf", "lorc/wolf-head" },
     { "hawk", "lorc/hawk-emblem" },
     { "raven", "lorc/raven" },
@@ -170,6 +173,50 @@ local DISCIPLINE_SILHOUETTE = {
 -- tests/char_compose_spec.lua asserts the resulting invariant directly: no two blueprints resolve to the
 -- same silhouette, except the deliberate aliases below.
 local CHARACTER_SILHOUETTE = {
+    -- THE HIRING HALL'S THIRTY-EIGHT. Each is a named version of a discipline whose exemplar keeps its
+    -- own body (the exemplars are still the unnamed things you meet on a floor), so every one of these
+    -- would otherwise fall through to its CLASS silhouette and land pixel-identical to the six other
+    -- heroes off the same shelf. Each wears what it actually DOES instead -- the relic's verb where
+    -- there is one, the discipline's where there is not.
+    brann = "lorc/axe-swing",                       -- the Red Account: swung out of a hole he dug
+    marek = "lorc/crossed-sabres",                  -- the order, not the arm that carries it out
+    ilse = "lorc/bordered-shield",
+    dov = "delapouite/brick-wall",                  -- Doorstone: he closes doors
+    vess = "lorc/hidden",
+    pim = "delapouite/robber",
+    cass = "delapouite/money-stack",
+    mira = "lorc/leaf-swirl",
+    tola = "lorc/paw-print",
+    sela = "delapouite/cage",
+    nio = "lorc/fire-silhouette",
+    isa = "lorc/magic-swirl",
+    cael = "lorc/skull-crack",
+    sunho = "delapouite/monk-face",
+    nell = "delapouite/holy-water",
+    zosia = "lorc/poison-gas",
+    pol = "lorc/bombing-run",
+    aldo = "delapouite/champions",
+    elio = "delapouite/fencer",
+    fen = "delapouite/running-shoe",
+    garan = "delapouite/spell-book",
+    osric = "delapouite/prayer-beads",
+    hilde = "delapouite/beer-bottle",
+    dray = "delapouite/hammer-break",
+    corin = "delapouite/barrier",
+    ivo = "lorc/silence",
+    solene = "lorc/shield-reflect",
+    grell = "lorc/biohazard",
+    rask = "lorc/bolas",
+    miro = "darkzaitzev/ninja-heroic-stance",
+    calla = "lorc/gavel",
+    nix = "delapouite/detonator",
+    ondo = "lorc/tornado",
+    tuva = "lorc/rune-stone",
+    sorrel = "delapouite/forest-camp",
+    ilan = "lorc/candle-flame",
+    wick = "delapouite/factory-arm",
+    ansel = "delapouite/medicine-pills",
+
     -- Off the rank swordman. The escortee is the trade he leads, not a mook; the homunculus is a made
     -- thing; the Breachward is the big grunt its own comment calls it; and the Trapper is the Bolas it
     -- throws (the ability that IS its job -- data/items/ability/ability_bolas.lua).

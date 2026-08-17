@@ -9,5 +9,6 @@ return {
     description = "The holy wall. A standing ward aura cuts the damage taken by every ally beside you.",
     classes = { "knight", "priest" },
     exemplar = "character_paladin", -- NEW, pending
+    hire = "character_solene",
     requiredQuests = { "quest_cathedral_the_oath_at_the_altar" }, -- pending
 }

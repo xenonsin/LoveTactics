@@ -11,5 +11,6 @@ return {
     description = "The bodyguard. Redirects the hits aimed at adjacent allies onto your own plate.",
     classes = { "knight" },
     exemplar = "character_sentinel", -- was character_grey_knight (a story-disguised encounter unit); dedicated exemplar authored
+    hire = "character_ilse",
     requiredQuests = { "quest_bastion_slot_05" },
 }

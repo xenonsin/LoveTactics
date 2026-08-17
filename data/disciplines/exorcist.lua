@@ -13,5 +13,6 @@ return {
     description = "The rite-worker. Banishes summons off the field outright, and strips enemy buffs and hazards.",
     classes = { "priest" },
     exemplar = "character_exorcist", -- was character_amana (a root companion); dedicated exemplar authored
+    hire = "character_nell",
     requiredQuests = { "quest_cathedral_slot_03" },
 }

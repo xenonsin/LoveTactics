@@ -512,10 +512,28 @@ function Save.snapshot(player)
         -- build their own previous session published. Nil on a save that never needed one.
         authorId = player.authorId,
         completedQuests = completedQuests,
+        -- ERRANDS TAKEN ON AND NOT YET FINISHED, as { questId = floor } (models/errand.lua). A house
+        -- asks for a small piece of work before it opens the next rung of its shelf, and the floor is
+        -- stored beside the id because the shop has to be able to say WHERE to go -- an errand whose
+        -- location the player has to remember is a chore rather than a piece of work.
+        --
+        -- Purely additive, so Save.VERSION does not move: an older save restores having taken none on.
+        errands = player.errands,
+        -- WHO THIS COMPANY WALKED PAST, as a list of character ids (models/descent_recruit.lua). The
+        -- Hiring Hall's whole stock: a body refused on a floor is standing in town when you come back
+        -- up. Kept on the profile rather than on the run because a run ends and the town does not --
+        -- dying two floors later does not un-refuse anybody.
+        --
+        -- Purely additive, so Save.VERSION does not move: an older save restores having refused nobody,
+        -- and the hall shows its authored starter slate, which is exactly right for a company that has
+        -- never turned anyone away.
+        declined = player.declined,
         -- STANDING WITH EACH HOUSE, as { [vendorId] = circles cleared }, and the deepest floor ever
-        -- reached. What the descent banks at extraction (Descent.extract) in place of what a completed
-        -- quest used to bank: the shelf reads the first through Quest.sponsorProgress, and the second
-        -- is the only thing that levels the company. Both purely additive, so Save.VERSION does not
+        -- reached. What the descent USED to bank in place of what a completed quest banks: the shelf
+        -- reads the first through Quest.sponsorProgress, and the second levelled the company. Both are
+        -- inert now -- a descent is a separate mode and banks nothing (models/descent.lua's
+        -- Descent.account) -- and both are still written because a save carries the whole shape and an
+        -- older one still holds real numbers here. Purely additive, so Save.VERSION does not
         -- move -- an older save restores with no standing and a deepest of zero, which reads as a
         -- company that has never gone down, which is exactly what it is.
         standing = standing,
@@ -541,6 +559,15 @@ function Save.snapshot(player)
         lastDeployed = lastDeployed,
         roster = roster,
         stash = stash,
+        -- THE DESCENT THIS COMPANY IS IN THE MIDDLE OF (models/descent.lua). The floor stack, the
+        -- shuffled circles, every board it has mapped and whatever it dropped down there. Nil until the
+        -- sponsor sends them down, and written through Descent.snapshot rather than raw because a run
+        -- holds live grids that Save.encode would refuse.
+        --
+        -- Purely additive, so Save.VERSION does not move: an older save restores having never gone down,
+        -- which is what it is.
+        descentRun = player.descentRun
+            and require("models.descent").snapshot(player.descentRun) or nil,
     }
 end
 
@@ -618,6 +645,11 @@ end
 -- one that drifted would be the one nobody tested.
 Save.snapshotCharacter = snapshotCharacter
 Save.restoreCharacter = restoreCharacter
+-- ...and the same for a single ITEM. What a company that wiped leaves behind is everything it was
+-- carrying, dropped on the tile it fell on (models/descent.lua's `drops`), and a cell cannot hold live
+-- instances -- Save.encode raises on the userdata an instance can carry. Rehydrated through
+-- Item.instantiate, which re-bakes the forge level from the blueprint like every other restore.
+Save.snapshotItem = snapshotItem
 Save.encode = encode
 Save.decode = decode
 Save.known = known
@@ -742,6 +774,10 @@ function Save.restore(snap)
         body = snap.body, -- nil for a save made before character creation set it
         name = snap.name,
         authorId = snap.authorId, -- nil on an older save; Player.authorId mints one on demand
+        errands = snap.errands or {},
+        -- Absent on a save from before the hall was stocked this way; an empty list reads as a company
+        -- that has turned nobody away, which is what it is.
+        declined = snap.declined or {},
         completedQuests = completedQuests,
         standing = standing,          -- absent on a save from before the descent; an empty table reads the same
         deepest = snap.deepest or 0,  -- ...and a company that has never been down has no record to beat
@@ -760,6 +796,9 @@ function Save.restore(snap)
         lastDeployed = lastDeployed,
         roster = roster,
         stash = stash,
+        -- The descent in progress, rebuilt from plain data (see the note in Save.snapshot). Nil for a
+        -- company that has never gone down, and for every save written before there was a stair.
+        descentRun = snap.descentRun and require("models.descent").restore(snap.descentRun) or nil,
     }
 end
 

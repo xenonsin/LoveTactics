@@ -243,6 +243,61 @@ function Item.isBound(item)
     return item ~= nil and item.bound == true
 end
 
+-- ---------------------------------------------------------------------------
+-- BAGS: an item that holds other items.
+--
+-- The 3x3 grid is the whole of what a body can reach, which is the constraint every loadout decision
+-- is made against -- so nothing here widens it. A bag is a SECOND container with its own cap, opened
+-- from the grid cell it occupies, and what makes it a design rather than a cheat is that filling it
+-- is not shopping: the Thief's is fed by theft alone, so the only things in it are things she took
+-- off somebody during this fight.
+--
+-- It exists because Combat.steal had nowhere to put a lift. It tries the thief's grid first and drops
+-- to the party stash when the grid is full -- and the stash is out of the fight, so on a nine-cell
+-- grid that is already carrying a build, "steal it" mostly meant "remove it from play". That is a
+-- fine outcome for a denial tool and a poor one for a signature whose payoff is USING what you took.
+-- ---------------------------------------------------------------------------
+
+-- How many more things `item` can hold: 0 for anything that is not a bag, so a caller can ask any
+-- item without first checking what it is.
+function Item.bagRoom(item)
+    if not (item and item.bag) then return 0 end
+    local cap = item.bag.capacity or 0
+    return math.max(0, cap - #(item.contents or {}))
+end
+
+-- Put `carried` into `item`. Refuses when there is no room, and refuses a bag inside a bag -- not for
+-- tidiness but because every reader here walks `contents` one level deep, and a nested one would hide
+-- its own contents from all of them.
+function Item.bagPut(item, carried)
+    if not carried or Item.bagRoom(item) <= 0 then return false end
+    if carried.bag then return false end
+    item.contents[#item.contents + 1] = carried
+    return true
+end
+
+-- Take `carried` back out, by identity. Returns whether it was in there.
+function Item.bagTake(item, carried)
+    for i, held in ipairs((item and item.contents) or {}) do
+        if held == carried then
+            table.remove(item.contents, i)
+            return true
+        end
+    end
+    return false
+end
+
+-- The first bag in `char`'s grid with room to spare, or nil. Grid order (row-major), the same way the
+-- grid already decides a default weapon and which flask a reflex reaches for.
+function Item.bagIn(char)
+    if not char then return nil end
+    local Character = require("models.character") -- lazily: character.lua requires this file
+    for _, item in ipairs(Character.eachItem(char)) do
+        if item.bag and Item.bagRoom(item) > 0 then return item end
+    end
+    return nil
+end
+
 -- Recursively copy a blueprint value so a runtime instance never mutates the immutable
 -- def. Tables are copied; every non-table value (numbers, strings, and crucially the
 -- ability `effect` *function*) is carried by reference -- functions aren't mutated, so
@@ -647,6 +702,7 @@ function Item.instantiate(id, quantity, level)
         stealPriority = def.stealPriority,     -- a pickpocket takes the highest first (decoy bait)
         noCopy = def.noCopy,                   -- a summoned copy of the holder never carries this
         bound = def.bound,                     -- bound to its holder: never moved, stowed, sold, or stolen (a signature relic)
+        bag = def.bag,                         -- { capacity }: this item HOLDS items (see Item.bagRoom)
         traits = deepCopy(def.traits),         -- combat reactions granted to whoever carries it
         -- Tunables for those traits, named by THIS item (Trait.param). What lets one trait blueprint
         -- serve two items that agree on the rule and disagree only about a figure -- the golem's guard
@@ -670,6 +726,10 @@ function Item.instantiate(id, quantity, level)
     else
         item.quantity = 1
     end
+
+    -- A BAG carries its own contents on the instance. Created here rather than lazily so every reader
+    -- can count it without first checking whether anything has been put in -- an empty bag is a bag.
+    if item.bag then item.contents = {} end
 
     applyLevel(item) -- fold the upgrade into the scaling stats and the display name
     return item
