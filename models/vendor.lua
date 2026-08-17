@@ -261,7 +261,7 @@ end
 -- `price` was never for sale and so can't be sold (returns 0) -- the Party screen refuses those
 -- rather than giving them away for nothing. One place so the panel and its test agree on the rate.
 function Vendor.sellValue(item)
-    if not item.price then return 0 end
+    if not (item and item.price) then return 0 end
     if Item.isBound(item) then return 0 end -- a bound relic is never for sale, whatever price it carries
     return math.floor(Vendor.priceFor(item.price, item.level or 0) * 0.5)
 end

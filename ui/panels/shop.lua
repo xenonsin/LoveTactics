@@ -564,6 +564,15 @@ function Shop:activateRow(row)
     if not row then return end
     if self.mode == "buy" then
         self:buy(row)
+    elseif self.mode == "errands" then
+        -- A READOUT, NOT A SHELF. An errand is taken on when the house asks for it in person
+        -- (states/hub.lua's vendorScenes), so there is nothing on these rows to press -- and the
+        -- `locked` they carry is the panel's own flag, which the list widget never sees (ui/menu.lua
+        -- only steps over a bare header), so the cursor does land here and the press must be answered.
+        -- Falling through to the sell branch is what it used to do, and it sold a row with no item.
+        if row.errand then
+            self:setMsg("They ask for this in person. There is nothing to take on here.", false)
+        end
     elseif self.mode == "fence" then
         if row.back then
             self.swapFrom = nil; self.menu = nil; self:refresh()
