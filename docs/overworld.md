@@ -34,8 +34,9 @@ be re-tuned to allow it.
 | Piece | Where | What it does |
 |---|---|---|
 | `models/terrain.lua` | one table | The ground, for both layers. Neither may hold a second opinion. |
-| `Overworld:bestBox` | `models/overworld.lua` | Of every window containing the tile, the one with the most walkable ground. |
-| `Arena.fromGrid` | `models/arena.lua` | Cuts that window and hands it back as an ordinary layout. |
+| `Overworld:bestBox` | `models/overworld.lua` | Of every window containing the tile, the one with the most ground you can *cross* from it. |
+| `Overworld:boxReach` | `models/overworld.lua` | How much of a window is reachable without leaving it — the measure above, and the one below. |
+| `Arena.fromGrid` | `models/arena.lua` | Cuts that window, walls what it cannot reach, and hands it back as an ordinary layout. |
 | `BattleMap:drawSurround` | `ui/battle_map.lua` | The rest of the map, dark and stopped, and the walls. |
 
 Three consequences worth stating on their own:
@@ -43,6 +44,12 @@ Three consequences worth stating on their own:
 - **The window is chosen, not centred.** Meet something at the mouth of a clearing and the board pulls
   into the clearing; get cornered in a corridor and it stays a corridor, because there was nothing
   better within reach.
+- **The board is one piece of ground.** The ring is a wall, so a window laid across a ridge or the
+  outside of a switchback holds two pockets that the map joins by a path running *round the outside* —
+  and inside the lock that path is gone. Boards opened with a boar on one side of it and the company on
+  the other, neither able to reach the other, and a `killAll` that could not be finished. So a window is
+  now measured by what you can cross **from the tile the fight began on**, and whatever the cut leaves
+  stranded, `Arena.fromGrid` walls. A board in pieces has to read as the small board it is.
 - **Your side is the side you arrived from.** A rolled board had no outside and so no "your side";
   `deployZoneFor`'s fixed block at the bottom centre existed because there was no better answer.
 - **Two words became two tiles.** The map's `forest` was impassable wood and the board's was a tree you
@@ -151,7 +158,7 @@ and what matters is how much of that is standing room.
 
 | Term | Constant | What it means |
 |---|---|---|
-| **space** | `Overworld.BOX_OK = 32` | walkable tiles in the best window containing this one. A fight is never *seated* below it |
+| **space** | `Overworld.BOX_OK = 32` | tiles you can *cross to* in the best window containing this one. A fight is never *seated* below it |
 | **shape** | `Overworld:isOpen` | a tile with a full 3×3 of walkable around it. A corridor scores zero however long it runs |
 | **floor** | `Overworld.BOX_MIN = 20` | below this there is nowhere to stand at all |
 
@@ -303,6 +310,18 @@ someone past what the hub would give them.
 The prior swing is worth recording: the rest guarantee originally **no-opped entirely** (it read a
 random-draw weight as a density floor), so attrition was one-way and no board offered a refund. Fixing
 that was right. It landed on a full refund at a guaranteed density, which is the other end.
+
+**One rest per six stops is a density, and a density is only right where the board is the run.** A
+quest board's leg is: the party goes home from it, the hub makes them whole, so how much refund the
+board owes really does track how big it is — eleven stops buys two camps, one per 2.3 fights. A descent
+floor is a *segment*. There are fifteen of them and no hub in the stack, so its stop count says nothing
+about the length of the run it belongs to, and the same fraction handed a 14–18 stop floor **three**
+camps. Three is not a little more than one: camps compound, so three return about 53% of what a floor
+cost against 25% for one, and fifteen floors of that is the free attrition `CAMP_SHARE` was cut to fix,
+reintroduced one board lower. So a map may pin a flat `count` per kind via `params.guarantee`, overlaid
+on the defaults rather than replacing them (`Descent.FLOOR_RESTS = 1` — the breather before the stair).
+The two freed stops did not vanish: they fell to the combat-share cap, taking a floor from 8.5 fights
+to 10.1.
 
 ## Getting out
 

@@ -220,6 +220,9 @@ function Overworld.generate(params)
     self:pruneDeadStubs()       -- trim barren spur-and-return corridors (no RNG)
     self:assignEncounterTiers() -- difficulty tell for the fog (drawn from rng LAST)
     self:placePatrols(params)  -- ...and the fights that walk lift off their cells onto beats
+    self:placeSecrets(params)  -- ...ground the fog will not lift until somebody finds the door
+    self:placeSecretRewards(params) -- ...and what is behind it, which is never one of the board's stops
+    self:placeExit(params)     -- ...and, on a floor you can leave, the way back up you came in by
 
     -- The board is finished: no pass after this rewrites a tile, so the box lookups it will be asked for
     -- thousands of times over a run can be cached (see walkableSums).
@@ -313,6 +316,20 @@ function Overworld.fromLayout(params)
 
     assert(self.start, "authored layout has no start (S)")
     assert(self.objective, "authored layout has no objective (X)")
+
+    -- WEATHER THE FILL, exactly as a rolled board's is. An authored layout skips the whole generation
+    -- pipeline, and one pass of it was being missed rather than declined: Overworld:decorate, which lays
+    -- the thicket's two cosmetic variants (scrub and standing rock) by noise. Without it every solid tile
+    -- on the map is the one glyph the author typed, so the wood either side of the trail is a flat plane
+    -- of a single colour -- which reads as a corridor cut through a fill rather than as country, and is
+    -- the same thing docs/overworld.md's coastline argument says about a square frame.
+    --
+    -- Safe to run over an authored map BECAUSE IT ONLY EVER TOUCHES `thicket`, and thicket is what an
+    -- author spells the fill with. Every tile inside a fight chamber is named outright (`.`/`f`/`^`/`w`/
+    -- `m`), so nothing the layout composed as a battlefield is reachable from here; what it rewrites is
+    -- solid before and solid after, at the same walkability and the same sight cost. The noise is
+    -- unseeded and deterministic, so the trail wears the same weather every run.
+    self:decorate()
 
     -- The authored opening state, stamped onto the cells it names (see the header). Out-of-bounds
     -- entries are dropped rather than asserted on: a hazard is decoration on the fight it lands in, and
@@ -955,6 +972,214 @@ function Overworld:placeObjectiveAndGates(params)
     self:placeKeys(dist, firstGateDist)
 end
 
+-- ---------------------------------------------------------------------------
+-- Secret doors: ground the fog does not lift by being walked past
+-- ---------------------------------------------------------------------------
+
+-- HOW MANY a floor hides.
+--
+-- Small. A secret is worth having because finding one is a surprise; a floor with six of them is a floor
+-- where searching is a chore you perform against every wall, which is the failure mode Wizardry's own
+-- later entries fell into. Two or three is enough that a player learns the floor MIGHT be hiding
+-- something and never enough that hunting becomes the game.
+Overworld.SECRETS = { min = 2, max = 3 }
+
+-- HOW DEEP THE HIDDEN GROUND RUNS, and it is not a constant -- it is whatever the WALL will hold.
+--
+-- This was a constant (3 to 5 tiles) and it produced no secrets at all, on any seed, for a reason worth
+-- writing down: a lattice carve leaves walls exactly `spacing - 1` tiles thick, so on the descent's
+-- original spacing of 2 there was ONE tile of rock between every pair of corridors and nowhere to put a
+-- corridor of three. The dig always broke through into ground the player had already walked, which the
+-- solidity check correctly refused, every time.
+--
+-- So the depth is derived: dig into the wall and stop one tile short of whatever is on the far side.
+-- At spacing 3 that is a single sealed tile -- an alcove -- and at 4 or 5 it is a short corridor. Both
+-- are secrets; what neither can be is a shortcut, which is the property that actually matters (see
+-- placeSecrets on why a door joining two known corridors is a different, lesser thing).
+function Overworld:secretDepth()
+    return math.max(0, (self.spacing or 4) - 2)
+end
+
+-- Hide a few spurs behind a door that reads as wall until it is found.
+--
+-- WHAT A SECRET DOOR IS HERE. One tile, carved walkable and marked `secret` -- and while it is secret,
+-- Overworld:reveal refuses to light it OR anything beyond it, so the corridor it opens onto stays black
+-- however close the company walks. Finding it (Overworld:findSecrets) clears the mark and the fog lifts
+-- through it like any other ground.
+--
+-- CARVED INTO DEAD WALL, never onto the existing trail. The door is dug from a spur end outward into
+-- fill, so the ground behind it exists nowhere else on the board -- which is the whole difference
+-- between a secret and a shortcut. A door that joined two corridors the player had already walked would
+-- be a discovery about the map's topology; this is a discovery about what is ON it.
+--
+-- Deliberately AFTER the encounters and the caches are placed, so the hidden ground is empty when it is
+-- dug and gets its reward from Overworld:placeSecretRewards below rather than by competing for the
+-- board's own stops -- a secret that hid an ordinary fight would be a fight the player never found.
+function Overworld:placeSecrets(params)
+    if not params.secrets then return end
+    local depth = self:secretDepth()
+    -- A board whose walls are one tile thick has nowhere to hide anything. Refused outright rather than
+    -- digging a door that opens onto a corridor the player already walked, which is a shortcut wearing a
+    -- secret's clothes -- and worse than no secret, because it teaches that looking is pointless.
+    if depth < 1 then return end
+    local n = resolveCount(Overworld.SECRETS, self.rng)
+
+    -- Spur ends, which is where a door can be dug without cutting into the road network.
+    local ends = {}
+    for y = 1 + self.margin, self.rows - self.margin do
+        for x = 1 + self.margin, self.cols - self.margin do
+            local c = self.cells[y][x]
+            if self:typeWalkable(c.tile) and not c.encounter and #self:pathNeighbors(x, y) == 1 then
+                ends[#ends + 1] = c
+            end
+        end
+    end
+    for i = #ends, 2, -1 do
+        local j = self.rng:random(i)
+        ends[i], ends[j] = ends[j], ends[i]
+    end
+
+    self.secretCells = {}
+    for _, from in ipairs(ends) do
+        if #self.secretCells >= n then break end
+        -- Dig AWAY from the spur's own corridor: the one open neighbour is where it came from, so the
+        -- opposite direction is the wall the door goes into.
+        local back = self:pathNeighbors(from.x, from.y)[1]
+        local dx, dy = from.x - back.x, from.y - back.y
+
+        -- Check the whole run is solid fill before cutting any of it. A half-dug secret that broke into
+        -- an existing corridor would be a door onto ground the player has already seen.
+        local ok, run = true, {}
+        for step = 1, depth do
+            local c = self:get(from.x + dx * step, from.y + dy * step)
+            if not c or c.tile ~= "thicket"
+                or from.x + dx * step <= self.margin or from.y + dy * step <= self.margin
+                or from.x + dx * step > self.cols - self.margin
+                or from.y + dy * step > self.rows - self.margin then
+                ok = false
+                break
+            end
+            run[#run + 1] = c
+        end
+        if ok and #run >= depth then
+            for i, c in ipairs(run) do
+                c.tile = "path"
+                -- Only the FIRST tile is the door. The rest is ordinary corridor that simply cannot be
+                -- reached or seen until the door is open.
+                if i == 1 then c.secret = true end
+            end
+            self.secretCells[#self.secretCells + 1] = run[1]
+            run[#run].secretEnd = true
+        end
+    end
+end
+
+-- What is at the end of a hidden spur. A cache, always, and a fat one.
+--
+-- A CACHE RATHER THAN A STOP, and it matters. Every other kind on the board is a thing that opens a
+-- panel and asks something -- a fight, a shelf, a slate of relics -- and a hidden one would be content
+-- the player is likely never to see, which is content wasted. A cache PAYS, immediately, on a tile
+-- nobody had to be persuaded onto: it is the reward for having looked, and its whole job is to make the
+-- next dead end worth walking down.
+--
+-- Paid at the TOP of the cache band rather than scaled by detour like the board's own (placeCaches).
+-- The ordinary rule prices a cache by how far off the road it sits, which is a proxy for what it cost
+-- you to reach; a secret's real cost is not distance but having looked at all, and distance cannot see
+-- that. So the payout is flat and generous, and the reason it can be is that there are only two or three
+-- of them and they are the one thing on the floor a player can walk past forever.
+Overworld.SECRET_CRAFT = 6
+Overworld.SECRET_HOUSE = 5
+
+function Overworld:placeSecretRewards(params)
+    if not self.secretCells or #self.secretCells == 0 then return end
+
+    local grades = Material.craftGrades()
+    local houses = params.houseMaterials
+    if not houses or #houses == 0 then
+        houses = params.houseMaterial and { params.houseMaterial } or {}
+    end
+
+    -- One sweep over the board: every tile a secret run marked as its end takes a cache and drops the
+    -- mark. `secretEnd` is generation-only scaffolding and is deliberately not in CELL_FIELDS, so it
+    -- never reaches a save either way -- clearing it here keeps a re-generated board honest all the same.
+    local i = 0
+    for y = 1, self.rows do
+        for x = 1, self.cols do
+            local c = self.cells[y][x]
+            if c.secretEnd then
+                c.secretEnd = nil
+                if not c.cache then
+                    i = i + 1
+                    local materials = {}
+                    -- The deepest craft grade the board deals, since this is the deepest thing on it.
+                    materials[grades[#grades]] = Overworld.SECRET_CRAFT
+                    local house = houses[((i - 1) % math.max(1, #houses)) + 1]
+                    if house then
+                        materials[house] = (materials[house] or 0) + Overworld.SECRET_HOUSE
+                    end
+                    c.cache = { materials = materials, house = house }
+                end
+            end
+        end
+    end
+end
+
+-- Is (x, y) sealed behind a secret door the party has not found? Read by reveal, so hidden ground stays
+-- black; movement is NOT gated on it, because the door tile is solid-looking wall the player has no
+-- reason to walk into until they have found it -- and once found, it is ordinary trail.
+function Overworld:isHidden(cell)
+    return cell ~= nil and cell.secret == true
+end
+
+-- Search the ground around (cx, cy) for a door. Returns the cell found, or nil.
+--
+-- ADJACENCY, NOT A ROLL. Wizardry makes you stand at a wall and press Search, sometimes for several
+-- turns, and the turns are the cost. There is no turn economy on this board to spend -- so the cost is
+-- being THERE: a door is found by having walked to the tile beside it, and a company that never goes
+-- down the dead end never finds it. That makes exploring the reward rather than a dice roll, which is
+-- also what stops it becoming a chore performed on every wall.
+function Overworld:findSecrets(cx, cy, radius)
+    radius = radius or 1
+    local found
+    for y = cy - radius, cy + radius do
+        for x = cx - radius, cx + radius do
+            local c = self:get(x, y)
+            if c and c.secret then
+                c.secret = nil
+                found = found or c
+            end
+        end
+    end
+    return found
+end
+
+-- THE WAY BACK UP, standing on the tile the party walked in on.
+--
+-- A campaign ground has no such thing and does not want one: a quest is left by pressing Back, the
+-- company goes home with everything it picked up, and the day is the only thing spent (states/game.lua's
+-- toHub). Leaving is free, so a tile that offered it would be a tile that offered nothing.
+--
+-- A DESCENT FLOOR IS THE OTHER CASE, and this is the whole of Wizardry's pacing engine. There, an
+-- expedition ends by WALKING BACK to the stair you came down by -- so how deep you push is bounded by
+-- how far you are willing to be from the way out, and the return trip is real ground you have to have
+-- something left for. Abandoning from where you stand is still possible and still costs the company;
+-- what this tile adds is the ending that does not.
+--
+-- Seated as an `encounter` on the start cell rather than as a field of its own, and the reason is the
+-- whole pipeline it buys: the marker draws, the fog hides and reveals it, walking onto it engages
+-- through the same seam every other stop uses, and the run save carries it in `cells` with the rest.
+-- A field would have needed all four written again.
+--
+-- Placed LAST, after every other pass, so it cannot displace a stop or be counted as one: the encounter
+-- budget, the combat share and the tier pass have all finished by the time this runs. The start tile is
+-- kept clear of stops by placeEncounters anyway, so there is nothing here to overwrite.
+function Overworld:placeExit(params)
+    if not params.exitAtStart then return end
+    local start = self:startCell()
+    if not start or start.encounter then return end
+    start.encounter = { kind = "ascent", name = "The Way Up" }
+end
+
 -- Scatter one pickup per key into the pre-gate region. Any key that can't be
 -- placed (tiny map) unlocks its gate, so the map is never unsolvable.
 function Overworld:placeKeys(dist, firstGateDist)
@@ -1230,9 +1455,22 @@ local ELITE_MIN_DEPTH = 0.5
 -- path has its approach ON the spine and is left alone -- a wounded party must always be able to walk to
 -- the objective, which is the rule that lets every other fight be optional in the first place.
 --
--- Ascent maps opt out, as they do for the spine rule: there combat IS the route.
+-- ASCENT MAPS OPT OUT, as they do for the spine rule: there combat IS the route, so a fight standing in
+-- front of a reward is not an offer, it is the road.
+--
+-- ...AND A DESCENT FLOOR OPTS BACK IN (`params.guardBoons`), because `ascent` turned out to be two
+-- claims wearing one name. A floor sets it to get the FIRST -- the objective goes on the farthest dead
+-- end there is, so the stair is the end of the road rather than a tile you stumble over
+-- (placeObjectiveAndGates) -- and inherited the second by accident. Measured with `. board-report
+-- descent`: not one reward on a descent floor was guarded, against 69% on a campaign ground, while the
+-- report showed nine loose fights and three quarters of the boons standing on a gateable tile. The
+-- supply and the geometry were both there and this early return was throwing them away.
+--
+-- A floor is not a climb. Its fights are optional stops around a stair, which is the exact shape the
+-- guarded-boon rule exists for -- so the flag says so rather than the descent giving up the dead-end
+-- objective to get its guards back.
 function Overworld:guardBoons(params)
-    if params and params.ascent then return end
+    if params and params.ascent and not params.guardBoons then return end
     if not self.spineKeys then return end
     local spineDist = self:spineDistances()
     -- Depth from the start, on the same scale placeEncounters seated by and assignEncounterTiers will
@@ -1550,17 +1788,37 @@ end
 -- Guaranteed stops
 -- ---------------------------------------------------------------------------
 
--- The guarantee's two knobs, per kind. A kind absent here is seated exactly ONCE, wherever the candidate
+-- The guarantee's knobs, per kind. A kind absent here is seated exactly ONCE, wherever the candidate
 -- order offers first -- which is what "at least one Reliquary" has always meant, and still does.
 --
--- REST is the only entry, and it needs both knobs. It is the run's single refund: everything else on the
+-- REST is the only entry, and it needs all of them. It is the run's single refund: everything else on the
 -- board spends the party's carried health and nothing else gives it back (models/player.lua), so how many
 -- rests a board holds has to track how LONG the run is rather than being a flat one. And a refund twenty
 -- tiles down a spur is not a pressure valve, it is one more boon to earn, so it is seated within `spine`
 -- tiles of the critical path.
+--
+--   per     one per this many stops -- a DENSITY, which is the right unit when the board is the run
+--   count   exactly this many, whatever the stop count -- a STRUCTURE, for a board that is one segment
+--           of a longer run and so cannot read its own length off its own size (see below)
+--   spine   seated within this many tiles of the critical path
 local GUARANTEE = {
     rest = { per = 6, spine = 1 }, -- one rest per 6 stops, on or beside the road
 }
+
+-- The knobs a particular map is placing under: the default above, OVERLAID with whatever
+-- `params.guarantee` names for that kind rather than replaced by it. A map that wants a different number
+-- of rests is saying nothing about whether a rest belongs beside the road, and a wholesale replacement
+-- would drop `spine` on the floor without a word -- the same trap `params.guaranteeKinds` carries, where
+-- naming a third kind replaces the list instead of adding to it.
+local function guaranteeFor(params, kind)
+    local base = GUARANTEE[kind]
+    local over = params.guarantee and params.guarantee[kind]
+    if not over then return base end
+    local g = {}
+    for k, v in pairs(base or {}) do g[k] = v end
+    for k, v in pairs(over) do g[k] = v end
+    return g
+end
 
 
 -- Resolve a guaranteed KIND to a placeable { kind, id, name }.
@@ -1751,7 +2009,8 @@ function Overworld:placeEncounters(params)
     -- kinds -- a Reliquary to stock the run's relics, a Rest to heal -- that `always` didn't already, all
     -- non-combat so the objective spine stays walkable. HOW MANY of each, and whether it wants to sit near
     -- the road, is per kind (see GUARANTEE above); the roster of kinds is tunable via params.guaranteeKinds
-    -- and its default is what the roguelike inner loop needs to feel like one (see models/relic.lua).
+    -- and the per-kind knobs via params.guarantee, and their defaults are what the roguelike inner loop
+    -- needs to feel like one (see models/relic.lua).
 
     -- How far off the critical path each walkable tile lies, computed only if some kind asks (the BFS is
     -- cheap but this runs at generation for every board, and most guarantees don't care where they land).
@@ -1785,8 +2044,12 @@ function Overworld:placeEncounters(params)
     end
 
     for _, kind in ipairs(params.guaranteeKinds or { "relic_cache", "rest" }) do
-        local g = GUARANTEE[kind]
-        local want = (g and g.per) and math.max(1, math.ceil((count or 0) / g.per)) or 1
+        local g = guaranteeFor(params, kind)
+        -- A flat `count` wins over a density: it is the more specific statement, and a map that names one
+        -- is saying its own length is not readable from its own stop count.
+        local want = (g and g.count)
+            or ((g and g.per) and math.max(1, math.ceil((count or 0) / g.per)))
+            or 1
         local have = 0
         for _, p in ipairs(placed) do if p.encounter.kind == kind then have = have + 1 end end
         local entry = (have < want) and guaranteedEntry(pool, kind) or nil
@@ -2047,7 +2310,11 @@ end
 -- are rebuilt from position rather than stored (this is most of the file's cells, so it matters).
 -- `guards` is the {x,y} of the boon a fight stands in front of (see guardBoons): plain data, and it must
 -- ride along or a resumed run would stop revealing rewards past their guard.
-local CELL_FIELDS = { "tile", "river", "bridge", "seen", "cleared", "picked", "encounter", "gate", "key", "cache", "guards" }
+-- `secret` rides out because it is RUN STATE, not geometry: a door found on the third trip down must
+-- still be open on the fourth, and a descent keeps its floors (models/descent.lua's Descent.keepFloor)
+-- precisely so that discovery persists. `secretEnd` deliberately does NOT -- it is generation-only
+-- scaffolding, consumed by placeSecretRewards before the board is ever saved.
+local CELL_FIELDS = { "tile", "river", "bridge", "seen", "cleared", "picked", "encounter", "gate", "key", "cache", "guards", "secret" }
 
 -- Snapshot the grid to plain data (no metatable, no love objects, no functions). The map cannot be
 -- regenerated from a seed on load -- the encounter pool is drawn in an unspecified (`pairs`) order, so the
@@ -2167,7 +2434,12 @@ function Overworld:reveal(cx, cy, radius)
         for x = cx - radius, cx + radius do
             if self:inVision(cx, cy, x, y, radius) then
                 local c = self:get(x, y)
-                if c and not c.seen then
+                -- A SECRET DOOR STOPS THE LIGHT. While the mark is on it the tile stays black, and so
+                -- does everything past it -- the fog is what hides the corridor behind it, and lighting
+                -- the door alone would put a lit stub of nothing in the middle of a wall, which is a
+                -- worse tell than no secret at all. Cleared by Overworld:findSecrets, after which this
+                -- is ordinary trail and lights like any other (Overworld:isHidden).
+                if c and not c.seen and not self:isHidden(c) then
                     c.seen = true
                     found = found + 1
                     if c.guards then uncovered = uncovered or {}; uncovered[#uncovered + 1] = c end
@@ -2221,6 +2493,8 @@ Overworld.BOX = 8
 --
 -- Both are read by the report before they are read by anything else: do not tune them from here, roll
 -- the boards (`. board-report 200 all`) and read what they say.
+--
+-- Counted in CROSSABLE tiles, not walkable ones -- see Overworld:boxReach.
 Overworld.BOX_OK = 32
 Overworld.BOX_MIN = 20
 
@@ -2290,33 +2564,128 @@ function Overworld:isOpen(x, y)
     return true
 end
 
--- THE WINDOW A FIGHT AT (x, y) WOULD BE FOUGHT IN: of every window CONTAINING that tile, the one
--- holding the most walkable ground. Returns its top-left (ox, oy) and its score.
+-- HOW MUCH OF A WINDOW YOU CAN ACTUALLY CROSS, standing on (x, y): the walkable tiles of the BOX x BOX
+-- window at (ox, oy) reachable from that tile WITHOUT LEAVING THE WINDOW. Returns the count, and fills
+-- `out` (optional) with a set of cell keys, so a caller that wants to know WHICH tiles those are does
+-- not walk the window twice.
+--
+-- THE WINDOW'S RING IS THE WALL. Once the lock closes there is no board outside the box (models/arena.lua's
+-- Arena.fromGrid), so a pocket of ground that joins the rest of this window only by a path running
+-- OUTSIDE it is not ground the fight has. Counting it was wrong twice over: it priced the opposition off
+-- floor nobody could stand on, and -- worse -- it let a window be CHOSEN for tiles that would turn out to
+-- be behind a wall, which is how a board ended up with a boar on one side of a ridge and the company on
+-- the other, neither able to reach the other for the whole fight.
+--
+-- Walkability is the tileset's, which is models/terrain.lua's, which is the battle board's: the seal
+-- Arena.fromGrid lays cannot disagree with the count priced here.
+local reachSeen, reachQueue = {}, {}
+function Overworld:boxReach(ox, oy, x, y, out)
+    local B = Overworld.BOX
+    if out then for k in pairs(out) do out[k] = nil end end
+    if x < ox or x >= ox + B or y < oy or y >= oy + B then return 0 end
+    local cells = self.cells
+    -- Scratch arrays indexed 1..B*B within the window, reused between calls: this runs once per
+    -- candidate window per query and a fresh table each time was the whole cost.
+    for i = 1, B * B do reachSeen[i] = false end
+    local function idx(cx, cy) return (cy - oy) * B + (cx - ox) + 1 end
+    local function open(cx, cy)
+        if cx < ox or cx >= ox + B or cy < oy or cy >= oy + B then return false end
+        local row = cells[cy]
+        local c = row and row[cx]
+        return c ~= nil and self:typeWalkable(c.tile)
+    end
+    if not open(x, y) then return 0 end
+
+    reachSeen[idx(x, y)] = true
+    reachQueue[1], reachQueue[2] = x, y
+    local head, tail, n = 1, 3, 0
+    while head < tail do
+        local cx, cy = reachQueue[head], reachQueue[head + 1]
+        head = head + 2
+        n = n + 1
+        if out then out[cy * 100000 + cx] = true end
+        for _, d in ipairs(DIRS) do
+            local nx, ny = cx + d[1], cy + d[2]
+            if open(nx, ny) then
+                local i = idx(nx, ny)
+                if not reachSeen[i] then
+                    reachSeen[i] = true
+                    reachQueue[tail], reachQueue[tail + 1] = nx, ny
+                    tail = tail + 2
+                end
+            end
+        end
+    end
+    return n
+end
+
+-- THE WINDOW A FIGHT AT (x, y) WOULD BE FOUGHT IN: of every window CONTAINING that tile, the one holding
+-- the most ground you can cross FROM that tile (Overworld:boxReach). Returns its top-left (ox, oy) and
+-- that score.
 --
 -- Chosen rather than centred, and that is the whole rule. Meet something at the mouth of a clearing and
 -- the box pulls into the clearing, so you fight in the room and not in the doorway. Get cornered in a
 -- true corridor and it stays a corridor, because there was nothing better within reach -- which is the
 -- price of having walked in there, not a failure of the generator.
 --
--- Ties break toward the top-left because the walk is ordered, so a seed reproduces its lock exactly --
--- the same reason every other placement pass here walks in a fixed grid order.
+-- CROSSABLE rather than merely walkable, because the box's own ring cuts the map: a window can sit across
+-- a ridge and score 44 while holding two pockets of 26 and 18 that have nothing to do with each other.
+-- Whichever pocket you are standing in IS the board, so that is what the window is chosen for and what
+-- the score reports. What the count leaves out, Arena.fromGrid then walls (a board in pieces has to read
+-- as the small board it is, not as a big one with a bug in it).
+--
+-- The plain walkable count is still the SIEVE: it bounds the reachable one from above, so candidates are
+-- walked in descending walkable order and the flood fill stops as soon as no remaining window could beat
+-- what has been found. On open ground that is one fill; the boards say two to seven where the ground is
+-- broken (desert is the worst of them), never the sixty-four the naive version would pay.
+--
+-- Ties break toward the window that WALLS LESS -- the same crossable ground with less of it sealed off is
+-- the same fight on a board that agrees with the map -- and then toward the top-left, so a seed
+-- reproduces its lock exactly.
 --
 -- `sums` is optional and exists for callers asking about many tiles (the report walks every cell on the
 -- board): build it once with walkableSums() and hand it in, or pay for one per query.
 function Overworld:bestBox(x, y, sums)
     sums = sums or self:walkableSums()
     local B = Overworld.BOX
-    local bx, by, best = nil, nil, -1
+    local cand, maxWalk = {}, -1
     for oy = math.max(1, y - B + 1), math.min(self.rows - B + 1, y) do
         for ox = math.max(1, x - B + 1), math.min(self.cols - B + 1, x) do
             local s = sums(ox, oy)
-            if s > best then best, bx, by = s, ox, oy end
+            cand[#cand + 1] = { ox = ox, oy = oy, walk = s }
+            if s > maxWalk then maxWalk = s end
         end
     end
     -- A board smaller than the box in either axis has no window at all. Clamp rather than return nil:
     -- every caller here wants a rectangle to draw or to count, and a degenerate map is a test fixture,
     -- not a state the campaign can reach.
-    if not bx then return 1, 1, 0 end
+    if #cand == 0 then return 1, 1, 0 end
+
+    -- Asked about a tile nothing can stand on -- a report walking every cell, a marker on solid ground.
+    -- There is nothing to be reachable FROM, so the question falls back to the plain count.
+    local here = self:get(x, y)
+    if not (here and self:typeWalkable(here.tile)) then
+        local b = cand[1]
+        for _, c in ipairs(cand) do if c.walk > b.walk then b = c end end
+        return b.ox, b.oy, math.max(0, b.walk)
+    end
+
+    table.sort(cand, function(a, b)
+        if a.walk ~= b.walk then return a.walk > b.walk end
+        if a.oy ~= b.oy then return a.oy < b.oy end
+        return a.ox < b.ox
+    end)
+
+    local bx, by, best, bestSealed = cand[1].ox, cand[1].oy, -1, math.huge
+    for _, c in ipairs(cand) do
+        if c.walk < best then break end -- nothing left can hold more crossable ground than this
+        local reach = self:boxReach(c.ox, c.oy, x, y)
+        local sealed = c.walk - reach
+        if reach > best or (reach == best and sealed < bestSealed) then
+            bx, by, best, bestSealed = c.ox, c.oy, reach, sealed
+        end
+        if bestSealed == 0 and best == maxWalk then break end -- a whole window, and the fullest there is
+    end
     return bx, by, math.max(0, best)
 end
 

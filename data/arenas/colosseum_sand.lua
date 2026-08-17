@@ -51,9 +51,11 @@ return {
         { x = 3, y = 8 }, { x = 6, y = 8 },
     },
     -- Composition order: Saber (the boss twin), then the two Trappers. She takes the centre of the gate;
-    -- a trapper sets up off each shoulder, so a dodging body is netted from either flank.
+    -- a trapper sets up off each shoulder, so a dodging body is netted from either flank. Off the
+    -- shoulder means BESIDE the pillar, x3 and x6 -- the outer tiles x2 and x7 ARE the pillars on this
+    -- row, and the second trapper stood in one of them until a spec walked the curated pool and asked.
     enemySpawns = {
-        { x = 4, y = 2 }, { x = 6, y = 2 }, { x = 2, y = 2 },
+        { x = 4, y = 2 }, { x = 6, y = 2 }, { x = 3, y = 2 },
     },
     -- The house's own rigging: two hidden snares at the funnel mouths, where the walls push a fleeing
     -- body. `side = "enemy"` so they never bite Saber's team, and hidden (like every authored trap)

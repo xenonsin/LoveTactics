@@ -589,9 +589,13 @@ local function bandTiles(tiles, cols, rows, edge, depth, occupied)
     return out
 end
 
--- How much walkable ground the board a fight at (x, y) would lock actually holds, of COLS*ROWS. Read
--- before the opposition is resolved, because the cap on how many bodies a fight fields has to know how
--- much floor there is to field them on (Arena.enemyCap).
+-- How much ground the board a fight at (x, y) would lock actually holds, of COLS*ROWS. Read before the
+-- opposition is resolved, because the cap on how many bodies a fight fields has to know how much floor
+-- there is to field them on (Arena.enemyCap).
+--
+-- CROSSABLE floor, not walkable floor: the ring the lock draws can cut a window in two, and the far
+-- pocket is walled by Arena.fromGrid rather than fought over. Pricing a fight off tiles that are about to
+-- become wall is how a defile ends up fielding a hall's worth of bodies.
 function Arena.boxUsable(grid, x, y)
     if not (grid and grid.bestBox) then return nil end
     return select(3, grid:bestBox(x, y))
@@ -602,9 +606,9 @@ end
 -- Arena.generateLayout returns, so nothing downstream of here learns anything new.
 --
 -- The window is CHOSEN, not centred: of every window containing the contact tile, the one holding the
--- most walkable ground (Overworld:bestBox). Meet something at the mouth of a clearing and the board
--- pulls into the clearing; get cornered in a corridor and it stays a corridor, because there was
--- nothing better within reach.
+-- most ground you can cross from it (Overworld:bestBox). Meet something at the mouth of a clearing and
+-- the board pulls into the clearing; get cornered in a corridor and it stays a corridor, because there
+-- was nothing better within reach.
 --
 -- Tiles carry over VERBATIM. That is the whole point of merging the two terrain tables
 -- (models/terrain.lua): the thicket that walled the trail is the thicket you fight around, the river is
@@ -613,10 +617,23 @@ end
 --
 -- The box's edge is the wall, so nothing has to be drawn to make one: outside the window there is no
 -- board. What the ring looks like is the renderer's business.
+--
+-- ...and because that ring is a wall, the window is CLOSED over ground that was open. A box laid across a
+-- ridge, a river bend or the outside of a switchback holds two pockets that on the map are joined by a
+-- path running round the outside -- and inside the lock that path does not exist. The board would open
+-- with a boar on one side of a wall and the company on the other, neither able to reach the other for the
+-- whole fight, and a killAll it cannot finish. So the tiles the fight cannot get to are WALLED: see
+-- sealUnreachable. Overworld:bestBox chooses the window by the same measure, so the board is the biggest
+-- crossable piece of ground within reach and not the biggest pile of tiles.
 function Arena.fromGrid(grid, opts)
     opts = opts or {}
     local cols, rows = Arena.COLS, Arena.ROWS
     local ox, oy = grid:bestBox(opts.x, opts.y)
+    -- The ground reachable from the tile the fight began on, in MAP keys. Read off the grid rather than
+    -- recomputed over the cut tiles so the seal and the score a fight was priced from (Arena.boxUsable,
+    -- which is the same call) can never be two different opinions about the same window.
+    local reachable = {}
+    local reach = grid:boxReach(ox, oy, opts.x, opts.y, reachable)
 
     local tiles = {}
     -- What is already burning (or blessed, or falling) on this ground when the lock closes. A map cell
@@ -632,7 +649,20 @@ function Arena.fromGrid(grid, opts)
             -- Off the map reads as solid rather than as open field: a board that runs off the edge of
             -- the world should be walled by it, not floored by it.
             tiles[j][i] = (c and c.tile) or "obstacle"
-            if c and c.hazard then
+            -- ...and so does open ground the lock cut off from the rest of the board. A tile behind the
+            -- ring is not somewhere the fight can go, and drawing it as floor is the worse of the two
+            -- lies: the player reads a board twice the size it is, walks a unit at a pocket it can never
+            -- enter, and watches an enemy stand in one it will never leave. Walled with the plain
+            -- `obstacle` -- the board's own word for "not through here", and what the ring outside the
+            -- window already is -- rather than with the biome's scatter blocker, because this is the edge
+            -- of the board arriving early, not a landform.
+            --
+            -- `reach == 0` means the fight began somewhere nothing can stand (a fixture, never a real
+            -- contact tile); seal nothing rather than wall the whole board.
+            if reach > 0 and c and grid:typeWalkable(c.tile)
+                and not reachable[(oy + j - 1) * 100000 + (ox + i - 1)] then
+                tiles[j][i] = "obstacle"
+            elseif c and c.hazard then
                 hazards[#hazards + 1] = { id = c.hazard.id, x = i, y = j, duration = c.hazard.duration }
             end
         end
@@ -933,6 +963,47 @@ local function footprintOf(id)
     return fp.w, fp.h
 end
 
+-- Mark the w×h block anchored at (x, y) as somebody's. The one way a body's ground is written down,
+-- so "what is already claimed" is always the whole footprint and never just the corner.
+local function claimCells(taken, x, y, w, h)
+    for j = 0, (h or 1) - 1 do
+        for i = 0, (w or 1) - 1 do taken[key(x + i, y + j)] = true end
+    end
+end
+
+-- Whether a w×h body could stand anchored at (x, y): every cell of it on the board, walkable, and
+-- nobody else's.
+local function anchorFree(layout, taken, w, h, x, y)
+    if x < 1 or y < 1 or x + w - 1 > layout.cols or y + h - 1 > layout.rows then return false end
+    for j = 0, h - 1 do
+        for i = 0, w - 1 do
+            local cx, cy = x + i, y + j
+            if taken[key(cx, cy)] then return false end
+            local t = (layout.tiles and layout.tiles[cy] and layout.tiles[cy][cx]) or "ground"
+            local p = Arena.TILE_PROPS[t] or Arena.TILE_PROPS.ground
+            if not p.walkable then return false end
+        end
+    end
+    return true
+end
+
+-- The nearest anchor to (x, y) a w×h body actually fits on, searched outward in rings so a body
+-- pushed off its spawn point stays with the line it was seated in. Nil only when the whole board
+-- has no room for it, which leaves the caller with its spawn point as it stood.
+local function nearestAnchor(layout, taken, w, h, x, y)
+    if anchorFree(layout, taken, w, h, x, y) then return x, y end
+    for r = 1, math.max(layout.cols, layout.rows) do
+        for dy = -r, r do
+            for dx = -r, r do
+                if math.max(math.abs(dx), math.abs(dy)) == r
+                    and anchorFree(layout, taken, w, h, x + dx, y + dy) then
+                    return x + dx, y + dy
+                end
+            end
+        end
+    end
+end
+
 -- Bind unit id lists onto a layout's spawn points (zipping to the shorter length).
 -- `offset` skips spawn points already claimed by an earlier bind.
 --
@@ -940,8 +1011,16 @@ end
 -- `footprint = { w, h }` -- see models/combat.lua) placed on an edge spawn would otherwise hang its
 -- far cells off the board. `layout` supplies cols/rows so the anchor is pulled back just far enough
 -- for the whole body to sit on the grid; a 1×1 unit, which is nearly all of them, never moves.
-local function bindUnits(ids, spawns, offset, layout)
+--
+-- A spawn list hands out ONE POINT PER BODY, which is a fair description of the board only while
+-- every body is 1x1. An ogre anchored on a band tile covers the three beside it -- points its own
+-- escort was seated on -- and the fight opened with bandits standing inside the brute. So the block
+-- each body takes is claimed in `taken` (shared across every bind of one board, and seeded with the
+-- props already standing), and a body whose spawn is somebody else's is walked out to the nearest
+-- ground it fits on.
+local function bindUnits(ids, spawns, offset, layout, taken)
     offset = offset or 0
+    taken = taken or {}
     local units = {}
     for i, id in ipairs(ids) do
         local sp = spawns[i + offset]
@@ -951,6 +1030,11 @@ local function bindUnits(ids, spawns, offset, layout)
             local w, h = footprintOf(id)
             x = math.max(1, math.min(x, layout.cols - w + 1))
             y = math.max(1, math.min(y, layout.rows - h + 1))
+            local fx, fy = nearestAnchor(layout, taken, w, h, x, y)
+            x, y = fx or x, fy or y
+            claimCells(taken, x, y, w, h)
+        else
+            claimCells(taken, x, y, 1, 1)
         end
         units[i] = { id = id, x = x, y = y }
     end
@@ -962,21 +1046,19 @@ end
 -- survivors in the middle" -- in which case every ally matching `objective.protect` is placed on the
 -- resolved region (mid-map) and the rest fall back to party spawns. This is the seam that lets a
 -- defended unit (or an inert "object") stand somewhere other than beside the party.
-local function bindAllies(allyIds, spec, layout)
+local function bindAllies(allyIds, spec, layout, taken)
     local party = spec.party or {}
     local obj = spec.objective
     local anchor = obj and obj.anchor
     local protectId = obj and obj.protect
     if not (anchor and protectId) then
-        return bindUnits(allyIds, layout.partySpawns, #party, layout)
+        return bindUnits(allyIds, layout.partySpawns, #party, layout, taken)
     end
 
     -- Region tiles that no unit already stands on, so an anchored survivor never shares a cell.
-    local taken = {}
-    for i = 1, #party do
-        local sp = layout.partySpawns[i]
-        if sp then taken[key(sp.x, sp.y)] = true end
-    end
+    -- `taken` already holds the party (and the props), claimed a footprint at a time by the bind
+    -- above -- there is nothing left for this pass to work out for itself.
+    taken = taken or {}
     local anchorTiles = {}
     for _, t in ipairs(Arena.resolveRegion(anchor, layout)) do
         if not taken[key(t.x, t.y)] then anchorTiles[#anchorTiles + 1] = t end
@@ -995,16 +1077,26 @@ local function bindAllies(allyIds, spec, layout)
         return a.x < b.x
     end)
 
+    -- Seating claims the whole block each body stands on, and walks a body out to the nearest ground
+    -- it fits when its tile is somebody's -- an escorted survivor is as capable of being a 2x2 as an
+    -- ogre is, and two of them seated a tile apart would otherwise stand in each other.
     local units, anchored, rest = {}, 0, 0
+    local function seat(id, x, y)
+        local w, h = footprintOf(id)
+        local fx, fy = nearestAnchor(layout, taken, w, h, x, y)
+        x, y = fx or x, fy or y
+        claimCells(taken, x, y, w, h)
+        units[#units + 1] = { id = id, x = x, y = y }
+    end
     for _, id in ipairs(allyIds) do
         if id == protectId and anchorTiles[anchored + 1] then
             anchored = anchored + 1
             local t = anchorTiles[anchored]
-            units[#units + 1] = { id = id, x = t.x, y = t.y }
+            seat(id, t.x, t.y)
         else
             rest = rest + 1
             local sp = layout.partySpawns[#party + rest]
-            if sp then units[#units + 1] = { id = id, x = sp.x, y = sp.y } end
+            if sp then seat(id, sp.x, sp.y) end
         end
     end
     return units
@@ -1066,9 +1158,14 @@ function Arena.build(ctx, spec)
         reseatByFormation(layout, spec.formation, spec.formationCols, spec.formationRows, #partyIds)
     end
 
-    local party = bindUnits(partyIds, layout.partySpawns, 0, layout)
-    local allies = bindAllies(allyIds, spec, layout)
-    local enemies = bindUnits(enemyIds, layout.enemySpawns, 0, layout)
+    -- ONE occupancy set across all three binds, seeded with the furniture already standing. A spawn
+    -- list has one point per body and no idea how big any of them is, so without this an ogre's 2x2
+    -- block simply covered the points its own escort was seated on (see bindUnits).
+    local seated = {}
+    for _, p in ipairs(layout.props or {}) do claimCells(seated, p.x, p.y, 1, 1) end
+    local party = bindUnits(partyIds, layout.partySpawns, 0, layout, seated)
+    local allies = bindAllies(allyIds, spec, layout, seated)
+    local enemies = bindUnits(enemyIds, layout.enemySpawns, 0, layout, seated)
 
     -- The ground the deployment phase offers. Every body the BOARD itself seats is excluded -- an
     -- escorted survivor, an enemy authored deep in the party's half -- so the phase never offers a tile

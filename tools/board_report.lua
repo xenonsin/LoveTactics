@@ -204,7 +204,7 @@ local function measure(grid)
     -- battle, and nothing but this figure will say so. It is measured here first precisely because it
     -- is the number most likely to be assumed rather than read.
     --
-    --   fightable  share of trail standing in a window with at least BOX_OK walkable tiles
+    --   fightable  share of trail standing in a window with at least BOX_OK tiles it can cross to
     --   seat score what the fights ACTUALLY got: mean, worst, and how many were seated under the floor
     --   sites      distinct non-overlapping windows good enough to be a board, which is the number the
     --              board's fight count has to fit inside
@@ -361,7 +361,7 @@ function M.compare(biomes, n, pool)
             crowded, #biomes * n * #trip, 100 * crowded / (#biomes * n * #trip)))
         print("")
     end
-    print(string.format("  fightable  share of trail in an %dx%d window holding >= %d walkable tiles",
+    print(string.format("  fightable  share of trail in an %dx%d window it can cross >= %d tiles of",
         Overworld.BOX, Overworld.BOX, Overworld.BOX_OK))
     print(string.format("  sites      distinct non-overlapping windows scoring >= %d -- places a fight could go",
         SITE_SCORE))
@@ -378,7 +378,8 @@ function M.run(args)
     args = args or {}
     local n = tonumber(args[1]) or 200
     local wantTiers, braid, cacheDiv, combatWeight = false, nil, nil, nil
-    local wantContracts, wantXp = false, false
+    local wantContracts, wantXp, wantDescent = false, false, false
+    local descentFloor = 1
     -- Which ground(s). `all` walks every blueprint in data/biomes; `biome=x` reports one; the bare
     -- default stays forest, so every figure recorded in docs/overworld.md still reproduces exactly.
     local biome, wantAll = "forest", false
@@ -394,6 +395,14 @@ function M.run(args)
         local b = tostring(a):match("^braid=([%d%.]+)$"); if b then braid = tonumber(b) end
         local d = tostring(a):match("^cachediv=([%d%.]+)$"); if d then cacheDiv = tonumber(d) end
         local w = tostring(a):match("^cw=([%d%.]+)$"); if w then combatWeight = tonumber(w) end
+        -- `descent` measures a FLOOR rather than a campaign ground: the dungeon carve at its own
+        -- spacing, the floor's stop count and cache pins, its reweighted pool and its guarantees.
+        -- Without this the instrument could only ever report on the half of the game that is parked.
+        if a == "descent" then wantDescent = true end
+        -- WHICH floor, because a floor's board is no longer one size: it widens a tile a floor
+        -- (Descent.floorDims), so "a descent floor" is a question that needs a depth to answer. Defaults
+        -- to the first, so every figure recorded against the bare `descent` still reproduces.
+        local f = tostring(a):match("^floor=(%d+)$"); if f then descentFloor = tonumber(f) end
     end
 
     local pool = M.stablePool(DEFAULT_DAY)
@@ -423,9 +432,21 @@ function M.run(args)
         byKind = {},
     }
 
+    -- A DESCENT FLOOR, measured as the mode actually rolls one. Everything that makes a floor different
+    -- from a ground comes off models/descent.lua rather than being restated here, so a retune there is
+    -- measured here without an edit.
+    local Descent = wantDescent and require("models.descent") or nil
+    local drun = Descent and Descent.new(nil, 909) or nil
+    if drun then drun.floor = descentFloor end
+    local dq = Descent and Descent.floorQuest(drun) or nil
+    if wantDescent then
+        biome = dq.map.biome
+        pool = Descent.floorPool({ biome = biome, day = DEFAULT_DAY, prestige = 10 })
+    end
+
     for i = 1, n do
         local encN = DEFAULT_ENCOUNTERS
-        local grid = Overworld.generate({
+        local params = {
             biome = biome,
             encounterCount = encN,
             encounters = pool,
@@ -436,7 +457,24 @@ function M.run(args)
             cacheCount = cacheDiv and math.max(1, math.floor(((encN.min + encN.max) / 2) / cacheDiv)) or nil,
             patrols = true, -- the board as the campaign actually rolls it
             seed = SEED_BASE + i,
-        })
+        }
+        if wantDescent then
+            local mp = dq.map
+            encN = mp.encounters
+            params.cols, params.rows = mp.cols, mp.rows
+            params.layout, params.spacing = mp.carve, mp.spacing
+            params.encounterCount = encN
+            params.cacheCount = cacheDiv
+                and math.max(1, math.floor(((encN.min + encN.max) / 2) / cacheDiv)) or mp.cacheCount
+            params.combatShare = mp.combatShare
+            params.guaranteeKinds = mp.guaranteeKinds
+            params.guarantee = mp.guarantee
+            params.ascent, params.keyCount = true, 0
+            params.secrets, params.exitAtStart = mp.secrets, mp.exitAtStart
+            params.guardBoons = mp.guardBoons
+            params.objective = mp.objective
+        end
+        local grid = Overworld.generate(params)
         local r = measure(grid)
         for _, k in ipairs({ "fights", "boons", "guarded", "rest", "stops", "caches", "services",
                              "tierSum", "tierN", "deadEnds", "cacheOnDeadEnd", "boonsWithApproach",
@@ -462,8 +500,11 @@ function M.run(args)
     local function per(v) return v / n end
     local function ratio(a, b) return b > 0 and (a / b) or 0 end
 
-    print(string.format("BOARD REPORT -- %d rolled boards, %s, %d-%d stops, day %d",
-        n, biome, DEFAULT_ENCOUNTERS.min, DEFAULT_ENCOUNTERS.max, DEFAULT_DAY))
+    local stopSpec = wantDescent and dq.map.encounters or DEFAULT_ENCOUNTERS
+    print(string.format("BOARD REPORT -- %d rolled %s, %s, %d-%d stops, day %d",
+        n, wantDescent and ("floor " .. descentFloor .. "s, " .. dq.map.cols .. "x" .. dq.map.rows)
+            or "boards", biome,
+        stopSpec.min, stopSpec.max, DEFAULT_DAY))
     print("")
     print(string.format("  %-22s %8s  %s", "", "per board", "note"))
     print(string.format("  %-22s %8.2f", "stops", per(tot.stops)))

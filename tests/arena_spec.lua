@@ -87,6 +87,52 @@ return {
         end,
     },
     {
+        -- A spawn list hands out one point per body, which describes the board only while every body
+        -- is 1x1. The Ogre encounter is the counter-example that shipped broken: its 2x2 brute covered
+        -- the points beside its anchor, and the escort seated on them opened the fight standing inside
+        -- it. Walked over many seeds and days, on the real blueprint, counting whole FOOTPRINTS.
+        name = "no body opens the fight standing inside another (the Ogre and its escort)",
+        fn = function()
+            local Character = require("models.character")
+            local ogre = require("data.encounters.encounter_ogre")
+
+            local function census(a, where)
+                local held = {}
+                local function claim(u)
+                    local fp = Character.normalizeFootprint(
+                        (Character.defs[u.id] or {}).footprint)
+                    for j = 0, fp.h - 1 do
+                        for i = 0, fp.w - 1 do
+                            local x, y = u.x + i, u.y + j
+                            local k = x .. "," .. y
+                            assert(not held[k], string.format(
+                                "%s: %s stands on %d,%d, already held by %s", where, u.id, x, y, held[k] or "?"))
+                            assert(x >= 1 and y >= 1 and x <= a.cols and y <= a.rows,
+                                string.format("%s: %s hangs off the board at %d,%d", where, u.id, x, y))
+                            assert(a.tiles[y][x].walkable, string.format(
+                                "%s: %s stands on unwalkable ground at %d,%d", where, u.id, x, y))
+                            held[k] = u.id
+                        end
+                    end
+                end
+                for _, u in ipairs(a.party) do claim(u) end
+                for _, u in ipairs(a.allies or {}) do claim(u) end
+                for _, u in ipairs(a.enemies) do claim(u) end
+            end
+
+            for _, biome in ipairs({ "__test_void", "forest" }) do
+                for day = 2, 12, 2 do
+                    for seed = 1, 12 do
+                        local a = Arena.build({ prestige = 3, day = day }, proceduralSpec({
+                            biome = biome, seed = seed, composition = ogre.composition,
+                        }))
+                        census(a, string.format("%s day %d seed %d", biome, day, seed))
+                    end
+                end
+            end
+        end,
+    },
+    {
         name = "composition scales the enemy count with prestige",
         fn = function()
             local low = Arena.build({ prestige = 1 }, proceduralSpec())
@@ -339,6 +385,65 @@ return {
                     end
                 end
             end
+        end,
+    },
+    {
+        name = "...and neither does a hand-drawn one",
+        fn = function()
+            -- A hand-authored board runs NONE of the guards the rolled and the cut ones do: the block
+            -- scatter's ceiling does not apply to it, and Arena.fromGrid's seal never sees it. Its floor
+            -- has to be one piece because somebody drew it that way, and the only thing that will ever say
+            -- otherwise is this.
+            local function walkable(t)
+                local p = Arena.TILE_PROPS[t]
+                return p ~= nil and p.walkable == true
+            end
+            local checked = 0
+            for id, def in pairs(Arena.defs) do
+                local L = def
+                local rows = L.rows or (L.tiles and #L.tiles) or 0
+                local cols = L.cols or (L.tiles and L.tiles[1] and #L.tiles[1]) or 0
+                assert(rows > 0 and cols > 0, id .. " has no tiles")
+                local start
+                for y = 1, rows do
+                    for x = 1, cols do
+                        if not start and walkable(L.tiles[y][x]) then start = { x = x, y = y } end
+                    end
+                end
+                assert(start, id .. " has no floor at all")
+                local seen = { [start.y * 100 + start.x] = true }
+                local q, qi, n = { start }, 1, 0
+                while qi <= #q do
+                    local c = q[qi]; qi = qi + 1
+                    n = n + 1
+                    for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+                        local nx, ny = c.x + d[1], c.y + d[2]
+                        local k = ny * 100 + nx
+                        if nx >= 1 and ny >= 1 and nx <= cols and ny <= rows
+                            and not seen[k] and walkable(L.tiles[ny][nx]) then
+                            seen[k] = true
+                            q[#q + 1] = { x = nx, y = ny }
+                        end
+                    end
+                end
+                local floor = 0
+                for y = 1, rows do
+                    for x = 1, cols do
+                        if walkable(L.tiles[y][x]) then floor = floor + 1 end
+                    end
+                end
+                assert(n == floor, string.format(
+                    "%s: %d tiles of floor in one piece and %d walled off from it", id, n, floor - n))
+                -- ...and every body the map itself seats stands in that piece.
+                for _, list in ipairs({ L.partySpawns or {}, L.enemySpawns or {}, L.deployZone or {} }) do
+                    for _, s in ipairs(list) do
+                        assert(seen[s.y * 100 + s.x], string.format(
+                            "%s: a body is seated at (%d,%d), off the board's own floor", id, s.x, s.y))
+                    end
+                end
+                checked = checked + 1
+            end
+            assert(checked >= 4, "expected the curated pool to have been walked, saw " .. checked)
         end,
     },
     {

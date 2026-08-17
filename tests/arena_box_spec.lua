@@ -41,13 +41,18 @@ return {
         end,
     },
     {
-        name = "arena box: no containing window holds more ground than the one chosen",
+        name = "arena box: no containing window holds more CROSSABLE ground than the one chosen",
         fn = function()
             local grid = board({ seed = 99 })
             local B = Overworld.BOX
             local sums = grid:walkableSums()
             -- Walk a sample of trail tiles and brute-force every window that contains each, so the
-            -- integral-image shortcut is checked against the definition it is an optimisation of.
+            -- branch-and-bound (which uses the integral image only as an upper bound, and floods for the
+            -- real answer) is checked against the definition it is an optimisation of.
+            --
+            -- The measure is what you can reach from the tile you are standing on WITHOUT LEAVING THE
+            -- WINDOW, because the window's ring is the wall once the lock closes. A plain walkable count
+            -- would happily choose a box straddling a ridge for the far side of it.
             local n = 0
             for y = 1, grid.rows do
                 for x = 1, grid.cols do
@@ -56,12 +61,7 @@ return {
                         local brute = 0
                         for oy = math.max(1, y - B + 1), math.min(grid.rows - B + 1, y) do
                             for ox = math.max(1, x - B + 1), math.min(grid.cols - B + 1, x) do
-                                local count = 0
-                                for j = oy, oy + B - 1 do
-                                    for i = ox, ox + B - 1 do
-                                        if grid:typeWalkable(grid.cells[j][i].tile) then count = count + 1 end
-                                    end
-                                end
+                                local count = grid:boxReach(ox, oy, x, y)
                                 if count > brute then brute = count end
                             end
                         end
@@ -72,6 +72,39 @@ return {
                 end
             end
             assert(n > 10, "expected to have checked a real sample, checked " .. n)
+        end,
+    },
+    {
+        name = "arena box: reach counts one piece of ground, and never counts round the outside",
+        fn = function()
+            -- The measure itself, against a board with a known shape rather than a rolled one: a window
+            -- split down the middle by a wall, joined only by a corridor running OUTSIDE it.
+            local grid = board({ seed = 5 })
+            local B = Overworld.BOX
+            assert(grid.rows >= 12 and grid.cols >= 8, "the fixture needs room for the shape it draws")
+            for y = 1, grid.rows do
+                for x = 1, grid.cols do
+                    grid.cells[y][x].tile = "thicket"
+                end
+            end
+            -- Two 8-tall columns of trail inside one window, walled from each other, meeting on a row
+            -- below it. Standing in the left column you can walk the right one only by leaving the box.
+            for y = 1, 10 do
+                grid.cells[y][2].tile = "path"
+                grid.cells[y][7].tile = "path"
+            end
+            for x = 2, 7 do grid.cells[10][x].tile = "path" end
+
+            local left = grid:boxReach(1, 1, 2, 1)
+            assert(left == B, "the left column alone is " .. B .. " tiles, reach says " .. left)
+            -- ...and the map itself does join them, which is exactly what the box is not allowed to use.
+            local joined = grid:boxReach(1, 3, 2, 3)
+            assert(joined > B, "a window holding the joining row should reach both columns, got " .. joined)
+
+            -- A tile nothing can stand on has nothing to reach.
+            assert(grid:boxReach(1, 1, 1, 1) == 0, "a wall reaches nothing")
+            -- ...and neither does a window that does not contain the tile asked about.
+            assert(grid:boxReach(20, 20, 2, 1) == 0, "a window that excludes the tile reaches nothing")
         end,
     },
     {
