@@ -324,4 +324,61 @@ return {
             assert(Arena.enemyCap({}, 999) <= base, "the box may cap a fight, never inflate one")
         end,
     },
+    {
+        name = "the company has somewhere to line up: a seated fight offers a real deployment zone",
+        fn = function()
+            -- WHAT THE PLAYER ACTUALLY SEES WHEN THE SEATING RULE FAILS. Everything the generator knows
+            -- about "is there room to fight here" is a count over an 8x8 window, and none of it is
+            -- visible in the game -- but the deployment phase is, and it draws the band on the edge the
+            -- company arrived from (Arena.DEPLOY_DEPTH, and `deployZone` in the layout Arena.fromGrid
+            -- returns). Cut a fight on a defile and that band is five lit tiles scattered down a wall
+            -- with the company smeared over them, which is the report of this that got filed.
+            --
+            -- Measured over the same 180 fights, before the shape floor reached the seating passes and
+            -- after: a quarter of all fights offered fewer than eight of the sixteen band tiles, and
+            -- FOUR boards offered none at all -- a deployment phase with nothing to click, falling all
+            -- the way back to wherever the spawn spill had scattered the party. After, 3%, and none
+            -- empty. So the floor asserted here is the absolute one -- never fewer than a company can
+            -- stand in -- and the share is asserted beside it, because the absolute floor alone would
+            -- pass on a board where every fight offered exactly four.
+            local Encounter = require("models.encounter")
+            local total, thin = 0, 0
+            for _, biome in ipairs({ "forest", "swamp", "tundra", "desert", "underworld", "castle" }) do
+                for seed = 1, 5 do
+                    local grid = Overworld.generate({
+                        biome = biome, seed = seed * 13,
+                        encounterCount = { min = 8, max = 11 },
+                        encounters = Encounter.pool({ biome = biome, day = 20, prestige = 10 }),
+                        objective = { name = "Boss" }, houseMaterial = "material_iron",
+                        patrols = true,
+                    })
+                    for y = 1, grid.rows do
+                        for x = 1, grid.cols do
+                            local kind = grid.cells[y][x].encounter and grid.cells[y][x].encounter.kind
+                            if kind == "combat" or kind == "elite" or kind == "objective" then
+                                -- Arrived from a neighbour, which is the only way a tile is ever
+                                -- engaged: the band is cut against the edge that neighbour names.
+                                local from = grid:pathNeighbors(x, y)[1]
+                                local layout = Arena.fromGrid(grid, {
+                                    x = x, y = y, biome = biome, party = 4, enemies = 4,
+                                    from = from and { x = from.x, y = from.y } or nil,
+                                })
+                                local zone = #(layout.deployZone or {})
+                                total = total + 1
+                                if zone < 8 then thin = thin + 1 end
+                                assert(zone >= Arena.DEPLOY_MIN, string.format(
+                                    "%s seed %d: the fight at (%d,%d) opens with %d tiles to deploy on, " ..
+                                    "under the field cap of %d -- the company has nowhere to line up",
+                                    biome, seed, x, y, zone, Arena.DEPLOY_MIN))
+                            end
+                        end
+                    end
+                end
+            end
+            assert(total > 50, "expected these boards to seat some fights, got " .. total)
+            assert(thin / total < 0.10, string.format(
+                "%d of %d fights (%.0f%%) open with under half a deployment band -- fights are being " ..
+                "seated in corridors again", thin, total, thin / total * 100))
+        end,
+    },
 }

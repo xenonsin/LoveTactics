@@ -45,6 +45,19 @@ local SEED_BASE = 20260811
 local FIGHT = { combat = true, elite = true }
 local BOON_KINDS = { treasure = true, relic_cache = true }
 
+-- WHAT THE FIGHTABILITY LEDGER COUNTS, which is deliberately NOT the same set as `FIGHT`. An objective
+-- is not a fight for the COMPOSITION census -- it is the day's work, not a stop the pool dealt -- but it
+-- is absolutely a fight for the question "is there room to have it", and it is the one fight on the
+-- board the player cannot decline.
+--
+-- It was outside this set for as long as the set existed, and that is how a floor's guardian came to be
+-- fought in a dead-end corridor with nobody noticing: placeObjectiveAndGates picks the deepest STRICT
+-- dead end (a spur is what makes an end gateable), the seat floor was never asked about it, and the
+-- ledger that would have said so was reading combat and elite only. Every figure in this block moved
+-- when `objective` was added to it, which is the report agreeing that it had been measuring the easy
+-- half of the board.
+local SEATED = { combat = true, elite = true, objective = true }
+
 -- WHAT COUNTS AS A PLACE A FIGHT COULD BE SEATED, for the `sites` count only. Deliberately above
 -- Overworld.BOX_OK: BOX_OK is the floor a seat must CLEAR, while a *site* is somewhere a fight would be
 -- good rather than merely legal, and the gap between the two is what tells a cramped board from a
@@ -206,36 +219,55 @@ local function measure(grid)
     --
     --   fightable  share of trail standing in a window with at least BOX_OK tiles it can cross to
     --   seat score what the fights ACTUALLY got: mean, worst, and how many were seated under the floor
+    --   open       ...and the same seats measured for SHAPE, against BOX_OPEN
     --   sites      distinct non-overlapping windows good enough to be a board, which is the number the
     --              board's fight count has to fit inside
     local sums = grid:walkableSums()
     -- ...and the same window measured for SHAPE rather than for space (Overworld.isOpen). A warren and a
     -- chamber score alike on the first and nothing alike on the second.
-    local openSums = grid:walkableSums(function(_, x, y) return grid:isOpen(x, y) end)
+    local openSums = grid:openSums()
     r.walkTiles, r.fightTiles = 0, 0
     r.seatSum, r.seatN, r.seatMin, r.seatBelow = 0, 0, math.huge, 0
-    r.openSum = 0
+    r.openSum, r.openMin, r.openBelow = 0, math.huge, 0
+    -- THE END, MEASURED ON ITS OWN. The mean over every seat hides the one seat that is not optional:
+    -- a board can seat its five loose fights in clearings and still put the objective in a defile, and
+    -- the average will read fine. So the mandatory fight is counted twice -- once in the ledger with
+    -- everything else, once here by itself.
+    r.endSeatSum, r.endOpenSum, r.endN, r.endBelow = 0, 0, 0, 0
     for y = 1, grid.rows do
         for x = 1, grid.cols do
             local c = grid.cells[y][x]
             if grid:typeWalkable(c.tile) then
                 r.walkTiles = r.walkTiles + 1
                 local ox, oy, score = grid:bestBox(x, y, sums)
-                if score >= Overworld.BOX_OK then r.fightTiles = r.fightTiles + 1 end
+                local open = openSums(ox, oy)
+                if score >= Overworld.BOX_OK and open >= Overworld.BOX_OPEN then
+                    r.fightTiles = r.fightTiles + 1
+                end
                 -- A tile holds a fight if a stop was seated on it OR a patrol is standing on it: the
                 -- fightability floor governs both, and a beat that walks its fight onto ground too thin
                 -- to fight on is the same failure as seating one there.
-                local fightHere = (c.encounter and FIGHT[c.encounter.kind]) or patrolAt(grid, x, y)
+                local fightHere = (c.encounter and SEATED[c.encounter.kind]) or patrolAt(grid, x, y)
                 if fightHere then
                     r.seatSum, r.seatN = r.seatSum + score, r.seatN + 1
-                    r.openSum = r.openSum + openSums(ox, oy)
+                    r.openSum = r.openSum + open
                     if score < r.seatMin then r.seatMin = score end
+                    if open < r.openMin then r.openMin = open end
                     if score < Overworld.BOX_OK then r.seatBelow = r.seatBelow + 1 end
+                    if open < Overworld.BOX_OPEN then r.openBelow = r.openBelow + 1 end
+                end
+                if c.encounter and c.encounter.kind == "objective" then
+                    r.endSeatSum, r.endOpenSum = r.endSeatSum + score, r.endOpenSum + open
+                    r.endN = r.endN + 1
+                    if score < Overworld.BOX_OK or open < Overworld.BOX_OPEN then
+                        r.endBelow = r.endBelow + 1
+                    end
                 end
             end
         end
     end
     if r.seatMin == math.huge then r.seatMin = 0 end
+    if r.openMin == math.huge then r.openMin = 0 end
 
     -- Greedy, highest-scoring first, suppressing anything that overlaps one already taken. Walked in a
     -- fixed order with ties broken by position so the count reproduces from the seed like everything
@@ -303,9 +335,9 @@ function M.compare(biomes, n, pool)
     print(string.format("BOARD REPORT -- %d boards per ground, %d-%d stops, day %d",
         n, DEFAULT_ENCOUNTERS.min, DEFAULT_ENCOUNTERS.max, DEFAULT_DAY))
     print("")
-    print(string.format("  %-11s %9s %7s %6s %6s %7s %7s %7s %8s",
-        "ground", "fightable", "sites", "seat", "open", "worst", "under", "walk", "guarded"))
-    print("  " .. string.rep("-", 78))
+    print(string.format("  %-11s %9s %7s %6s %6s %6s %7s %7s %7s %8s",
+        "ground", "fightable", "sites", "seat", "open", "ends", "worst", "under", "walk", "guarded"))
+    print("  " .. string.rep("-", 86))
     -- A DAY'S GROUND, AS THE CAMPAIGN ACTUALLY ROLLS IT. Three pieces of work is the middle of the
     -- range a ground carries (models/quest.lua's Quest.trip), and it is what this has to measure --
     -- with one end the board is smaller and every fight has more room than it will really get. The
@@ -314,7 +346,8 @@ function M.compare(biomes, n, pool)
     local crowded = 0
     for _, biome in ipairs(biomes) do
         local t = { walk = 0, fight = 0, sites = 0, seatSum = 0, seatN = 0, below = 0,
-                    dead = 0, guarded = 0, boons = 0, cells = 0, openSum = 0 }
+                    dead = 0, guarded = 0, boons = 0, cells = 0, openSum = 0,
+                    endOpen = 0, endN = 0 }
         local worst = math.huge
         for i = 1, n do
             local grid = Overworld.generate({
@@ -333,20 +366,24 @@ function M.compare(biomes, n, pool)
             t.fight = t.fight + r.fightTiles
             t.sites = t.sites + r.sites
             t.seatSum, t.seatN = t.seatSum + r.seatSum, t.seatN + r.seatN
-            t.below = t.below + r.seatBelow
+            -- Either floor missed is a seat under the floor. Space and shape are both requirements, so
+            -- reporting only the first would keep hiding exactly what it hid before.
+            t.below = t.below + math.max(r.seatBelow, r.openBelow)
             t.openSum = t.openSum + r.openSum
+            t.endOpen, t.endN = t.endOpen + r.endOpenSum, t.endN + r.endN
             t.dead = t.dead + r.deadEnds
             t.guarded, t.boons = t.guarded + r.guarded, t.boons + r.boons
-            if r.seatN > 0 and r.seatMin < worst then worst = r.seatMin end
+            if r.seatN > 0 and r.openMin < worst then worst = r.openMin end
         end
         if worst == math.huge then worst = 0 end
         local function ratio(a, b) return b > 0 and (a / b) or 0 end
-        print(string.format("  %-11s %8.1f%% %7.1f %6.1f %6.1f %7d %7.1f %6.1f%% %7.1f%%",
+        print(string.format("  %-11s %8.1f%% %7.1f %6.1f %6.1f %6.1f %7d %7.1f %6.1f%% %7.1f%%",
             biome,
             100 * ratio(t.fight, t.walk),
             t.sites / n,
             ratio(t.seatSum, t.seatN),
             ratio(t.openSum, t.seatN),
+            ratio(t.endOpen, t.endN),
             worst,
             t.below / n,
             100 * ratio(t.walk, t.cells),
@@ -361,8 +398,8 @@ function M.compare(biomes, n, pool)
             crowded, #biomes * n * #trip, 100 * crowded / (#biomes * n * #trip)))
         print("")
     end
-    print(string.format("  fightable  share of trail in an %dx%d window it can cross >= %d tiles of",
-        Overworld.BOX, Overworld.BOX, Overworld.BOX_OK))
+    print(string.format("  fightable  share of trail in an %dx%d window holding >= %d crossable and >= %d open",
+        Overworld.BOX, Overworld.BOX, Overworld.BOX_OK, Overworld.BOX_OPEN))
     print(string.format("  sites      distinct non-overlapping windows scoring >= %d -- places a fight could go",
         SITE_SCORE))
     print(string.format("  seat       mean box score the fights were ACTUALLY seated on, of %d",
@@ -370,8 +407,11 @@ function M.compare(biomes, n, pool)
     print("  open       ...and how much of that was OPEN ground (a full 3x3 of trail around it).")
     print("             This is the column that matters: space is not shape. A warren scores well on")
     print("             `seat` and zero on `open` -- room for four bodies, no room for a decision.")
-    print(string.format("  under      fights a board seated below the floor of %d -- these must reach 0",
-        Overworld.BOX_OK))
+    print("  ends       the same open figure for the OBJECTIVES alone -- the one fight nobody may skip,")
+    print("             seated on a strict dead end by rule, and therefore the seat most likely to be a")
+    print("             defile. A board can seat its loose fights well and still fail here.")
+    print(string.format("  under      fights a board seated below either floor (%d crossable, %d open)"
+        .. " -- these must reach 0", Overworld.BOX_OK, Overworld.BOX_OPEN))
 end
 
 function M.run(args)
@@ -428,6 +468,8 @@ function M.run(args)
         fights = 0, boons = 0, guarded = 0, rest = 0, stops = 0, caches = 0, services = 0,
         tierSum = 0, tierN = 0, walkTiles = 0, fightTiles = 0, sites = 0,
         seatSum = 0, seatN = 0, seatBelow = 0, seatMin = math.huge,
+        openSum = 0, openBelow = 0, openMin = math.huge,
+        endSeatSum = 0, endOpenSum = 0, endN = 0, endBelow = 0,
         depthTierSum = { 0, 0, 0, 0, 0 }, depthTierN = { 0, 0, 0, 0, 0 },
         byKind = {},
     }
@@ -480,10 +522,13 @@ function M.run(args)
                              "tierSum", "tierN", "deadEnds", "cacheOnDeadEnd", "boonsWithApproach",
                              "craftStock", "houseStock",
                              "walkTiles", "fightTiles", "sites", "seatSum", "seatN", "seatBelow",
+                             "openSum", "openBelow",
+                             "endSeatSum", "endOpenSum", "endN", "endBelow",
                              "patrols", "beatSum" }) do
             tot[k] = (tot[k] or 0) + r[k]
         end
         if r.seatN > 0 and r.seatMin < tot.seatMin then tot.seatMin = r.seatMin end
+        if r.seatN > 0 and r.openMin < tot.openMin then tot.openMin = r.openMin end
         for b = 1, 5 do
             tot.depthTierSum[b] = tot.depthTierSum[b] + r.depthTierSum[b]
             tot.depthTierN[b] = tot.depthTierN[b] + r.depthTierN[b]
@@ -547,8 +592,17 @@ function M.run(args)
     print(string.format("    %-20s %8.1f  %s", "mean seat score", ratio(tot.seatSum, tot.seatN),
         string.format("of %d; worst seen %d", Overworld.BOX * Overworld.BOX,
             tot.seatMin == math.huge and 0 or tot.seatMin)))
+    print(string.format("    %-20s %8.1f  %s", "mean open ground", ratio(tot.openSum, tot.seatN),
+        string.format("of %d; worst seen %d -- space is not shape",
+            Overworld.BOX * Overworld.BOX, tot.openMin == math.huge and 0 or tot.openMin)))
+    print(string.format("    %-20s %8.1f  %s", "the end's own seat", ratio(tot.endOpenSum, tot.endN),
+        string.format("open ground at the %.2f objectives a board -- the fight nobody may skip",
+            per(tot.endN))))
     print(string.format("    %-20s %8.2f  %s", "seated under floor", per(tot.seatBelow),
-        string.format("fights a board below %d -- must reach 0", Overworld.BOX_OK)))
+        string.format("fights a board below %d crossable -- must reach 0", Overworld.BOX_OK)))
+    print(string.format("    %-20s %8.2f  %s", "seated under shape", per(tot.openBelow),
+        string.format("...and below %d open -- must reach 0 (%.2f of them are ends)",
+            Overworld.BOX_OPEN, per(tot.endBelow))))
     print(string.format("    %-20s %8.2f  %s", "patrols", per(tot.patrols),
         string.format("of %.2f fights, mean beat %.1f tiles", per(tot.fights),
             tot.patrols > 0 and (tot.beatSum / tot.patrols) or 0)))

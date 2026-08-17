@@ -140,7 +140,13 @@ function Muster.encounter(def, ctx)
     -- world no longer scales to the party at all, which is the whole of what makes a spent day cost
     -- something. So the far side is minted at the day's danger level, and the near side is rated from
     -- the company's real stats (Muster.companyScore), which is where the comparison belongs.
-    local danger = Calendar.dangerLevel(ctx.day or 1)
+    --
+    -- ...and the calendar is the CAMPAIGN'S clock. A descent has none and hardens on depth instead, so
+    -- it hands its own level in (Descent.dangerLevel). This reading is what colours the marker and what
+    -- gates the walk-off (Muster.WALK_OVER), so it must be the level the fight will really spawn at --
+    -- reading the day down a stair rated the first floor's stock at blueprint level 1 and turned every
+    -- marker on it calm.
+    local danger = ctx.enemyLevel or Calendar.dangerLevel(ctx.day or 1)
     local total = 0
     for _, id in ipairs(ids) do
         local ok, char = pcall(Growth.spawn, id, danger, ctx.floorLevel)

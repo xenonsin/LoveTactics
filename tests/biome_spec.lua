@@ -70,11 +70,25 @@ return {
         end,
     },
     {
-        name = "biomes that shipped before the palette seed no hazard",
+        -- WAS "biomes that shipped before the palette seed no hazard", which pinned forest, castle and
+        -- underworld as having none. That was a snapshot of an unfinished state rather than a rule: three
+        -- of the seven circles had no ground of their own, so a stratum read as a tileset rather than as
+        -- a place. All seven have one now, and the rule worth holding is the one that keeps it that way.
+        name = "every biome declares a signature hazard, and it is a real one",
         fn = function()
-            for _, id in ipairs({ "forest", "castle", "underworld" }) do
-                assert(Biome.hazardFor(id) == nil, id .. " should not have gained a signature hazard")
+            local Hazard = require("models.hazard")
+            local n = 0
+            for id in pairs(Biome.defs) do
+                if not id:find("__spec", 1, true) then
+                    local spec = Biome.hazardFor(id)
+                    assert(spec, id .. " has no signature hazard. A stratum with no ground of its own "
+                        .. "reads as a tileset rather than as a place.")
+                    assert(Hazard.defs[spec.id], id .. " names hazard '" .. tostring(spec.id)
+                        .. "', which is not a blueprint")
+                    n = n + 1
+                end
             end
+            assert(n >= 7, "the sweep should cover every biome, saw " .. n)
         end,
     },
     {
@@ -135,10 +149,26 @@ return {
         end,
     },
     {
-        name = "a biome with no signature hazard seeds none",
+        -- WAS "a biome with no signature hazard seeds none", asserting the forest seeded nothing. The
+        -- forest has ground of its own now (sweetbriar), so what is worth holding is the general shape:
+        -- a biome that declares a hazard seeds it, and a caller that declares none still seeds none.
+        name = "a biome seeds the ground its blueprint declares, and only that",
         fn = function()
-            local layout = Arena.generateLayout({ seed = 7, party = 2, enemies = 2, biome = "forest" })
-            assert(#layout.hazards == 0, "the forest should seed no hazards")
+            -- The three biomes that had none until this pass, each now seeding its own and nothing
+            -- borrowed from a neighbour.
+            for biome, want in pairs({
+                forest = "hazard_sweetbriar",
+                castle = "hazard_threshold",
+                underworld = "hazard_spoil_heap",
+            }) do
+                local layout = Arena.generateLayout({ seed = 7, party = 2, enemies = 2, biome = biome })
+                assert(#layout.hazards >= 1, biome .. " should seed its signature ground")
+                for _, h in ipairs(layout.hazards) do
+                    assert(h.id == want, string.format("%s seeds %s, got %s", biome, want, tostring(h.id)))
+                    local props = Arena.TILE_PROPS[layout.tiles[h.y][h.x]] or {}
+                    assert(props.walkable, "a seeded hazard must sit on a tile a unit can stand on")
+                end
+            end
         end,
     },
     {

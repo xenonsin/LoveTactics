@@ -122,9 +122,23 @@ function Glades.carve(grid)
                 for _, s in ipairs(spurs) do
                     local dx, dy = s[1] - x, s[2] - y
                     local d = math.floor(math.sqrt(dx * dx + dy * dy))
-                    -- Stay two tiles clear: one for the spur end itself, one for the cut vertex beside
-                    -- it that a guard has to be able to stand on.
-                    if d - 2 < radius then radius = d - 2 end
+                    -- Stay ONE tile clear: the spur end itself, and nothing more.
+                    --
+                    -- It used to be two, reserving the cut vertex beside the spur end so "a guard has to
+                    -- be able to stand on" it -- and that was right about which tile the guard takes and
+                    -- wrong about what standing there means. It reserved that tile as CORRIDOR, and a
+                    -- guard is a fight now: the reservation was handing every guarded boon on this
+                    -- ground a fight in a hallway. Measured with `. board-report`, once the seat floor
+                    -- reached this pass, forest kept only 16% of its guarded boons -- not for want of
+                    -- cut vertices (96% of boons have one) but because the layout had deliberately put
+                    -- every one of them outside the room.
+                    --
+                    -- At one, the clearing's rim IS the cut vertex. The spur end keeps its single
+                    -- neighbour and stays a strict dead end -- everything the offer rule needs -- and
+                    -- the tile that gates it now looks into the glade, so the fight standing in the
+                    -- doorway is fought in the room behind it (Overworld.BOX_OPEN scores the window, not
+                    -- the tile).
+                    if d - 1 < radius then radius = d - 1 end
                 end
                 -- Below 3 a disc has no interior, so every tile in it still has wall in its 3x3 and it
                 -- would add walkable ground without adding anywhere to fight. Not worth carving.

@@ -134,14 +134,22 @@ return {
             -- larger on every side to pay for it -- so these boards are both bigger and more chewed than
             -- they were, by different amounts on each ground. The castle is untouched to the digit
             -- (Rooms.ownsEdge), which is the check that the pass really is scoped to the edge.
+            -- MOVED AGAIN, AND ON THREE GROUNDS AT ONCE, by the seat floor reaching the objective
+            -- (Overworld.BOX_OPEN). "Content is switched off" above means the ENCOUNTER passes; the
+            -- objective is placed regardless, because a board without an end is not a board -- and it now
+            -- takes a dead end that can hold the fight rather than the deepest one there is. A different
+            -- end means pruneDeadStubs keeps a different set of corridors alive, which is a change to the
+            -- carved ground and belongs here.
+            --
+            -- Forest moved twice over: models/layouts/glades.lua lets a clearing come one tile nearer a
+            -- spur than it used to, so the tile that gates a boon is the room's rim instead of a hallway
+            -- outside it. Castle is untouched to the digit again, and for the same reason it was last
+            -- time -- rooms carves no dead ends at all, so neither rule has anything to choose between.
             local EXPECTED = {
-                forest = { 249403, 389 }, -- glades: the maze, opened (models/layouts/glades.lua)
+                forest = { 238718, 386 }, -- glades: the maze, opened (models/layouts/glades.lua)
                 castle = { 212536, 401 }, -- rooms: chambers and halls (models/layouts/rooms.lua)
-                tundra = { 349875, 568 }, -- floes: open flats quartered by meltwater, every lobe forded
-                -- MOVED, DELIBERATELY, by two tiles: the open carve now owns its own connectivity
-                -- (models/layouts/open.lua's stitch), so a ridge that closed a loop gets a gap and the
-                -- ruin's mouth is guaranteed ground outside it. This seed only needed a gap.
-                desert = { 414974, 626 }, -- open: a plain with ridges and one ruin
+                tundra = { 349950, 568 }, -- floes: open flats quartered by meltwater, every lobe forded
+                desert = { 414235, 626 }, -- open: a plain with ridges and one ruin
             }
             local bad = {}
             for biome, want in pairs(EXPECTED) do

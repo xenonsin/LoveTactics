@@ -320,6 +320,73 @@ local CHARACTER_SILHOUETTE = {
 
     -- Off the wolf head, which the rank Wolf keeps.
     wolf_alpha = "lorc/wolf-howl",
+    -- The wild fauna added with the warband pass. Both would otherwise fall into a bucket already
+    -- occupied: a carrion crawler matches nothing in CREATURE_MATCH and lands on the `beast` fallback,
+    -- which is the wolf grunt's own head; a wyrmling matches "wyrm" and comes out pixel-identical to the
+    -- druid's Wyrm. Named here rather than by adding CREATURE_MATCH rows, because both are ONE body
+    -- rather than a family and a substring row would sweep in whatever is written next.
+    carrion_crawler = "delapouite/grasping-slug", -- low, many-legged, and interested in the floor
+    wyrmling = "lorc/dragon-breath",              -- read as the cone, which is the only thing it does
+
+    -- THE GLUTTONY CIRCLE. Five creatures and a mini sin, every one of them `beast` -- so without a name
+    -- here all six would land on the `beast` KIND fallback together, which is the wolf grunt's head. Each
+    -- wears what it DOES rather than what it is, on the same rule the Hiring Hall's thirty-eight follow.
+    gorge_fly = "delapouite/fly",
+    bogswallow = "delapouite/swallower",   -- the grip, not the animal: it holds rather than chases
+    tallow_hound = "delapouite/slime",     -- rendered down and still walking
+    grendlemaw = "lorc/jawbone",           -- it is a mouth with a fen attached
+    the_sated = "delapouite/stomach",      -- what it has eaten IS the silhouette
+    the_gralloch = "lorc/meat-hook",       -- named for Gula's tool, and wearing it
+
+    -- THE ENVY CIRCLE. Glass, all of it -- an `elemental`, three `construct`s and the mini sin -- which
+    -- without names here would collapse onto two kind fallbacks between them.
+    glass_mote = "lorc/crystal-shine",
+    glass_eater = "lorc/crystalize",
+    mimic_of_ash = "lorc/mirror-mirror",   -- it gives back what was aimed at it
+    the_second_self = "lorc/glass-heart",  -- wearing one of yours, and hollow behind it
+    the_unwanted = "lorc/crystal-cluster", -- it is already several things
+    second_water = "lorc/frozen-orb",      -- the thinner wash, poured off and kept
+
+    -- THE WRATH CIRCLE. Two elementals, two demons and a beast, which without names here would collapse
+    -- onto three kind fallbacks between them.
+    ember_spit = "lorc/small-fire",
+    cinder_kin = "lorc/burning-embers",
+    forge_wretch = "lorc/flaming-claw",
+    the_unquenched = "lorc/fire-breath",   -- it drinks the board and breathes it back
+    rift_born = "sbed/lava",               -- the seam, not the thing that came out of it
+    the_anvil = "lorc/anvil-impact",       -- a thing that exists to be struck
+
+    -- THE SLOTH CIRCLE. Three elementals, an undead, a beast and a humanoid mini sin.
+    rime_gnat = "lorc/ice-cube",
+    drift_thing = "delapouite/frozen-body",
+    hollow_sleeper = "lorc/hood",             -- somebody who stopped, not weather
+    the_winter_hart = "caro-asercion/deer-head",
+    the_long_winter = "lorc/icicles-fence",   -- the ground it leaves, not the shape it has
+    the_late_watch = "lorc/frozen-block",     -- a relief that came too late to be one
+
+    -- THE PRIDE CIRCLE. Four constructs and two humanoids, all of them armour of one sort or another.
+    gilded_page = "lorc/armor-vest",
+    gilded_sworn = "lorc/visored-helm",
+    standard_bearer = "lorc/trophy",       -- it carries the honour, not the weapon
+    the_gallery = "lorc/mailed-fist",      -- there is always another suit
+    the_peerless = "lorc/spartan",         -- it holds a door, alone, on principle
+    marginalia = "lorc/quill-ink",         -- lesser writing beside the real text
+
+    -- THE GREED CIRCLE. A beast, a construct, two demons, a beast and an object.
+    coin_chitter = "delapouite/two-coins",
+    coffer_crawler = "delapouite/cave-entrance", -- a shell you have to open
+    assayer = "delapouite/gold-stack",           -- it is reading your purse, not you
+    the_gilt_wyrm = "lorc/dragon-head",
+    the_hoard = "lorc/cash",                     -- it IS the pile
+    the_tally = "delapouite/war-pick",           -- a record of what is owed, collected
+
+    -- THE LUST CIRCLE. A beast, an undead and three demons.
+    petal_drift = "lorc/three-leaves",
+    bloom_wraith = "lorc/haunting",              -- `spectre` is the Gaunt Vigil's; this is the grove's
+    chorister = "lorc/love-howl",                -- the call, not the singer
+    the_hartwood_bride = "lorc/flowers",
+    the_beloved = "lorc/heart-inside",
+    the_suppliant = "lorc/fluffy-flame",         -- a bowl held out for a very long time
     wolfsong_spirit = "lorc/direwolf",
 }
 

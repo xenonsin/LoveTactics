@@ -285,6 +285,10 @@ Grade.TRAIT_GRADE = {
     trait_whirl_answer =                4.5,  -- Whirl Answer
     trait_wolf_companion =              4.5,  -- Wolf Companion
     trait_wrath_rising =                6.0,  -- Rising Wrath
+    -- Wrath's rule one rank down: one term instead of two (blows taken, no missing-health curve) and a
+    -- hard ceiling of 12. Worth appreciably less than the uncapped compounding parent, and more than a
+    -- flat bonus because you still choose whether to feed it.
+    trait_kindling =                    3.0,  -- Kindling
 
     -- ADOPTED FROM THE SEED, not individually weighed. These are the classifier's own numbers, taken
     -- as authored on the designer's instruction rather than argued one by one. They are real weights
@@ -298,6 +302,9 @@ Grade.TRAIT_GRADE = {
     trait_breakers_wedge =              1.0,  -- Breaker's Wedge
     trait_cleansing_ward =              1.0,  -- Cleansing Ward
     trait_covetous_reflection =         1.0,  -- Covetous Reflection
+    -- Envy's rule one rank down: the same copy, of the WEAKEST body rather than the strongest, once,
+    -- and only past half health. Graded BELOW its parent for all three reasons at once.
+    trait_lesser_reflection =           0.5,  -- Lesser Reflection
     trait_formation_fighter =           1.0,  -- Formation Fighter
     trait_gleaning =                    1.0,  -- Gleaning
     trait_grave_cold =                  1.0,  -- Grave-Cold
@@ -333,6 +340,47 @@ Grade.TRAIT_GRADE = {
     trait_opportunist =                 2.0,  -- Opportunist
     trait_rapture =                     2.0,  -- Rapture
     trait_ravenous =                    2.0,  -- Ravenous
+    -- Gluttony's rule one rank down: Ravenous heals on every blow LANDED, this heals on a death nearby.
+    -- Deaths are far rarer than swings and it has to be within three tiles of one, so it is worth
+    -- appreciably less than its parent -- but it feeds on either side's dead, which is worth something
+    -- back. Sits at half.
+    trait_engorge =                     1.0,  -- Engorge
+    -- Fires once, on the bearer's own death, and lays one tile of ground. Worth something to a body that
+    -- dies in a doorway and nothing at all to one that dies in the open -- and the bearer is never
+    -- around to use it.
+    trait_cinderfall =                  0.5,  -- Cinderfall
+    -- Heals as it acts, but only while standing in fire. Enormous on the one board that fills itself
+    -- with fire and worth exactly zero anywhere else, so it grades near the conditional heals rather
+    -- than near the unconditional ones.
+    trait_drinks_the_fire =             2.0,  -- Drinks the Fire
+    -- Sloth's rule one rank down: one pair sworn instead of the whole party, and paid for with a turn
+    -- rather than arriving at the opening bell. Worth roughly a third of Acedia's version.
+    trait_torpor =                      2.0,  -- Torpor
+    -- Lays a tile of the biome's own hazard per action. Real on the board it belongs to and worth
+    -- nothing at all off it, so it grades with the other terrain riders.
+    trait_conduction =                  1.5,  -- Conduction
+    -- The offensive twin of Formation Fighter, which grades at 1.0. Damage per adjacent ally rather than
+    -- defense, measured live off the same board reading, so it is worth about the same -- a shade more,
+    -- since offence compounds with the rest of a rank's output and armour does not.
+    trait_close_ranks =                 1.5,  -- Close Ranks
+    -- Pride's rule one rank down: Counter Magic on a cooldown longer than any fight, so it answers one
+    -- spell and is then spent. A fraction of the parent, which answers every ten ticks for as long as its
+    -- mana holds.
+    trait_answered_once =               1.0,  -- Answered Once
+    -- A large two-stat swing on a condition the OPPONENT controls entirely: they need only step a second
+    -- body in. Worth a lot when it holds and nothing the moment anyone notices, which is where the
+    -- conditional stat riders sit.
+    trait_single_combat =               2.0,  -- Single Combat
+    -- Greed's rule read from the other side: damage scaled by the party's purse, capped, and lowered by
+    -- its own swarm robbing you during the fight. Conditional on a number the player controls, so it
+    -- grades with the other situational damage riders.
+    trait_assayed =                     2.0,  -- Assayed
+    -- Lust's rule one rank down: Rapture drains on EVERY hit, this only on a foe that spent nothing.
+    -- Roughly half the parent, which sits at 2.0.
+    trait_unasked =                     1.0,  -- The Unasked
+    -- One Charm per cooldown. Charm is the strongest control in the game and a fourteen-tick gate is
+    -- what keeps this a decision rather than a lock, so it grades near the other hard controls.
+    trait_lure =                        3.0,  -- Lure
     trait_round_for_the_house =         2.0,  -- Round for the House
     trait_second_wind =                 2.0,  -- Second Wind
     trait_shared_ledger =               2.0,  -- The Shared Ledger

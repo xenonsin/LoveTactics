@@ -85,19 +85,25 @@ end
 -- Where a coach bubble is allowed to live: clear of the top HUD (title + buttons) and the bottom hint.
 local COACH_BOUNDS = { x = 20, y = 70, w = Scale.WIDTH - 40, h = Scale.HEIGHT - 70 - 44 }
 
--- Clickable "Back" button so a mouse-only player can leave to the hub.
-local backButton = { x = 16, y = 16, w = 110, h = 36 }
--- Clickable "Items" button: opens the Party screen (stash mode) to arrange party items on the overworld.
-local itemsButton = { x = 138, y = 16, w = 110, h = 36 }
--- Clickable "Use" button: opens the consumables screen to drink a restorative draught between fights.
-local useButton = { x = 260, y = 16, w = 110, h = 36 }
+-- THE HUD'S BUTTON ROW: Back, then Items, then Use, LAID OUT OVER THE ONES ACTUALLY THERE.
+--
+-- Each of the three used to hold a hardcoded lane -- 16, 138, 260 -- and keep it whether or not the
+-- button to its left drew at all. That was invisible while Back was present on everything except the
+-- flight tutorial. A descent has no Back button ever (see backVisible), so the row would open behind a
+-- permanent empty 110px lane on every floor of the mode: a slot reserved for a control that is not
+-- coming back. The row closes up instead, which is the same rule the overworld already follows for
+-- controls that only draw where they are legal.
+--
+-- The geometry is unchanged when all three are up: 16, then 16+110+12 = 138, then 260.
+local BUTTON_ROW = { x = 16, y = 16, w = 110, h = 36, gap = 12 }
+
+local function rowRect(slot)
+    return { x = BUTTON_ROW.x + (slot - 1) * (BUTTON_ROW.w + BUTTON_ROW.gap),
+             y = BUTTON_ROW.y, w = BUTTON_ROW.w, h = BUTTON_ROW.h }
+end
 
 local function rectContains(r, x, y)
     return x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
-end
-
-local function backContains(x, y)
-    return rectContains(backButton, x, y)
 end
 
 -- The Back button (return to the hub) is hidden on any scripted leg -- the prologue's flight tutorial
@@ -105,8 +111,28 @@ end
 -- rides on, so it must not be abandonable). Both are scripted sequences, not board quests one can quit.
 -- On a normal quest game.tutorial and game.scripted are both nil, so the button always shows. (A future
 -- pass renames it "Return to City" and gates it behind an "abandon this quest?" warning.)
+--
+-- ...AND A DESCENT HAS NO BACK BUTTON AT ALL, because it already had a better one and this was the
+-- worse of the two.
+--
+-- A floor's way out is the ASCENT STAIR, standing on the tile the company walked in on
+-- (Descent.floorQuest's `exitAtStart`). Taking it goes up to the Gate and KEEPS the floor stack, so a
+-- company that bites off too much can climb out and come back down to floor nine. This button was a
+-- second exit to the same place that threw the stack away: it ran toHub, which nilled
+-- player.descentRun, so giving up on floor nine cost nine floors and the hint on the HUD said only
+-- "Esc: end run".
+--
+-- Which made the mode's incentives exactly backwards. A WIPE -- the punishing ending -- keeps your
+-- depth and costs only what the company was carrying (see onLoss). Quitting kept nothing. So the
+-- button that reads as the safe move was the expensive one, and it was bound to the key every other
+-- screen in the game uses for "close this".
+--
+-- Nothing is lost by removing it. The stair is always reachable, the board autosaves on every step
+-- (saveRun), so quitting the APP mid-floor resumes where it stood, and a company that cannot win still
+-- has the wipe -- which now ends at the Gate with the levels, the mapped floors and the bound relics
+-- intact. There is no way to strand a run in here, only ways to pay for one.
 local function backVisible()
-    return not game.tutorial and not game.scripted
+    return not game.tutorial and not game.scripted and not game.descent
 end
 
 -- The "Use" button rides alongside the Items button on a normal quest (both flags start true). On the
@@ -116,6 +142,22 @@ end
 -- lesson -- and a potion has nothing to heal yet.
 local function useVisible()
     return game.itemsVisible and game.useUnlocked
+end
+
+-- Where each button actually sits this frame. One reading of the row, used by the draw, the hit test
+-- and the cursor alike -- three copies of "which lane is Use in" is how a button ends up clickable
+-- somewhere it is not drawn.
+local function backRect() return rowRect(1) end
+local function itemsRect() return rowRect(backVisible() and 2 or 1) end
+local function useRect()
+    local slot = 1
+    if backVisible() then slot = slot + 1 end
+    if game.itemsVisible then slot = slot + 1 end
+    return rowRect(slot)
+end
+
+local function backContains(x, y)
+    return rectContains(backRect(), x, y)
 end
 
 -- Open the consumables screen over the overworld (same modal slot as the encounter panel).
@@ -266,8 +308,11 @@ end
 -- the Adventurers' Guild -- and with it the mode joined the campaign's save. There is one company now,
 -- so nothing is ever thrown away and every ending walks back up into the city it came from.
 --
--- `outcome` is how it ended -- "won", "wiped" or "left" -- passed rather than inferred, because only
--- the caller knows whether the stair was taken as a victory, a defeat or a decision.
+-- `outcome` is how it ended -- passed rather than inferred, because only the caller knows whether the
+-- stair was taken as a victory or a defeat. It was "won", "wiped" or "left"; "left" is gone with the
+-- Back button that produced it (see backVisible), and a wipe does not come through here at all any
+-- more -- it wakes the company at the Gate with the run intact (onLoss). So the one caller left is the
+-- Hollow Crown, and this is the function that closes a FINISHED descent.
 --
 -- `keep` no longer means anything about a file, because there is no separate file. It survives as the
 -- distinction between an ending that finished the RUN (the Hollow Crown) and one that finished an
@@ -786,9 +831,14 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- were re-seated as texture. The board looked like a pacing decision and was a gate.
     --
     -- So depth IS the day, scaled onto the campaign's forty so the two ladders speak the same units:
-    -- floor one reads shallow, the Hollow Crown reads like the last week of the calendar. The enemy
-    -- LEVEL still comes off `floorLevel` and is untouched by this -- that ladder was already right; what
-    -- was missing was permission for the deep blueprints to appear.
+    -- floor one reads shallow, the Hollow Crown reads like the last week of the calendar.
+    --
+    -- ELIGIBILITY ONLY, and this line used to claim otherwise. It said the enemy LEVEL still came off
+    -- `floorLevel` and was untouched by this -- but states/battle.lua read its level off
+    -- Calendar.dangerLevel(day) too, and Growth.combatantLevel takes the higher of the two, so from
+    -- floor 3 down this mapping WAS the level ladder and floorLevel was never read again. The descent
+    -- carries its own dial now (Descent.dangerLevel, passed as `enemyLevel` at every fight below) and
+    -- the day is back to the one job it was brought in for: which blueprints may appear at all.
     if game.descent then
         game.day = (resume and resume.day)
             or math.max(1, math.floor(Descent.depth(game.descent) / Descent.FLOORS * Calendar.DAYS))
@@ -1178,6 +1228,7 @@ function game:cellMuster(cell)
         local def = enc and enc.id and EncounterModel.get(enc.id)
         cached = def and Muster.encounter(def, {
             day = game.day,
+            enemyLevel = game.quest and game.quest.dangerLevel,
             quest = game.quest,
             floorLevel = game.quest and game.quest.floorLevel,
             -- The ground this marker's fight would be taken on, so the pips price the fight the player
@@ -1395,10 +1446,13 @@ function game:openEncounter(cell)
             -- Read at launch rather than at the loss, because by then the rollback has already put it
             -- back and there would be nothing left to count.
             lostHaul = game:haulPhrase(),
-            -- What the give-up button is called. A quest is abandoned back to the city; a descent has no
-            -- city, and its run simply ends -- so the button says that rather than naming somewhere the
-            -- player cannot go (states/battle.lua).
-            lossLabel = game.descent and "End the Run" or nil,
+            -- What the defeat panel's button is called, and it has to name what the button DOES. It said
+            -- "End the Run", which was accurate when a wipe ended everything and is now the one thing a
+            -- wipe does not do: onLoss below drops the pack, wounds the company and wakes them at the
+            -- Gate with their levels, their mapped floors and the stair to floor N still standing. A
+            -- player reads this line at the worst moment of a run, and it was telling them they had lost
+            -- fifteen floors they had not lost.
+            lossLabel = game.descent and "Wake at the Gate" or nil,
             -- The sponsor's stock, for the salvage every won fight leaves behind (models/spoils.lua).
             -- Same value the map's caches were laid out with, so a run's fights and its dead ends pay
             -- into the same house.
@@ -1413,6 +1467,10 @@ function game:openEncounter(cell)
             -- then the quest, so a line can set one floor for all its fights and a single beat can raise it.
             floorLevel = (objSpec and objSpec.floorLevel)
                 or (game.quest and game.quest.floorLevel) or nil,
+            -- ...and the level the world down here fights at, when the mode keeps a clock of its own. A
+            -- descent hardens on DEPTH rather than on the calendar (Descent.dangerLevel); absent it,
+            -- states/battle.lua falls back to the day, which is the campaign's answer and unchanged.
+            enemyLevel = game.quest and game.quest.dangerLevel or nil,
             -- The whole marching company. Battle's deployment phase decides which of them take the field
             -- and where; the rest wait on the bench and can be rotated in (docs/deployment.md).
             party = game.player and game.player.roster or {},
@@ -1839,6 +1897,9 @@ function game:openEncounter(cell)
                 -- the played one, or the two would build different fights from the same tile.
                 generalsStanding = Calendar.generalsStanding(game.player),
                 floorLevel = game.quest and game.quest.floorLevel or nil,
+                -- Threaded here as well as onto the played path, for the reason `generalsStanding`
+                -- above is: the walk-off must settle the fight that was standing on the tile.
+                enemyLevel = game.quest and game.quest.dangerLevel or nil,
                 party = game.player and game.player.roster or {},
             })
             local combat = built.combat
@@ -2223,10 +2284,14 @@ function game:openEncounter(cell)
     -- back down to. That is the persistence the mode used to refuse outright, and it is what makes the
     -- distance to this tile worth measuring.
     --
-    -- Three ways off a floor now, and they are properly different:
+    -- Three ways off a floor, and they are properly different:
     --   this tile     climb out. Keep the company and everything on it. Come back to this floor.
-    --   Esc           give up where you stand. The company is left down here (leaveQuest).
     --   the stair     go deeper, having beaten the circle's general.
+    --   losing        wake at the Gate, keep the floor and the levels, leave the packs on the tile.
+    --
+    -- There was a fourth -- Esc, which gave up where you stood and discarded the floor stack -- and it
+    -- is gone (see backVisible). This tile is what it should always have been: the way out is a PLACE
+    -- you walk to, priced in the distance back to it, exactly as the way down is.
     if kind == "ascent" then
         local run = game.descent
         if not run then cell.cleared = true; return end
@@ -2615,18 +2680,17 @@ function game:resolveNonCombat(cell)
     if enc.kind == "rest" then game:restHeal() end -- back-compat: any path still routing rest here heals
 end
 
+-- A QUEST'S DOOR, and a descent can no longer come through it.
+--
+-- There was a branch here that read `if game.descent then endDescent("left", ...)` -- walking away from
+-- a descent ended the run where it stood, discarding the floor stack. It was written while that was the
+-- mode's only voluntary exit; the ascent stair is that now, and it PAUSES a run rather than ending one.
+-- Deleted rather than left unreachable behind the vanished Back button, because a dead branch whose one
+-- act is to throw away fifteen floors is a trap for whoever wires the next exit into here.
+--
+-- The two endings a descent still has are the Hollow Crown (endDescent "won", which does close the run)
+-- and a wipe (onLoss, which keeps it and sends the company to the Gate).
 local function toHub()
-    -- WALKING AWAY FROM A DESCENT ends the run where it stands. Same reading as the wipe above: there is
-    -- no company on the other side of this to hand anything back to, so there is nothing to roll back --
-    -- only a run to close and an account of it to give.
-    --
-    -- It is now the ONLY voluntary exit the mode has, and it is a giving up rather than a leaving with
-    -- something. The landing used to offer a second one that read as the sensible answer; it banked
-    -- nothing either, so all it ever did was let a player quit with better wording.
-    if game.descent then
-        endDescent("left", Descent.account(game.player, game.descent))
-        return
-    end
     -- WALKING OUT IS FREE, and this is the line that says so. It used to void the run exactly as a
     -- wipe does -- the two differed only in how the player got there -- which made the objective the
     -- only exit that banked anything. It is the other way round now: the company comes home with
@@ -2651,36 +2715,13 @@ end
 -- it picked up and the only thing spent is the day -- so there is nothing to warn about and nothing to
 -- ask. It just leaves.
 --
--- A DESCENT still asks, and still means it: there is no city on the other side of a descent and no
--- climbing out of one, so this is the only voluntary end the mode has and it is a giving up. Two modes,
--- two rules, and the prompt exists for exactly one of them.
---
--- It used to be titled "Climb Out?" and to weigh the haul, back when the landing sold climbing out as
--- the sensible answer. Neither is true now: what a run is for is the Hollow Crown, and stopping short of
--- it costs the company and the floors alike, whatever is in the packs.
+-- A DESCENT NEVER REACHES THIS. It used to, and the prompt that stood here ("Give Up the Descent?")
+-- was the mode's only voluntary end -- from back when there was no climbing out of one. There is now:
+-- the ascent stair, which keeps the floor stack instead of throwing it away, so the give-up ended a run
+-- the stair would have paused. The button is gone with it (see backVisible), and this is a quest's
+-- door only.
 local function leaveQuest()
-    if not game.descent then toHub() return end
-    if not (game.player and game.player.activeRun) then toHub() return end
-
-    local cleared = game.descent.cleared or 0
-    game.activePanel = Choice.new({
-        title = "Give Up the Descent?",
-        prompt = cleared > 0
-            and ("The company is on floor " .. Descent.depth(game.descent) .. " and has beaten " ..
-                cleared .. (cleared == 1 and " circle. " or " circles. ") ..
-                "None of it counts for anything unless the Hollow Crown comes down.")
-            or "The company has not beaten a circle yet. There is nothing below but the way down.",
-        options = {
-            { label = "Keep going",
-              desc = "The Crown is the only end this run has that is not this one.",
-              accent = { 0.83, 0.73, 0.45 },
-              cb = function() game.activePanel = nil end },
-            { label = "Give up",
-              desc = "The company is left where it stands and the run ends here.",
-              accent = { 0.88, 0.45, 0.33 },
-              cb = function() game.activePanel = nil; toHub() end },
-        },
-    })
+    toHub()
 end
 
 function game.update(dt)
@@ -2735,9 +2776,12 @@ function game.drawCoach()
         local node = hintNode("loadout_hint")
         -- The Items button lives in the top HUD strip, above COACH_BOUNDS; give this one bubble a
         -- bounds that reaches up to the button so it can sit directly BELOW it, tail pointing up.
-        local belowBounds = { x = 20, y = itemsButton.y,
-            w = Scale.WIDTH - 40, h = Scale.HEIGHT - itemsButton.y - 44 }
-        CoachBubble.draw(Locale.text("conversation_tutorial_flight", node), itemsButton,
+        -- The LIVE rect, not the authored lane: the flight tutorial hides Back, so Items sits in the
+        -- first slot there and a bubble anchored on the old constant would point at empty air.
+        local anchor = itemsRect()
+        local belowBounds = { x = 20, y = anchor.y,
+            w = Scale.WIDTH - 40, h = Scale.HEIGHT - anchor.y - 44 }
+        CoachBubble.draw(Locale.text("conversation_tutorial_flight", node), anchor,
             { prefer = "below", key = loadoutKey(), bounds = belowBounds })
     elseif step == "equip" and game.activePanel and game.activePanel.coachAnchor then
         local anchor = game.activePanel:coachAnchor()
@@ -2841,43 +2885,27 @@ function game:drawChecklist()
     love.graphics.setColor(1, 1, 1)
 end
 
+-- One button of the row, at the lane it actually occupies this frame (see BUTTON_ROW).
+local function drawRowButton(rect, label)
+    love.graphics.setColor(0.20, 0.23, 0.32)
+    love.graphics.rectangle("fill", rect.x, rect.y, rect.w, rect.h, 6, 6)
+    love.graphics.setColor(0.5, 0.55, 0.7)
+    love.graphics.rectangle("line", rect.x, rect.y, rect.w, rect.h, 6, 6)
+    love.graphics.setColor(0.95, 0.95, 0.95)
+    love.graphics.setFont(hudFont)
+    love.graphics.printf(label, rect.x, rect.y + rect.h / 2 - 8, rect.w, "center")
+end
+
 function game.drawHud()
-    -- Back button. Hidden during the flight tutorial (see backVisible).
-    if backVisible() then
-        love.graphics.setColor(0.20, 0.23, 0.32)
-        love.graphics.rectangle("fill", backButton.x, backButton.y, backButton.w, backButton.h, 6, 6)
-        love.graphics.setColor(0.5, 0.55, 0.7)
-        love.graphics.rectangle("line", backButton.x, backButton.y, backButton.w, backButton.h, 6, 6)
-        love.graphics.setColor(0.95, 0.95, 0.95)
-        love.graphics.setFont(hudFont)
-        love.graphics.printf("Back", backButton.x, backButton.y + backButton.h / 2 - 8,
-            backButton.w, "center")
-    end
+    -- Back button. Hidden during the flight tutorial, and absent from a descent entirely (backVisible).
+    if backVisible() then drawRowButton(backRect(), "Back") end
 
     -- Items button. Hidden on the flight tutorial until the first chest is opened (game.itemsVisible),
     -- so the Loadout panel is introduced only once there is loot to arrange.
-    if game.itemsVisible then
-        love.graphics.setColor(0.20, 0.23, 0.32)
-        love.graphics.rectangle("fill", itemsButton.x, itemsButton.y, itemsButton.w, itemsButton.h, 6, 6)
-        love.graphics.setColor(0.5, 0.55, 0.7)
-        love.graphics.rectangle("line", itemsButton.x, itemsButton.y, itemsButton.w, itemsButton.h, 6, 6)
-        love.graphics.setColor(0.95, 0.95, 0.95)
-        love.graphics.setFont(hudFont)
-        love.graphics.printf("Items", itemsButton.x, itemsButton.y + itemsButton.h / 2 - 8,
-            itemsButton.w, "center")
-    end
+    if game.itemsVisible then drawRowButton(itemsRect(), "Items") end
 
     -- Use button (drink a potion), beside Items. Same visibility gate save for the flight tutorial.
-    if useVisible() then
-        love.graphics.setColor(0.20, 0.23, 0.32)
-        love.graphics.rectangle("fill", useButton.x, useButton.y, useButton.w, useButton.h, 6, 6)
-        love.graphics.setColor(0.5, 0.55, 0.7)
-        love.graphics.rectangle("line", useButton.x, useButton.y, useButton.w, useButton.h, 6, 6)
-        love.graphics.setColor(0.95, 0.95, 0.95)
-        love.graphics.setFont(hudFont)
-        love.graphics.printf("Use", useButton.x, useButton.y + useButton.h / 2 - 8,
-            useButton.w, "center")
-    end
+    if useVisible() then drawRowButton(useRect(), "Use") end
 
     -- Always-on party HP/mana strip: the run's attrition, legible while routing (models/player.lua).
     -- Pass the mouse (logical space) so the per-companion ability badge shows its tooltip on hover.
@@ -2989,13 +3017,11 @@ function game.drawHud()
     -- otherwise. The items key only appears once the Loadout button itself does.
     local items = game.itemsVisible and (InputMode.isGamepad() and "Y: items      " or "I: items      ") or ""
     local use = useVisible() and (InputMode.isGamepad() and "X: use      " or "U: use      ") or ""
-    -- The "back to hub" hint is dropped alongside the button itself during the flight tutorial.
-    -- Where backing out actually goes, named honestly. A quest is abandoned to the city; a descent has no
-    -- city to be abandoned to -- the run simply ends (states/game.lua's toHub) -- and a hint that names a
-    -- place the player cannot reach teaches them the wrong thing about the mode they are in.
-    local backTo = game.descent and "end run" or "hub"
-    local back = backVisible() and (InputMode.isGamepad() and ("Back: " .. backTo)
-        or ("Esc: " .. backTo)) or ""
+    -- The "back to hub" hint is dropped alongside the button itself -- during the flight tutorial, and
+    -- on every floor of a descent, which has no Back button any more (see backVisible). It read
+    -- "Esc: end run" down there, which was true and was the problem: one keystroke, on the key every
+    -- other screen uses to close a panel, discarding the whole floor stack.
+    local back = backVisible() and (InputMode.isGamepad() and "Back: hub" or "Esc: hub") or ""
     local hint = InputMode.isGamepad()
         and ("Move: D-pad / Stick      " .. items .. use .. back)
         or ("Move: WASD / Arrows / click adjacent tile      " .. items .. use .. back)
@@ -3017,8 +3043,8 @@ function game:cursorKind(x, y)
     if game.activePanel then
         return game.activePanel.cursorKind and game.activePanel:cursorKind(x, y) or "arrow"
     end
-    if (backVisible() and backContains(x, y)) or (game.itemsVisible and rectContains(itemsButton, x, y))
-        or (useVisible() and rectContains(useButton, x, y)) then
+    if (backVisible() and backContains(x, y)) or (game.itemsVisible and rectContains(itemsRect(), x, y))
+        or (useVisible() and rectContains(useRect(), x, y)) then
         return "hand"
     end
     return "arrow"
@@ -3029,9 +3055,9 @@ function game.mousepressed(x, y, button)
         game.activePanel:mousepressed(x, y, button)
     elseif button == 1 and backVisible() and backContains(x, y) then
         leaveQuest()
-    elseif button == 1 and game.itemsVisible and rectContains(itemsButton, x, y) then
+    elseif button == 1 and game.itemsVisible and rectContains(itemsRect(), x, y) then
         openLoadout()
-    elseif button == 1 and useVisible() and rectContains(useButton, x, y) then
+    elseif button == 1 and useVisible() and rectContains(useRect(), x, y) then
         openConsumables()
     else
         game.map:mousepressed(x, y, button)

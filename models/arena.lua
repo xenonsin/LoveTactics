@@ -724,6 +724,27 @@ function Arena.fromGrid(grid, opts)
     spill(partySpawns, opts.party or 0)
     spill(enemySpawns, opts.enemies or 0)
 
+    -- YOUR SIDE OF THE BOARD, AND IT HAS TO BE BIG ENOUGH TO BE A SIDE. Two rows of the arrival edge is
+    -- the shape (Arena.DEPLOY_DEPTH), and on a cut board those two rows are whatever the map put there:
+    -- a window can clear both fightability floors and still be walled along the one edge the company
+    -- happens to come in by. Measured across 180 seated fights, a quarter of them offered fewer than
+    -- eight of the sixteen band tiles and four offered NONE, at which point deployZoneFor falls all the
+    -- way back to the spawn spill -- which is the scattered smear of lit tiles down a wall that this
+    -- reads as in the game.
+    --
+    -- So the band DEEPENS rather than the zone giving up: it takes another row of your own side until it
+    -- holds a company, which keeps every claim the zone makes ("the edge you arrived from", contiguous
+    -- with where you walked in) and gives up only the fixed depth, which was never a promise to anybody.
+    -- Half the board is the cap, past which "your side" has stopped meaning anything and the fallback is
+    -- the honest answer.
+    local deployZone = bandTiles(tiles, cols, rows, entry, Arena.DEPLOY_DEPTH, nil)
+    local depth = Arena.DEPLOY_DEPTH
+    local maxDepth = math.floor(((entry == "left" or entry == "right") and cols or rows) / 2)
+    while #deployZone < Arena.DEPLOY_MIN and depth < maxDepth do
+        depth = depth + 1
+        deployZone = bandTiles(tiles, cols, rows, entry, depth, nil)
+    end
+
     return {
         cols = cols, rows = rows, tiles = tiles,
         partySpawns = partySpawns, enemySpawns = enemySpawns,
@@ -731,7 +752,7 @@ function Arena.fromGrid(grid, opts)
         biome = opts.biome,
         -- Authored, so deployZoneFor uses it outright: the eight tiles of the edge you arrived on,
         -- which is what docs/deployment.md's fixed block becomes once the board has an outside.
-        deployZone = bandTiles(tiles, cols, rows, entry, Arena.DEPLOY_DEPTH, nil),
+        deployZone = deployZone,
         -- Where on the map this board was cut from, so the renderer can put the camera over it and the
         -- run's save can restore the same eight tiles (docs/overworld.md, C5).
         box = { x = ox, y = oy, w = cols, h = rows, entry = entry },

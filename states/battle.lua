@@ -4751,7 +4751,13 @@ function battle.enter(self, opts)
     -- `scaling = false` are honoured per unit inside Growth.combatantLevel.
     -- Required inline, not at file scope: this file sits ON Lua 5.1's 200-local ceiling and one more
     -- top-level local is a compile error naming an unrelated line six hundred lines away.
-    battle.enemyLevel = require("models.calendar").dangerLevel(battle.day)
+    --
+    -- `enemyLevel` is passed when the fight's mode keeps its own clock, and the day is the fallback for
+    -- everyone who does not. A descent has no calendar and hardens on DEPTH (Descent.dangerLevel); it
+    -- used to borrow the campaign's by mapping depth onto forty days, which quietly made the day the
+    -- level dial for a mode that has none -- and put ordinary stock on the first stair at blueprint
+    -- level 1, where the whole floor read as beneath the company and offered to resolve itself.
+    battle.enemyLevel = opts.enemyLevel or require("models.calendar").dangerLevel(battle.day)
     battle.floorLevel = opts.floorLevel
     battle.fallen = nil                  -- who went down in THIS fight, for the launcher's wounds
     battle.summary = nil                 -- the victory/defeat overlay, once the fight is decided

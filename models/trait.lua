@@ -763,6 +763,7 @@ local function ctxFor(combat, unit, trait, event)
     local Status = require("models.status")
     local Summon = require("models.summon")
     local Transform = require("models.transform")
+    local Hazard = require("models.hazard")
 
     -- Stamp a live conjuration onto the item that granted this trait (see ctx.summon below).
     local function claim(summoned)
@@ -1005,6 +1006,16 @@ local function ctxFor(combat, unit, trait, event)
         -- dry-run preview), so it needs no inert twin the way an ability's fx.burst does.
         burst = function(x, y, tags, opts)
             Combat.spawnBurst(combat, x or unit.x, y or unit.y, tags, opts)
+        end,
+        -- Lay a hazard on a tile, as fx.placeHazard does for an ability. A REACTION can leave ground
+        -- behind too -- a body that catches fire where it falls (data/traits/trait_cinderfall.lua) is
+        -- the same statement as a spell that lays fire, made on the death hook instead of the cast one.
+        -- Sided to the bearer, so the renderer tints it as theirs and Hazard's own ownership rules
+        -- apply unchanged.
+        placeHazard = function(x, y, id, opts)
+            opts = opts or {}
+            opts.side = opts.side or unit.side
+            return Hazard.place(combat, x or unit.x, y or unit.y, id, opts)
         end,
         log = function(kind, text, subjects) return Combat.logEvent(combat, kind, text, subjects) end,
     }

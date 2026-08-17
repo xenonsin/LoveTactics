@@ -151,9 +151,12 @@ function EncounterBattle.build(opts)
         encounterKind = opts.encounter and opts.encounter.kind }
     local arena = Arena.build(ctx, EncounterBattle.spec(opts, partyIds, seed))
 
-    -- The world fights at the level the CALENDAR sets, not at one derived from the company: that is
-    -- what makes a squandered day a day the world pulled ahead (models/calendar.lua).
-    local enemyLevel = Calendar.dangerLevel(opts.day or 1)
+    -- The world fights at the level its own CLOCK sets, not at one derived from the company: that is
+    -- what makes a squandered day a day the world pulled ahead (models/calendar.lua). The campaign's
+    -- clock is the calendar; a descent's is depth, and it passes `enemyLevel` outright
+    -- (Descent.dangerLevel). This is the walk-off's own build, so it has to read the same number
+    -- states/battle.lua does or auto-resolving would settle a different fight from the one on the tile.
+    local enemyLevel = opts.enemyLevel or Calendar.dangerLevel(opts.day or 1)
     local partyUnits, enemyUnits = {}, {}
     -- Escorted allies fight on the party's side but are not the player's characters, so they get
     -- fresh instances and run themselves -- scaled like the far side, not left at level 1.

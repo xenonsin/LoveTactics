@@ -158,8 +158,8 @@ and what matters is how much of that is standing room.
 
 | Term | Constant | What it means |
 |---|---|---|
-| **space** | `Overworld.BOX_OK = 32` | tiles you can *cross to* in the best window containing this one. A fight is never *seated* below it |
-| **shape** | `Overworld:isOpen` | a tile with a full 3×3 of walkable around it. A corridor scores zero however long it runs |
+| **space** | `Overworld.BOX_OK = 32` | tiles you can *cross to* in the best window containing this one |
+| **shape** | `Overworld.BOX_OPEN = 16` | how many of them are *open* — `Overworld:isOpen`, a full 3×3 of walkable around the tile. A corridor scores zero however long it runs |
 | **floor** | `Overworld.BOX_MIN = 20` | below this there is nowhere to stand at all |
 
 **Space is not shape, and the second number is the one that matters.** Before the layout pass, *open
@@ -168,11 +168,39 @@ because every layout was 1-wide corridors. And the failure had two faces: the lo
 fights at ~20 of 64, at or below the bare minimum, while the tight ones scored 34 and were unfightable
 anyway. Room for four bodies; no room for a decision.
 
-Two rules that had to be learned by breaking them:
+**Both are floors. For a long time only the first one was.** The layouts were carving clearings
+specifically so fights could happen in them — `glades` says so in its own header — and the seating rule
+was scoring windows by walkable count, on which a lattice of 1-wide corridors ties a clearing. It could
+not tell the two apart, so it seated fights in the corridors at the same rate as in the rooms it had
+been given. The measured result: forest seated its fights on **8.4** open tiles of 64, swamp on 7.6, the
+colosseum — an oval of bare sand — on 14.8. `Overworld:seatsFight` is now the single seam every pass
+that *chooses* a seat asks, and it asks both questions at once, because the bug this exists to prevent
+is a caller reading one number and believing it read the other.
+
+Three places choose a seat, and all three had to learn it separately:
+
+- **`placeObjectiveAndGates`** — the fight nobody may skip, and the one that was worst. Every rule about
+  an objective is about gateability, a strict dead end is what makes an end lockable, and gateability
+  was allowed to be the *only* question: a spur tip is the least arena-shaped tile a board has. Forest
+  objectives stood on **3.3** open tiles of 64. Room is a filter over the candidate ends, graded —
+  arenas first, merely-standable second, and on a board with neither, the roomiest spur outright, with
+  distance no longer deciding because there is nothing left to prefer it over.
+- **`placeEncounters`** — a fight dealt onto a corridor looks ahead for a clearing among the candidates
+  still free, and demotes to a non-combat stop only if the board has none.
+- **`guardBoons`** — where nearly all of the corridor fights actually came from. A spur mouth is the
+  likeliest tile on the map to be a hallway, and this pass was lifting fights *out* of the clearings
+  `placeEncounters` had chosen and standing them in doorways: a one-end forest board put 92% of its
+  fights on guard and 3.9 of 4.5 of them under the shape floor. See the guarded-boon section below for
+  what refusing cost.
+
+Three rules that had to be learned by breaking them:
 
 - **A demotion that empties the board is worse than a thin fight.** Refusing every seat on a ground that
   clears nothing does not produce careful placement, it produces a board with no fights on it — which is
   what the desert and the tundra did the first time the rule ran.
+- **Refusing to *move* a fight costs nothing.** Which is why `guardBoons` has no such escape hatch: the
+  fight is not created by that pass, and declining to move it leaves it in the clearing it was already
+  standing in. An unguarded cache is a free pickup; a guarded one fought for in a hallway is the failure.
 - **Corridor contact stays legal.** The floor governs what the *generator* chooses, which is a different
   question from what the player walks into. Being caught mid-hall is the price of a mistake.
 
@@ -208,33 +236,51 @@ through the gate at the near edge, which is the longest approach the oval has. T
 it: a lock on the road to an objective standing in the open is walked around, so a board whose objective
 is not a strict dead end places no keys at all. There are no locked doors in an arena.
 
-Measured across 20 boards a ground:
+Measured across 50 boards a ground, `. board-report 50 all`, **before → after the shape floor reached
+the three seating passes**. `ends` is the same open figure for the objectives alone; `under` is fights a
+board seated below either floor, and it must reach 0.
 
-| ground | fightable | sites | seat | open | under | guarded |
+| ground | fightable | seat | open | ends | under | guarded |
 |---|---|---|---|---|---|---|
-| castle | 100.0% | 4.5 | 57.1 | 40.2 | 0.00 | 37.2% |
-| colosseum | 100.0% | 3.9 | 59.4 | 37.1 | 0.00 | 68.0% |
-| desert | 99.1% | 5.0 | 50.0 | 23.9 | 0.10 | 68.3% |
-| forest | 89.9% | 4.1 | 40.0 | 12.4 | 0.70 | 68.1% |
-| swamp | 89.5% | 5.2 | 39.6 | 10.9 | 1.10 | 75.0% |
-| tundra | 99.7% | 5.4 | 48.3 | 18.0 | 0.10 | 68.3% |
-| underworld | 100.0% | 6.6 | 57.4 | 41.7 | 0.00 | 70.7% |
-| volcanic | 99.7% | 2.8 | 53.0 | 29.4 | 0.10 | 66.9% |
+| castle | 99.8 → 99.8% | 57.6 → 57.6 | 39.7 → 39.7 | 38.1 → 38.1 | 0.1 → 0.1 | 38.4 → 38.4% |
+| colosseum | 63.1 → 63.1% | 51.6 → **54.4** | 14.8 → **19.7** | 16.0 → **17.3** | 4.3 → **1.1** | 56.8 → *17.3%* |
+| desert | 80.8 → **82.4%** | 41.0 → **53.9** | 19.2 → **30.4** | 12.1 → **27.4** | 3.6 → **0.0** | 68.5 → *61.6%* |
+| forest | 39.0 → **55.4%** | 32.1 → **49.6** | 8.4 → **23.9** | 3.3 → **19.5** | 6.4 → **0.8** | 67.4 → *32.7%* |
+| swamp | 37.4 → **53.1%** | 31.9 → **50.1** | 7.6 → **24.0** | 4.0 → **20.3** | 6.8 → **0.7** | 71.5 → *35.9%* |
+| tundra | 80.2 → **83.0%** | 39.0 → **53.4** | 14.9 → **27.3** | 7.8 → **24.1** | 4.5 → **0.0** | 68.0 → *61.9%* |
+| underworld | 98.5 → **99.2%** | 48.3 → **54.3** | 34.0 → **37.5** | 23.1 → **28.4** | 1.3 → **0.0** | 68.2 → 67.7% |
+| volcanic | 93.1 → **93.2%** | 49.7 → **53.0** | 28.2 → **32.5** | 22.5 → **27.7** | 1.7 → **0.0** | 53.9 → *45.3%* |
 
-The colosseum seats its fights higher than any other ground and has the fewest distinct sites to seat
-them on, which is the same fact twice: there is one room, it is all standing space, and a bout is
-fought wherever on it you happened to meet.
+**The castle does not move, on any column, to the digit.** `rooms` carves no dead ends at all, so
+neither the objective filter nor the cache preference has anything to choose between, and every door it
+offers was already a room. It is the control in this experiment and it behaves like one.
+
+**The underworld barely moves either, and that is the proof the geometry can give both.** `caverns` is
+bellies and necks: its doors are wide, so demanding that a guard be able to fight where it stands costs
+it half a point of guarded share. Every ground that lost a lot of guarded share lost it to the same
+fact — a gate is a narrow place and an arena is a wide one, and on a maze they are rarely the same tile.
+
+The colosseum is the outlier and worth reading rather than tuning away: its fights are *good* now
+(a rendered board seats its thinnest at 20 open and its end at 30), but its boons live in the cells
+under the stands and the mouths of those cells are the one narrow thing on the whole ground. It buys
+better fights with fewer guarded rewards, on the one board where the fight is the entire point.
 
 The coastline is what moved these off their pre-weathering numbers: a wandering wall touches more of the
-ground beside it, so **open** is a few points down on the wide grounds (the tundra most, 25.2 → 18.0)
-while **sites** — how many distinct places a fight can actually go — is where it was, which is the one
-that decides whether a board is playable.
+ground beside it, so **open** is a few points down on the wide grounds while **sites** — how many
+distinct places a fight can actually go — is where it was, which is the one that decides whether a board
+is playable.
 
 Three things a layout keeps being taught, each learned by getting it wrong first:
 
 1. **A room over a dead end deletes the dead end.** Carving clearings at any lattice node took the
    forest's guarded share from 60% to 27%, which is the braid rate's failure reached from another
-   direction. A glade opens a *through*-node and shrinks its radius to spare any spur end.
+   direction. A glade opens a *through*-node and shrinks its radius to spare any spur end — **by one
+   tile, not two.** It reserved two for a while, one for the spur end and one for the cut vertex beside
+   it "that a guard has to be able to stand on", and that was right about which tile the guard takes and
+   wrong about what standing there means: it reserved that tile as *corridor*, so the layout was
+   deliberately putting every door it offered outside the room. At one, the clearing's rim is the cut
+   vertex, the spur end keeps its single neighbour, and the fight in the doorway is fought in the glade
+   behind it — forest fightability 39.8% → 56.5%, sites 4.6 → 6.5.
 2. **A chain makes every room spine.** The castle's halls were a chain first, and guarded 1.6% of its
    boons — one route through every chamber means every doorway is on the objective road, and combat is
    kept off it. A tree branches, and the leaves are dead ends.
@@ -439,6 +485,23 @@ spurs with *nothing at the end* — the actual complaint. Lowering the rate also
 
 Material income goes **up**, because a guarded cache pays a bonus and far more of them are now guarded.
 
+**And then the ceiling moved again, downward, on purpose.** `boons gateable` is the ceiling on how many
+boons *can* be guarded; it is not the ceiling on how many *should* be, because a guard is a fight and a
+fight has to happen somewhere. Once `guardBoons` had to seat on ground that clears the shape floor, the
+achieved share fell on every maze-like ground — forest 67.4% → 32.7%, swamp 71.5% → 35.9%, the colosseum
+56.8% → 17.3% — while the wide grounds barely noticed (underworld 68.2% → 67.7%). The trade is stated
+plainly because it is a trade: **a gate is a narrow place and an arena is a wide one**, and where a board
+cannot offer a tile that is both, it now keeps the fight in the clearing and lets the cache sit loose.
+
+Two things soften it, both of them pairings made *earlier* rather than rules relaxed later:
+
+- `placeCaches` prefers dead ends whose one neighbour can hold a fight, so the boons land where a
+  pairing is possible instead of being sorted out afterwards (desert +10 points, tundra +15).
+- `glades` shrinks a clearing by one tile rather than two (above), so a maze's doors are rims of rooms.
+
+Do not "fix" the remaining gap by relaxing the seat floor. The share is a structural nicety; the fight
+being playable is the contract.
+
 **The ratio was the wrong lever.** Cutting `cacheTarget` to force boons-per-fight toward 1.0 was tried
 and rejected by measurement: it dropped material income by a third *and* lowered the absolute number of
 guarded boons, because it removed boons rather than adding pairings. `boons per fight` is reported as
@@ -490,13 +553,20 @@ the Arcanum reading an unknown discipline off a piece, the Cafe standing a round
 - ~~**Nothing prices time on the board.**~~ **Closed by the step clock.** Every step the company takes
   is a step something else takes, so sweeping every spur costs patrol moves. The hunger clock this entry
   used to reach for was the wrong shape; the board's own currency turned out to be the right one.
-- **The castle and the volcanic guard ~20-38% of their boons** against 62-71% everywhere else. Both
+- **The castle and the volcanic guard ~38-45% of their boons** against 62-68% on the wide grounds. Both
   carve wide connected ground, so the spine runs through most of it and combat is kept off the spine.
   Preferring deeper ground for caches took the castle from 18% to 38%; the rest is layout tuning
   (branchier halls, more leaf chambers), not a rule change. **Raising the guard's reach does not help** —
   measured flat at 28 tiles, so the limit is that no *off-spine* gating tile exists, and the beat-guard
   idea would have to seat a guard on the spine, which breaks the one contract the board cannot lose.
-- **The swamp still seats ~1.3 fights a board under the fightability floor**, the worst of the seven.
+- **The maze grounds now guard only ~33-36% of their boons**, and the colosseum 17%, because a guard has
+  to be able to fight where it stands. That is the trade recorded above and it is deliberate; what is
+  still open is whether `glades` and `sands` can be carved so that more of their doors are rooms, which
+  is layout work rather than a rule change.
+- **The forest and the swamp still seat ~0.8 fights a board under the shape floor**, the worst two of
+  the eight, and it is the same fact as their fightability sitting near 55% while every other ground is
+  past 80%: half their trail is warren. The escape hatch is doing its job (a board that clears nothing
+  still gets fights) — the layouts have not caught up.
 - **Every offer on the board pays the same currency.** Materials from a cache, materials and gold from
   a fight — so the board is N copies of one offer at different prices, and route *choice* cannot really
   exist until two boons can differ in kind. The largest open item here, and it is a content question

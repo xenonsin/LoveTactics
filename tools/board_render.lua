@@ -19,8 +19,11 @@
 -- window containing it the tile can actually CROSS TO (Overworld:bestBox, which counts what a fight
 -- standing here could reach without leaving the box), divided by eight -- so `4` means 32 of 64 and is
 -- exactly the floor an encounter may be seated on. An `O` means the tile is OPEN -- a full 3x3 of trail
--- around it -- which is the difference between a chamber and a warren, and which no board in the game
--- currently produces at all.
+-- around it -- which is the difference between a chamber and a warren. Both are floors now: a seat has
+-- to clear BOX_OK on the digits and BOX_OPEN on the O's, and the second is the one a pretty board fails.
+-- (This note used to end "which no board in the game currently produces at all", which was true when the
+-- panel was written and has not been for a while -- the layouts carve clearings, and until the seat rule
+-- learned to read them the fights were being seated in the corridors between.)
 --
 -- Read-only and seeded, so two runs with the same arguments print the same board.
 
@@ -142,22 +145,35 @@ function M.run(args)
     print("")
 
     -- ---- what the fights actually got -----------------------------------------
+    -- Worst by OPEN ground rather than by crossable ground, which is the floor that decides whether the
+    -- board is a room or a hallway (Overworld.BOX_OPEN) and the one a bad board fails first. The
+    -- objective is counted with the rest: it is not a stop the pool dealt, but it is a fight, and it is
+    -- the only one the player cannot walk past.
+    local opens = grid:openSums()
     local worst, worstAt, seats = math.huge, nil, 0
     local openTiles = 0
     for y = 1, grid.rows do
         for x = 1, grid.cols do
             local c = grid.cells[y][x]
             if grid:typeWalkable(c.tile) and grid:isOpen(x, y) then openTiles = openTiles + 1 end
-            if c.encounter and (c.encounter.kind == "combat" or c.encounter.kind == "elite") then
-                local _, _, score = grid:bestBox(x, y, sums)
+            local kind = c.encounter and c.encounter.kind
+            if kind == "combat" or kind == "elite" or kind == "objective" then
+                local _, open = grid:roomAt(x, y, sums, opens)
                 seats = seats + 1
-                if score < worst then worst, worstAt = score, { x, y } end
+                if open < worst then worst, worstAt = open, { x, y } end
             end
         end
     end
     if worst == math.huge then worst = 0 end
-    print(string.format("  %d fights seated; worst board %d of %d%s", seats, worst, Overworld.BOX * Overworld.BOX,
+    print(string.format("  %d fights seated; thinnest board %d open of %d%s", seats, worst,
+        Overworld.BOX * Overworld.BOX,
         worstAt and string.format(" at (%d,%d)", worstAt[1], worstAt[2]) or ""))
+    if grid.objective then
+        local cross, open = grid:roomAt(grid.objective.x, grid.objective.y, sums, opens)
+        print(string.format("  the end at (%d,%d): %d crossable, %d open -- %s",
+            grid.objective.x, grid.objective.y, cross, open,
+            (cross >= Overworld.BOX_OK and open >= Overworld.BOX_OPEN) and "an arena" or "A DEFILE"))
+    end
     print(string.format("  %d open tiles on the whole board", openTiles))
 end
 

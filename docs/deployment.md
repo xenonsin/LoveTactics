@@ -53,6 +53,25 @@ Bottom is the party's edge everywhere in `models/arena.lua` — enemies muster o
 draft's marching grid faces them — so a board that wants the party entering from elsewhere authors its
 own zone rather than being guessed at.
 
+**A board cut out of the map authors its own, and it is a band rather than a block.** `Arena.fromGrid`
+hands over the whole width of the edge the company arrived from, two rows deep, because that is what the
+fixed block becomes once the board has an outside: you came in *there*, so *there* is where you line up.
+
+**And on a cut board those two rows are whatever the map put there**, which is the one thing a rolled
+board never had to worry about. A window can clear both fightability floors and still be walled along
+the single edge the company happened to approach by. Measured across 180 seated fights: **a quarter
+offered fewer than eight of the sixteen band tiles, and four offered none at all** — at which point the
+zone falls back to the spawn spill, and what the player sees is five lit tiles scattered down a wall
+with the company smeared over them. That is what the phase looks like when the seating rule has failed,
+and it is the only place in the game where that failure is visible at all.
+
+So the band **deepens** rather than the zone giving up: it takes another row of your own side until it
+holds `DEPLOY_MIN`, capped at half the board, past which "your side" has stopped meaning anything and
+the fallback is the honest answer. Every claim the zone makes survives — the edge you arrived from,
+continuous with where you walked in — and the only thing given up is the fixed depth, which was a shape
+and never a promise. With the shape floor on the seating passes ahead of it
+([docs/overworld.md](overworld.md)), the share offering under half a band is now 3%, and none are empty.
+
 If that yields fewer than `Arena.DEPLOY_MIN = 4` tiles (the field cap, mirrored the way
 `Combat.MAX_FIELD` mirrors `Player.MAX_FIELD`), it falls back to the authored spawns: a cramped board
 must never produce a phase with nowhere to stand.

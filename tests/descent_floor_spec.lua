@@ -191,7 +191,12 @@ return {
             "a floor asks for its rewards to be guarded")
 
         local boons, guarded = 0, 0
-        for seed = 1, 10 do
+        -- THIRTY SEEDS, not ten. Ten was enough while the share sat near half and the failure being
+        -- guarded against was zero; it is not enough now that a guard also has to be able to FIGHT where
+        -- it stands (Overworld.BOX_OPEN), which took the measured share to ~42% and widened its spread.
+        -- A ten-seed sample of a 42% mean reads anywhere from 28% to 55%, so the spec was failing on the
+        -- sample rather than on the board.
+        for seed = 1, 30 do
             local grid = floorGrid(seed)
             for y = 1, grid.rows do
                 for x = 1, grid.cols do
@@ -208,8 +213,12 @@ return {
             end
         end
         assert(boons > 0, "the floors hold rewards at all")
-        -- Measured at ~48%. A third is well clear of the zero the bug produced and well under the
-        -- share the geometry allows, so a retune of the carve does not have to come and edit this.
+        -- Measured at ~42%, down from ~48% and for a reason worth writing down rather than tuning past:
+        -- a guard used to need only to be a cut vertex, and now needs to be a cut vertex a battle can
+        -- happen on. Those two wants pull opposite ways -- a gate is a narrow place and an arena is a
+        -- wide one -- and the fights this rule declines to seat are not lost, they stay in the clearings
+        -- placeEncounters put them in. A third is still well clear of the zero the bug produced and
+        -- under the share the geometry allows, so a retune of the carve does not have to come edit this.
         assert(guarded / boons > 0.30,
             string.format("only %.0f%% of a floor's rewards stand behind a fight (%d of %d) -- the " ..
                 "guarded-boon pass is being skipped again", guarded / boons * 100, guarded, boons))

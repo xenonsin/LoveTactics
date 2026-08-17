@@ -86,32 +86,54 @@ local Descent = {}
 Descent.SINS = {
     { id = "gluttony", name = "Gluttony", vendor = "hunters_lodge", biome = "swamp",
         scene = "conversation_descent_gluttony",
-        guardian = { lead = "character_general_gluttony", filler = "character_dire_bear" },
-        minor = { lead = "character_dire_bear", filler = "character_wolf_grunt" } },
+        -- THE MINOR LEAD WAS character_dire_bear, AND THAT WAS A BUG. The bear is a Wild Shape a hunter
+        -- WEARS -- its pools are placeholders the hunter's own body carries across, so its blueprint
+        -- reads `health = 1`. Fielded here as a floor's centrepiece it spawned with one health at level
+        -- 1 and 57 at level 17, while swinging for 62: a body that died to a stiff breeze and hit like a
+        -- general. A blueprint used as both cargo and combatant has to be SPLIT, so the druid's bear
+        -- stays hers and this floor gets a body authored to stand on it (character_the_gralloch.lua).
+        --
+        -- The filler moved for the same reason. A guardian's escort should be the circle's own stock,
+        -- which the swamp now has.
+        -- ...and the lieutenant stands behind her, which is the invariant the mini sin was BUILT for:
+        -- the body that barred the stair two floors ago is at her shoulder when you reach her, so the
+        -- rule it taught you the slow way is standing next to the thing that has it in full.
+        guardian = { lead = "character_general_gluttony", filler = "character_the_gralloch" },
+        minor = { lead = "character_the_gralloch", filler = "character_gorge_fly" } },
     { id = "lust", name = "Lust", vendor = "cathedral", biome = "forest",
         scene = "conversation_descent_lust",
-        guardian = { lead = "character_general_lust", filler = "character_inquisitor" },
-        minor = { lead = "character_inquisitor", filler = "character_crusader" } },
+        guardian = { lead = "character_general_lust", filler = "character_the_suppliant" },
+        minor = { lead = "character_the_suppliant", filler = "character_petal_drift" } },
     { id = "greed", name = "Greed", vendor = "undercroft", biome = "underworld",
         scene = "conversation_descent_greed",
-        guardian = { lead = "character_general_greed", filler = "character_mammonite" },
-        minor = { lead = "character_mammonite", filler = "character_bandit" } },
+        guardian = { lead = "character_general_greed", filler = "character_the_tally" },
+        minor = { lead = "character_the_tally", filler = "character_coin_chitter" } },
     { id = "envy", name = "Envy", vendor = "alchemist", biome = "desert",
         scene = "conversation_descent_envy",
-        guardian = { lead = "character_general_envy", filler = "character_homunculus" },
-        minor = { lead = "character_homunculus", filler = "character_homunculus_discard" } },
+        -- THE SECOND OF THE TWO BROKEN LEADS. character_homunculus is the alchemist's SUMMON -- its own
+        -- header says it is "reached only through the Summon Homunculus ability, which scales it by the
+        -- item's upgrade level" -- so fielded as a floor's centrepiece it stood there as tier-1 chaff
+        -- with 18 health at level 1. And the filler was character_homunculus_discard, which is CARGO: a
+        -- `protect` objective with a holdGround posture, whose own header spends a paragraph on why it
+        -- must never be fielded as a combatant. Both replaced by the circle's own stock.
+        guardian = { lead = "character_general_envy", filler = "character_second_water" },
+        minor = { lead = "character_second_water", filler = "character_glass_mote" } },
     { id = "wrath", name = "Wrath", vendor = "colosseum", biome = "volcanic",
         scene = "conversation_descent_wrath",
-        guardian = { lead = "character_general_wrath", filler = "character_champion" },
-        minor = { lead = "character_champion", filler = "character_barbarian" } },
+        -- The Champion held this slot and held it CORRECTLY -- a real body carrying a Demon Sigil with
+        -- two authored phases, and the worked example in trait_boss_phases. It was still the wrong
+        -- occupant: a stratum's centrepiece should BE the sin one rank down, not an arena fighter who
+        -- happens to be nearby. It stays the authoring pattern; it stops standing in for Ira.
+        guardian = { lead = "character_general_wrath", filler = "character_the_anvil" },
+        minor = { lead = "character_the_anvil", filler = "character_cinder_kin" } },
     { id = "sloth", name = "Sloth", vendor = "bastion", biome = "tundra",
         scene = "conversation_descent_sloth",
-        guardian = { lead = "character_general_sloth", filler = "character_forsworn_captain" },
-        minor = { lead = "character_forsworn_captain", filler = "character_forsworn_knight" } },
+        guardian = { lead = "character_general_sloth", filler = "character_the_late_watch" },
+        minor = { lead = "character_the_late_watch", filler = "character_drift_thing" } },
     { id = "pride", name = "Pride", vendor = "arcanum", biome = "castle",
         scene = "conversation_descent_pride",
-        guardian = { lead = "character_general_pride", filler = "character_battlemage" },
-        minor = { lead = "character_battlemage", filler = "character_mage" } },
+        guardian = { lead = "character_general_pride", filler = "character_marginalia" },
+        minor = { lead = "character_marginalia", filler = "character_gilded_sworn" } },
 }
 
 -- HOW DEEP A CIRCLE GOES. Wizardry's proving grounds are ten levels and its descendants go deeper; the
@@ -386,6 +408,36 @@ Descent.FLOOR_SPACING = 3
 -- difficulty envelope, a gentler climb through it -- which is also the right shape for a mode whose
 -- company now persists between expeditions rather than being minted at level 1 each time.
 Descent.LEVEL_PER_FLOOR = 1
+
+-- WHAT THE WORLD FIGHTS AT ON THE FIRST STAIR, and the number that fixes a floor nobody had to play.
+--
+-- The campaign hardens on the calendar (models/calendar.lua) and a descent has no calendar, so
+-- states/game.lua maps depth onto the campaign's forty days to decide which encounter blueprints are
+-- eligible down here. That mapping was only ever meant to open the deep pool -- its own comment says the
+-- enemy LEVEL still comes off `floorLevel` -- but Calendar.dangerLevel(day) is what states/battle.lua
+-- reads for the level too, and Growth.combatantLevel takes the higher of the two. So from floor 3 down
+-- the day ladder won outright and floorLevel was never read again: measured, the bottom floor spawned
+-- ordinary stock at 19 and elites at 22 against a company the experience curve puts at 15.
+--
+-- The shallow end was worse than the deep one. Floor 1 asked for day 2, which is danger 2, which after
+-- ENEMY_LEVEL_LAG is stock at BLUEPRINT LEVEL 1 -- while a company clears that same floor arriving at
+-- level 4, because the descent's experience curve is cheapest at the bottom (10, then 20, then 30). A
+-- muster margin of 192% against Muster.WALK_OVER of 200 means every marker on the floor goes calm and
+-- every fight on it opens the auto-resolve offer instead of a board. The first floor of the mode was
+-- the one floor nobody had to play.
+--
+-- So the descent gets its own dial, keyed on the only clock it has, and the day goes back to the one job
+-- it was brought in for. THREE is where a company that has fought its way onto the stair actually
+-- stands, so floor 1 opens as a fight rather than a formality.
+Descent.OPENING_DANGER = 3
+
+-- The level the world fights at on this floor -- the descent's Calendar.dangerLevel, and the number
+-- states/battle.lua takes as `enemyLevel`. Fed in as the TRACKED level rather than as a battleFloor,
+-- which is what keeps Growth's two tiers apart: ordinary stock lags it and anything naming a
+-- `floorLevel` of its own tracks it exactly, so the trash thins out and the guardian does not.
+function Descent.dangerLevel(run)
+    return Descent.OPENING_DANGER + (Descent.depth(run) - 1) * Descent.LEVEL_PER_FLOOR
+end
 
 -- Ids are `descent_f<N>`. Nothing in the engine ever looks a floor up in Quest.defs -- models/save.lua
 -- branches on the presence of a stored descent BEFORE it tries Quest.get -- but the prefix keeps a floor
@@ -979,6 +1031,7 @@ function Descent.floorQuest(run, player)
             -- not anybody's errand.
             sponsor = nil,
             floorLevel = floorLevel,
+            dangerLevel = Descent.dangerLevel(run),
             descent = run,
             -- What states/game.lua reads to know that clearing this objective ENDS the run rather than
             -- opening another landing. Named on the descriptor rather than inferred from the depth, so
@@ -1034,6 +1087,10 @@ function Descent.floorQuest(run, player)
         -- landing names the one below, and from stage 4 extraction banks standing against it).
         sin = sin.id,
         floorLevel = floorLevel,
+        -- What the world fights at down here. Distinct from `floorLevel`, which is the per-fight
+        -- MINIMUM a set-piece can raise; this is the level ordinary stock is grown to. See
+        -- Descent.dangerLevel for why the day cannot do this job.
+        dangerLevel = Descent.dangerLevel(run),
         -- The field states/game.lua keys the whole feature off. Carried by reference: the state reads it
         -- to know it is in a descent and to park it on player.activeRun.
         descent = run,

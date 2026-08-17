@@ -829,20 +829,80 @@ function Overworld:placeObjectiveAndGates(params)
             end
         end
     end
+    -- ...AND THE END HAS TO BE SOMEWHERE THE FIGHT CAN HAPPEN, which for a long time it did not have to
+    -- be. Every rule above and below this one is about GATEABILITY -- a strict dead end is what makes an
+    -- objective lockable and what stops it being stumbled over -- and gateability was allowed to be the
+    -- only question asked. It is the wrong only question now that a fight is taken on these very tiles:
+    -- a spur tip is the least arena-shaped tile a board has, and the one fight the player cannot decline
+    -- was being seated on the worst of them by rule. Rolled boards, before this: the objectives of a
+    -- forest board stood on 3.5 tiles of open ground out of 64, a swamp's on 4.5, against a floor of 16.
+    -- That is a floor guardian fought in a defile, four bodies deep in a queue, and it is what the
+    -- fightability ledger could not see because it was counting combat and elite only.
+    --
+    -- So room is a FILTER over the candidates and not a new scoring term. The distance rules keep their
+    -- exact meaning -- the band on a ground, the peak on a climb -- they just run over the ends that can
+    -- hold the fight rather than over all of them.
+    --
+    -- AND THE FALLBACK IS GRADED, because "fall back to all of them" is not one behaviour, it is the old
+    -- one. A tight board would hand the distance rule the whole spur list again and it would happily
+    -- return a pocket of twelve crossable tiles on a board carrying a hundred and ten open ones, which is
+    -- worse than anything the filter was written to prevent. Three tiers, each a strictly weaker claim
+    -- than the one above:
+    --
+    --   1  clears both floors -- an arena. The distance rule decides among them.
+    --   2  clears the space floor only -- room to stand, if not to flank. Distance decides again.
+    --   3  neither: take the roomiest spur on the board outright, ties to the deeper one. Distance stops
+    --      being a preference here because there is nothing left to prefer it over -- every candidate is
+    --      a bad board and the only question is which is least bad.
+    local sums, openSums = self:walkableSums(), self:openSums()
+    local roomy, standable = {}, {}
+    for _, e in ipairs(deadEnds) do
+        local ok, cross = self:seatsFight(e.cell.x, e.cell.y, sums, openSums)
+        if ok then roomy[#roomy + 1] = e end
+        if cross >= Overworld.BOX_OK then standable[#standable + 1] = e end
+    end
     -- On an ASCENT map the objective is the PEAK: the farthest dead-end there is, not a comfortable
     -- one in the top band. The marathon this band exists to avoid is exactly what a climb is for --
     -- the road has to run out, and the thing at the end of it has to be the last thing.
     local pick, pickScore
-    if params.ascent then
-        for _, e in ipairs(deadEnds) do -- score is distance: take the highest
+    local ends = (#roomy > 0 and roomy) or (#standable > 0 and standable) or deadEnds
+    -- Tier 3: nothing on this board can hold a fight, so distance stops deciding and room decides
+    -- outright. Sorted rather than filtered, so every rule below -- the band, the peak, the farthest
+    -- fallback, the spread the extra ends are held at -- reads the same list in the same order.
+    if #roomy == 0 and #standable == 0 then
+        local score = {}
+        for _, e in ipairs(ends) do
+            local cross, open = self:roomAt(e.cell.x, e.cell.y, sums, openSums)
+            score[e] = open * 100 + cross
+        end
+        table.sort(ends, function(a, b)
+            if score[a] ~= score[b] then return score[a] > score[b] end
+            if a.d ~= b.d then return a.d > b.d end
+            if a.cell.y ~= b.cell.y then return a.cell.y < b.cell.y end
+            return a.cell.x < b.cell.x
+        end)
+        pick = ends[1] and ends[1].cell
+    end
+    if pick then -- decided above; the distance rules have nothing left to choose between
+    elseif params.ascent then
+        for _, e in ipairs(ends) do -- score is distance: take the highest
             if not pickScore or e.d > pickScore then pickScore = e.d; pick = e.cell end
         end
     else
         local band, want = maxDist * 0.7, maxDist * 0.8
-        for _, e in ipairs(deadEnds) do -- score is error against the band: take the lowest
+        for _, e in ipairs(ends) do -- score is error against the band: take the lowest
             if e.d >= band then
                 local err = math.abs(e.d - want)
                 if not pickScore or err < pickScore then pickScore = err; pick = e.cell end
+            end
+        end
+        -- The band is measured against the WHOLE board and `ends` is a subset of it, so a board whose
+        -- only arenas sit nearer than 70% of the reach clears the filter and then finds nothing inside
+        -- the band. Take the deepest one there is rather than falling through to a defile at the right
+        -- distance: how far the objective sits is a preference, whether it can be fought is not.
+        if not pick then
+            for _, e in ipairs(ends) do
+                if not pickScore or e.d > pickScore then pickScore = e.d; pick = e.cell end
             end
         end
     end
@@ -851,7 +911,7 @@ function Overworld:placeObjectiveAndGates(params)
     -- distance band can hold no dead-end at all; when it doesn't, fall back to the FARTHEST dead-end
     -- there is rather than a plain far tile, and only accept a non-dead-end if the map has none.
     local farDeadEnd, farDeadD
-    for _, e in ipairs(deadEnds) do
+    for _, e in ipairs(ends) do -- the roomy ones when there are any, exactly as above
         if not farDeadD or e.d > farDeadD then farDeadD = e.d; farDeadEnd = e.cell end
     end
     objective = namedObjective or pick or farDeadEnd or objective
@@ -868,11 +928,16 @@ function Overworld:placeObjectiveAndGates(params)
     -- a quarter of the board's reach and halves until something qualifies -- a relaxing threshold
     -- rather than a fixed one, because a compact braided board may genuinely have no far-apart pair and
     -- a crowded end still beats no end at all.
+    --
+    -- Room relaxes LAST, after the spread has run all the way down. Every end on this board is a fight
+    -- somebody has to take, so a second one seated in a defile is the same failure as the first; the
+    -- order says a crowded pair of arenas beats a well-spread pair of corridors.
     for i = 2, #specs do
         local best, bestD
+        local wantRoom = #ends < #deadEnds -- only a real narrowing is worth relaxing back out of
         local spread = maxDist * 0.25
         while not best and spread >= 1 do
-            for _, e in ipairs(deadEnds) do
+            for _, e in ipairs(wantRoom and ends or deadEnds) do
                 if not claimed[cellKey(e.cell)] then
                     local ok = true
                     for _, c in ipairs(chosen) do
@@ -882,6 +947,9 @@ function Overworld:placeObjectiveAndGates(params)
                 end
             end
             spread = spread / 2
+            if not best and spread < 1 and wantRoom then
+                wantRoom, spread = false, maxDist * 0.25 -- out of arenas: take a spur anywhere
+            end
         end
         -- NO DEAD END LEFT. Rather than dropping the quest -- a piece of work the player travelled for,
         -- silently absent from the board -- it takes the farthest unclaimed walkable tile there is, and
@@ -1334,10 +1402,40 @@ function Overworld:placeCaches(params)
         return shuffled[a] < shuffled[b]
     end)
 
+    -- ...AND, AMONG THE SPURS, THE ONES WHOSE DOOR IS A ROOM.
+    --
+    -- The same argument as the sort above, carried one step further, and it became necessary the moment
+    -- a guard had to be able to FIGHT where it stands (Overworld.BOX_OPEN). Every dead end can be gated
+    -- -- that is what a dead end is -- so "prefers ground that can be gated" no longer separates
+    -- anything, and the question that decides whether this cache ends up behind a fight is now whether
+    -- the tile that gates it is an arena or a hallway. A maze has plenty of both and the shuffle was
+    -- picking between them blind: forest guarded 96% of its boons on paper and 16% in fact.
+    --
+    -- The dead end's single neighbour is the proxy, not the answer -- guardBoons re-asks the real
+    -- question, exactly, and may walk further back for a better door. A proxy is the right instrument
+    -- here anyway: this pass runs before the fights exist, so it is choosing where a pairing COULD
+    -- happen, and being right about most of them is what the ordering is for.
+    --
+    -- Stable within each group, so a spur's position still comes off the shuffle and a seed reproduces
+    -- its board.
+    local roomy, tight = {}, {}
+    do
+        local sums, opens = self:walkableSums(), self:openSums()
+        for _, c in ipairs(deadEnds) do
+            local n = self:pathNeighbors(c.x, c.y)[1]
+            if n and self:seatsFight(n.x, n.y, sums, opens) then
+                roomy[#roomy + 1] = c
+            else
+                tight[#tight + 1] = c
+            end
+        end
+    end
+
     -- Dead ends first, then off-spine tiles: a board that braided all its spurs away still pays, it
     -- just pays somewhere the player was more likely to pass anyway.
     local cands = {}
-    for _, c in ipairs(deadEnds) do cands[#cands + 1] = c end
+    for _, c in ipairs(roomy) do cands[#cands + 1] = c end
+    for _, c in ipairs(tight) do cands[#cands + 1] = c end
     local dist = self:spineDistances()
     for _, c in ipairs(spare) do
         if (dist[cellKey(c)] or 0) > 0 then cands[#cands + 1] = c end
@@ -1569,15 +1667,39 @@ function Overworld:guardBoons(params)
     -- requirement and is checked exactly; among tiles that all satisfy it, the box score is what decides,
     -- because a guard is a fight and a fight now happens where it stands. Grid order still breaks a true
     -- tie, so a seed reproduces its board.
-    local boxSums = self:walkableSums()
+    --
+    -- Ranked on OPEN ground first and crossable ground second, which is the order the two floors are
+    -- written in (Overworld.BOX_OPEN). A spur mouth is the likeliest tile on the board to be a corridor,
+    -- so the choice between two doors is almost always a choice between a room and a hallway, and the
+    -- walkable count cannot tell them apart -- it was picking hallways at the same rate as rooms while
+    -- reading as though it had preferred something.
+    --
+    -- ...AND A DOOR TOO NARROW TO FIGHT IN IS NOT AN APPROACH AT ALL. This pass turned out to be where
+    -- nearly all of a board's corridor fights came from, and by a wide margin: a one-end forest board
+    -- put 92% of its fights on guard, so whatever care placeEncounters took choosing clearings was
+    -- undone one pass later by lifting those same fights into doorways. Measured, 3.9 of 4.5 fights a
+    -- board were seated under the shape floor and only 0.4 of them were the objective.
+    --
+    -- So the floor applies HERE TOO, and unlike placeEncounters there is no case for an escape hatch.
+    -- Demoting there empties a board, because the alternative to a thin fight is no fight; refusing
+    -- here costs nothing, because the fight is not created by this pass -- it already stands somewhere
+    -- placeEncounters chose, and declining to move it leaves it in a clearing. An unguarded cache is a
+    -- free pickup. A guarded one the player has to fight for in a hallway is the thing being fixed.
+    --
+    -- This is the same trade the rank rule below already makes in the same loop ("Leaving the boon open
+    -- is also not a loss to the pass"), applied to the other half of what makes a guard a guard.
+    local boxSums, openSums = self:walkableSums(), self:openSums()
     local function approachTo(boon)
-        local best, bestScore
+        local best, bestOpen, bestCross
         for _, n in ipairs(self:pathNeighbors(boon.x, boon.y)) do
-            if seatable(n) and not n.guards and not reachableWithout(boon, n) then
-                local score = select(3, self:bestBox(n.x, n.y, boxSums))
-                if not best or score > bestScore
-                    or (score == bestScore and (n.y < best.y or (n.y == best.y and n.x < best.x))) then
-                    best, bestScore = n, score
+            if seatable(n) and not n.guards and not reachableWithout(boon, n)
+                and self:seatsFight(n.x, n.y, boxSums, openSums) then
+                local cross, open = self:roomAt(n.x, n.y, boxSums, openSums)
+                if not best or open > bestOpen
+                    or (open == bestOpen and cross > bestCross)
+                    or (open == bestOpen and cross == bestCross
+                        and (n.y < best.y or (n.y == best.y and n.x < best.x))) then
+                    best, bestOpen, bestCross = n, open, cross
                 end
             end
         end
@@ -1590,11 +1712,14 @@ function Overworld:guardBoons(params)
         -- four open neighbours and none of them gates anything, so the castle's first measured board
         -- guarded 1.6% of its boons while offering a doorway for every single one.
         --
-        -- So walk back toward the start and take the FIRST tile that genuinely gates the boon. Nearest
-        -- first, so the guard still stands as close to what it protects as the geometry allows.
+        -- So walk back toward the start and take the FIRST tile that genuinely gates the boon AND can
+        -- hold the fight. Nearest first, so the guard still stands as close to what it protects as the
+        -- geometry allows -- and a corridor stretch between the boon and the room that gates it is
+        -- walked past rather than stood in.
         local steps, cur = 0, startParent[cellKey(boon)]
         while cur and steps < GUARD_REACH do
-            if seatable(cur) and not cur.guards and not reachableWithout(boon, cur) then return cur end
+            if seatable(cur) and not cur.guards and not reachableWithout(boon, cur)
+                and self:seatsFight(cur.x, cur.y, boxSums, openSums) then return cur end
             cur = startParent[cellKey(cur)]
             steps = steps + 1
         end
@@ -2097,8 +2222,9 @@ function Overworld:placeEncounters(params)
     for _, d in pairs(startDist) do if d > farthest then farthest = d end end
 
     -- Built once for the whole fill: every candidate asks whether there is room to fight here, and the
-    -- integral image makes each answer a handful of lookups instead of a 64-tile count.
-    local boxSums = self:walkableSums()
+    -- integral image makes each answer a handful of lookups instead of a 64-tile count. Both tables,
+    -- because room is a pair -- see Overworld.BOX_OPEN for what the second one buys.
+    local boxSums, openSums = self:walkableSums(), self:openSums()
 
     -- ...and whether this board has ANY ground worth fighting on. A DEMOTION THAT EMPTIES THE BOARD IS
     -- WORSE THAN A THIN FIGHT: on a ground whose carve offers nothing above the floor, refusing every
@@ -2114,12 +2240,12 @@ function Overworld:placeEncounters(params)
     -- of those steps cost 64 window lookups -- board generation went from imperceptible to several
     -- seconds a board, which is a stall at the start of every quest. The scores do not change while this
     -- loop runs, so there is no reason to ask twice.
-    local boxScore = {}
+    local seats = {}
     local anyFightable = false
     for _, c in ipairs(cands) do
-        local s = select(3, self:bestBox(c.x, c.y, boxSums))
-        boxScore[c] = s
-        if s >= Overworld.BOX_OK then anyFightable = true end
+        local ok = self:seatsFight(c.x, c.y, boxSums, openSums)
+        seats[c] = ok
+        if ok then anyFightable = true end
     end
 
     for i = next_, #cands do
@@ -2142,7 +2268,7 @@ function Overworld:placeEncounters(params)
             -- Corridor contact is still perfectly legal: a patrol that catches the party mid-hall gets
             -- exactly that fight, and it should. This rule only governs what the GENERATOR chooses to
             -- put somewhere, which is a different question from what the player walks into.
-            local thin = anyFightable and (boxScore[c] or 0) < Overworld.BOX_OK
+            local thin = anyFightable and not seats[c]
             local onSpine = self.spineKeys and not params.ascent and self.spineKeys[cellKey(c)]
 
             -- LOOK FOR ROOM BEFORE GIVING UP THE FIGHT. Demoting outright was tried and it bought
@@ -2155,7 +2281,7 @@ function Overworld:placeEncounters(params)
                     local alt = cands[j]
                     if not alt.encounter
                         and not (self.spineKeys and not params.ascent and self.spineKeys[cellKey(alt)])
-                        and (boxScore[alt] or 0) >= Overworld.BOX_OK then
+                        and seats[alt] then
                         local spaced = true
                         for _, p in ipairs(placed) do
                             if math.abs(p.x - alt.x) + math.abs(p.y - alt.y) < 2 then spaced = false; break end
@@ -2498,6 +2624,27 @@ Overworld.BOX = 8
 Overworld.BOX_OK = 32
 Overworld.BOX_MIN = 20
 
+-- ...AND THE SHAPE FLOOR, which is a different question from the space floor and was carried for a
+-- whole pass as though the first one covered it. BOX_OK counts tiles; BOX_OPEN counts OPEN tiles --
+-- ones with a full 3x3 of trail around them (Overworld:isOpen) -- so it is the number that separates an
+-- arena from a warren of the same area.
+--
+-- The gap was not theoretical and it was not small. models/layouts/glades.lua carves five to fourteen
+-- clearings a board FOR THIS EXACT PURPOSE, and says so in its own header: "every few junctions there is
+-- somewhere a fight can actually happen, and the placement pass seats fights there". The placement pass
+-- was scoring windows by walkable count, on which a lattice of 1-wide corridors ties a clearing -- so it
+-- could not tell the two apart and seated fights in the corridors as readily as in the rooms it had been
+-- given. Rolled boards, `. board-report 200 all`: forest seated its fights at 40 walkable tiles and
+-- TWELVE open ones, swamp at 10.6, the colosseum -- an oval of bare sand -- at 14.5. The layouts had
+-- built the arenas and nothing was reading them.
+--
+-- 16 of 64 is a quarter of the window, which is the interior of one radius-3 blob: the smallest clearing
+-- glades will carve, and by its own note the smallest disc that has an interior at all. Below that a
+-- board has walkable ground and no room to make a decision on it.
+--
+-- Same rule as the two above: do not tune it from here, roll the boards and read the `open` column.
+Overworld.BOX_OPEN = 16
+
 -- Summed-area table over walkable tiles, returned as a closure answering any window in constant time.
 --
 -- Built FRESH on each call rather than memoized onto the grid, deliberately. Tiles are still being
@@ -2562,6 +2709,42 @@ function Overworld:isOpen(x, y)
         end
     end
     return true
+end
+
+-- The same summed-area machinery over OPEN ground rather than walkable ground, memoized on the finished
+-- board like its walkable twin. Built through walkableSums' predicate hook, which is what that hook was
+-- generalised for -- so the two tables can never be two different opinions about the same window.
+function Overworld:openSums()
+    if self.sealed and self._openSums then return self._openSums end
+    local query = self:walkableSums(function(_, x, y) return self:isOpen(x, y) end)
+    if self.sealed then self._openSums = query end
+    return query
+end
+
+-- IS THERE AN ARENA HERE. The one question every pass that CHOOSES where to put a fight has to ask, and
+-- the reason it is a function rather than two comparisons at four call sites: the answer is a pair --
+-- crossable ground and open ground -- and a caller that reads only one of them is the bug this exists to
+-- stop being written again.
+--
+-- Returns `cross, open, ox, oy` for the window a fight at (x, y) would actually be fought in, which is
+-- the window bestBox chooses and not a window centred here. `sums`/`openSums` are optional and exist for
+-- callers asking about many tiles in a loop; build them once and hand them in.
+--
+-- Open ground is counted over the WHOLE window rather than only the part reachable from (x, y). The
+-- crossable count already carries the reachability question, and a second flood per candidate would
+-- double the cost of every placement pass to refine a number that is a floor, not a score.
+function Overworld:roomAt(x, y, sums, openSums)
+    sums = sums or self:walkableSums()
+    openSums = openSums or self:openSums()
+    local ox, oy, cross = self:bestBox(x, y, sums)
+    return cross, openSums(ox, oy), ox, oy
+end
+
+-- Can the generator SEAT a fight on (x, y)? Both floors, together: room for four bodies (BOX_OK) and
+-- room to make a decision with them (BOX_OPEN). See the constants for why one of them was not enough.
+function Overworld:seatsFight(x, y, sums, openSums)
+    local cross, open = self:roomAt(x, y, sums, openSums)
+    return cross >= Overworld.BOX_OK and open >= Overworld.BOX_OPEN, cross, open
 end
 
 -- HOW MUCH OF A WINDOW YOU CAN ACTUALLY CROSS, standing on (x, y): the walkable tiles of the BOX x BOX
