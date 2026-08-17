@@ -26,7 +26,7 @@
 -- hour is the Cathedral's to seal.
 return {
     name = "Seal the Hour",
-    description = "Holds all damage and healing on one body, then settles the whole account at once.",
+    description = "Applies Sealed Hour on the target.",
     flavor = "The Cathedral does not promise that it will not hurt. It promises to say when.",
     sprite = "assets/items/ability_sealed_hour.png",
     type = "ability",

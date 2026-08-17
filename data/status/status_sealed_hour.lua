@@ -19,7 +19,7 @@
 return {
     name = "Sealed Hour",
     abbr = "Hour",
-    description = "Sealed: all damage and healing is held, then settles at once when it ends.",
+    description = "Sealed: damage and healing are held, then land as one net total when it ends.",
     color = { 0.918, 0.883, 0.970 }, -- badge tint (suspended pale violet)
     duration = 12,                -- ~2.5 turns of held time
     defers = true,
