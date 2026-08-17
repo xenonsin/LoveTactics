@@ -13,6 +13,8 @@ local BurgerButton = require("ui.burger_button")
 local CoachBubble = require("ui.coach_bubble")
 local Conversation = require("models.conversation")
 local Discipline = require("models.discipline")
+local Errand = require("models.errand")   -- the small work a house asks for before it opens a rung
+local Quest = require("models.quest")     -- an errand IS a quest def; the intro is the house asking
 local Item = require("models.item")
 local Vendor = require("models.vendor")
 local Locale = require("models.locale")
@@ -48,9 +50,13 @@ end
 -- the eye goes for buildings, so the left corner is the one piece of chrome nothing else wants.
 local BURGER_X, BURGER_Y = 18, 18
 
--- The building the first-visit tutorial points the newcomer at: the Adventurers' Guild board, where
--- the guard's advice (data/conversations/prologue_arrival.lua) sends them for work.
-local INTRO_BUILDING = "quest_board"
+-- The building the first-visit tutorial points the newcomer at: the Gate, where the sponsor who cut in
+-- front of the Adventurers' Guild has just sent them (conversation_prologue_sponsor).
+--
+-- It was the Quest Board, which is retired (models/building.lua's RETIRED). Coaching a door the city no
+-- longer has would have left the arrival pointing at nothing and the coach bubble anchored to a rect
+-- that does not exist.
+local INTRO_BUILDING = "the_gate"
 
 -- The hotspot rect of the building the intro coaches, read off the live map, or nil. The coach bubble
 -- anchors to this (ui/coach_bubble.lua).
@@ -124,6 +130,20 @@ end
 -- is chosen at the title screen now (states/menu.lua) rather than from the city -- so the branch went
 -- with the card. A future mode belongs on the title screen beside it, not on this map.
 local function launchPanel(building)
+    -- A DOOR ONTO A WHOLE SCREEN rather than a pop-up over the city. The Gate is one
+    -- (data/buildings/the_gate.lua): the inn, the store, the hiring hall and the stair are a place you
+    -- go to, not a modal the city sits behind.
+    --
+    -- `state` has been on the building blueprint and in Building.list for a while with nothing reading
+    -- it; this is the reader. Player.active is set first because every screen the gate leads to takes
+    -- the company off it.
+    if building.state then
+        local ok, StateModule = pcall(require, "states." .. building.state)
+        if ok and StateModule then
+            Player.active = hub.player
+            return State.switch(StateModule, { player = hub.player, run = hub.player.descentRun })
+        end
+    end
     local moduleName = building.panel or "placeholder"
     local ok, PanelModule = pcall(require, "ui.panels." .. moduleName)
     if not ok then
@@ -171,6 +191,32 @@ local function vendorScenes(building)
                 Player.markDisciplineAnnounced(hub.player, disciplineId)
                 hub.player.announcingDiscipline = name
             end }
+        end
+    end
+
+    -- 3. THE HOUSE ASKS FOR SOMETHING. A shelf climbs a rung at a time and each rung is bought by doing
+    -- a small piece of work for the house (models/errand.lua) -- so when the company has been deep
+    -- enough for the next one, the vendor asks for it before the shelf opens, and the errand is taken on
+    -- there and then.
+    --
+    -- ACCEPTED BY BEING ASKED, with no yes-or-no. A refusal would be a door onto the same conversation
+    -- tomorrow and a shelf that stays shut for no reason the player chose -- and there is nothing to
+    -- weigh, because an errand costs nothing to hold. Where it is, and whether to go, is the decision;
+    -- it is on the floor and in the shop's Errands tab either way.
+    --
+    -- The scene is the QUEST'S OWN `intro`, which is the house asking for exactly this in its own voice
+    -- -- seventy of them are already authored (data/conversations/<house>/). A house whose errand has no
+    -- intro takes the work silently rather than not at all.
+    local deepest = hub.player and hub.player.descentRun and hub.player.descentRun.cleared or 0
+    local offered = Errand.offered(hub.player, vendorId, deepest)
+    if offered then
+        local def = Quest.defs[offered]
+        local floor = Errand.floorFor(hub.player, vendorId)
+        local function take() Errand.accept(hub.player, offered, floor) end
+        if def and def.intro and Conversation.defs[def.intro] then
+            steps[#steps + 1] = { id = def.intro, before = take }
+        else
+            take()
         end
     end
 
@@ -222,8 +268,12 @@ end
 local function openPanel(building)
     if hub.player and hub.player.hubIntro == "coach" then
         if building.id ~= INTRO_BUILDING then return end
-        hub.player.hubIntro = nil -- the lesson is spent the moment the board is opened
-        Conversation.play("conversation_prologue_flier", function() launchPanel(building) end)
+        hub.player.hubIntro = nil -- the lesson is spent the moment the Gate is opened
+        -- No scene between the coach and the door any more. The flier was Rowan spotting the
+        -- Colosseum's contract ON the Quest Board -- a beat about a board that is retired
+        -- (models/building.lua's RETIRED), so playing it here would have her read a notice off a wall
+        -- the city does not have. The sponsor said everything this moment needs to say, one screen ago.
+        launchPanel(building)
         return
     end
     launchVendor(building)
@@ -263,8 +313,23 @@ function hub.enter()
         --
         -- The Armory is the non-vendor door onto the Party panel -- it holds the stash rather than a
         -- shelf, which is exactly the difference the two ledgers draw.
+        --   a house    a request it is ready to make       (models/errand.lua, cleared by walking in)
+        --
+        -- THE THIRD ONE IS THE ONE THE CITY MOST NEEDS. A shelf climbs a rung at a time and each rung is
+        -- bought by running an errand, but the house only ASKS when you open its door -- so a company
+        -- that came up from floor eight and did not think to call on the Bastion would never learn it
+        -- had work. The dot is what makes "somebody wants something" visible from the street, which is
+        -- the one thing a city of seven counters cannot say any other way.
+        --
+        -- Cleared by being ASKED rather than by a flag of its own: `Errand.offered` stops answering the
+        -- moment the errand is taken on (vendorScenes accepts it on the way to the shelf), so the dot
+        -- goes out for the same reason the others do -- the thing it was pointing at has been seen.
         badge = function(b)
-            if b.vendor then return Vendor.hasMarkedStock(b.vendor, hub.player.newStock) end
+            if b.vendor then
+                local deepest = hub.player.descentRun and hub.player.descentRun.cleared or 0
+                if Errand.offered(hub.player, b.vendor, deepest) then return true end
+                return Vendor.hasMarkedStock(b.vendor, hub.player.newStock)
+            end
             if b.panel == "party" then return Player.hasNewStash(hub.player) end
             return false
         end,
@@ -272,12 +337,25 @@ function hub.enter()
     burger = BurgerButton.new(BURGER_X, BURGER_Y)
 
     -- First arrival at the capital (New Game only; the prologue set this flag -- states/prologue.lua).
-    -- The guard scene plays over the city the player is now looking at, and on its close the intro
-    -- moves to its coaching stage, where the Quest Board is the only door that opens (see openPanel and
-    -- hub.draw). A loaded save never carries this flag, so its hub opens straight to free play.
+    -- TWO SCENES BACK TO BACK, and the second is the hinge of the whole game.
+    --
+    -- The guard's arrival plays over the city the player is now looking at, and it ends with the party
+    -- deciding to register at the Adventurers' Guild -- which is where this used to hand off to the
+    -- Quest Board and forty days of contracts. Somebody gets to them first: a sponsor with a hole under
+    -- the north quarter and nobody willing to go into it (conversation_prologue_sponsor).
+    --
+    -- An INTERCEPTION rather than a rewrite of the guard's lines. The arrival scene is authored, tagged
+    -- and translated; the honest way to change what game this is was to have the party's decision
+    -- overtaken rather than edited. The board is still there in the fiction. They never reach it.
+    --
+    -- On its close the intro moves to its coaching stage, where the Gate is the only door that opens
+    -- (see openPanel and hub.draw). A loaded save never carries this flag, so its hub opens straight to
+    -- free play.
     if hub.player.hubIntro == "arrival" then
         Conversation.play("conversation_prologue_arrival", function()
-            hub.player.hubIntro = "coach"
+            Conversation.play("conversation_prologue_sponsor", function()
+                hub.player.hubIntro = "coach"
+            end)
         end)
         return -- nothing else opens over the arrival; there is no pending summary on a first visit
     end
@@ -296,7 +374,8 @@ end
 
 function hub.update(dt)
     if activePanel then
-        activePanel:update(dt)
+        -- Optional: a static card (the Choice-based Hiring Hall and Inn) has nothing to tick.
+        if activePanel.update then activePanel:update(dt) end
     else
         map:update(dt)
     end
@@ -328,11 +407,14 @@ function hub.draw()
     -- reads as accomplishment; "28 days remain" is a deadline and reads as pressure, which is the
     -- thing this number is for. The last week turns amber, and the final day says so in words.
     --
-    -- NOT DURING THE COACHING. On the very first visit the city refuses every door but the Quest Board
-    -- (openPanel), because the newcomer is being taught one thing; a deadline counting down over that
-    -- lesson is a second thing, and the player has not yet learned what a day is for. It appears from
-    -- the moment they have run something, which is also when it starts being true of them.
-    if not (hub.player and hub.player.hubIntro == "coach") then
+    -- PARKED WITH THE CAMPAIGN IT COUNTED. The forty days were the Quest Board's deadline: every
+    -- expedition spent one, and the number was on this screen because expeditions were chosen from it.
+    -- The board is retired (models/building.lua's RETIRED) and the one door out of the city goes down a
+    -- stair that spends no days, so a countdown here would be pressure from a clock nothing reads.
+    --
+    -- Left in place rather than deleted, exactly like the board itself: models/calendar.lua is
+    -- untouched, and bringing the campaign back is deleting this `if false` and the RETIRED entry.
+    if false then
         local left = Calendar.remaining(hub.player)
         local text
         if Calendar.isOver(hub.player) then text = "He has come"
@@ -355,8 +437,8 @@ function hub.draw()
         local rect = introBuildingRect()
         if rect then
             local key = Locale.selectKey() -- "Enter" / "A", or nil on the mouse
-            local text = key and "the Quest Board to find work."
-                or "Click the Quest Board to find work."
+            local text = key and "the Gate. The sponsor is waiting."
+                or "Click the Gate. The sponsor is waiting."
             CoachBubble.draw(text, rect, { prefer = "below", key = key })
         end
     end

@@ -165,10 +165,13 @@ local function chooseQuest(policy, player, avail)
     return best and best.entry
 end
 
--- Walk the whole campaign under one policy. Returns the ledger: one row per quest completed, in the
--- order it was run, each naming what arrived. Public so tests/progression_report_spec.lua can assert
--- on the walk itself rather than on printed text.
-function M.walk(policy)
+-- The arrival accounting, shared by both walks below. Returns the throwaway player, the rows table it
+-- fills, and a `credit` function that completes one quest and appends its row.
+--
+-- Factored out when the day-bounded walk arrived: the reachability walk picks its own order as it
+-- goes and the day-bounded one is handed an order by tools/biome_report.lua, but WHAT ARRIVES at a
+-- quest is the same question in both, and a second copy of it would be a second thing to keep true.
+local function newLedger()
     local player = newPlayer()
     local rows = {}
 
@@ -179,29 +182,7 @@ function M.walk(policy)
     local prevDisc = disciplineSet(player)
     local level = Growth.levelForPrestige(player.prestige)
 
-    -- THE WALK IS A REACHABILITY PROOF, NOT A PLAYTHROUGH, and the distinction became load-bearing when
-    -- the campaign got a deadline. What this measures is "can every authored quest be reached at all" --
-    -- i.e. is any of them orphaned behind a gate its own line cannot satisfy. It has never modelled how
-    -- many quests a player has TIME for, and should not start: the calendar's budget is a tuning
-    -- question (Calendar.DAYS) and this is a content-integrity question.
-    --
-    -- The one place the clock has to exist here is the finale, which is gated on the last day rather
-    -- than on keys. So the walk runs the board dry first and only then advances to the last day, which
-    -- is exactly the order a real campaign meets them in -- and keeps the Gate walked LAST rather than
-    -- taken the moment the clock is mentioned.
-    local Calendar = require("models.calendar")
-    player.day = 1
-    local dayAdvanced = false
-
-    while true do
-        local entry = chooseQuest(policy, player, Quest.available(player))
-        if not entry and not dayAdvanced then
-            dayAdvanced = true
-            player.day = Calendar.DAYS
-            entry = chooseQuest(policy, player, Quest.available(player))
-        end
-        if not entry then break end
-
+    local function credit(entry, extra)
         -- The two lines of Quest.complete this measures. See newPlayer above for why not the function.
         player.completedQuests[entry.id] = true
         player.prestige = player.prestige + Quest.PRESTIGE_PER_QUEST
@@ -228,6 +209,8 @@ function M.walk(policy)
             disciplines = gained,
             joins = entry.rewardCharacter,
             items = entry.rewardItems and #entry.rewardItems or 0,
+            day = extra and extra.day,
+            ground = extra and extra.ground,
         }
         -- The definition of a step, and the whole point of the report: a quest is SILENT when none of
         -- the five arrival sources moved. See the header for why gold is not among them.
@@ -236,9 +219,78 @@ function M.walk(policy)
 
         rows[#rows + 1] = row
         rowsOpen, prevDisc, level = newRows, newDiscSet, newLevel
+        return row
+    end
+
+    return player, rows, credit
+end
+
+-- Walk the whole campaign under one policy. Returns the ledger: one row per quest completed, in the
+-- order it was run, each naming what arrived. Public so tests/progression_report_spec.lua can assert
+-- on the walk itself rather than on printed text.
+function M.walk(policy)
+    local player, rows, credit = newLedger()
+
+    -- THE WALK IS A REACHABILITY PROOF, NOT A PLAYTHROUGH, and the distinction became load-bearing when
+    -- the campaign got a deadline. What this measures is "can every authored quest be reached at all" --
+    -- i.e. is any of them orphaned behind a gate its own line cannot satisfy. It has never modelled how
+    -- many quests a player has TIME for, and should not start: the calendar's budget is a tuning
+    -- question (Calendar.DAYS) and this is a content-integrity question.
+    --
+    -- That decision stands, and M.walkDays below is what it made room for rather than an argument
+    -- against it. The time question is real -- it is the largest open item in docs/progression.md --
+    -- but it is a different question, it needs the ground-per-day model that lives in
+    -- tools/biome_report.lua, and folding it in here would have cost the orphan check that is this
+    -- walk's entire job.
+    --
+    -- The one place the clock has to exist here is the finale, which is gated on the last day rather
+    -- than on keys. So the walk runs the board dry first and only then advances to the last day, which
+    -- is exactly the order a real campaign meets them in -- and keeps the Gate walked LAST rather than
+    -- taken the moment the clock is mentioned.
+    local Calendar = require("models.calendar")
+    player.day = 1
+    local dayAdvanced = false
+
+    while true do
+        local entry = chooseQuest(policy, player, Quest.available(player))
+        if not entry and not dayAdvanced then
+            dayAdvanced = true
+            player.day = Calendar.DAYS
+            entry = chooseQuest(policy, player, Quest.available(player))
+        end
+        if not entry then break end
+        credit(entry)
     end
 
     return rows
+end
+
+-- WHAT FORTY DAYS ACTUALLY REACHES. The walk above answers "is every quest reachable"; this answers
+-- "how much of it does a player SEE", which is the question the clock asks and which nothing was
+-- measuring -- docs/progression.md's "Where forty came from" has carried a note since the day a ground
+-- replaced a quest saying every number in it was downstream of an arithmetic nobody had redone.
+--
+-- The order comes from tools/biome_report.lua, which owns the ground-per-day model: a day buys a
+-- ground and takes what is standing on it. That report answers WHERE and WHEN; this one answers WHAT
+-- ARRIVES, and handing the order across keeps each question with the walk that can actually see it.
+function M.walkDays(policy, take)
+    local BiomeReport = require("tools.biome_report")
+    local result = BiomeReport.walk(policy, false, false, take)
+
+    local _, rows, credit = newLedger()
+    for _, step in ipairs(result.order) do
+        local entry = Quest.defs[step.id]
+        if entry then
+            credit({
+                id = step.id,
+                name = entry.name,
+                sponsor = entry.sponsor,
+                rewardCharacter = entry.rewardCharacter,
+                rewardItems = entry.rewardItems,
+            }, { day = step.day, ground = step.ground })
+        end
+    end
+    return rows, result
 end
 
 -- Walk `vendorId`'s line alone: take that house's quests whenever any is startable, and take an
@@ -427,6 +479,48 @@ local function printPolicy(policy, label, full)
     return rows
 end
 
+-- THE DAY-BOUNDED TABLE: what forty days reaches, against what the campaign holds.
+--
+-- Read this against the reachability walk above, which always reports the whole 92. The gap between
+-- the two IS the deadline -- everything the player never saw -- and it is the number "a second run has
+-- a reason to exist" was always claiming without measuring.
+local function printDays()
+    local Calendar = require("models.calendar")
+    local BiomeReport = require("tools.biome_report")
+
+    local total = 0
+    for _ in pairs(Quest.defs) do total = total + 1 end
+
+    print("")
+    print(string.format("what %d days reach -- a day buys a GROUND and takes what is standing on it",
+        Calendar.DAYS))
+    print("      (the walk above is a reachability proof and always reports all " .. total
+        .. "; this is a budget)")
+    print(string.format("      %-12s %-10s %6s %6s %7s %5s %5s %7s",
+        "policy", "take", "quests", "of", "shelf+", "disc", "join", "unseen"))
+    print("      " .. string.rep("-", 70))
+
+    for _, p in ipairs(M.POLICIES) do
+        for _, t in ipairs(BiomeReport.TAKES) do
+            local rows = M.walkDays(p.id, t.id)
+            local shelf, disc, joins = 0, 0, 0
+            for _, row in ipairs(rows) do
+                shelf = shelf + math.max(0, row.shelf)
+                disc = disc + #row.disciplines
+                if row.joins then joins = joins + 1 end
+            end
+            print(string.format("      %-12s %-10s %6d %6d %7d %5d %5d %6.0f%%",
+                p.id, t.id, #rows, total, shelf, disc, joins,
+                (total - #rows) / total * 100))
+        end
+    end
+
+    print("")
+    print("      unseen = the share of the authored campaign a run of this shape never reaches.")
+    print("      A deadline that leaves nothing unseen is not a deadline; see docs/progression.md,")
+    print("      \"Where forty came from\", whose arithmetic this exists to settle.")
+end
+
 -- The solo table: one row per house, and the verdict the design rule asks for.
 local function printSolo()
     print("")
@@ -495,6 +589,7 @@ function M.run(args)
         walked[p.id] = printPolicy(p.id, p.label, full)
     end
 
+    printDays()
     printSolo()
 
     -- A quest the walk never reached is unreachable in that order -- a real authoring bug (a gate

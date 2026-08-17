@@ -31,6 +31,7 @@ return {
         ctx.knockback(ctx.attacker, ctx.def.counter.shoves)
         ctx.log("action", string.format("%s drives %s back with the shield!",
             (ctx.unit.char and ctx.unit.char.name) or "Unit",
-            (ctx.attacker.char and ctx.attacker.char.name) or "the attacker"))
+            (ctx.attacker.char and ctx.attacker.char.name) or "the attacker"),
+            { ctx.unit, ctx.attacker }) -- the doer and the done-to, so hovering the line rings both
     end,
 }

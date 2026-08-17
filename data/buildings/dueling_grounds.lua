@@ -10,11 +10,11 @@
 -- the Cafe.
 return {
     name = "Dueling Grounds",
-    order = 13,
-    x = 1090,
-    y = 530,
+    order = 8,
+    x = 970,
+    y = 268,
     w = 180,
-    h = 140,
+    h = 130,
     panel = "pvp",
     unlockPrestige = 1,
     unlockQuest = "quest_colosseum_slot_01", -- see models/building.lua

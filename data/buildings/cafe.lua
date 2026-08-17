@@ -1,10 +1,10 @@
 return {
     name = "Cafe",
-    order = 12,
-    x = 815,
-    y = 530,
+    order = 7,
+    x = 660,
+    y = 268,
     w = 270,
-    h = 140,
+    h = 130,
     -- Not a shop: the Cafe sells no items at all any more (data/vendors/cafe.lua). Its own panel opens
     -- onto the meal menu -- one supper before the road, worn by the whole company for the whole quest
     -- (models/meal.lua, docs/meals.md).

@@ -46,10 +46,11 @@ local function cellsByEncounter(grid)
     return out
 end
 
--- The tile the company would have stepped off to reach `cell`: its neighbour one row north. Every
--- chamber on this map is entered from the north on purpose (see the layout's header), and the party's
--- edge -- and with it both objective regions -- is read off exactly this.
-local function fromNorth(cell) return { x = cell.x, y = cell.y - 1 } end
+-- The tile the company would have stepped off to reach `cell`: its neighbour one row south. The road
+-- runs north and every chamber on this map is entered from the south on purpose (see the layout's
+-- header), and the party's edge -- and with it both objective regions and which side of the SCREEN the
+-- company opens on -- is read off exactly this.
+local function fromSouth(cell) return { x = cell.x, y = cell.y + 1 } end
 
 -- How many tiles of a cut window are OPEN ground: a 3x3 with nothing solid in it. The measure a plain
 -- walkable count cannot be -- a warren of 1-wide corridors can clear a walkable floor and still hold
@@ -109,7 +110,7 @@ return {
             local cells = cellsByEncounter(grid)
             for _, f in ipairs(FIGHTS) do
                 local cell = cells[f.key]
-                local arena = Arena.fromGrid(grid, { x = cell.x, y = cell.y, from = fromNorth(cell),
+                local arena = Arena.fromGrid(grid, { x = cell.x, y = cell.y, from = fromSouth(cell),
                     party = 4, enemies = 4, biome = "forest" })
                 local open = openTiles(arena)
                 -- Twelve is the same reading docs/overworld.md takes of an 8x8: enough of the window is
@@ -131,7 +132,7 @@ return {
             local cell = cells.objective
             local built = EncounterBattle.build({
                 encounter = { kind = "objective" }, objective = obj, biome = "forest", day = 1,
-                grid = grid, at = { x = cell.x, y = cell.y }, from = fromNorth(cell),
+                grid = grid, at = { x = cell.x, y = cell.y }, from = fromSouth(cell),
                 party = {}, seed = 4,
             })
             assert(#built.enemyUnits == 3,
@@ -141,7 +142,7 @@ return {
             local built2 = EncounterBattle.build({
                 encounter = { kind = "combat", id = "encounter_survivors_defend" },
                 biome = "forest", day = 1,
-                grid = grid, at = { x = defend.x, y = defend.y }, from = fromNorth(defend),
+                grid = grid, at = { x = defend.x, y = defend.y }, from = fromSouth(defend),
                 party = {}, seed = 4,
             })
             assert(#built2.enemyUnits == 2, "the steading opens against both imps")
@@ -161,17 +162,18 @@ return {
             local cells = cellsByEncounter(grid)
             for _, f in ipairs(FIGHTS) do
                 local cell = cells[f.key]
-                local arena = Arena.fromGrid(grid, { x = cell.x, y = cell.y, from = fromNorth(cell),
+                local arena = Arena.fromGrid(grid, { x = cell.x, y = cell.y, from = fromSouth(cell),
                     party = 4, enemies = 4, biome = "forest" })
                 assert(#arena.deployZone > Arena.DEPLOY_MIN,
                     f.name .. " offers " .. #arena.deployZone .. " tiles to place four bodies on")
-                assert(arena.box.entry == "top",
-                    f.name .. " is entered from the north, so the objective regions point downfield")
+                assert(arena.box.entry == "bottom",
+                    f.name .. " is entered from the south, so the company opens along the bottom of the "
+                    .. "screen and the objective regions point upfield")
             end
         end,
     },
     {
-        name = "the Champion's chamber IS the authored arena, flipped to the edge the party walks in on",
+        name = "the Champion's chamber IS the authored arena, row for row",
         fn = function()
             -- Two files describe this board: the chamber in the map (what the flight actually fights on,
             -- since a windowed board wins over spec.layout) and data/arenas/demon_champion.lua (the
@@ -180,11 +182,14 @@ return {
             -- point of the authored board is the levers, and a lever that drifted out of the live copy
             -- would take a stage of the boss fight with it.
             --
-            -- The flip is the party's edge: the arena seats them on its bottom row, and descending into
-            -- the chamber seats them on its top one. So chamber row j is arena row (rows + 1 - j).
+            -- No flip, and that is the point of the trail running north: the arena seats the party on
+            -- its bottom row, and climbing into the chamber from the south seats them on its bottom row
+            -- too. So chamber row j is arena row j, and the two files can be read side by side. While
+            -- the road ran south the copy here was upside down against its source, which is exactly the
+            -- transcription a lever drifts out of.
             local grid = flightGrid()
             local cell = cellsByEncounter(grid).objective
-            local chamber = Arena.fromGrid(grid, { x = cell.x, y = cell.y, from = fromNorth(cell),
+            local chamber = Arena.fromGrid(grid, { x = cell.x, y = cell.y, from = fromSouth(cell),
                 party = 4, enemies = 4, biome = "forest" })
             local authored = Arena.defs.demon_champion
             assert(authored, "the fallback arena is still there")
@@ -201,7 +206,7 @@ return {
             for j = 1, chamber.rows do
                 for i = 1, chamber.cols do
                     local got = chamber.tiles[j][i]
-                    local want = authored.tiles[chamber.rows + 1 - j][i]
+                    local want = authored.tiles[j][i]
                     assert(class(got) == class(want),
                         "chamber " .. i .. "," .. j .. " is " .. got .. ", the arena says " .. want)
                 end
@@ -216,7 +221,7 @@ return {
             -- and what the windowed board dropped on the floor until this seam existed.
             local grid = flightGrid()
             local cell = cellsByEncounter(grid).objective
-            local chamber = Arena.fromGrid(grid, { x = cell.x, y = cell.y, from = fromNorth(cell),
+            local chamber = Arena.fromGrid(grid, { x = cell.x, y = cell.y, from = fromSouth(cell),
                 party = 4, enemies = 4, biome = "forest" })
             assert(#chamber.hazards == 2, "both hazards rode into the window, got " .. #chamber.hazards)
             for _, h in ipairs(chamber.hazards) do
@@ -226,12 +231,12 @@ return {
                 assert(chamber.tiles[h.y][h.x] == "forest", "on the treeline it is said to be burning")
                 -- The firebreak the arena's header argues for: the fire is on the Champion's side of the
                 -- neck, so it can never walk up the treeline into the party's own line.
-                assert(h.y > 5, "on the far side of the neck (row 5), not the party's")
+                assert(h.y < 4, "on the far side of the neck (row 4), not the party's")
             end
 
             -- A fight anywhere else on the leg opens on ground that is not on fire.
             local defend = cellsByEncounter(grid).encounter_survivors_defend
-            local other = Arena.fromGrid(grid, { x = defend.x, y = defend.y, from = fromNorth(defend),
+            local other = Arena.fromGrid(grid, { x = defend.x, y = defend.y, from = fromSouth(defend),
                 party = 4, enemies = 4, biome = "forest" })
             assert(#other.hazards == 0, "the steading opens cold")
         end,
@@ -248,6 +253,87 @@ return {
                 local cell = cells[id]
                 assert(cell, id .. " is on the map")
                 assert(not grid:isOpen(cell.x, cell.y), id .. " sits on trail, not in a clearing")
+            end
+        end,
+    },
+    {
+        name = "a chamber has ONE door in and one out -- a second is a second way past the doorway",
+        fn = function()
+            -- The rule the trail's shape rests on, and the one it is easiest to break by accident while
+            -- making the road between the chambers wander. Every fight stop stands on the tile the road
+            -- ENTERS its chamber by, so a second walkable tile on the chamber's rim is a way in that does
+            -- not touch the stop: the party walks into the room, the encounter never fires, and it fires
+            -- later from a side tile instead -- which hands Arena.fromGrid the wrong edge and points both
+            -- objective regions at the row the party is standing along. It also closes a loop through the
+            -- chamber, and the route order (tests/flight_leg_spec.lua) is measured on BFS distance.
+            --
+            -- Asked of the WINDOW bestBox actually cuts rather than of the rows in the ASCII, so a chamber
+            -- that drifted out from under its own walls fails here too.
+            local grid = flightGrid()
+            local cells = cellsByEncounter(grid)
+            local B = Overworld.BOX
+            local function walkableIn(x1, y1, x2, y2)
+                local n = 0
+                for y = y1, y2 do
+                    for x = x1, x2 do
+                        local c = grid:get(x, y)
+                        if c and grid:typeWalkable(c.tile) then n = n + 1 end
+                    end
+                end
+                return n
+            end
+            for _, f in ipairs(FIGHTS) do
+                local cell = cells[f.key]
+                local ox, oy = grid:bestBox(cell.x, cell.y)
+                local x2, y2 = ox + B - 1, oy + B - 1
+                assert(walkableIn(ox, y2 + 1, x2, y2 + 1) == 1,
+                    f.name .. " is entered by exactly one tile from the south")
+                assert(walkableIn(ox, oy - 1, x2, oy - 1) <= 1,
+                    f.name .. " is left by at most one tile to the north")
+                assert(walkableIn(ox - 1, oy, ox - 1, y2) == 0
+                    and walkableIn(x2 + 1, oy, x2 + 1, y2) == 0,
+                    f.name .. " is walled on both flanks -- nothing walks in from the side")
+            end
+        end,
+    },
+    {
+        name = "no stop is lit from anywhere but its own approach",
+        fn = function()
+            -- What the trail's spacing is FOR, stated as the thing it buys rather than as the shape that
+            -- used to buy it. The first version of this map spaced its legs three rows apart and left the
+            -- rule implicit in that; the road wanders now and doubles back inside its own band, so the
+            -- spacing cannot be read off the rows any more and the fog has to be asked directly.
+            --
+            -- Asked through Overworld:inVision, which is the same test :reveal lifts the fog with -- and
+            -- which is NOT a plain radius: it passes dx^2+dy^2 <= r^2+r, so radius 2 reaches a corner at
+            -- 2.44 tiles and a leg that looks clear by eye is not.
+            local grid = flightGrid()
+            local dist = grid:bfsDistances(grid:startCell())
+            local function keyOf(c) return c.y * 100000 + c.x end
+            local stops = {}
+            for y = 1, grid.rows do
+                for x = 1, grid.cols do
+                    local c = grid:get(x, y)
+                    if c.encounter then stops[#stops + 1] = c end
+                end
+            end
+            assert(#stops == 8, "seven route stops and the objective, got " .. #stops)
+            -- Three steps: you see a stop on the approach to it, never from another leg of the road. A
+            -- chamber therefore still opens up as you walk into it.
+            local LEAD = 3
+            for _, s in ipairs(stops) do
+                local sd = dist[keyOf(s)]
+                assert(sd, "every stop is reachable")
+                for y = 1, grid.rows do
+                    for x = 1, grid.cols do
+                        local c = grid:get(x, y)
+                        local d = dist[keyOf(c)]
+                        if d and grid:inVision(x, y, s.x, s.y, grid.visionRadius) then
+                            assert(d >= sd - LEAD, "the stop at " .. s.x .. "," .. s.y .. " lights up "
+                                .. (sd - d) .. " steps out, from " .. x .. "," .. y)
+                        end
+                    end
+                end
             end
         end,
     },

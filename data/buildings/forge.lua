@@ -6,11 +6,11 @@
 -- Sits in the free card of the bottom row, between the Draft Yard and the Crucible.
 return {
     name = "The Forge",
-    order = 10,
-    x = 195,
-    y = 530,
+    order = 6,
+    x = 350,
+    y = 268,
     w = 270,
-    h = 140,
+    h = 130,
     panel = "forge",
     unlockPrestige = 1,
 }

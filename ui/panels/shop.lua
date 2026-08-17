@@ -59,8 +59,13 @@ local HEADER_PAD = 18
 -- by the service itself -- see models/vendor.lua's Services block for why a city of identical shelves
 -- is the thing that needed fixing. Per instance rather than a file constant, because which tabs exist
 -- is now a property of the vendor rather than of the panel.
-local BASE_MODES = { "buy", "sell" }
-local MODE_LABEL = { buy = "Buy", sell = "Sell" }
+-- ERRANDS IS A LIST LIKE THE OTHER TWO, and that is why it is a mode rather than a corner of the Buy
+-- pane. A shelf climbs a rung at a time and each rung is bought by doing a small piece of work for the
+-- house (models/errand.lua) -- so "what does this house want" is exactly as much a thing you come here
+-- to read as "what does it sell", and it belongs in the same segmented control with the same
+-- shoulder-button cycle rather than tucked under the stock as a footnote.
+local BASE_MODES = { "buy", "sell", "errands" }
+local MODE_LABEL = { buy = "Buy", sell = "Sell", errands = "Errands" }
 
 -- Detail accent per item type (matches ui/item_tooltip.lua).
 local TYPE_COLOR = {
@@ -125,8 +130,8 @@ function Shop.new(opts)
     self.detailY = self.boxY + 112
     self.detailW = self.boxX + BOX_W - 24 - self.detailX
 
-    -- This house's tabs: Buy, Sell, and its service if it has one.
-    self.modes = { BASE_MODES[1], BASE_MODES[2] }
+    -- This house's tabs: Buy, Sell, Errands, and its service if it has one.
+    self.modes = { BASE_MODES[1], BASE_MODES[2], BASE_MODES[3] }
     self.service = self.def.service
     if self.service then
         self.modes[#self.modes + 1] = self.service.id
@@ -194,6 +199,55 @@ end
 -- same index so the two stay aligned for the detail pane and the locked overlay. A vendor with no unlocked discipline
 -- stock shows no headers at all -- a single base section needs no banner -- so the plain shelf looks
 -- exactly as it did.
+-- THE ERRANDS TAB: what this house has asked for, and WHERE IT IS.
+--
+-- The floor number is the whole reason this list exists. An errand is seated on one particular floor of
+-- the descent (models/errand.lua), and a player who has to remember which one is doing bookkeeping the
+-- game could have done for them -- so every row leads with it.
+--
+-- THIS HOUSE'S ONLY, because this is its shop and its shelf they open. Another house's work is legible
+-- at that house's counter, which is also where the stock it buys is.
+--
+-- Rows are not selectable: there is nothing to press. An errand is taken on when the house asks for it
+-- (states/hub.lua's vendorScenes) rather than accepted off a list, so this is a readout, and `locked`
+-- is what stops the list widget offering a Take button over a row that has none.
+function Shop:buildErrandRows()
+    local Errand = require("models.errand")
+    local open = Errand.open(self.player)
+
+    for _, e in ipairs(open) do
+        if e.def and e.def.sponsor == self.vendorId then
+            self.rows[#self.rows + 1] = {
+                errand = e,
+                label = "Floor " .. e.floor .. "  -  " .. (e.def.name or e.id),
+                locked = true,
+            }
+        end
+    end
+
+    if #self.rows == 0 then
+        -- WHY there is nothing here, which is three different situations and only one of them is "done".
+        -- A house with nothing to ask reads identically to one you have not been deep enough for, and
+        -- the player can do something about exactly one of those.
+        local done = Errand.done(self.player, self.vendorId)
+        local nextId = Errand.next(self.player, self.vendorId)
+        local text
+        if not nextId then
+            text = "You have run everything this house has to ask for."
+        else
+            text = "Nothing outstanding. They will ask again once you have been as deep as floor "
+                .. Errand.floorFor(self.player, self.vendorId) .. "."
+        end
+        self.rows[#self.rows + 1] = { label = text, locked = true, note = true }
+        if done > 0 then
+            self.rows[#self.rows + 1] = {
+                label = done .. (done == 1 and " errand run for them." or " errands run for them."),
+                locked = true, note = true,
+            }
+        end
+    end
+end
+
 function Shop:buildBuyRows()
     local groups, order = {}, {}
     local stock = Vendor.stock(self.vendorId, self.questsDone, self.player.recipes,
@@ -340,6 +394,8 @@ function Shop:refresh()
         self:buildBuyRows()
     elseif self.mode == "fence" then
         self:buildFenceRows()
+    elseif self.mode == "errands" then
+        self:buildErrandRows()
     else -- sell
         for i, item in ipairs(self.player.stash or {}) do
             local value = Vendor.sellValue(item)
@@ -767,7 +823,7 @@ function Shop:drawVendor()
     -- description below. A vendor with no shelf of its own (the Cafe) runs no quest line and shows
     -- nothing -- though it does not open this panel at all any more (ui/panels/cafe.lua).
     if self.def.sells ~= false then
-        love.graphics.printf("Quests Completed: " .. (self.questsDone or 0), x + 12, ty + 22, w - 24, "left")
+        love.graphics.printf("Errands run: " .. (self.questsDone or 0), x + 12, ty + 22, w - 24, "left")
     end
     love.graphics.setFont(self.smallFont)
     Theme.set(Theme.muted)
@@ -1032,7 +1088,9 @@ function Shop:drawFooter()
     -- The tab-cycle key is named after what it actually cycles: at a house with a service the strip has
     -- three tabs, and a hint reading "Buy/Sell" tells the player the third one is unreachable from the
     -- keyboard, which it is not.
-    local cycle = self.service and "switch list" or "Buy/Sell"
+    -- Three base tabs now (Buy, Sell, Errands), so the shoulder cycle is never a two-way toggle and the
+    -- hint never names a pair.
+    local cycle = "switch list"
     local hint = InputMode.isGamepad()
         and ("A: confirm    LB/RB: " .. cycle .. "    D-pad: scroll    B: close")
         or ("Enter: confirm    Tab: " .. cycle .. "    Wheel: scroll    Esc: close")

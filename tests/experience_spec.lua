@@ -92,18 +92,20 @@ return {
     end },
 
     { name = "the seventh circle is reached at about the level it is built for", fn = function()
-        -- THE CURVE'S ONE REAL CLAIM. Descent.floorLevel fights floor 7 at LEVEL_PER_FLOOR x 6 + 1, and a
-        -- clean run musters at level 1 with no prestige behind it -- so if the curve is wrong the bottom
-        -- of the descent is either a walk or a wall. Anchored against the ladder rather than a literal,
-        -- so retuning LEVEL_PER_FLOOR fails here instead of silently desyncing the two.
+        -- THE CURVE'S ONE REAL CLAIM, anchored on the BOTTOM. A clean company musters at level 1 with no
+        -- prestige behind it and fights its way down every floor, so if the curve is wrong the Hollow
+        -- Crown is either a walk or a wall. Read off Descent.floorLevel at the last floor rather than a
+        -- literal, so retuning LEVEL_PER_FLOOR or FLOORS_PER_CIRCLE fails HERE instead of silently
+        -- desyncing the two ladders -- which is exactly what lengthening a circle into a stratum did.
         local run = Descent.new(nil, 1)
-        run.floor = 7
+        run.floor = Descent.FLOORS
         local wanted = Descent.floorLevel(run)
 
-        -- What a body actually earns getting there: seven floors of roughly six fights, in which it acts
-        -- about seven times and takes a little over one kill. Deliberately spelled out in those units
-        -- rather than as a total, so the assumption is arguable rather than a magic number.
-        local floors, fightsPerFloor, actionsPerFight, killsPerFight = 7, 6, 7, 1.25
+        -- What a body actually earns getting there: every floor of the descent at roughly six fights, in
+        -- which it acts about seven times and takes a little over one kill. Deliberately spelled out in
+        -- those units rather than as a total, so the assumption is arguable rather than a magic number --
+        -- and driven off the real floor count, so a deeper descent re-derives instead of going stale.
+        local floors, fightsPerFloor, actionsPerFight, killsPerFight = Descent.FLOORS, 6, 7, 1.25
         local earned = floors * fightsPerFloor *
             (actionsPerFight * Experience.PER_ACTION + killsPerFight * Experience.PER_FELLING)
 

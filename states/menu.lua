@@ -234,8 +234,9 @@ local function buildMenu()
     -- beaten (Player.hasFinishedCampaign, banked at the `endsCampaign` seam rather than at New Game+),
     -- and not before.
     --
-    -- That placement is the whole point rather than a convenience. A descent musters its own company off
-    -- a tiered shelf, banks nothing back, and levels on its own per-character XP -- so it is not campaign
+    -- That placement is the whole point rather than a convenience. A descent walks in with one body and
+    -- picks up its company on the floors, banks nothing back, and levels on its own per-character XP --
+    -- so it is not campaign
     -- progression and the city was rightly the wrong door for it. But "not campaign progression" is not
     -- the same as "not for players": an endless, self-contained run that strips you back to nothing is
     -- exactly what a finished campaign should open onto, and while it sat in the debug column the ending
@@ -244,15 +245,10 @@ local function buildMenu()
     --
     -- Draft stays in the debug column: it is a separate competitive mode rather than the far end of this
     -- one, so finishing the campaign is not what earns it.
-    if Player.hasSave() and Player.hasFinishedCampaign() then
-        items[#items + 1] = {
-            label = "The Descent",
-            action = function()
-                Player.start()
-                State.switch(require("states.descent"))
-            end,
-        }
-    end
+    -- THE DESCENT IS NOT A MENU ENTRY ANY MORE. It was the post-campaign mode, entered from here with a
+    -- company of its own; it is the GAME now -- the prologue walks you into the capital and a sponsor at
+    -- the gate sends you down (states/gate.lua, reached from the city). A second door with its own save
+    -- semantics is exactly how two paths drift, so there is one.
 
     -- The main menu is otherwise what a player meets first, and it is for starting or resuming the
     -- campaign rather than for picking between modes. Anything still being built lives in the debug
@@ -278,12 +274,14 @@ local DEBUG_MARGIN = 16
 local function buildDebugMenu()
     if not DEBUG then return nil end
     return Menu.new({
-        -- THE OTHER TWO MODES. Both are whole games of their own -- a descent musters a company at the
-        -- gate and banks nothing (states/descent.lua); a draft run shares none of the campaign's
-        -- progression either -- and both were reached through the city until the city went back to being
-        -- the campaign's town alone. They sit here rather than on the main menu because they are still
-        -- being built: this column is where a mode lives until it is worth putting in front of a player.
-        { label = "Descent", action = function() State.switch(require("states.descent")) end },
+        -- DRAFT, alone now. It shares none of the campaign's progression and is still being built, which
+        -- is what this column is for: a mode lives here until it is worth putting in front of a player.
+        --
+        -- The Descent left it by being promoted rather than finished. It is no longer a mode beside the
+        -- campaign, it IS the campaign -- the prologue walks you into the capital and a sponsor at the
+        -- gate sends you down -- so it is reached from the city like anything else the player does
+        -- (states/gate.lua), and a debug door onto it would be a second entry with its own save
+        -- semantics.
         { label = "Draft", action = function() State.switch(require("states.draft")) end },
         { label = "Mock Battle", action = function() startMockBattle() end },
         -- Every tile-field pattern on one board, for looking at the shader rather than arguing about

@@ -38,6 +38,7 @@ return {
         ctx.applyStatus(ctx.attacker, "status_stun")
         ctx.log("action", string.format("%s bashes %s with a shield!",
             (ctx.unit.char and ctx.unit.char.name) or "Unit",
-            (ctx.attacker.char and ctx.attacker.char.name) or "the attacker"))
+            (ctx.attacker.char and ctx.attacker.char.name) or "the attacker"),
+            { ctx.unit, ctx.attacker }) -- the doer and the done-to, so hovering the line rings both
     end,
 }

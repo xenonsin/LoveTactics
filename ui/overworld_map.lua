@@ -423,6 +423,21 @@ local function markerColor(kind)
     if kind == "shrine" then return 0.88, 0.40, 0.48 end       -- a sin's altar: a Vice for a toll
     if kind == "merchant" then return 0.90, 0.74, 0.32 end      -- a wandering market: goods for gold
     if kind == "crossroads" then return 0.70, 0.72, 0.80 end     -- a branching dilemma: a gamble
+    if kind == "recruit" then return 0.62, 0.86, 0.45 end -- somebody still standing: a body for the company
+    if kind == "ascent" then return 0.72, 0.78, 0.86 end -- the way back up: cold daylight, and the only one
+    -- The way DOWN, opened by putting the floor's guard off it. Deliberately the same family as the way
+    -- up rather than its own hue: they are one pair, and what tells them apart is which direction the
+    -- mark goes -- see MarkerIcon.stair. Banked warmer and darker, so the pair reads as daylight above
+    -- and the next circle below without either being mistaken for a fight or a gift.
+    if kind == "stair" then return 0.62, 0.58, 0.72 end
+    if kind == "pack" then return 0.80, 0.72, 0.42 end -- what you dropped when the company went down
+    -- THE FOUR HAZARDS share one colour, and that is the point of them: a descent floor's hostile
+    -- geography is a category the player learns to recognise ("something is wrong with this square"),
+    -- not four things to memorise. The MARK says which; the colour says only that it is not a fight and
+    -- not a gift. A sour green-grey, kept well away from the treasure jade and the rest's teal.
+    if kind == "dark" or kind == "spinner" or kind == "translation" or kind == "sink" then
+        return 0.45, 0.52, 0.44
+    end
     return 0.85, 0.25, 0.25 -- combat
 end
 
@@ -536,6 +551,100 @@ function MarkerIcon.rest(x, y, w, h, r, g, b, a)
     love.graphics.polygon("fill", x + w / 2, y + h * 0.38, x + w * 0.34, y + h, x + w * 0.66, y + h)
 end
 
+-- A standing figure: somebody who came down here before you and has not fallen yet, willing to walk on
+-- with the company (data/encounters/encounter_wanderer.lua). A PERSON rather than an object, because that
+-- is exactly what separates this stop from the treasure and the reliquary either side of it on the board.
+function MarkerIcon.recruit(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.circle("fill", x + w / 2, y + h * 0.18, w * 0.20)
+    love.graphics.polygon("fill",
+        x + w * 0.5, y + h * 0.36,
+        x + w * 0.88, y + h,
+        x + w * 0.12, y + h)
+end
+
+-- THE FOUR HAZARDS. One colour between them (see markerColor) and four marks, so the category reads at
+-- a glance and the particular reads on a look. Each is the thing it does to you, drawn:
+
+-- THE DARK: a lamp flame pinched to nothing. A disc with a bite out of it -- light, most of it gone.
+function MarkerIcon.dark(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.arc("fill", x + w / 2, y + h / 2, w * 0.42, math.pi * 0.35, math.pi * 1.65)
+end
+
+-- THE TURNING FLOOR: an arrow bent back on itself. Direction, made unreliable.
+function MarkerIcon.spinner(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.setLineWidth(math.max(2, w * 0.12))
+    love.graphics.arc("line", "open", x + w / 2, y + h / 2, w * 0.34, math.pi * 0.2, math.pi * 1.6)
+    love.graphics.setLineWidth(1)
+    love.graphics.polygon("fill",
+        x + w * 0.52, y + h * 0.06,
+        x + w * 0.90, y + h * 0.30,
+        x + w * 0.50, y + h * 0.40)
+end
+
+-- THE TRANSLATION: two marks and nothing between them. Here, and then there.
+function MarkerIcon.translation(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.circle("fill", x + w * 0.22, y + h * 0.74, w * 0.17)
+    love.graphics.circle("line", x + w * 0.78, y + h * 0.26, w * 0.17)
+end
+
+-- THE SINK: a mouth in the floor, and the way through it is down.
+function MarkerIcon.sink(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.ellipse("line", x + w / 2, y + h * 0.30, w * 0.40, h * 0.16)
+    love.graphics.polygon("fill",
+        x + w * 0.30, y + h * 0.42,
+        x + w * 0.70, y + h * 0.42,
+        x + w * 0.50, y + h)
+end
+
+-- WHAT YOU DROPPED: a bundle, tied. Everything the company was carrying when it went down, in a heap
+-- on the tile it fell on -- the one mark on the board that is YOURS rather than the floor's.
+function MarkerIcon.pack(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.rectangle("fill", x + w * 0.12, y + h * 0.34, w * 0.76, h * 0.58, w * 0.10)
+    love.graphics.setLineWidth(math.max(2, w * 0.10))
+    love.graphics.line(x + w * 0.5, y + h * 0.34, x + w * 0.5, y + h * 0.92)
+    love.graphics.arc("line", "open", x + w * 0.5, y + h * 0.34, w * 0.22, math.pi, 0)
+    love.graphics.setLineWidth(1)
+end
+
+-- THE WAY BACK UP: a flight of steps climbing away from the viewer, and an arrow over it. Steps rather
+-- than a door, because the one thing this mark has to say at a glance across a fogged board is which
+-- DIRECTION it goes -- a descent has stairs at both ends of every floor, and the mark that means "out"
+-- must never be read as the one that means "down". The arrow is what settles it.
+function MarkerIcon.ascent(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    -- Three treads, each shorter and higher than the last, so the flight reads as going away upward.
+    for i = 0, 2 do
+        local tw = w * (0.86 - i * 0.20)
+        love.graphics.rectangle("fill", x + (w - tw) / 2, y + h * (0.72 - i * 0.20), tw, h * 0.13)
+    end
+    love.graphics.polygon("fill",
+        x + w * 0.5, y,
+        x + w * 0.74, y + h * 0.22,
+        x + w * 0.26, y + h * 0.22)
+end
+
+-- THE WAY DOWN: the same flight of steps, walked the other way, under an arrow that points into it.
+-- Drawn as the ascent's mirror on purpose -- a descent has stairs at both ends of every floor and the
+-- two marks are one pair, so the treads say "stair" and the direction is the whole of what separates
+-- them. Nearest tread widest, so the flight reads as coming toward the viewer and going down.
+function MarkerIcon.stair(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    for i = 0, 2 do
+        local tw = w * (0.86 - i * 0.20)
+        love.graphics.rectangle("fill", x + (w - tw) / 2, y + h * (0.06 + i * 0.20), tw, h * 0.13)
+    end
+    love.graphics.polygon("fill",
+        x + w * 0.5, y + h,
+        x + w * 0.74, y + h * 0.78,
+        x + w * 0.26, y + h * 0.78)
+end
+
 -- A house: a roof over a doored body. A friendly town.
 function MarkerIcon.town(x, y, w, h, r, g, b, a)
     love.graphics.setColor(r, g, b, a)
@@ -543,6 +652,94 @@ function MarkerIcon.town(x, y, w, h, r, g, b, a)
     love.graphics.rectangle("fill", x + w * 0.15, y + h * 0.45, w * 0.7, h * 0.55)
     love.graphics.setColor(r * 0.35, g * 0.35, b * 0.35, a)
     love.graphics.rectangle("fill", x + w * 0.4, y + h * 0.6, w * 0.2, h * 0.4)
+end
+
+-- ---------------------------------------------------------------------------
+-- THE PLATE EVERY STOP STANDS ON
+--
+-- A fight that walks and a fight that sits are the same object, and both are drawn by the same three
+-- calls -- plate, mark, pips. They used to be drawn twice by hand, in two loops that had drifted a
+-- pixel of inset apart, a corner radius apart, and a whole icon size apart: a patrol wore an opaque
+-- plate with its mark filling the tile while a seated stop wore a 35% wash with its mark inset by
+-- better than a quarter, so the two read as different KINDS of thing when the only difference between
+-- them is that one of them moves.
+--
+-- What a patrol has that a seated stop does not is a STATE -- what it is doing about you -- and that
+-- takes the BORDER, which is the one channel a seated stop spends on nothing but its own colour over
+-- again. So the wash answers "what is this and how hard is it" identically everywhere on the board,
+-- including the outgrown-fight slate a patrol never used to be able to wear, and the ring answers
+-- "and it has seen you".
+-- ---------------------------------------------------------------------------
+
+local MARKER_INSET = 2       -- px in from the tile edge
+local MARKER_RADIUS = 4
+local MARKER_WASH = 0.35     -- alpha of the plate's fill, under a full-strength border of the same
+local MARKER_ICON_PAD = 0.28 -- share of the tile the mark is inset by, per side
+
+-- The plate: a wash of the stop's own colour under a border of it. `ring` (a patrol's state colour)
+-- replaces that border and gets a dark backing pass beneath it, the same way the battle board seats
+-- its overlay boundaries -- a ring that has to carry over ground it shares a hue with cannot be left
+-- to luck.
+local function drawMarkerPlate(wx, wy, s, r, g, b, a, ring)
+    local px, py = wx + MARKER_INSET, wy + MARKER_INSET
+    local pw = s - MARKER_INSET * 2
+    love.graphics.setColor(r, g, b, a * MARKER_WASH)
+    love.graphics.rectangle("fill", px, py, pw, pw, MARKER_RADIUS, MARKER_RADIUS)
+    if ring then
+        love.graphics.setColor(0, 0, 0, a * 0.55)
+        love.graphics.setLineWidth(3)
+        love.graphics.rectangle("line", px, py, pw, pw, MARKER_RADIUS, MARKER_RADIUS)
+        love.graphics.setColor(ring[1], ring[2], ring[3], a)
+        love.graphics.setLineWidth(2)
+    else
+        love.graphics.setColor(r, g, b, a)
+        love.graphics.setLineWidth(1)
+    end
+    love.graphics.rectangle("line", px, py, pw, pw, MARKER_RADIUS, MARKER_RADIUS)
+    love.graphics.setLineWidth(1)
+end
+
+-- The mark, drawn in white on top of the plate so the SHAPE reads even where two kinds sit close in
+-- hue (an event violet against a combat red). An unrecognised kind draws the crossed swords rather
+-- than nothing at all: an empty box among marked ones reads as a bug, and a stop with no mark of its
+-- own is a fight anyway.
+local function drawMarkerIcon(kind, wx, wy, s, a)
+    local pad = s * MARKER_ICON_PAD
+    local icon = MarkerIcon[kind] or MarkerIcon.combat
+    icon(wx + pad, wy + pad, s - pad * 2, s - pad * 2, 1, 1, 1, a)
+end
+
+-- How far above the company a stop stands, in pips -- and only for the kinds that comparison is about.
+-- A treasure or a camp is not something a muster can be over- or under-matched by, so it draws none.
+local function pipSteps(kind, band)
+    if not (kind == "combat" or kind == "elite") then return 0 end
+    return band and Muster.PIPS[band] or 0
+end
+
+-- The pips: one per step above the company, along the plate's bottom edge. None at all when the fight
+-- is even or beneath them -- the wash above has already said which of those two it is.
+--
+-- Sized to be COUNTED, which the old tier pips were not: they were `s * 0.06`, under 2px across at a
+-- 32px tile, and three of them could not be told from two. They got away with it only because their
+-- colour ALSO encoded the tier (green -> amber -> red), so nobody was counting -- they were reading
+-- "red". Now that the count carries a fact of its own, it has to survive being read.
+local function drawMarkerPips(wx, wy, s, steps, a)
+    if steps <= 0 then return end
+    local pipR = math.max(2.5, s * 0.09)
+    local gap = pipR * 2 + 2
+    local w = steps * gap - 2
+    local cy = wy + s - pipR - 2
+
+    -- A dark seat behind the row, because the pips land on the plate's own hostile red and a warning
+    -- mark that needs good luck with its background is no warning.
+    love.graphics.setColor(0.05, 0.05, 0.07, a * 0.85)
+    love.graphics.rectangle("fill", wx + s / 2 - w / 2 - 3, cy - pipR - 1.5,
+        w + 6, pipR * 2 + 3, pipR + 1.5, pipR + 1.5)
+
+    love.graphics.setColor(PIP_COLOR[1], PIP_COLOR[2], PIP_COLOR[3], a)
+    for i = 1, steps do
+        love.graphics.circle("fill", wx + s / 2 - w / 2 + pipR + (i - 1) * gap, cy, pipR)
+    end
 end
 
 function OverworldMap:draw()
@@ -756,43 +953,11 @@ function OverworldMap:drawMarkers()
                     local band = self.musterBand and self.musterBand(c) or nil
                     if band == "beneath" then r, g, b = CALM_MARKER[1], CALM_MARKER[2], CALM_MARKER[3] end
                     local a = c.cleared and 0.3 or 1
-                    love.graphics.setColor(r, g, b, a)
-                    love.graphics.rectangle("line", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
-                    love.graphics.setColor(r, g, b, a * 0.35)
-                    love.graphics.rectangle("fill", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
-                    -- Colour still encodes the kind on the box; the icon draws it in white on top so the
-                    -- SHAPE reads even where two kinds sit close in hue (event violet vs a red combat).
-                    local icon = MarkerIcon[kind] or MarkerIcon.combat
-                    local pad = s * 0.28
-                    icon(wx + pad, wy + pad, s - pad * 2, s - pad * 2, 1, 1, 1, a)
-
-                    -- How far above the company this fight stands: one pip per step, along the marker's
-                    -- bottom edge. None at all when it is even or beneath them -- the box colour above
-                    -- has already said which of those two it is.
-                    --
-                    -- Sized to be COUNTED, which the old tier pips were not: they were `s * 0.06`, under
-                    -- 2px across at a 32px tile, and three of them could not be told from two. They got
-                    -- away with it only because their colour ALSO encoded the tier (green -> amber ->
-                    -- red), so nobody was counting -- they were reading "red". Now that the count carries
-                    -- a fact of its own, it has to survive being read.
-                    local steps = band and Muster.PIPS[band] or 0
-                    if steps > 0 and (kind == "combat" or kind == "elite") then
-                        local pipR = math.max(2.5, s * 0.09)
-                        local gap = pipR * 2 + 2
-                        local w = steps * gap - 2
-                        local cy = wy + s - pipR - 2
-
-                        -- A dark seat behind the row, because the pips land on the marker's own hostile
-                        -- red and a warning mark that needs good luck with the background is no warning.
-                        love.graphics.setColor(0.05, 0.05, 0.07, a * 0.85)
-                        love.graphics.rectangle("fill", wx + s / 2 - w / 2 - 3, cy - pipR - 1.5,
-                            w + 6, pipR * 2 + 3, pipR + 1.5, pipR + 1.5)
-
-                        love.graphics.setColor(PIP_COLOR[1], PIP_COLOR[2], PIP_COLOR[3], a)
-                        for i = 1, steps do
-                            love.graphics.circle("fill", wx + s / 2 - w / 2 + pipR + (i - 1) * gap, cy, pipR)
-                        end
-                    end
+                    -- A seated stop has nothing to say beyond what it is, so it wears no state ring: the
+                    -- plate, the mark and the pips, the same three the patrols wear.
+                    drawMarkerPlate(wx, wy, s, r, g, b, a)
+                    drawMarkerIcon(kind, wx, wy, s, a)
+                    drawMarkerPips(wx, wy, s, pipSteps(kind, band), a)
                     love.graphics.setColor(1, 1, 1)
                 end
             end
@@ -800,12 +965,17 @@ function OverworldMap:drawMarkers()
     end
 end
 
--- A patrol's state, as the marker's colour. Beat keeps the hostile red every fight has always worn;
+-- A patrol's state, as the marker's BORDER. Beat keeps the hostile red every fight has always worn;
 -- Alert is the warm gold the board already uses for "live, act now"; Return is a cool slate.
+--
+-- It is the border rather than the fill because the fill is spoken for: a patrol is a fight like any
+-- other and its wash has to say how it stands against the company, in the one colour language the
+-- seated stops already speak. Two facts, two channels -- what it is, and what it is doing.
 --
 -- The slate is deliberately DARKER than the outgrown-fight slate (CALM_MARKER): those two must not be
 -- confused, because one means "beneath your notice" and the other means "has just lost you and is
--- walking home", which are opposite invitations.
+-- walking home", which are opposite invitations. Now that a patrol can wear both at once -- a calm
+-- wash under a returning ring -- the separation matters more, not less.
 local PATROL_STATE = {
     beat = { 0.86, 0.28, 0.22 },
     alert = { 0.95, 0.72, 0.24 },
@@ -817,7 +987,7 @@ local PATROL_STATE = {
 --
 --   the beat    a faint dotted circuit -- the schedule, on the ground you can currently see
 --   the pip     the tile it occupies NEXT, so the exchange is legible before you move
---   the colour  what it is doing (see PATROL_STATE)
+--   the ring    what it is doing (see PATROL_STATE), around the same plate a seated fight stands on
 --
 -- All three are gated on :lit rather than on `seen`, and so is the patrol itself: a body that walks is
 -- the last thing a map should be able to remember. It is in sight or it is gone, and where it went is
@@ -851,41 +1021,30 @@ function OverworldMap:drawPatrols()
                 end
             end
 
-            local col = PATROL_STATE[p.state] or PATROL_STATE.beat
             local wx, wy = grid:cellToPixel(p.x, p.y)
-            love.graphics.setColor(col[1], col[2], col[3], 0.95)
-            love.graphics.rectangle("fill", wx + 3, wy + 3, s - 6, s - 6, 3)
-            love.graphics.setColor(0, 0, 0, 0.55)
-            love.graphics.rectangle("line", wx + 3, wy + 3, s - 6, s - 6, 3)
-
             local kind = p.encounter and p.encounter.kind
-            local icon = MarkerIcon[kind]
-            if icon then icon(wx + 3, wy + 3, s - 6, s - 6, 1, 1, 1, 1) end
 
-            -- HOW FAR ABOVE THE COMPANY THIS ONE STANDS, in the same pips a seated fight wears. The
-            -- readout is keyed by cell everywhere else and a patrol is not on a cell, so without this the
-            -- fights that MOVE -- the ones you most need to decide about -- would be the only fights on
-            -- the board with no reading at all. Same mark, same place, same meaning.
+            -- HOW FAR ABOVE THE COMPANY THIS ONE STANDS, read exactly as a seated fight's is: it sets
+            -- the wash and it sets the pips. The readout is keyed by cell everywhere else and a patrol
+            -- is not on a cell, so without asking here the fights that MOVE -- the ones you most need to
+            -- decide about -- would be the only fights on the board you could not price.
             local band = self.musterBand and self.musterBand({ x = p.x, y = p.y, encounter = p.encounter })
-            local steps = band and Muster.PIPS[band] or 0
-            if steps > 0 then
-                local pipR = math.max(2.5, s * 0.09)
-                local gap = pipR * 2 + 2
-                local w = steps * gap - 2
-                local cy = wy + s - pipR - 3
-                love.graphics.setColor(0.05, 0.05, 0.07, 0.85)
-                love.graphics.rectangle("fill", wx + s / 2 - w / 2 - 3, cy - pipR - 1.5,
-                    w + 6, pipR * 2 + 3, pipR + 1.5, pipR + 1.5)
-                love.graphics.setColor(PIP_COLOR[1], PIP_COLOR[2], PIP_COLOR[3], 1)
-                for i = 1, steps do
-                    love.graphics.circle("fill", wx + s / 2 - w / 2 + pipR + (i - 1) * gap, cy, pipR)
-                end
-            end
+            local r, g, b = markerColor(kind)
+            if band == "beneath" then r, g, b = CALM_MARKER[1], CALM_MARKER[2], CALM_MARKER[3] end
+
+            drawMarkerPlate(wx, wy, s, r, g, b, 1, PATROL_STATE[p.state] or PATROL_STATE.beat)
+            drawMarkerIcon(kind, wx, wy, s, 1)
+            drawMarkerPips(wx, wy, s, pipSteps(kind, band), 1)
 
             -- A slow patrol wears its pace, so "I can get past this one" is readable rather than
-            -- learned by being caught.
+            -- learned by being caught. Drawn in the state colour on a dark seat, like everything else
+            -- that answers what the patrol is DOING: the two ticks used to be plain black over an opaque
+            -- plate, and over a wash that is a mark nobody can see.
             if (p.pace or 1) > 1 then
-                love.graphics.setColor(0, 0, 0, 0.5)
+                local ring = PATROL_STATE[p.state] or PATROL_STATE.beat
+                love.graphics.setColor(0.05, 0.05, 0.07, 0.85)
+                love.graphics.rectangle("fill", wx + 4, wy + s - 10, 11, 5, 2, 2)
+                love.graphics.setColor(ring[1], ring[2], ring[3], 1)
                 love.graphics.rectangle("fill", wx + 5, wy + s - 9, 3, 3)
                 love.graphics.rectangle("fill", wx + 10, wy + s - 9, 3, 3)
             end

@@ -16,6 +16,16 @@
 --       onTake  = function(entry) ... end,                       -- TAKE: grant that relic, clear the cell
 --       onLeave = function() ... end,                            -- LEAVE / dismissed: take nothing
 --   })
+--
+-- WHAT THE REFUSAL IS CALLED, and why it is a parameter. On a reliquary, refusing leaves the cell to
+-- come back to, and "Leave" is the whole of it. A descent's LANDING opens this same panel over the
+-- general the party just put down (states/game.lua's openLanding), and there the refusal is not a
+-- leaving at all -- there is nowhere to stand but the stair, so declining the boon goes down anyway.
+-- A button that said "Leave" there would name an exit that does not exist.
+--
+-- So `prompt`, `leaveLabel` and `closeable` are the three things a caller may say instead. They are
+-- text and a flag rather than a second panel, because the GESTURE is identical -- three cards, take
+-- one, the rest are the price -- and the only honest difference is what the untaken cards cost you.
 
 local CloseButton = require("ui.close_button")
 local InputMode = require("input_mode")
@@ -38,6 +48,12 @@ function RelicOffer.new(opts)
     opts = opts or {}
     local self = setmetatable({}, RelicOffer)
     self.title = opts.title or "Reliquary"
+    self.prompt = opts.prompt or "Take one. The rest stay sealed."
+    self.leaveLabel = opts.leaveLabel or "Leave"
+    -- A panel with nowhere to back out to draws no X. The refusal is still reachable by mouse (the
+    -- button below the cards), by key and by pad -- what goes away is the corner control that reads as
+    -- "dismiss this" on a screen where nothing can be dismissed.
+    self.closeable = opts.closeable ~= false
     self.offer = opts.offer or {}
     self.onTake = opts.onTake
     self.onLeave = opts.onLeave
@@ -76,7 +92,12 @@ function RelicOffer.new(opts)
 
     local n = math.max(1, #self.offer)
     self.boxW = PAD * 2 + n * CARD_W + (n - 1) * CARD_GAP
-    self.oCards = 96
+    -- The cards start under the prompt rather than at a fixed offset. The reliquary's own one-liner
+    -- fits on a line at any slate size, but a caller's prompt need not -- and a two-line one at a fixed
+    -- 96 would print its second line through the top of the cards.
+    self.oPrompt = 60
+    local _, promptLines = self.promptFont:getWrap(self.prompt, self.boxW - PAD * 2)
+    self.oCards = self.oPrompt + math.max(1, #promptLines) * self.promptFont:getHeight() + 17
     local bw, bh, gap = 150, 44, 16
     self.oButtons = self.oCards + self.cardH + 18
     self.oHint = self.oButtons + bh + 12
@@ -84,7 +105,7 @@ function RelicOffer.new(opts)
     self.boxX = Scale.WIDTH / 2 - self.boxW / 2
     self.boxY = Scale.HEIGHT / 2 - self.boxH / 2
 
-    self.closeButton = CloseButton.new(self.boxX + self.boxW, self.boxY)
+    self.closeButton = self.closeable and CloseButton.new(self.boxX + self.boxW, self.boxY) or nil
 
     for i, entry in ipairs(self.offer) do
         entry.rect = {
@@ -190,27 +211,28 @@ function RelicOffer:draw()
 
     love.graphics.setFont(self.promptFont)
     love.graphics.setColor(0.66, 0.69, 0.76)
-    love.graphics.printf("Take one. The rest stay sealed.", bx, by + 60, self.boxW, "center")
+    love.graphics.printf(self.prompt, bx + PAD, by + self.oPrompt, self.boxW - PAD * 2, "center")
 
     for i, entry in ipairs(self.offer) do self:drawCard(entry, i == self.focus) end
 
-    self:drawButton(self.leaveBtn, "Leave", false, false)
+    self:drawButton(self.leaveBtn, self.leaveLabel, false, false)
     self:drawButton(self.takeBtn, "Take", true, true)
 
-    local hint = InputMode.isGamepad() and "D-pad choose  -  A take  -  B leave"
-        or "Arrows choose  -  Enter take  -  Esc leave"
+    local refuse = self.leaveLabel:lower()
+    local hint = InputMode.isGamepad() and ("D-pad choose  -  A take  -  B " .. refuse)
+        or ("Arrows choose  -  Enter take  -  Esc " .. refuse)
     love.graphics.setFont(self.hintFont)
     love.graphics.setColor(0.55, 0.6, 0.7)
     love.graphics.printf(hint, bx, by + self.oHint, self.boxW, "center")
 
-    self.closeButton:draw()
+    if self.closeButton then self.closeButton:draw() end
     love.graphics.setColor(1, 1, 1)
 end
 
 -- ---- input -------------------------------------------------------------------
 
 function RelicOffer:mousemoved(x, y)
-    self.closeButton:mousemoved(x, y)
+    if self.closeButton then self.closeButton:mousemoved(x, y) end
     self.leaveBtn.hovered = inRect(self.leaveBtn, x, y)
     self.takeBtn.hovered = inRect(self.takeBtn, x, y)
     for i, entry in ipairs(self.offer) do
@@ -219,7 +241,7 @@ function RelicOffer:mousemoved(x, y)
 end
 
 function RelicOffer:cursorKind(x, y)
-    if self.closeButton:contains(x, y) then return "hand" end
+    if self.closeButton and self.closeButton:contains(x, y) then return "hand" end
     if inRect(self.leaveBtn, x, y) or inRect(self.takeBtn, x, y) then return "hand" end
     for _, entry in ipairs(self.offer) do if inRect(entry.rect, x, y) then return "hand" end end
     return "arrow"
@@ -229,7 +251,7 @@ end
 -- second click on Take.
 function RelicOffer:mousepressed(x, y, button)
     if button ~= 1 then return end
-    if self.closeButton:mousepressed(x, y, button) then self:leave(); return end
+    if self.closeButton and self.closeButton:mousepressed(x, y, button) then self:leave(); return end
     if inRect(self.takeBtn, x, y) then self:take(); return end
     if inRect(self.leaveBtn, x, y) then self:leave(); return end
     for i, entry in ipairs(self.offer) do

@@ -320,9 +320,26 @@ return {
         .. "and stay unseen until the killing one.",
     classes = { "rogue", "mage" },     -- 2 = multiclass; 1 = subclass
     exemplar = "character_kaen",       -- the NPC built AS this discipline, met in its unlock quest
+    hire = "character_miro",           -- the named hero who will WALK WITH YOU, met on a floor
     requiredQuests = { "quest_the_shadowless" },
 }
 ```
+
+**`exemplar` and `hire` are two different bodies and the difference is which side of the fight they
+stand on.** The exemplar is the one built *as* the discipline for you to face — a boss, met in the
+unlock quest. The hire is the discipline's entry on the [hall roster](../tests/hall_roster_spec.lua):
+one named hero apiece, each carrying the bound relic that makes the shelf a build. A descent's recruit
+stop deals off `hire` and never off `exemplar` or the generic class templates
+(`models/descent_recruit.lua`) — the company is grown out of people, not stat lines. The plain classes
+under the disciplines are met the same way, as the seven line **companions** (`Temptation.COMPANIONS`):
+Saber for the fighter, Rowan for the knight, Clem for the rogue. They hold the first floor by
+themselves, because a class is what a player has from the beginning and a discipline is earned.
+
+**How deep a hero is met comes from `requiredQuests`, as an order rather than as a depth**: the slot a
+discipline is gated at ranks it against every other discipline, and the descent lays that ranked list
+down the fourteen floors below the first at an even rate, so each opens two or three new bodies. Read
+level-for-level instead, the twenty-one multiclass heroes all land on one floor — the campaign has no
+opinion about which multiclass comes first, and the lump is that absence showing through.
 
 **`description` is the mechanic said out loud** — what the path is, then the one thing it does, in a
 sentence or two (`Discipline.description`, pinned by `tests/discipline_spec.lua`). It is the same claim

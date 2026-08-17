@@ -157,6 +157,35 @@ return {
         end,
     },
     {
+        -- NO MODE LOSES A BODY TO A FIGHT IT WON, and this pins it in the mode most likely to want to.
+        --
+        -- The descent briefly did: a member whose downed count ran out was left on the floor and gone
+        -- from the roster. It is reverted, and deliberately. Losing a quarter of the company to one bad
+        -- turn in a fight you WON is the harshest possible reading of a countdown, and it made the
+        -- countdown the whole game rather than a beat in it. What carries the stake instead is the
+        -- WOUND (models/wound.lua) -- a reserve on the body plus debuffs that stack -- which degrades a
+        -- company over an expedition rather than deleting part of it in a turn. The only thing that
+        -- ever costs a body is a wipe, and even then they lie where they fell to be fetched.
+        name = "a won fight carries out both fallen states, gone cold or not, in every mode",
+        fn = function()
+            local c = Combat.new(arena(6, 6), {
+                unit("character_rowan", 2, 2, { stats = { health = 100 } }),
+                unit("character_knight", 3, 3, { stats = { health = 100 } }),
+            }, { unit("character_bandit", 5, 5) })
+            local cold, warm = c.units[1], c.units[2]
+            kill(c, cold)
+            Status.tick(c, 15)
+            kill(c, warm)
+            assert(cold.corpse and not cold.incapacitated, "precondition: one went cold")
+            assert(warm.incapacitated, "precondition: the other is still inside the window")
+
+            local carried = Combat.reviveFallenParty(c)
+            assert(#carried == 2, "both are carried out, not one")
+            assert(cold.alive and warm.alive, "and both are standing")
+            assert(not cold.corpse and not warm.incapacitated, "with the fallen flags cleared")
+        end,
+    },
+    {
         name = "a demon skips the whole window: a corpse at once, and no revive takes it",
         fn = function()
             local c = Combat.new(arena(6, 6), { unit("character_rowan", 2, 2) },

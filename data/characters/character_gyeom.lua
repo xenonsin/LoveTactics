@@ -57,6 +57,11 @@ return {
         false,          false,               false,
     },
     defaultAction = "weapon_wand",
+    -- THE TWO ITEMS THAT ARE THIS UNIT, named for the same reason every hall hero names them: a base
+    -- class is met on a floor like any other body now (models/descent_recruit.lua), and this is the
+    -- pair its card is written from.
+    signatureWeapon  = "weapon_wand",
+    signatureAbility = "utility_ledger",
     -- Basic tactics (models/ai.lua): the Ledger only pays out if she is still standing to keep banking
     -- into it (utility_ledger.lua) -- every turn she survives is a turn of practice, and the Release
     -- she is built around is four turns of it away. So the one instinct worth authoring is not to trade

@@ -67,9 +67,19 @@ Experience.STEP = 3
 
 -- THE DESCENT KEEPS ITS OWN, and the two are separate constants because the modes are separate games.
 --
--- The descent's ladder is anchored on Descent.LEVEL_PER_FLOOR: the seventh circle fights at level 13,
--- and a floor is six or seven fights paying about 70 a body, so 490 across a run. Six puts level 13 at
--- 468 -- a company that fights its way down arrives at about the level the bottom is built for.
+-- The descent's ladder is anchored on the BOTTOM, and the arithmetic is worth writing down because the
+-- constant is meaningless without it. A floor is about six fights, each paying a body roughly twelve
+-- (seven actions at PER_ACTION, a little over one felling at PER_FELLING), so a floor is ~72 and the
+-- fifteen floors of a whole descent are ~1080. The Hollow Crown fights at Descent.floorLevel of the
+-- bottom floor, which is 15. Reaching level 15 costs STEP x 15 x 14 / 2 = 105 x STEP, and level 16
+-- costs 120 x STEP -- so a step of ten puts a company that fights its way down at exactly the level the
+-- bottom is built for, and one short of overshooting it.
+--
+-- IT WAS SIX, for an eight-floor descent whose seventh circle fought at level 13 off ~490 earned. When a
+-- circle became a stratum the mode went to fifteen floors, which is twice the fighting -- so leaving the
+-- step alone would have handed the Crown a company five levels above it. The floor ladder got gentler
+-- (Descent.LEVEL_PER_FLOOR fell to one) and this got steeper, and between them the envelope the growth
+-- tables and the shelf were built against did not move.
 --
 -- Nothing about that reasoning changed when the campaign's did, and it must not be dragged along: the
 -- campaign re-anchored because it acquired a deadline and a forty-day budget, which the descent has
@@ -77,7 +87,7 @@ Experience.STEP = 3
 -- which is the "second master" the decision to leave the descent alone was made to avoid. So the step
 -- is a PARAMETER on everything below, defaulting to the campaign's, and models/descent.lua names this
 -- one at its own resolve.
-Experience.DESCENT_STEP = 6
+Experience.DESCENT_STEP = 10
 
 -- Total experience needed to have REACHED `level`. Level 1 costs nothing -- everybody starts there.
 function Experience.totalFor(level, step)

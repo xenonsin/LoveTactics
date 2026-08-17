@@ -176,6 +176,36 @@ return {
         end,
     },
     {
+        -- THE OTHER CALLER, and it is not a departure. A descent's dead are released with `withKit`
+        -- (states/game.lua's buryLost): a companion who walks out hands the company's gear back on the
+        -- way, but a body whose downed window ran out is lying on a floor of the descent with its pack
+        -- still on. Getting the Mailpiercer back off a corpse you could not reach in time would make
+        -- the countdown cost a seat and nothing else.
+        name = "released withKit, the gear goes down with the body",
+        fn = function()
+            local p = freshPlayer()
+            local rowan
+            for _, char in ipairs(p.roster) do if char.id == "character_rowan" then rowan = char end end
+            local loose = Item.instantiate("consumable_healing_potion")
+            Character.addItem(rowan, loose)
+
+            local before = #(p.stash or {})
+            assert(Player.release(p, "character_rowan", { withKit = true }), "she was there to lose")
+            assert(#(p.stash or {}) == before, "nothing came back to the stash")
+
+            local held
+            for cell = 1, Character.MAX_INVENTORY do
+                local item = rowan.inventory and rowan.inventory[cell]
+                if item and item.id == loose.id then held = true end
+            end
+            assert(held, "the gear is still in the grid of the body that went down with it")
+
+            -- The ledgers are still scrubbed: the seat is empty either way, and a wound carried by
+            -- somebody who is gone would follow the id back onto whoever next holds it.
+            assert(p.wounds["character_rowan"] == nil, "and the ledgers are scrubbed all the same")
+        end,
+    },
+    {
         name = "release scrubs the ledgers that name a body by id",
         fn = function()
             local p = freshPlayer()

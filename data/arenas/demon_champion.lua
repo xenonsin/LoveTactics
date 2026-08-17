@@ -6,9 +6,10 @@
 -- paragraph. A campaign fight is now taken on an 8x8 window of the overworld's own tiles, and that
 -- board wins over `spec.layout` outright (models/arena.lua's Arena.build: `if spec.grid and spec.at`
 -- comes first). So the live copy of this board is the chamber authored into the map at the Champion's
--- tile -- data/overworld/tutorial_flight.lua, flipped, because descending into it seats the party at
--- the top rather than the bottom -- and what survives here is the fallback for a caller with no map
--- under it, plus the fixture tests/demon_champion_spec.lua reads.
+-- tile -- data/overworld/tutorial_flight.lua, transcribed row for row, since that trail runs north and
+-- climbing into the chamber from the south seats the party on the bottom row exactly as this board does
+-- -- and what survives here is the fallback for a caller with no map under it, plus the fixture
+-- tests/demon_champion_spec.lua reads.
 --
 -- The two are pinned to each other by tests/flight_board_spec.lua rather than trusted to have been
 -- copied carefully, which is the only honest way to keep two descriptions of one battlefield: every

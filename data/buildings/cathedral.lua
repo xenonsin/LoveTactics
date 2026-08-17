@@ -1,12 +1,15 @@
 return {
     name = "The Cathedral",
-    order = 4,
-    x = 970,
-    y = 150,
+    order = 10,
+    x = 350,
+    y = 416,
     w = 270,
-    h = 140,
+    h = 130,
     panel = "shop",
     vendor = "cathedral", -- priest class
+    -- OPENS WHEN ITS CIRCLE FALLS (models/building.lua). This house IS one of the seven sins, and
+    -- putting that circle's general down in the descent is what puts its shelf in the city.
+    unlockCircle = true,
     unlockPrestige = 1,
     -- Held shut a slot longer than the Colosseum, and the reason is the story: the player does not walk
     -- into this building, they are CARRIED into it. The padded card

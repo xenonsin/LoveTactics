@@ -58,6 +58,11 @@ return {
         false,                   false,                   false,
     },
     defaultAction = "weapon_envenomed_kris",
+    -- THE TWO ITEMS THAT ARE THIS UNIT, named for the same reason every hall hero names them: a base
+    -- class is met on a floor like any other body now (models/descent_recruit.lua), and this is the
+    -- pair its card is written from.
+    signatureWeapon  = "weapon_borrowed_time",
+    signatureAbility = "ability_shadow_strike",
     ai = {
         { priority = "high", act = "attack", item = "weapon_envenomed_kris",
           when = { subject = "any_foe", test = "in_reach" } },

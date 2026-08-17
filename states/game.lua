@@ -20,12 +20,15 @@ local Quest = require("models.quest")
 local Vendor = require("models.vendor")   -- the sponsoring house behind a quest, for its cache stock
 local Material = require("models.material")
 local Item = require("models.item")     -- the Merchant's shelf prices come off the blueprints
+local Character = require("models.character") -- MAX_INVENTORY, for the pack a wipe leaves on the floor
+local Errand = require("models.errand")   -- the small work a house asks for before it opens a rung
 local Spoils = require("models.spoils") -- ...and its stock off the same band a fight's loot rolls in
 local EncounterPanel = require("ui.panels.encounter")
 local LootReveal = require("ui.panels.loot_reveal")
 local RelicOffer = require("ui.panels.relic_offer")   -- the Reliquary's pick-one-of-three
 local RelicReveal = require("ui.panels.relic_reveal") -- the Sin's Altar's single relic + toll
 local Merchant = require("ui.panels.merchant") -- the road's shop: ordinary goods for gold
+local RecruitPanel = require("ui.panels.recruit") -- the floor's survivor: take them on, or walk on
 local Choice = require("ui.panels.choice")
 local Crossroads = require("models.crossroads")
 local RestChoice = require("ui.panels.rest_choice")
@@ -43,6 +46,7 @@ local PartyStatus = require("ui.party_status")
 local RelicStrip = require("ui.relic_strip")
 local OverworldAbility = require("models.overworld_ability")
 local Descent = require("models.descent") -- a run as a stack of floors, their circles, the landing between
+local Recruit = require("models.descent_recruit") -- who is still standing down there, and what joining costs
 local Experience = require("models.experience") -- what levels a descent's company, since no prestige does
 local Relic = require("models.relic")
 local Meal = require("models.meal") -- the Cafe's supper: one platter, worn by the company all run
@@ -227,6 +231,11 @@ local function clearRun()
     if game.player then game.player.activeRun = nil end
 end
 
+-- Forward-declared, and defined where the rest of the run plumbing is (search for its header). It is
+-- named up here because the landing -- which sits above that block -- now leaves the player standing on
+-- a board it has changed, and a change to the board that is not persisted is one a resume loses.
+local saveRun
+
 -- LOSING A FIGHT, which is now the only thing on the board that costs anything.
 --
 -- The rule inverted. It used to be that the objective was the only exit that banked: a wipe AND a
@@ -249,29 +258,30 @@ local function wipeRun()
     return true
 end
 
--- WHERE A DESCENT GOES WHEN IT ENDS, which is not where a quest goes.
+-- WHERE A DESCENT GOES WHEN IT ENDS, which is now the same place a quest went: the city.
 --
--- A campaign quest ends at the city: the company lives there, the reward is banked there, and the
--- advancement overlay opens on the way in. A descent has no city. It is a separate game mode with its own
--- front screen (states/descent.lua), it banks nothing, and the company it musters at the gate does not
--- outlive the run -- so the account this hands over is the ONLY report the player gets, and after it the
--- run is gone.
+-- THE DESCENT IS THE GAME. It used to be a separate mode with its own front screen and its own save
+-- file, and it ended by throwing a company away. Then the prologue became its on-ramp -- the avatar you
+-- made, the Rowan sworn beside her, the guard at the capital's gate and the sponsor who cut in front of
+-- the Adventurers' Guild -- and with it the mode joined the campaign's save. There is one company now,
+-- so nothing is ever thrown away and every ending walks back up into the city it came from.
 --
--- `outcome` is how it ended -- "extracted", "wiped" or "left" -- and it is passed rather than inferred
--- because the three are indistinguishable by the time they arrive here: all three have dropped the run,
--- and only the caller knows whether that was a victory, a defeat or a decision.
+-- `outcome` is how it ended -- "won", "wiped" or "left" -- passed rather than inferred, because only
+-- the caller knows whether the stair was taken as a victory, a defeat or a decision.
 --
--- The saved run goes with it. That is what "each run is clean" means in one line: there is no file left
--- for the next entry to find, so the next entry musters.
-local function endDescent(outcome, result)
+-- `keep` no longer means anything about a file, because there is no separate file. It survives as the
+-- distinction between an ending that finished the RUN (the Hollow Crown) and one that finished an
+-- expedition, and the gate reads it to know whether to offer the stair again.
+local function endDescent(outcome, result, keep)
     result = result or {}
     result.outcome = outcome
-    Descent.clearSaved()
-    -- The throwaway company stops being the active player. Nothing would ask it for anything -- both
-    -- doors into the hub call Player.start first -- but leaving a spent descent profile sitting in the
-    -- global is exactly the sort of thing that is only ever discovered by a bug.
-    Player.active = nil
-    State.switch(require("states.descent"), { result = result })
+    if not keep and game.player then
+        -- The run is over. The company is not -- it walks back into the city with everything it kept,
+        -- and the next descent starts a fresh stack of floors.
+        game.player.descentRun = nil
+    end
+    Player.save()
+    State.switch(require("states.hub"))
 end
 
 -- WHAT THIS RUN IS CARRYING, and would lose by leaving any way but through the objective.
@@ -396,83 +406,192 @@ function game:inflictWounds()
     return hurt
 end
 
--- THE LANDING. A floor is cleared and the party is standing at the head of the next stair, which is the
--- only place in the game that asks the question an extraction is actually about: is what you are carrying
--- worth more than what is below?
+-- HOW FAR THE COMPANY CAN SEE, re-resolved. The map widget's radius is settled once at enter from the
+-- board's own, the party's torch and Gyeom's Ledger; this puts the Dark on top of all of it and takes it
+-- off again when the stretch runs out.
 --
--- Both answers are real, and that is the whole design. Extract banks the haul and ends the run; Descend
--- keeps everything provisional for one more floor. Nothing about the board makes this decision for the
--- player, so the prompt has to carry the two facts they weigh it on -- what a wipe would cost them
--- (game:haulPhrase, the same words the turn-back prompt and the defeat panel use) and where they are
--- being asked to go. A choice between two unlabelled doors is not a choice.
+-- A separate call rather than a field on the widget because the radius has three owners now and only one
+-- of them changes mid-floor. `darkFor` counts DOWN IN STEPS (game:onArrive), not seconds: a hazard
+-- measured in wall-clock would punish a player who stopped to read a tooltip, and what the dark is
+-- actually taking is ground covered blind.
+function game:applyVision()
+    if not (game.map and game.player) then return end
+    local base = math.max(game.grid.visionRadius or 2, Player.visionRadius(game.player))
+        + OverworldAbility.visionBonus(game.player)
+    game.map.visionRadius = ((game.darkFor or 0) > 0) and 1 or base
+end
+
+-- Put a marker on every tile of THIS floor that has a body on it, and take away the ones that have been
+-- lifted. Run whenever the list can have changed -- a floor entered, a body left, a body taken up.
 --
--- Deliberately NOT closeable: `onClose` is nil, so Esc and B do not dismiss it. There is nowhere to back
--- out to -- the floor is over and the party is on the stair -- and a dismissable landing would strand the
--- player on a cleared board with no way forward.
-function game:openLanding()
+-- The marker is an `encounter` of kind "corpse", for the reason the way up is one (models/overworld.lua's
+-- placeExit): the marker pipeline, the fog, and the walk-onto-it seam all come free, and a bespoke cell
+-- field would have meant writing all three again. It carries the run entry itself so the stop knows
+-- which body it is standing on without searching.
+function game:markBodies()
+    if not (game.descent and game.grid) then return end
+    -- Clear first, so a pack picked up leaves no marker behind and a re-entry does not double them.
+    for y = 1, game.grid.rows do
+        for x = 1, game.grid.cols do
+            local c = game.grid.cells[y][x]
+            if c.encounter and c.encounter.kind == "pack" then c.encounter = nil end
+        end
+    end
+    for _, drop in ipairs(Descent.dropsOn(game.descent, Descent.depth(game.descent))) do
+        local c = drop.x and drop.y and game.grid:get(drop.x, drop.y)
+        -- Never over the top of something else. A pack dropped on the tile the way up stands on -- or on
+        -- a stop that has not been cleared yet -- keeps its entry on the run and simply goes unmarked;
+        -- the alternative is deleting the exit from the floor, which is unrecoverable.
+        if c and not c.encounter then
+            c.encounter = { kind = "pack", name = "What You Dropped", drop = drop }
+        end
+    end
+end
+
+-- THE LANDING. The circle's guard is face-down on the stair, and the stair is open.
+--
+-- IT USED TO BE AN EXTRACTION PROMPT, and deleting that question is the point rather than a
+-- simplification. It asked "is what you are carrying worth more than what is below?", which is the right
+-- question for a mode that banks -- and this one does not (models/descent.lua). Climbing out ended the
+-- run and handed the player nothing they could spend, spend against, or beat next time; descending
+-- risked a haul that evaporated on the way out anyway. BOTH ANSWERS PAID ZERO, so the choice was
+-- between finishing the session and not finishing it, dressed as a decision about loot. Seven floors of
+-- tension rested on a stake that was not there.
+--
+-- So the mode has one win now -- the Hollow Crown -- and the landing stops being an exit. What it is
+-- instead is the beat the references all put here: you have just killed something with a name, and it
+-- was carrying something. A slate of three off the beaten circle's own shelf, one taken, the other two
+-- gone with it. Which circles the shuffle dealt you is now what a run's build is made of, and the seven
+-- orders stop being seven orders of the same run.
+--
+-- AND IT NO LONGER TAKES THE STEP DOWN. Both of its buttons used to, so beating the guardian ended the
+-- floor whether or not the company was finished with it -- see Descent.openStair for what that cost.
+-- What this beat does now is credit the circle, hand over what she was carrying, and open the stair as
+-- a tile behind her. Going down is a walk the player takes afterwards, and the panel is the reward for
+-- the fight rather than the door out of the floor.
+--
+-- Deliberately NOT closeable: the slate is dealt once and dropped the moment this closes (`run.landing`),
+-- so a dismissal that was not an answer would throw the boon away without ever having said so.
+--
+-- `cell` is the objective tile just cleared -- the ground the stair opens on. Nil on a resume, where
+-- the board already came back with its stair on it and only the undealt boon is outstanding.
+function game:openLanding(cell)
     local run = game.descent
     if not run then return end
     Descent.clearFloor(run)
 
-    -- The CIRCLE below, not the ground below. A biome is where you will be standing; a sin is what you
-    -- are going down to face, whose house the floor pays into and whose own cast holds its stair. It is
-    -- also the thing the shuffle makes worth reading -- the ground is a consequence of it.
+    -- A BEATEN CIRCLE OPENS ITS HOUSE IN THE CITY, and this is the whole of that wiring.
     --
-    -- Under the seventh there is no circle left, and the landing says so outright: naming the Hollow
-    -- Crown is the whole of the warning a player gets, and it is the one they most need. A descent has
-    -- a bottom, and this is the stair that reaches it.
-    local nextFloor = Descent.depth(run) + 1
-    local below = Descent.nameOf(run, nextFloor)
-    local last = Descent.isBottom(nextFloor)
-    local carried = game:haulPhrase()
+    -- Each of the seven shops IS one of the sins (models/descent.lua's SINS carries the join), and they
+    -- were gated on the campaign's completed-quest count -- parked at zero forever, so they were seven
+    -- doors that could never open. They read `player.standing[vendorId]` now
+    -- (models/building.lua), and putting a general down is what writes it.
+    --
+    -- ON THE PLAYER, not just the run. `run.standing` is the expedition's own tally and dies with it;
+    -- this is a city that has to still be open tomorrow, so it goes where the save keeps things.
+    -- Credited ONCE per circle, on the general's floor, by the same test the run's tally uses -- getting
+    -- past her honour guard is not getting past her.
+    if Descent.isGeneralFloor(Descent.depth(run)) and game.player then
+        local sin = Descent.sinAt(run, Descent.depth(run))
+        if sin then
+            game.player.standing = game.player.standing or {}
+            local had = (game.player.standing[sin.vendor] or 0)
+            game.player.standing[sin.vendor] = had + 1
+            if had == 0 then
+                local house = require("models.vendor").get(sin.vendor)
+                game:pushToast(((house and house.name) or sin.name) .. " opens its doors to you")
+            end
+        end
+    end
 
-    game.activePanel = Choice.new({
-        title = last and "There is one stair left." or "The stair goes down.",
-        prompt = carried
-            and ("You are carrying " .. carried .. ". It is yours only if you walk out with it.")
-            or "You are carrying nothing yet.",
-        options = {
-            {
-                label = last and "Go down to it" or "Go deeper",
-                -- Phrased so the place NAMES itself rather than being slotted after an article: the
-                -- sin takes none ("The next floor is Wrath"), which is also why the line names the
-                -- circle rather than the ground it is fought on. The bottom is the one exception and
-                -- takes its article, because it is a thing rather than a place.
-                desc = last
-                    and ("Below this there are no more circles. " .. below ..
-                        " is waiting, and beating it ends the descent with everything you are carrying.")
-                    or ("The next floor is " .. below .. ". Everything you carry stays at stake."),
-                -- The same amber the turn-back prompt gives "Keep going": pressing on with the haul
-                -- still unbanked. Note the landing INVERTS that prompt's morals -- there, walking out
-                -- was the empty-handed answer; here it is the one that pays -- so the colours are
-                -- assigned by what the option does to your stake, never by which one continues.
-                accent = { 0.83, 0.73, 0.45 },
-                cb = function()
-                    game.activePanel = nil
-                    Descent.advance(run)
-                    State.switch(require("states.game"),
-                        Descent.floorQuest(run, game.player), game.day, game.player)
-                end,
-            },
-            {
-                label = "Climb out",
-                desc = carried and ("Walk out with " .. carried .. " and end the descent.")
-                    or "End the descent and go back up.",
-                accent = { 0.42, 0.80, 0.62 }, -- green: the answer that ends the run on your terms
-                cb = function()
-                    game.activePanel = nil
-                    -- THE EXTRACTION. Dropping the run drops the rollback point with it, so the floors
-                    -- below stop being able to take the haul back. What it no longer does is BANK: there
-                    -- is nothing on the other side of a descent to bank into, and the company that
-                    -- carried it out does not outlive the run either. See Descent.extract on what that
-                    -- changed and why the landing's question is still a real one without it.
-                    local out = Descent.extract(game.player, run)
-                    clearRun()
-                    endDescent("extracted", out)
-                end,
-            },
-        },
+    -- WHAT THE GENERAL WAS CARRYING. Slated off the circle just beaten rather than the one below, so the
+    -- boon belongs to the fight that earned it: Relic.slate already leans a shelf toward a named sin, and
+    -- this is the same call the reliquary makes with the same contrast rule (a Vice against two Virtues
+    -- where the shelf allows).
+    --
+    -- PINNED TO THE RUN, exactly as the reliquary's slate is pinned to its cell and for the same reason
+    -- plus one. The reason: a landing re-opened must not deal three different relics. The extra: a run
+    -- saves at the landing, and `pending` aside this is the only place a run holds a decision that has
+    -- not been made yet -- so it rides in the snapshot as what it is, a list of ids.
+    --
+    -- ONLY A GENERAL CARRIES ONE. A circle owns a stratum of floors and she stands on the last of them
+    -- (models/descent.lua's isGeneralFloor); the floors above hers are held by her honour guard. Paying
+    -- a boon at every stair would hand out fifteen relics down a fifteen-floor descent, against a shelf
+    -- of nineteen -- so the slate would be bare by the fourth circle and the reliquaries on the boards
+    -- would have nothing left to offer either. Seven boons, one per general, keeps them scarce and
+    -- keeps her floor the thing the stratum was walking toward.
+    local wasGeneral = Descent.isGeneralFloor(Descent.depth(run))
+    local beaten = Descent.sinAt(run, Descent.depth(run))
+    if wasGeneral and not run.landing then
+        run.landing = Relic.slate({
+            day = game.day,
+            sin = beaten and beaten.id,
+            exclude = game.relicState,
+        }, 3)
+    end
+
+    -- THE WAY DOWN, OPENED. Done here rather than on the panel's buttons so the board is already changed
+    -- before anything is drawn over it: a player who quits with the boon still on screen comes back to a
+    -- floor whose stair is standing open, and the resume has only the undealt card left to re-open.
+    -- What the naming below then says about the circle underneath belongs to the stair, and is said
+    -- there -- at the moment the player commits to the step rather than at the moment they cannot.
+    game:openStairDown(cell)
+
+    -- The pinned slate can go stale the same way the reliquary's can: a relic on it may have been taken
+    -- at a Sin's Altar or won at a Crossroads between the save and the resume. Drop what the run already
+    -- holds rather than dealing a card that does nothing when pressed.
+    local offer = {}
+    for _, id in ipairs(run.landing or {}) do
+        if not Relic.has(game.relicState, id) then
+            offer[#offer + 1] = { id = id, info = Relic.info(id) }
+        end
+    end
+
+    -- Back to the floor, with or without the boon. One function because the two buttons differ only in
+    -- what they take on the way -- and neither of them goes anywhere any more.
+    local function backToFloor()
+        game.activePanel = nil
+        run.landing = nil -- the decision is made; nothing to re-deal on a resume
+        saveRun()          -- ...and the stair the board now carries, which is the state worth losing least
+    end
+
+    -- A bare shelf (the run already holds everything eligible) is not a panel worth opening -- there is
+    -- nothing to choose between and the only button would be the one that dismisses it. The toast the
+    -- stair pushed has already said the thing this panel would have said.
+    if #offer == 0 then backToFloor() return end
+
+    game.activePanel = RelicOffer.new({
+        title = (wasGeneral and beaten) and (beaten.name .. " is beaten.") or "The stair is clear.",
+        prompt = "The way down is open behind her, and she was carrying this.",
+        offer = offer,
+        -- The refusal is a refusal now and says so. It used to read "Go down", because both buttons did.
+        leaveLabel = "Take nothing",
+        closeable = false,
+        onTake = function(entry)
+            Relic.grant(game.relicState, entry.id)
+            game:pushToast("Taken from the body: " .. (Relic.info(entry.id).name or entry.id))
+            backToFloor()
+        end,
+        onLeave = backToFloor,
     })
+end
+
+-- OPENING THE STAIR: the tile the guardian was holding stops being the floor's objective and becomes
+-- the way down (models/descent.lua's Descent.openStair, which is where the argument for this lives).
+--
+-- Two things happen here that the model half cannot do, because both are about the SCREEN:
+--
+--   the token steps back off it. The company is standing on the ground it just fought for, and a stop
+--     is only ever entered by ARRIVING at it (ui/overworld_map.lua) -- so a stair left underfoot would
+--     be one the player had to walk away from before it could be used, which is exactly the shape of a
+--     thing that reads as broken. Stepping back one tile, the way a tutorial retry does
+--     (OverworldMap:retreatFromEncounter), puts it in front of them instead.
+--   it is said out loud. Without a line the whole change is one marker swapping shape on the tile the
+--     party is standing on, which is the least visible square on the board to put news in.
+function game:openStairDown(cell)
+    if not Descent.openStair(cell) then return end
+    if game.map and game.map.retreatFromEncounter then game.map:retreatFromEncounter() end
+    game:pushToast("The way down is open")
 end
 
 -- ---------------------------------------------------------------------------
@@ -616,7 +735,7 @@ end
 -- every point the board changes -- entering the map, approaching an encounter, and resolving one. The
 -- resolution saves matter: a treasure collected or an event resolved marks its cell cleared, and without
 -- persisting that a resume would replay the stop and grant its spoils twice (a combat win already saves).
-local function saveRun()
+function saveRun()
     if game.player and game.player.activeRun then
         Player.save()
         -- Every seam that changes what the run is carrying already passes through here -- a collected
@@ -656,6 +775,24 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- carries the run itself, which is what makes one expedition out of a stack of floors: the same table
     -- travels from floor to floor, so the rollback point taken at the top survives all of them.
     game.descent = quest and quest.descent or nil
+
+    -- A DESCENT'S CLOCK IS ITS DEPTH, and this line is load-bearing in a way that was invisible.
+    --
+    -- `day` is the campaign's difficulty dial: the enemy level, the loot band and -- the one that bites
+    -- here -- WHICH ENCOUNTER BLUEPRINTS ARE ELIGIBLE AT ALL (each carries a `minDay`). A descent
+    -- profile has no calendar, so Calendar.day fell through to 1 and every floor of a fifteen-floor
+    -- dungeon drew from the day-one pool. Measured: the floor seated two or three fights where its own
+    -- combat share allows twelve, because almost nothing was eligible to seat and the rest of the stops
+    -- were re-seated as texture. The board looked like a pacing decision and was a gate.
+    --
+    -- So depth IS the day, scaled onto the campaign's forty so the two ladders speak the same units:
+    -- floor one reads shallow, the Hollow Crown reads like the last week of the calendar. The enemy
+    -- LEVEL still comes off `floorLevel` and is untouched by this -- that ladder was already right; what
+    -- was missing was permission for the deep blueprints to appear.
+    if game.descent then
+        game.day = (resume and resume.day)
+            or math.max(1, math.floor(Descent.depth(game.descent) / Descent.FLOORS * Calendar.DAYS))
+    end
     local mp = quest and quest.map or {}
     -- Which house's stock this run pays out in: the quest's SPONSOR, not the party's needs. That is the
     -- whole point -- running the Bastion's line yields Bastion stock, which the Arcanum's gear will want
@@ -701,6 +838,17 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- widget below; the encounter pool / always list above is built but unused (harmless).
     if resume then
         game.grid = resume.grid
+    elseif game.descent and Descent.floorBoard(game.descent, Descent.depth(game.descent)) then
+        -- A FLOOR THIS COMPANY HAS ALREADY WALKED. Wizardry's levels are the same maze every time, which
+        -- is the entire reason mapping one is worth doing -- a secret door found on the third trip is
+        -- something you found rather than something that was rolled. So a descent keeps its boards
+        -- (Descent.keepFloor) and re-enters the one it made, fog and cleared stops and all, rather than
+        -- rolling a new one over the top of the player's own map.
+        game.grid = Overworld.fromSnapshot(Descent.floorBoard(game.descent, Descent.depth(game.descent)))
+        -- ...and its inhabitants are back. The maze is permanent and the monsters are not
+        -- (Descent.rearmFloor) -- so a floor you finished is not an empty corridor next time, and the
+        -- walk back down to a dropped pack costs what walking down cost the first time.
+        Descent.rearmFloor(game.grid)
     elseif mp.layout then
         game.grid = Overworld.fromLayout({
             layout = mp.layout,
@@ -735,6 +883,34 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
             -- ...and raises the share cap to match. Absent (every campaign leg) the generator keeps
             -- its own 0.6.
             combatShare = mp.combatShare,
+            -- Which texture kinds the board is guaranteed to hold whatever the draw does. Absent (every
+            -- campaign leg) the generator keeps its own default of a reliquary and a rest; a descent
+            -- floor names that pair plus a recruit stop while the company has room (Descent.floorQuest).
+            guaranteeKinds = mp.guaranteeKinds,
+            -- ...and HOW MANY of each, which is a separate question from which. Absent (every campaign
+            -- leg) the generator keeps its own per-kind density; a descent floor pins its camps to a flat
+            -- one, because a floor is one segment of a fifteen-floor run and cannot read the run's length
+            -- off its own stop count (Descent.FLOOR_RESTS).
+            guarantee = mp.guarantee,
+            -- A descent floor is an ascent by placement and NOT a climb by design, so it opts back in
+            -- to guarded rewards (models/overworld.lua's guardBoons).
+            guardBoons = mp.guardBoons,
+            -- THE WAY BACK UP, on the tile the party walks in on. A descent floor only: a campaign quest
+            -- is left for free by pressing Back, so a tile offering an exit would be offering nothing.
+            exitAtStart = mp.exitAtStart,
+            -- WHICH CARVE, and how tight. Absent (every campaign leg) the biome names its own layout and
+            -- its own corridor spacing, which is what a GROUND wants. A descent floor overrides both --
+            -- see models/layouts/dungeon.lua for the measurement that says spacing, not size, is what
+            -- turns a rectangle into a dungeon.
+            --
+            -- `mp.carve` rather than `mp.layout`, because that name is already taken one branch up for
+            -- an AUTHORED ascii map (Overworld.fromLayout) and the two are different things entirely.
+            layout = mp.carve,
+            spacing = mp.spacing,
+            -- Doors that read as wall until somebody walks the dead end beside them
+            -- (models/overworld.lua's placeSecrets). A descent floor only: a campaign ground is walked
+            -- once and left, so ground the player never finds is content that was never made.
+            secrets = mp.secrets,
             alwaysEncounters = always,
             -- A climb rather than a region: guaranteed encounters laid out in authored order by distance
             -- from the start, and the objective on the farthest dead-end there is. See
@@ -786,6 +962,28 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
         onArrive = function(cell, revealed)
             fireAbility("step", { cell = cell, revealed = revealed })
             fireRelics("step", { cell = cell, revealed = revealed })
+            -- A DOOR IS FOUND BY BEING BESIDE IT. Wizardry makes you stand at a wall and press Search,
+            -- and the turns are the cost; there is no turn economy on this board to spend, so the cost
+            -- is having WALKED there -- down a dead end that looked like it ended. A company that never
+            -- goes down the spur never finds it, which makes exploring the reward rather than a roll,
+            -- and stops searching becoming a chore performed against every wall.
+            local door = game.grid:findSecrets(cell.x, cell.y, 1)
+            if door then
+                game.grid:reveal(cell.x, cell.y, game.map.visionRadius)
+                game:pushToast("The wall gives. There is a way through here.")
+                saveRun()
+            end
+            -- The Dark burns down in STEPS, here, because this is the one callback that fires on a
+            -- landed tile and on nothing else. It is what the hazard is measured in: ground covered
+            -- blind, rather than seconds a player might have spent reading a tooltip.
+            if (game.darkFor or 0) > 0 then
+                game.darkFor = game.darkFor - 1
+                if game.darkFor <= 0 then
+                    game.darkFor = nil
+                    game:pushToast("The lamp catches again.")
+                end
+                game:applyVision()
+            end
         end,
         -- A cache/key taken by walking over it: name it on screen (see announcePickup).
         onPickup = function(kind, payload) announcePickup(kind, payload) end,
@@ -920,7 +1118,18 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- into an encounter: the autosave is taken on approach (the map widget's onApproach), one tile shy of
     -- the stop, precisely so Continue hands the player an overworld to act in first. Nothing is auto-opened
     -- here; walking onto the (still-uncleared) tile engages it, exactly as it did the first time.
-    if resume then return end
+    --
+    -- THE ONE EXCEPTION IS THE LANDING, and it is not a stop -- it is the only screen in the game a
+    -- resume can land BEHIND. The boon a circle's guard was carrying is dealt once and lives nowhere but
+    -- that panel, so a player who quit while it was open would come back to a floor with a relic
+    -- undealt and nothing on the board that could ever deal it. `run.landing` is set for exactly that
+    -- window (game:openLanding) and cleared the moment the card is answered, so this re-opens the same
+    -- panel with the same three. The STAIR needs no such handling any more: it is a tile on the board
+    -- now (Descent.openStair), so it comes back in the snapshot with the rest of the ground.
+    if resume then
+        if game.descent and game.descent.landing then game:openLanding() end
+        return
+    end
 
     -- Last, once the map exists: a quest may open with a scene played OVER it. A conversation is a
     -- global overlay on a frozen state (main.lua), so the road, the markers and the fog sit there
@@ -1023,13 +1232,12 @@ function game:openEncounter(cell)
                 game.onComplete()
                 return
             end
-            -- A DESCENT floor's stair. The leg is over but the RUN is not: instead of paying out and
-            -- going home, the landing asks whether there is a next floor. Extraction still happens
-            -- through exactly one seam -- it has just moved from "the objective cleared" to "the player
-            -- said so" (game:openLanding -> clearRun). Placed above the board-quest payout rather than
-            -- inside it so a descent never touches Quest.complete, which has no floor to complete.
+            -- A DESCENT floor's stair. The leg is over but the RUN is not, and neither is the floor:
+            -- the landing credits the circle, deals what the guardian was carrying, and opens the way
+            -- down as a tile to walk back to. Placed above the board-quest payout rather than inside it
+            -- so a descent never touches Quest.complete, which has no floor to complete.
             if game.descent then
-                game:openLanding()
+                game:openLanding(cell)
                 return
             end
             -- A `meet` objective pays exactly as a fought one does -- the settle for a line's last
@@ -1076,8 +1284,22 @@ function game:openEncounter(cell)
             local frontRow = function() return front or deployed end
             fireAbility("battleStart", { cell = cell, party = deployed, frontRow = frontRow })
             local relicCtx = fireRelics("battleStart", { cell = cell, party = deployed, frontRow = frontRow })
+            -- WHAT A WOUNDED BODY FIGHTS UNDER, stamped at spawn beside the relics' own boons because
+            -- it is the same kind of thing: a status the unit ARRIVES wearing rather than one anything
+            -- on the board applied. Two sources, one seam -- so combat never learns what a wound is
+            -- (models/wound.lua's Wound.combatEffects).
+            --
+            -- Over the whole company for the same reason the relic traits are: a benched member has to
+            -- arrive already carrying it when they rotate on.
+            local boons = Relic.openingBoons(relicCtx)
+            for _, char in ipairs((game.player and game.player.roster) or {}) do
+                for _, effect in ipairs(Wound.combatEffects(game.player, char.id)) do
+                    boons[#boons + 1] = { char = char, id = effect.id, opts = effect.opts }
+                end
+            end
+
             return {
-                openingBoons = Relic.openingBoons(relicCtx),
+                openingBoons = boons,
                 -- Over the whole COMPANY, not just the deployed four: a party-scope relic is worn by
                 -- everyone who marched, and a benched member has to arrive already wearing it when they
                 -- rotate on. Only frontRow scope narrows, to the line actually put forward.
@@ -1223,6 +1445,7 @@ function game:openEncounter(cell)
                 -- The tutorial is exempt: its flight leg is authored to be lost bodies and all, and a
                 -- lesson that permanently scars the company before the hub exists is not a lesson.
                 if not game.tutorial then game:inflictWounds() end
+
                 -- The flight leg's Use lesson: the party walks off the survivors' defence wounded,
                 -- with a pocket of draughts from the teaching chest and nowhere to spend them, so the
                 -- button appears the moment that need does. Revealed on the leg's FIRST combat win --
@@ -1255,13 +1478,56 @@ function game:openEncounter(cell)
                     -- the skim below never doubles it.
                     if game.descent then
                         grantSideSpoils(spoils)
-                        -- THE BOTTOM. Clearing the last floor's objective is not another landing --
-                        -- there is nothing below it to be asked about. The run is WON, so it banks
-                        -- itself: extraction here rather than at a prompt, because the alternative is
-                        -- a player who beat the Hollow Crown and then had to press "climb out" to be
-                        -- allowed to keep it.
+
+                        -- BACK ONTO THE BOARD, and it has to be done by hand here for the same reason
+                        -- the won-road-fight branch below does it: the battle state is still current,
+                        -- frozen on its last frame, and returning to the map skips game.enter. Every
+                        -- exit from this branch except the two that leave the mode entirely now lands
+                        -- the player on the floor -- an errand paid, or a stair opened with a boon
+                        -- sitting over it -- so the restore is here, above the fork, rather than
+                        -- repeated down each arm and forgotten on one.
+                        require("models.sound").music("music.overworld")
+                        State.current = game
+                        game:refreshMuster() -- the fight was paid for in health and potions; re-rate
+
+                        -- AN ERRAND FINISHED. A floor carries the stair AND whatever a house asked for
+                        -- down here, each on its own end (models/descent.lua's floorObjectives), so the
+                        -- objective just cleared is only the stair if it says so. An errand's spec is
+                        -- stamped with the quest it belongs to; clearing it writes the shelf's own
+                        -- ledger, which is what opens the next rung of that house's stock
+                        -- (models/errand.lua, then Quest.sponsorProgress -> Vendor.stock).
+                        --
+                        -- Returns rather than falling through to the landing: a floor is not finished
+                        -- because a piece of side work on it is, and the stair is still standing.
+                        local errandId = objSpec and objSpec.questId
+                        if errandId and Errand.complete(game.player, errandId) then
+                            local def = require("models.quest").defs[errandId]
+                            -- Paid here rather than through Quest.complete, which is the campaign's
+                            -- payout seam and knows about days, standing and a board this mode does not
+                            -- have. What an errand owes is its purse and its goods.
+                            if def then
+                                if (def.rewardGold or 0) > 0 then
+                                    Player.addGold(game.player, def.rewardGold)
+                                end
+                                for _, itemId in ipairs(def.rewardItems or {}) do
+                                    Player.grantItem(game.player, itemId)
+                                end
+                                game:pushToast("Done for " ..
+                                    ((require("models.vendor").get(def.sponsor) or {}).name or "the house"))
+                                if def.outro then require("models.conversation").play(def.outro) end
+                            end
+                            Player.save()
+                            saveRun()
+                            return
+                        end
+
+                        -- THE BOTTOM, AND THE ONLY WIN THE MODE HAS. Clearing the last floor's
+                        -- objective is not another landing -- there is nothing below it to be asked
+                        -- about, and since the landing stopped offering an exit this is the one place a
+                        -- descent can end on the player's terms. Every other ending is a wipe or a
+                        -- walking away.
                         if game.quest and game.quest.endsDescent then
-                            local out = Descent.extract(game.player, game.descent)
+                            local out = Descent.account(game.player, game.descent)
                             if out then out.title = "The Crown Is Broken" end
                             clearRun()
                             -- The descent's own terminal, NOT the credits. Rolling the campaign's ending
@@ -1270,10 +1536,10 @@ function game:openEncounter(cell)
                             -- game. The credits still belong to the campaign's finale
                             -- (data/quests/quest_the_gate_below.lua), which is reached from the board and
                             -- has nothing to do with this stair.
-                            endDescent("extracted", out)
+                            endDescent("won", out)
                             return
                         end
-                        game:openLanding()
+                        game:openLanding(cell)
                         return
                     end
                     if game.player and spoils and (spoils.gold or 0) > 0 then
@@ -1462,16 +1728,63 @@ function game:openEncounter(cell)
             -- return to -- the prologue's flight leg (game.tutorial) has none yet, so there the panel
             -- shows Try Again alone.
             onLoss = (not game.tutorial) and function()
-                -- A DESCENT WIPE ENDS THE RUN, and there is nothing to put back. The rollback below
-                -- exists to hand a campaign company back the gear it marched in with; here the company
-                -- IS the run -- mustered at the gate, discarded with it -- so restoring it would be
-                -- rebuilding a table on its way to the bin. Wounds are not inflicted either: they outlive
-                -- a quest because the roster does, and this roster does not.
+                -- A DESCENT WIPE LEAVES THE COMPANY WHERE IT FELL, and does not end the descent.
+                --
+                -- IT USED TO END EVERYTHING -- the company, the floors, the file -- and that was right
+                -- while a run banked nothing and had nowhere to come back to. It has both now (the gate,
+                -- models/gate.lua), and the reference the mode is being built against answers a wipe the
+                -- same way it answers a single death: the bodies stay down there, you form a NEW party,
+                -- and you go and get them. That is the most famous thing about Wizardry and it costs
+                -- nothing to have, because the machinery is already here -- a body left on a floor is
+                -- exactly what game:buryLost writes, and this writes the whole party at once.
+                --
+                -- The rollback below is skipped: it exists to hand a campaign company back the gear it
+                -- marched in with, and this company is not coming back for its gear -- it is lying on
+                -- floor N wearing it, which is the point.
                 if game.descent then
-                    -- `floors` is where they were STANDING, not what they cleared: the account reads
-                    -- "went down on floor 4", and a company that dies on the fourth floor cleared three.
-                    endDescent("wiped", { floors = Descent.depth(game.descent),
-                                          circles = game.descent.standing })
+                    -- A WIPE DROPS THE PACK AND SENDS THE COMPANY HOME. Dark Souls' bloodstain: the
+                    -- bodies always come back -- they wake at the temple, whole and wounded -- and what
+                    -- stays on the floor is everything they were carrying.
+                    --
+                    -- It is the only thing standing between "climb out" and "die" being the same move.
+                    -- Levels, mapped floors and bound relics all survive a wipe; the kit and the haul do
+                    -- not, until somebody walks back down to the tile. Without it a company that died on
+                    -- floor nine would wake, walk back, and have lost nothing but the walk.
+                    --
+                    -- BOUND ITEMS STAY ON THEIR HOLDER, the one exception, and the same one Player.release
+                    -- makes: a bound item is a signature relic welded to its bearer by every other path in
+                    -- the game (never moved, stowed, sold or stolen), and a wipe is not the place to
+                    -- invent a way to part them.
+                    local floor = Descent.depth(game.descent)
+                    local dropped = {}
+                    for _, char in ipairs(game.player.roster or {}) do
+                        for cell = 1, Character.MAX_INVENTORY do
+                            local item = char.inventory and char.inventory[cell]
+                            if item and not Item.isBound(item) then
+                                dropped[#dropped + 1] = item
+                                char.inventory[cell] = nil
+                            end
+                        end
+                    end
+                    -- ...and the haul, which is the half that actually hurts: everything picked up since
+                    -- the company last saw daylight is in the stash, uncommitted.
+                    for _, item in ipairs(game.player.stash or {}) do dropped[#dropped + 1] = item end
+                    game.player.stash = {}
+
+                    Descent.dropPack(game.descent, floor,
+                        game.map and game.map.px, game.map and game.map.py, dropped)
+
+                    -- Everybody wakes up hurt. The wound is the other half of the cost and the only one
+                    -- that follows them out (models/wound.lua) -- so a wipe is a company that is poorer
+                    -- AND worse, which is what makes the second attempt on a floor a different fight.
+                    game:inflictWounds()
+
+                    Player.save()
+                    State.switch(require("states.gate"), {
+                        player = game.player,
+                        run = game.descent,
+                        wiped = floor,
+                    })
                     return
                 end
                 -- The one thing a wipe does NOT take back. Inflicted BEFORE the rollback, which is
@@ -1894,6 +2207,318 @@ function game:openEncounter(cell)
         return
     end
 
+    -- THE WAY BACK UP. The tile the party walked in on, and the only ending a descent has that costs
+    -- nothing (models/overworld.lua's placeExit).
+    --
+    -- THIS IS THE RETREAT, AND IT IS NOT THE EXTRACTION THAT WAS DELETED. That one was a button on the
+    -- landing: it ended a run, banked nothing, and read as the sensible answer, so the landing's whole
+    -- question was fake. This is a PLACE. You have to be standing on it, which means you have to have
+    -- walked back to it -- so how deep a company pushes is bounded by how far it is willing to be from
+    -- the way out, and the return trip is real ground it needs something left for. That bound is the
+    -- whole of Wizardry's pacing and it cannot be got from a menu.
+    --
+    -- AND IT BANKS, which the extraction never did. The company, its levels, its gear and its purse go
+    -- into the descent's own file and the next expedition picks them up where they stood -- same seed,
+    -- so the same seven circles in the same order, and the floor it climbed out of is the floor it goes
+    -- back down to. That is the persistence the mode used to refuse outright, and it is what makes the
+    -- distance to this tile worth measuring.
+    --
+    -- Three ways off a floor now, and they are properly different:
+    --   this tile     climb out. Keep the company and everything on it. Come back to this floor.
+    --   Esc           give up where you stand. The company is left down here (leaveQuest).
+    --   the stair     go deeper, having beaten the circle's general.
+    if kind == "ascent" then
+        local run = game.descent
+        if not run then cell.cleared = true; return end
+        local carried = game:haulPhrase()
+        local depth = Descent.depth(run)
+        game.activePanel = Choice.new({
+            title = "The Way Up",
+            prompt = carried
+                and ("The company is on floor " .. depth .. " carrying " .. carried ..
+                     ". Climb out and all of it comes with them.")
+                or ("The company is on floor " .. depth .. " and has found nothing yet."),
+            options = {
+                {
+                    label = "Climb out",
+                    desc = "The expedition ends here. The company keeps what it is carrying and comes " ..
+                        "back down to floor " .. depth .. ".",
+                    accent = { 0.72, 0.78, 0.86 },
+                    cb = function()
+                        game.activePanel = nil
+                        -- BANKING IS RE-BASELINING, not dropping the run. Everything found has been live
+                        -- on the company since it was picked up; what made it provisional is the entry
+                        -- snapshot a wipe rolls back to (wipeRun). Re-taking that snapshot here is the
+                        -- whole of the bank: the floors below can no longer reach anything the company
+                        -- climbed out with.
+                        --
+                        -- THE BOARD IS KEPT, and that is the Wizardry part. A floor cannot be rebuilt
+                        -- from its seed (Overworld:snapshot says why -- the stops are drawn in `pairs`
+                        -- order), so the only way to come back to the floor you left is to keep it. Which
+                        -- is the right answer anyway: the fog you lifted, the stops you cleared and the
+                        -- map you made are all still there next time, exactly as a Wizardry floor is the
+                        -- one you already walked.
+                        local entry = Save.snapshot(game.player)
+                        if game.player.activeRun then game.player.activeRun.entry = entry end
+                        run.entry = entry
+                        -- ...and the floor goes in the company's own map book on the way up.
+                        Descent.keepFloor(run, depth, game.grid:snapshot())
+                        Player.save() -- the company and its floor, to the descent's own file
+                        -- UP TO THE GATE, not to a terminal card. Climbing out is not the end of
+                        -- anything -- it is the other half of the loop, and there is a town at the top
+                        -- of the stair now (states/gate.lua). The card that reports how a run ENDED is
+                        -- still there for the three endings that are endings.
+                        State.switch(require("states.gate"), { player = game.player, run = run })
+                    end,
+                },
+                {
+                    label = "Stay down",
+                    desc = "The floor is not finished with.",
+                    accent = { 0.83, 0.73, 0.45 },
+                    cb = function() game.activePanel = nil end,
+                },
+            },
+            -- Backing out is staying down, which is a real answer -- unlike the landing, this tile is
+            -- one the party can simply walk off again. The cell is left uncleared to come back to.
+            onClose = function() game.activePanel = nil end,
+        })
+        return
+    end
+
+    -- THE WAY DOWN, and it is the way up's opposite number in every respect that matters: a tile, on
+    -- ground the company had to fight for, that answers every time it is stood on and never clears.
+    --
+    -- It exists because beating a floor's guardian used to BE the step down (models/descent.lua's
+    -- Descent.openStair). Now the fight only opens it, and everything still standing on the floor --
+    -- the reliquary, the caches, the recruit, a house's errand -- is between the player and this tile
+    -- for exactly as long as they want it to be. What the stair asks is the only question left: enough.
+    --
+    -- ONE-WAY, and the panel says so rather than implying it. The board is kept on the way through
+    -- (Descent.keepFloor), but nothing walks back UP a floor -- the only route to this ground again is
+    -- climbing out to the gate and coming back down -- so what is left here is left.
+    if kind == "stair" then
+        local run = game.descent
+        if not run then cell.cleared = true; return end
+        local depth = Descent.depth(run)
+        local below = Descent.nameOf(run, depth + 1)
+        -- Phrased so the place NAMES itself rather than being slotted after an article: a sin takes
+        -- none ("Below you is Wrath"). The bottom is the one exception and takes its article, because
+        -- it is a thing rather than a place -- and naming the Hollow Crown is the whole of the warning
+        -- a player gets before the last floor of the run. It is said HERE, on the step itself, rather
+        -- than on the boon card a floor earlier where there was nothing to do about it.
+        local last = Descent.isBottom(depth + 1)
+        game.activePanel = Choice.new({
+            title = "The Stair Down",
+            prompt = last
+                and ("There are no more circles. Below you is " .. below ..
+                     ", and beating it ends the descent.")
+                or ("Below you is " .. below .. "."),
+            options = {
+                {
+                    label = "Go down",
+                    desc = "Floor " .. (depth + 1) .. ". Whatever is still standing on this floor " ..
+                        "stays on it.",
+                    accent = { 0.83, 0.73, 0.45 },
+                    cb = function()
+                        game.activePanel = nil
+                        -- Put this floor away before stepping off it, so a company that climbs out and
+                        -- comes back finds the map it made rather than a fresh roll.
+                        Descent.keepFloor(run, depth, game.grid:snapshot())
+                        Descent.advance(run)
+                        State.switch(require("states.game"), Descent.floorQuest(run, game.player),
+                            game.day, game.player)
+                    end,
+                },
+                {
+                    label = "Not yet",
+                    desc = "The floor is not finished with.",
+                    accent = { 0.72, 0.78, 0.86 },
+                    cb = function() game.activePanel = nil end,
+                },
+            },
+            onClose = function() game.activePanel = nil end,
+        })
+        return
+    end
+
+    -- ---- THE FOUR HAZARDS (data/encounters/encounter_dark.lua and siblings) -------------------------
+    --
+    -- What makes a descent floor a place that lies to you rather than a route with fights on it. All
+    -- four resolve WITHOUT a panel and without a choice: a hazard you are asked to confirm is a door,
+    -- and the thing being borrowed here is the square that does it to you before you have finished
+    -- stepping. The toast is the whole of the telling.
+    --
+    -- Each marks its cell cleared, so a floor a company keeps (Descent.keepFloor) does not spring the
+    -- same hole twice -- which is the difference between a hazard and a wall.
+
+    -- THE DARK: vision to arm's length for a stretch of walking. Everything the board says at a distance
+    -- -- a fight's tier pips, a reward past its guard, the way up -- has to be walked into instead.
+    if kind == "dark" then
+        cell.cleared = true
+        game.darkFor = (game.darkFor or 0) + 30
+        game:pushToast("The lamp gutters. You can see a pace ahead.")
+        game:applyVision()
+        saveRun()
+        return
+    end
+
+    -- THE TURNING FLOOR: your place on your own map, taken. The ground around the company goes back
+    -- under the fog; everything learned about the REST of the floor is untouched, which is right --
+    -- what a spinner costs is bearings, not the map.
+    if kind == "spinner" then
+        cell.cleared = true
+        local r = 6
+        for y = cell.y - r, cell.y + r do
+            for x = cell.x - r, cell.x + r do
+                local c = game.grid:get(x, y)
+                -- The tile underfoot stays lit. A company that cannot see the square it is standing on
+                -- is not disoriented, it is stuck.
+                if c and not (x == cell.x and y == cell.y) then c.seen = false end
+            end
+        end
+        game:pushToast("The floor turns under you. Nothing here looks the way you left it.")
+        game:applyVision()
+        saveRun()
+        return
+    end
+
+    -- THE TRANSLATION: somewhere else on this floor, onto ground already walked. The cost is the walk
+    -- back, which on a warren this size is the largest bill the board can hand out for free.
+    if kind == "translation" then
+        cell.cleared = true
+        local seen = {}
+        for y = 1, game.grid.rows do
+            for x = 1, game.grid.cols do
+                local c = game.grid.cells[y][x]
+                -- Known ground, walkable, and not where they already are. Deliberately not fog: a party
+                -- dropped blind beside an unread fight is an ambush the board chose, and this mode
+                -- spends its cruelty on permanent death instead.
+                if c.seen and game.grid:typeWalkable(c.tile) and not c.encounter
+                    and (math.abs(x - cell.x) + math.abs(y - cell.y)) > 8 then
+                    seen[#seen + 1] = c
+                end
+            end
+        end
+        if #seen > 0 then
+            local to = seen[math.random(#seen)]
+            game.map.px, game.map.py = to.x, to.y
+            game.map.slidePrevX, game.map.slidePrevY = to.x, to.y
+            game.map:updateCamera()
+            game.map:snapCamera()
+            game:pushToast("You step, and the step lands somewhere else.")
+        else
+            -- Nowhere far enough that the company has seen. Nothing happens, and it says so rather than
+            -- reporting a translation that did not occur.
+            game:pushToast("The air pulls, and lets go.")
+        end
+        game:applyVision()
+        saveRun()
+        return
+    end
+
+    -- THE SINK: a floor deeper, at whatever health you were carrying, with the stair you skipped still
+    -- held. The circle is NOT credited and its boon is not paid -- falling past a general is not beating
+    -- one -- so a sink arrives deeper and poorer, which is the trap under the shortcut.
+    if kind == "sink" then
+        cell.cleared = true
+        local run = game.descent
+        if not run or Descent.isBottom(Descent.depth(run) + 1) then
+            -- Nothing under the bottom to fall into. A hole that could drop the company past the Hollow
+            -- Crown would end a run by accident.
+            game:pushToast("The floor gives, and holds.")
+            saveRun()
+            return
+        end
+        Descent.keepFloor(run, Descent.depth(run), game.grid:snapshot())
+        Descent.advance(run)
+        game:pushToast("The floor gives way.")
+        State.switch(require("states.game"), Descent.floorQuest(run, game.player), game.day, game.player)
+        return
+    end
+
+    -- WHAT YOU DROPPED. The other half of a wipe: the company wakes at the temple, and everything it was
+    -- carrying stays in a heap on the tile it fell on (the onLoss branch above). Walking back to it is
+    -- the whole of the cost, and picking it up is unconditional -- there is no decision here, only the
+    -- distance you already paid to be standing on it.
+    if kind == "pack" then
+        local drop = cell.encounter.drop
+        local items = drop and game.descent and Descent.takePack(game.descent, drop)
+        if items then
+            for _, item in ipairs(items) do Player.addToStash(game.player, item) end
+            game:pushToast("You take back what you dropped  (" .. #items ..
+                (#items == 1 and " item)" or " items)"))
+        end
+        cell.cleared = true
+        cell.encounter = nil
+        game:markBodies()
+        saveRun()
+        return
+    end
+
+    -- SOMEONE STILL STANDING: the stop where a descent's company grows. ONE body
+    -- (models/descent_recruit.lua), taken on or walked past -- met whole, with their face, their figures
+    -- and the kit they are carrying all readable (ui/panels/recruit.lua), rather than as one of three
+    -- stat lines on cards too narrow to say anything else.
+    --
+    -- Who is standing there is rolled ONCE and pinned to the cell, like the merchant's stock, so walking
+    -- off the tile and back onto it cannot reroll it. Walking on (X/Esc/the button) leaves the cell
+    -- uncleared to reconsider -- which is a real option, because the walk back is real ground and the
+    -- floor's stair does not wait.
+    if kind == "recruit" then
+        local enc = cell.encounter
+        -- Only a descent seats this stop, and only while the company has room. A company that filled up
+        -- between generation and arrival cannot happen today (nothing else recruits), but a stop that can
+        -- only refuse would be a walk for nothing, so it clears rather than opening on a dead offer.
+        if not Descent.hasRoom(game.player) then
+            cell.cleared = true
+            game:pushToast("Nobody here you have room for")
+            saveRun()
+            return
+        end
+        if not enc.offer then
+            -- Seeded off the run and the tile, so a resume re-rolls nothing and two stops on one floor
+            -- are not the same body.
+            --
+            -- The DEPTH decides who could be standing there at all: a hero is met on the floor whose
+            -- fights stand where the campaign would have unlocked their discipline (Recruit.floorFor),
+            -- so the first circle offers the plain subclasses and the multiclass heroes are a deep find.
+            local run = game.descent
+            enc.offer = Recruit.offer(((run and run.seed) or 0) + (cell.x or 0) * 31 + (cell.y or 0) * 7919,
+                game.player and game.player.roster, nil, Descent.depth(run))
+        end
+        -- The slate rides in the save and can outlive a blueprint that was renamed or removed, so the
+        -- first id that still names a body is the one standing here; if none does, nobody is.
+        local id, preview
+        for _, candidate in ipairs(enc.offer) do
+            preview = Recruit.preview(game.player, candidate)
+            if preview then id = candidate; break end
+        end
+        if not id then cell.cleared = true; saveRun(); return end
+        game.activePanel = RecruitPanel.new({
+            title = enc.name or "Someone Still Standing",
+            char = preview, -- the body that would join, at the level it would join at
+            prompt = "They will walk on with you. The company holds " .. Descent.PARTY_MAX ..
+                ", and stands " .. #((game.player and game.player.roster) or {}) .. " today.",
+            onAccept = function()
+                cell.cleared = true
+                Recruit.join(game.player, id)
+                game.activePanel = nil
+                game:pushToast((Recruit.nameOf(id) or id) .. " joins the company")
+                saveRun()
+            end,
+            -- The stop keeps until you come back -- AND the refusal is recorded. Whoever you walk past
+            -- turns up in the Hiring Hall when you are next in town (models/descent_recruit.lua's
+            -- Recruit.decline / hallSlate), which is what makes passing on somebody a decision you
+            -- meet again rather than a free one.
+            onDecline = function()
+                Recruit.decline(game.player, id)
+                game.activePanel = nil
+                saveRun()
+            end,
+        })
+        return
+    end
+
     game.activePanel = EncounterPanel.new({
         encounter = cell.encounter,
         onResolve = function()
@@ -1954,6 +2579,25 @@ end
 function game:restStudy()
     local grid = game.grid
     if not grid then return end
+    -- STUDYING THE GROUND FINDS ITS DOORS. This is what a Study is for and it had nothing to find until
+    -- there were secrets to find -- a whole board's worth at once, which is what makes the Rest's third
+    -- option worth taking over a heal on a floor the company has half-walked. Done first, so the reveal
+    -- passes below light the ground the doors just opened.
+    if grid.findSecrets then
+        local opened = 0
+        for y = 1, grid.rows do
+            for x = 1, grid.cols do
+                if grid.cells[y][x].secret then
+                    grid.cells[y][x].secret = nil
+                    opened = opened + 1
+                end
+            end
+        end
+        if opened > 0 then
+            game:pushToast(opened == 1 and "A door you had walked past."
+                or (opened .. " doors you had walked past."))
+        end
+    end
     if grid.objective then grid:reveal(grid.objective.x, grid.objective.y, 1) end
     for y = 1, grid.rows do
         for x = 1, grid.cols do
@@ -1974,11 +2618,13 @@ end
 local function toHub()
     -- WALKING AWAY FROM A DESCENT ends the run where it stands. Same reading as the wipe above: there is
     -- no company on the other side of this to hand anything back to, so there is nothing to roll back --
-    -- only a run to close and an account of it to give. It is still a real loss, and the landing's "climb
-    -- out" is still the exit that is not: leaving from the middle of a floor abandons what the floor was
-    -- worth, which is exactly what the prompt that reached here just named.
+    -- only a run to close and an account of it to give.
+    --
+    -- It is now the ONLY voluntary exit the mode has, and it is a giving up rather than a leaving with
+    -- something. The landing used to offer a second one that read as the sensible answer; it banked
+    -- nothing either, so all it ever did was let a player quit with better wording.
     if game.descent then
-        endDescent("left", { floors = (game.descent.cleared or 0), circles = game.descent.standing })
+        endDescent("left", Descent.account(game.player, game.descent))
         return
     end
     -- WALKING OUT IS FREE, and this is the line that says so. It used to void the run exactly as a
@@ -2005,26 +2651,32 @@ end
 -- it picked up and the only thing spent is the day -- so there is nothing to warn about and nothing to
 -- ask. It just leaves.
 --
--- A DESCENT still asks, and still means it: there is no city on the other side of a descent, so
--- climbing out early gives up the company as well as the haul (models/descent.lua). Two modes, two
--- rules, and the prompt exists for exactly one of them.
+-- A DESCENT still asks, and still means it: there is no city on the other side of a descent and no
+-- climbing out of one, so this is the only voluntary end the mode has and it is a giving up. Two modes,
+-- two rules, and the prompt exists for exactly one of them.
+--
+-- It used to be titled "Climb Out?" and to weigh the haul, back when the landing sold climbing out as
+-- the sensible answer. Neither is true now: what a run is for is the Hollow Crown, and stopping short of
+-- it costs the company and the floors alike, whatever is in the packs.
 local function leaveQuest()
     if not game.descent then toHub() return end
+    if not (game.player and game.player.activeRun) then toHub() return end
 
-    local lost = game:haulPhrase()
-    if not (game.player and game.player.activeRun and lost) then toHub() return end
-
+    local cleared = game.descent.cleared or 0
     game.activePanel = Choice.new({
-        title = "Climb Out?",
-        prompt = "Nothing you have found is yours until you climb out. Leave now and " .. lost ..
-            " stay where you found them, and the run ends here.",
+        title = "Give Up the Descent?",
+        prompt = cleared > 0
+            and ("The company is on floor " .. Descent.depth(game.descent) .. " and has beaten " ..
+                cleared .. (cleared == 1 and " circle. " or " circles. ") ..
+                "None of it counts for anything unless the Hollow Crown comes down.")
+            or "The company has not beaten a circle yet. There is nothing below but the way down.",
         options = {
             { label = "Keep going",
-              desc = "The stair is the only way out with any of it.",
+              desc = "The Crown is the only end this run has that is not this one.",
               accent = { 0.83, 0.73, 0.45 },
               cb = function() game.activePanel = nil end },
-            { label = "End the run",
-              desc = "The company is left at the gate. The descent counts for nothing.",
+            { label = "Give up",
+              desc = "The company is left where it stands and the run ends here.",
               accent = { 0.88, 0.45, 0.33 },
               cb = function() game.activePanel = nil; toHub() end },
         },

@@ -205,7 +205,12 @@ end
 -- The median is taken BEFORE the newcomer is on the roster, or they would be counted in the company
 -- they are being measured against -- which on a one-member company reads their own zero and hands a
 -- recruit joining a veteran avatar nothing at all.
-function Player.recruit(player, charId)
+--
+-- `step` is the XP curve the inherited experience is resolved against, and it exists because the descent
+-- levels on its own (Experience.DESCENT_STEP): the median comes off bodies that climbed the steeper
+-- ladder, so resolving it against the campaign's would hand a recruit more levels than the veterans it
+-- was measured against. Absent -- every campaign call site -- it is the campaign's, as it always was.
+function Player.recruit(player, charId, step)
     local Experience = require("models.experience")
     player.roster = player.roster or {}
     for _, char in ipairs(player.roster) do
@@ -215,7 +220,7 @@ function Player.recruit(player, charId)
     local char = Character.instantiate(charId)
     char.xp = joining
     player.roster[#player.roster + 1] = char
-    Experience.resolve(char)
+    Experience.resolve(char, step)
     -- Announce the newcomer in the next conversation to play: "[<name> has joined your Party]" folded
     -- onto the end of that scene (models/conversation.lua). Required lazily so this stays the low-level
     -- model it is -- the queue is display-only data, and a scene always follows a recruit.
@@ -240,8 +245,15 @@ end
 -- gone: `lastDeployed` (the deployment phase's opening pick) and `wounds`. `completedQuests` is
 -- deliberately untouched -- her recruit quest still happened.
 --
+-- `opts.withKit` LEAVES THE GEAR ON THE BODY, and it exists for the one caller that is not a departure:
+-- a descent's dead (states/game.lua's buryLost). A companion who walks out is somewhere, and handing
+-- back the company's gear on the way is what an honest one does. A body whose downed window ran out is
+-- lying on a floor of the descent with its pack still on, and a run that got its Mailpiercer back off
+-- the corpse it could not reach in time would be a run where the countdown cost a seat and nothing
+-- else. What makes the window worth sprinting into is that the kit is down there with them.
+--
 -- Returns true if she was there to lose. Persistence is the caller's call, like Player.recruit.
-function Player.release(player, charId)
+function Player.release(player, charId, opts)
     if not (player and charId) then return false end
 
     local index
@@ -254,11 +266,13 @@ function Player.release(player, charId)
 
     -- Indexed 1..MAX_INVENTORY, never `pairs`: the grid is a SPARSE array (any cell may be nil) and
     -- models/character.lua says so at the top of the file -- pairs would skip past a hole and stop.
-    for cell = 1, Character.MAX_INVENTORY do
-        local item = char.inventory and char.inventory[cell]
-        if item and not Item.isBound(item) then
-            Player.addToStash(player, item)
-            char.inventory[cell] = nil
+    if not (opts and opts.withKit) then
+        for cell = 1, Character.MAX_INVENTORY do
+            local item = char.inventory and char.inventory[cell]
+            if item and not Item.isBound(item) then
+                Player.addToStash(player, item)
+                char.inventory[cell] = nil
+            end
         end
     end
 
@@ -327,10 +341,21 @@ function Player.new()
         -- extraction, added to the completed-quest count by Quest.sponsorProgress. The shelf, the
         -- forge's ceiling and the ability bench all open on the sum.
         standing = {},
-        -- The deepest floor ever reached and walked out of. The ONLY thing that levels the company
-        -- now (Descent.extract) -- a record cannot be re-earned without going further, which is what
-        -- makes it unfarmable in a way a per-run payout never is.
+        -- The deepest floor ever reached. INERT: it was the descent's depth record back when a descent
+        -- banked into the campaign save, and it levelled the company off the record rather than off a
+        -- per-run payout so that it could not be farmed. A descent banks nothing now and levels body by
+        -- body in the fighting (models/experience.lua), so nothing writes this and nothing reads it. The
+        -- field stays because Save.snapshot writes the whole shape and an older save still carries one.
         deepest = 0,
+        -- THE DESCENT THIS COMPANY IS IN THE MIDDLE OF: the floor stack, the shuffled circles, the maps
+        -- it has made and whatever it dropped down there (models/descent.lua's Descent.new). Nil until
+        -- the sponsor at the gate sends them down for the first time.
+        --
+        -- On the PLAYER because there is one company and one save now. It used to be a throwaway profile
+        -- in a file of its own, back when the descent was a separate mode that banked nothing; the
+        -- prologue's avatar and her sworn knight walk into the city and down the stair, so the run is
+        -- something this player owns like its gold and its roster.
+        descentRun = nil,
         -- What each body is still carrying from a fight it went down in, as { [charId] = count }
         -- (models/wound.lua). Caps the hub's free heal until somebody pays to set it, and is the one
         -- thing a wipe does not roll back.
@@ -559,6 +584,11 @@ end
 -- leaves the party whole, and this is why models/save.lua need not persist current resources.
 function Player.restore(player)
     local Wound = require("models.wound")
+    -- The reserve, re-stamped onto the bodies before anything reads a ceiling. A save/load rebuilds
+    -- every roster member from its blueprint, so `char.woundShare` has to be written back from the
+    -- player's ledger somewhere -- and this function already runs at every point a company is made
+    -- whole, which is exactly the set of moments the stamp can be stale at. See Wound.stamp.
+    Wound.stamp(player)
     for _, char in ipairs(player.roster or {}) do
         -- A WOUND IS A CAP ON THIS REFILL, and this is the only seam it has (models/wound.lua). The
         -- hub still heals for free; a body that came out of a fight on its back is topped up to less

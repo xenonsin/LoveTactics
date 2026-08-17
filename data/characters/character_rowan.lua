@@ -82,6 +82,11 @@ return {
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so
     -- its range shows, and driving the basic click-to-use. The player can re-pin any ability.
     defaultAction = "weapon_iron_mace",
+    -- THE TWO ITEMS THAT ARE THIS UNIT, named for the same reason every hall hero names them: a base
+    -- class is met on a floor like any other body now (models/descent_recruit.lua), and this is the
+    -- pair its card is written from.
+    signatureWeapon  = "weapon_iron_mace",
+    signatureAbility = "armor_sworn_aegis",
     -- Basic tactics (models/ai.lua): the wall still knows a kill when it sees one -- under auto-battle
     -- she turns the mace on the foe already closest to falling, and shoves it where the shove helps.
     -- From the ground she is holding, though: the `defensive` posture leashes her stand tiles to the

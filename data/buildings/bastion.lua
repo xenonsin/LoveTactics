@@ -1,12 +1,15 @@
 return {
     name = "The Bastion",
-    order = 6,
-    x = 350,
-    y = 340,
+    order = 11,
+    x = 660,
+    y = 416,
     w = 270,
-    h = 140,
+    h = 130,
     panel = "shop",
     vendor = "bastion", -- knight class
+    -- OPENS WHEN ITS CIRCLE FALLS (models/building.lua). This house IS one of the seven sins, and
+    -- putting that circle's general down in the descent is what puts its shelf in the city.
+    unlockCircle = true,
     unlockPrestige = 2,
     -- Prestige 2 alone put this door up the moment the debut paid out, which is one quest into the
     -- game: the tutorial handed the player a city of six shops before they had run anything. The

@@ -18,6 +18,12 @@ Choice.__index = Choice
 
 local BOX_W = 500
 local PAD = 26
+-- A card's height, and the reason it is a default rather than a constant. 70 holds a label and ONE line of
+-- description, which is what a dilemma's options are (models/crossroads.lua) -- a second line lands with
+-- its descenders across the card's bottom border. A caller whose rows have more to say than that passes
+-- `optionHeight` and gets the room instead of writing shorter, less useful rows: the descent's recruit
+-- stop describes a body in two lines (states/game.lua), because what a body is worth is what it can take
+-- and what it fights with, and neither half is decoration.
 local OPT_H = 70
 local OPT_GAP = 12
 
@@ -50,15 +56,16 @@ function Choice.new(opts)
         self.promptH = math.max(1, #lines) * self.promptFont:getHeight() + 12
     end
     self.optTop = 58 + self.promptH
-    self.boxH = self.optTop + #self.options * (OPT_H + OPT_GAP) + 22
+    self.optH = opts.optionHeight or OPT_H
+    self.boxH = self.optTop + #self.options * (self.optH + OPT_GAP) + 22
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
     self.boxY = Scale.HEIGHT / 2 - self.boxH / 2
     self.closeButton = CloseButton.new(self.boxX + BOX_W, self.boxY)
 
     for i, o in ipairs(self.options) do
         o.rect = {
-            x = self.boxX + PAD, y = self.boxY + self.optTop + (i - 1) * (OPT_H + OPT_GAP),
-            w = BOX_W - PAD * 2, h = OPT_H,
+            x = self.boxX + PAD, y = self.boxY + self.optTop + (i - 1) * (self.optH + OPT_GAP),
+            w = BOX_W - PAD * 2, h = self.optH,
         }
         o.accent = o.accent or ACCENTS[(i - 1) % #ACCENTS + 1]
     end

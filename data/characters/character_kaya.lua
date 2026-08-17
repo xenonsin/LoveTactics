@@ -47,6 +47,11 @@ return {
         false,                 false,                   false,
     },
     defaultAction = "weapon_iron_longbow",
+    -- THE TWO ITEMS THAT ARE THIS UNIT, named for the same reason every hall hero names them: a base
+    -- class is met on a floor like any other body now (models/descent_recruit.lua), and this is the
+    -- pair its card is written from.
+    signatureWeapon  = "weapon_iron_longbow",
+    signatureAbility = "utility_wolfsong_horn",
     ai = {
         -- Basic tactics (models/ai.lua): loose the bow at whatever is in reach; the horn and wolf carry
         -- her control themselves.

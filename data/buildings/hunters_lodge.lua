@@ -1,12 +1,15 @@
 return {
     name = "Hunter's Lodge",
-    order = 5,
-    x = 40,
-    y = 340,
+    order = 12,
+    x = 970,
+    y = 416,
     w = 270,
-    h = 140,
+    h = 130,
     panel = "shop",
     vendor = "hunters_lodge", -- hunter class
+    -- OPENS WHEN ITS CIRCLE FALLS (models/building.lua). This house IS one of the seven sins, and
+    -- putting that circle's general down in the descent is what puts its shelf in the city.
+    unlockCircle = true,
     unlockPrestige = 2,
     -- Same gate as the Bastion and the Cathedral, and for the same reason: prestige 2 is one quest
     -- into the campaign, so this door was arriving with the debut's payout. It waits on the padded

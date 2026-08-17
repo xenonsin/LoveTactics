@@ -15,7 +15,7 @@
 --
 -- This card spent a while as "The Gate", the descent's between-run screen, with the board demoted to a
 -- nested panel it opened. The descent is a separate game mode now -- chosen at the title screen, run on
--- a company drafted at its mouth, banking nothing into a save (states/descent.lua) -- so the city is the
+-- a company raised on its own floors, banking nothing into a save (states/descent.lua) -- so the city is the
 -- campaign's town alone again and this corner is the board it always was.
 return {
     name = "Quest Board",

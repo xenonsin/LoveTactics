@@ -46,7 +46,7 @@ return {
                 assert(list[i - 1].order <= list[i].order,
                     "list not sorted at index " .. i)
             end
-            assert(list[1].id == "quest_board", "quest_board should sort first")
+            assert(list[1].id == "the_gate", "the Gate should sort first: it is the city's front door")
         end,
     },
     {
@@ -89,78 +89,78 @@ return {
         end,
     },
     {
-        -- THE OPENING FUNNEL IS TWO QUESTS WIDE. Finishing the debut pays a prestige, and prestige 2
-        -- used to be the whole gate on three shops -- so one quest into the campaign the player was
-        -- handed the Cathedral, the Bastion and the Lodge at once, before they had run anything. All
-        -- three now wait on the padded card as well (data/buildings/cathedral.lua and its neighbours).
-        -- Everything at prestige 3 and up is untouched on purpose; this pins the two-quest funnel and
-        -- nothing beyond it, so a later re-tier of the upper doors does not have to argue with it.
-        name = "the debut alone opens no house; the padded card opens three",
+        -- A HOUSE OPENS WHEN ITS CIRCLE FALLS, and this replaced the campaign's two-quest opening
+        -- funnel. Those seven doors were gated on `unlockPrestige` and an `unlockQuest`, both reading
+        -- the completed-quest count -- which is parked at zero forever now that the board is retired, so
+        -- as written they were seven cards that could never open.
+        --
+        -- What they open on instead is the thing the mode already counts: each house IS one of the seven
+        -- sins (models/descent.lua's SINS carries the join), so putting a circle's general down credits
+        -- `player.standing[vendorId]` and the shelf appears in the city. That is what makes the city grow
+        -- as the company goes deeper, and what brings most of the game's economy back online.
+        --
+        -- The QUEST GATE IS IGNORED for these rather than satisfied, which is the half worth pinning:
+        -- honouring an `unlockQuest` naming a quest nobody can finish would keep the door shut whatever
+        -- the player did underground.
+        name = "each of the seven houses opens on its own circle, and on nothing else",
         fn = function()
-            local FUNNELLED = { "cathedral", "bastion", "hunters_lodge" }
+            local Descent = require("models.descent")
 
-            local function lockedIn(ctx, id)
-                for _, b in ipairs(Building.list(ctx)) do
-                    if b.id == id then return b.locked end
+            local function findIn(list, id)
+                for _, b in ipairs(list) do if b.id == id then return b end end
+            end
+
+            for _, sin in ipairs(Descent.SINS) do
+                local def = Building.defs[sin.vendor]
+                assert(def, sin.id .. "'s house has no building: " .. tostring(sin.vendor))
+                assert(def.unlockCircle, sin.vendor .. " is not gated on its circle")
+
+                -- Shut with nothing beaten, however decorated the company is otherwise. Standing 20
+                -- would have opened every prestige gate in the city.
+                local cold = { completedQuests = standingOf(20) }
+                assert(findIn(Building.list(cold), sin.vendor).locked,
+                    sin.vendor .. " opened without its circle being beaten")
+
+                -- ...and open the moment that circle is credited, and only that one.
+                local warm = { completedQuests = standingOf(1), standing = { [sin.vendor] = 1 } }
+                assert(not findIn(Building.list(warm), sin.vendor).locked,
+                    sin.vendor .. " stayed shut with its circle beaten")
+                for _, other in ipairs(Descent.SINS) do
+                    if other.vendor ~= sin.vendor then
+                        assert(findIn(Building.list(warm), other.vendor).locked,
+                            "beating " .. sin.id .. " opened " .. other.vendor .. " as well")
+                    end
                 end
-                error("no such building listed: " .. id)
             end
-
-            -- The state the player is actually in after the debut: one quest done, so standing 2.
-            -- Standing is DERIVED from the ledger now, so these fixtures state the ledger and let the
-            -- count fall out of it rather than asserting the two agree.
-            local afterDebut = { completedQuests = standingOf(2, "quest_colosseum_slot_01") }
-            for _, id in ipairs(FUNNELLED) do
-                assert(lockedIn(afterDebut, id),
-                    id .. " should still be shut one quest into the campaign")
-            end
-
-            local afterCard = { completedQuests = standingOf(3,
-                "quest_colosseum_slot_01", "quest_colosseum_slot_02") }
-            for _, id in ipairs(FUNNELLED) do
-                assert(not lockedIn(afterCard, id), id .. " should open on the padded card")
-            end
-
-            -- THE QUEST HALF STILL BITES ON ITS OWN: standing far past the door's threshold, the card
-            -- unplayed, and the Bastion stays shut.
-            local standingOnly = { completedQuests = standingOf(20) }
-            assert(lockedIn(standingOnly, "bastion"),
-                "no amount of standing should open a door a story is supposed to open")
-
-            -- THE STANDING HALF NO LONGER CAN, and that is a real consequence of standing becoming the
-            -- quest count rather than a number a save holds independently. This case used to assert the
-            -- opposite -- two quests done at prestige 1 -- which was a state a player could be in when
-            -- the two gates read different sources and is now unreachable by construction: finishing
-            -- the padded card IS two quests, so it necessarily carries standing 3, past the Bastion's
-            -- threshold of 2. The door's two gates are no longer independent, so the AND is only doing
-            -- one gate's work here. That is worth knowing rather than papering over: if the funnel is
-            -- ever meant to bite in both directions again, the door needs a threshold ABOVE the quest
-            -- count its own `unlockQuest` implies.
-            local Building2 = require("models.building")
-            local afterCardStanding = 3 -- slot_01 + slot_02
-            assert(afterCardStanding >= (Building2.defs.bastion.unlockPrestige or 1),
-                "fixture check: the padded card already clears the Bastion's standing threshold, which "
-                .. "is why the standing half cannot be tested in isolation any more")
         end,
     },
     {
-        -- THE CITY IS THE CAMPAIGN'S TOWN AND NOTHING ELSE'S. The Draft Yard and the Gate both stood
-        -- here once, and both were doors onto modes that share none of the campaign's progression --
-        -- which made the town read as the place all three lived. Every card is a campaign door now, so
-        -- no building names a `state` and the hub has no branch for one (states/hub.lua): a card that
-        -- somehow carried one would open nothing at all.
-        name = "every door in the city is a campaign door, and opens a panel",
+        -- THE CITY HAS ONE DOOR AND IT GOES DOWN. The prologue ends at the capital, the guard points
+        -- the party at the Adventurers' Guild, and a sponsor gets to them first
+        -- (conversation_prologue_sponsor) -- so the Quest Board is retired and the Gate stands in its
+        -- slot. This case is the inverse of the one it replaced, which asserted that no building could
+        -- ever name a `state`.
+        --
+        -- RETIRED, NOT DELETED, and that distinction is what the second half pins: the board's
+        -- blueprint, every quest, the calendar and the biome windows are all still on disk and
+        -- untouched. Bringing the campaign back is removing one entry from Building.RETIRED, and this
+        -- fails loudly if somebody ever "tidies up" by deleting the data instead.
+        name = "the city's front door is the Gate, and the board is parked rather than cut",
         fn = function()
-            local board
+            local gate, board
             for _, b in ipairs(Building.list(1)) do
-                assert(b.state == nil,
-                    b.id .. " names a state, but the hub only opens panels now")
+                if b.id == "the_gate" then gate = b end
                 if b.id == "quest_board" then board = b end
             end
-            assert(board, "the Quest Board is the first card in the city")
-            assert(board.panel == "quest_board",
-                "the board's card opens the board -- it was the descent's Gate for a while")
-            assert(not board.locked, "and the campaign's front door is never gated")
+            assert(gate, "the Gate is a card in the city")
+            assert(gate.state == "gate", "and it opens a whole screen rather than a pop-up")
+            assert(not gate.locked, "the city's only door is never gated")
+            assert(board == nil, "the Quest Board is retired from the city")
+
+            -- ...but still entirely there, which is the whole point of parking it.
+            assert(Building.defs.quest_board, "the board's blueprint must survive being retired")
+            assert(Building.RETIRED.quest_board, "and it is the retirement that hides it, not a deletion")
+            assert(next(Quest.defs) ~= nil, "the campaign's quests are still on disk")
             assert(Building.defs.draft_yard == nil, "the Draft Yard left the city with Draft")
         end,
     },

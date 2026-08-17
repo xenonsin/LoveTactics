@@ -3,11 +3,11 @@
 -- already own (no `vendor` field, so the Party panel shows the Stash rather than a Store).
 return {
     name = "Armory",
-    order = 2,
-    x = 350,
-    y = 150,
+    order = 5,
+    x = 40,
+    y = 268,
     w = 270,
-    h = 140,
+    h = 130,
     panel = "party",
     unlockPrestige = 1,
 }

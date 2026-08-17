@@ -55,6 +55,11 @@ return {
         false,                  false,                          false,
     },
     defaultAction = "ability_heal",
+    -- THE TWO ITEMS THAT ARE THIS UNIT, named for the same reason every hall hero names them: a base
+    -- class is met on a floor like any other body now (models/descent_recruit.lua), and this is the
+    -- pair its card is written from.
+    signatureWeapon  = "weapon_censer",
+    signatureAbility = "utility_reliquary_kept_trust",
     -- Basic tactics (models/ai.lua): giving made mechanical. Reach for Heal the instant an ally slips
     -- below two-thirds -- the Reliquary and the Martyr's Icon carry the rest of her giving themselves.
     ai = {

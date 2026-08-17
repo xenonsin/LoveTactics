@@ -633,6 +633,25 @@ return {
     ["line.conversation_colosseum_vendor_intro.4"] = { en = "And yet here you stand, veteran, shilling for a team with nothing behind it.", ja = "" },  -- TODO
     ["line.conversation_colosseum_vendor_intro.5"] = { en = "Nothing behind it is the only thing on this sand I have ever trusted. Sell them the good leathers, not the ones you move on the losers.", ja = "" },  -- TODO
     ["line.conversation_colosseum_vendor_intro.6"] = { en = "...The good leathers, then. Win loud, {name}. The crowd keeps a name, and a name is the only thing here I can't sell you. You earn that one blow by blow.", ja = "" },  -- TODO
+    ["line.conversation_descent_crown.1"] = { en = "You came a long way down to meet me. There is no me to meet.", ja = "" },  -- TODO
+    ["line.conversation_descent_crown.2"] = { en = "Seven wants, and seven people who agreed to carry one each, because a want cannot walk about on its own. You went past every one of them to get here.", ja = "" },  -- TODO
+    ["line.conversation_descent_crown.3"] = { en = "You did not know a single one of their names this morning. That is the part I like.", ja = "" },  -- TODO
+    ["line.conversation_descent_crown.4"] = { en = "I have nothing to say to you that is mine. I never did. Come and take the last of it.", ja = "" },  -- TODO
+    ["line.conversation_descent_envy.1"] = { en = "Hold still. I want to see which of you is worth having.", ja = "" },  -- TODO
+    ["line.conversation_descent_envy.2"] = { en = "I will wear it in a moment, and I will do it perfectly. That has never once been the same as having it.", ja = "" },  -- TODO
+    ["line.conversation_descent_gluttony.1"] = { en = "You are going further down. They all are.", ja = "" },  -- TODO
+    ["line.conversation_descent_gluttony.2"] = { en = "I ate the last four who came through saying it. I could not describe one of them to you now. There is nothing in me that keeps things.", ja = "" },  -- TODO
+    ["line.conversation_descent_greed.1"] = { en = "You came down here to be paid. Everyone who walks past me is on their way to being paid.", ja = "" },  -- TODO
+    ["line.conversation_descent_greed.2"] = { en = "I am owed by everything that lives. I have never once spent any of it and I have never once been able to stop collecting.", ja = "" },  -- TODO
+    ["line.conversation_descent_greed.3"] = { en = "What you are carrying is already mine. Bring it here.", ja = "" },  -- TODO
+    ["line.conversation_descent_lust.1"] = { en = "You are holding something back. For the bottom, or for whatever you have decided is worse than me.", ja = "" },  -- TODO
+    ["line.conversation_descent_lust.2"] = { en = "I will have it either way. It is the only thing I have ever been able to do.", ja = "" },  -- TODO
+    ["line.conversation_descent_pride.1"] = { en = "Show me what you have brought.", ja = "" },  -- TODO
+    ["line.conversation_descent_pride.2"] = { en = "I will know it the moment I see it. I always do. I have not been surprised in a very long time and I would like to be.", ja = "" },  -- TODO
+    ["line.conversation_descent_sloth.1"] = { en = "You want the stair behind me. You could turn round instead. Nobody down here would hold it against you.", ja = "" },  -- TODO
+    ["line.conversation_descent_sloth.2"] = { en = "I held a post once. Nobody came. You will find out what I found out, and it will take you about fifteen years.", ja = "" },  -- TODO
+    ["line.conversation_descent_wrath.1"] = { en = "Do not make it quick. A quick blow is a blow somebody is holding back.", ja = "" },  -- TODO
+    ["line.conversation_descent_wrath.2"] = { en = "I have had a lifetime of being handled. Come and hit me properly.", ja = "" },  -- TODO
     ["line.conversation_flight_champion.1"] = { en = "Stop here, {name}. That one at the head of them is no imp. It has a name where they carry none, and it leads this whole raiding party. This is the thing that has been walking the road behind us.", ja = "" },  -- TODO
     ["line.conversation_flight_champion.2"] = { en = "It's between us and the capital.", ja = "" },  -- TODO
     ["line.conversation_flight_champion.3"] = { en = "It is. And it will not fall to the swarm-work that served against the rest. It takes blows the grunts could not, and the imps beside it only want to keep us busy while it reaches you.", ja = "" },  -- TODO
@@ -776,6 +795,21 @@ return {
     ["line.conversation_prologue_ruins.4"] = { en = "Then let's find them.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.5"] = { en = "Good! We take the king's road to the capital, {name}. We'll be safe behind its walls, and we save anyone we can along the way.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.6"] = { en = "Bellmere is gone. I don't know who else made it out.", ja = "" },  -- TODO
+    ["line.conversation_prologue_sponsor.1"] = { en = "Before you join that queue. You are the two who came in with the Bellmere column, and one of you is wearing Bastion plate.", ja = "" },  -- TODO
+    ["line.conversation_prologue_sponsor.10"] = { en = "Here are my terms. I pay for the people you take, the steel they carry and the bed they sleep in. Whatever you bring up is yours.", ja = "" },  -- TODO
+    ["line.conversation_prologue_sponsor.11"] = { en = "That is a great deal of coin for somebody else's expedition.", ja = "" },  -- TODO
+    ["line.conversation_prologue_sponsor.12"] = { en = "It stops coming up the stair. That is what I am buying.", ja = "" },  -- TODO
+    ["line.conversation_prologue_sponsor.13"] = { en = "{name}. The wall we held is ash and there is nothing east of here to go back to. This is work, and it is the only work.", ja = "" },  -- TODO
+    ["line.conversation_prologue_sponsor.14"] = { en = "Then we go down.", ja = "" },  -- TODO
+    ["line.conversation_prologue_sponsor.15"] = { en = "The gate is the far side of the north quarter. Hire whoever will take the coin, and be sensible about how deep you go on the first day.", ja = "" },  -- TODO
+    ["line.conversation_prologue_sponsor.2"] = { en = "We were told to register at the guild.", ja = "" },  -- TODO
+    ["line.conversation_prologue_sponsor.3"] = { en = "You were. The board has four contracts on it and eleven hundred people in the city who can hold a blade. You would be waiting a month.", ja = "" },  -- TODO
+    ["line.conversation_prologue_sponsor.4"] = { en = "I have work that nobody is queuing for.", ja = "" },  -- TODO
+    ["line.conversation_prologue_sponsor.5"] = { en = "Say it plainly.", ja = "" },  -- TODO
+    ["line.conversation_prologue_sponsor.6"] = { en = "There is a stair under the north quarter. It was a cellar, and then it was deeper than a cellar, and it has been getting deeper since the burning started.", ja = "" },  -- TODO
+    ["line.conversation_prologue_sponsor.7"] = { en = "Things come up out of it at night. The Watch seals the door and the door does not stay sealed.", ja = "" },  -- TODO
+    ["line.conversation_prologue_sponsor.8"] = { en = "And nobody has gone down.", ja = "" },  -- TODO
+    ["line.conversation_prologue_sponsor.9"] = { en = "Four companies have gone down. None of them has come back up, which is why the fifth is expensive.", ja = "" },  -- TODO
     ["line.conversation_prologue_village.2"] = { en = "This is not a raid. The Demon Lord's army empties whole valleys like this and moves on before the ash is cold.", ja = "" },  -- TODO
     ["line.conversation_prologue_village.3"] = { en = "Two of them have seen us, and they will not come to you. Watch how I take mine.", ja = "" },  -- TODO
     ["line.conversation_prologue_village.4"] = { en = "Look at it, {name}. The market row, the bell tower, the gate your father set the first stone in. All of it, inside a night.", ja = "" },  -- TODO
@@ -918,6 +952,14 @@ return {
     ["title.conversation_colosseum_slot_09_outro"] = { en = "What the House Does Instead", ja = "" },  -- TODO
     ["title.conversation_colosseum_slot_10_confront"] = { en = "Ira, the Unappeased", ja = "" },  -- TODO
     ["title.conversation_colosseum_vendor_intro"] = { en = "The Shelf and the Sand", ja = "" },  -- TODO
+    ["title.conversation_descent_crown"] = { en = "The Hollow Crown", ja = "" },  -- TODO
+    ["title.conversation_descent_envy"] = { en = "Livia, the Unborn", ja = "" },  -- TODO
+    ["title.conversation_descent_gluttony"] = { en = "Gula, the Unsated", ja = "" },  -- TODO
+    ["title.conversation_descent_greed"] = { en = "Aurea, the Ever-Owed", ja = "" },  -- TODO
+    ["title.conversation_descent_lust"] = { en = "Luxuria, the Unbidden", ja = "" },  -- TODO
+    ["title.conversation_descent_pride"] = { en = "Sublimitas, the Unequalled", ja = "" },  -- TODO
+    ["title.conversation_descent_sloth"] = { en = "Acedia, the Unrelieved", ja = "" },  -- TODO
+    ["title.conversation_descent_wrath"] = { en = "Ira, the Unappeased", ja = "" },  -- TODO
     ["title.conversation_flight_champion"] = { en = "The Champion", ja = "" },  -- TODO
     ["title.conversation_flight_event_shrine"] = { en = "The Roadside Shrine", ja = "" },  -- TODO
     ["title.conversation_flight_event_survivor"] = { en = "A Voice from the Brush", ja = "" },  -- TODO
@@ -933,6 +975,7 @@ return {
     ["title.conversation_prologue_flier"] = { en = "The Board", ja = "" },  -- TODO
     ["title.conversation_prologue_intro"] = { en = "Bellmere", ja = "" },  -- TODO
     ["title.conversation_prologue_ruins"] = { en = "The Road", ja = "" },  -- TODO
+    ["title.conversation_prologue_sponsor"] = { en = "The Gate", ja = "" },  -- TODO
     ["title.conversation_prologue_village"] = { en = "The Lane", ja = "" },  -- TODO
     ["title.conversation_tutorial_flight"] = { en = "The Open Road", ja = "" },  -- TODO
     ["title.conversation_tutorial_village"] = { en = "Rowan's Lesson", ja = "" },  -- TODO

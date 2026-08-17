@@ -60,6 +60,11 @@ return {
         false,           false,                       false,
     },
     defaultAction = "weapon_first_motion",
+    -- THE TWO ITEMS THAT ARE THIS UNIT, named for the same reason every hall hero names them: a base
+    -- class is met on a floor like any other body now (models/descent_recruit.lua), and this is the
+    -- pair its card is written from.
+    signatureWeapon  = "weapon_first_motion",
+    signatureAbility = "ability_bolas",
     ai = {
         -- Basic tactics (models/ai.lua), top-to-bottom, first match wins. Every swing is the same
         -- greatsword; what separates the rules is WHO she goes for and HOW LONG SHE HOLDS IT, which is

@@ -84,23 +84,21 @@ end
 -- with these people" asks it here -- the shop, the forge's ceiling, the board, the reward diff. One
 -- function, which is why the descent could move what feeds it without touching any of them.
 --
--- TWO SOURCES, ADDED, because the game is mid-migration and both are real.
+-- ONE SOURCE: ERRANDS RUN. A house opens its DOOR when its circle falls and its SHELF a rung at a time
+-- as you do small pieces of work for it (models/errand.lua) -- two gates on two different things, and
+-- keeping them apart is the whole point.
 --
---   quests finished   the campaign's answer: one per completed quest naming this vendor as sponsor.
---   floors cleared    the descent's: one per extraction from that house's circle (Descent.extract).
---
--- Added rather than branched on, because a house does not have two standings. While the quest board
--- still offers legs, a player who runs one and descends a circle has done two things for the same
--- house and both should count; after stage 9 the board offers nothing new and the second term is the
--- only one that moves. It also makes the migration free in both directions: an existing save has no
--- `standing` at all and reads exactly as it did, and a save that has never touched the board still
--- opens shelves.
+-- `player.standing[vendorId]` -- circles beaten -- is deliberately NOT counted here, and it used to be.
+-- That term was the descent's old banking from when the mode paid into the campaign, and once circles
+-- started opening doors it began double-dipping: beating a general opened the house AND handed over the
+-- first rung of its stock, so the errand the house asks for bought nothing the general had not already
+-- paid for. The door and the shelf read different numbers now.
 --
 -- Counting the quests rather than storing a number is deliberate and predates this: it survives
 -- selling a relic, or losing a save's reputation field, which no longer exists.
 function Quest.sponsorProgress(player, vendorId)
     if not vendorId then return 0 end
-    local done = (player.standing or {})[vendorId] or 0
+    local done = 0
     for id in pairs(player.completedQuests or {}) do
         local def = Quest.defs[id]
         if def and def.sponsor == vendorId then done = done + 1 end

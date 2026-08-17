@@ -46,6 +46,11 @@ return {
         false,               false,                 false,
     },
     defaultAction = "ability_heal",
+    -- THE TWO ITEMS THAT ARE THIS UNIT, named for the same reason every hall hero names them: a base
+    -- class is met on a floor like any other body now (models/descent_recruit.lua), and this is the
+    -- pair its card is written from.
+    signatureWeapon  = "weapon_vitriol_wand",
+    signatureAbility = "utility_aqua_vitae",
     ai = {
         { priority = "urgent", act = "support", item = "ability_heal", targetPref = "most_wounded",
           when = { subject = "ally_lowest_hp", test = "hp_pct_below", value = 0.65 } },
