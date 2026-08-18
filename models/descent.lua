@@ -786,7 +786,7 @@ end
 -- a shallow floor forever, and it is the wrong trade: a fight that costs health and turns and hands back
 -- nothing does not respect the time it took, and the player who grinds anyway is now grinding for
 -- nothing. If the curve ever needs defending from grinding, the lever is the curve
--- (Experience.DESCENT_STEP), never the reward for a fight actually fought. The floor's PLACES stay
+-- (Experience.STEP), never the reward for a fight actually fought. The floor's PLACES stay
 -- spent, so re-treading pays combat and nothing else -- no second cache, no second relic -- which is
 -- most of the answer on its own.
 function Descent.rearmFloor(grid)

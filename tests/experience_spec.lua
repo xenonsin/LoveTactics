@@ -1,11 +1,10 @@
--- Tests for models/experience.lua -- what levels a body in the descent.
+-- Tests for models/experience.lua -- what levels a body, in the one mode there is.
 --
--- Two things are worth pinning here and they pull in opposite directions. One is that experience WORKS:
--- acting earns it, it converts to levels through the growth tables, and the curve lands the seventh
--- circle near the level the seventh circle is built for. The other is that it stays OUT OF THE CAMPAIGN:
--- a campaign roster levels off prestige and always has, and the safety of that arrangement rests entirely
--- on the campaign never resolving a body's xp into a level. The last case is the one that fails if
--- somebody later "tidies up" by calling Experience.resolve from Player.syncLevels.
+-- Two things are worth pinning here and they meet in the middle. One is that experience WORKS: acting
+-- earns it, it converts to levels through the growth tables, and the curve lands the bottom floor near
+-- the level the bottom floor is built for. The other is that there is exactly ONE curve -- the split
+-- into a campaign step and a descent step is gone, and the cases below hold both ends of what replaced
+-- it: the Hollow Crown at the deep end, and what Act 0 pays at the shallow one.
 
 local Experience = require("models.experience")
 local Growth = require("models.growth")
@@ -109,32 +108,47 @@ return {
         local earned = floors * fightsPerFloor *
             (actionsPerFight * Experience.PER_ACTION + killsPerFight * Experience.PER_FELLING)
 
-        -- ON THE DESCENT'S OWN STEP, which is the point of the case now. The two modes stopped sharing
-        -- a curve when the campaign re-anchored against a forty-day budget the descent has not got;
-        -- reading Experience.STEP here would make every campaign retune fail this case, which is
-        -- exactly the coupling the split was made to remove.
-        local reached = Experience.levelFor(earned, Experience.DESCENT_STEP)
+        -- ON THE ONE STEP THERE IS. This case used to name a descent-only constant, because the mode
+        -- kept a ladder of its own against a campaign anchored on a forty-day budget. That campaign is
+        -- retired (models/building.lua's RETIRED) and so is its curve; the descent's anchor is now the
+        -- game's, and this case is what pins it.
+        local reached = Experience.levelFor(earned)
         assert(math.abs(reached - wanted) <= 2,
             "a company that fights its way down should arrive near level " .. wanted ..
             ", not " .. reached)
-
-        -- And the campaign's step must NOT satisfy this ladder -- if it did, the two constants would be
-        -- interchangeable and the split would be decoration.
-        assert(Experience.levelFor(earned) > wanted + 2,
-            "the campaign curve is deliberately faster; if it fits the descent's ladder too, the two "
-            .. "steps are not actually doing different jobs")
     end },
 
-    { name = "the two curves are independent, and each is named where it is used", fn = function()
-        -- The campaign's step is measured against a forty-day budget (`. board-report 12 xp`); the
-        -- descent's against its seven-floor ladder. Nothing should ever make one a function of the other.
-        assert(Experience.STEP ~= Experience.DESCENT_STEP, "two ladders, two anchors")
-        -- Defaulting: an unqualified call is the CAMPAIGN's, because that is the mode almost every
-        -- caller is in. The descent is the one that has to say so.
-        assert(Experience.totalFor(10) == Experience.totalFor(10, Experience.STEP),
-            "an unqualified curve reading is the campaign's")
-        assert(Experience.totalFor(10, Experience.DESCENT_STEP) > Experience.totalFor(10),
-            "and the descent's is the dearer of the two")
+    { name = "there is one curve, and no call site can name a second", fn = function()
+        -- WHAT THE SPLIT COST. Two constants meant every seam had to pick, the pick was written as
+        -- `game.descent and DESCENT_STEP or nil`, and every seam standing outside a run got the cheap
+        -- ladder by default -- Act 0 among them (see the case below) and the load-time catch-up in
+        -- Player.resolveLevels with it. So the second constant is gone rather than merely unused, and
+        -- the curve reads the same however a caller tries to qualify it.
+        assert(Experience.DESCENT_STEP == nil, "the descent's separate ladder is gone, not deprecated")
+        assert(Experience.totalFor(10, 3) == Experience.totalFor(10),
+            "a stray second argument must not buy a second curve")
+        assert(Experience.levelFor(Experience.totalFor(10), 3) == 10,
+            "and nor must one handed to the reading")
+    end },
+
+    { name = "what Act 0 pays lands the company where the first floor fights", fn = function()
+        -- THE OTHER END OF THE SAME LADDER, and the regression this file exists to hold. The prologue
+        -- banks its experience before any descent exists, so under the old split it cashed out on the
+        -- campaign's cheap curve and delivered a company at level 8 to a floor that fights at 3 -- every
+        -- marker on it reading as beneath them (Muster.WALK_OVER), and then four floors during which
+        -- nobody gained a level at all, because Growth.resolve never levels a body down.
+        --
+        -- Act 0 is four fights -- the village, the two survivor stops, the champion (states/prologue.lua)
+        -- -- and a two-body company takes all of them. Simulated through models/autobattle.lua that pays
+        -- about 48 a head; real play, with its longer fights, its reinforcement waves and a retry or two,
+        -- lands nearer 84. Both are checked, because the claim is about the BAND the prologue exits in,
+        -- not about a single number nobody can hit twice.
+        for _, banked in ipairs({ 48, 84 }) do
+            local level = Experience.levelFor(banked)
+            assert(level >= Descent.OPENING_DANGER - 1 and level <= Descent.OPENING_DANGER + 1,
+                "a body leaving Act 0 with " .. banked .. " experience is level " .. level ..
+                ", which should be within a level of the first floor's " .. Descent.OPENING_DANGER)
+        end
     end },
 
     { name = "banked experience survives a save, so a resumed run keeps its progress", fn = function()

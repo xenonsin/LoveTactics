@@ -549,8 +549,7 @@ local function finishBattle(result)
         -- drafted at the level it fights at and nothing resolves its experience into anything, so a bar
         -- there would be filling toward a level that never arrives.
         experience = result == "win" and battle.player and battle.combat
-            and Experience.report(battle.combat.xpByChar, battle.xpStep) or nil,
-        xpStep = battle.xpStep,
+            and Experience.report(battle.combat.xpByChar) or nil,
         benchShare = benchShare,
         encounter = battle.encounter,
         actions = actions,
@@ -4750,9 +4749,6 @@ function battle.enter(self, opts)
     -- (finishBattle -> Experience.payBench). Nil for a mock battle, a draft and a netplay duel, all of
     -- which have no roster behind the four on the board and nobody to pay.
     battle.player = opts.player
-    -- The curve the victory panel's experience bars fill on. The descent runs its own ladder and names
-    -- its own step (models/experience.lua); nil is the campaign's, which is every other caller.
-    battle.xpStep = opts.xpStep
     -- Which house's stock this run's fights salvage in: the quest's SPONSOR, the same resolution the
     -- map's caches use (states/game.lua). Nil on an unsponsored leg -- the prologue -- where a fight
     -- pays craft stock and nothing else.

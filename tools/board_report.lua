@@ -648,9 +648,11 @@ function M.run(args)
     end
 
     -- WHAT A DAY IS WORTH IN EXPERIENCE, measured by actually fighting the board rather than estimated
-    -- from a guess about how often a body swings. This is the input Experience.STEP has to be anchored
-    -- on, and the last time a number like it was hand-derived (the guarded-boon knob) the boards said
-    -- something else entirely.
+    -- from a guess about how often a body swings. It used to be what Experience.STEP was anchored on,
+    -- back when the campaign kept a curve of its own; that curve is retired with the Quest Board and the
+    -- one step left is anchored on the bottom of the descent (models/experience.lua). So this is a
+    -- CROSS-CHECK now -- what a day of ordinary board fighting banks, read against the ladder the
+    -- descent set -- and not the measurement the constant is derived from.
     --
     -- Resolves every combat/elite stop on a sample of boards through models/autobattle.lua -- the same
     -- loop the walk-off path uses, so the plan, the ordering and the free-action handling are the real

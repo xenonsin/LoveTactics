@@ -75,8 +75,9 @@ rests on three things: it makes the solo-line rule bite (below), it leaves most 
 so a second run has a reason to exist, and anything approaching seven lines needs seventy-odd days,
 which is not a constraint at all.
 
-**`Calendar.FINAL_DANGER` and `Experience.STEP` are both anchored against forty days of income.**
-Moving the day count means re-reading both, and `. board-report 12 xp` is the instrument.
+**`Calendar.FINAL_DANGER` is anchored against forty days of income.** Moving the day count means
+re-reading it, and `. board-report 12 xp` is the instrument. `Experience.STEP` used to be anchored the
+same way and no longer is — see [The curve](#the-curve), where it collapsed into the descent's ladder.
 
 > **The second bullet is out of date and the arithmetic behind it has to be redone.** It was written
 > when a day bought one quest, so days and quests were the same number. A day buys a ground now, and a
@@ -106,30 +107,38 @@ spreading buys the lattice.
 
 Levels are **earned per body**, by acting and by felling, resolved at the end of every fight.
 
-`Experience.STEP = 3`, and it is anchored on a measurement rather than an estimate — which matters,
-because the estimate was wrong by a factor of two. `. board-report 12 xp` fights every combat and elite
-on a dozen rolled boards through `models/autobattle.lua` (the real loop, the real plan, the real
-ordering) and reads what combat actually banked:
+`Experience.STEP = 10`, and there is **exactly one of it**. There used to be two — a campaign step of 3
+measured against forty days of quest-board income, and a `DESCENT_STEP` of 10 anchored on the bottom of
+the Gate — on the reasoning that two modes with two clocks must not share a constant. The Quest Board
+is retired (`Building.RETIRED`) and the descent is the campaign now, so the mode that needed its own
+number no longer ships, and all the split still bought was a branch every seam had to get right.
+
+**Which they did not, and it is worth recording how it failed.** The pick was written
+`game.descent and DESCENT_STEP or nil`, so any seam standing outside a run silently took the cheap
+ladder:
 
 | | |
 |---|---|
-| Measured income | **22 experience a body a day** (the design note said 44) |
-| Over forty days | 882, clearing every board entire |
-| Which reaches | **level 23–24** at STEP 3 — near 20 for a run that skips a third of its fights |
-| Against a world closing at | `Calendar.FINAL_DANGER = 22` |
+| Act 0's four fights pay | ~48–84 a body (measured through `models/autobattle.lua`) |
+| ...which on the campaign step was | **level 8** |
+| ...and on the one step is | **level 3–4** |
+| The first floor fights at | `Descent.OPENING_DANGER = 3` |
 
-At the old STEP of 6 that same income landed at level 17 — five short of the world — so a player who
-fought everything still arrived outmatched. That is not a deadline, it is a wall.
+So the prologue handed the Gate a company five levels above the floor it was about to walk onto: over a
+quarter of floor 1's stops read as *Beneath you* and offered to auto-resolve themselves
+(`Muster.WALK_OVER`), and then — because `Growth.resolve` never levels a body down — that head start
+cost four floors during which nobody gained a level at all. `Player.resolveLevels`, the load-time
+catch-up, passed no step either, so a mid-descent save re-levelled its whole roster on the cheap curve
+every time it loaded. **The tutorial's income was never the defect. The curve it was read on was.**
 
-The first measurement said **four** a day, and that was the harness lying rather than the game: the
-opening roster is one body at level 1, and a lone level-1 Rowan against day-20 stock is dead in two
-turns. The fix names the circularity rather than hiding it — to know what level a company reaches by
-day N you need the curve being measured — and resolves it by **assuming parity**: level the company to
-what the calendar says the world is worth, then ask what a day pays them.
+The step itself is anchored on the bottom of the descent: a floor is about six fights paying a body
+roughly twelve apiece, so fifteen floors are ~1080, and reaching level 15 — what the Hollow Crown fights
+at — costs `STEP × 15 × 14 / 2`. Ten puts a company that fights its way down exactly there and one short
+of overshooting. `tests/experience_spec.lua` pins both ends of that ladder, the Crown and Act 0;
+`tests/descent_level_spec.lua` walks all fifteen floors against it.
 
-**The descent keeps its own step** (`Experience.DESCENT_STEP = 6`). Its ladder is anchored on seven
-floors, not on forty days, and sharing one constant meant every campaign retune silently re-tuned the
-post-game.
+`. board-report 12 xp` still measures what a day of ordinary board fighting banks (22 a body), but it is
+a cross-check now rather than the measurement the constant is derived from.
 
 ### Two rules the per-body curve forced
 
@@ -329,7 +338,7 @@ is in the code.
   an ending that fires on schedule with a variable final fight. Whether the story as written survives
   that framing is an authoring question nobody has asked yet, and it is the largest open item here.
 - **The tuning is first-pass and wants play, not more measurement.** `Calendar.DAYS = 40`,
-  `FINAL_DANGER = 22`, `Experience.STEP = 3`, `Player.CAMP_SHARE = 0.5`. The instruments exist; whether
+  `FINAL_DANGER = 22`, `Experience.STEP = 10`, `Player.CAMP_SHARE = 0.5`. The instruments exist; whether
   forty days *feels* like pressure or like a leash is the one question none of them answer.
 - **The day's span has not been re-priced against a ground buying several quests.** See
   *Where forty came from*. Everything downstream of "forty days is about thirty quests" needs walking

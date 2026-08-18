@@ -17,8 +17,7 @@
 --       technique = {                                                        -- banked this fight; wins only
 --           { name = "Rowan", houses = { { key = "ninja", amount = 14 } } }, -- grouped by whose hand
 --       },
---       experience = Experience.report(combat.xpByChar, step),               -- one row per body; wins only
---       xpStep = nil,                                                        -- the curve the bars fill on
+--       experience = Experience.report(combat.xpByChar),                     -- one row per body; wins only
 --       benchShare = 12,                                                     -- what everyone who sat out got
 --       encounter = battle.encounter,                                        -- { name, ... } (optional)
 --       actions = {                                                          -- 1 button (win) or 1-2 (loss)
@@ -218,10 +217,7 @@ function BattleSummary.new(opts)
     -- the technique it banked. Merged rather than stacked as two sections because they are two answers
     -- about the SAME body -- two sections would print every name on the panel twice, and the second
     -- copy would tell the player nothing they had not read six lines above.
-    --
-    -- The step is the ladder these bars fill on. The descent runs its own (models/experience.lua), so
-    -- it is passed rather than assumed; nil is the campaign's.
-    self.xpStep = opts.xpStep
+
     -- What everyone who did not take the field was paid for the fight (Experience.BENCH_SHARE, awarded
     -- in states/battle.lua). One line rather than a bar apiece: the bench did not earn it action by
     -- action, and four more bars for bodies the player did not watch would bury the four they did.
@@ -691,8 +687,8 @@ function BattleSummary:draw()
                 -- which is the whole announcement (the overworld's toast confirms it a beat later).
                 local row = group.xp
                 local xpAt = self:xpShown(row)
-                local level = Experience.levelFor(xpAt, self.xpStep)
-                local into, span = Experience.intoLevel(xpAt, self.xpStep)
+                local level = Experience.levelFor(xpAt)
+                local into, span = Experience.intoLevel(xpAt)
                 local barW = half - 10 - 8 - XP_GAIN_W - XP_MARGIN
                 local nameW = half - 10 - XP_LEVEL_W - 6 - XP_MARGIN
 
@@ -711,7 +707,7 @@ function BattleSummary:draw()
 
                 -- The slice that just landed is lit brighter than what was already banked (the bar's own
                 -- `gain`), and a body that has just rolled over shows its whole new level as that slice.
-                local base = Experience.totalFor(level, self.xpStep)
+                local base = Experience.totalFor(level)
                 local settled = math.max(0, math.min(into or 0, row.from - base))
                 ProgressBar.draw(bx + half + 10, ty + 7, barW, XP_BAR_H, into or 0, span or 0, {
                     gain = (into or 0) - settled, color = XP_FILL, alpha = alpha,

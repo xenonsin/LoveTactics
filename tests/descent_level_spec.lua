@@ -25,11 +25,11 @@ local Muster = require("models.muster")
 local Player = require("models.player")
 local Calendar = require("models.calendar")
 
--- What the descent's own experience curve puts a company at, having fought its way to `floor`. A floor
--- is about six fights paying a body roughly twelve apiece -- the ~72 models/experience.lua anchors
--- DESCENT_STEP on, and the figure that constant would be meaningless without.
+-- What the experience curve puts a company at, having fought its way to `floor`. A floor
+-- is about six fights paying a body roughly twelve apiece -- the ~72 models/experience.lua anchors its
+-- one STEP on, and the figure that constant would be meaningless without.
 local function partyLevelAt(floor)
-    return Experience.levelFor(72 * floor, Experience.DESCENT_STEP)
+    return Experience.levelFor(72 * floor)
 end
 
 -- A four-body company at `level`, which is the whole company: a descent fields exactly what it marches

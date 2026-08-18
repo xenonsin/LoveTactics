@@ -316,12 +316,11 @@ return {
         assert(#profile.roster == 2, "and is in the company")
         assert(char.xp == 100, "carrying the company's median experience, not starting from nothing")
 
-        -- THE REASON Recruit.join exists rather than a bare Player.recruit call: the two modes level on
-        -- different curves, and resolving descent experience against the campaign's hands a recruit more
-        -- levels than the veterans it was measured against.
-        local mine = Experience.levelFor(100, Experience.DESCENT_STEP)
+        -- WHAT A RECRUIT ARRIVES AT. The median is resolved on the game's one curve (Experience.STEP),
+        -- so a body hired at the gate reads its inherited bank exactly as the veterans it was measured
+        -- against read theirs. This assertion used to name a descent-only step; that ladder is gone.
+        local mine = Experience.levelFor(100)
         assert(char.level == mine, "a recruit joins at level " .. mine .. ", got " .. tostring(char.level))
-        assert(mine < Experience.levelFor(100), "precondition: the two ladders disagree at this xp")
 
         assert(Recruit.join(profile, id) == nil, "and the same body cannot join twice")
         assert(#profile.roster == 2, "a refused join must not grow the company")

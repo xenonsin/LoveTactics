@@ -206,11 +206,11 @@ end
 -- they are being measured against -- which on a one-member company reads their own zero and hands a
 -- recruit joining a veteran avatar nothing at all.
 --
--- `step` is the XP curve the inherited experience is resolved against, and it exists because the descent
--- levels on its own (Experience.DESCENT_STEP): the median comes off bodies that climbed the steeper
--- ladder, so resolving it against the campaign's would hand a recruit more levels than the veterans it
--- was measured against. Absent -- every campaign call site -- it is the campaign's, as it always was.
-function Player.recruit(player, charId, step)
+-- IT USED TO TAKE A CURVE. A third argument named which XP step the inherited median resolved against,
+-- because the descent levelled on a steeper ladder than the campaign and a recruit read on the wrong one
+-- arrived above the veterans it was measured against. There is one ladder now (Experience.STEP), so the
+-- median and the level it buys are the same fact on every path in.
+function Player.recruit(player, charId)
     local Experience = require("models.experience")
     player.roster = player.roster or {}
     for _, char in ipairs(player.roster) do
@@ -220,7 +220,7 @@ function Player.recruit(player, charId, step)
     local char = Character.instantiate(charId)
     char.xp = joining
     player.roster[#player.roster + 1] = char
-    Experience.resolve(char, step)
+    Experience.resolve(char)
     -- Announce the newcomer in the next conversation to play: "[<name> has joined your Party]" folded
     -- onto the end of that scene (models/conversation.lua). Required lazily so this stays the low-level
     -- model it is -- the queue is display-only data, and a scene always follows a recruit.

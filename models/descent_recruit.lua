@@ -335,7 +335,7 @@ function Recruit.preview(player, id)
     local Experience = require("models.experience")
     local char = Character.instantiate(id)
     char.xp = Experience.medianOf(player and player.roster)
-    Experience.resolve(char, Experience.DESCENT_STEP)
+    Experience.resolve(char)
     return char
 end
 
@@ -392,15 +392,13 @@ end
 --
 -- Player.recruit is the one path by which anything joins a roster -- it refuses a duplicate, hands the
 -- newcomer the company's MEDIAN experience so a body found on floor four is not a level-1 liability, and
--- announces the join. The only thing a descent adds is its own XP step: the two modes level on different
--- curves (Experience.DESCENT_STEP), and resolving a descent body's experience against the campaign's
--- ladder would hand a recruit more levels than the veterans it was measured against.
+-- announces the join. A descent adds nothing to that any more: there is one XP curve in the game
+-- (Experience.STEP), so a body hired at the gate and a body sworn in Act 0 read their bank the same way.
 --
 -- Returns the instance, or nil if the company already held that id.
 function Recruit.join(player, id)
-    local Experience = require("models.experience")
     local Player = require("models.player")
-    local joined = Player.recruit(player, id, Experience.DESCENT_STEP)
+    local joined = Player.recruit(player, id)
     -- Taking somebody on un-refuses them: a body in the company must not also be standing in the hall
     -- waiting to be hired. Cleared on the JOIN rather than filtered at the hall, so the list stays the
     -- honest record of who is still out there (Recruit.hallSlate would hide it, not fix it).

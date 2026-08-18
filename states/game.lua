@@ -47,7 +47,7 @@ local RelicStrip = require("ui.relic_strip")
 local OverworldAbility = require("models.overworld_ability")
 local Descent = require("models.descent") -- a run as a stack of floors, their circles, the landing between
 local Recruit = require("models.descent_recruit") -- who is still standing down there, and what joining costs
-local Experience = require("models.experience") -- what levels a descent's company, since no prestige does
+local Experience = require("models.experience") -- the one ladder: what turns banked xp into levels
 local Relic = require("models.relic")
 local Meal = require("models.meal") -- the Cafe's supper: one platter, worn by the company all run
 local Wound = require("models.wound") -- what a body that went down carries out of the run
@@ -1392,10 +1392,10 @@ function game:openEncounter(cell)
             -- finishBattle, the only place that knows who stood on the board); this turns everybody's
             -- banked experience into levels.
             if game.player then
-                -- The descent names its own curve step: it is a separate mode with its own ladder, and sharing
-                -- one constant meant a campaign retune silently re-tuned the post-game (models/experience.lua).
-                local step = game.descent and Experience.DESCENT_STEP or nil
-                for _, up in ipairs(Experience.resolveParty(game.player.roster, step)) do
+                -- ...on the one curve there is. It used to branch on `game.descent` for a steeper
+                -- descent-only ladder, which meant every seam standing outside a run -- Act 0's whole
+                -- tutorial included -- quietly cashed out on the cheap one (models/experience.lua).
+                for _, up in ipairs(Experience.resolveParty(game.player.roster)) do
                     game:pushToast((up.char.name or up.char.id) .. " reaches level " .. up.toLevel)
                 end
             end
@@ -1470,10 +1470,6 @@ function game:openEncounter(cell)
             -- and where; the rest wait on the bench and can be rotated in (docs/deployment.md).
             party = game.player and game.player.roster or {},
             player = game.player, -- so the phase can remember who was fielded (Player.noteDeployed)
-            -- Which ladder the victory panel's experience bars fill on -- the same branch the resolve
-            -- above takes, so the bar a player watches fill and the level it resolves into cannot
-            -- disagree about the curve.
-            xpStep = game.descent and Experience.DESCENT_STEP or nil,
             -- The supper bought at the Cafe before this quest (models/meal.lua): one platter, worn by
             -- the whole company at every fight of the run, and cleared when the run resolves. Read live
             -- off the player rather than snapshotted at launch, so a resumed run picks it up too.
