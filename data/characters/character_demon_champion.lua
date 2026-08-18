@@ -30,7 +30,23 @@ return {
     sprite = "assets/chars/demon_champion.png",
     revivable = false, -- a demon does not come back: no downed window, and no revive takes it
     stats = {
-        health = 115, mana = 0, stamina = 24, -- stamina affords claws + Cleave + repeated Roars
+        -- TWO POOLS, AND THE SPLIT IS THE FIGHT. A demon's body is billed to stamina and its will to
+        -- mana (the contract data/characters/character_demon_grunt.lua states in full), so the claws,
+        -- the Sigil's escalating riposte and a Heave come out of the 24 below, while the Roar (12) and
+        -- the Cleave (10) -- the two casts the three stages are actually made of -- come out of the 60.
+        --
+        -- 60 is about five casts, which is one full run of the stage script and no spare, and mana
+        -- never regenerates (Combat.regenerate). So the boss's specials are a countable resource, and
+        -- Drain Mana (data/items/ability/ability_drain_mana.lua) -- the rogue ability the road hands
+        -- over two stops before this fight -- takes most of a Cleave off it per siphon at base (8 of
+        -- 10) and a whole Roar and more once forged (20). That is what the gift is FOR: this is the
+        -- body it was granted against, and before the demons carried mana it did nothing here at all.
+        --
+        -- Splitting them also fixed the stamina it never had. 24 used to pay for the claws AND both
+        -- casts at a default 1/tick regen (Combat.DEFAULT_STAMINA_REGEN), which is nothing like enough
+        -- for a 12-stamina swing, so a long stage-3 saw the boss punching. Its casting turns now bank
+        -- stamina instead of spending it.
+        health = 115, mana = 60, stamina = 24,
         damage = 14, magicDamage = 0,          -- base; the stage-3 enrage adds up to +20 as it empties
         defense = 8, magicDefense = 4,
         movement = 4,

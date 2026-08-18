@@ -13,6 +13,17 @@
 -- So a change to the sword, to Clear Out, or to these two lines breaks the prologue's whole shape. The
 -- heavier Demon Grunt (data/characters/character_demon_grunt.lua) is what the horde fields once the
 -- teaching is over.
+--
+-- IT SPENDS MANA TO ATTACK, and it is the purest statement of the demon contract: a demon's BODY is
+-- paid for in stamina and its WILL is paid for in mana, and an imp is nothing but will. Its Cinder
+-- Spit is hellfire, so hellfire is what the pool below buys -- 30 mana against a 5-mana shot, which is
+-- six of them and no more, because mana never regenerates (Combat.regenerate). An imp that has spat
+-- six times has spent itself: the AI drops it to the free unarmed punch, which means walking into
+-- sword range, which is how an emptied imp dies. That is the intended arc rather than an oversight --
+-- outlasting a demon is a real way to beat one.
+--
+-- Its stamina stays where it was and now pays for nothing but that punch and any answer it throws
+-- (Trait.answerCost). The pool is small and that is correct: an imp out of fire is out of arguments.
 return {
     name = "Imp",
     kind = "demon",
@@ -20,7 +31,12 @@ return {
     sprite = "assets/chars/demon_imp.png",
     revivable = false, -- a demon does not come back: no downed window, and no revive takes it
     stats = {
-        health = 14, mana = 0, stamina = 8,
+        -- 30 mana = six Cinder Spits (5 each). Not a number the growth tables ever move: a demon has
+        -- no class, so it grows on the neutral (fighter) table, which gains health, damage and stamina
+        -- and no mana at all -- so a scaled imp hits harder with the same six shots. That is the right
+        -- shape for a shot count, and it means a Drain Mana is worth the same fraction of an imp at
+        -- every level of the game.
+        health = 14, mana = 30, stamina = 8,
         staminaRegen = 2,
         damage = 4, magicDamage = 7, -- it spits hellfire; the claws are for show
         defense = 2, magicDefense = 2,

@@ -26,7 +26,12 @@ return {
         range = 1,
         speed = 6,
         windup = 3, -- the three-tick tell: the window a Stun or a shove has to deny the call
-        cost = { stat = "stamina", amount = 6 },
+        -- Paid in MANA, like the Cleave: the Champion's body (its claws, the Sigil's riposte, a Heave)
+        -- is billed to stamina and its WILL to mana, which is the contract every demon on the board
+        -- keeps (data/characters/character_demon_grunt.lua). 12 of a 60-mana pool, and mana does not
+        -- regenerate (Combat.regenerate) -- so the Roar is a thing the fight has a countable number of,
+        -- and a Drain Mana thrown at the Champion (8 at base, 20 forged) is most of one taken away.
+        cost = { stat = "mana", amount = 12 },
         aoe = { radius = 1, shape = "square" },
         damage = Curve.ramp(6, 16), -- a real bruise, so the AI values winding it up
         effect = function(fx)

@@ -25,6 +25,21 @@
 -- 6, so the column bills 8 more before the last stroke and the pool follows it. That is the rule
 -- working, not an exception to it: this number is downstream of the blows, and it is the only number
 -- here that is allowed to be. The residual it leaves for the player's finishing swing is still 6.
+--
+-- THE DEMON CONTRACT, stated on the body it is easiest to read off: a demon's BODY costs stamina and
+-- its WILL costs mana. The claws are the body, so they stay on stamina exactly as they were; the mana
+-- below buys Brimstone (data/items/ability/ability_demon_brimstone.lua), the gout of hellfire it
+-- spits at the ground to close a lane. An imp is all will and pays for everything in mana
+-- (character_demon_imp.lua); the Champion pays for its claws, its riposte and its throw out of
+-- stamina, and for the Roar and the Cleave out of mana (character_demon_champion.lua). This body is
+-- the middle of that and carries both.
+--
+-- None of it touches the prologue's arithmetic. The grunt is hand-driven for every turn it takes in
+-- the village (data/tutorials/village.lua's `script` -- it charges, it is answered, it holds), so it
+-- never reaches for Brimstone there, and the column above is counted in physical blows: its claw
+-- against the avatar's Defense, the Jolt against the magicDefense below. `magicDamage` was 0 and is
+-- now 6 for one reason -- Brimstone is `magical`, and a gout thrown by a body with no magic behind it
+-- would land for nothing and never be worth the mana. Nothing in the prologue reads it.
 return {
     name = "Demon Grunt",
     kind = "demon",
@@ -54,8 +69,14 @@ return {
         -- "the demon that keeps swatting with its fists." staminaRegen = 2 refills the full 12 across a
         -- claw's own 6-tick cycle, so it swings claws every turn and the fists never come out. Starting
         -- stamina stays 15, so nothing about the prologue's opening arithmetic moves.
-        health = 74, mana = 0, stamina = 15, staminaRegen = 2,
-        damage = 8, magicDamage = 0,
+        --
+        -- 24 mana is three Brimstones (8 each) and then no more for the rest of the battle, because
+        -- mana does not regenerate (Combat.regenerate) and `scaling = false` means this pool is the
+        -- same three castings at every level of the game. Three is deliberate: enough that closing a
+        -- lane is a thing grunts do, few enough that a party can wait one out -- and few enough that
+        -- one Drain Mana (data/items/ability/ability_drain_mana.lua) is worth a whole casting.
+        health = 74, mana = 24, stamina = 15, staminaRegen = 2,
+        damage = 8, magicDamage = 6,
         defense = 4, magicDefense = 2,
         movement = 4,
         speed = 2,
@@ -64,7 +85,12 @@ return {
     -- carry a borrowed iron sword, which cost the prologue twice over: a 6-damage swing at a 62-health
     -- avatar is not a reason to spend a whole mana pool delaying its turn, and the sword's Parry came
     -- along with it, so the blows that end the lesson all answered back.
-    startingItems = { "weapon_rending_claws" },
+    --
+    -- Brimstone rides beside the claws rather than replacing anything: the claws are what a grunt
+    -- wants to be doing, and the gout is what it does when it cannot get there. Its firing rule lives
+    -- on the item itself (an item's `ai` block binds to that item -- see AI.rulesFor), so the tactics
+    -- written on this blueprint stay the one line they have always been.
+    startingItems = { "weapon_rending_claws", "ability_demon_brimstone" },
     defaultAction = "weapon_rending_claws",
     -- Basic tactics (models/ai.lua): press the wounded -- finish the foe already closest to falling.
     ai = {

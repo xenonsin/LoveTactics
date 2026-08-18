@@ -112,7 +112,16 @@ local FLIGHT_QUEST = {
                 { id = "encounter_survivors_defend", loot = { "ability_shout" } },
                 -- Stop 4: alchemist (Assayer's Eye) -- the apothecary's own lens, pressed on you (scene choices).
                 { id = "encounter_event", conversation = "conversation_flight_event_survivor" },
-                -- Stop 5: rogue (Drain Mana) -- siphoned off the demons blocking the way out.
+                -- Stop 5: rogue (Drain Mana) -- siphoned off the demons blocking the way out, and the
+                -- one gift on this road that has to be checked against what the road actually fields.
+                -- It used to be inert for the whole rest of Act 0: every demon carried mana = 0, so the
+                -- class introduction the stop exists to make spent 4 stamina and restored nothing. The
+                -- demons pay for their hellfire in mana now (data/characters/character_demon_imp.lua
+                -- states the contract), so the gift has something to bite on for the rest of the road.
+                -- The spoils land after the win, so the body it is actually FOR is the Champion at the
+                -- end of the trail, whose Roar and Cleave come out of one 60-mana pool -- and the fight
+                -- it is won in is the argument for carrying it, since the grunt on this map spends its
+                -- own mana burning the road the driver has to walk down.
                 { id = "encounter_survivors_extract", loot = { "ability_drain_mana" } },
                 -- Stop 6: mage (Fire Bolt) + fighter (Power Strike) -- the last chest before the gate
                 -- rounds out the two classes the village opened with, one spell and one strike.
