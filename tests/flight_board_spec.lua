@@ -14,6 +14,7 @@
 local Arena = require("models.arena")
 local Overworld = require("models.overworld")
 local Encounter = require("models.encounter")
+local Combat = require("models.combat")
 local EncounterBattle = require("models.encounter_battle")
 
 -- The flight's grid, built the way states/game.lua builds it (resolving the quest's always-list first).
@@ -335,6 +336,48 @@ return {
                     end
                 end
             end
+        end,
+    },
+    {
+        name = "the ford is a road the party has time to clear -- the column takes four turns to cross it",
+        fn = function()
+            -- The escort lesson only exists in the gap between "the road opened" and "the column is
+            -- out": clearing the way AHEAD of the wagon is the whole of it (see the layout's header).
+            -- At the four movement nearly every body walks, that gap was two turns on this eight-deep
+            -- board -- the wagon took the back half on its opening move and crossed from the ford to
+            -- the far row in one step the moment the last demon fell, which reads as the objective
+            -- resolving itself. Measured here on the real ford window with nothing standing in the
+            -- way, which is the best case the driver can ever have: no `wait` rule firing, no body to
+            -- route around, just the walk.
+            local grid = flightGrid()
+            local cell = cellsByEncounter(grid).encounter_survivors_extract
+            local built = EncounterBattle.build({
+                encounter = { kind = "combat", id = "encounter_survivors_extract" },
+                biome = "forest", day = 1, grid = grid,
+                at = { x = cell.x, y = cell.y }, from = fromSouth(cell),
+                party = {}, seed = 4,
+            })
+            local combat = Combat.new(built.arena, built.partyUnits, {})
+            Combat.openBattle(combat)
+            local driver = combat.units[1]
+            assert(driver.char.id == "character_caravan_driver", "the column is the only body on it")
+
+            -- Its own turns, taken the way models/autobattle.lua takes one: plan, walk, act.
+            local turns = 0
+            while Combat.evaluate(combat) == nil and turns < 20 do
+                turns = turns + 1
+                local unit = combat.turn and combat.turn.unit
+                if not (unit and unit.alive) then unit = Combat.startTurn(combat) end
+                if not unit then break end
+                local plan = Combat.planEnemyAction(combat, unit)
+                if plan and plan.move then
+                    local route = Combat.planMove(combat, unit, plan.move.x, plan.move.y)
+                    if route then Combat.runMove(combat, route) end
+                end
+                Combat.pass(combat, unit)
+            end
+            assert(Combat.evaluate(combat) == "win", "the column walks itself out on an empty board")
+            assert(turns >= 4, "the crossing is four turns of road, got " .. turns)
         end,
     },
 }

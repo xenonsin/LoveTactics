@@ -37,7 +37,16 @@ return {
         staminaRegen = 1,
         damage = 4, magicDamage = 0,
         defense = 3, magicDefense = 2,
-        movement = 4,
+        -- TWO, not the four nearly every body on the board walks. The board is eight tiles deep and a
+        -- `reach` objective asks the column to cross all of it, so at four the whole crossing was two
+        -- turns: the wagon took the back half on its opening move and then, the moment the last demon
+        -- fell, went from the ford to the far row in one step and ended the fight. That leaves no
+        -- stretch of road for the party to be clearing AHEAD of it, which is the only thing an escort
+        -- objective asks anyone to do. At two the crossing is four turns, the ford costs it a turn on
+        -- its own (wading is slow underfoot), and the column arrives a beat after the road opens
+        -- rather than with it. Same reading as character_survivor, which walks at two for the same
+        -- reason.
+        movement = 2,
         speed = 2,
     },
 
