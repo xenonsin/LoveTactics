@@ -379,6 +379,25 @@ return {
         assert(generals == #Descent.SINS, "every circle gets exactly one general floor")
     end },
 
+    { name = "every stair names the body that was holding it", fn = function()
+        -- Both ranks pay a relic on the landing now (states/game.lua's openLanding), so the card that
+        -- opens over the body has to say WHICH of the two fights was just won -- and the only thing that
+        -- tells them apart on screen is the name. Read off the blueprint rather than restated, so a body
+        -- renamed in data cannot leave the landing announcing a stale one.
+        local Character = require("models.character")
+        for _, sin in ipairs(Descent.SINS) do
+            local general = Descent.guardianName(sin, true)
+            local minor = Descent.guardianName(sin, false)
+            assert(general == Character.defs[sin.guardian.lead].name,
+                sin.id .. "'s stair should name her, as her blueprint spells it")
+            assert(minor == Character.defs[sin.minor.lead].name,
+                sin.id .. "'s lieutenant's stair should name the lieutenant")
+            assert(general ~= minor, sin.id .. "'s two ranks are indistinguishable on the landing")
+        end
+        -- The bottom has no sin and names itself (Descent.nameOf), so there is nothing to ask for here.
+        assert(Descent.guardianName(nil, true) == nil, "no circle, no name")
+    end },
+
     { name = "under the seventh circle there is a bottom, and it is not a sin", fn = function()
         -- A DESCENT ENDS. This case replaced one that asserted the opposite -- that the deck was dealt
         -- again past the seventh, forever -- which was the endless reading the design has since
@@ -684,15 +703,16 @@ return {
         end
     end },
 
-    { name = "a circle's house is a real vendor with a real shop, gated on that circle", fn = function()
-        -- THE JOIN THE CITY NOW GROWS ON. Each of the seven shops IS one of the sins, so beating a
-        -- circle's general opens that shelf in the city (states/game.lua's openLanding writes
-        -- `player.standing[vendorId]`, models/building.lua reads it).
+    { name = "a circle's house is a real vendor with a real shop, opened by its own first errand", fn = function()
+        -- THE SIN-TO-HOUSE JOIN, from the DESCENT's side as well as the city's, because it has two ends
+        -- and a rename at either one breaks it silently: a sin naming a vendor with no building would tag
+        -- a floor's salvage into a house that does not exist.
         --
-        -- Asserted from the DESCENT's side as well as the city's, because the join has two ends and a
-        -- rename at either one breaks it silently: a sin naming a vendor with no building would credit a
-        -- house that does not exist, and the toast would name nothing.
+        -- The circle no longer OPENS that house -- it pays what the body was carrying instead
+        -- (Descent.DROPS) -- so what is pinned here is that each sin still has a real shelf to be the
+        -- house of, and that the shelf's door is on a gate the player can actually reach.
         local Building = require("models.building")
+        local Errand = require("models.errand")
         local Vendor = require("models.vendor")
         for _, sin in ipairs(Descent.SINS) do
             local vendor = Vendor.get(sin.vendor)
@@ -701,12 +721,49 @@ return {
                 sin.vendor .. " claims sin '" .. tostring(vendor.sin) .. "' while " .. sin.id ..
                 " claims it -- the join disagrees with itself")
             local building = Building.defs[sin.vendor]
-            assert(building, sin.id .. "'s house has no card in the city")
-            assert(building.unlockCircle,
-                sin.vendor .. " is not gated on its circle, so beating " .. sin.id .. " opens nothing")
+            assert(building, sin.id .. "'s house has no card")
+            assert(building.unlockErrand,
+                sin.vendor .. " is not gated on its opener, so nothing the player does opens it")
+            assert(Errand.opener(sin.vendor),
+                sin.vendor .. " is gated on an opener it does not have -- a door that can never open")
             assert(building.vendor == sin.vendor,
                 "the card and the shelf must be the same house")
         end
+    end },
+
+    { name = "every circle pays what its bodies were carrying, or says why it cannot", fn = function()
+        -- Descent.DROPS is the wiring for the thing armor_mail_of_the_unappeased.lua already declared:
+        -- "the payment for a general, and the shape every one of the seven relics takes -- kill a sin,
+        -- wear it."
+        --
+        -- The lists are allowed to be EMPTY -- Sloth's general has no relic authored and no lieutenant
+        -- has a wearable mirror yet -- and an empty list is a payout, not a bug: Descent.dropFor returns
+        -- nil and the landing pays the house's forge stock. What is not allowed is a list naming an item
+        -- that does not exist, which would drop nothing and say it had.
+        local Item = require("models.item")
+        local Player = require("models.player")
+        for _, sin in ipairs(Descent.SINS) do
+            local set = Descent.DROPS[sin.id]
+            assert(set, sin.id .. " has no drop set at all -- see Descent.DROPS")
+            for _, rank in ipairs({ "general", "minor" }) do
+                for _, id in ipairs(set[rank] or {}) do
+                    assert(Item.defs[id],
+                        sin.id .. "'s " .. rank .. " pays '" .. id .. "', which is not an item")
+                    assert(Item.defs[id].price == nil,
+                        id .. " is priced, so a shelf can sell what a sin was supposed to be the only source of")
+                end
+            end
+        end
+
+        -- ...and the walk itself: the first piece not already owned, and nothing once the set is spent.
+        local p = Player.new()
+        local wrath
+        for _, sin in ipairs(Descent.SINS) do if sin.id == "wrath" then wrath = sin end end
+        local first = Descent.dropFor(p, wrath, true)
+        assert(first == "armor_mail_of_the_unappeased", "Ira pays her mail, not the heart she fights with")
+        Player.addToStash(p, Item.instantiate(first))
+        assert(Descent.dropFor(p, wrath, true) == nil,
+            "a general must not hand over a second copy of something the company already carries")
     end },
 
     { name = "a boon undealt on a landing survives a save and is not re-dealt", fn = function()

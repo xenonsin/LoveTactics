@@ -14,7 +14,7 @@
 return {
     name = "Hiring Hall",
     order = 2,
-    x = 350,
+    x = 175,
     y = 120,
     w = 270,
     h = 130,

@@ -1,21 +1,20 @@
+-- The Colosseum: the fighters' shelf, and the house of Wrath (data/vendors/colosseum.lua).
+--
+-- OPENS ON ITS OWN FIRST ERRAND, found on a floor (models/building.lua, models/errand.lua). The house
+-- cannot ask -- a house asks inside its own shop and this one has no shop yet -- so its opening job is
+-- lying at a dead end down there for the company to walk into.
+--
+-- On the MARKET board rather than in the city: seven shelves and a general store are one kind of door,
+-- and they share a screen behind the city's Markets card.
 return {
     name = "The Colosseum",
-    order = 9,
+    order = 1,
     x = 40,
-    y = 416,
+    y = 265,
     w = 270,
     h = 130,
     panel = "shop",
-    vendor = "colosseum", -- fighter class; see data/vendors/colosseum.lua
-    -- OPENS WHEN ITS CIRCLE FALLS (models/building.lua). This house IS one of the seven sins, and
-    -- putting that circle's general down in the descent is what puts its shelf in the city.
-    unlockCircle = true,
-    unlockPrestige = 1,
-    -- Shut until the debut is fought on its own sand (data/quests/colosseum/quest_colosseum_slot_01.lua). The tutorial hub
-    -- opens with only the Cafe and the Quest Board among its shops; you cannot browse the fighters'
-    -- shelf before you have stood in their arena. The debut also lifts prestige to 2, so this door and
-    -- the neighbours that open at 2 all appear together the moment it is won. The gate does NOT hide the
-    -- debut quest itself: Quest.available reads Building.vendorUnlockPrestige, which is still 1 (see
-    -- models/building.lua and models/quest.lua).
-    unlockQuest = "quest_colosseum_slot_01",
+    district = "market",
+    vendor = "colosseum", -- fighter class
+    unlockErrand = true,
 }

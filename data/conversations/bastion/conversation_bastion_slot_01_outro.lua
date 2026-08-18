@@ -12,7 +12,7 @@
 -- arrived" whichever way it is answered -- the base scene must always work (docs/story.md).
 return {
     title = "The Gate at Highwatch",
-    cast  = { "character_caravan_master", "character_rowan", "character_avatar" },
+    cast  = { "character_caravan_master", "character_rowan", "character_avatar", "bastion" },
 
     script = {
         { "character_caravan_master", "Twelve days. We'd stopped counting somewhere around the eighth.", tag = 1 },
@@ -30,5 +30,7 @@ return {
         } },
         { "character_rowan", "Forgive me, {name}. I'm no use at this part of it.", tag = 8 },
         { "character_rowan", "Somebody arrived. That's all I have ever wanted a story to say.", tag = 9 },
+        { "bastion", "Highwatch sent word down ahead of you. Twelve days without supply, and the column reached them.", tag = 15 },
+        { "bastion", "The order keeps a counter on the markets. It is open to you. Come and be armed properly next time.", tag = 16 },
     },
 }

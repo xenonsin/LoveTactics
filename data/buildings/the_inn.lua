@@ -16,9 +16,9 @@
 return {
     name = "The Inn",
     order = 3,
-    x = 660,
+    x = 490,
     y = 120,
-    w = 270,
+    w = 300,
     h = 130,
     panel = "inn",
     unlockPrestige = 1,

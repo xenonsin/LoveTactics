@@ -136,6 +136,91 @@ Descent.SINS = {
         minor = { lead = "character_marginalia", filler = "character_gilded_sworn" } },
 }
 
+-- WHAT COMES OFF THE BODY: the unique piece a rank pays for being put down, per sin, in the order it is
+-- handed over.
+--
+-- "KILL A SIN, WEAR IT" is not a new idea here; it is the authored one, and this table is the wiring it
+-- never had. data/items/armor/armor_mail_of_the_unappeased.lua says it outright -- "the payment for a
+-- general, and the shape every one of the seven relics takes" -- and five more of those relics have been
+-- sitting in their generals' own grids the whole time, `noSteal`, unpriced, on nobody's shelf. What a
+-- circle paid instead was a SHOP DOOR, which was a patch applied when the Quest Board was retired and
+-- seven houses could no longer open; the door opens on an errand now (models/errand.lua) and the body
+-- goes back to paying what it was carrying.
+--
+-- A LIST PER RANK, NOT AN ITEM, because a general must not hand over something the player already has.
+-- Descent.dropFor walks it and pays the first piece not already owned, so a second playthrough is paid
+-- in things that playthrough has not seen. The lists are short today and they are meant to grow: that is
+-- the shape the run-again loop is built on rather than a placeholder.
+--
+-- WRATH PAYS THE MAIL, NOT THE HEART, and she is the pattern for every lieutenant here. Ira carries
+-- `utility_unappeased_heart`, which is `bound` -- her fight rule, and unstealable so a rogue cannot lift
+-- her whole fight off her mid-battle. What drops is a wearable sibling carrying the same trait.
+--
+-- EVERY LIEUTENANT NEEDED THAT TREATMENT. Their kit is tagged `natural`, which in this codebase means a
+-- body part rather than equipment -- handing a player the Gralloch Hook hands them an organ. So each has
+-- a wearable piece of its own, and each carries the FIRST-PHASE rule that body was built to teach
+-- (data/items/utility/utility_anvils_face.lua and its six siblings).
+--
+-- WHICH MAKES A CIRCLE A TWO-PIECE SET, in the order the circle taught it. The whole tier is built on one
+-- rule -- a mini sin's second phase is its general's first -- so the lieutenant's piece is the cut-down
+-- version and the general's is the thing it was cutting down. The Anvil sharpens on every blow and stops;
+-- Ira never stops. Wear both and the two terms compound exactly as they compounded on her. That is what
+-- makes the second half of a circle worth walking to rather than a smaller copy of the first.
+--
+-- AN EMPTY LIST IS STILL A PAYOUT, and the field stays even though nothing is empty today: a list runs
+-- out on a second playthrough, and Descent.dropFor then returns nil and the landing pays the house's
+-- forge stock. That is the same path an unauthored piece would take, which is why adding to these lists
+-- is safe and forgetting to is survivable.
+Descent.DROPS = {
+    gluttony = { general = { "utility_maw_of_the_unfed" },     minor = { "utility_larder_hook" } },
+    lust     = { general = { "utility_reliquary_unbidden" },   minor = { "utility_beggars_bowl" } },
+    greed    = { general = { "utility_bottomless_purse" },     minor = { "utility_tally_stick" } },
+    envy     = { general = { "utility_envious_glass" },        minor = { "utility_second_vessel" } },
+    wrath    = { general = { "armor_mail_of_the_unappeased" }, minor = { "utility_anvils_face" } },
+    -- Acedia's relic is her PIKE, and it took a second look to see it: it is tagged
+    -- { "spear", "pierce", "physical", "melee", "relic" }, so a search for the bare `tags = { "relic" }`
+    -- the other six wear reports her as the one general with nothing to pay. She is not. The set is
+    -- whole.
+    sloth    = { general = { "weapon_forsworn_pike" },         minor = { "utility_unblown_horn" } },
+    pride    = { general = { "utility_codex_unanswered" },     minor = { "utility_marginal_gloss" } },
+}
+
+-- WHAT A SPENT SET PAYS INSTEAD, in units of the house's own forge stock.
+--
+-- Sized against the bench that bills it: a Forge rung costs two-to-three house stock (models/forge.lua),
+-- so four is a rung and change -- enough that a general with nothing left to give is still the best thing
+-- that happened on that floor, and not so much that farming a circle you have stripped beats going
+-- deeper. One constant, because the right answer is a tuning question and will move.
+Descent.SPENT_SET_STOCK = 4
+
+-- Does this company already hold `itemId` -- in the stash, or in anybody's grid?
+--
+-- Asked of the WHOLE company rather than of a ledger of its own, because that is what "already got this"
+-- means to a player: a relic worn by the knight is not a relic they are missing. Selling one therefore
+-- makes it droppable again, which is correct -- they gave it up.
+local function ownsItem(player, itemId)
+    if not (player and itemId) then return false end
+    for _, item in ipairs(player.stash or {}) do
+        if (type(item) == "table" and item.id or item) == itemId then return true end
+    end
+    for _, char in ipairs(player.roster or {}) do
+        for _, item in pairs(char.inventory or {}) do
+            if type(item) == "table" and item.id == itemId then return true end
+        end
+    end
+    return false
+end
+
+-- The piece this body pays, or nil when its list is empty or spent. See Descent.DROPS.
+function Descent.dropFor(player, sin, isGeneral)
+    local set = sin and Descent.DROPS[sin.id]
+    if not set then return nil end
+    for _, id in ipairs((isGeneral and set.general or set.minor) or {}) do
+        if not ownsItem(player, id) then return id end
+    end
+    return nil
+end
+
 -- HOW DEEP A CIRCLE GOES. Wizardry's proving grounds are ten levels and its descendants go deeper; the
 -- descent was eight, which is a tour of the seven rather than a dungeon. Two floors per circle makes it
 -- fifteen -- squarely in that band -- and it is one constant, so three per circle is a one-line change.
@@ -894,6 +979,20 @@ function Descent.isGeneralFloor(floor)
     return Descent.floorWithinCircle(floor) == Descent.FLOORS_PER_CIRCLE
 end
 
+-- WHO WAS STANDING ON THIS STAIR, by name -- the general on her own floor, her lieutenant on the ones
+-- above it. Read off the character blueprint rather than restated here: the lieutenant is a body from the
+-- circle's own cast (Descent.SINS' `minor.lead`) and renaming it in data must not leave a stale copy in
+-- this table. Nil at the bottom, which has no sin and names itself.
+--
+-- Exists because the LANDING says it out loud. Both ranks pay a relic now, and a card that opened over
+-- "the stair is clear" said nothing about which of the two fights had just been won.
+function Descent.guardianName(sin, isGeneral)
+    if not sin then return nil end
+    local band = isGeneral and sin.guardian or sin.minor
+    local def = band and band.lead and require("models.character").defs[band.lead]
+    return (def and def.name) or (isGeneral and sin.name) or nil
+end
+
 -- Which circle this floor is. Nil at the bottom, which is not a sin -- it is what the seven of them
 -- were in front of.
 -- A CIRCLE OWNS A RUN OF FLOORS, so the deck is indexed by which stratum this floor falls in rather
@@ -905,6 +1004,43 @@ function Descent.sinAt(run, floor)
     if Descent.isBottom(floor) then return nil end
     local circle = math.floor((floor - 1) / Descent.FLOORS_PER_CIRCLE) + 1
     return shuffledSins(run and run.seed)[circle]
+end
+
+-- WHICH HOUSE HAS WORK POSTED ON THIS FLOOR, as a vendor id -- the door-opening job a shut house cannot
+-- ask for, because a house asks inside its own shop (models/errand.lua's Errand.opener).
+--
+-- A SECOND PERMUTATION, DELIBERATELY UNCORRELATED WITH THE SINS. Both are dealt off the run's seed, but
+-- with different salts, so the house whose opener is lying on floor three has nothing to do with the sin
+-- who holds it. That is the entire point of the change: which shop you meet stops tracking how deep you
+-- have gone. Correlating them -- seating a house's opener on its own circle's floors -- would rebuild the
+-- thing this replaced with one fewer boss in front of it.
+--
+-- ONE FLOOR EACH, CYCLING. Floors 1..7 carry the seven houses in the dealt order and floors 8..14 carry
+-- them again, so every house is offered exactly twice in a descent and walking past one costs a lap
+-- rather than the run. Nothing is seated at the bottom: the Hollow Crown's floor is not a circle and has
+-- no house.
+--
+-- Derived from the seed, never stored, for the same reason the sins are: a resume re-derives the floor
+-- from a seed and a depth, and a stored order is a second copy that can disagree with it. Whether the
+-- opener is actually SEATED is a separate question and belongs to the player, not the run -- see
+-- Descent.floorObjectives.
+local function shuffledHouses(seed)
+    local deck = {}
+    for i, sin in ipairs(Descent.SINS) do deck[i] = sin.vendor end
+    for i = #deck, 2, -1 do
+        -- Salted off the sins' own shuffle (which passes floor = 0) so the two permutations cannot come
+        -- out in step. 991 is arbitrary and only has to be a number the sins never pass.
+        local j = (hash(seed, 991, i) % i) + 1
+        deck[i], deck[j] = deck[j], deck[i]
+    end
+    return deck
+end
+
+function Descent.openerAt(run, floor)
+    floor = math.max(1, floor or 1)
+    if Descent.isBottom(floor) then return nil end
+    local deck = shuffledHouses(run and run.seed)
+    return deck[((floor - 1) % #deck) + 1]
 end
 
 -- Which biome this floor wears: its sin's, and the underworld at the bottom -- where the campaign's own
@@ -1131,12 +1267,13 @@ function Descent.floorQuest(run, player)
                 win = { type = "killAll" },
             },
             -- ...AND WHATEVER A HOUSE HAS ASKED FOR DOWN HERE. See Descent.floorObjectives.
-            objectives = Descent.floorObjectives(player, floor, sin, floorLevel, general),
+            objectives = Descent.floorObjectives(player, floor, sin, floorLevel, general, run),
         },
     }
 end
 
--- EVERY END THIS FLOOR CARRIES: the stair, and one per errand a house has asked for down here.
+-- EVERY END THIS FLOOR CARRIES: the stair, one per errand a house has asked for down here, and -- if a
+-- house with a shut door has work posted on this floor -- the job that opens it.
 --
 -- The stair is ALWAYS FIRST, because states/game.lua resolves "the objective" as `objectives[1]` before
 -- it falls back to `objective` -- so a floor whose errand sorted ahead of its stair would treat the
@@ -1147,7 +1284,7 @@ end
 -- which piece of work was finished. The generator gives each its own dead end, which is what a ground
 -- carrying three quests has always done -- so a floor with an errand on it is that same shape, and the
 -- stair is simply one of two things worth walking to.
-function Descent.floorObjectives(player, floor, sin, floorLevel, general)
+function Descent.floorObjectives(player, floor, sin, floorLevel, general, run)
     local stair = {
         name = general and sin and ("The Stair Down — " .. sin.name) or "The Stair Down",
         opening = general and sin and sin.scene or nil,
@@ -1157,8 +1294,10 @@ function Descent.floorObjectives(player, floor, sin, floorLevel, general)
     }
     if not player then return { stair } end
 
-    local out = { stair }
-    for _, entry in ipairs(require("models.errand").onFloor(player, floor)) do
+    -- One errand-shaped entry becomes one end on the board. Shared by the two kinds this floor can carry
+    -- -- the jobs a house ASKED for and the one it cannot ask for -- because they are the same object: a
+    -- quest blueprint's objective, stamped with the id that says which piece of work it settles.
+    local function specFor(entry)
         local spec = {}
         for k, v in pairs(entry.map and entry.map.objective or {}) do spec[k] = v end
         spec.questId = entry.id
@@ -1170,8 +1309,37 @@ function Descent.floorObjectives(player, floor, sin, floorLevel, general)
         -- Salvages in the house that asked for it, which is the same rule a sponsored quest follows.
         spec.houseMaterial = require("models.material")
             .houseFor((require("models.vendor").get(entry.sponsor) or {}).class)
-        out[#out + 1] = spec
+        return spec
     end
+
+    local Errand = require("models.errand")
+    local out = { stair }
+    for _, entry in ipairs(Errand.onFloor(player, floor)) do
+        out[#out + 1] = specFor(entry)
+    end
+
+    -- THE DOOR-OPENING JOB, seated for a house that has no door to ask through.
+    --
+    -- Never accepted, because there is nowhere to accept it: Errand.accept is reached from inside a
+    -- shop, and this house's shop does not exist yet. It is simply lying on the floor, at its own dead
+    -- end like every other end here, and finishing it opens the shop and counts as that house's first
+    -- errand in one stroke (models/errand.lua's Errand.opener).
+    --
+    -- Skipped once its door is open, which is what stops a house that already trades from posting the
+    -- job that would have introduced it. A house met and walked past keeps its posting and comes round
+    -- again seven floors later (Descent.openerAt).
+    local house = Descent.openerAt(run, floor)
+    local openerId = house and not Errand.doorOpen(player, house) and Errand.opener(house)
+    local openerDef = openerId and require("models.quest").defs[openerId]
+    if openerDef and openerDef.map and openerDef.map.objective then
+        out[#out + 1] = specFor({
+            id = openerId,
+            name = openerDef.name,
+            sponsor = openerDef.sponsor,
+            map = openerDef.map,
+        })
+    end
+
     return out
 end
 

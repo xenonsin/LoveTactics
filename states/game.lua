@@ -525,100 +525,95 @@ function game:openLanding(cell)
     if not run then return end
     Descent.clearFloor(run)
 
-    -- A BEATEN CIRCLE OPENS ITS HOUSE IN THE CITY, and this is the whole of that wiring.
+    -- CIRCLES BEATEN, banked on the player so the tally outlives the run that earned it.
     --
-    -- Each of the seven shops IS one of the sins (models/descent.lua's SINS carries the join), and they
-    -- were gated on the campaign's completed-quest count -- parked at zero forever, so they were seven
-    -- doors that could never open. They read `player.standing[vendorId]` now
-    -- (models/building.lua), and putting a general down is what writes it.
+    -- IT NO LONGER OPENS ANYTHING. This used to be the wiring that put a house in the city -- a beaten
+    -- circle unlocked its shop -- which was a patch applied when the Quest Board was retired and seven
+    -- doors could no longer open at all. It put every class's shelf behind fourteen floors of descent in
+    -- a different order each run, so the only way to equip a class was to go deeper than that class's
+    -- gear would have carried you. A house opens on the first errand it posts on a floor now
+    -- (models/errand.lua) and this number is read by exactly one thing: the "Circles beaten:" line on the
+    -- terminal card (states/descent.lua).
     --
-    -- ON THE PLAYER, not just the run. `run.standing` is the expedition's own tally and dies with it;
-    -- this is a city that has to still be open tomorrow, so it goes where the save keeps things.
-    -- Credited ONCE per circle, on the general's floor, by the same test the run's tally uses -- getting
-    -- past her honour guard is not getting past her.
+    -- Credited ONCE per circle, on the general's floor, by the same test the run's own tally uses --
+    -- getting past her honour guard is not getting past her.
     if Descent.isGeneralFloor(Descent.depth(run)) and game.player then
         local sin = Descent.sinAt(run, Descent.depth(run))
         if sin then
             game.player.standing = game.player.standing or {}
-            local had = (game.player.standing[sin.vendor] or 0)
-            game.player.standing[sin.vendor] = had + 1
-            if had == 0 then
-                local house = require("models.vendor").get(sin.vendor)
-                game:pushToast(((house and house.name) or sin.name) .. " opens its doors to you")
+            game.player.standing[sin.vendor] = (game.player.standing[sin.vendor] or 0) + 1
+        end
+    end
+
+    -- WHAT WAS ON THE BODY, and it is the body's OWN piece rather than a hand of cards.
+    --
+    -- THIS DEALT A RELIC SLATE: three for a general, two for her lieutenant, drawn off a weighted shelf
+    -- leaning toward the circle just beaten. Both ranks paid the same currency and differed only in the
+    -- WIDTH of the offer, which made a general a slightly wider lieutenant.
+    --
+    -- What each of them pays now is a unique authored object that was hers -- Ira's mail, the Codex, the
+    -- Bottomless Purse -- and it survives the run, where a relic never did (models/descent.lua's DROPS,
+    -- which carries the whole argument and the gaps still to be authored). Three consequences worth
+    -- naming:
+    --
+    --   there is no CHOICE here any more, so there is no slate to pin to the run for a resume to
+    --   re-deal, and `run.landing` goes with it;
+    --
+    --   the piece goes to the STASH, not to the run's relic state. The point of it is that it outlives
+    --   the company that took it;
+    --
+    --   an exhausted list -- a second playthrough, or a rank whose mirror is not authored yet -- pays
+    --   that house's forge stock instead, so the stair is never silent.
+    local wasGeneral = Descent.isGeneralFloor(Descent.depth(run))
+    local beaten = Descent.sinAt(run, Descent.depth(run))
+    local dropId = Descent.dropFor(game.player, beaten, wasGeneral)
+
+    -- THE WAY DOWN, OPENED. Done here rather than after the announcement so the board is already changed
+    -- before anything is drawn over it: a player who quits with the notice still on screen comes back to
+    -- a floor whose stair is standing open. What the naming below then says about the circle underneath
+    -- belongs to the stair, and is said there -- at the moment the player commits to the step rather than
+    -- at the moment they cannot.
+    game:openStairDown(cell)
+    run.landing = nil -- no slate to re-deal; a resume finds the stair open and nothing outstanding
+
+    -- WHO IS BEING NAMED. The general by name on her own stair; her lieutenant by name on the floors above
+    -- it (Descent.guardianName), which is what tells the two ranks apart now that both of them pay.
+    local felled = Descent.guardianName(beaten, wasGeneral)
+    if game.player then
+        if dropId then
+            local item = Item.instantiate(dropId)
+            Player.addToStash(game.player, item)
+            Player.markNew(game.player, Player.NEW_STASH, dropId)
+            game:pushToast((felled and (felled .. " is beaten. ") or "") ..
+                "Taken from the body: " .. ((item and item.name) or dropId))
+        else
+            -- NOTHING OF HERS LEFT, so the house pays in its own stock -- the material its bench bills in
+            -- (models/material.lua). It is the one payout that cannot run out and the one that still says
+            -- whose circle this was, which is more than gold could do.
+            local houseMat = beaten and require("models.material")
+                .houseFor((require("models.vendor").get(beaten.vendor) or {}).class)
+            if houseMat then
+                Player.addMaterial(game.player, houseMat, Descent.SPENT_SET_STOCK)
+                local mat = require("models.material").get(houseMat)
+                game:pushToast((felled and (felled .. " is beaten. ") or "") ..
+                    "Nothing of hers you do not already carry  +" .. Descent.SPENT_SET_STOCK ..
+                    " " .. ((mat and mat.name) or houseMat))
+            else
+                Player.addGold(game.player, Relic.BARE_SHELF_GOLD)
+                game:pushToast("Nothing on the body you do not already carry  +" ..
+                    Relic.BARE_SHELF_GOLD .. "g")
             end
         end
     end
-
-    -- WHAT THE GENERAL WAS CARRYING. Slated off the circle just beaten rather than the one below, so the
-    -- boon belongs to the fight that earned it: Relic.slate already leans a shelf toward a named sin, and
-    -- this is the same call the reliquary makes with the same contrast rule (a Vice against two Virtues
-    -- where the shelf allows).
+    -- ...and the stair the board now carries, which is the state worth losing least.
     --
-    -- PINNED TO THE RUN, exactly as the reliquary's slate is pinned to its cell and for the same reason
-    -- plus one. The reason: a landing re-opened must not deal three different relics. The extra: a run
-    -- saves at the landing, and `pending` aside this is the only place a run holds a decision that has
-    -- not been made yet -- so it rides in the snapshot as what it is, a list of ids.
-    --
-    -- ONLY A GENERAL CARRIES ONE. A circle owns a stratum of floors and she stands on the last of them
-    -- (models/descent.lua's isGeneralFloor); the floors above hers are held by her honour guard. Paying
-    -- a boon at every stair would hand out fifteen relics down a fifteen-floor descent, against a shelf
-    -- of nineteen -- so the slate would be bare by the fourth circle and the reliquaries on the boards
-    -- would have nothing left to offer either. Seven boons, one per general, keeps them scarce and
-    -- keeps her floor the thing the stratum was walking toward.
-    local wasGeneral = Descent.isGeneralFloor(Descent.depth(run))
-    local beaten = Descent.sinAt(run, Descent.depth(run))
-    if wasGeneral and not run.landing then
-        run.landing = Relic.slate({
-            day = game.day,
-            sin = beaten and beaten.id,
-            exclude = game.relicState,
-        }, 3)
-    end
-
-    -- THE WAY DOWN, OPENED. Done here rather than on the panel's buttons so the board is already changed
-    -- before anything is drawn over it: a player who quits with the boon still on screen comes back to a
-    -- floor whose stair is standing open, and the resume has only the undealt card left to re-open.
-    -- What the naming below then says about the circle underneath belongs to the stair, and is said
-    -- there -- at the moment the player commits to the step rather than at the moment they cannot.
-    game:openStairDown(cell)
-
-    -- The pinned slate can go stale the same way the reliquary's can: a relic on it may have been taken
-    -- at a Sin's Altar or won at a Crossroads between the save and the resume. Drop what the run already
-    -- holds rather than dealing a card that does nothing when pressed.
-    local offer = {}
-    for _, id in ipairs(run.landing or {}) do
-        if not Relic.has(game.relicState, id) then
-            offer[#offer + 1] = { id = id, info = Relic.info(id) }
-        end
-    end
-
-    -- Back to the floor, with or without the boon. One function because the two buttons differ only in
-    -- what they take on the way -- and neither of them goes anywhere any more.
-    local function backToFloor()
-        game.activePanel = nil
-        run.landing = nil -- the decision is made; nothing to re-deal on a resume
-        saveRun()          -- ...and the stair the board now carries, which is the state worth losing least
-    end
-
-    -- A bare shelf (the run already holds everything eligible) is not a panel worth opening -- there is
-    -- nothing to choose between and the only button would be the one that dismisses it. The toast the
-    -- stair pushed has already said the thing this panel would have said.
-    if #offer == 0 then backToFloor() return end
-
-    game.activePanel = RelicOffer.new({
-        title = (wasGeneral and beaten) and (beaten.name .. " is beaten.") or "The stair is clear.",
-        prompt = "The way down is open behind her, and she was carrying this.",
-        offer = offer,
-        -- The refusal is a refusal now and says so. It used to read "Go down", because both buttons did.
-        leaveLabel = "Take nothing",
-        closeable = false,
-        onTake = function(entry)
-            Relic.grant(game.relicState, entry.id)
-            game:pushToast("Taken from the body: " .. (Relic.info(entry.id).name or entry.id))
-            backToFloor()
-        end,
-        onLeave = backToFloor,
-    })
+    -- NO PANEL. There is nothing to decide -- one object, already in the stash -- and the beat that used
+    -- to open here was a chooser for a hand of cards that no longer exists. The toast above is the whole
+    -- announcement, which is the same treatment the old bare-shelf branch gave a stair with nothing on
+    -- it. Whether a general's defeat deserves more than a line in the corner is a question about the
+    -- SCREEN and worth asking on the screen; it is deliberately not answered by keeping a chooser with
+    -- one option in it.
+    saveRun()
 end
 
 -- OPENING THE STAIR: the tile the guardian was holding stops being the floor's objective and becomes
@@ -2098,9 +2093,15 @@ function game:openEncounter(cell)
                 offer[#offer + 1] = { id = id, info = Relic.info(id) }
             end
         end
-        if #offer == 0 then -- shelf exhausted: don't strand the player on an empty reliquary
+        -- Shelf exhausted: don't strand the player on an empty reliquary. NOT `guaranteed` -- a reliquary
+        -- is furniture and an empty one is an honest answer, where a boss's stair is a body and has to be
+        -- carrying something (game:openLanding). Both pay the same consolation when they are bare.
+        if #offer == 0 then
             cell.cleared = true
-            if game.player then Player.addGold(game.player, 15); game:pushToast("The reliquary is bare  +15g") end
+            if game.player then
+                Player.addGold(game.player, Relic.BARE_SHELF_GOLD)
+                game:pushToast("The reliquary is bare  +" .. Relic.BARE_SHELF_GOLD .. "g")
+            end
             saveRun()
             return
         end

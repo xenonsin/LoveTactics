@@ -1,8 +1,14 @@
--- Hub city state: the town screen reached from the main menu. Buildings are
--- clickable hotspots over a background image; clicking one opens a modal pop-up
--- panel (Quest Board, or a placeholder for buildings not yet designed). The
--- city grows as the player's prestige unlocks more buildings (see
--- models/building.lua and data/buildings/).
+-- Hub city state: the town screen reached from the main menu. Buildings are clickable hotspots over a
+-- background image; clicking one opens a modal pop-up panel, or switches to a whole screen for the two
+-- doors that are places rather than counters (the Gate, the Markets).
+--
+-- A PLAZA WITH THE GATE IN THE MIDDLE (models/building.lua's GRID). The stair is the reason the city
+-- exists and everything else here is something you do before going down or because you came back up, so
+-- it is drawn larger and the other seven cards ring it.
+--
+-- The city grows as its doors are opened, and that is no longer prestige: the shelves moved onto the
+-- market board and each opens on the first errand its house posts on a descent floor
+-- (models/errand.lua). Nothing on THIS board waits on anything except the Dueling Grounds.
 
 local State = require("states")
 local Player = require("models.player")
@@ -14,9 +20,9 @@ local CoachBubble = require("ui.coach_bubble")
 local Conversation = require("models.conversation")
 local Discipline = require("models.discipline")
 local Errand = require("models.errand")   -- the small work a house asks for before it opens a rung
-local Quest = require("models.quest")     -- an errand IS a quest def; the intro is the house asking
 local Item = require("models.item")
 local Vendor = require("models.vendor")
+local VendorVisit = require("models.vendor_visit") -- what a shop says before it shows you the shelf
 local Locale = require("models.locale")
 local Scale = require("scale")
 local ScreenFx = require("ui.screen_fx")
@@ -161,88 +167,15 @@ local function launchPanel(building)
     })
 end
 
--- The scenes a shop plays BEFORE its shelf, in order: its one-time first-visit greeting, then one
--- "the shelf just grew" announcement for each newly unlocked discipline whose stock lands here. Each
--- is authored inline; each records its flag and saves so it never repeats. Returns a flat list of
--- { conversationId, before } steps, where `before` runs just ahead of the scene (used to set the
--- discipline name the {discipline} token reads). An empty list means open straight to the shelf.
-local function vendorScenes(building)
-    local steps = {}
-    local vendorId = building.vendor
-    if not vendorId then return steps end
-
-    -- 1. First-visit greeting (data/conversations/<id>/conversation_<id>_vendor_intro.lua).
-    local introId = "conversation_" .. vendorId .. "_vendor_intro"
-    if not Player.hasVisitedVendor(hub.player, vendorId) and Conversation.defs[introId] then
-        steps[#steps + 1] = { id = introId, before = function()
-            Player.markVendorVisited(hub.player, vendorId)
-        end }
-    end
-
-    -- 2. One announcement per newly unlocked discipline that stocks this shelf. The shop speaks; the
-    -- {discipline} token names each one (set on the player for the scene's duration -- Locale.substitute).
-    local vdef = Vendor.get(vendorId)
-    local class = vdef and vdef.class
-    local announceId = "conversation_" .. vendorId .. "_discipline_unlocked"
-    if class and Conversation.defs[announceId] then
-        for _, disciplineId in ipairs(Discipline.pendingAnnouncements(hub.player, class)) do
-            local name = Discipline.defs[disciplineId] and Discipline.defs[disciplineId].name
-            steps[#steps + 1] = { id = announceId, before = function()
-                Player.markDisciplineAnnounced(hub.player, disciplineId)
-                hub.player.announcingDiscipline = name
-            end }
-        end
-    end
-
-    -- 3. THE HOUSE ASKS FOR SOMETHING. A shelf climbs a rung at a time and each rung is bought by doing
-    -- a small piece of work for the house (models/errand.lua) -- so when the company has been deep
-    -- enough for the next one, the vendor asks for it before the shelf opens, and the errand is taken on
-    -- there and then.
-    --
-    -- ACCEPTED BY BEING ASKED, with no yes-or-no. A refusal would be a door onto the same conversation
-    -- tomorrow and a shelf that stays shut for no reason the player chose -- and there is nothing to
-    -- weigh, because an errand costs nothing to hold. Where it is, and whether to go, is the decision;
-    -- it is on the floor and in the shop's Errands tab either way.
-    --
-    -- The scene is the QUEST'S OWN `intro`, which is the house asking for exactly this in its own voice
-    -- -- seventy of them are already authored (data/conversations/<house>/). A house whose errand has no
-    -- intro takes the work silently rather than not at all.
-    local deepest = hub.player and hub.player.descentRun and hub.player.descentRun.cleared or 0
-    local offered = Errand.offered(hub.player, vendorId, deepest)
-    if offered then
-        local def = Quest.defs[offered]
-        local floor = Errand.floorFor(hub.player, vendorId)
-        local function take() Errand.accept(hub.player, offered, floor) end
-        if def and def.intro and Conversation.defs[def.intro] then
-            steps[#steps + 1] = { id = def.intro, before = take }
-        else
-            take()
-        end
-    end
-
-    return steps
-end
-
--- Play a shop's pre-shelf scenes in sequence, then open the panel. Each step records its flag before
--- it plays and the batch saves once at the end, so a greeting or announcement never repeats across a
--- save/load. The chain is built by recursion over the step list -- Conversation.play is callback-based
--- and there is no other sequencer here.
+-- Play a shop's pre-shelf scenes -- the greeting, any discipline announcement, the house's next ask --
+-- and then open its panel. All of it lives in models/vendor_visit.lua now: the shelves moved onto their
+-- own board (states/markets.lua) and two screens open shop doors, so the sequencing is one copy with two
+-- callers rather than ninety duplicated lines that can disagree about what a house asked for.
+--
+-- A building with no vendor has nothing to say and opens straight away.
 local function launchVendor(building)
-    local steps = vendorScenes(building)
-    if #steps == 0 then launchPanel(building); return end
-
-    local function playFrom(i)
-        local step = steps[i]
-        if not step then
-            hub.player.announcingDiscipline = nil -- clear the token after the last scene
-            Player.save()
-            launchPanel(building)
-            return
-        end
-        if step.before then step.before() end
-        Conversation.play(step.id, function() playFrom(i + 1) end)
-    end
-    playFrom(1)
+    if not building.vendor then launchPanel(building); return end
+    VendorVisit.play(hub.player, building.vendor, function() launchPanel(building) end)
 end
 
 -- Activation seam handed to the building map. In free play it opens the clicked building's panel

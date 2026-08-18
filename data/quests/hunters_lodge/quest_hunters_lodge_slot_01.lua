@@ -7,6 +7,10 @@ return {
     description = "A white stag walks the deep wood. The Lodge wants its antlers on their wall.",
     difficulty = "Normal",
     sponsor = "hunters_lodge",
+    -- The thanks for the job that OPENS this house. Its opener is seated on a descent floor unasked
+    -- (models/errand.lua), so this scene is where the house first learns who ran it -- and the greeting
+    -- waiting at its counter picks up from these lines.
+    outro = "conversation_hunters_lodge_slot_01_outro",
     rewardItems = { "weapon_deadfall_bow", "armor_quarryhide" },
     rewardGold = 130,
     requiredPrestige = 2,

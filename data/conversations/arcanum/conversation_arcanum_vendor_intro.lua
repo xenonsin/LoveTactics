@@ -5,6 +5,7 @@ return {
     cast  = { "arcanum", "character_avatar", { id = "character_gyeom", when = { has = "character_gyeom" } } },
 
     script = {
+        { "arcanum", "The grimoire is drying on a table upstairs. Four pages are legible. You brought us four more than we had.", tag = 8 },
         { "arcanum", "The Arcanum. We win the wars the crown cannot and turn back the plagues its physicians can't name. Buy what you like. Everything on this shelf was earned by someone.", tag = 1 },
         { "character_avatar", "Earned by whom?", tag = 2 },
         { "arcanum", "Does it matter, so long as it works? No one else can do what we do. That is the beginning and end of the question.", tag = 3 },

@@ -7,8 +7,8 @@
 return {
     name = "The Forge",
     order = 6,
-    x = 350,
-    y = 268,
+    x = 835,
+    y = 300,
     w = 270,
     h = 130,
     panel = "forge",

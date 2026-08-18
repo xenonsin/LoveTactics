@@ -5,6 +5,7 @@ return {
     cast  = { "bastion", "character_avatar", { id = "character_rowan", when = { has = "character_rowan" } } },
 
     script = {
+        { "bastion", "The column reached Highwatch. Twelve days without supply, and it reached them. That is why you are standing here.", tag = 7 },
         { "bastion", "The Watch outfits those who hold. Shields that outlast the arm behind them. Mail a knight can be found standing in. We do not arm those who run. State your post, or your reason for having none.", tag = 1 },
         { "character_avatar", "I hold what's mine. That's post enough.", tag = 2 },
         { when = { has = "character_rowan" }, script = {

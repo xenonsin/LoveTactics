@@ -108,7 +108,13 @@ function BuildingMap:draw()
         love.graphics.rectangle("line", b.x, b.y, b.w, b.h, Theme.R, Theme.R)
         love.graphics.setLineWidth(1)
 
-        local label = b.locked and ("? (prestige " .. b.unlockPrestige .. ")") or b.name
+        -- A SHUT DOOR IS THREE QUESTION MARKS AND NOTHING ELSE. It read "? (prestige 4)" -- a currency
+        -- the city stopped counting and, for the shops, not even the gate being asked. It then carried a
+        -- sentence naming the deed, which was right while each door wanted a different one. Every shut
+        -- shop wants the same thing now (go down, walk the floors, the work is lying on one of them), so
+        -- a per-card sentence was seven copies of one instruction, and naming the house in it gave away
+        -- the shop the card exists to withhold.
+        local label = b.locked and "???" or b.name
         Theme.set(active and Theme.accentAmber or (b.locked and Theme.muted or Theme.ink))
         love.graphics.printf(label, b.x, b.y + b.h / 2 - 10, b.w, "center")
 

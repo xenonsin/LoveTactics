@@ -1,9 +1,9 @@
 -- Tests for models/errand.lua -- the small work a house asks for, and the second gate on its shelf.
 --
--- A house opens its DOOR when its circle falls (tests/hub_spec.lua pins that). What it does not do is
--- hand over its catalogue for having beaten a general: the shelf still climbs a rung at a time, and each
--- rung is bought by running an errand. So stock is gated twice -- by the floor reached, and by the work
--- done -- and this file is the second of those.
+-- A house opens its DOOR on its own first errand, found on a floor (tests/hub_spec.lua pins that half).
+-- What that does not do is hand over its catalogue: the shelf still climbs a rung at a time and each
+-- rung is bought by running another errand. So stock is gated twice -- by the floor reached, and by the
+-- work done -- and this file is the second of those.
 --
 -- The errands ARE the campaign's parked quests, re-seated (see the module header), so most of what is
 -- checked here is that the re-reading is faithful: the ordering is the slot order, the ledger is the one
@@ -15,11 +15,12 @@ local Quest = require("models.quest")
 local Save = require("models.save")
 local Vendor = require("models.vendor")
 
--- A company that has beaten `circles` of this house's circle and is `deepest` floors down.
-local function company(vendorId, circles, deepest)
+-- A company whose door at `vendorId` is open (or not) and which has gone `deepest` floors down. The
+-- door is the house's OPENER having been run -- its first errand, found on a floor (models/errand.lua).
+local function company(vendorId, doorOpen, deepest)
     local p = Player.new()
     p.completedQuests = {}
-    p.standing = { [vendorId] = circles or 0 }
+    if doorOpen then p.completedQuests[Errand.opener(vendorId)] = true end
     p.descentRun = { cleared = deepest or 0 }
     return p
 end
@@ -42,33 +43,35 @@ return {
         end
     end },
 
-    { name = "three gates: the circle, the line, and how deep you have been", fn = function()
+    { name = "three gates: the door, the line, and how deep you have been", fn = function()
         local v = "bastion"
 
-        -- The circle first. A house whose door is shut asks for nothing, however deep the company has
-        -- gone -- there is nobody to ask.
-        local shut = company(v, 0, 40)
-        assert(Errand.offered(shut, v, 40) == nil, "a house with its circle unbeaten asks for nothing")
+        -- The door first. A house whose opener has not been run asks for nothing, however deep the
+        -- company has gone -- there is nowhere to ask, because asking happens inside the shop.
+        local shut = company(v, false, 40)
+        assert(Errand.offered(shut, v, 40) == nil, "a house whose door is shut asks for nothing")
 
-        -- ...and once it is open, the FLOOR still gates it. A company that has beaten the circle but only
+        -- ...and once it is open, the FLOOR still gates it. A company that has run the opener but only
         -- gone a floor deep is not being handed the second rung.
-        local shallow = company(v, 1, 0)
+        local shallow = company(v, true, 0)
         assert(Errand.offered(shallow, v, 0) == nil, "a house asks nothing of a company that has not gone down")
 
-        local deep = company(v, 1, Errand.FLOORS_PER_RUNG)
-        local first = Errand.offered(deep, v, Errand.FLOORS_PER_RUNG)
-        assert(first, "a beaten circle and enough depth should produce an errand")
-        assert(first == Errand.forVendor(v)[1], "and it is the first of the line")
+        local deep = company(v, true, Errand.FLOORS_PER_RUNG * 2)
+        local next2 = Errand.offered(deep, v, Errand.FLOORS_PER_RUNG * 2)
+        assert(next2, "an open door and enough depth should produce an errand")
+        -- The SECOND of the line, and that is the door model rather than an off-by-one: the opener is
+        -- the first, it was run on a floor, and running it is what put this shop on the board at all.
+        assert(next2 == Errand.forVendor(v)[2], "and it is the second of the line -- the opener is spent")
 
         -- The line runs out. A house that has been run dry asks for nothing rather than looping.
-        local finished = company(v, 1, 99)
+        local finished = company(v, true, 99)
         for _, id in ipairs(Errand.forVendor(v)) do finished.completedQuests[id] = true end
         assert(Errand.offered(finished, v, 99) == nil, "a finished line asks for nothing")
     end },
 
     { name = "each rung asks the company to have gone deeper than the last", fn = function()
         local v = "bastion"
-        local p = company(v, 1, 99)
+        local p = company(v, true, 99)
         local last = 0
         for i = 1, 4 do
             local floor = Errand.floorFor(p, v)
@@ -82,7 +85,7 @@ return {
         -- The floor is the whole reason the open list exists: an errand whose location the player has to
         -- remember is a chore the game could have spared them.
         local v = "bastion"
-        local p = company(v, 1, 10)
+        local p = company(v, true, 10)
         local id = Errand.offered(p, v, 10)
 
         assert(#Errand.open(p) == 0, "nothing is open before it is taken on")
@@ -107,7 +110,7 @@ return {
         -- completed quests per sponsor -- so an errand completes by writing `completedQuests`, and the
         -- shop opens with no second tally that could disagree with the first.
         local v = "bastion"
-        local p = company(v, 1, 99)
+        local p = company(v, true, 99)
         local before = Vendor.stock(v, Quest.sponsorProgress(p, v))
         local openBefore = 0
         for _, e in ipairs(before) do if not e.locked then openBefore = openBefore + 1 end end
@@ -124,7 +127,7 @@ return {
 
     { name = "open errands survive a save, floor and all", fn = function()
         local v = "bastion"
-        local p = company(v, 1, 10)
+        local p = company(v, true, 10)
         local id = Errand.offered(p, v, 10)
         Errand.accept(p, id, 7)
 
@@ -152,6 +155,47 @@ return {
                 assert(obj, id .. " has no objective to seat")
                 assert(obj.composition, id .. " has no composition: nothing to fight")
                 assert(obj.win and obj.win.type, id .. " has no win condition: nothing to finish")
+            end
+        end
+    end },
+
+    { name = "an opener thanks you in the house's own voice, and its counter greets you in the same one", fn = function()
+        -- THE SHAPE OF MEETING A HOUSE. Its first job is lying on a floor with nobody to introduce it
+        -- (Errand.opener), so the only two moments the house gets to speak are the thanks straight after
+        -- that fight and the greeting the first time you walk into the shop it opened. Both have to be
+        -- the SAME voice or the player meets two strangers: the house is the speaker in each.
+        --
+        -- Pinned because every part of it fails silently. An `outro` naming a scene that does not exist
+        -- plays nothing; a greeting that never mentions the job reads as a shop you wandered into.
+        local Conversation = require("models.conversation")
+        local Vendor = require("models.vendor")
+
+        local function speaks(def, who)
+            for _, node in ipairs((def and def.script) or {}) do
+                if node[1] == who then return true end
+            end
+            return false
+        end
+
+        for vendorId in pairs(Vendor.defs) do
+            if Vendor.defs[vendorId].class then
+                local opener = Errand.opener(vendorId)
+                assert(opener, vendorId .. " has no opener at all")
+
+                -- The thanks, wired onto the quest and actually authored.
+                local outroId = Quest.defs[opener].outro
+                assert(outroId, opener .. " opens a door and says nothing when it is finished")
+                local outro = Conversation.defs[outroId]
+                assert(outro, opener .. " names an outro that does not exist: " .. tostring(outroId))
+                assert(speaks(outro, vendorId),
+                    outroId .. " never lets " .. vendorId .. " speak -- the house does not thank you itself")
+
+                -- ...and the greeting behind the door it opened, in that same voice.
+                local introId = "conversation_" .. vendorId .. "_vendor_intro"
+                local intro = Conversation.defs[introId]
+                assert(intro, vendorId .. " opens a shop with no first-visit greeting")
+                assert(intro.script and intro.script[1] and intro.script[1][1] == vendorId,
+                    introId .. " does not open in the house's own voice")
             end
         end
     end },

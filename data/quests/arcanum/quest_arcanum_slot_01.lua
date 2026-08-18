@@ -8,6 +8,10 @@ return {
     description = "A grimoire lies in the flooded ruins. Others are already digging for it.",
     difficulty = "Normal",
     sponsor = "arcanum",
+    -- The thanks for the job that OPENS this house. Its opener is seated on a descent floor unasked
+    -- (models/errand.lua), so this scene is where the house first learns who ran it -- and the greeting
+    -- waiting at its counter picks up from these lines.
+    outro = "conversation_arcanum_slot_01_outro",
     rewardItems = { "weapon_iron_crook", "armor_gleaners_mantle" },
     rewardGold = 140,
     requiredPrestige = 3,

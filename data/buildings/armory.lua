@@ -4,8 +4,8 @@
 return {
     name = "Armory",
     order = 5,
-    x = 40,
-    y = 268,
+    x = 175,
+    y = 300,
     w = 270,
     h = 130,
     panel = "party",

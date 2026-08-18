@@ -1,23 +1,16 @@
+-- The Bastion: the knights' shelf, and the house of Sloth.
+--
+-- OPENS ON ITS OWN FIRST ERRAND, found on a floor -- see data/buildings/colosseum.lua for the whole of
+-- that note, and models/building.lua for why it is not the circle any more.
 return {
     name = "The Bastion",
-    order = 11,
-    x = 660,
-    y = 416,
+    order = 2,
+    x = 350,
+    y = 265,
     w = 270,
     h = 130,
     panel = "shop",
+    district = "market",
     vendor = "bastion", -- knight class
-    -- OPENS WHEN ITS CIRCLE FALLS (models/building.lua). This house IS one of the seven sins, and
-    -- putting that circle's general down in the descent is what puts its shelf in the city.
-    unlockCircle = true,
-    unlockPrestige = 2,
-    -- Prestige 2 alone put this door up the moment the debut paid out, which is one quest into the
-    -- game: the tutorial handed the player a city of six shops before they had run anything. The
-    -- padded card is where the campaign actually opens (data/quests/colosseum/quest_colosseum_slot_02.lua)
-    -- and it is the gate the Cathedral, this house and the Lodge now share, so the opening funnel is
-    -- two Colosseum quests wide and the city arrives after them rather than during them.
-    -- The gate does NOT hide this house's work: Quest.available reads Building.vendorUnlockPrestige,
-    -- which is still 2, so the line head carries the same requirement itself (models/quest.lua,
-    -- data/quests/bastion/quest_bastion_slot_01.lua). See data/buildings/colosseum.lua.
-    unlockQuest = "quest_colosseum_slot_02",
+    unlockErrand = true,
 }

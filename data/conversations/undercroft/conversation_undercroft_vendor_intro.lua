@@ -5,6 +5,7 @@ return {
     cast  = { "undercroft", "character_avatar", { id = "character_clem", when = { has = "character_clem" } } },
 
     script = {
+        { "undercroft", "Three doors and two keys, and you came back with the box. That is why this counter is open.", tag = 8 },
         { "undercroft", "No sign, no door you'd notice. Good. You found us anyway. The Undercroft looks after its own, friend. Debts, and the quiet murder of the people who won't pay them. Everything on this floor belonged to someone else once. That's just business.", tag = 1 },
         { "character_avatar", "And the people it belonged to?", tag = 2 },
         { "undercroft", "Owed. Everyone's owed, up above. Your house, your city's water, your king's war. We just hold the note. A debt is a debt. That's not cruelty, that's the world.", tag = 3 },

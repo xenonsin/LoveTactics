@@ -451,47 +451,55 @@ return {
         end,
     },
     {
-        name = "a house's work waits for the house's door to open",
+        name = "a house's opener is its own line's first slot, and it is reachable",
         fn = function()
-            -- A sponsor's legs are gated behind the prestige its BUILDING opens at, so a Bastion quest
-            -- stays hidden until prestige 2: a quest that points at a locked door is an errand the
-            -- player cannot run, and the shop is where its reward is spent.
+            -- THIS CASE HAS BEEN REVERSED THREE TIMES and the current answer is the plainest of them.
             --
-            -- This case was inverted for a while, when the descent was the campaign's progression
-            -- engine and prestige had stopped being how a player advanced. The descent is a separate
-            -- game mode now and prestige is the campaign's currency again, so the gate -- and this
-            -- case -- point the way they originally did.
-            assert(Quest.defs.quest_bastion_slot_01.sponsor == "bastion",
-                "quest_bastion_slot_01 should be a Bastion quest")
+            -- It began as "a house's work waits for the house's door to open": a Bastion quest stayed off
+            -- the board until prestige 2, because a quest pointing at a locked door is an errand the
+            -- player cannot spend the reward of. That rule needed a house that is NOT open from the
+            -- start, and there is no longer any such thing on the prestige scale -- the seven doors carry
+            -- no `unlockPrestige` at all now, because the number is parked at 1 forever with the board
+            -- retired (Player.standing).
+            --
+            -- What replaced it inverts the dependency rather than retuning it. `slot_01` of a house's own
+            -- line IS the door: it is seated on a descent floor unasked, and running it opens the shop
+            -- (models/errand.lua's Errand.opener). So the first piece of work no longer waits for the
+            -- door -- it is the thing that opens it, which is the only arrangement where a shut house can
+            -- ever be opened by a player who has never been able to talk to it.
+            --
+            -- Pinned here because the failure is silent in exactly the way the old prestige gate was: an
+            -- opener that does not exist, or that belongs to another house, is a card that never turns
+            -- over and nothing errors.
+            local Errand = require("models.errand")
+            local Vendor = require("models.vendor")
 
-            local function boardHas(player, id)
-                for _, q in ipairs(Quest.available(player)) do
-                    if q.id == id then return true end
+            for vendorId, vdef in pairs(Vendor.defs) do
+                if vdef.class then
+                    local opener = Errand.opener(vendorId)
+                    assert(opener, vendorId .. " has no opener, so its door can never be opened")
+                    assert(Quest.defs[opener], vendorId .. "'s opener is not a quest: " .. tostring(opener))
+                    assert(Quest.defs[opener].sponsor == vendorId,
+                        vendorId .. "'s opener belongs to " .. tostring(Quest.defs[opener].sponsor))
+                    assert(Quest.defs[opener].map and Quest.defs[opener].map.objective,
+                        opener .. " has no objective, so no floor can seat it")
+
+                    -- And it is SLOT ONE specifically, which is not the same as the head of the line:
+                    -- Errand.forVendor sorts by id, so a house whose line carries a story quest gets it
+                    -- sorted in by alphabet. The Colosseum's door was opening on its Champion's
+                    -- Challenge and the Crucible's on Ren's recruit, because "champions" and
+                    -- "apothecary" both precede "slot". Neither is the job a house posts to introduce
+                    -- itself, and a door on the wrong one is a shelf nobody reaches.
+                    assert(opener:match("_slot_01$"),
+                        vendorId .. "'s opener is " .. opener .. ", not its first slot")
+
+                    -- Running it opens the door and nothing else does.
+                    local shut, open = Player.new(), Player.new()
+                    shut.completedQuests, open.completedQuests = {}, { [opener] = true }
+                    assert(not Errand.doorOpen(shut, vendorId), vendorId .. " opens without its opener")
+                    assert(Errand.doorOpen(open, vendorId), vendorId .. " stays shut with its opener run")
                 end
-                return false
             end
-
-            local opensAt = Building.vendorUnlockPrestige("bastion")
-            assert(opensAt > 1, "this case needs a house that is not open from the start")
-            assert(not boardHas(playerAt(opensAt - 1), "quest_bastion_slot_01"),
-                "a house's work must not be posted before you can walk into the house")
-
-            -- A door can carry a SECOND gate. The Bastion, the Lodge and the Cathedral also wait on
-            -- the padded card (data/buildings/bastion.lua), so meeting the prestige is no longer the
-            -- whole of "you can walk in" and this case must ask the building what its gate is rather
-            -- than assume the number is all of it. The two halves are enforced in different places --
-            -- Quest.available reads only the prestige (models/quest.lua), so the line head repeats the
-            -- quest requirement itself -- which is exactly the seam worth pinning here.
-            local gateQuest = Building.defs["bastion"].unlockQuest
-            assert(gateQuest, "the Bastion's door is quest-gated; if that changed, so should this case")
-            local held = playerAt(opensAt)
-            assert(not boardHas(held, "quest_bastion_slot_01"),
-                "prestige alone must not post the work of a house whose door is still shut")
-
-            local open = playerAt(opensAt)
-            open.completedQuests[gateQuest] = true
-            assert(boardHas(open, "quest_bastion_slot_01"),
-                "...and it must be posted as soon as you can actually walk in")
         end,
     },
     {

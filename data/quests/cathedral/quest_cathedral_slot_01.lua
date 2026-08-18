@@ -6,6 +6,10 @@ return {
     description = "Something stalks the old mill after dark. The Cathedral wants it laid to rest.",
     difficulty = "Normal",
     sponsor = "cathedral",
+    -- The thanks for the job that OPENS this house. Its opener is seated on a descent floor unasked
+    -- (models/errand.lua), so this scene is where the house first learns who ran it -- and the greeting
+    -- waiting at its counter picks up from these lines.
+    outro = "conversation_cathedral_slot_01_outro",
     rewardItems = { "weapon_drowned_censer", "armor_censer_cloth_habit" },
     rewardGold = 120,
     -- Gated on the PADDED CARD, not the debut. Two reasons and they are the same reason: the

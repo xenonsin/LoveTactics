@@ -356,6 +356,7 @@ return {
     panel = nil,           -- module name under ui/panels/, or nil for the placeholder
     state = nil,           -- module name under states/, for a door that opens a whole screen
     vendor = nil,          -- vendor id, for shop buildings (panel = "party", store mode)
+    unlockCircle = true,   -- opens when this house's own circle falls; a vendor id names somebody else's
     unlockPrestige = 3,    -- locked (dimmed, non-clickable) until prestige >= 3
 }
 ```
@@ -366,8 +367,21 @@ for the rare door that is a whole mode rather than an overlay — the Draft Yard
 `{ returnTo = hub }`, and the state is expected to honour it so leaving comes back to the city
 rather than to the title screen. Set one or the other, never both.
 
-This is how **the city grows over time**: give new buildings a higher `unlockPrestige` and they
-appear locked, then unlock as the player earns prestige. Positions are in the 1280×720 logical
+**Gate a new door on a deed, not on `unlockPrestige`.** Prestige is the finished-quest count plus one
+(`Player.standing`) and the Quest Board is retired, so it is parked at 1 for the life of a save — a
+building gated above that is a card that never opens. It is also a number the player is never shown
+anywhere in the city, which is why a locked card that quoted it (`? (prestige 3)`) told them nothing
+they could act on. `unlockCircle` is the gate the descent feeds: `true` opens the door when the
+house's own circle falls, and a vendor id opens it on somebody else's (`data/buildings/dueling_grounds.lua`
+waits on Wrath's). The field stays for the campaign's sake and is honoured if the board comes back.
+
+A locked card draws `?` over the sentence `Building.requirement` composes from whichever gate is
+asked — "Beat the circle of Lust". That line is the **whole** of what the city ever says about a shut
+door: there is no tooltip behind one and no screen listing the requirements elsewhere, so a new gate
+must be one `Building.requirement` can name as an action. `tests/hub_spec.lua` fails a shut door that
+says nothing.
+
+Positions are in the 1280×720 logical
 coordinate space (see `scale.lua`), which is letterbox-scaled to the real window; place them
 over the corresponding spot on `assets/hub/city.png`. The city is laid out on a **4/4/3 grid of
 270×140 cards with 40px gutters** — columns at `x = 40, 350, 660, 970`, rows at `y = 150, 340,

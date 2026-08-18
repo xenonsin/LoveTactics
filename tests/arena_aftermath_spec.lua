@@ -160,15 +160,19 @@ return {
         end,
     },
     {
-        name = "the Cathedral's door and its line both wait on the padded card",
+        name = "the Cathedral's line waits on the padded card",
         fn = function()
-            -- The player is carried into that building; they do not walk into it. Both gates read the
-            -- same quest so the shop and the work arrive on the scene that opens them.
-            local Building = require("models.building")
-            local cathedral = Building.defs["cathedral"]
-            assert(cathedral.unlockQuest == "quest_colosseum_slot_02", "the door waits on the revival")
+            -- THE DOOR NO LONGER DOES, and the half that went is worth naming rather than deleting.
+            -- The Cathedral's card was gated on this same quest because the player does not walk into
+            -- that building, they are CARRIED into it: the padded card ends with the company dead on the
+            -- sand and its epilogue opens on a Cathedral ceiling. That scene belongs to the Quest Board,
+            -- which is retired, so the gate named a quest nobody can finish -- a card that never turns
+            -- over. The door opens on the house's own first errand now (models/errand.lua).
+            --
+            -- The LINE still waits on it, and that is untouched campaign authoring: if the board comes
+            -- back, the work behind the Cathedral still arrives after the revival that introduced it.
             assert(Quest.defs["quest_cathedral_slot_01"].requiredQuests[1] == "quest_colosseum_slot_02",
-                "so does the first job behind it")
+                "the first job behind the Cathedral waits on the revival")
             -- And she is no longer recruited inside her own line, which would hand the player a second
             -- copy of a companion they already have.
             for id, q in pairs(Quest.defs) do

@@ -5,6 +5,7 @@ return {
     cast  = { "colosseum", "character_avatar", { id = "character_saber", when = { has = "character_saber" } } },
 
     script = {
+        { "colosseum", "The gatekeeper is still telling people about that bout. Loudly, and with himself winning it.", tag = 7 },
         { "colosseum", "You walked off the sand still breathing, so the shelf is yours. Steel, leathers, the little cruelties that keep a fighter on the card one more week. No house behind you? Good. A house takes a cut. I only take coin.", tag = 1 },
         { "character_avatar", "Then coin is all you'll get.", tag = 2 },
         { when = { has = "character_saber" }, script = {

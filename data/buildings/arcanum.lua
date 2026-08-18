@@ -1,14 +1,15 @@
+-- The Arcanum: the mages' shelf, and the house of Pride.
+--
+-- OPENS ON ITS OWN FIRST ERRAND, found on a floor -- see data/buildings/colosseum.lua.
 return {
     name = "The Arcanum",
-    order = 13,
-    x = 40,
-    y = 564,
+    order = 6,
+    x = 505,
+    y = 413,
     w = 270,
     h = 130,
     panel = "shop",
+    district = "market",
     vendor = "arcanum", -- mage class
-    -- OPENS WHEN ITS CIRCLE FALLS (models/building.lua). This house IS one of the seven sins, and
-    -- putting that circle's general down in the descent is what puts its shelf in the city.
-    unlockCircle = true,
-    unlockPrestige = 3,
+    unlockErrand = true,
 }

@@ -290,6 +290,20 @@ Grade.TRAIT_GRADE = {
     -- flat bonus because you still choose whether to feed it.
     trait_kindling =                    3.0,  -- Kindling
 
+    -- THE SEVEN LIEUTENANT RELICS (models/descent.lua's DROPS). Each is a BASELINE that works with its
+    -- partner still underground, plus a synergy term that only fires while its general's relic is on the
+    -- same bearer -- so the honest weight is the baseline plus a share of the pair. A build-around is not
+    -- worth its ceiling to a company that has beaten one of the two floors it takes to assemble.
+    --
+    -- Anchored against Rising Wrath at 6.0 (the uncapped parent) and Kindling at 3.0 (one capped term).
+    trait_larder =                      3.0,  -- Larder -- live damage off health held above half
+    trait_beggars_due =                 3.0,  -- Beggar's Due -- conditional damage; the condition is common late
+    trait_covetous_eye =                3.0,  -- Covetous Eye -- conditional damage, unconditional while a copy stands
+    trait_glossed =                     3.0,  -- Glossed -- mana per enemy working; pays a caster and nobody else
+    trait_kept_watch =                  3.0,  -- Kept Watch -- capped armour, a point per foe you bind
+    trait_anvil_face =                  4.5,  -- Anvil's Face -- capped armour alone, uncapped beside the Mail
+    trait_assayers_tally =              4.5,  -- The Tally -- a live purse read plus a per-theft notch
+
     -- ADOPTED FROM THE SEED, not individually weighed. These are the classifier's own numbers, taken
     -- as authored on the designer's instruction rather than argued one by one. They are real weights
     -- and the grader treats them as such -- but Grade.TRAIT_ADOPTED below keeps the provenance, because

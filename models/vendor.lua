@@ -97,6 +97,7 @@ end
 function Vendor.sells(def, item)
     if not def or not item then return false end
     if def.sells == false then return false end
+
     if Item.classOf(item) == def.class then return true end
     -- A discipline item also lands on each of its discipline's parent shelves. That is how a multiclass
     -- item (whose `class` is one parent, its home tally) appears on the OTHER parent's shelf too --

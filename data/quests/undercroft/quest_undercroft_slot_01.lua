@@ -8,6 +8,10 @@ return {
     description = "A merchant prince keeps his vault behind three doors. The Undercroft has two keys.",
     difficulty = "Normal",
     sponsor = "undercroft",
+    -- The thanks for the job that OPENS this house. Its opener is seated on a descent floor unasked
+    -- (models/errand.lua), so this scene is where the house first learns who ran it -- and the greeting
+    -- waiting at its counter picks up from these lines.
+    outro = "conversation_undercroft_slot_01_outro",
     rewardItems = { "armor_cutpurse_coat" },
     rewardGold = 150,
     requiredPrestige = 3,

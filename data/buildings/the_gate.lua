@@ -17,13 +17,19 @@
 --
 -- `unlockPrestige = 1` because it is the first thing there is. A city whose only door were locked would
 -- be a city with nothing in it.
+--
+-- IT SITS IN THE MIDDLE AND IT IS DRAWN LARGER, which is the one thing on this board that is not a
+-- lattice position (models/building.lua's GRID). Everything else in the city is something you do BEFORE
+-- going down or BECAUSE you came back up -- hire, sleep, arm, eat, buy, spar -- so a row of equal plates
+-- with the stair first among them says the wrong thing. Around it, they read as what they are: a town
+-- that grew up against a hole in the ground.
 return {
     name = "The Gate",
     order = 1,
-    x = 40,
-    y = 120,
-    w = 270,
-    h = 130,
+    x = 490,
+    y = 280,
+    w = 300,
+    h = 170,
     state = "gate",
     sprite = "assets/hub/the_gate.png", -- falls back to its name plate until art lands
     description = "A stair down, a lamp over it, and a queue of people who need the work.",

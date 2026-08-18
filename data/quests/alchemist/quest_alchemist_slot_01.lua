@@ -38,6 +38,10 @@ return {
         "are specific about intact. They are not specific about anything else.",
     difficulty = "Easy",
     sponsor = "alchemist",
+    -- The thanks for the job that OPENS this house. Its opener is seated on a descent floor unasked
+    -- (models/errand.lua), so this scene is where the house first learns who ran it -- and the greeting
+    -- waiting at its counter picks up from these lines.
+    outro = "conversation_alchemist_slot_01_outro",
     rewardItems = { "armor_reagent_vest" },
     rewardGold = 80,
     requiredPrestige = 4,

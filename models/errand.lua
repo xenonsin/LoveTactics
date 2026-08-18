@@ -1,9 +1,18 @@
--- ERRANDS: the small pieces of work a house asks for, and the second half of what opens its shelf.
+-- ERRANDS: the small pieces of work a house asks for. The FIRST one opens its door and the rest climb
+-- its shelf, so a house is one ladder rather than a threshold with a ladder behind it.
 --
--- A house opens its DOOR when its circle falls (models/building.lua's `unlockCircle`). What it does not
--- do is hand over its whole catalogue for having beaten a general -- the shelf still climbs a rung at a
--- time, and each rung is bought by doing something for the house. So a vendor's stock is gated twice:
--- by the FLOOR you have reached, and by the errands you have run for them.
+-- THE DOOR USED TO BE THE CIRCLE, and that was the whole problem. A house opened when its sin fell --
+-- floors 2, 4, ... 14, dealt in a different order every run -- and it asked for nothing at all until
+-- then, because a house asks for work INSIDE ITS OWN SHOP. So the two gates ran in series on the same
+-- currency: a house dealt sixth opened at floor twelve and then wanted fourteen more floors of errands
+-- that do not exist. Six of the seven shelves were decorative in any given run, the disciplines behind
+-- them were unreachable, and going deeper was the only way to equip a class -- which is backwards, since
+-- depth is exactly what a company needs the gear FOR.
+--
+-- So the opener is something you FIND. It is seated on a floor unasked (Descent.floorObjectives), at its
+-- own dead end off the path to the stair, and running it opens the door and counts as errand one. A
+-- company that beelines the stair opens nothing; a company that walks the floor comes home with a shop.
+-- Depth still decides how good a shelf is. It no longer decides whether a class can be equipped at all.
 --
 -- WHAT AN ERRAND IS, and why almost none of this is new content. It is one of the campaign's own quests
 -- (data/quests/<house>/quest_<house>_slot_NN.lua), re-seated. Those blueprints already carry everything
@@ -44,8 +53,8 @@ local Errand = {}
 -- deliberately NOT one per floor: a house that had a new job every time you came up would turn the city
 -- into a queue of chores, and the shelf would outrun what the floors are handing out anyway.
 --
--- The circle itself is the first gate and it is separate: a house that has not been beaten asks for
--- nothing at all, because its door is shut (models/building.lua).
+-- The door is the gate above this one and it is separate: a house whose opener has not been run asks
+-- for nothing at all, because there is nowhere to ask (models/building.lua).
 Errand.FLOORS_PER_RUNG = 2
 
 -- The ordered list of a house's errands, shallowest first. Sorted by ID because the slot number IS the
@@ -78,9 +87,18 @@ function Errand.done(player, vendorId)
 end
 
 -- The next errand this house has to ask for, or nil once its line is finished.
+--
+-- THE FIRST ONE NOT DONE, rather than the Nth by position, and the difference is the opener. That job is
+-- run on a FLOOR before this house has a door to ask through (Errand.opener), and it is `slot_01` rather
+-- than whatever sorts first -- so on a house whose line carries a story quest it sits partway down the
+-- list. Counting positions would then hand back a job already finished, and later offer the opener again
+-- as though the shop had never opened.
 function Errand.next(player, vendorId)
-    local ids = Errand.forVendor(vendorId)
-    return ids[Errand.done(player, vendorId) + 1]
+    local done = (player and player.completedQuests) or {}
+    for _, id in ipairs(Errand.forVendor(vendorId)) do
+        if not done[id] then return id end
+    end
+    return nil
 end
 
 -- The floor a company must have REACHED for that next errand to be offered.
@@ -88,12 +106,47 @@ function Errand.floorFor(player, vendorId)
     return (Errand.done(player, vendorId) + 1) * Errand.FLOORS_PER_RUNG
 end
 
+-- THE OPENER: `slot_01`, and the one piece of work that is never asked for.
+--
+-- Nothing about it is new -- every house's line already opens on one, authored back when the Quest Board
+-- posted them. What changed is where it is met: a shut house cannot ask, so its first job is seated on a
+-- floor for the player to walk into instead.
+--
+-- NAMED FOR THE SLOT RATHER THAN TAKEN OFF THE FRONT OF THE LINE, and that is not a nicety. Errand.forVendor
+-- sorts by id, and a house whose line includes a story quest gets that quest sorted in by ALPHABET: the
+-- Colosseum's door was opening on `quest_colosseum_champions_challenge` and the Crucible's on
+-- `quest_alchemist_apothecary_ren`, because "champions" and "apothecary" both precede "slot". A capstone
+-- bout and a companion's recruit are not the job a house posts to introduce itself, and a door gated on
+-- the wrong one is a shelf the player never reaches.
+--
+-- Falls back to the head of the line for a house with no numbered slots at all. Nil only when there is no
+-- line whatsoever -- and a door gated on an opener that does not exist is a door that never opens, which
+-- is the exact failure this whole model replaced.
+function Errand.opener(vendorId)
+    local ids = Errand.forVendor(vendorId)
+    for _, id in ipairs(ids) do
+        if id:match("_slot_01$") then return id end
+    end
+    return ids[1]
+end
+
+-- Is this house's door open -- i.e. has its opener been run?
+--
+-- A house with no line has no opener, and reads OPEN rather than shut. There is no such house today;
+-- the default is chosen so that authoring a shelf without a line yields a shop you can walk into rather
+-- than a card that can never turn over.
+function Errand.doorOpen(player, vendorId)
+    local opener = Errand.opener(vendorId)
+    if not opener then return true end
+    return ((player and player.completedQuests) or {})[opener] == true
+end
+
 -- Has this house got something to ask for right now?
 --
--- Three gates, and each is a different question: is the door open at all (its circle), is there anything
+-- Three gates, and each is a different question: is the door open at all (its opener), is there anything
 -- left to ask (the line), and has the company been deep enough to be asked (the floor).
 function Errand.offered(player, vendorId, deepest)
-    if ((player and player.standing or {})[vendorId] or 0) <= 0 then return nil end
+    if not Errand.doorOpen(player, vendorId) then return nil end
     local id = Errand.next(player, vendorId)
     if not id then return nil end
     if (deepest or 0) < Errand.floorFor(player, vendorId) then return nil end

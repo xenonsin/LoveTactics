@@ -1,8 +1,8 @@
 return {
     name = "Cafe",
     order = 7,
-    x = 660,
-    y = 268,
+    x = 175,
+    y = 480,
     w = 270,
     h = 130,
     -- Not a shop: the Cafe sells no items at all any more (data/vendors/cafe.lua). Its own panel opens
