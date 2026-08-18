@@ -876,6 +876,7 @@ local function computeThreat(unit)
     local ab = action and action.activeAbility
     local support = ab ~= nil and Combat.isSupportAbility(ab)
     battle.defaultSupport = support
+    battle.defaultHarmless = ab ~= nil and Combat.isHarmlessAbility(ab)
     local range = ((ab and ab.range) or 1) + Combat.adjacencyRangeBonus(unit.char, action)
     -- While Blink is armed the move set is a teleport diamond, which is NOT a set of walk-and-strike
     -- stand tiles (click-to-use folds a WALK into the approach). So reach only from the current tile:
@@ -1074,6 +1075,7 @@ local function armDefaultAction(current)
     battle.windup = windupFloor(action) -- a chargeable signature (First Motion) opens at its floor, not +0
     battle.mode = "armed"
     battle.armedSupport = battle.defaultSupport
+    battle.armedHarmless = battle.defaultHarmless
     battle.armedTile = action.activeAbility.target == "tile"
     computeRange(current, action)
 end
@@ -2246,8 +2248,10 @@ local function armItem(item)
     battle.armedItem = item
     battle.windup = windupFloor(item) -- a chargeable signature opens at its floor, not +0
     battle.mode = "armed"
-    -- Friendly abilities (heal / buff) highlight green; offensive strikes and trap placements red.
+    -- Friendly abilities (heal / buff) highlight green; offensive strikes and trap placements red; a
+    -- harmless cast (a foe read rather than hit -- the Assayer's Eye) steel-cyan.
     battle.armedSupport = Combat.isSupportAbility(item.activeAbility)
+    battle.armedHarmless = Combat.isHarmlessAbility(item.activeAbility)
     battle.armedTile = item.activeAbility.target == "tile" -- tile-target (e.g. summon a trap)
     -- A two-stage throw (Heave) opens in its GRAB phase: the first aim picks the adjacent target, a
     -- second phase then picks where it lands (enterThrowDest). nil for every single-aim ability.
@@ -3840,6 +3844,7 @@ refreshView = function()
         -- strike (red), since a thrown body/keg is offense wherever it lands.
         overlays.range = battle.throwCells or {}
         overlays.rangeSupport = false
+        overlays.rangeHarmless = false
     elseif steerable and isParty and ((battle.mode == "armed" and battle.armedItem) or hoverAbility or keyAbility) then
         -- Armed (the turn-start default, or an explicitly armed item), or previewing a hovered ability
         -- slot: show the EFFECTIVE range -- the movement band PLUS the action's reach beyond it, so the
@@ -3853,6 +3858,9 @@ refreshView = function()
         local armed = battle.mode == "armed" and previewItem == battle.armedItem
         local support = armed and battle.armedSupport
             or Combat.isSupportAbility(previewItem.activeAbility)
+        -- Read off the previewed item either way: `harmless` is declared on the ability, so there is
+        -- nothing an armed-state flag knows about it that the blueprint does not.
+        local harmless = Combat.isHarmlessAbility(previewItem.activeAbility)
         if previewItem ~= battle.rangeFor then computeRange(current, previewItem) end
 
         -- Movement band, split by danger (blue safe / purple risky) exactly like move mode.
@@ -3875,6 +3883,7 @@ refreshView = function()
         end
         overlays.range = band
         overlays.rangeSupport = support
+        overlays.rangeHarmless = harmless
 
         -- What the armed item would DO on the aimed cell -- read once here and used twice below: the
         -- blast footprint must not be painted over a cell that is going to walk (a tile-aimed weapon
@@ -4621,6 +4630,10 @@ local function commitDeploy(opts, deployed, front, placed)
         onHoverUnit = function(unit) battle.hoverUnit = unit end,
         onWait = function() waitTurn() end, -- the long Wait button under the item grid
         onRotate = function() openBenchChooser("rotate") end, -- FALL BACK: trade places with the bench
+        -- A click on a turn-strip card asks to INSPECT that body. Only an assayed foe has anything to
+        -- answer with (its kit card); everyone else's click is a no-op, which is why the strip has
+        -- never done anything with one until now.
+        onInspectUnit = function(unit) battle.togglePeek(unit) end,
     })
     battle.panel.fx = battle.fx
 
@@ -5015,8 +5028,7 @@ function battle.enter(self, opts)
     battle.fx.bursts = battle.map.bursts
     battle.panel = nil -- built by commitDeploy, once there is a company to draw a turn strip for
     -- The read-only kit card for a foe assayed by the Assayer's Eye (ui/inventory_peek.lua). `peekUnit`
-    -- is the foe currently in focus; see updatePeekFocus (kept open while the cursor is over the foe or
-    -- the card itself).
+    -- is the foe it is PINNED to -- opened and closed by battle.togglePeek, never by a hover.
     battle.peek = InventoryPeek.new()
     battle.peekUnit = nil
     -- The log toggles into a thin, board-width strip in the bottom gutter, directly under the board.
@@ -5425,40 +5437,58 @@ function battle.drawCoach()
     })
 end
 
--- Decide which assayed foe (if any) the inventory-peek card should show this frame. The card stays
--- open while the cursor rests on the foe OR on the card itself, so the player can travel from one to
--- the other to hover its items; hovering some OTHER unit dismisses it, while hovering empty ground
--- (or the card) leaves it be. A foe that has fallen drops focus.
-function battle.updatePeekFocus()
-    local mx, my = battle.mouseX, battle.mouseY
-    if battle.peekUnit and not battle.peekUnit.alive then battle.peekUnit = nil end
-    if not mx then return end
-    -- Over the card already: keep it, so its own slots stay hoverable.
-    if battle.peekUnit and battle.peek:contains(mx, my) then return end
-    -- The unit under the cursor, from either surface: the timeline strip, else the board tile.
-    local hovered = battle.panel:unitAt(mx, my)
-    if not hovered then
-        local cx, cy = battle.map:cellAt(mx, my)
-        if cx then hovered = Combat.unitAt(battle.combat, cx, cy) end
-    end
-    if hovered then
-        if hovered.side ~= "party" and hovered.alive and Combat.inventoryRevealed(hovered) then
-            battle.peekUnit = hovered
-        else
-            battle.peekUnit = nil -- a different unit (or an un-assayed foe) dismisses the card
-        end
-    end
-    -- hovered == nil (empty ground, a side column): leave peekUnit as it was -- the card is sticky.
+-- The assayed foe whose kit card is PINNED open (battle.peekUnit), dropped the moment the foe stops
+-- qualifying -- it falls, or the reveal goes with the body it was on. Nothing here opens the card:
+-- hover is deliberately not a way in.
+--
+-- It used to be. The card opened on any hover of an assayed foe and then stayed sticky, which put a
+-- panel over the board on the way to every ordinary aim -- the foe you are about to strike is exactly
+-- the foe you assayed. A reading you cannot avoid is worse than one you have to ask for, so the card
+-- is now opened by an ACT (battle.togglePeek) and closed the same way.
+function battle.updatePeek()
+    local u = battle.peekUnit
+    if u and not (u.alive and Combat.inventoryRevealed(u)) then battle.peekUnit = nil end
 end
 
--- Draw the inventory-peek card for the focused foe, anchored to its board token and clamped to the
--- board region (clear of both side columns). Drawn over the board but under the tooltip pass, so a
--- hovered slot's ItemTooltip lands on top.
+-- Open the kit card on `unit`, or close it if that foe's card is already the one open. The one way in,
+-- shared by all three inputs: the K key (aimed by the mouse pointer, else by the board cursor), a click
+-- on the foe's turn-order card, and a click on the open card itself (which lands here as the same foe
+-- and so closes it). Refuses anything that is not a living, assayed foe, so a stray press is a no-op
+-- rather than an empty card. Returns true when it took the press.
+function battle.togglePeek(unit)
+    if not (unit and unit.alive and unit.side ~= "party" and Combat.inventoryRevealed(unit)) then
+        return false
+    end
+    battle.peekUnit = (battle.peekUnit ~= unit) and unit or nil
+    Sound.play("battle.select")
+    return true
+end
+
+-- The unit the player means when they ask for a kit, read off whichever device is driving: the mouse
+-- pointer (over the turn strip first, then the board tile under it) or the board cursor a keyboard/pad
+-- player steers. Mirrors the two surfaces the card itself is reachable from.
+function battle.peekTarget()
+    if InputMode.isMouse() and battle.mouseX then
+        local u = battle.panel and battle.panel:unitAt(battle.mouseX, battle.mouseY)
+        if u then return u end
+        local cx, cy = battle.map:cellAt(battle.mouseX, battle.mouseY)
+        if cx then return Combat.unitAt(battle.combat, cx, cy) end
+        return nil
+    end
+    local c = battle.map.cursor
+    return Combat.unitAt(battle.combat, c.x, c.y)
+end
+
+-- Draw the inventory-peek card for the pinned foe, anchored to its board token and clamped to the
+-- board itself -- clear of both side columns, and clear of the encounter lines above and the combat
+-- log below, both of which are drawn after this and would otherwise print straight through the card.
+-- Drawn over the board but under the tooltip pass, so a hovered slot's ItemTooltip lands on top.
 function battle.drawPeek()
     local u = battle.peekUnit
     if not (u and u.alive) then return end
     local ax, ay = battle.map:cellCenter(u.x, u.y)
-    battle.peek:draw(u, ax, ay, LEFT_W, Scale.WIDTH - PANEL_W)
+    local _, by, _, bh = battle.map:boardRect()
+    battle.peek:draw(u, ax, ay, LEFT_W, Scale.WIDTH - PANEL_W, by, by + bh)
 end
 
 function battle.draw()
@@ -5486,7 +5516,7 @@ function battle.draw()
         return
     end
 
-    battle.updatePeekFocus()
+    battle.updatePeek()
     battle.map:draw()
     battle.drawLeftColumn()
     -- Keyboard / pad aiming: the OS pointer is idle, so the context-cursor glyph (sword / wand /
@@ -6017,22 +6047,25 @@ function battle.drawHudText(boardX, boardW)
             -- player expects that panel rather than an immediate swing.
             local chargeable = battle.armedItem and Item.isChargeable(battle.armedItem.activeAbility)
             local set = chargeable and "set the wind-up" or nil
+            -- A harmless cast is still aimed at a foe, so it keeps the target half of the sentence and
+            -- only changes the verb: "strike" is the one word that would be a lie about it.
+            local harm = battle.armedHarmless and "read"
             if pad then
                 local verb = battle.armedTile and ("Aim a tile, A to " .. (set or ("place " .. name)))
                     or battle.armedSupport and "A on an ally to support"
-                    or ("A on a target to " .. (set or "strike"))
+                    or ("A on a target to " .. (set or harm or "strike"))
                 hint = verb .. (canAim and "  ·  LB/RB to aim" or "")
                     .. "  ·  Y to switch  ·  B to cancel"
             elseif kbd then
                 local verb = battle.armedTile and ("Move to a tile, Enter to " .. (set or ("place " .. name)))
                     or battle.armedSupport and "Enter on an ally to support"
-                    or ("Enter on a target to " .. (set or "strike"))
+                    or ("Enter on a target to " .. (set or harm or "strike"))
                 hint = verb .. (canAim and "  ·  Tab to aim next" or "")
                     .. "  ·  number keys to switch  ·  Esc to cancel"
             else -- mouse
                 local verb = battle.armedTile and ("Click a tile to " .. (set or ("place " .. name)))
                     or battle.armedSupport and "Click an ally to support"
-                    or ("Click a target to " .. (set or "strike"))
+                    or ("Click a target to " .. (set or harm or "strike"))
                 hint = verb .. "  ·  click the item / Esc to cancel"
             end
         elseif Combat.hasMoved(battle.combat) then
@@ -6159,6 +6192,10 @@ function battle.keypressed(key)
     end
     if key == "t" then -- toggle the all-enemy-attack-ranges danger overlay
         battle.showEnemyRanges = not battle.showEnemyRanges
+        return
+    end
+    if key == "k" then -- open/close the KIT card of the assayed foe under the pointer / board cursor
+        battle.togglePeek(battle.peekTarget())
         return
     end
     if key == "v" then -- toggle whole-side auto-battle (hand the player's units to the AI)
@@ -6444,9 +6481,14 @@ function battle.mousepressed(x, y, button)
     -- A click is a fresh intent: drop any armed keyboard Wait preview so it can't confirm on a later
     -- Space/0. The mouse Wait button runs its own one-click path (onWait) and needs no preview here.
     battle.waitPreview = false
-    -- A click on the assayed-foe kit card is swallowed here: the card floats OVER the board, so an
-    -- unguarded click would fall through and attack whatever tile sits under it.
-    if battle.peekUnit and battle.peek:contains(x, y) then return end
+    -- A click on the open kit card closes it -- and is swallowed either way, because the card floats
+    -- OVER the board and an unguarded click would fall through and attack whatever tile sits under it.
+    -- Closing on the card itself is the mouse's dismiss: the "×" in its title bar marks it, but the
+    -- whole plate answers, since a read-only card has nothing else a click could mean.
+    if battle.peekUnit and battle.peek:contains(x, y) then
+        if button == 1 then battle.peekUnit = nil end
+        return
+    end
     if button == 1 and pointIn(MENU_BUTTON, x, y) then
         battle.menuOpen = not battle.menuOpen
         return
@@ -6587,6 +6629,12 @@ function battle.boardCursorKind()
     if a.kind == "move" then return a.blink and "blink" or "move" end
     if a.kind == "strikeTrap" then return "break" end
     if a.kind == "place" then return "target" end
+    -- A harmless cast aims at a body without swinging at it, so it wears the reticle rather than the
+    -- sword or the wand -- the one glyph that says "this one, here" and promises no blow. Read off the
+    -- item's own blueprint, like every other reading of `harmless`.
+    if a.kind == "ability" and Combat.isHarmlessAbility(a.item and a.item.activeAbility) then
+        return "target"
+    end
     -- Striking or offensively casting on a foe: a sword for a physical hit, a wand for a magical
     -- one. The turn auto-arms the actor's default action, so an ordinary weapon attack arrives as
     -- an armed "ability" too -- the tag, not the kind, is what tells a sword swing from a spell.

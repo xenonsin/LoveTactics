@@ -5,9 +5,13 @@
 -- pop the shared ItemTooltip on hover.
 --
 -- It is anchored to a point (the foe's board token) and clamped on-screen, but does NOT follow the
--- cursor: the whole point is that the player can move the mouse ONTO it and hover its slots. The battle
--- state keeps it open while the cursor is over the assayed foe OR over this card (peek:contains), so
--- moving between the two never dismisses it.
+-- cursor: the whole point is that the player can move the mouse ONTO it and hover its slots.
+--
+-- It is PINNED, not hovered. The battle state opens it on an act -- K, or a click on the foe's
+-- turn-order card -- and it stays on that foe until it is closed the same way, the foe falls, or the
+-- card itself is clicked. It deliberately does not open on a bare hover: it sits over the board, and
+-- the foe you have assayed is the foe you are about to aim at, so a hover-opened card spent most of
+-- its life in the way of the strike it was meant to inform.
 --
 -- Icons follow the same fallback the item grid uses: `item.sprite` is either a loaded image (drawn
 -- scaled to the slot) or, when the art is missing, a rounded placeholder carrying the item's initial.
@@ -24,6 +28,7 @@ local SLOT = 40
 local GAP = 4
 local PAD = 8
 local TITLE_H = 20
+local CLOSE_W = 14 -- the "×" mark's column at the title's right edge
 
 local GRID_W = COLS * SLOT + (COLS - 1) * GAP
 local GRID_H = ROWS * SLOT + (ROWS - 1) * GAP
@@ -40,23 +45,31 @@ function InventoryPeek.new()
 end
 
 -- The card rect for a foe token at (anchorX, anchorY), placed to the token's RIGHT when there's room
--- and to its LEFT otherwise, then clamped inside [minX, maxX] x [4, HEIGHT-4] so it never slides under
--- the side columns or off-screen. Pure, so draw() and any hit-test agree on where the card sits.
-local function layoutRect(anchorX, anchorY, minX, maxX)
+-- and to its LEFT otherwise, then clamped inside [minX, maxX] x [minY, maxY]. Pure, so draw() and any
+-- hit-test agree on where the card sits.
+--
+-- The vertical bounds are the BOARD's own, not the screen's: the fight's furniture is drawn after this
+-- card (the encounter's name and objective above the board, the combat log below it), so a card that
+-- rode up to the screen edge was drawn straight through by the header text over it. Kept inside the
+-- board, it can only ever cover ground -- which is the one thing it is allowed to cover.
+local function layoutRect(anchorX, anchorY, minX, maxX, minY, maxY)
+    minY = math.max(4, minY or 4)
+    maxY = math.min(Scale.HEIGHT - 4, maxY or (Scale.HEIGHT - 4))
     local x = anchorX + SLOT * 0.6
     if x + CARD_W > maxX then x = anchorX - SLOT * 0.6 - CARD_W end
     x = math.max(minX, math.min(x, maxX - CARD_W))
     local y = anchorY - CARD_H / 2
-    y = math.max(4, math.min(y, Scale.HEIGHT - CARD_H - 4))
+    -- A board shorter than the card leaves nothing to clamp into; pin to its top rather than invert.
+    y = math.max(minY, math.min(y, math.max(minY, maxY - CARD_H)))
     return x, y
 end
 
--- Draw the read-only kit of `unit` anchored near (anchorX, anchorY), clamped within [minX, maxX].
--- Caches the card + slot rects so contains()/itemAt() can be called against the same frame.
-function InventoryPeek:draw(unit, anchorX, anchorY, minX, maxX)
+-- Draw the read-only kit of `unit` anchored near (anchorX, anchorY), clamped within [minX, maxX] x
+-- [minY, maxY]. Caches the card + slot rects so contains()/itemAt() can be called against the same frame.
+function InventoryPeek:draw(unit, anchorX, anchorY, minX, maxX, minY, maxY)
     self.slots = {}
     if not (unit and unit.char) then self.rect = nil; return end
-    local bx, by = layoutRect(anchorX, anchorY, minX, maxX)
+    local bx, by = layoutRect(anchorX, anchorY, minX, maxX, minY, maxY)
     self.rect = { x = bx, y = by, w = CARD_W, h = CARD_H }
 
     -- Plate + a foe-red border, so an assayed enemy's card reads as an enemy's.
@@ -70,7 +83,15 @@ function InventoryPeek:draw(unit, anchorX, anchorY, minX, maxX)
     love.graphics.setFont(self.titleFont)
     love.graphics.setColor(0.94, 0.90, 0.80, 1)
     local title = (unit.char.name or "Foe") .. " — Kit"
-    love.graphics.printf(title, bx + PAD, by + 4, GRID_W, "left")
+    -- The name is fitted to the width the "×" leaves, so a long one is ellipsized rather than run
+    -- under the mark (Theme.fitText -- never a scale factor on printed text).
+    love.graphics.printf(Theme.ellipsize(title, self.titleFont, GRID_W - CLOSE_W),
+        bx + PAD, by + 4, GRID_W - CLOSE_W, "left")
+    -- A close mark at the title's right edge. It is a MARK, not a button: the whole card closes on a
+    -- click (the battle state owns that), and this is what says so -- a read-only card has nothing
+    -- else a click could mean, so a hit-target of its own would only shrink the one that works.
+    love.graphics.setColor(0.62, 0.65, 0.72, 1)
+    love.graphics.printf("×", bx + PAD + GRID_W - CLOSE_W, by + 4, CLOSE_W, "right")
 
     local gx, gy = bx + PAD, by + TITLE_H + PAD
     for i = 1, COLS * ROWS do

@@ -100,11 +100,21 @@ local BRACE = { 0.391, 0.549, 0.812 } -- a shield's Defend brace-defense (matche
 -- board's green/red targeting overlays and the action preview's SUPPORT/OFFENSE accents).
 local RANGE_FRIENDLY = { 0.361, 0.671, 0.480 }
 local RANGE_HOSTILE = { 0.789, 0.361, 0.354 }
+-- A cast aimed at a foe that does it no harm (the Assayer's Eye) reaches in steel-cyan, matching
+-- Colors.HARMLESS on the board -- the one band that is neither a threat nor a kindness.
+local RANGE_HARMLESS = { 0.404, 0.678, 0.729 }
 local GLYPH_GAP = 4 -- between a stat row's glyph and the value it marks
 local STAT_GAP = 8  -- least space kept between a stat row's label and its value column
 
 local function titleCase(s)
     return (tostring(s):gsub("^%l", string.upper))
+end
+
+-- The tint an ability's reach pictures wear, in the same order the board decides it: harmless first
+-- (it is declared, and a declared fact outranks a guessed one), then friendly, else hostile.
+local function rangeBandColor(ab)
+    if Combat.isHarmlessAbility(ab) then return RANGE_HARMLESS end
+    return Combat.isSupportAbility(ab) and RANGE_FRIENDLY or RANGE_HOSTILE
 end
 
 -- The longest cooldown any reflex on this item declares, in ticks (nil when none of them has one).
@@ -403,11 +413,12 @@ local function buildBlocks(item, actor, innerW, out, owner)
         blocks[#blocks + 1] = { kind = "stat", label = "Range", value = rangeText }
         -- A little diamond map of that reach beneath the number: the caster at the centre, the
         -- tiles it can strike tinted green (a friendly cast) or red (a hostile one). Skipped for a
-        -- self-only ability (range 0), which has no reach to draw.
+        -- self-only ability (range 0), which has no reach to draw. The shelf reads the same three
+        -- colours the board does, so an item's reach is one picture wherever it is met.
+        local bandColor = rangeBandColor(ab)
         local diagram = RangeDiagram.layout(ab, innerW)
         if diagram then
-            blocks[#blocks + 1] = { kind = "rangediag", layout = diagram,
-                color = Combat.isSupportAbility(ab) and RANGE_FRIENDLY or RANGE_HOSTILE }
+            blocks[#blocks + 1] = { kind = "rangediag", layout = diagram, color = bandColor }
         end
         -- The AREA footprint: the tiles the cast actually sweeps (a spear's line, an axe's arc, a
         -- blast's square), drawn around the caster. Shape is structured `aoe` data, so it belongs in
@@ -415,8 +426,7 @@ local function buildBlocks(item, actor, innerW, out, owner)
         -- board-dependent footprint (aoe.cells), which FootprintDiagram cannot picture off-board.
         local aoe = ab.aoe
         if aoe and not aoe.cells and (aoe.shape or (aoe.radius and aoe.radius > 0)) then
-            blocks[#blocks + 1] = { kind = "footprintdiag", aoe = aoe, box = 60,
-                color = Combat.isSupportAbility(ab) and RANGE_FRIENDLY or RANGE_HOSTILE }
+            blocks[#blocks + 1] = { kind = "footprintdiag", aoe = aoe, box = 60, color = bandColor }
         end
         if ab.speed then
             blocks[#blocks + 1] = { kind = "stat", label = "Speed", value = tostring(ab.speed) }

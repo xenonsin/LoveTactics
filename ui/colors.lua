@@ -46,6 +46,10 @@ local Colors = {
     -- Tile overlay bands.
     RANGE   = { 0.749, 0.239, 0.231 }, -- offensive reach
     SUPPORT = { 0.239, 0.608, 0.380 }, -- heal / buff reach
+    -- The reach of a cast aimed at a foe that does it no harm (Combat.isHarmlessAbility -- the
+    -- Assayer's Eye). A cool steel-cyan: it must not read as the threat red beside it, and it must
+    -- not read as the kindness green either, since it can only ever land on the other side.
+    HARMLESS = { 0.404, 0.678, 0.729 },
     MOVE    = { 0.275, 0.463, 0.776 }, -- reachable move tiles
     DANGER  = { 0.486, 0.302, 0.745 }, -- tiles a foe could also strike
     AOE     = { 0.749, 0.239, 0.231 }, -- armed blast footprint

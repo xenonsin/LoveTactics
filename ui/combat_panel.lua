@@ -15,6 +15,7 @@
 --   local panel = CombatPanel.new(combat, {
 --       onActivateItem = function(item, index) ... end,  -- slot clicked (arm / toggle)
 --       onHoverItem    = function(item_or_nil) ... end,  -- hover changed (drives preview)
+--       onInspectUnit  = function(unit) ... end,         -- turn-strip card clicked (read that body)
 --   })
 --   panel:setView({ order = {units}, current = unit, isPartyTurn = bool,
 --                   items = {inventory}, armedItem = item_or_nil })
@@ -206,6 +207,7 @@ function CombatPanel.new(combat, opts)
     self.onHoverUnit = opts.onHoverUnit
     self.onWait = opts.onWait -- the long Wait/Focus/Defend button under the item grid
     self.onRotate = opts.onRotate -- the Fall Back button above it (trade places with the bench)
+    self.onInspectUnit = opts.onInspectUnit -- a turn-strip card clicked: read that body
 
     -- Chrome wears the display face (Theme.display -> the engraved serif, falling back to the default
     -- until the ttf lands); dense numeric read-outs stay on the plain body face for legibility.
@@ -1534,7 +1536,9 @@ function CombatPanel:drawItemGrid()
         -- (gold), usable (blue), else idle.
         local blinkOn = isBlink and self.view.current and self.view.current.blinkArmed
         if armed then
-            if Combat.isSupportAbility(item.activeAbility) then
+            if Combat.isHarmlessAbility(item.activeAbility) then
+                love.graphics.setColor(0.40, 0.68, 0.73) -- harmless armed (a foe read, not struck)
+            elseif Combat.isSupportAbility(item.activeAbility) then
                 love.graphics.setColor(0.35, 0.85, 0.40) -- support armed (heal / buff)
             else
                 love.graphics.setColor(0.85, 0.35, 0.35) -- offensive armed (strike / trap)
@@ -1671,6 +1675,13 @@ function CombatPanel:mousepressed(x, y, button)
     -- bug this avoids.
     local item, i = self:actionItemAt(x, y)
     if item and self.onActivateItem then self.onActivateItem(item, i) end
+    -- Missed the grid: a click on a turn-strip card is the mouse's way to ask about that BODY. The
+    -- strip is where a foe is read from, so it is where the asking belongs; what an inspect shows is
+    -- the state's business (today, an assayed foe's kit card).
+    if not item and self.onInspectUnit then
+        local unit = self:unitAt(x, y)
+        if unit then self.onInspectUnit(unit) end
+    end
     return true
 end
 

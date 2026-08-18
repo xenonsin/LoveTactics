@@ -7745,6 +7745,20 @@ function Combat.isSupportAbility(ab)
     return ab.target == "ally" or ab.target == "self"
 end
 
+-- The third valence: a cast AIMED at a foe that does the foe no harm. Support answers "is this a
+-- kindness"; this answers "is it a blow", and a handful of abilities are neither -- the Assayer's Eye
+-- reads a satchel, and its whole payload is knowledge (Combat.revealInventory).
+--
+-- Always DECLARED (`harmless = true`), never guessed, because there is no honest guess to make: a
+-- hostile cast that happens to roll 0 damage against the body in front of it is still a blow, and
+-- reading zero off a dry run would paint half the debuff shelf as harmless. What the flag buys is the
+-- whole reading of the cast -- the reach band's colour, the cast cue's glow and sound, the aiming
+-- hint's verb, and the enemy AI's refusal to spend a turn on one -- so that "not an attack" is a
+-- single fact stated once rather than something the player has to infer from a damage number.
+function Combat.isHarmlessAbility(ab)
+    return ab ~= nil and ab.harmless == true
+end
+
 -- The tag list a cast/strike cue carries so the view can pick its picture -- the item's own tags plus
 -- the active ability's, in that order, the same descriptive-tag-leads ordering ui/motif.lua reads. A
 -- weapon says its family and shape ("dagger", "pierce"); the ability behind it adds the element it
@@ -9168,7 +9182,8 @@ function Combat.useItem(combat, unit, item, tx, ty, windup, dest, spend)
         -- The wind-up is an action too: a cast beat on begin-channel, then a second when it resolves
         -- (resolveCast, turns later). So a channeled spell reads both as it is loosed and as it lands.
         Combat.pushFx(combat, { type = "cast", unit = unit, tx = tx, ty = ty,
-            support = Combat.isSupportAbility(ab), tags = Combat.fxTags(item, ab) })
+            support = Combat.isSupportAbility(ab), harmless = Combat.isHarmlessAbility(ab),
+            tags = Combat.fxTags(item, ab) })
         local channelEntry = Combat.logEvent(combat, "action",
             string.format("%s begins channeling %s.", unitName(unit), item.name or "an ability"), unit)
         -- Hang the item on the line so the combat-log panel can show its full tooltip on hover --
@@ -9322,7 +9337,8 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
     -- blood animated the actor (the view derived a lunge from the damage cue); a cure or a summon
     -- resolved with the caster standing dead still. See ui/combat_fx.
     Combat.pushFx(combat, { type = "cast", unit = unit, tx = tx, ty = ty,
-        support = Combat.isSupportAbility(ab), tags = Combat.fxTags(item, ab) })
+        support = Combat.isSupportAbility(ab), harmless = Combat.isHarmlessAbility(ab),
+        tags = Combat.fxTags(item, ab) })
 
     -- Effect context: bound helpers let a data-file effect compose damage/heal/AoE
     -- without touching this module. Results are accumulated for the caller/UI.

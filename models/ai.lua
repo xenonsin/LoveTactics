@@ -900,7 +900,16 @@ local function itemsFor(combat, unit)
     local Combat = require("models.combat")
     local out = {}
     for _, item in ipairs(Combat.abilityItems(unit.char)) do
-        if not Combat.itemBlockReason(unit, item) then out[#out + 1] = item end
+        -- A HARMLESS ability (the Assayer's Eye) never enters an AI plan. Its payload is knowledge
+        -- for the side reading the screen, so an enemy that cast one would spend a whole turn buying
+        -- itself nothing -- and every layer below takes it for a strike it can afford, which is worse:
+        -- the `defensive` posture would count it as hostile reach and break its hold to go and look at
+        -- somebody. Dropped here, at the one seam every candidate is enumerated from, so engage,
+        -- candidates and firingSolution are all answered at once.
+        if not Combat.itemBlockReason(unit, item)
+            and not Combat.isHarmlessAbility(item.activeAbility) then
+            out[#out + 1] = item
+        end
     end
     -- The bare-handed strike goes last: it is free, so it can never be filtered out above, and a unit
     -- that can't pay for a single ability can still throw a punch. Sorting it last means a real

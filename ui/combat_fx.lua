@@ -309,15 +309,24 @@ function CombatFx:playBeat(events, actor)
     local actorCast = false -- did the acting unit already play a cast beat this batch?
     for _, e in ipairs(events) do
         if e.type == "cast" then
-            self:cast(e.unit, e.tx, e.ty, e.support)
+            self:cast(e.unit, e.tx, e.ty, e.support, e.harmless)
             if e.unit == actor then actorCast = true end
             -- The activation itself makes a sound: the swing under an attack's impact, or an ability
             -- firing. Only offensive casts ring it -- a support cast (heal/buff) is announced by its own
-            -- heal/buff cue below, so it would only double up here.
-            if not e.support then Sound.play("battle.cast") end
+            -- heal/buff cue below, so it would only double up here. A HARMLESS cast (a foe assayed, not
+            -- struck) rings the neutral shimmer instead: it is an activation, so it must be heard, but
+            -- the swing is the one thing it is not.
+            if e.harmless then Sound.play("battle.status")
+            elseif not e.support then Sound.play("battle.cast") end
             -- A friendly cast (a heal, a blessing) rises as motes off the caster; an offensive cast
-            -- leaves its mark through the damage bursts its blows spawn, so it gets none here.
-            if self.bursts and e.support then self.bursts:support(e.unit.x, e.unit.y, "motes") end
+            -- leaves its mark through the damage bursts its blows spawn, so it gets none here. A
+            -- harmless one spawns no blow at all, so it marks the BODY IT READ -- a sigil on the foe's
+            -- own tile -- or nothing on the board would say where the working landed.
+            if self.bursts and e.harmless then
+                self.bursts:support(e.tx or e.unit.x, e.ty or e.unit.y, "sigil")
+            elseif self.bursts and e.support then
+                self.bursts:support(e.unit.x, e.unit.y, "motes")
+            end
         elseif e.type == "damage" then
             local cell = struck[e.unit] or e.unit
             self:hit(e.unit, e.amount, e.lethal)
@@ -407,14 +416,20 @@ end
 -- toward the aim -- a vertical hop for a self/tile cast with no direction -- plus a colored glow, green
 -- for a friendly cast (heal/buff), warm gold for an offensive one. The model pushes a "cast" cue for
 -- EVERY ability activation, so a cure, a summon or a self-buff reads on the board, not just a strike.
-function CombatFx:cast(unit, tx, ty, support)
+--
+-- A HARMLESS cast (Combat.isHarmlessAbility -- a foe read rather than hit) glows the same steel-cyan
+-- its reach band wears, and does NOT lean: the lean is the picture of a body throwing its weight at
+-- another one, which is exactly the reading the flag exists to withdraw. It bobs in place instead,
+-- like a cast aimed at nobody.
+function CombatFx:cast(unit, tx, ty, support, harmless)
     local r = self:reaction(unit)
     local dx, dy = (tx or unit.x) - unit.x, (ty or unit.y) - unit.y
     local len = math.sqrt(dx * dx + dy * dy)
-    if len > 1e-4 then r.castDx, r.castDy = dx / len, dy / len
+    if len > 1e-4 and not harmless then r.castDx, r.castDy = dx / len, dy / len
     else r.castDx, r.castDy = nil, nil end -- aimed at its own tile (self/tile cast): bob in place
     r.castT = CAST_TIME
-    r.castColor = support and { 0.55, 0.95, 0.70 } or { 0.98, 0.82, 0.45 }
+    if harmless then r.castColor = { 0.55, 0.85, 0.92 }
+    else r.castColor = support and { 0.55, 0.95, 0.70 } or { 0.98, 0.82, 0.45 } end
 end
 
 -- A blow landing on `unit`: shake + flash the sprite, float the number, jiggle its card. Damage

@@ -240,6 +240,15 @@ local function appendUnit(blocks, unit, preview)
         end
     end
 
+    -- A foe whose kit has been laid open (the Assayer's Eye) says so, and says how to read it. The
+    -- reveal lasts the whole fight and its card no longer opens on a hover, so without this line the
+    -- thing the ability bought would be invisible -- and this tooltip is exactly where the player is
+    -- already looking at the foe it was spent on.
+    if Combat.inventoryRevealed(unit) then
+        blocks[#blocks + 1] = { kind = "desc",
+            text = "Assayed — K, or click its turn card, to read its kit." }
+    end
+
     -- Active status effects: each shown as its name (in the status's colour) with the remaining
     -- duration on the right, so a stunned/rooted unit's condition reads in full here.
     local statuses = unit.statuses

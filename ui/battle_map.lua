@@ -1079,8 +1079,12 @@ function BattleMap:drawOverlays()
     -- while a unit is hovered, so the two never paint together.
     paint(self.overlays.inspectMove, Colors.MOVE)
     paint(self.overlays.inspectRange, Colors.RANGE)
-    -- Support abilities (heals / buffs) reach in green; offensive ones in red.
-    if self.overlays.rangeSupport then
+    -- Support abilities (heals / buffs) reach in green; offensive ones in red. A HARMLESS cast --
+    -- aimed at a foe but doing it no harm (the Assayer's Eye) -- reaches in steel-cyan, since the band
+    -- is the promise of what a click there does and neither of the other two colours tells the truth.
+    if self.overlays.rangeHarmless then
+        paint(self.overlays.range, Colors.HARMLESS)
+    elseif self.overlays.rangeSupport then
         paint(self.overlays.range, Colors.SUPPORT)
     else
         paint(self.overlays.range, Colors.RANGE)

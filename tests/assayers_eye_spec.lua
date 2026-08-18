@@ -63,6 +63,37 @@ return {
         end,
     },
     {
+        name = "the assay is harmless -- neither a blow nor a kindness",
+        fn = function()
+            local lens = Item.instantiate("ability_assayers_eye")
+            local ab = lens.activeAbility
+            assert(Combat.isHarmlessAbility(ab), "the Eye declares itself harmless")
+            -- It still aims at a foe, so it must NOT be dressed as support: the band, the cast glow
+            -- and the AI's ally scan all key off that, and green on an enemy would be a worse lie
+            -- than red.
+            assert(not Combat.isSupportAbility(ab), "a harmless cast is not a friendly one")
+            -- And nothing else in the shelf gets the reading for free: a plain strike stays a strike.
+            assert(not Combat.isHarmlessAbility(Item.instantiate("weapon_iron_sword").activeAbility),
+                "a weapon is never harmless")
+        end,
+    },
+    {
+        name = "an enemy carrying only the Eye never plans it",
+        fn = function()
+            -- A reveal is knowledge for the side reading the screen: an enemy that cast one would
+            -- spend its whole turn buying itself nothing. AI.itemsFor drops it, so the body falls
+            -- through to its fists (or to a move) instead of standing there assaying the party.
+            local foe = unit("character_bandit", 5, 4)
+            for i = 1, Character.MAX_INVENTORY do foe.char.inventory[i] = nil end
+            foe.char.inventory[1] = Item.instantiate("ability_assayers_eye")
+            foe.char.stats.mana = { max = 20, current = 20 }
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 4, 4) }, { foe })
+            local plan = Combat.planEnemyAction(c, c.units[2])
+            assert(not (plan and plan.item and plan.item.id == "ability_assayers_eye"),
+                "the enemy AI never spends a turn assaying")
+        end,
+    },
+    {
         name = "the tooltip dry-run records the reveal and no damage",
         fn = function()
             local caster = unit("character_rowan", 3, 4)
