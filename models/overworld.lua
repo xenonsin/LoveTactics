@@ -26,6 +26,7 @@ local Tileset = require("models.tileset")
 local Biome = require("models.biome")
 local Material = require("models.material") -- cache payloads: craft grades + the sponsoring house's stock
 local Layout = require("models.layout") -- which carve this ground uses (models/layouts/)
+local Vision = require("models.vision") -- line of sight: what the fog lifts off is cast, not a disc
 local Encounter = require("models.encounter") -- guaranteed stops resolve by kind off the blueprints (see guaranteedEntry)
 
 local Overworld = {}
@@ -2538,13 +2539,41 @@ function Overworld:get(x, y)
     return self.cells[y] and self.cells[y][x]
 end
 
--- Whether tile (x, y) is within vision `radius` of (cx, cy). Circular (Euclidean)
--- with a small bias so the lit area reads as a soft disc rather than a hard square.
--- Shared by reveal (which tiles get discovered) and the renderer's fog (which are
--- currently lit) so the two can never disagree.
-function Overworld:inVision(cx, cy, x, y, radius)
+-- Whether tile (x, y) is within `radius` of (cx, cy) BY DISTANCE ALONE. Circular (Euclidean) with a
+-- small bias so the lit area reads as a soft disc rather than a hard square. How far the eye carries,
+-- and nothing about what stands in the way -- ask inVision for that.
+function Overworld:inRange(cx, cy, x, y, radius)
     local dx, dy = x - cx, y - cy
     return dx * dx + dy * dy <= radius * radius + radius
+end
+
+-- Every tile visible from (cx, cy) out to `radius` (models/vision.lua), memoized: the renderer asks
+-- this of every tile on the board every frame and the answer only changes when the party moves. The
+-- terrain a cast reads is fixed at generation, so a field stays good for the whole run; the cache is
+-- wiped wholesale rather than aged when it fills, because the entry that matters is the one for the
+-- tile the party is standing on and that one is a single step from being rebuilt anyway.
+local VISION_CACHE_MAX = 64
+function Overworld:visionField(cx, cy, radius)
+    if not self.visionCache or self.visionCacheCount >= VISION_CACHE_MAX then
+        self.visionCache, self.visionCacheCount = {}, 0
+    end
+    local k = cx .. "," .. cy .. "," .. radius
+    local field = self.visionCache[k]
+    if not field then
+        field = Vision.field(self, cx, cy, radius)
+        self.visionCache[k] = field
+        self.visionCacheCount = self.visionCacheCount + 1
+    end
+    return field
+end
+
+-- Whether tile (x, y) can be SEEN from (cx, cy): close enough, and with a clear line to it. Shared by
+-- reveal (which tiles get discovered) and the renderer's fog (which are lit right now) so the two can
+-- never disagree -- and now across both halves of that statement, so no wall can hide a tile from the
+-- fog while the fog is busy lifting off it.
+function Overworld:inVision(cx, cy, x, y, radius)
+    if not self:inRange(cx, cy, x, y, radius) then return false end
+    return self:visionField(cx, cy, radius)[Vision.key(x, y)] == true
 end
 
 -- Fog of war: mark every cell within vision `radius` of (cx, cy) as discovered.

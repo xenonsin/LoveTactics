@@ -138,6 +138,15 @@ length, one to four tiles deep, in headlands and bays. The tiles stay square; th
   board that keeps doing it is a sizing rule falling behind what a ground can hold. It sits around 8%
   today, concentrated in the room-carve grounds that have almost no degree-1 tiles at all.
 - **A fight is never seated where a fight cannot happen.** See the fightability floor below.
+- **The fog lifts off what the party can see, not off what is near it.** Vision is cast, not measured:
+  `Overworld:inVision` asks the radius (`inRange`, the soft Euclidean disc) *and* line of sight
+  (`models/vision.lua`, recursive shadowcasting from the party's tile), so a wall stops the light and
+  everything behind it stays dark however close the party walks. The wall itself lights — a wall you
+  cannot see is a hole in the map — and only the ground behind it goes out. Solid is solid by tile
+  walkability, asked of the biome's own tileset, which is the same test a patrol's eye uses
+  (`Patrol.sees`): if you can trace a clear line to it, it can trace one to you. The grounds are
+  corridors cut through fill, so this is most of what makes walking one an act of looking: a junction
+  opens as you reach it instead of being reported through the trees.
 - **The map remembers a place; it never remembers a body.** A landmark — a cache, a key, a gate, the
   objective pennant, a camp, a shop, a shrine, a scene — is a fact about the country, so once it has
   been found it stays on the map (`OverworldMap:mapped`, i.e. `seen`) and a detour can be planned from
