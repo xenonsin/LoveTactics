@@ -414,6 +414,12 @@ local PIP_COLOR = { 1.0, 0.86, 0.55 }    -- warning bone-gold, legible on the ho
 
 local function markerColor(kind)
     if kind == "objective" then return 0.95, 0.75, 0.20 end
+    -- A PIECE OF POSTED WORK SHARES THE ENDS' GOLD, and that is the point of it: an errand and the
+    -- floor's own end are both things this day ends at, and the colour says so. What separates them is
+    -- the MARK -- a pennant against a writ -- which is the same split the four hazards are drawn on
+    -- (one colour for the category, a shape for the particular). Two identical pennants on one board
+    -- was the bug: the stair's guard and a house's errand promised the same thing and were not.
+    if kind == "quest" then return 0.95, 0.75, 0.20 end
     if kind == "elite" then return 0.95, 0.55, 0.15 end
     if kind == "town" then return 0.85, 0.85, 0.90 end
     if kind == "treasure" then return 0.35, 0.80, 0.55 end
@@ -478,6 +484,23 @@ function MarkerIcon.objective(x, y, w, h, r, g, b, a)
     love.graphics.line(x + w * 0.22, y, x + w * 0.22, y + h)
     love.graphics.setLineWidth(1)
     love.graphics.polygon("fill", x + w * 0.22, y, x + w, y + h * 0.22, x + w * 0.22, y + h * 0.44)
+end
+
+-- A POSTED WRIT: the piece of work somebody asked for. A campaign ground's quest, a house's errand, the
+-- job lying on a descent floor that opens a shut door -- every end that belongs to a NAME rather than to
+-- the map (models/quest.lua's Quest.trip, Descent.floorObjectives). The pennant above stays what it
+-- always was: the board's own end, which on a descent floor is the guard standing on the way down.
+--
+-- Drawn as a sheet with a roll at each end, and the rolls are deliberately WIDER than the sheet: that
+-- overhang is the whole silhouette, and it is the one shape on the board that is broader at the top and
+-- bottom than through the middle. A scroll drawn as a plain rectangle would read as the event bubble's
+-- cousin at sixteen pixels, which is the size this has to survive at.
+function MarkerIcon.quest(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.rectangle("fill", x + w * 0.16, y + h * 0.12, w * 0.68, h * 0.76)
+    love.graphics.setColor(r * 0.4, g * 0.4, b * 0.4, a)
+    love.graphics.rectangle("fill", x, y, w, h * 0.20, 2, 2)
+    love.graphics.rectangle("fill", x, y + h * 0.80, w, h * 0.20, 2, 2)
 end
 
 -- A speech bubble: a scene to talk through, not a fight to win.
@@ -706,6 +729,22 @@ local function drawMarkerPlate(wx, wy, s, r, g, b, a, ring)
     end
     love.graphics.rectangle("line", px, py, pw, pw, MARKER_RADIUS, MARKER_RADIUS)
     love.graphics.setLineWidth(1)
+end
+
+-- WHAT THE MARK SAYS, which is not always what the encounter IS.
+--
+-- A board carries as many ends as the day has work in it and every one of them is stamped `objective`
+-- (models/overworld.lua), because to everything downstream -- the arena's cap, the salvage, the payout
+-- -- they are one thing: a set-piece. Splitting the KIND would have to be done in the model, where a
+-- dozen `kind == "objective"` tests would then quietly stop matching an errand and size it as roadside
+-- traffic. So the split is made here, where it is a question about drawing and nothing else.
+--
+-- The discriminator was already on the cell: a spec that belongs to a piece of work carries the id of
+-- that work (`questId`), and the board's own end carries nothing. A campaign ground, where every end IS
+-- a quest, therefore draws writs across the board and no pennant at all -- which is the truth about it.
+local function markerKind(enc)
+    if enc and enc.kind == "objective" and enc.questId then return "quest" end
+    return enc and enc.kind
 end
 
 -- The mark, drawn in white on top of the plate so the SHAPE reads even where two kinds sit close in
@@ -961,7 +1000,7 @@ function OverworldMap:drawMarkers()
                 end
 
                 if self:markedStop(x, y) then
-                    local kind = c.encounter.kind
+                    local kind = markerKind(c.encounter)
                     local r, g, b = markerColor(kind)
                     -- How this fight stands against the company, asked once and spent twice below: on
                     -- the box colour and on the pips. Nil for a stop there is no comparison to make
@@ -1039,7 +1078,7 @@ function OverworldMap:drawPatrols()
             end
 
             local wx, wy = grid:cellToPixel(p.x, p.y)
-            local kind = p.encounter and p.encounter.kind
+            local kind = markerKind(p.encounter)
 
             -- HOW FAR ABOVE THE COMPANY THIS ONE STANDS, read exactly as a seated fight's is: it sets
             -- the wash and it sets the pips. The readout is keyed by cell everywhere else and a patrol
