@@ -11,12 +11,28 @@
 -- live in models/gate.lua so a spec can drive them without a window; this is the two sentences the
 -- player reads before pressing yes.
 --
+-- IT HAS A FACE NOW, and it did not before. Every other counter in the city draws its keeper down the
+-- left of its panel -- the Cafe, the Touchstone, the Hero's Rift, the seven houses -- and this was the
+-- one door where somebody puts hands on the company and nobody was standing behind it. The pane is the
+-- same recessed slot at the same width, added to Choice itself (`keeper`) rather than by growing this
+-- room a three-column panel it has no content for. The name, the portrait and the line under it all
+-- come off data/vendors/inn.lua, which is also what the first-visit greeting hangs on.
+--
+-- THE ROOMS GREY OUT WHEN NOBODY IS BROKEN, which is the whole reason the wounded count is read here at
+-- all. Coming home already restores health and mana for free (Player.restore, on hub entry), so a night
+-- buys exactly one thing: the bones. With none to set, the bill is a charge for nothing -- and pressing
+-- it would take the gold and change nothing on the roster, which is the shape of a bug even when the
+-- ledger is right. It is drawn and refused rather than hidden, because a counter showing the player
+-- nothing but the door out says nothing about why they came. Same for a purse that cannot cover it.
+--
 -- Same constructor contract every hub panel takes (states/hub.lua's launchPanel hands `player`, `title`
 -- and `onClose` to all of them), so the building blueprint needed nothing special.
 
 local Choice = require("ui.panels.choice")
 local Gate = require("models.gate")
 local Player = require("models.player")
+local Sprite = require("models.sprite")
+local Vendor = require("models.vendor") -- only for the keeper's name, portrait and line
 local Wound = require("models.wound")
 
 local Inn = {}
@@ -24,42 +40,66 @@ local Inn = {}
 function Inn.new(opts)
     opts = opts or {}
     local player = opts.player or Player.active
-    local price = Gate.innPrice(player)
-    local hurt = #(Wound.wounded(player) or {})
-    local canPay = (player and player.gold or 0) >= price
+    local def = Vendor.get(opts.vendor or "inn") or {}
+    -- Tolerant: a missing file comes back as its own path string, which the keeper pane draws a lettered
+    -- plate for (models/sprite.lua). The art has not landed and this room works without it.
+    local keeper = {
+        name = def.name or "The Inn",
+        sprite = def.sprite and Sprite.load(def.sprite) or nil,
+        line = def.description,
+    }
+
+    local price, hurt, canPay
 
     -- Rebuilt rather than mutated after a rest: the price is per head and the wounded count changes the
     -- moment the bill is paid, so the card that says "three of them need the surgeon" has to stop saying
-    -- it. Cheap -- it is a table of two options.
+    -- it -- and the rooms themselves have to go dark, since there is now nothing left to set. Cheap --
+    -- it is a table of two options.
     local self
     local function rebuild(notice)
+        price = Gate.innPrice(player)
+        hurt = #(Wound.wounded(player) or {})
+        canPay = (player and player.gold or 0) >= price
+
+        local prompt = notice
+        if not prompt then
+            prompt = "A night, a fire and a surgeon: " .. price .. " gold for the company. Everything " ..
+                "restored, and every bone set."
+            if hurt > 0 then
+                prompt = prompt .. "  " .. hurt ..
+                    (hurt == 1 and " of them needs" or " of them need") .. " the surgeon."
+            else
+                -- Says what is true of the company rather than what is wrong with the button. The row
+                -- below carries the refusal; this carries the reason there is nothing to buy.
+                prompt = prompt .. "  Nobody is carrying a wound."
+            end
+        end
+
+        -- Two refusals, one dead card. Ordered so the player is told the thing they cannot change first:
+        -- an empty purse is a reason to come back, an unbroken company is a reason not to.
+        local why
+        if hurt == 0 then why = "Nobody needs a bed you have to pay for."
+        elseif not canPay then why = "You cannot cover it." end
+
         self = Choice.new({
-            title = opts.title or "The Inn",
-            prompt = notice or (
-                "A night, a fire and a surgeon: " .. price .. " gold for the company. Everything " ..
-                "restored, and every bone set." ..
-                (hurt > 0
-                    and ("  " .. hurt .. (hurt == 1 and " of them needs" or " of them need") .. " the surgeon.")
-                    or "")),
+            title = opts.title or def.name or "The Inn",
+            keeper = keeper,
+            prompt = prompt,
             options = {
                 {
                     label = "Take the rooms  (" .. price .. "g)",
-                    desc = canPay and "They come down to breakfast whole."
-                        or "You cannot cover it.",
+                    desc = why or "They come down to breakfast whole.",
+                    disabled = why ~= nil,
                     accent = { 0.83, 0.73, 0.45 },
                     cb = function()
-                        local ok, why = Gate.rest(player)
+                        local ok, reason = Gate.rest(player)
                         if ok then Player.save() end
                         -- The card stays open on the news rather than closing on it. A panel that
                         -- vanishes the instant you spend leaves the player looking at a city and
                         -- guessing whether the gold went somewhere.
                         rebuild(ok and "They sleep, and somebody sets what is broken."
-                            or (why == "gold" and "You cannot cover it."
+                            or (reason == "gold" and "You cannot cover it."
                                 or "There is nobody to take a room."))
-                        if ok then
-                            price, hurt, canPay = Gate.innPrice(player), 0,
-                                (player.gold or 0) >= Gate.innPrice(player)
-                        end
                     end,
                 },
                 {
@@ -71,6 +111,9 @@ function Inn.new(opts)
             },
             onClose = opts.onClose,
         })
+        -- A dead first row must not open focused on itself: the keyboard and the pad land on the one
+        -- thing in the room that still does something.
+        if why then self.focus = 2 end
     end
     rebuild()
 

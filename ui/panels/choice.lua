@@ -3,10 +3,25 @@
 -- ui/panels/rest_choice.lua is the same idea with fixed options; this one takes them as data. A state owns
 -- it as game.activePanel and forwards input; three-input + mouse-only.
 --
---   Choice.new({ title=, prompt=, options={ { label=, desc=?, accent=?, cb=fn }, ... }, onClose= })
+--   Choice.new({ title=, prompt=, options={ { label=, desc=?, accent=?, disabled=?, cb=fn }, ... },
+--                keeper=?, onClose= })
 --
 -- Choosing an option fires its cb (and the panel is spent); onClose fires on X/Esc/B when a back-out is
 -- allowed (pass nil to forbid leaving -- a committing choice).
+--
+-- A DISABLED OPTION IS DRAWN AND REFUSED, never hidden, and that is the one place this widget departs
+-- from the board's rule that a control appears only where it can be used. On a board a move that is
+-- rarely legal draws nothing until it is; here the option IS the room -- the Inn's whole offer is "take
+-- the rooms" -- and a card that vanished when it could not be bought would leave a counter showing the
+-- player nothing but the door out, with no line saying why they came. It stays, dimmed, wearing the
+-- reason in its own description.
+--
+-- A KEEPER PANE is optional and additive: pass `keeper = { name=, sprite=, line= }` and the box grows a
+-- recessed column down its left with the portrait fitted inside it, the counter's name under that and
+-- its own sentence beneath -- the same shape every shelf in the city uses (ui/panels/cafe.lua,
+-- ui/panels/hiring.lua, ui/panels/touchstone.lua). It is what lets a counter whose whole offer is one
+-- yes-or-no still have a face behind it, without that counter growing a three-column panel it has no
+-- content for. Callers that pass no keeper are laid out exactly as they were.
 
 local CloseButton = require("ui.close_button")
 local InputMode = require("input_mode")
@@ -18,6 +33,14 @@ Choice.__index = Choice
 
 local BOX_W = 500
 local PAD = 26
+-- The keeper column, sized to the strip the shelves use rather than to this box: a portrait the player
+-- has learned to read at one width in four other rooms should not be narrower in the fifth.
+local KEEPER_W = 220
+local KEEPER_GAP = 22
+-- The room a portrait needs to be a portrait. A yes-or-no card is short -- two options and a prompt is
+-- barely 300px -- and a standing figure fitted into what is left over comes out a letterbox, which is
+-- the one failure mode worth spending fixed height on.
+local KEEPER_MIN_H = 360
 -- A card's height, and the reason it is a default rather than a constant. 70 holds a label and ONE line of
 -- description, which is what a dilemma's options are (models/crossroads.lua) -- a second line lands with
 -- its descenders across the card's bottom border. A caller whose rows have more to say than that passes
@@ -48,7 +71,14 @@ function Choice.new(opts)
     self.descFont = Theme.body(14)
     self.hintFont = Theme.body(13)
 
-    self.boxW = BOX_W
+    -- The keeper's own strip is spent on top of the card rather than out of it: the options keep the
+    -- width they have everywhere else, so a caller that grows a face does not also get shorter rows.
+    self.keeper = opts.keeper
+    self.keeperFont = Theme.display(18)
+    self.lineFont = Theme.body(13)
+    local keeperCol = self.keeper and (KEEPER_W + KEEPER_GAP) or 0
+
+    self.boxW = BOX_W + keeperCol
     -- Prompt wraps above the options; height follows it.
     self.promptH = 0
     if self.prompt then
@@ -57,14 +87,30 @@ function Choice.new(opts)
     end
     self.optTop = 58 + self.promptH
     self.optH = opts.optionHeight or OPT_H
-    self.boxH = self.optTop + #self.options * (self.optH + OPT_GAP) + 22
-    self.boxX = Scale.WIDTH / 2 - BOX_W / 2
+    local natural = self.optTop + #self.options * (self.optH + OPT_GAP) + 22
+    self.boxH = natural
+    if self.keeper then
+        self.boxH = math.max(natural, KEEPER_MIN_H)
+        -- The slack the portrait bought is split above and below the stack rather than all dumped
+        -- under it: options left hanging off the title read as a card that lost its bottom half.
+        self.optTop = self.optTop + (self.boxH - natural) / 2
+    end
+    self.boxX = Scale.WIDTH / 2 - self.boxW / 2
     self.boxY = Scale.HEIGHT / 2 - self.boxH / 2
-    self.closeButton = CloseButton.new(self.boxX + BOX_W, self.boxY)
+    self.closeButton = CloseButton.new(self.boxX + self.boxW, self.boxY)
+
+    -- Everything that is not the portrait lives in a column of the card's own width, offset past it.
+    self.colX = self.boxX + keeperCol
+    if self.keeper then
+        self.keeperRect = {
+            x = self.boxX + PAD, y = self.boxY + 54,
+            w = KEEPER_W, h = self.boxH - 54 - 22,
+        }
+    end
 
     for i, o in ipairs(self.options) do
         o.rect = {
-            x = self.boxX + PAD, y = self.boxY + self.optTop + (i - 1) * (self.optH + OPT_GAP),
+            x = self.colX + PAD, y = self.boxY + self.optTop + (i - 1) * (self.optH + OPT_GAP),
             w = BOX_W - PAD * 2, h = self.optH,
         }
         o.accent = o.accent or ACCENTS[(i - 1) % #ACCENTS + 1]
@@ -76,6 +122,9 @@ function Choice:choose(i)
     if self.finished then return end
     local o = self.options[i]
     if not o then return end
+    -- Refused, and the panel is NOT spent: a dead card must cost the player nothing, least of all the
+    -- live one underneath it. See the disabled note in the header for why it is drawn at all.
+    if o.disabled then return end
     self.finished = true
     if o.cb then o.cb() end
 end
@@ -85,6 +134,58 @@ function Choice:close()
     if not self.onClose then return end -- a committing choice: X/Esc do nothing
     self.finished = true
     self.onClose()
+end
+
+-- THE KEEPER'S PANE, built to the shape every other counter in the city uses (ui/panels/cafe.lua,
+-- ui/panels/hiring.lua, ui/panels/touchstone.lua): a recessed slot down the left with the portrait
+-- fitted inside it, the counter's name under that and its own sentence beneath.
+--
+-- `keeper.sprite` is whatever models/sprite.lua handed the caller, which is an image when the art has
+-- landed and the path string when it has not -- so the lettered plate below is the ordinary case for
+-- now and not an error path. NO SIN TINT on it, the same call the Cafe and the Rift make for the same
+-- reason: the seven houses each borrow their sin's hue, and a counter that is not one of the seven
+-- wearing a borrowed colour would be the only thing in the game claiming it was.
+function Choice:drawKeeper()
+    local r = self.keeperRect
+    if not r then return end
+
+    Theme.set(Theme.slot)
+    love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, Theme.R, Theme.R)
+    Theme.set(Theme.frame)
+    love.graphics.rectangle("line", r.x, r.y, r.w, r.h, Theme.R, Theme.R)
+
+    local pad, footH = 12, 76
+    local px, py = r.x + pad, r.y + pad
+    local pw, ph = r.w - pad * 2, r.h - pad * 2 - footH
+
+    local sprite = self.keeper.sprite
+    if type(sprite) == "userdata" then
+        love.graphics.setColor(1, 1, 1)
+        local sw, sh = sprite:getDimensions()
+        local scale = math.min(pw / sw, ph / sh)
+        love.graphics.draw(sprite, px + pw / 2, py + ph / 2, 0, scale, scale, sw / 2, sh / 2)
+    else
+        Theme.set(Theme.panel2)
+        love.graphics.rectangle("fill", px, py, pw, ph, 8, 8)
+        love.graphics.setFont(self.titleFont)
+        Theme.set(Theme.ink, 0.55)
+        love.graphics.printf((self.keeper.name or "?"):sub(1, 1), px, py + ph / 2 - 20, pw, "center")
+    end
+
+    local ty = py + ph + 10
+    if self.keeper.name then
+        love.graphics.setFont(self.keeperFont)
+        Theme.set(Theme.ink)
+        love.graphics.printf(Theme.ellipsize(self.keeper.name, self.keeperFont, pw), px, ty, pw, "left")
+        ty = ty + self.keeperFont:getHeight() + 4
+    end
+    -- The counter's own sentence, read off its blueprint by the caller rather than written again here,
+    -- so the keeper says the same thing wherever they are quoted.
+    if self.keeper.line then
+        love.graphics.setFont(self.lineFont)
+        Theme.set(Theme.muted, 0.80)
+        love.graphics.printf(self.keeper.line, px, ty, pw, "left")
+    end
 end
 
 function Choice:draw()
@@ -97,24 +198,31 @@ function Choice:draw()
     Theme.set(Theme.frame)
     love.graphics.rectangle("line", bx, by, self.boxW, self.boxH, Theme.R, Theme.R)
 
+    self:drawKeeper()
+
+    local cx = self.colX
     love.graphics.setFont(self.titleFont)
     Theme.set(Theme.accentAmber)
-    love.graphics.printf(self.title, bx, by + 16, self.boxW, "center")
+    love.graphics.printf(self.title, cx, by + 16, BOX_W, "center")
 
     if self.prompt then
         love.graphics.setFont(self.promptFont)
         love.graphics.setColor(0.82, 0.83, 0.88)
-        love.graphics.printf(self.prompt, bx + PAD, by + 50, self.boxW - PAD * 2, "center")
+        love.graphics.printf(self.prompt, cx + PAD, by + 50, BOX_W - PAD * 2, "center")
     end
 
     for i, o in ipairs(self.options) do
         local r = o.rect
         local accent = o.accent
         local focused = (i == self.focus)
-        love.graphics.setColor(0.12, 0.13, 0.16, focused and 0.95 or 0.6)
+        -- A dead card keeps its shape and loses its light: same plate, same accent hue, everything at
+        -- roughly a third. It has to stay legible -- its description is the only place the reason it is
+        -- dead is written -- while never once looking pressable.
+        local dim = o.disabled and 0.34 or 1
+        love.graphics.setColor(0.12, 0.13, 0.16, (focused and 0.95 or 0.6) * (o.disabled and 0.7 or 1))
         love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 7, 7)
-        love.graphics.setColor(accent[1], accent[2], accent[3], focused and 1 or 0.45)
-        love.graphics.setLineWidth(focused and 2 or 1)
+        love.graphics.setColor(accent[1], accent[2], accent[3], (focused and 1 or 0.45) * dim)
+        love.graphics.setLineWidth((focused and not o.disabled) and 2 or 1)
         love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 7, 7)
         love.graphics.setLineWidth(1)
         love.graphics.rectangle("fill", r.x, r.y, 4, r.h, 2, 2)
@@ -124,13 +232,16 @@ function Choice:draw()
         -- laid out exactly as before.
         local hasDesc = o.desc and o.desc ~= ""
         love.graphics.setFont(self.labelFont)
-        love.graphics.setColor(0.96, 0.95, 0.92)
+        love.graphics.setColor(0.96, 0.95, 0.92, dim)
         love.graphics.print(o.label, r.x + 18,
             hasDesc and (r.y + 10) or (r.y + r.h / 2 - self.labelFont:getHeight() / 2))
 
         if hasDesc then
             love.graphics.setFont(self.descFont)
-            love.graphics.setColor(0.78, 0.80, 0.86)
+            -- The refusal is the one thing on a dead card that must still read, so it is dimmed less
+            -- far than the label above it: a player looking at a row they cannot press is looking for
+            -- exactly this line.
+            love.graphics.setColor(0.78, 0.80, 0.86, o.disabled and 0.72 or 1)
             love.graphics.printf(o.desc, r.x + 18, r.y + 38, r.w - 34, "left")
         end
     end
@@ -139,7 +250,7 @@ function Choice:draw()
     local hint = (InputMode.isGamepad() and "D-pad choose  -  A confirm" or "Arrows choose  -  Enter confirm") .. leaveHint
     love.graphics.setFont(self.hintFont)
     love.graphics.setColor(0.55, 0.6, 0.7)
-    love.graphics.printf(hint, bx, by + self.boxH - 22, self.boxW, "center")
+    love.graphics.printf(hint, cx, by + self.boxH - 22, BOX_W, "center")
 
     if self.onClose then self.closeButton:draw() end
     love.graphics.setColor(1, 1, 1)
@@ -152,7 +263,11 @@ end
 
 function Choice:cursorKind(x, y)
     if self.onClose and self.closeButton:contains(x, y) then return "hand" end
-    for _, o in ipairs(self.options) do if inRect(o.rect, x, y) then return "hand" end end
+    -- A dead card keeps the plain arrow: the pointer is the fastest thing the player has for finding
+    -- out whether a row does anything, and it must not promise a press this row will refuse.
+    for _, o in ipairs(self.options) do
+        if inRect(o.rect, x, y) then return o.disabled and "arrow" or "hand" end
+    end
     return "arrow"
 end
 
