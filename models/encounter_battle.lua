@@ -78,6 +78,15 @@ function EncounterBattle.spec(opts, partyIds, seed)
         spec.composition = def and def.composition
         spec.allies = def and def.allies
         spec.objective = def and def.objective
+        -- A CAST THE CELL ALREADY KNOWS wins over the blueprint's. Plain id lists only -- everything
+        -- that can put one here rides in a save, so a function could never have been stored.
+        --
+        -- One caller today: the fight standing over a dropped pack (models/descent.lua's
+        -- Descent.packGuard), whose company is drawn ONCE, when the party falls, and kept. The
+        -- blueprint underneath it carries the name and the fiction and deliberately no composition,
+        -- because a blueprint's would be re-rolled on every re-entry and this fight has to be the same
+        -- fight the second time you walk up to it.
+        if enc.composition then spec.composition = enc.composition end
     end
     -- A fight against somebody's team rather than a roll of the encounter table: a stored build, or
     -- another player. The far side arrives as live character instances, so THEIR ids are the
@@ -120,6 +129,11 @@ end
 function EncounterBattle.cellEligible(cell)
     local enc = cell and cell.encounter
     if not enc then return false end
+    -- A guarded pack is a plain kill-them-all with no escort and no win clock, so it qualifies on the
+    -- same terms -- which is also what gives its marker a muster rating and its pips (states/game.lua's
+    -- cellMuster). `composition` is what says something is standing there at all; an unguarded pile
+    -- from before the guard existed is a pickup, and there is nothing to rate or to walk off.
+    if enc.kind == "pack" then return enc.composition ~= nil end
     if enc.kind ~= "combat" and enc.kind ~= "elite" then return false end
     return EncounterBattle.eligible(enc.id and EncounterModel.get(enc.id))
 end

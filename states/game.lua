@@ -19,6 +19,7 @@ local Request = require("models.request") -- a day foraging for a house, with no
 local Quest = require("models.quest")
 local Vendor = require("models.vendor")   -- the sponsoring house behind a quest, for its cache stock
 local Material = require("models.material")
+local Identify = require("models.identify") -- the unread finds a floor hands up
 local Item = require("models.item")     -- the Merchant's shelf prices come off the blueprints
 local Character = require("models.character") -- MAX_INVENTORY, for the pack a wipe leaves on the floor
 local Errand = require("models.errand")   -- the small work a house asks for before it opens a rung
@@ -28,7 +29,6 @@ local LootReveal = require("ui.panels.loot_reveal")
 local RelicOffer = require("ui.panels.relic_offer")   -- the Reliquary's pick-one-of-three
 local RelicReveal = require("ui.panels.relic_reveal") -- the Sin's Altar's single relic + toll
 local Merchant = require("ui.panels.merchant") -- the road's shop: ordinary goods for gold
-local RecruitPanel = require("ui.panels.recruit") -- the floor's survivor: take them on, or walk on
 local Choice = require("ui.panels.choice")
 local Crossroads = require("models.crossroads")
 local RestChoice = require("ui.panels.rest_choice")
@@ -46,9 +46,9 @@ local PartyStatus = require("ui.party_status")
 local RelicStrip = require("ui.relic_strip")
 local OverworldAbility = require("models.overworld_ability")
 local Descent = require("models.descent") -- a run as a stack of floors, their circles, the landing between
-local Recruit = require("models.descent_recruit") -- who is still standing down there, and what joining costs
 local Experience = require("models.experience") -- the one ladder: what turns banked xp into levels
 local Relic = require("models.relic")
+local Voucher = require("models.voucher") -- vouchers off the floors; the hall is what spends them
 local Meal = require("models.meal") -- the Cafe's supper: one platter, worn by the company all run
 local Wound = require("models.wound") -- what a body that went down carries out of the run
 local CoachBubble = require("ui.coach_bubble")
@@ -329,7 +329,7 @@ local function endDescent(outcome, result, keep)
     State.switch(require("states.hub"))
 end
 
--- WHAT THIS RUN IS CARRYING, and would lose by leaving any way but through the objective.
+-- WHAT THIS RUN IS CARRYING, and would lose by getting wiped.
 --
 -- Read by DIFFING the live company against the entry snapshot rather than by tallying at each grant.
 -- That is the whole reason it can be trusted: a chest, a fight's spoils, an event's gift, a relic's
@@ -337,34 +337,19 @@ end
 -- report. There is no ledger to fall out of step with the stash.
 --
 -- Positive differences only. Drinking a potion the company marched in with is not a negative find, and
--- gold spent at the Merchant is not at stake -- a rollback would hand it back. What is shown is what a wipe
--- would actually take.
-local function tallyItems(roster, stash)
-    local t = {}
-    local function add(it)
-        if it and it.id then t[it.id] = (t[it.id] or 0) + (it.quantity or 1) end
-    end
-    for _, char in ipairs(roster or {}) do
-        -- `pairs`, not a numeric walk: a live grid is keyed 1..9 with holes and the snapshot stores a
-        -- sparse map. Both read the same this way.
-        for _, it in pairs(char.inventory or {}) do add(it) end
-    end
-    for _, it in ipairs(stash or {}) do add(it) end
-    return t
-end
-
+-- gold spent at the Merchant is not at stake -- a rollback would hand it back. What is shown is what a
+-- wipe would actually take.
 function game:refreshHaul()
     local run = game.player and game.player.activeRun
     local entry = run and run.entry
     if not entry then game.haul = nil return end
 
-    local was = tallyItems(entry.roster, entry.stash)
-    local now = tallyItems(game.player.roster, game.player.stash)
+    -- Through Player.atRisk rather than a tally of its own, so the number on the defeat panel, the mark
+    -- in the Loadout and the pile a wipe actually drops are one answer asked three times. They used to
+    -- be two counts computed the same way in two files, which is exactly how a readout goes quietly
+    -- false (the badge would have been the third).
     local items = 0
-    for id, n in pairs(now) do
-        local gained = n - (was[id] or 0)
-        if gained > 0 then items = items + gained end
-    end
+    for _, n in pairs(Player.atRisk(game.player, entry)) do items = items + n end
 
     local materials = 0
     for id, n in pairs(game.player.materials or {}) do
@@ -406,7 +391,10 @@ end
 -- Ordered by name so two reads of the same marker never rearrange themselves under the cursor; `pairs`
 -- over the result is unspecified.
 function game:payoutPhrase(enc)
-    if not (enc and (enc.kind == "combat" or enc.kind == "elite" or enc.kind == "objective")) then
+    -- `pack` is a fight and salvages like one (see onWin), so the marker telegraphs the same stock. A
+    -- pile with no cast on it is not a fight and promises nothing.
+    if not (enc and (enc.kind == "combat" or enc.kind == "elite" or enc.kind == "objective"
+        or (enc.kind == "pack" and enc.composition))) then
         return nil
     end
     local got = Spoils.materials({
@@ -488,7 +476,22 @@ function game:markBodies()
         -- a stop that has not been cleared yet -- keeps its entry on the run and simply goes unmarked;
         -- the alternative is deleting the exit from the floor, which is unrecoverable.
         if c and not c.encounter then
-            c.encounter = { kind = "pack", name = "What You Dropped", drop = drop }
+            -- A PILE IS A FIGHT. `id` names the blueprint that supplies the fiction and `composition`
+            -- is the cast, drawn once when the company fell and kept on the drop (Descent.packGuard) so
+            -- the same company is standing there on the second attempt as on the first.
+            --
+            -- A drop from before this landed carries neither. It stays a walk-on pickup rather than
+            -- being handed a guard invented on the spot: a player who put a pack down under the old
+            -- rules did not agree to fight for it.
+            local blueprint = drop.guard == "scavengers" and "encounter_pack_scavengers"
+                or drop.guard == "drawn" and "encounter_pack_drawn" or nil
+            c.encounter = {
+                kind = "pack",
+                name = "What You Dropped",
+                drop = drop,
+                id = blueprint,
+                composition = drop.guardIds,
+            }
         end
     end
 end
@@ -544,6 +547,19 @@ function game:openLanding(cell)
             game.player.standing[sin.vendor] = (game.player.standing[sin.vendor] or 0) + 1
         end
     end
+
+    -- WHAT THE CIRCLE PAYS TOWARD THE COMPANY: vouchers, graded at the floor that finished it
+    -- (models/voucher.lua). This is the whole of how a descent grows its roster now -- the recruit stop
+    -- that used to stand on every floor is gone -- so it is credited on the same beat as the circle
+    -- itself and by the same test, and the count is said out loud on the landing rather than discovered
+    -- later in the city.
+    --
+    -- Granted on the PLAYER rather than on the run, because it has to outlive the run: a voucher earned
+    -- on floor six and carried up is the reward for having gone to floor six, and a wipe two floors
+    -- later does not un-earn it. A wipe takes a share of the coin and ore the run GAINED
+    -- (Player.loseHaul) and nothing else, so this needs no exemption written for it -- but it is worth
+    -- saying out loud that it is not an oversight: the circles you beat are yours.
+    local vouchers = Voucher.grantForFloor(game.player, Descent.depth(run))
 
     -- WHAT WAS ON THE BODY, and it is the body's OWN piece rather than a hand of cards.
     --
@@ -612,7 +628,21 @@ function game:openLanding(cell)
     -- announcement, which is the same treatment the old bare-shelf branch gave a stair with nothing on
     -- it. Whether a general's defeat deserves more than a line in the corner is a question about the
     -- SCREEN and worth asking on the screen; it is deliberately not answered by keeping a chooser with
-    -- one option in it.
+    -- one object in it.
+    --
+    -- THE TOKENS GET THEIR OWN LINE, after the body's, because they are a different kind of news: the
+    -- object above is what this fight paid, and this is what the CIRCLE paid toward the next company.
+    -- Named by their RANK rather than counted alone, because the rank is the whole of what a token is
+    -- worth and a player who reads only the count will spend the good one first by accident. Stars
+    -- rather than the floor it was earned on -- the player never meets a floor number
+    -- (models/voucher.lua).
+    if vouchers > 0 then
+        local stars = Voucher.starsOf(Descent.depth(run))
+        local word = ({ "one-star", "two-star", "three-star", "four-star", "five-star" })[stars]
+        game:pushToast(vouchers == 1
+            and ("A " .. word .. " rift token")
+            or (vouchers .. " " .. word .. " rift tokens"))
+    end
     saveRun()
 end
 
@@ -837,6 +867,12 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     if game.descent then
         game.day = (resume and resume.day)
             or math.max(1, math.floor(Descent.depth(game.descent) / Descent.FLOORS * Calendar.DAYS))
+        -- THE COMPANY'S HIGH-WATER MARK, written here because this is the line where a floor descriptor
+        -- stops being a plan and becomes a board somebody is standing on. Every way down arrives here --
+        -- the Gate's stair, the landing's "go down", a floor that gives way -- so a fourth one cannot
+        -- forget to report. It is what the city grows on: the Cafe opens at floor two and the Forge at
+        -- floor four (models/descent.lua's Descent.reached, models/building.lua's `unlockDepth`).
+        Descent.reached(game.player, Descent.depth(game.descent))
     end
     local mp = quest and quest.map or {}
     -- Which house's stock this run pays out in: the quest's SPONSOR, not the party's needs. That is the
@@ -1221,6 +1257,13 @@ function game:cellMuster(cell)
     if cached == nil then
         local enc = cell.encounter
         local def = enc and enc.id and EncounterModel.get(enc.id)
+        -- A GUARDED PACK IS RATED OFF THE CELL, because that is where its cast is: the company standing
+        -- over a dropped bag was drawn once, when the party fell, and stored on the drop
+        -- (models/descent.lua's Descent.packGuard). Its blueprint deliberately carries no composition,
+        -- so rating the blueprint would price every pile on the board as the resolver's default body.
+        if enc and enc.kind == "pack" and enc.composition then
+            def = { kind = "pack", composition = enc.composition }
+        end
         cached = def and Muster.encounter(def, {
             day = game.day,
             enemyLevel = game.quest and game.quest.dangerLevel,
@@ -1310,7 +1353,16 @@ function game:openEncounter(cell)
         return
     end
 
-    if kind == "combat" or kind == "elite" or kind == "objective" then
+    -- A DROPPED PACK WITH SOMETHING STANDING ON IT is a fight like any other, and goes through the
+    -- arena on the ordinary path: the same deployment phase, the same relics, the same salvage, the
+    -- same wounds. What is different is only what winning pays, which onWin handles below.
+    --
+    -- Guarded ONLY when the drop carries a cast (see markBodies). A pile left before the guard existed
+    -- falls through to the unconditional pickup at the bottom of this function, which is what it was
+    -- dropped under.
+    local guardedPack = kind == "pack" and cell.encounter.composition ~= nil
+
+    if guardedPack or kind == "combat" or kind == "elite" or kind == "objective" then
         -- Everything that has to know WHO IS STANDING WHERE, resolved once the deployment phase commits
         -- and handed back to the battle. It cannot be computed here any more: the player chooses which of
         -- the company take the field, and on which tiles, over the real board (docs/deployment.md), so
@@ -1363,6 +1415,12 @@ function game:openEncounter(cell)
             if spoils then
                 if (spoils.gold or 0) > 0 then Player.addGold(game.player, spoils.gold) end
                 for _, id in ipairs(spoils.loot or {}) do Player.grantItem(game.player, id) end
+                -- ...and the unread find, on the rare stop that paid one (models/identify.lua). Granted
+                -- through Identify.grant rather than Player.grantItem: the piece goes into the stash as a
+                -- HUSK, and the id it is really built on is the one thing the player has not bought yet.
+                for _, find in ipairs(spoils.sealed or {}) do
+                    Identify.grant(game.player, find.id, find.floor)
+                end
                 -- The salvage floor: every won fight leaves forging stock behind, so a stop that
                 -- rolled no loot is still worth having stopped at (models/spoils.lua). Banked straight
                 -- to the player rather than onto the run's cache haul, because a cleared fight does not
@@ -1372,6 +1430,26 @@ function game:openEncounter(cell)
                 end
                 Player.save()
             end
+
+            -- A THIN CHANCE OF A RIFT TOKEN, on any won fight (models/voucher.lua's FIGHT_CHANCE).
+            --
+            -- HERE rather than at the three call sites, because this is the one seam every won fight
+            -- passes through -- a road fight, a fight walked over without watching, and the floor's own
+            -- guardian all pay through this call, which is exactly the property the salvage above
+            -- relies on. Putting the roll anywhere else would give one of those three a different
+            -- chance to the other two, and nothing would report it.
+            --
+            -- Descent only: a token opens the Hero's Rift, and the campaign has no rift to open.
+            if game.descent and game.player then
+                local dropped = Voucher.rollFromFight(game.player, Descent.depth(game.descent))
+                if dropped then
+                    local stars = Voucher.starsOf(dropped.floor)
+                    local word = ({ "one-star", "two-star", "three-star", "four-star", "five-star" })[stars]
+                    game:pushToast("A " .. word .. " rift token, off the body")
+                    Player.save()
+                end
+            end
+
             -- Companion abilities react to the win (Amana heals, Ren distils a dose, Rowan banks a
             -- vigil, Clem takes her cut, Gyeom studies), then the relics do too (Pilgrim's Coin pays,
             -- Alms Bowl heals, a Vice bites). Save so their effects persist.
@@ -1401,6 +1479,32 @@ function game:openEncounter(cell)
             end
 
             if game.player then Player.save() end
+        end
+
+        -- THE PILE, HANDED BACK. Whatever was standing over the company's own dropped kit is down, so
+        -- the kit is theirs again -- into the STASH, where every other find on this floor lands, rather
+        -- than back into the grids it came out of. Which body carries what is a decision, and the
+        -- Loadout is where decisions are taken.
+        --
+        -- ITS OWN SEAM, beside grantSideSpoils and for the same reason that one is one: a pack fight can
+        -- be PLAYED or WALKED OFF (Muster.WALK_OVER), and a walk-off that resolved the guard without
+        -- handing the bag over would leave the player standing on a cleared tile with their kit still
+        -- on it. Both paths call this; there is no second copy to forget.
+        --
+        -- The salvage, the experience and the thin chance of a rift token are paid by grantSideSpoils
+        -- like any other won fight: beating somebody for your own bag back is still beating somebody.
+        local function takeGuardedPack()
+            if not guardedPack then return end
+            local drop = cell.encounter and cell.encounter.drop
+            local items = drop and game.descent and Descent.takePack(game.descent, drop)
+            for _, item in ipairs(items or {}) do Player.addToStash(game.player, item) end
+            -- The entry is off the run, so this clears the marker rather than re-drawing it. Every
+            -- other pile still lying on this floor is re-marked in the same pass.
+            game:markBodies()
+            if items then
+                game:pushToast("You take back what you dropped  (" .. #items ..
+                    (#items == 1 and " item)" or " items)"))
+            end
         end
 
         -- The battle launch itself, deferred behind the walk-off offer for a fight the company has
@@ -1578,6 +1682,17 @@ function game:openEncounter(cell)
                         if game.quest and game.quest.endsDescent then
                             local out = Descent.account(game.player, game.descent)
                             if out then out.title = "The Crown Is Broken" end
+                            -- THE DEMON LORD IS DOWN, AND THE SAVE REMEMBERS IT. Banked here because
+                            -- this is the ending now: `endsCampaign` was the board's finale seam
+                            -- (data/quests/quest_the_gate_below.lua) and the board is retired, so the
+                            -- flag it wrote has had no writer since -- while the thing it means, "this
+                            -- company has reached the end", is precisely what breaking the Crown is.
+                            --
+                            -- WHAT IT OPENS is the shuffle: every descent after this one deals its own
+                            -- order of the seven circles instead of walking Dante's
+                            -- (models/descent.lua's Descent.sinOrder). Written BEFORE clearRun, so the
+                            -- next run opened off this player is already the shuffled kind.
+                            Player.finishCampaign(game.player)
                             clearRun()
                             -- The descent's own terminal, NOT the credits. Rolling the campaign's ending
                             -- here was right while the descent was the campaign's spine; it is a separate
@@ -1736,6 +1851,9 @@ function game:openEncounter(cell)
                         playEpilogue()
                     end
                 else
+                    -- Ahead of the salvage below because it is the thing this fight was FOR, and the
+                    -- toasts should say so in that order.
+                    takeGuardedPack()
                     -- A combat/elite win: grant the spoils the battle summary just revealed, then
                     -- resume THIS overworld. See grantSideSpoils -- the walk-off path pays through the
                     -- very same call, so a fight is worth the same whether it was played or skipped.
@@ -1791,37 +1909,64 @@ function game:openEncounter(cell)
                 -- marched in with, and this company is not coming back for its gear -- it is lying on
                 -- floor N wearing it, which is the point.
                 if game.descent then
-                    -- A WIPE DROPS THE PACK AND SENDS THE COMPANY HOME. Dark Souls' bloodstain: the
-                    -- bodies always come back -- they wake at the temple, whole and wounded -- and what
-                    -- stays on the floor is everything they were carrying.
+                    -- A WIPE DROPS WHAT THE EXPEDITION FOUND AND SENDS THE COMPANY HOME. The bodies
+                    -- always come back -- they wake at the temple, whole and wounded -- and what stays
+                    -- on the floor is everything they had picked up since they walked down.
                     --
                     -- It is the only thing standing between "climb out" and "die" being the same move.
-                    -- Levels, mapped floors and bound relics all survive a wipe; the kit and the haul do
-                    -- not, until somebody walks back down to the tile. Without it a company that died on
+                    -- Levels, mapped floors and bound relics all survive a wipe; the haul does not,
+                    -- until somebody walks back down to the tile. Without it a company that died on
                     -- floor nine would wake, walk back, and have lost nothing but the walk.
                     --
-                    -- BOUND ITEMS STAY ON THEIR HOLDER, the one exception, and the same one Player.release
-                    -- makes: a bound item is a signature relic welded to its bearer by every other path in
-                    -- the game (never moved, stowed, sold or stolen), and a wipe is not the place to
-                    -- invent a way to part them.
+                    -- IT USED TO TAKE THE KIT AS WELL -- every grid emptied, the company waking naked --
+                    -- and that was the bloodstain read literally. It cannot work here. Dark Souls drops
+                    -- a FLOW (souls come back by playing) and Wizardry lets you staff a rescue party out
+                    -- of a tavern; this mode has neither. Gear comes off the floors, the Gate store
+                    -- sells draughts and a spare blade, and a body is a gacha pull (models/voucher.lua)
+                    -- -- so stripping the grids meant the recovery dive was STRICTLY HARDER than the
+                    -- dive that had just failed: same bodies, wounded, floor rearmed, nothing to fight
+                    -- with. That is a spiral, not a stake.
+                    --
+                    -- SO THE BET IS THE HAUL, WHICH IS THE BET THE MODE IS ABOUT. Pushing one more spur
+                    -- risks what you are carrying out, never the chassis you carry it with -- and the
+                    -- grids stay exactly as the player arranged them, holes and adjacencies included.
+                    -- Measured against the entry snapshot by Player.takeAtRisk, which is also what the
+                    -- Loadout badges, so what the player was shown at stake is precisely what falls.
+                    --
+                    -- ...AND THE COIN AND ORE GO WITH IT (wipeRun, below), or a company that had tidied
+                    -- every find into a grid would pay nothing at all and "sort your bag before a risky
+                    -- fight" would be the game's best move.
+                    --
+                    -- BOUND ITEMS STAY ON THEIR HOLDER, the one exception, and the same one
+                    -- Player.release makes: a signature relic is welded to its bearer by every other
+                    -- path in the game (never moved, stowed, sold or stolen), and a wipe is not the
+                    -- place to invent a way to part them. Player.atRisk skips them on both sides.
+                    --
+                    -- IT IS NO LONGER A BLOODSTAIN in the other half either. A pile is not destroyed by
+                    -- the next one and it does not sit there waiting to be strolled onto: piles
+                    -- accumulate, and each has something standing over it, drawn to the size of what was
+                    -- spilled (models/descent.lua's Descent.dropPack and Descent.packGuard). What a wipe
+                    -- costs is a FIGHT rather than a deletion.
                     local floor = Descent.depth(game.descent)
-                    local dropped = {}
-                    for _, char in ipairs(game.player.roster or {}) do
-                        for cell = 1, Character.MAX_INVENTORY do
-                            local item = char.inventory and char.inventory[cell]
-                            if item and not Item.isBound(item) then
-                                dropped[#dropped + 1] = item
-                                char.inventory[cell] = nil
-                            end
-                        end
-                    end
-                    -- ...and the haul, which is the half that actually hurts: everything picked up since
-                    -- the company last saw daylight is in the stash, uncommitted.
-                    for _, item in ipairs(game.player.stash or {}) do dropped[#dropped + 1] = item end
-                    game.player.stash = {}
+                    local dropped = Player.takeAtRisk(game.player, game.descent.entry)
 
                     Descent.dropPack(game.descent, floor,
                         game.map and game.map.px, game.map and game.map.py, dropped)
+
+                    -- ...AND MOST OF THE COIN AND ORE THE EXPEDITION EARNED, which is the half that does
+                    -- not lie in a heap waiting to be fetched. A rout drops what it was carrying;
+                    -- purses come open.
+                    --
+                    -- Player.loseHaul rather than wipeRun, and the difference is the one thing that must
+                    -- not be copied over from the campaign path: wipeRun ends by dropping the run, and a
+                    -- descent's run is what holds the floors, the piles and the stair the company is
+                    -- going to walk back down. Only the cut is wanted here.
+                    --
+                    -- It is also what keeps "leave the grid" honest. Only items are recoverable off the
+                    -- pile, so without a cost that is NOT an item, the optimal play before a risky fight
+                    -- would be to tidy every find into a spare grid cell and walk in owing nothing.
+                    local before = game.descent.entry and Save.restore(game.descent.entry)
+                    if before then Player.loseHaul(game.player, before) end
 
                     -- Everybody wakes up hurt. The wound is the other half of the cost and the only one
                     -- that follows them out (models/wound.lua) -- so a wipe is a company that is poorer
@@ -1975,6 +2120,9 @@ function game:openEncounter(cell)
                 encounter = cell.encounter,
                 actions = { { label = "Continue", onSelect = function()
                     game.activePanel = nil
+                    -- ...and the bag, if what was walked off was standing on one. Same seam the played
+                    -- path takes, so a pack recovered either way is recovered identically.
+                    takeGuardedPack()
                     grantSideSpoils(spoils)
                     -- A walked-off fight wounds exactly as a played one does. Read off THIS combat
                     -- object rather than states/battle.lua's field, because no battle state was ever
@@ -2044,13 +2192,23 @@ function game:openEncounter(cell)
         local enc = cell.encounter
         local def = enc.id and EncounterModel.get(enc.id)
         local loot = enc.loot or (def and def.loot) or {}
-        if #loot == 0 then cell.cleared = true; saveRun(); return end -- empty cache: nothing to reveal
+        -- What this cache is hiding, rolled ONCE here rather than inside the panel, because the panel is
+        -- opened, dismissed and opened again on an uncollected chest -- rolling it there would let a
+        -- player reopen the lid until they liked what was under it. Empty off a descent floor (the roll
+        -- needs a floorLevel) and empty most of the time even on one; see Spoils.rollSealed.
+        local sealed = Spoils.rollSealed({ kind = "treasure", floorLevel = game.quest and game.quest.floorLevel or nil })
+        -- An empty cache is one with nothing legible AND nothing unread in it.
+        if #loot == 0 and #sealed == 0 then cell.cleared = true; saveRun(); return end
         game.activePanel = LootReveal.new({
             encounter = enc,
             loot = loot,
+            sealed = sealed,
             onCollect = function()
                 cell.cleared = true
                 for _, id in ipairs(loot) do Player.grantItem(game.player, id) end
+                for _, find in ipairs(sealed) do
+                    Identify.grant(game.player, find.id, find.floor)
+                end
                 if game.tutorial == "flight" and not game.itemsVisible then
                     game.itemsVisible = true
                     game.coach = "loadout" -- the loot has somewhere to go now; introduce the panel
@@ -2498,10 +2656,10 @@ function game:openEncounter(cell)
         return
     end
 
-    -- WHAT YOU DROPPED. The other half of a wipe: the company wakes at the temple, and everything it was
-    -- carrying stays in a heap on the tile it fell on (the onLoss branch above). Walking back to it is
-    -- the whole of the cost, and picking it up is unconditional -- there is no decision here, only the
-    -- distance you already paid to be standing on it.
+    -- WHAT YOU DROPPED, UNGUARDED. A pile has something standing on it now (Descent.packGuard) and is
+    -- handled far above, on the combat path -- so the only packs that reach here are the ones dropped
+    -- before that landed, which carry no cast. They are picked up by walking onto them, which is what
+    -- they were dropped under; a save mid-run must not have a fight invented over its bag.
     if kind == "pack" then
         local drop = cell.encounter.drop
         local items = drop and game.descent and Descent.takePack(game.descent, drop)
@@ -2514,70 +2672,6 @@ function game:openEncounter(cell)
         cell.encounter = nil
         game:markBodies()
         saveRun()
-        return
-    end
-
-    -- SOMEONE STILL STANDING: the stop where a descent's company grows. ONE body
-    -- (models/descent_recruit.lua), taken on or walked past -- met whole, with their face, their figures
-    -- and the kit they are carrying all readable (ui/panels/recruit.lua), rather than as one of three
-    -- stat lines on cards too narrow to say anything else.
-    --
-    -- Who is standing there is rolled ONCE and pinned to the cell, like the merchant's stock, so walking
-    -- off the tile and back onto it cannot reroll it. Walking on (X/Esc/the button) leaves the cell
-    -- uncleared to reconsider -- which is a real option, because the walk back is real ground and the
-    -- floor's stair does not wait.
-    if kind == "recruit" then
-        local enc = cell.encounter
-        -- Only a descent seats this stop, and only while the company has room. A company that filled up
-        -- between generation and arrival cannot happen today (nothing else recruits), but a stop that can
-        -- only refuse would be a walk for nothing, so it clears rather than opening on a dead offer.
-        if not Descent.hasRoom(game.player) then
-            cell.cleared = true
-            game:pushToast("Nobody here you have room for")
-            saveRun()
-            return
-        end
-        if not enc.offer then
-            -- Seeded off the run and the tile, so a resume re-rolls nothing and two stops on one floor
-            -- are not the same body.
-            --
-            -- The DEPTH decides who could be standing there at all: a hero is met on the floor whose
-            -- fights stand where the campaign would have unlocked their discipline (Recruit.floorFor),
-            -- so the first circle offers the plain subclasses and the multiclass heroes are a deep find.
-            local run = game.descent
-            enc.offer = Recruit.offer(((run and run.seed) or 0) + (cell.x or 0) * 31 + (cell.y or 0) * 7919,
-                game.player and game.player.roster, nil, Descent.depth(run))
-        end
-        -- The slate rides in the save and can outlive a blueprint that was renamed or removed, so the
-        -- first id that still names a body is the one standing here; if none does, nobody is.
-        local id, preview
-        for _, candidate in ipairs(enc.offer) do
-            preview = Recruit.preview(game.player, candidate)
-            if preview then id = candidate; break end
-        end
-        if not id then cell.cleared = true; saveRun(); return end
-        game.activePanel = RecruitPanel.new({
-            title = enc.name or "Someone Still Standing",
-            char = preview, -- the body that would join, at the level it would join at
-            prompt = "They will walk on with you. The company holds " .. Descent.PARTY_MAX ..
-                ", and stands " .. #((game.player and game.player.roster) or {}) .. " today.",
-            onAccept = function()
-                cell.cleared = true
-                Recruit.join(game.player, id)
-                game.activePanel = nil
-                game:pushToast((Recruit.nameOf(id) or id) .. " joins the company")
-                saveRun()
-            end,
-            -- The stop keeps until you come back -- AND the refusal is recorded. Whoever you walk past
-            -- turns up in the Hiring Hall when you are next in town (models/descent_recruit.lua's
-            -- Recruit.decline / hallSlate), which is what makes passing on somebody a decision you
-            -- meet again rather than a free one.
-            onDecline = function()
-                Recruit.decline(game.player, id)
-                game.activePanel = nil
-                saveRun()
-            end,
-        })
         return
     end
 
@@ -2675,6 +2769,22 @@ end
 function game:resolveNonCombat(cell)
     local enc = cell.encounter
     if enc.kind == "rest" then game:restHeal() end -- back-compat: any path still routing rest here heals
+
+    -- A HEROIC SPIRIT hands up one rift token, graded at the floor it is standing on
+    -- (data/encounters/encounter_heroic_spirit.lua). The third source, and the only one the player
+    -- steers: a circle pays on a schedule and a won fight rolls a chance, but this one is a place they
+    -- chose to walk to.
+    --
+    -- Guarded on `game.descent` even though only a descent seats the stop: the blueprint is in the
+    -- shared registry, and a campaign board that ever authored one would otherwise pay a token into a
+    -- purse the campaign has no rift to spend at.
+    if enc.kind == "spirit" and game.descent and game.player then
+        local token = Voucher.grant(game.player, Descent.depth(game.descent))
+        local stars = Voucher.starsOf(token.floor)
+        local word = ({ "one-star", "two-star", "three-star", "four-star", "five-star" })[stars]
+        game:pushToast("The spirit gives up a name  ·  a " .. word .. " rift token")
+        Player.save()
+    end
 end
 
 -- A QUEST'S DOOR, and a descent can no longer come through it.

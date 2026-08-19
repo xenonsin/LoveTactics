@@ -164,7 +164,12 @@ Arena.DEFAULT_ENEMY_CAP = 9 -- an encounter with no quest behind it (a roadside 
 -- the fights the player spends most of their time in.
 Arena.SKIRMISH_CAP = 4
 Arena.ELITE_CAP = 6
-Arena.CAP_BY_KIND = { combat = Arena.SKIRMISH_CAP, elite = Arena.ELITE_CAP }
+-- `pack` is the fight standing over a company's own dropped kit (models/descent.lua). Elite tier rather
+-- than skirmish, because a big pile draws a full rival company and clamping that to four would cut the
+-- anchors off the combo the draw is made of -- and rather than set-piece, because the fall-through for
+-- an unnamed kind is the quest difficulty, which is the stair guardian's ceiling. Getting your bag back
+-- is a hard fight; it is not a boss.
+Arena.CAP_BY_KIND = { combat = Arena.SKIRMISH_CAP, elite = Arena.ELITE_CAP, pack = Arena.ELITE_CAP }
 
 -- How many tiles of standing room one enemy is worth. The board a fight is now taken on is a window of
 -- the map rather than a fixed rectangle, so a defile and a hall no longer field the same number: this

@@ -24,6 +24,7 @@ local InventoryGrid = require("ui.inventory_grid")
 local TacticsEditor = require("ui.tactics_editor")
 local PoolGrid = require("ui.pool_grid")
 local AdjacencyLinks = require("ui.adjacency_links")
+local Glyphs = require("ui.glyphs")
 local CloseButton = require("ui.close_button")
 local QuantityPopup = require("ui.quantity_popup")
 local ItemTooltip = require("ui.item_tooltip")
@@ -33,6 +34,7 @@ local ButtonPrompt = require("ui.button_prompt")
 local InputMode = require("input_mode")
 local Character = require("models.character")
 local Player = require("models.player")
+local Identify = require("models.identify")
 local Item = require("models.item")
 local Combat = require("models.combat") -- for Combat.unpayableCosts: the equip-time affordability warning
 local Growth = require("models.growth")
@@ -350,6 +352,8 @@ function Party.new(opts)
         x = self.focusX + self.focusW + 20,
         y = contentY + 24,
         char = self.chars[self.charIndex],
+        -- The bag badge on anything this expedition found. See Party:refreshAtRisk.
+        isAtRisk = function(item) return self.atRisk ~= nil and self.atRisk[item] ~= nil end,
     })
 
     local poolX = self.grid.x + self.grid.gridW + 24
@@ -370,6 +374,8 @@ function Party.new(opts)
         onSeen = function(item)
             if Player.seeNew(self.player, Player.NEW_STASH, item and item.id) then Player.save() end
         end,
+        -- ...and the bag badge, the same one the member grid draws, in the same corner of the cell.
+        isAtRisk = function(item) return self.atRisk ~= nil and self.atRisk[item] ~= nil end,
     })
     self.pool:setItems(self.player and self.player.stash or {})
 
@@ -794,11 +800,25 @@ function Party:noteUnusable(char, item)
     return true
 end
 
+-- Refuse an unread piece, out loud. Player.takeFromStash already makes the move impossible
+-- (models/identify.lua) -- this is the sentence that goes with it, because a refusal with nothing
+-- attached reads as a dropped click rather than a rule the player can learn.
+--
+-- Named for what it says rather than what it checks, and called at the TOP of each equip path rather
+-- than folded into noteUnusable below: that one warns about an item that has already landed, and this
+-- one has to stop the landing.
+function Party:refuseUnread(item)
+    if not Identify.isUnidentified(item) then return false end
+    self:setMsg("This is unidentified. The Touchstone will identify it, for a fee.", false)
+    return true
+end
+
 -- STASH -> current grid cell. Index into the pool maps 1:1 to the stash, since the pool was fed
 -- player.stash directly.
 function Party:placeIntoGrid(stashIndex, cell)
     local char = self:currentChar()
     if not (char and self.player) then return end
+    if self:refuseUnread(self.player.stash and self.player.stash[stashIndex]) then return end
     if Item.isBound(char.inventory[cell]) then return end -- a bound relic can't be displaced from its cell
     local incoming = Player.takeFromStash(self.player, stashIndex)
     if not incoming then return end
@@ -947,6 +967,7 @@ function Party:givePoolItemToMember(poolIndex, memberIdx)
     local stashIndex = self:stashIndex(poolIndex)
     local item = self.player and self.player.stash and self.player.stash[stashIndex]
     if not item then return end
+    if self:refuseUnread(item) then self.pool:cancelPickup(); return end
     Player.takeFromStash(self.player, stashIndex)
     if not Character.addItem(member, item) then
         Player.addToStash(self.player, item)
@@ -997,6 +1018,7 @@ function Party:equipStashItem(poolIndex)
     local char = self:currentChar()
     local stashItem = self.player and self.player.stash and self.player.stash[self:stashIndex(poolIndex)]
     if not (char and stashItem) then return end
+    if self:refuseUnread(stashItem) then return end
     local slot = Character.firstEmptySlot(char)
     if not slot and not self:canMergeStack(char, stashItem) then
         self:setMsg((char.name or "This character") .. "'s inventory is full.", false)
@@ -1645,7 +1667,24 @@ function Party:update(dt)
     end
 end
 
+-- WHAT THIS EXPEDITION FOUND, as a map from the live item instance to how much of it is at stake.
+-- Fed to both grids so a found piece wears its badge whether it is in somebody's hands or in the stash
+-- (models/player.lua's Player.atRisk, which is also what a wipe actually drops).
+--
+-- RECOMPUTED PER FRAME, not cached and invalidated. The Armory moves items constantly -- equip, unequip,
+-- swap cells, split a stack, drag onto a portrait, the debug catalog -- and a mark that goes stale after
+-- one of a dozen mutation sites is worse than no mark, because the player would believe it. It is one
+-- linear pass over what the company holds, in a modal panel that is not the battle loop.
+--
+-- Empty outside a descent: `activeRun.entry` is what "walked in with" means, and a campaign Loadout
+-- opened in the city has no expedition to be measuring against.
+function Party:refreshAtRisk()
+    local run = self.player and self.player.activeRun
+    self.atRisk = (run and run.entry) and Player.atRisk(self.player, run.entry) or nil
+end
+
 function Party:draw()
+    self:refreshAtRisk()
     love.graphics.setColor(0, 0, 0, 0.6)
     love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
 
@@ -2006,6 +2045,25 @@ function Party:drawMemberGrid()
     love.graphics.setLineWidth(1)
     Theme.set(Theme.ink)
     love.graphics.print("Won't work here (hover to see why)", self.grid.x + 36, ly)
+
+    -- ...and the bag, which only exists underground. A mark nobody explains is a mark the player
+    -- invents a meaning for, and this one has to be read exactly right: it is not "cursed", not
+    -- "new", not "can't be sold" -- it is the list a bad fight leaves on the floor.
+    --
+    -- The line names the DEED rather than the state ("found down here" over "at risk"), because what
+    -- the player has to be able to check is whether a given piece is one of theirs from town or one
+    -- of the floor's, and that is a fact about where it came from.
+    --
+    -- Drawn only in a descent, and that is the same rule the mark itself follows: a legend row
+    -- promising a badge no cell on this screen can wear is a worse lie than a badge with no legend.
+    if self.atRisk then
+        ly = ly + 24
+        Glyphs.atRisk(self.grid.x + 11, ly + 8, 10)
+        Theme.set(Theme.ink)
+        -- Kept to the length of the two lines above it, which is what the column has room for -- the
+        -- first draft ran off the edge of the panel and lost the half that said what happens.
+        love.graphics.print("Found down here -- dropped if you fall", self.grid.x + 36, ly)
+    end
 end
 
 -- Loadout / Tactics segmented tabs, mirroring ui/panels/shop.lua's mode selector: filled + outlined

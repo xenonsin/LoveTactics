@@ -62,7 +62,109 @@ local function anyItemId()
     return ids[1]
 end
 
+-- A stackable id and a non-stackable one, taken off the data layer so this file never pins itself to a
+-- piece of content. `stackable` is whatever consumable the registry offers first.
+local function stackableId()
+    local ids = {}
+    for id, def in pairs(Item.defs) do
+        if def.stackable then ids[#ids + 1] = id end
+    end
+    table.sort(ids)
+    return ids[1]
+end
+
+-- A one-body company mid-expedition, with `grid` laid into the member's cells BEFORE the entry snapshot
+-- is taken -- so everything placed after the call reads as a find.
+local function companyInRun(grid)
+    local Character = require("models.character")
+    local player = Player.new()
+    local char = Character.instantiate("character_knight")
+    player.roster = { char }
+    player.stash = {}
+    char.inventory = {}
+    for cell, id in pairs(grid or {}) do char.inventory[cell] = Item.instantiate(id) end
+    local entry = Save.snapshot(player)
+    player.activeRun = { questId = "quest_bastion_slot_01", entry = entry }
+    return player, char, entry
+end
+
 return {
+    { name = "the kit the company marched down with is not at stake -- what it found is", fn = function()
+        -- LEAVE THE GRID, DROP WHAT THE RUN COLLECTED. The rule a descent wipe runs on
+        -- (states/game.lua's onLoss), and the reason it is not "drop everything": gear comes off the
+        -- floors and the Gate store sells draughts, so a company that woke stripped had a recovery dive
+        -- strictly harder than the dive that had just killed it.
+        local id = anyItemId()
+        local player, char, entry = companyInRun({ [1] = id })
+
+        -- ...and then the floor pays out: one into the stash, one equipped into a spare cell.
+        player.stash[1] = Item.instantiate(id)
+        char.inventory[5] = Item.instantiate(id)
+
+        local risk = Player.atRisk(player, entry)
+        assert(risk[char.inventory[1]] == nil, "the blade it walked in with is safe in its hand")
+        assert(risk[char.inventory[5]] == 1, "the one it found and equipped is not")
+        assert(risk[player.stash[1]] == 1, "and neither is the one still loose in the stash")
+
+        local dropped = Player.takeAtRisk(player, entry)
+        assert(#dropped == 2, "two finds go on the pile, got " .. #dropped)
+        assert(char.inventory[1] ~= nil, "and the marched-in blade is still in its cell")
+        assert(char.inventory[5] == nil, "the found one is gone from the grid")
+        assert(#player.stash == 0, "and the stash is empty")
+    end },
+
+    { name = "a hole, never a shuffle: taking a find does not rearrange a loadout", fn = function()
+        -- A grid's SHAPE is the player's arrangement -- adjacency is the mechanic the whole screen
+        -- exists for (ui/inventory_grid.lua) -- so pulling a found piece out of the middle must leave
+        -- the cell empty rather than closing the gap and quietly rewiring every neighbour.
+        local id = anyItemId()
+        local player, char, entry = companyInRun({ [1] = id, [9] = id })
+        char.inventory[5] = Item.instantiate(id)
+
+        Player.takeAtRisk(player, entry)
+        assert(char.inventory[1] and char.inventory[9], "both marched-in cells still hold their item")
+        assert(char.inventory[5] == nil, "and the find's cell is a hole")
+    end },
+
+    { name = "a stack splits at the line between what was brought and what was found", fn = function()
+        -- Five draughts where the company marched in with two is three at stake and two safe. Dropping
+        -- the whole stack would bill the company for what it brought, which is the one thing every rule
+        -- in this file agrees must not happen.
+        local id = stackableId()
+        if not id then return end -- no stackable content shipped; nothing to pin
+        local player, _, entry = companyInRun()
+        player.stash[1] = Item.instantiate(id)
+        player.stash[1].quantity = 2
+        local entry2 = Save.snapshot(player)
+        player.activeRun.entry = entry2
+
+        player.stash[1].quantity = 5
+        assert(Player.atRisk(player, entry2)[player.stash[1]] == 3, "three of the five are finds")
+
+        local dropped = Player.takeAtRisk(player, entry2)
+        assert(#dropped == 1 and dropped[1].quantity == 3, "three go on the pile")
+        assert(#player.stash == 1 and player.stash[1].quantity == 2, "and two stay in the bag")
+    end },
+
+    { name = "a bound relic is never at stake, however it was come by", fn = function()
+        -- The one exception, and the same one Player.release makes: a signature relic is welded to its
+        -- bearer by every other path in the game, and a wipe is not the place to invent a way to part
+        -- them. A relic dealt by a landing mid-run is still a find, and still cannot be dropped.
+        local Character = require("models.character")
+        local player = Player.new()
+        local char = Character.instantiate("character_knight")
+        player.roster, player.stash, char.inventory = { char }, {}, {}
+        local entry = Save.snapshot(player)
+
+        local bound = Item.instantiate(anyItemId())
+        bound.bound = true
+        char.inventory[3] = bound
+
+        assert(Player.atRisk(player, entry)[bound] == nil, "a bound piece is never marked")
+        assert(#Player.takeAtRisk(player, entry) == 0, "and never taken")
+        assert(char.inventory[3] == bound, "it stays on its bearer")
+    end },
+
     { name = "the rollback point rides with the run through a save", fn = function()
         local player = playerInRun()
         local restored = Save.restore(reserialize(Save.snapshot(player)))

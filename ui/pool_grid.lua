@@ -67,6 +67,10 @@ function PoolGrid.new(opts)
     -- optional -- a pool given neither simply never dots anything.
     self.isNew = opts.isNew
     self.onSeen = opts.onSeen
+    -- `isAtRisk(item)` badges anything this expedition FOUND -- a wipe leaves it on the floor
+    -- (models/player.lua's Player.atRisk). Optional and nil outside a descent, so a campaign Loadout
+    -- and every shop shelf draw exactly what they always did.
+    self.isAtRisk = opts.isAtRisk
     self.nameFont = Theme.body(11)
     self.smallFont = Theme.body(11)
     self.bigFont = Theme.display(20)
@@ -305,6 +309,14 @@ function PoolGrid:drawCell(i, sx, sy)
 
     -- Unseen: the red dot, top-right, over the locked wash and the name band so it survives both.
     if unseen then Glyphs.unseenDot(sx + CELL - 7, sy + 7, 4) end
+
+    -- AT-RISK: what this expedition found, and would leave on the floor if the company went down.
+    -- Bottom-left, which is the corner the grid puts it in too (ui/inventory_grid.lua) -- an item has to
+    -- carry the same answer in the same place whether the player is looking at it in somebody's hands
+    -- or in the pile. Over the locked wash for the same reason the dot is.
+    if self.isAtRisk and self.isAtRisk(item, cell) then
+        Glyphs.atRisk(sx + 11, sy + CELL - 26, 10)
+    end
 
     -- Overlays: picked (in hand), hover (mouse), the keyboard/gamepad cursor.
     if lifted then

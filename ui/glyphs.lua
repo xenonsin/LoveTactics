@@ -89,6 +89,41 @@ end
 -- Drawn as a filled disc inside a dark rim, because it sits over whatever the icon happens to be --
 -- a bright sprite, a tinted plate, a lit border -- and a bare disc loses its edge against the warm
 -- ones. Centred on (cx, cy) rather than filling a box: every caller anchors it to a corner.
+-- The AT-RISK mark: worn by anything this expedition FOUND rather than marched in with, so a wipe
+-- would leave it in a heap on the floor (models/player.lua's Player.atRisk). Descent only -- there is
+-- nothing to lose on a campaign board, and nothing draws it there.
+--
+-- WHAT IT HAS TO SAY IS "THIS FALLS", so it is a downward arrow rather than a warning triangle or a
+-- coloured border. A border says "this cell is special" and leaves the player to guess which way; an
+-- arrow has a direction, and the direction IS the meaning.
+--
+-- ONE SHAPE, NOT TWO. It was a satchel with an arrow cut through it -- the pile marker's own silhouette
+-- (ui/overworld_map.lua's MarkerIcon.pack), so the mark and the thing it becomes would be the same
+-- picture -- and at ten pixels that is not a satchel, it is a dark blob with two gold nubs on it. The
+-- bag body is four pixels tall at this size and the arrow cut eats all but its corners. Compound marks
+-- need room; a corner badge has none, so it gets the half that carries the meaning.
+--
+-- THE SAME BONE-GOLD THE PILE MARKER WEARS is what survives of the link, and it is the whole reason
+-- this is not simply a red warning: what these items become is that satchel on that tile, and the
+-- colour is what the player recognises when they walk back for it. Saturated red is also spoken for --
+-- it is the unseen dot, in the opposite corner of the same cell, and two urgent reds on one card would
+-- leave neither of them meaning anything.
+--
+-- Centred on (cx, cy) like the dot above, because every caller anchors it to a corner.
+local AT_RISK = { 0.85, 0.76, 0.44 }
+function Glyphs.atRisk(cx, cy, size)
+    local s = size or 10
+    -- A dark plate first: this sits over whatever the item icon happens to be, and a thin gold mark is
+    -- invisible over a bright sprite without one. Same reasoning as the unseen dot's rim.
+    love.graphics.setColor(0.05, 0.05, 0.06, 0.85)
+    love.graphics.rectangle("fill", cx - s * 0.60, cy - s * 0.60, s * 1.20, s * 1.20, s * 0.26)
+    love.graphics.setColor(AT_RISK[1], AT_RISK[2], AT_RISK[3])
+    -- Stem then head, the head wide enough to still read as a point when the stem is one pixel.
+    love.graphics.rectangle("fill", cx - s * 0.11, cy - s * 0.42, s * 0.22, s * 0.42)
+    love.graphics.polygon("fill", cx - s * 0.38, cy - s * 0.04, cx + s * 0.38, cy - s * 0.04,
+        cx, cy + s * 0.44)
+end
+
 local UNSEEN = { 0.851, 0.267, 0.251 }
 function Glyphs.unseenDot(cx, cy, radius)
     local r = radius or 4
@@ -220,5 +255,42 @@ Glyphs.INTENT = {
     debuff  = Glyphs.intentDebuff,
     wait    = Glyphs.intentWait,
 }
+
+-- RANK: a five-pointed star, filled or hollow. What a body pulled out of the rift is worth
+-- (models/voucher.lua's Voucher.starsOf), drawn as a run of these rather than printed as a character
+-- for the reason every other mark in this file is a polygon: the UI faces are Alegreya and Alegreya
+-- Sans, neither is guaranteed to carry U+2605, and a rank that silently renders as a tofu box on one
+-- machine is a rank nobody can read. A drawn mark cannot go missing.
+--
+-- `hollow` draws the unearned half of a rank, so five pips always occupy the same width and two ranks
+-- laid one above the other line up.
+function Glyphs.star(x, y, w, h, r, g, b, a, hollow)
+    love.graphics.setColor(r, g, b, hollow and (a or 1) * 0.28 or (a or 1))
+    local cx, cy = x + w / 2, y + h / 2
+    local outer = math.min(w, h) / 2
+    local inner = outer * 0.42
+    local pts = {}
+    -- Ten vertices, alternating outer and inner, starting at the top point (-pi/2) so the star sits
+    -- upright rather than resting on a point.
+    for i = 0, 9 do
+        local ang = -math.pi / 2 + i * math.pi / 5
+        local rad = (i % 2 == 0) and outer or inner
+        pts[#pts + 1] = cx + math.cos(ang) * rad
+        pts[#pts + 1] = cy + math.sin(ang) * rad
+    end
+    love.graphics.polygon("fill", pts)
+end
+
+-- A whole rank in one call: `stars` filled pips out of `outOf`, laid left to right inside (x, y, w, h)
+-- with the pips sized to the height. Returns the width actually drawn, so a caller can lay text after
+-- it without measuring twice.
+function Glyphs.rank(x, y, h, stars, outOf, r, g, b, a, gap)
+    outOf = outOf or stars
+    gap = gap or math.max(1, h * 0.18)
+    for i = 1, outOf do
+        Glyphs.star(x + (i - 1) * (h + gap), y, h, h, r, g, b, a, i > stars)
+    end
+    return outOf * h + (outOf - 1) * gap
+end
 
 return Glyphs

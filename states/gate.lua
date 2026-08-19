@@ -42,9 +42,25 @@ local smallFont = Theme.body(13)
 -- Going down, and starting over
 -- ---------------------------------------------------------------------------
 
+-- THE STAIR IS WHERE AN EXPEDITION BEGINS, so it is where the rollback point is taken.
+--
+-- `run.entry` is the company exactly as it walked in, and what a wipe puts on the floor is measured
+-- against it (Player.takeAtRisk). Clearing it here makes states/game.lua's enter take a fresh one at the
+-- mouth of the floor, which is the only reading of "what this expedition found" a player would accept:
+-- the blade bought at the store, the body pulled at the hall and the night at the inn all happened in
+-- TOWN, with banked gold, and none of them is a find that a bad fight downstairs can spill.
+--
+-- Carrying the climb-out snapshot back down instead -- which is what happened before, since the run
+-- keeps `entry` and enter only falls back when it is nil -- meant everything bought between two
+-- descents was still provisional, and a company that spent its winnings kitting out at the Gate would
+-- lose the kit on the next floor. Climbing out banks; going down starts the next bet.
+--
+-- Floor to floor is untouched: that is a fresh enter with no Gate in between, `run.entry` is still set,
+-- and re-snapshotting there would bank a run's finds just for walking downstairs.
 local function descend()
     gate.panel = nil
     local run = gate.run or Descent.new(gate.player)
+    run.entry = nil
     Player.active = gate.player
     State.switch(require("states.game"), Descent.floorQuest(run, gate.player), nil, gate.player)
 end

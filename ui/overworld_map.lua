@@ -423,7 +423,7 @@ local function markerColor(kind)
     if kind == "shrine" then return 0.88, 0.40, 0.48 end       -- a sin's altar: a Vice for a toll
     if kind == "merchant" then return 0.90, 0.74, 0.32 end      -- a wandering market: goods for gold
     if kind == "crossroads" then return 0.70, 0.72, 0.80 end     -- a branching dilemma: a gamble
-    if kind == "recruit" then return 0.62, 0.86, 0.45 end -- somebody still standing: a body for the company
+    if kind == "spirit" then return 0.62, 0.86, 0.45 end -- a heroic spirit: the one stop that grows the company
     if kind == "ascent" then return 0.72, 0.78, 0.86 end -- the way back up: cold daylight, and the only one
     -- The way DOWN, opened by putting the floor's guard off it. Deliberately the same family as the way
     -- up rather than its own hue: they are one pair, and what tells them apart is which direction the
@@ -543,24 +543,33 @@ function MarkerIcon.shrine(x, y, w, h, r, g, b, a)
         x + w * 0.66, y + h * 0.5, x + w * 0.5, y + h * 0.42, x + w * 0.34, y + h * 0.5)
 end
 
+-- A WISP: a heroic spirit, standing where somebody fell and holding out a name
+-- (data/encounters/encounter_heroic_spirit.lua). A flame rather than the standing figure the old
+-- recruit stop wore, because what is here is no longer a body you take on -- a person mark would
+-- promise a member and pay a token.
+--
+-- Drawn as a teardrop stood on its point with a hollow at its heart: broad and rounded at the top,
+-- tapering to where it touches the ground, which is the one silhouette that reads as flame at
+-- sixteen pixels without needing a flicker to sell it.
+function MarkerIcon.spirit(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    local cx = x + w / 2
+    local bodyR = w * 0.30
+    local by = y + h - bodyR * 1.25
+    love.graphics.circle("fill", cx, by, bodyR)
+    love.graphics.polygon("fill", cx, y, cx + bodyR, by, cx - bodyR, by)
+    -- The hollow: a spirit is a shape with nothing inside it, and the void is what tells this from a
+    -- solid pip at a glance.
+    love.graphics.setColor(r * 0.16, g * 0.16, b * 0.18, a)
+    love.graphics.circle("fill", cx, by + h * 0.02, bodyR * 0.40)
+end
+
 -- A tent: a safe camp to rest at.
 function MarkerIcon.rest(x, y, w, h, r, g, b, a)
     love.graphics.setColor(r, g, b, a)
     love.graphics.polygon("fill", x + w / 2, y, x, y + h, x + w, y + h)
     love.graphics.setColor(r * 0.35, g * 0.35, b * 0.35, a)
     love.graphics.polygon("fill", x + w / 2, y + h * 0.38, x + w * 0.34, y + h, x + w * 0.66, y + h)
-end
-
--- A standing figure: somebody who came down here before you and has not fallen yet, willing to walk on
--- with the company (data/encounters/encounter_wanderer.lua). A PERSON rather than an object, because that
--- is exactly what separates this stop from the treasure and the reliquary either side of it on the board.
-function MarkerIcon.recruit(x, y, w, h, r, g, b, a)
-    love.graphics.setColor(r, g, b, a)
-    love.graphics.circle("fill", x + w / 2, y + h * 0.18, w * 0.20)
-    love.graphics.polygon("fill",
-        x + w * 0.5, y + h * 0.36,
-        x + w * 0.88, y + h,
-        x + w * 0.12, y + h)
 end
 
 -- THE FOUR HAZARDS. One colour between them (see markerColor) and four marks, so the category reads at
@@ -712,7 +721,10 @@ end
 -- How far above the company a stop stands, in pips -- and only for the kinds that comparison is about.
 -- A treasure or a camp is not something a muster can be over- or under-matched by, so it draws none.
 local function pipSteps(kind, band)
-    if not (kind == "combat" or kind == "elite") then return 0 end
+    -- `pack` earns pips for the same reason the other two do: it is a fight, and the one fight a player
+    -- has to decide whether to walk back into. See markerColor -- the pack keeps its own colour and mark
+    -- so it never reads as ordinary traffic; the pips only say how far over the company it stands.
+    if not (kind == "combat" or kind == "elite" or kind == "pack") then return 0 end
     return band and Muster.PIPS[band] or 0
 end
 
@@ -866,6 +878,10 @@ end
 -- hovered-fight readout, so what is drawn and what is named can never disagree about what a fight is.
 local function isFight(c)
     local e = c and c.encounter
+    -- A guarded pack counts, and only a guarded one: `composition` is what says something is standing
+    -- there (models/descent.lua's Descent.packGuard). A pile left before the guard existed is still a
+    -- pickup, and drawing a hovered-fight readout over it would name a fight that never opens.
+    if e and e.kind == "pack" then return not c.cleared and e.composition ~= nil end
     return e ~= nil and not c.cleared and (e.kind == "combat" or e.kind == "elite")
 end
 

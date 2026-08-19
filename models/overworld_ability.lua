@@ -88,7 +88,10 @@ end
 
 local function isCombat(cell)
     local e = cell and cell.encounter
-    return e and (e.kind == "combat" or e.kind == "elite")
+    -- `pack` is the fight standing over a company's own dropped kit (models/descent.lua). It reaches
+    -- the arena on the ordinary path and costs the same health and potions, so the companions who
+    -- react to a cleared fight -- Rowan's Vigil, Saber's patience, Amana's triage -- react to this one.
+    return e and (e.kind == "combat" or e.kind == "elite" or e.kind == "pack")
 end
 
 -- Announce a visible effect (states/game.lua shows it as an overworld toast). A no-op if no notifier

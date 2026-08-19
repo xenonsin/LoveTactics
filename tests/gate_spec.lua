@@ -109,11 +109,15 @@ return {
         assert(items and #items == 1, "and is still recoverable after the round trip")
     end },
 
-    { name = "a second death destroys the first pile, wherever it was lying", fn = function()
-        -- THE RULE THAT MAKES THE WALK BACK MATTER, and it is the answer to "what stops the player
-        -- simply walking back". Nothing stops them -- what the game does instead is make the walk the
-        -- most dangerous thing they will do, because failing it costs twice: the new pack plus the old
-        -- one, permanently. Dark Souls' bloodstain exactly.
+    { name = "a second death leaves a second pile, and the first is still lying where it fell", fn = function()
+        -- THE ONE-PILE RULE IS GONE, and this pins its absence rather than merely not testing it,
+        -- because what it did was permanent: dropping a pack destroyed the last one wherever it was
+        -- lying, so a bad night on the way back deleted the kit of the night before it. That was Dark
+        -- Souls' bloodstain, borrowed from a game where the thing on the ground is a FLOW -- souls come
+        -- back by playing. Down here it is kit, kit comes off the floors, and the Gate store sells
+        -- draughts, so the deleted pile was something the save could never mint again.
+        --
+        -- What stops the player simply walking back is a FIGHT now (see the guard case below).
         local Item = require("models.item")
         local run = Descent.new(company(1, 0), 5)
 
@@ -121,12 +125,117 @@ return {
         assert(#Descent.dropsOn(run, 3) == 1, "the first pile is on floor 3")
 
         Descent.dropPack(run, 6, 9, 9, { Item.instantiate("consumable_healing_potion") })
-        assert(#Descent.dropsOn(run, 3) == 0, "the first pile is gone for good")
-        assert(#Descent.dropsOn(run, 6) == 1, "and only the second is on the floor")
-        assert(#(run.drops or {}) == 1, "one pile exists at a time, ever")
+        assert(#Descent.dropsOn(run, 3) == 1, "and it is STILL on floor 3 after the second death")
+        assert(#Descent.dropsOn(run, 6) == 1, "with the second lying on floor 6")
+        assert(#(run.drops or {}) == 2, "two deaths, two piles")
 
-        local back = Descent.takePack(run, Descent.dropsOn(run, 6)[1])
-        assert(back[1].id == "consumable_healing_potion", "and it is the second death's, not the first's")
+        local back = Descent.takePack(run, Descent.dropsOn(run, 3)[1])
+        assert(back[1].id == "weapon_iron_sword", "the older pile still holds what was dropped in it")
+        assert(#Descent.dropsOn(run, 6) == 1, "and taking one leaves the other where it is")
+    end },
+
+    { name = "two deaths on ONE tile merge, because a second marker there would be invisible", fn = function()
+        -- states/game.lua's markBodies never draws a pack over a cell that already has an encounter, so
+        -- a second entry on the same square would sit on the run unreachable forever. Different tiles
+        -- are different piles; the same tile is one pile that got bigger.
+        local Item = require("models.item")
+        local run = Descent.new(company(1, 0), 5)
+
+        Descent.dropPack(run, 3, 4, 4, { Item.instantiate("weapon_iron_sword") })
+        Descent.dropPack(run, 3, 4, 4, { Item.instantiate("consumable_healing_potion") })
+        assert(#Descent.dropsOn(run, 3) == 1, "one pile on the tile, not two")
+
+        local pile = Descent.dropsOn(run, 3)[1]
+        assert(pile.count == 2, "holding both deaths' worth, got " .. tostring(pile.count))
+        local back = Descent.takePack(run, pile)
+        assert(#back == 2, "and it hands over everything in it")
+    end },
+
+    { name = "a pile is guarded, and what is standing on it is drawn to how much was spilled", fn = function()
+        -- DELETING A LIMITER OBLIGES YOU TO NAME ITS REPLACEMENT. The one-pile rule answered "what stops
+        -- the player simply walking back" with a threat to erase what they were walking back for; the
+        -- guard answers it with a fight, and prices that fight off the SIZE OF THE PILE rather than off
+        -- the depth. So the pack a company leaves on its first bad night draws the circle's own vermin,
+        -- and the pack a full company leaves on floor twelve is being worn by somebody else by the time
+        -- anyone comes back for it.
+        local Item = require("models.item")
+        local run = Descent.new(company(1, 0), 5)
+
+        local small = {}
+        for _ = 1, 3 do small[#small + 1] = Item.instantiate("consumable_healing_potion") end
+        local pile = Descent.dropPack(run, 3, 4, 4, small)
+        assert(pile.guard == "drawn",
+            "a small pile draws the floor's own small things, got " .. tostring(pile.guard))
+        assert(pile.guardIds and #pile.guardIds > 0, "and something is actually standing there")
+
+        local big = {}
+        for _ = 1, Descent.PACK_COMPANY_ITEMS do big[#big + 1] = Item.instantiate("weapon_iron_sword") end
+        local rich = Descent.dropPack(run, 7, 2, 2, big)
+        assert(rich.guard == "scavengers",
+            "a company's worth of kit draws a company, got " .. tostring(rich.guard))
+        assert(rich.guardIds and #rich.guardIds >= 3, "a rival company is a company, not a body")
+
+        -- A CAST IS PLAIN DATA, which is the whole reason it is resolved at the wipe rather than at the
+        -- marker: Save.encode raises on a function value, so a composition closure here would take the
+        -- save write down the first time somebody died (models/descent.lua's `drops` note).
+        assert(pcall(Save.encode, Descent.snapshot(run), 0), "a guarded pile still serialises")
+
+        -- ...and it does not move under a company standing in front of it. The fight is drawn once.
+        local before = table.concat(rich.guardIds, ",")
+        local back = Descent.restore(reserialize(Descent.snapshot(run)))
+        assert(table.concat(Descent.dropsOn(back, 7)[1].guardIds, ",") == before,
+            "the same company is standing there after a save and a reload")
+    end },
+
+    { name = "the company stored on a pile is the company that stands on the board", fn = function()
+        -- THROUGH THE REAL PRODUCER. A stored list of ids is only a guard if the arena actually fields
+        -- it, and the seam between the two is EncounterBattle.spec, which reads a blueprint's
+        -- composition for every other encounter in the game. A pack blueprint deliberately has none --
+        -- the cast belongs to the pile, not to the fiction -- so if that branch were ever dropped, the
+        -- fight would silently open against the composition resolver's default body and nothing above
+        -- here would notice.
+        local EncounterBattle = require("models.encounter_battle")
+        local Item = require("models.item")
+        local p = company(1, 0)
+        local run = Descent.new(p, 5)
+        local pile = Descent.dropPack(run, 3, 4, 4, { Item.instantiate("weapon_iron_sword") })
+
+        -- The cell states/game.lua's markBodies builds over a pile.
+        local cell = { kind = "pack", name = "What You Dropped", drop = pile,
+            id = "encounter_pack_drawn", composition = pile.guardIds }
+        local built = EncounterBattle.build({
+            encounter = cell, quest = Descent.floorQuest(run, p), day = 3,
+            enemyLevel = Descent.dangerLevel(run), party = p.roster, seed = 5,
+        })
+
+        local ids = {}
+        for _, u in ipairs(built.enemyUnits or {}) do ids[#ids + 1] = u.char and u.char.id end
+        assert(#ids > 0, "the pile fielded nobody")
+        local wanted = {}
+        for _, id in ipairs(pile.guardIds) do wanted[id] = true end
+        for _, id in ipairs(ids) do
+            assert(wanted[id], "the board fielded " .. tostring(id) .. ", which is not on the pile")
+        end
+    end },
+
+    { name = "a pack is taken by ID, so a marker built before a save still finds its pile", fn = function()
+        -- The board's marker carries a COPY of the entry -- the grid snapshot stores the encounter
+        -- whole, drop and all -- so identity was true exactly until somebody reloaded. It survived the
+        -- one-pile rule because there was never a second entry for the copy to be confused with.
+        local Item = require("models.item")
+        local run = Descent.new(company(1, 0), 5)
+        Descent.dropPack(run, 3, 4, 4, { Item.instantiate("weapon_iron_sword") })
+        Descent.dropPack(run, 3, 8, 8, { Item.instantiate("consumable_healing_potion") })
+
+        local live = Descent.dropsOn(run, 3)
+        assert(#live == 2 and live[1].id ~= live[2].id, "precondition: two piles, two ids")
+
+        -- What the marker would be holding after a round trip: a copy, equal in id and nothing else.
+        local copy = { id = live[2].id }
+        local back = Descent.takePack(run, copy)
+        assert(back and back[1].id == "consumable_healing_potion",
+            "the copy finds ITS pile, not the other one")
+        assert(#Descent.dropsOn(run, 3) == 1, "and only that one is lifted")
     end },
 
     { name = "coming back to a floor wakes its fights and nothing else", fn = function()

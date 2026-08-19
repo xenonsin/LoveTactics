@@ -186,9 +186,27 @@ function Player.hasNewStash(player)
 end
 
 -- Pull the item at `index` out of the stash and hand it back (nil if there is nothing there).
+-- AN UNREAD PIECE CANNOT BE TAKEN OUT, and this is where that rule is enforced rather than in the
+-- screens that would otherwise each have to remember it (models/identify.lua).
+--
+-- Unreadable means unusable: a piece nobody has identified cannot be equipped, given away or sold at a
+-- shop, so it is dead weight until the company climbs out and pays to have it read. That delay IS the
+-- feature -- it puts a satchel of unread blades on the scales every time the player decides whether to
+-- take one more floor -- and a delay that any one of four equip paths forgets to honour is not a delay.
+--
+-- This function is that single funnel: the cell drop, the auto-equip, the partial-stack move, the drag
+-- onto a portrait and the shop's sell-back all come through here to get the item off the shelf. So a
+-- husk cannot be equipped, given away, OR sold, and the last of those is deliberate rather than
+-- incidental -- selling one unnamed would be the shortest path through the Touchstone and it would go
+-- around it. The only way an unread piece stops being one is Identify.read, which re-stamps it in place
+-- and never moves it, so this guard never sees the moment it stops applying.
+--
+-- The screens still say so out loud (ui/panels/party.lua): a refusal with no sentence attached reads as
+-- a dropped input rather than a rule.
 function Player.takeFromStash(player, index)
     local stash = player.stash
     if not stash or not stash[index] then return nil end
+    if require("models.identify").isUnidentified(stash[index]) then return nil end
     return table.remove(stash, index)
 end
 
@@ -341,11 +359,15 @@ function Player.new()
         -- extraction, added to the completed-quest count by Quest.sponsorProgress. The shelf, the
         -- forge's ceiling and the ability bench all open on the sum.
         standing = {},
-        -- The deepest floor ever reached. INERT: it was the descent's depth record back when a descent
-        -- banked into the campaign save, and it levelled the company off the record rather than off a
-        -- per-run payout so that it could not be farmed. A descent banks nothing now and levels body by
-        -- body in the fighting (models/experience.lua), so nothing writes this and nothing reads it. The
-        -- field stays because Save.snapshot writes the whole shape and an older save still carries one.
+        -- THE DEEPEST FLOOR THIS COMPANY HAS EVER STOOD ON. Written when the party arrives on a board
+        -- (models/descent.lua's Descent.reached) and never lowered, so it outlives the run that set it --
+        -- which `descentRun.cleared` does not, since a finished descent takes the run with it.
+        --
+        -- WHAT READS IT is the city growing: the Cafe opens at floor two and the Forge at floor four
+        -- (models/building.lua's `unlockDepth`). It was INERT for a while -- the descent's old depth
+        -- record, from back when a run banked into the campaign save and levelled the company off the
+        -- record so it could not be farmed -- and it survived that era unread because Save.snapshot
+        -- writes the whole shape. The descent is the campaign again, so it means what it always meant.
         deepest = 0,
         -- THE DESCENT THIS COMPANY IS IN THE MIDDLE OF: the floor stack, the shuffled circles, the maps
         -- it has made and whatever it dropped down there (models/descent.lua's Descent.new). Nil until
@@ -360,6 +382,12 @@ function Player.new()
         -- (models/wound.lua). Caps the hub's free heal until somebody pays to set it, and is the one
         -- thing a wipe does not roll back.
         wounds = {},
+        -- ...and whether anybody ever has been, which the ledger above cannot answer once the surgeon is
+        -- paid. THE INN IS WHAT READS IT (models/building.lua's `unlockWound`): setting a bone is the
+        -- only thing that building does, so a company that has never had one broken has no use for the
+        -- door and does not see it. One-way, so the city does not lose a building the morning after it
+        -- was used.
+        wounded = false,
         meal = nil,           -- the one supper bought at the Cafe and not yet eaten through (models/meal.lua)
         materials = {},       -- material id -> count; spent at the Blacksmith (see models/material.lua)
         recipes = {},         -- item id -> tier level; a consumable bought at its vendor comes at this level
@@ -793,6 +821,167 @@ end
 -- carrying rather than all of it, so a bad roll is a bad day rather than a wasted one -- and the
 -- quarter that survives is what stops a wipe deep in a good run feeling like the game took the run back.
 Player.WIPE_LOSS = 0.75
+
+-- WHAT THIS EXPEDITION HAS FOUND, as a map from the LIVE item instance to how many of it are at stake.
+-- `before` is the entry snapshot -- the company exactly as it walked in.
+--
+-- ONE WRITER, AND IT HAS TWO READERS THAT MUST NOT DISAGREE. A descent wipe drops what the expedition
+-- found and leaves the kit the company marched down with (states/game.lua's onLoss), and the Loadout
+-- badges those same items so the player can see what is at stake BEFORE the fight rather than after it
+-- (ui/inventory_grid.lua, ui/pool_grid.lua). A player who reads the badge on four things and loses five
+-- has been told the rule wrong, which is the same argument game:haulPhrase already makes about the
+-- number -- so the badge, the phrase and the drop are all this one function.
+--
+-- MEASURED AGAINST THE SNAPSHOT rather than tracked as a running tally, for the reason Player.loseHaul
+-- gives below: no grant seam on the way in has to learn a new rule. A chest, a fight's spoils, an
+-- event's gift and anything added later all land in the same places and none of them has to report.
+--
+-- GRIDS ARE CREDITED FIRST, then the stash, and that ordering is the whole of "leave the grid". The
+-- entry allowance for an id is spent on what bodies are WEARING before it is spent on the stash, so a
+-- second iron sword found on floor three is the one at risk and the one a knight marched in with is
+-- not. They are the same item, so which instance carries the mark is arbitrary -- what is not arbitrary
+-- is that the count comes out of the loose pile rather than out of somebody's hand.
+--
+-- KEYED BY ID AND LEVEL, because a forged piece and its base are not the same thing to a player, and
+-- reading them as one would let a +3 blade found on a floor pass as the plain one already carried.
+--
+-- QUANTITIES, NOT INSTANCES, which is why this returns a count per item rather than a list. A stack of
+-- five draughts where the company marched in with two is three at risk and two safe, and dropping the
+-- whole stack would bill the company for what it brought. The caller splits; see splitAtRisk.
+--
+-- BOUND ITEMS ARE NEVER AT RISK, on either side of the comparison. A signature relic is welded to its
+-- bearer by every other path in the game -- never moved, stowed, sold or stolen -- and a wipe is not
+-- the place to invent a way to part them. Skipped in the entry tally too, or the allowance for an id
+-- would be spent on a copy that could never have been lost.
+function Player.atRisk(player, before)
+    local out = {}
+    if not (player and before) then return out end
+    local Item = require("models.item")
+    local function key(it) return (it.id or "?") .. "#" .. tostring(it.level or 0) end
+
+    -- What was held at entry, by key -- and separately WHERE, by body and cell. Both are needed: the
+    -- count decides how much is safe and the placement decides WHICH copy gets to be it.
+    local was, placed = {}, {}
+    for _, char in ipairs(before.roster or {}) do
+        local cells = {}
+        -- `pairs`, not a numeric walk: a live grid is keyed 1..9 with holes and the snapshot stores a
+        -- sparse map. Both read the same this way.
+        for cell, it in pairs(char.inventory or {}) do
+            if it and it.id and not Item.isBound(it) then
+                was[key(it)] = (was[key(it)] or 0) + (it.quantity or 1)
+                cells[cell] = key(it)
+            end
+        end
+        if char.id then placed[char.id] = cells end
+    end
+    for _, it in ipairs(before.stash or {}) do
+        if it and it.id and not Item.isBound(it) then
+            was[key(it)] = (was[key(it)] or 0) + (it.quantity or 1)
+        end
+    end
+
+    -- Spend `have` of the key's allowance and report what it did not cover.
+    local function claim(k, have)
+        local kept = math.min(was[k] or 0, have)
+        was[k] = (was[k] or 0) - kept
+        return have - kept
+    end
+
+    -- PASS ONE, POSITIONAL: a cell that held this exact thing at entry and still does keeps it, and
+    -- keeps it BEFORE any other copy can spend the allowance.
+    --
+    -- Without this the arithmetic is still right and the MARK is wrong, which is worse than either. A
+    -- knight who marched down with a blade in cell 1 and picked a second one up into cell 5 has three
+    -- identical tables between his grid and the stash, and a plain walk credits them in whatever order
+    -- it meets them -- so the badge could land on cell 1, which the player has had since town. What
+    -- they need to be told is which cell they FILLED down here, and this is the only reading that
+    -- answers that. Whole cells only: a stack that grew in place is settled in pass two, where the
+    -- surplus is what gets marked.
+    local safe = {}
+    for _, char in ipairs(player.roster or {}) do
+        local cells = char.id and placed[char.id]
+        if cells then
+            for cell, it in pairs(char.inventory or {}) do
+                if it and it.id and not Item.isBound(it) and cells[cell] == key(it)
+                    and (was[key(it)] or 0) >= (it.quantity or 1) then
+                    claim(key(it), it.quantity or 1)
+                    safe[it] = true
+                end
+            end
+        end
+    end
+
+    -- PASS TWO: everything else draws on what is left, grids before the stash. Spending the remaining
+    -- allowance on what a body is WEARING before what is loose is the rest of "leave the grid" -- the
+    -- surplus lands in the pile, which is where a find sits until somebody equips it.
+    local function consider(it)
+        if not (it and it.id) or Item.isBound(it) or safe[it] then return end
+        local gained = claim(key(it), it.quantity or 1)
+        if gained > 0 then out[it] = gained end
+    end
+    for _, char in ipairs(player.roster or {}) do
+        for cell = 1, Character.MAX_INVENTORY do consider((char.inventory or {})[cell]) end
+    end
+    for _, it in ipairs(player.stash or {}) do consider(it) end
+    return out
+end
+
+-- Take everything Player.atRisk named OFF the company and hand it back as a list, ready to be dropped
+-- in a heap on the floor (models/descent.lua's Descent.dropPack).
+--
+-- A PARTIAL STACK IS SPLIT rather than surrendered whole: the live stack is decremented to what the
+-- company brought and a copy carrying the surplus goes on the pile. A shallow copy is enough and is
+-- deliberately not a fresh instantiate -- a husk waiting to be identified (models/identify.lua) carries
+-- fields an id alone cannot rebuild, and the pile snapshots whatever it is handed anyway.
+--
+-- Grids are emptied by CELL, so a body's loadout keeps its shape: taking a found piece out of the
+-- middle of a grid must leave a hole rather than shuffle everything up a slot and quietly rewire every
+-- adjacency the player arranged (models/character.lua).
+function Player.takeAtRisk(player, before)
+    local risk = Player.atRisk(player, before)
+    local out = {}
+    -- The surplus, split off `it` and returned -- or nil when the whole thing goes and the caller has to
+    -- unhook it from wherever it is sitting.
+    local function surplus(it)
+        local gained = risk[it]
+        if not gained or gained >= (it.quantity or 1) then return nil end
+        local copy = {}
+        for k, v in pairs(it) do copy[k] = v end
+        copy.quantity = gained
+        it.quantity = (it.quantity or 1) - gained
+        return copy
+    end
+    for _, char in ipairs((player and player.roster) or {}) do
+        local inv = char.inventory or {}
+        for cell = 1, Character.MAX_INVENTORY do
+            local it = inv[cell]
+            if it and risk[it] then
+                local part = surplus(it)
+                if part then
+                    out[#out + 1] = part
+                else
+                    inv[cell] = nil -- a hole, never a shuffle: the grid's shape is the player's arrangement
+                    out[#out + 1] = it
+                end
+            end
+        end
+    end
+    -- Backwards, so removing an entry cannot move one this loop has not reached yet.
+    local stash = (player and player.stash) or {}
+    for i = #stash, 1, -1 do
+        local it = stash[i]
+        if it and risk[it] then
+            local part = surplus(it)
+            if part then
+                out[#out + 1] = part
+            else
+                table.remove(stash, i)
+                out[#out + 1] = it
+            end
+        end
+    end
+    return out
+end
 
 -- Take a wipe's cut. `before` is the entry snapshot -- the company as it walked in -- and everything
 -- the run gained on top of it is what is at risk.
