@@ -1,10 +1,13 @@
--- Tests for how a descent's company is raised: one body in at the gate, three found on the floors.
+-- Tests for WHO a descent can put in a company and how deep each one stands -- the census half of
+-- recruitment (models/descent_recruit.lua). The other half, the vouchers a floor hands up and the pull
+-- that spends one, is tests/voucher_spec.lua.
 --
--- This replaced tests/descent_muster_spec.lua, which pinned the opposite arrangement -- a shelf, a purse
--- and a company of eight bought before a tile was walked. What is worth pinning changed with it. The
--- muster's cases were all about never handing a player something unplayable off a screen; these are about
--- a run being ABLE to raise a company at all, which is a property of the boards it walks rather than of a
--- widget: if a floor stops seating the stop, a run is one body deep forever and nothing else says so.
+-- SEVERAL CASES HERE PIN AN ABSENCE, and that is deliberate. A descent used to grow its company by
+-- meeting people on the floors -- a guaranteed stop, one body, taken on or walked past -- and that stop
+-- is removed. The removal is worth specs because it latched shut in a way nothing reported: a company of
+-- four never lost anybody, the stop only seated while there was room, so from the second floor of the
+-- first run the game silently stopped offering anyone. An absence that used to be a feature needs a case
+-- saying so, or it comes back the next time somebody reads the old prose.
 
 local Descent = require("models.descent")
 local Recruit = require("models.descent_recruit")
@@ -60,66 +63,101 @@ return {
         assert(Descent.STARTING_BODY == nil,
             "there is no starting body constant: a body that is YOURS is what was removed")
 
-        -- The cap IS the field: a descent has no bench, so every body found fights. Mirrored in
-        -- models/descent.lua rather than required, which is exactly why it needs pinning here.
+        -- PARTY_MAX IS THE FIELD AND NOT THE ROSTER, which is the reversal the Hiring Hall's pull was
+        -- built on (models/voucher.lua). It used to be both: four held, ever, no bench -- and that made
+        -- recruitment latch shut, because nothing ever left a company of four and the floors stopped
+        -- offering the moment it filled.
         assert(Descent.PARTY_MAX == Player.MAX_FIELD,
-            "the company cap must be the field: " .. Descent.PARTY_MAX .. " vs " .. Player.MAX_FIELD)
-        assert(Descent.hasRoom({ roster = { {}, {}, {} } }), "three of four has room for one more")
-        assert(not Descent.hasRoom({ roster = { {}, {}, {}, {} } }), "a full company has none")
+            "the board cap must be the field: " .. Descent.PARTY_MAX .. " vs " .. Player.MAX_FIELD)
+
+        -- ...and the function that used to ask "is there room for one more" is GONE rather than always
+        -- returning true. Pinned as an absence because a branch that cannot be false is the shape this
+        -- bug took the first time: every caller read it, every caller believed it, and the answer
+        -- stopped being a question years before anybody noticed.
+        assert(Descent.hasRoom == nil,
+            "Descent.hasRoom must not come back: the roster is unbounded and the question has one answer")
     end },
 
-    { name = "a floor seats the stop that grows the company, and stops once it is full", fn = function()
+    { name = "a floor guarantees a spirit whatever the company holds, and never a body", fn = function()
+        -- THE STOP CAME BACK AND ITS PAYOUT DID NOT. A floor guarantees a third kind again -- a heroic
+        -- spirit -- but where the old `recruit` stop handed over a BODY, this one hands up a token
+        -- (models/voucher.lua). That is the whole of the fix: the old one could only seat while the
+        -- company had ROOM, so it stopped seating for good once four were held.
+        --
+        -- ASSERTED ACROSS EVERY ROSTER SIZE, which is the case that would have caught the original bug:
+        -- a payout with no cap must not develop one, and a guarantee that quietly went conditional on
+        -- the company again would pass every other case in this file.
         local run = Descent.new(nil, 77)
-        local short = Descent.floorQuest(run, { roster = { {} } })
-        local full = Descent.floorQuest(run, { roster = { {}, {}, {}, {} } })
-
-        local function names(list)
+        local function names(roster)
             local set = {}
-            for _, k in ipairs(list or {}) do set[k] = true end
+            for _, k in ipairs(Descent.floorQuest(run, { roster = roster }).map.guaranteeKinds or {}) do
+                set[k] = true
+            end
             return set
         end
-        local a, b = names(short.map.guaranteeKinds), names(full.map.guaranteeKinds)
-        assert(a.recruit, "a floor walked by a short company must guarantee somewhere to grow")
-        assert(not b.recruit, "a full company must not be sent to a stop that can only refuse")
-        -- Naming a third kind REPLACES the generator's default pair rather than adding to it, so a floor
-        -- that forgot to restate them would quietly lose its reliquary and its rest.
-        for _, kind in ipairs({ "relic_cache", "rest" }) do
-            assert(a[kind] and b[kind], "a floor must still guarantee its " .. kind)
+        for _, roster in ipairs({ {}, { {} }, { {}, {}, {}, {} }, { {}, {}, {}, {}, {}, {} } }) do
+            local kinds = names(roster)
+            assert(kinds.spirit,
+                "a floor must guarantee its spirit whatever the company holds -- that is the fix")
+            assert(not kinds.recruit,
+                "the body-granting stop must not come back: the company grows at the rift now")
+            -- Naming kinds REPLACES the generator's default pair rather than adding to it, so a floor
+            -- that forgot to restate them would quietly lose its reliquary and its rest.
+            for _, kind in ipairs({ "relic_cache", "rest" }) do
+                assert(kinds[kind], "a floor must still guarantee its " .. kind)
+            end
         end
     end },
 
-    { name = "the stop is really on the board, and the floor is still a floor", fn = function()
-        -- THE CASE THAT EARNS THIS FILE. Everything above is a descriptor agreeing with itself; this
-        -- rolls the actual board. A descent floor is an `ascent` map, and models/overworld.lua's
-        -- placeEncounters takes an entirely different route through those -- so "the descriptor asked for
-        -- a recruit stop" and "a recruit stop is standing on the floor" are two facts, and only the
-        -- second one is the feature.
-        local run = Descent.new(nil, 5150)
-        local quest = Descent.floorQuest(run, { roster = { {} } })
-        for _, seed in ipairs({ 3, 17, 404, 8888 }) do
-            local grid = Overworld.generate(floorParams(quest, seed))
-            local counts = kindCounts(grid)
-            assert((counts.recruit or 0) >= 1,
-                "seed " .. seed .. ": a company of one was given no way to grow")
-            assert((counts.rest or 0) >= 1, "seed " .. seed .. ": the floor lost its rest")
-            assert((counts.relic_cache or 0) >= 1, "seed " .. seed .. ": the floor lost its reliquary")
-            -- ...and the floor is still mostly fighting. A guarantee that swallowed the weighted fill
-            -- would pass every assertion above and leave a board of three stops.
-            assert((counts.combat or 0) + (counts.elite or 0) >= 4,
-                "seed " .. seed .. ": a floor is fights with texture between them, not the texture alone")
-        end
-    end },
-
-    { name = "the blueprint the guarantee resolves is authored-only and one of a kind", fn = function()
+    { name = "the spirit is one authored blueprint, and it is never rolled onto a board", fn = function()
         -- The guarantee resolves a KIND to a blueprint off the registry in sorted id order, so a second
-        -- `recruit` blueprint would silently decide which one every floor seats. And the weight must be
-        -- zero: a positive one would put wanderers on rolled CAMPAIGN boards, where nothing recruits.
+        -- `spirit` blueprint would silently decide which one every floor seats. And the weight must be
+        -- zero: a positive one would scatter spirits across rolled CAMPAIGN boards, where there is no
+        -- rift to spend a token at and resolveNonCombat pays nothing.
         local found = {}
         for id, def in pairs(Encounter.defs) do
-            if def.kind == "recruit" then found[#found + 1] = id end
+            if def.kind == "spirit" then found[#found + 1] = id end
         end
-        assert(#found == 1, "expected exactly one recruit blueprint, found " .. #found)
+        assert(#found == 1, "expected exactly one spirit blueprint, found " .. #found)
         assert(Encounter.defs[found[1]].weight == 0, found[1] .. " must be authored-only (weight 0)")
+        -- It is a row the player reads before pressing a button, so it has to carry a sentence.
+        local desc = Encounter.defs[found[1]].description
+        assert(desc and desc ~= "", found[1] .. " needs a description: the panel prints one")
+    end },
+
+    { name = "the spirit really stands on the board, and the floor is still a floor", fn = function()
+        -- THE CASE THAT EARNS THIS FILE. Everything above is a descriptor agreeing with itself; this
+        -- rolls the actual board. A descent floor is an `ascent` map, and models/overworld.lua's
+        -- placeEncounters takes an entirely different route through those -- so "the descriptor asked
+        -- for a spirit" and "a spirit is standing on the floor" are two facts, and only the second one
+        -- is what the player walks.
+        local run = Descent.new(nil, 5150)
+        -- The body-granting stop stays gone at the root: the guarantee resolves a KIND to a blueprint
+        -- off the registry, and the weighted fill draws off the same registry, so one absent blueprint
+        -- settles both halves.
+        for id, def in pairs(Encounter.defs) do
+            assert(def.kind ~= "recruit",
+                id .. " still declares kind = 'recruit'; that stop was replaced, not restored")
+        end
+
+        for _, roster in ipairs({ { {} }, { {}, {}, {}, {}, {} } }) do
+            local quest = Descent.floorQuest(run, { roster = roster })
+            for _, seed in ipairs({ 3, 17, 404, 8888 }) do
+                local counts = kindCounts(Overworld.generate(floorParams(quest, seed)))
+                assert((counts.spirit or 0) >= 1,
+                    "seed " .. seed .. ": no spirit stands on the floor, so it hands up no token")
+                assert((counts.recruit or 0) == 0,
+                    "seed " .. seed .. ": a body-granting stop is standing on a floor that has none to give")
+                -- The floor keeps everything else it owes. A guarantee table that lost an entry would
+                -- pass the lines above and quietly drop the reliquary or the rest.
+                assert((counts.rest or 0) >= 1, "seed " .. seed .. ": the floor lost its rest")
+                assert((counts.relic_cache or 0) >= 1, "seed " .. seed .. ": the floor lost its reliquary")
+                -- ...and the floor is still mostly fighting. Adding a guaranteed stop SPENDS a cell, so
+                -- this is the assertion that catches a third guarantee eating the board's fights.
+                assert((counts.combat or 0) + (counts.elite or 0) >= 4,
+                    "seed " .. seed .. ": a floor is fights with texture between them, not the texture alone")
+            end
+        end
     end },
 
     { name = "every discipline names the hero the floors offer for it", fn = function()

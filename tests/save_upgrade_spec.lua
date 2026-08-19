@@ -26,6 +26,87 @@ return {
         end,
     },
     {
+        -- THE THREE THINGS THE CITY GROWS ON (models/building.lua's gate table). Each is a fact about
+        -- the company rather than about the campaign, each opens a building, and each is a field nothing
+        -- else in the save would notice going missing -- a door that quietly stopped opening after a
+        -- quit-and-continue is exactly the failure that has no other symptom.
+        name = "the depth record, the wound mark and the hiring purse round-trip",
+        fn = function()
+            local Descent = require("models.descent")
+            local Voucher = require("models.voucher")
+            local Wound = require("models.wound")
+
+            local player = Player.new()
+            Descent.reached(player, 6)
+            Wound.inflict(player, { { id = "character_rowan" } })
+            Voucher.stake(player, "character_saber")
+            Voucher.grant(player, 2)
+
+            local restored = Save.restore(Save.snapshot(player))
+            assert(Descent.deepest(restored) == 6,
+                "the depth record survives, got " .. tostring(Descent.deepest(restored)))
+            assert(Wound.everWounded(restored), "the wound mark survives")
+            -- THE HIRING PURSE (models/voucher.lua), which is a COUNT: a token has no grade, so there
+            -- is nothing to carry across but how many. Three here -- the sponsor stakes one and two are
+            -- granted -- and a purse that reloaded short would silently rob the player.
+            assert(Voucher.count(restored) == 3,
+                "the purse survives a reload, got " .. Voucher.count(restored))
+            assert(restored.staked == true,
+                "the sponsor's clause stays paid: she does not stake a second time after a reload")
+            assert(restored.riggedPull == "character_saber",
+                "the opening pull is still rigged to the body the story picked")
+
+            -- ...and paying the surgeon does not un-mark it. The ledger empties; the fact does not, or
+            -- the city would lose the Inn the morning after it was used.
+            Wound.mend(restored, "character_rowan")
+            local again = Save.restore(Save.snapshot(restored))
+            assert(#Wound.wounded(again) == 0, "the ledger is clear")
+            assert(Wound.everWounded(again), "and the mark is one-way")
+        end,
+    },
+    {
+        -- A SAVE FROM BEFORE ANY OF THIS reads as a company that has never gone down, never been hurt
+        -- and had nothing staked -- which is exactly what it is. Purely additive, so Save.VERSION does
+        -- not move, which means this is the only thing standing between an old save and a crash.
+        name = "an older save loads with no depth, no wound history and an empty purse",
+        fn = function()
+            local Descent = require("models.descent")
+            local Voucher = require("models.voucher")
+            local Wound = require("models.wound")
+
+            local snap = Save.snapshot(Player.new())
+            snap.deepest, snap.wounded, snap.staked = nil, nil, nil
+            snap.vouchers, snap.bonds, snap.pulls, snap.pity = nil, nil, nil, nil
+
+            local restored = Save.restore(snap)
+            assert(Descent.deepest(restored) == 0, "no record to beat")
+            assert(not Wound.everWounded(restored), "nor any bones ever set")
+            assert(Voucher.count(restored) == 0, "nor anything in the hiring purse")
+            assert(next(restored.bonds or {}) == nil, "nor anybody pulled twice")
+            assert(restored.pulls == 0 and restored.pity == 0, "and the pull ledger reads as unused")
+            assert(restored.staked == false,
+                "a save from before the stake existed has not been paid for, which is what it is")
+        end,
+    },
+    {
+        -- `staked` WAS A LIST AND IS A BOOLEAN, which is the one field here that changed SHAPE rather
+        -- than merely appearing. An older save recorded the bodies the sponsor had stood in the hall;
+        -- the hall does not hold bodies any more, so what survives is the single fact the flag is for --
+        -- has her clause been made good. A truthy table reads as yes, because that save's sponsor had
+        -- already paid and must not pay again.
+        name = "a save whose staked field is still a list loads as a sponsor who has already paid",
+        fn = function()
+            local Voucher = require("models.voucher")
+            local snap = Save.snapshot(Player.new())
+            snap.staked = { "character_saber" }
+
+            local restored = Save.restore(snap)
+            assert(restored.staked == true, "an old list-shaped stake reads as paid")
+            assert(not Voucher.stake(restored, "character_saber"),
+                "...so she is not asked for a second voucher on load")
+        end,
+    },
+    {
         name = "visited-vendor and discipline-announced flags round-trip",
         fn = function()
             local player = Player.new()

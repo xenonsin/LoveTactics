@@ -1,15 +1,19 @@
--- SOMEONE STILL STANDING: the one body a descent floor puts in front of you, and the two answers to it.
+-- A BODY, WHOLE: the panel that puts one person in front of the player with everything about them
+-- readable at once, and either one answer or two depending on who opened it.
 --
--- The descent walks in short and holds four (models/descent.lua), so most of a company is found on the
--- floors. This is the stop that finds it: a survivor of somebody else's run, standing where you came
--- through, who will walk the rest of it with you or will not. Take them on, or walk on.
+-- TWO CALLERS, and they want opposite things from it. The Hiring Hall's summon
+-- (ui/panels/hire_reveal.lua) opens it with `single = true` as the PAYOFF of a pull: the voucher is
+-- spent, the body has already joined, and the panel is the reveal rather than a question -- one button,
+-- and every dismissal routes to it. A caller that is genuinely ASKING (the descent's floor stop, which
+-- is retired, and whatever asks next) opens it with two.
 --
 --   local panel = RecruitPanel.new({
---       title    = "Someone Still Standing",
---       char     = Recruit.preview(player, id),   -- the body that would join, built and thrown away
---       prompt   = "The company holds 4, and stands 2 today.",
---       onAccept = function() ... end,            -- join them, clear the cell
---       onDecline = function() ... end,           -- walk on; the stop keeps until you come back
+--       title    = "Brann answers",
+--       char     = result.char,                   -- the body itself, or Recruit.preview for a dry run
+--       prompt   = "A voucher graded to floor 8.",
+--       single   = true,                          -- one button; Esc/B/close all accept
+--       onAccept = function() ... end,
+--       onDecline = function() ... end,           -- two-answer callers only
 --   })
 --
 -- WHY ONE BODY AND NOT A SLATE. This stop dealt three cards through ui/panels/choice.lua until now, and
@@ -86,6 +90,19 @@ function RecruitPanel.new(opts)
     self.onAccept = opts.onAccept
     self.onDecline = opts.onDecline
     self.finished = false
+
+    -- ONE ANSWER INSTEAD OF TWO, for the caller that is not asking a question.
+    --
+    -- A floor stop asked one -- take them on, or walk on -- and both buttons were real. The summon
+    -- (ui/panels/hire_reveal.lua) is not asking anything: the voucher is already spent, the body is
+    -- already in the company, and this panel is what the player is being SHOWN. A refusal button on a
+    -- reveal offers to undo something that cannot be undone, so `single` draws one centred button and
+    -- routes every dismissal -- Esc, B, the close corner -- to accept.
+    --
+    -- The kit cursor is untouched by this: reading the pieces is the whole reason the reveal borrows
+    -- this panel rather than drawing a portrait and a name.
+    self.single = opts.single == true
+    if self.single then self.acceptLabel = opts.acceptLabel or "Welcome" end
 
     self.choice = 1     -- 1 = take, 2 = walk on. The panel opens on the offer, not on the refusal.
     self.peek = nil     -- keyboard/pad kit cursor: an index into self.slots, or nil for "nothing open"
@@ -184,9 +201,16 @@ function RecruitPanel.new(opts)
     end
 
     local by = self.boxY + self.oButtons
-    local totalW = BTN_W * 2 + BTN_GAP
-    self.takeBtn = { x = self.boxX + self.boxW / 2 - totalW / 2, y = by, w = BTN_W, h = BTN_H }
-    self.leaveBtn = { x = self.takeBtn.x + BTN_W + BTN_GAP, y = by, w = BTN_W, h = BTN_H }
+    if self.single then
+        -- Centred on the card rather than sitting where the left of a pair would: a lone button parked
+        -- off-centre reads as one half of a row whose other half failed to draw.
+        self.takeBtn = { x = self.boxX + self.boxW / 2 - BTN_W / 2, y = by, w = BTN_W, h = BTN_H }
+        self.leaveBtn = { x = -1000, y = -1000, w = 0, h = 0 } -- off-screen: never hit, never drawn
+    else
+        local totalW = BTN_W * 2 + BTN_GAP
+        self.takeBtn = { x = self.boxX + self.boxW / 2 - totalW / 2, y = by, w = BTN_W, h = BTN_H }
+        self.leaveBtn = { x = self.takeBtn.x + BTN_W + BTN_GAP, y = by, w = BTN_W, h = BTN_H }
+    end
 
     self.closeButton = CloseButton.new(self.boxX + self.boxW, self.boxY)
     return self
@@ -198,14 +222,17 @@ function RecruitPanel:accept()
     if self.onAccept then self.onAccept() end
 end
 
+-- Every dismissal lands here, which is why `single` intercepts it rather than hiding the button: Esc, B
+-- and the close corner all walk on, and on a reveal there is nothing to walk on FROM.
 function RecruitPanel:decline()
     if self.finished then return end
+    if self.single then return self:accept() end
     self.finished = true
     if self.onDecline then self.onDecline() end
 end
 
 function RecruitPanel:commit()
-    if self.choice == 1 then self:accept() else self:decline() end
+    if self.single or self.choice == 1 then self:accept() else self:decline() end
 end
 
 -- The item the tooltip is open on: whatever the mouse is over, else whatever the kit cursor is parked on.
@@ -354,12 +381,21 @@ function RecruitPanel:draw()
 
     -- Amber for the offer, quiet bronze for the refusal. The steel ring is spoken for -- it is the kit
     -- cursor two inches above these buttons, and a button wearing it would read as "the cursor is here".
-    self:drawButton(self.takeBtn, self.acceptLabel, self.choice == 1, Theme.accentAmber)
-    self:drawButton(self.leaveBtn, self.declineLabel, self.choice == 2, Theme.muted)
+    self:drawButton(self.takeBtn, self.acceptLabel, self.single or self.choice == 1, Theme.accentAmber)
+    if not self.single then
+        self:drawButton(self.leaveBtn, self.declineLabel, self.choice == 2, Theme.muted)
+    end
 
-    local hint = InputMode.isGamepad()
-        and "D-pad choose  -  Up/Down read the kit  -  A confirm  -  B walk on"
-        or "Left/Right choose  -  Up/Down read the kit  -  Enter confirm  -  Esc walk on"
+    local hint
+    if self.single then
+        hint = InputMode.isGamepad()
+            and "Up/Down read the kit  -  A continue"
+            or "Up/Down read the kit  -  Enter continue"
+    else
+        hint = InputMode.isGamepad()
+            and "D-pad choose  -  Up/Down read the kit  -  A confirm  -  B walk on"
+            or "Left/Right choose  -  Up/Down read the kit  -  Enter confirm  -  Esc walk on"
+    end
     love.graphics.setFont(self.hintFont)
     Theme.set(Theme.muted, 0.85)
     love.graphics.printf(hint, bx, by + self.oHint, self.boxW, "center")

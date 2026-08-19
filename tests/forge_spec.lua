@@ -339,14 +339,14 @@ return {
         name = "a batch costs the sum of the rungs it buys -- convenience, never a discount",
         fn = function()
             local p = richPlayer()
-            local item = Item.instantiate("weapon_first_motion", 1, 3)
+            local item = Item.instantiate("weapon_iron_greatsword", 1, 3)
             local batch = Forge.costTo(p, item, 6)
             assert(batch.levels == 3, "three rungs from +3 to +6, got " .. batch.levels)
             assert(batch.level == 6, "the batch lands at +6")
 
             local technique, materials = 0, {}
             for lvl = 4, 6 do
-                local rung = Forge.upgradeCost(p, Item.instantiate("weapon_first_motion", 1, lvl - 1))
+                local rung = Forge.upgradeCost(p, Item.instantiate("weapon_iron_greatsword", 1, lvl - 1))
                 technique = technique + rung.technique
                 for matId, n in pairs(rung.materials) do materials[matId] = (materials[matId] or 0) + n end
             end
@@ -379,7 +379,7 @@ return {
         name = "a batch reaching past the standing ceiling is locked, and names where the wall is",
         fn = function()
             local p = richPlayer()
-            local item = Item.instantiate("weapon_first_motion", 1, 0)
+            local item = Item.instantiate("weapon_iron_greatsword", 1, 0)
             local ceiling = Forge.ceilingFor(p, item)
             assert(ceiling < Item.MAX_LEVEL, "a fresh player has not earned the whole ladder")
 
@@ -400,7 +400,7 @@ return {
             -- looping upgrade() and letting it refuse partway leaves gold and materials gone on a
             -- climb the player never got.
             local p = richPlayer()
-            local item = Item.instantiate("weapon_first_motion", 1, 0)
+            local item = Item.instantiate("weapon_iron_greatsword", 1, 0)
             local target = Forge.ceilingFor(p, item)
             assert(target >= 2, "need at least a two-rung climb to test a partial spend")
 
@@ -422,7 +422,7 @@ return {
         name = "an affordable batch lands the item at the target and charges the summed bill once",
         fn = function()
             local p = richPlayer()
-            local item = Item.instantiate("weapon_first_motion", 1, 0)
+            local item = Item.instantiate("weapon_iron_greatsword", 1, 0)
             local target = math.min(3, Forge.ceilingFor(p, item))
             local cost = Forge.costTo(p, item, target)
 
@@ -444,10 +444,10 @@ return {
         name = "costTo refuses to climb below where the item already stands",
         fn = function()
             local p = richPlayer()
-            local item = Item.instantiate("weapon_first_motion", 1, 5)
+            local item = Item.instantiate("weapon_iron_greatsword", 1, 5)
             assert(Forge.costTo(p, item, 5) == nil, "aiming at the current level buys nothing")
             assert(Forge.costTo(p, item, 3) == nil, "and the ladder does not run backwards")
-            local maxed = Item.instantiate("weapon_first_motion", 1, Item.MAX_LEVEL)
+            local maxed = Item.instantiate("weapon_iron_greatsword", 1, Item.MAX_LEVEL)
             assert(Forge.costTo(p, maxed, Item.MAX_LEVEL) == nil, "a fully forged piece prices nothing")
             local out, reason = Forge.upgradeTo(p, maxed, Item.MAX_LEVEL)
             assert(out == nil and reason == "max level", "and refuses with 'max level'")

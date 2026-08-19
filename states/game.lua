@@ -632,16 +632,11 @@ function game:openLanding(cell)
     --
     -- THE TOKENS GET THEIR OWN LINE, after the body's, because they are a different kind of news: the
     -- object above is what this fight paid, and this is what the CIRCLE paid toward the next company.
-    -- Named by their RANK rather than counted alone, because the rank is the whole of what a token is
-    -- worth and a player who reads only the count will spend the good one first by accident. Stars
-    -- rather than the floor it was earned on -- the player never meets a floor number
-    -- (models/voucher.lua).
+    -- COUNTED AND NOT GRADED, because a token has no grade: every one is the same ticket and the rank is
+    -- rolled when the player presses the button (models/voucher.lua). Naming a grade here was the last
+    -- place the old system leaked onto a surface.
     if vouchers > 0 then
-        local stars = Voucher.starsOf(Descent.depth(run))
-        local word = ({ "one-star", "two-star", "three-star", "four-star", "five-star" })[stars]
-        game:pushToast(vouchers == 1
-            and ("A " .. word .. " rift token")
-            or (vouchers .. " " .. word .. " rift tokens"))
+        game:pushToast(vouchers == 1 and "A rift token" or (vouchers .. " rift tokens"))
     end
     saveRun()
 end
@@ -1441,11 +1436,8 @@ function game:openEncounter(cell)
             --
             -- Descent only: a token opens the Hero's Rift, and the campaign has no rift to open.
             if game.descent and game.player then
-                local dropped = Voucher.rollFromFight(game.player, Descent.depth(game.descent))
-                if dropped then
-                    local stars = Voucher.starsOf(dropped.floor)
-                    local word = ({ "one-star", "two-star", "three-star", "four-star", "five-star" })[stars]
-                    game:pushToast("A " .. word .. " rift token, off the body")
+                if Voucher.rollFromFight(game.player) then
+                    game:pushToast("A rift token, off the body")
                     Player.save()
                 end
             end
@@ -2770,7 +2762,7 @@ function game:resolveNonCombat(cell)
     local enc = cell.encounter
     if enc.kind == "rest" then game:restHeal() end -- back-compat: any path still routing rest here heals
 
-    -- A HEROIC SPIRIT hands up one rift token, graded at the floor it is standing on
+    -- A HEROIC SPIRIT hands up one rift token (a token has no grade -- models/voucher.lua)
     -- (data/encounters/encounter_heroic_spirit.lua). The third source, and the only one the player
     -- steers: a circle pays on a schedule and a won fight rolls a chance, but this one is a place they
     -- chose to walk to.
@@ -2779,10 +2771,8 @@ function game:resolveNonCombat(cell)
     -- shared registry, and a campaign board that ever authored one would otherwise pay a token into a
     -- purse the campaign has no rift to spend at.
     if enc.kind == "spirit" and game.descent and game.player then
-        local token = Voucher.grant(game.player, Descent.depth(game.descent))
-        local stars = Voucher.starsOf(token.floor)
-        local word = ({ "one-star", "two-star", "three-star", "four-star", "five-star" })[stars]
-        game:pushToast("The spirit gives up a name  ·  a " .. word .. " rift token")
+        Voucher.grant(game.player, 1)
+        game:pushToast("The spirit gives up a name  ·  a rift token")
         Player.save()
     end
 end

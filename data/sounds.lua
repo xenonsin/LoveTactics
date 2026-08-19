@@ -117,6 +117,43 @@ return {
     ["treasure.reveal"] = { file = "assets/audio/treasure/reveal.ogg", category = "sfx",
         length = "1-1.5s", desc = "The chest lid pops fully open on a burst of light and a spray of coins. THE treasure payoff -- a bright, sparkling flourish with a shimmer of falling gold; celebratory but shorter than quest.complete." },
 
+    -- The Hero's Rift -- the crossing (ui/panels/hire_reveal.lua). FOUR CUES FOR FOUR BEATS, and the
+    -- reason there are four rather than one is the whole design of that animation: the reveal tells the
+    -- player a RANK, and in every game in this genre the rank is audible before it is visible. The
+    -- visual carries it in two channels already (hue and star count); this is the third, and it is the
+    -- one that works while the player is looking at their phone.
+    --
+    -- `rift.star` is fired once per pip and PITCHED UP the run (1.0, 1.06, 1.12, ...) at the call site,
+    -- so a five-star arrival is a rising five-note figure and a one-star is a single note. That climb
+    -- is the tell: the player hears how good it is before the last pip has landed, which is exactly the
+    -- job the pips do visually and the reason it must be one cue rather than five.
+    ["rift.open"] = { file = "assets/audio/rift/open.ogg", category = "sfx", volume = 0.9,
+        length = "0.7-1s", desc = "A rift token is spent and the tear begins to open: light gathering, a ring closing in. Airy and rising, a held intake of breath -- pure anticipation, carrying NO information about what is coming, because every crossing sounds identical here. Think a portal drawing breath, not a spell being cast." },
+    ["rift.star"] = { file = "assets/audio/rift/star.ogg", category = "sfx", volume = 0.75,
+        length = "<=0.3s", desc = "One rank pip strikes in above the rift. A clean bright chime with a short tail -- struck, not swelled. Fired one to five times in quick succession and pitch-shifted UP each time at the call site, so the run reads as a rising figure; it must sound musical repeated and transposed, so no strong inharmonic content." },
+    ["rift.surge"] = { file = "assets/audio/rift/surge.ogg", category = "sfx",
+        length = "0.4-1s", desc = "The rift floods with light just before the body arrives -- the payoff beat. A warm bloom/whoosh that resolves rather than builds; the exhale answering rift.open. Fires at every rank, so it must not sound rare." },
+    ["rift.overshoot"] = { file = "assets/audio/rift/overshoot.ogg", category = "sfx",
+        length = "0.6-1.2s", desc = "The rarest event in the game: the rift deals somebody ranked ABOVE the token that opened it, and the ring breaks. A glassy shatter with a bright rising tail over it -- something giving way and something wonderful coming through. Layered OVER rift.surge, so it must sit above that cue rather than replace it. This is the sound players will remember; spend the budget here." },
+
+    -- The Touchstone -- the reading (ui/panels/identify_reveal.lua). FOUR CUES FOR FOUR BEATS, and they
+    -- are deliberately the rift's own structure in another material: that reveal tells the player a RANK
+    -- and this one tells them a LEVEL, and a player who has learned to hear one should not have to learn
+    -- the other from scratch. What separates them is the substance. The rift is air and light, so its
+    -- cues breathe; this is stone and metal on a counter, so these are struck, scraped and rung.
+    --
+    -- `stone.mark` is fired once per rung and PITCHED UP the run (1.0, 1.06, 1.12, ...) at the call site,
+    -- exactly as rift.star is, so a +5 reading is a rising five-note figure and a +1 is a single note.
+    -- The climb is the tell: the player hears how good it is before the last mark has landed.
+    ["stone.read"] = { file = "assets/audio/stone/read.ogg", category = "sfx", volume = 0.85,
+        length = "0.6-0.9s", desc = "A piece is laid on the touchstone and drawn across it. A low stone-on-metal SCRAPE with a lamp-glass creak over it, settling into a held hum -- the instrument being used, before it has said anything. Identical for every reading, so it must carry NO information about what is coming: this is the anticipation beat." },
+    ["stone.mark"] = { file = "assets/audio/stone/mark.ogg", category = "sfx", volume = 0.75,
+        length = "<=0.3s", desc = "One rung of the reading strikes in. A small bright STRUCK tone with a short metallic tail, like a jeweller's hammer on a stamp -- struck, never swelled. Fired one to ten times in quick succession and pitch-shifted UP each time at the call site, so it must sound musical repeated and transposed; no strong inharmonic content." },
+    ["stone.reveal"] = { file = "assets/audio/stone/reveal.ogg", category = "sfx",
+        length = "0.4-1s", desc = "The true item declares itself. A warm ringing bloom that RESOLVES rather than builds, like struck metal finding its note -- the answer to stone.read. Fires at every level, so it must not sound rare or triumphant; the level is carried by the marks before it, not by this." },
+    ["stone.break"] = { file = "assets/audio/stone/break.ogg", category = "sfx",
+        length = "0.6-1.2s", desc = "The rarest reading: a piece climbs its whole ladder and the lamp glass over the counter fails. A sharp glassy CRACK with a bright ringing tail rising out of it -- something giving way, and something very good underneath it. Layered OVER stone.reveal rather than replacing it, so it must sit above that cue. The counterpart to rift.overshoot; spend the budget here." },
+
     -- Music beds -- streamed, looping, one per place the player spends time (states/*). Seamless loops
     -- (author tail-to-head), 44.1kHz stereo. `music.credits` is the exception: it ENDS (loop = false).
     ["music.menu"] = { file = "assets/audio/music/menu.ogg", category = "music", volume = 0.8,

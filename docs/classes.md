@@ -328,9 +328,10 @@ return {
 **`exemplar` and `hire` are two different bodies and the difference is which side of the fight they
 stand on.** The exemplar is the one built *as* the discipline for you to face — a boss, met in the
 unlock quest. The hire is the discipline's entry on the [hall roster](../tests/hall_roster_spec.lua):
-one named hero apiece, each carrying the bound relic that makes the shelf a build. A descent's recruit
-stop deals off `hire` and never off `exemplar` or the generic class templates
-(`models/descent_recruit.lua`) — the company is grown out of people, not stat lines. The plain classes
+one named hero apiece, each carrying **exactly one** bound relic — the object that makes the shelf a
+build, and the thing a duplicate levels when the Hiring Hall deals that body a second time
+([`models/voucher.lua`](../models/voucher.lua)). The hall's pull deals off `hire` and never off
+`exemplar` or the generic class templates — the company is grown out of people, not stat lines. The plain classes
 under the disciplines are met the same way, as the seven line **companions** (`Temptation.COMPANIONS`):
 Saber for the fighter, Rowan for the knight, Clem for the rogue. They hold the first floor by
 themselves, because a class is what a player has from the beginning and a discipline is earned.
@@ -340,6 +341,11 @@ discipline is gated at ranks it against every other discipline, and the descent 
 down the fourteen floors below the first at an even rate, so each opens two or three new bodies. Read
 level-for-level instead, the twenty-one multiclass heroes all land on one floor — the campaign has no
 opinion about which multiclass comes first, and the lump is that absence showing through.
+
+That depth is what a **hiring voucher** is graded against. The floors no longer hand over bodies; a
+beaten circle hands up a voucher graded at the floor that finished it, and the hall spends one on a
+pull that mostly deals near that depth, sometimes shallower, and occasionally *deeper than the voucher
+was earned* — which is how a deep cut of the shelf turns up before the campaign would have opened it.
 
 **`description` is the mechanic said out loud** — what the path is, then the one thing it does, in a
 sentence or two (`Discipline.description`, pinned by `tests/discipline_spec.lua`). It is the same claim

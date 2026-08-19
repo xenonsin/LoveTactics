@@ -1103,7 +1103,7 @@ function Descent.newProfile(chars)
     -- THE HIRING PURSE, empty (models/voucher.lua). A company at the mouth has beaten no circle, so it
     -- has been handed nothing -- the one voucher it opens the game with is the sponsor's, and she plants
     -- that herself when the prologue's scene closes rather than here.
-    profile.vouchers = {}
+    profile.vouchers = 0
     profile.bonds = {}
     profile.pulls = 0
     profile.pity = 0

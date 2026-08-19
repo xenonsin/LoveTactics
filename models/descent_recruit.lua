@@ -1,28 +1,30 @@
--- WHO IS STILL DOWN HERE: the bodies a descent picks up on its way to the bottom.
+-- WHO IS DOWN HERE: the forty-five bodies a descent can put in a company, and how deep each one stands.
 --
--- A company holds four and is grown on the road rather than bought: every floor with room in it seats one
--- stop where somebody who came down before you is still standing, and this module is what that stop
--- offers -- who is standing there, and the join itself.
+-- THE CENSUS, NOT THE DOOR. This module answers three questions and deliberately no others: who exists
+-- (Recruit.roster), how deep they stand (Recruit.floorFor), and what one of them reads like when you
+-- are looking at them (describe / preview / join). WHAT SPENDS IT is models/voucher.lua -- the vouchers
+-- a floor hands up and the pull the Hiring Hall turns them into. Read that file for the loop; this one
+-- is the shelf it draws off.
 --
--- THE HIRING HALL IS DOWNSTREAM OF IT, not a second source. The town does not deal its own slate; it
--- offers the people you WALKED PAST down here (Recruit.decline / Recruit.hallSlate), so a hire is never a
--- body the player has not already met and turned down.
+--   Recruit.pool(8)               -- ids standing at floor 8 or above, sorted, blueprint-checked
+--   Recruit.preview(player, id)   -- the body that WOULD join, built at the company's level
+--   Recruit.join(player, id)      -- and the join itself
 --
---   local offer = Recruit.offer(seed, player.roster, nil, floor)  -- ids, none already in the company
---   Recruit.join(player, offer[1])                    -- instantiated, kit intact, at the company's level
+-- THE SPLIT IS OLDER THAN THE PULL AND SURVIVED IT INTACT, which is the argument for the shape. A
+-- descent used to grow its company by meeting people on the floors, one stop at a time; that stop is
+-- gone (see the note further down, and models/descent.lua's guaranteeKinds for why). Every part of this
+-- file that the stop was using turned out to be a description of the ROSTER rather than of the stop,
+-- so none of it moved.
 --
--- THIS REPLACED THE MUSTER, and the difference is where the decision sits. models/descent_muster.lua sold
--- a company of up to eight off an eleven-body shelf for a twelve-coin purse, at the mouth, before a tile
--- was walked -- so a run was settled on a screen by comparing bodies the player had never fought with, and
--- every run after the first opened on that same screen. The same choice made THREE TIMES, one floor apart,
--- against a company that already exists and a circle you have already fought, is a decision with an answer
--- in it: what this company is short of. That is the whole argument for the move.
+-- WHAT IT OFFERS IS BODIES, NOT BUILDS. Draft strips a bought unit to its chassis
+-- (models/draft_chassis.lua) because there the gear row IS the draft; a descent's gear comes off its
+-- FLOORS -- the caches, the salvage, the merchant stops -- and putting a second source in front of the
+-- same question would make the floors' answer the less interesting one. So a body arrives wearing
+-- exactly what its blueprint authors, and what happens to it after that is the run's business.
 --
--- WHAT IT OFFERS IS BODIES, NOT BUILDS -- the one line it keeps from the muster. Draft strips a bought
--- unit to its chassis (models/draft_chassis.lua) because there the gear row IS the draft; a descent's gear
--- comes off its FLOORS -- the caches, the salvage, the merchant stops -- and putting a second source in
--- front of the same question would make the floors' answer the less interesting one. So a body arrives
--- wearing exactly what its blueprint authors, and what happens to it after that is the run's business.
+-- ...WITH ONE OBJECT EXCEPTED, and it is the exception the pull is built on: the single BOUND item
+-- every one of the forty-five carries. That one is the body rather than its gear, it cannot be forged
+-- (models/forge.lua), and the only thing that levels it is the body turning up again.
 --
 -- Pure model -- no love.graphics, love.filesystem untouched -- so it loads under the headless runner.
 
@@ -33,20 +35,20 @@ local Discipline = require("models.discipline")
 
 local Recruit = {}
 
--- How many bodies a stop puts in front of the player. ONE: somebody is standing there, and you either
--- take them on or walk on.
+-- How many bodies Recruit.offer deals when a caller does not say. ONE, and the reasoning behind that
+-- number is worth keeping even though nothing in the descent calls it today.
 --
--- It offered three for a while, on the reasoning that a slate asks what the company is short of. What
+-- It dealt three for a while, on the reasoning that a slate asks what the company is short of. What
 -- three cards actually asked was narrower than that -- laid side by side at a card's width apiece, the
 -- only thing they could carry was a stat line, so the question collapsed into "which of these numbers is
--- biggest" against two strangers rather than against the company standing behind you. One body is met the
--- way a body on a floor is met: whole. It gets the room for a portrait, the kit it is carrying laid out in
--- the grid it fights from, and a tooltip on every piece of it (ui/panels/recruit.lua) -- which is far more
--- to read than three cards ever fit, about the only decision that was ever really here.
+-- biggest" against two strangers rather than against the company standing behind you. One body is met
+-- whole: the room for a portrait, the kit it is carrying laid out in the grid it fights from, and a
+-- tooltip on every piece of it (ui/panels/recruit.lua) -- which is far more to read than three cards ever
+-- fit, about the only decision that was ever really there.
 --
--- THE HIRING HALL SHOWS THREE, and it is not dealing them: they are the last three people you turned
--- down (ui/panels/hiring.lua). The town is a shelf you walked to and can leave without spending a step;
--- a floor is where you happen to be standing.
+-- THE PULL KEPT THAT LESSON AND DROPPED THE SLATE ENTIRELY. A pull deals exactly one body and there is
+-- nothing to compare it against, which is the same argument taken one step further: the panel is a
+-- REVEAL, not a shelf.
 Recruit.OFFER = 1
 
 -- ---------------------------------------------------------------------------
@@ -340,74 +342,44 @@ function Recruit.preview(player, id)
 end
 
 -- ---------------------------------------------------------------------------
--- WHO YOU TURNED DOWN: the hall's stock.
+-- WHAT USED TO BE HERE: the hall's stock, and why it is gone
+-- ---------------------------------------------------------------------------
 --
--- The Hiring Hall does not deal a fresh slate off the pool. It offers THE PEOPLE YOU WALKED PAST -- the
--- survivor on floor three you decided you had no room for, still in town when you come back up. That
--- makes the hall a consequence rather than a shop, and it makes declining somebody a decision you will
--- meet again instead of a free one.
+-- This module used to own a second half. The Hiring Hall dealt nothing of its own -- its stock was
+-- THE PEOPLE YOU WALKED PAST (`Recruit.decline`, `Recruit.hallSlate`), the survivor on floor three you
+-- decided you had no room for, still in town when you came back up. Refusing somebody was a decision
+-- you met again rather than a free one, and a hire was never a body the player had not already stood in
+-- front of and read. Beside it sat `Recruit.stake`, the one gladiator the sponsor paid for before the
+-- city had even been looked at.
 --
--- The list lives on the PROFILE rather than on the run: a run ends, the town does not, and a body you
--- refused is not un-refused by dying two floors later.
+-- IT WAS COHERENT AND IT STARVED. Every part of that argument holds except the supply: a refusal can
+-- only happen at a stop, a stop only ever seated while the company had ROOM, and nothing ever left a
+-- company of four. So the floors stopped offering on the second floor of the first run, no refusal was
+-- ever recorded again, and the hall a player walked into for the rest of the save was a room that said
+-- "the company is full" forever. A consequence with no input is not a consequence.
 --
--- AND THERE IS NOTHING ELSE IN IT. A hall nobody has walked past is EMPTY, and it stays empty until the
--- first body is turned down on a floor. It carried a small authored starter slate for a while -- three
--- heroes standing there on a fresh save, on the reasoning that the hall is the only card in the city
--- that does anything before the first descent. That was a shop pretending to be a consequence: it hands
--- over bodies the player never met, which is exactly the thing this list exists to stop being possible,
--- and it made the first two hires the ones the game chose rather than the ones the floors offered. The
--- company that walks in at the gate is the prologue's (the avatar and the Rowan sworn beside her), so
--- nothing is blocked by an empty hall -- there is simply nothing to hire until you have refused somebody.
-
--- Record that `player` walked past `id`. Idempotent: refusing the same body twice does not stock the
--- hall with two of them, and taking somebody on later removes them (see Recruit.join).
-function Recruit.decline(player, id)
-    if not (player and id) then return end
-    player.declined = player.declined or {}
-    for _, held in ipairs(player.declined) do
-        if held == id then return end
-    end
-    player.declined[#player.declined + 1] = id
-end
-
--- The hall's slate: everybody turned down and not since hired, in the order they were walked past. Empty
--- for a player who has refused nobody, which is the honest answer -- see above.
+-- What replaced it is models/voucher.lua: the floors hand up a VOUCHER, the hall spends it on a pull,
+-- and a repeat of somebody you already hold levels the one relic that body is built around. The two
+-- halves this file keeps -- WHO is down here (Recruit.roster / floorFor / pool) and what it costs to
+-- read them (describe / preview / join) -- are exactly the halves the summon needed, which is why they
+-- stayed here rather than moving.
 --
--- Ids whose blueprint has gone are dropped here rather than at the card, so the hall never offers a name
--- it cannot build.
-function Recruit.hallSlate(player)
-    local taken = {}
-    for _, entry in ipairs((player and player.roster) or {}) do
-        taken[entry.id or entry] = true
-    end
-
-    local out = {}
-    for _, id in ipairs((player and player.declined) or {}) do
-        if not taken[id] and Character.defs[id] then out[#out + 1] = id end
-    end
-    return out
-end
+-- `Recruit.offer` stays too, unused by the descent today. It is the seeded slate a stop dealt, and it
+-- is the one piece of the old shape that is worth keeping warm: nothing else in the game deals N bodies
+-- from a pinned seed, and the day a stop wants to exist again it is what it will want.
 
 -- Take one into the company.
 --
 -- Player.recruit is the one path by which anything joins a roster -- it refuses a duplicate, hands the
--- newcomer the company's MEDIAN experience so a body found on floor four is not a level-1 liability, and
--- announces the join. A descent adds nothing to that any more: there is one XP curve in the game
--- (Experience.STEP), so a body hired at the gate and a body sworn in Act 0 read their bank the same way.
+-- newcomer the company's MEDIAN experience so a body pulled on floor four is not a level-1 liability,
+-- and announces the join. A descent adds nothing to that any more: there is one XP curve in the game
+-- (Experience.STEP), so a body pulled at the hall and a body sworn in Act 0 read their bank the same way.
 --
--- Returns the instance, or nil if the company already held that id.
+-- Returns the instance, or nil if the company already held that id -- which is no longer an error case
+-- but a BOND (models/voucher.lua's Voucher.pull), and the caller that matters knows the difference.
 function Recruit.join(player, id)
     local Player = require("models.player")
-    local joined = Player.recruit(player, id)
-    -- Taking somebody on un-refuses them: a body in the company must not also be standing in the hall
-    -- waiting to be hired. Cleared on the JOIN rather than filtered at the hall, so the list stays the
-    -- honest record of who is still out there (Recruit.hallSlate would hide it, not fix it).
-    if joined then
-        for i = #((player and player.declined) or {}), 1, -1 do
-            if player.declined[i] == id then table.remove(player.declined, i) end
-        end
-    end
-    return joined
+    return Player.recruit(player, id)
 end
 
 return Recruit

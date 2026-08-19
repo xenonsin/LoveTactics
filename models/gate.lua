@@ -26,17 +26,25 @@ local Gate = {}
 -- The inn
 -- ---------------------------------------------------------------------------
 
--- WHAT A NIGHT COSTS, per body in the company. Priced per head rather than flat because the company
--- grows from one to four over the first circles, and a flat bill would be crushing at the mouth and
--- pocket change by the seventh -- which is backwards, since a full company is exactly when a night is
--- worth most.
+-- WHAT A NIGHT COSTS, per body FIELDED. Priced per head rather than flat because the company grows
+-- from one to four over the first circles, and a flat bill would be crushing at the mouth and pocket
+-- change by the seventh -- which is backwards, since a full company is exactly when a night is worth
+-- most.
 --
 -- Deliberately cheaper than mending. A rest is the thing you do every time you come up; setting a bone
 -- is the thing you save for, and Wound.MEND_COST is what that costs.
+--
+-- PER FIELDED HEAD RATHER THAN PER ROSTER HEAD, and that distinction did not exist until the Hiring
+-- Hall started dealing (models/voucher.lua). The roster used to BE the field -- four, capped -- so "the
+-- company" had one meaning and this counted it. A roster is deep now and a pull adds to it, so counting
+-- roster heads would price a night at three hundred and seventy-five for a player who had been lucky,
+-- and a bill that climbs with how many people you have COLLECTED is a tax on collecting them. What the
+-- inn is for is the four who went down, so it bills the four who went down.
 Gate.INN_PER_HEAD = 25
 
 function Gate.innPrice(player)
-    local n = #((player and player.roster) or {})
+    local Player = require("models.player")
+    local n = math.min(#((player and player.roster) or {}), Player.MAX_FIELD)
     return math.max(Gate.INN_PER_HEAD, n * Gate.INN_PER_HEAD)
 end
 

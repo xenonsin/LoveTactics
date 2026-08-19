@@ -89,6 +89,12 @@ local function snapshotItem(item)
     -- blueprint, so a rebalanced upgrade curve flows into old saves like every other content edit.
     local snap = { id = item.id, quantity = item.quantity or 1 }
     if item.level and item.level > 0 then snap.level = item.level end
+    -- The seal, and the ONE field identification adds to this schema (models/identify.lua). It carries
+    -- the floor the piece was found on rather than a boolean, so the fee, the sell price and the
+    -- reveal's ceiling all read one number -- and the LEVEL beside it is already the rolled answer,
+    -- sitting in the field it will still be sitting in after somebody pays to look at it. A husk
+    -- therefore needs no second hiding place: the save stores the truth and the game withholds it.
+    if item.unidentified and item.unidentified > 0 then snap.unidentified = item.unidentified end
     return snap
 end
 
@@ -150,6 +156,12 @@ local function snapshotCharacter(char)
         if amount and amount ~= 0 then growth[stat] = amount end
     end
     if next(growth) then snap.growth = growth end
+
+    -- How many bonds' worth of growth the table above already contains (models/voucher.lua's
+    -- Summon.applyGrowth). Persisted BECAUSE the growth is: the packet is folded into `growth` and
+    -- re-baked on load like every other point, so without this mark the next Summon.applyBond would
+    -- fold it in a second time and a bonded body would grow a little every time the game was loaded.
+    if (char.bonded or 0) > 0 then snap.bonded = char.bonded end
 
     -- The fraction of a point a blended level-up could not spend, carried into the next one
     -- (Growth.applyLevelBlend). Dropping it would lose up to a point per stat per save/load, which
@@ -384,6 +396,13 @@ function Save.snapshot(player)
     local stash = {}
     for i, item in ipairs(player.stash or {}) do stash[i] = snapshotItem(item) end
 
+    -- WHAT THE TOUCHSTONE IS HOLDING (models/identify.lua). Unnamed pieces the player sold, kept for
+    -- buying back, and they have to persist for the same reason the stash does: a buy-back the player
+    -- can only reach before the next save is not an offer, it is a trap. Snapshotted through the same
+    -- helper, so a shelved husk comes back sealed exactly as a stashed one does.
+    local touchstoneShelf = {}
+    for i, item in ipairs(player.touchstoneShelf or {}) do touchstoneShelf[i] = snapshotItem(item) end
+
     local standing = {}
     for vendorId, n in pairs(player.standing or {}) do
         if (tonumber(n) or 0) > 0 then standing[vendorId] = n end
@@ -519,15 +538,37 @@ function Save.snapshot(player)
         --
         -- Purely additive, so Save.VERSION does not move: an older save restores having taken none on.
         errands = player.errands,
-        -- WHO THIS COMPANY WALKED PAST, as a list of character ids (models/descent_recruit.lua). The
-        -- Hiring Hall's whole stock: a body refused on a floor is standing in town when you come back
-        -- up. Kept on the profile rather than on the run because a run ends and the town does not --
-        -- dying two floors later does not un-refuse anybody.
+        -- THE HIRING PURSE (models/voucher.lua). Four fields, and all four are on the PROFILE rather than
+        -- on a run for the same reason: a run ends, the town does not, and a voucher earned on floor six
+        -- is the reward for having gone to floor six.
         --
-        -- Purely additive, so Save.VERSION does not move: an older save restores having refused nobody,
-        -- and the hall shows its authored starter slate, which is exactly right for a company that has
-        -- never turned anyone away.
-        declined = player.declined,
+        --   vouchers    HOW MANY tokens are held, as a plain count. It was a list of `{ floor = n }`
+        --               while tokens carried a grade; they do not (models/voucher.lua), so there is
+        --               nothing to tell one from another and nothing to keep a list of.
+        --   bonds       { [charId] = duplicates taken }, which is the level that body's bound relic
+        --               stands at (Summon.relicLevel). Keyed by ID rather than by roster instance, the
+        --               same call `wounds` makes and for the same reason: the id survives the roster
+        --               being rebuilt out of this file.
+        --   pulls       how many vouchers have been spent, ever. Half of the pull seed -- see
+        --               Voucher.peek for why a pull is seeded differently to everything else in the game.
+        --   pullSalt    the other half, minted once per profile so two playthroughs do not deal the
+        --               same sequence.
+        --
+        -- `pity` rides beside them (Summon.PITY) and `staked` survives as a BOOLEAN -- it used to be the
+        -- list of bodies the sponsor had put in the hall, and it is now just "has her voucher been
+        -- planted". `riggedPull` is the name that voucher calls, and it is spent by the pull that reads
+        -- it.
+        --
+        -- Purely additive, so Save.VERSION does not move: an older save restores with an empty purse and
+        -- no bonds, which is a company that has never pulled -- and its retired `declined` list is
+        -- simply not read, which drops it on the next write.
+        vouchers = player.vouchers,
+        bonds = player.bonds,
+        pulls = player.pulls,
+        pullSalt = player.pullSalt,
+        pity = player.pity,
+        staked = player.staked == true or nil,
+        riggedPull = player.riggedPull,
         -- STANDING WITH EACH HOUSE, as { [vendorId] = circles cleared }, and the deepest floor ever
         -- reached. What the descent USED to bank in place of what a completed quest banks: the shelf
         -- reads the first through Quest.sponsorProgress, and the second levelled the company. Both are
@@ -543,6 +584,11 @@ function Save.snapshot(player)
         -- that outlives the run -- including a wipe, which states/game.lua's rollbackRun holds this
         -- key across on purpose.
         wounds = wounds,
+        -- ...and whether anybody ever has been (models/wound.lua's Wound.everWounded), which the ledger
+        -- above stops being able to answer the moment the surgeon is paid. The Inn is the door it opens.
+        -- Purely additive, so Save.VERSION does not move: an older save restores unmarked, and the first
+        -- wound taken after loading writes it.
+        wounded = player.wounded or nil,
         -- The supper bought at the Cafe and not yet eaten through (models/meal.lua) -- a bare meal id,
         -- nil when nobody has ordered. Purely additive, so Save.VERSION deliberately does NOT move: an
         -- older save loads with no meal held, which reads as a company that has not been to the counter
@@ -559,6 +605,7 @@ function Save.snapshot(player)
         lastDeployed = lastDeployed,
         roster = roster,
         stash = stash,
+        touchstoneShelf = touchstoneShelf,
         -- THE DESCENT THIS COMPANY IS IN THE MIDDLE OF (models/descent.lua). The floor stack, the
         -- shuffled circles, every board it has mapped and whatever it dropped down there. Nil until the
         -- sponsor sends them down, and written through Descent.snapshot rather than raw because a run
@@ -579,6 +626,26 @@ end
 -- load. Unknown ids are dropped and the rest of the save survives.
 local function known(defs, id)
     return id ~= nil and defs[id] ~= nil
+end
+
+-- One item snapshot -> one live instance. Every restore path goes through here so that a SEALED piece
+-- cannot come back read: rehydrating a husk through Item.instantiate would hand the player the true
+-- name, the true stats and the " +n" for free, which is the whole feature undone by a load.
+--
+-- `models.identify` is required lazily rather than at the top of the file, and that is a cycle rather
+-- than a style choice: identify -> player -> save. Same reason models/building.lua reaches for Errand
+-- and Wound inside its own functions.
+--
+-- A blueprint that stopped being sealable since the save was written (its type changed, it became bound,
+-- its price was removed) restores READ rather than vanishing. Identify.sealed answers nil there, and
+-- losing the piece would be worse than revealing it -- the player still owns a thing they went and found.
+local function restoreItem(itemSnap)
+    if (itemSnap.unidentified or 0) > 0 then
+        local Identify = require("models.identify")
+        local husk = Identify.sealed(itemSnap.id, itemSnap.unidentified, itemSnap.level)
+        if husk then return husk end
+    end
+    return Item.instantiate(itemSnap.id, itemSnap.quantity, itemSnap.level)
 end
 
 local function restoreCharacter(snap)
@@ -603,6 +670,11 @@ local function restoreCharacter(snap)
     -- Character.instantiate's contract for it.
     if snap.xp and snap.xp > 0 then char.xp = snap.xp end
 
+    -- The bond mark, restored beside the growth it accounts for. Absent on a save from before the hall
+    -- dealt this way, which reads as a body carrying no bond growth -- exactly right for one that has
+    -- never been pulled twice.
+    if snap.bonded and snap.bonded > 0 then char.bonded = snap.bonded end
+
     -- A save written before per-class level crediting existed carries no `growthBy`, so the ledger
     -- would read as a character that had never levelled at all. Seed it the way that save's stats were
     -- actually earned: under the old rule every level went to the single dominant class, so crediting
@@ -617,7 +689,7 @@ local function restoreCharacter(snap)
     char.inventory = {}
     for cell, itemSnap in pairs(snap.inventory or {}) do
         if known(Item.defs, itemSnap.id) then
-            char.inventory[tonumber(cell)] = Item.instantiate(itemSnap.id, itemSnap.quantity, itemSnap.level)
+            char.inventory[tonumber(cell)] = restoreItem(itemSnap)
         end
     end
     -- Re-seat any bound signature relics in their authored cells. A current save already has them (at
@@ -674,7 +746,17 @@ function Save.restore(snap)
     local stash = {}
     for _, itemSnap in ipairs(snap.stash or {}) do
         if known(Item.defs, itemSnap.id) then
-            stash[#stash + 1] = Item.instantiate(itemSnap.id, itemSnap.quantity, itemSnap.level)
+            stash[#stash + 1] = restoreItem(itemSnap)
+        end
+    end
+
+    -- The Touchstone's shelf: pieces sold unnamed and still buyable back (models/identify.lua). Same
+    -- restore path as the stash, so a shelved husk comes back sealed rather than in the clear, and the
+    -- same id guard, so a piece whose blueprint left the game drops instead of crashing the load.
+    local touchstoneShelf = {}
+    for _, itemSnap in ipairs(snap.touchstoneShelf or {}) do
+        if known(Item.defs, itemSnap.id) then
+            touchstoneShelf[#touchstoneShelf + 1] = restoreItem(itemSnap)
         end
     end
 
@@ -690,6 +772,25 @@ function Save.restore(snap)
         -- A character blueprint that vanished from data drops its wounds with it, the same rule the
         -- standing above follows: nothing should carry an injury that no body can be mended of.
         if require("models.character").defs[charId] then wounds[charId] = tonumber(n) or 0 end
+    end
+    -- The hiring purse (models/voucher.lua). Vouchers carry one number and are rebuilt rather than
+    -- copied through, so a hand-edited save cannot put a table in the list; bonds are filtered against
+    -- the blueprints exactly as wounds are one block up.
+    -- THE PURSE IS A COUNT, and a save written while it was a LIST of graded tokens folds into one:
+    -- however many tickets it was holding is however many it still holds. Reading the old shape here
+    -- rather than bumping Save.VERSION keeps every other field on that save loadable, which is the same
+    -- call the `staked` list-to-boolean fold below makes.
+    local vouchers = 0
+    if type(snap.vouchers) == "table" then
+        for _ in ipairs(snap.vouchers) do vouchers = vouchers + 1 end
+    else
+        vouchers = math.max(0, math.floor(tonumber(snap.vouchers) or 0))
+    end
+    local bonds = {}
+    for charId, n in pairs(snap.bonds or {}) do
+        if require("models.character").defs[charId] and (tonumber(n) or 0) > 0 then
+            bonds[charId] = math.floor(tonumber(n))
+        end
     end
     local completedQuests = {}
     for questId in pairs(snap.completedQuests or {}) do completedQuests[questId] = true end
@@ -775,13 +876,28 @@ function Save.restore(snap)
         name = snap.name,
         authorId = snap.authorId, -- nil on an older save; Player.authorId mints one on demand
         errands = snap.errands or {},
-        -- Absent on a save from before the hall was stocked this way; an empty list reads as a company
-        -- that has turned nobody away, which is what it is.
-        declined = snap.declined or {},
+        -- THE HIRING PURSE. Absent on a save from before the hall dealt this way, and an empty purse
+        -- reads as a company that has never pulled -- which is what it is.
+        --
+        -- `bonds` is filtered against the blueprints the same way `wounds` is, one block up: a character
+        -- that vanished from data drops its bonds with it rather than leaving a ledger naming somebody
+        -- the game can no longer build.
+        --
+        -- `staked` was a LIST on an older save (the bodies the sponsor had put in the hall) and is a
+        -- boolean now. A truthy table restores as true, which is the honest reading of it: that save's
+        -- sponsor had already made good on her clause, so hers is not owed again.
+        vouchers = vouchers,
+        bonds = bonds,
+        pulls = tonumber(snap.pulls) or 0,
+        pullSalt = tonumber(snap.pullSalt),
+        pity = tonumber(snap.pity) or 0,
+        staked = snap.staked ~= nil and snap.staked ~= false,
+        riggedPull = known(require("models.character").defs, snap.riggedPull) and snap.riggedPull or nil,
         completedQuests = completedQuests,
         standing = standing,          -- absent on a save from before the descent; an empty table reads the same
         deepest = snap.deepest or 0,  -- ...and a company that has never been down has no record to beat
         wounds = wounds,              -- ...nor any bones to set
+        wounded = snap.wounded == true, -- ...and no history of any, which is what an older save reads as
         -- A meal id that vanished from data/ is dropped rather than crashing the load, exactly like a
         -- removed item or character -- and reads as a company that has not eaten.
         meal = known(require("models.meal").defs, snap.meal) and snap.meal or nil,
@@ -796,6 +912,7 @@ function Save.restore(snap)
         lastDeployed = lastDeployed,
         roster = roster,
         stash = stash,
+        touchstoneShelf = touchstoneShelf,
         -- The descent in progress, rebuilt from plain data (see the note in Save.snapshot). Nil for a
         -- company that has never gone down, and for every save written before there was a stair.
         descentRun = snap.descentRun and require("models.descent").restore(snap.descentRun) or nil,

@@ -802,7 +802,7 @@ function OverworldMap:fogFx()
 end
 
 -- Fog of war overlay (drawn after markers so it hides markers on hidden tiles).
--- Three tiers: undiscovered tiles are near-opaque churning mist; discovered tiles outside
+-- Three tiers: undiscovered tiles are opaque churning mist; discovered tiles outside
 -- the current (circular) vision radius are veiled; tiles within vision are left
 -- untouched. Uses the grid's shared inVision test so it matches what reveal lit.
 --
@@ -820,7 +820,7 @@ function OverworldMap:drawFog()
                 local c = self.grid:get(x, y)
                 local wx, wy = self.grid:cellToPixel(x, y)
                 if not c.seen then
-                    love.graphics.setColor(0.02, 0.02, 0.03, 0.98)
+                    love.graphics.setColor(0.02, 0.02, 0.03, 1)
                     love.graphics.rectangle("fill", wx, wy, s, s)
                 elseif not self.grid:inVision(self.px, self.py, x, y, r) then
                     love.graphics.setColor(0.02, 0.02, 0.03, 0.5)
@@ -838,16 +838,17 @@ function OverworldMap:drawFog()
     for y = 1, self.grid.rows do
         for x = 1, self.grid.cols do
             local c = self.grid:get(x, y)
-            local alpha
+            local alpha, breathe
             if not c.seen then
-                alpha = 0.98
+                alpha, breathe = 1, 0 -- unwalked ground is OPAQUE: the board under it never shows through
             elseif not self.grid:inVision(self.px, self.py, x, y, r) then
-                alpha = 0.5
+                alpha, breathe = 0.5, 0.06
             end
             if alpha then
                 local wx, wy = self.grid:cellToPixel(x, y)
                 sh:send("uCell", { x, y })
                 sh:send("uAlpha", alpha)
+                sh:send("uBreathe", breathe)
                 love.graphics.draw(self.fogPx, wx, wy, 0, s, s)
             end
         end
