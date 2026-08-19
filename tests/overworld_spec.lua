@@ -587,6 +587,71 @@ return {
         end,
     },
     {
+        -- THE STOPS ARE SPREAD OVER THE BOARD, and the unit is the board's own gap, not a constant.
+        --
+        -- Pinned because the old rule -- "no stop within two tiles of another" -- reads like a spacing
+        -- rule and is only a rule against stacking: on a dense board it left the seating loop free to
+        -- deal its stops in whatever order the shuffle handed over, and darts clump. Measured on this
+        -- exact config before the fix: mean nearest-neighbour 5.01 tiles, up to HALF of a board's stops
+        -- within two tiles of another one, and five stops inside a single radius-2 disc -- which is what
+        -- the player sees, because a lit disc is about that size. After: 5.87, a quarter, and three.
+        --
+        -- Held here rather than in `. board-report` because a report column no pass reads is silently
+        -- false. Thresholds sit between the two measurements, so this fails if the spread is lost and
+        -- does not fail on a seed's ordinary wobble.
+        name = "stops spread over the board rather than clumping (dense board)",
+        fn = function()
+            local nnSum, nnN, close, worstDisc = 0, 0, 0, 0
+            for seed = 1, 30 do
+                local grid = Overworld.generate({
+                    cols = 26, rows = 26, seed = seed, biome = "forest",
+                    encounterCount = { min = 14, max = 18 }, keyCount = 0,
+                    encounters = { { kind = "combat", weight = 3 }, { kind = "treasure", weight = 1 } },
+                    objective = { name = "Boss" }, houseMaterial = "material_iron",
+                })
+                local stops = {}
+                for y = 1, grid.rows do
+                    for x = 1, grid.cols do
+                        local c = grid:get(x, y)
+                        if c.encounter and c.encounter.kind ~= "objective" then stops[#stops + 1] = c end
+                    end
+                end
+                assert(#stops >= 10, "expected a dense board to hold its stops, got " .. #stops)
+                for _, a in ipairs(stops) do
+                    local best = math.huge
+                    for _, b in ipairs(stops) do
+                        if a ~= b then
+                            local d = math.abs(a.x - b.x) + math.abs(a.y - b.y)
+                            if d < best then best = d end
+                        end
+                    end
+                    if best < math.huge then
+                        nnSum, nnN = nnSum + best, nnN + 1
+                        if best <= 2 then close = close + 1 end
+                    end
+                end
+                -- The worst thing one lit disc can show. Walked over every tile, so this is the board's
+                -- worst case and not the mean it hides behind.
+                for y = 1, grid.rows do
+                    for x = 1, grid.cols do
+                        local n = 0
+                        for _, s in ipairs(stops) do
+                            if math.abs(s.x - x) + math.abs(s.y - y) <= 2 then n = n + 1 end
+                        end
+                        if n > worstDisc then worstDisc = n end
+                    end
+                end
+            end
+            local meanNN = nnSum / nnN
+            local closeShare = close / nnN
+            assert(meanNN >= 5.4, "stops are packed closer than the board can hold: mean NN " .. meanNN)
+            assert(closeShare <= 0.12,
+                "too many stops within two tiles of another: " .. closeShare)
+            assert(worstDisc <= 4,
+                "one disc holds a pile of stops: " .. worstDisc)
+        end,
+    },
+    {
         -- Skippable combats: the objective must be reachable without clearing a fight, so no
         -- combat/elite may sit on the start->objective spine (a wounded party routes around).
         -- The generator persists that spine as grid.spineKeys.

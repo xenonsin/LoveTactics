@@ -1538,6 +1538,36 @@ local GUARD_CRAFT_BONUS, GUARD_HOUSE_BONUS = 1, 1
 local ELITE_SHARE = 0.25
 local ELITE_MIN_DEPTH = 0.5
 
+-- HOW FAR APART THE STOPS STAND, which is a DERIVED number and never an authored one.
+--
+-- The seating loop used to reject a tile only when a stop already sat within two tiles of it, and two is
+-- a rule against stacking rather than a rule about spread: at that gap a floor's eighteen stops are a
+-- dart throw, and darts clump. Measured on a first descent floor -- 366 walkable tiles, twelve fights --
+-- 36% of the fights had another fight within three tiles and one a board had two, while whole wings of
+-- the same floor held nothing. What the player sees when that lands is five fights inside one lit disc
+-- and an empty map behind them, which is the same complaint the layouts' own content pass answered:
+-- a count was never the problem, the clumping was ([[board-content-measured-in-fights]]).
+--
+-- So the gap is the POISSON-DISC RADIUS for the board's own density -- the square root of the ground each
+-- stop gets to itself -- and it has to be derived because a floor and a roadside differ by a factor of
+-- three in both terms: a fixed gap that reads on one is unmeetable on the other. A board that cannot meet
+-- its own gap relaxes it a tile at a time down to STOP_GAP_MIN rather than holding fewer stops, the same
+-- graceful partial every other pass in here takes.
+local STOP_GAP_MIN = 2
+
+-- The gap `count` marks can hold on this board's walkable ground: the radius each one gets to itself if
+-- the ground is shared out evenly. Asked by every pass that puts a mark down or moves one (see
+-- STOP_GAP_MIN), so all of them space by the same number rather than each carrying its own constant.
+function Overworld:markGap(count)
+    local walk = 0
+    for y = 1, self.rows do
+        for x = 1, self.cols do
+            if self:typeWalkable(self.cells[y][x].tile) then walk = walk + 1 end
+        end
+    end
+    return math.max(STOP_GAP_MIN, math.floor(math.sqrt(walk / math.max(1, count or 1))))
+end
+
 -- Stand a fight in front of the reward, so a spur is one offer made of two tiles rather than a fight OR
 -- a payout. This is the tile-level shape of the whole overworld decision: the objective is the only
 -- fight the player MUST take, every other fight is optional, and an optional fight should be attached to
@@ -1727,6 +1757,32 @@ function Overworld:guardBoons(params)
         return nil
     end
 
+    -- A GUARD MAY NOT UNDO THE SPREAD. placeEncounters seats the fights at the widest gap the board can
+    -- hold (Overworld:markGap), and then this pass lifts most of them onto approach tiles -- so until it
+    -- asked the same question, it could set two fights three tiles apart on a floor whose own gap was
+    -- five. With the seating rule fixed, this pass was the only clumping left on a measured floor.
+    --
+    -- STOP_GAP_MIN and not the board's own gap, and half the board's gap was tried in between. A guard's
+    -- tile is chosen by the CUT, not by this pass, so a wide rule here does not move a guard somewhere
+    -- better -- it declines the guard. Measured over 120 forest boards, half the gap cost 5 points of
+    -- guarded share (50.6% -> 45.4%) to prevent six adjacent pairs in 455 fights; the floor alone gets
+    -- the pairs and keeps the share. Declining costs a guard and nothing else -- the boon stays open,
+    -- which this pass already treats as an acceptable outcome twice over (the shape and rank rules).
+    local crowdGap = STOP_GAP_MIN
+    local function crowds(tile, leaving)
+        for y = 1, self.rows do
+            for x = 1, self.cols do
+                local c = self.cells[y][x]
+                if c ~= tile and c ~= leaving and c.encounter
+                    and (c.encounter.kind == "combat" or c.encounter.kind == "elite")
+                    and math.abs(c.x - tile.x) + math.abs(c.y - tile.y) < crowdGap then
+                    return true
+                end
+            end
+        end
+        return false
+    end
+
     local target = math.floor(#boons * GUARDED_BOON_SHARE + 0.5)
     local placed, next_ = 0, 1
     for _, boon in ipairs(boons) do
@@ -1769,7 +1825,7 @@ function Overworld:guardBoons(params)
                         break
                     end
                 end
-                if src then
+                if src and not crowds(app, src) then
                     app.encounter = src.encounter
                     src.encounter = nil
                     while next_ <= #guards and (guards[next_].guards or not guards[next_].encounter) do
@@ -1855,6 +1911,16 @@ function Overworld:placePatrols(params)
         return true
     end
 
+    -- NO TWO BEATS SHARE A TILE. A beat runs up to BEAT_MAX tiles from its seat, so two walkers seated
+    -- the board's gap apart could still be dealt overlapping circuits -- and then the spread the seating
+    -- rule bought is undone by the bodies walking into each other. Measured on a first descent floor,
+    -- thirty steps of nobody-hunting wandering cost half a tile of mean separation.
+    --
+    -- Claimed as each beat is grown, so the first patrol takes the ground it wants and the next one walks
+    -- around it. Nothing is lost when a beat comes back empty: a one-tile beat is a sentry, and the
+    -- fight simply stays seated where placeEncounters put it (see the `#beat > 1` test below).
+    local claimed = {}
+
     -- Grow a beat outward from `cell` by breadth-first walk, taking only tiles `accept` allows, up to
     -- BEAT_MAX. Walked in a fixed order so a seed reproduces its beats.
     local function growBeat(cell, accept)
@@ -1865,7 +1931,7 @@ function Overworld:placePatrols(params)
             local c = q[qi]; qi = qi + 1
             for _, n in ipairs(self:pathNeighbors(c.x, c.y)) do
                 if #beat >= BEAT_MAX then break end
-                if not seen[cellKey(n)] and accept(n) then
+                if not seen[cellKey(n)] and not claimed[cellKey(n)] and accept(n) then
                     seen[cellKey(n)] = true
                     beat[#beat + 1] = { x = n.x, y = n.y }
                     q[#q + 1] = n
@@ -1902,6 +1968,7 @@ function Overworld:placePatrols(params)
             beat = growBeat(c, function(n) return not n.encounter end)
         end
         if #beat > 1 then
+            for _, b in ipairs(beat) do claimed[cellKey(b)] = true end
             self.patrols[#self.patrols + 1] = Patrol.new(c, beat, { kind = kind, guards = c.guards })
             c.encounter = nil -- the fight walks now; the cell keeps nothing
             c.guards = nil
@@ -2035,7 +2102,45 @@ function Overworld:placeEncounters(params)
     end
 
     local placed = {}
-    local next_ = 1
+
+    -- THE GAP THIS BOARD CAN AFFORD, and the two questions every seating pass below asks with it. Kept on
+    -- the board because the passes that RUN AFTER this one -- the guards, the beats -- have to space
+    -- themselves by the same number, or they undo the spread one body at a time.
+    local stopGap = self:markGap(count)
+    self.stopGap = stopGap
+
+    local function spacedAt(c, gap)
+        for _, p in ipairs(placed) do
+            if math.abs(p.x - c.x) + math.abs(p.y - c.y) < gap then return false end
+        end
+        return true
+    end
+
+    -- The first free candidate that stands clear of everything already down, walking the widest gap
+    -- first and relaxing a tile at a time. Walked from the top of the list each time rather than from a
+    -- cursor: a rule that relaxes has to be free to come back for a tile the wider pass turned down.
+    local function firstSpaced(filter)
+        for gap = stopGap, STOP_GAP_MIN, -1 do
+            for _, c in ipairs(cands) do
+                if not c.encounter and (not filter or filter(c)) and spacedAt(c, gap) then return c end
+            end
+        end
+        return nil
+    end
+
+    -- ...and the same, for a stop that wants a particular kind of ground. `prefer` outranks the gap
+    -- whole: a rest seated six tiles off the road is not the pressure valve GUARANTEE.rest asks for,
+    -- however evenly it is spread. Falls through to the first free tile of any kind, the same silent
+    -- partial placeKeys and placeCaches take on a cramped board -- a guarantee that cannot be honoured
+    -- exactly is still better honoured somewhere than dropped.
+    local function takeSpaced(prefer)
+        local pick = (prefer and firstSpaced(prefer)) or firstSpaced(nil)
+        if pick then return pick end
+        for _, c in ipairs(cands) do
+            if not c.encounter then return c end
+        end
+        return nil
+    end
 
     -- ASCENT maps (`params.ascent`): the guaranteed encounters are a ROUTE, not a set. Seated ALONG THE
     -- ROAD in authored order, so `always = { pickets, pickets, line, line, breach }` is met
@@ -2120,10 +2225,11 @@ function Overworld:placeEncounters(params)
         return
     end
 
-    -- Guaranteed specific encounters first (placed even if a little close).
+    -- Guaranteed specific encounters first -- spaced like every other stop. They used to be taken off
+    -- the front of the list "even if a little close", which on a quest that authors three of them put
+    -- the three things the quest is ABOUT in one corner of the board.
     for _, e in ipairs(always) do
-        local c = cands[next_]
-        next_ = next_ + 1
+        local c = takeSpaced()
         if c then
             c.encounter = { kind = e.kind, id = e.id, name = e.name,
                             loot = e.loot, conversation = e.conversation }
@@ -2146,29 +2252,6 @@ function Overworld:placeEncounters(params)
         return (spineDist[cellKey(c)] or math.huge) <= radius
     end
 
-    -- The next free candidate, preferring one that satisfies `prefer`. Falls back to the first free tile
-    -- of any kind, the same silent partial fallback placeKeys and placeCaches take on a cramped board --
-    -- a guarantee that cannot be honoured exactly is still better honoured somewhere than dropped.
-    --
-    -- A preferred pick can come from ANYWHERE in the list, not just the front, so `next_` is re-seated to
-    -- the first free candidate afterwards rather than blindly incremented. Taking a cell out of the middle
-    -- is safe: it now carries an encounter, and the fill loop below skips it on its own spacing rule
-    -- (a placed cell reads distance 0 to itself).
-    local function takeCandidate(prefer)
-        local pick
-        if prefer then
-            for _, c in ipairs(cands) do
-                if not c.encounter and prefer(c) then pick = c; break end
-            end
-        end
-        if not pick then
-            for _, c in ipairs(cands) do
-                if not c.encounter then pick = c; break end
-            end
-        end
-        return pick
-    end
-
     for _, kind in ipairs(params.guaranteeKinds or { "relic_cache", "rest" }) do
         local g = guaranteeFor(params, kind)
         -- A flat `count` wins over a density: it is the more specific statement, and a map that names one
@@ -2181,12 +2264,11 @@ function Overworld:placeEncounters(params)
         local entry = (have < want) and guaranteedEntry(pool, kind) or nil
         local prefer = (g and g.spine) and function(c) return withinSpine(c, g.spine) end or nil
         while entry and have < want do
-            local c = takeCandidate(prefer)
+            local c = takeSpaced(prefer)
             if not c then break end -- board is full: it simply holds fewer, as everywhere else here
             c.encounter = { kind = entry.kind, id = entry.id, name = entry.name }
             placed[#placed + 1] = c
             have = have + 1
-            while cands[next_] and cands[next_].encounter do next_ = next_ + 1 end
         end
     end
 
@@ -2249,71 +2331,85 @@ function Overworld:placeEncounters(params)
         if ok then anyFightable = true end
     end
 
-    for i = next_, #cands do
-        if #placed >= target then break end
-        local c = cands[i]
-        local ok = true
-        for _, p in ipairs(placed) do
-            if math.abs(p.x - c.x) + math.abs(p.y - c.y) < 2 then ok = false; break end
-        end
-        if ok then
-            local pick = self:pickEncounter(pool)
-            -- Re-seat a fight as a non-combat stop when it cannot stand here: on the walkable spine, or
-            -- once the combat-share cap is full. Keep the fight only if the pool has no texture left.
-            -- A FIGHT IS NEVER SEATED WHERE A FIGHT CANNOT HAPPEN. The board locks an 8x8 window of
-            -- these tiles and walls it, so a stop dealt onto a 1-wide corridor is not a hard fight, it
-            -- is four bodies in a queue. Demoted like the two rules beside it rather than moved, so the
-            -- stop count and the quest's authored pool are untouched -- the tile keeps its marker and
-            -- the marker stops being a fight.
-            --
-            -- Corridor contact is still perfectly legal: a patrol that catches the party mid-hall gets
-            -- exactly that fight, and it should. This rule only governs what the GENERATOR chooses to
-            -- put somewhere, which is a different question from what the player walks into.
-            local thin = anyFightable and not seats[c]
-            local onSpine = self.spineKeys and not params.ascent and self.spineKeys[cellKey(c)]
+    -- ONE STOP, SEATED ON A TILE THAT HAS ALREADY CLEARED THE GAP. Lifted out of the loop below because
+    -- the loop is now two -- the whole candidate list is walked once per gap (see STOP_GAP_MIN) -- and a
+    -- body this long repeated inside a relaxation would be the same rules read twice.
+    local function seat(c, gap)
+        local pick = self:pickEncounter(pool)
+        -- Re-seat a fight as a non-combat stop when it cannot stand here: on the walkable spine, or
+        -- once the combat-share cap is full. Keep the fight only if the pool has no texture left.
+        -- A FIGHT IS NEVER SEATED WHERE A FIGHT CANNOT HAPPEN. The board locks an 8x8 window of
+        -- these tiles and walls it, so a stop dealt onto a 1-wide corridor is not a hard fight, it
+        -- is four bodies in a queue. Demoted like the two rules beside it rather than moved, so the
+        -- stop count and the quest's authored pool are untouched -- the tile keeps its marker and
+        -- the marker stops being a fight.
+        --
+        -- Corridor contact is still perfectly legal: a patrol that catches the party mid-hall gets
+        -- exactly that fight, and it should. This rule only governs what the GENERATOR chooses to
+        -- put somewhere, which is a different question from what the player walks into.
+        local thin = anyFightable and not seats[c]
+        local onSpine = self.spineKeys and not params.ascent and self.spineKeys[cellKey(c)]
 
-            -- LOOK FOR ROOM BEFORE GIVING UP THE FIGHT. Demoting outright was tried and it bought
-            -- almost nothing at a real price: thin seats fell 0.88 -> 0.70 a board while the fights
-            -- themselves fell 4.3 -> 3.9, because most thin seats are guardBoons standing a guard in a
-            -- spur mouth later, not this loop. So a fight dealt onto a corridor goes looking for a
-            -- clearing among the candidates still free, and only demotes if the board has none.
-            if isFight(pick.kind) and thin and not onSpine then
-                for j = i + 1, #cands do
-                    local alt = cands[j]
+        -- LOOK FOR ROOM BEFORE GIVING UP THE FIGHT. Demoting outright was tried and it bought
+        -- almost nothing at a real price: thin seats fell 0.88 -> 0.70 a board while the fights
+        -- themselves fell 4.3 -> 3.9, because most thin seats are guardBoons standing a guard in a
+        -- spur mouth later, not this loop. So a fight dealt onto a corridor goes looking for a
+        -- clearing among the candidates still free, and only demotes if the board has none.
+        --
+        -- The clearing it moves to is asked for the same gap first, because a look-ahead that moved a
+        -- body without asking where the other bodies are would undo the spread one fight at a time.
+        -- But it RELAXES rather than gives up: measured over 120 forest boards, holding the rescue to
+        -- the full gap demoted 3% of the board's fights to texture, and a fight seated a little close
+        -- is worth more than a stop that stopped being a fight -- which is the trade this whole
+        -- look-ahead exists to make.
+        if isFight(pick.kind) and thin and not onSpine then
+            for g = gap, STOP_GAP_MIN, -1 do
+                for _, alt in ipairs(cands) do
                     if not alt.encounter
                         and not (self.spineKeys and not params.ascent and self.spineKeys[cellKey(alt)])
-                        and seats[alt] then
-                        local spaced = true
-                        for _, p in ipairs(placed) do
-                            if math.abs(p.x - alt.x) + math.abs(p.y - alt.y) < 2 then spaced = false; break end
-                        end
-                        if spaced then c, thin = alt, false; break end
+                        and seats[alt] and spacedAt(alt, g) then
+                        c, thin = alt, false
+                        break
                     end
                 end
+                if not thin then break end
             end
+        end
 
-            if isFight(pick.kind) and (onSpine or thin or combatPlaced >= combatCap) then
-                pick = self:pickNonCombat(pool) or pick
+        if isFight(pick.kind) and (onSpine or thin or combatPlaced >= combatCap) then
+            pick = self:pickNonCombat(pool) or pick
+        end
+        -- Then the rank rule, after the kind rule: a stop demoted to texture above is no longer a
+        -- fight and must not spend the elite budget on its way past.
+        if pick.kind == "elite" then
+            local depth = (startDist[cellKey(c)] or 0) / farthest
+            if depth < ELITE_MIN_DEPTH or elitePlaced >= eliteCap then
+                pick = self:pickOrdinaryCombat(pool) or pick
             end
-            -- Then the rank rule, after the kind rule: a stop demoted to texture above is no longer a
-            -- fight and must not spend the elite budget on its way past.
-            if pick.kind == "elite" then
-                local depth = (startDist[cellKey(c)] or 0) / farthest
-                if depth < ELITE_MIN_DEPTH or elitePlaced >= eliteCap then
-                    pick = self:pickOrdinaryCombat(pool) or pick
-                end
-            end
-            if pick.kind == "elite" then elitePlaced = elitePlaced + 1 end
-            -- NOTE: steering spur ends toward rewards was tried here and removed. It reads well -- a
-            -- find belongs at the end of a corridor -- but placeCaches already claims the dead ends one
-            -- pass earlier, so the only thing left for the steer to do was convert fights into boons. On
-            -- a board where boons already outnumber fights, that spends the guards it was meant to
-            -- create. What limits guarding is the SUPPLY OF FIGHTS, not where the rewards sit.
-            if pick then
-                c.encounter = { kind = pick.kind, id = pick.id, name = pick.name }
-                placed[#placed + 1] = c
-                if isFight(pick.kind) then combatPlaced = combatPlaced + 1 end
-            end
+        end
+        if pick.kind == "elite" then elitePlaced = elitePlaced + 1 end
+        -- NOTE: steering spur ends toward rewards was tried here and removed. It reads well -- a
+        -- find belongs at the end of a corridor -- but placeCaches already claims the dead ends one
+        -- pass earlier, so the only thing left for the steer to do was convert fights into boons. On
+        -- a board where boons already outnumber fights, that spends the guards it was meant to
+        -- create. What limits guarding is the SUPPLY OF FIGHTS, not where the rewards sit.
+        if pick then
+            c.encounter = { kind = pick.kind, id = pick.id, name = pick.name }
+            placed[#placed + 1] = c
+            if isFight(pick.kind) then combatPlaced = combatPlaced + 1 end
+        end
+    end
+
+    -- WIDEST GAP FIRST, then a tile narrower, and so on down to STOP_GAP_MIN. The first pass takes only
+    -- tiles that stand the board's whole gap clear of every stop already down -- which is what spreads
+    -- the stops over the floor instead of over the front of the shuffled list -- and each pass after it
+    -- fills in what a board too cramped for its own stop count has left. A board that meets its gap
+    -- never runs the narrower passes at all: they find nothing to place, because the target is met.
+    for gap = stopGap, STOP_GAP_MIN, -1 do
+        if #placed >= target then break end
+        for _, c in ipairs(cands) do
+            if #placed >= target then break end
+            if not c.encounter and spacedAt(c, gap) then seat(c, gap) end
         end
     end
     self.encounterCount = #placed

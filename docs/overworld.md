@@ -127,6 +127,13 @@ length, one to four tiles deep, in headlands and bays. The tiles stay square; th
   wounded company can always route to a boss — or past one, to another. The spine is the **union** of
   the paths back from every end, so the road home is a road *network* and the rule reads the same across
   all of it.
+- **Two kinds of end, two marks.** Everything downstream of the generator calls an end an `objective` —
+  the arena's cap, the salvage, the payout, all of which want one answer — but a board can carry an end
+  that belongs to the *map* and an end that belongs to a *name*, and on a descent floor it usually
+  carries both: the guard standing on the stair down, and the errand a house asked for. `ui/overworld_map.lua`
+  splits them at the draw, off the `questId` an end stamped with a piece of work already carries: a
+  **pennant** for the board's own end, a **writ** for posted work, both in the same gold because both
+  are things the day ends at. A campaign ground, where every end is a quest, is all writs.
 - **Every other fight is optional, and an optional fight should be attached to something worth
   having.** That is `guardBoons`: the boon behind, the fight in the way.
 - **Only the deepest approach is gated.** `keyCount` is authored per quest, so summing them across a
@@ -138,6 +145,24 @@ length, one to four tiles deep, in headlands and bays. The tiles stay square; th
   board that keeps doing it is a sizing rule falling behind what a ground can hold. It sits around 8%
   today, concentrated in the room-carve grounds that have almost no degree-1 tiles at all.
 - **A fight is never seated where a fight cannot happen.** See the fightability floor below.
+- **The stops are spread at the gap the board can hold, and the gap is derived.** `Overworld:markGap`
+  answers "how much ground does each mark get to itself" — the square root of walkable tiles over the
+  stop count, i.e. the Poisson-disc radius for this board's own density — and every pass that puts a mark
+  down or moves one spaces by that number: the seating loop walks the whole candidate list at the widest
+  gap first and relaxes a tile at a time when a board cannot meet it, a guard may not be lifted onto a
+  tile that touches another fight, and no two patrol beats share a tile. It has to be derived because a
+  descent floor and a roadside differ by a factor of three in both terms — 18 stops on 380 walkable tiles
+  against 10 on 620 — so any fixed gap is nominal on one and unmeetable on the other.
+
+  The rule it replaced was `< 2`, which reads like spacing and is only a rule against *stacking*: below
+  it the order the shuffle dealt in decided everything, and darts clump. Measured on a dense 26×26 board,
+  30 seeds: mean nearest-neighbour **5.01 → 5.87** tiles, stops within two tiles of another **19% → 7%**
+  (worst board: half of them → a quarter), and the most stops inside one radius-2 disc — about what a lit
+  disc shows — **5 → 3**. Five fights in one disc with an empty map behind them was the complaint that
+  started this; it is the same finding the layouts' own content pass made one layer down, where a count
+  was never the problem and the clumping was. Composition is unmoved: a floor still holds 17.9 stops and
+  11.4 fights, guarded boons 44.4% → 41.8%, the tier arc unchanged. Pinned in `tests/overworld_spec.lua`,
+  not in `. board-report`, because a report column no pass reads is silently false.
 - **The fog lifts off what the party can see, not off what is near it.** Vision is cast, not measured:
   `Overworld:inVision` asks the radius (`inRange`, the soft Euclidean disc) *and* line of sight
   (`models/vision.lua`, recursive shadowcasting from the party's tile), so a wall stops the light and
