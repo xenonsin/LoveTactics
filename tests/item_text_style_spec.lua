@@ -52,6 +52,38 @@ local BANNED = {
     "greater power",
 }
 
+-- Bare comparative magnitudes: "hits harder", "blows are heavier", "bites deeper". The word says a
+-- number moved without saying which number or by how much, which is the one thing rules text exists
+-- to do -- and unlike the vague DURATIONS above there is no tooltip row standing by to cover for it.
+-- BANNED already held the intensified forms ("far more", "far deeper", "greater power"); the bare
+-- ones leaked through the same hole for 19 items until this list caught them.
+--
+-- The fix is never a synonym. It is one of two things, both of which the doc spells out: read the
+-- real coefficient out of the effect code and write the `Increase damage by N per ...` directive, or
+-- -- when a stat ROW already prints the figure (Fist Damage, Aura Amount, Gather Power) -- name the
+-- effect in plain game nouns and let the row carry the number.
+--
+-- Whole-word and case-insensitive. Comparatives only: "hard"/"deep"/"heavy" are ordinary adjectives
+-- ("a hard counter", "deep in the fog") and are deliberately absent.
+local COMPARATIVES = {
+    "harder", "heavier", "deeper", "stronger", "weaker", "bigger", "greater",
+}
+
+-- Elliptical increments: a second conditional bonus written as a fragment that leans on the clause
+-- before it -- "Increase damage by 4 if the target's stamina is 0, and 4 more if its mana is 0."
+-- A card never abbreviates the second half. Each condition either gets its own whole sentence
+-- ("Increase damage by 4 if X. Increase damage by 4 if Y.") or the two collapse into the canonical
+-- `for each` directive. The fragment is the tell, so the pattern is a bare number followed by
+-- "more" under an "and": "and 4 more", "and 2 more". Lua patterns, matched case-insensitively.
+--
+-- Narrow on purpose. A number-plus-"more" that is a real magnitude keeps working -- "Deal 50% more
+-- damage to a Rooted foe", "the ground beside you costs 1 more" -- because neither hangs off an
+-- "and" the way an abbreviated repeat does.
+local ELLIPTICAL = {
+    "%f[%a]and%s+%d+%s+more%f[%A]",
+    "%f[%a]and%s+%d+%%%s+more%f[%A]",
+}
+
 -- Whole-word lowercase leaks: a named status hiding in a lowercase verb ("it roots the foe")
 -- instead of its capitalized noun ("inflicts Root"). Matched CASE-SENSITIVELY on purpose -- a
 -- capitalized reference to a status the target already has ("a Frozen or Stunned foe", "immune to
@@ -100,6 +132,28 @@ local function allText(def)
     return out
 end
 
+-- Rules text the player reads that is NOT on an item: a trait's badge tooltip mid-fight and a status's
+-- glossary entry beside the item tooltip. docs/item-text.md calls both item text and holds them to the
+-- same rules, and the `mend` sweep below already reaches them -- under the old carve-out that is exactly
+-- where the banned word survived. A magnitude rule has the same hole: seven trait descriptions were
+-- still saying "harder" when every item had stopped.
+local function eachRulesText()
+    local out = {}
+    for _, it in ipairs(eachItem()) do
+        for _, desc in ipairs(descriptions(it.def)) do out[#out + 1] = { id = it.id, text = desc } end
+    end
+    for _, source in ipairs({ { "trait", Trait.defs }, { "status", Status.defs } }) do
+        local ids = {}
+        for id in pairs(source[2]) do ids[#ids + 1] = id end
+        table.sort(ids)
+        for _, id in ipairs(ids) do
+            local d = source[2][id].description
+            if type(d) == "string" then out[#out + 1] = { id = source[1] .. " " .. id, text = d } end
+        end
+    end
+    return out
+end
+
 return {
     {
         name = "no description uses vague duration or magnitude filler (docs/item-text.md)",
@@ -113,6 +167,35 @@ return {
                                 .. ' way; use a controlled duration or let the tooltip row carry it'
                                 .. ' (docs/item-text.md)')
                     end
+                end
+            end
+        end,
+    },
+    {
+        name = "a magnitude is a number, never a bare comparative -- items, traits and statuses alike",
+        fn = function()
+            for _, entry in ipairs(eachRulesText()) do
+                local low = entry.text:lower()
+                for _, word in ipairs(COMPARATIVES) do
+                    assert(not low:find("%f[%a]" .. word .. "%f[%A]"),
+                        entry.id .. ' says "' .. word .. '" -- a comparative is not a magnitude.'
+                            .. ' Read the coefficient out of the effect and write "Increase'
+                            .. ' damage by N per ...", or name the effect and let the stat row'
+                            .. ' carry the number (docs/item-text.md)')
+                end
+            end
+        end,
+    },
+    {
+        name = "a second conditional bonus is a whole sentence, not \"and N more\" (docs/item-text.md)",
+        fn = function()
+            for _, entry in ipairs(eachRulesText()) do
+                local low = entry.text:lower()
+                for _, pat in ipairs(ELLIPTICAL) do
+                    assert(not low:find(pat),
+                        entry.id .. ' abbreviates a second bonus ("and N more") -- write the'
+                            .. ' condition out in its own sentence, or collapse both into'
+                            .. ' "for each" (docs/item-text.md)')
                 end
             end
         end,

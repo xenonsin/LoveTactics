@@ -17,7 +17,7 @@
 return {
     name = "Hollowed",
     abbr = "Holw",
-    description = "Hollowed: physical blows barely land, and magic bites far deeper.",
+    description = "Increases defense by 40. Magical blows deal 10 more.",
     color = { 0.782, 0.800, 0.852 }, -- badge tint (thin grey-white)
     duration = 10,                -- ~2 turns: an escape, not a stance
     statBonus = { defense = 40 }, -- steel finds the floor of 1 and nothing more

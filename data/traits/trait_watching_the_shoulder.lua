@@ -23,7 +23,7 @@
 -- pure read, so this is safe on the preview and tooltip paths that call flatStat every frame.
 return {
     name = "Watching the Shoulder",
-    description = "Strikes harder for each point of Tempo held.",
+    description = "Increase damage by 1 per point of Tempo held.",
     live = function(ctx)
         local n = require("models.combat").chargePool(ctx.unit, "tempo")
         if n == 0 then return nil end

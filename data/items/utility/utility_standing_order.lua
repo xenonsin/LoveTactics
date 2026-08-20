@@ -14,7 +14,7 @@
 -- this makes all of them permanently harder to remove.
 return {
     name = "The Standing Order",
-    description = "Every construct you field is upgraded: harder, tougher, and it lasts.",
+    description = "Grants Giant's Vigour and Empowered to every construct you field, and heals them. Stacks.",
     flavor = "He does not repair them. He revises them, which is a different relationship.",
     sprite = "assets/items/sig_standing_order.png",
     type = "utility",

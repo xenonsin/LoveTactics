@@ -9,7 +9,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Alchemic Mastery",
-    description = "Adjacent consumables hit harder.",
+    description = "Increases the amount every adjacent consumable deals or heals.",
     flavor = "Dead weight on its own. Every bomb in the satchel would like to sit beside it.",
     sprite = "assets/items/alchemic_mastery.png",
     type = "utility",

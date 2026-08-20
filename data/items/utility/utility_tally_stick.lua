@@ -14,7 +14,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Tally Stick",
-    description = "Heavier for the coin your company holds, and for everything you have taken this fight.",
+    description = "Increase damage by 1 per 250 gold your company holds, up to 10. Increase damage by 3 per item taken this battle.",
     flavor = "Notched on both edges, end to end. The Tally kept the accounts of everyone who came down " ..
         "here, and all of them were behind.",
     sprite = "assets/items/tally_stick.png",

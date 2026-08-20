@@ -6,7 +6,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Drunken Fist",
-    description = "Bare-handed strikes hit far harder while Drunk; nothing while sober.",
+    description = "Adds damage to bare-handed strikes while Drunk. Does nothing while sober.",
     flavor = "A gambler's charm, sold by a priest who has made his peace with the arrangement.",
     sprite = "assets/items/drunken_fist.png",
     type = "utility",

@@ -12,7 +12,7 @@
 -- high-water mark. Losing the health loses the damage, which is what stops it being a free ramp.
 return {
     name = "Larder",
-    description = "Blows are heavier for every point of health held above half.",
+    description = "Increase damage by 1 per 6 health you hold above half.",
     share = 6, -- a point of damage per this much health above the halfway mark
     onCast = function(ctx)
         local hp = ctx.unit.char and ctx.unit.char.stats and ctx.unit.char.stats.health

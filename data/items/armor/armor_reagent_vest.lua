@@ -24,7 +24,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Reagent Vest",
-    description = "Adjacent consumables hit harder and carry poison.",
+    description = "Increases the amount every adjacent consumable deals or heals, and gives each the poison tag.",
     flavor = "The Crucible issues it to the ones who stopped asking what a thing does and started asking what it does next.",
     sprite = "assets/items/armor_reagent_vest.png",
     type = "armor",

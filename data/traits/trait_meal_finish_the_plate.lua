@@ -18,7 +18,7 @@
 -- has left rather than on the ceiling it started the campaign with.
 return {
     name = "Finish the Plate",
-    description = "Strikes land harder against anything already below half its health.",
+    description = "Increase damage by 5 against a foe below half health.",
     amount = 5,
     damageBonusVs = function(ctx)
         local tgt = ctx.target

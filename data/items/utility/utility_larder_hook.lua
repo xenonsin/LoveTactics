@@ -15,7 +15,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Larder Hook",
-    description = "Your blows are heavier for every point of health you hold above half.",
+    description = "Increase damage by 1 per 6 health you hold above half.",
     flavor = "The Gralloch hung its catch on this. Nothing on it was ever taken down.",
     sprite = "assets/items/larder_hook.png",
     type = "utility",

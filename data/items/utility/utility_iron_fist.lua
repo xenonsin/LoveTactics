@@ -6,7 +6,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Iron Fist",
-    description = "Bare-handed strikes hit markedly harder. Does nothing for a weapon.",
+    description = "Adds damage to bare-handed strikes. Does nothing for a weapon.",
     flavor = "Hands hardened past a weapon's need. The Cathedral does not ask how, and is not told.",
     sprite = "assets/items/iron_fist.png",
     type = "utility",

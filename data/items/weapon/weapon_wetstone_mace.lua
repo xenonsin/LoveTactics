@@ -16,7 +16,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Wetstone Mace",
-    description = "Inflicts Wet and Knockback 2; the charged head bites deeper on anything already Wet.",
+    description = "Inflicts Wet and Knockback 2.",
     flavor = "The quenching trough is not for cooling it. Nobody at the forge has ever been able to explain what it is for.",
     sprite = "assets/items/wetstone_mace.png",
     type = "weapon",

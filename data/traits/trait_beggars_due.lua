@@ -11,7 +11,7 @@
 -- a foe that stops being easy, which is the counterplay and should stay available.
 return {
     name = "Beggar's Due",
-    description = "Heavier against a foe with an empty pool, and heavier still with both empty.",
+    description = "Increase damage by 4 if the target's stamina is 0. Increase damage by 4 if the target's mana is 0.",
     bonus = 4, -- damage per empty pool
     onCast = function(ctx)
         local target = ctx.unitAt(ctx.tx, ctx.ty)

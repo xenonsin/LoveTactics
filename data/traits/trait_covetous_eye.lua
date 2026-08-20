@@ -12,7 +12,7 @@
 -- killing it into the other side's best play. The Glass alone never gave them that decision.
 return {
     name = "Covetous Eye",
-    description = "Heavier against a foe with more health than you; against everyone while your copy stands.",
+    description = "Increase damage by 5 against a foe with more health than you, or against any foe while your copy stands.",
     bonus = 5,
     onCast = function(ctx)
         local target = ctx.unitAt(ctx.tx, ctx.ty)

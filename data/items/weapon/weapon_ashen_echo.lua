@@ -19,7 +19,7 @@ local CEILING = 14   -- ...and the cap, so a long fight cannot turn it into a ge
 
 return {
     name = "Ashen Echo",
-    description = "Strikes an adjacent foe, harder for every blow it has taken.",
+    description = "Strikes an adjacent foe. Increase damage by 2 per 10 health it is missing, up to 14.",
     flavor = "It has no opinions of its own. It has an excellent memory for other people's.",
     sprite = "assets/items/ashen_echo.png",
     type = "weapon",

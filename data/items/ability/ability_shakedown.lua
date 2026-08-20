@@ -27,7 +27,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Shakedown",
-    description = "Strikes a foe, harder the more health it still has, and shakes coin loose.",
+    description = "Increase damage by 1% per 1% of the target's remaining health. Gain gold on the same scale.",
     flavor = "You cannot shake down a ruined man. The Undercroft's whole art is getting there first.",
     sprite = "assets/items/ability_shakedown.png",
     type = "ability",

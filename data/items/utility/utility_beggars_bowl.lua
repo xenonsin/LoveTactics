@@ -14,7 +14,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Beggar's Bowl",
-    description = "Heavier against a foe with an empty pool, and heavier still with both empty.",
+    description = "Increase damage by 4 if the target's stamina is 0. Increase damage by 4 if the target's mana is 0.",
     flavor = "Carried through the nave for a hundred years. It has never held anything.",
     sprite = "assets/items/beggars_bowl.png",
     type = "utility",

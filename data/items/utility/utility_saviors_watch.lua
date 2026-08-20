@@ -23,7 +23,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Savior's Watch",
-    description = "Strikes harder and walks further for each wounded ally within three tiles, up to three.",
+    description = "Increase damage by 2 and movement by 1 per wounded ally within 3 tiles, up to 3.",
     flavor = "He never learned to run. He learned that some distances shorten themselves if you look at them right.",
     sprite = "assets/items/saviors_watch.png",
     type = "utility",

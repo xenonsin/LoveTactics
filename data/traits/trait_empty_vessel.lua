@@ -14,7 +14,7 @@
 -- hitting the party's dog would make the charm a flat damage bonus wearing a condition.
 return {
     name = "Empty Vessel",
-    description = "Your blows land far harder against a caster whose mana is spent.",
+    description = "Increase damage by 8 against a foe whose mana is 0.",
     magnitude = 8, -- flat damage against a caster whose pool is spent
     damageBonusVs = function(ctx)
         local t = ctx.target

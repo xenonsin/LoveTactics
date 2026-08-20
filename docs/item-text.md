@@ -91,6 +91,24 @@ Several effect shapes have one canonical wording so the corpus reads uniform. Cl
   glossary (`data/keywords/keyword_knockback.lua`, surfaced from the dry run's `out.knockback`), and the
   tooltip also carries a `Knockback: N tiles` row — the same reinforcement a named status gets from its
   hourglass row, so writing the count in the text is not a banned row-restatement here.
+- **A magnitude is a number, never a bare comparative.** `harder`, `heavier`, `deeper`, `stronger`,
+  `weaker`, `bigger`, `greater` are banned outright — they say a number moved without saying which or
+  by how much, and unlike a vague duration there is no tooltip row standing by to cover for it. The
+  fix is never a synonym; it is one of two things. Either read the real coefficient out of the effect
+  code and write the directive — `"Blows are heavier for every point of health held above half."` →
+  `"Increase damage by 1 per 6 health you hold above half."` — or, when a **stat row already prints
+  the figure** (Fist Damage, Aura Amount, Gather Power), name the effect in plain game nouns and let
+  the row carry it: `"Bare-handed strikes hit markedly harder."` → `"Adds damage to bare-handed
+  strikes."` A comparative is also where a description goes quietly stale: the Ashen Echo said
+  `"harder for every blow it has taken"` while its effect had always read *missing health*, and no
+  one could see the difference because neither half named a number.
+- **A second conditional bonus is a whole sentence, never an ellipsis.** Two conditions that each
+  add the same amount are written out in full — `"Increase damage by 4 if the target's stamina is 0.
+  Increase damage by 4 if the target's mana is 0."` — or collapsed into the `for each` directive
+  below. Never abbreviate the second half onto the first (`"…is 0, and 4 more if its mana is 0"`): a
+  card repeats the clause rather than making the reader carry a number across a comma. Name the
+  pools, states and thresholds exactly (`stamina is 0`), not a category standing in for them (`an
+  empty pool`).
 - **Scaling is a directive:** `Increase|Decrease damage for each <condition>.` — `"Increase damage for
   each foe in area."`, `"Increase damage for each foe you have killed this battle."` Never "lands
   harder for every…", "devastating against a lone foe, weaker for every extra body".

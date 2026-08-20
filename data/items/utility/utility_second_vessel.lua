@@ -18,7 +18,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Second Vessel",
-    description = "Heavier against a foe with more health than you; against everyone while your copy stands.",
+    description = "Increase damage by 5 against a foe with more health than you, or against any foe while your copy stands.",
     flavor = "The vats were run twice. This held what came off the second time, and the Crucible sold " ..
         "it as the first.",
     sprite = "assets/items/second_vessel.png",

@@ -48,7 +48,7 @@ end
 
 return {
     name = "Borrowed Time",
-    description = "A coup that lands harder the more hurt the foe is. Every third kill collected, it quickens the whole party.",
+    description = "Increase damage by 0.6% per 1% of the foe's missing health. At three kills collected, grants the party Haste.",
     flavor = "Time is money, and she is the one debtor in the city who gives it away. She keeps none of it.",
     sprite = "assets/items/sig_borrowed_time.png",
     type = "weapon",

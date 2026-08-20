@@ -16,7 +16,7 @@
 -- grid catches anything else that fills it too.
 return {
     name = "The Tally",
-    description = "Heavier for the coin your company holds, and for everything you have taken this fight.",
+    description = "Increase damage by 1 per 250 gold your company holds, up to 10. Increase damage by 3 per item taken this battle.",
     perCoin = 250,  -- gold per point of damage
     ceiling = 10,   -- ...and the cap, so a rich save does not walk in unkillable
     perTaken = 3,   -- a point per item in your grid you did not start the fight with

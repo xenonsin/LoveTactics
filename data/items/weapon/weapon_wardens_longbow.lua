@@ -28,7 +28,7 @@ return {
     price = 345,
     unlockQuests = 2,
     activeAbility = {
-        description = "Holding the draw longer draws a heavier shaft: each extra tick adds a quarter of the shot.",
+        description = "Increase damage by 25% per extra tick held, up to three.",
         target = "enemy",
         range = 5,    -- the family's reach: two tiles past a bow
         minRange = 2, -- and the family's dead zone

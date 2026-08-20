@@ -21,7 +21,7 @@
 -- see across the ground it is about to cross.
 return {
     name = "Savior's Watch",
-    description = "Strikes harder and walks further for each wounded ally within three tiles, up to three.",
+    description = "Increase damage by 2 and movement by 1 per wounded ally within 3 tiles, up to 3.",
     live = function(ctx)
         local n = ctx.countWounded(3, "ally")
         if n == 0 then return nil end

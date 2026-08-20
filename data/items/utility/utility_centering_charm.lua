@@ -12,7 +12,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Centering Charm",
-    description = "Replaces Wait with Gather: end your turn to coil, so your next landed blow hits far harder.",
+    description = "Replaces Wait with Gather: end your turn to coil and gain Empowered.",
     flavor = "A breath held is a blow saved. The Cathedral's fighting monks keep no other secret.",
     sprite = "assets/items/centering_charm.png",
     type = "utility",
