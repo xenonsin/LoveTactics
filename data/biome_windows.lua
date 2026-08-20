@@ -25,7 +25,9 @@
 -- castle, and a schedule wide enough to carry all of them would have propped up the imbalance instead
 -- of exposing it. The window is set where castle SHOULD sit -- about fifteen quests, level with its
 -- neighbours -- and the re-authoring pass closes the gap from the other side. Until it does,
--- `. biome-report` will show castle days carrying more work than the rest.
+-- `. biome-report` will show castle days carrying more work than the rest. The eighteen have since
+-- been RE-CUT rather than added to: the middle season gave four of its days back to the last week, on
+-- the row itself, because four house lines end in the capital and none of them could reach it.
 -- WHY THE FIRST FORTNIGHT IS WIDE. Measured, not guessed: `. biome-report` prints the live pool per
 -- day, and on day 1 it is ONE -- the debut, which every gate in models/quest.lua conspires to make the
 -- only thing on the board. A window that shuts the debut's ground is not pressure, it is a campaign
@@ -35,9 +37,17 @@
 -- the board widens rather than on a shape picked for its own sake.
 return {
     -- id            windows, inclusive day ranges     open days
-    castle     = { { 1, 9 },   { 23, 31 } }, --          18
+    -- THREE WINDOWS AND STILL EIGHTEEN DAYS. The third one is not extra capital, it is the middle
+    -- season's own days moved to the end of the campaign, because that is where the capital is needed:
+    -- four of the eight house lines FINISH here (arcanum, cathedral, undercroft, and the alchemist's
+    -- last approach), and a table that shut the castle on day 31 shut it nine days before those endings
+    -- could be reached. `. biome-report` said so directly -- the breadth walk ended with the True Ledger
+    -- and the Next Unequalled live, castle-bound, and out of reach on every remaining morning, which is
+    -- a blocked day whatever else is open. Their fiction cannot be widened out of it either: the ledger
+    -- room is IN the Bank and the shortlist is read in the Arcanum's own halls.
+    castle     = { { 1, 9 },   { 23, 27 }, { 34, 37 } }, -- 18
     forest     = { { 1, 16 },  { 30, 37 } }, --          24
-    -- THE ONLY GROUND WITH THREE WINDOWS, and the third one is a hole being closed rather than a shape
+    -- THE OTHER GROUND WITH THREE WINDOWS, and its third one is a hole being closed rather than a shape
     -- being drawn. The tundra used to shut for good on day 31, and `. biome-report`'s committed walk ran
     -- into the consequence the moment the Colosseum's re-homing shifted its route: on day 39 it held
     -- eight live quests and five of them were tundra, with nothing reachable anywhere. The last three

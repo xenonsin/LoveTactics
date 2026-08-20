@@ -193,9 +193,19 @@ return {
                     "the '%s' policy is blocked on %d day(s) -- run `. biome-report` for the worklist",
                     policy.id, r.blocked))
                 -- A window may decide WHERE a day is spent; it must never cost the day itself.
-                assert(r.ran >= base.ran, string.format(
-                    "the schedule cost the '%s' policy %d expedition(s) against a no-window baseline",
-                    policy.id, base.ran - r.ran))
+                --
+                -- MEASURED IN DAYS, and it used to be measured in quests (`r.ran >= base.ran`), which
+                -- was the same number until bcb959e and is a different claim after it. When a day
+                -- bought one quest, "no day was lost" and "no quest was lost" said the same thing; now
+                -- a day buys a whole GROUND, so quests-run also counts how crowded the ground the
+                -- company picked was, and a schedule that routes a day onto a thinner one has cost the
+                -- player nothing -- it has done its job. Held as quests the assertion forbids the
+                -- windows from ever creating scarcity, which is the one thing they are for: the
+                -- breadth walk clears 92 of 92 with the table switched off, and every ending the
+                -- windows put out of reach reads as a failure rather than as a deadline.
+                assert(r.idleDays <= base.idleDays, string.format(
+                    "the schedule left the '%s' policy %d day(s) that advanced no line, against %d "
+                    .. "with no windows at all", policy.id, r.idleDays, base.idleDays))
             end
         end,
     },
