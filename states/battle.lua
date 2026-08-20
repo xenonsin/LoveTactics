@@ -488,6 +488,17 @@ local function finishBattle(result)
             -- mercy revive -- see the note there.
             rescue = battle.rescue,
         })
+        -- ...and what the OBJECTIVE itself pays, hung beside the rolled spoils rather than folded into
+        -- them. A separate field because the two are granted by different code on different beats: the
+        -- table above is paid out by grantSideSpoils when Continue is pressed, and this was already paid
+        -- by the branch that runs after it (an errand's purse, the guardian's own piece, the circle's
+        -- tokens). Putting these ids in `spoils.loot` would have handed every one of them over twice.
+        --
+        -- Asked here, at the moment the fight is decided, because the answer depends on what the player
+        -- owns and the fight can move that. See states/game.lua's previewObjectiveReward.
+        if spoils and battle.objectiveReward then
+            spoils.awarded = battle.objectiveReward()
+        end
     end
 
     -- THE BENCH'S SHARE OF THE FIGHT. Paid here, and here rather than at either of the overworld's
@@ -4743,6 +4754,13 @@ function battle.enter(self, opts)
     -- defeat panel. Passed down rather than computed, since the fight knows nothing about the run.
     battle.lostHaul = opts.lostHaul
     battle.encounter = opts.encounter or { kind = "combat", name = "Battle" }
+    -- What clearing an OBJECTIVE pays, as a function to ask when the fight is decided
+    -- (states/game.lua's previewObjectiveReward). An objective's spoils are the salvage floor and
+    -- nothing else -- its real payout is handed over by the beat after this panel closes -- so without
+    -- this the one fight a floor is built around reports the thinnest reward on the board. Display
+    -- only: what it names is granted downstream, never here. Nil for every caller with no objective
+    -- behind it (a road stop, a mock battle, a draft, a duel).
+    battle.objectiveReward = opts.objectiveReward
     battle.generalsStanding = opts.generalsStanding
     battle.day = opts.day or 1 -- the campaign day, which sets the far side's level and the spoils band
     -- The campaign player, kept so a won fight can pay the bench its share of the experience

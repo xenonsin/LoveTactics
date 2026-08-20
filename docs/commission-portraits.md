@@ -75,11 +75,11 @@ eight **vendors** are the shopkeepers of the town's shops; the **Demon Lord** is
 | `general_gluttony.png` | **Gula, the Unsated** | Gluttony | Never full; aggressive, devouring. |
 | `general_envy.png` | **Livia, the Unborn** | Envy | A homunculus who pacted to become human. |
 
-### The eight vendors — shopkeepers
+### The nine vendors — shopkeepers
 One VN portrait each, for the shop's proprietor. Seven are themed to a sin (their quest line ends
-facing that general); the Cafe is the odd one out — no sin, no quest line, and it sells no goods at
-all, only a hot meal before the road ([meals.md](meals.md)). Files match the vendor id
-(`data/vendors/*.lua`).
+facing that general); two are not. The Cafe sells no goods at all, only a hot meal before the road
+([meals.md](meals.md)), and the Touchstone sells no goods either — only a **reading**
+([identification.md](identification.md)). Files match the vendor id (`data/vendors/*.lua`).
 
 | File | Shop | Sin | The shop's read |
 |---|---|---|---|
@@ -91,6 +91,7 @@ all, only a hot meal before the road ([meals.md](meals.md)). Files match the ven
 | `undercroft.png` | **The Undercroft** | Greed | No sign, no door you'd notice; everything inside belonged to someone else. |
 | `hunters_lodge.png` | **Hunter's Lodge** | Gluttony | Antlers on every beam; they ask what you killed before your name. |
 | `cafe.png` | **The Cafe** | — (neutral) | A cook, not a merchant. She feeds companies on their way out and remembers which ones came back. |
+| `touchstone.png` | **The Touchstone** | — (neutral) | An assayer, not a merchant. Four houses dig the rift and none of them trusts the other three to say what came out of it, so she is the one they all pay to say it — which makes her the only person in the city who is nobody's. Older than the diggers she serves, unhurried, entirely uninterested in what anything is worth to *you*. A lamp on a swing-arm, a slab of dark stone worn pale down its middle, loupe pushed up on her forehead. Her hands should be the second thing you look at. |
 
 ### The final boss
 | File | Name | Notes |

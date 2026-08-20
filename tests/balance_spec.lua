@@ -23,6 +23,7 @@ local Item = require("models.item")
 local Vendor = require("models.vendor")
 local Discipline = require("models.discipline")
 local Forge = require("models.forge")
+local Errand = require("models.errand") -- the rungs a house really asks for; see the forge-ceiling case
 
 -- id -> why this body is exempt from EVERY rule below.
 --
@@ -414,10 +415,13 @@ return {
         fn = function()
             local bad = {}
             for _, vendorId in ipairs(houses()) do
-                local lineLength = 0
-                for _, def in pairs(Quest.defs) do
-                    if def.sponsor == vendorId then lineLength = lineLength + 1 end
-                end
+                -- THE LINE IS THE ERRANDS IT ASKS FOR, not everything it sponsors. This counted every
+                -- quest naming the vendor -- twelve to fourteen apiece -- and a house asks for six
+                -- (models/errand.lua). The rest are unasked, and the descent is the only mode there is,
+                -- so a quest nobody is sent to is a quest nobody can finish. Walking a standing no
+                -- player can reach is how this stayed green while every bench in the game stopped a
+                -- rung short of the ladder.
+                local lineLength = Errand.tiers(vendorId)
                 -- A class item of this house, to ask the ceiling about something real.
                 local sample
                 for id, def in pairs(Item.defs) do

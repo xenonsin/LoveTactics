@@ -100,9 +100,28 @@ end
 -- wrong. A `unlockQuest` gate needs the player, so a def that names one is treated as locked when
 -- all that was handed over is a number.
 --
--- Two kinds of gate, ANDed: `unlockPrestige` is the city growing as the company does, and
--- `unlockQuest` is a door a particular story opens -- the dueling grounds do not appear because you
--- got richer, they appear because you fought on the sand once.
+-- THE GATES, ANDed. Each one is a different kind of deed, and the reason there are several is that the
+-- city grows on what the company has DONE rather than on a currency:
+--
+--   unlockPrestige   the campaign's ladder. Parked at 1 everywhere -- see Building.RETIRED.
+--   unlockQuest      a door a particular story opens. No shipped card uses it; see tests/hub_spec.lua.
+--   unlockErrand     the first piece of work a house posts on a floor (models/errand.lua).
+--   unlockAnyErrand  ...or ANY house's, which is the Markets: a square of seven shut shopfronts is a
+--                    door onto a corridor of doors, so it arrives with its first tenant.
+--   unlockDepth      how far down this company has ever been (models/descent.lua's Descent.deepest).
+--                    The Cafe at floor two, the Forge at floor four.
+--   unlockWound      somebody has been carried up broken (models/wound.lua's Wound.everWounded). The
+--                    Inn, whose only job is setting a bone.
+--   unlockUnidentified  the company is carrying something it cannot read (models/identify.lua). The
+--                    Touchstone, whose only job is reading it. The most literal of the six: the player
+--                    finds the thing, cannot use it, and THEN the door is there.
+--
+-- WHY THE LAST THREE EXIST AT ALL, since the plaza opened whole on a fresh save until they did. Four of
+-- the eight cards on the first screen of the game do nothing yet: there is no bone to set, no shelf to
+-- browse, no supper worth buying for a road nobody has walked and nothing in the bag to forge. So the
+-- city opens on the doors that work -- hire somebody, look at what they carry, go down -- and each of
+-- the rest arrives on the expedition that gives it a job. The player learns a building at a time, and
+-- learns each one at the moment it is useful.
 --
 -- `opts.district` picks which board is being laid out -- "city" (the default) or "market". The shops all
 -- moved behind one Markets card and onto a board of their own; see Building.DISTRICTS.
@@ -142,11 +161,27 @@ function Building.list(playerOrPrestige, opts)
             --
             -- The quest gate is IGNORED for these, not satisfied: it names a campaign quest that cannot
             -- be completed, so honouring it would keep the door shut whatever the player did underground.
+            local Errand = require("models.errand")
             local byErrand = errandVendor(id, def)
             if byErrand then
-                locked = not require("models.errand").doorOpen(player, byErrand)
+                locked = not Errand.doorOpen(player, byErrand)
             elseif def.unlockQuest then
                 locked = locked or not (player and Player.hasCompleted(player, def.unlockQuest))
+            end
+            -- ...and the three gates the city itself grew on (see the header). ANDed onto whatever the
+            -- gates above decided rather than replacing it, because they ask different questions: none
+            -- of these three cards is a shop, so none of them is on an errand gate to be overruled.
+            if def.unlockAnyErrand then
+                locked = locked or not Errand.anyDoorOpen(player)
+            end
+            if def.unlockDepth then
+                locked = locked or require("models.descent").deepest(player) < def.unlockDepth
+            end
+            if def.unlockWound then
+                locked = locked or not require("models.wound").everWounded(player)
+            end
+            if def.unlockUnidentified then
+                locked = locked or not require("models.identify").everFound(player)
             end
             list[#list + 1] = {
                 id = id,
@@ -161,7 +196,15 @@ function Building.list(playerOrPrestige, opts)
                 vendor = def.vendor, -- vendor id for shop buildings; nil otherwise
                 unlockPrestige = def.unlockPrestige or 1,
                 unlockQuest = def.unlockQuest, -- quest id that opens this door, or nil
+                unlockDepth = def.unlockDepth, -- floor this company must have stood on, or nil
                 district = district, -- "city" or "market"; which board this card belongs to
+                -- WHAT THIS DOOR IS FOR, in ONE short sentence. It is the second half of the coach
+                -- bubble the city puts on a card it has just grown (states/hub.lua's doorText) -- so it
+                -- is not flavour, it is the whole of what the player is told about a building before
+                -- they walk into it, and it has to fit in a 240px bubble beside the card's name.
+                -- Every city card carries one; tests/hub_doors_spec.lua fails one that does not, and
+                -- one too long to fit.
+                description = def.description,
                 -- A SHUT DOOR SAYS NOTHING, and that is a decision rather than an omission. The card
                 -- carried a sentence for an afternoon -- "Beat the circle of Lust", composed off
                 -- whichever gate was really being asked -- and it was the right fix for a card quoting
@@ -191,6 +234,85 @@ function Building.vendorUnlockPrestige(vendorId)
         end
     end
     return 1
+end
+
+-- ---------------------------------------------------------------------------
+-- Doors the city has grown: the ledger, and what is owed an announcement
+-- ---------------------------------------------------------------------------
+--
+-- THE PROBLEM A GROWING CITY HAS. Six of the nine cards on the plaza are shut on a fresh save and each
+-- opens on a deed done underground (see the gate table above) -- so the player comes up from a floor,
+-- and a building that was three question marks is suddenly a name. Nothing says it happened, nothing
+-- says what the room is for, and the one moment the door is interesting is the moment it appears. A
+-- card that quietly stops being locked is a feature delivered by not being mentioned.
+--
+-- So the city COACHES a door it has just grown, in exactly the way it coaches the hall and the stair on
+-- the first visit (states/hub.lua's INTRO_STAGES): a bubble pinned to the card, carrying the card's name
+-- and the blueprint's own `description` of what the room is for, and while it is up that card is the
+-- only one that opens. A room explained and then walked into is learned; a room explained is read.
+--
+-- A POP-UP DID THIS FOR AN AFTERNOON and was cut. The city already has a grammar for "press this, and
+-- here is why", and a modal in front of it covers the plate it is naming, has to be dismissed before the
+-- thing it is pointing at can be reached, and makes a new counter a bigger event than the stair the
+-- whole game is about. The sentence it carried is in the bubble now.
+--
+-- `player.seenDoors` is the whole of the memory: building id -> true, for every door the player has
+-- been shown. It is NIL rather than empty until the city is first looked at, and that distinction is
+-- load-bearing -- an empty table would be indistinguishable from a save written before this existed,
+-- and every such save would come back to a city announcing all three of its opening doors as news.
+-- Building.seedSeen is what flips nil to a real ledger, and it can never leave it empty (the plaza
+-- always has the stair, the hall and the Armory open).
+
+-- Has the player looked at the city at all? False only before Building.seedSeen has ever run, which is
+-- the first hub entry of a new game -- and every save written before the ledger existed.
+function Building.seeded(player)
+    return type(player and player.seenDoors) == "table"
+end
+
+-- Has this door already been announced (or been open since before the ledger started)?
+function Building.seenDoor(player, id)
+    return ((player and player.seenDoors) or {})[id] == true
+end
+
+-- Record that the player has been shown this door, so it is never announced again. Called when the
+-- coached card is actually walked into -- by the deed, not by the bubble being read, for the reason the
+-- first visit's hire stage is: a lesson satisfied by reading a card teaches reading cards.
+function Building.markSeen(player, id)
+    if not (player and id) then return end
+    player.seenDoors = player.seenDoors or {}
+    player.seenDoors[id] = true
+end
+
+-- Record every door the city currently has open, announcing none of them. The first look at the city,
+-- and the only way the ledger is created.
+--
+-- What it buys is that nothing already standing is ever news. On a new game that is the three cards the
+-- plaza opens with -- the stair, the hall and the Armory -- which are the first visit's own business
+-- (states/hub.lua's INTRO_STAGES coaches two of them, and a forced tour of the third on top of the
+-- sponsor's scene would be a fourth thing happening before the player has pressed anything). On a save
+-- written before any of this existed it is however much of the city that company had already earned,
+-- which is exactly right: they have been using those rooms for hours.
+function Building.seedSeen(player)
+    if not player then return end
+    player.seenDoors = player.seenDoors or {}
+    for _, b in ipairs(Building.list(player, { district = "city" })) do
+        if not b.locked then player.seenDoors[b.id] = true end
+    end
+end
+
+-- The doors the city has grown that the player has not been shown yet, in board order (the Gate first,
+-- the Touchstone last) so a morning that opened two of them announces them in the order they are read.
+--
+-- EMPTY WHILE UNSEEDED, deliberately. An unseeded ledger means the player has not looked at the city,
+-- and nothing that was already there when they arrived is news -- so the safe answer to "what is new"
+-- for somebody who has seen nothing is "nothing", and the caller seeds first (states/hub.lua).
+function Building.unannounced(player)
+    if not Building.seeded(player) then return {} end
+    local new = {}
+    for _, b in ipairs(Building.list(player, { district = "city" })) do
+        if not b.locked and not Building.seenDoor(player, b.id) then new[#new + 1] = b end
+    end
+    return new
 end
 
 return Building

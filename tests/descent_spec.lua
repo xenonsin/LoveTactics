@@ -332,8 +332,14 @@ return {
         -- And a circle owns a RUN of floors, all on her ground -- so the sequence of floors has to be
         -- seven contiguous blocks, never interleaved. Checked across many seeds because a single one
         -- could be a lucky permutation.
+        --
+        -- WALKED ON BOTH ORDERS. A first descent takes Dante's (Descent.INFERNO) and a post-Crown one
+        -- deals its own, and this rule is about the SHAPE of a stratum rather than about which sin
+        -- holds it -- so it has to hold either way, and running only the default would leave the
+        -- shuffle with no coverage at all now that it is no longer what a fresh run does.
         for seed = 1, 40 do
             local run = Descent.new(nil, seed)
+            run.shuffled = (seed % 2 == 0) or nil
             local order, seen = {}, {}
             for floor = 1, Descent.CIRCLE_FLOORS do
                 local sin = Descent.sinAt(run, floor)
@@ -350,6 +356,87 @@ return {
             end
             assert(#order == #Descent.SINS, "seed " .. seed .. " deals " .. #order .. " circles, not seven")
         end
+    end },
+
+    { name = "a first descent walks Dante's order, top to bottom", fn = function()
+        -- THE POEM IS THE FIRST WAY DOWN. A first descent is the only time the seven circles are new,
+        -- and dealing them at random spends that once and never gets it back -- a player who meets
+        -- Pride on floor one and Lust on floor thirteen has been handed the fiction backwards with no
+        -- way to be told there was an order.
+        --
+        -- Lust, Gluttony and Greed are Dante's second, third and fourth circles outright; the Wrathful
+        -- hold the surface of the Styx in the fifth with the Sullen submerged beneath them, so sloth is
+        -- the deeper of that pair; the envious who act are among the fraudulent in the eighth; and pride
+        -- is the ninth circle itself, Lucifer frozen at the centre.
+        local want = { "lust", "gluttony", "greed", "wrath", "sloth", "envy", "pride" }
+        for i, id in ipairs(want) do
+            assert(Descent.INFERNO[i] == id,
+                "circle " .. i .. " of the poem should be " .. id .. ", got " ..
+                tostring(Descent.INFERNO[i]))
+        end
+        assert(#Descent.INFERNO == #Descent.SINS, "the poem names every circle and no others")
+
+        -- Every id names a real sin, exactly once. A typo here would silently drop a circle to the
+        -- fallback tail of Descent.sinOrder and read as "the order is slightly different", which is a
+        -- bug with no symptom.
+        local byId, seen = {}, {}
+        for _, sin in ipairs(Descent.SINS) do byId[sin.id] = true end
+        for _, id in ipairs(Descent.INFERNO) do
+            assert(byId[id], id .. " is in the running order but is not one of the seven")
+            assert(not seen[id], id .. " is listed twice")
+            seen[id] = true
+        end
+        for id in pairs(byId) do assert(seen[id], id .. " has no place in the running order") end
+
+        -- ...and the floors actually come out that way, on any seed, for a company that has not
+        -- finished. The seed is what deals the shuffle; it must not touch this.
+        for _, seed in ipairs({ 1, 777, 4242 }) do
+            local run = Descent.new(Player.new(), seed)
+            assert(not run.shuffled, "a company that has beaten nothing walks the poem")
+            for i, id in ipairs(Descent.INFERNO) do
+                local floor = (i - 1) * Descent.FLOORS_PER_CIRCLE + 1
+                assert(Descent.sinAt(run, floor).id == id,
+                    "seed " .. seed .. ": floor " .. floor .. " should be " .. id ..
+                    ", got " .. Descent.sinAt(run, floor).id)
+            end
+        end
+    end },
+
+    { name = "breaking the Crown is what opens the shuffle", fn = function()
+        -- THE SHUFFLE IS THE POST-GAME. It is what makes going back down worth doing, and it is a
+        -- reward for having seen the authored order rather than a substitute for it -- so the Demon
+        -- Lord at the bottom is what turns it on (states/game.lua banks it when the Crown falls).
+        local fresh = Player.new()
+        assert(not Player.hasFinishedCampaign(fresh), "precondition: nothing beaten yet")
+        assert(not Descent.new(fresh, 99).shuffled, "a first run is not shuffled")
+
+        Player.finishCampaign(fresh)
+        assert(Player.hasFinishedCampaign(fresh), "the Crown is broken")
+        assert(Descent.new(fresh, 99).shuffled, "and the next run deals its own order")
+
+        -- A RUN IN PROGRESS KEEPS THE ORDER IT OPENED WITH. The flag is stamped at the mouth rather
+        -- than asked per floor, so a layout cannot move under a company standing in the middle of it --
+        -- and it rides in the save, or a resume would re-derive a different descent.
+        local run = Descent.new(fresh, 99)
+        local before = {}
+        for floor = 1, Descent.CIRCLE_FLOORS do before[floor] = Descent.sinAt(run, floor).id end
+        local restored = Descent.restore(reserialize(Descent.snapshot(run)))
+        for floor = 1, Descent.CIRCLE_FLOORS do
+            assert(Descent.sinAt(restored, floor).id == before[floor],
+                "a resumed run disagrees about floor " .. floor)
+        end
+
+        -- ...and it really is a different order from the poem, or the reward is invisible. Checked over
+        -- several seeds: one shuffle could come out as the identity by luck, forty cannot.
+        local moved = false
+        for seed = 1, 40 do
+            local r = Descent.new(fresh, seed)
+            for i, id in ipairs(Descent.INFERNO) do
+                local floor = (i - 1) * Descent.FLOORS_PER_CIRCLE + 1
+                if Descent.sinAt(r, floor).id ~= id then moved = true end
+            end
+        end
+        assert(moved, "every shuffled seed dealt Dante's order: the shuffle is not running")
     end },
 
     { name = "a stratum is a descent toward its general, not interchangeable floors", fn = function()
@@ -454,7 +541,12 @@ return {
         -- The determinism the resume rests on: a run is saved as a seed and a depth, and everything
         -- else is re-derived. Two runs on one seed must agree, and a run must still agree with itself
         -- after a round trip through the serializer.
+        --
+        -- ON THE SHUFFLED PATH, because that is the only one where the seed decides anything: Dante's
+        -- order is the same list on every seed, so a run laid out that way would pass this case with
+        -- the derivation entirely broken.
         local a, b = Descent.new(nil, 777), Descent.new(nil, 777)
+        a.shuffled, b.shuffled = true, true
         for floor = 1, #Descent.SINS do
             assert(Descent.sinAt(a, floor).id == Descent.sinAt(b, floor).id,
                 "two runs on seed 777 disagree about floor " .. floor)
@@ -464,6 +556,155 @@ return {
             assert(Descent.sinAt(restored, floor).id == Descent.sinAt(a, floor).id,
                 "a resumed run disagrees about floor " .. floor)
         end
+    end },
+
+    { name = "no fight on any floor of a descent can be walked over", fn = function()
+        -- THE CASE THAT EARNS ITS KEEP. A player walked onto floor one and the first marker they met
+        -- offered to auto-resolve itself -- encounter_stag, a lone ancient stag, which is a perfectly
+        -- good ROADSIDE fight on a quest board and a formality with a marker on it in a dungeon.
+        --
+        -- Rated through Muster, which is the same ruler states/game.lua asks before it offers the walk-off
+        -- (Muster.canWalkOver against game:musterMargin), against the company that really walks each
+        -- floor: the prologue's pair, the hireling the sponsor staked, whoever the floors' own recruit
+        -- stops added by then, all at the floor's level. So this is the question the player asked, put to
+        -- every fight in the mode instead of the one they happened to stand next to.
+        local Muster = require("models.muster")
+        local Growth = require("models.growth")
+        local Character = require("models.character")
+        local Encounter = require("models.encounter")
+
+        -- THE STRONGEST COMPANY THAT CAN BE STANDING ON THIS FLOOR, which is the only honest side to ask
+        -- from: a walk-over is decided on the margin, so modelling a thinner party would quietly stop
+        -- catching the thing this case exists to catch, and modelling one that cannot exist yet would
+        -- harden the shallow floors against nobody.
+        --
+        -- WHAT CAN BE STANDING THERE is now a schedule rather than a guess. The company walks to the
+        -- stair as THREE -- the prologue's pair, plus the hireling the sponsor staked at the Hiring Hall
+        -- (models/voucher.lua's Voucher.stake) -- and the fourth arrives through a voucher, which is paid
+        -- for CLEARING A CIRCLE. So four is unreachable until the first circle is behind you.
+        --
+        -- It used to grow the company by walking guaranteeKinds looking for a recruit stop. That stop is
+        -- gone, and the loop silently stopped adding anybody -- which left this rating a company of three
+        -- against every floor including the deep ones a company of four walks.
+        local function companyAt(floor)
+            local p = Player.new()
+            p.roster = { Character.instantiate("character_avatar"),
+                         Character.instantiate("character_rowan") }
+            Player.recruit(p, "character_saber")
+            if floor > Descent.FLOORS_PER_CIRCLE then
+                Player.recruit(p, "character_kaya")
+            end
+            local want = floor > Descent.FLOORS_PER_CIRCLE and Descent.PARTY_MAX or Descent.PARTY_MAX - 1
+            assert(#p.roster == want, string.format(
+                "floor %d's reference company should hold %d, got %d", floor, want, #p.roster))
+            for _, c in ipairs(p.roster) do
+                Growth.resolve(c, 1 + (floor - 1) * Descent.LEVEL_PER_FLOOR)
+            end
+            return p
+        end
+
+        for floor = 1, Descent.CIRCLE_FLOORS do
+            local p = companyAt(floor)
+            local run = Descent.new(p, 4242)
+            run.floor = floor
+            local quest = Descent.floorQuest(run, p)
+            local ours = Muster.company(Muster.fielded(p))
+            local day = math.max(1, math.floor(floor / Descent.FLOORS * 40))
+            local rated = 0
+            for _, e in ipairs(Descent.floorPool({ day = day, biome = quest.map.biome })) do
+                if e.kind == "combat" or e.kind == "elite" then
+                    local margin = Muster.margin(ours, Muster.encounter(Encounter.get(e.id), {
+                        day = day, floorLevel = quest.floorLevel,
+                        enemyLevel = quest.dangerLevel, quest = quest,
+                    }))
+                    if margin then
+                        rated = rated + 1
+                        assert(not Muster.canWalkOver(margin), string.format(
+                            "floor %d offers %s at %.0f%% -- the company can skip it outright",
+                            floor, e.id, margin))
+                    end
+                end
+            end
+            -- ...and the floor still HAS fights. A filter that emptied the pool would satisfy every
+            -- assertion above by leaving nothing to assert about.
+            assert(rated >= 5, "floor " .. floor .. " draws from only " .. rated .. " rateable fights")
+        end
+    end },
+
+    { name = "a floor drops its lightest fights, and nothing that fields none", fn = function()
+        -- The rule behind the case above, stated where it is enforced (Descent.MIN_SHARE): a floor seats
+        -- no fight worth less than a share of its own median one. Relative rather than absolute so it
+        -- re-derives itself as content lands, and NOT company-relative -- "drop what the company could
+        -- walk over" is the rule one actually wants and it would make the pool a function of the roster,
+        -- when a floor's layout has to reproduce from (seed, floor) alone or the resume has nothing to
+        -- stand on.
+        local Encounter = require("models.encounter")
+        local Muster = require("models.muster")
+        for _, sin in ipairs(Descent.SINS) do
+            for _, day in ipairs({ 1, 2, 8, 20, 40 }) do
+                local ctx = { day = day, biome = sin.biome }
+                local kept, fights, texture = {}, 0, 0
+                for _, e in ipairs(Descent.floorPool(ctx)) do
+                    if e.kind == "combat" or e.kind == "elite" then
+                        fights = fights + 1
+                        kept[#kept + 1] = Muster.encounter(Encounter.get(e.id), { day = day })
+                    else
+                        texture = texture + 1
+                    end
+                end
+                -- Nothing left on the floor is under the line, measured against the median of what is
+                -- left. A filter that ran once over the unfiltered pool and then let a survivor sit below
+                -- the new median would pass a naive check and still leave a formality on the board.
+                table.sort(kept)
+                local median = kept[math.ceil(#kept / 2)]
+                if median and #kept >= Descent.SHARE_FLOOR_N then
+                    assert(kept[1] >= median * Descent.MIN_SHARE * 0.9, string.format(
+                        "%s at day %d keeps a fight at %.0f%% of its median", sin.biome, day,
+                        kept[1] / median * 100))
+                end
+
+                -- THE HALF THAT WOULD ROT SILENTLY: a rest, a reliquary and a merchant field nobody, so
+                -- a worth filter that forgot to ask what KIND it was looking at would strip a floor of
+                -- everything that is not a fight and leave every case above passing.
+                assert(texture > 0, sin.biome .. " at day " .. day .. " lost all of its non-fight stops")
+                assert(fights >= Descent.SHARE_FLOOR_N,
+                    sin.biome .. " at day " .. day .. " is down to " .. fights .. " fights")
+            end
+        end
+
+        -- ...and the lone body is gone as a CONSEQUENCE rather than as a second rule. A one-body
+        -- composition cannot be worth half a floor's median, so the count follows from the worth -- which
+        -- is the right way round, since a body count was the first cut here and it stopped being enough
+        -- the moment the same blueprint composed two.
+        for _, sin in ipairs(Descent.SINS) do
+            for _, day in ipairs({ 1, 2, 8, 20, 40 }) do
+                local ctx = { day = day, biome = sin.biome }
+                for _, e in ipairs(Descent.floorPool(ctx)) do
+                    if e.kind == "combat" or e.kind == "elite" then
+                        local comp = Encounter.get(e.id).composition
+                        local ids = type(comp) == "function" and comp(ctx) or comp
+                        if type(ids) == "table" then
+                            assert(#ids > 1, string.format("%s fields %d on %s at day %d",
+                                e.id, #ids, sin.biome, day))
+                        end
+                    end
+                end
+            end
+        end
+
+        -- ...and the BLUEPRINT is untouched. data/encounters/ is shared with the campaign, where a lone
+        -- stag on a forest road is the encounter it was written to be; what the descent refuses is
+        -- seating it, not its existence. A "fix" that edited the composition would pass everything above
+        -- and quietly change a campaign fight nobody asked about.
+        local stag = Encounter.get("encounter_stag")
+        assert(stag, "the stag blueprint still exists")
+        assert(#stag.composition({ day = 1 }) == 1,
+            "the stag is still the lone beast the campaign road wants")
+        local onRoad = false
+        for _, e in ipairs(Encounter.pool({ day = 1, biome = "forest" })) do
+            if e.id == "encounter_stag" then onRoad = true end
+        end
+        assert(onRoad, "and the campaign's own forest pool still offers it")
     end },
 
     { name = "a floor is mostly fights, and its elites do not grow with the company", fn = function()

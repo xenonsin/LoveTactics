@@ -1,0 +1,195 @@
+# The Count
+
+**The price on coming back up early.** One number on the descent run, `models/descent.lua`, drawn on the
+Rift's own plate in the city. It climbs when the company takes the ascent stair and falls when it goes
+deeper.
+
+## What it is for
+
+Every other event in the descent's loop was already priced, and priced well:
+
+| Event | What it is | What it costs |
+|---|---|---|
+| Healing | a need | nothing, and it stays that way |
+| A bed at the Inn | a need | 25 a head (`Gate.INN_PER_HEAD`), and wounds are 120 (`Wound.MEND_COST`) |
+| A wipe | a failure | the haul as a guarded pack, most of the purse, a wound on every head |
+| **Climbing out** | **a decision** | **nothing at all** |
+
+So the optimal play was to walk back to the ascent tile after every fight, go up, take the city's free
+`Player.restore`, and come back down to a floor already cleared and already lit — `Descent.keepFloor`
+keeps the board, so the return trip crossed dead ground. The retreat was meant to be *"priced in the
+distance back to it"* (`states/game.lua`, the ascent branch); after one pass that distance is free.
+
+**The voluntary climb-out is the only event in the loop that is a decision with an alternative.** That is
+why it is the one being charged, and the constraint that produced it is worth stating, because several
+cheaper designs were built and thrown away against it:
+
+> A cost on recovery is a tax on *needing* to recover, and needing to recover is what being bad at the
+> game looks like.
+
+Healing, beds and rests all fail that test — the first two are needs and the third is a need with a
+timer. So does a **bounded allowance** (one bed per floor reached, *Darkest Dungeon 2*'s inn), which is
+the same defect wearing a counter: a cap is equal in supply and unequal in impact, and only the
+struggling player ever reaches it. The failure case is exempt here for the same reason — a wipe already
+costs more than a retreat, and charging it twice would make dying the cheaper move.
+
+## The fiction, which was already written
+
+Iselle, in the first conversation of the game
+(`data/conversations/prologue/conversation_prologue_sponsor.lua`):
+
+> Nothing down there is born. It forms. That is the other half of the trade, and the Crown pays by the
+> floor to keep the count down. We call it pruning.
+>
+> So the deep floors go unpruned. Then the count climbs, and what is down there comes up the stair and
+> out into the country.
+>
+> Bellmere, four nights ago. That did not come over the hills, it came up out of this ground.
+
+The number *is* that count, and the worked example is the fight the player has already fought. Nothing
+new had to be invented; one line had to be repaired. It used to read *"They breed"*, which is untrue —
+demons and monsters materialise out of the Demon Lord's power.
+
+**"Pruning" survived that correction on purpose.** It is a gardening word for something that does not
+grow, which is exactly right as trade slang: Iselle runs a digging house, from the outside an
+infestation that comes back looks like something that grows back, and her line already frames it as a
+nickname rather than a description. The wrong word costs nothing and pays off at the bottom of the hole.
+
+## The three seams
+
+```
+climbing out        +1   Descent.climbOut    -- states/game.lua's ascent branch, the only caller
+reaching a floor    -1   Descent.advance     -- the one place a floor number rises
+sealing a circle    -2   Descent.clearFloor  -- inside the existing once-only general-floor guard
+```
+
+Floored at nought and capped at `Descent.COUNT_MAX`. The floor matters: a company that sealed everything
+would otherwise bank a credit against withdrawals it has not made, and *"I may now come up eleven times
+for free"* is a purse, not a pacing rule.
+
+The payback rides `Descent.advance` rather than `game.enter` because that is the one function a floor
+number rises in — so every way down pays back exactly once (the landing's stair, and a floor that gives
+way), and **re-entering a floor the company climbed out of pays nothing**, because the number does not
+move. The walk back to where they were is correctly worth zero.
+
+A wipe cannot reach any of this. `Descent.climbOut` has one call site and the loss path is not it.
+
+### What it produces
+
+A full descent pays back 28 on its own — fourteen floors stepped onto, seven circles sealed.
+
+| Play style | Withdrawals a floor | Where it ends up |
+|---|---|---|
+| Pressing on | 1 | never leaves the lowest band |
+| Cautious | 2 | never leaves the lowest band either — the seals cancel it exactly |
+| Careless | 3 | near the top by the bottom of the rift, in the band where the plaza boards up |
+| Shuttling | 7 | full on floor three |
+
+`tests/count_spec.lua` pins both, measured at the worst moment of each floor rather than after the stair
+has paid it back — a peak read post-descent flatters every play style equally and proves nothing.
+
+**These ratios are provisional and are meant to be measured.** `COUNT_MAX = 15` is derived from a floor's
+stop count, not from a played descent. It was 25, which was too slack — a full descent pays back 28 on
+its own, so even a careless company finished around half full and the city never went dark on anybody.
+
+**What the maximum does not do** is worth knowing before it is moved again: it does not touch the careful
+player at all. One withdrawal a floor nets zero against the stair's own payback, and two a floor is
+cancelled exactly by the seals, so both sit at nought whatever the ceiling is. The maximum decides how
+fast the *careless* fill. If ordinary play should feel this, the dial is `COUNT_SEAL` (−2 → −1), not
+`COUNT_MAX`.
+
+## The readout
+
+`ui/count_meter.lua`, one widget with three callers, so the player learns to read it once: the Rift card
+in the plaza, the Rift screen's right-hand column under the purse, and the Way Up card underground.
+
+**Marks rather than a bar.** The thing being shown is an integer that moves one step at a time; a
+continuous fill would claim a continuous quantity and hide the step. Fifteen marks grouped in fives
+are countable at a glance, and the whole budget is legible the first time it is seen. No numeral — the
+fives carry the count, and a figure beside them says the same thing twice on a plate that also holds a
+building's name.
+
+**The Way Up card is the exception**, and takes the transition form — `11 → 12 of 15` — because there the
+player is being told what a move they have not made yet would do. It sits on the panel's *prompt* rather
+than on the option's description: `ui/panels/choice.lua` grows its box to fit a wrapped prompt and holds
+every option card at a fixed 70px, so a third description line spills over the card below it.
+
+**The change gets a beat.** The mark that just filled rises into the row from below over a quarter of a
+second while the ones already lit sit still — vertical arrival into a horizontal row, so it reads as an
+addition rather than a fill. Once, on the first draw after the number moved, never looping.
+
+### Nothing before the first climb-out
+
+The readout is hidden until the player takes the ascent stair for the first time. Not a threshold on the
+number — their own act, which is the moment it becomes about something they did. Once revealed it stays,
+even at nought, which is `Wound.everWounded`'s pattern and the Inn's own argument: the mark rather than
+the ledger, or the readout comes off the plaza the morning after it was earned.
+
+Two one-way marks, and they are deliberately not one:
+
+- `player.climbedOut` — set the instant the stair is taken, because the marks have to be on screen while
+  Iselle points at them. Gates the readout and the Way Up transition.
+- `player.tallyTaught` — set when her scene has finished. Gates the scene, and survives a player quitting
+  in the middle of it, which a flag passed through the state switch would not.
+
+### The bands
+
+| Band | Range | Marks | Text | The city |
+|---|---|---|---|---|
+| Low | 1–5 | green | — | unchanged |
+| Climbing | 6–10 | yellow | — | the lamps begin to go out |
+| Unpruned | 11–14 | orange | **Breach imminent** | darker still |
+| — | 15 | red | **Breach imminent** | darkest |
+
+**The row is a ladder, coloured per mark rather than per reading.** Mark *i* wears the colour of the band
+a count of *i* falls into, so the meter has a fixed geography a player can learn: you can see the orange
+marks waiting two groups along before lighting any of them. A meter that restained its whole row on each
+band change would say *"it is bad now"* and never *"it is about to be"*.
+
+The bands sit on 6 and 11 rather than on arithmetic thirds because the marks are drawn in fives, and a
+boundary falling inside a group renders as four green and one yellow sitting together — which reads as an
+off-by-one, not as a ladder. Measured on screen. At 6/11 the first group is wholly green, the second
+wholly yellow, and the last is orange with a single red cap on the ceiling mark.
+
+No new hues: three of the four come from `ui/colors.lua`'s enamel families (verdigris, bronze, ember) and
+the middle step is the chrome's own `accentWeapon`. Green is the game's ally/heal colour and is
+unambiguous here because this meter never draws on the board — on a city card it reads as the universal
+"nothing to do here", which is what a low tally is.
+
+**Most bands say nothing, and that is the point of a meter.** The marks already state where the tally
+stands; a line of prose under them restating it in words is the same fact twice, and a card that always
+carries a sentence has no way to raise its voice when it needs to. So the bottom two bands are marks
+alone and the warning is the only text this readout ever draws — appearing two thirds of the way up,
+where the number stops being bookkeeping, so that **its arrival is the signal**.
+
+The top two share the one string rather than escalating to a second. "Breach imminent" is as true at the
+ceiling as one below it, and what a full tally ought to say differently is the ending firing, which is
+not built — a second string invented now would be a promise to keep later.
+
+The row of marks sits at the same y whether or not the warning is above it. A meter that slid up when
+its text went away would be a readout that changes place, and the player would be re-finding it every
+time the number crossed a band instead of reading it.
+
+Spaced off `COUNT_MAX` in thirds, and `tests/count_spec.lua` pins that the top band begins exactly at the
+maximum and that every band is reachable — dropping the ceiling without re-spacing these leaves three
+bands nobody can reach, which is invisible in play and obvious in a spec.
+
+Three of the four are legibility and nothing else. The city dims through a flat darkening laid over the
+painted plaza (`CountMeter.CITY_DIM`), which is the cheapest true version of "the place is worse than it
+was" and needs no per-building state; boarded windows and a thinner queue at the Crossing are the same
+idea done properly, and they are art rather than code.
+
+## What is not built
+
+**What happens at the maximum.** The design is that the stair stops being an exit: take it and what is
+down there comes up with you, with every general still unsealed beside it — `Calendar.generalsStanding`
+already sizes that fight and now counts the descent's own seals as well as completed quests, so the
+number is honest. But the ending itself is not wired, which is why the top band still reads **Breach
+imminent** rather than announcing one: a readout saying *"it is coming up the stair"* over a stair that
+politely goes to town would be the game making a claim it does not keep. When the ending lands, the top
+band earns a string of its own, and that is the point at which it should stop sharing one with the band
+below it.
+
+**Fog decay**, held in reserve: cleared stops stay cleared, but fog closes over ground the company had not
+reached while it was away. It prices the trip in the trip, which is what the ascent tile always intended.
+Second lever — pulling both at once means learning nothing from either.

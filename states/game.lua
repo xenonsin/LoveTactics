@@ -551,15 +551,18 @@ function game:openLanding(cell)
     -- WHAT THE CIRCLE PAYS TOWARD THE COMPANY: vouchers, graded at the floor that finished it
     -- (models/voucher.lua). This is the whole of how a descent grows its roster now -- the recruit stop
     -- that used to stand on every floor is gone -- so it is credited on the same beat as the circle
-    -- itself and by the same test, and the count is said out loud on the landing rather than discovered
-    -- later in the city.
+    -- itself and by the same test.
+    --
+    -- THE COUNT IS NOT KEPT, because nothing here says it any more: the victory screen named these tokens
+    -- a beat ago, off Voucher.forFloor, which is this same call with the granting taken out
+    -- (Descent.objectiveReward). Reporting them again in a toast would be the payout announced twice.
     --
     -- Granted on the PLAYER rather than on the run, because it has to outlive the run: a voucher earned
     -- on floor six and carried up is the reward for having gone to floor six, and a wipe two floors
     -- later does not un-earn it. A wipe takes a share of the coin and ore the run GAINED
     -- (Player.loseHaul) and nothing else, so this needs no exemption written for it -- but it is worth
     -- saying out loud that it is not an oversight: the circles you beat are yours.
-    local vouchers = Voucher.grantForFloor(game.player, Descent.depth(run))
+    Voucher.grantForFloor(game.player, Descent.depth(run))
 
     -- WHAT WAS ON THE BODY, and it is the body's OWN piece rather than a hand of cards.
     --
@@ -595,49 +598,41 @@ function game:openLanding(cell)
     -- WHO IS BEING NAMED. The general by name on her own stair; her lieutenant by name on the floors above
     -- it (Descent.guardianName), which is what tells the two ranks apart now that both of them pay.
     local felled = Descent.guardianName(beaten, wasGeneral)
+    -- WHO WENT DOWN, and only that. What she was CARRYING used to be said on this same line -- the piece,
+    -- or the house stock that stands in for it, or the gold that stands in for that -- and a reward
+    -- announced in the corner of the map is a reward the player reads after they have stopped looking for
+    -- one. All three are named on the victory screen now, as cards beside the salvage, before this toast
+    -- is ever drawn (states/game.lua's previewObjectiveReward -> ui/panels/battle_summary.lua). What is
+    -- left here is the news, which is what a toast is for: a general is dead and the floor knows it.
+    if felled then game:pushToast(felled .. " is beaten") end
     if game.player then
         if dropId then
             local item = Item.instantiate(dropId)
             Player.addToStash(game.player, item)
             Player.markNew(game.player, Player.NEW_STASH, dropId)
-            game:pushToast((felled and (felled .. " is beaten. ") or "") ..
-                "Taken from the body: " .. ((item and item.name) or dropId))
         else
             -- NOTHING OF HERS LEFT, so the house pays in its own stock -- the material its bench bills in
             -- (models/material.lua). It is the one payout that cannot run out and the one that still says
             -- whose circle this was, which is more than gold could do.
-            local houseMat = beaten and require("models.material")
-                .houseFor((require("models.vendor").get(beaten.vendor) or {}).class)
+            local houseMat = beaten and Material.houseFor((Vendor.get(beaten.vendor) or {}).class)
             if houseMat then
                 Player.addMaterial(game.player, houseMat, Descent.SPENT_SET_STOCK)
-                local mat = require("models.material").get(houseMat)
-                game:pushToast((felled and (felled .. " is beaten. ") or "") ..
-                    "Nothing of hers you do not already carry  +" .. Descent.SPENT_SET_STOCK ..
-                    " " .. ((mat and mat.name) or houseMat))
             else
                 Player.addGold(game.player, Relic.BARE_SHELF_GOLD)
-                game:pushToast("Nothing on the body you do not already carry  +" ..
-                    Relic.BARE_SHELF_GOLD .. "g")
             end
         end
     end
     -- ...and the stair the board now carries, which is the state worth losing least.
     --
-    -- NO PANEL. There is nothing to decide -- one object, already in the stash -- and the beat that used
-    -- to open here was a chooser for a hand of cards that no longer exists. The toast above is the whole
-    -- announcement, which is the same treatment the old bare-shelf branch gave a stair with nothing on
-    -- it. Whether a general's defeat deserves more than a line in the corner is a question about the
-    -- SCREEN and worth asking on the screen; it is deliberately not answered by keeping a chooser with
-    -- one object in it.
+    -- STILL NO PANEL HERE, and now for a better reason than the one that used to sit in this space. The
+    -- old note asked whether a general's defeat deserved more than a line in the corner and declined to
+    -- answer, because the only answer on offer was a chooser with one object in it. The answer turned out
+    -- to be that it deserved the screen the game ALREADY draws for a won fight: the piece, the house stock
+    -- that stands in for it, and the tokens below are all named on the victory panel now, one beat before
+    -- this function runs. Opening a second panel here would report the same payout twice.
     --
-    -- THE TOKENS GET THEIR OWN LINE, after the body's, because they are a different kind of news: the
-    -- object above is what this fight paid, and this is what the CIRCLE paid toward the next company.
-    -- COUNTED AND NOT GRADED, because a token has no grade: every one is the same ticket and the rank is
-    -- rolled when the player presses the button (models/voucher.lua). Naming a grade here was the last
-    -- place the old system leaked onto a surface.
-    if vouchers > 0 then
-        game:pushToast(vouchers == 1 and "A rift token" or (vouchers .. " rift tokens"))
-    end
+    -- The tokens are still GRANTED here rather than on that screen -- the panel only ever displays, which
+    -- is the rule that keeps a preview from becoming a second payout (see game:previewObjectiveReward).
     saveRun()
 end
 
@@ -759,6 +754,28 @@ function game:payObjective(cell, materials)
         or Quest.complete(game.player, quest, materials, { keepMeal = true })
     if quest.id then game.tripDone[quest.id] = true end
     return reward, quest
+end
+
+-- WHAT THE OBJECTIVE IS ABOUT TO PAY, named on the victory screen instead of in the corner of the map.
+--
+-- The arithmetic is Descent.objectiveReward's: it is a property of the run and the player, and it lives in
+-- the model so that a spec can read it -- this file pulls ui/theme.lua and so cannot be required under the
+-- headless runner, which makes any payout written here a payout no test can check.
+--
+-- What is decided HERE is the two cases with nothing to preview, both of them questions about the run
+-- descriptor this state owns rather than about the payout itself:
+--
+--   NO DESCENT    a campaign board quest pays through Quest.complete and gets the Company Advancement
+--                 overlay instead -- a different screen with a different job. (That overlay has had no
+--                 reachable caller since the Quest Board was retired, which is most of why the descent's
+--                 objectives ended up reporting themselves in toasts.)
+--   ENDS THE RUN  the bottom of the descent finishes on the mode's own terminal card, which already names
+--                 everything the account holds. Naming it on a victory panel first would spend the one
+--                 screen this mode has been building toward for fifteen floors.
+function game:previewObjectiveReward(objSpec)
+    if not game.descent then return nil end
+    if game.quest and game.quest.endsDescent then return nil end
+    return Descent.objectiveReward(game.player, game.descent, objSpec)
 end
 
 -- A class line's last quest settles its temptation ledger, and a companion whose line ended in `left`
@@ -1426,7 +1443,7 @@ function game:openEncounter(cell)
                 Player.save()
             end
 
-            -- A THIN CHANCE OF A RIFT TOKEN, on any won fight (models/voucher.lua's FIGHT_CHANCE).
+            -- A THIN CHANCE OF A CROSSING TOKEN, on any won fight (models/voucher.lua's FIGHT_CHANCE).
             --
             -- HERE rather than at the three call sites, because this is the one seam every won fight
             -- passes through -- a road fight, a fight walked over without watching, and the floor's own
@@ -1434,10 +1451,10 @@ function game:openEncounter(cell)
             -- relies on. Putting the roll anywhere else would give one of those three a different
             -- chance to the other two, and nothing would report it.
             --
-            -- Descent only: a token opens the Hero's Rift, and the campaign has no rift to open.
+            -- Descent only: a token opens the Crossing, and the campaign has no tear to open.
             if game.descent and game.player then
                 if Voucher.rollFromFight(game.player) then
-                    game:pushToast("A rift token, off the body")
+                    game:pushToast("A crossing token, off the body")
                     Player.save()
                 end
             end
@@ -1483,7 +1500,7 @@ function game:openEncounter(cell)
         -- handing the bag over would leave the player standing on a cleared tile with their kit still
         -- on it. Both paths call this; there is no second copy to forget.
         --
-        -- The salvage, the experience and the thin chance of a rift token are paid by grantSideSpoils
+        -- The salvage, the experience and the thin chance of a crossing token are paid by grantSideSpoils
         -- like any other won fight: beating somebody for your own bag back is still beating somebody.
         local function takeGuardedPack()
             if not guardedPack then return end
@@ -1529,6 +1546,13 @@ function game:openEncounter(cell)
             -- composition, the escorts, the win condition and the board all come off this one spec
             -- (models/encounter_battle.lua), and a ground carrying three quests has three of them.
             objective = objSpec,
+            -- WHAT WINNING THIS END PAYS, for the victory screen to name (game:previewObjectiveReward).
+            --
+            -- A FUNCTION rather than a value, because the answer is not knowable yet. It turns on what the
+            -- player owns, and a fight is exactly the beat that can move that -- a thief lifting the
+            -- guardian's own piece mid-battle would make a value read at launch name a thing already in
+            -- the stash. Called once, when the summary is built.
+            objectiveReward = function() return game:previewObjectiveReward(objSpec) end,
             day = game.day,
             -- Who is still standing when the last door opens; read only by the finale's composition
             -- (data/quests/quest_the_gate_below.lua) and nil-safe everywhere else.
@@ -1657,8 +1681,14 @@ function game:openEncounter(cell)
                                 for _, itemId in ipairs(def.rewardItems or {}) do
                                     Player.grantItem(game.player, itemId)
                                 end
+                                -- WHO IT WAS FOR, and no longer WHAT IT PAID. The purse and the goods
+                                -- above were announced by this toast and by nothing else, so a house's
+                                -- work paid out in the corner of the map while the victory screen next to
+                                -- it showed one ingot of salvage. Both are cards on that screen now
+                                -- (game:previewObjectiveReward); this keeps the half a toast is good at,
+                                -- which is naming the house whose ledger just moved.
                                 game:pushToast("Done for " ..
-                                    ((require("models.vendor").get(def.sponsor) or {}).name or "the house"))
+                                    ((Vendor.get(def.sponsor) or {}).name or "the house"))
                                 if def.outro then require("models.conversation").play(def.outro) end
                             end
                             Player.save()
@@ -2446,10 +2476,27 @@ function game:openEncounter(cell)
         local depth = Descent.depth(run)
         game.activePanel = Choice.new({
             title = "The Way Up",
-            prompt = carried
+            -- WHAT THE WAY UP COSTS, said where the decision is made, as a TRANSITION rather than an
+            -- addition (models/descent.lua's count): this is an always-on forecast of a move the player
+            -- has not made yet, and "18 of 25" alone would not say which way it moved. Same grammar and
+            -- the same arrow the party sheet's forecasts use (ui/panels/party.lua).
+            --
+            -- ON THE PROMPT RATHER THAN THE OPTION, and that is a layout fact rather than a preference:
+            -- ui/panels/choice.lua grows its box to fit a wrapped prompt and holds every option card at
+            -- a fixed 70px, so a third line of description spills out of the card and over the one
+            -- below it. Measured, not guessed -- it did exactly that.
+            --
+            -- Silent until Iselle has named the thing (Descent.everClimbedOut), because a number quoted
+            -- before anybody has explained what it counts is a price on a service the player cannot read.
+            prompt = (carried
                 and ("The company is on floor " .. depth .. " carrying " .. carried ..
                      ". Climb out and all of it comes with them.")
-                or ("The company is on floor " .. depth .. " and has found nothing yet."),
+                or ("The company is on floor " .. depth .. " and has found nothing yet.")) ..
+                (Descent.everClimbedOut(game.player)
+                    and ("\nThe count goes " .. Descent.count(run) .. " \226\134\146 " ..
+                         math.min(Descent.COUNT_MAX, Descent.count(run) + 1) ..
+                         " of " .. Descent.COUNT_MAX .. ".")
+                    or ""),
             options = {
                 {
                     label = "Climb out",
@@ -2458,6 +2505,11 @@ function game:openEncounter(cell)
                     accent = { 0.72, 0.78, 0.86 },
                     cb = function()
                         game.activePanel = nil
+                        -- WHAT THE WAY UP COSTS, and the only thing in the mode that costs it. Marked
+                        -- BEFORE the rollback point is taken, so a wipe on the next floor cannot
+                        -- un-teach the readout the player has already been shown.
+                        Descent.markClimbedOut(game.player)
+                        Descent.climbOut(run)
                         -- BANKING IS RE-BASELINING, not dropping the run. Everything found has been live
                         -- on the company since it was picked up; what made it provisional is the entry
                         -- snapshot a wipe rolls back to (wipeRun). Re-taking that snapshot here is the
@@ -2762,7 +2814,7 @@ function game:resolveNonCombat(cell)
     local enc = cell.encounter
     if enc.kind == "rest" then game:restHeal() end -- back-compat: any path still routing rest here heals
 
-    -- A HEROIC SPIRIT hands up one rift token (a token has no grade -- models/voucher.lua)
+    -- A HEROIC SPIRIT hands up one crossing token (a token has no grade -- models/voucher.lua)
     -- (data/encounters/encounter_heroic_spirit.lua). The third source, and the only one the player
     -- steers: a circle pays on a schedule and a won fight rolls a chance, but this one is a place they
     -- chose to walk to.
@@ -2772,7 +2824,7 @@ function game:resolveNonCombat(cell)
     -- purse the campaign has no rift to spend at.
     if enc.kind == "spirit" and game.descent and game.player then
         Voucher.grant(game.player, 1)
-        game:pushToast("The spirit gives up a name  ·  a rift token")
+        game:pushToast("The spirit gives up a name  ·  a crossing token")
         Player.save()
     end
 end

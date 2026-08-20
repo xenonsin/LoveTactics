@@ -368,11 +368,15 @@ return {
     name = "Guild Hall",
     order = 5,             -- sort + keyboard/gamepad nav order
     x = 980, y = 340, w = 270, h = 140,  -- clickable hotspot in the 1280x720 logical space
+    description = "...", -- what the room is FOR, in one short sentence -- see below
     panel = nil,           -- module name under ui/panels/, or nil for the placeholder
     state = nil,           -- module name under states/, for a door that opens a whole screen
     vendor = nil,          -- vendor id, for shop buildings (panel = "party", store mode)
-    unlockCircle = true,   -- opens when this house's own circle falls; a vendor id names somebody else's
-    unlockPrestige = 3,    -- locked (dimmed, non-clickable) until prestige >= 3
+    unlockErrand = true,   -- opens on this house's own first errand; a vendor id names somebody else's
+    unlockAnyErrand = nil, -- ...or on ANY house's first errand (the Markets)
+    unlockDepth = nil,     -- ...or once the company has stood on floor N
+    unlockWound = nil,     -- ...or once anybody has been carried up broken (the Inn)
+    unlockPrestige = 1,    -- the campaign's own ladder, parked at 1 -- see below
 }
 ```
 
@@ -386,15 +390,54 @@ rather than to the title screen. Set one or the other, never both.
 (`Player.standing`) and the Quest Board is retired, so it is parked at 1 for the life of a save — a
 building gated above that is a card that never opens. It is also a number the player is never shown
 anywhere in the city, which is why a locked card that quoted it (`? (prestige 3)`) told them nothing
-they could act on. `unlockCircle` is the gate the descent feeds: `true` opens the door when the
-house's own circle falls, and a vendor id opens it on somebody else's (`data/buildings/dueling_grounds.lua`
-waits on Wrath's). The field stays for the campaign's sake and is honoured if the board comes back.
+they could act on. The field stays for the campaign's sake and is honoured if the board comes back.
 
-A locked card draws `?` over the sentence `Building.requirement` composes from whichever gate is
-asked — "Beat the circle of Lust". That line is the **whole** of what the city ever says about a shut
-door: there is no tooltip behind one and no screen listing the requirements elsewhere, so a new gate
-must be one `Building.requirement` can name as an action. `tests/hub_spec.lua` fails a shut door that
-says nothing.
+The gates the descent actually feeds are the other four, ANDed, and each names a different deed
+(`models/building.lua` holds the authoritative list):
+
+| field | opens when | who uses it |
+| --- | --- | --- |
+| `unlockErrand` | this house's first errand is run — `true` means its own line, a vendor id somebody else's | the seven shops; the Dueling Grounds waits on the Colosseum's |
+| `unlockAnyErrand` | *any* house's first errand is run | the Markets |
+| `unlockDepth = N` | the company has stood on floor N (`Descent.deepest`) | the Cafe at 2, the Forge at 4 |
+| `unlockWound` | anybody has been carried up broken (`Wound.everWounded`) | the Inn |
+
+Pick the one that names the deed the door is *for*. A building whose only job is setting a bone opens
+on a bone being broken; a bench that spends salvaged materials opens once there is salvage to spend.
+The point of staging them is that the plaza opens on three cards rather than eight, and the player
+learns each building at the moment it becomes useful — so a gate that is merely *a* deed, rather than
+*this door's* deed, is a card arriving for no reason the player can feel.
+
+**An opened card coaches the player into it.** A card that quietly stops being locked is a feature
+delivered by not being mentioned — the one moment a door is interesting is the moment it appears, and by
+the next visit it is furniture. So the hub pins a coach bubble to it, exactly as the first visit does
+for the Crossing and the Rift, and while that bubble is up **that card is the only one that opens**.
+Walking in is what spends it; reading the bubble is not, for the same reason the first visit's hire
+stage is spent by the hire and not by the door. The ledger behind it is `player.seenDoors`
+(`models/building.lua`), seeded on the first look at the city so nothing that was already standing is
+ever coached.
+
+Note there is deliberately **no pop-up**. One was built and cut: the city already has a grammar for
+"press this, and here is why", and a modal in front of it covers the plate it is naming, has to be
+dismissed before the thing it points at can be reached, and makes a new counter a bigger event than the
+stair the whole game is about.
+
+The bubble reads the blueprint's **`description`** after the card's name, which is why it is required on
+every city card and is not flavour: it is the whole of what the player is told about a building before
+they walk into it. Write **one short sentence** saying what the room *does for them* — "Every upgrade to
+every piece of gear is bought at this bench." — not what it looks like, and keep it under ~90 characters
+so it fits the bubble beside the name. `tests/hub_doors_spec.lua` fails a city card without one, one
+shorter than a sentence, and one too long to fit.
+
+The seven market shopfronts are deliberately outside this: they are on their own board
+(`states/markets.lua`) and each already introduces itself in its keeper's own voice the first time it is
+opened (`models/vendor_visit.lua`).
+
+**A shut card says nothing.** It draws `???` and no sentence at all. That is a decision rather than an
+omission: every shut door in the market has the same answer (go down, walk the floors, the work is
+lying on one of them), so a per-card requirement line was seven copies of one instruction — and naming
+the house in it gave away the shop the card exists to withhold. `tests/hub_spec.lua` fails a shut door
+that carries a requirement string for something to draw.
 
 Positions are in the 1280×720 logical
 coordinate space (see `scale.lua`), which is letterbox-scaled to the real window; place them

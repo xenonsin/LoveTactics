@@ -842,7 +842,7 @@ return {
     ["line.conversation_prologue_ruins.5"] = { en = "Good! We take the king's road to the capital, {name}. We'll be safe behind its walls, and we save anyone we can along the way.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.6"] = { en = "Bellmere is gone. I don't know who else made it out.", ja = "" },  -- TODO
     ["line.conversation_prologue_sponsor.1"] = { en = "Before you join that queue. You are the two who came in with the Bellmere column, and one of you is wearing Bastion plate.", ja = "" },  -- TODO
-    ["line.conversation_prologue_sponsor.10"] = { en = "They breed. That is the other half of the trade. The Crown pays by the floor to keep the count down, and we call it pruning.", ja = "" },  -- TODO
+    ["line.conversation_prologue_sponsor.10"] = { en = "Nothing down there is born. It forms. That is the other half of the trade, and the Crown pays by the floor to keep the count down. We call it pruning.", ja = "" },  -- TODO
     ["line.conversation_prologue_sponsor.11"] = { en = "The Crown should have soldiers down there.", ja = "" },  -- TODO
     ["line.conversation_prologue_sponsor.12"] = { en = "It has. Two companies of the Watch, on the first three floors, and they will not go past them.", ja = "" },  -- TODO
     ["line.conversation_prologue_sponsor.13"] = { en = "So the deep floors go unpruned. Then the count climbs, and what is down there comes up the stair and out into the country.", ja = "" },  -- TODO
@@ -866,6 +866,16 @@ return {
     ["line.conversation_prologue_village.2"] = { en = "This is not a raid. The Demon Lord's army empties whole valleys like this and moves on before the ash is cold.", ja = "" },  -- TODO
     ["line.conversation_prologue_village.3"] = { en = "Two of them have seen us, and they will not come to you. Watch how I take mine.", ja = "" },  -- TODO
     ["line.conversation_prologue_village.4"] = { en = "Look at it, {name}. The market row, the bell tower, the gate your father set the first stone in. All of it, inside a night.", ja = "" },  -- TODO
+    ["line.conversation_rift_tally.1"] = { en = "You came up.", ja = "" },  -- TODO
+    ["line.conversation_rift_tally.10"] = { en = "Be sensible about how often you come up.", ja = "" },  -- TODO
+    ["line.conversation_rift_tally.2"] = { en = "That is allowed. It is paid for. Look at the tally beside the stair before you do it again.", ja = "" },  -- TODO
+    ["line.conversation_rift_tally.3"] = { en = "What is it counting?", ja = "" },  -- TODO
+    ["line.conversation_rift_tally.4"] = { en = "What is down there. I told you it forms, and I told you what we call keeping the number down.", ja = "" },  -- TODO
+    ["line.conversation_rift_tally.5"] = { en = "You pruned the floors you walked. The one you turned your back on starts filling again tonight.", ja = "" },  -- TODO
+    ["line.conversation_rift_tally.6"] = { en = "Go deeper and the tally comes down. Come up and it climbs. There is nothing else in it.", ja = "" },  -- TODO
+    ["line.conversation_rift_tally.7"] = { en = "And when it fills.", ja = "" },  -- TODO
+    ["line.conversation_rift_tally.8"] = { en = "Then it does not wait for anybody to go down. It comes up this stair and out into the streets.", ja = "" },  -- TODO
+    ["line.conversation_rift_tally.9"] = { en = "You watched that happen at Bellmere. This city is larger and the stair is in the middle of it.", ja = "" },  -- TODO
     ["line.conversation_touchstone_vendor_intro.1"] = { en = "Four houses dig that hole and not one of them trusts the other three to say what came out of it. So they pay me to say it. Everything that comes up unnamed comes up here.", ja = "" },  -- TODO
     ["line.conversation_touchstone_vendor_intro.10"] = { en = "Not on this counter.", ja = "" },  -- TODO
     ["line.conversation_touchstone_vendor_intro.11"] = { en = "No. I checked.", ja = "" },  -- TODO
@@ -1059,6 +1069,7 @@ return {
     ["title.conversation_prologue_ruins"] = { en = "The Road", ja = "" },  -- TODO
     ["title.conversation_prologue_sponsor"] = { en = "The Rift", ja = "" },  -- TODO
     ["title.conversation_prologue_village"] = { en = "The Lane", ja = "" },  -- TODO
+    ["title.conversation_rift_tally"] = { en = "The Tally", ja = "" },  -- TODO
     ["title.conversation_touchstone_vendor_intro"] = { en = "The Touchstone", ja = "" },  -- TODO
     ["title.conversation_tutorial_flight"] = { en = "The Open Road", ja = "" },  -- TODO
     ["title.conversation_tutorial_village"] = { en = "Rowan's Lesson", ja = "" },  -- TODO

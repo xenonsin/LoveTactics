@@ -30,6 +30,7 @@ return {
     w = 300,
     h = 130,
     panel = "inn",
+    description = "A night here sets the bones nothing underground will.",
     -- IT KEEPS A VENDOR ID WITHOUT KEEPING A SHELF, exactly as the Cafe, the Touchstone and the Hero's
     -- Rift do: what that buys is a KEEPER -- the portrait the panel draws, the name, and the one-time
     -- first-visit greeting (models/vendor_visit.lua) -- and the hub's first-visit machinery is keyed on

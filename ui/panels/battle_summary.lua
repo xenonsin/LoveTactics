@@ -51,6 +51,7 @@ local ProgressBar = require("ui.progress_bar")
 local InputMode = require("input_mode")
 local Discipline = require("models.discipline")
 local Experience = require("models.experience")
+local Identify = require("models.identify")
 local Item = require("models.item")
 local Material = require("models.material")
 local Sprite = require("models.sprite")
@@ -157,7 +158,12 @@ function BattleSummary.new(opts)
     self.onReviewLog = opts.onReviewLog
 
     local spoils = opts.spoils or {}
-    self.gold = math.max(0, spoils.gold or 0)
+    -- WHAT THE OBJECTIVE PAID, added to what the fight rolled. Two purses on one line rather than two
+    -- lines, because the player is owed one answer to "what did that win put in my pocket" and an
+    -- errand's fee is not a different kind of coin from a road stop's. See states/game.lua's
+    -- previewObjectiveReward for why this arrives beside the spoils instead of inside them.
+    local awarded = spoils.awarded or {}
+    self.gold = math.max(0, (spoils.gold or 0) + (awarded.gold or 0))
     -- One line under the encounter's name saying what this win was paid FOR, when the payout was not
     -- simply the rate for clearing the board -- "1 of 2 survivors walked out"
     -- (models/encounter_battle.lua's rescue pay). It is the reason the gold below it is the number it
@@ -165,20 +171,84 @@ function BattleSummary.new(opts)
     -- naming the difference. Wins only: a defeat pays nothing to explain.
     self.note = self.win and spoils.note or nil
 
-    -- Display-only instances, duplicate ids collapsed to one card carrying its count (three potions read
-    -- as "Healing Potion x3"), just as loot_reveal does. Each card is { name, sprite, count, item } for
-    -- real loot and { name, sprite, count, material } for salvage -- which of the two ids a card carries
-    -- picks the tooltip it hovers (item sheet vs. where more of the stock drops).
+    -- Display-only instances. Each card is { name, sprite, count, item } for an item and
+    -- { name, sprite, count, material } for stock -- which of the two ids a card carries picks the
+    -- tooltip it hovers (item sheet vs. where more of the stock drops), and a card with neither hovers
+    -- none. They are laid out in the order built below, which is worth: what the objective paid, then
+    -- what fell off the bodies, then the unread find, then the salvage floor.
+    self.cards = {}
+
+    -- THE OBJECTIVE'S OWN PAYOUT, FIRST -- ahead of the loot, the husk and the salvage, which are ranked
+    -- below it by exactly the rule that ranks them against each other: worth. A general's mail is the
+    -- thing the floor was about; the potion that fell out of her guard is not, and a run of cards that
+    -- opened with the potion would bury the headline under its own change.
+    --
+    -- Uncollapsed and untallied, because there is never more than one of anything here: an errand hands
+    -- over an authored list and a guardian carries a single piece (models/descent.lua's DROPS).
+    for _, id in ipairs(awarded.items or {}) do
+        local item = Item.instantiate(id)
+        self.cards[#self.cards + 1] = {
+            name = item.name, sprite = item.sprite, count = 1, item = item,
+        }
+    end
+    -- ...and the house's own stock when there was nothing of hers left to take -- the one payout that
+    -- cannot run out, and still the headline on the floor it falls on rather than salvage.
+    local awardedMats = {}
+    for id in pairs(awarded.materials or {}) do awardedMats[#awardedMats + 1] = id end
+    table.sort(awardedMats)
+    for _, id in ipairs(awardedMats) do
+        local def = Material.get(id)
+        local count = awarded.materials[id]
+        if def and (count or 0) > 0 then
+            self.cards[#self.cards + 1] = {
+                name = def.name or id, sprite = Sprite.load(def.sprite), count = count, material = id,
+            }
+        end
+    end
+    -- THE CIRCLE'S TOKENS, last of the awarded three. A card rather than a figure beside the gold, even
+    -- though a token is not an object and never enters the stash: what it buys is a body, which is the
+    -- most valuable thing this screen ever reports, and a numeral tucked against the coin would read as
+    -- change. It carries no `item` or `material`, so it hovers no tooltip -- there is nothing to say
+    -- about a token that its own count does not already say (models/voucher.lua: they have no rank).
+    --
+    -- NO ART YET. Sprite.load resolves a missing file to its path string and the card draws its
+    -- placeholder plate, which is the project's standard way of letting art land later
+    -- (docs/art-assets.md). This is the token's first appearance anywhere as a picture -- the hiring
+    -- hall has only ever printed the count as text -- so there was no icon to reuse.
+    if (awarded.vouchers or 0) > 0 then
+        self.cards[#self.cards + 1] = {
+            name = "Crossing Token", count = awarded.vouchers,
+            sprite = Sprite.load("assets/ui/crossing_token.png"),
+        }
+    end
+
+    -- WHAT FELL OFF THE BODIES, with duplicate ids collapsed to one card carrying its count (three
+    -- potions read as "Healing Potion x3"), just as loot_reveal does.
     local order, tally = {}, {}
     for _, id in ipairs(spoils.loot or {}) do
         if tally[id] then tally[id] = tally[id] + 1 else tally[id] = 1; order[#order + 1] = id end
     end
-    self.cards = {}
     for _, id in ipairs(order) do
         local item = Item.instantiate(id, tally[id])
         self.cards[#self.cards + 1] = {
             name = item.name, sprite = item.sprite, count = tally[id], item = item,
         }
+    end
+
+    -- The unread find, on the rare stop that pays one (models/identify.lua). Between the loot and the
+    -- salvage, because that is what it is worth: dearer than the potion above it, and not the floor.
+    --
+    -- ONE CARD PER FIND, NEVER COLLAPSED, which is the opposite of the rule two lines up. Duplicate ids
+    -- collapse because three potions ARE three of one thing; two husks are two separate finds and the
+    -- player is not allowed to know they happen to match. Tallying them would answer, in the count, the
+    -- exact question the counter charges to answer.
+    for _, find in ipairs(spoils.sealed or {}) do
+        local husk = Identify.sealed(find.id, find.floor)
+        if husk then
+            self.cards[#self.cards + 1] = {
+                name = husk.name, sprite = husk.sprite, count = 1, item = husk,
+            }
+        end
     end
 
     -- The salvage every won fight leaves behind (models/spoils.lua), after the loot: it is the floor,

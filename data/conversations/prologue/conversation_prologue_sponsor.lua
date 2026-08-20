@@ -17,11 +17,29 @@
 -- hiring off the road instead of off the board. The information the scene carries is not "there is a
 -- hole", it is the TRADE: who pays, who competes, and what the Crown buys.
 --
--- WHAT PRUNING IS, because it is the campaign's premise in one word. Things breed down there. The Crown
--- pays by the floor to keep the count down, and when nobody goes deep enough they come up the stair and
--- out into the country. That is what happened to Bellmere. The prologue's own scenes call it the Demon
--- Lord's army and never say where it came from; Iselle is where the player finds out, and it turns the
--- descent from a job into the answer to the first fight in the game.
+-- WHAT PRUNING IS, because it is the campaign's premise in one word. Nothing down there is born: it
+-- FORMS, out of the Demon Lord's own power, and it does not stop. The Crown pays by the floor to keep
+-- the count down, and when nobody goes deep enough they come up the stair and out into the country.
+-- That is what happened to Bellmere. The prologue's own scenes call it the Demon Lord's army and never
+-- say where it came from; Iselle is where the player finds out, and it turns the descent from a job
+-- into the answer to the first fight in the game.
+--
+-- SHE USED TO SAY "THEY BREED", AND THAT WAS WRONG ABOUT THE WORLD. Demons and monsters materialise out
+-- of the Crown's power; nothing about it is reproduction. The line is now a statement of what actually
+-- happens, and it is load-bearing twice over -- it is also the fiction the descent's tally is read
+-- against (models/descent.lua's count, and Iselle's own scene at the Rift when a company first comes
+-- back up early).
+--
+-- "PRUNING" SURVIVES THAT CORRECTION ON PURPOSE. It is a gardening word for something that does not
+-- grow, which is exactly right for trade slang: she runs a digging house, not a seminary, and from the
+-- outside an infestation that comes back looks like something that grows back. Her line already frames
+-- it as a nickname ("we call it pruning") rather than as a description, so the wrong word costs nothing
+-- and quietly pays off when the player reaches the bottom of the hole and finds out what is really
+-- making them.
+--
+-- data/lang/strings.lua carries a stale `en` mirror of this line until tools/extract_strings.lua next
+-- runs. That is harmless: the game never reads the `en` column (models/locale.lua), so the text here is
+-- what English players see.
 --
 -- WHAT SHE ACTUALLY OFFERS, because the terms are the mode: she stakes the expedition -- the hirelings,
 -- the kit, the room at the inn -- and the company keeps what it brings up and sells it at her counter.
@@ -48,7 +66,7 @@ return {
         { "sponsor", "The city sits on it. The market you walked through is stocked out of it, and so is the treasury.", tag = 7 },
         { "sponsor", "Four houses pay companies to go down and dig. Mine is one of the four. Mine is the smallest.", tag = 8 },
         { "character_avatar", "And the things that live down there?", tag = 9 },
-        { "sponsor", "They breed. That is the other half of the trade. The Crown pays by the floor to keep the count down, and we call it pruning.", tag = 10 },
+        { "sponsor", "Nothing down there is born. It forms. That is the other half of the trade, and the Crown pays by the floor to keep the count down. We call it pruning.", tag = 10 },
         { "character_rowan", "The Crown should have soldiers down there.", tag = 11 },
         { "sponsor", "It has. Two companies of the Watch, on the first three floors, and they will not go past them.", tag = 12 },
         { "sponsor", "So the deep floors go unpruned. Then the count climbs, and what is down there comes up the stair and out into the country.", tag = 13 },

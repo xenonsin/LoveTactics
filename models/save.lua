@@ -440,6 +440,20 @@ function Save.snapshot(player)
         if seen then announcedDisciplines[disciplineId] = true end
     end
 
+    -- WHICH CITY DOORS HAVE BEEN SHOWN (models/building.lua's seenDoors block). A door the city grows is
+    -- coached once -- a bubble on its card, every other card refused -- and this is what keeps it to
+    -- once across a save. Same additive rule as the two above: Save.VERSION does NOT move.
+    --
+    -- NIL AND EMPTY ARE DIFFERENT HERE, which is why this is not written unconditionally. Nil means the
+    -- ledger has never been seeded, and an older save has exactly that -- so it loads with nil, the hub
+    -- seeds it off whatever that company has already earned, and a player who has been using the Forge
+    -- for hours is not marched back through an announcement for it. A seeded ledger is never empty (the
+    -- plaza always has three open cards), so nothing legitimate is lost by dropping an empty one.
+    local seenDoors
+    for id, seen in pairs(player.seenDoors or {}) do
+        if seen then seenDoors = seenDoors or {}; seenDoors[id] = true end
+    end
+
     -- Story flags (models/story_effect.lua's `effect = { flag = ... }`, read back by a scene's
     -- `when = { flag = ... }`). Same shape and same additive rule as the two above: Save.VERSION does
     -- NOT move, and an older save loads with nothing flagged -- which reads as a player who has not
@@ -589,6 +603,12 @@ function Save.snapshot(player)
         -- Purely additive, so Save.VERSION does not move: an older save restores unmarked, and the first
         -- wound taken after loading writes it.
         wounded = player.wounded or nil,
+        -- ...and whether this company has ever come back up the stair early. The same shape and the
+        -- same reason as `wounded` above: a one-way mark rather than a ledger reading, because
+        -- Iselle's tally falls back to nought the moment they descend again and the readout it gates
+        -- must not come off the plaza the morning after it was earned (models/descent.lua).
+        climbedOut = player.climbedOut or nil,
+        tallyTaught = player.tallyTaught or nil, -- ...and whether she has explained it. See Descent.tallyTaught.
         -- The supper bought at the Cafe and not yet eaten through (models/meal.lua) -- a bare meal id,
         -- nil when nobody has ordered. Purely additive, so Save.VERSION deliberately does NOT move: an
         -- older save loads with no meal held, which reads as a company that has not been to the counter
@@ -598,6 +618,7 @@ function Save.snapshot(player)
         recipes = recipes,
         visitedVendors = visitedVendors,
         announcedDisciplines = announcedDisciplines,
+        seenDoors = seenDoors,
         flags = flags,
         temptation = temptation,
         newItems = newItems,
@@ -821,6 +842,20 @@ function Save.restore(snap)
         if seen then announcedDisciplines[disciplineId] = true end
     end
 
+    -- Shown-door flags (models/building.lua's seenDoors block). NOT forgiving in the same way as the two
+    -- above, and it is the one set here where nil must stay nil: an empty ledger and an unseeded one are
+    -- different states, and rebuilding this as `{}` would tell the hub the player has looked at a city
+    -- and seen no doors in it -- which would announce every card they already own. Left absent, the hub
+    -- seeds it off what that company has already earned. Filtered against the registry like every other
+    -- id set: a building deleted from data/ is dropped rather than sat in the ledger forever.
+    local seenDoors
+    for id, seen in pairs(snap.seenDoors or {}) do
+        if seen and known(require("models.building").defs, id) then
+            seenDoors = seenDoors or {}
+            seenDoors[id] = true
+        end
+    end
+
     -- Story flags. Deliberately NOT filtered against any registry, unlike the id sets around it: a flag
     -- is a record that something was answered, not a pointer at a blueprint, and there is nothing to
     -- check it against. An orphaned flag whose scene was deleted is inert -- no `when` asks for it.
@@ -898,6 +933,8 @@ function Save.restore(snap)
         deepest = snap.deepest or 0,  -- ...and a company that has never been down has no record to beat
         wounds = wounds,              -- ...nor any bones to set
         wounded = snap.wounded == true, -- ...and no history of any, which is what an older save reads as
+        climbedOut = snap.climbedOut == true, -- ...and has never turned back, which is what one reads as too
+        tallyTaught = snap.tallyTaught == true, -- ...so nobody has had to explain the tally to them yet
         -- A meal id that vanished from data/ is dropped rather than crashing the load, exactly like a
         -- removed item or character -- and reads as a company that has not eaten.
         meal = known(require("models.meal").defs, snap.meal) and snap.meal or nil,
@@ -905,6 +942,7 @@ function Save.restore(snap)
         recipes = recipes,
         visitedVendors = visitedVendors,
         announcedDisciplines = announcedDisciplines,
+        seenDoors = seenDoors,     -- nil on an older save, which is what the hub seeds off (see above)
         flags = flags,             -- absent on a save from before this existed; empty reads as unanswered
         temptation = temptation,   -- ...and an empty ledger resolves every line as `held`, which is right
         newItems = newItems,

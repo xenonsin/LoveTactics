@@ -36,6 +36,7 @@
 -- whichever shop happened to be open). See Forge.ceilingFor.
 
 local Discipline = require("models.discipline")
+local Errand = require("models.errand") -- how many rungs a house asks for; the ladder the ceiling is laid on
 local Item = require("models.item")
 local Material = require("models.material")
 local Player = require("models.player")
@@ -49,8 +50,8 @@ local Forge = {}
 -- the ladder kept its shape when the currency moved.
 Forge.GOLD_PER_LEVEL = 40
 
--- Rungs a class item may climb before its house has been run at all, with one more per quest after
--- (see Forge.ceilingFor).
+-- Rungs a class item may climb before its house has been run at all, with the rest of the ladder
+-- spread over the errands it asks for after (see Forge.ceilingFor).
 --
 -- This used to read Vendor.tier -- the four-value wave enum { 0, 3, 6, 10 } -- and by the end the
 -- FORGE was its last consumer anywhere in the game: tools/unlock_rescale.lua moved all 339 item gates
@@ -60,9 +61,21 @@ Forge.GOLD_PER_LEVEL = 40
 -- player has the least of everything else -- the bench was at its least useful where it was most
 -- needed, and a lever nobody can pull is not a lever.
 --
--- 3, and per quest thereafter, so the ladder tops out about two thirds of the way down a line (a house
--- runs 12-14 quests) rather than never. Standing still gates it; the granularity now matches the
--- shelf's, so one quest at a house moves both halves of that house's offer.
+-- 3, and the rest of the ladder spread over the line, so the bench tops out exactly as a house's work
+-- runs out rather than never. Standing still gates it; the granularity still matches the shelf's, so
+-- one errand at a house moves both halves of that house's offer.
+--
+-- IT WAS ONE RUNG PER QUEST, AND THAT WAS A LADDER LENGTH IN DISGUISE. A house ran 12-14 quests then,
+-- so +1 apiece cleared the ladder halfway down a line with room to spare. A house asks for SIX errands
+-- now (models/errand.lua) and nothing else it sponsors is asked for at all, so the same constant
+-- stopped every bench in the game at +9 -- one rung short, on every line, forever. Worse, the shelf did
+-- not stop with it: six rungs carry the same span eleven forge levels do (Balance.slotAnchors -- the
+-- last slot unforged is the first slot fully forged), so an errand was opening two levels' worth of
+-- shelf while raising the bench by one.
+--
+-- So the ceiling reads the rung as a POSITION on whatever ladder the house is on, which is what
+-- Grade.priceFor already had to learn in the same re-cut. Re-cut the shelf again and the size of a step
+-- moves; where it starts and where it stops do not.
 --
 -- Note the ceiling was never the binding constraint at gate 0 -- the BILL is (a new save holds 6 iron
 -- scrap, 2 steel ingot, 250 gold and no technique). This makes the early rungs reachable; it does not
@@ -111,16 +124,27 @@ end
 --                     it, and keeping both would be charging twice for the same permission -- you
 --                     cannot buy a rung you have not played for, because the currency IS the playing.
 --                     A brake the player watches fill beats a lock that silently opens.
---   class item        the standing of the house that sells it -- Quest.sponsorProgress, ONE RUNG PER
---                     QUEST, the same granularity its shelf opens on. This SURVIVED the move to a
---                     technique price, and is not the double-charge the discipline ceiling was: that
---                     one measured play, which is exactly what the price now measures, while this one
---                     measures campaign standing. Two different axes, one of each.
+--   class item        the standing of the house that sells it -- Quest.sponsorProgress, laid across the
+--                     rungs that house asks for, the same ladder its shelf opens on. This SURVIVED the
+--                     move to a technique price, and is not the double-charge the discipline ceiling
+--                     was: that one measured play, which is exactly what the price now measures, while
+--                     this one measures campaign standing. Two different axes, one of each.
 --   classless         no ceiling. Nothing gates it but the materials.
 --
 -- The discipline branch is FIRST and explicit, not a fall-through: discipline stock carries a `class`
 -- too (a Ninja blade is rogue stock), so letting it drop into the branch below would quietly reinstate
 -- a ceiling on top of the price.
+--
+-- WHAT A CLASS ITEM'S STANDING BUYS is the rest of the ladder above CEILING_BASE, divided by the number
+-- of errands the house has to ask (Forge.CEILING_BASE's note). Both ends are fixed -- an unworked house
+-- opens three rungs, a finished line opens all ten -- and the rung count decides only how big a step is.
+-- A house with more errands therefore climbs in smaller steps rather than further, which is what keeps
+-- the Lodge's eight-rung line and the Arcanum's six worth the same bench.
+--
+-- The standing is CLAMPED to the rung count before it is scaled. Standing counts every completed quest
+-- naming the sponsor, not just the asked ones, so a save carrying a side quest the current ladder no
+-- longer asks for would otherwise scale past the top and be caught only by the min() below -- arriving
+-- at the ceiling early and silently, which is the failure this whole function is here to avoid.
 --
 -- Returns Item.MAX_LEVEL at most, always.
 function Forge.ceilingFor(player, item)
@@ -132,7 +156,11 @@ function Forge.ceilingFor(player, item)
     if class then
         local vendorId = Forge.houseVendorFor(class)
         local done = vendorId and Quest.sponsorProgress(player, vendorId) or 0
-        return math.min(Item.MAX_LEVEL, Forge.CEILING_BASE + done)
+        local rungs = vendorId and Errand.tiers(vendorId) or 0
+        if rungs <= 0 then return Item.MAX_LEVEL end
+        local climb = Item.MAX_LEVEL - Forge.CEILING_BASE
+        local earned = math.floor(math.min(done, rungs) * climb / rungs + 0.5)
+        return math.min(Item.MAX_LEVEL, Forge.CEILING_BASE + earned)
     end
     return Item.MAX_LEVEL
 end

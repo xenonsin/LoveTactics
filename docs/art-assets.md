@@ -39,7 +39,7 @@ characters share a token** (the sin generals were one picture between the seven 
 | `chars/` | 107 | 107 | ~52px on a 60px tile | **Spine rigs (commission)** — composed tokens stand in until each rig lands; see [Characters](#characters) |
 | ~~`hazards/`~~ | — | — | 64px tile, under units | **no art, ever** — [drawn by a shader](#hazards-are-not-icons) ✅ |
 | `portraits/` | 0 | 17 | 470px tall standing figure | **commission** |
-| `vendors/` | 0 | 8 | shop panel | **commission** |
+| `vendors/` | 0 | 9 | shop panel | **commission** |
 | `traps/` | 6 | 6 | 64px tile | game-icons.net ✅ |
 | `overworld/` | 0 | 9 | one tilesheet per biome, see [Terrain](#terrain) | **commission** — [brief](commission-terrain-tileset.md) |
 | `materials/` | 3 | 3 | 64px cell | game-icons.net ✅ |
@@ -568,6 +568,19 @@ by that path, and the id and sprite basename disagree for ~half the catalogue. I
 `assets/items/`; a sprite pointing elsewhere (e.g. `weapon_talons` borrows `assets/chars/hawk.png`) is
 skipped rather than composed over shared art. Output stays **generated**, preserving the one property
 that cannot be lost — a new item costs zero art.
+
+### The four husks
+
+`assets/items/unidentified_{weapon,armor,utility,ability}.png` are the icons an **unidentified** piece
+wears until somebody pays to name it ([identification.md](identification.md)). They are the one set in
+`assets/items/` that the composer must never touch, and the reason is the feature: the composer draws a
+family, an element, a class and a tier, and every one of those is a fact the husk exists to withhold. A
+composed husk would answer the question the Touchstone charges to answer.
+
+So they are four hand-authored silhouettes and nothing else — a blade shape, a coat shape, a charm
+shape, a rune shape — each unmistakably its type and deliberately unmistakable for any particular item
+of it. Wrapped, shrouded, or drawn as an outline; whatever reads as "this is a thing of that kind and
+you cannot see it yet" at 38px in a list row and again at 64px on a card.
 
 ### What still gets commissioned
 

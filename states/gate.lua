@@ -33,6 +33,11 @@ local headFont = Theme.display(17)
 local bodyFont = Theme.body(14)
 local smallFont = Theme.body(13)
 
+-- Iselle's tally, in the right-hand column under the purse. Beside the gold rather than over the stair
+-- on purpose: this screen is a LEDGER the player reads before committing, and the tally is the other
+-- entry in it. Held at file scope so the arrival beat fires on a real change (ui/count_meter.lua).
+local countMeter = require("ui.count_meter").new()
+
 -- ---------------------------------------------------------------------------
 -- Going down
 -- ---------------------------------------------------------------------------
@@ -112,9 +117,24 @@ function gate.enter(self, opts)
     require("models.sound").music("music.menu")
     require("ui.screen_fx").reset()
     gate:build()
+
+    -- SHE EXPLAINS THE TALLY, ONCE, THE FIRST TIME THEY COME BACK UP EARLY. The mark that opens the
+    -- readout is set the instant the stair is taken (states/game.lua), so by the time this runs the
+    -- marks are already on screen and she has something to point at. The second mark is set when the
+    -- scene has actually finished, which is what survives a player quitting in the middle of it.
+    --
+    -- Not gated on `opts` for that reason: a flag passed through the switch would be gone on the next
+    -- load, and this is the only place the mechanic is ever explained.
+    if Descent.everClimbedOut(gate.player) and not Descent.tallyTaught(gate.player) then
+        require("models.conversation").play("conversation_rift_tally", function()
+            Descent.markTallyTaught(gate.player)
+            Player.save()
+        end)
+    end
 end
 
 function gate.update(dt)
+    countMeter:update(dt)
     if gate.panel then
         if gate.panel.update then gate.panel:update(dt) end
     elseif gate.menu then
@@ -170,6 +190,11 @@ function gate.draw()
     love.graphics.setFont(headFont)
     Theme.set(Theme.accentAmber)
     love.graphics.printf((p.gold or 0) .. " gold", Scale.WIDTH / 2 + 40, 178, 300, "right")
+
+    -- ...and the other half of the ledger, once she has explained what it is (Descent.everClimbedOut).
+    if Descent.everClimbedOut(p) and gate.run then
+        countMeter:draw(Scale.WIDTH / 2 + 40, 250, 300, gate.run)
+    end
 
     if gate.menu then gate.menu:draw() end
     if gate.panel then gate.panel:draw() end

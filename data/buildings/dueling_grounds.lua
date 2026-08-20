@@ -27,6 +27,7 @@ return {
     w = 270,
     h = 130,
     panel = "pvp",
+    description = "Your company against somebody else's, both sides normalized.",
     unlockErrand = "colosseum", -- see models/building.lua
     unlockPrestige = 1,
 }

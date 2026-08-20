@@ -9,5 +9,6 @@ return {
     w = 270,
     h = 130,
     panel = "party",
+    description = "Everything the company owns, and who is carrying what down.",
     unlockPrestige = 1,
 }

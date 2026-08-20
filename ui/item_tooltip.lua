@@ -32,6 +32,7 @@
 local Scale = require("scale")
 local Combat = require("models.combat")
 local Character = require("models.character")
+local Identify = require("models.identify")
 local Item = require("models.item")
 local Trait = require("models.trait")
 local Discipline = require("models.discipline")
@@ -254,6 +255,21 @@ local function buildBlocks(item, actor, innerW, out, owner)
 
     if item.description and item.description ~= "" then
         blocks[#blocks + 1] = { kind = "desc", text = item.description }
+    end
+
+    -- WHERE AN UNREAD PIECE WAS FOUND, and it is the only row a husk gets (models/identify.lua). No
+    -- guard is needed for the rest of this function: a husk is built from nothing rather than stripped
+    -- down, so it carries no tags, no class, no ability and no bonus, and every block below simply finds
+    -- nothing to draw. This is the one fact it does hold.
+    --
+    -- It earns its row by being the reason the bill is the number it is. The Touchstone prices a reading
+    -- off the floor a piece came off and never off the piece, so two husks on one shelf are quoted
+    -- differently and nothing else on the card says why. A floor is also a place the player walked to,
+    -- which is what makes it readable here where a bare grade would not be.
+    if Identify.isUnidentified(item) then
+        blocks[#blocks + 1] = { kind = "sep" }
+        blocks[#blocks + 1] = { kind = "stat", label = "Found",
+            value = "Floor " .. Identify.floorOf(item) }
     end
 
     -- The taxonomy this item belongs to (a shop taxonomy; docs/classes.md). If it carries a discipline

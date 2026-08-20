@@ -14,6 +14,11 @@
 --
 -- SO A FRESH SAVE ARRIVES AT THREE DOORS, and the first visit is coached through two of them: hire
 -- somebody, then go down (INTRO_STAGES below).
+--
+-- ...AND EVERY DOOR AFTER THOSE THREE IS COACHED THE SAME WAY, on the morning it appears -- the same
+-- bubble on the card, wearing the blueprint's own sentence about what the room is for, and every other
+-- card refused until it has been walked into. A card that quietly stops being locked is a feature
+-- delivered by not being mentioned. See `coachNextDoor` and models/building.lua's seenDoors block.
 
 local State = require("states")
 local Player = require("models.player")
@@ -29,7 +34,6 @@ local Item = require("models.item")
 local Identify = require("models.identify")
 local Voucher = require("models.voucher") -- the vouchers the floors hand up, and the pull that spends one
 local Wound = require("models.wound")     -- what a body carries up; the Inn's dot and the Inn's whole offer
-local Vendor = require("models.vendor")
 local VendorVisit = require("models.vendor_visit") -- what a shop says before it shows you the shelf
 local Locale = require("models.locale")
 local Scale = require("scale")
@@ -37,6 +41,8 @@ local ScreenFx = require("ui.screen_fx")
 local Sound = require("models.sound")
 local Theme = require("ui.theme")
 local Calendar = require("models.calendar") -- the days-remaining line under the title
+local CountMeter = require("ui.count_meter") -- Iselle's tally, on the Rift's plate
+local Descent = require("models.descent")    -- ...and what it reads, plus the mark that reveals it
 
 local hub = {}
 
@@ -45,6 +51,14 @@ local titleFont = Theme.display(28)
 -- display face is Alegreya with OLD-STYLE figures, so its digits sit at x-height and "3" hangs below
 -- the baseline (see ui/theme.lua).
 local dayFont = Theme.body(16)
+
+-- ISELLE'S TALLY, drawn on the Rift's own plate rather than under the title. The parked day counter
+-- below sat centred in the header because expeditions were chosen from a board and the clock belonged
+-- to the screen; this number belongs to one hole in the ground, so it rides the card that hole is drawn
+-- on -- dead centre of the plaza, already the one card drawn larger, and exactly where the eye is when
+-- the player is deciding whether to press it. Held at file scope so the arrival beat fires on a real
+-- change rather than on every visit to the city (ui/count_meter.lua).
+local countMeter = CountMeter.new()
 
 local map           -- BuildingMap widget
 local mapOpts       -- ...and the options it was built with, so the debug mint can rebuild it
@@ -101,7 +115,7 @@ local INTRO_STAGES = {
         -- nothing at all. Voucher.stake plants both halves: the voucher in the purse and the name the
         -- next pull will deal whatever the bands say.
         hire = "character_saber",
-        text = "the Hero's Rift. The sponsor has paid for one crossing already.",
+        text = "the Crossing. The sponsor has paid for one already.",
     },
     coach = {
         building = "the_gate",
@@ -115,6 +129,75 @@ local function introStage()
     return hub.player and INTRO_STAGES[hub.player.hubIntro] or nil
 end
 
+-- THE DOORS THE CITY HAS GROWN SINCE THE PLAYER LAST STOOD IN IT, and the one currently being coached.
+--
+-- `doorQueue` is filled once per hub entry from models/building.lua (board order, so a morning that
+-- opened two of them coaches them in the order they are read); `coachedDoor` is the stage synthesized
+-- for the one in hand. Both are rebuilt on every enter, so nothing here survives a visit it did not
+-- belong to.
+--
+-- A GROWN DOOR IS COACHED EXACTLY AS THE FIRST VISIT'S TWO ARE, and nothing more. There was a pop-up
+-- here for an afternoon -- a card naming the room, saying what it was for, with one button that armed
+-- the bubble -- and it was wrong for a reason worth keeping written down: the city already HAS a grammar
+-- for "press this and here is why", and it is a bubble pinned to the card. A modal in front of it is a
+-- second thing to dismiss before reaching the first, it covers the very plate it is talking about, and
+-- it made a new door a bigger event than the stair the whole game is about. So the sentence the pop-up
+-- carried moved into the bubble, where the Crossing's has always been.
+local doorQueue = {}
+local coachedDoor  -- an INTRO_STAGES-shaped stage for a new door, or nil
+
+-- A grown door's whole bubble, in the shape INTRO_STAGES writes by hand: the card's name with its
+-- article normalized ("The Forge" -> "the Forge", "Cafe" -> "the Cafe", so a name already carrying one
+-- does not get two), then the blueprint's own sentence saying what the room is for.
+--
+-- hub.draw composes "Click " in front of the whole thing, which is why it opens lowercase.
+local function doorText(b)
+    local bare = (b.name or "door"):gsub("^[Tt]he%s+", "")
+    local text = "the " .. bare .. "."
+    if b.description and b.description ~= "" then text = text .. " " .. b.description end
+    return text
+end
+
+-- Whichever card the city is refusing every other door on behalf of: the first visit's stage, or a
+-- newly grown door. One reader, so openPanel and hub.draw cannot disagree about which is in force.
+--
+-- The intro WINS while it is running, and it has to: it is coaching the hall and the stair, which are
+-- two of the three doors a fresh save opens with -- and those three are seeded as already-shown
+-- precisely so this queue is empty until the company comes back up from a floor (Building.seedSeen).
+local function coachedStage()
+    return introStage() or coachedDoor
+end
+
+-- Put the keyboard/pad cursor on the card being coached. The bubble wears a key cap ("Enter", "A"), and
+-- that cap is a promise about what the key does -- but the map's own selection starts wherever the board
+-- put it, so the promised key activated some other card, the gate refused it, and the one instruction on
+-- the screen did nothing. Called wherever a stage comes into force, and it is why hub.mousemoved stops
+-- letting the pointer drag the selection while one is: the highlighted card and the coached card must be
+-- the same card for as long as the bubble is up.
+local function focusCoachedCard()
+    local stage = coachedStage()
+    if stage and map then map:selectById(stage.building) end
+end
+
+-- Take the next grown door off the queue and coach it: a bubble on its card, every other card refused
+-- until it has been walked into.
+--
+-- Does nothing while the first visit is running, so the sponsor's two coached doors are never competing
+-- with a third. The guard reads `hubIntro` itself rather than introStage(), because the intro has a
+-- stage the table does not name: "arrival" is the two scenes playing over the city, and it would
+-- otherwise read as free play.
+--
+-- Deliberately NOT guarded on `activePanel`. A bubble is drawn by hub.draw only when nothing is open
+-- over the city, so a door coached while the post-quest summary is still up simply waits behind it --
+-- which is the right order without needing a callback to sequence it.
+local function coachNextDoor()
+    if coachedDoor or (hub.player and hub.player.hubIntro) then return end
+    local b = table.remove(doorQueue, 1)
+    if not b then return end
+    coachedDoor = { building = b.id, text = doorText(b), door = true }
+    focusCoachedCard()
+end
+
 -- The hotspot rect of the building this stage coaches, read off the live map, or nil. The coach bubble
 -- anchors to this (ui/coach_bubble.lua).
 local function introBuildingRect(stage)
@@ -124,6 +207,20 @@ local function introBuildingRect(stage)
         end
     end
     return nil
+end
+
+-- Every OTHER card on the board, for the bubble to keep off (ui/coach_bubble.lua's `avoid`). The plaza
+-- is nine plates with narrow gutters, so a bubble placed by preference alone lands on a neighbour and
+-- covers a name -- and on this screen the names are the whole content. Handing it the cards lets it pick
+-- the side that hides the least, which on a top-row card is the empty band above the ring.
+local function otherCardRects(stage)
+    local rects = {}
+    for _, b in ipairs(map and map.buildings or {}) do
+        if b.id ~= stage.building then
+            rects[#rects + 1] = { x = b.x, y = b.y, w = b.w, h = b.h }
+        end
+    end
+    return rects
 end
 
 local function titleCase(s) return (s:gsub("^%l", string.upper)) end
@@ -274,9 +371,26 @@ end
 -- playing a vendor's one-time greeting first (see launchVendor). While the first-visit tutorial is
 -- running it refuses every door but the one the current stage coaches (INTRO_STAGES).
 local function openPanel(building)
-    local stage = introStage()
+    local stage = coachedStage()
     if stage then
         if building.id ~= stage.building then return end
+        -- A NEWLY GROWN DOOR IS SPENT BY BEING WALKED INTO, which is the same rule the hire stage below
+        -- keeps and for the same reason: the ledger records a door as SHOWN, and a lesson satisfied by
+        -- reading the bubble over it would mark the room learned by somebody who never saw inside it.
+        --
+        -- Recorded and saved here rather than on the panel's close, because two of these doors open a
+        -- whole SCREEN (the Markets) and never close a panel at all -- there is no later moment that
+        -- every door passes through.
+        if stage.door then
+            Building.markSeen(hub.player, building.id)
+            Player.save()
+            coachedDoor = nil
+            -- ...and through launchVendor, not launchPanel: three of the grown doors keep a shopkeeper
+            -- (the Inn, the Cafe, the Touchstone) whose one-time greeting is the first thing that
+            -- should happen inside the room the player was just sent to.
+            launchVendor(building)
+            return
+        end
         -- SPENT BY THE DEED, NOT BY THE DOOR -- and only the Gate's stage can be spent on the door,
         -- because opening the Gate IS leaving the city. The hall's stage is spent by the hire joining
         -- the company (see introAdvance), so a player who walks in, reads her card and walks out is
@@ -303,6 +417,10 @@ local function introAdvance()
         if char.id == stage.hire then
             hub.player.hubIntro = "coach"
             Player.save()
+            -- The bubble moves to the stair on this frame, so the cursor under it has to as well --
+            -- otherwise the coached card and the highlighted card are two different cards until the
+            -- player happens to touch something (see focusCoachedCard).
+            focusCoachedCard()
             return
         end
     end
@@ -366,7 +484,7 @@ function hub.enter()
             -- it later. It goes out when the last husk is read or sold, not when it is seen.
             if b.panel == "touchstone" then return Identify.count(hub.player) > 0 end
             -- A TOKEN IN THE PURSE, asked BEFORE the vendor branch for the same reason the Touchstone
-            -- is: the Hero's Rift declares a vendor id to keep a keeper (a portrait, a name, a
+            -- is: the Crossing declares a vendor id to keep a keeper (a portrait, a name, a
             -- greeting) without keeping a shelf, so the branch below would take it, ask a shelf
             -- question about a house that stocks nothing, and answer false forever.
             --
@@ -391,8 +509,24 @@ function hub.enter()
             if b.panel == "inn" then return #Wound.wounded(hub.player) > 0 end
             if b.vendor then
                 local deepest = hub.player.descentRun and hub.player.descentRun.cleared or 0
-                if Errand.offered(hub.player, b.vendor, deepest) then return true end
-                return Vendor.hasMarkedStock(b.vendor, hub.player.newStock)
+                return Errand.doorBadge(hub.player, b.vendor, deepest)
+            end
+            -- A DOT BEHIND A DOOR BEHIND A DOOR. The seven shelves moved off this board onto the market
+            -- square (data/buildings/markets.lua), and their dots went with them -- so a house asking
+            -- for work, or holding a rung an errand had just opened, said so on a screen the player has
+            -- no reason to open unless they already know. The card wears the OR of the seven: it points
+            -- INTO the square, where the same dot then names which counter.
+            --
+            -- Not the count, and not which house. A city plate says there is something in there; the
+            -- board behind it is one press away and answers both.
+            if b.state == "markets" then
+                local deepest = hub.player.descentRun and hub.player.descentRun.cleared or 0
+                for _, shop in ipairs(Building.list(hub.player, { district = "market" })) do
+                    if not shop.locked and Errand.doorBadge(hub.player, shop.vendor, deepest) then
+                        return true
+                    end
+                end
+                return false
             end
             if b.panel == "party" then return Player.hasNewStash(hub.player) end
             return false
@@ -400,6 +534,25 @@ function hub.enter()
     }
     map = BuildingMap.new(Building.list(hub.player), mapOpts)
     burger = BurgerButton.new(BURGER_X, BURGER_Y)
+
+    -- WHAT THE CITY GREW WHILE THE COMPANY WAS BELOW (models/building.lua's seenDoors block). The ledger
+    -- is created on the first look at the city and records everything already open, so this comes back
+    -- empty on the first visit -- and empty on the first visit of a save written before any of this
+    -- existed, whose company has been using those rooms for hours.
+    --
+    -- ABOVE THE ARRIVAL BRANCH, which returns early: a stale queue or a stale coached door left over
+    -- from a previous visit would otherwise still be in force behind the sponsor's scene. Seeding here
+    -- is also the honest place for it -- the first look at the city is this line, not the one after the
+    -- conversation that plays over it.
+    if not Building.seeded(hub.player) then
+        Building.seedSeen(hub.player)
+        Player.save()
+    end
+    doorQueue = Building.unannounced(hub.player)
+    coachedDoor = nil
+    -- The first visit's own stages are already in force at this point (they live on the save, not on
+    -- the queue), so the cursor is lined up with the hall or the stair the same way a grown door's is.
+    focusCoachedCard()
 
     -- First arrival at the capital (New Game only; the prologue set this flag -- states/prologue.lua).
     -- TWO SCENES BACK TO BACK, and the second is the hinge of the whole game.
@@ -432,6 +585,11 @@ function hub.enter()
         return -- nothing else opens over the arrival; there is no pending summary on a first visit
     end
 
+    -- The door the city grew while the company was below, coached from here on. It needs no sequencing
+    -- against the summary below: a bubble is only drawn over a clear city, so it waits behind the
+    -- summary on its own and is standing there when the player closes it.
+    coachNextDoor()
+
     -- Just back from a won quest? Surface the reward + the company's level-ups, then clear the handoff
     -- so it shows once (states/game.lua stashed it on the player before switching here).
     if hub.player.pendingSummary then
@@ -446,6 +604,16 @@ end
 
 function hub.update(dt)
     introAdvance()
+    -- The next door waiting behind the one just walked through, coached as soon as the last is spent.
+    -- Asked here rather than hooked onto the panel's close for the reason openPanel gives: a door that
+    -- opens a whole SCREEN never closes a panel, so there is no one seam every door passes through.
+    -- coachNextDoor refuses on its own while one is already in hand, so this is a cheap no-op on almost
+    -- every frame.
+    coachNextDoor()
+    -- Ticked whatever is open: the tally's arrival is a beat the city plays on its own, and holding it
+    -- behind a panel would mean a player who walked in and opened a shop came back to a mark already
+    -- landed, which is the one thing the beat exists to stop.
+    countMeter:update(dt)
     if activePanel then
         -- Optional: a static card (the Choice-based Hiring Hall and Inn) has nothing to tick.
         if activePanel.update then activePanel:update(dt) end
@@ -466,6 +634,18 @@ function hub.draw()
             0, screenW / background:getWidth(), screenH / background:getHeight())
     else
         Theme.drawMount(screenW, screenH)
+    end
+
+    -- ...AND THE LAMPS GO OUT AS THE TALLY CLIMBS. Over the painted city and under everything else, so
+    -- the place dims while the cards, the title and the tally itself stay legible on top of it. Three of
+    -- the four bands do nothing mechanical (models/descent.lua's COUNT_BANDS); this is what they are
+    -- for -- a player noticing the city is worse than it was without being told so.
+    local dim = Descent.everClimbedOut(hub.player) and hub.player and hub.player.descentRun
+        and CountMeter.cityDim(hub.player.descentRun)
+    if dim then
+        Theme.set(Theme.mount, dim)
+        love.graphics.rectangle("fill", 0, 0, screenW, screenH)
+        love.graphics.setColor(1, 1, 1)
     end
 
     love.graphics.setFont(titleFont)
@@ -500,19 +680,35 @@ function hub.draw()
 
     map:draw()
 
+    -- ISELLE'S TALLY, over the Rift's plate. Drawn HERE rather than inside ui/building_map.lua so the
+    -- widget stays generic: one building carrying a readout is not a reason for every card to learn
+    -- about one. The rect comes off Building.GRID, which is the same source the card itself is
+    -- positioned from, so the two cannot drift apart.
+    --
+    -- NOTHING BEFORE THE FIRST CLIMB-OUT. Not a threshold on the number -- the player's own act, which
+    -- is the moment it becomes about something they did. Until then this card is exactly what it has
+    -- always been (models/descent.lua's Descent.everClimbedOut, and the mark is one-way for the same
+    -- reason the Inn's door is).
+    if Descent.everClimbedOut(hub.player) and hub.player and hub.player.descentRun then
+        local gate = Building.GRID.city.gate
+        countMeter:draw(gate.x, 384, gate.w, hub.player.descentRun)
+    end
+
     -- Drawn under any open panel (which dims the city), so the burger does not float over its own menu.
     if not activePanel then burger:draw() end
 
-    -- The first-visit coach: a bubble pinned to whichever card the current stage is about, while nothing
-    -- is open over the city. Same widget the battle tutorial uses (ui/coach_bubble), so "click" stays
-    -- device-honest -- a key cap for pad/keyboard, the plain verb for the mouse.
-    local stage = introStage()
+    -- The coach: a bubble pinned to whichever card the current stage is about, while nothing is open
+    -- over the city. Same widget the battle tutorial uses (ui/coach_bubble), so "click" stays
+    -- device-honest -- a key cap for pad/keyboard, the plain verb for the mouse. Two things put a stage
+    -- in force -- the first visit's two doors, and a door the city has just grown -- and this draws
+    -- either without knowing which (coachedStage).
+    local stage = coachedStage()
     if stage and not activePanel then
         local rect = introBuildingRect(stage)
         if rect then
             local key = Locale.selectKey() -- "Enter" / "A", or nil on the mouse
             local text = key and stage.text or ("Click " .. stage.text)
-            CoachBubble.draw(text, rect, { prefer = "below", key = key })
+            CoachBubble.draw(text, rect, { prefer = "below", key = key, avoid = otherCardRects(stage) })
         end
     end
 
@@ -526,7 +722,13 @@ function hub.mousemoved(x, y, dx, dy)
         activePanel:mousemoved(x, y)
     else
         burger:mousemoved(x, y)
-        map:mousemoved(x, y)
+        -- The pointer does NOT drag the selection off a coached card. Hover-selects everywhere else so
+        -- all three inputs stay in sync (BuildingMap:mousemoved), but while a bubble is up the
+        -- highlighted card and the card its key cap promises must be the same one -- and every other
+        -- card is refused anyway, so highlighting one is a press the board is about to turn down.
+        -- The mouse can still CLICK any card: BuildingMap:mousepressed finds it by rect, not by
+        -- selection.
+        if not coachedStage() then map:mousemoved(x, y) end
     end
 end
 
@@ -547,6 +749,11 @@ function hub.mousepressed(x, y, button)
         openSystemMenu()
     else
         map:mousepressed(x, y, button)
+        -- A REFUSED PRESS GIVES THE HIGHLIGHT BACK. BuildingMap selects whatever was clicked before it
+        -- activates, so a click on a card the coach is refusing lit that card and left the bubble
+        -- pointing at another -- two cards claiming to be the live one. A no-op when the press landed on
+        -- the coached card, because spending the stage is what clears it.
+        focusCoachedCard()
     end
 end
 
@@ -562,7 +769,7 @@ end
 -- MINT AN UNIDENTIFIED PIECE, for development only. 1-8 put one in the satchel found at that many
 -- circles down, so the Touchstone's reading can be driven at any depth band on demand.
 --
--- IT LIVES ON THE CITY rather than inside the counter, which is the opposite of where the Hero's Rift
+-- IT LIVES ON THE CITY rather than inside the counter, which is the opposite of where the Crossing
 -- keeps its own mint row -- and the reason is the door. The Touchstone does not appear until the company
 -- is carrying something nobody can name (models/identify.lua's Identify.everFound), so a mint button
 -- inside it could only ever be pressed by somebody who no longer needed it. The first one has to come
@@ -585,6 +792,10 @@ local function debugMintUnidentified(n)
     -- The card is not on the plaza until the satchel says it should be, and the locked flags are decided
     -- when the map is built -- so the map has to be rebuilt for the new door to appear.
     map = BuildingMap.new(Building.list(hub.player), mapOpts)
+    -- ...and re-asked, so the Touchstone this just opened announces itself here exactly as it would on
+    -- the walk up from the floor that found the piece. Without it the mint would open a card silently
+    -- and the one path that can reach this feature on demand would be the one path that skips it.
+    doorQueue = Building.unannounced(hub.player)
 end
 
 function hub.keypressed(key)
@@ -599,6 +810,7 @@ function hub.keypressed(key)
         openSystemMenu()
     else
         map:keypressed(key)
+        focusCoachedCard() -- arrows may not walk the cursor off a coached card; see hub.mousemoved
     end
 end
 
@@ -609,6 +821,7 @@ function hub.gamepadpressed(joystick, button)
         openSystemMenu()
     else
         map:gamepadpressed(joystick, button)
+        focusCoachedCard() -- the d-pad may not walk the cursor off a coached card either
     end
 end
 

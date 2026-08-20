@@ -209,6 +209,82 @@ local function rollLoot(day, kind, override, enemyUnits, scale)
 end
 
 -- ---------------------------------------------------------------------------
+-- Sealed drops: what the rift hands up unread
+-- ---------------------------------------------------------------------------
+
+-- HOW OFTEN A STOP PAYS SOMETHING NOBODY CAN READ (models/identify.lua).
+--
+-- Deliberately thin, and the shape mirrors the voucher purse's: a common fight almost never pays one,
+-- so the ordinary stop still reads as the ordinary stop, and the two places worth going out of your way
+-- for pay one in four. Across a twelve-stop floor that comes to roughly one or two -- enough that the
+-- walk to the counter is a decision about which to read first, and not enough that it becomes a queue.
+--
+-- THE STAIR GUARDIAN IS ABSENT and that is a decision, not an omission. A general already pays an
+-- authored piece off Descent.DROPS -- the thing her fight was built to hand over. Rolling a husk on top
+-- would put two rewards on one body and quietly make the authored one the consolation prize.
+Spoils.SEALED_CHANCE = { combat = 0.05, elite = 0.25, treasure = 0.25 }
+
+-- How far above the road's own band a CHEST may reach, as a multiple of it. See sealedCandidates.
+Spoils.SEALED_ABOVE = 2.5
+
+-- The pool a sealed drop is drawn from, and it is TWO POOLS depending on where the piece came from.
+-- The split is the honest reading of this file's own doctrine rather than an exception to it:
+--
+--   off a body    the carried pool, exactly as an ordinary drop. A fight against somebody wielding a
+--                 thing is its own answer to what it should pay -- you took his axe, you simply cannot
+--                 read it yet -- so the seal hides the QUALITY and the connection survives intact. A
+--                 roster carrying nothing sealable (a wolf pack, whose fangs are unpriced) pays no husk,
+--                 which needs no special case: the pool comes back empty and the draw comes back nil.
+--
+--   out of a chest  ABOVE the band. A cache has no body behind it to connect to, so there is nothing for
+--                 a carried draw to preserve -- and that is exactly the room this feature needed. What a
+--                 chest seals is dearer than anything the road could otherwise hand over, which is what
+--                 makes identification the way the rift pays above its own price band, and what makes
+--                 the fee worth paying rather than a toll on a thing you already had.
+--
+-- Bounded above as well as below. An unbounded draw would let the first floor's first chest hand over
+-- the dearest object in the game, and a ceiling that a run can raise by descending is the whole point.
+local function sealedCandidates(floor, kind, enemyUnits)
+    local Identify = require("models.identify") -- lazy: identify -> player -> save -> descent -> here
+    local pool = {}
+    if kind == "treasure" then
+        local band = bandPrice(floor)
+        local top = band * Spoils.SEALED_ABOVE
+        for id, def in pairs(Item.defs) do
+            if def.price and def.price > band and def.price <= top and Identify.canSeal(def) then
+                pool[#pool + 1] = { id = id, weight = 1 }
+            end
+        end
+    else
+        for _, entry in ipairs(carriedCandidates(enemyUnits)) do
+            if Identify.canSeal(entry.id) then pool[#pool + 1] = entry end
+        end
+    end
+    return pool
+end
+
+-- The sealed half of a stop's takings: a list of `{ id, floor }`, almost always empty.
+--
+-- NIL `floorLevel` PAYS NOTHING, WHICH IS HOW THE CAMPAIGN OPTS OUT. Identification is a thing the RIFT
+-- does: the descent's gear comes off its floors, and a husk is the floors reaching above the band they
+-- are otherwise capped at. The campaign's roads are stocked by their houses instead, and a mystery blade
+-- on a quest whose shop is three stops away would be a delayed reward with nowhere to collect it.
+--
+-- At most one per stop. Two husks off one fight would make the counter a chore rather than a choice, and
+-- the second is never the one the player remembers.
+function Spoils.rollSealed(opts)
+    opts = opts or {}
+    local floor = opts.floorLevel
+    if not floor then return {} end
+    local kind = opts.kind or "combat"
+    local chance = Spoils.SEALED_CHANCE[kind]
+    if not chance or rnd() >= chance then return {} end
+    local id = pick(sealedCandidates(floor, kind, opts.enemyUnits))
+    if not id then return {} end
+    return { { id = id, floor = floor } }
+end
+
+-- ---------------------------------------------------------------------------
 -- The Merchant's shelf: the same band, bought instead of taken
 -- ---------------------------------------------------------------------------
 
@@ -354,6 +430,12 @@ function Spoils.roll(opts)
     return {
         gold = rollGold(count, mult, kind, opts.rewardGold, scale),
         loot = rollLoot(day, kind, opts.loot, opts.enemyUnits, scale),
+        -- The unread piece, on the rare stop that pays one. A SEPARATE field from `loot` rather than an
+        -- entry in it, because the two are granted differently and by different code: loot is a list of
+        -- ids that Player.grantItem instantiates in the clear, and this is a list of finds that
+        -- Identify.grant husks. Folding them together would mean every reader of `loot` -- the summary
+        -- panel, the reveal, the tutorial's grants -- having to ask which kind each entry was.
+        sealed = Spoils.rollSealed(opts),
         materials = Spoils.materials({
             kind = kind, tier = opts.tier, houseMaterial = opts.houseMaterial,
         }),

@@ -174,7 +174,32 @@ function Wound.inflict(player, chars)
     -- The reserve moves the instant the ledger does. Without this a body wounded at the end of a fight
     -- would walk to the next stop still able to heal into ground it has just lost.
     Wound.stamp(player)
+    -- ...and the city learns it has a use for an inn. See Wound.everWounded: the mark is one-way, so the
+    -- first wound writes it and every one after changes nothing.
+    if #hurt > 0 then player.wounded = true end
     return hurt
+end
+
+-- HAS THIS COMPANY EVER BEEN HURT? A one-way mark, written the first time anybody takes a wound and
+-- never cleared -- not by paying the surgeon, not by mending the last one on the roster.
+--
+-- THE INN IS THE DOOR IT OPENS (data/buildings/the_inn.lua). Setting a bone is the only thing that
+-- building does, so a city that has never seen a wound has no use for it and does not show it; the
+-- first body carried up broken is what puts it on the plaza.
+--
+-- ONE-WAY RATHER THAN LIVE, and that is the decision worth stating. Reading `#Wound.wounded(player) > 0`
+-- instead would be the same sentence in the present tense, and it would take the Inn back off the map
+-- the morning after it was used -- so the city would gain and lose a building every time the company got
+-- hurt and paid to stop being. A door the player has learned the way to stays where they learned it.
+--
+-- A FIELD OF ITS OWN rather than an entry in `player.flags`, and the reason is New Game+. Flags are the
+-- general-purpose "something happened once" ledger and they RESET there, along with the quest ledger and
+-- the temptation record, because those are the campaign starting over. This is not a thing the campaign
+-- did, it is a thing that happened to these bodies -- and New Game+ carries the company as it finished,
+-- `wounds` included. On a flag, a second run would open on a company holding wounds and no door to set
+-- them. It sits beside `player.deepest` instead: two facts about the company that outlive everything.
+function Wound.everWounded(player)
+    return (player and player.wounded) == true
 end
 
 -- Set one wound, for gold. Returns true when it was paid and mended, or nil plus a reason:

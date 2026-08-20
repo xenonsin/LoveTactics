@@ -16,6 +16,7 @@ local Character = require("models.character")
 local Combat = require("models.combat")
 local Arena = require("models.arena")
 local Growth = require("models.growth")
+local Errand = require("models.errand") -- the jobs a house asks for, which are the rungs its bench climbs
 
 -- Run `fn` with Save pointed at a scratch file, cleaning up afterwards either way.
 local function withScratchSave(fn)
@@ -93,10 +94,16 @@ return {
     },
     {
         -- Replaces a case that pinned Vendor.tier's four-value wave enum. That enum is gone: item gates
-        -- moved to per-quest `unlockQuests` and the forge ceiling to Forge.CEILING_BASE + quests done,
-        -- which left it with no callers. What the case was really protecting -- "standing with a house
-        -- turns into a deeper ladder, one house at a time" -- is what is checked here instead.
-        name = "a house's forge ceiling climbs one rung per quest and tops out at the ladder's end",
+        -- moved to per-quest `unlockQuests` and the forge ceiling onto the errand ladder, which left it
+        -- with no callers. What the case was really protecting -- "standing with a house turns into a
+        -- deeper ladder, one house at a time" -- is what is checked here instead.
+        --
+        -- IT WALKED EVERY QUEST THE BASTION SPONSORS and demanded exactly one rung apiece, which is the
+        -- assumption that broke when the shelves were re-cut: a house asks for six errands and sponsors
+        -- thirteen, so the old claim was measured on a line no player can run and the step is no longer
+        -- a constant. The two ENDS are the contract now -- an unworked house opens CEILING_BASE, a
+        -- finished line opens the whole ladder -- and in between it may only climb.
+        name = "a house's forge ceiling climbs as its line is run and tops out at the ladder's end",
         fn = function()
             local p = Player.new()
             p.completedQuests = {}
@@ -105,19 +112,26 @@ return {
             assert(Forge.ceilingFor(p, sword) == Forge.CEILING_BASE,
                 "a fresh save opens at the base ceiling")
 
-            local done, seen = 0, {}
-            for questId, qdef in pairs(Quest.defs) do
-                if qdef.sponsor == "bastion" then seen[#seen + 1] = questId end
-            end
-            table.sort(seen)
-            for _, questId in ipairs(seen) do
+            local line = Errand.forVendor("bastion")
+            assert(#line > 0, "the Bastion asks for work")
+            local prev = Forge.ceilingFor(p, sword)
+            for i, questId in ipairs(line) do
                 p.completedQuests[questId] = true
-                done = done + 1
-                assert(Forge.ceilingFor(p, sword) == math.min(Item.MAX_LEVEL, Forge.CEILING_BASE + done),
-                    "quest " .. done .. " at the Bastion should buy exactly one more rung")
+                local ceiling = Forge.ceilingFor(p, sword)
+                assert(ceiling >= prev, "errand " .. i .. " at the Bastion must never lower the ceiling")
+                assert(ceiling <= Item.MAX_LEVEL, "and must never pass the top of the curve")
+                prev = ceiling
             end
-            assert(Forge.ceilingFor(p, sword) == Item.MAX_LEVEL,
-                "a finished line reaches the top of the curve")
+            assert(prev == Item.MAX_LEVEL, "a finished line reaches the top of the curve")
+
+            -- The ladder is laid over the rungs the house has, so a shelf re-cut moves the size of a
+            -- step and never where it stops. Halfway down the line is halfway up the bench.
+            local half = Player.new()
+            half.completedQuests = {}
+            for i = 1, math.floor(#line / 2) do half.completedQuests[line[i]] = true end
+            local mid = Forge.ceilingFor(half, sword)
+            assert(mid > Forge.CEILING_BASE and mid < Item.MAX_LEVEL,
+                "half a line buys real rungs and stops short of the top, got +" .. mid)
         end,
     },
     {

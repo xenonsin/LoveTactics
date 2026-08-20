@@ -13,6 +13,7 @@ local Item = require("models.item")
 local Player = require("models.player")
 local Vendor = require("models.vendor")
 local Quest = require("models.quest")
+local Errand = require("models.errand") -- the rungs a house asks for, which are the rungs its bench climbs
 
 -- A player with unlimited stock, so a test about the BILL is never really a test about the purse. The
 -- technique holder is a real roster member with a bottomless ledger: the bill reads earned minus spent
@@ -47,9 +48,30 @@ return {
     {
         name = "craft stock grades on the item's own price, not on how deep the forge rung is",
         fn = function()
-            assert(Material.gradeFor({ price = 60 }) == "material_iron_scrap", "cheap stock is scrap")
-            assert(Material.gradeFor({ price = 320 }) == "material_steel_ingot", "mid-shelf is steel")
-            assert(Material.gradeFor({ price = 900 }) == "material_mythril", "the top of the shelf is mythril")
+            -- ASKED AT THE SHELF'S OWN PRICES, never at made-up ones. This case used to assert on 60,
+            -- 320 and 900 -- three numbers no item in the game carries -- and so it passed unmoved
+            -- through the re-cut that emptied the steel band down to a single rung. A price is derived
+            -- from the slot it unlocks from (docs/shelf.md), so the rungs are the only prices there are.
+            local Grade = require("models.grade")
+            local top = require("models.balance").maxSlot()
+            local seen = {}
+            for slot = 0, top do
+                seen[#seen + 1] = Material.gradeFor({ price = Grade.priceFor(slot) })
+            end
+            assert(seen[1] == "material_iron_scrap", "the opening rung forges on scrap")
+            assert(seen[#seen] == "material_mythril", "the deepest rung forges on mythril")
+            -- Every grade earns a place on the ladder, and the ladder never grades DOWN as it climbs.
+            local grades, rank = Material.craftGrades(), {}
+            for i, id in ipairs(grades) do rank[id] = i end
+            local used = {}
+            for i, id in ipairs(seen) do
+                used[id] = true
+                assert(i == 1 or rank[id] >= rank[seen[i - 1]],
+                    "rung " .. (i - 1) .. " grades below the rung beneath it")
+            end
+            for _, id in ipairs(grades) do
+                assert(used[id], id .. " is a craft grade no rung of the shelf ever bills")
+            end
             -- The grade is a property of the ITEM, so it does not drift as the ladder climbs. This is
             -- what the retired Material.TIER_BY_LEVEL got wrong.
             local sword = Item.instantiate("weapon_iron_sword")
@@ -156,18 +178,28 @@ return {
             assert(Forge.houseVendorFor("knight") == "bastion", "the knight's house is the Bastion")
             assert(Forge.ceilingFor(p, sword) == Forge.CEILING_BASE, "no quests done -> the opening ceiling")
 
-            -- One rung per quest at the sponsoring house, matching the granularity its SHELF opens on.
-            -- Only the sponsoring house counts.
+            -- The ladder above the base, laid across the errands this house asks for -- the same rungs
+            -- its SHELF opens on. Only the sponsoring house counts.
+            local line = Errand.forVendor("bastion")
+            local rungs = #line
             local done = 0
-            for questId, qdef in pairs(Quest.defs) do
-                if qdef.sponsor == "bastion" and done < 4 then
-                    p.completedQuests[questId] = true
-                    done = done + 1
-                end
+            for _, questId in ipairs(line) do
+                p.completedQuests[questId] = true
+                done = done + 1
             end
             assert(Quest.sponsorProgress(p, "bastion") == done, "the standing counts this house's quests")
-            assert(Forge.ceilingFor(p, sword) == Forge.CEILING_BASE + done,
-                "and the ceiling rose one rung per quest, not one per wave")
+            assert(done == rungs, "and a finished line is every rung the house asked for")
+            assert(Forge.ceilingFor(p, sword) == Item.MAX_LEVEL,
+                "a house whose work is all done forges to the top of the curve")
+
+            -- Another house's work moves nothing here: the ceiling is the standing of the house that
+            -- SELLS the item, not of whoever the player happened to be working for.
+            local other = richPlayer()
+            for _, questId in ipairs(Errand.forVendor("arcanum")) do
+                other.completedQuests[questId] = true
+            end
+            assert(Forge.ceilingFor(other, sword) == Forge.CEILING_BASE,
+                "a finished Arcanum line buys no rungs on a knight's blade")
         end,
     },
     {

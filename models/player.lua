@@ -394,6 +394,11 @@ function Player.new()
         newItems = {},        -- item id -> true; arrived in the stash and not yet looked at (Player.markNew)
         newStock = {},        -- item id -> true; put on a vendor's shelf by a quest and not yet looked at
         visitedVendors = {},  -- vendor id -> true; a shop plays its intro scene the first time only (states/hub.lua)
+        -- WHICH CITY DOORS THE PLAYER HAS BEEN SHOWN (models/building.lua's seenDoors block) is
+        -- deliberately ABSENT here rather than an empty table. Nil means "has not looked at the city
+        -- yet", which is the state the first hub entry seeds the ledger off; an empty table is
+        -- indistinguishable from it and would have the plaza announce its three opening cards as news.
+        -- seenDoors = nil,
         announcedDisciplines = {}, -- discipline id -> true; a vendor announces a newly unlocked discipline once (states/hub.lua)
         -- Story flags, as a plain set of id -> true. Written by a conversation choice's
         -- `effect = { flag = ... }` (models/story_effect.lua) and read back by a scene's

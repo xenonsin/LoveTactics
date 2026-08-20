@@ -30,13 +30,31 @@ end
 -- Craft stock: grade by the item's own quality
 -- ---------------------------------------------------------------------------
 
--- Price bands against the shelf's actual spread (474 priced items: p25 220, median 320, p75 400), so
--- roughly a quarter of the catalogue forges on scrap, half on steel, and the top quarter on mythril.
--- Ascending; the first band the price fits in wins, and the last entry is the open-ended top.
+-- Price bands cut TWO RUNGS OF THE SHELF APIECE. A price is derived from the slot it unlocks from now
+-- (docs/shelf.md's grade -> slot -> price), so the six rungs of a house's shelf are six prices --
+-- 80, 210, 345, 475, 610, 740 -- and a band is a pair of them: scrap for the opening rungs, steel for
+-- the middle, mythril for the deep cut. Ascending; the first band the price fits in wins, and the last
+-- entry is the open-ended top.
+--
+-- THEY WERE 249 AND 399, MEASURED AGAINST A SPREAD THAT NO LONGER EXISTS -- "474 priced items: p25 220,
+-- median 320, p75 400", which is the hand-authored price list from before the grader, and gave roughly
+-- a quarter scrap, half steel, a quarter mythril. Against the derived ladder those same two numbers put
+-- rungs 0-1 on scrap, rung 2 ALONE on steel, and rungs 3, 4 and 5 all on mythril: 37% of the catalogue
+-- on scrap, 18% on steel and 45% on the rarest ore, with the middle of every shelf forging out of the
+-- top of the economy. Nobody decided that -- a table of absolute gold thresholds simply sat still while
+-- the ladder underneath it was re-cut from twelve rungs to six.
+--
+-- Even thirds rather than the old quarter/half/quarter, and the change is honest rather than a
+-- retuning: the grader spreads a house's stock evenly across its rungs, so with six of them a band is
+-- worth two rungs or it is worth three, and there is no cut that makes the middle twice the ends.
+--
+-- A consumable is priced at 0.4 of its rung (Grade.PRICE_TYPE), so the whole of that shelf lands in the
+-- bottom two bands and nothing one-shot ever bills mythril. That is not an oversight of this table: a
+-- draught is cheap for being spent, and the rarest ore is for the thing you keep.
 Material.GRADE_BY_PRICE = {
-    { max = 249, id = "material_iron_scrap" },
-    { max = 399, id = "material_steel_ingot" },
-    { id = "material_mythril" },
+    { max = 249, id = "material_iron_scrap" },  -- rungs 0-1 (80, 210), and every consumable to rung 4
+    { max = 549, id = "material_steel_ingot" }, -- rungs 2-3 (345, 475)
+    { id = "material_mythril" },                -- rungs 4-5 (610, 740)
 }
 
 -- The craft stock `item` is forged from. An item with no price (a quest grant, a natural weapon) is

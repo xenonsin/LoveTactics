@@ -140,6 +140,49 @@ return {
         end,
     },
     {
+        -- A boss's stair pays a relic every time (states/game.lua's openLanding), so its draw asks for
+        -- `guaranteed` and the empty answer the reliquary is allowed to give is illegal there. The case
+        -- that proves it is the unrollable relic: relic_honed_edge is authored at `weight = 0` -- off the
+        -- weighted shelf, granted by name at a Crossroads -- so a run holding all eighteen others leaves a
+        -- pool the ordinary draw reads as empty and a body that is still carrying something.
+        name = "a guaranteed slate falls through to a relic no weighted draw would offer",
+        fn = function()
+            local all, others = {}, {}
+            for id in pairs(Relic.defs) do
+                all[#all + 1] = id
+                if id ~= "relic_honed_edge" then others[#others + 1] = id end
+            end
+            assert(#Relic.slate({ exclude = others }, 3) == 0,
+                "the weighted shelf cannot reach a weight-0 relic -- an ordinary slate comes back empty")
+            local got = Relic.slate({ exclude = others, guaranteed = true }, 3)
+            assert(#got == 1 and got[1] == "relic_honed_edge",
+                "a guaranteed slate hands over the one relic the run does not hold")
+            -- The one emptiness nothing can answer: relics are unique per run, so a run holding the whole
+            -- registry has nothing left to be given. The caller pays Relic.BARE_SHELF_GOLD and says so.
+            assert(#Relic.slate({ exclude = all, guaranteed = true }, 3) == 0,
+                "holding every relic in the registry is still an empty slate")
+            assert(Relic.anyUnheld(all) == nil, "and anyUnheld agrees there is nothing left")
+        end,
+    },
+    {
+        name = "a guaranteed slate leaves a healthy shelf's composition alone",
+        fn = function()
+            for _ = 1, 20 do -- the fallback is a last resort, not a thumb on an ordinary draw
+                local ids = Relic.slate({ guaranteed = true }, 3)
+                assert(#ids == 3, "a healthy shelf still fills all three slots")
+                local vices = 0
+                for _, id in ipairs(ids) do
+                    if Relic.get(id).alignment == "vice" then vices = vices + 1 end
+                end
+                assert(vices == 1, "and still lands exactly one temptation")
+                -- A lieutenant's stair deals two, which is the narrower version of the same offer: the
+                -- Vice is drawn first at n >= 2, so the contrast rule survives the smaller slate.
+                local two = Relic.slate({ guaranteed = true }, 2)
+                assert(#two == 2 and two[1] ~= two[2], "a two-card slate is two distinct relics")
+            end
+        end,
+    },
+    {
         name = "dispatch fires only held relics' hooks, namespaces scratch by id, and notifies",
         fn = function()
             local a = char("ally_a", { 60, 60 })

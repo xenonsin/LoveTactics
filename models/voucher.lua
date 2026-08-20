@@ -92,6 +92,23 @@ function Voucher.spend(player)
     return true
 end
 
+-- WHAT A FLOOR PAYS, WITHOUT PAYING IT. Split off from grantForFloor below because the victory screen
+-- has to NAME the tokens on the same beat as the body's own piece, and it draws that screen before the
+-- grant runs -- so the count has to be askable twice and land once. Pure: reads a floor number, touches
+-- no profile.
+--
+-- Takes no player on purpose. What a floor pays is a property of where the floor sits in its circle and
+-- of nothing about the company standing on it, so a signature that could not consult one is the honest
+-- one -- and it is what makes the preview and the grant incapable of disagreeing.
+function Voucher.forFloor(floor)
+    if not floor then return 0 end
+    -- The LAST floor of a circle is the one that pays: a circle cleared, not a floor walked.
+    -- Descent.isGeneralFloor is exactly that test -- she stands on the last floor of her stratum -- so
+    -- the two constants below are one floor paying twice rather than two different floors.
+    if not Descent.isGeneralFloor(floor) then return 0 end
+    return Voucher.PER_CIRCLE + Voucher.GENERAL_BONUS
+end
+
 -- What a cleared floor is worth, granted straight onto the profile. Called once per floor cleared, and
 -- it decides for itself whether this floor pays at all -- the caller has a floor number and nothing
 -- else to reason with, and the answer is a property of where the floor sits in its circle.
@@ -99,12 +116,8 @@ end
 -- Returns the number granted (0 or 2), so a caller can say so on the landing.
 function Voucher.grantForFloor(player, floor)
     if not (player and floor) then return 0 end
-    -- The LAST floor of a circle is the one that pays: a circle cleared, not a floor walked.
-    -- Descent.isGeneralFloor is exactly that test -- she stands on the last floor of her stratum -- so
-    -- the two constants below are one floor paying twice rather than two different floors.
-    if not Descent.isGeneralFloor(floor) then return 0 end
-    local n = Voucher.PER_CIRCLE + Voucher.GENERAL_BONUS
-    Voucher.grant(player, n)
+    local n = Voucher.forFloor(floor)
+    if n > 0 then Voucher.grant(player, n) end
     return n
 end
 

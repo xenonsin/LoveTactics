@@ -225,6 +225,73 @@ function Descent.dropFor(player, sin, isGeneral)
     return nil
 end
 
+-- WHAT CLEARING AN OBJECTIVE IS ABOUT TO PAY, so the victory screen can name it instead of the corner of
+-- the map. Returns `{ gold, items = {ids}, materials = {[id]=n}, vouchers }`, or nil for an objective that
+-- pays nothing by these routes.
+--
+-- The three things a cleared descent objective hands over -- an errand's purse and goods, the guardian's
+-- own piece, the tokens a finished circle pays -- were each announced by a pushToast and by nothing else.
+-- So the one fight a floor is BUILT AROUND was the only fight whose reward never reached the screen that
+-- exists to report a reward: the panel showed the salvage floor alone, and the objective read as the
+-- poorest stop on the board. (The campaign's objectives had the Company Advancement overlay for this,
+-- which has had no reachable caller since the Quest Board was retired -- both its entry points hang off
+-- Quest.complete.)
+--
+-- DISPLAY ONLY, and that is the whole contract. NOTHING HERE GRANTS. Every grant stays exactly where it
+-- was -- the errand branch in states/game.lua's onWin, and game:openLanding -- which keeps the
+-- double-payout guards those paths already carry as the only guards there need to be. The returned table
+-- rides the spoils as `awarded`, a field grantSideSpoils deliberately does not read: folding these ids
+-- into `spoils.loot` instead would have paid every one of them out twice, once on the panel's Continue
+-- and once on the beat below it.
+--
+-- Every branch mirrors the test its own grant makes, so the screen can never name a thing the payout then
+-- declines to hand over:
+--   an errand   pays only while unfinished, which is Errand.complete's own first check;
+--   a guardian  pays the first piece of hers this player does not already own (Descent.dropFor above,
+--               which is pure), and the house's stock when the list is exhausted -- openLanding's own
+--               fallback, and the gold beneath that when even the house has no material;
+--   the tokens  are Voucher.forFloor, which is grantForFloor with the granting taken out.
+--
+-- IT LIVES HERE RATHER THAN ON THE STATE that calls it because states/game.lua cannot be required under
+-- the headless runner (it pulls ui/theme.lua, which wants a window), so a payout written there is a
+-- payout no spec can read. This is arithmetic over a run and a player, which is what a model is.
+function Descent.objectiveReward(player, run, objSpec)
+    if not (player and run) then return nil end
+    local out = { gold = 0, items = {}, materials = {}, vouchers = 0 }
+
+    -- AN ERRAND, tried first and returned from -- the same order states/game.lua's onWin takes, and for
+    -- the same reason: a floor carries the stair AND whatever a house asked for down here, each on its own
+    -- end (Descent.floorObjectives), so the objective just cleared is only the stair if it says so.
+    local errandId = objSpec and objSpec.questId
+    if errandId then
+        if (player.completedQuests or {})[errandId] then return nil end
+        local def = require("models.quest").defs[errandId]
+        if not def then return nil end
+        out.gold = def.rewardGold or 0
+        for _, itemId in ipairs(def.rewardItems or {}) do out.items[#out.items + 1] = itemId end
+        return (out.gold > 0 or #out.items > 0) and out or nil
+    end
+
+    -- THE STAIR GUARDIAN: what was on the body, then what the circle paid toward the next company.
+    local depth = Descent.depth(run)
+    local beaten = Descent.sinAt(run, depth)
+    local dropId = Descent.dropFor(player, beaten, Descent.isGeneralFloor(depth))
+    if dropId then
+        out.items[#out.items + 1] = dropId
+    else
+        local houseMat = beaten and require("models.material")
+            .houseFor((require("models.vendor").get(beaten.vendor) or {}).class)
+        if houseMat then
+            out.materials[houseMat] = Descent.SPENT_SET_STOCK
+        else
+            out.gold = require("models.relic").BARE_SHELF_GOLD
+        end
+    end
+    -- Lazy: voucher -> descent -> here. Same cycle every other require in this file steps around.
+    out.vouchers = require("models.voucher").forFloor(depth)
+    return out
+end
+
 -- HOW DEEP A CIRCLE GOES. Wizardry's proving grounds are ten levels and its descendants go deeper; the
 -- descent was eight, which is a tour of the seven rather than a dungeon. Two floors per circle makes it
 -- fifteen -- squarely in that band -- and it is one constant, so three per circle is a one-line change.
@@ -685,6 +752,9 @@ function Descent.new(player, seed)
         -- The deepest floor this run has actually cleared, which is what a new depth record is measured
         -- against at extraction. Distinct from `floor`, which is where the party is standing.
         cleared = 0,
+        -- Iselle's tally: what this company has left forming behind it. Climbs when they come back up
+        -- early, falls when they go deeper. See the count section below.
+        count = 0,
         -- The boon slate dealt off the general the party just put down, held only for the window between
         -- clearing a floor and taking its stair (states/game.lua's openLanding). A list of relic ids, so
         -- it rides in a save as plain data and a resume re-opens the landing on the same three cards
@@ -1277,7 +1347,7 @@ function Descent.sinAt(run, floor)
     return Descent.sinOrder(run and run.seed, run and run.shuffled)[circle]
 end
 
--- WHICH HOUSE HAS WORK POSTED ON THIS FLOOR, as a vendor id -- the door-opening job a shut house cannot
+-- WHICH HOUSES HAVE WORK POSTED ON THIS FLOOR, as vendor ids -- the door-opening job a shut house cannot
 -- ask for, because a house asks inside its own shop (models/errand.lua's Errand.opener).
 --
 -- A SECOND PERMUTATION, DELIBERATELY UNCORRELATED WITH THE SINS. Both are dealt off the run's seed, but
@@ -1286,10 +1356,25 @@ end
 -- have gone. Correlating them -- seating a house's opener on its own circle's floors -- would rebuild the
 -- thing this replaced with one fewer boss in front of it.
 --
--- ONE FLOOR EACH, CYCLING. Floors 1..7 carry the seven houses in the dealt order and floors 8..14 carry
--- them again, so every house is offered exactly twice in a descent and walking past one costs a lap
--- rather than the run. Nothing is seated at the bottom: the Hollow Crown's floor is not a circle and has
--- no house.
+-- ALL SEVEN IN THE FIRST CIRCLE, because tier 0 is fought at the top of the descent.
+--
+-- An opener hands over slot 0, and slot 0 is not "the first thing this house sells" in the abstract --
+-- it is a band of gear balanced against the shallowest floors in the game (docs/balance.md, and
+-- models/errand.lua's Errand.floorFor, which seats every other errand on the floor its own rung is
+-- fought at). A door first met on floor seven paid out floor-one kit seven floors past where it was
+-- worth carrying; on floor thirteen it was a joke. Every other posting sits at the depth its rung is
+-- balanced for, and this is the one whose rung cannot move -- so the posting is what moves.
+--
+-- SPLIT ACROSS THE CIRCLE'S TWO FLOORS rather than piled on floor one, and that is capacity, not taste:
+-- a shallow floor carves about seven and a half dead ends (see FLOOR_GROWTH) and the stair takes one of
+-- them, so seven doors on floor one would be seating eight ends in seven spurs and the generator would
+-- start degrading them onto shared ground. Three and four fit with room to spare.
+--
+-- It dealt one house per floor across floors 1..7 before this, and a second lap over 8..14 before that.
+-- The cost of the compression is real and is the point: every door in the game is offered in the first
+-- two floors, and a company that walks past one has to climb back for it. Climbing back is a thing the
+-- mode already does (Descent.enterFloor puts a cleared board back exactly as it stood, dead end and
+-- all), which is what keeps this a price rather than a locked-out house.
 --
 -- Derived from the seed, never stored, for the same reason the sins are: a resume re-derives the floor
 -- from a seed and a depth, and a stored order is a second copy that can disagree with it. Whether the
@@ -1307,11 +1392,17 @@ local function shuffledHouses(seed)
     return deck
 end
 
-function Descent.openerAt(run, floor)
+function Descent.openersAt(run, floor)
     floor = math.max(1, floor or 1)
-    if Descent.isBottom(floor) then return nil end
+    if floor > Descent.FLOORS_PER_CIRCLE then return {} end
     local deck = shuffledHouses(run and run.seed)
-    return deck[((floor - 1) % #deck) + 1]
+    local out = {}
+    for i, vendorId in ipairs(deck) do
+        -- The deal's order decides WHICH floor of the circle, so the split moves with the seed like
+        -- everything else here rather than always cutting the same three houses onto floor one.
+        if math.ceil(i * Descent.FLOORS_PER_CIRCLE / #deck) == floor then out[#out + 1] = vendorId end
+    end
+    return out
 end
 
 -- Which biome this floor wears: its sin's, and the underworld at the bottom -- where the campaign's own
@@ -1607,18 +1698,22 @@ function Descent.floorObjectives(player, floor, sin, floorLevel, general, run)
     -- errand in one stroke (models/errand.lua's Errand.opener).
     --
     -- Skipped once its door is open, which is what stops a house that already trades from posting the
-    -- job that would have introduced it. A house met and walked past keeps its posting and comes round
-    -- again seven floors later (Descent.openerAt).
-    local house = Descent.openerAt(run, floor)
-    local openerId = house and not Errand.doorOpen(player, house) and Errand.opener(house)
-    local openerDef = openerId and require("models.quest").defs[openerId]
-    if openerDef and openerDef.map and openerDef.map.objective then
-        out[#out + 1] = specFor({
-            id = openerId,
-            name = openerDef.name,
-            sponsor = openerDef.sponsor,
-            map = openerDef.map,
-        })
+    -- job that would have introduced it -- and it is why a later run's first circle is a thinner place
+    -- than a first run's: only the doors still shut are lying there. A house met and walked past keeps
+    -- its posting on the floor that carried it, and the only way back is up (Descent.openersAt: every
+    -- door is dealt into the first circle, because an opener hands over slot 0 and slot 0 is balanced
+    -- for exactly those floors).
+    for _, house in ipairs(Descent.openersAt(run, floor)) do
+        local openerId = not Errand.doorOpen(player, house) and Errand.opener(house)
+        local openerDef = openerId and require("models.quest").defs[openerId]
+        if openerDef and openerDef.map and openerDef.map.objective then
+            out[#out + 1] = specFor({
+                id = openerId,
+                name = openerDef.name,
+                sponsor = openerDef.sponsor,
+                map = openerDef.map,
+            })
+        end
     end
 
     return out
@@ -1663,13 +1758,194 @@ function Descent.reached(player, floor)
     return player.deepest
 end
 
+-- ---------------------------------------------------------------------------
+-- The count: what the company left forming behind it
+-- ---------------------------------------------------------------------------
+--
+-- IT IS ISELLE'S TALLY, AND THE FICTION FOR IT IS THE FIRST CONVERSATION IN THE GAME. The capital sits
+-- on the Rift, four houses pay companies to dig it, and the other half of that trade is that the floors
+-- do not stay dug: nothing down there is born, it FORMS, out of whatever is at the bottom of the hole.
+-- The Crown pays by the floor to keep the number down and the trade calls it pruning. Leave the deep
+-- floors unpruned and the count climbs, and what is down there comes up the stair and out into the
+-- country -- which is Bellmere, which is the fight the game opens on
+-- (data/conversations/prologue/conversation_prologue_sponsor.lua).
+--
+-- WHAT IT IS FOR, MECHANICALLY. Every other event in the loop is already priced and priced well: a wipe
+-- drops the haul as a pack with a guard on it, takes most of the purse and wounds every head
+-- (states/game.lua's onLoss). Healing is free, a bed is twenty-five a head. The one move that cost
+-- NOTHING was the voluntary climb-out -- it banked, it kept the mapped floor, and the city handed over a
+-- full restore on arrival -- so the optimal play was to walk back to the ascent tile after every fight,
+-- go up, heal, and come back down to a floor already cleared and already lit. This is the price on that,
+-- and it is deliberately the only thing being priced.
+--
+-- WHY THIS EVENT AND NOT A CHEAPER ONE. A cost on healing, on a bed, or on a rest is a tax on NEEDING to
+-- recover, and needing to recover is what being bad at the game looks like; a bounded allowance is the
+-- same defect wearing a counter, since a cap is equal in supply and unequal in impact -- only the
+-- struggling player ever reaches it. The voluntary climb-out is the one event in the loop that is a
+-- decision with an alternative rather than a need, and the failure case (the wipe) is exempt, so the
+-- player having the hardest time is the one who pays this least.
+--
+-- IT MOVES BOTH WAYS, which is what keeps it from being a countdown:
+--
+--   climbing out        +1   the floor you walked away from starts filling again
+--   reaching a floor    -1   pruning (Descent.advance, below -- the one seam a floor number rises at)
+--   sealing a circle    -2   a general felled on her own floor (Descent.clearFloor)
+--
+-- So a company that withdraws once a floor and keeps descending sits at nought forever and never learns
+-- the number exists, which is right: that is the pacing move the ascent tile was built for. A company
+-- that climbs out after every fight nets seven a floor.
+--
+-- THE MAXIMUM IS PROVISIONAL AND IS MEANT TO BE MEASURED, not derived. Nothing reads it yet except the
+-- readout and the bands below: what happens when it is reached -- the stair stops being an exit and what
+-- is down there comes up with you -- is deliberately not wired, because it should be built against a
+-- played descent rather than against an estimate. See docs/the-count.md.
+--
+-- IT WAS TWENTY-FIVE AND THAT WAS TOO SLACK. A full descent pays back twenty-eight on its own (fourteen
+-- floors stepped onto, seven circles sealed), so at twenty-five even a careless company finished the run
+-- around half full and the city never went dark on anybody. Fifteen puts a company that withdraws three
+-- times a floor near the top by the bottom of the rift, which is the band where the plaza boards up, and
+-- leaves a shuttle full on floor three.
+--
+-- WHAT LOWERING IT DOES NOT DO, because it is worth knowing before it is moved again: it does not touch
+-- the careful player at all. One withdrawal a floor nets zero against the stair's own payback and two a
+-- floor is cancelled exactly by the seals, so both sit at nought whatever this number is. The maximum
+-- decides how fast the CARELESS fill; the ratios below decide whether the careful ever move. If ordinary
+-- play should feel this, the dial is COUNT_SEAL, not COUNT_MAX.
+Descent.COUNT_MAX = 15
+
+-- What a felled general takes off it. Two rather than one because a circle is two floors
+-- (Descent.FLOORS_PER_CIRCLE), so a seal pays back the floor it stood on and the one above it.
+Descent.COUNT_SEAL = 2
+
+-- The bands, as the lowest count each begins at. Ordered deepest-first so a lookup walks it and stops.
+--
+-- MOST OF THEM SAY NOTHING, and that is the point of a meter. The marks already say where the tally
+-- stands; a line of prose under them restating it in words is the same fact twice, and a card that
+-- always carries a sentence has no way to raise its voice when it needs to. So the bottom two bands are
+-- marks alone, and the warning is the only text this readout ever shows.
+--
+-- It is drawn at the point where the number stops being bookkeeping and starts being a thing about to
+-- happen -- two thirds of the way up -- so its arrival IS the signal. The player learns the marks first
+-- and the words only when it matters.
+--
+-- THE TOP TWO SHARE IT rather than escalating to a second line. "Breach imminent" is as true at the
+-- ceiling as it is one below it, and what a full tally ought to say differently is the ending firing,
+-- which is not built (see COUNT_MAX). A second string invented now would be a promise to keep later.
+--
+-- THE TOP BAND SAYS THE STATE, NOT THE EVENT, AND THAT IS TEMPORARY. What is meant to happen at the top
+-- is that the stair stops being an exit -- take it and what is down there comes up with you, with every
+-- general still unsealed beside it. That is not built yet, so the line here reports where the tally
+-- stands and promises nothing. A readout that said "It is coming up the stair" over a stair that
+-- politely went to town would be the game making a claim it does not keep, which is worse than a flat
+-- line. When the ending lands, this is the string that changes.
+--
+-- SPACED TO THE READOUT'S GROUPS OF FIVE, not to arithmetic thirds. The marks are drawn in fives
+-- (ui/count_meter.lua) and each mark wears its own band's colour, so a boundary that falls inside a
+-- group renders as four green and one yellow sitting together -- which reads as an off-by-one rather
+-- than as a ladder. Measured on screen, not guessed. Sitting them on 6 and 11 makes the first group
+-- wholly green, the second wholly yellow, and the last orange with a single red cap on the mark that
+-- is the ceiling.
+--
+-- Moving COUNT_MAX must move these with it: a band table left at its old thresholds when the ceiling
+-- drops is three bands nobody can reach and one that is the whole meter. tests/count_spec.lua walks
+-- every value from nought to the maximum against them.
+Descent.COUNT_BANDS = {
+    { at = 15, id = "up",       phrase = "Breach imminent" },
+    { at = 11, id = "unpruned", phrase = "Breach imminent" },
+    { at = 6,  id = "climbing" },
+    { at = 0,  id = "low" },
+}
+
+-- What the tally reads. Zero for a run that has never come back up early.
+function Descent.count(run)
+    return (run and run.count) or 0
+end
+
+-- Which band a raw tally of `n` stands in. Returns the band table (id, phrase), never nil.
+--
+-- Split out from countBand because the READOUT needs it per MARK rather than per run: each mark in the
+-- row is coloured by the band it belongs to, so the meter climbs green, yellow, orange, red as it fills
+-- (ui/count_meter.lua). Mark i is the mark a count of i lights, so bandAt(i) is exactly its band.
+function Descent.bandAt(n)
+    n = n or 0
+    for _, band in ipairs(Descent.COUNT_BANDS) do
+        if n >= band.at then return band end
+    end
+    return Descent.COUNT_BANDS[#Descent.COUNT_BANDS]
+end
+
+-- Which band `run` stands in.
+function Descent.countBand(run)
+    return Descent.bandAt(Descent.count(run))
+end
+
+-- Move the tally by `delta`, floored at zero and capped at the maximum. Returns the new count.
+--
+-- Floored rather than allowed to go negative: a company that seals every circle on the way down would
+-- otherwise bank a large credit against withdrawals it has not made yet, and "I may now come up eleven
+-- times for free" is a resource, not a pacing rule. The tally is a statement about the state of the
+-- rift right now, not a purse.
+function Descent.countBy(run, delta)
+    if not run then return 0 end
+    run.count = math.max(0, math.min(Descent.COUNT_MAX, (run.count or 0) + (delta or 0)))
+    return run.count
+end
+
+-- The company took the ascent stair. THE ONE CALLER IS states/game.lua's ascent branch and it must stay
+-- that way: a wipe also ends an expedition and also wakes the company at the Rift, and it is exempt --
+-- it already costs the haul, the purse and a wound on every head, and charging the failure twice is the
+-- exact thing this design is built not to do.
+function Descent.climbOut(run)
+    return Descent.countBy(run, 1)
+end
+
+-- Has this company ever come back up early? A ONE-WAY MARK ON THE PLAYER rather than a reading of the
+-- live tally, and for the same reason the Inn's door is (models/wound.lua's Wound.everWounded): the
+-- count falls back to nought the moment the company descends again, so a readout that asked the ledger
+-- would come off the plaza the morning after it was earned, having taught nobody anything.
+--
+-- It is what the readout and Iselle's scene are gated on. Before the first climb-out the Rift card is
+-- exactly what it is today.
+function Descent.everClimbedOut(player)
+    return (player and player.climbedOut) or false
+end
+
+function Descent.markClimbedOut(player)
+    if not player then return false end
+    player.climbedOut = true
+    return true
+end
+
+-- Has Iselle explained the tally yet? A SECOND one-way mark, and the two are deliberately not one.
+--
+-- `climbedOut` is set the instant the stair is taken, because the readout has to be on screen while she
+-- points at it. This one is set when her scene has actually finished, and it is what stops the scene
+-- playing twice -- including for a player who quit the game in the middle of it, which a flag passed
+-- through the state switch would not survive.
+function Descent.tallyTaught(player)
+    return (player and player.tallyTaught) or false
+end
+
+function Descent.markTallyTaught(player)
+    if not player then return false end
+    player.tallyTaught = true
+    return true
+end
+
 -- Step to the next floor. Records that the floor just left was cleared, which is what the depth record
 -- is read from at extraction -- `floor` alone would over-report, since it is where the party is
 -- standing rather than what they beat.
+--
+-- ...and it PRUNES, which is why the tally's payback sits here rather than in states/game.lua's
+-- game.enter. `run.floor` rises in exactly one place and this is it, so every way down pays back once
+-- and only once: the landing's stair, and a floor that gives way under the company. Re-entering a floor
+-- the party climbed out of does not come through here -- the floor number does not move -- so the walk
+-- back to where they were is correctly worth nothing.
 function Descent.advance(run)
     if not run then return end
     run.cleared = math.max(run.cleared or 0, run.floor or 1)
     run.floor = (run.floor or 1) + 1
+    Descent.countBy(run, -1)
     return run
 end
 
@@ -1689,6 +1965,9 @@ function Descent.clearFloor(run)
         local vendor = Descent.sinAt(run, floor).vendor
         run.standing = run.standing or {}
         run.standing[vendor] = (run.standing[vendor] or 0) + 1
+        -- ...and the tally comes down with her. Inside the once-only guard deliberately: the payback is
+        -- for felling the general, and a floor credited twice would pay twice.
+        Descent.countBy(run, -Descent.COUNT_SEAL)
     end
     run.cleared = math.max(run.cleared or 0, floor)
     return run.cleared
@@ -1797,6 +2076,10 @@ function Descent.snapshot(run)
         shuffled = run.shuffled or nil,
         cleared = run.cleared or 0,
         pending = pending,
+        -- Iselle's tally (Descent.count). Absent on a save written before it existed, which reads as
+        -- nought -- the same thing a run that has never come back up early reads as -- so this is purely
+        -- additive and Save.VERSION does not move.
+        count = run.count or nil,
         -- Unbanked standing rides in the save, or quitting on floor four and resuming would hand the
         -- three circles below back at zero -- a resume is not an extraction and must lose nothing.
         standing = standing,
@@ -1837,6 +2120,7 @@ function Descent.restore(snap)
         shuffled = snap.shuffled or nil,
         cleared = snap.cleared or 0,
         pending = pending,
+        count = snap.count or 0, -- absent before the tally existed, and nought is what that means
         standing = standing, -- absent in a save written before circles had houses; an empty table reads the same
         landing = landing,   -- nil unless the run was saved standing on a landing; see snapshot
         drops = drops,       -- ...and the packs, still lying where the company dropped them

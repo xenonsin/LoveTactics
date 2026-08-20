@@ -128,6 +128,18 @@ end
 -- half is dry (the shelf is small and a run keeps what it takes) the remainder is topped up from the
 -- unfiltered pool, so the Vice is a strong preference and never a contract; a thin shelf simply yields
 -- fewer than `n`. Shuffled before returning: a Vice pinned to the same card slot every time is a tell.
+--
+-- `ctx.guaranteed` MAKES THE EMPTY CASE ILLEGAL, and it is the difference between a shelf and a body. A
+-- reliquary is furniture: if the run already holds everything the pool will offer, an empty slate is the
+-- honest answer and the caller pays a consolation instead (Relic.BARE_SHELF_GOLD). A boss's stair is not
+-- furniture -- something was standing there and it was carrying something -- so the stair asks for this
+-- flag, and a draw that would come back empty falls through to ANY relic the run does not already hold,
+-- ignoring the weights and the minDay gates the weighted pool respects. That last resort is deliberately
+-- indiscriminate: a relic authored at `weight = 0` is off the ROLLABLE shelf (it is granted by name
+-- elsewhere), which is a statement about the draw and not about whether the relic may ever be held.
+--
+-- The one case it still cannot answer is a run holding all of Relic.defs at once -- relics are unique per
+-- run (Relic.grant) and there is nothing left to give. The caller handles that, and says so.
 function Relic.slate(ctx, n)
     ctx = ctx or {}
     n = n or 3
@@ -148,11 +160,36 @@ function Relic.slate(ctx, n)
     while #ids < n do if not draw("virtue") then break end end
     while #ids < n do if not draw(nil) then break end end -- a thin shelf: take whatever is still eligible
 
+    if #ids == 0 and ctx.guaranteed then
+        local id = Relic.anyUnheld(taken)
+        if id then ids[1] = id end
+    end
+
     for i = #ids, 2, -1 do                     -- Fisher-Yates, so the Vice lands in no fixed slot
         local j = math.floor(rnd() * i) + 1
         ids[i], ids[j] = ids[j], ids[i]
     end
     return ids
+end
+
+-- What a bare reliquary pays instead of a relic, and now also what a bare STAIR pays. One number in one
+-- place so the two corners cannot drift apart: both are "the shelf has nothing left for this run", and a
+-- player who meets them a floor apart should not be told two different things about the same emptiness.
+Relic.BARE_SHELF_GOLD = 15
+
+-- ANY relic `held` does not already contain, ignoring weight, minDay and condition -- the last resort
+-- behind Relic.slate's `guaranteed`. Nil only when every relic in the registry is held.
+--
+-- Walked in SORTED id order rather than straight out of `pairs`, because `pairs` over a registry is
+-- unspecified: two machines resolving the same run's last-resort drop from the same seed have to reach
+-- the same relic, or a descent stops replaying the same (the identical rule Descent.SINS is ordered for).
+function Relic.anyUnheld(held)
+    held = Relic._excludeSet(held)
+    local ids = {}
+    for id in pairs(Relic.defs) do if not held[id] then ids[#ids + 1] = id end end
+    if #ids == 0 then return nil end
+    table.sort(ids)
+    return ids[math.min(#ids, math.floor(rnd() * #ids) + 1)]
 end
 
 -- ---------------------------------------------------------------------------

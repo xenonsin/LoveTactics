@@ -6,8 +6,9 @@
 --
 -- Deliberately small: no pattern switch (fog is one thing) and no edge feathering (the fog's job is to
 -- HIDE, and a hard tile boundary against the revealed world is correct -- you can see exactly as far as
--- you have walked). Two tiers ride in on uAlpha: the near-opaque dark over never-seen ground, and the
--- lighter veil over ground seen once but now out of sight.
+-- you have walked). Two tiers ride in on uAlpha: the fully opaque dark over never-seen ground, and the
+-- lighter veil over ground seen once but now out of sight. Only the veil breathes (uBreathe) -- unseen
+-- ground is flat 1.0, so the board beneath it never shows through as a grid of faint squares.
 --
 -- Built to the house contract: plain string data at require-time (ui/overworld_map.lua compiles it
 -- lazily under a pcall and latches back to the flat rects on failure), noise shared from shaders/noise.
@@ -18,7 +19,8 @@ local Fog = {}
 
 Fog.source = [[
 uniform float uTime;
-uniform float uAlpha;   // the tier's base opacity (near-1 unseen, ~0.5 the dimmed veil)
+uniform float uAlpha;   // the tier's base opacity (1 over unseen ground, ~0.5 the dimmed veil)
+uniform float uBreathe;  // how much of it the churn may take back; 0 over unseen ground
 uniform vec2  uCell;     // this tile's BOARD coordinate, so the churn is continuous across tiles
 ]] .. Noise.source .. [[
 
@@ -30,9 +32,10 @@ vec4 effect(vec4 color, Image tex, vec2 tc, vec2 sc) {
     float churn = mix(a, b, 0.5);
     // The mist is near-black, lifting to a cold charcoal in its thicker folds so the roll is visible.
     vec3 rgb = mix(vec3(0.015, 0.015, 0.022), vec3(0.05, 0.05, 0.075), churn);
-    // Modulate the opacity a little with the churn so the veil breathes; never enough to reveal what
-    // it hides -- an unseen tile stays unreadable.
-    float a2 = uAlpha * (0.88 + 0.12 * churn);
+    // The veil over ground already walked breathes with the churn. Ground NEVER walked does not: it
+    // arrives with uBreathe 0 and stays flatly opaque, because a tile the fog is hiding has to give up
+    // nothing at all -- not the terrain under it, not even the shape of the board.
+    float a2 = uAlpha - uBreathe * (1.0 - churn);
     return vec4(rgb, a2);
 }
 ]]

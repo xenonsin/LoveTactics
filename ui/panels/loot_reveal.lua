@@ -11,6 +11,7 @@
 --   local panel = LootReveal.new({
 --       encounter = cell.encounter,                  -- { name, ... } (optional; titles the panel)
 --       loot = { "consumable_healing_potion", ... }, -- item ids to reveal (display copies)
+--       sealed = { { id = "weapon_iron_axe", floor = 7 } }, -- unread finds, revealed as husks
 --       onCollect = function() ... end,              -- OPENED and taken: grant the loot + clear the cell
 --       onCancel  = function() ... end,              -- dismissed while still closed: grant nothing
 --   })
@@ -21,6 +22,7 @@
 local CloseButton = require("ui.close_button")
 local ItemTooltip = require("ui.item_tooltip")
 local InputMode = require("input_mode")
+local Identify = require("models.identify")
 local Item = require("models.item")
 local Scale = require("scale")
 local Sound = require("models.sound")
@@ -90,6 +92,21 @@ function LootReveal.new(opts)
     for _, id in ipairs(order) do
         self.items[#self.items + 1] = Item.instantiate(id, tally[id])
         self.counts[#self.items] = tally[id]
+    end
+
+    -- The unread find a cache can hold (models/identify.lua), last, after everything legible. A husk is
+    -- a display copy like the rest -- the caller grants the real one in onCollect -- and it draws its own
+    -- generic icon and its "Unidentified Weapon" name, so the card says exactly what the player knows.
+    --
+    -- ONE CARD PER FIND, NEVER COLLAPSED, which is the opposite of the tally above. Two potions are two
+    -- of one thing; two husks are two separate finds, and a count of two would answer, for free, the very
+    -- question the counter charges to answer.
+    for _, find in ipairs(opts.sealed or {}) do
+        local husk = Identify.sealed(find.id, find.floor)
+        if husk then
+            self.items[#self.items + 1] = husk
+            self.counts[#self.items] = 1
+        end
     end
     local n = math.max(1, #self.items)
 

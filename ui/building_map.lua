@@ -64,6 +64,23 @@ function BuildingMap:moveSelection(delta)
     end
 end
 
+-- Put the selection on a named building. Returns false for a card this board does not have or one that
+-- is shut, leaving the selection where it was.
+--
+-- It exists for the COACH (states/hub.lua): a bubble pinned to a card and wearing an "Enter" cap is a
+-- promise about what that key does, and the keyboard cursor is somewhere else entirely on the frame the
+-- bubble comes up -- so Enter activated a different card, the gate refused it, and the one instruction
+-- on the screen did nothing.
+function BuildingMap:selectById(id)
+    for i, b in ipairs(self.buildings) do
+        if b.id == id and not b.locked then
+            self.selected = i
+            return true
+        end
+    end
+    return false
+end
+
 function BuildingMap:activate()
     local b = self.buildings[self.selected]
     if b and not b.locked and self.onActivate then
