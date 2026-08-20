@@ -1027,6 +1027,11 @@ function Combat.addUnit(combat, char, side, x, y, opts)
     }
     unit.index = #combat.units + 1
     combat.units[unit.index] = unit
+    -- A body that ARRIVES has not had a turn on this board (Combat.heldItsTurn). A summon is freshly
+    -- instantiated and carries nothing, but a bench rotation brings a party instance that may still be
+    -- holding the tally from a previous fight -- and it must walk on as somebody who has not stood up,
+    -- not as somebody who held. Combat.new's opening bodies are cleared in buildOpeningUnit below.
+    char.spentThisTurn = nil
     applyUnitPassives(unit)
     -- Traits are attached but their opener is NOT fired: a summon arriving mid-battle did not start
     -- the battle. Its reactive hooks (onDamaged / onCast / onDeath) are live from this moment.
@@ -1080,6 +1085,11 @@ local function buildOpeningUnit(combat, u, side)
     Combat.releaseClaims(unit.char)
     local st = unit.char.stats.stamina
     if type(st) == "table" then st.current = st.max end
+    -- The turn's spend tally is a leftover of exactly the same kind (Combat.heldItsTurn): a party
+    -- instance that ended the last fight having held its final turn would walk onto THIS board already
+    -- reading as a body that held one, and be drained for it before it had ever been asked. Cleared to
+    -- nil rather than 0 -- nobody has stood up yet -- and the first turn start opens it.
+    unit.char.spentThisTurn = nil
     return unit
 end
 
@@ -2591,6 +2601,16 @@ function Combat.startTurn(combat)
         -- makes an extra action part of the same turn rather than a new one, since a surge re-opens
         -- combat.turn straight from endTurn and never comes back through this function.
         unit.turnFlags = nil
+        -- WHAT IT HAS PAID OUT SINCE (Combat.heldItsTurn): the turn's spend tally, opened at 0 here and
+        -- added to at every spend, so a body that comes back around having reached for no pool at all
+        -- still reads 0 -- the gate The Unasked drains on (data/traits/trait_unasked.lua). Zeroed rather
+        -- than cleared, because nil has to keep meaning "has not stood up yet": a body that never got a
+        -- turn is not a body that held one, and the drain passes over it.
+        --
+        -- Cleared here for the same reason turnFlags is: an extra action is part of the turn that
+        -- earned it, and a surge that re-opened the turn out of endTurn must not hand the unit a fresh
+        -- ledger to hold its way through.
+        if unit.char then unit.char.spentThisTurn = 0 end
     end
     if unit then Status.onTurnStart(combat, unit) end
     -- The idle veil, granted past the expiry sweep above (see where `veil` is decided): a ninja who
@@ -7783,9 +7803,30 @@ local function resourceValue(char, stat)
 end
 
 local function spendResource(char, stat, amount)
+    -- THE TURN'S SPEND TALLY, kept at the primitive rather than at Combat.spendCost, so a blink's price
+    -- per jump and a summon's reservation count as spending exactly as a cast does -- each of them is a
+    -- reserve that is no longer there to be taken, which is the only thing the tally is asked about
+    -- (Combat.heldItsTurn). Stamina and mana only: health is not a reserve anybody husbands, so an
+    -- Overchannel paid in blood is the cast's price and not a second spend beside it.
+    if amount and amount > 0 and (stat == "stamina" or stat == "mana") then
+        char.spentThisTurn = (char.spentThisTurn or 0) + amount
+    end
     local res = char.stats[stat]
     if type(res) == "table" then res.current = res.current - amount
     else char.stats[stat] = (res or 0) - amount end
+end
+
+-- Did `unit` come back around to act without having paid anything out of a pool? The gate The Unasked
+-- drains on (data/traits/trait_unasked.lua): true only for a body that has HAD a turn and reached for
+-- nothing in it. Answers false for a unit that has not stood up yet -- an unopened tally is nil, and a
+-- body that was never given the chance to spend has not held anything back.
+--
+-- Reads the tally rather than the pools: a body that is simply EMPTY has spent everything it had and is
+-- the last thing the rule means to punish, and "its stamina is at 0" cannot tell that apart from a body
+-- that started the fight with none.
+function Combat.heldItsTurn(unit)
+    local spent = unit and unit.char and unit.char.spentThisTurn
+    return spent ~= nil and spent <= 0
 end
 
 -- Drain up to `amount` of a resource from `char`, returning how much was actually removed (never more

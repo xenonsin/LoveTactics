@@ -134,15 +134,95 @@ return {
             for _, u in ipairs(c.units) do
                 if u.side == "party" then victim = u else sup = u end
             end
+            -- 40 off 180 leaves it at 78%, comfortably above its own `stopsAskingBelow` -- so this case
+            -- reads the CONDITION and not the phase past it (which is the case below).
             Combat.dealFlatDamage(c, sup, 40, {}, "test")
             local hurt = Fixture.hp(sup)
-            local stam = victim.char.stats.stamina.current
 
+            -- A BODY THAT HAS NOT STOOD UP YET IS NOT A BODY THAT HELD ITS TURN. The gate is a fact
+            -- about a turn already taken, so the victim has to actually take one -- and hold it.
+            assert(not Combat.heldItsTurn(victim), "nobody has been asked anything yet")
+            victim.initiative, sup.initiative = 0, 5
+            assert(Combat.startTurn(c) == victim, "the victim is up first")
+            Combat.pass(c, victim) -- holds: reaches for no pool at all
+            assert(Combat.heldItsTurn(victim), "and comes back around having spent nothing")
+
+            local stam = victim.char.stats.stamina.current
             openTurn(c, sup)
             assert(Combat.useItem(c, sup, itemNamed(sup.char, "weapon_petal_touch"), victim.x, victim.y),
                 "the Suppliant acts")
             assert(victim.char.stats.stamina.current < stam, "it draws off what was held back")
             assert(Fixture.hp(sup) > hurt, "and takes it into itself")
+        end,
+    },
+    {
+        name = "a body that SPENT its turn is passed over -- the dilemma, not a tax",
+        fn = function()
+            local map = Fixture.new(10, 10)
+            local c = Fixture.combat(map,
+                { unit("character_knight", 4, 4, { isolate = "bare" }) },
+                { unit("character_the_suppliant", 5, 4) })
+            local sup, victim
+            for _, u in ipairs(c.units) do
+                if u.side == "party" then victim = u else sup = u end
+            end
+
+            victim.initiative, sup.initiative = 0, 5
+            assert(Combat.startTurn(c) == victim, "the victim is up first")
+            -- Paid through Combat.spendCost, the one path every cast in the game pays through -- the
+            -- seam the tally is kept at, rather than a field poked directly into the unit.
+            Combat.spendCost(c, victim, { stat = "stamina", amount = 3 })
+            Combat.pass(c, victim)
+            assert(not Combat.heldItsTurn(victim), "it spent, so it held nothing back")
+
+            local stam = victim.char.stats.stamina.current
+            openTurn(c, sup)
+            assert(Combat.useItem(c, sup, itemNamed(sup.char, "weapon_petal_touch"), victim.x, victim.y),
+                "the Suppliant acts")
+            assert(victim.char.stats.stamina.current == stam, "and the bowl passes it over")
+        end,
+    },
+    {
+        name = "past half health the Suppliant stops asking, and drains a body that spent",
+        fn = function()
+            local map = Fixture.new(10, 10)
+            local c = Fixture.combat(map,
+                { unit("character_knight", 4, 4, { isolate = "bare" }) },
+                { unit("character_the_suppliant", 5, 4) })
+            local sup, victim
+            for _, u in ipairs(c.units) do
+                if u.side == "party" then victim = u else sup = u end
+            end
+
+            victim.initiative, sup.initiative = 0, 5
+            assert(Combat.startTurn(c) == victim, "the victim is up first")
+            Combat.spendCost(c, victim, { stat = "stamina", amount = 3 })
+            Combat.pass(c, victim)
+            assert(not Combat.heldItsTurn(victim), "the same body the case above is passed over")
+
+            -- 100 off 180 puts it at 44%, under its threshold: the condition comes off and the rule is
+            -- Luxuria's. This is the tier's promise -- the mini sin's second phase is its general's
+            -- first -- and it is a promise about the SAME victim the gate just spared.
+            Combat.dealFlatDamage(c, sup, 100, {}, "test")
+            local stam = victim.char.stats.stamina.current
+            openTurn(c, sup)
+            assert(Combat.useItem(c, sup, itemNamed(sup.char, "weapon_petal_touch"), victim.x, victim.y),
+                "the Suppliant acts")
+            assert(victim.char.stats.stamina.current < stam, "it stops asking, and takes it anyway")
+        end,
+    },
+    {
+        name = "the Suppliant stops asking on the same beat its relic sheds the grove",
+        fn = function()
+            -- Two authored numbers, in two files, that have to mean one moment: the trait's threshold
+            -- and the relic's phase. Apart, the fight makes a promise ("The Suppliant stops asking.")
+            -- on a beat where nothing about the drain changed.
+            local def = Trait.defs["trait_unasked"]
+            local relic = Item.defs["utility_offered_nothing"]
+            assert(def.stopsAskingBelow, "the condition comes off somewhere")
+            assert(relic.phases and relic.phases[1], "and the relic phases somewhere")
+            assert(def.stopsAskingBelow == relic.phases[1].at,
+                "the drain's threshold and the relic's phase are the same moment")
         end,
     },
     {
