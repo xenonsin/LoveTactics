@@ -17,6 +17,7 @@
 -- Pure logic, headless.
 
 local Character = require("models.character")
+local Combat = require("models.combat")
 local Discipline = require("models.discipline")
 local Item = require("models.item")
 
@@ -187,6 +188,39 @@ tests[#tests + 1] = { name = "an Elite or Boss humanoid is more than a weapon", 
             assert(n >= 3, string.format("%s: tier %d humanoid carrying %d item(s). An Elite is a "
                 .. "signature relic and a rule list that reads, not a health pool with a sword.",
                 id, def.tier, n))
+        end
+    end
+end }
+
+tests[#tests + 1] = { name = "a body that means to move can take a step", fn = function()
+    -- Armour movement penalties STACK (tests/armor_spec.lua), and the two halves of that sum are
+    -- authored months apart: `movement` is one line at the top of a blueprint, the coats are a grid
+    -- filled in later by whoever was writing that body's kit. Nothing ever added them together.
+    --
+    -- What the sum reaching zero costs is invisible in every direction. Combat.moveBudget clamps at 0
+    -- rather than going negative, Combat.reachableList comes back empty, and models/ai.lua walks its
+    -- whole rule list, finds nothing within reach of a melee weapon it can never close with, and
+    -- returns `{ wait = true }`. No error, no warning: on the board it reads as an enemy standing in
+    -- its corner doing nothing for the length of the battle, which looks like a broken planner and is
+    -- a stat line.
+    --
+    -- Two bodies were sitting on it when this was written. character_forsworn_captain declared 2 and
+    -- wore a tower shield and the Warden's Oath at -1 each; character_bulwark declared 4 and wore the
+    -- Halting Rank and the Unyielding Harness at -2 each. Both are fixed in their own files, and the
+    -- fixes are opposite -- one raised the base, one took a coat off -- which is exactly why this
+    -- asserts the sum and not either half of it.
+    --
+    -- A blueprint that declares `movement = 0` is a sentry, a totem or a plank, and opts out by saying
+    -- so, the same way rung 0 opts out of carrying a weapon above.
+    for id, def in pairs(Character.defs) do
+        local base = def.stats and def.stats.movement
+        if base and base > 0 then
+            local unit = { char = Character.instantiate(id), alive = true, x = 1, y = 1, side = "enemy" }
+            Combat.refreshPassives(unit)
+            assert(Combat.moveBudget(unit) > 0, string.format("%s: declares movement %d and its kit "
+                .. "spends %d of it, so it cannot take a step and waits out every battle it stands "
+                .. "in. Raise the base, or take a coat off it.",
+                id, base, base - Combat.flatStat(unit, "movement")))
         end
     end
 end }

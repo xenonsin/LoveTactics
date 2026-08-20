@@ -13,8 +13,15 @@
 -- and no brace to hold. The Lent Aegis is the same oath paid the other way, stripping her own guard to
 -- put it on somebody else, which is what a serjeant standing in front of a general is for.
 --
--- The stat line is untouched. She is harder to get past than she was, but only because of two items
--- the player can take off her and hold -- both priced, both unbound, both Sentinel stock she cannot
+-- The stat line carries exactly one correction, and it is a correction to this file's own kit: the
+-- tower shield and the Warden's Oath are each `movement = -1`, and on a base of 2 they summed to a
+-- body that could not take a step. Effective movement 0 means Combat.reachableList is empty, which
+-- means nothing is ever in reach of a range-1 mace, which means models/ai.lua walks the whole rule
+-- list and falls out the bottom on `aggressive: nothing worth doing` -- a serjeant who waits out
+-- every battle she stands in. Base 4 is what makes the kit read as the two tiles it was written for.
+--
+-- Nothing else moved. She is harder to get past than she was, but only because of two items the
+-- player can take off her and hold -- both priced, both unbound, both Sentinel stock she cannot
 -- shop for until the Bastion opens that shelf.
 return {
     name = "Forsworn Captain",
@@ -28,7 +35,7 @@ return {
         staminaRegen = 2,
         damage = 17, magicDamage = 0,
         defense = 0, magicDefense = 10,
-        movement = 2,
+        movement = 4, -- two tiles once the shield and the Oath have each taken their -1
         speed = 2,
     },
     -- The 3x3 loadout grid (row-major); false = an empty cell. Mace and shield are the doctrine she
