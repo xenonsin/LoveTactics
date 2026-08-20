@@ -399,10 +399,19 @@ function M.walkForgeEconomy()
             end
         end
         if sample then
-            for _, done in ipairs({ 0, 2, 5, 9 }) do
+            -- WALKED ALONG THE HOUSE'S OWN LINE, and at each standing priced the DEEPEST RUNG THAT
+            -- STANDING JUST OPENED -- which is the question in the section title.
+            --
+            -- It used to sample the standings { 0, 2, 5, 9 } and forge the item to `done` as well,
+            -- because under the retired one-rung-per-quest ceiling those were the same number. They are
+            -- not any more (models/forge.lua), and a house asks for six errands, so the old sample
+            -- priced two rungs no line can reach against a standing no player can hold.
+            local rungs = require("models.errand").tiers(v.id)
+            for done = 0, rungs do
                 local player = Balance.playerAt(math.max(1, done), v.id, done)
                 player.materials = {}
-                local item = Item.instantiate(sample.id, 1, done)
+                local ceiling = Forge.ceilingFor(player, sample.def)
+                local item = Item.instantiate(sample.id, 1, math.max(0, ceiling - 1))
                 local cost = Forge.upgradeCost(player, item)
 
                 -- One run of this house's line, at its floor: an objective plus a couple of road
@@ -843,6 +852,7 @@ function M.run(args)
     print("  Materials from ONE run at its floor (objective + elite + 4 road fights, no caches),")
     print("  against the next rung on that house's opening weapon. `runs` is how many such runs the")
     print("  worst-supplied line of the bill needs. Caches pay 1-4 craft / 1-3 house on top.")
+    print("  `after` is errands run at that house; `rung` is the deepest level that standing opens.")
     print("  house           after  rung  runs  bill")
     local econ = M.walkForgeEconomy()
     local worst, deepest = 0, 0
@@ -866,7 +876,7 @@ function M.run(args)
     print("")
     print(string.format("  ONE item keeps pace: %d run per early rung, %d at the top of the ladder,",
         worst, deepest))
-    print("  against a house line of 12-14 quests. The bill grows with depth (t+1 craft,")
+    print("  against a house line of six errands. The bill grows with depth (t+1 craft,")
     print("  ceil(t/2) house) while the payout per run is flat, which is the right shape -- a deep")
     print("  rung should cost more runs than a shallow one.")
     print("  The constraint is BREADTH, not depth: a run funds about two early rungs, so a company")

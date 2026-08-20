@@ -128,7 +128,8 @@ the rescale may never move a body out of the rung it declares.
    the weapon (the Arcanum sells no blade better than a gate-0 wand until quest 10; what its player
    swings is Fire Bolt, then Fireball).
 8. **An item's magnitude scales with the gate that opens it, within its family.** See below.
-9. **The forge ceiling rises every quest** and reaches the top of the ladder before a line ends.
+9. **The forge ceiling rises with every errand a house asks for** and reaches the top of the ladder
+   as its line runs out. See below.
 10. **Every quest at a house opens at least two shelf rows it can actually sell**, while that house
     still has stock to come. The final opening gate is exempt — a shelf that is finishing has nothing
     left to spread.
@@ -142,6 +143,31 @@ and 4; the Arcanum at 3 and 4; the Undercroft at 4, 7, 9 and 10.
 
 Counting **plain** (non-discipline) rows on purpose: a gate whose only additions are discipline stock
 opens nothing for a player who has not unlocked the discipline.
+
+### On rule 9 — the bench climbs the ladder the shelf climbs
+
+`Forge.CEILING_BASE` opens three rungs at a house nobody has worked for, and the rest of the ladder is
+spread over **the errands that house asks for** — six at every house today ([shelf.md](shelf.md),
+`models/errand.lua`). So a finished line reaches `+10` exactly as its work runs out, and re-cutting the
+shelf again moves the size of a step rather than where it stops.
+
+It used to be **one rung per quest**, which was a ladder length written down as a constant. A house ran
+12–14 quests then and `+1` apiece cleared the curve halfway down a line. When the shelves were re-cut
+to six rungs, everything the house sponsors *besides* those six stopped being asked for at all — and
+the descent is the only mode there is, so a quest nobody is sent to is a quest nobody can finish. The
+same constant then stopped every bench in the game at `+9`: one rung short, on every line, forever.
+Discipline and classless stock have no ceiling, so the only gear that could not be finished was the
+plain shelf.
+
+The rate was the worse half. Six rungs carry the same span eleven forge levels do — `Balance.slotAnchors`
+is "the last slot unforged is the first slot fully forged" — so an errand was opening **two levels'
+worth of shelf while raising the bench by one**. That is the same defect the wave enum had before it,
+arriving from the other side.
+
+> **This was green the whole time.** `tests/balance_spec.lua`'s sweep counted every quest naming the
+> sponsor rather than the six it asks for, so it walked a standing no player can reach and passed a
+> bench three rungs short. A guard that measures a line nobody can run measures nothing; it counts
+> `Errand.tiers` now.
 
 ### On rule 8 — item power against its gate
 
@@ -304,8 +330,15 @@ numbers and two tutorial tests failed.
 
 `balance-report`'s FORGE ECONOMY section measures it, at the floor — one run's objective, one elite
 and four road fights, counting no caches. One item keeps pace comfortably: **1 run per early rung,
-3 at the top of the ladder**, against a house line of 12–14 quests. The bill grows with depth
-(`t+1` craft, `ceil(t/2)` house) while the payout per run is flat, which is the right shape.
+3 at the top of the ladder**, against a house line of six errands — sixteen runs to take one piece
+from the rack to `+10`. The bill grows with depth (`t+1` craft, `ceil(t/2)` house) while the payout
+per run is flat, which is the right shape.
+
+The section walks a house's line **an errand at a time**, and at each standing prices the deepest rung
+that standing opens — so the row says what the errand you just ran actually put within reach. It used
+to sample the standings `{ 0, 2, 5, 9 }` and forge the item to the same number, because under the
+retired one-rung-per-quest ceiling those *were* the same number. They are two quantities now, and two
+of those four standings are past anything a line can reach.
 
 > **The floor this measures is now a floor on a *day*, and a day can clear more than one objective.**
 > A run is a ground carrying every quest posted on it ([docs/progression.md](progression.md)), so a

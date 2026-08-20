@@ -92,9 +92,16 @@ end
 -- something ARE the ladder, and there are six to eight of them per house -- which is the rung count the
 -- shelf wanted anyway. `errand: every discipline's gate quest is still asked for` holds the floor.
 --
--- The count differs by house (six at five of them, seven at the Cathedral, eight at the Lodge) because
--- the disciplines are not evenly spread, and that is a feature at this size: seven houses on one ladder
--- would ask for seven jobs on the same floor. See Errand.floorFor.
+-- IT IS SIX AT EVERY HOUSE TODAY -- one opener and five gates apiece, 35 gate quests carrying the 38
+-- disciplines, since two may share a rung. This paragraph used to read "six at five of them, seven at
+-- the Cathedral, eight at the Lodge"; the gates were evened out and the sentence was not, and a comment
+-- describing a distribution the data no longer has is the kind of thing a reader trusts. Errand.tiers
+-- is the answer, and it is counted rather than stated.
+--
+-- The count may differ by house again and nothing here objects: the disciplines are not obliged to be
+-- evenly spread, Errand.floorFor staggers on whatever count it finds, and the forge ceiling divides by
+-- it (models/forge.lua). What would be a problem is seven houses on one ladder asking for seven jobs on
+-- the same floor, which is what the stagger below exists to prevent. See Errand.floorFor.
 local gateCache
 local function opensADiscipline(questId)
     if not gateCache then

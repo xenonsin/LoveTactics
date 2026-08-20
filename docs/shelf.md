@@ -115,9 +115,17 @@ and it is preview-safe by construction.
 ## The slot
 
 Each house's stock is ranked weakest-first and spread across `0 .. rungs - 1`, where **a rung is a job
-the house asks for**: its opener, plus every quest a discipline hangs off. Six rungs at five houses,
-seven at the Cathedral, eight at the Hunter's Lodge (`models/errand.lua`, and `tools/grade_report.lua`
-reads the count from there so the shelf cannot disagree with the work that opens it).
+the house asks for**: its opener, plus every quest a discipline hangs off. That is **six rungs at every
+house** — one opener and five gates apiece, 35 gate quests carrying the 38 disciplines, since two may
+share a rung (`models/errand.lua`, and `tools/grade_report.lua` reads the count from there so the shelf
+cannot disagree with the work that opens it).
+
+> An earlier draft of this section read "six at five houses, seven at the Cathedral, eight at the
+> Hunter's Lodge", and `models/errand.lua` still says so in prose. The gates were evened out and the
+> sentences were not; `Errand.tiers` returns 6 for all seven houses today, which is what `grade-report`
+> prints and what every rung count below is measured against. Nothing is keyed to the uniformity —
+> `Errand.floorFor` staggers on it and `Forge.ceilingFor` divides by it — so a house may grow a
+> seventh rung without an edit anywhere but the data.
 
 It used to be `0 .. quests - 2`, one rung per authored quest. A house's stock is a fixed 78–109 wares
 however many rungs it is cut into, so twelve rungs meant **two or three wares an errand** at the bottom
@@ -296,10 +304,19 @@ be on — `tests/balance_spec.lua`'s *an item's magnitude is the one its unlock 
 catches a loop stopped one step early. Two or three sword and dagger rows may trade places forever
 (identical grades, different fitness against what they face); that is the damping limit, not a fault.
 
-**Anything keyed to the slot NUMBER breaks when the rung count changes**, and three things were: the
+**Anything keyed to the slot NUMBER breaks when the rung count changes**, and five things were: the
 price ladder (`Grade.priceFor`), the standing the wielder is assumed to have (`Balance.prestigeForSlot`),
-and — through the price band — the descent's sealed finds. All three now read the slot as a *position*
-on whatever ladder it is on, so re-cutting the shelf moves the size of a step and never the span.
+— through the price band — the descent's sealed finds, the forge ceiling (`Forge.ceilingFor`, which
+climbed one rung per quest against a line that no longer runs that many, and so stopped every bench in
+the game at `+9`), and the craft-stock bands (`Material.GRADE_BY_PRICE`, two absolute gold thresholds
+that sat still while the prices under them moved, leaving one rung on steel and three on mythril). All
+five read the slot as a *position* on whatever ladder it is on now, so re-cutting the shelf moves the
+size of a step and never the span.
+
+The last two were found by asking the question the other way round — *what else did the twelve-rung
+shelf teach a number?* — because neither announced itself. The forge ceiling had a guard that measured
+a line nobody can run ([balance.md](balance.md), rule 9); the craft bands had a spec asserting on three
+prices no item carries. Both were green.
 
 The rewrite deliberately does **not** touch magnitude. Doing both in one place would hide which of
 the two decided any given number.
