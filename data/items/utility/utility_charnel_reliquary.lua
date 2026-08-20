@@ -20,7 +20,7 @@ return {
     tags = { "charm" },
     class = "mage",
     discipline = "necromancer", -- deeper cut of the shelf: buyable only once the necromancer gate is cleared
-    price = 440,
-    unlockQuests = 6,
+    price = 475,
+    unlockQuests = 3,
     traits = { "trait_deaths_dividend" },
 }

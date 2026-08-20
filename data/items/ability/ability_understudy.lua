@@ -66,8 +66,8 @@ return {
     type = "ability",
     tags = { "physical" },
     class = "alchemist",
-    price = 260,
-    unlockQuests = 3,
+    price = 210,
+    unlockQuests = 1,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

@@ -14,8 +14,8 @@ return {
     type = "consumable",
     tags = { "oil" },
     class = "alchemist",
-    price = 225,
-    unlockQuests = 8,
+    price = 190,
+    unlockQuests = 3,
     activeAbility = {
         target = "tile", -- thrown and bursts around the point, like the Acid Bomb
         allowOccupied = true,

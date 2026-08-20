@@ -24,8 +24,8 @@ return {
     tags = { "longbow", "pierce", "physical", "ranged" },
     hands = 2,
     class = "hunter",
-    price = 800,
-    unlockQuests = 12,
+    price = 740,
+    unlockQuests = 5,
     activeAbility = {
         target = "enemy",
         range = 5,
@@ -36,7 +36,7 @@ return {
         cost = { stat = "stamina", amount = 11 },
         -- Well under the iron longbow's per body -- `raw` means all of it arrives, and three bodies may
         -- pay it. A raw shot at the family's usual weight would simply delete a rank.
-        damage = Curve.ramp(19, 29),
+        damage = Curve.ramp(22, 32),
         -- The line runs from the archer THROUGH the aimed cell: the arrow's own flight path continued.
         aoe = { shape = "line", length = 3 },
         effect = function(fx)

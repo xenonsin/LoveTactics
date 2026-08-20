@@ -27,8 +27,8 @@ return {
     tags = { "physical" },
     class = "hunter",
     discipline = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
-    price = 260,
-    unlockQuests = 3,
+    price = 210,
+    unlockQuests = 1,
     activeAbility = {
         target = "tile",
         range = 3,

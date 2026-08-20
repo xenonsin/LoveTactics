@@ -25,7 +25,7 @@ return {
     class = "fighter",
     discipline = "warlord", -- deeper cut of the shelf: buyable only once the warlord gate is cleared
     price = 740,
-    unlockQuests = 11,
+    unlockQuests = 5,
     activeAbility = {
         target = "tile", -- aim an empty tile; the standard rises there
         range = 3,

@@ -20,7 +20,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "alchemist",
-    price = 200,
-    unlockQuests = 2,
+    price = 80,
+    unlockQuests = 0,
     statusImmunity = { "status_poison", "status_acid" },
 }

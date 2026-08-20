@@ -28,8 +28,8 @@ return {
     tags = { "pierce", "physical" },
     class = "fighter",
     discipline = "duelist",
-    price = 560,
-    unlockQuests = 8,
+    price = 475,
+    unlockQuests = 3,
     charge = { key = "tempo", from = { "repeatStrike" }, max = 3, resetOn = "targetSwitch" },
     activeAbility = {
         target = "enemy",

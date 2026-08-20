@@ -10,26 +10,29 @@
 -- rewrite is a separate pass on purpose: the ranking has to be argued with before 650 files move,
 -- which is exactly the checkpoint the last shelf pass (tools/unlock_rescale.lua) did not have.
 --
--- THE PROPOSED SLOT is where the grade says an item belongs: its rank within its own house, mapped
--- onto that house's band the same way the current gates run (0 .. quests - 2, so the last two quests
--- of a line still open something). Spread by RANK rather than by grade value, deliberately -- an even
--- spread guarantees every quest opens stock, which is a real progression requirement, and the bug was
--- never the spread. It was the key.
+-- THE PROPOSED SLOT is where the grade says an item belongs: its rank within its own house, mapped onto
+-- that house's rungs -- six to eight of them, one per job the house asks for (maxGateFor, off
+-- models/errand.lua's ladder). Spread by RANK rather than by grade value, deliberately -- an even spread
+-- guarantees every errand opens stock, which is a real progression requirement, and the bug was never
+-- the spread. It was the key.
 
 local Grade = require("models.grade")
 local Item = require("models.item")
 local Vendor = require("models.vendor")
 local Quest = require("models.quest")
 local Trait = require("models.trait")
+local Errand = require("models.errand") -- TIERS: the rung count the shelf and the errand ladder share
 
 local M = {}
 
-local TAIL_MARGIN = 2 -- as tools/unlock_rescale.lua: the payoff quests open nothing new
+local function maxGateFor(vendorId)
+    return math.max(0, Errand.tiers(vendorId) - 1)
+end
 
--- The earliest slot a DISCIPLINE item may name. No subclass unlocks before its line's third quest
--- ("a discipline handed over on a line's first or second quest is not earned advancement, it is a
--- welcome gift" -- data/disciplines/bombardier.lua), so nothing below this could ever be buyable.
-local DISCIPLINE_FLOOR = 3
+-- The earliest slot a DISCIPLINE item may name. No subclass opens on a house's opener -- that job is the
+-- door itself -- so nothing at slot 0 could ever be buyable. It was 3 of 12 when the band was twelve
+-- rungs long; the gates now sit on tiers 1..5 (data/disciplines/*.lua), and this is the first of them.
+local DISCIPLINE_FLOOR = 1
 
 -- class -> vendor id, and how many quests each house sponsors.
 local function houses()
@@ -194,36 +197,83 @@ local function planFor(class, maxGate, pinned)
         return a.id < b.id
     end)
 
-    -- TWO BANDS, SPREAD SEPARATELY -- the base shelf over the whole line, the discipline cut over what
-    -- is left once a discipline can actually be unlocked.
+    -- ONE SPREAD, TO AN EVEN COUNT PER RUNG -- and the rung's capacity is what the pins are counted
+    -- against, not something they sit on top of.
     --
-    -- Spreading them together and then clamping the discipline rows up to the floor was the obvious
-    -- thing and it is wrong: every discipline item that graded below the floor piles onto that one
-    -- slot, and the slots underneath it are left with only whatever plain stock happened to rank there.
-    -- tests/balance_spec.lua reads exactly that as "quest 3 opened 0 plain rows" -- a quest whose reward
-    -- is invisible because the shelf did not move. tools/unlock_rescale.lua banded them apart for the
-    -- same reason; the ordering within each band is the only thing this pass changes.
-    -- The pinned rows are taken OUT before the spread rather than moved after it. Moving them after
-    -- leaves a hole exactly where each one used to sit -- the iron bow and the iron longbow both rank
-    -- mid-shelf and both belong at slot 0, so lifting them out afterwards cost the Lodge two of its
-    -- middle rungs and balance_spec read the gap as a quest that opened nothing.
-    local base, deep = {}, {}
+    -- It used to be TWO spreads, the base shelf over the whole line and the discipline cut over
+    -- everything above DISCIPLINE_FLOOR, and they were never summed. The bottom rungs therefore held
+    -- base stock alone and every rung above the floor held both, which is not a curve anyone chose: the
+    -- shipped shelf ran 32, 15, 16 and then 66 across its first four rungs. An errand that opens two
+    -- wares is a job run for a tooltip.
+    --
+    -- The old comment here defended the split, and the thing it was defending against is real: clamping
+    -- discipline rows UP to the floor piles every low-grading one onto that single slot and starves the
+    -- rungs under it. This does not clamp. A discipline row that comes up while the walk is still below
+    -- the floor is HELD, a base row takes its place, and it is dealt in at the first legal rung -- so
+    -- the floor costs it its position in the ranking and nothing else.
+    --
+    -- The pins are taken OUT before the walk, as they always were: moving them afterwards leaves a hole
+    -- exactly where each one used to sit. What is new is that their rung's capacity is reduced by what
+    -- they took, so sixteen ladder anchors pinned to slot 0 no longer arrive on top of a full rung's
+    -- worth of graded stock.
+    local spread, taken = {}, {}
     for _, row in ipairs(asc) do
         local pin = Grade.SLOT_PINS[row.id]
         if pinned[row.id] or (pin and pin.at) then
             row.want = pinned[row.id] and 0 or pin.at
             row.pinned = pinned[row.id] and "ladder anchor" or pin.why
-        elseif row.def.discipline then
-            deep[#deep + 1] = row
+            taken[row.want] = (taken[row.want] or 0) + 1
         else
-            base[#base + 1] = row
+            spread[#spread + 1] = row
         end
     end
-    for i, row in ipairs(base) do row.want = slotFor(i, #base, maxGate) end
-    for i, row in ipairs(deep) do
-        local floor = math.min(DISCIPLINE_FLOOR, maxGate)
-        row.want = floor + slotFor(i, #deep, maxGate - floor)
+
+    -- The share is of the WHOLE shelf, pins included, and each rung's room is its share less what was
+    -- pinned into it. Sizing the share off the un-pinned rows alone leaves every rung short by its own
+    -- pins and the slack falls through to the last one -- which came out at 124 wares against 70.
+    local rungs, n = maxGate + 1, #spread
+    for _, count in pairs(taken) do n = n + count end
+    local room, slot = {}, 0
+    for s = 0, maxGate do
+        room[s] = math.max(0, math.floor(n / rungs) + ((s < n % rungs) and 1 or 0) - (taken[s] or 0))
     end
+    local floor = math.min(DISCIPLINE_FLOOR, maxGate)
+
+    -- TWO QUEUES IN RANK ORDER, and each rung takes its plain rows first.
+    --
+    -- A rung whose whole intake is discipline stock is a rung that opens NOTHING for a player who has
+    -- not unlocked that discipline: they run the job, walk into the shop, and the shelf has not moved.
+    -- tests/balance_spec.lua reads exactly that and it is the reason the two bands were spread apart in
+    -- the first place. Splitting them is not the only way to get it, though, and the old way bought it at
+    -- the price of the curve: a floor of PLAIN_FLOOR plain rows per rung, filled from the ranked list
+    -- before anything else, buys the same guarantee while the rest of the rung still fills by grade.
+    --
+    -- Affordable by construction: a house carries 26 to 43 plain wares over six to eight rungs.
+    local PLAIN_FLOOR = 2
+    local baseQ, deepQ, bi, di = {}, {}, 1, 1
+    for _, row in ipairs(spread) do
+        if row.def.discipline then deepQ[#deepQ + 1] = row else baseQ[#baseQ + 1] = row end
+    end
+    for s = 0, maxGate do
+        local placed = 0
+        while placed < room[s] and placed < PLAIN_FLOOR and baseQ[bi] do
+            baseQ[bi].want = s; bi = bi + 1; placed = placed + 1
+        end
+        while placed < room[s] do
+            local b = baseQ[bi]
+            local d = s >= floor and deepQ[di] or nil -- nothing deep sits under the discipline floor
+            local pick
+            if b and d then pick = (b.adjusted <= d.adjusted) and b or d
+            else pick = b or d end
+            if not pick then break end
+            pick.want = s
+            if pick == b then bi = bi + 1 else di = di + 1 end
+            placed = placed + 1
+        end
+    end
+    -- Whatever the rounding left over goes on the top rung, which is where the deepest stock belongs.
+    for i = bi, #baseQ do baseQ[i].want = maxGate end
+    for i = di, #deepQ do deepQ[i].want = maxGate end
 
     for _, row in ipairs(asc) do
         row.have = row.def.unlockQuests or 0
@@ -403,7 +453,7 @@ function M.run(args)
 
         for _, class in ipairs(classList()) do
             local vid = vendorOf[class]
-            local maxGate = math.max(0, (vid and counts[vid] or 0) - TAIL_MARGIN)
+            local maxGate = maxGateFor(vid)
             local asc = planFor(class, maxGate, pinned)
 
             for _, row in ipairs(asc) do
@@ -448,7 +498,7 @@ function M.run(args)
 
     for _, class in ipairs(classList()) do
         local vid = vendorOf[class]
-        local maxGate = math.max(0, (vid and counts[vid] or 0) - TAIL_MARGIN)
+        local maxGate = maxGateFor(vid)
         local asc, blindRows = planFor(class, maxGate, pinned)
 
         for _, row in ipairs(blindRows) do

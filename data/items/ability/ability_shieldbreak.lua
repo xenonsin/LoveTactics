@@ -13,14 +13,14 @@ return {
     tags = { "impact", "physical" },
     class = "knight",
     discipline = "vanguard", -- knight x rogue; the Breach mechanic's first stock
-    price = 560,
-    unlockQuests = 8,
+    price = 475,
+    unlockQuests = 3,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 9 },
-        damage = Curve.ramp(14, 24),
+        damage = Curve.ramp(12, 22),
         effect = function(fx)
             -- The Sunder rides the blow, so it lands on whoever the strike hits -- a guardian who steps
             -- in front of it is the one broken open.

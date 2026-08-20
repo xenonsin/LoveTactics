@@ -10,5 +10,5 @@ return {
     classes = { "mage", "priest" },
     exemplar = "character_theurge", -- NEW, pending
     hire = "character_ilan",
-    requiredQuests = { "quest_cathedral_the_twin_liturgy" }, -- pending
+    requiredQuests = { "quest_cathedral_the_confession" },
 }

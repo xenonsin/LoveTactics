@@ -23,10 +23,14 @@ return {
         "she can put it back by morning. She says to stay where you are until she has.",
     difficulty = "Hard",
     sponsor = "hunters_lodge",
+    ladder = 3, -- which rung of the Lodge this job opens (models/errand.lua)
     rewardGold = 250,
     -- Both parents, earned: "quest_hunters_lodge_slot_03" is the first hunter subclass gate on its line,
     -- "quest_arcanum_slot_03" the first mage. Holding either is impossible without them.
-    requiredQuests = { "quest_hunters_lodge_slot_03", "quest_arcanum_slot_03" },
+    -- THE LODGE'S SPIRIT RUNG, and both spirit paths hang off it: the shaman (hunter and mage) and the
+    -- totemist (hunter and priest), which is why the Cathedral's key is here beside the Arcanum's. Seven
+    -- subclasses over five rungs means two of them share, and these two share a subject.
+    requiredQuests = { "quest_hunters_lodge_slot_03", "quest_arcanum_slot_03", "quest_cathedral_slot_03" },
     requiredPrestige = 2,
     map = {
         biomes = { "forest", "swamp" },

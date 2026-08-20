@@ -29,7 +29,7 @@ return {
     tags = { "charm" },
     class = "rogue",
     discipline = "mammonite", -- an earner: the half of the shelf that opens with the gate itself
-    price = 320,
-    unlockQuests = 4,
+    price = 345,
+    unlockQuests = 2,
     traits = { "trait_skimmers_cut" },
 }

@@ -31,14 +31,14 @@ return {
     tags = { "earth", "impact", "magical" },
     class = "mage",
     discipline = "elementalist", -- the earth storm, beside Blizzard / Meteor Storm / Thunder Storm
-    price = 560,
-    unlockQuests = 8,
+    price = 740,
+    unlockQuests = 5,
     activeAbility = {
         target = "self", -- it runs out from the caster's own feet: no aiming, only placement
         range = 0,
         speed = 4,
         cost = { stat = "mana", amount = 16 },
-        damage = Curve.ramp(14, 24), -- the base, before the crowd is counted
+        damage = Curve.ramp(16, 26), -- the base, before the crowd is counted
         aoe = { radius = 2, shape = "square" },
         requiresAdjacent = { tag = "staff" },
         ai = { priority = "high", act = "attack",

@@ -17,14 +17,14 @@ return {
     type = "ability",
     tags = { "impact", "physical", "melee" },
     class = "knight",
-    price = 440,
-    unlockQuests = 6,
+    price = 475,
+    unlockQuests = 3,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
-        damage = Curve.ramp(11, 21),
+        damage = Curve.ramp(12, 22),
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_vulnerable_impact" })
         end,

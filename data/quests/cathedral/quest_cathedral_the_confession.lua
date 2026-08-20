@@ -30,7 +30,10 @@ return {
     rewardGold = 250,
     -- Both parents, earned: "quest_undercroft_slot_04" is the first rogue subclass gate on its line,
     -- "quest_cathedral_slot_03" the first priest. Holding either is impossible without them.
-    requiredQuests = { "quest_undercroft_slot_04", "quest_cathedral_slot_03" },
+    -- THE THEURGE'S NOW, not the inquisitor's: mage and priest rather than rogue and priest, so the
+    -- Arcanum's first subclass replaces the Undercroft's. The two swapped tiers -- the theurge came up
+    -- to 3 and the inquisitor went down to 5 -- and a capstone's keys belong to whoever it opens.
+    requiredQuests = { "quest_arcanum_slot_03", "quest_cathedral_slot_03" },
     requiredPrestige = 1,
     map = {
         biomes = { "castle", "swamp" },

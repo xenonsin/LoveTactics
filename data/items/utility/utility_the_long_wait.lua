@@ -23,7 +23,7 @@ return {
     tags = { "charm", "guile" },
     class = "rogue",
     discipline = "poacher",
-    price = 380,
-    unlockQuests = 5,
+    price = 475,
+    unlockQuests = 3,
     traits = { "trait_the_long_wait" },
 }

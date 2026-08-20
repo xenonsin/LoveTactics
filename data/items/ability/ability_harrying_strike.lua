@@ -13,14 +13,14 @@ return {
     tags = { "slash", "physical" },
     class = "fighter",
     discipline = "skirmisher", -- fighter x hunter; the Hit-and-run mechanic's first stock
-    price = 320,
-    unlockQuests = 4,
+    price = 210,
+    unlockQuests = 1,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.ramp(9, 19),
+        damage = Curve.ramp(7, 17),
         effect = function(fx)
             fx.damage(fx.target)
             fx.retreat(fx.user, 1)

@@ -16,14 +16,14 @@ return {
     tags = { "dagger", "pierce", "physical", "holy", "melee" },
     class = "rogue",
     discipline = "inquisitor", -- rogue x priest; the Judgment mechanic's first stock
-    price = 560,
-    unlockQuests = 8,
+    price = 610,
+    unlockQuests = 4,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 2, -- quick, like every dagger
         cost = { stat = "stamina", amount = 5 },
-        damage = Curve.ramp(12, 22), -- carries `holy` via the item tags
+        damage = Curve.ramp(13, 23), -- carries `holy` via the item tags
         effect = function(fx)
             local hp = fx.target.char and fx.target.char.stats and fx.target.char.stats.health
             -- Judgment: an ordinary failing foe is executed near death; a MARKED one from far higher,

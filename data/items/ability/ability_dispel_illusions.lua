@@ -14,8 +14,8 @@ return {
     tags = { "holy" },
     class = "priest",
     discipline = "exorcist", -- deeper cut of the shelf: buyable only once the exorcist gate is cleared
-    price = 240,
-    unlockQuests = 5,
+    price = 345,
+    unlockQuests = 2,
     activeAbility = {
         target = "tile",
         range = 4,

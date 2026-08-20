@@ -14,7 +14,7 @@ return {
     tags = { "pierce", "physical" },
     class = "hunter",
     price = 740,
-    unlockQuests = 11,
+    unlockQuests = 5,
     activeAbility = {
         target = "tile",       -- aim an adjacent tile: it sets the direction the line travels
         allowOccupied = true,  -- the first tile may hold a foe -- the arrow starts there and drives on

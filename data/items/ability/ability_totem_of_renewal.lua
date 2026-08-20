@@ -25,8 +25,8 @@ return {
     tags = { "holy", "summon" },
     class = "priest",
     discipline = "totemist",
-    price = 800,
-    unlockQuests = 12,
+    price = 740,
+    unlockQuests = 5,
     activeAbility = {
         target = "tile",
         range = 3,

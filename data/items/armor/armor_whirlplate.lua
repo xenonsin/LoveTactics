@@ -31,8 +31,8 @@ return {
     tags = { "heavy" },
     class = "fighter",
     discipline = "champion", -- fighter x knight; the Riposte-wall's plate -- answer every striker at once
-    price = 680,
-    unlockQuests = 10,
+    price = 610,
+    unlockQuests = 4,
     traits = { "trait_whirl_answer" },
     bonus = { defense = Curve.ramp(3, 13), movement = -2 },
 }

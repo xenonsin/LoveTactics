@@ -10,5 +10,5 @@ return {
     classes = { "rogue", "priest" },
     exemplar = "character_inquisitor", -- NEW, pending
     hire = "character_calla",
-    requiredQuests = { "quest_cathedral_the_confession" }, -- pending
+    requiredQuests = { "quest_cathedral_the_oath_at_the_altar" },
 }

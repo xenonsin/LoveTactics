@@ -23,7 +23,7 @@ return {
     tags = { "charm" },
     class = "fighter",
     discipline = "battlemage",
-    price = 320,
-    unlockQuests = 4,
+    price = 210,
+    unlockQuests = 1,
     traits = { "trait_resonant_grip" },
 }

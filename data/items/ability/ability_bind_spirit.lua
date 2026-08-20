@@ -28,8 +28,8 @@ return {
     tags = { "summon", "lightning" },
     class = "mage",
     discipline = "shaman",
-    price = 680,
-    unlockQuests = 10,
+    price = 740,
+    unlockQuests = 5,
     activeAbility = {
         target = "tile",
         range = 2,

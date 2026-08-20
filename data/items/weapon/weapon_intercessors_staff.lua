@@ -28,8 +28,8 @@ return {
     type = "weapon",
     tags = { "staff", "magical", "melee" }, -- magical: routes through magicDamage / magicDefense
     class = "priest",
-    price = 620,
-    unlockQuests = 9,
+    price = 610,
+    unlockQuests = 4,
     traits = { "trait_intercession" }, -- an item's `traits` reach whoever carries it (models/trait.lua)
     -- The family's obligation, and shallower than the Crozier's on purpose: this staff wants to be swung,
     -- so the turn it offers you for NOT swinging has to be the worse of the two.

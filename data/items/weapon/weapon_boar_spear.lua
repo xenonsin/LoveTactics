@@ -21,8 +21,8 @@ return {
     tags = { "spear", "pierce", "physical", "melee" },
     hands = 2, -- a two-handed polearm, as every spear is
     class = "knight",
-    price = 680,
-    unlockQuests = 10,
+    price = 740,
+    unlockQuests = 5,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -30,7 +30,7 @@ return {
         minRange = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(14, 24), -- a shade under an iron spear's: the bar is the rest
+        damage = Curve.ramp(16, 26), -- a shade under an iron spear's: the bar is the rest
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
             -- The spear convention (docs/weapons.md): a status lands on the FAR tile, the point

@@ -25,15 +25,15 @@ return {
     tags = { "hammer", "impact", "physical", "ice", "melee" },
     hands = 2,
     class = "fighter",
-    price = 680,
-    unlockQuests = 10,
+    price = 740,
+    unlockQuests = 5,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 7,
         cost = { stat = "stamina", amount = 12 },
         -- A shade under the iron hammer's: the second swing is where the number actually lives.
-        damage = Curve.ramp(19, 31),
+        damage = Curve.ramp(24, 36),
         effect = function(fx)
             -- The freeze rides the blow (`inflicts`) rather than following it, for the reason the iron
             -- hammer's header gives: hard control applied on the NEXT line arrives after the counter has

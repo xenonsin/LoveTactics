@@ -31,8 +31,8 @@ return {
     type = "ability",
     tags = { "summon" },
     class = "alchemist",
-    price = 680,
-    unlockQuests = 10,
+    price = 740,
+    unlockQuests = 5,
     activeAbility = {
         target = "tile",
         range = 2,

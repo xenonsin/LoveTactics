@@ -24,8 +24,8 @@ return {
     tags = { "axe", "slash", "physical", "melee" },
     hands = 2, -- a greataxe: two-handed (Dual Wield can pair it only once forged to +5)
     class = "fighter",
-    price = 560,
-    unlockQuests = 8,
+    price = 610,
+    unlockQuests = 4,
     activeAbility = {
         target = "tile",       -- aim an adjacent tile: it sets the facing the arc sweeps
         allowOccupied = true,  -- the tile in front may hold a foe -- it's the centre of the arc
@@ -33,7 +33,7 @@ return {
         minRange = 1,          -- must pick a neighbor (a facing); never the wielder's own tile
         speed = 6, -- ponderous: you pay for the damage in turn order
         cost = { stat = "stamina", amount = 16 },
-        damage = Curve.ramp(11, 29),
+        damage = Curve.ramp(13, 31),
         aoe = { shape = "front", width = 3 }, -- axes cleave innately: a 3-wide arc in front
         lifesteal = 0.33, -- the wielder drinks a third of everything the arc opens (a keyword)
         effect = function(fx)

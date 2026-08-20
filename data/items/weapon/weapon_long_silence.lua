@@ -25,8 +25,8 @@ return {
     tags = { "longbow", "pierce", "physical", "ranged" },
     hands = 2,
     class = "hunter",
-    price = 680,
-    unlockQuests = 10,
+    price = 740,
+    unlockQuests = 5,
     activeAbility = {
         target = "enemy",
         range = 5,
@@ -36,7 +36,7 @@ return {
         windup = 2,
         cost = { stat = "stamina", amount = 10 },
         -- Under the iron longbow's: taking a caster's whole kit away is worth more than the arrow.
-        damage = Curve.ramp(21, 31),
+        damage = Curve.ramp(20, 30),
         effect = function(fx)
             local t = fx.target
             if not t then return end

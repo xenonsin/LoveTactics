@@ -20,7 +20,7 @@ return {
     tags = { "charm", "spirit" },
     class = "hunter",
     discipline = "shaman",
-    price = 380,
-    unlockQuests = 5,
+    price = 345,
+    unlockQuests = 2,
     traits = { "trait_ghost_wind" },
 }

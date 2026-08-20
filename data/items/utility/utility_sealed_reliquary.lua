@@ -30,7 +30,7 @@ return {
     type = "utility",
     tags = { "holy" },
     class = "priest",
-    price = 560,
-    unlockQuests = 8,
+    price = 475,
+    unlockQuests = 3,
     traits = { "trait_sealed_reliquary" },
 }

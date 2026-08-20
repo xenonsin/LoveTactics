@@ -10,5 +10,5 @@ return {
     classes = { "hunter", "mage" },
     exemplar = "character_shaman", -- NEW, pending
     hire = "character_ondo",
-    requiredQuests = { "quest_hunters_lodge_the_spirit_wood" }, -- pending
+    requiredQuests = { "quest_hunters_lodge_the_spirit_wood" },
 }

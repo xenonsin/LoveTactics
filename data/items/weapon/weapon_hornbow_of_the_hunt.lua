@@ -25,8 +25,8 @@ return {
     tags = { "bow", "pierce", "physical", "ranged" },
     hands = 2, -- two-handed, like every bow
     class = "hunter",
-    price = 200,
-    unlockQuests = 2, -- the reach bow, early: the deep bows are the Limning and the Hailfall
+    price = 210,
+    unlockQuests = 1, -- the reach bow, early: the deep bows are the Limning and the Hailfall
     activeAbility = {
         target = "enemy",
         range = 5, -- two tiles further than a plain bow
@@ -34,7 +34,7 @@ return {
         requiresSight = true,
         speed = 3,
         cost = { stat = "stamina", amount = 10 },
-        damage = Curve.ramp(8, 22),
+        damage = Curve.ramp(6, 20),
         effect = function(fx)
             -- Tiles past the point-blank band (minRange 2), each worth a fifth of the shot's power.
             -- Taken off fx.amount rather than a flat number, so the reward climbs with the forge just

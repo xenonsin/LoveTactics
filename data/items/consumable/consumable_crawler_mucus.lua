@@ -25,8 +25,8 @@ return {
     tags = { "poison", "coating" },
     class = "alchemist",
     discipline = "poisoner", -- deeper cut of the shelf: buyable only once the poisoner gate is cleared
-    price = 150,
-    unlockQuests = 5,
+    price = 140,
+    unlockQuests = 2,
     aura = {
         appliesTo = { "weapon", "ability" },
         exceptTags = { "restorative" }, -- a draught that rooted its drinker is not a coating, it is a mistake

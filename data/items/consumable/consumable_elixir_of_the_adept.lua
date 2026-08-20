@@ -16,8 +16,8 @@ return {
     type = "consumable",
     tags = { "potion", "elixir", "restorative" },
     class = "alchemist",
-    price = 175,
-    unlockQuests = 6,
+    price = 190,
+    unlockQuests = 3,
     activeAbility = {
         target = "ally",
         range = 1,

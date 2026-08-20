@@ -24,7 +24,7 @@ return {
     tags = { "belt" },
     class = "fighter",
     discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
-    price = 500,
-    unlockQuests = 7,
+    price = 345,
+    unlockQuests = 2,
     traits = { "trait_adrenal_surge" },
 }

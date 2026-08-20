@@ -23,8 +23,8 @@ return {
     tags = { "heavy", "holy" },
     class = "knight",
     discipline = "paladin",
-    price = 560,
-    unlockQuests = 8,
+    price = 475,
+    unlockQuests = 3,
     bonus = { defense = Curve.ramp(6, 16), movement = -2 },
     traits = { "trait_vow_marked" },
 }

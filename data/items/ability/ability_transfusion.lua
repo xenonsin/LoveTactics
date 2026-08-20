@@ -13,8 +13,8 @@ return {
     tags = { "restorative" },
     class = "priest",
     discipline = "apothecary", -- priest x alchemist; the Lent-vitality mechanic's first stock
-    price = 740,
-    unlockQuests = 11,
+    price = 610,
+    unlockQuests = 4,
     activeAbility = {
         target = "ally", -- an ally other than yourself is the point; self-targeting is a wash
         range = 2,

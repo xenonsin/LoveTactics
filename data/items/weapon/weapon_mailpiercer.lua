@@ -33,7 +33,7 @@ return {
     hands = 2, -- a two-handed polearm, as every spear is
     class = "knight",
     price = 740,
-    unlockQuests = 11,
+    unlockQuests = 5,
     activeAbility = {
         target = "tile",       -- the aimed neighbour sets the direction the thrust runs
         allowOccupied = true,
@@ -43,7 +43,7 @@ return {
         cost = { stat = "stamina", amount = 10 },
         -- Under the iron spear's curve at every level, and it lands WHOLE: no defense, no resist. What
         -- the number gives up is what the armour would have taken anyway.
-        damage = Curve.ramp(14, 24),
+        damage = Curve.ramp(16, 26),
         aoe = { shape = "line", length = 2 }, -- the family's two tiles (docs/weapons.md)
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

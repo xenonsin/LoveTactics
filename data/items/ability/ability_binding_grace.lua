@@ -29,8 +29,8 @@ return {
     tags = { "holy", "magical" },
     class = "priest",
     discipline = "monk", -- the Cathedral's own subclass is the one body that pays nothing for the second clause
-    price = 680,
-    unlockQuests = 10,
+    price = 610,
+    unlockQuests = 4,
     activeAbility = {
         target = "ally",
         range = 4,

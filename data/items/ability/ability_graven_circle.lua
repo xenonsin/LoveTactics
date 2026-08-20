@@ -26,8 +26,8 @@ return {
     tags = { "magical", "arcane" },
     class = "mage",
     discipline = "elementalist", -- the sigils are Elementalist's own (docs/classes.md); this is the circle they are cut in
-    price = 260,
-    unlockQuests = 3,
+    price = 210,
+    unlockQuests = 1,
     activeAbility = {
         target = "self", -- centred on the caster; there is nothing to aim
         range = 0,

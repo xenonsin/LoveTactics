@@ -13,15 +13,15 @@ return {
     type = "ability",
     tags = { "impact", "physical" },
     class = "fighter",
-    price = 680,
-    unlockQuests = 10,
+    price = 740,
+    unlockQuests = 5,
     activeAbility = {
         target = "tile",   -- an empty tile to land on (not allowOccupied: you cannot land on a unit)
         range = 4,
         minRange = 1,      -- it is a leap, not a stomp in place
         speed = 5,
         cost = { stat = "stamina", amount = 12 },
-        damage = Curve.ramp(15, 25), -- per-target blast damage = power + the caster's Damage, minus Defense
+        damage = Curve.ramp(16, 26), -- per-target blast damage = power + the caster's Damage, minus Defense
         aoe = { shape = "square", radius = 1 }, -- the 3x3 burst centred on the landing tile
         effect = function(fx)
             fx.teleportUser(fx.tx, fx.ty) -- land first...

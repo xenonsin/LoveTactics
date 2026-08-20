@@ -115,9 +115,11 @@ end
 -- included; `locked` marks the ones the player has not earned yet, so the shop can show them greyed
 -- out -- seeing what the rest of the line unlocks is the point of the ladder.
 --
--- `questsDone` is the count of this vendor's quests the player has finished (Quest.sponsorProgress).
--- An item is locked until that count reaches its `unlockQuests`. Passed as a bare number (not a
--- player) so this module stays player-free.
+-- `questsDone` is the RUNG of this shelf the player has reached (Quest.shelfRung), and an item is
+-- locked until that rung reaches its `unlockQuests`. It is one below the house's standing, because the
+-- first errand a house is run for is its opener and that one buys the DOOR rather than a band of stock
+-- -- see Quest.shelfRung for why. Passed as a bare number (not a player) so this module stays
+-- player-free, which is also why the offset is the caller's to apply and not this function's.
 --
 -- `recipes` is an optional plain { itemId = tier } map (the player's consumable recipe levels):
 -- a listed item is stocked at its tier, with `price` scaled to match, so buying it yields the

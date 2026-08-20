@@ -21,7 +21,7 @@ return {
     tags = { "charm" },
     class = "fighter",
     discipline = "warbrewer",
-    price = 440,
-    unlockQuests = 6,
+    price = 345,
+    unlockQuests = 2,
     traits = { "trait_field_still" },
 }

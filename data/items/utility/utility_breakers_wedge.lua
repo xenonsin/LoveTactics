@@ -20,7 +20,7 @@ return {
     tags = { "charm" },
     class = "knight",
     discipline = "vanguard",
-    price = 320,
-    unlockQuests = 4,
+    price = 210,
+    unlockQuests = 1,
     traits = { "trait_breakers_wedge" },
 }

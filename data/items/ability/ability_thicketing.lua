@@ -29,8 +29,8 @@ return {
     tags = { "earth" },
     class = "hunter",
     discipline = "druid", -- deeper cut of the shelf: buyable only once the druid gate is cleared
-    price = 620,
-    unlockQuests = 9,
+    price = 475,
+    unlockQuests = 3,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

@@ -30,8 +30,8 @@ return {
     tags = { "heavy", "plate" },
     class = "knight",
     discipline = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
-    price = 620,
-    unlockQuests = 9,
+    price = 610,
+    unlockQuests = 4,
     traits = { "trait_unyielding" },
     bonus = { defense = Curve.ramp(7, 17), magicDefense = Curve.ramp(3, 13), movement = -2 },
     resist = { physical = 3 },

@@ -13,14 +13,14 @@ return {
     tags = { "holy", "impact" },
     class = "priest",
     discipline = "crusader", -- fighter x priest; the Smite mechanic's first stock
-    price = 680,
-    unlockQuests = 10,
+    price = 610,
+    unlockQuests = 4,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 4,
         cost = { stat = "mana", amount = 10 },
-        damage = Curve.ramp(15, 25), -- carries `holy` via the item tags
+        damage = Curve.ramp(13, 23), -- carries `holy` via the item tags
         effect = function(fx)
             fx.damage(fx.target)
             fx.placeHazard(fx.target.x, fx.target.y, "hazard_heal", { amount = 6 + fx.level, duration = 12 + fx.level })

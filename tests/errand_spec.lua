@@ -56,8 +56,10 @@ return {
         local shallow = company(v, true, 0)
         assert(Errand.offered(shallow, v, 0) == nil, "a house asks nothing of a company that has not gone down")
 
-        local deep = company(v, true, Errand.FLOORS_PER_RUNG * 2)
-        local next2 = Errand.offered(deep, v, Errand.FLOORS_PER_RUNG * 2)
+        local open = company(v, true, 0)
+        local reach = Errand.floorFor(open, v)
+        local deep = company(v, true, reach)
+        local next2 = Errand.offered(deep, v, reach)
         assert(next2, "an open door and enough depth should produce an errand")
         -- The SECOND of the line, and that is the door model rather than an off-by-one: the opener is
         -- the first, it was run on a floor, and running it is what put this shop on the board at all.
@@ -72,6 +74,19 @@ return {
     { name = "each rung asks the company to have gone deeper than the last", fn = function()
         local v = "bastion"
         local p = company(v, true, 99)
+        -- ...with the OTHER houses' subclass work behind it. Three of the Bastion's six rungs are
+        -- multiclass capstones, and each names a subclass job at the other parent (a warden wants the
+        -- Lodge, a vanguard the Undercroft) -- so a company that had worked nowhere else would find the
+        -- Bastion out of things it could ask for, which is the cross-house chain doing its job rather
+        -- than the ladder failing. See Errand.next.
+        local Discipline = require("models.discipline")
+        for _, def in pairs(Discipline.defs) do
+            if #def.classes == 1 then
+                for _, q in ipairs(def.requiredQuests or {}) do
+                    if (Quest.defs[q] or {}).sponsor ~= v then p.completedQuests[q] = true end
+                end
+            end
+        end
         local last = 0
         for i = 1, 4 do
             local floor = Errand.floorFor(p, v)
@@ -105,24 +120,186 @@ return {
         assert(not Errand.complete(p, id), "finishing it twice changes nothing")
     end },
 
+    { name = "every errand opens a rung, and the line stops when the shelf does", fn = function()
+        -- NO DEAD JOB AT THE END OF A LINE. An errand opens the slot its own count names (the opener
+        -- takes 0, each after it the next), so a house asking for more jobs than its shelf has rungs
+        -- ends on one that pays no stock -- and under Errand.floorFor that one would sit on the deepest
+        -- floor in the game. The surplus is dropped from the line instead.
+        local Item = require("models.item")
+        for vendorId in pairs(Errand.houses()) do
+            local line = Errand.forVendor(vendorId)
+            local class = (Vendor.get(vendorId) or {}).class
+            -- Measured on the house's OWN stock, not on everything its shelf carries: a multiclass ware
+            -- lands on both its parents' shelves and keeps the slot its home house gave it, so the Lodge's
+            -- eight-rung stock shows up on the Bastion's six-rung shelf at slot 7 and means nothing there.
+            local top, atTop = -1, 0
+            for id, def in pairs(Item.defs) do
+                if def.price and def.class == class then
+                    local slot = def.unlockQuests or 0
+                    if slot > top then top, atTop = slot, 0 end
+                    if slot == top then atTop = atTop + 1 end
+                end
+            end
+            assert(#line == top + 1, vendorId .. " asks for " .. #line .. " errands over "
+                .. (top + 1) .. " rungs of its own stock")
+            assert(atTop > 0, vendorId .. " has nothing on its top rung")
+
+            -- ...and the trim takes the tail, which is a house's side work -- unless the tail is a job a
+            -- discipline hangs off, in which case the cut moves up the list and a numbered rung goes
+            -- instead. Gates outrank the ladder: a lost numbered slot costs one fight, a lost gate costs
+            -- a whole discipline. (The Crucible is the standing case -- both its tail jobs are gates.)
+            local kept = {}
+            for _, id in ipairs(line) do kept[id] = true end
+            for id, def in pairs(Quest.defs) do
+                if def.sponsor == vendorId and def.map and def.map.objective and not kept[id] then
+                    for _, disc in pairs(require("models.discipline").defs) do
+                        for _, gate in ipairs(disc.requiredQuests or {}) do
+                            assert(gate ~= id, vendorId .. " cut " .. id .. ", which opens a discipline")
+                        end
+                    end
+                end
+            end
+        end
+    end },
+
+    { name = "every discipline's gate quest is still asked for", fn = function()
+        -- A DISCIPLINE HANGS OFF ONE NAMED QUEST, and the descent is the only mode there is -- so a
+        -- quest that is not an errand is a quest nobody can finish, and the discipline behind it can
+        -- never be unlocked by anyone. Nineteen of the thirty-eight gates are `the_*` side jobs, which
+        -- is exactly the tail Errand.forVendor trims to fit the shelf's rungs.
+        local Discipline = require("models.discipline")
+        local asked = {}
+        for vendorId in pairs(Errand.houses()) do
+            for _, id in ipairs(Errand.forVendor(vendorId)) do asked[id] = true end
+        end
+        for id, def in pairs(Discipline.defs) do
+            for _, questId in ipairs(def.requiredQuests or {}) do
+                assert(asked[questId], id .. " gates on " .. questId .. ", which no house asks for")
+            end
+        end
+    end },
+
+    { name = "every house's line fits inside one descent", fn = function()
+        -- THE PROMISE: no errand is gated on a floor the mode does not have. It used to be one rung per
+        -- two floors, so a fifteen-floor descent could be asked for seven of a line of twelve to
+        -- fourteen -- and the rest, with the shelf rungs they open, stood behind floor sixteen.
+        local Descent = require("models.descent")
+        local deepest = Descent.CIRCLE_FLOORS
+        assert(deepest < Descent.FLOORS, "the bottom is the Crown's floor and seats no errand")
+        -- AND THE LADDER STOPS SHORT OF IT. The top of a shelf is bought at floor 12, which leaves the
+        -- seventh circle and the Crown to spend it in -- a company should not buy the best gear the game
+        -- sells and immediately fight the last thing in the game with it.
+        assert(Descent.FLOORS - (Errand.LAST_ASK_FLOOR + 1) >= 3,
+            "the last rung leaves no room to play with what it opened")
+
+        for vendorId in pairs(Errand.houses()) do
+            local line = Errand.forVendor(vendorId)
+            local p = company(vendorId, true, 99)
+            local last, floors = 0, {}
+            for n = 2, #line do -- from the second: the opener is found, never asked for
+                -- ...standing on the line with n-1 of its errands run, which is what floorFor reads.
+                p.completedQuests = {}
+                for i = 1, n - 1 do p.completedQuests[line[i]] = true end
+                local floor = Errand.floorFor(p, vendorId)
+                assert(floor >= last, vendorId .. " asks for errand " .. n .. " shallower than the one before")
+                assert(floor >= 1 and floor <= deepest,
+                    vendorId .. " seats errand " .. n .. " on floor " .. floor .. ", which no run reaches")
+                last, floors[n] = floor, floor
+            end
+            -- Every house finishes on the last rung floor, give or take the one-floor stagger that keeps
+            -- the five six-rung houses from all asking on the same five floors.
+            assert(floors[#line] >= Errand.LAST_ASK_FLOOR and floors[#line] <= Errand.LAST_ASK_FLOOR + 1,
+                vendorId .. " does not finish its ladder where every other house does: its last errand "
+                    .. "sits on floor " .. tostring(floors[#line]) .. ", not " .. Errand.LAST_ASK_FLOOR)
+        end
+    end },
+
     { name = "a finished errand opens the shelf by the path the shelf already read", fn = function()
-        -- THE LEDGER IS THE ONE THAT EXISTED. Stock is gated on Quest.sponsorProgress, which counts
-        -- completed quests per sponsor -- so an errand completes by writing `completedQuests`, and the
-        -- shop opens with no second tally that could disagree with the first.
+        -- THE LEDGER IS THE ONE THAT EXISTED. Stock is gated on Quest.shelfRung, which is the count of
+        -- completed quests per sponsor less the opener -- so an errand completes by writing
+        -- `completedQuests`, and the shop opens with no second tally that could disagree with the first.
         local v = "bastion"
         local p = company(v, true, 99)
-        local before = Vendor.stock(v, Quest.sponsorProgress(p, v))
+        local before = Vendor.stock(v, Quest.shelfRung(p, v))
         local openBefore = 0
         for _, e in ipairs(before) do if not e.locked then openBefore = openBefore + 1 end end
 
         Errand.complete(p, Errand.next(p, v))
         assert(Quest.sponsorProgress(p, v) >= 1, "the shelf's own counter moved")
 
-        local after = Vendor.stock(v, Quest.sponsorProgress(p, v))
+        local after = Vendor.stock(v, Quest.shelfRung(p, v))
         local openAfter = 0
         for _, e in ipairs(after) do if not e.locked then openAfter = openAfter + 1 end end
         assert(openAfter > openBefore,
             "running an errand opened nothing: " .. openBefore .. " -> " .. openAfter)
+    end },
+
+    { name = "the opener opens the bottom band and only that", fn = function()
+        -- THE FIRST ERRAND BUYS SLOT 0. It used to buy slot 0 and slot 1 together: the bottom band is
+        -- authored at slot 0, which a standing of nought already cleared, and the opener also moved the
+        -- standing to one -- so a freshly opened door had eleven of the Arcanum's wares behind it, eight
+        -- of them free. Quest.shelfRung is the offset that separates the door from the first rung.
+        for _, v in ipairs({ "bastion", "arcanum" }) do
+            local shut = company(v, false, 99)
+            for _, e in ipairs(Vendor.stock(v, Quest.shelfRung(shut, v))) do
+                assert(e.locked, v .. " sells " .. e.id .. " to a company it has never worked with")
+            end
+
+            local open = company(v, true, 99)
+            local bottom, above = 0, 0
+            for _, e in ipairs(Vendor.stock(v, Quest.shelfRung(open, v))) do
+                if not e.locked then
+                    if (e.unlockQuests or 0) == 0 then bottom = bottom + 1 else above = above + 1 end
+                end
+            end
+            assert(bottom > 0, v .. " opened its door onto an empty shelf")
+            assert(above == 0, v .. " handed over " .. above .. " wares above its bottom band")
+        end
+    end },
+
+    { name = "a finished errand dots the wares it opened, on its own door", fn = function()
+        -- WHAT THE WORK WAS FOR, said somewhere the player is standing. An errand pays out on a descent
+        -- floor rather than through Quest.complete, so the shelf it opened used to open in silence: no
+        -- unseen mark on the new rows, no dot on the house, and a shelf forty rows deep to find them in.
+        local v = "arcanum"
+        local p = company(v, false, 99)
+        p.newStock = {}
+        assert(not Vendor.hasMarkedStock(v, p.newStock), "an unrun house has nothing unread on it")
+
+        local ok, opened = Errand.complete(p, Errand.opener(v))
+        assert(ok, "the opener is run")
+        assert(opened and #opened.items > 0, "and it opened the bottom band")
+        assert(opened.vendorId == v and opened.vendor ~= v, "named by its shop name, for whoever says it")
+        for _, entry in ipairs(opened.items) do
+            assert(Player.isNew(p, Player.NEW_STOCK, entry.id),
+                entry.id .. " came on sale, so it must carry the mark the shop draws")
+        end
+        assert(Vendor.hasMarkedStock(v, p.newStock), "and the house's own door wears the dot")
+        assert(not Vendor.hasMarkedStock("bastion", p.newStock), "a house that sells none of it does not")
+
+        for id in pairs(p.newStock) do Player.seeNew(p, Player.NEW_STOCK, id) end
+        assert(not Vendor.hasMarkedStock(v, p.newStock), "and reading the shelf takes the dot off")
+    end },
+
+    { name = "a house's door speaks once, for work or for wares", fn = function()
+        -- ONE QUESTION, THREE BOARDS: the market square, its shop cards, and the Markets card out in the
+        -- city that wears the OR of all seven. The two halves clear differently, which is the whole
+        -- reason the dot can say either thing -- a request goes out when it is TAKEN ON, a shelf when
+        -- its rows have been read.
+        local v = "arcanum"
+        local p = company(v, false, 99)
+        p.newStock = {}
+        assert(not Errand.doorBadge(p, v, 99), "a shut house asks nothing and holds nothing")
+        assert(not Errand.doorBadge(p, nil, 99), "and a card with no shelf behind it never dots")
+
+        Errand.complete(p, Errand.opener(v))
+        assert(Errand.doorBadge(p, v, 99), "the wares it opened are unread, so the door speaks")
+        for id in pairs(p.newStock) do Player.seeNew(p, Player.NEW_STOCK, id) end
+
+        assert(Errand.offered(p, v, 99), "and it is deep enough to be asked for the next one")
+        assert(Errand.doorBadge(p, v, 99), "so the door still speaks, for the work this time")
+        Errand.accept(p, Errand.next(p, v), 4)
+        assert(not Errand.doorBadge(p, v, 99), "taking it on is what puts that half out")
     end },
 
     { name = "open errands survive a save, floor and all", fn = function()

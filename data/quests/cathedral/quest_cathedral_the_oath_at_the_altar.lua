@@ -27,7 +27,11 @@ return {
     rewardGold = 250,
     -- Both parents, earned: "quest_bastion_slot_03" is the first knight subclass gate on its line,
     -- "quest_cathedral_slot_03" the first priest. Holding either is impossible without them.
-    requiredQuests = { "quest_bastion_slot_03", "quest_cathedral_slot_03" },
+    -- TWO CAPSTONES ON ONE RUNG, so the keys are the union of both. The paladin wants the Bastion and
+    -- the Cathedral; the inquisitor, who came down to this tier, wants the Undercroft and the Cathedral.
+    -- A house has more subclasses than it has rungs to hang them from, and the Cathedral's last rung is
+    -- where the two that ask most of the player land together.
+    requiredQuests = { "quest_bastion_slot_03", "quest_cathedral_slot_03", "quest_undercroft_slot_04" },
     requiredPrestige = 1,
     map = {
         biome = "castle",

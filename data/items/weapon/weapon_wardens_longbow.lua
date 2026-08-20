@@ -25,8 +25,8 @@ return {
     tags = { "longbow", "pierce", "physical", "ranged" },
     hands = 2, -- two-handed, like every bow
     class = "hunter",
-    price = 560,
-    unlockQuests = 8,
+    price = 345,
+    unlockQuests = 2,
     activeAbility = {
         description = "Holding the draw longer draws a heavier shaft: each extra tick adds a quarter of the shot.",
         target = "enemy",
@@ -41,7 +41,7 @@ return {
         cost = { stat = "stamina", amount = 9 },
         -- Under the iron longbow's, read as the UNDEEPENED number: drawing to the same depth as an iron
         -- longbow should land a little short of it, and the extra ticks are what buys past it.
-        damage = Curve.ramp(18, 29),
+        damage = Curve.ramp(15, 26),
         effect = function(fx)
             -- +25% per tick held BEYOND the base draw (fx.held, not the total tell in fx.windup).
             -- Linear and uncomplicated on purpose -- see the header.

@@ -10,8 +10,8 @@ return {
     sprite = "assets/items/chainmail.png",
     type = "armor",
     class = "knight",
-    price = 380,
-    unlockQuests = 5,
+    price = 210,
+    unlockQuests = 1,
     -- Medium tier: better all-round steel than leather, still one square slower. Defense and resists
     -- are per-level tables (levels 0..10) the forge steps up; the movement penalty is flat.
     bonus = {

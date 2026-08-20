@@ -12,8 +12,8 @@ return {
     tags = { "utility" },
     class = "alchemist",
     discipline = "artificer", -- mage x alchemist; the Constructs mechanic's first stock
-    price = 560,
-    unlockQuests = 8,
+    price = 475,
+    unlockQuests = 3,
     activeAbility = {
         target = "ally",
         range = 2,

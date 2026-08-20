@@ -38,7 +38,7 @@ local function company()
     assert(id, VENDOR .. " asks for nothing at all -- the fixture has rotted")
     return {
         completedQuests = {},
-        errands = { [id] = Errand.FLOORS_PER_RUNG },
+        errands = { [id] = 2 }, -- the floor it was seated on; any floor will do, the row just prints it
         gold = 500,
         stash = { { id = "item_potion", name = "Potion", price = 40, quantity = 3 } },
     }, id
@@ -73,14 +73,15 @@ return {
         end,
     },
     {
-        name = "the empty-list note is inert too -- there is not even an errand behind it",
+        name = "the empty-list note is not a row at all -- it is prose, and prose wraps",
         fn = function()
-            -- A house that has asked for nothing yet still fills the tab, with a sentence explaining
-            -- which of the three silences this is. Those rows have neither item nor errand.
+            -- A house that has asked for nothing yet still explains itself, with a sentence naming
+            -- which of the three silences this is. That sentence is not a Menu row: a row is one line
+            -- of a fixed height, and the sentence ran to two and printed over the tally under it.
             local panel = errandTab({ completedQuests = {}, errands = {}, gold = 500, stash = {} })
-            assert(#panel.rows > 0 and panel.rows[1].note, "the empty tab should still explain itself")
-            for _, row in ipairs(panel.rows) do panel:activateRow(row) end
-            assert(panel.message == nil, "a note is not a refusal -- there is nothing there to refuse")
+            assert(#panel.rows == 0, "a note put through the list is a note that overlaps the next one")
+            assert(type(panel.errandNote) == "string" and panel.errandNote ~= "",
+                "the empty tab should still explain itself")
         end,
     },
     {

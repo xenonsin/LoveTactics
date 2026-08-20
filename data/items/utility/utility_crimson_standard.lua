@@ -31,8 +31,8 @@ return {
     tags = { "banner" },
     class = "fighter",
     discipline = "warlord", -- deeper cut of the shelf: buyable only once the warlord gate is cleared
-    price = 440,
-    unlockQuests = 6,
+    price = 345,
+    unlockQuests = 2,
     -- Radius 1: the smoke reaches the bodies actually beside the bearer, and no further. The forge
     -- cannot widen it -- an upgrade buys a stronger blessing, never a wider one, which is the censer's
     -- own rule (see the `incense` contract in models/item.lua) and the only thing keeping a

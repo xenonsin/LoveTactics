@@ -20,15 +20,15 @@ return {
     tags = { "hammer", "impact", "physical", "melee" },
     hands = 2, -- a two-handed maul, as every hammer is
     class = "fighter",
-    price = 620,
-    unlockQuests = 9,
+    price = 740,
+    unlockQuests = 5,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 7, -- the family's ponderous tempo: the stun is still bought with your own turn
         cost = { stat = "stamina", amount = 10 },
         -- Half an iron hammer's. What it removes is worth more than what it deals.
-        damage = Curve.ramp(21, 31),
+        damage = Curve.ramp(24, 34),
         effect = function(fx)
             local t = fx.target
             if not t then return end

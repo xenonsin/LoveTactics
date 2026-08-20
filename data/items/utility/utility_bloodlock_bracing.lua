@@ -43,8 +43,8 @@ return {
     tags = { "charm" },
     class = "fighter",
     discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
-    price = 620,
-    unlockQuests = 9,
+    price = 475,
+    unlockQuests = 3,
     -- The armor the locked blood buys, forged deeper level by level. Defense and Magic Defense move
     -- together: the brace is whole-body, not a shield turned to one school.
     bonus = {

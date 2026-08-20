@@ -15,7 +15,7 @@ return {
     tags = { "charm" },
     class = "rogue",
     discipline = "duelist", -- fighter x rogue; the Duel-stance mechanic's first stock
-    price = 440,
-    unlockQuests = 6,
+    price = 475,
+    unlockQuests = 3,
     traits = { "trait_duelists_poise" },
 }

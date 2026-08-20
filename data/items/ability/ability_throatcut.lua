@@ -26,8 +26,8 @@ return {
     tags = { "pierce", "physical", "guile" },
     class = "rogue",
     discipline = "poacher",
-    price = 440,
-    unlockQuests = 6,
+    price = 475,
+    unlockQuests = 3,
     activeAbility = {
         target = "enemy",
         range = 1,

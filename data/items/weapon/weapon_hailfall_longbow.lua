@@ -31,8 +31,8 @@ return {
     tags = { "longbow", "pierce", "physical", "ranged" },
     hands = 2, -- every bow is two-handed (docs/weapons.md)
     class = "hunter",
-    price = 800,
-    unlockQuests = 12,
+    price = 740,
+    unlockQuests = 5,
     activeAbility = {
         target = "tile",       -- ground, not a body: the volley falls on a place
         allowOccupied = true,  -- and that place may well have somebody standing in it
@@ -44,7 +44,7 @@ return {
         cost = { stat = "stamina", amount = 10 },
         -- Per ARROW, and well under the iron longbow's single heavy shaft: five of these landing is a
         -- rout, one of them landing is a waste of a turn. That spread is the weapon.
-        damage = Curve.ramp(21, 31),
+        damage = Curve.ramp(22, 32),
         aoe = { shape = "diamond", radius = 2 }, -- paints where the volley MAY fall (see the note above)
         effect = function(fx)
             -- The thirteen tiles of the radius-2 diamond around the aim point: the spread the archer

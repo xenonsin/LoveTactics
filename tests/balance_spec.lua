@@ -459,11 +459,13 @@ return {
             -- that would be demanding an infinite catalogue. A gap with more shelf still to come is
             -- the real defect: the player runs a quest, opens the shop, and the shop is unchanged.
             local bad = {}
+            local Errand = require("models.errand")
             for _, vendorId in ipairs(houses()) do
-                local lineLength = 0
-                for _, def in pairs(Quest.defs) do
-                    if def.sponsor == vendorId then lineLength = lineLength + 1 end
-                end
+                -- THE LADDER, not the count of quests the house sponsors: a house asks only for the work
+                -- that opens a rung (models/errand.lua), and the plain numbered fights it also sponsors
+                -- are not gates at all. Walking those read every one of them as a quest that opened
+                -- nothing -- which is true and meaningless, since nobody is ever asked to run them.
+                local lineLength = Errand.tiers(vendorId)
 
                 -- The whole curve first, so "is there more to come" is answerable at each gate.
                 local counts = {}

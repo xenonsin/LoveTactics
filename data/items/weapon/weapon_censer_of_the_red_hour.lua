@@ -24,8 +24,8 @@ return {
     type = "weapon",
     tags = { "censer", "impact", "physical", "melee" },
     class = "priest",
-    price = 500,
-    unlockQuests = 7,
+    price = 345,
+    unlockQuests = 2,
     incense = {
         hazard = "hazard_bloodsong",
         radius = 1,
@@ -36,7 +36,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.ramp(9, 19),
+        damage = Curve.ramp(7, 17),
         effect = function(fx)
             fx.damage(fx.target)
         end,

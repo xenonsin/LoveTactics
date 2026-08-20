@@ -28,7 +28,7 @@ return {
     tags = { "boots", "water" },
     class = "mage",
     discipline = "elementalist", -- element as terrain; the water twin of the Cinderstride
-    price = 440,
-    unlockQuests = 6,
+    price = 345,
+    unlockQuests = 2,
     trail = { hazard = "hazard_rain", duration = 8 },
 }

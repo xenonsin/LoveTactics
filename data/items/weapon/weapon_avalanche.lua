@@ -24,7 +24,7 @@ return {
     hands = 2,
     class = "fighter",
     price = 740,
-    unlockQuests = 11,
+    unlockQuests = 5,
     activeAbility = {
         description = "Holding the wind-up longer widens the blow: two extra ticks turn one tile into a three-tile arc.",
         target = "tile",
@@ -39,7 +39,7 @@ return {
         cost = { stat = "stamina", amount = 17 },
         -- A shade under the iron greatsword's: what the extra ticks buy is width, and it must not also
         -- quietly buy weight, or holding would never be wrong.
-        damage = Curve.ramp(48, 74),
+        damage = Curve.ramp(50, 76),
         -- The declared footprint is the WIDE one, so the aim preview and fx.aoeUnits agree on the shape
         -- the swing can reach. The effect below narrows it back to the single aimed body when the bearer
         -- chose not to hold -- narrowing in the effect is safe (the preview over-promises reach, never

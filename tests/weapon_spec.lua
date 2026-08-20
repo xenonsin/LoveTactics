@@ -734,6 +734,13 @@ return {
             local c = Combat.new(arena(8, 8), { unit(rogue, 3, 3) }, { unit(plainChar("character_bandit"), 3, 4) })
             local thief, mark = c.units[1], c.units[2]
 
+            -- A BODY THAT SURVIVES BOTH STABS. This blade sits on the top rung of the Undercroft's shelf,
+            -- and a top-rung dagger two-shots a plain bandit -- so the second delta was clamped by what
+            -- the mark had left rather than by what the blade did, and read as equal to the first. The
+            -- claim under test is about the blow, not about lethality, so the mark is given room for it.
+            mark.char.stats.health.max = 400
+            mark.char.stats.health.current = 400
+
             -- A clean target: an ordinary strike, and it leaves its own deeper wound behind.
             local before = hp(mark)
             openTurn(c, thief)

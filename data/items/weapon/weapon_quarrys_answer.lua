@@ -29,8 +29,8 @@ return {
     tags = { "bow", "pierce", "physical", "ranged" },
     hands = 2, -- every bow is two-handed (docs/weapons.md)
     class = "hunter",
-    price = 560,
-    unlockQuests = 8, -- above the Stillhunter's 3; rank 4 is the vendor ceiling (data/vendors/)
+    price = 345,
+    unlockQuests = 2, -- above the Stillhunter's 3; rank 4 is the vendor ceiling (data/vendors/)
     -- The whole of the extra. Weapon-borne, so Trait.mayCounter binds it to this bow's band and this
     -- bow's dead zone -- a dagger sharing the grid lends it nothing, and it lends the dagger nothing.
     traits = { "trait_ranged_counter" },
@@ -41,7 +41,7 @@ return {
         requiresSight = true,
         speed = 2,
         cost = { stat = "stamina", amount = 7 }, -- an answer is a swing, so this is also what a reply costs
-        damage = Curve.ramp(11, 21), -- barely over an iron bow's: the reflex is the price
+        damage = Curve.ramp(9, 19), -- barely over an iron bow's: the reflex is the price
         effect = function(fx)
             fx.damage(fx.target)
         end,

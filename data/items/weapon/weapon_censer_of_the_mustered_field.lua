@@ -20,8 +20,8 @@ return {
     type = "weapon",
     tags = { "censer", "impact", "physical", "melee" },
     class = "priest",
-    price = 440,
-    unlockQuests = 6,
+    price = 210,
+    unlockQuests = 1,
     incense = {
         hazard = "hazard_muster",
         radius = 1, -- the 3x3 the priest stands in the middle of; radius never scales with the forge
@@ -32,7 +32,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.ramp(10, 20), -- feeble on purpose: the smoke is the weapon
+        damage = Curve.ramp(7, 17), -- feeble on purpose: the smoke is the weapon
         effect = function(fx)
             fx.damage(fx.target)
         end,

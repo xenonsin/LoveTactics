@@ -31,8 +31,8 @@ return {
     type = "ability",
     tags = { "magical", "arcane" },
     class = "mage",
-    price = 260,
-    unlockQuests = 3,
+    price = 210,
+    unlockQuests = 1,
     activeAbility = {
         target = "self",   -- the fold is centred on the caster; there is nothing to aim
         range = 0,

@@ -29,8 +29,8 @@ return {
     tags = { "holy" },
     class = "priest",
     discipline = "exorcist", -- Banish, turned inward -- it strips what is riding the body and lifts it out of reach
-    price = 620,
-    unlockQuests = 9,
+    price = 475,
+    unlockQuests = 3,
     traits = { "trait_stayed_hand" },
     bonus = { magicDefense = Curve.ramp(1, 11) },
 }

@@ -8,7 +8,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "rogue",
-    price = 440,
-    unlockQuests = 6,
+    price = 210,
+    unlockQuests = 1,
     traits = { "trait_opportunist" },
 }

@@ -14,14 +14,14 @@ return {
     tags = { "slash", "physical" },
     class = "fighter",
     discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
-    price = 260,
-    unlockQuests = 3,
+    price = 210,
+    unlockQuests = 1,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(9, 19), -- the base, at full health; scaled up by the missing fraction below
+        damage = Curve.ramp(7, 17), -- the base, at full health; scaled up by the missing fraction below
         effect = function(fx)
             local hp = fx.user.char.stats.health
             local ratio = (hp.max and hp.max > 0) and (hp.current / hp.max) or 1

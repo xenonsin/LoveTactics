@@ -16,8 +16,8 @@ return {
     tags = { "lightning" },
     class = "alchemist",
     discipline = "bombardier", -- deeper cut of the shelf: buyable only once the bombardier gate is cleared
-    price = 270,
-    unlockQuests = 10,
+    price = 245,
+    unlockQuests = 4,
     activeAbility = {
         target = "tile", -- thrown at a foe and bursts around it, like Fire Bomb / Ice Bomb
         allowOccupied = true,

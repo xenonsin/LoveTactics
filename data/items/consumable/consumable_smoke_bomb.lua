@@ -20,7 +20,7 @@ return {
     type = "consumable",
     tags = { "smoke" },
     class = "rogue",
-    price = 80,
-    unlockQuests = 2,
+    price = 85,
+    unlockQuests = 1,
     traits = { "trait_smoke_screen" },
 }

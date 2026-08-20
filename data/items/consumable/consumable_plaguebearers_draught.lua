@@ -26,8 +26,8 @@ return {
     tags = { "draught", "poison" },
     class = "alchemist",
     discipline = "plague_knight",
-    price = 150,
-    unlockQuests = 5,
+    price = 140,
+    unlockQuests = 2,
     maxStack = 3,
     activeAbility = {
         target = "self",

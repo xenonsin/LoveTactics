@@ -1249,9 +1249,25 @@ Grade.SLOT_PINS = {
     -- board-reading abilities belong on a shelf.
     --
     -- The other ten items the dry run cannot see all carry a discipline and were judged to be sitting
-    -- correctly already, so they keep their slots and stay out of the spread.
-    ability_collapse = { at = 3, why = "blind to the dry run: placed by hand" },
-    ability_understudy = { at = 3, why = "blind to the dry run: placed by hand" },
+    -- correctly already, so they kept their slots and stayed out of the spread.
+    --
+    -- THAT STOPPED BEING SAFE WHEN THE BAND WAS RE-CUT. A blind row keeps whatever slot it has, and the
+    -- shelves went from twelve rungs to six -- so eight of those ten were left standing at slots 6 to 10
+    -- on a shelf whose deepest rung is 5. A gate above the top rung is stock nothing opens. They are
+    -- placed by hand at their old depth read against the new band (old/11 x 5), which is the same
+    -- rescale the rest of the pins took; where they belong ON MERIT is still a question the dry run
+    -- cannot answer, and pinning them is how it stays an author's answer rather than a silent one.
+    ability_collapse = { at = 1, why = "blind to the dry run: placed by hand" },
+    ability_bring_it_down = { at = 4, why = "blind to the dry run: rescaled into the six-rung band" },
+    ability_distil = { at = 4, why = "blind to the dry run: rescaled into the six-rung band" },
+    consumable_sappers_line = { at = 5, why = "blind to the dry run: rescaled into the six-rung band" },
+    ability_shared_burden = { at = 3, why = "blind to the dry run: rescaled into the six-rung band" },
+    ability_field_assembly = { at = 3, why = "blind to the dry run: rescaled into the six-rung band" },
+    ability_raise_dead = { at = 5, why = "blind to the dry run: rescaled into the six-rung band" },
+    ability_dispel_illusions = { at = 2, why = "blind to the dry run: rescaled into the six-rung band" },
+    ability_ley_line = { at = 5, why = "blind to the dry run: rescaled into the six-rung band" },
+    ability_dual_wield = { at = 3, why = "blind to the dry run: rescaled into the six-rung band" },
+    ability_understudy = { at = 1, why = "blind to the dry run: placed by hand" },
 
     -- PLACED BY HAND against the grade rather than around a blind spot. The dry run reads the Muster
     -- Rift perfectly well -- the teleport scores +5.0 -- and still nets it to -4.0, because everything
@@ -1259,14 +1275,14 @@ Grade.SLOT_PINS = {
     -- is WHAT is moved: a whole side, any distance, which is a verb nothing else in the game has. A
     -- party split by terrain or strung out by a chase is a party losing, and this un-loses it in one
     -- action. That is not opening-rack stock at 80 gold, whatever it grades.
-    ability_muster_rift = { at = 8, why = "board-scale repositioning: not a verb the opening rack sells" },
+    ability_muster_rift = { at = 4, why = "board-scale repositioning: not a verb the opening rack sells" },
 
     -- PLACED BY HAND for a different reason: the grade can see this one perfectly well now. Polymorph
     -- read at half a turn until status_polymorph carried an authored weight (the pig's emptiness is not
     -- a field), and on merit it ranks a rung below this. The last rung is the author's, and the thing it
     -- is protecting is not power but reach: taking a body out of the fight outright, deterministically,
     -- with no roll to survive, is not a verb the Arcanum hands over in its first half.
-    ability_polymorph = { at = 6, why = "removing a body outright is not opened in the line's first half" },
+    ability_polymorph = { at = 3, why = "removing a body outright is not opened in the line's first half" },
 
     -- PLACED BY HAND against a grade the tool reads correctly, so it carries that row's burden of proof.
     -- Disarm moved from the Crucible to the Undercroft and grades 5.3 there, which lands it at slot 7 --
@@ -1276,7 +1292,7 @@ Grade.SLOT_PINS = {
     -- and it belongs beside Pickpocket (3) at the front of the line rather than among the executes and
     -- the outright thefts the Undercroft's deep shelf is for. Slot 7 would sell the lesson after the
     -- graduation.
-    ability_disarm = { at = 4, why = "greed's verb taught small: it sits beside Pickpocket, not past the executes" },
+    ability_disarm = { at = 2, why = "greed's verb taught small: it sits beside Pickpocket, not past the executes" },
 
     -- HEAVY ARMOUR NEEDS A DEEP ENOUGH RUNG TO BE LEGAL ON. Balance.ARMOR_SHARE caps one piece at 40%
     -- of the attack budget AT ITS OWN SLOT, and the iron plate's resist bag (physical 4, slash 4,
@@ -1287,17 +1303,20 @@ Grade.SLOT_PINS = {
     --
     -- The floor is the armour's own protection deciding where it may sit, not a correction to the
     -- grade. Its authored slot is where its bag is legal.
-    armor_iron_plate = { min = 7, why = "its resist bag is only legal at the cap from this rung up" },
+    armor_iron_plate = { min = 3, why = "its resist bag is only legal at the cap from this rung up" },
 
     -- The Mammonite gate sits at slot 6 BETWEEN the halves of its kit: the earners are already on sale
     -- when the discipline unlocks, and the spenders are Aurea's own art, still two tiers off. Pinned as
     -- an ordering rather than as literal numbers, exactly as tests/purse_spec.lua asserts it.
-    ability_ledgers_due = { max = 5, why = "a Mammonite earner: buyable by the time the gate clears" },
-    ability_price_on_the_head = { max = 5, why = "a Mammonite earner" },
-    ability_blood_money = { min = 6, why = "spends the purse: Aurea's art, and it waits for her" },
-    ability_gilded_wound = { min = 6, why = "spends the purse" },
-    ability_grease_palms = { min = 6, why = "spends the purse" },
-    ability_open_account = { min = 6, why = "spends the purse" },
+    -- `at` rather than `max`, because this one is BLIND (it reads the purse, which a boardless replay
+    -- has none of) and a blind row is set aside from the spread entirely -- so a ceiling has nothing to
+    -- act on and it sat above its own gate. The other earner is graded and a ceiling holds it fine.
+    ability_ledgers_due = { at = 2, why = "a Mammonite earner: buyable by the time the gate clears" },
+    ability_price_on_the_head = { max = 2, why = "a Mammonite earner" },
+    ability_blood_money = { min = 4, why = "spends the purse: Aurea's art, and it waits for her" },
+    ability_gilded_wound = { min = 4, why = "spends the purse" },
+    ability_grease_palms = { min = 4, why = "spends the purse" },
+    ability_open_account = { min = 4, why = "spends the purse" },
 
     -- THE WARD LINE IS PLACED, NOT RANKED -- both halves, at 3 and at 9, across all seven houses.
     --
@@ -1316,29 +1335,29 @@ Grade.SLOT_PINS = {
     -- rung on all seven shelves and not a clamp.
     --
     -- tests/vulnerability_spec.lua asserts the ordering; these pins are what hold it.
-    ability_ward_fire = { at = 3, why = "the ward line is placed at 3: taught before it is refused" },
-    ability_ward_ice = { at = 3, why = "the ward line is placed at 3" },
-    ability_ward_lightning = { at = 3, why = "the ward line is placed at 3" },
-    ability_ward_water = { at = 3, why = "the ward line is placed at 3" },
-    ability_ward_dark = { at = 3, why = "the ward line is placed at 3" },
-    ability_ward_holy = { at = 3, why = "the ward line is placed at 3" },
-    ability_ward_acid = { at = 3, why = "the ward line is placed at 3" },
-    ability_ward_poison = { at = 3, why = "the ward line is placed at 3" },
-    ability_ward_slash = { at = 3, why = "the ward line is placed at 3" },
-    ability_ward_impact = { at = 3, why = "the ward line is placed at 3" },
-    ability_ward_pierce = { at = 3, why = "the ward line is placed at 3" },
+    ability_ward_fire = { at = 1, why = "the ward line is placed at 1: taught before it is refused" },
+    ability_ward_ice = { at = 1, why = "the ward line is placed at 1" },
+    ability_ward_lightning = { at = 1, why = "the ward line is placed at 1" },
+    ability_ward_water = { at = 1, why = "the ward line is placed at 1" },
+    ability_ward_dark = { at = 1, why = "the ward line is placed at 1" },
+    ability_ward_holy = { at = 1, why = "the ward line is placed at 1" },
+    ability_ward_acid = { at = 1, why = "the ward line is placed at 1" },
+    ability_ward_poison = { at = 1, why = "the ward line is placed at 1" },
+    ability_ward_slash = { at = 1, why = "the ward line is placed at 1" },
+    ability_ward_impact = { at = 1, why = "the ward line is placed at 1" },
+    ability_ward_pierce = { at = 1, why = "the ward line is placed at 1" },
 
-    ability_seal_fire = { at = 9, why = "voiding a blow outright is late-line power, not a graded row" },
-    ability_seal_ice = { at = 9, why = "the seal line is placed at 9" },
-    ability_seal_lightning = { at = 9, why = "the seal line is placed at 9" },
-    ability_seal_water = { at = 9, why = "the seal line is placed at 9" },
-    ability_seal_dark = { at = 9, why = "the seal line is placed at 9" },
-    ability_seal_holy = { at = 9, why = "the seal line is placed at 9" },
-    ability_seal_acid = { at = 9, why = "the seal line is placed at 9" },
-    ability_seal_poison = { at = 9, why = "the seal line is placed at 9" },
-    ability_seal_slash = { at = 9, why = "the seal line is placed at 9" },
-    ability_seal_impact = { at = 9, why = "the seal line is placed at 9" },
-    ability_seal_pierce = { at = 9, why = "the seal line is placed at 9" },
+    ability_seal_fire = { at = 4, why = "voiding a blow outright is late-line power, not a graded row" },
+    ability_seal_ice = { at = 4, why = "the seal line is placed at 4" },
+    ability_seal_lightning = { at = 4, why = "the seal line is placed at 4" },
+    ability_seal_water = { at = 4, why = "the seal line is placed at 4" },
+    ability_seal_dark = { at = 4, why = "the seal line is placed at 4" },
+    ability_seal_holy = { at = 4, why = "the seal line is placed at 4" },
+    ability_seal_acid = { at = 4, why = "the seal line is placed at 4" },
+    ability_seal_poison = { at = 4, why = "the seal line is placed at 4" },
+    ability_seal_slash = { at = 4, why = "the seal line is placed at 4" },
+    ability_seal_impact = { at = 4, why = "the seal line is placed at 4" },
+    ability_seal_pierce = { at = 4, why = "the seal line is placed at 4" },
 
     -- THE BACKFILL FOR THE RUNGS THE WARD LINE VACATED, and it is the second half of the pin block
     -- above rather than nine separate decisions.
@@ -1366,19 +1385,20 @@ Grade.SLOT_PINS = {
     -- Each reads as the house's own first lesson, which is what a quest-1 shelf is for: the Bastion
     -- sells refusing to fall, the Colosseum finding the gap in the plate, the Lodge the deeper wind
     -- and the killing eye, the Undercroft crossing the ground nobody else can.
-    utility_second_wind = { at = 1, why = "the Bastion's quest 1: what the ward line left it short of" },
-    consumable_wine = { at = 2, why = "the Cathedral's quest 2: what the ward line left it short of" },
-    utility_duelists_reflex = { at = 1, why = "the Colosseum's quest 1, which opened nothing at all" },
-    ability_penetrating_strike = { at = 1, why = "the Colosseum's quest 1: retuned to the rung, not just moved to it" },
-    utility_endurance = { at = 1, why = "the Lodge's quest 1, which opened nothing at all" },
-    utility_executioners_eye = { at = 1, why = "the Lodge's quest 1" },
-    weapon_hornbow_of_the_hunt = { at = 2, why = "the Lodge's quest 2, vacated by the eye above it" },
-    utility_feather_boots = { at = 1, why = "the Undercroft's quest 1: the thinnest shelf in the game" },
-    consumable_smoke_bomb = { at = 2, why = "the Undercroft's quest 2" },
+    utility_second_wind = { at = 0, why = "the Bastion's quest 1: what the ward line left it short of" },
+    consumable_wine = { at = 1, why = "the Cathedral's quest 2: what the ward line left it short of" },
+    utility_duelists_reflex = { at = 0, why = "the Colosseum's quest 1, which opened nothing at all" },
+    ability_penetrating_strike = { at = 0, why = "the Colosseum's quest 1: retuned to the rung, not just moved to it" },
+    utility_endurance = { at = 0, why = "the Lodge's quest 1, which opened nothing at all" },
+    utility_executioners_eye = { at = 0, why = "the Lodge's quest 1" },
+    weapon_hornbow_of_the_hunt = { at = 1, why = "the Lodge's quest 2, vacated by the eye above it" },
+    utility_feather_boots = { at = 0, why = "the Undercroft's quest 1: the thinnest shelf in the game" },
+    consumable_smoke_bomb = { at = 1, why = "the Undercroft's quest 2" },
 }
 
 Grade.PRICE_BASE = 80   -- what the opening rung costs
-Grade.PRICE_STEP = 60   -- and what each rung adds
+Grade.PRICE_STEP = 60   -- and what each rung of a TWELVE-rung shelf added
+Grade.PRICE_SPAN = 12   -- the shelf that step was chosen against; see below
 Grade.PRICE_TYPE = {
     consumable = 0.4,   -- one-shot: the discount, and the only one
 }
@@ -1386,8 +1406,23 @@ Grade.PRICE_TYPE = {
 -- The shelf price of an item unlocking at `slot`, before any forge level (Vendor.priceFor still
 -- applies that on top). Rounded to the nearest five, because a shelf full of prices like 447 reads as
 -- noise where 445 reads as a number somebody chose.
+--
+-- THE STEP IS PER RUNG OF A TWELVE-RUNG SHELF, and the slot is read as a POSITION on whatever ladder it
+-- is actually on. The two were the same number while every house had twelve rungs; when the shelves
+-- were re-cut to six (models/errand.lua's ladder), reading the raw slot silently halved the top of the
+-- economy -- the dearest thing in the game went from 800 gold to 380, which is not a decision anybody
+-- made about prices. It quietly broke things keyed to the band as well: the descent's sealed finds are
+-- drawn ABOVE what a floor pays (models/spoils.lua), and on floor nine there was no longer anything
+-- above it, so the chests stopped sealing.
+--
+-- The price ladder therefore spans what it always spanned end to end, and the rung count decides how
+-- big each step up it is rather than where it stops.
 function Grade.priceFor(slot, itemType)
-    local base = Grade.PRICE_BASE + Grade.PRICE_STEP * math.max(0, slot or 0)
+    local Balance = require("models.balance")
+    local top = Balance.maxSlot()
+    local rungs = (top and top > 0) and top or (Grade.PRICE_SPAN - 1)
+    local step = Grade.PRICE_STEP * (Grade.PRICE_SPAN - 1) / rungs
+    local base = Grade.PRICE_BASE + step * math.max(0, slot or 0)
     local scaled = base * (Grade.PRICE_TYPE[itemType] or 1)
     return math.max(5, math.floor(scaled / 5 + 0.5) * 5)
 end

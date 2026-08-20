@@ -23,8 +23,8 @@ return {
     type = "consumable",
     tags = { "potion", "elixir", "restorative" },
     class = "alchemist",
-    price = 200,
-    unlockQuests = 7,
+    price = 190,
+    unlockQuests = 3,
     activeAbility = {
         target = "ally", -- includes the user: a unit is its own ally
         range = 1,

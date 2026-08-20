@@ -28,8 +28,8 @@ return {
     type = "ability",
     tags = { "arcane" },
     class = "knight",
-    price = 560,
-    unlockQuests = 8,
+    price = 610,
+    unlockQuests = 4,
     activeAbility = {
         target = "self",
         range = 0,

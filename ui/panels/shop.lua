@@ -238,19 +238,20 @@ function Shop:buildErrandRows()
             text = "Nothing outstanding. They will ask again once you have been as deep as floor "
                 .. Errand.floorFor(self.player, self.vendorId) .. "."
         end
-        self.rows[#self.rows + 1] = { label = text, locked = true, note = true }
-        if done > 0 then
-            self.rows[#self.rows + 1] = {
-                label = done .. (done == 1 and " errand run for them." or " errands run for them."),
-                locked = true, note = true,
-            }
-        end
+        -- Not rows. A Menu row is one line of a fixed height (ui/menu.lua) and this is a sentence --
+        -- put through the list it wrapped inside its own plate and printed straight over the tally
+        -- underneath it. The panel already has a place for prose with nothing behind it: the empty
+        -- state, which wraps and stacks (Shop:draw).
+        self.errandNote = text
+        self.errandTally = done > 0
+            and (done .. (done == 1 and " errand run for them." or " errands run for them."))
+            or nil
     end
 end
 
 function Shop:buildBuyRows()
     local groups, order = {}, {}
-    local stock = Vendor.stock(self.vendorId, self.questsDone, self.player.recipes,
+    local stock = Vendor.stock(self.vendorId, self.shelfRung, self.player.recipes,
         Discipline.unlockedSet(self.player), Discipline.levelSet(self.player))
     for _, entry in ipairs(stock) do
         -- Instantiate at the item's recipe tier, so its name (+n) and stats reflect what's bought.
@@ -388,7 +389,12 @@ function Shop:refresh()
     -- starts at the top.
     local scroll = self.menu and self.menu.scroll or 0
     self.questsDone = Quest.sponsorProgress(self.player, self.vendorId)
+    -- What the SHELF reads, one below the standing above it: the opener bought the door this panel is
+    -- being drawn inside, not a band of stock (Quest.shelfRung). The two are kept apart here rather than
+    -- collapsed because the header still reports errands run, and that is the honest count.
+    self.shelfRung = Quest.shelfRung(self.player, self.vendorId)
     self.rows = {}
+    self.errandNote, self.errandTally = nil, nil
 
     if self.mode == "buy" then
         self:buildBuyRows()
@@ -481,7 +487,7 @@ function Shop:buildFenceRows()
 
     if not self.swapFrom then
         for i, item in ipairs(self.player.stash or {}) do
-            local offers = Vendor.swapOffers(self.vendorId, item, self.questsDone, recipes, unlocked, levels)
+            local offers = Vendor.swapOffers(self.vendorId, item, self.shelfRung, recipes, unlocked, levels)
             local fee = Vendor.swapFee(item)
             -- An item with nothing to trade for is LISTED AND GREYED rather than hidden, for the same
             -- reason the shelf greys a locked row: a stash entry that silently vanishes from a tab reads
@@ -638,7 +644,7 @@ function Shop:lockReason(entry)
         local name = Discipline.displayName(entry.discipline) or entry.discipline
         return "Locked: grow " .. name .. " to level " .. entry.unlockLevel .. "."
     end
-    local remaining = (entry.unlockQuests or 0) - (self.questsDone or 0)
+    local remaining = (entry.unlockQuests or 0) - (self.shelfRung or 0)
     if remaining > 0 then
         local quests = remaining == 1 and "quest" or "quests"
         return "Locked: complete " .. remaining .. " more of this house's " .. quests .. "."
@@ -786,8 +792,18 @@ function Shop:draw()
             -- Two different emptinesses, and saying "your stash is empty" for the second would be a
             -- lie: a company can be carrying plenty and simply have nothing this shelf can match.
             empty = self.swapFrom and "Nothing of its worth on this shelf." or "Nothing here to trade."
+        elseif self.mode == "errands" then
+            empty = self.errandNote or empty
         end
-        love.graphics.printf(empty, self.listLeft, self.boxY + 200, self.listW, "center")
+        local y = self.boxY + 200
+        love.graphics.printf(empty, self.listLeft, y, self.listW, "center")
+        -- The tally sits under the sentence, so it has to start below however many lines that sentence
+        -- actually took -- the floor number can push it to two.
+        if self.errandTally then
+            local _, wrapped = self.bodyFont:getWrap(empty, self.listW)
+            y = y + #wrapped * self.bodyFont:getHeight() + 10
+            love.graphics.printf(self.errandTally, self.listLeft, y, self.listW, "center")
+        end
     end
 
     self:drawFooter()

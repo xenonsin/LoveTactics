@@ -12,14 +12,14 @@ return {
     tags = { "pierce", "physical", "guile" },
     class = "rogue",
     discipline = "ninja", -- rogue x mage; the Shadowclone mechanic's first stock
-    price = 680,
-    unlockQuests = 10,
+    price = 740,
+    unlockQuests = 5,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 2,
         cost = { stat = "stamina", amount = 7 },
-        damage = Curve.ramp(14, 24),
+        damage = Curve.ramp(16, 26),
         effect = function(fx)
             fx.damage(fx.target)
             fx.retreat(fx.user, 1) -- slip back out of reach

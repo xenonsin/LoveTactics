@@ -13,8 +13,8 @@ return {
     tags = { "lightning", "magical" },
     class = "mage",
     discipline = "elementalist", -- deeper cut of the shelf: buyable only once the elementalist gate is cleared
-    price = 560,
-    unlockQuests = 8,
+    price = 740,
+    unlockQuests = 5,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -22,7 +22,7 @@ return {
         speed = 5,
         windup = 6, -- mirrors Blizzard's wind-up
         cost = { stat = "mana", amount = 16 },
-        damage = Curve.ramp(14, 24),
+        damage = Curve.ramp(16, 26),
         aoe = { radius = 1, shape = "square" },
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

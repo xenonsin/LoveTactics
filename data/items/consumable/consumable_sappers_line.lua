@@ -23,8 +23,8 @@ return {
     tags = { "explosive" },
     class = "alchemist",
     discipline = "saboteur",
-    price = 150,
-    unlockQuests = 10,
+    price = 295,
+    unlockQuests = 5,
     maxStack = 3,
     activeAbility = {
         target = "tile",

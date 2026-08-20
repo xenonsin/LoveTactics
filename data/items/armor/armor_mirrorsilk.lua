@@ -27,8 +27,8 @@ return {
     tags = { "cloth", "arcane" },
     class = "mage",
     discipline = "spellbreaker", -- knight x mage; the same deflection worn rather than carried
-    price = 500,
-    unlockQuests = 7,
+    price = 475,
+    unlockQuests = 3,
     traits = { "trait_counter_magic" },
     bonus = { magicDefense = Curve.ramp(3, 13), movement = -1 },
     resist = { magical = 3 },

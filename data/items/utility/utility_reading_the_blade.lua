@@ -29,8 +29,8 @@ return {
     tags = { "charm" },
     class = "fighter",
     discipline = "duelist",
-    price = 560,
-    unlockQuests = 8,
+    price = 475,
+    unlockQuests = 3,
     traits = { "trait_watching_the_shoulder" },
     charge = { key = "tempo", from = { "repeatStrike" }, max = 5, resetOn = "targetSwitch" },
 }

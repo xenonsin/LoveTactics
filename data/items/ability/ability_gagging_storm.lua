@@ -29,8 +29,8 @@ return {
     tags = { "lightning", "magical" },
     class = "mage",
     discipline = "spellbreaker", -- knight x mage; Counterspell laid as GROUND -- it shatters the channels standing in it
-    price = 260,
-    unlockQuests = 3,
+    price = 210,
+    unlockQuests = 1,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

@@ -31,7 +31,7 @@ return {
     class = "knight",
     discipline = "sentinel", -- deeper cut of the shelf: buyable only once the sentinel gate is cleared
     price = 740,
-    unlockQuests = 11,
+    unlockQuests = 5,
     activeAbility = {
         target = "tile", -- aim an empty tile; the dummy is stood up there
         range = 3,

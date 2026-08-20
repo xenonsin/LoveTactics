@@ -28,8 +28,8 @@ return {
     tags = { "charm" },
     class = "fighter",
     discipline = "champion", -- deeper cut of the shelf: buyable only once the champion gate is cleared
-    price = 380,
-    unlockQuests = 5,
+    price = 345,
+    unlockQuests = 2,
     traits = { "trait_against_the_odds" },
     -- A floor, so the cell is not dead in the fights where nobody obliges by surrounding you. Small
     -- on purpose: what is being bought here is the trait, and a generous baseline would let the charm

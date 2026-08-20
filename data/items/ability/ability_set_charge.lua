@@ -11,8 +11,8 @@ return {
     tags = { "utility" },
     class = "alchemist",
     discipline = "saboteur", -- rogue x alchemist; the Planted-charges mechanic's first stock
-    price = 320,
-    unlockQuests = 4,
+    price = 210,
+    unlockQuests = 1,
     activeAbility = {
         target = "tile",
         range = 2,

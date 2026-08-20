@@ -12,8 +12,8 @@ return {
     tags = { "impact" },
     class = "knight",
     discipline = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
-    price = 620,
-    unlockQuests = 9,
+    price = 740,
+    unlockQuests = 5,
     activeAbility = {
         target = "tile",       -- aim a nearby tile; the diamond around it is the shout's reach
         allowOccupied = true,

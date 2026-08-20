@@ -13,14 +13,14 @@ return {
     tags = { "holy", "slash" },
     class = "fighter",
     discipline = "crusader", -- fighter x priest; the Smite mechanic's first stock
-    price = 680,
-    unlockQuests = 10,
+    price = 610,
+    unlockQuests = 4,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 9 },
-        damage = Curve.ramp(15, 25),
+        damage = Curve.ramp(12, 22),
         healing = Curve.ramp(4, 14), -- fx.amount: healed PER adjacent enemy
         effect = function(fx)
             fx.damage(fx.target)

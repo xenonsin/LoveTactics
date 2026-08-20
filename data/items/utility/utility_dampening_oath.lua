@@ -22,7 +22,7 @@ return {
     tags = { "charm" },
     class = "knight",
     discipline = "spellbreaker",
-    price = 440,
-    unlockQuests = 6,
+    price = 345,
+    unlockQuests = 2,
     traits = { "trait_dampening_oath" },
 }

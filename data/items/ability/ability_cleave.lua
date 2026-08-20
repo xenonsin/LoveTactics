@@ -13,8 +13,8 @@ return {
     type = "ability",
     tags = { "slash", "physical" },
     class = "fighter",
-    price = 500,
-    unlockQuests = 7,
+    price = 610,
+    unlockQuests = 4,
     activeAbility = {
         target = "tile",       -- aim an adjacent tile: it sets the facing the arc sweeps
         allowOccupied = true,  -- the tile in front may hold a foe -- it's the centre of the arc
@@ -22,7 +22,7 @@ return {
         minRange = 1,          -- must pick a neighbor (a facing); never the caster's own tile
         speed = 5,
         cost = { stat = "stamina", amount = 12 },
-        damage = Curve.ramp(11, 21), -- per-target damage = power + the caster's Damage, minus Defense
+        damage = Curve.ramp(14, 24), -- per-target damage = power + the caster's Damage, minus Defense
         aoe = { shape = "front", width = 3 }, -- a 3-wide arc perpendicular to the facing
         requiresAdjacent = { type = "weapon", tag = "melee" }, -- a melee weapon must sit adjacent in the grid
         effect = function(fx)

@@ -25,8 +25,8 @@ return {
     tags = { "mace", "impact", "physical", "melee" },
     hands = 2, -- a two-handed sweep: four tiles of travel is a whole-body swing
     class = "knight",
-    price = 500,
-    unlockQuests = 7,
+    price = 80,
+    unlockQuests = 0,
     activeAbility = {
         target = "enemy",
         range = 1,

@@ -250,6 +250,12 @@ Balance.MAGNITUDE_WAIVERS = {
         .. " so a player who learned the number off one they shot is not surprised by one that jumped"
         .. " them. tests/demon_champion_spec.lua pins the two together -- this figure is a cross-item"
         .. " promise rather than a rung on a shelf.",
+    ability_bolas = "the throw is the delivery, not the purchase: the Poacher's whole shelf is paid out"
+        .. " by the Root it lands (weapon_poachers_kris puts half its swing again through a Rooted body,"
+        .. " utility_quarrys_end opens on the snare), so the weight itself is nearly nothing on purpose."
+        .. " It is also the only Root that needs no weapon beside it -- a slot-10 blow on top of a"
+        .. " weaponless range-3 Root at speed 4 would make it strictly the better Pinning Shot (slot 7,"
+        .. " bow-gated, same status), folding the discipline's setup half into its shooting half.",
 }
 
 -- (Balance.EARLY_GATES -- "how many gates count as the opening shelf" -- lived here to bound the median
@@ -1056,10 +1062,33 @@ function Balance.facedAt()
     return earliest
 end
 
+-- THE STANDING A SLOT IS BOUGHT AT, which is not the slot number and stopped being able to pretend it
+-- was the day the shelves were re-cut.
+--
+-- A slot used to be one finished quest, so "slot 7" and "prestige 7" were the same statement and every
+-- reference body in this file was grown by passing the gate straight in. Then the shelves went from
+-- twelve rungs to six or eight (models/errand.lua's ladder, one rung per job a house asks for) -- and
+-- the same reading turned the TOP of a shelf into a company seven quests old. Every magnitude in the
+-- game is measured against the body that would swing it, so the whole ladder quietly dropped about a
+-- third: `balance-rescale` proposed cutting 108 items and was right to, given what it had been told.
+--
+-- So the slot is read as a POSITION ON ITS LADDER and mapped onto the standing a company really has by
+-- the time it is buying there. The span is what the old twelve-rung shelf implied end to end, kept as a
+-- constant rather than re-derived, because it describes the CAMPAIGN -- how much a company grows over a
+-- full run -- and not the shelf, which is now free to be cut into as many rungs as the work supports.
+Balance.PRESTIGE_SPAN = 12
+
+function Balance.prestigeForSlot(slot)
+    local top = Balance.maxSlot()
+    if top <= 0 then return 1 end
+    local f = math.min(1, math.max(0, (slot or 0) / top))
+    return math.max(1, math.floor(1 + f * (Balance.PRESTIGE_SPAN - 1) + 0.5))
+end
+
 -- The standing an ITEM should be judged at: the earlier of its shelf gate and when it is first faced.
 function Balance.itemPrestige(id, def)
     def = def or Item.defs[id]
-    local prestige = math.max(1, (def and def.unlockQuests) or 0)
+    local prestige = Balance.prestigeForSlot(def and def.unlockQuests)
     local faced = Balance.facedAt()[id]
     if faced and faced < prestige then prestige = faced end
     return prestige
@@ -1077,7 +1106,7 @@ function Balance.wielderStatFor(idOrItem)
     for _, t in ipairs(def.tags or {}) do
         if t == "magical" then magical = true end
     end
-    local prestige = math.max(1, def.unlockQuests or 0)
+    local prestige = Balance.prestigeForSlot(def.unlockQuests) -- the standing its rung is bought at, not the rung
     local ref = Balance.refChar(prestige, magical and "mage" or nil)
     return (magical and ref.stats.magicDamage or ref.stats.damage) or 0
 end

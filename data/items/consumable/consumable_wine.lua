@@ -10,8 +10,8 @@ return {
     type = "consumable",
     tags = { "drink" },
     class = "priest",
-    price = 80,
-    unlockQuests = 2,
+    price = 85,
+    unlockQuests = 1,
     activeAbility = {
         target = "ally", -- includes the user (a unit is its own ally)
         range = 1,

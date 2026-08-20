@@ -9,8 +9,8 @@ return {
     type = "ability",
     tags = { "utility" },
     class = "hunter",
-    price = 440,
-    unlockQuests = 6,
+    price = 210,
+    unlockQuests = 1,
     activeAbility = {
         target = "enemy",
         range = 5,

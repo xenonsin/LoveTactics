@@ -11,8 +11,8 @@ return {
     tags = { "holy" },
     class = "priest",
     discipline = "paladin", -- knight x priest; the Ward-aura mechanic's first stock
-    price = 260,
-    unlockQuests = 3,
+    price = 210,
+    unlockQuests = 1,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

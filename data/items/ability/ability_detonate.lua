@@ -12,15 +12,15 @@ return {
     type = "ability",
     tags = { "fire", "magical" },
     class = "mage",
-    price = 680,
-    unlockQuests = 10,
+    price = 610,
+    unlockQuests = 4,
     activeAbility = {
         target = "enemy",
         range = 4,
         requiresSight = true,
         speed = 4,
         cost = { stat = "mana", amount = 12 },
-        damage = Curve.ramp(14, 24),
+        damage = Curve.ramp(12, 22),
         aoe = { radius = 1, shape = "square" },
         effect = function(fx)
             local t = fx.target

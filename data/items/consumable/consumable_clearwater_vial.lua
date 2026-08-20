@@ -21,8 +21,8 @@ return {
     type = "consumable",
     tags = { "potion", "restorative" },
     class = "alchemist",
-    price = 55,
-    unlockQuests = 1,
+    price = 30,
+    unlockQuests = 0,
     activeAbility = {
         target = "self",
         support = true,

@@ -30,14 +30,14 @@ return {
     tags = { "slash", "physical" },
     class = "fighter",
     discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
-    price = 260,
-    unlockQuests = 3,
+    price = 210,
+    unlockQuests = 1,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(9, 19),
+        damage = Curve.ramp(7, 17),
         adjacencyScaling = { type = "weapon" },
         effect = function(fx)
             local hp = fx.target.char and fx.target.char.stats and fx.target.char.stats.health

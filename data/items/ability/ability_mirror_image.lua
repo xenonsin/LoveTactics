@@ -11,8 +11,8 @@ return {
     tags = { "illusion", "utility" },
     class = "mage",
     discipline = "ninja", -- rogue x mage; the Shadowclone mechanic's first stock
-    price = 680,
-    unlockQuests = 10,
+    price = 740,
+    unlockQuests = 5,
     activeAbility = {
         target = "tile",
         range = 1,

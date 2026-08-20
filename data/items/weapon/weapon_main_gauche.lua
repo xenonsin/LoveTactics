@@ -28,8 +28,8 @@ return {
     tags = { "dagger", "pierce", "physical", "melee" },
     class = "rogue",
     discipline = "duelist",
-    price = 620,
-    unlockQuests = 9,
+    price = 740,
+    unlockQuests = 5,
     traits = { "trait_parry" },
     charge = { key = "tempo", from = { "answered" }, max = 5 },
     activeAbility = {
@@ -37,7 +37,7 @@ return {
         range = 1,
         speed = 2, -- the family's own tempo: quick back around, which is what makes the parry affordable
         cost = { stat = "stamina", amount = 5 },
-        damage = Curve.ramp(13, 23),
+        damage = Curve.ramp(15, 25),
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_bleed" })
         end,

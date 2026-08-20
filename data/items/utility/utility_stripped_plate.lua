@@ -21,7 +21,7 @@ return {
     tags = { "charm" },
     class = "rogue",
     discipline = "vanguard",
-    price = 320,
-    unlockQuests = 4,
+    price = 345,
+    unlockQuests = 2,
     traits = { "trait_stripped_plate" },
 }

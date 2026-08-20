@@ -481,13 +481,23 @@ return {
             -- are already on sale by then, and the spenders are Aurea's own art, still two tiers off.
             -- Pinned as an ordering rather than as literal numbers, so retuning either tier stays free.
             local function gate(id) return Item.defs[id].unlockQuests or 0 end
-            local SLOT_6 = 5 -- `unlockQuests` is a count already done, so slot 6 clears a gate of 5
+            -- WHICH RUNG QUARTER-END IS, derived rather than typed. It used to be the sixth job of a
+            -- twelve-job line and so cleared a gate of five; the Undercroft asks for six jobs now
+            -- (models/errand.lua -- the opener and the five its disciplines hang off), and Quarter-End is
+            -- the fourth of them. The ORDERING is the contract here, not the number, so the number is
+            -- read off the ladder and the assertion below survives the next re-cut.
+            local Errand = require("models.errand")
+            local rung
+            for i, id in ipairs(Errand.forVendor("undercroft")) do
+                if id == "quest_undercroft_slot_06" then rung = i - 1 end
+            end
+            assert(rung, "Quarter-End is not on the Undercroft's ladder at all")
             for _, id in ipairs({ "ability_ledgers_due", "ability_price_on_the_head" }) do
-                assert(gate(id) <= SLOT_6, id .. " is an earner: it must already be buyable at the gate")
+                assert(gate(id) <= rung, id .. " is an earner: it must already be buyable at the gate")
             end
             for _, id in ipairs({ "ability_blood_money", "ability_gilded_wound",
                                   "ability_grease_palms", "ability_open_account" }) do
-                assert(gate(id) > SLOT_6, id .. " spends the purse: it is Aurea's art, and waits for her")
+                assert(gate(id) > rung, id .. " spends the purse: it is Aurea's art, and waits for her")
             end
         end,
     },

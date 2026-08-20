@@ -29,8 +29,8 @@ return {
     tags = { "fire" },
     class = "priest",
     discipline = "crusader", -- fighter x priest; the armed faithful's ring -- it asks a priest to stand in the line
-    price = 500,
-    unlockQuests = 7,
+    price = 345,
+    unlockQuests = 2,
     incense = { hazard = "hazard_burning_halo", radius = 1,
                 amount = Curve.ramp(4, 14) },
 }

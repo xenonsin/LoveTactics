@@ -25,7 +25,6 @@ local Errand = require("models.errand")
 local Player = require("models.player")
 local Scale = require("scale")
 local Theme = require("ui.theme")
-local Vendor = require("models.vendor")
 local VendorVisit = require("models.vendor_visit")
 
 local markets = {}
@@ -77,15 +76,13 @@ function markets.enter(self, opts)
     map = BuildingMap.new(Building.list(markets.player, { district = "market" }), {
         onActivate = openStall,
         -- The red unseen dot, exactly as the city drew it for these cards before they moved: a house
-        -- with work to ask for, or a shelf carrying wares a quest put there and nobody has read. It is
-        -- the one thing a square of eight counters cannot say any other way, and it is the reason the
-        -- Markets card in the city will eventually want to carry a dot of its own -- a request behind a
-        -- door behind a door is a request nobody sees.
+        -- with work to ask for, or a shelf carrying wares that were put there and nobody has read. It is
+        -- the one thing a square of eight counters cannot say any other way. The Markets card out in the
+        -- city carries the OR of these (states/hub.lua) -- a request behind a door behind a door is a
+        -- request nobody sees -- which is why the question is Errand.doorBadge's and not this closure's.
         badge = function(b)
-            if not b.vendor then return false end
             local deepest = markets.player.descentRun and markets.player.descentRun.cleared or 0
-            if Errand.offered(markets.player, b.vendor, deepest) then return true end
-            return Vendor.hasMarkedStock(b.vendor, markets.player.newStock)
+            return Errand.doorBadge(markets.player, b.vendor, deepest)
         end,
     })
     back = CloseButton.new(Scale.WIDTH - 24, 24)

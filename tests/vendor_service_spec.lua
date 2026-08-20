@@ -9,8 +9,18 @@
 -- throws with no window.
 
 local Vendor = require("models.vendor")
+local Errand = require("models.errand")
 local Item = require("models.item")
 local Shop = require("ui.panels.shop")
+
+-- A ledger with every house's door open and nothing else run: the shelf gates on Quest.shelfRung, the
+-- standing less the door-buying opener, so a customer with an empty ledger sees an entirely shut shelf
+-- and there is nothing to fence.
+local function doorsOpen()
+    local done = {}
+    for vendorId in pairs(Errand.houses()) do done[Errand.opener(vendorId)] = true end
+    return done
+end
 
 local function stubFonts(fn)
     local gfx = love.graphics
@@ -124,7 +134,7 @@ return {
         name = "every house has Buy, Sell and Errands; only a service house grows a fourth tab",
         fn = function()
             stubFonts(function()
-                local base = { completedQuests = {}, recipes = {}, gold = 0, stash = {} }
+                local base = { completedQuests = doorsOpen(), recipes = {}, gold = 0, stash = {} }
                 local plain = Shop.new({ vendor = "bastion", player = base })
                 assert(#plain.modes == 3, "Buy, Sell and Errands, and nothing else")
                 assert(plain.modes[3] == "errands", "Errands is the third of the three every house has")
@@ -141,7 +151,7 @@ return {
                 local vid = fenceVendorId()
                 local item = anySwappable(vid)
                 local fee = Vendor.swapFee(item)
-                local player = { completedQuests = {}, recipes = {}, gold = fee + 50, stash = { item } }
+                local player = { completedQuests = doorsOpen(), recipes = {}, gold = fee + 50, stash = { item } }
                 local shop = Shop.new({ vendor = vid, player = player })
 
                 shop:setMode("fence")
@@ -169,7 +179,7 @@ return {
             stubFonts(function()
                 local vid = fenceVendorId()
                 local item = anySwappable(vid)
-                local player = { completedQuests = {}, recipes = {}, gold = 0, stash = { item } }
+                local player = { completedQuests = doorsOpen(), recipes = {}, gold = 0, stash = { item } }
                 local shop = Shop.new({ vendor = vid, player = player })
                 shop:setMode("fence")
                 shop:activateRow(shop.rows[1])
@@ -187,7 +197,7 @@ return {
             stubFonts(function()
                 local vid = fenceVendorId()
                 local item = anySwappable(vid)
-                local player = { completedQuests = {}, recipes = {}, gold = 999, stash = { item } }
+                local player = { completedQuests = doorsOpen(), recipes = {}, gold = 999, stash = { item } }
                 local shop = Shop.new({ vendor = vid, player = player })
                 shop:setMode("fence")
                 shop:activateRow(shop.rows[1])
@@ -204,7 +214,7 @@ return {
             stubFonts(function()
                 local vid = fenceVendorId()
                 local item = anySwappable(vid)
-                local player = { completedQuests = {}, recipes = {}, gold = 999, stash = { item } }
+                local player = { completedQuests = doorsOpen(), recipes = {}, gold = 999, stash = { item } }
                 local shop = Shop.new({ vendor = vid, player = player })
                 shop:setMode("fence")
                 shop:activateRow(shop.rows[1])
@@ -224,7 +234,7 @@ return {
                 local vid = fenceVendorId()
                 local item = anySwappable(vid)
                 local other = Item.instantiate(item.id)
-                local player = { completedQuests = {}, recipes = {}, gold = 9999, stash = { item } }
+                local player = { completedQuests = doorsOpen(), recipes = {}, gold = 9999, stash = { item } }
                 local shop = Shop.new({ vendor = vid, player = player })
                 shop:setMode("fence")
                 shop:activateRow(shop.rows[1])

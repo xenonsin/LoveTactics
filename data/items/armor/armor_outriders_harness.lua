@@ -25,8 +25,8 @@ return {
     tags = { "leather" },
     class = "fighter",
     discipline = "skirmisher",
-    price = 620,
-    unlockQuests = 9,
+    price = 475,
+    unlockQuests = 3,
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     traits = { "trait_outriders_harness" },
 }

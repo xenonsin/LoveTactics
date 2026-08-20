@@ -22,10 +22,16 @@ return {
         "where the column expected. They will not stand. Make them.",
     difficulty = "Hard",
     sponsor = "hunters_lodge",
+    ladder = 5, -- which rung of the Lodge this job opens (models/errand.lua)
     rewardGold = 250,
     -- Both parents, earned: "quest_colosseum_slot_03" is the first fighter subclass gate on its line,
     -- "quest_hunters_lodge_slot_03" the first hunter. Holding either is impossible without them.
-    requiredQuests = { "quest_colosseum_slot_03", "quest_hunters_lodge_slot_03" },
+    -- THE LODGE'S LAST RUNG, carrying both of its chase paths: the skirmisher (fighter and hunter) and
+    -- the poacher (rogue and hunter), which is why the Undercroft's key is here beside the Colosseum's.
+    -- The poacher could not share the fourth rung with the trapper -- that one is a numbered slot on the
+    -- Lodge's own chain, and a chain slot names exactly one prerequisite (tests/quest_ladder_spec.lua),
+    -- so it has no room for another house's key. A capstone does.
+    requiredQuests = { "quest_colosseum_slot_03", "quest_hunters_lodge_slot_03", "quest_undercroft_slot_04" },
     requiredPrestige = 2,
     map = {
         biome = "tundra",

@@ -21,8 +21,8 @@ return {
     tags = { "summon", "illusion" },
     class = "mage",
     discipline = "summoner", -- deeper cut of the shelf: buyable only once the summoner gate is cleared
-    price = 680,
-    unlockQuests = 10,
+    price = 740,
+    unlockQuests = 5,
     noCopy = true,
     activeAbility = {
         target = "tile",

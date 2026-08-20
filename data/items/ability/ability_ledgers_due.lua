@@ -31,8 +31,8 @@ return {
     tags = { "dark" },
     class = "rogue",
     discipline = "mammonite", -- an earner: the half of the shelf that opens with the gate itself
-    price = 260,
-    unlockQuests = 4,
+    price = 345,
+    unlockQuests = 2,
     activeAbility = {
         target = "tile",
         range = 1, -- you have to be standing over it

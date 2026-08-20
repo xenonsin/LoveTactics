@@ -29,6 +29,7 @@ return {
         "the fire is the only thing they can find. Hold the camp until dawn.",
     difficulty = "Normal",
     sponsor = "hunters_lodge",
+    ladder = 1, -- which rung of the Lodge this job opens (models/errand.lua)
     rewardItems = { "weapon_windward" },
     rewardGold = 130,
     requiredQuests = { "quest_hunters_lodge_slot_02" }, -- slot 3: the line runs in order

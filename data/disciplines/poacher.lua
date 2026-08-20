@@ -9,5 +9,5 @@ return {
     classes = { "rogue", "hunter" },
     exemplar = "character_poacher", -- NEW, pending
     hire = "character_rask",
-    requiredQuests = { "quest_hunters_lodge_the_marked_quarry" }, -- pending
+    requiredQuests = { "quest_hunters_lodge_the_running_fight" },
 }

@@ -26,8 +26,8 @@ return {
     tags = { "charm" },
     class = "fighter",
     discipline = "champion",
-    price = 320,
-    unlockQuests = 4,
+    price = 210,
+    unlockQuests = 1,
     traits = { "trait_still_standing" },
     charge = { key = "defiance", from = { "hitTaken", "allyStruck" }, max = 8 },
 }

@@ -82,12 +82,27 @@ return {
         name = "every quest hands over something -- no silent quest in either order",
         fn = function()
             -- The step-7 finding, pinned so a future cut cannot quietly reintroduce a dead stretch:
-            -- levels, shelf rows, disciplines, companions and item grants between them cover all 92
-            -- quests. Gold is deliberately not counted (every quest pays it); see the tool's header.
+            -- levels, shelf rows, disciplines, companions and item grants between them cover every quest
+            -- a player is ever ASKED to run. Gold is deliberately not counted (every quest pays it); see
+            -- the tool's header.
+            --
+            -- SCOPED TO THE LADDER, because "every authored quest" stopped being the same set. A house
+            -- asks for its opener and the jobs its disciplines hang off (models/errand.lua) and nothing
+            -- else -- the plain numbered fights it also sponsors are blueprints nobody is sent to, so a
+            -- silence there is not a dead stretch in anybody's progression. This walk is over the
+            -- retired board's order and still the best reachability proof there is; what it may no
+            -- longer do is judge a quest the game never offers.
+            local Errand = require("models.errand")
+            local asked = {}
+            for vendorId in pairs(Errand.houses()) do
+                for _, id in ipairs(Errand.forVendor(vendorId)) do asked[id] = true end
+            end
             for _, policy in ipairs({ "committed", "breadth" }) do
                 local silent = {}
                 for _, row in ipairs(Report.walk(policy)) do
-                    if row.silent then silent[#silent + 1] = string.format("#%d %s", row.n, row.id) end
+                    if row.silent and (asked[row.id] or not Quest.defs[row.id].sponsor) then
+                        silent[#silent + 1] = string.format("#%d %s", row.n, row.id)
+                    end
                 end
                 assert(#silent == 0, string.format("%s: %d silent quest(s): %s",
                     policy, #silent, table.concat(silent, ", ")))

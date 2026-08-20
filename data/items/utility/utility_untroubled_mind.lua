@@ -24,7 +24,7 @@ return {
     type = "utility",
     tags = { "charm", "holy" },
     class = "priest",
-    price = 320,
-    unlockQuests = 4,
+    price = 80,
+    unlockQuests = 0,
     statusImmunity = { "status_charm", "status_sleep" },
 }

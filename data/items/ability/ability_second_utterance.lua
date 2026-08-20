@@ -44,8 +44,8 @@ return {
     type = "ability",
     tags = { "arcane", "protective" },
     class = "mage",
-    price = 200,
-    unlockQuests = 2,
+    price = 80,
+    unlockQuests = 0,
     activeAbility = {
         target = "ally", -- includes the caster: a unit is its own ally, so a mage may speak for itself
         support = true,

@@ -9,8 +9,8 @@ return {
     tags = { "summon", "lightning" },
     class = "mage",
     discipline = "summoner", -- deeper cut of the shelf: buyable only once the summoner gate is cleared
-    price = 620,
-    unlockQuests = 9,
+    price = 740,
+    unlockQuests = 5,
     activeAbility = {
         target = "tile",
         range = 2,

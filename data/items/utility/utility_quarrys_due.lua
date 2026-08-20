@@ -21,7 +21,7 @@ return {
     tags = { "charm" },
     class = "hunter",
     discipline = "poacher",
-    price = 500,
-    unlockQuests = 7,
+    price = 475,
+    unlockQuests = 3,
     traits = { "trait_quarrys_due" },
 }

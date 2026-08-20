@@ -12,7 +12,7 @@ return {
     tags = { "charm" },
     class = "fighter",
     discipline = "warbrewer", -- fighter x alchemist; the Combat-draught mechanic's first stock
-    price = 380,
-    unlockQuests = 5,
+    price = 345,
+    unlockQuests = 2,
     traits = { "trait_brawlers_bandolier" },
 }

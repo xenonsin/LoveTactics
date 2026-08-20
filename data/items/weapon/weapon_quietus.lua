@@ -29,14 +29,14 @@ return {
     tags = { "dagger", "pierce", "physical", "melee" },
     class = "rogue",
     discipline = "assassin",
-    price = 560,
-    unlockQuests = 8,
+    price = 610,
+    unlockQuests = 4,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 2, -- quick, as every dagger is (docs/weapons.md)
         cost = { stat = "stamina", amount = 7 },
-        damage = Curve.ramp(11, 21),
+        damage = Curve.ramp(13, 23),
         effect = function(fx)
             -- Bleed lands on a survivor (opts.inflicts, the family's wound); denyRevival lands only on
             -- the KILL (opts.denyRevival -> Combat.dealFlatDamage's fatal branch). One stab, both.

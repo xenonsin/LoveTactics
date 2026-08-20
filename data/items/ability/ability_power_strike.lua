@@ -12,14 +12,14 @@ return {
     type = "ability",
     tags = { "impact", "physical" },
     class = "fighter",
-    price = 560,
-    unlockQuests = 8,
+    price = 740,
+    unlockQuests = 5,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 5,
         cost = { stat = "stamina", amount = 12 },
-        damage = Curve.ramp(14, 24),
+        damage = Curve.ramp(16, 26),
         requiresAdjacent = { type = "weapon", tag = "melee" }, -- a melee weapon must sit adjacent in the grid
         effect = function(fx)
             -- The stun rides the blow, so the reeling target does not answer it (see the War Hammer).

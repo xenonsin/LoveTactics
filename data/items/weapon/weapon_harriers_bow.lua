@@ -32,7 +32,7 @@ return {
     class = "hunter",
     discipline = "skirmisher",
     price = 740,
-    unlockQuests = 11,
+    unlockQuests = 5,
     hands = 2, -- the family contract: every bow is two-handed (docs/weapons.md)
     activeAbility = {
         target = "enemy",
@@ -43,7 +43,7 @@ return {
         free = true, -- S2: bills no initiative and leaves the turn open (docs/classes.md)
         soleAction = true, -- ...but still the turn's action: only the move stays open, never a second attack
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.ramp(13, 23), -- under the iron bow: the freedom is the price
+        damage = Curve.ramp(15, 25), -- under the iron bow: the freedom is the price
         effect = function(fx)
             fx.damage(fx.target)
         end,

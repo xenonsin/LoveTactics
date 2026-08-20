@@ -26,8 +26,8 @@ return {
     tags = { "greatsword", "slash", "physical", "melee" },
     hands = 2,
     class = "fighter",
-    price = 620,
-    unlockQuests = 9,
+    price = 740,
+    unlockQuests = 5,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -36,7 +36,7 @@ return {
         speed = 7,
         windup = 2,
         cost = { stat = "stamina", amount = 16 },
-        damage = Curve.ramp(46, 72), -- an iron greatsword's: the seal is the extra
+        damage = Curve.ramp(50, 76), -- an iron greatsword's: the seal is the extra
         effect = function(fx)
             local t = fx.target
             if not t then return end

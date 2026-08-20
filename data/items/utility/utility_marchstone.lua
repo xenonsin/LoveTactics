@@ -26,7 +26,7 @@ return {
     tags = { "charm", "control" },
     class = "hunter",
     discipline = "warden",
-    price = 500,
-    unlockQuests = 7,
+    price = 345,
+    unlockQuests = 2,
     incense = { hazard = "hazard_halting_ground", radius = 1 },
 }

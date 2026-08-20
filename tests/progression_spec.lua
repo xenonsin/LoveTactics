@@ -220,16 +220,18 @@ return {
         -- house's stock does not break the test -- what must not come back is the clumping.
         name = "every house's shelf opens something on nearly every quest of its line",
         fn = function()
-            local Quest = require("models.quest")
+            local Errand = require("models.errand")
             for vendorId, vdef in pairs(Vendor.defs) do
-                if vdef.sells ~= false then
-                    local sponsored = 0
-                    for _, qdef in pairs(Quest.defs) do
-                        if qdef.sponsor == vendorId then sponsored = sponsored + 1 end
-                    end
-                    -- How many rows each quest count newly unlocks, walked up the line.
+                if vdef.sells ~= false and Errand.tiers(vendorId) > 0 then
+                    -- THE LINE IS THE LADDER, not the count of quests a house sponsors. A house asks for
+                    -- the work that OPENS something -- its opener and the jobs its disciplines hang off
+                    -- (models/errand.lua) -- and the rest of what it sponsors is not on any shelf's
+                    -- ladder at all, so walking every sponsored quest here reads the plain numbered
+                    -- fights as gates that opened nothing.
+                    local rungs = Errand.tiers(vendorId)
+                    -- How many rows each rung newly unlocks, walked up the ladder.
                     local seen, silent = 0, {}
-                    for done = 0, sponsored - 2 do
+                    for done = 0, rungs - 1 do
                         local open = 0
                         for _, e in ipairs(Vendor.stock(vendorId, done)) do
                             if (e.unlockQuests or 0) <= done then open = open + 1 end
@@ -762,10 +764,11 @@ return {
         fn = function()
             local p = playerAt(1)
             -- The shelf as the player would see it walking in before the quest (same three gates the
-            -- shop reads: quest count, discipline unlocked, discipline level).
+            -- shop reads: shelf rung, discipline unlocked, discipline level). The rung rather than the
+            -- standing, because the first errand a house is run for buys its door -- Quest.shelfRung.
             local function shelf()
                 local locked = {}
-                for _, entry in ipairs(Vendor.stock("colosseum", Quest.sponsorProgress(p, "colosseum"),
+                for _, entry in ipairs(Vendor.stock("colosseum", Quest.shelfRung(p, "colosseum"),
                         p.recipes, Discipline.unlockedSet(p), Discipline.levelSet(p))) do
                     locked[entry.id] = entry.locked
                 end

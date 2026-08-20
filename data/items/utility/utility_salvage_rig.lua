@@ -20,7 +20,7 @@ return {
     tags = { "charm" },
     class = "alchemist",
     discipline = "artificer",
-    price = 500,
-    unlockQuests = 7,
+    price = 345,
+    unlockQuests = 2,
     traits = { "trait_salvage_rig" },
 }

@@ -255,12 +255,21 @@ tests[#tests + 1] = { name = "a multiclass stocks at least one item on EACH pare
         .. "discipline and then stocks nothing for it: " .. table.concat(bare, ", "))
 end }
 
-tests[#tests + 1] = { name = "no quest gates two disciplines (the no-reuse rule)", fn = function()
-    local seen = {}
+tests[#tests + 1] = { name = "no rung opens more than two disciplines", fn = function()
+    -- IT USED TO BE ONE, and that was right while a house had twelve rungs to hang seven subclasses
+    -- from. A house asks for six jobs now (models/errand.lua) and the Cathedral has six subclasses, the
+    -- Lodge seven -- so a rung apiece is arithmetic the ladder cannot do, and the choice is between two
+    -- on a rung or a subclass nobody can reach. Two is the cap: a rung that opened three would be a job
+    -- carrying more than the player can read as one reward.
+    --
+    -- What a shared rung must still be is a SUBJECT rather than a leftover pile -- the Lodge's spirit
+    -- wood opens the shaman and the totemist, which are the two spirit paths.
+    local counts, who = {}, {}
     for id, def in pairs(Discipline.defs) do
         for _, q in ipairs(def.requiredQuests) do
-            assert(not seen[q], "quest '" .. q .. "' gates both " .. tostring(seen[q]) .. " and " .. id)
-            seen[q] = id
+            counts[q] = (counts[q] or 0) + 1
+            who[q] = who[q] and (who[q] .. ", " .. id) or id
+            assert(counts[q] <= 2, "quest '" .. q .. "' gates " .. counts[q] .. ": " .. who[q])
         end
     end
 end }

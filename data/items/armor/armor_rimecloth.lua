@@ -23,8 +23,8 @@ return {
     type = "armor",
     tags = { "cloth", "ice" },
     class = "alchemist",
-    price = 380,
-    unlockQuests = 5,
+    price = 345,
+    unlockQuests = 2,
     bonus = {
         magicDefense = Curve.ramp(3, 13),
         statusResist = 3,

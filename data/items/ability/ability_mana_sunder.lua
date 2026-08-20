@@ -13,14 +13,14 @@ return {
     tags = { "impact", "physical" },
     class = "knight",
     discipline = "spellbreaker", -- knight x mage; the Counterspell mechanic's first stock
-    price = 680,
-    unlockQuests = 10,
+    price = 610,
+    unlockQuests = 4,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 9 },
-        damage = Curve.ramp(15, 25),
+        damage = Curve.ramp(14, 24),
         restore = Curve.ramp(10, 30), -- fx.amount: the mana burned off
         effect = function(fx)
             -- The Silence rides the blow, so a guardian who takes the strike is the one gagged.

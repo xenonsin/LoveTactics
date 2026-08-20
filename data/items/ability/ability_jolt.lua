@@ -10,8 +10,8 @@ return {
     type = "ability",
     tags = { "lightning", "magical" },
     class = "mage",
-    price = 620,
-    unlockQuests = 9,
+    price = 610,
+    unlockQuests = 4,
     activeAbility = {
         target = "enemy",
         range = 3,

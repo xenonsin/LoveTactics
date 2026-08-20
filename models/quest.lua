@@ -106,15 +106,46 @@ function Quest.sponsorProgress(player, vendorId)
     return done
 end
 
--- The sponsor's shelf as it stands right now, for the before/after diff in Quest.complete. Asks
--- Vendor.stock the same question the shop asks it (ui/panels/shop.lua), with the same three gates --
--- quest count, discipline unlocked, discipline level -- so what the reward panel announces as newly on
--- sale is exactly what the player will find on sale when they walk in.
-local function shelfOf(player, vendorId)
+-- THE RUNG OF THE SHELF that standing has reached, which is one below it: THE FIRST ERRAND BUYS THE
+-- DOOR, not stock.
+--
+-- A house's opener is the piece of work that opens its shop (models/errand.lua), and it lands in the
+-- same ledger as every errand after it -- so it was paying twice. The shelf's bottom band is authored
+-- at slot 0, which is what a shop carries before anything is earned, and the opener also moved the
+-- standing to 1. Walking through a freshly opened door therefore found ELEVEN wares on the Arcanum's
+-- shelf: eight that had been unlocked since the fresh save and three the opener had just released.
+-- Two bands in one visit, with the earned one indistinguishable from the free one -- and the base rack
+-- never announced, because it had never been locked for the reward diff to see it open.
+--
+-- Offsetting here rather than re-authoring 484 slots keeps the spread exactly where the grader put it
+-- (docs/shelf.md): slot N is still the Nth band up, it is simply the (N+1)th errand that reaches it.
+--
+-- THE OFFSET IS THE SHELF'S, NOT THE STANDING'S. The forge ceiling, the board's sponsor-quest gates and
+-- the shop's own "Errands run" line all still read Quest.sponsorProgress, because those count work done
+-- for a house; this counts how far up its stock that work has bought.
+--
+-- NOT CLAMPED AT ZERO, and the negative rung is the point: a house nobody has worked for has its bottom
+-- band SHUT rather than merely unreachable, so the opener has something to open. Clamping would leave
+-- slot 0 unlocked at a standing of nought -- true only because the door in front of it is shut, which is
+-- a second gate doing this one's job, and it would cost the reward diff (openedStock, below) the one
+-- moment where the base rack can be announced as newly on sale.
+function Quest.shelfRung(player, vendorId)
+    return Quest.sponsorProgress(player, vendorId) - 1
+end
+
+-- The sponsor's shelf as it stands right now, for the before/after diff below. Asks Vendor.stock the
+-- same question the shop asks it (ui/panels/shop.lua), with the same three gates -- shelf rung,
+-- discipline unlocked, discipline level -- so what the reward panel announces as newly on sale is
+-- exactly what the player will find on sale when they walk in.
+--
+-- Public because the descent opens shelves too: an errand is finished on a floor, far from this file's
+-- payout seam (models/errand.lua), and it has to take the same BEFORE picture through the same gates.
+function Quest.shelf(player, vendorId)
     if not vendorId then return nil end
-    return Vendor.stock(vendorId, Quest.sponsorProgress(player, vendorId), player.recipes,
+    return Vendor.stock(vendorId, Quest.shelfRung(player, vendorId), player.recipes,
         Discipline.unlockedSet(player), Discipline.levelSet(player))
 end
+local shelfOf = Quest.shelf
 
 -- What a completion PUT ON the sponsor's shelf: every item that was locked in `before` and is for sale
 -- now. Derived by diffing the shelf rather than by re-deriving the gate here, because a shelf opens per
@@ -139,6 +170,24 @@ local function openedStock(player, vendorId, before)
 
     local def = Vendor.get(vendorId)
     return { vendorId = vendorId, vendor = def and def.name or vendorId, items = opened }
+end
+
+-- The same diff, with the wares MARKED UNSEEN on the way out -- the dot the shop draws on the new rows
+-- and, through Vendor.hasMarkedStock, the dot the hub draws on the house's own door.
+--
+-- One function does both because the mark and the report are the same fact told twice, and they were
+-- drifting: Quest.complete diffed the shelf and marked what it found, while an errand -- which opens a
+-- shelf by exactly the same ledger write, just out on a descent floor rather than at the campaign's
+-- payout seam -- wrote nothing at all. A house whose stock an errand had opened wore no dot anywhere,
+-- so the only way to learn a rung had opened was to walk in and read a shelf forty rows deep.
+--
+-- Take `before` with Quest.shelf, do the ledger write, then call this. Returns nil when nothing opened.
+function Quest.markOpenedStock(player, vendorId, before)
+    local report = openedStock(player, vendorId, before)
+    for _, entry in ipairs(report and report.items or {}) do
+        Player.markNew(player, Player.NEW_STOCK, entry.id)
+    end
+    return report
 end
 
 -- Does the player meet a quest's sponsor-quest gate? `requiredSponsorQuests = { vendor = id, count = n }`
@@ -788,10 +837,7 @@ function Quest.complete(player, quest, carried, opts)
     -- itself dots the new rows (Player.markNew) -- the reward panel names three of them, and the
     -- shelf they landed on is forty rows deep. Resolved before the save below so the marks persist
     -- with everything else this completion changed.
-    local unlockedStock = openedStock(player, quest.sponsor, shelfBefore)
-    for _, entry in ipairs(unlockedStock and unlockedStock.items or {}) do
-        Player.markNew(player, Player.NEW_STOCK, entry.id)
-    end
+    local unlockedStock = Quest.markOpenedStock(player, quest.sponsor, shelfBefore)
 
     -- A line's last quest settles what its ten offers came to (models/temptation.lua): held, left, or
     -- caved. `endsLine` is a data flag on the slot-10 blueprint rather than a quest id this file knows,

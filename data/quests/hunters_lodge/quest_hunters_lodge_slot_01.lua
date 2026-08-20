@@ -7,6 +7,7 @@ return {
     description = "A white stag walks the deep wood. The Lodge wants its antlers on their wall.",
     difficulty = "Normal",
     sponsor = "hunters_lodge",
+    ladder = 0, -- which rung of the Lodge this job opens (models/errand.lua)
     -- The thanks for the job that OPENS this house. Its opener is seated on a descent floor unasked
     -- (models/errand.lua), so this scene is where the house first learns who ran it -- and the greeting
     -- waiting at its counter picks up from these lines.

@@ -27,8 +27,8 @@ return {
     tags = { "impact" },
     class = "alchemist",
     discipline = "saboteur",
-    price = 360,
-    unlockQuests = 8,
+    price = 610,
+    unlockQuests = 4,
     activeAbility = {
         target = "tile",
         range = 3,

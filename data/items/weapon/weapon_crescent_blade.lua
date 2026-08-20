@@ -38,8 +38,8 @@ return {
     hands = 1, -- one-handed, like every sword: the free hand is half of what the family is
     traits = { "trait_parry" }, -- swords answer a melee blow (docs/weapons.md)
     class = "knight", -- a sword, so the Bastion's shelf -- the same rule that puts weapon_demon_bane there
-    price = 680,
-    unlockQuests = 10, -- above Demon Bane's 3; rank 4 is the vendor ceiling (data/vendors/)
+    price = 740,
+    unlockQuests = 5, -- above Demon Bane's 3; rank 4 is the vendor ceiling (data/vendors/)
     activeAbility = {
         target = "tile",      -- a direction, not a victim: the aimed tile sets the line the arc runs
         allowOccupied = true, -- the first tile may hold a foe; the crescent starts there and carries on
@@ -60,7 +60,7 @@ return {
         -- three bodies where a sword catches one, and it declines armor on top of that. Tuned nearer
         -- weapon_iron_spear's 2-tile line, a step lower again for the extra tile and the routing.
         --        level:  0  1  2  3  4  5  6  7   8   9  10
-        damage = Curve.ramp(12, 22),
+        damage = Curve.ramp(16, 26),
         aoe = { shape = "line", length = 3 }, -- three tiles in a straight line away from the wielder
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

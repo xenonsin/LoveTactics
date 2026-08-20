@@ -26,8 +26,8 @@ return {
     type = "armor",
     tags = { "hide", "fire" },
     class = "alchemist",
-    price = 260,
-    unlockQuests = 3,
+    price = 80,
+    unlockQuests = 0,
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     resist = { fire = 6 },
 }

@@ -14,8 +14,8 @@ return {
     type = "consumable",
     tags = { "fire" }, -- no "magical": the fire is chemistry, and cares nothing for magic defense
     class = "alchemist",
-    price = 270,
-    unlockQuests = 10,
+    price = 295,
+    unlockQuests = 5,
     activeAbility = {
         target = "tile",
         allowOccupied = true, -- the burst may be centred ON a foe, like Fireball

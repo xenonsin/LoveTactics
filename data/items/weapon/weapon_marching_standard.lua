@@ -47,7 +47,7 @@ return {
     -- Rank 4 is the ceiling: every vendor's `ranks` table is four rungs long (data/vendors/), and the
     -- general quests gate on rank 4 as "the highest standing". A shelf therefore climbs 1..4 with its two
     -- capstones sharing the top rung -- here this and the Mailpiercer.
-    unlockQuests = 11,
+    unlockQuests = 5,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -55,7 +55,7 @@ return {
         minRange = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 11 },
-        damage = Curve.ramp(14, 24), -- under an iron spear's: the standard is the rest
+        damage = Curve.ramp(16, 26), -- under an iron spear's: the standard is the rest
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
             -- The thrust always happens, whatever state the colours are in: this is a spear first, and

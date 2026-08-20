@@ -23,7 +23,7 @@ return {
     tags = { "charm", "holy" },
     class = "mage",
     discipline = "theurge",
-    price = 380,
-    unlockQuests = 5,
+    price = 345,
+    unlockQuests = 2,
     traits = { "trait_vigil_beads" },
 }

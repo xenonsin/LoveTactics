@@ -34,6 +34,7 @@ return {
         "farms. The Lodge's runners are on their way to close the entry regardless.",
     difficulty = "Normal",
     sponsor = "hunters_lodge",
+    ladder = 2, -- which rung of the Lodge this job opens (models/errand.lua)
     rewardItems = { "weapon_struck_ledger", "armor_kennelbound_jerkin" },
     rewardGold = 180,
     requiredQuests = { "quest_hunters_lodge_slot_03" }, -- slot 4: the line runs in order

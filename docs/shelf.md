@@ -2,9 +2,8 @@
 
 Where an item sits, what it costs, and why neither is authored by hand any more.
 
-Every priced item in the game names a **slot** (`unlockQuests`, the count of its house's quests you
-must finish before it is on sale) and a **price**. Both used to be typed into the blueprint. Both are
-now derived, in one direction:
+Every priced item in the game names a **slot** (`unlockQuests`, the rung of its house's shelf it sits
+on) and a **price**. Both used to be typed into the blueprint. Both are now derived, in one direction:
 
 ```
 grade  ->  slot  ->  price
@@ -115,9 +114,48 @@ and it is preview-safe by construction.
 
 ## The slot
 
-Each house's stock is ranked weakest-first and spread across `0 .. quests - 2` — the last two quests
-of a line open nothing new, because gating anything on "finish the whole line" puts it out of reach
-of the line that unlocks it.
+Each house's stock is ranked weakest-first and spread across `0 .. rungs - 1`, where **a rung is a job
+the house asks for**: its opener, plus every quest a discipline hangs off. Six rungs at five houses,
+seven at the Cathedral, eight at the Hunter's Lodge (`models/errand.lua`, and `tools/grade_report.lua`
+reads the count from there so the shelf cannot disagree with the work that opens it).
+
+It used to be `0 .. quests - 2`, one rung per authored quest. A house's stock is a fixed 78–109 wares
+however many rungs it is cut into, so twelve rungs meant **two or three wares an errand** at the bottom
+of a shelf — a job run for a tooltip. Six means 10–15, an unlock you feel arriving.
+
+Everything else a house sponsors is *unasked* — the blueprints stay, nobody is sent to them. Never trim
+a line by sort order: 19 of the 38 discipline gates are `the_*` side quests, and the descent is the only
+mode there is, so a quest nobody is asked for is a quest nobody can finish and a discipline behind one
+is out of the game.
+
+**Slot N is reached by the (N+1)th errand**, not the Nth. A house's first errand is its *opener* — the
+piece of work, found on a descent floor, that opens the door at all (`models/errand.lua`) — and what
+it hands over is slot 0. Slot 1 waits for the errand after it.
+
+So the gate reads `Quest.shelfRung`, the house's standing less one, rather than the standing itself.
+Without that offset the opener paid twice: slot 0 is unlocked at a standing of nought, so a freshly
+opened door showed its bottom band *and* the band the opener had just earned — eleven of the Arcanum's
+wares in one visit, eight of them free and indistinguishable from the three that were earned.
+
+**The descent seats the work at the rung's own depth.** An errand is found on the floor its slot
+belongs to — slot 0 in the descent's first seven floors, a house's deepest slot on floor 14, the last
+floor a run can seat work on (`models/errand.lua`'s `Errand.floorFor`, off the house's own top slot).
+The shelf and the descent are one ladder read from two ends, so the gear a floor buys is the gear that
+floor is fought at.
+
+Three consequences fall out of that, all enforced by `tests/errand_spec.lua`:
+
+- **A line is exactly as long as the shelf has rungs**, because they are the same list counted twice.
+- **The ladder stops short of the bottom.** The first rung is asked on floor 3, the last on floor 11
+  or 12 — never deeper. A company should not buy the best gear the game sells and immediately fight
+  the last thing in the game with it; three floors is the room to find out what it does.
+- **The openers are all dealt into the first circle.** Slot 0 is a band balanced for the shallowest
+  floors, so a door first met on floor thirteen would have paid out opening-rack gear at the bottom of
+  a run (`Descent.openersAt`, three on floor 1 and four on floor 2 — seven doors do not fit on one
+  floor's dead ends).
+
+Half the houses ask a floor later than the other half (`Errand.floorFor`'s stagger), because five of
+the seven carry six rungs and an even spread alone lands all five on the same five floors.
 
 **Two bands, spread separately.** The base shelf runs the whole line; the discipline cut starts at
 slot 3. Spreading them together and clamping afterwards piles every low-grading discipline item onto
@@ -251,6 +289,17 @@ construction, because `Balance.slotTarget` reads the slot. So:
 ...and repeat the whole loop until `grade-report diff` reports **0 items would move**. With the
 anchors pinned and the grade blind to damage it reaches a fixed point in one round; if it does not,
 something is being chosen on a field that is not slot-free.
+
+**Finish on a magnitude pass, never on a grade apply.** The last thing to run must be
+`balance-rescale apply 0`, because a slot move leaves the item's damage describing the rung it used to
+be on — `tests/balance_spec.lua`'s *an item's magnitude is the one its unlock slot names* is what
+catches a loop stopped one step early. Two or three sword and dagger rows may trade places forever
+(identical grades, different fitness against what they face); that is the damping limit, not a fault.
+
+**Anything keyed to the slot NUMBER breaks when the rung count changes**, and three things were: the
+price ladder (`Grade.priceFor`), the standing the wielder is assumed to have (`Balance.prestigeForSlot`),
+and — through the price band — the descent's sealed finds. All three now read the slot as a *position*
+on whatever ladder it is on, so re-cutting the shelf moves the size of a step and never the span.
 
 The rewrite deliberately does **not** touch magnitude. Doing both in one place would hide which of
 the two decided any given number.

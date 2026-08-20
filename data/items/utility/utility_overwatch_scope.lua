@@ -21,7 +21,7 @@ return {
     type = "utility",
     tags = { "scope" },
     class = "hunter",
-    price = 380,
-    unlockQuests = 5,
+    price = 80,
+    unlockQuests = 0,
     waitBehavior = { kind = "overwatch", speed = 12, stamina = 6, zone = 1 },
 }

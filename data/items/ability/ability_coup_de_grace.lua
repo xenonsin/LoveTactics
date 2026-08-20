@@ -13,15 +13,15 @@ return {
     tags = { "guile", "physical" },
     class = "rogue",
     discipline = "assassin", -- deeper cut of the shelf: buyable only once the assassin gate is cleared
-    price = 440,
-    unlockQuests = 6,
+    price = 475,
+    unlockQuests = 3,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 5,
         cost = { stat = "stamina", amount = 8 },
         requiresAdjacent = { type = "weapon", tag = "melee" },
-        damage = Curve.ramp(11, 21),
+        damage = Curve.ramp(12, 22),
         effect = function(fx)
             local t = fx.target
             if not t then return end

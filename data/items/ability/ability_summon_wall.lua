@@ -13,8 +13,8 @@ return {
     type = "ability",
     tags = { "holy", "illusion" },
     class = "priest",
-    price = 500,
-    unlockQuests = 7,
+    price = 475,
+    unlockQuests = 3,
     activeAbility = {
         target = "tile",
         range = 4,

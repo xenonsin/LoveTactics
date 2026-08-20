@@ -13,7 +13,7 @@ return {
     type = "utility",
     tags = { "satchel", "arcane" },
     class = "alchemist",
-    price = 440,
-    unlockQuests = 6, -- backfills the rung Disarm left when it went to the Undercroft
+    price = 475,
+    unlockQuests = 3, -- backfills the rung Disarm left when it went to the Undercroft
     traits = { "trait_alchemists_reservoir" },
 }

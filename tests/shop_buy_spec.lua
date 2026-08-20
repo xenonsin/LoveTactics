@@ -10,7 +10,17 @@
 -- against a stubbed font (the trick tests/combat_fx_spec.lua uses). Nothing here draws.
 
 local Shop = require("ui.panels.shop")
+local Errand = require("models.errand")
 local Vendor = require("models.vendor")
+
+-- A ledger with every house's door open and nothing else run. The shelf gates on Quest.shelfRung --
+-- the standing less the opener, which buys the door rather than a band of stock -- so a company with an
+-- empty ledger is standing outside, and a panel built for it has no unlocked row to press.
+local function doorsOpen()
+    local done = {}
+    for vendorId in pairs(Errand.houses()) do done[Errand.opener(vendorId)] = true end
+    return done
+end
 
 -- A font stand-in with the three metrics the shop and its confirmation ask for while laying out.
 local function stubFonts(fn)
@@ -31,7 +41,7 @@ end
 local function shopFor(vendorId, gold)
     return Shop.new({
         vendor = vendorId,
-        player = { completedQuests = {}, recipes = {}, gold = gold or 0, stash = {} },
+        player = { completedQuests = doorsOpen(), recipes = {}, gold = gold or 0, stash = {} },
     })
 end
 

@@ -34,14 +34,14 @@ return {
     tags = { "guile", "physical" }, -- `guile`, the rogue's own word for a conditional multiplier
     class = "rogue",
     discipline = "thief", -- deeper cut of the shelf: buyable only once the thief gate is cleared
-    price = 560,
-    unlockQuests = 8,
+    price = 610,
+    unlockQuests = 4,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 5,
         cost = { stat = "stamina", amount = 10 },
-        damage = Curve.ramp(14, 26), -- the floor: what it lands for against a foe with nothing left
+        damage = Curve.ramp(12, 24), -- the floor: what it lands for against a foe with nothing left
         description = "Puts up to its own damage through a second time, in proportion to the target's remaining health.",
         effect = function(fx)
             local t = fx.target

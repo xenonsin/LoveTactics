@@ -12,8 +12,8 @@ return {
     type = "ability",
     tags = { "pierce", "physical" },
     class = "fighter",
-    price = 140,
-    unlockQuests = 1,
+    price = 80,
+    unlockQuests = 0,
     activeAbility = {
         target = "enemy",
         range = 1,
