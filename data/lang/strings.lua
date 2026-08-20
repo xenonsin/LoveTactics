@@ -674,6 +674,18 @@ return {
     ["line.conversation_descent_sloth.2"] = { en = "I held a post once. Nobody came. You will find out what I found out, and it will take you about fifteen years.", ja = "" },  -- TODO
     ["line.conversation_descent_wrath.1"] = { en = "Do not make it quick. A quick blow is a blow somebody is holding back.", ja = "" },  -- TODO
     ["line.conversation_descent_wrath.2"] = { en = "I have had a lifetime of being handled. Come and hit me properly.", ja = "" },  -- TODO
+    ["line.conversation_errand_asked.1"] = { en = "This is the one {house} sent us for.", ja = "" },  -- TODO
+    ["line.conversation_errand_asked.2"] = { en = "{posting}", ja = "" },  -- TODO
+    ["line.conversation_errand_asked.3"] = { en = "Their shelf moves when it is done and not before. It keeps until we come back for it, {name}, and so does the stair.", ja = "" },  -- TODO
+    ["line.conversation_errand_asked.4"] = { en = "Now, or on the way past. Choose...", ja = "" },  -- TODO
+    ["line.conversation_errand_asked.5"] = { en = "Take it on.", ja = "" },  -- TODO
+    ["line.conversation_errand_asked.6"] = { en = "Leave it standing.", ja = "" },  -- TODO
+    ["line.conversation_errand_found.1"] = { en = "There is a seal cut into the stone here, and it is not an old one. {house}, out of the city.", ja = "" },  -- TODO
+    ["line.conversation_errand_found.2"] = { en = "{posting}", ja = "" },  -- TODO
+    ["line.conversation_errand_found.3"] = { en = "They posted it and nobody came down for it. A house pays what it owes, {name}, and it opens its counter to whoever finishes the job. Their door is shut to us today.", ja = "" },  -- TODO
+    ["line.conversation_errand_found.4"] = { en = "We take the work, or we leave it lying where it is. Choose...", ja = "" },  -- TODO
+    ["line.conversation_errand_found.5"] = { en = "Take the work.", ja = "" },  -- TODO
+    ["line.conversation_errand_found.6"] = { en = "Leave it lying.", ja = "" },  -- TODO
     ["line.conversation_flight_champion.1"] = { en = "Stop here, {name}. That one at the head of them is no imp. It has a name where they carry none, and it leads this whole raiding party. This is the thing that has been walking the road behind us.", ja = "" },  -- TODO
     ["line.conversation_flight_champion.2"] = { en = "It's between us and the capital.", ja = "" },  -- TODO
     ["line.conversation_flight_champion.3"] = { en = "It is. And it will not fall to the swarm-work that served against the rest. It takes blows the grunts could not, and the imps beside it only want to keep us busy while it reaches you.", ja = "" },  -- TODO
@@ -1050,6 +1062,8 @@ return {
     ["title.conversation_descent_pride"] = { en = "Sublimitas, the Unequalled", ja = "" },  -- TODO
     ["title.conversation_descent_sloth"] = { en = "Acedia, the Unrelieved", ja = "" },  -- TODO
     ["title.conversation_descent_wrath"] = { en = "Ira, the Unappeased", ja = "" },  -- TODO
+    ["title.conversation_errand_asked"] = { en = "The Work Asked For", ja = "" },  -- TODO
+    ["title.conversation_errand_found"] = { en = "A Posting Nobody Took", ja = "" },  -- TODO
     ["title.conversation_flight_champion"] = { en = "The Champion", ja = "" },  -- TODO
     ["title.conversation_flight_event_shrine"] = { en = "The Roadside Shrine", ja = "" },  -- TODO
     ["title.conversation_flight_event_survivor"] = { en = "A Voice from the Brush", ja = "" },  -- TODO

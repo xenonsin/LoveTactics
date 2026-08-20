@@ -421,9 +421,12 @@ function Conversation.play(id, onDone, ctx, opts)
         require("models.story_effect").apply(effect, Player.active)
     end
     local Dialogue = require("ui.dialogue")
-    Conversation.active = Dialogue.new(resolved, function()
+    -- `onDone` is handed the ANSWER the player gave -- the `answer` field of the last choice they
+    -- committed, or nil if the scene asked nothing or was escaped out of before they said. A scene
+    -- that only speaks calls back with nil, which is what every existing caller already ignores.
+    Conversation.active = Dialogue.new(resolved, function(answer)
         Conversation.active = nil
-        if onDone then onDone() end
+        if onDone then onDone(answer) end
     end, id) -- the id scopes keyed line lookups: "conversation.<id>.<key>"
     return Conversation.active
 end

@@ -108,11 +108,17 @@ local function serializeEffect(effect)
     return "{ " .. table.concat(parts, ", ") .. " }"
 end
 
--- Serialize one choice: { "<text>", tag = N, goto = "..", effect = { .. } }
+-- Serialize one choice: { "<text>", tag = N, goto = "..", answer = "..", effect = { .. } }
+--
+-- `answer` is what the option means to the caller that opened the scene (ui/dialogue.lua) rather than
+-- something it does to the player. It is emitted here for the same reason `effect` is: this tool
+-- regenerates the whole file, so a field it does not know about is a field that disappears the next
+-- time anybody adds a line to the scene.
 local function serializeChoice(c)
     local parts = { q(choiceText(c) or "") }
     if c.tag ~= nil then parts[#parts + 1] = "tag = " .. c.tag end
     if c.goto then parts[#parts + 1] = "goto = " .. q(c.goto) end
+    if c.answer then parts[#parts + 1] = "answer = " .. q(c.answer) end
     if c.effect then parts[#parts + 1] = "effect = " .. serializeEffect(c.effect) end
     return "{ " .. table.concat(parts, ", ") .. " }"
 end

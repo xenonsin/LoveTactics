@@ -171,7 +171,13 @@ function Dialogue.new(def, onComplete, convId)
                 -- `effect` is a declarative side-effect applied when this choice is committed
                 -- (grant an item, restore, set a story flag -- see models/story_effect.lua). It is
                 -- carried through untouched; the applier lives outside this widget.
+                -- `answer` is what this option MEANS to whoever opened the scene, reported back
+                -- through the completion callback (models/conversation.lua). An `effect` changes the
+                -- player; an answer changes what the caller does next -- a floor's errand asks whether
+                -- to fight it at all, and "accept" is not a thing to grant, it is a branch to take.
+                -- Carried through untouched, like `effect`; this widget never reads its value.
                 node.choices[j] = { text = c.text or c[1] or "", tag = c.tag, goto = c.goto,
+                                    answer = c.answer,
                                     effect = c.effect, reward = rewardOf(c.effect) }
             end
         end
@@ -350,10 +356,14 @@ function Dialogue:advance(gotoLabel)
     end
 end
 
+-- The scene is over -- played out, or escaped from. `self.answer` is the answer given to the last
+-- question that carried one, and NIL when the player never answered: escape and B end a scene from
+-- anywhere, including from in front of the choices. A caller that asked a question has to read that
+-- as the cancelling answer, because cancel is what those two buttons mean everywhere else.
 function Dialogue:finish()
     if self.done then return end
     self.done = true
-    if self.onComplete then self.onComplete() end
+    if self.onComplete then self.onComplete(self.answer) end
 end
 
 -- ---------------------------------------------------------------------------
@@ -419,6 +429,10 @@ function Dialogue:confirm()
         -- Apply the choice's outcome (loot, story flag, a tradeoff) before following its branch,
         -- so a scene that shows the reward on the next node has already granted it.
         if choice and choice.effect and self.onEffect then self.onEffect(choice.effect) end
+        -- The LAST answer given wins, and a scene that asks nothing gives none. Recorded rather than
+        -- reported here because the caller acts when the scene is over, not mid-line: an errand
+        -- accepted three lines from the end still has three lines to play before the fight.
+        if choice and choice.answer then self.answer = choice.answer end
         self:advance(choice and choice.goto)
         return
     end

@@ -134,6 +134,13 @@ length, one to four tiles deep, in headlands and bays. The tiles stay square; th
   splits them at the draw, off the `questId` an end stamped with a piece of work already carries: a
   **pennant** for the board's own end, a **writ** for posted work, both in the same gold because both
   are things the day ends at. A campaign ground, where every end is a quest, is all writs.
+- **A writ says whose it is before it is fought, and asks.** Stepping onto posted work opens a scene
+  naming the house and reading its own description out (`models/errand.lua`'s `Errand.posting`,
+  `states/game.lua`'s `askErrand`), and it ends on a question: take it on, or leave it standing. Yes
+  goes into the fight; no steps the token back one tile and leaves the end exactly where it was, to be
+  walked back onto whenever. The scene matters most for a house the company has never met — its first
+  job is *found*, not asked for, and without this the player fought a stranger's siege and learned what
+  it had been for from a shelf that had moved by the time they were next in town.
 - **Every other fight is optional, and an optional fight should be attached to something worth
   having.** That is `guardBoons`: the boon behind, the fight in the way.
 - **Only the deepest approach is gated.** `keyCount` is authored per quest, so summing them across a

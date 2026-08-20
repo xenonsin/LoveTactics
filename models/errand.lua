@@ -411,6 +411,60 @@ function Errand.onFloor(player, floor)
     return out
 end
 
+-- ---------------------------------------------------------------------------
+-- Meeting one on the floor
+-- ---------------------------------------------------------------------------
+
+-- WHOSE WORK IS STANDING AT THIS DEAD END, or nil when the end is not anybody's errand.
+--
+-- A floor's ends all look alike from the map: a marker on a dead end with a fight behind it. Two of
+-- them are a house's, and until this existed the player was told so by nothing at all. The asked one
+-- was at least chosen in a shop an hour ago; the OPENER was never chosen by anybody -- it is lying on
+-- the floor unasked (Descent.floorObjectives), and a company that walked into it fought a siege for a
+-- quartermaster they had never met and found out what it was for from a shelf that moved.
+--
+-- So the tile says it before the fight does (states/game.lua's askErrand), and the two kinds are told
+-- apart because they are two different sentences:
+--
+--   asked   the house asked for this in its shop and the company came down here to find it
+--   found   the house has no door yet; this is the posting that opens it
+--
+-- ALREADY-FINISHED READS AS NEITHER, which matters on a resumed run: a cleared cell is not re-entered,
+-- but an errand can also be finished from the OTHER end (the same job seated on a floor twice over two
+-- runs), and asking whether to take on work already done is a scene about nothing.
+function Errand.posting(player, questId)
+    if not questId then return nil end
+    local def = Quest.defs[questId]
+    if not (def and def.sponsor) then return nil end
+    if ((player and player.completedQuests) or {})[questId] then return nil end
+    local kind
+    if ((player and player.errands) or {})[questId] then
+        kind = "asked"
+    elseif questId == Errand.opener(def.sponsor) and not Errand.doorOpen(player, def.sponsor) then
+        kind = "found"
+    end
+    if not kind then return nil end
+    return { id = questId, def = def, vendorId = def.sponsor, kind = kind }
+end
+
+-- The scene that asks. A house may answer in its own voice by authoring
+-- `conversation_<vendor>_errand_<kind>`; none does today, and the two generic scenes carry all seven --
+-- they name the house and read its posting out through `{house}` and `{posting}` (models/locale.lua),
+-- which is the same way one "the shelf just grew" scene per shop speaks any discipline.
+--
+-- Generic ON PURPOSE rather than for want of authoring. The words are the same words every time because
+-- the SITUATION is: a seal on a stone, a job nobody took, and a company deciding whether to spend the
+-- next fight on it. What differs between two of these is the house and the work, and both of those are
+-- read off the posting rather than written seven times.
+Errand.SCENES = { asked = "conversation_errand_asked", found = "conversation_errand_found" }
+
+function Errand.postingScene(posting)
+    if not (posting and posting.kind) then return nil end
+    local own = "conversation_" .. tostring(posting.vendorId) .. "_errand_" .. posting.kind
+    if require("models.conversation").defs[own] then return own end
+    return Errand.SCENES[posting.kind]
+end
+
 -- Finished. Writes the SHELF'S OWN LEDGER rather than a second one, so the stock opens by the path it
 -- always did (Quest.shelfRung -> Vendor.stock), and drops the open-errand entry so the shop stops
 -- listing a floor to go to.

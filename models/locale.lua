@@ -141,6 +141,22 @@ function Locale.substitute(text)
         local p = require("models.player").active
         text = text:gsub("{discipline}", (p and p.announcingDiscipline) or "a new discipline")
     end
+    if text:find("{house}", 1, true) or text:find("{posting}", 1, true) then
+        -- The house whose work the company is standing on, and what its posting says -- set on the
+        -- player for the scene's duration exactly as {discipline} is (states/game.lua's askErrand),
+        -- so ONE "somebody posted this" scene speaks for all seven houses. The fallbacks are what a
+        -- line reads as if it plays with nothing posted, which is a bug rather than a state: they are
+        -- written to be sentences rather than to be noticed.
+        --
+        -- Replaced through a FUNCTION rather than a string, because a posting is authored prose rather
+        -- than a name: a description carrying a `%` would be read as a capture reference by gsub and
+        -- come back mangled or throw.
+        local p = require("models.player").active
+        local house = (p and p.postingHouse) or "a house in the city"
+        local work = (p and p.postingWork) or "Work, and no more said about it."
+        text = text:gsub("{house}", function() return house end)
+        text = text:gsub("{posting}", function() return work end)
+    end
     if text:find("{select}", 1, true) then
         text = text:gsub("{select}", Locale.selectKey() or SELECT_WORD)
     end

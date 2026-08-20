@@ -336,6 +336,89 @@ return {
         end
     end },
 
+    { name = "the tile knows whose work it is, and which of the two meetings this is", fn = function()
+        -- The two ways a company meets a house's work, told apart because they are two different
+        -- scenes: the job asked for over a counter, and the posting from a house with no counter yet.
+        local v = "bastion"
+        local opener = Errand.opener(v)
+
+        local shut = company(v, false, 3)
+        local found = Errand.posting(shut, opener)
+        assert(found, "the opener is lying on the floor and reads as nothing")
+        assert(found.kind == "found", "a house with no door cannot have asked: " .. found.kind)
+        assert(found.vendorId == v, "the posting names the wrong house: " .. tostring(found.vendorId))
+
+        local open = company(v, true, 6)
+        local id = Errand.next(open, v)
+        assert(id, v .. " has nothing left to ask for")
+        -- NEVER ASKED FOR IS NOT A POSTING. A house sponsors far more work than it ever asks for, and
+        -- a job the player has not taken on is not standing on any floor to be met.
+        assert(Errand.posting(open, id) == nil, id .. " is a posting before anybody asked for it")
+
+        Errand.accept(open, id, 6)
+        local asked = Errand.posting(open, id)
+        assert(asked and asked.kind == "asked", "an accepted errand does not read as asked for")
+        assert(asked.def == Quest.defs[id], "the posting carries the wrong blueprint")
+
+        -- Finished reads as neither, which is what a resumed run needs: the same job can be seated on
+        -- a floor that was generated before it was run, and asking whether to take on work already
+        -- done is a scene about nothing.
+        open.completedQuests[id] = true
+        assert(Errand.posting(open, id) == nil, "a finished errand is still being offered")
+        -- The stair carries no quest at all, and is the end every floor has.
+        assert(Errand.posting(open, nil) == nil, "an end with no quest on it reads as somebody's work")
+    end },
+
+    { name = "the scene that asks names the house and reads the posting out, whoever is standing there", fn = function()
+        -- WHAT THE PLAYER IS OWED BEFORE THE FIGHT: whose work this is, what it says, and both answers.
+        -- Every part of it fails silently -- a scene that names no house is a fight for a stranger, and
+        -- a scene with one answer is not a question.
+        local Conversation = require("models.conversation")
+
+        for _, kind in ipairs({ "asked", "found" }) do
+            local id = Errand.postingScene({ vendorId = "bastion", kind = kind })
+            local def = id and Conversation.defs[id]
+            assert(def, "no scene asks about a " .. kind .. " errand: " .. tostring(id))
+
+            -- The house and its posting have to be on UNGATED lines. Every other line in these scenes
+            -- is a companion's, and a company that lost her still has to be told what it is standing on.
+            local plain = {}
+            local answers = {}
+            local asks = 0
+            for _, node in ipairs(def.script or {}) do
+                if not node.script then plain[#plain + 1] = node[2] or node.text or "" end
+                if node.choices then
+                    asks = asks + 1
+                    for _, choice in ipairs(node.choices) do
+                        assert(choice.answer, id .. ": an option that answers nothing")
+                        answers[choice.answer] = true
+                    end
+                end
+            end
+            local said = table.concat(plain, " ")
+            assert(said:find("{house}", 1, true), id .. " never names the house")
+            assert(said:find("{posting}", 1, true), id .. " never says what the work is")
+            assert(asks == 1, id .. " asks " .. asks .. " questions; the scene is one question")
+            assert(answers.accept and answers.decline, id .. " does not offer both answers")
+        end
+    end },
+
+    { name = "one scene speaks for all seven houses, off the posting set on the player", fn = function()
+        -- The tokens the scenes are written against (models/locale.lua). A `%` in an authored
+        -- description is the case that matters: substituted as a plain replacement string it would be
+        -- read as a capture reference and come back mangled.
+        local Locale = require("models.locale")
+        local was = Player.active
+        local p = Player.new()
+        p.postingHouse = "The Bastion"
+        p.postingWork = "Highwatch is 100% besieged. Get the column up the mountain."
+        Player.active = p
+        local out = Locale.substitute("{house} posted this. {posting}")
+        Player.active = was
+        assert(out == "The Bastion posted this. Highwatch is 100% besieged. Get the column up the mountain.",
+            "the posting did not survive substitution: " .. out)
+    end },
+
     { name = "an opener thanks you in the house's own voice, and its counter greets you in the same one", fn = function()
         -- THE SHAPE OF MEETING A HOUSE. Its first job is lying on a floor with nobody to introduce it
         -- (Errand.opener), so the only two moments the house gets to speak are the thanks straight after

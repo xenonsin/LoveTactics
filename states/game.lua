@@ -1307,9 +1307,49 @@ function game:musterBand(cell)
     return Muster.band(game:musterMargin(cell))
 end
 
+-- ASKING WHETHER TO DO A HOUSE'S WORK, at the tile the work is standing on.
+--
+-- Two scenes, because there are two ways to meet one (models/errand.lua's Errand.posting): the errand
+-- a house asked for, and the posting from a house that has no door yet. Both name the house and read
+-- its own description out, through `{house}` and `{posting}` -- set on the player for the length of the
+-- scene and cleared after, the same way one "the shelf just grew" scene per shop speaks any discipline
+-- (models/locale.lua's Locale.substitute).
+--
+-- YES GOES INTO THE FIGHT and no steps the company back off the tile. Declining costs nothing and takes
+-- nothing: the cell is never marked cleared, so the work is still standing there and walking back onto
+-- it asks again. That is the whole point of asking -- a floor is not obliged to be spent the way it was
+-- planned in a shop, and a company that arrived lighter than it left can take the stair instead.
+--
+-- NO ANSWER IS A NO. Escape and B end a scene from anywhere, choices on screen or not, and they mean
+-- cancel on every other surface in the game; the answer comes back nil and the company steps back.
+function game:askErrand(cell, posting)
+    local player = game.player
+    local vendor = Vendor.get(posting.vendorId) or {}
+    if player then
+        player.postingHouse = vendor.name or posting.vendorId
+        player.postingWork = posting.def.description or posting.def.name
+    end
+    require("models.conversation").play(Errand.postingScene(posting), function(answer)
+        if player then
+            player.postingHouse, player.postingWork = nil, nil
+        end
+        if answer == "accept" then
+            game:openEncounter(cell, { errandAnswered = true })
+        elseif game.map and game.map.retreatFromEncounter then
+            -- Back onto the tile they came from, the way a cleared stair steps the token off itself
+            -- (game:openStairDown). A stop is only ever entered by ARRIVING at it, so a refusal that
+            -- left the party standing on the marker would be work they could not walk back into.
+            game.map:retreatFromEncounter()
+        end
+    end)
+end
+
 -- Engaging an encounter. Combat kinds (combat / elite / objective) drop into the
 -- battle arena; the non-combat kinds (town / treasure) keep the simple modal.
-function game:openEncounter(cell)
+--
+-- `opts.errandAnswered` is set by the second call askErrand makes below, once a house's work has been
+-- said yes to. Nothing else passes it, and a re-entered tile asks again.
+function game:openEncounter(cell, opts)
     local kind = cell.encounter.kind
     local mp = game.quest and game.quest.map or {}
 
@@ -1325,6 +1365,24 @@ function game:openEncounter(cell)
     -- folds onto it when it plays (Conversation.drainJoins). Completion routes exactly like a cleared
     -- combat objective: a scripted caller's onComplete goes home, a board quest pays out and returns.
     local objSpec = kind == "objective" and objectiveAt(cell) or nil
+
+    -- A HOUSE'S WORK SAYS WHOSE IT IS BEFORE IT IS FOUGHT, and asks whether to fight it at all.
+    --
+    -- A floor's ends are all the same marker on the same kind of dead end, and two of them belong to a
+    -- house: the job it asked for over its counter, and the posting that opens a house with no door
+    -- yet. Neither ever said so out loud. Walking into the second of those meant fighting a siege for a
+    -- quartermaster the company had never met and finding out what it had been for from a shelf that
+    -- moved the next time they were in town (models/errand.lua's Errand.posting).
+    --
+    -- ONLY UNDERGROUND. The seam is the descent's -- an errand is seated on a floor and nowhere else --
+    -- and a scripted leg's objective is not a thing anybody may decline: the prologue's flight has no
+    -- answer for a refusal, and would sit on the map with nothing left to do.
+    local posting = game.descent and objSpec and Errand.posting(game.player, objSpec.questId)
+    if posting and not (opts and opts.errandAnswered) then
+        game:askErrand(cell, posting)
+        return
+    end
+
     if objSpec and objSpec.meet then
         cell.cleared = true
         game.complete = true
