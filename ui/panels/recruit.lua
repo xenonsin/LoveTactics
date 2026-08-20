@@ -104,6 +104,13 @@ function RecruitPanel.new(opts)
     self.single = opts.single == true
     if self.single then self.acceptLabel = opts.acceptLabel or "Welcome" end
 
+    -- WHO OWNS THE GROUND UNDER THIS. A floor stop opens this panel over a live battle map, so the
+    -- panel lays its own scrim over it. The crossing opens it over its own much darker one with the
+    -- rift still burning behind the card (ui/panels/hire_reveal.lua), and a second veil there would
+    -- dim the one thing the card is supposed to be standing in front of. `scrim = false` says the
+    -- caller has already darkened the room.
+    self.scrim = opts.scrim ~= false
+
     self.choice = 1     -- 1 = take, 2 = walk on. The panel opens on the offer, not on the refusal.
     self.peek = nil     -- keyboard/pad kit cursor: an index into self.slots, or nil for "nothing open"
     self.hover = nil    -- the slot the mouse is over, which outranks the peek while it lasts
@@ -359,8 +366,10 @@ function RecruitPanel:drawButton(b, label, picked, accent)
 end
 
 function RecruitPanel:draw()
-    love.graphics.setColor(0, 0, 0, 0.6)
-    love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
+    if self.scrim then
+        love.graphics.setColor(0, 0, 0, 0.6)
+        love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
+    end
 
     local bx, by = self.boxX, self.boxY
     Theme.plate(bx, by, self.boxW, self.boxH, Theme.R)
