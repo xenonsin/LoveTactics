@@ -54,34 +54,27 @@ end
 -- ("data/conversations/prologue/conversation_prologue_sponsor.lua"); it is resolved against the
 -- launched source directory, which is where the file a `require` actually read lives.
 --
--- Three ways in, in order, because there is no portable "open this in the user's editor":
+-- Two ways in, in order, because there is no portable "open this in the user's editor":
 --   1. $LOVETACTICS_EDITOR, a command template. `{file}` and `{line}` are substituted; a template
 --      naming neither gets the quoted path appended. This is the only one that can be right for an
 --      editor we have never heard of, so it wins.
 --        LOVETACTICS_EDITOR=code -g {file}:{line}
 --        LOVETACTICS_EDITOR=subl
---   2. VS Code, if `code` answers on PATH -- the editor this project is written in, and the reason
---      the line number is worth carrying at all: `code -g` lands the caret ON the line.
---   3. love.system.openURL, which hands the file to the OS and lands wherever .lua is associated.
---      No line number survives a file:// URL, so this one opens at the top.
+--   2. A URL handed to the OS. `vscode://file/<path>:<line>` first -- VS Code registers that scheme
+--      on every platform it installs on, and it is the only URL form that carries a line number, so
+--      the caret lands ON the line. If nothing answers it, `file://<path>`, which opens wherever
+--      .lua is associated, at the top.
+--
+-- It deliberately does NOT shell out to look for an editor. `code` on PATH is a .cmd shim, and a
+-- windowed LOVE build has no console for a child process to borrow: every `os.execute` -- the `where
+-- code` probe as much as the `start "" code` that followed it -- allocates a console window, and the
+-- one wrapping a batch file stays on screen after the editor is up. The scheme handler is registered
+-- against Code.exe directly, so ShellExecute reaches it without a shell in between. The template is
+-- the one path left that can spawn a console, and only because the user asked for a command by name.
 --
 -- Returns true if something was launched. It never raises: a debug shortcut that crashes the game
 -- when an editor is missing is worse than one that quietly does nothing, and the caller prints the
 -- path to the console either way, so the fallback of last resort is copying it out of there.
-local probedCode
-
--- Is `code` on PATH? Probed once and remembered -- the check itself spawns a shell, and doing that on
--- every click is how a debug button starts flashing a console window.
-local function hasVSCode()
-    if probedCode == nil then
-        local probe = (love.system.getOS() == "Windows") and "where code >nul 2>nul" or "command -v code >/dev/null 2>&1"
-        -- LuaJIT's os.execute answers with the exit code (0 = found); guard for a boolean anyway,
-        -- since a false here only costs us the fallback, not the feature.
-        local result = os.execute(probe)
-        probedCode = result == 0 or result == true
-    end
-    return probedCode
-end
 
 -- Run `cmd` without the game waiting on the editor to be closed again. `os.execute` blocks until the
 -- child exits, which for a plain `notepad "file"` means the game is frozen until you are done editing
@@ -92,6 +85,24 @@ local function spawn(cmd)
     else
         os.execute(cmd .. " &")
     end
+end
+
+-- Percent-encode a filesystem path into the path half of a URL. Windows spells paths with
+-- backslashes and the project can sit under a folder with a space in it; either one makes a URL the
+-- OS refuses or truncates. Everything outside the unreserved set survives as %XX, except the `/` and
+-- `:` a path needs to keep (`E:/Projects/...`).
+local function urlPath(abs)
+    local encoded = abs:gsub("\\", "/"):gsub("[^%w%-%._~/:]", function(c)
+        return string.format("%%%02X", string.byte(c))
+    end)
+    return encoded
+end
+
+-- Hand a URL to the OS. Wrapped because openURL is missing under the headless test runner, and
+-- because a false here is a fallback rather than a failure.
+local function openURL(url)
+    local ran, opened = pcall(love.system.openURL, url)
+    return ran and opened == true
 end
 
 function Debug.openFile(rel, line)
@@ -107,14 +118,12 @@ function Debug.openFile(rel, line)
         return true
     end
 
-    local ok = pcall(hasVSCode)
-    if ok and probedCode then
-        spawn('code -g "' .. abs .. ":" .. line .. '"')
-        return true
-    end
+    local path = urlPath(abs)
+    if openURL("vscode://file/" .. path .. ":" .. line .. ":1") then return true end
 
-    local ran, opened = pcall(love.system.openURL, "file://" .. abs)
-    return ran and opened == true
+    -- file:// wants an absolute path rooted at `/`; a Windows path starts at its drive letter.
+    if path:sub(1, 1) ~= "/" then path = "/" .. path end
+    return openURL("file://" .. path)
 end
 
 return Debug

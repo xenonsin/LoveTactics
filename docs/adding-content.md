@@ -221,9 +221,11 @@ prints `<path>:<line>` to the console, so a `lovec` run tells you where to look 
 Which editor gets it, in order:
 
 1. `$LOVETACTICS_EDITOR`, a command template — `{file}` and `{line}` are substituted, and a template
-   naming neither gets the quoted path appended (`LOVETACTICS_EDITOR=code -g {file}:{line}`).
-2. VS Code, if `code` answers on PATH — `code -g` lands the caret on the line.
-3. Otherwise the OS opens the file with whatever `.lua` is associated with, at the top.
+   naming neither gets the quoted path appended (`LOVETACTICS_EDITOR=subl {file}:{line}`). This is
+   the only one that runs a command, so on Windows it is also the only one that can flash a console.
+2. `vscode://file/<path>:<line>`, handed to the OS — VS Code registers that scheme when it installs,
+   and it is the one URL form carrying a line number, so the caret lands on the line.
+3. Otherwise `file://<path>`, which opens whatever `.lua` is associated with, at the top.
 
 Remember that `extract-strings` **rewrites the file from the data**, so edit the lines, not the `tag`s.
 
