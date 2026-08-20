@@ -34,13 +34,19 @@ Choice.__index = Choice
 local BOX_W = 500
 local PAD = 26
 -- The keeper column, sized to the strip the shelves use rather than to this box: a portrait the player
--- has learned to read at one width in four other rooms should not be narrower in the fifth.
-local KEEPER_W = 220
+-- has learned to read at one size in four other rooms should not be smaller in the fifth.
+local KEEPER_W = 260
 local KEEPER_GAP = 22
--- The room a portrait needs to be a portrait. A yes-or-no card is short -- two options and a prompt is
--- barely 300px -- and a standing figure fitted into what is left over comes out a letterbox, which is
--- the one failure mode worth spending fixed height on.
-local KEEPER_MIN_H = 360
+-- The room a portrait needs to be a portrait, and it is NOT a number picked to look tall enough -- it is
+-- back-solved from the shelves so the picture comes out the same size here as it does at a shop counter.
+-- ui/panels/shop.lua fits its portrait into 236 x 356; this pane spends `pad * 2` (24) and a foot of 76
+-- on the name and the line, so 356 + 24 + 76 + the 54/22 margins the box keeps above and below is 532.
+--
+-- IT WAS 360, and at 360 the same face was 196 x 184 -- a letterbox next to the shelves' standing
+-- figure. A yes-or-no card is short (two options and a prompt is barely 300px) and a portrait fitted
+-- into what is left over is always the thing that gets squeezed, which is why this height is fixed and
+-- the card grows to meet it rather than the other way round.
+local KEEPER_MIN_H = 532
 -- A card's height, and the reason it is a default rather than a constant. 70 holds a label and ONE line of
 -- description, which is what a dilemma's options are (models/crossroads.lua) -- a second line lands with
 -- its descenders across the card's bottom border. A caller whose rows have more to say than that passes

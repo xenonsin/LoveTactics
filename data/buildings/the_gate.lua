@@ -2,10 +2,11 @@
 --
 -- IT WAS CALLED THE GATE, and the `id` still is -- ids are internal and renaming this one would touch
 -- states/gate.lua, models/gate.lua, every spec that names a building and nothing the player can see.
--- What changed is the NAME, and it changed because the city has two rifts now and they are the same
--- kind of thing: this one is the tear you go down into, and the Hero's Rift
--- (data/buildings/hiring_hall.lua) is the tear people come up out of. Calling one a gate and the other
--- a rift made them read as unrelated buildings when the whole premise is that they are one wound.
+-- What changed is the NAME, and it changed because a gate is a thing a city builds and this is a thing
+-- that happened to it. There are two tears and they are the same wound: this is the one you go down
+-- into, and the Crossing (data/buildings/hiring_hall.lua) is the small one above ground that people
+-- come up out of. This one wears the name -- it is the older, the larger, and the one the whole city
+-- grew up against -- and the other is named for what is done at it, so the two never trade places.
 --
 -- THE PLAYER IS TOLD THE NAME ONCE, by the sponsor, in the line that exists to do exactly that
 -- ("Everyone calls it the Rift" -- conversation_prologue_sponsor). A place the fiction never names is

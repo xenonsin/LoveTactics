@@ -9,7 +9,7 @@
 --
 -- So it pays a TOKEN now (models/voucher.lua). Nothing about it can latch: there is no roster cap on a
 -- purse, so a floor can always afford to put one of these on the board, and what the player does with
--- it is a decision taken later at the Hero's Rift rather than on the spot.
+-- it is a decision taken later at the Crossing rather than on the spot.
 --
 -- IT ALSO FIXES THE FICTION IT USED TO STRAIN. A living survivor standing patiently on floor nine, in a
 -- place the game says has swallowed four companies, was a body the world had to explain. A spirit is

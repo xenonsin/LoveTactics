@@ -3,7 +3,7 @@
 -- Three things this room owes the player, and each is a rule the city keeps everywhere else:
 --
 --   a keeper    a portrait, a name and a one-time greeting, off data/vendors/inn.lua -- the same terms
---               the Cafe, the Touchstone and the Hero's Rift stand on, and the reason the Inn declares a
+--               the Cafe, the Touchstone and the Crossing stand on, and the reason the Inn declares a
 --               vendor id at all. It must NOT be a shelf: a vendor with a class is a market house
 --               (tests/hub_spec.lua refuses one standing in the city), and this one sells no items.
 --   a greeting  played once, on the first visit, by models/vendor_visit.lua. Asked here rather than

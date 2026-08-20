@@ -1,4 +1,4 @@
--- THE HERO'S RIFT: a tear in a city that already has one, and the single button that opens it.
+-- THE CROSSING: a tear in a city that already has one, and the single button that opens it.
 --
 -- IT DEALS, AND IT DEALS BLIND. That is a reversal of what this room used to be and the reversal is
 -- the point, so here is what it was: a Hiring Hall whose whole stock was THE PEOPLE YOU HAD WALKED
@@ -16,7 +16,7 @@
 -- pity track gives a bad streak a visible end. What they also do is turn the room into a spreadsheet
 -- you consult before pressing a button, and this room is thirty seconds long. A player who can read
 -- "5%" off a legend is a player deciding whether the crossing is worth it; a player who cannot is a
--- player who just opens the rift. The second one is having a better time, and nothing here is sold
+-- player who just opens the tear. The second one is having a better time, and nothing here is sold
 -- for money, so none of the machinery that makes those readouts ethically necessary applies.
 --
 -- WHAT IT IS INSTEAD IS ONE BUTTON, DRESSED. Not a list with the exit weighted the same as the only
@@ -65,8 +65,15 @@ local BTN_W, BTN_H = 340, 104
 -- If those panels ever move, this moves with them: three counters agreeing by copy is a convention, and
 -- the day it needs to be a shared constant is the day a fourth one disagrees.
 local KEEPER_X, KEEPER_Y, KEEPER_W = 24, 64, 260
--- Tall enough that the portrait pane is never squeezed into a letterbox by a short room.
-local KEEPER_MIN_H = 236
+-- ...AND AT THEIR HEIGHT TOO, which the width alone did not buy. The shop's pane runs from `boxY + 64`
+-- to 44 short of the bottom of a 580-tall box -- 472 -- and spends `pad * 2` (24) and a 92-high foot on
+-- the purse and the counter's line, which fits the portrait into 236 x 356.
+--
+-- THIS ROOM IS SHORT AND THE PORTRAIT PAID FOR IT. The floor here was 236, which is the whole PANE, so
+-- the picture inside it came out 236 x 120 -- a letterbox beside the standing figure four other counters
+-- draw. A face is the one thing in a panel that has to be the same face everywhere, so the height is
+-- fixed at the shelves' and the box grows to meet it rather than the portrait shrinking to fit the box.
+local KEEPER_PANE_H = 472
 -- The dev row's little squares. Small enough that they never compete with the plate above them.
 local DBG_W, DBG_H, DBG_GAP = 30, 24, 6
 
@@ -93,7 +100,7 @@ function Hiring.new(opts)
     local self = setmetatable({}, Hiring)
     self.opts = opts
     self.player = opts.player or Player.active
-    self.title = opts.title or "Hero's Rift"
+    self.title = opts.title or "The Crossing"
     self.finished = false
     self.t = 0        -- free-running, for the plate's breath
     self.hover = false
@@ -109,11 +116,11 @@ function Hiring.new(opts)
     -- all seven houses draw a portrait pane down the left of their panel -- and this room was the one
     -- that did not, which made it read as a machine rather than as a place with somebody in it.
     --
-    -- Read off the vendor blueprint (data/vendors/heros_rift.lua) rather than pointed at directly,
+    -- Read off the vendor blueprint (data/vendors/crossing.lua) rather than pointed at directly,
     -- because that is where every other panel gets its shopkeeper and it is the seam the first-visit
     -- greeting hangs off too. Sprite.load is tolerant -- a missing file comes back as its own path
     -- string -- so the pane falls back to a lettered plate and the art can land later.
-    self.def = (opts.vendor and Vendor.get(opts.vendor)) or Vendor.get("heros_rift") or {}
+    self.def = (opts.vendor and Vendor.get(opts.vendor)) or Vendor.get("crossing") or {}
     self.keeper = Sprite.load(self.def.sprite)
 
     self:layout()
@@ -154,13 +161,25 @@ function Hiring:layout()
         self.oSub = nil
         self.boxH = afterPrompt + self.hintFont:getHeight() + PAD
     end
-    -- A floor under the box, so the keeper always has room to stand. Without it the empty room -- two
-    -- lines of prose and no plate -- squeezed the portrait into a letterbox.
+    -- A floor under the box, so the keeper always has room to stand at the size it stands everywhere
+    -- else (KEEPER_PANE_H). This room is a sentence and one plate, so the floor is what sets the height
+    -- every time -- the box is sized by its portrait rather than by its content, and that is deliberate.
+    --
+    -- THE SLACK GOES TO THE PLATE AND NOT TO THE SENTENCE, which is exactly how ui/panels/choice.lua
+    -- spends it for the Inn: the prompt keeps its place under the title, where a room's own line belongs,
+    -- and the thing you press floats to the middle of the column so it sits opposite the portrait's face
+    -- rather than hanging off the title with half a card of nothing under it.
     --
     -- BEFORE the hint is placed, not after, which is the bug this ordering fixes: the hint anchors to
     -- the bottom margin, so computing it against the pre-floor height stranded "Esc leave" halfway up
     -- an empty column with a hand's width of nothing under it.
-    self.boxH = math.max(self.boxH, KEEPER_Y + KEEPER_MIN_H + 24)
+    local floorH = KEEPER_Y + KEEPER_PANE_H + 24
+    if self.boxH < floorH then
+        local slack = (floorH - self.boxH) / 2
+        if self.oButton then self.oButton = self.oButton + slack end
+        if self.oSub then self.oSub = self.oSub + slack end
+        self.boxH = floorH
+    end
     self.oHint = self.boxH - PAD - self.hintFont:getHeight() + 4
 
     self.boxW = BOX_W
@@ -390,10 +409,20 @@ function Hiring:drawKeeper()
 
     -- The counter's own sentence, off the blueprint rather than written again here, so the keeper says
     -- the same thing wherever they are quoted.
+    --
+    -- CENTRED IN THE FOOT rather than hung off the portrait, because this counter does not fill the foot
+    -- the shelves do. Their 92 holds a purse, an errand tally and a line; here there is only the line, and
+    -- pinning it to the top of the strip left a hand's width of empty pane under it. The strip stays the
+    -- shelves' size -- the portrait above it is what that number is protecting -- and the sentence sits in
+    -- the middle of what is left.
     if self.def.description then
         love.graphics.setFont(self.subFont)
         Theme.set(Theme.muted, 0.80)
-        love.graphics.printf(self.def.description, px, py + ph + 10, pw, "center")
+        local top = py + ph + 10
+        local _, wrapped = self.subFont:getWrap(self.def.description, pw)
+        local textH = #wrapped * self.subFont:getHeight()
+        local slack = math.max(0, (r.y + r.h - pad) - top - textH)
+        love.graphics.printf(self.def.description, px, top + slack / 2, pw, "center")
     end
 end
 

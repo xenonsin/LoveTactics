@@ -12,7 +12,7 @@
 -- player reads before pressing yes.
 --
 -- IT HAS A FACE NOW, and it did not before. Every other counter in the city draws its keeper down the
--- left of its panel -- the Cafe, the Touchstone, the Hero's Rift, the seven houses -- and this was the
+-- left of its panel -- the Cafe, the Touchstone, the Crossing, the seven houses -- and this was the
 -- one door where somebody puts hands on the company and nobody was standing behind it. The pane is the
 -- same recessed slot at the same width, added to Choice itself (`keeper`) rather than by growing this
 -- room a three-column panel it has no content for. The name, the portrait and the line under it all

@@ -1,6 +1,6 @@
--- THE HERO'S RIFT's keeper: the one who watches the tear and knows what comes out of it.
+-- THE CROSSING's keeper: the one who watches the tear and knows what comes out of it.
 --
--- The rift is above ground, small, and it gives up people (data/buildings/hiring_hall.lua). Somebody
+-- The tear is above ground, small, and it gives up people (data/buildings/hiring_hall.lua). Somebody
 -- has to be standing at it -- a tear nobody attends is a hole in a wall, and the room the player opens
 -- would be a counter with no one behind it while every other counter in the city has a face.
 --
@@ -16,12 +16,12 @@
 -- not one of them (tests/hub_spec.lua asserts exactly that).
 --
 -- WHAT IT TAKES IS NOT MONEY. Every other counter in the city is paid in gold; this one is paid in
--- rift tokens carried up from below (models/voucher.lua), which is why it is on the plaza rather than
--- the market board. A keeper who cannot be bought is the right face for the one door whose price is
--- how deep you went.
+-- tokens carried up from below (models/voucher.lua), which is why it is on the plaza rather than the
+-- market board. A keeper who cannot be bought is the right face for the one door whose price is how
+-- deep you went.
 return {
-    name = "Hero's Rift",
+    name = "The Crossing",
     sells = false, -- sells no ITEMS; its whole offer is the crossing (models/voucher.lua)
-    sprite = "assets/vendors/heros_rift.png", -- keeper portrait; falls back to a placeholder
+    sprite = "assets/vendors/crossing.png", -- keeper portrait; falls back to a placeholder
     description = "Bring up a token and it will hold the tear long enough for one of them to come through.",
 }

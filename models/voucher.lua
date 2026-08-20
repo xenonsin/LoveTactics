@@ -1,4 +1,4 @@
--- HIRING TOKENS: what a floor hands up, what the Hero's Rift does with one, and what a second copy of
+-- HIRING TOKENS: what a floor hands up, what the Crossing does with one, and what a second copy of
 -- somebody is worth.
 --
 -- The descent used to grow its company by MEETING people: a stop on every floor where a survivor was

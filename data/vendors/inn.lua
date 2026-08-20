@@ -1,7 +1,7 @@
 -- THE INN's keeper: the one who sets the bone.
 --
--- IT KEEPS A BLUEPRINT WITHOUT KEEPING A SHELF, for the reason the Cafe, the Touchstone and the Hero's
--- Rift do (data/vendors/cafe.lua, touchstone.lua, heros_rift.lua): what a vendor file buys here is a
+-- IT KEEPS A BLUEPRINT WITHOUT KEEPING A SHELF, for the reason the Cafe, the Touchstone and the
+-- Crossing do (data/vendors/cafe.lua, touchstone.lua, crossing.lua): what a vendor file buys here is a
 -- SHOPKEEPER. The portrait, the name and the one-time first-visit greeting all read this file, and the
 -- hub's first-visit machinery is keyed on a building naming a vendor. Four counters in this city now
 -- stand on those terms, which is the pattern rather than an exception.

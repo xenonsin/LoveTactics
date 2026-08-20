@@ -117,7 +117,7 @@ return {
     ["treasure.reveal"] = { file = "assets/audio/treasure/reveal.ogg", category = "sfx",
         length = "1-1.5s", desc = "The chest lid pops fully open on a burst of light and a spray of coins. THE treasure payoff -- a bright, sparkling flourish with a shimmer of falling gold; celebratory but shorter than quest.complete." },
 
-    -- The Hero's Rift -- the crossing (ui/panels/hire_reveal.lua). FOUR CUES FOR FOUR BEATS, and the
+    -- The Crossing -- the crossing itself (ui/panels/hire_reveal.lua). FOUR CUES FOR FOUR BEATS, and the
     -- reason there are four rather than one is the whole design of that animation: the reveal tells the
     -- player a RANK, and in every game in this genre the rank is audible before it is visible. The
     -- visual carries it in two channels already (hue and star count); this is the third, and it is the
@@ -128,7 +128,7 @@ return {
     -- is the tell: the player hears how good it is before the last pip has landed, which is exactly the
     -- job the pips do visually and the reason it must be one cue rather than five.
     ["rift.open"] = { file = "assets/audio/rift/open.ogg", category = "sfx", volume = 0.9,
-        length = "0.7-1s", desc = "A rift token is spent and the tear begins to open: light gathering, a ring closing in. Airy and rising, a held intake of breath -- pure anticipation, carrying NO information about what is coming, because every crossing sounds identical here. Think a portal drawing breath, not a spell being cast." },
+        length = "0.7-1s", desc = "A crossing token is spent and the tear begins to open: light gathering, a ring closing in. Airy and rising, a held intake of breath -- pure anticipation, carrying NO information about what is coming, because every crossing sounds identical here. Think a portal drawing breath, not a spell being cast." },
     ["rift.star"] = { file = "assets/audio/rift/star.ogg", category = "sfx", volume = 0.75,
         length = "<=0.3s", desc = "One rank pip strikes in above the rift. A clean bright chime with a short tail -- struck, not swelled. Fired one to five times in quick succession and pitch-shifted UP each time at the call site, so the run reads as a rising figure; it must sound musical repeated and transposed, so no strong inharmonic content." },
     ["rift.surge"] = { file = "assets/audio/rift/surge.ogg", category = "sfx",
