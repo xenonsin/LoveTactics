@@ -214,6 +214,19 @@ return {
 - Player controls are automatic across mouse + keyboard + gamepad (advance: Enter / Space / click;
   choose: up/down; skip: Esc / B).
 
+**Editing the scene you are looking at.** In a development build (`Debug.enabled`) every conversation
+carries its own file in the footer of the text box: click it, or press **F2**, and the blueprint opens
+at the line being spoken — no hunting through `data/conversations/`'s folders for the id. It also
+prints `<path>:<line>` to the console, so a `lovec` run tells you where to look even if nothing opens.
+Which editor gets it, in order:
+
+1. `$LOVETACTICS_EDITOR`, a command template — `{file}` and `{line}` are substituted, and a template
+   naming neither gets the quoted path appended (`LOVETACTICS_EDITOR=code -g {file}:{line}`).
+2. VS Code, if `code` answers on PATH — `code -g` lands the caret on the line.
+3. Otherwise the OS opens the file with whatever `.lua` is associated with, at the top.
+
+Remember that `extract-strings` **rewrites the file from the data**, so edit the lines, not the `tag`s.
+
 ### Gating a scene on progress
 
 Write the scene for the whole story, then let it pare itself down to fit the save it plays in. A cast

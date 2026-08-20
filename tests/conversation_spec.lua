@@ -358,4 +358,44 @@ return {
             assert(u.name == "not_a_real_id" and u.portrait == nil, "unknown speaker falls back to its id")
         end,
     },
+    {
+        name = "every scene knows the file it was authored in",
+        fn = function()
+            for id in pairs(Conversation.defs) do
+                local path = Conversation.source(id)
+                assert(path, "no source path recorded for " .. id)
+                assert(path:match("([^/]+)%.lua$") == id, "path should be named for its id: " .. path)
+                assert(love.filesystem.getInfo(path), "recorded path does not exist: " .. path)
+            end
+            assert(Conversation.source("not_a_real_id") == nil, "an unknown id has no file")
+        end,
+    },
+    {
+        name = "a stamped line is located in its own file, by tag rather than by substring",
+        fn = function()
+            -- Whichever scene we can find with a tagged line: the point is the lookup, not the scene.
+            local id, node
+            for defId, def in pairs(Conversation.defs) do
+                for _, entry in ipairs(def.script or {}) do
+                    if entry.tag and not entry.script then
+                        id, node = defId, entry
+                        break
+                    end
+                end
+                if node then break end
+            end
+            assert(node, "no tagged line to look up -- run `. extract-strings`")
+            local line = Conversation.sourceLine(id, node)
+            assert(line, "should find the authored line for tag " .. tostring(node.tag))
+            local rows, n = {}, 0
+            for row in (love.filesystem.read(Conversation.source(id)) .. "\n"):gmatch("([^\n]*)\n") do
+                n = n + 1
+                rows[n] = row
+            end
+            assert(tonumber(rows[line]:match("tag%s*=%s*(%d+)")) == node.tag,
+                "the line found should be the one carrying that tag")
+            assert(Conversation.sourceLine(id, nil) == nil, "no node, no line")
+            assert(Conversation.sourceLine("not_a_real_id", node) == nil, "no file, no line")
+        end,
+    },
 }

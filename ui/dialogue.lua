@@ -25,6 +25,7 @@ local Locale = require("models.locale")
 local Item = require("models.item")
 local ButtonPrompt = require("ui.button_prompt")
 local ItemTooltip = require("ui.item_tooltip")
+local Debug = require("models.debug")
 local utf8 = require("utf8") -- the typewriter reveals whole CHARACTERS, not bytes (CJK is multibyte)
 
 local Dialogue = {}
@@ -203,6 +204,11 @@ function Dialogue.new(def, onComplete, convId)
     end
     self:relayout(true)
 
+    -- The blueprint file this scene was authored in, for the development-only "edit this scene"
+    -- control in the footer (see :sourceRect / :openSource). nil in a release build, and nil for a
+    -- scene played without an id -- there is nothing to open.
+    self.sourcePath = Debug.enabled and convId and Conversation.source(convId) or nil
+
     self.index = 1
     self:startNode()
     return self
@@ -350,6 +356,47 @@ function Dialogue:finish()
     if self.onComplete then self.onComplete() end
 end
 
+-- ---------------------------------------------------------------------------
+-- Jump to source (development builds only)
+-- ---------------------------------------------------------------------------
+-- Every scene carries its own file, one click away, at the left end of the footer the control hints
+-- already share. A line that reads wrong reads wrong WHILE IT IS ON SCREEN, and the id in the corner
+-- of the screen is not the thing that needs fixing -- the file is, and until now finding it meant
+-- guessing which of data/conversations' folders the id was filed under. So this names the file, opens
+-- it, and (when the editor takes a line) lands on the line being spoken.
+--
+-- Mouse + F2 rather than the project's usual three inputs: a pad cannot type, so a control whose
+-- entire purpose is to hand the scene to a text editor has nothing to offer one. It is gated on
+-- Debug.enabled at construction, so a release build never draws it and never binds the key.
+
+-- The footer control's segment list -- glyph + the file's own name, which is what you would have
+-- searched for anyway. Nil when there is no file to open.
+function Dialogue:sourceSegments()
+    if not self.sourcePath then return nil end
+    local name = self.sourcePath:match("([^/]+)$") or self.sourcePath
+    return { { glyph = "F2", label = name, color = Theme.cursor } }
+end
+
+-- Its clickable rect, measured off the same row the hints are drawn on. Padded a little vertically
+-- so the pill is not a 16px-tall mouse target.
+function Dialogue:sourceRect()
+    local segs = self:sourceSegments()
+    if not segs then return nil end
+    local w = ButtonPrompt.width(segs)
+    local y = self.boxY + self.boxH - 26
+    return { x = self.boxX + 28, y = y - 6, w = w, h = ButtonPrompt.height() + 10 }
+end
+
+-- Open the scene's file at the current line. The path is printed as well as opened: if no editor
+-- answers (nothing associated with .lua, no `code`, no $LOVETACTICS_EDITOR), the console still says
+-- exactly where to go, which is the whole ask minus the convenience.
+function Dialogue:openSource()
+    if not self.sourcePath then return end
+    local line = Conversation.sourceLine(self.convId, self:currentNode()) or 1
+    print(("dialogue: %s:%d"):format(self.sourcePath, line))
+    Debug.openFile(self.sourcePath, line)
+end
+
 -- The one "advance / confirm" gesture, shared by Enter/Space, gamepad A/Start, and a box click:
 --   * mid-reveal      -> snap the typewriter to the full page (let the reader catch up)
 --   * more pages left -> turn to the next page of a long line
@@ -433,6 +480,8 @@ function Dialogue:keypressed(key)
         self:moveChoice(1)
     elseif key == "return" or key == "kpenter" or key == "space" then
         self:confirm()
+    elseif key == "f2" then
+        self:openSource() -- development builds only; no-op when there is no file (see :openSource)
     end
 end
 
@@ -461,8 +510,19 @@ function Dialogue:mousemoved(x, y)
     end
 end
 
+local function pointIn(r, x, y)
+    return r and x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
+end
+
 function Dialogue:mousepressed(x, y, button)
     if button ~= 1 then return end
+    -- The debug "edit this scene" control is tested FIRST: it sits inside the box, and every other
+    -- click in the box advances the line, so anything but first-refusal would skip a line each time
+    -- the file was opened.
+    if pointIn(self:sourceRect(), x, y) then
+        self:openSource()
+        return
+    end
     -- A click on a choice option commits it; a click anywhere else advances the line.
     if self:choicesActive() and self.choiceRects then
         for i, r in ipairs(self.choiceRects) do
@@ -481,6 +541,7 @@ end
 
 -- Hand over a choice option; arrow elsewhere. See ui/cursor.lua.
 function Dialogue:cursorKind(x, y)
+    if pointIn(self:sourceRect(), x, y) then return "hand" end
     if self:choicesActive() and self.choiceRects then
         for _, r in ipairs(self.choiceRects) do
             if x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h then
@@ -736,8 +797,27 @@ function Dialogue:draw()
             or { { glyph = "Click", label = "Advance" }, { glyph = "Esc", label = "Skip" } }
     end
     -- Right-aligned in the box, but pulled in ahead of the side bust when one stands at that end.
+    local hintX, hintY = self.boxX, self.boxY + self.boxH - 26
     local hintW = self.overScene and (self:sideBustLeft() - SIDE_PAD - self.boxX) or (self.boxW - 24)
-    ButtonPrompt.draw(segs, self.boxX, self.boxY + self.boxH - 26, hintW, { align = "right" })
+
+    -- The development-only "edit this scene" control takes the other end of the same footer, and the
+    -- hint row is measured from where it stops -- so a long file name pushes the hints along instead
+    -- of printing underneath them. It wears a plate the hints do not, because it is the one thing on
+    -- this row you can click; hovering lights the glyph the way a focused control does.
+    local source = self:sourceSegments()
+    if source then
+        local r = self:sourceRect()
+        local hovered = pointIn(r, self.mouseX or -1, self.mouseY or -1)
+        Theme.set(Theme.slot, hovered and 0.95 or 0.6)
+        love.graphics.rectangle("fill", r.x - 6, r.y, r.w + 12, r.h, Theme.R, Theme.R)
+        Theme.set(hovered and Theme.frame or Theme.hairline)
+        love.graphics.rectangle("line", r.x - 6, r.y, r.w + 12, r.h, Theme.R, Theme.R)
+        source[1].color = hovered and Theme.accentAmber or Theme.cursor
+        ButtonPrompt.draw(source, r.x, hintY, r.w, { align = "left" })
+        hintX = r.x + r.w + 24
+        hintW = hintW - (hintX - self.boxX)
+    end
+    ButtonPrompt.draw(segs, hintX, hintY, hintW, { align = "right" })
 
     love.graphics.setColor(1, 1, 1)
 end

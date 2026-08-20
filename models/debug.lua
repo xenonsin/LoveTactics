@@ -41,4 +41,80 @@ function Debug.only(value)
     return value
 end
 
+-- ---------------------------------------------------------------------------
+-- Jump to source
+-- ---------------------------------------------------------------------------
+
+-- Open one of the project's own files in an editor, optionally at `line`. This is the plumbing under
+-- every "edit this blueprint" affordance -- the one on the conversation overlay (ui/dialogue.lua)
+-- first -- so that reading a line in the game and fixing its wording are one gesture apart instead of
+-- a hunt through data/ for the file it came out of.
+--
+-- `rel` is a project-relative path exactly as love.filesystem spells it
+-- ("data/conversations/prologue/conversation_prologue_sponsor.lua"); it is resolved against the
+-- launched source directory, which is where the file a `require` actually read lives.
+--
+-- Three ways in, in order, because there is no portable "open this in the user's editor":
+--   1. $LOVETACTICS_EDITOR, a command template. `{file}` and `{line}` are substituted; a template
+--      naming neither gets the quoted path appended. This is the only one that can be right for an
+--      editor we have never heard of, so it wins.
+--        LOVETACTICS_EDITOR=code -g {file}:{line}
+--        LOVETACTICS_EDITOR=subl
+--   2. VS Code, if `code` answers on PATH -- the editor this project is written in, and the reason
+--      the line number is worth carrying at all: `code -g` lands the caret ON the line.
+--   3. love.system.openURL, which hands the file to the OS and lands wherever .lua is associated.
+--      No line number survives a file:// URL, so this one opens at the top.
+--
+-- Returns true if something was launched. It never raises: a debug shortcut that crashes the game
+-- when an editor is missing is worse than one that quietly does nothing, and the caller prints the
+-- path to the console either way, so the fallback of last resort is copying it out of there.
+local probedCode
+
+-- Is `code` on PATH? Probed once and remembered -- the check itself spawns a shell, and doing that on
+-- every click is how a debug button starts flashing a console window.
+local function hasVSCode()
+    if probedCode == nil then
+        local probe = (love.system.getOS() == "Windows") and "where code >nul 2>nul" or "command -v code >/dev/null 2>&1"
+        -- LuaJIT's os.execute answers with the exit code (0 = found); guard for a boolean anyway,
+        -- since a false here only costs us the fallback, not the feature.
+        local result = os.execute(probe)
+        probedCode = result == 0 or result == true
+    end
+    return probedCode
+end
+
+-- Run `cmd` without the game waiting on the editor to be closed again. `os.execute` blocks until the
+-- child exits, which for a plain `notepad "file"` means the game is frozen until you are done editing
+-- -- so the command is detached: `start` on Windows, a background `&` elsewhere.
+local function spawn(cmd)
+    if love.system.getOS() == "Windows" then
+        os.execute('start "" ' .. cmd)
+    else
+        os.execute(cmd .. " &")
+    end
+end
+
+function Debug.openFile(rel, line)
+    if not Debug.enabled or not rel then return false end
+    local abs = love.filesystem.getSource() .. "/" .. rel
+    line = tonumber(line) or 1
+
+    local template = os.getenv("LOVETACTICS_EDITOR")
+    if template and template ~= "" then
+        local cmd = template:gsub("{file}", '"' .. abs .. '"'):gsub("{line}", tostring(line))
+        if not template:find("{file}", 1, true) then cmd = cmd .. ' "' .. abs .. '"' end
+        spawn(cmd)
+        return true
+    end
+
+    local ok = pcall(hasVSCode)
+    if ok and probedCode then
+        spawn('code -g "' .. abs .. ":" .. line .. '"')
+        return true
+    end
+
+    local ran, opened = pcall(love.system.openURL, "file://" .. abs)
+    return ran and opened == true
+end
+
 return Debug

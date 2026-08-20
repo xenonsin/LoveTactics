@@ -11,12 +11,19 @@
 -- part of the id -- and only the require path follows the nesting. Ids must
 -- stay unique across the whole tree.
 --
+-- A SECOND return value maps each id back to the file it came from
+-- ("data/conversations/prologue/conversation_prologue_sponsor.lua"), which the id alone cannot
+-- say once subfolders are in play -- knowing a scene is `conversation_prologue_sponsor` does not
+-- tell you it lives under prologue/. It is returned rather than folded into the defs so nothing
+-- downstream has to know it exists (`local defs = Registry.load(...)` is unchanged), and it is what
+-- lets a debug affordance open a blueprint's source (see models/debug.lua's openFile).
+--
 -- Uses love.filesystem, which is rooted at the launched project.
 
 local Registry = {}
 
 function Registry.load(dir, requirePrefix)
-    local defs = {}
+    local defs, paths = {}, {}
     local function scan(subdir, subprefix)
         for _, file in ipairs(love.filesystem.getDirectoryItems(subdir)) do
             local path = subdir .. "/" .. file
@@ -27,12 +34,13 @@ function Registry.load(dir, requirePrefix)
                 local id = file:match("^(.+)%.lua$")
                 if id then
                     defs[id] = require(subprefix .. "." .. id)
+                    paths[id] = path
                 end
             end
         end
     end
     scan(dir, requirePrefix)
-    return defs
+    return defs, paths
 end
 
 return Registry

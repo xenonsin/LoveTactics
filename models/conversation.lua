@@ -24,7 +24,8 @@ local Locale = require("models.locale")
 
 local Conversation = {}
 
-Conversation.defs = Registry.load("data/conversations", "data.conversations")
+-- `paths` maps each id back to the file it was authored in -- see Conversation.source below.
+Conversation.defs, Conversation.paths = Registry.load("data/conversations", "data.conversations")
 
 -- The overlay currently playing (a ui/dialogue.lua instance), or nil. main.lua reads this.
 Conversation.active = nil
@@ -425,6 +426,41 @@ function Conversation.play(id, onDone, ctx, opts)
         if onDone then onDone() end
     end, id) -- the id scopes keyed line lookups: "conversation.<id>.<key>"
     return Conversation.active
+end
+
+-- ---------------------------------------------------------------------------
+-- Source files
+-- ---------------------------------------------------------------------------
+
+-- The project-relative file a scene was authored in, or nil for an unknown id. Registry.load hands
+-- this back alongside the defs, because the id alone cannot say which subfolder a scene lives in
+-- (data/conversations is organised by line -- prologue/, rift/, cathedral/ -- while ids stay flat).
+-- Read by the debug "edit this scene" affordance on the dialogue overlay (ui/dialogue.lua).
+function Conversation.source(id)
+    return Conversation.paths[id]
+end
+
+-- The 1-based line in that file where `node` is authored, or nil if it cannot be found -- so the
+-- editor opens ON the line being spoken rather than at the top of a two-hundred-line scene.
+--
+-- Matched on the node's localization `tag`, which is the one field that is unique per line and
+-- survives resolution (a resolved node is a shallow copy of the authored one). The tag is compared
+-- as a NUMBER: a plain substring search for "tag = 1" finds "tag = 10" first. An unstamped line
+-- (written but not yet run through tools/extract_strings.lua) falls back to searching for its text.
+function Conversation.sourceLine(id, node)
+    local path = node and Conversation.paths[id]
+    if not path then return nil end
+    local body = love.filesystem.read(path)
+    if not body then return nil end
+
+    local text = node.text or node[2]
+    local line = 0
+    for row in (body .. "\n"):gmatch("([^\n]*)\n") do
+        line = line + 1
+        if node.tag and tonumber(row:match("tag%s*=%s*(%d+)")) == node.tag then return line end
+        if not node.tag and text and text ~= "" and row:find(text, 1, true) then return line end
+    end
+    return nil
 end
 
 return Conversation

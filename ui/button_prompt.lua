@@ -74,4 +74,19 @@ function ButtonPrompt.draw(segments, x, y, w, opts)
     love.graphics.setColor(1, 1, 1)
 end
 
+-- The pixel width the same row would draw at -- what a caller needs when the row is not the only
+-- thing on its line (ui/dialogue.lua puts a debug control at the other end of the same footer and
+-- has to know where it stops).
+function ButtonPrompt.width(segments)
+    if not segments or #segments == 0 then return 0 end
+    local gf, lf = fonts()
+    return rowWidth(segments, gf, lf)
+end
+
+-- The height of a rendered row, for hit-testing a clickable prompt.
+function ButtonPrompt.height()
+    local gf = fonts()
+    return gf:getHeight() + 4
+end
+
 return ButtonPrompt
