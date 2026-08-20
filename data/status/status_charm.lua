@@ -1,10 +1,19 @@
--- Charm: the victim fights for whoever charmed it -- an uncontrollable ally on the caster's side for
+-- Charm: the victim fights for whoever charmed it -- an uncontrollable ally on the charmer's side for
 -- the duration, planned by the enemy AI (Combat.planEnemyAction reads unit.side), then it reverts.
 --
--- The side/control flip and the HP-fraction roll that gates landing it live in the ability effect
--- (data/items/ability/ability_charm.lua): the effect stashes the victim's original side/control on the
--- unit and swaps in the caster's. This status is the TIMER that owns the reversion -- onExpire puts
--- them back.
+-- THE FLIP LIVES HERE, in the status, not in the thing that delivered it. It used to live in the Charm
+-- ability's effect, and every OTHER deliverer applied this status and flipped nothing: the sweetbriar
+-- underfoot (data/hazards/hazard_sweetbriar.lua), the Petal Drift's touch, the Hartwood Bride's
+-- antlers, the Chorister's Lure. Those four are precisely the ones that charm the PLAYER -- so a party
+-- member walked out of the whole Lust circle wearing a magenta badge and still taking the player's
+-- orders, and the one control mechanic that circle is built on did nothing at all. A status that IS a
+-- change of allegiance owns that change, or the next deliverer forgets it too. Only the landing ROLL
+-- stayed with the ability, because that is a fact about the spell (it rewards softening a victim
+-- first) rather than about being charmed.
+--
+-- A quest objective is not taken: `bossProof` refuses this outright on a `boss` body, which is what
+-- every general and mark in the game leans on (see Status.isImmune). That gate moved here with the
+-- flip, for the same reason -- the briar cannot be asked to remember it.
 --
 -- A `debuff`, so Cure/Panacea can break the spell and free the victim early -- the fair counterplay
 -- (an ally on the charmed unit's former side snaps it out of it). Correctness of the reversion no
@@ -18,6 +27,36 @@ return {
     color = { 0.837, 0.469, 0.755 }, -- badge tint (magenta)
     duration = 10, -- ~2 turns at Status.TICKS_PER_TURN: long enough for the victim to actually act
     debuff = true,
+    bossProof = true, -- a quest objective is never turned (Status.isImmune)
+    -- It STAYS when the bearer walks off the ground that laid it. Every other zone-granted status this
+    -- flag governs is a condition of standing somewhere; an allegiance is not. Zone-bound, a body
+    -- charmed by the sweetbriar would be driven by the enemy AI for exactly as long as its own turn
+    -- kept it on the flowers -- and would snap back to the party mid-walk, halfway through an action
+    -- aimed at its own line. It carries the charm away with it and counts it down like anything else.
+    lingers = true,
+    -- Take the body: stash the side and command it came in on, then move it onto the charmer's.
+    -- `control = "ai"` is the "uncontrollable" half -- turned or not, nobody is driving it by hand.
+    onApply = function(ctx)
+        local u = ctx.unit
+        -- A REFRESH must not re-stash. The unit is already flipped, so reading its side again would
+        -- record the charmer's side as the one to go home to and the reversion would strand it.
+        if u._charmSide then return end
+        u._charmSide, u._charmControl = u.side, u.control
+        -- Whoever turned it, when the deliverer named itself (fx.applyStatus rides the caster along as
+        -- `applier`). Ground charms nobody -- the sweetbriar has no owner to fight for -- so the
+        -- fallback turns the victim on its own line, which is the same sentence from the other end.
+        -- The turner's own side is used only when it really is the far side: a charm is a body
+        -- changing hands, and it always changes.
+        local turner = ctx.applier
+        local takes = (turner and turner.side ~= u.side and turner.side)
+            or ((u.side == "party") and "enemy" or "party")
+        u.side, u.control = takes, "ai"
+    end,
+    -- A body that falls while charmed comes home. Statuses wind down on a corpse rather than being
+    -- stripped, so without this the fight can end with one of your own lying on the enemy's side --
+    -- and Combat.reviveFallenParty, which reads `side == "party"` to decide who is carried out of a won
+    -- fight, would leave them on the floor for good. Expiring here runs the ordinary reversion below.
+    onDeath = function(ctx) ctx.expire() end,
     onExpire = function(ctx)
         local u = ctx.unit
         if u._charmSide then

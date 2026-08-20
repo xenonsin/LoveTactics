@@ -21,10 +21,25 @@ local Muster = require("models.muster")
 local Player = require("models.player")
 
 -- Every roadside blueprint that can actually be rolled onto a board, by kind.
+--
+-- WEIGHTED means weighted: `weight = 0` is authored-only content -- a quest's scripted stop, reached
+-- through its own `map.encounters.always` and never rolled into an ordinary board's pool (the arena
+-- undercard, the survivor and siege sets). Those are set-pieces by construction, and measuring them as
+-- ordinary road fights is measuring the wrong thing: a scripted 1-versus-2 sparring bout that the party
+-- is meant to struggle in ran the longest fight in the sample and answered for a claim about the road.
+-- The filter was missing from this helper, so it always had; nothing had yet pushed one of them far
+-- enough over the budget to say so out loud.
 local function weightedByKind(kind)
     local out = {}
     for id, def in pairs(Encounter.defs) do
-        if def.kind == kind and def.composition then out[#out + 1] = { id = id, def = def } end
+        -- Read exactly as models/encounter.lua's pool reads it: a weight may be a FUNCTION of the
+        -- context (a blueprint that only shows up deep, or in one biome), and one of those is a
+        -- blueprint that rolls -- it is the flat 0 that means "never".
+        local w = def.weight
+        if type(w) == "function" then w = 1 end
+        if def.kind == kind and def.composition and (w or 1) > 0 then
+            out[#out + 1] = { id = id, def = def }
+        end
     end
     table.sort(out, function(a, b) return a.id < b.id end)
     return out

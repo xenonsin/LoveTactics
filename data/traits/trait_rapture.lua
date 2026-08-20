@@ -19,7 +19,12 @@ return {
     mana = 12,
     onCast = function(ctx)
         local target = ctx.unitAt(ctx.tx, ctx.ty)
-        if not target or not target.alive or target.side == ctx.unit.side then return end
+        -- WHOSE the body is, not which side it is standing on: a foe this same cast just Charmed is on
+        -- her side by the time this hook runs, and seizing what it held back is exactly the thing she
+        -- does to it (Status.ownSide, which reads through Charm's stash).
+        local Status = require("models.status")
+        if not target or not target.alive
+            or Status.ownSide(target) == Status.ownSide(ctx.unit) then return end
         -- A will that gave everything away holds nothing back to seize (Amana's Unbidden rule).
         if require("models.trait").has(target, "trait_devotion_unbidden") then
             ctx.log("action", string.format("%s has held nothing back.", (target.char and target.char.name) or "The target"))

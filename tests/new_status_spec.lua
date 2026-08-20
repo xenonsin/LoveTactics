@@ -4,6 +4,7 @@
 local Character = require("models.character")
 local Combat = require("models.combat")
 local Status = require("models.status")
+local Fixture = require("tests.support.fixture")
 
 local function arena(cols, rows)
     local tiles = {}
@@ -98,9 +99,6 @@ return {
             local c = Combat.new(arena(6, 6), {}, { unit("character_bandit", 1, 1) })
             local u = c.units[1]
             assert(u.side == "enemy", "the bandit starts on the enemy side")
-            -- Mimic what the Charm ability's effect does before applying the status: stash + flip.
-            u._charmSide, u._charmControl = u.side, u.control
-            u.side, u.control = "party", "ai"
             Status.apply(c, u, "status_charm", { duration = 2 })
             assert(u.side == "party", "while charmed it fights on the party side")
             Status.tick(c, 5) -- run the clock past the duration
@@ -115,8 +113,6 @@ return {
             local c = Combat.new(arena(6, 6), {}, { unit("character_bandit", 1, 1) })
             local u = c.units[1]
             local origSide, origControl = u.side, u.control
-            u._charmSide, u._charmControl = u.side, u.control
-            u.side, u.control = "party", "ai"
             Status.apply(c, u, "status_charm", { duration = 5 })
             assert(u.side == "party", "charmed onto the party side")
             -- Cure strips the debuff; the teardown must still fire so the flip is undone.
@@ -124,6 +120,68 @@ return {
             assert(not Status.has(u, "status_charm"), "Cure strips the charm")
             assert(u.side == origSide and u.control == origControl, "and it reverts to its own side and control")
             assert(u._charmSide == nil, "the stash is cleared on reversion")
+        end,
+    },
+    -- THE FLIP BELONGS TO THE STATUS, NOT TO THE DELIVERER. It lived in the Charm ability's effect,
+    -- so the four things that charm the PLAYER -- the sweetbriar, the Petal Drift's touch, the
+    -- Hartwood Bride's antlers, the Chorister's Lure -- all inflicted a badge that changed nothing,
+    -- and a charmed party member kept taking the player's orders. These cases enter through a
+    -- deliverer rather than through the ability, which is the half that was never covered.
+    {
+        name = "a Charm delivered by a weapon turns a party member against the party",
+        fn = function()
+            local c = Fixture.combat(Fixture.new(8, 8),
+                { Fixture.unit("character_knight", 4, 4) },
+                { Fixture.unit("character_chorister", 5, 4) })
+            local knight, singer = c.units[1], c.units[2]
+            assert(knight.side == "party" and Combat.isPlayerControlled(knight), "the knight starts yours")
+
+            Fixture.openTurn(c, singer)
+            assert(Combat.useItem(c, singer, Fixture.itemNamed(singer.char, "weapon_petal_touch"),
+                knight.x, knight.y), "the chorister reaches him")
+
+            assert(Status.has(knight, "status_charm"), "he is charmed")
+            assert(knight.side == "enemy", "and he is fighting on the side that took him")
+            assert(not Combat.isPlayerControlled(knight), "the player is not driving him while he is")
+            Status.tick(c, 20)
+            assert(knight.side == "party" and Combat.isPlayerControlled(knight), "he comes back")
+        end,
+    },
+    {
+        name = "ground names no charmer, so the victim simply turns on its own line",
+        fn = function()
+            -- The sweetbriar's path: an unsided hazard applies the status with no applier at all.
+            local c = Combat.new(arena(6, 6), { unit("character_knight", 1, 1) }, {})
+            local u = c.units[1]
+            Status.apply(c, u, "status_charm")
+            assert(u.side == "enemy" and u.control == "ai", "the briar takes him for the enemy")
+        end,
+    },
+    {
+        name = "a quest objective is never taken, whatever inflicts the Charm",
+        fn = function()
+            local c = Combat.new(arena(6, 6), {}, { unit("character_bandit_chief", 1, 1) })
+            local boss = c.units[1]
+            assert(boss.char.boss, "the chief is a quest objective")
+            assert(Status.apply(c, boss, "status_charm") == nil, "the charm is refused outright")
+            assert(not Status.has(boss, "status_charm"), "no badge lands")
+            assert(boss.side == "enemy", "and it is still fighting its own fight")
+        end,
+    },
+    {
+        name = "a body that falls while charmed comes home, so a won fight still carries it out",
+        fn = function()
+            local c = Combat.new(arena(6, 6),
+                { unit("character_knight", 1, 1) }, { unit("character_bandit", 3, 3) })
+            local knight = c.units[1]
+            Status.apply(c, knight, "status_charm", { applier = c.units[2] })
+            assert(knight.side == "enemy", "charmed onto the enemy's side")
+
+            Combat.dealFlatDamage(c, knight, 9999, nil, "test")
+            assert(not knight.alive, "and cut down while he is theirs")
+            assert(knight.side == "party", "he falls back to his own side")
+            local fallen = Combat.fallenParty(c)
+            assert(#fallen == 1 and fallen[1] == knight.char, "so the company carries him out")
         end,
     },
 }

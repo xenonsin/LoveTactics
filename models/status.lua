@@ -5,7 +5,11 @@
 --
 -- Blueprints live in data/status/<id>.lua and expose optional hook functions the combat
 -- model calls at the right moments:
---   * onApply(ctx)        -- when the status is first applied / re-applied (stun bumps init)
+--   * onApply(ctx)        -- when the status is first applied / re-applied (stun bumps init). Alone
+--                            among the hooks it also gets ctx.applier -- WHO landed it, when the
+--                            caller named one (often nil: ground, a trap and a tick name nobody).
+--                            What a status whose effect is a change of allegiance needs: Charm has to
+--                            know whose side to move the bearer onto.
 --   * onExpire(ctx)       -- when its remaining ticks hit 0
 --   * onTurnStart(ctx)    -- at the top of the affected unit's turn. For what is genuinely scoped to a
 --                            TURN -- Defending and Invisible self-expiring at their owner's next one.
@@ -26,6 +30,10 @@
 --                            Inspiration). Only ever consulted for a status a zone granted -- one from
 --                            a spell or a potion has no zone to leave and simply runs its duration.
 --                            See models/hazard.lua, which owns the whole rule.
+--   * bossProof = true    -- a `boss` body (a quest objective) refuses this status outright, wherever
+--                            it came from -- Status.isImmune answers it beside the purchased wards.
+--                            For the one status that takes a unit out of the fight it is the point of:
+--                            Charm.
 --   * onEnterTile(ctx)    -- the unit arrived on a tile by ground movement -- walked, shoved, or
 --                            dragged, but never blinked or swapped (e.g. bleed damage)
 --   * blocksMove = true   -- the unit cannot move on its turn (root)
@@ -257,6 +265,19 @@ function Status.instantiate(id, opts)
         debt = nil,
         def = def,
     }
+end
+
+-- The side a body BELONGS to, which is not always the side it is fighting on. Charm moves `unit.side`
+-- for its duration and stashes the original (data/status/status_charm.lua).
+--
+-- Almost everything is right to read `unit.side` and ignore this: while it is charmed the body really
+-- is on that side, which is what makes it an ally for a heal, a friend a fireball must not catch, and a
+-- threat to its own line. This answers the other question -- WHOSE IS IT -- which a rule about seizing
+-- somebody has to ask instead: a body you have just taken is standing on your side and is still not
+-- yours. Without it a cast that charms and then reads sides declines to fire on the very body it took
+-- (data/traits/trait_unasked.lua, which the Suppliant's charming touch runs into every hit).
+function Status.ownSide(unit)
+    return unit and (unit._charmSide or unit.side)
 end
 
 -- The active status of `id` on `unit`, or nil.
@@ -757,6 +778,16 @@ end
 function Status.isImmune(unit, id)
     local def = Status.defs[id]
     if not (def and def.debuff) then return false end -- never blocks a buff
+    -- A QUEST OBJECTIVE IS NOT TAKEN. `bossProof` names a status that would remove a body from the
+    -- fight it IS -- Charm turns it against its own side -- and `char.boss` is this codebase's word for
+    -- "this unit is the objective" (every general and mark declares it, and every one of their
+    -- blueprints already says in as many words that it means no execute and no Charm). Stated on the
+    -- STATUS and answered here rather than in each ability that inflicts it, because the deliverers are
+    -- data files -- a hazard, a natural weapon, a trait -- and a rule each of them has to remember is a
+    -- rule the next one forgets.
+    if def.bossProof and unit and unit.char and unit.char.boss then
+        return { name = "a quest objective" }
+    end
     for _, s in ipairs((unit and unit.statuses) or {}) do
         for _, blocked in ipairs(s.def.grantsImmunity or {}) do
             -- The DEF, not the instance: the log below names the ward, and a name is a property of the
@@ -893,7 +924,11 @@ function Status.apply(combat, unit, id, opts)
         status = Status.instantiate(id, opts)
         unit.statuses[#unit.statuses + 1] = status
     end
-    if def.onApply then def.onApply(ctxFor(combat, unit, status)) end
+    if def.onApply then
+        local ctx = ctxFor(combat, unit, status)
+        ctx.applier = opts.applier
+        def.onApply(ctx)
+    end
     -- Log only a fresh application (a refresh of an existing status would just spam the panel).
     -- A `hideLog` status announces nothing at all: Invisible would otherwise write the very line
     -- the Decoy that granted it is trying to keep out of the log.

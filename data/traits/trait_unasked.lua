@@ -22,7 +22,13 @@ return {
     mana = 8,
     onCast = function(ctx)
         local target = ctx.unitAt(ctx.tx, ctx.ty)
-        if not target or not target.alive or target.side == ctx.unit.side then return end
+        -- WHOSE the body is, not which side it is standing on. Its own touch Charms
+        -- (data/items/weapon/weapon_petal_touch.lua), which moves the victim onto ITS side before this
+        -- hook runs -- so a plain `side` test would have the Suppliant decline to drain the very body it
+        -- just took. Status.ownSide reads through Charm's stash to the side the body belongs to.
+        local Status = require("models.status")
+        if not target or not target.alive
+            or Status.ownSide(target) == Status.ownSide(ctx.unit) then return end
         -- A will that gave everything away holds nothing back to seize -- Amana's rule, honoured here
         -- exactly as Rapture honours it, so the one counter to the sin works on both its ranks.
         if require("models.trait").has(target, "trait_devotion_unbidden") then return end

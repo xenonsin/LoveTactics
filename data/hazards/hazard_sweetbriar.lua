@@ -24,7 +24,16 @@ return {
     tags = { "nature" },
     duration = 16,           -- shorter than black ice's 24: Charm is worth more per tick than Cripple
     disposition = "hostile", -- the enemy AI paths around it rather than through
+    -- The status takes the body (data/status/status_charm.lua): it stashes the victim's side and
+    -- command and moves it onto the charmer's. Ground names no applier, so the victim simply turns on
+    -- its own line -- which is the unsided reading above, stated from the other end.
+    --
+    -- A SHORTER CHARM THAN ANYTHING ELSE INFLICTS. The status runs 10 ticks -- two turns, which is a
+    -- fight -- and this ground is authored as a moment (see above). 6 is the smallest number that is
+    -- still worth landing: past Status.TICKS_PER_TURN, so the body it takes is certain to get one turn
+    -- on the other side rather than shaking the flowers off before it ever acts. It costs the line one
+    -- body for one turn, and the Chorister standing behind the briar is what costs it the fight.
     onEnter = function(ctx)
-        ctx.applyStatus(ctx.unit, "status_charm")
+        ctx.applyStatus(ctx.unit, "status_charm", { duration = 6 })
     end,
 }

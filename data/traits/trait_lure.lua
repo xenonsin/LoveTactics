@@ -22,7 +22,9 @@ return {
         if ctx.onCooldown("trait_lure") then return end
         local target = ctx.unitAt(ctx.tx, ctx.ty)
         if not target or not target.alive or target.side == ctx.unit.side then return end
-        ctx.applyStatus(target, "status_charm")
+        -- Named as the applier so the status turns the body onto THIS singer's side (the flip lives in
+        -- data/status/status_charm.lua, and reads ctx.applier).
+        ctx.applyStatus(target, "status_charm", { applier = ctx.unit })
         ctx.setCooldown("trait_lure", ctx.def.cooldown or 14)
         ctx.log("action", string.format("%s is called, and goes.",
             (target.char and target.char.name) or "Somebody"))
