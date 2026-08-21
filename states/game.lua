@@ -135,7 +135,7 @@ local function backVisible()
     return not game.tutorial and not game.scripted and not game.descent
 end
 
--- The "Use" button rides alongside the Items button on a normal quest (both flags start true). On the
+-- The "Potions" button rides alongside the Items button on a normal quest (both flags start true). On the
 -- flight tutorial it is held back TWICE over: it needs loot to spend (game.itemsVisible, set by the
 -- teaching chest) and the first fight behind the party (game.useUnlocked, set on the survivors'
 -- defence win). Until then that leg's HUD is deliberately spare -- the Items button IS the equip
@@ -1125,7 +1125,7 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- board quest to abandon. See backVisible and arena_debut's followUp.
     game.scripted = mp.scripted
     game.itemsVisible = (mp.tutorial ~= "flight")
-    -- The Use button's own gate, held shut for the flight leg until the first fight is won (see
+    -- The Potions button's own gate, held shut for the flight leg until the first fight is won (see
     -- useVisible and the combat onWin below). True from the start everywhere else.
     game.useUnlocked = (mp.tutorial ~= "flight")
     game.coach = nil
@@ -3111,8 +3111,8 @@ function game.drawHud()
     -- so the Loadout panel is introduced only once there is loot to arrange.
     if game.itemsVisible then drawRowButton(itemsRect(), "Items") end
 
-    -- Use button (drink a potion), beside Items. Same visibility gate save for the flight tutorial.
-    if useVisible() then drawRowButton(useRect(), "Use") end
+    -- Potions button (drink a draught), beside Items. Same visibility gate save for the flight tutorial.
+    if useVisible() then drawRowButton(useRect(), "Potions") end
 
     -- Always-on party HP/mana strip: the run's attrition, legible while routing (models/player.lua).
     -- Pass the mouse (logical space) so the per-companion ability badge shows its tooltip on hover.
@@ -3223,7 +3223,7 @@ function game.drawHud()
     -- Show the glyphs for the device last used: pad buttons only in gamepad mode, keyboard/mouse
     -- otherwise. The items key only appears once the Loadout button itself does.
     local items = game.itemsVisible and (InputMode.isGamepad() and "Y: items      " or "I: items      ") or ""
-    local use = useVisible() and (InputMode.isGamepad() and "X: use      " or "U: use      ") or ""
+    local use = useVisible() and (InputMode.isGamepad() and "X: potions      " or "U: potions      ") or ""
     -- The "back to hub" hint is dropped alongside the button itself -- during the flight tutorial, and
     -- on every floor of a descent, which has no Back button any more (see backVisible). It read
     -- "Esc: end run" down there, which was true and was the problem: one keystroke, on the key every
