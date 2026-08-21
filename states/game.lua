@@ -850,6 +850,26 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     require("models.sound").music("music.overworld")
     ScreenFx.reset() -- the map opens on full colour, whatever the last screen left ringing
 
+    -- A RESUMED DESCENT FLOOR IS RE-SYNTHESIZED HERE, because the descriptor that came back from the
+    -- save was built without a player and a floor's ends are a fact about one.
+    --
+    -- Save.restoreRun runs inside Save.load, before there is a player object to hand it, so its
+    -- `Descent.floorQuest(descent)` gets nil for the second argument -- and Descent.floorObjectives
+    -- answers a nil player with the stair and nothing else. Every errand seated on the floor was
+    -- therefore missing from `quest.map.objectives` on a resume, while the CELLS carrying them came
+    -- back off the serialized board intact. objectiveAt matches a cell to its spec by questId and
+    -- falls back to objectives[1] when nothing matches, so an errand tile resolved to THE STAIR: no
+    -- posting was recognised, the scene that asks whether to take the work never played, and the
+    -- fight the tile opened was the guardian's rather than the house's. Quit and Continue was all it
+    -- took, which is why the model specs were green.
+    --
+    -- Rebuilt rather than patched, because the floor descriptor is pure -- the same run and the same
+    -- player yield the same floor -- and the board itself is NOT rebuilt: it comes off the snapshot
+    -- below, fog and cleared stops and all. What this restores is only the reading of it.
+    if resume and resume.descent and player then
+        quest = Descent.floorQuest(resume.descent, player) or quest
+    end
+
     game.quest = quest
     -- A RESUME KEEPS THE DAY IT WAS ENTERED ON. Reading the clock afresh would be right today and
     -- wrong the moment anything else can move it, and the failure would be a board that quietly
@@ -3098,12 +3118,19 @@ function game:drawChecklist()
         -- ...and between the box and the sentence, the HOUSE that posted this row, as the same mark
         -- standing on its tile out on the board (ui/vendor_icons.lua). This is the legend: the mark is
         -- unreadable on a 32px tile until it has been met once beside the words, and this row is the
-        -- only place on the whole map screen where the work is spelled out. Drawn in the row's own
-        -- colour, so a ticked row's house greys out with it -- what is left to do stays the brighter
-        -- thing on screen. Unsponsored work simply leaves the slot empty rather than shuffling the
-        -- column: two indents in one list would read as two kinds of row.
+        -- only place on the whole map screen where the work is spelled out. Unsponsored work simply
+        -- leaves the slot empty rather than shuffling the column: two indents in one list would read as
+        -- two kinds of row.
+        --
+        -- IN THE HOUSE'S OWN COLOUR, which is the half of the marker that reads from across the board --
+        -- the shape settles which house, the hue is what carried you to the tile in the first place. A
+        -- legend that taught only the shape would leave the player learning the louder signal by trial.
+        -- A TICKED ROW gives the colour up and greys with the rest of the row: the house is a thing to
+        -- go and do, and work already done should not go on being the brightest thing on the screen.
+        local hr, hg, hb = VendorIcons.color(row.sponsor)
+        if row.done or not hr then hr, hg, hb = c[1], c[2], c[3] end
         VendorIcons.draw(row.sponsor, x + CHECKLIST_MARK_X, y + 3, CHECKLIST_MARK, CHECKLIST_MARK,
-            c[1], c[2], c[3])
+            hr, hg, hb)
         love.graphics.setColor(c)
         -- The work, not the title (game:worklist).
         for _, line in ipairs(checklistLines(row.work or row.name)) do

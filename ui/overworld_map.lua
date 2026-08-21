@@ -414,14 +414,24 @@ end
 local CALM_MARKER = { 0.46, 0.56, 0.55 }
 local PIP_COLOR = { 1.0, 0.86, 0.55 }    -- warning bone-gold, legible on the hostile box beneath it
 
-local function markerColor(kind)
+local function markerColor(kind, enc)
+    -- THE GOLD IS THE BOSS'S, and nothing else on the board may wear it. The board's own end -- the
+    -- guard standing on the way down, the thing the whole day is pointed at -- is the one marker the eye
+    -- should find first, and a colour that finds it first is worth more than any other signal here.
     if kind == "objective" then return 0.95, 0.75, 0.20 end
-    -- A PIECE OF POSTED WORK SHARES THE ENDS' GOLD, and that is the point of it: an errand and the
-    -- floor's own end are both things this day ends at, and the colour says so. What separates them is
-    -- the MARK -- a pennant against a writ -- which is the same split the four hazards are drawn on
-    -- (one colour for the category, a shape for the particular). Two identical pennants on one board
-    -- was the bug: the stair's guard and a house's errand promised the same thing and were not.
-    if kind == "quest" then return 0.95, 0.75, 0.20 end
+    -- A PIECE OF POSTED WORK WEARS THE HOUSE THAT POSTED IT (ui/vendor_icons.lua). It shared the ends'
+    -- gold at first, on the argument that an errand and the floor's own end are both things the day ends
+    -- at, with the MARK left to say which house -- and that was a category with one member reasoning
+    -- about a board that has seven. A ground carries every house's work at once, so gold stopped meaning
+    -- "the end" and started meaning "somebody's work", which is nearly every marker out there; the
+    -- boss's own tile had nothing left to be found by. The hue narrows it to a house and the mark
+    -- settles it, and the two are learned together on the checklist beside the words (states/game.lua).
+    -- Work nobody sponsors keeps the old gold: with no house to name, an end is all it is.
+    if kind == "quest" then
+        local r, g, b = VendorIcons.color(Quest.sponsorOf(enc and enc.questId))
+        if r then return r, g, b end
+        return 0.95, 0.75, 0.20
+    end
     if kind == "elite" then return 0.95, 0.55, 0.15 end
     if kind == "town" then return 0.85, 0.85, 0.90 end
     if kind == "treasure" then return 0.35, 0.80, 0.55 end
@@ -762,10 +772,12 @@ end
 -- you are working for is the decision the whole ground is asking, and until now it was the one fact the
 -- marker did not carry.
 --
--- The COLOUR stays the ends' gold, and that is deliberate: the wash says "this is an end you can finish
--- today", the mark says whose. Same split the four hazards are drawn on -- one colour for the category,
--- a shape for the particular. Work nobody sponsors (the Gate Below) keeps the writ, which is what
--- VendorIcons.draw's false return is for.
+-- The PLATE under it carries the same house (markerColor above): the hue narrows the board to one house
+-- at arm's length, where a fourteen-pixel shape cannot be read at all, and the mark settles which house
+-- once you are looking at it. Two channels, one fact, deliberately -- this is the reverse of the four
+-- hazards, which share a colour and split on shape, because a hazard is a category the player must
+-- learn as a category and a house is one they already know by name. Work nobody sponsors (the Gate
+-- Below) keeps the writ and the old gold, which is what VendorIcons.draw's false return is for.
 local function drawMarkerIcon(kind, wx, wy, s, a, enc)
     local pad = s * MARKER_ICON_PAD
     local x, y, box = wx + pad, wy + pad, s - pad * 2
@@ -1021,7 +1033,7 @@ function OverworldMap:drawMarkers()
 
                 if self:markedStop(x, y) then
                     local kind = markerKind(c.encounter)
-                    local r, g, b = markerColor(kind)
+                    local r, g, b = markerColor(kind, c.encounter)
                     -- How this fight stands against the company, asked once and spent twice below: on
                     -- the box colour and on the pips. Nil for a stop there is no comparison to make
                     -- about -- a treasure, a rest, an escort fight the muster cannot price -- which
@@ -1105,7 +1117,7 @@ function OverworldMap:drawPatrols()
             -- is not on a cell, so without asking here the fights that MOVE -- the ones you most need to
             -- decide about -- would be the only fights on the board you could not price.
             local band = self.musterBand and self.musterBand({ x = p.x, y = p.y, encounter = p.encounter })
-            local r, g, b = markerColor(kind)
+            local r, g, b = markerColor(kind, p.encounter)
             if band == "beneath" then r, g, b = CALM_MARKER[1], CALM_MARKER[2], CALM_MARKER[3] end
 
             drawMarkerPlate(wx, wy, s, r, g, b, 1, PATROL_STATE[p.state] or PATROL_STATE.beat)

@@ -322,15 +322,20 @@ each item names how many of that count unlock it (`unlockQuests`, below).
 
 Then point a building at it with `panel = "shop", vendor = "<id>"`.
 
-**And give it a mark.** Every house owns a small vector sigil in `ui/vendor_icons.lua`, keyed by the
-same id — a shield for the Bastion, a keyhole for the Undercroft, a barred gate for the Colosseum. It
-is drawn wherever the house has to be named in a space too small for its name: on the shop's portrait
-plate, on the day's checklist, and — the reason it exists — **on the house's posted work out on the
-ground**. A day buys a whole ground and every quest posted there stands on the map at once
-([progression.md](progression.md)), so three houses' writs can be on one board; the marker's gold says
-"an end you can finish today" and the mark says whose shelf finishing it opens. A vendor with no mark
-silently falls back to a generic scroll and its work becomes indistinguishable from everyone else's,
-so `tests/vendor_icon_spec.lua` fails the build for a house that is missing one.
+**And give it a mark and a colour.** Every house owns a small vector sigil *and* a hue in
+`ui/vendor_icons.lua`, both keyed by the same id — a steel-blue shield for the Bastion, a verdigris
+keyhole for the Undercroft, a barred gate on sand for the Colosseum. They are drawn wherever the house
+has to be named in a space too small for its name: on the shop's portrait plate, on the day's
+checklist, and — the reason they exist — **on the house's posted work out on the ground**. A day buys a
+whole ground and every quest posted there stands on the map at once
+([progression.md](progression.md)), so three houses' writs can be on one board: the hue narrows it to a
+house from across the map and the mark settles which, and finishing it opens that house's shelf.
+
+Two marker colours are reserved and no house may take them — the **gold** of the board's own end (the
+boss) and the **red** of a fight. `tests/vendor_icon_spec.lua` fails the build for a house missing a
+mark or a colour, for one that lands on either reserved colour, and for two houses drawn close enough
+to read as one. Without those a new house silently falls back to a generic gold scroll and its work
+becomes indistinguishable from everyone else's.
 
 There is an eighth vendor with no class and no shelf — the **Cafe**, which declares `sells = false`
 and sells meals rather than goods ([meals.md](meals.md)). It keeps a blueprint here only because it

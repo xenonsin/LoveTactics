@@ -1,4 +1,4 @@
--- ONE MARK PER HOUSE.
+-- ONE MARK PER HOUSE, AND ONE COLOUR.
 --
 -- A vendor is named everywhere -- on a quest board row, on a shop's header, on the piece of work
 -- standing out on the ground -- and until now it was named in WORDS everywhere, which a 32px map tile
@@ -24,7 +24,8 @@
 --
 -- Kin to ui/glyphs.lua (a mark beside a number) and ui/status_badge.lua (a whole badge). Kept out of
 -- glyphs.lua because these are keyed by a DATA id -- add data/vendors/<id>.lua and this file owes it a
--- mark, which tests/vendor_icon_spec.lua enforces -- where a glyph is keyed by a concept.
+-- mark AND a colour, both of which tests/vendor_icon_spec.lua enforces -- where a glyph is keyed by a
+-- concept. The colours are the second half of the identity and live at the bottom of this file.
 
 local VendorIcons = {}
 
@@ -202,6 +203,56 @@ function Marks.touchstone(x, y, w, h, r, g, b, a)
     love.graphics.setLineWidth(math.max(2, w * 0.12))
     love.graphics.line(x + w * 0.26, y + h * 0.74, x + w * 0.76, y + h * 0.24)
     love.graphics.setLineWidth(1)
+end
+
+-- ---------------------------------------------------------------------------
+-- AND ONE COLOUR PER HOUSE
+--
+-- The mark alone was not enough. Every piece of posted work wore the ENDS' GOLD -- the wash said "an
+-- end you can finish today" and the mark said whose -- which is the right split for a category with one
+-- member and the wrong one here: gold is what the board's own end wears, the guard on the way down, the
+-- thing the whole day is pointed at. Seven houses sharing the boss's colour meant the loudest signal on
+-- the map was spent saying "somebody's work", which is true of nearly every marker on a campaign
+-- ground. So the gold goes back to being the BOSS alone, and a house's writ takes the house's own hue.
+--
+-- TWO COLOURS ARE RESERVED AND NO HOUSE MAY HAVE THEM: the ends' gold (an objective -- see
+-- ui/overworld_map.lua's markerColor) and the hostile red (a fight). Those two answer the questions
+-- asked most often and fastest -- is this the thing I came for, is this something that will hit me --
+-- and a house hue that could be mistaken for either would cost more than it bought.
+--
+-- What is left is the wheel from chartreuse round to magenta, and the seven are spread across it about
+-- fifty degrees apart, assigned by the house's own sin where the wheel allowed: sloth's blue, pride's
+-- violet, lust's magenta, gluttony's green, envy's acid. Two could not have theirs and are the reason
+-- the mapping is not simply "the sin's colour" -- greed's gold IS the boss's, and wrath's red IS the
+-- fight's. The Undercroft took verdigris (a cellar, and the one house whose colour is a place rather
+-- than a passion) and the Colosseum took the SAND -- pale, warm and nearly unsaturated, which is the
+-- one direction left that gold cannot be confused with.
+--
+-- Adjacency that is accepted rather than missed: a treasure chest sits near the Undercroft's verdigris
+-- and a heroic spirit near the Lodge's green. Both are descent furniture rather than a campaign
+-- ground's, and both carry a shape nothing else has -- the colour narrows, the mark settles.
+local Colors = {
+    alchemist     = { 0.62, 0.94, 0.28 }, -- acid, and kept well clear of gold: the melt in the pot (envy)
+    hunters_lodge = { 0.34, 0.78, 0.34 }, -- deep forest green (gluttony)
+    undercroft    = { 0.20, 0.82, 0.66 }, -- verdigris on old silver: a cellar nobody signs for
+    bastion       = { 0.36, 0.62, 0.96 }, -- cold steel blue (sloth)
+    arcanum       = { 0.66, 0.42, 0.98 }, -- violet (pride)
+    cathedral     = { 0.98, 0.40, 0.78 }, -- stained glass at the west end (lust)
+    colosseum     = { 0.94, 0.86, 0.68 }, -- the sand itself: what wrath cannot have the red for
+    -- The four houses that post no work keep colours too, so nothing has to special-case them, and so
+    -- the spacing rule below is one rule over eleven rather than a rule with four exemptions.
+    cafe          = { 0.96, 0.56, 0.52 }, -- a hot plate
+    inn           = { 0.72, 0.78, 0.94 }, -- a cold room and a warm bed
+    crossing      = { 0.30, 0.30, 0.88 }, -- the deep indigo of what comes through the tear
+    touchstone    = { 0.58, 0.64, 0.72 }, -- the stone
+}
+
+-- A house's colour as three components, or nil for a house that has none. Three returns rather than the
+-- table itself, because every caller feeds it straight into love.graphics.setColor or a plate.
+function VendorIcons.color(vendorId)
+    local c = vendorId and Colors[vendorId]
+    if not c then return nil end
+    return c[1], c[2], c[3]
 end
 
 -- Does this house have a mark? Asked by anything that has to lay out a row BEFORE it draws one, and by
