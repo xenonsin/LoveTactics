@@ -4,8 +4,10 @@
 --
 -- On the hunter shelf because setup-then-payoff is gluttony's whole loop (docs/classes.md), and pierce
 -- is what the shelf's bows and longbows deal -- mark the priority target from range, then the ranged
--- line drills it. It is the MOBILE answer the family was missing: Exposed already opens a foe to pierce,
--- but only inside a Coveted Blood cloud you have to keep standing in, which a bow line cannot use. See
+-- line drills it. It is the MOBILE deliverer of the mark: the same status the Coveted Blood cloud and
+-- the Muster ground lay, but pinned on a chosen body from range and carried away by it, where a
+-- zone-granted one lifts the moment its bearer steps off the ground granting it (the status file's own
+-- comment sets out which grant does which, and what happens when a dart lands inside a cloud). See
 -- docs/vulnerability.md for the family.
 local Curve = require("models.curve")
 

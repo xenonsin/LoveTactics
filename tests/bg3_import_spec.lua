@@ -625,8 +625,8 @@ return {
             equip(al.char, { [1] = "utility_coveted_blood" })
             Combat.layIncense(c, al)
 
-            assert(Status.has(foe, "status_exposed"), "the foe beside the bearer is opened up")
-            assert(not Status.has(knight, "status_exposed"), "the bearer's own line is not")
+            assert(Status.has(foe, "status_vulnerable_pierce"), "the foe beside the bearer is opened up")
+            assert(not Status.has(knight, "status_vulnerable_pierce"), "the bearer's own line is not")
 
             local before = Combat.mitigatedDamage(foe, 30, { "slash" })
             local pierced = Combat.mitigatedDamage(foe, 30, { "pierce" })

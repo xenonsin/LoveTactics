@@ -6239,7 +6239,7 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- what the blow WAS and stays out of how it looks; ui/burst_fx.lua turns the tags into a shape.
     -- `vulnerable` flags a blow that struck a WEAKNESS: the net of every vulnerability/resistance the
     -- target carries for this blow's tags is positive, so the wound landed harder than a bare hit
-    -- (the Vulnerable openers, Wet under lightning, Frozen under crush/fire, Exposed, a Reckless
+    -- (the Vulnerable openers, Wet under lightning, Frozen under crush/fire, Unravelled, a Reckless
     -- Cuirass's gear-bound weakness -- all fold through Status.vulnerability). The extra damage is
     -- already IN `dmg`; this is only the cue for it, so ui/burst_fx.lua can flare a "weak point struck"
     -- over the impact and the player can read at a glance that the tag they chose is the one that bites.

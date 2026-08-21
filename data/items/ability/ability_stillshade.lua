@@ -4,8 +4,8 @@
 -- The difference from an ordinary vanishing is that this one is PAID FOR ON THE WAY OUT. Invisibility
 -- in this game is a window that closes on a clock; you hide, you reposition, the clock runs down, and
 -- what you bought was distance. Stillshade buys distance too, and then charges the exit price to the
--- enemy: whoever the rogue steps out onto is left Exposed, which every piercing thing the party owns
--- can read.
+-- enemy: whoever the rogue steps out onto is left Vulnerable: Pierce, which every piercing thing the
+-- party owns can read.
 --
 -- Which makes it a SETUP the whole company shares rather than an escape one character takes. The rogue
 -- vanishes on turn one; on turn two they open a foe and the hunter's arrows, the knight's spear and

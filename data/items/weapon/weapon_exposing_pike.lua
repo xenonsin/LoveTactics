@@ -1,21 +1,22 @@
 -- A spear, so it skewers a line (docs/weapons.md). Its extra is that the wounds it opens stay open to
--- the next spear: everything in the line is left Exposed (status_exposed), which is +8 damage taken from
--- every PIERCE-tagged hit thereafter.
+-- the next spear: everything in the line is left Vulnerable: Pierce (status_vulnerable_pierce), which
+-- is +8 damage taken from every PIERCE-tagged hit thereafter.
 --
--- The party weapon of the family, and the one whose damage stat is somebody else. Exposed is narrow on
--- purpose (data/status/status_exposed.lua argues the case: "a vulnerability to everything would just be
--- a damage buff painted on the enemy") -- it answers pierce and nothing else. Which is exactly the tag
+-- The party weapon of the family, and the one whose damage stat is somebody else. The mark is narrow on
+-- purpose (data/status/status_vulnerable_pierce.lua argues the case: "a vulnerability to everything
+-- would just be a damage buff painted on the enemy") -- it answers pierce and nothing else. Which is
+-- exactly the tag
 -- every spear, every bow, every longbow and half the daggers in this game already carry. Two spearmen in
 -- a line, or a spearman and an archer, and this weapon is worth more than anything else on the shelf.
 -- A party with no other pierce in it, and it is a slightly weak iron spear.
 --
--- Note it exposes both tiles, unlike the Boar Spear's near-tile-only crossbar: a debuff that makes other
+-- Note it opens both tiles, unlike the Boar Spear's near-tile-only crossbar: a debuff that makes other
 -- people's hits land is worth spreading, where a root is worth rationing.
 local Curve = require("models.curve")
 
 return {
     name = "Exposing Pike",
-    description = "Inflicts Exposed on the far tile.",
+    description = "Inflicts Vulnerable: Pierce on the far tile.",
     flavor = "The Bastion drills two ranks of pikes for a reason. The first rank is not the one that kills you.",
     sprite = "assets/items/exposing_pike.png",
     type = "weapon",
@@ -41,7 +42,7 @@ return {
             for _, u in ipairs(fx.aoeUnits()) do
                 fx.damage(u)
                 if u.alive and u.x == farX and u.y == farY then
-                    fx.applyStatus(u, "status_exposed")
+                    fx.applyStatus(u, "status_vulnerable_pierce")
                 end
             end
         end,

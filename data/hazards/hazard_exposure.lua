@@ -1,5 +1,6 @@
 -- The Coveted Blood's cloud: the ground the alchemist carries with it, in which enemy flesh will not
--- close (data/status/status_exposed.lua). Everyone in it EXCEPT the bearer's own side is Exposed.
+-- close (data/status/status_vulnerable_pierce.lua). Everyone in it EXCEPT the bearer's own side is
+-- opened to the point.
 --
 -- Mechanically this is Choking Fumes (data/hazards/hazard_choking.lua) with the damage taken out, and
 -- the resemblance is worth reading rather than hiding: both are a sided cloud that walks with whoever
@@ -8,11 +9,12 @@
 -- censer's cloud kills people and this one does not kill anybody at all. It only makes your line's
 -- arrows worth more, which is the entire distinction between lust's punitive half and envy.
 --
--- Zone-bound, because Exposed declares no `lingers`: step out of the cloud and it lifts at once. No
+-- Zone-bound, because Vulnerable: Pierce declares no `lingers`: step out of the cloud and it lifts at
+-- once -- the mark a hunter's dart pins from range is the same status without a zone stamped on it. No
 -- tick, no damage, no spread -- there is nothing in here but a condition on somebody else's arithmetic.
 return {
     name = "Coveted Blood",
-    description = "Inflicts Exposed on foes in it.",
+    description = "Inflicts Vulnerable: Pierce on foes in it.",
     tags = { "poison" },
     -- The same smoke the Choking Fumes wear, in a cloying rose rather than the censer's sick green:
     -- these two clouds mean different things and must not read as one, which is exactly the mistake
@@ -24,6 +26,6 @@ return {
         -- Sided to the bearer, so the alchemist's own party is never the one being opened up. Mirror
         -- of the Choking Fumes' ally check, and of a Sanctuary's before it.
         if ctx.isAlly(ctx.unit) then return end
-        ctx.applyStatus(ctx.unit, "status_exposed", { magnitude = ctx.amount })
+        ctx.applyStatus(ctx.unit, "status_vulnerable_pierce")
     end,
 }

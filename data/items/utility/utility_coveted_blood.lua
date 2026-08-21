@@ -27,7 +27,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Coveted Blood",
-    description = "Inflicts Exposed on adjacent foes.",
+    description = "Inflicts Vulnerable: Pierce on adjacent foes.",
     flavor = "It is not that she wants them dead. It is that she wants to have been necessary.",
     sprite = "assets/items/utility_coveted_blood.png",
     type = "utility",

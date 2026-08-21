@@ -1,6 +1,6 @@
 -- Muster: the ground a Muster Cuirass holds. It does two opposite things at once, sorted by whose feet
 -- are on it -- allies standing in it are braced (Heroism's steadiness), enemies standing in it are
--- Exposed. One zone, two effects, decided by `ctx.isAlly`.
+-- opened to the point (Vulnerable: Pierce). One zone, two effects, decided by `ctx.isAlly`.
 --
 -- That double reading is what makes it worth a whole item rather than being two smaller ones. A pure
 -- buff aura rewards clumping up, which this game already rewards plenty; a pure debuff aura rewards
@@ -12,7 +12,7 @@
 -- wearer is by definition in the middle of it. There is no version of this item that is safe to use.
 return {
     name = "Muster",
-    description = "Grants Heroism to allies in it; inflicts Exposed on foes.",
+    description = "Grants Heroism to allies in it; inflicts Vulnerable: Pierce on foes.",
     tags = { "banner" },
     duration = 6,
     disposition = "neutral", -- it draws the owner in and pushes the foe out; neither reading is right
@@ -25,7 +25,7 @@ return {
         if ctx.isAlly(ctx.unit) then
             ctx.applyStatus(ctx.unit, "status_heroism")
         else
-            ctx.applyStatus(ctx.unit, "status_exposed")
+            ctx.applyStatus(ctx.unit, "status_vulnerable_pierce")
         end
     end,
 }

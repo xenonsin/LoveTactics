@@ -1,7 +1,7 @@
 -- Muster Banner: the Warlord's answer to a stalemate. It plants the same destructible standard the
 -- Rally and Sacred Banners raise (data/characters/character_banner.lua), but the ground it holds open
 -- is MUSTERED (data/hazards/hazard_muster.lua) -- a zone that reads its two effects off whose feet are
--- on it: allies braced (Heroism), enemies left Exposed. One square, sorted by side.
+-- on it: allies braced (Heroism), enemies left Vulnerable: Pierce. One square, sorted by side.
 --
 -- Where Rally and Sacred hand out a pure buff, this one is a banner you plant BETWEEN the lines: it is
 -- worth the most exactly where your people and theirs are standing on the same tiles, which is the

@@ -1,5 +1,6 @@
 -- The exit price of a Stillshade. While the rogue is hidden and carrying the shade's mark, the first
--- thing they cast is a thing they cast on the way out -- and the body it lands on is left Exposed.
+-- thing they cast is a thing they cast on the way out -- and the body it lands on is left open to the
+-- point (Vulnerable: Pierce).
 --
 -- Hangs on onCast rather than on the ability itself, and that is the only place it CAN hang: the spell
 -- that vanishes the rogue does not know who they will step out onto, because that decision is a turn
@@ -29,7 +30,7 @@ return {
         ctx.clearStatus(ctx.unit, "status_mark")
         ctx.clearStatus(ctx.unit, "status_invisible")
         if not (victim and victim.alive and victim.side ~= ctx.unit.side) then return end
-        ctx.applyStatus(victim, "status_exposed")
+        ctx.applyStatus(victim, "status_vulnerable_pierce")
         ctx.log("status", string.format("%s steps out of the shade, and %s is wide open.",
             ctx.unit.char and ctx.unit.char.name or "Unit",
             victim.char and victim.char.name or "the target"), { ctx.unit, victim })

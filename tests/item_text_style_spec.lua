@@ -25,7 +25,7 @@ local Trait = require("models.trait")
 -- description is the tell that the line restates the definition the glossary column already renders
 -- (models/glossary.lua builds that column from the ability's EFFECT, not from this text, so the
 -- restatement is pure duplication). Plain, case-sensitive find on "<Name>:" -- narrow on purpose:
--- "gain Blessed." never trips it, "leaves them Exposed: ..." does.
+-- "gain Blessed." never trips it, "leaves them Wounded: ..." does.
 local STATUS_NAMES = {}
 for _, def in pairs(Status.defs) do
     if type(def.name) == "string" then STATUS_NAMES[#STATUS_NAMES + 1] = def.name end

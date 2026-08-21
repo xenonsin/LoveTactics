@@ -207,7 +207,7 @@ one exception: it *pairs* the two tiles, so it needs both.
 |---|---|---|
 | S1 | `weapon_iron_spear` | the base: skewers a 2-tile line |
 | S2 | `weapon_boar_spear` | The crossbar: the **far** tile is Rooted and cannot back off the point. |
-| S3 | `weapon_exposing_pike` | The **far** tile is left **Exposed** (+8 from every pierce hit) — and pierce is what every spear, bow and half the daggers already carry. Its damage stat is the party. |
+| S3 | `weapon_exposing_pike` | The **far** tile is left **Vulnerable: Pierce** (+8 from every pierce hit) — and pierce is what every spear, bow and half the daggers already carry. Its damage stat is the party. |
 | S4 | `weapon_mailpiercer` | The line lands **`raw`** (no defense, no resist) and the **far** tile is left **Halted**. |
 | S4 | `weapon_marching_standard` | The thrust **plants a standard** — Rally ground for as long as the pole stands. Raised for free by a swing, and it never silences the weapon that raised it (`noClaim`). |
 | Q | `weapon_second_rank` | Reaches a **third tile while an ally stands directly behind you**. The pike drill as a weapon — the only item that reads the tile at your back. |

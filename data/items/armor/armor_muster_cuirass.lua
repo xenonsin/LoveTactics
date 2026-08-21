@@ -1,6 +1,6 @@
 -- The Muster Cuirass: a knight's breastplate cut with the old company marks, which does two opposite
 -- things at once to the ground around it -- allies standing beside its wearer are braced, and enemies
--- standing beside its wearer are Exposed (data/hazards/hazard_muster.lua).
+-- standing beside its wearer are opened to the point (data/hazards/hazard_muster.lua).
 --
 -- The double reading is what makes it worth a whole item rather than two smaller ones. A pure buff
 -- aura rewards clumping up, which this game already rewards plenty; a pure debuff aura rewards shoving
@@ -9,7 +9,7 @@
 -- place to want to be, and exactly where a knight is supposed to want to be.
 --
 -- It also quietly makes the party's piercing weapons better, which is the part that changes a loadout
--- rather than a turn: Exposed amplifies `pierce` and nothing else (see the status's own comment on why
+-- rather than a turn: the mark amplifies `pierce` and nothing else (see the status's own comment on why
 -- narrowness is the design), so a cuirass in a company of spears and bows is worth roughly double what
 -- it is worth in a company of axes. The knight's item is an argument about what everyone ELSE brought.
 --

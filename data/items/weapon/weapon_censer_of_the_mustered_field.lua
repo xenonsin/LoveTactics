@@ -14,7 +14,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Censer of the Mustered Field",
-    description = "Braces adjacent allies and inflicts Exposed on adjacent foes.",
+    description = "Braces adjacent allies and inflicts Vulnerable: Pierce on adjacent foes.",
     flavor = "The Cathedral swings it at the head of a column. Nobody has ever been sure whether that is a blessing or a threat.",
     sprite = "assets/items/censer_mustered.png",
     type = "weapon",

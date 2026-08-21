@@ -1,8 +1,8 @@
 -- Unravelled: the weave that holds this body together has been picked loose, and magic pours into the
 -- gap. A flat pre-mitigation bonus to every `magical` hit that lands on the bearer, folded into
--- Combat.mitigatedDamage exactly as Wet's lightning weakness and Exposed's opening to pierce are.
+-- Combat.mitigatedDamage exactly as Wet's lightning weakness and Vulnerable: Pierce's opening are.
 --
--- The magical twin of Exposed, and deliberately built on the same narrow principle: it amplifies ONE
+-- The magical twin of the Vulnerable family, built on the same narrow principle: it amplifies ONE
 -- school rather than everything. A blanket vulnerability is just a damage buff painted on the enemy;
 -- a vulnerability to one school is a question asked of the party's whole loadout, worth nothing beside
 -- three axes and a great deal beside a wand, a censer and a bottle of liquid fire.

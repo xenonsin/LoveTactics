@@ -21,7 +21,7 @@
 local DEBUFFS = {
     "status_poison", "status_burn", "status_acid", "status_mark", "status_blind", "status_cripple",
     "status_root", "status_stun", "status_freeze", "status_wet", "status_mired", "status_bleed",
-    "status_exposed", "status_sundered",
+    "status_vulnerable_pierce", "status_sundered",
 }
 
 return {
