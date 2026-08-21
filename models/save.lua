@@ -349,6 +349,13 @@ function Save.restoreRun(snap)
         -- with no way back and the next floor's game.enter would mint a fresh snapshot, silently banking
         -- everything the run had found so far.
         if descent then descent.entry = snap.entry end
+        -- NO PLAYER TO HAND IT, and the floor descriptor that comes back is thinner for it: a floor's
+        -- ends are read off the player (which errands are open, which houses are still shut), so this
+        -- one carries the stair alone. This runs inside Save.load, which is building the table a player
+        -- is made FROM -- there is nothing here to pass. It is enough to answer the only question asked
+        -- here, which is whether the run can be resumed at all; states/game.lua's enter re-synthesizes
+        -- the descriptor against the live player before the board is read against it. See the comment
+        -- there for what a stair-only objectives list did to an errand seated on the floor.
         quest = descent and Descent.floorQuest(descent)
         if not quest then return nil end -- unreadable descent: drop the run, keep the player
     else

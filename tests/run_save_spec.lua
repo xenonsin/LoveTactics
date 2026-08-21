@@ -7,6 +7,7 @@
 local Overworld = require("models.overworld")
 local Save = require("models.save")
 local Player = require("models.player")
+local Descent = require("models.descent")
 
 -- A small deterministic board with an objective, a key/gate, and mixed encounters.
 local function genGrid()
@@ -163,6 +164,70 @@ return {
         fn = function()
             local restored = Save.restore(reserialize(Save.snapshot(Player.new())))
             assert(restored.resumeRun == nil, "a player who never entered a run carries no resume descriptor")
+        end,
+    },
+    {
+        -- THE BUG THIS HOLDS THE FLOOR ON. Save.restoreRun runs inside Save.load, before there is a
+        -- player object to hand it, so the floor descriptor it rebuilds is a stair and nothing else
+        -- (Descent.floorObjectives answers a nil player that way). The BOARD, meanwhile, comes back off
+        -- the snapshot with every errand cell intact. states/game.lua matches a cell to its spec by
+        -- questId and falls back to objectives[1] when nothing matches -- so before the fix an errand
+        -- tile on a resumed floor resolved to the stair: the scene that asks whether to take the house's
+        -- work never played, and the fight the tile opened was the guardian's rather than the house's.
+        --
+        -- Asserted against a RE-SYNTHESIZED descriptor, which is what states/game.lua's enter now builds
+        -- from `resume.descent` and the live player. The lookup below is objectiveAt's, spelled out.
+        name = "a resumed descent floor still knows whose work each of its ends is",
+        fn = function()
+            local player = Player.new()
+            local run = Descent.new(player)
+            player.descentRun = run
+            local quest = Descent.floorQuest(run, player)
+            local mp = quest.map
+
+            local errands = 0
+            for _, spec in ipairs(mp.objectives or {}) do
+                if spec.questId then errands = errands + 1 end
+            end
+            assert(errands > 0, "floor one seats no house work at all, so this proves nothing")
+
+            local g = Overworld.generate({
+                cols = mp.cols, rows = mp.rows, biome = mp.biome, seed = 7,
+                objective = mp.objective, objectives = mp.objectives,
+                layout = mp.carve, spacing = mp.spacing, ascent = mp.ascent,
+                encounterCount = { min = 4, max = 4 },
+                encounters = { { kind = "combat", weight = 1 } },
+            })
+            player.activeRun = {
+                questId = quest.id,
+                day = 1,
+                descent = run,
+                grid = g,
+                map = { px = g.start.x, py = g.start.y, keysHeld = {} },
+                abilityState = {},
+            }
+
+            local restored = Save.restore(reserialize(Save.snapshot(player)))
+            local resume = restored and restored.resumeRun
+            assert(resume and resume.descent, "the descent run survives the round trip")
+
+            -- What states/game.lua's enter does with it: the floor read against the live player again.
+            local rebuilt = Descent.floorQuest(resume.descent, player).map
+            local seen = 0
+            for _, o in ipairs(resume.grid.objectives or {}) do
+                local cell = resume.grid:get(o.x, o.y)
+                local id = cell.encounter and cell.encounter.questId
+                if id then
+                    local match
+                    for _, spec in ipairs(rebuilt.objectives or {}) do
+                        if spec.questId == id then match = spec end
+                    end
+                    assert(match, "the resumed floor has no spec for the work standing at "
+                        .. o.x .. "," .. o.y .. " (" .. id .. "): it would fall back to the stair")
+                    seen = seen + 1
+                end
+            end
+            assert(seen == errands, "the resumed board lost an end: " .. seen .. " of " .. errands)
         end,
     },
 }
