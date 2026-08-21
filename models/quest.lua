@@ -96,6 +96,17 @@ end
 --
 -- Counting the quests rather than storing a number is deliberate and predates this: it survives
 -- selling a relic, or losing a save's reputation field, which no longer exists.
+-- WHOSE WORK IS THIS -- the vendor id behind a quest id, or nil for an unsponsored one (the Gate
+-- Below) and for an id no longer in data/. A one-line lookup, and it is here rather than spelled out at
+-- each call site because three of them now ask it about a piece of work standing on a BOARD: the map's
+-- writ marker, the day's checklist and the quest board row all draw the house's mark (ui/vendor_icons.lua)
+-- and all three have only the id -- a cell carries the quest ID and nothing else of the spec
+-- (models/overworld.lua), which is exactly the shape this answers for.
+function Quest.sponsorOf(id)
+    local def = id and Quest.defs[id]
+    return def and def.sponsor or nil
+end
+
 function Quest.sponsorProgress(player, vendorId)
     if not vendorId then return 0 end
     local done = 0

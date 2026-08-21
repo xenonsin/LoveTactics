@@ -25,6 +25,7 @@ local Growth = require("models.growth")
 local Item = require("models.item")
 local ItemTooltip = require("ui.item_tooltip")
 local CloseButton = require("ui.close_button")
+local VendorIcons = require("ui.vendor_icons") -- the house's mark, learned HERE beside its name
 local Scale = require("scale")
 local InputMode = require("input_mode")
 local Debug = require("models.debug")
@@ -453,13 +454,25 @@ function QuestBoard:drawDossier()
         -- ground rows wear on the other side of this panel -- so the house costs no line of its own.
         -- A long title yields to it rather than overprinting; nothing here runs past about 30
         -- characters, so the trim is a backstop rather than a regular event.
+        -- ...and the house wears its MARK here, immediately left of its own name. This is the only
+        -- place the two are ever seen together, and it is the place that has to teach the mark: an hour
+        -- from now that same shape will be standing alone on a tile out on the ground, saying which of
+        -- the three writs on the board belongs to the shelf you are shopping for (ui/vendor_icons.lua,
+        -- ui/overworld_map.lua). A house with no mark simply prints its name, as it always did.
         local house = quest.sponsorName
-        local houseW = house and (self.bodyFont:getWidth(house) + 14) or 0
+        local markW = VendorIcons.has(quest.sponsor) and (lineH * 0.8 + 5) or 0
+        local houseW = house and (self.bodyFont:getWidth(house) + markW + 14) or 0
         Theme.set(Theme.ink)
         love.graphics.print(Theme.ellipsize(quest.name, self.bodyFont, w - houseW), x, cy)
         if house then
             Theme.set(Theme.muted)
             love.graphics.printf(house, x, cy, w, "right")
+            if markW > 0 then
+                local mark = lineH * 0.8
+                VendorIcons.draw(quest.sponsor,
+                    x + w - self.bodyFont:getWidth(house) - mark - 5, cy + (lineH - mark) / 2,
+                    mark, mark, Theme.muted[1], Theme.muted[2], Theme.muted[3])
+            end
         end
         cy = cy + lineH
 

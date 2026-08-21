@@ -39,6 +39,7 @@ local Sprite = require("models.sprite")
 local Scale = require("scale")
 local InputMode = require("input_mode")
 local Theme = require("ui.theme")
+local VendorIcons = require("ui.vendor_icons") -- the house's mark: its stand-in portrait, and its sigil
 
 local Shop = {}
 Shop.__index = Shop
@@ -830,12 +831,24 @@ function Shop:drawVendor()
         local scale = math.min(pw / sw, ph / sh)
         love.graphics.draw(self.vendorSprite, px + pw / 2, py + ph / 2, 0, scale, scale, sw / 2, sh / 2)
     else
+        -- NO PORTRAIT YET, so the plate stands in for one -- and what it carries is the HOUSE'S OWN MARK
+        -- (ui/vendor_icons.lua), the same shape that stands on this house's work out on the ground.
+        --
+        -- It carried the name's first LETTER before, which was the closest thing this panel had to a bug
+        -- you could look straight at: six of the seven houses are "The something", so six shops in a row
+        -- showed a big "T". The mark tells them apart, and it is the one place a player is standing
+        -- still, looking at a shelf, with the house's name printed above -- which is where a mark that
+        -- has to be recognised on a 32px tile gets learned.
         local tint = SIN_COLOR[self.def.sin] or SIN_DEFAULT
         love.graphics.setColor(tint[1], tint[2], tint[3])
         love.graphics.rectangle("fill", px, py, pw, ph, 8, 8)
-        love.graphics.setFont(self.titleFont)
-        Theme.set(Theme.ink)
-        love.graphics.printf((self.def.name or "?"):sub(1, 1), px, py + ph / 2 - 20, pw, "center")
+        local mark = math.min(pw, ph) * 0.52
+        if not VendorIcons.draw(self.vendorId, px + (pw - mark) / 2, py + (ph - mark) / 2, mark, mark,
+                Theme.ink[1], Theme.ink[2], Theme.ink[3]) then
+            love.graphics.setFont(self.titleFont)
+            Theme.set(Theme.ink)
+            love.graphics.printf((self.def.name or "?"):sub(1, 1), px, py + ph / 2 - 20, pw, "center")
+        end
     end
 
     local ty = y + portraitH + 2

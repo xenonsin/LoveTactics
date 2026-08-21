@@ -21,6 +21,8 @@ local Sprite = require("models.sprite")
 local Tileset = require("models.tileset")
 local Muster = require("models.muster") -- for BAND -> pip count; the comparison itself is the caller's
 local Patrol = require("models.patrol") -- the fights that walk their beat (models/patrol.lua)
+local Quest = require("models.quest") -- sponsorOf: which house posted the work standing on a tile
+local VendorIcons = require("ui.vendor_icons") -- ...and that house's own mark, which is what draws
 local Theme = require("ui.theme")
 
 local OverworldMap = {}
@@ -751,10 +753,28 @@ end
 -- hue (an event violet against a combat red). An unrecognised kind draws the crossed swords rather
 -- than nothing at all: an empty box among marked ones reads as a bug, and a stop with no mark of its
 -- own is a fight anyway.
-local function drawMarkerIcon(kind, wx, wy, s, a)
+--
+-- ONE EXCEPTION, AND IT IS THE WHOLE POINT OF THE GROUND: a piece of posted work draws the mark of the
+-- HOUSE THAT POSTED IT (ui/vendor_icons.lua) instead of the generic writ. A day buys a whole ground and
+-- every quest standing on it is on the map at once (models/quest.lua's Quest.trip), so a board can be
+-- carrying the Bastion's column, the Lodge's hunt and the Undercroft's job at the same time -- three
+-- identical scrolls, and no way to tell from the map which shelf the walk over there opens. Which house
+-- you are working for is the decision the whole ground is asking, and until now it was the one fact the
+-- marker did not carry.
+--
+-- The COLOUR stays the ends' gold, and that is deliberate: the wash says "this is an end you can finish
+-- today", the mark says whose. Same split the four hazards are drawn on -- one colour for the category,
+-- a shape for the particular. Work nobody sponsors (the Gate Below) keeps the writ, which is what
+-- VendorIcons.draw's false return is for.
+local function drawMarkerIcon(kind, wx, wy, s, a, enc)
     local pad = s * MARKER_ICON_PAD
+    local x, y, box = wx + pad, wy + pad, s - pad * 2
+    if kind == "quest"
+        and VendorIcons.draw(Quest.sponsorOf(enc and enc.questId), x, y, box, box, 1, 1, 1, a) then
+        return
+    end
     local icon = MarkerIcon[kind] or MarkerIcon.combat
-    icon(wx + pad, wy + pad, s - pad * 2, s - pad * 2, 1, 1, 1, a)
+    icon(x, y, box, box, 1, 1, 1, a)
 end
 
 -- How far above the company a stop stands, in pips -- and only for the kinds that comparison is about.
@@ -1012,7 +1032,7 @@ function OverworldMap:drawMarkers()
                     -- A seated stop has nothing to say beyond what it is, so it wears no state ring: the
                     -- plate, the mark and the pips, the same three the patrols wear.
                     drawMarkerPlate(wx, wy, s, r, g, b, a)
-                    drawMarkerIcon(kind, wx, wy, s, a)
+                    drawMarkerIcon(kind, wx, wy, s, a, c.encounter)
                     drawMarkerPips(wx, wy, s, pipSteps(kind, band), a)
                     love.graphics.setColor(1, 1, 1)
                 end
@@ -1089,7 +1109,7 @@ function OverworldMap:drawPatrols()
             if band == "beneath" then r, g, b = CALM_MARKER[1], CALM_MARKER[2], CALM_MARKER[3] end
 
             drawMarkerPlate(wx, wy, s, r, g, b, 1, PATROL_STATE[p.state] or PATROL_STATE.beat)
-            drawMarkerIcon(kind, wx, wy, s, 1)
+            drawMarkerIcon(kind, wx, wy, s, 1, p.encounter)
             drawMarkerPips(wx, wy, s, pipSteps(kind, band), 1)
 
             -- A slow patrol wears its pace, so "I can get past this one" is readable rather than

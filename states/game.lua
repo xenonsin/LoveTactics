@@ -55,6 +55,7 @@ local CoachBubble = require("ui.coach_bubble")
 local Locale = require("models.locale")
 local Theme = require("ui.theme")
 local ScreenFx = require("ui.screen_fx")
+local VendorIcons = require("ui.vendor_icons") -- the house marks: the checklist is the map's legend
 
 local game = {}
 
@@ -708,6 +709,10 @@ function game:worklist()
         local work = spec.meet and "Reach the meeting" or Combat.objectiveGoal(spec.win)
         out[#out + 1] = {
             id = q.id, name = q.name, work = work,
+            -- WHO POSTED IT, carried through so the row can wear that house's mark
+            -- (ui/vendor_icons.lua) -- the same mark standing on the tile out on the board. The row is
+            -- where the mark is glossed: here it sits beside the sentence saying what the work is.
+            sponsor = q.sponsor,
             done = (game.tripDone or {})[q.id] == true,
         }
     end
@@ -3035,6 +3040,14 @@ end
 local CHECKLIST_W = 330    -- the text column, right of the tick box
 local CHECKLIST_LINE = 20
 local CHECKLIST_MAX_LINES = 2
+-- The row's two marks, left of the sentence and in the order they are read: DID I DO IT (the tick box,
+-- x + 1, ten pixels) and WHOSE IS IT (the house's mark, ui/vendor_icons.lua). The house sits second
+-- because the box is the thing scanned down the column; the mark is looked at once, when the row is
+-- being weighed against the other rows.
+local CHECKLIST_MARK_X = 16
+local CHECKLIST_MARK = 14
+local CHECKLIST_TEXT_X = CHECKLIST_MARK_X + CHECKLIST_MARK + 6
+local CHECKLIST_DONE = { 0.45, 0.48, 0.44 } -- a row already ticked: greyed, and it keeps its place
 
 local function checklistLines(text)
     local _, lines = hudFont:getWrap(text, CHECKLIST_W)
@@ -3070,11 +3083,10 @@ function game:drawChecklist()
     love.graphics.setFont(hudFont)
     local x, y = 16, game:checklistTop()
     for _, row in ipairs(rows) do
-        if row.done then
-            love.graphics.setColor(0.45, 0.48, 0.44)
-        else
-            love.graphics.setColor(Theme.ink)
-        end
+        -- The row's colour, held rather than merely set: the house mark below paints in it and then
+        -- shades its own detail off it, so the sentence has to be able to get it back.
+        local c = row.done and CHECKLIST_DONE or Theme.ink
+        love.graphics.setColor(c)
         -- The box is what makes this a list of work rather than a caption, so it is drawn as a box
         -- rather than typed as a character -- a glyph would depend on the font having it. It sits on the
         -- row's FIRST line; a wrapped continuation is indented under the text, not under the box.
@@ -3083,9 +3095,19 @@ function game:drawChecklist()
             love.graphics.line(x + 3, y + 9, x + 6, y + 12)
             love.graphics.line(x + 6, y + 12, x + 10, y + 6)
         end
+        -- ...and between the box and the sentence, the HOUSE that posted this row, as the same mark
+        -- standing on its tile out on the board (ui/vendor_icons.lua). This is the legend: the mark is
+        -- unreadable on a 32px tile until it has been met once beside the words, and this row is the
+        -- only place on the whole map screen where the work is spelled out. Drawn in the row's own
+        -- colour, so a ticked row's house greys out with it -- what is left to do stays the brighter
+        -- thing on screen. Unsponsored work simply leaves the slot empty rather than shuffling the
+        -- column: two indents in one list would read as two kinds of row.
+        VendorIcons.draw(row.sponsor, x + CHECKLIST_MARK_X, y + 3, CHECKLIST_MARK, CHECKLIST_MARK,
+            c[1], c[2], c[3])
+        love.graphics.setColor(c)
         -- The work, not the title (game:worklist).
         for _, line in ipairs(checklistLines(row.work or row.name)) do
-            love.graphics.print(line, x + 18, y)
+            love.graphics.print(line, x + CHECKLIST_TEXT_X, y)
             y = y + CHECKLIST_LINE
         end
     end

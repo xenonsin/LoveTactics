@@ -322,6 +322,16 @@ each item names how many of that count unlock it (`unlockQuests`, below).
 
 Then point a building at it with `panel = "shop", vendor = "<id>"`.
 
+**And give it a mark.** Every house owns a small vector sigil in `ui/vendor_icons.lua`, keyed by the
+same id — a shield for the Bastion, a keyhole for the Undercroft, a barred gate for the Colosseum. It
+is drawn wherever the house has to be named in a space too small for its name: on the shop's portrait
+plate, on the day's checklist, and — the reason it exists — **on the house's posted work out on the
+ground**. A day buys a whole ground and every quest posted there stands on the map at once
+([progression.md](progression.md)), so three houses' writs can be on one board; the marker's gold says
+"an end you can finish today" and the mark says whose shelf finishing it opens. A vendor with no mark
+silently falls back to a generic scroll and its work becomes indistinguishable from everyone else's,
+so `tests/vendor_icon_spec.lua` fails the build for a house that is missing one.
+
 There is an eighth vendor with no class and no shelf — the **Cafe**, which declares `sells = false`
 and sells meals rather than goods ([meals.md](meals.md)). It keeps a blueprint here only because it
 keeps a shopkeeper: a portrait, a name, and a first-visit greeting.
