@@ -214,15 +214,15 @@ end
 
 -- HOW OFTEN A STOP PAYS SOMETHING NOBODY CAN READ (models/identify.lua).
 --
--- Deliberately thin, and the shape mirrors the voucher purse's: a common fight almost never pays one,
--- so the ordinary stop still reads as the ordinary stop, and the two places worth going out of your way
--- for pay one in four. Across a twelve-stop floor that comes to roughly one or two -- enough that the
+-- The shape mirrors the voucher purse's: the ordinary stop still reads as the ordinary stop -- six
+-- fights in seven pay what they always paid and nothing else -- and the two places worth going out of
+-- your way for pay one in three. Across a twelve-stop floor that comes to two or three: enough that the
 -- walk to the counter is a decision about which to read first, and not enough that it becomes a queue.
 --
 -- THE STAIR GUARDIAN IS ABSENT and that is a decision, not an omission. A general already pays an
 -- authored piece off Descent.DROPS -- the thing her fight was built to hand over. Rolling a husk on top
 -- would put two rewards on one body and quietly make the authored one the consolation prize.
-Spoils.SEALED_CHANCE = { combat = 0.05, elite = 0.25, treasure = 0.25 }
+Spoils.SEALED_CHANCE = { combat = 0.15, elite = 0.35, treasure = 0.35 }
 
 -- How far above the road's own band a CHEST may reach, as a multiple of it. See sealedCandidates.
 Spoils.SEALED_ABOVE = 2.5

@@ -71,9 +71,9 @@ rather than an exception to it.
 
 | source | chance | the id is drawn from |
 |---|---|---|
-| an ordinary won fight | 5% | the carried pool |
-| an elite | 25% | the carried pool |
-| a treasure chest | 25% | **above** the band |
+| an ordinary won fight | 15% | the carried pool |
+| an elite | 35% | the carried pool |
+| a treasure chest | 35% | **above** the band |
 
 **Off a body**, the fight is its own answer to what it should pay: you took his axe, you simply cannot
 read it yet, so the seal hides the *quality* and the connection survives intact. A roster carrying
