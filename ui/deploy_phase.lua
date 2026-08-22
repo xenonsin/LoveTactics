@@ -17,8 +17,9 @@
 --     the log are never both wanted, and sitting there puts each portrait directly under the ground it
 --     is about to be dragged onto. The host passes that rect in (battle's gutterRect) so the two can
 --     never drift apart.
---   THE CONTROLS -- Loadout, Auto-Fill, Clear, Auto and the bell -- stack down the LEFT COLUMN, under
---     the hamburger, in the band the fight's own drawer entries occupy. They were once a row along the
+--   THE CONTROLS -- Loadout, Auto-Fill, Clear, Auto (with the playback-speed cycler paired to its
+--     right while it is on) and the bell -- stack down the LEFT COLUMN, under the hamburger and its
+--     drawer, in the band the fight's own entries occupy. They were once a row along the
 --     foot of the strip, split either side of the hint; a company strip is 480px on the standard eight
 --     column board, and five buttons plus a sentence do not fit across it. The column is where this
 --     screen already keeps its furniture, so the controls read as the screen's rather than the strip's,
@@ -53,6 +54,14 @@ local CARD_GAP = 6
 -- so the column reads as one stack of plates rather than two kinds of button.
 local CTRL_H = 36
 local CTRL_GAP = 8
+-- A control PAIRED to the right of the one above it, sharing its row: the playback-speed cycler beside
+-- the auto switch. The fight's own speed button has exactly this shape and offset beside its Auto entry
+-- (states/battle.lua's speedButton), so the pair reads the same before the bell as after it.
+local PAIR_GAP = 4
+local PAIR_W = 56
+-- The speeds the cycler steps through when the host names none -- a probe, a test harness. A live fight
+-- hands its own list in (states/battle.lua's SPEED_STEPS), so the two can never offer different gears.
+local SPEED_STEPS = { 1, 2, 3 }
 -- The phase's headline takes the THIRD of the fight's three HUD lines -- the row the control hint
 -- occupies once the bell rings. The two above it are the host's and say the same thing before the
 -- fight as during it: the encounter's name (y 20) and its objective (y 52). This line is the one that
@@ -72,6 +81,9 @@ local COMPANY_MAX = 8
 --   column              { x, y, w } -- the top of the left column's free band; the controls stack down it
 --   autoBattle          whether the fight should open handed to the AI (the host's standing preference)
 --   allowAuto           false where auto-battle is forbidden (a tutorial); hides the toggle outright
+--   autoSpeed           the playback speed a watched fight opens at (the host's standing preference)
+--   speedSteps          the gears that cycler steps through; the host's list, so the fight and the
+--                       phase can never offer different ones
 --   onLoadout           opens the Loadout screen over the phase; nil hides the button outright (a
 --                       fight with no player behind it -- a probe, a debug board -- has no stash to
 --                       open). The host owns that modal, exactly as it owns the Settings one.
@@ -95,6 +107,13 @@ function DeployPhase.new(opts)
     -- that carries across fights rather than a per-battle question. See states/battle.lua's autoAll.
     self.allowAuto = opts.allowAuto ~= false
     self.autoBattle = self.allowAuto and opts.autoBattle and true or false
+    -- How fast a WATCHED fight plays, cycled beside the switch that decides it is watched at all. The
+    -- same preference the fight's own cycler steps (states/battle.lua's autoSpeed), seeded here and
+    -- handed back on the commit: a player who armed auto has already said they are watching this one,
+    -- and the pace they want to watch it at is part of that same sentence rather than a control they
+    -- have to go into the drawer for once the bell has rung.
+    self.speedSteps = opts.speedSteps or SPEED_STEPS
+    self.autoSpeed = opts.autoSpeed or self.speedSteps[1]
 
     self.placed = {}        -- { { char, unit, x, y }, ... } in placement order
     self.held = nil         -- the member the keyboard/pad picked up
@@ -288,9 +307,20 @@ function DeployPhase:begin()
         return false
     end
     if self.onCommit then
-        self.onCommit(self:deployedChars(), self:frontLine(), self.placed, self.autoBattle)
+        self.onCommit(self:deployedChars(), self:frontLine(), self.placed, self.autoBattle, self.autoSpeed)
     end
     return true
+end
+
+-- Step the playback speed on to the next gear, wrapping. A no-op unless the fight is actually being
+-- handed over: the cycler is not drawn otherwise, and the key that reaches it must not quietly change a
+-- setting whose control is off screen (the fight's F does the same).
+function DeployPhase:cycleSpeed()
+    if not (self.allowAuto and self.autoBattle) then return end
+    local steps = self.speedSteps
+    local i = 1
+    for n, v in ipairs(steps) do if v == self.autoSpeed then i = n break end end
+    self.autoSpeed = steps[i % #steps + 1]
 end
 
 function DeployPhase:toggleAuto()
@@ -359,12 +389,19 @@ end
 -- The order is the order the decisions are made in: kit the company, stand them up, take it back, say
 -- who plays -- and the bell last, because it is the one that ends the phase.
 function DeployPhase:controls()
-    local out = {}
+    local out, row = {}, 0
     local function add(key, label, enabled, on)
-        local i = #out + 1
-        out[i] = { key = key, label = label, enabled = enabled ~= false, on = on,
-                   rect = { x = self.column.x, y = self.column.y + (i - 1) * (CTRL_H + CTRL_GAP),
+        row = row + 1
+        out[#out + 1] = { key = key, label = label, enabled = enabled ~= false, on = on,
+                   rect = { x = self.column.x, y = self.column.y + (row - 1) * (CTRL_H + CTRL_GAP),
                             w = self.column.w, h = CTRL_H } }
+    end
+    -- A control that shares the row above it, flush to its right: it is a setting ON that control, not
+    -- a step after it, and a stack that spent a whole row on it would say otherwise.
+    local function addBeside(key, label, enabled, on)
+        local prev = out[#out].rect
+        out[#out + 1] = { key = key, label = label, enabled = enabled ~= false, on = on,
+                          rect = { x = prev.x + prev.w + PAIR_GAP, y = prev.y, w = PAIR_W, h = CTRL_H } }
     end
     if self.onLoadout then add("loadout", "Loadout") end
     add("autofill", "Auto-Fill")
@@ -373,6 +410,13 @@ function DeployPhase:controls()
     -- ("begin -- like this"), not a third placement tool. Spelt out rather than ticked -- it has to
     -- answer "played or watched?" on its own, from a glance, with no second control to compare against.
     if self.allowAuto then add("auto", self.autoBattle and "Auto: On" or "Auto: Off", true, self.autoBattle) end
+    -- Playback speed, paired to the switch's right and drawn only while it is thrown -- exactly where
+    -- and when the fight draws its own (states/battle.lua's speedButton). How fast the AI plays is
+    -- meaningless in a fight the player is taking themselves, and a plate that answered nothing would
+    -- still be a plate the eye has to rule out.
+    if self.allowAuto and self.autoBattle then
+        addBeside("speed", tostring(self.autoSpeed) .. "x", true, true)
+    end
     -- The bell says which fight it is ringing for. A player who armed auto and then pressed a button
     -- reading "Begin Battle" would have been told nothing about the fight they were about to not play.
     add("begin", self.autoBattle and "Begin (Auto)" or "Begin Battle", #self.placed > 0)
@@ -398,15 +442,18 @@ function DeployPhase:press(key)
     elseif key == "autofill" then self:autoFill()
     elseif key == "clear" then self:reset()
     elseif key == "auto" then self:toggleAuto()
+    elseif key == "speed" then self:cycleSpeed()
     elseif key == "begin" then self:begin() end
 end
 
 -- The foot of the control stack: what the docked hover boxes below may rise to. The column is shared,
 -- and a tooltip that grew up over the bell would cover the one control the phase cannot do without.
+-- The LOWEST plate rather than the last one in the list, since a paired control (the speed cycler)
+-- shares a row with the entry before it and so is not the stack's foot however late it is added.
 function DeployPhase:controlsBottom()
-    local list = self:controls()
-    local last = list[#list]
-    return last and (last.rect.y + last.rect.h) or self.column.y
+    local bottom = self.column.y
+    for _, c in ipairs(self:controls()) do bottom = math.max(bottom, c.rect.y + c.rect.h) end
+    return bottom
 end
 
 -- ---------------------------------------------------------------------------
@@ -772,6 +819,9 @@ function DeployPhase:keypressed(key)
     -- V, the same key that flips whole-side auto inside the fight (states/battle.lua): one binding for
     -- one idea, before the bell and after it.
     elseif key == "v" then self:toggleAuto()
+    -- F, the same key that steps the playback speed inside the fight -- and dead here for the same
+    -- reason it is dead there: nothing is being watched until auto is armed.
+    elseif key == "f" then self:cycleSpeed()
     -- I, the overworld's own Loadout key (states/game.lua): the screen it opens is the same screen,
     -- so it answers to the same letter before a fight as on the road to it.
     elseif key == "i" then self:press("loadout")
@@ -788,6 +838,9 @@ function DeployPhase:gamepadpressed(_, button)
     elseif button == "a" then self:confirm()
     -- Y, not the fight's A: here A is already "pick up / place", and placement outranks a switch.
     elseif button == "y" then self:toggleAuto()
+    -- Right-stick click cycles the speed, the fight's own binding for it -- one stick for one idea,
+    -- before the bell and after it.
+    elseif button == "rightstick" then self:cycleSpeed()
     -- X for the Loadout, since the overworld's Y is spoken for here. The other face buttons are the
     -- phase's own (place / drop), and the shoulder pair is not a place to hide a screen.
     elseif button == "x" then self:press("loadout")
