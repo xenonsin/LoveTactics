@@ -8,6 +8,7 @@
 -- offset reading 0 (the body already standing on the destination -- a teleport) during the wait.
 
 local CombatFx = require("ui.combat_fx")
+local Colors = require("ui.colors")
 
 -- :new() builds two fonts, and love.graphics.newFont refuses to work without a window -- so a headless
 -- run gets a stub for the length of construction. Nothing under test draws (the fonts are read only by
@@ -287,6 +288,47 @@ return {
             -- No controller to defer against: the exchange plays exactly as it did before flights existed.
             assert(#fx.floaters >= 1, "a blow with no burst controller should resolve immediately")
             assert(not fx:awaiting(victim), "nothing should be held when there is no bolt to wait on")
+        end,
+    },
+    -- The allegiance twin of the shove cases above, and the same invariant: what the model has already
+    -- done must not be drawn until the blow that did it plays. A Charm changes a body's SIDE, so the
+    -- tell is not a sprite standing on the wrong tile but a party member wearing enemy colours (and an
+    -- enemy intent icon) all through the approach walk of the thing coming to take them.
+    {
+        name = "a charmed body keeps the colours it was taken from until the touch lands",
+        fn = function()
+            local fx = newFx()
+            local st = { id = "status_charm" }
+            -- As the view always finds it: the model has already turned the knight, and stashed the
+            -- pair to revert to (data/status/status_charm.lua).
+            local u = { x = 1, y = 1, side = "enemy", control = "ai", statuses = { st },
+                _charmSide = "party", _charmControl = "player", char = { name = "knight" } }
+            local cue = { { type = "status", unit = u, status = st } }
+
+            fx:hold(cue, 1)
+            local side, control = fx:shownAllegiance(u)
+            assert(side == "party" and control == "player",
+                "it must still read as ours while the touch is riding in")
+            assert(fx:unitColor(u) == Colors.allegiance("party", "player"),
+                "...and be painted in the colours that read says")
+
+            fx:hold(cue, -1)
+            side, control = fx:shownAllegiance(u)
+            assert(side == "enemy" and control == "ai",
+                "and change hands on the beat the blow plays, not before it")
+        end,
+    },
+    {
+        name = "a body nobody charmed reads its own side, held cue or not",
+        fn = function()
+            local fx = newFx()
+            local st = { id = "status_burn" }
+            local u = { x = 1, y = 1, side = "party", control = "player", statuses = { st },
+                char = { name = "knight" } }
+            fx:hold({ { type = "status", unit = u, status = st } }, 1)
+            local side, control = fx:shownAllegiance(u)
+            assert(side == "party" and control == "player",
+                "only an allegiance is held back -- an ordinary affliction holds only its own badge")
         end,
     },
 }

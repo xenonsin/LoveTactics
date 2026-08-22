@@ -11,6 +11,14 @@
 -- stayed with the ability, because that is a fact about the spell (it rewards softening a victim
 -- first) rather than about being charmed.
 --
+-- IT ENDS WITH WHOEVER CAST IT. The status remembers the body that turned it (`charmer`, stamped
+-- below beside the flip), and Combat.releaseCharmedBy hands back everyone that body was holding the
+-- moment it leaves the field -- felled, or dismissed. Cutting down the singer is the counterplay this
+-- circle is meant to be read as, and a charm that outlived its charmer took that away: killing the
+-- Chorister bought nothing on the turn it mattered, and left a party member swinging at their own line
+-- on behalf of a corpse. Ground is the one charm nobody holds (see the turner fallback below), so a
+-- briar's charm answers to no death and simply runs its short clock.
+--
 -- A quest objective is not taken: `bossProof` refuses this outright on a `boss` body, which is what
 -- every general and mark in the game leans on (see Status.isImmune). That gate moved here with the
 -- flip, for the same reason -- the briar cannot be asked to remember it.
@@ -51,6 +59,12 @@ return {
         local takes = (turner and turner.side ~= u.side and turner.side)
             or ((u.side == "party") and "enemy" or "party")
         u.side, u.control = takes, "ai"
+        -- ...and WHO is holding it, on the status instance -- the same shape Shout stamps a Taunt's
+        -- `.taunter` in, and read back by the same helper (Status.removePointingAt). Stamped here,
+        -- inside the take, rather than on every application: a refresh returns above without
+        -- re-stashing, so the body keeps answering to the one whose side it is actually standing on
+        -- instead of to whoever last topped the duration up. Nil for ground, which holds nobody.
+        ctx.status.charmer = turner
     end,
     -- A body that falls while charmed comes home. Statuses wind down on a corpse rather than being
     -- stripped, so without this the fight can end with one of your own lying on the enemy's side --

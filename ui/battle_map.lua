@@ -1385,7 +1385,7 @@ function BattleMap:drawUnits()
                 -- boss's border runs heavier. Multiplied by `tint`/`a` so it fades and dims with the body.
                 local dw, dh = sw * scale, sh * scale
                 local dmin = math.min(dw, dh)
-                local sc = Colors.unit(u)
+                local sc = self:unitColor(u)
                 love.graphics.setLineWidth(math.max(1.5, dmin * (u.char.boss and 0.045 or 0.03)))
                 love.graphics.setColor(sc[1] * tint, sc[2] * tint, sc[3] * tint, a)
                 love.graphics.rectangle("line",
@@ -1394,7 +1394,7 @@ function BattleMap:drawUnits()
                 love.graphics.setLineWidth(1)
             else
                 -- Token fallback: colored disc with the unit's initial, in the unit's side colour.
-                local c = Colors.unit(u)
+                local c = self:unitColor(u)
                 love.graphics.setColor(c[1] * tint, c[2] * tint, c[3] * tint, a)
                 love.graphics.circle("fill", cx, cy, disc)
                 love.graphics.setFont(self.font)
@@ -1619,6 +1619,16 @@ function BattleMap:statusAt(px, py)
     return nil
 end
 
+-- The colour a body reads as: its side, except while a Charm has flipped it in the model and the blow
+-- that did so has not yet been seen to land -- then it keeps the colours it was taken from, so the
+-- turn does not give itself away ahead of the impact (ui/combat_fx.lua shownAllegiance). Every plate
+-- and bar on the board asks through here so they turn on the same frame. Falls back to the live side
+-- when there is no fx controller (a board drawn outside a battle).
+function BattleMap:unitColor(u)
+    if self.fx then return self.fx:unitColor(u) end
+    return Colors.unit(u)
+end
+
 -- Thin HP bar along the bottom of the unit's tile, filled in the unit's SIDE colour (blue ally /
 -- red foe) -- with no ring on the token, this bar is what says whose unit this is. The hue is spent
 -- on the side, so how hurt the unit is reads from the bar's length, darkened toward empty by
@@ -1627,7 +1637,7 @@ end
 function BattleMap:drawHpBar(u, wx, wy, alpha)
     local al = alpha or 1
     local hp = u.char.stats.health
-    local side = Colors.unit(u)
+    local side = self:unitColor(u)
     -- The shown value lags the model so the bar drains smoothly toward the new HP after a hit; the
     -- aimed-action preview slice below still projects off the true current HP.
     local shown = (self.fx and self.fx:displayHp(u)) or (hp and hp.current) or 0

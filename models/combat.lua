@@ -5390,6 +5390,25 @@ local function unmaskDecoy(combat, decoy)
     end
 end
 
+-- A CHARM IS SOMEBODY'S WORKING, AND IT ENDS WHEN THEY DO. `gone` has just left the field, so every
+-- body it turned comes home: the status names its charmer (data/status/status_charm.lua stamps it
+-- beside the flip), and stripping it fires the onExpire that puts the side and the command back.
+--
+-- The Taunt release in killUnit is the same helper doing the same job for the same reason, and this is
+-- the louder half of it. Killing the thing that took your knight is the counterplay the whole Lust
+-- circle is written to be read as -- so a charm that outlives its charmer does not merely linger, it
+-- makes cutting the singer down worth nothing on the one turn it mattered. Announced per freed body,
+-- because a unit changing sides mid-fight is a board change the player must be able to read; the line
+-- names the returning body rather than how the holder went, so it is true of a death and a dismissal
+-- alike. Ground holds nobody (a briar sets no charmer), so a terrain charm matches no exit here and
+-- runs its own short clock, which is exactly the unsided reading terrain is meant to have.
+local function releaseCharmedBy(combat, gone)
+    for _, freed in ipairs(Status.removePointingAt(combat, "status_charm", "charmer", gone)) do
+        Combat.logEvent(combat, "status",
+            string.format("%s comes back to itself.", unitName(freed)), freed)
+    end
+end
+
 -- Take a summon off the field without killing it: its summoner fell, or the binding that held it
 -- ran out (Summon.tick). Not a death -- nothing struck it -- so it is logged as vanishing rather
 -- than as a defeat, and `text` lets the caller say why. Everything its presence held up is unwound:
@@ -5412,6 +5431,9 @@ function Combat.dismiss(combat, unit, text)
     -- As in killUnit: a dismissed banner's ground goes with it, however it left the field.
     Hazard.dropOwnedBy(combat, unit)
     Combat.releaseHeldBy(combat, unit)
+    -- ...and so does anyone it had charmed. A conjured charmer winking out is the same fact as one
+    -- being cut down, from the victim's side of it: there is nobody left to be fighting for.
+    releaseCharmedBy(combat, unit)
     leaveTurn(combat, unit) -- and its turn, if it was standing in one (see leaveTurn)
 end
 
@@ -5763,6 +5785,12 @@ local function killUnit(combat, target)
     -- duration; stripping it here keeps the board honest. Each foe holds at most one, refreshed rather
     -- than stacked, but filter on `.taunter` anyway so a future multi-taunter case stays correct.
     Status.removePointingAt(combat, "status_taunt", "taunter", target)
+
+    -- ...and the same argument for the bond that runs the other way: a body this one had TAKEN comes
+    -- back to its own line now that there is nobody left to fight for (see releaseCharmedBy). Fired
+    -- before the tallies below on purpose -- a unit that just came home is one of yours again, and the
+    -- `allyDown`/`foeDown` sweep reads `u.side` to decide which of the two it banks.
+    releaseCharmedBy(combat, target)
 
     -- Every surviving ally of the fallen banks an `allyDown` -- what a signature that answers a
     -- comrade's death gates on (Combat.tally). A summon/decoy leaving the field is not a comrade lost,

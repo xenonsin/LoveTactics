@@ -14,6 +14,7 @@
 -- Everything here is created lazily inside :new()/on first use, never at require-time, so the model's
 -- headless tests (which never touch the UI layer) stay free of love.graphics.
 
+local Colors = require("ui.colors")
 local ScreenFx = require("ui.screen_fx")
 local BurstFx = require("ui.burst_fx")
 local Sound = require("models.sound")
@@ -181,6 +182,38 @@ end
 -- so an affliction never surfaces ahead of the blow that carries it (ui/battle_map.lua statusBadgeRects).
 function CombatFx:statusPending(status)
     return self.heldStatus[status] ~= nil
+end
+
+-- The side and command a unit should be DRAWN with right now, which is not always the pair it holds.
+--
+-- Charm is the one status that changes a body's ALLEGIANCE (data/status/status_charm.lua), and the
+-- model flips it the instant the cast resolves -- which is a whole approach walk and an impact beat
+-- before the blow is seen to land. Left alone the board reads the turn out of order and gives the
+-- ending away: a party member goes red, moves to the enemy's colours and starts wearing an enemy
+-- intent icon while the thing that took them is still three tiles off walking in, and only then does
+-- the touch land. The badge was already held back for exactly this reason (:statusPending, above);
+-- this is the rest of the same sentence, and the two now surface together.
+--
+-- Keyed off the very hold the badge uses, so there is one clock and no second latch to fall out of
+-- sync: while the charm's landing cue is still owed the unit draws as the side it was taken FROM
+-- (`_charmSide`/`_charmControl`, the pair the status stashed to revert to). Drawing only -- the model,
+-- the AI and every rule still read the true side, because the body really has changed hands.
+function CombatFx:shownAllegiance(unit)
+    if type(unit) ~= "table" then return unit, nil end
+    if unit._charmSide then
+        for _, st in ipairs(unit.statuses or {}) do
+            if st.id == "status_charm" and self:statusPending(st) then
+                return unit._charmSide, unit._charmControl
+            end
+        end
+    end
+    return unit.side, unit.control
+end
+
+-- ...and that pair as a colour, so every surface that paints a body asks one question and gets one
+-- answer (ui/battle_map.lua's token frame and HP bar, ui/combat_panel.lua's cards).
+function CombatFx:unitColor(unit)
+    return Colors.allegiance(self:shownAllegiance(unit))
 end
 
 -- The tile gap between two units, king's-move: an attacker two or more tiles from the body it struck

@@ -80,10 +80,20 @@ end
 -- its side colour. Falls back to Colors.side for anything that isn't a unit table.
 function Colors.unit(unit)
     if type(unit) ~= "table" then return Colors.side(unit) end
-    if unit.side == "party" and (unit.control == "ai" or unit.control == "none") then
+    return Colors.allegiance(unit.side, unit.control)
+end
+
+-- The same answer off a bare (side, control) pair rather than off a unit. Split out because the
+-- allegiance a body is DRAWN with is not always the one it currently holds: a Charm flips the unit in
+-- the model the instant the cast resolves, but the view must keep drawing the old colours until the
+-- blow that turned it is seen to land (ui/combat_fx.lua's shownAllegiance, which reads the pre-charm
+-- side back off the unit and hands it here). The rule about which colour a pair maps to lives in one
+-- place all the same -- two copies of it is how the board and the turn strip start disagreeing.
+function Colors.allegiance(side, control)
+    if side == "party" and (control == "ai" or control == "none") then
         return Colors.ALLY
     end
-    return Colors.side(unit.side)
+    return Colors.side(side)
 end
 
 -- `color` darkened toward empty by `ratio` (1 = full, 0 = empty), as r, g, b. Lets a health bar

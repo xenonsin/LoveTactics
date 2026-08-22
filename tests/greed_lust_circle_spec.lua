@@ -263,6 +263,50 @@ return {
         end,
     },
     {
+        name = "cut the singer down and what it took comes back",
+        fn = function()
+            local map = Fixture.new(10, 10)
+            local c = Fixture.combat(map,
+                { unit("character_knight", 4, 4) },
+                { unit("character_chorister", 5, 4) })
+            local chor, victim
+            for _, u in ipairs(c.units) do
+                if u.side == "party" then victim = u else chor = u end
+            end
+            openTurn(c, chor)
+            assert(Combat.useItem(c, chor, itemNamed(chor.char, "weapon_petal_touch"), victim.x, victim.y),
+                "the chorister sings")
+            assert(Status.has(victim, "status_charm") and victim.side == "enemy",
+                "and the knight is standing on their line")
+
+            -- The counterplay the circle is written to be read as: kill the thing that took it.
+            Combat.dealFlatDamage(c, chor, 9999, { "physical" }, "test")
+            assert(not chor.alive, "the singer falls")
+            assert(not Status.has(victim, "status_charm"), "and the charm falls with it")
+            assert(victim.side == "party" and victim.control ~= "ai",
+                "the knight is yours again, command and all")
+        end,
+    },
+    {
+        name = "ground charms nobody, so no death frees it",
+        fn = function()
+            local map = Fixture.new(10, 10)
+            local c = Fixture.combat(map,
+                { unit("character_knight", 4, 4) },
+                { unit("character_chorister", 8, 8) })
+            local chor, victim
+            for _, u in ipairs(c.units) do
+                if u.side == "party" then victim = u else chor = u end
+            end
+            -- A briar names no applier: the charm is the ground's, and the ground outlives everyone.
+            Status.apply(c, victim, "status_charm", { duration = 6 })
+            assert(victim.side == "enemy", "the flowers take it all the same")
+            Combat.dealFlatDamage(c, chor, 9999, { "physical" }, "test")
+            assert(Status.has(victim, "status_charm"),
+                "a body nobody is holding is not let go by a death")
+        end,
+    },
+    {
         name = "the Beloved makes the choice worse rather than the fight",
         fn = function()
             local dev = Item.defs["utility_beloveds_devotion"]

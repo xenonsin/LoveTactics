@@ -79,8 +79,10 @@ local RESOURCES = {
 }
 
 -- The fill colour for `unit`'s `key` pool -- the side colour for health, the pool's own otherwise.
-local function barColor(res, unit)
-    return res.color or Colors.unit(unit)
+-- A method rather than a bare local so the health case can go through :unitColor and inherit the
+-- held-allegiance read with everything else that paints a body.
+function CombatPanel:barColor(res, unit)
+    return res.color or self:unitColor(unit)
 end
 
 -- Short tag drawn beside each turn-strip bar (tinted with the pool colour), so a bar reads without
@@ -282,6 +284,24 @@ end
 function CombatPanel:shownHealth(unit)
     if self.fx then return self.fx:displayHp(unit) end
     return unit.char.stats.health.current
+end
+
+-- The colour the strip should draw `unit` in -- its side, except while a Charm has flipped it in the
+-- model and the blow that turned it has not yet been seen to land, when it keeps the colours it was
+-- taken from (ui/combat_fx.lua shownAllegiance). The strip asks the same question the board does, off
+-- the same hold, so a body does not change hands on one surface a beat before the other. Falls back
+-- to the live side when no fx controller is wired, exactly as :shownHealth does.
+function CombatPanel:unitColor(unit)
+    if self.fx then return self.fx:unitColor(unit) end
+    return Colors.unit(unit)
+end
+
+-- Is `unit` drawn as ONE OF OURS right now? The same held read, for the places that branch on faction
+-- rather than paint with it -- notably the enemy-intent icon, which on an unheld read would announce a
+-- charm a whole beat before the touch that laid it, on the very card the player is watching.
+function CombatPanel:shownParty(unit)
+    if self.fx then return (self.fx:shownAllegiance(unit)) == "party" end
+    return unit.side == "party"
 end
 
 -- The current-turn (tall) card is a FIXED anchor -- it never slides or grows; whoever is acting simply
@@ -847,7 +867,7 @@ function CombatPanel:drawPortrait(unit, px, py, ps, a)
         local scale = math.min(ps / sw, ps / sh)
         love.graphics.draw(sprite, px + ps / 2, py + ps / 2, 0, scale, scale, sw / 2, sh / 2)
     else
-        local c = Colors.unit(unit)
+        local c = self:unitColor(unit)
         love.graphics.setColor(c[1] * 0.8, c[2] * 0.8, c[3] * 0.8, a)
         love.graphics.rectangle("fill", px, py, ps, ps, 4, 4)
         local big = ps >= 48
@@ -931,7 +951,7 @@ function CombatPanel:drawPoolBars(unit, rx, rw, topY, alpha)
     for _, r in ipairs(rows) do valueColW = math.max(valueColW, self.smallFont:getWidth(r.text) + 2) end
     for i, r in ipairs(rows) do
         local rowY = topY + (i - 1) * 13
-        local c = barColor(r.res, unit)
+        local c = self:barColor(r.res, unit)
         -- The tag/glyph tint: the bar's colour lifted toward white so it stays legible at 9px on the
         -- dark card.
         local tr, tg, tb = c[1] * 0.6 + 0.28, c[2] * 0.6 + 0.28, c[3] * 0.6 + 0.28
@@ -976,7 +996,7 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha)
     -- card carries that in its HP bar; a ghost shows no stats, so faction rides on the dash, the
     -- portrait ring and the name instead (blue ours / green uncommanded / red theirs).
     if entry.preview then
-        local fc = Colors.unit(unit)
+        local fc = self:unitColor(unit)
         -- The plate keeps its slate, washed a touch toward the side's hue so the whole card, not just
         -- its edge, leans the right way at a glance.
         local pl = Theme.panel2
@@ -1010,7 +1030,10 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha)
     -- A real card. p = 0 is the slim upcoming look, p = 1 the tall framed current card. `forceProm`
     -- (the fading frame card in an "out" hand-off) pins it full-height regardless of cardProm.
     local isCurrent = (unit == self.view.current)
-    local isParty = unit.side == "party"
+    -- The HELD read (see :shownParty): a body the model has just charmed still reads as ours until the
+    -- blow that took it is seen to land, so its card does not start wearing an enemy intent icon while
+    -- the thing that turned it is still walking in.
+    local isParty = self:shownParty(unit)
     local p = entry.forceProm or self.cardProm[unit] or (isCurrent and 1 or 0)
     -- Top-anchored: the card hangs from its slot top (ey) and its height grows with p, so a card
     -- dropping into the frame slides its top down and fills the slot as it arrives.
@@ -1056,7 +1079,7 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha)
         -- This card spends its name row on the SPELL and its bar row on the wind-up cue, so it carries
         -- no HP bar to say whose cast is landing. The faction ring stands in, the same mark the ghost
         -- and the acting card wear.
-        local fc = Colors.unit(unit)
+        local fc = self:unitColor(unit)
         love.graphics.setColor(fc[1], fc[2], fc[3], 0.85)
         love.graphics.setLineWidth(2)
         love.graphics.rectangle("line", px, py, ps, ps, 4, 4)
@@ -1084,7 +1107,7 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha)
     -- border now bone-gold trim, faction rides here as a portrait accent -- blue ours / red theirs.
     -- Fades in with prominence so a slim upcoming card's portrait stays plain.
     if p > 0.5 then
-        local fc = Colors.unit(unit)
+        local fc = self:unitColor(unit)
         love.graphics.setColor(fc[1], fc[2], fc[3], (p - 0.5) / 0.5 * ca)
         love.graphics.setLineWidth(2)
         love.graphics.rectangle("line", px, py, ps, ps, 4, 4)
@@ -1120,7 +1143,7 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha)
         local delta = pv and ((pv.heal or 0) - (pv.damage or 0)) or 0
         local reserved = Combat.reservedAmount(unit.char, "health")
         local effMax = Combat.unreservedMax(unit.char, "health") + reserved
-        drawResourceBar(rx, dy + 22, rw, 6, self:shownHealth(unit), effMax, Colors.unit(unit),
+        drawResourceBar(rx, dy + 22, rw, 6, self:shownHealth(unit), effMax, self:unitColor(unit),
             delta, pv and pv.lethal, reserved, (1 - p) * ca)
     end
     if p > 0.02 then
@@ -1138,7 +1161,7 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha)
     -- visibly turns from ghost into real. Only for the real queue card (not the fading frame card,
     -- `alpha`) and only for a card that actually had a ghost (dashed = true).
     if sd and sd.dashed and sd.t > 0.02 and not alpha then
-        self:dashedRect(ex, dy, ew, dh, 0.9 * sd.t, Colors.unit(unit))
+        self:dashedRect(ex, dy, ew, dh, 0.9 * sd.t, self:unitColor(unit))
     end
 end
 

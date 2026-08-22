@@ -312,7 +312,12 @@ end
 -- on the field. For statuses that bind one unit to another (Taunt's `.taunter`, stamped by Shout):
 -- when `who` leaves the field the bond has no other end, so the status -- and its badge -- should go
 -- with it. Fires each removed status's onExpire so it unwinds exactly as a natural expiry would.
+--
+-- Returns the units it stripped one from, in board order (empty when the bond held nobody). A Taunt
+-- ending is a compulsion quietly lifting and needs no announcement, but a Charm ending is a body
+-- changing sides mid-fight -- the caller has to be able to name who came home (Combat.releaseCharmedBy).
 function Status.removePointingAt(combat, id, field, who)
+    local freed = {}
     for _, unit in ipairs(combat.units or {}) do
         local list = unit.statuses
         if list then
@@ -320,10 +325,12 @@ function Status.removePointingAt(combat, id, field, who)
                 if list[i].id == id and list[i][field] == who then
                     local s = table.remove(list, i)
                     if s.def.onExpire then s.def.onExpire(ctxFor(combat, unit, s)) end
+                    freed[#freed + 1] = unit
                 end
             end
         end
     end
+    return freed
 end
 
 -- Strip every DEBUFF from `unit` (a status whose def sets `debuff = true`: Burn, Wet, Stun, Root,
