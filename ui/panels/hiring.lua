@@ -32,8 +32,8 @@
 --
 -- AND WITH NO TOKEN THERE IS NO BUTTON. Not a greyed one -- a control draws only where it is legal,
 -- and a dead plate in the middle of an empty room is an invitation the room cannot honour. What stands
--- there instead is the sentence saying where tokens come from, which is the one thing a player looking
--- at an empty rift actually needs.
+-- there instead is one line saying the rift is shut, which is the whole of what a player looking at an
+-- empty rift needs from this room -- the tokens are downstairs and no wording here changes that.
 
 local CloseButton = require("ui.close_button")
 local Debug = require("models.debug")
@@ -133,11 +133,25 @@ function Hiring:layout()
     local best = Voucher.count(self.player) > 0
     self.best = best
 
-    local prompt = self.notice or (best
-        and "A token holds it open long enough for one of them to come through. Which one is not " ..
-            "yours to say."
-        or "Nothing to open it with. A circle beaten below hands one up, a spirit on every floor holds " ..
-           "one out, and now and then a body falls with one on it.")
+    -- AN EMPTY PURSE OUTRANKS THE NOTICE, and says so in its own words rather than carrying the last
+    -- crossing's. The arrival line used to be the ONLY thing left standing here -- the crossing that
+    -- spent the final token dropped the room to its no-token layout, which draws no plate and no count,
+    -- so "Pim comes through." sat alone in a column with nothing under it and read as a panel that had
+    -- failed to draw. The news is a moment old and the state is now: the state wins.
+    --
+    -- ONE LINE, AND IT IS THE STATE. The room used to spend the empty visit explaining where tokens
+    -- come from -- a circle beaten below, a spirit on a floor, a body that falls with one on it -- which
+    -- is three places named to somebody who is standing in none of them and cannot act on any of it
+    -- from here. A player looking at a shut rift needs to know it is shut. They find out where the
+    -- tokens are by descending, which is the only way they were ever going to.
+    local prompt
+    if best then
+        prompt = self.notice
+            or "A token holds it open long enough for one of them to come through. Which one is not " ..
+               "yours to say."
+    else
+        prompt = "No heroic spirits to summon."
+    end
     self.prompt = prompt
 
     -- THE COLUMN RIGHT OF THE KEEPER is what everything below measures against, not the whole box.
