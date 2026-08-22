@@ -7,9 +7,19 @@
 --
 -- A THIN WRAPPER OVER ui/panels/choice.lua rather than a panel of its own, and that is the whole design:
 -- what an inn actually offers is one yes-or-no with a price on it, and Choice already draws a titled
--- card with two options, handles mouse, keyboard and pad, and closes on Esc. The prices and the spend
+-- card of options, handles mouse, keyboard and pad, and closes on Esc. The prices and the spend
 -- live in models/gate.lua so a spec can drive them without a window; this is the two sentences the
 -- player reads before pressing yes.
+--
+-- THERE IS ONE ROW, not two. The card used to carry a "Not tonight" row beside the rooms, which is the
+-- door out drawn twice: the X in the corner, Esc and B already leave, they leave from every panel in
+-- the game, and a decline that costs nothing and changes nothing does not need a card of its own to be
+-- discoverable. What is left is the only thing this counter actually sells.
+--
+-- THE PURSE IS ON THE CARD, in the keeper pane where every shelf in the city prints it. A bed is priced
+-- per head and the price climbs, so what the player is really deciding is whether the night leaves
+-- enough for the day after it -- and that is unanswerable from a panel that shows the bill and not the
+-- balance. `keeper.gold` is re-read on every rebuild so the number moves the moment the bill is paid.
 --
 -- IT HAS A FACE NOW, and it did not before. Every other counter in the city draws its keeper down the
 -- left of its panel -- the Cafe, the Touchstone, the Crossing, the seven houses -- and this was the
@@ -60,6 +70,10 @@ function Inn.new(opts)
         price = Gate.innPrice(player)
         hurt = #(Wound.wounded(player) or {})
         canPay = (player and player.gold or 0) >= price
+        -- Re-read rather than snapshotted at construction: the card is rebuilt the moment the bill is
+        -- paid, and a purse that still said what it held before the night would be the one line on the
+        -- panel lying about what just happened.
+        keeper.gold = player and player.gold or 0
 
         local prompt = notice
         if not prompt then
@@ -102,18 +116,9 @@ function Inn.new(opts)
                                 or "There is nobody to take a room."))
                     end,
                 },
-                {
-                    label = "Not tonight",
-                    desc = "Keep the coin.",
-                    accent = { 0.50, 0.68, 0.92 },
-                    cb = function() if opts.onClose then opts.onClose() end end,
-                },
             },
             onClose = opts.onClose,
         })
-        -- A dead first row must not open focused on itself: the keyboard and the pad land on the one
-        -- thing in the room that still does something.
-        if why then self.focus = 2 end
     end
     rebuild()
 

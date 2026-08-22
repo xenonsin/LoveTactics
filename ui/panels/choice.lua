@@ -16,12 +16,19 @@
 -- player nothing but the door out, with no line saying why they came. It stays, dimmed, wearing the
 -- reason in its own description.
 --
--- A KEEPER PANE is optional and additive: pass `keeper = { name=, sprite=, line= }` and the box grows a
--- recessed column down its left with the portrait fitted inside it, the counter's name under that and
--- its own sentence beneath -- the same shape every shelf in the city uses (ui/panels/cafe.lua,
+-- A KEEPER PANE is optional and additive: pass `keeper = { name=, sprite=, line=, gold=? }` and the box
+-- grows a recessed column down its left with the portrait fitted inside it, the counter's name under that
+-- and its own sentence beneath -- the same shape every shelf in the city uses (ui/panels/cafe.lua,
 -- ui/panels/hiring.lua, ui/panels/touchstone.lua). It is what lets a counter whose whole offer is one
 -- yes-or-no still have a face behind it, without that counter growing a three-column panel it has no
 -- content for. Callers that pass no keeper are laid out exactly as they were.
+--
+-- `keeper.gold` is the player's purse and it draws in the SAME PLACE it draws at every other counter:
+-- the first amber line under the portrait, above the name, not tucked in beside the price. A counter that
+-- charges is a counter where "can I afford the next one too" is the question being asked, and the answer
+-- should be in the spot the player already looks at on the shelves rather than a spot per room. It is a
+-- plain number the caller re-passes whenever it rebuilds the card, so spending is visible without this
+-- widget holding a reference to the player.
 
 local CloseButton = require("ui.close_button")
 local InputMode = require("input_mode")
@@ -46,7 +53,13 @@ local KEEPER_GAP = 22
 -- figure. A yes-or-no card is short (two options and a prompt is barely 300px) and a portrait fitted
 -- into what is left over is always the thing that gets squeezed, which is why this height is fixed and
 -- the card grows to meet it rather than the other way round.
-local KEEPER_MIN_H = 532
+--
+-- Split so a purse line pays for its own room instead of eating the portrait's: the foot is what sits
+-- under the picture (name, sentence, and the gold line when there is one) and the base is everything
+-- else -- 356 of portrait, 24 of pad and the 54/22 margins the box keeps above and below.
+local KEEPER_BASE_H = 456
+local KEEPER_FOOT_H = 76
+local KEEPER_GOLD_H = 24
 -- A card's height, and the reason it is a default rather than a constant. 70 holds a label and ONE line of
 -- description, which is what a dilemma's options are (models/crossroads.lua) -- a second line lands with
 -- its descenders across the card's bottom border. A caller whose rows have more to say than that passes
@@ -81,8 +94,10 @@ function Choice.new(opts)
     -- width they have everywhere else, so a caller that grows a face does not also get shorter rows.
     self.keeper = opts.keeper
     self.keeperFont = Theme.display(18)
+    self.goldFont = Theme.body(15)
     self.lineFont = Theme.body(13)
     local keeperCol = self.keeper and (KEEPER_W + KEEPER_GAP) or 0
+    self.keeperFootH = KEEPER_FOOT_H + ((self.keeper and self.keeper.gold) and KEEPER_GOLD_H or 0)
 
     self.boxW = BOX_W + keeperCol
     -- Prompt wraps above the options; height follows it.
@@ -96,7 +111,7 @@ function Choice.new(opts)
     local natural = self.optTop + #self.options * (self.optH + OPT_GAP) + 22
     self.boxH = natural
     if self.keeper then
-        self.boxH = math.max(natural, KEEPER_MIN_H)
+        self.boxH = math.max(natural, KEEPER_BASE_H + self.keeperFootH)
         -- The slack the portrait bought is split above and below the stack rather than all dumped
         -- under it: options left hanging off the title read as a card that lost its bottom half.
         self.optTop = self.optTop + (self.boxH - natural) / 2
@@ -160,7 +175,7 @@ function Choice:drawKeeper()
     Theme.set(Theme.frame)
     love.graphics.rectangle("line", r.x, r.y, r.w, r.h, Theme.R, Theme.R)
 
-    local pad, footH = 12, 76
+    local pad, footH = 12, self.keeperFootH
     local px, py = r.x + pad, r.y + pad
     local pw, ph = r.w - pad * 2, r.h - pad * 2 - footH
 
@@ -179,6 +194,14 @@ function Choice:drawKeeper()
     end
 
     local ty = py + ph + 10
+    -- THE PURSE, in the shelves' amber and the shelves' position: first line under the portrait, so the
+    -- number a player reads before every price in the city does not move because this counter sells beds.
+    if self.keeper.gold then
+        love.graphics.setFont(self.goldFont)
+        Theme.set(Theme.accentAmber)
+        love.graphics.print(self.keeper.gold .. " gold", px, ty)
+        ty = ty + KEEPER_GOLD_H
+    end
     if self.keeper.name then
         love.graphics.setFont(self.keeperFont)
         Theme.set(Theme.ink)
@@ -253,7 +276,15 @@ function Choice:draw()
     end
 
     local leaveHint = self.onClose and (InputMode.isGamepad() and "  -  B leave" or "  -  Esc leave") or ""
-    local hint = (InputMode.isGamepad() and "D-pad choose  -  A confirm" or "Arrows choose  -  Enter confirm") .. leaveHint
+    -- A one-row card has nothing to walk between, and telling the player to walk it is the hint teaching
+    -- a control that does nothing. Confirm and leave are the whole of it (ui/panels/inn.lua).
+    local pad = InputMode.isGamepad()
+    local hint
+    if #self.options <= 1 then
+        hint = (pad and "A confirm" or "Enter confirm") .. leaveHint
+    else
+        hint = (pad and "D-pad choose  -  A confirm" or "Arrows choose  -  Enter confirm") .. leaveHint
+    end
     love.graphics.setFont(self.hintFont)
     love.graphics.setColor(0.55, 0.6, 0.7)
     love.graphics.printf(hint, cx, by + self.boxH - 22, BOX_W, "center")

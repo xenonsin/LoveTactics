@@ -11,6 +11,11 @@
 --   a dead row  "Take the rooms" is drawn and refused when there is nothing to set. Coming home already
 --               restores health and mana for free (Player.restore), so a night buys exactly one thing --
 --               the bones -- and with none to set, pressing it would take the gold and change nothing.
+--   a purse     the gold the company is carrying, in the keeper pane, where every shelf in the city
+--               prints it. The bill climbs per head, so the decision is what the night leaves behind.
+--
+-- And one row, not two: the X, Esc and B are the way out of every panel in the game, so a "Not tonight"
+-- card beside the rooms was the same door drawn twice.
 --
 -- The panel half borrows tests/vendor_service_spec.lua's stubbed-font trick, since Choice.new bakes
 -- fonts and love.graphics.newFont throws with no window.
@@ -122,7 +127,6 @@ return {
                 local purse = p.gold
                 local panel = openInn(p)
                 assert(rooms(panel).disabled, "the rooms are still live with nobody to mend")
-                assert(panel.focus == 2, "the dead row opened focused on itself")
 
                 panel:choose(1)
                 assert(p.gold == purse, "a refused row took the money anyway")
@@ -145,7 +149,41 @@ return {
                 -- The card is rebuilt in place (the proxy forwards to whichever is current), so the row
                 -- the player just pressed is the one that has to be dark now.
                 assert(rooms(panel).disabled, "the rooms stayed live with nothing left to set")
-                assert(panel.focus == 2, "focus was left sitting on a dead row")
+            end)
+        end,
+    },
+    {
+        -- The way out is the X in the corner, Esc and B -- the same exit every panel in the game keeps.
+        -- A "Not tonight" row was the door drawn twice, and this is what stops it coming back.
+        name = "the card offers the rooms and nothing else, and still lets the player leave",
+        fn = function()
+            stubFonts(function()
+                local closed = false
+                local Inn = require("ui.panels.inn")
+                local panel = Inn.new({ player = company(3, 2), vendor = INN,
+                    onClose = function() closed = true end })
+                assert(#panel.options == 1, "the Inn's card carries a row that is not the rooms")
+
+                panel:close()
+                assert(closed, "the only way out of the Inn does not open")
+            end)
+        end,
+    },
+    {
+        -- What is really being decided at a counter whose price climbs per head: whether the night
+        -- leaves enough for the day after it. The keeper pane prints it where every shelf prints it.
+        name = "the purse is on the card, and it moves when the night is paid for",
+        fn = function()
+            stubFonts(function()
+                local p = company(3, 2)
+                local price = Gate.innPrice(p)
+                local purse = p.gold
+                local panel = openInn(p)
+                assert(panel.keeper.gold == purse, "the Inn does not show what the company is carrying")
+
+                panel:choose(1)
+                assert(panel.keeper.gold == purse - price,
+                    "the purse still says what it held before the night")
             end)
         end,
     },
