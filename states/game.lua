@@ -46,6 +46,8 @@ local PartyStatus = require("ui.party_status")
 local RelicStrip = require("ui.relic_strip")
 local OverworldAbility = require("models.overworld_ability")
 local Descent = require("models.descent") -- a run as a stack of floors, their circles, the landing between
+local Seed = require("models.seed") -- what this playthrough is made of; the ground is dealt off it
+local SeedReadout = require("ui.seed_readout") -- ...and what says so on screen, in a dev build only
 local Experience = require("models.experience") -- the one ladder: what turns banked xp into levels
 local Relic = require("models.relic")
 local Voucher = require("models.voucher") -- vouchers off the floors; the hall is what spends them
@@ -1039,7 +1041,23 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
             -- rather than defaulted on, because lifting a fight off a cell changes what cell.encounter
             -- means and every placement spec reads exactly that.
             patrols = true,
-            seed = os.time() + math.floor(((love.timer and love.timer.getTime()) or 0) * 1000) % 100000,
+            -- THE GROUND IS DEALT OFF THE SAVE'S SEED, not off the clock (models/seed.lua).
+            --
+            -- This was a clock read, and it was the line that made the seed everything else in the mode
+            -- reproduces from a half-truth: the circles, the deal of houses and the guard over a dropped
+            -- pack all came back the same, and then the company walked out onto ground that had never
+            -- existed before and would never exist again. A seed that does not decide the map is not a
+            -- seed anybody can use.
+            --
+            -- A FLOOR IS (run, depth) and nothing else, which is the same rule every other derived thing
+            -- down here obeys (Descent.floorQuest, Descent.sinOrder): a floor must lay out identically
+            -- however many times it is asked for, or a resume that missed its kept board would rebuild a
+            -- different one. A campaign ground is (lap, day, which piece of work) -- the day is the
+            -- clock the campaign actually runs on, and the quest id keeps two grounds bought on one day
+            -- from being the same ground twice.
+            seed = game.descent
+                and Seed.mix(game.descent.seed, Descent.depth(game.descent))
+                or Seed.mix(Seed.lap(player), game.day or 1, Seed.text(quest and quest.id or "")),
         }
         game.grid = Overworld.generate(params)
     end
@@ -2088,6 +2106,22 @@ function game:openEncounter(cell, opts)
                     -- that follows them out (models/wound.lua) -- so a wipe is a company that is poorer
                     -- AND worse, which is what makes the second attempt on a floor a different fight.
                     game:inflictWounds()
+
+                    -- ...AND THE FLOOR GOES IN THE MAP BOOK, exactly as the stair down and the way up
+                    -- put it there (Descent.keepFloor). A floor cannot be rebuilt from its seed
+                    -- (Overworld:snapshot says why -- the stops are drawn in `pairs` order), so a route
+                    -- OFF a floor that does not put the board away is a route that rolls a fresh floor N
+                    -- on the way back down. This was the one such route left, and it was the worst one to
+                    -- be missing it: the Gate tells a wiped company "they are still there, and so is
+                    -- everything they were carrying", and then the recovery dive opened on ground they
+                    -- had never walked -- with the pile seated onto tiles by coordinate (markBodies)
+                    -- that no longer meant anything, so the thing they came back for could be standing
+                    -- in a wall.
+                    --
+                    -- AFTER the drop, and that ordering is the point: markBodies re-seats every pile on
+                    -- the run when a floor is entered, so a marker baked into this snapshot would be a
+                    -- second copy of a pile that Descent.takePack can only empty once.
+                    Descent.keepFloor(game.descent, floor, game.grid:snapshot())
 
                     Player.save()
                     State.switch(require("states.gate"), {
@@ -3294,6 +3328,12 @@ function game.drawHud()
         or ("Move: WASD / Arrows / click adjacent tile      " .. items .. use .. back)
     love.graphics.printf(hint, 0, Scale.HEIGHT - 30, Scale.WIDTH, "center")
     love.graphics.setColor(1, 1, 1)
+
+    -- THE NUMBERS THIS BOARD WAS DEALT FROM, in a development build only (ui/seed_readout.lua). The
+    -- board is the thing a bug actually stands on, so this is where the readout earns its corner: a
+    -- floor with no way down, a stop seated in a wall, a fight that should not be there -- all of them
+    -- are unreportable without the rift and the depth, and unreproducible from a screenshot.
+    SeedReadout.draw(game.player, game.descent)
 end
 
 function game.mousemoved(x, y, dx, dy)

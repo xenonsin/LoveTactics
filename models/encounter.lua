@@ -45,6 +45,19 @@ function Encounter.pool(ctx)
             end
         end
     end
+
+    -- ORDERED BY ID, and this is what makes a seeded board a seeded board.
+    --
+    -- The generator draws its stops out of this pool in LIST order (models/overworld.lua), and the list
+    -- was assembled by walking a keyed table with `pairs` -- which Lua leaves unspecified. So the same
+    -- seed laid a different floor on another machine, or after a Lua build changed how it hashes a
+    -- string, and the seed the whole mode reproduces from was quietly a half-truth: same circles, same
+    -- houses, different ground. Descent.HAZARDS is written as an ordered list for exactly this reason;
+    -- this is the same rule applied where the ids come out of a table instead of a literal.
+    --
+    -- By id rather than by weight or name: an id is unique, so no two entries can tie and be left in
+    -- whatever order they arrived in, which would put the bug straight back.
+    table.sort(pool, function(a, b) return a.id < b.id end)
     return pool
 end
 

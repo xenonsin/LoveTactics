@@ -136,7 +136,17 @@ function Overworld.generate(params)
     -- not carved out of it: we inflate the grid by 2*margin and offset the node
     -- lattice inward by the same amount, so the trail network keeps its full size.
     self.margin = params.margin or biomeDef.margin or 2
-    self.rng = love.math.newRandomGenerator(params.seed or os.time())
+    -- A BOARD IS DEALT OFF A SEED SOMEBODY CAN SAY, and never off the clock. The fallback here was
+    -- `os.time()`, which meant a ground could not be produced a second time: the bug standing on it
+    -- could not be shown to anyone, and the save's seed described everything about a floor except the
+    -- floor. Asking is a programming error now rather than a silent roll -- the same gate
+    -- Arena.generateLayout keeps over a battle's ground, for the same reason.
+    --
+    -- The one caller in play (states/game.lua) derives its seed from the save's own (models/seed.lua);
+    -- a spec pins whatever number it likes.
+    assert(type(params.seed) == "number",
+        "Overworld.generate needs a seed -- a board rolled off the clock cannot be produced again")
+    self.rng = love.math.newRandomGenerator(params.seed)
 
     -- Resolve how many encounters this map will actually hold up front (a
     -- { min, max } range is drawn here, once) so the play area can be sized to

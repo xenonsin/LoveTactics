@@ -349,6 +349,15 @@ function Player.new()
         -- and `name` cannot do that job: it is typed at creation, changeable, and two people will
         -- pick the same one. Generated once and then persisted -- see Player.authorId.
         authorId = nil,
+        -- WHAT THIS PLAYTHROUGH IS MADE OF (models/seed.lua). Everything the game rolls hangs off it --
+        -- the ground each floor is carved into, the deal of houses across the circles, the guard over a
+        -- dropped pack -- so two saves on this number walk the same rift. Minted here because a game is
+        -- random exactly once, when it begins; every later roll derives.
+        seed = require("models.seed").roll(),
+        -- How many descents this lap has begun, which is what keeps two runs in one playthrough from
+        -- being one run played twice (Seed.run). Reset by New Game+ along with the lap, never lowered
+        -- otherwise -- a run that ended is still a run that was dealt.
+        runsStarted = 0,
         -- The roster IS the company: everyone owned marches, and the deployment phase picks
         -- MAX_FIELD of them per battle. Unbounded, and there is no second list beside it.
         roster = roster,
@@ -1097,7 +1106,15 @@ function Player.newGamePlus(player)
     player = player or Player.active
     if not player then return nil end
 
+    -- A NEW LAP IS A NEW RIFT, and this line is the whole of how. The seed a lap runs under is the
+    -- save's own seed folded with this count (models/seed.lua's Seed.lap), so incrementing it deals a
+    -- different order of circles, a different set of grounds and a different deal of houses -- while
+    -- ONE number still describes the entire save, second lap and all. Nothing is re-rolled and nothing
+    -- extra is stored; a lap's seed is derived on every load and so cannot drift from what it was.
     player.ngPlus = (player.ngPlus or 0) + 1
+    -- ...and the descents counted within the lap start over with it, or the first run of the second lap
+    -- would be dealt as though it were the fourth.
+    player.runsStarted = 0
     player.completedQuests = {}
     player.flags = {}
     player.temptation = {}

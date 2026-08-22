@@ -313,10 +313,17 @@ end
 --
 -- That is a bad failure for an instrument whose entire justification is "do not hand-derive a count,
 -- roll the boards and read what they say": a number that will not reproduce cannot be read. Sorting by
--- id fixes it here. It does NOT fix it for the game -- models/overworld.lua's own header notes the same
--- unspecified order is why a board cannot be regenerated from its seed on load, and the save serializes
--- every cell to work around it. Sorting inside Encounter.pool would close that too, and would change
--- which boards players get, so it is a decision rather than a cleanup.
+-- id fixes it here.
+--
+-- THE DECISION THIS NOTE ASKED FOR HAS SINCE BEEN TAKEN: Encounter.pool sorts by id itself now, because
+-- a save carries a seed (models/seed.lua) and a seed that deals a different floor on another machine is
+-- not a seed. It did change which boards players get, once. So this function is no longer what makes
+-- the report reproducible -- the game is -- and it is kept rather than deleted because the guarantee it
+-- states is the tool's own: an instrument should not be able to lose it if the model ever does.
+--
+-- What none of that changes is why a board is SERIALIZED whole rather than re-rolled on load
+-- (Overworld:snapshot): a floor holds run state -- fog lifted, stops cleared, doors found -- and no seed
+-- can say what a player did.
 function M.stablePool(day)
     local pool = Encounter.pool({ day = day })
     table.sort(pool, function(a, b) return tostring(a.id) < tostring(b.id) end)

@@ -537,11 +537,23 @@ function Save.snapshot(player)
         run = ok and r or nil
     end
 
+    -- WHAT THIS PLAYTHROUGH IS MADE OF (models/seed.lua). Written unconditionally, unlike almost every
+    -- other additive field here: a seed is never zero and never uninteresting, and a save that diffs
+    -- clean by hiding the one number that describes it would be hiding the wrong thing. A save from
+    -- before seeds existed has none and mints one on first use (Seed.base), so no VERSION bump.
+    --
+    -- The LAP's seed is deliberately not written beside it: it is derived from this number and `ngPlus`
+    -- (Seed.lap), and a second stored copy of a derived value is a copy that can disagree.
+    local seed = player.seed
+    local runsStarted = (player.runsStarted or 0) > 0 and player.runsStarted or nil
+
     return {
         version = Save.VERSION,
         gold = player.gold,
         prestige = player.prestige,
         run = run,
+        seed = seed,
+        runsStarted = runsStarted,
         ngPlus = ngPlus,
         campaignsFinished = campaignsFinished,
         day = day,
@@ -911,6 +923,12 @@ function Save.restore(snap)
         gold = snap.gold or 0,
         prestige = snap.prestige or 1,
         resumeRun = resumeRun,
+        -- THE SEED (models/seed.lua). Nil on a save written before seeds existed, which is the one case
+        -- that matters here: Seed.base mints one the first time anything asks, so an old save joins the
+        -- scheme instead of being told it has no world. Kept as a number rather than defaulted to zero,
+        -- because zero is a seed and "no seed yet" is not.
+        seed = tonumber(snap.seed),
+        runsStarted = tonumber(snap.runsStarted) or 0, -- descents begun this lap; absent means none yet
         ngPlus = snap.ngPlus or 0, -- absent on a save from before New Game+, and on any first run
         campaignsFinished = snap.campaignsFinished or 0, -- absent until the campaign has been beaten once
         day = snap.day or 1, -- the calendar; absent on a fresh save and on any save older than it

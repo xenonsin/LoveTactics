@@ -341,4 +341,48 @@ return {
         assert(restored.cols == grid.cols and restored.rows == grid.rows, "as the same board")
         assert(restored:startCell().seen, "with the fog the company lifted still lifted")
     end },
+
+    { name = "a wipe puts the floor away like every other way off it", fn = function()
+        -- WHY THIS IS WRITTEN AGAINST THE SOURCE. There are four routes off a floor -- the stair down,
+        -- the way up, a sink, and a wipe -- and all four are branches inside states/game.lua, the last
+        -- of them a closure hanging off a battle panel's `onLoss`. None can be reached from a headless
+        -- spec, so the invariant is stated where it CAN be checked: the branch that sends a wiped
+        -- company up to the Gate keeps its board on the way.
+        --
+        -- It shipped without one, and the shape of the miss is the reason for the tripwire: the other
+        -- three routes all kept their board, so the feature worked everywhere anybody looked. What a
+        -- wipe did instead was roll a fresh floor N for the walk back -- against a Gate that had just
+        -- promised "they are still there, and so is everything they were carrying", with the pile
+        -- seated onto the new ground by the coordinates it fell on (states/game.lua's markBodies), so
+        -- the thing the company came back for could be standing inside a wall.
+        local src = assert(love.filesystem.read("states/game.lua"), "should be able to read the state")
+
+        -- The nearest `onLoss` above the switch that carries `wiped`, which brackets the branch without
+        -- pinning a line number that every edit to the file would move.
+        local function lastBefore(needle, pos)
+            local at, from = nil, 1
+            while true do
+                local i = src:find(needle, from, true)
+                if not i or i > pos then break end
+                at, from = i, i + 1
+            end
+            return at
+        end
+
+        local switch = src:find("wiped = floor", 1, true)
+        assert(switch, "nothing sends a wiped company to the Gate any more -- retarget this case")
+        local branch = src:sub(lastBefore("onLoss = ", switch) or 1, switch)
+
+        local keep = branch:find("Descent.keepFloor(", 1, true)
+        assert(keep, "a wipe leaves a floor without keeping its board: the recovery dive would open on " ..
+            "ground the company has never walked")
+
+        -- AFTER THE DROP, and the ordering is load-bearing rather than tidy. Every pile on the run is
+        -- re-seated onto the board when a floor is entered (markBodies), so a pile marker baked into
+        -- this snapshot would be a second copy of a pack that Descent.takePack can only empty once.
+        local drop = branch:find("Descent.dropPack(", 1, true)
+        assert(drop, "a wipe no longer drops a pack -- retarget this case")
+        assert(drop < keep, "the floor is kept before the pile is dropped, so the pile's own marker " ..
+            "rides out in the snapshot and comes back twice")
+    end },
 }

@@ -25,6 +25,7 @@ local Player = require("models.player")
 local Scale = require("scale")
 local Menu = require("ui.menu")
 local Theme = require("ui.theme")
+local SeedReadout = require("ui.seed_readout") -- the numbers behind the stair, in a dev build only
 
 local gate = {}
 
@@ -198,6 +199,12 @@ function gate.draw()
 
     if gate.menu then gate.menu:draw() end
     if gate.panel then gate.panel:draw() end
+
+    -- The numbers behind the stair, in a development build only (ui/seed_readout.lua). Here as well as
+    -- on the board because this is the screen a descent is COMMITTED from: the rift below is dealt
+    -- before the stair is taken, so a run can be written down -- or recognised as one already seen --
+    -- without walking into it first.
+    SeedReadout.draw(gate.player, gate.run)
 end
 
 -- ---------------------------------------------------------------------------

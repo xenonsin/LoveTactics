@@ -727,7 +727,15 @@ end
 function Descent.new(player, seed)
     return {
         floor = 1,
-        seed = seed or (os.time() % 1000000),
+        -- OFF THE SAVE'S OWN SEED, not off the clock (models/seed.lua). It was `os.time()`, which is a
+        -- seed nobody can say: a bug report about a floor could not be replayed, a run could not be
+        -- handed to somebody else, and the number the whole layout hangs from was different every time
+        -- the same save went down. Seed.run folds the lap's seed with which descent this is, so two runs
+        -- in one playthrough are different rifts and the same playthrough replays as itself.
+        --
+        -- An explicit `seed` still wins, which is what a spec pins a run with. The clock survives only
+        -- for a run with no player behind it at all -- a fixture, never live play.
+        seed = seed or (player and require("models.seed").run(player)) or (os.time() % 1000000),
         -- WHICH ORDER THE SEVEN CIRCLES COME IN, decided once, here, at the mouth of the run.
         --
         -- False is Dante's order and true is this run's own shuffle; what flips it is having broken the
