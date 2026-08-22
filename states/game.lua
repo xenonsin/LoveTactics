@@ -1635,7 +1635,18 @@ function game:openEncounter(cell, opts)
             -- player owns, and a fight is exactly the beat that can move that -- a thief lifting the
             -- guardian's own piece mid-battle would make a value read at launch name a thing already in
             -- the stash. Called once, when the summary is built.
-            objectiveReward = function() return game:previewObjectiveReward(objSpec) end,
+            --
+            -- AND ONLY FOR AN END. Every stop on a floor came through here with this callback attached,
+            -- and `objSpec` is nil for all of them but the objective -- which Descent.objectiveReward
+            -- reads as "the stair guardian" by contract (tests/objective_reward_spec.lua asks it that
+            -- way). So a road fight three tiles from the stair was asking what the FLOOR pays and being
+            -- told the guardian's own piece: the victory screen named the Beggar's Bowl after every win
+            -- on a lust floor, plus the circle's tokens under it, while the grant -- which hangs off the
+            -- objective alone (game:openLanding) -- never handed one over. A reward named and never paid,
+            -- once per fight. Gated on the CELL rather than on `objSpec` being non-nil, because "is this
+            -- the end" is a fact about the stop, and objectiveAt's fallback is allowed to come back empty.
+            objectiveReward = kind == "objective"
+                and function() return game:previewObjectiveReward(objSpec) end or nil,
             day = game.day,
             -- Who is still standing when the last door opens; read only by the finale's composition
             -- (data/quests/quest_the_gate_below.lua) and nil-safe everywhere else.
