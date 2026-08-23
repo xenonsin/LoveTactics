@@ -5600,9 +5600,11 @@ function battle.draw()
     -- When the cursor is over the open combat log, that panel owns the hover: it draws its own
     -- item/status/breakdown tooltip during its draw pass, so the board's tile tooltip must not also
     -- fire here and stack on top of it.
-    if battle.bagPanel then return end
-    if battle.windupChooser or battle.spendChooser then
-        -- The wind-up / spend modal owns the frame: no board / panel tooltip bleeds behind it.
+    if battle.windupChooser or battle.spendChooser or battle.bagPanel then
+        -- The wind-up / spend / bag modal owns the frame: no board / panel tooltip bleeds behind it.
+        -- Suppressing the tooltip is ALL this does -- an early return here would leave draw before the
+        -- modal's own draw call below, and an invisible panel that still eats every click reads as a
+        -- frozen mouse rather than as an open bag.
     elseif not InputMode.isMouse() and battle.keySlot then
         -- Keyboard / pad play: the mouse isn't driving, so nothing is hovered -- float the selected slot's
         -- tooltip anchored to the slot itself, so a numpad/pad press reads the item the way a hover would.
