@@ -113,9 +113,13 @@ takes its rect back the moment the fight starts.
 - The strip fits the whole company where it can. Past that, cards stop shrinking (`MIN_CARD_W`) and it
   **pages**: the wheel scrolls it, keyboard/pad navigation drags it along, and a small `<n` / `n>` tab
   at each end counts who is off-screen.
-- The phase's controls stack down the **left column**, under the hamburger, in the band the fight's own
-  drawer entries occupy (`battle.deployControlRect`) — the screen's furniture goes where the screen
-  already keeps it, and the strip's foot is left to the hint line alone. They read top to bottom in the
+- The phase's controls stack down the **left column**, in the band the fight's own drawer entries
+  occupy (`battle.deployControlRect`) — the screen's furniture goes where the screen already keeps it,
+  and the strip's foot is left to the hint line alone. Above them stand the only two pieces of the
+  fight's drawer that mean anything before the bell — **Settings** and the **board-turn pair** — and
+  they stand *open*: there is no hamburger on this screen, because a fold over two always-legal
+  controls hides nothing and costs a click on the beat where turning the board is the first thing a
+  player wants to do. The drawer returns with the fight. The controls read top to bottom in the
   order the decisions are made in: **Loadout**, **Auto-Fill**, **Clear**, **Auto**, and the bell last.
 - **Auto-Fill** places the four who fought last battle (`Player.lastDeployed`, ids only — no tiles are
   ever persisted) on the board's own bound spawns: exactly where they would have stood before there was

@@ -173,45 +173,53 @@ local SPEED_STEPS = { 1, 2, 3 }
 -- "Win" over "Settings" while mousepressed still tested Settings first -- so the debug button silently
 -- opened the settings overlay instead of ending the fight.
 local winButton = { x = 16, y = 368, w = 130, h = 36 }
--- The drawer's content BEFORE the bell (the deployment phase): Settings, and the board-turn pair. Every
+-- The left column BEFORE the bell (the deployment phase): Settings, and the board-turn pair. Every
 -- other entry describes a fight that is not running yet -- there is nothing to forfeit, the log has no
 -- lines and its rect is the deployment strip's, and Threats / Auto / Reinforce all read a turn order
--- that has not started. So Settings takes the drawer's FIRST slot rather than settingsButton's own: a
--- short drawer belongs under the hamburger, not half-way down an empty column.
+-- that has not started.
+--
+-- Which is why there is no HAMBURGER here. A toggle whose whole contents are two controls that are
+-- always legal is chrome hiding chrome: the fold saved nothing (the column below is the phase's own
+-- control band either way, and the tooltips dock under that), and it cost a click on a screen where
+-- turning the board is the first thing a player wants to do. So the pair stands OPEN, in the corner
+-- the hamburger held, and the phase's own band follows straight on -- one unbroken run of plates from
+-- the top of the column to the bell. The drawer comes back with the fight, where there are seven
+-- entries and the column below them is the tooltips'.
 --
 -- A field on `battle` rather than another file local, and so are the three helpers further down
 -- (drawMenuButton / drawMenuEntry / menuHoverCue): this chunk is within a handful of names of Lua
 -- 5.1's ceiling of 200 locals per function, and going over it is a SYNTAX error at load -- one no
 -- spec catches, because nothing headless requires a state that draws. Add module-level names here as
 -- `battle.*`, not `local`.
-battle.deploySettingsButton = { x = 16, y = 60, w = 130, h = 36 }
--- The board-turn pair as the DEPLOYMENT phase wears it: the drawer's second row, the same two
+battle.deploySettingsButton = { x = 16, y = 16, w = 130, h = 36 }
+-- The board-turn pair as the DEPLOYMENT phase wears it: the column's second row, the same two
 -- half-width plates the fight keeps under Threats and drawn by the same drawTurnEntries. Which way the
 -- board faces is a fact about the PICTURE, not about the fight (see battle.turnBoard) -- and the beat
 -- it matters most in is this one, where the player is reading the ground before they stand anybody on
 -- it. Q / E already turned it here; these are the mouse's way to the same pair, so a mouse-only player
 -- can face the board their way before the bell.
 --
--- The pair sits in the DRAWER rather than in the phase's own control band because turning the view is
--- the screen's furniture and not a placement decision: it belongs with Settings, next to the entry it
+-- The pair sits ABOVE the phase's own control band rather than in it because turning the view is the
+-- screen's furniture and not a placement decision: it belongs with Settings, next to the entry it
 -- shares a container with during the fight.
-battle.deployTurnLeftButton = { x = 16, y = 104, w = 62, h = 36 }
-battle.deployTurnRightButton = { x = 84, y = 104, w = 62, h = 36 }
+battle.deployTurnLeftButton = { x = 16, y = 60, w = 62, h = 36 }
+battle.deployTurnRightButton = { x = 84, y = 60, w = 62, h = 36 }
 -- The band the deployment phase stacks its own controls down (Loadout, Auto-Fill, Clear, Auto and the
--- speed cycler paired beside it, the bell): straight under the drawer's two rows, at the entries' own width, so the column reads as one
--- run of plates whether the drawer is open or shut -- and so opening it never shoves the bell down the
--- screen. The phase lays the buttons out from here and docks its hover boxes below them
--- (ui/deploy_phase.lua). Every fight before the bell has these controls, so unlike the drawer this band
--- is not conditional on anything.
-battle.deployControlRect = { x = 16, y = 148, w = 130 }
+-- speed cycler paired beside it, the bell): straight under the two furniture rows above, at their own
+-- width, so the whole column reads as one run of plates. The phase lays the buttons out from here and
+-- docks its hover boxes below them (ui/deploy_phase.lua). Every fight before the bell has these
+-- controls, so this band is not conditional on anything either.
+battle.deployControlRect = { x = 16, y = 104, w = 130 }
 
 -- The y the docked tooltip stack may rise to: just under the hamburger while the menu is closed, or
 -- under its last visible entry while it is open, so the menu and the tooltips never draw over each
 -- other. Read as drawTileTooltip's `dockTop`, and handed to the deployment phase for its own docked
 -- hover boxes (ui/deploy_phase.lua).
 local function menuBottom()
-    if not battle.menuOpen then return MENU_BUTTON.y + MENU_BUTTON.h + 8 end
+    -- Before the bell there is no drawer to open or shut: Settings and the turn pair always stand, so
+    -- the ceiling is always under them.
     if battle.deploy then return battle.deployTurnRightButton.y + battle.deployTurnRightButton.h + 8 end
+    if not battle.menuOpen then return MENU_BUTTON.y + MENU_BUTTON.h + 8 end
     local last = Debug.enabled and winButton or settingsButton
     return last.y + last.h + 8
 end
@@ -240,12 +248,15 @@ end
 -- on its own as the toggle). False while the menu is closed: closed, those rects belong to the
 -- docked tooltip column. Shared by mousepressed -- which folds the drawer away on any click that
 -- misses it -- and cursorKind, so the hand cursor and the click regions can't drift apart.
+--
+-- The deployment phase is asked FIRST and is not gated on `menuOpen`: there is no drawer before the
+-- bell, its two controls always stand (see deploySettingsButton).
 local function overMenuEntry(x, y)
-    if not battle.menuOpen then return false end
     if battle.deploy then
         return pointIn(battle.deploySettingsButton, x, y)
             or pointIn(battle.deployTurnLeftButton, x, y) or pointIn(battle.deployTurnRightButton, x, y)
     end
+    if not battle.menuOpen then return false end
     return pointIn(forfeitButton, x, y) or pointIn(logButton, x, y) or pointIn(rangesButton, x, y)
         or pointIn(battle.turnLeftButton, x, y) or pointIn(battle.turnRightButton, x, y)
         or (autoAllowed() and pointIn(autoButton, x, y)) or pointIn(settingsButton, x, y)
@@ -260,14 +271,15 @@ end
 -- rects belong to the tooltip column). Mirrors overMenuEntry, but names the button rather than just
 -- answering yes/no.
 local function hoveredMenuButton(x, y)
-    if pointIn(MENU_BUTTON, x, y) then return "menu" end
-    if not battle.menuOpen then return nil end
+    -- Before the bell: no hamburger to cue, and the two standing controls are always live.
     if battle.deploy then
         if pointIn(battle.deploySettingsButton, x, y) then return "settings" end
         if pointIn(battle.deployTurnLeftButton, x, y) then return "turnleft" end
         if pointIn(battle.deployTurnRightButton, x, y) then return "turnright" end
         return nil
     end
+    if pointIn(MENU_BUTTON, x, y) then return "menu" end
+    if not battle.menuOpen then return nil end
     if pointIn(forfeitButton, x, y) then return "forfeit" end
     if pointIn(logButton, x, y) then return "log" end
     if pointIn(rangesButton, x, y) then return "threats" end
@@ -5537,8 +5549,8 @@ function battle.draw()
     -- because the deployment phase is a beat of this battle and not a lobby in front of it, and the
     -- boxes the phase docks into that column (its tile/occupant hover) need the column drawn under
     -- them. What is left out is the fight's own furniture, which has nothing to report yet: no turn
-    -- strip (nobody is acting), no combat log (nothing has happened), and a drawer holding only what
-    -- means anything before the bell (drawDeployMenu).
+    -- strip (nobody is acting), no combat log (nothing has happened), and no drawer at all -- only the
+    -- two controls that mean anything before the bell, standing open (drawDeployMenu).
     if battle.deploy then
         battle.map:draw()
         battle.drawLeftColumn()
@@ -5919,8 +5931,8 @@ function battle.drawLeftColumn()
 end
 
 -- The hamburger itself: three bars, brighter while the menu is open so its state reads at a
--- glance (the same on/off treatment the toggles below use). Drawn on every screen the left column
--- appears on -- the fight, and the deployment phase before it.
+-- glance (the same on/off treatment the toggles below use). Drawn during the FIGHT only: the
+-- deployment phase has two controls and stands them open instead (see drawDeployMenu).
 function battle.drawMenuButton()
     local menuOpen = battle.menuOpen
     if menuOpen then Theme.set(Theme.panel) else Theme.set(Theme.panel2) end
@@ -5952,8 +5964,8 @@ function battle.drawMenuEntry(btn, label, on, accent)
     love.graphics.printf(label, btn.x, btn.y + btn.h / 2 - 8, btn.w, "center")
 end
 
--- The two board-turn plates, drawn as the drawer's fourth row in the fight and as its second before the
--- bell (the pair is passed in; the fight's is the default). They take the plate from drawMenuEntry with
+-- The two board-turn plates, drawn as the drawer's fourth row in the fight and as the left column's
+-- second row before the bell (the pair is passed in; the fight's is the default). They take the plate from drawMenuEntry with
 -- no label and then wear a drawn arrow instead of a word, so they sit in the same slate-and-frame
 -- run as every other entry and only their mark differs. Lit while the board is off its default facing,
 -- in the same accent both wear -- the board being turned is one state, not two, so lighting only the
@@ -5974,13 +5986,11 @@ function battle.drawTurnEntries(left, right)
     love.graphics.setColor(1, 1, 1)
 end
 
--- The drawer as the DEPLOYMENT phase wears it: the same hamburger in the same corner, opening on the
--- two entries that mean something before the bell -- Settings, and the board-turn pair (see
--- deploySettingsButton). The column's controls are part of the screen's furniture, not the fight's, so
--- they stand before the first turn as after it.
+-- The left column's furniture as the DEPLOYMENT phase wears it: the two controls that mean something
+-- before the bell -- Settings, and the board-turn pair (see deploySettingsButton) -- standing OPEN in
+-- the corner, with no hamburger over them. They are part of the screen rather than the fight, so they
+-- stand before the first turn as after it; here they also have nothing to hide behind, so they don't.
 function battle.drawDeployMenu()
-    battle.drawMenuButton()
-    if not battle.menuOpen then return end
     battle.drawMenuEntry(battle.deploySettingsButton, "Settings", false, { 0.70, 0.70, 0.78 })
     battle.drawTurnEntries(battle.deployTurnLeftButton, battle.deployTurnRightButton)
 end
@@ -6183,7 +6193,7 @@ function battle.keypressed(key)
     if battle.fadeOut then return end
     -- The settings overlay is the top-most modal: it eats every key while it is up. Esc closes it
     -- (never forfeits the fight underneath), the rest work the list. Above the deployment phase too,
-    -- since the phase's own drawer opens it -- a modal a screen raised is a modal over that screen.
+    -- since the phase's own Settings plate opens it -- a modal a screen raised is a modal over that screen.
     if battle.settingsMenu then
         if key == "escape" then closeSettings() else battle.settingsMenu:keypressed(key) end
         return
@@ -6196,7 +6206,7 @@ function battle.keypressed(key)
     -- PICTURE and not about whatever is being decided on it: it means the same thing while a line is
     -- being deployed, while a body is being picked off the bench, and after the fight is over. Only the
     -- two screens that cover the board -- the settings overlay and the Loadout -- take it first. The
-    -- drawer's two plates are the mouse's way to the same pair. Q and E because WASD is the board
+    -- column's two plates are the mouse's way to the same pair. Q and E because WASD is the board
     -- cursor, so the keys that turn the view sit either side of the hand already steering it.
     if key == "q" then battle.turnBoard(-1); return end
     if key == "e" then battle.turnBoard(1); return end
@@ -6380,7 +6390,7 @@ function battle.mousemoved(x, y, dx, dy)
     end
     if battle.deployLoadout then battle.deployLoadout:mousemoved(x, y); return end
     if battle.deploy then
-        battle.menuHoverCue(x, y) -- the pre-bell drawer is hoverable like any other left-column button
+        battle.menuHoverCue(x, y) -- the pre-bell controls are hoverable like any other left-column button
         battle.deploy:mousemoved(x, y)
         return
     end
@@ -6448,37 +6458,29 @@ end
 
 function battle.mousepressed(x, y, button)
     if battle.fadeOut then return end -- see keypressed: the ending takes no input
-    -- The settings overlay, opened from the pre-bell drawer, is modal over the deployment phase (see
+    -- The settings overlay, opened from the pre-bell Settings plate, is modal over the deployment phase (see
     -- keypressed) -- so it is asked before the phase is, and the shared block below handles it.
     if battle.deployLoadout and not battle.settingsMenu then
         battle.deployLoadout:mousepressed(x, y, button)
         return
     end
     if battle.deploy and not battle.settingsMenu then
-        -- The left column's hamburger works before the bell exactly as it does during the fight: it
-        -- toggles the drawer, its entries open Settings and turn the board, and a click that missed them
-        -- all folds the drawer away and still falls THROUGH to the phase, so the drag it was aimed at is
-        -- not eaten.
-        if button == 1 and pointIn(MENU_BUTTON, x, y) then
-            battle.menuOpen = not battle.menuOpen
-            return
-        end
-        if battle.menuOpen and button == 1 and pointIn(battle.deploySettingsButton, x, y) then
+        -- The left column's two standing controls: Settings, and the turn plates. No hamburger before
+        -- the bell (see deploySettingsButton), so there is no drawer to toggle and nothing to fold away
+        -- on a click that missed -- every other press falls straight THROUGH to the phase, so the drag
+        -- it was aimed at is not eaten.
+        if button == 1 and pointIn(battle.deploySettingsButton, x, y) then
             openSettings()
             return
         end
-        -- The turn plates leave the drawer OPEN, like the fight's toggles do: a quarter is rarely the
-        -- whole turn the player wanted, and a menu that folded itself away after the first press would
-        -- make the second one a two-click move.
-        if battle.menuOpen and button == 1 and pointIn(battle.deployTurnLeftButton, x, y) then
+        if button == 1 and pointIn(battle.deployTurnLeftButton, x, y) then
             battle.turnBoard(-1)
             return
         end
-        if battle.menuOpen and button == 1 and pointIn(battle.deployTurnRightButton, x, y) then
+        if button == 1 and pointIn(battle.deployTurnRightButton, x, y) then
             battle.turnBoard(1)
             return
         end
-        if battle.menuOpen and not overMenuEntry(x, y) then battle.menuOpen = false end
         battle.deploy:mousepressed(x, y, button)
         return
     end
@@ -6640,8 +6642,8 @@ function battle.cursorKind()
     end
     if battle.deployLoadout then return battle.deployLoadout:cursorKind(mx, my) end
     if battle.deploy then
-        -- The column's hamburger and its open entry are clickable before the bell too.
-        if pointIn(MENU_BUTTON, mx, my) or overMenuEntry(mx, my) then return "hand" end
+        -- The column's two standing controls are clickable before the bell too.
+        if overMenuEntry(mx, my) then return "hand" end
         return battle.deploy:cursorKind(mx, my)
     end
     if battle.logReview then

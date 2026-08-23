@@ -18,8 +18,9 @@
 --     is about to be dragged onto. The host passes that rect in (battle's gutterRect) so the two can
 --     never drift apart.
 --   THE CONTROLS -- Loadout, Auto-Fill, Clear, Auto (with the playback-speed cycler paired to its
---     right while it is on) and the bell -- stack down the LEFT COLUMN, under the hamburger and its
---     drawer, in the band the fight's own entries occupy. They were once a row along the
+--     right while it is on) and the bell -- stack down the LEFT COLUMN, under the two standing plates
+--     the host keeps there before the bell (Settings and the board-turn pair -- there is no hamburger
+--     on this screen), in the band the fight's own entries occupy. They were once a row along the
 --     foot of the strip, split either side of the hint; a company strip is 480px on the standard eight
 --     column board, and five buttons plus a sentence do not fit across it. The column is where this
 --     screen already keeps its furniture, so the controls read as the screen's rather than the strip's,
@@ -50,7 +51,7 @@ local DRAG_THRESHOLD = 5
 -- column. Still reserved out of the cards' height, so the portraits sit where they always did.
 local HINT_H = 22
 local CARD_GAP = 6
--- One control in the left column, sized to the drawer entries above it (battle's deploySettingsButton)
+-- One control in the left column, sized to the plates above it (battle's deploySettingsButton)
 -- so the column reads as one stack of plates rather than two kinds of button.
 local CTRL_H = 36
 local CTRL_GAP = 8
@@ -126,7 +127,7 @@ function DeployPhase.new(opts)
 
     self.titleFont = Theme.display(16)
     self.font = Theme.body(13)
-    -- The column's plates are lettered in the same display face as the drawer entries they stack under
+    -- The column's plates are lettered in the same display face as the host's entries they stack under
     -- (states/battle.lua's hudFont), so the whole column reads as one set of controls -- but sized ONCE
     -- against the longest label the stack can show, so every plate is lettered alike and the bell's two
     -- words are not the one thing that overflows its plate.
@@ -546,7 +547,7 @@ function DeployPhase:drawButton(r, label, enabled, on)
 end
 
 -- `bounds` is the board region (left column .. combat panel), so the title centres over the board.
--- `bounds.dockTop` is the y the docked hover boxes may rise to (the host's menu drawer sits above it).
+-- `bounds.dockTop` is the y the docked hover boxes may rise to (the host's own plates sit above it).
 function DeployPhase:draw(bounds)
     bounds = bounds or { x = 0, w = Scale.WIDTH }
 
@@ -665,7 +666,7 @@ function DeployPhase:drawHover(bounds)
     elseif kind == "prop" then objInfo = { prop = obj } end
 
     -- The column's full width, minus the 16px margins the fight's docked boxes keep. The stack rises to
-    -- the host's ceiling (`dockTop`) -- under the hamburger, or under the drawer while it is open --
+    -- the host's ceiling (`dockTop`) -- under the Settings and board-turn plates it stands there --
     -- exactly as the fight's own boxes do, so the two never draw over each other.
     local W = math.max(180, ((bounds and bounds.x) or 0) - 32)
     local gap = 8
