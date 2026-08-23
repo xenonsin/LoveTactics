@@ -25,6 +25,7 @@
 local Menu = require("ui.menu")
 local QuantityPopup = require("ui.quantity_popup")
 local Choice = require("ui.panels.choice") -- the generic yes/no modal, hosted here as the buy confirmation
+local DebugMenu = require("ui.panels.debug_menu") -- the right-click item menu (development builds only)
 local CloseButton = require("ui.close_button")
 local ItemTooltip = require("ui.item_tooltip") -- printFlavor (sheared italic story line) + printDiscipline
 local GlossaryPanel = require("ui.glossary_panel")
@@ -560,6 +561,7 @@ end
 function Shop:setMsg(text, ok) self.message, self.messageOk = text, ok end
 
 function Shop:close()
+    self.itemDebug = nil -- a context menu never outlives the panel it was opened over
     if self.onClose then self.onClose() end
 end
 
@@ -811,6 +813,7 @@ function Shop:draw()
     self.closeButton:draw()
     if self.quantityPopup then self.quantityPopup:draw() end
     if self.confirm then self.confirm:draw() end
+    if self.itemDebug then self.itemDebug:draw() end -- last: it is modal over everything above
     love.graphics.setColor(1, 1, 1)
 end
 
@@ -1139,7 +1142,34 @@ end
 -- Input
 -- ---------------------------------------------------------------------------
 
+-- ---------------------------------------------------------------------------
+-- The item debug menu (development builds only)
+-- ---------------------------------------------------------------------------
+
+-- Open the debug context menu on the shelf row under the pointer. Returns true when one opened.
+-- A LOCKED row counts: what it stands on is a blueprint like any other, and "why can I not buy this
+-- yet" is one of the questions the menu's grade page exists to answer -- so the lookup goes through
+-- Menu:indexAt, which does not care whether the row can be activated.
+function Shop:openItemDebug(x, y)
+    if not self:hasRows() then return false end
+    local i = self.menu:indexAt(x, y)
+    local row = i and self.rows[i]
+    if not row or not row.item then return false end
+    local menu = DebugMenu.forItem({
+        x = x, y = y,
+        item = row.item,
+        onClose = function() self.itemDebug = nil end,
+        -- A reload changes the name and the price the row's LABEL was built from, so the shelf is
+        -- rebuilt rather than left reading yesterday's figures.
+        refresh = function() self:refresh() end,
+    })
+    if not menu then return false end
+    self.itemDebug = menu
+    return true
+end
+
 function Shop:mousemoved(x, y)
+    if self.itemDebug then self.itemDebug:mousemoved(x, y) return end
     if self.confirm then self.confirm:mousemoved(x, y) return end
     if self.quantityPopup then self.quantityPopup:mousemoved(x, y) return end
     self.closeButton:mousemoved(x, y)
@@ -1149,6 +1179,7 @@ end
 -- Hand over the close X, the Buy/Sell mode tabs, or any item row; arrow elsewhere. When the
 -- sell-quantity popup is open it owns the pointer. See ui/cursor.lua.
 function Shop:cursorKind(x, y)
+    if self.itemDebug then return self.itemDebug:cursorKind(x, y) end
     if self.confirm then return self.confirm:cursorKind(x, y) end
     if self.quantityPopup then return self.quantityPopup:cursorKind(x, y) end
     if self.closeButton:contains(x, y) then return "hand" end
@@ -1160,14 +1191,17 @@ function Shop:cursorKind(x, y)
 end
 
 function Shop:wheelmoved(dx, dy)
+    if self.itemDebug then self.itemDebug:wheelmoved(dx, dy) return end
     if self.confirm then return end -- the list must not scroll out from under the question
     if self.quantityPopup then self.quantityPopup:wheelmoved(dy) return end
     if self:hasRows() then self.menu:wheelmoved(dx, dy) end
 end
 
 function Shop:mousepressed(x, y, button)
+    if self.itemDebug then self.itemDebug:mousepressed(x, y, button) return end
     if self.confirm then self.confirm:mousepressed(x, y, button) return end
     if self.quantityPopup then self.quantityPopup:mousepressed(x, y, button) return end
+    if button == 2 then self:openItemDebug(x, y) return end
     if button ~= 1 then return end
     if self.closeButton:mousepressed(x, y, button) then self:close() return end
     for _, m in ipairs(self.modes) do
@@ -1182,6 +1216,7 @@ function Shop:mousepressed(x, y, button)
 end
 
 function Shop:keypressed(key)
+    if self.itemDebug then self.itemDebug:keypressed(key) return end
     if self.confirm then self.confirm:keypressed(key) return end
     if self.quantityPopup then self.quantityPopup:keypressed(key) return end
     if key == "escape" then self:close()
@@ -1192,6 +1227,7 @@ function Shop:keypressed(key)
 end
 
 function Shop:gamepadpressed(joystick, button)
+    if self.itemDebug then self.itemDebug:gamepadpressed(joystick, button) return end
     if self.confirm then self.confirm:gamepadpressed(joystick, button) return end
     if self.quantityPopup then self.quantityPopup:gamepadpressed(joystick, button) return end
     if button == "b" then self:close()

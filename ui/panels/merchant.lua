@@ -19,6 +19,7 @@
 -- mouse does by hovering.
 
 local CloseButton = require("ui.close_button")
+local DebugMenu = require("ui.panels.debug_menu") -- the right-click item menu (development builds only)
 local GlossaryPanel = require("ui.glossary_panel") -- only for WIDTH: the room the aside needs beside the tooltip
 local InputMode = require("input_mode")
 local ItemTooltip = require("ui.item_tooltip")
@@ -113,6 +114,7 @@ end
 function Merchant:close()
     if self.finished then return end
     self.finished = true
+    self.itemDebug = nil -- a context menu never outlives the panel it was opened over
     if self.onClose then self.onClose() end
 end
 
@@ -206,13 +208,35 @@ function Merchant:draw()
     -- edge, level with the row it reads: the shelf inspects one row at a time whichever input is
     -- driving, and a box that followed the mouse would read differently for the pad than for the hand.
     local entry = self.stock[self.focus]
-    if entry then
+    if entry and not self.itemDebug then
         ItemTooltip.draw(entry.item, bx + self.boxW, entry.rect.y - 24, Scale.WIDTH)
     end
+    if self.itemDebug then self.itemDebug:draw() end -- modal over the shelf, and over the reading
     love.graphics.setColor(1, 1, 1)
 end
 
+-- Open the debug context menu on the ware under the pointer (development builds only). Returns true
+-- when one opened. A BOUGHT row counts: the blueprint is the same one either way, and it is a reading,
+-- not a purchase. The panel holds display copies rather than the granted item, so a reload re-stamps
+-- what the shelf is drawing and nothing the player owns -- which is the right half to touch here.
+function Merchant:openItemDebug(x, y)
+    for _, entry in ipairs(self.stock) do
+        if inRect(entry.rect, x, y) then
+            local menu = DebugMenu.forItem({
+                x = x, y = y,
+                item = entry.item,
+                onClose = function() self.itemDebug = nil end,
+            })
+            if not menu then return false end
+            self.itemDebug = menu
+            return true
+        end
+    end
+    return false
+end
+
 function Merchant:mousemoved(x, y)
+    if self.itemDebug then self.itemDebug:mousemoved(x, y) return end
     self.closeButton:mousemoved(x, y)
     for i, entry in ipairs(self.stock) do
         if inRect(entry.rect, x, y) then self.focus = i; break end
@@ -220,17 +244,26 @@ function Merchant:mousemoved(x, y)
 end
 
 function Merchant:cursorKind(x, y)
+    if self.itemDebug then return self.itemDebug:cursorKind(x, y) end
     if self.closeButton:contains(x, y) then return "hand" end
     for _, entry in ipairs(self.stock) do if inRect(entry.rect, x, y) then return "hand" end end
     return "arrow"
 end
 
 function Merchant:mousepressed(x, y, button)
+    if self.itemDebug then self.itemDebug:mousepressed(x, y, button) return end
+    if button == 2 then self:openItemDebug(x, y) return end
     if button ~= 1 then return end
     if self.closeButton:mousepressed(x, y, button) then self:close(); return end
     for i, entry in ipairs(self.stock) do
         if inRect(entry.rect, x, y) then self:buy(i); return end
     end
+end
+
+-- The shelf itself does not scroll -- it is a handful of fixed rows -- so the wheel exists here only
+-- for the debug menu's grade page, which is long enough to.
+function Merchant:wheelmoved(dx, dy)
+    if self.itemDebug then self.itemDebug:wheelmoved(dx, dy) end
 end
 
 function Merchant:moveFocus(d)
@@ -239,13 +272,15 @@ function Merchant:moveFocus(d)
 end
 
 function Merchant:keypressed(key)
+    if self.itemDebug then self.itemDebug:keypressed(key) return end
     if key == "escape" then self:close()
     elseif key == "up" or key == "w" then self:moveFocus(-1)
     elseif key == "down" or key == "s" then self:moveFocus(1)
     elseif key == "return" or key == "kpenter" or key == "space" then self:buy(self.focus) end
 end
 
-function Merchant:gamepadpressed(_, button)
+function Merchant:gamepadpressed(joystick, button)
+    if self.itemDebug then self.itemDebug:gamepadpressed(joystick, button) return end
     if button == "b" then self:close()
     elseif button == "dpup" then self:moveFocus(-1)
     elseif button == "dpdown" then self:moveFocus(1)

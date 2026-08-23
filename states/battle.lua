@@ -6439,10 +6439,26 @@ function battle.wheelmoved(dx, dy)
     battle.panel:wheelmoved(dx, dy)
 end
 
--- Open the right-click debug menu over the cell under (x, y). Debug builds only (the sole caller
--- gates on Debug.enabled). Reads the tile and any living unit on it, so the menu can offer the unit
--- page or the terrain page; the callbacks let it clear itself, arm a tile pick, and refresh the view.
+-- Open the right-click debug menu under (x, y). Debug builds only (the sole caller gates on
+-- Debug.enabled). What is under the pointer decides which menu it is, in the same order the hover
+-- tooltip resolves it: an ITEM SLOT -- the acting unit's own cards, or an assayed foe's kit card --
+-- opens the item menu on that blueprint, and anything else falls through to the board, which reads the
+-- tile and any living unit on it to offer the unit page or the terrain page. Both are the same widget
+-- and the same `battle.debugMenu` field, so every input handler already routes them.
+--
+-- The callbacks let it clear itself, arm a tile pick, and refresh the view.
 local function openDebugMenu(x, y)
+    local item = (battle.peekUnit and battle.peek:itemAt(x, y))
+        or (battle.panel and battle.panel:itemAt(x, y)) -- nil before the bell: no company, no strip yet
+    local itemMenu = item and DebugMenu.forItem({
+        x = x, y = y,
+        item = item,
+        unit = battle.current,
+        onClose = function() battle.debugMenu = nil end,
+        refresh = function() refreshView() end,
+    })
+    if itemMenu then battle.debugMenu = itemMenu; return end
+
     local cx, cy = battle.map:cellAt(x, y)
     if not cx then return end
     battle.debugMenu = DebugMenu.new({
@@ -6611,7 +6627,8 @@ function battle.mousepressed(x, y, button)
         battle.debugPickTile = nil
         return
     end
-    -- Right-click on the board opens the context-sensitive debug menu (unit vs terrain under the cell).
+    -- Right-click opens the context-sensitive debug menu: an item slot under the pointer gets the item
+    -- menu, anything else the board menu (unit vs terrain under the cell).
     if Debug.enabled and button == 2 then openDebugMenu(x, y); return end
     if battle.map:mousepressed(x, y, button) then confirm() end
 end

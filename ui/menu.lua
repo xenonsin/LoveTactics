@@ -419,12 +419,22 @@ function Menu:mousepressed(x, y, button)
     end
 end
 
+-- The index of the visible row under a point, or nil. Interactivity is NOT part of the test: a caller
+-- that wants to ACT on the row asks `interactive` itself (mouseOverItem, just below), while one that
+-- only wants to READ it -- the shop's right-click debug menu, inspecting a locked shelf row -- wants
+-- the row a header or a lock would otherwise hide from it. The index, not the item, because a host
+-- keeps its own parallel row list and it is that entry, not Menu's label, that carries the payload.
+function Menu:indexAt(x, y)
+    for i, item in ipairs(self.items) do
+        if isInside(item, x, y) then return i end
+    end
+    return nil
+end
+
 -- True when the point is over any visible menu item, so a state can show the hand cursor there.
 function Menu:mouseOverItem(x, y)
-    for _, item in ipairs(self.items) do
-        if isInside(item, x, y) and interactive(item) then return true end
-    end
-    return false
+    local i = self:indexAt(x, y)
+    return i ~= nil and interactive(self.items[i])
 end
 
 -- Wheel scrolls the window without moving the selection, the way a list is expected to behave.

@@ -7,7 +7,11 @@ local Curve = require("models.curve")
 
 local Item = {}
 
-Item.defs = Registry.load("data/items", "data.items")
+-- `paths` is the registry's second return: id -> the file the blueprint was read out of
+-- ("data/items/weapon/weapon_iron_sword.lua"). The id alone cannot say it once the folder is bucketed
+-- by type, and it is what lets a debug affordance open a blueprint's source or re-read it from disk
+-- (Item.reload at the file's foot; ui/panels/debug_menu.lua's item menu).
+Item.defs, Item.paths = Registry.load("data/items", "data.items")
 
 -- The seven classes. An item's `class` decides which vendor stocks it (see models/vendor.lua);
 -- it never gates who may equip the item. Anyone can carry anything -- class only says where
@@ -733,6 +737,85 @@ function Item.instantiate(id, quantity, level)
 
     applyLevel(item) -- fold the upgrade into the scaling stats and the display name
     return item
+end
+
+-- ---------------------------------------------------------------------------
+-- Hot reload
+-- ---------------------------------------------------------------------------
+--
+-- Re-read one blueprint off disk and swap it into `Item.defs`, so editing a data file and seeing the
+-- change are one gesture apart instead of a restart apart. The partner of the debug menu's "Open in
+-- editor" row (ui/panels/debug_menu.lua): open the file, change a number, reload, look again.
+--
+-- Only the BLUEPRINT is swapped. Every item already in a grid is a mutable copy taken at instantiate
+-- time and knows nothing about the def it came from, so a reload on its own changes nothing you can
+-- see -- which is why `Item.restamp` exists beside it and the menu runs the two together.
+--
+-- Returns `ok, err, staleDef`. A data file with a syntax error in it leaves `Item.defs` untouched and
+-- reports the message: a debug shortcut that empties the catalog because you saved mid-edit is worse
+-- than one that says "not yet".
+
+-- The require path a blueprint file answers to: "data/items/weapon/x.lua" -> "data.items.weapon.x".
+local function modulePath(rel)
+    return (rel:gsub("%.lua$", ""):gsub("/", "."))
+end
+
+function Item.reload(id)
+    local stale = Item.defs[id]
+    local rel = Item.paths[id]
+    if not rel then return false, "no source file for " .. tostring(id) end
+
+    local mod = modulePath(rel)
+    local was = package.loaded[mod]
+    package.loaded[mod] = nil
+    local ok, def = pcall(require, mod)
+    if not ok or type(def) ~= "table" then
+        package.loaded[mod] = was -- put the working copy back; the catalog never sees the bad read
+        return false, (ok and "blueprint did not return a table" or tostring(def)), stale
+    end
+
+    Item.defs[id] = def
+    return true, nil, stale
+end
+
+-- Runtime state an instance owns rather than inherits -- what a re-stamp must carry across, because
+-- no blueprint can say it. `level` is not here: it is fed back INTO the rebuild so the new magnitudes
+-- come out at the level the item is actually forged to.
+local INSTANCE_OWNED = { quantity = true, contents = true, activeSummon = true, unidentified = true }
+
+-- Bring a live item up to date with its (just reloaded) blueprint, IN PLACE. The instance keeps its
+-- identity -- whatever grid cell, stash slot or combat unit is holding this exact table goes on
+-- holding it -- and every blueprint-derived field is re-stamped onto it from a fresh instantiate.
+--
+-- `staleDef` is the blueprint the item was built from, as handed back by Item.reload. It is needed to
+-- clear fields the edit DELETED: a key the new instance does not set is only safe to remove if the old
+-- blueprint is what put it there, and everything else on the table is runtime state written by combat.
+-- Without it a trait you just cut out of the file would still be on the item, which is the exact lie a
+-- reload exists to prevent.
+function Item.restamp(item, staleDef)
+    if not item or not item.id or not Item.defs[item.id] then return false end
+
+    local fresh = Item.instantiate(item.id, item.quantity, item.level)
+
+    -- The fields the blueprint owns: everything the new copy sets, plus everything the OLD copy set,
+    -- so a key the edit removed is nil'd rather than left standing.
+    local owned = {}
+    for k in pairs(fresh) do owned[k] = true end
+    if staleDef then
+        local before = Item.defs[item.id]
+        Item.defs[item.id] = staleDef
+        local ok, old = pcall(Item.instantiate, item.id, item.quantity, item.level)
+        Item.defs[item.id] = before
+        if ok then for k in pairs(old) do owned[k] = true end end
+    end
+
+    for k in pairs(owned) do
+        if not INSTANCE_OWNED[k] then item[k] = fresh[k] end
+    end
+    -- An edit that took the `bag` field away leaves nothing to hold the contents; drop them with it
+    -- rather than keep a pocket on an item that no longer has one.
+    if not item.bag then item.contents = nil end
+    return true
 end
 
 return Item

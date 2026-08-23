@@ -31,6 +31,7 @@ local ItemTooltip = require("ui.item_tooltip")
 local StatTooltip = require("ui.stat_tooltip")
 local NoteTooltip = require("ui.note_tooltip")
 local ButtonPrompt = require("ui.button_prompt")
+local DebugMenu = require("ui.panels.debug_menu") -- the right-click item menu (development builds only)
 local InputMode = require("input_mode")
 local Character = require("models.character")
 local Player = require("models.player")
@@ -475,6 +476,7 @@ function Party:setMsg(text, ok)
 end
 
 function Party:close()
+    self.itemDebug = nil -- a context menu never outlives the panel it was opened over
     -- Put the real stash back before anything can persist it: with the debug catalog still installed,
     -- the save below would write hundreds of catalog items over the player's real inventory.
     if self.debugAll then self:setDebugAll(false) end
@@ -1718,8 +1720,9 @@ function Party:draw()
     self:drawFooter()
     self.closeButton:draw()
     self:drawDrag()
-    if not self.drag then self:drawActiveTooltip() end
+    if not self.drag and not self.itemDebug then self:drawActiveTooltip() end
     if self.quantityPopup then self.quantityPopup:draw() end
+    if self.itemDebug then self.itemDebug:draw() end -- last: it is modal over everything above
     love.graphics.setColor(1, 1, 1)
 end
 
@@ -2339,7 +2342,45 @@ end
 -- Hand over anything you can pick: the close X, a party-member portrait on the rail, a loadout grid
 -- cell, or a stash-pool cell. When the split-quantity popup is open it owns the pointer. Arrow over
 -- the dead space between. See ui/cursor.lua.
+-- ---------------------------------------------------------------------------
+-- The item debug menu (development builds only)
+-- ---------------------------------------------------------------------------
+
+-- The item under (x, y), from either half of the screen: a loadout grid cell or a stash cell. The
+-- right-click menu's subject, and deliberately the same lookup drawActiveTooltip does -- whatever the
+-- hover box is describing is what the menu opens on.
+function Party:itemAtPoint(x, y)
+    local cell = self.grid:indexAt(x, y)
+    if cell then
+        local char = self:currentChar()
+        return char and char.inventory[cell]
+    end
+    local pi = self.pool:indexAt(x, y)
+    return pi and self.pool:itemAt(pi) or nil
+end
+
+-- Open the debug context menu on the item under the pointer. Returns true when one opened, so the
+-- caller can swallow the click. DebugMenu.forItem answers nil in a release build and for an item the
+-- catalog does not know, which is the whole gate -- there is no Debug.enabled test to keep in step here.
+function Party:openItemDebug(x, y)
+    local item = self:itemAtPoint(x, y)
+    if not item then return false end
+    local menu = DebugMenu.forItem({
+        x = x, y = y,
+        item = item,
+        onClose = function() self.itemDebug = nil end,
+        -- A reload re-stamps the live item in place, so the grid and the stash are already showing the
+        -- new figures; what has to be redone is the derived stash view, which is rebuilt from the
+        -- items and would otherwise keep a stale name or price on a row.
+        refresh = function() self:refreshStash() end,
+    })
+    if not menu then return false end
+    self.itemDebug = menu
+    return true
+end
+
 function Party:cursorKind(x, y)
+    if self.itemDebug then return self.itemDebug:cursorKind(x, y) end
     if self.quantityPopup then return self.quantityPopup:cursorKind(x, y) end
     if self.closeButton:contains(x, y) then return "hand" end
     if self:railIndexAt(x, y) then return "hand" end
@@ -2357,6 +2398,7 @@ end
 
 function Party:mousemoved(x, y)
     self.mx, self.my = x, y
+    if self.itemDebug then self.itemDebug:mousemoved(x, y) return end
     if self.quantityPopup then self.quantityPopup:mousemoved(x, y) return end
     self.closeButton:mousemoved(x, y)
     local editor = self:columnEditor()
@@ -2380,6 +2422,7 @@ end
 
 function Party:wheelmoved(_, dy)
     if dy == 0 then return end
+    if self.itemDebug then self.itemDebug:wheelmoved(0, dy) return end
     if self.quantityPopup then self.quantityPopup:wheelmoved(dy) return end
     local x, y = Scale.toGame(love.mouse.getPosition())
     local editor = self:columnEditor()
@@ -2401,7 +2444,12 @@ function Party:wheelmoved(_, dy)
 end
 
 function Party:mousepressed(x, y, button)
+    -- The debug context menu is the top-most thing on this panel while it is up, so it is asked first;
+    -- the split-quantity popup is the next modal down and still owns the pointer under it. Only once
+    -- both are closed does a right-click over a cell -- grid or stash -- open the menu on that item.
+    if self.itemDebug then self.itemDebug:mousepressed(x, y, button) return end
     if self.quantityPopup then self.quantityPopup:mousepressed(x, y, button) return end
+    if button == 2 then self:openItemDebug(x, y) return end
     if button ~= 1 then return end
     if self.closeButton:mousepressed(x, y, button) then self:close() return end
 
@@ -2546,6 +2594,7 @@ function Party:mousereleased(x, y, button)
 end
 
 function Party:keypressed(key)
+    if self.itemDebug then self.itemDebug:keypressed(key) return end
     if self.quantityPopup then self.quantityPopup:keypressed(key) return end
     -- Number keys jump straight to a tab, in the order the strip shows them.
     for i, m in ipairs(self.modes) do
@@ -2592,6 +2641,7 @@ function Party:keypressed(key)
 end
 
 function Party:gamepadpressed(joystick, button)
+    if self.itemDebug then self.itemDebug:gamepadpressed(joystick, button) return end
     if self.quantityPopup then self.quantityPopup:gamepadpressed(joystick, button) return end
     -- Triggers switch tab, shoulders switch character. The shoulders were already the character
     -- switch and moving them would break a habit for the sake of a new feature.

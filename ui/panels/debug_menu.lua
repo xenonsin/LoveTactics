@@ -1,9 +1,23 @@
--- The battle debug context menu: a cursor-anchored dropdown that pops up on RIGHT-CLICK during a
--- battle, in development builds only (states/battle.lua gates its creation on Debug.enabled, exactly
--- as it gates the Win/Lose buttons). Right-click a tile and the menu reads the tile under the cursor:
+-- The debug context menu: a cursor-anchored dropdown that pops up on RIGHT-CLICK, in development
+-- builds only (every host gates its creation on Debug.enabled, exactly as states/battle.lua gates the
+-- Win/Lose buttons). It comes in two flavours, told apart by what was under the cursor.
+--
+-- DebugMenu.new -- the BOARD menu, during a battle. Reads the tile under the pointer:
 --   * a living unit there -> the unit page (damage, kill, heal, statuses, items, initiative, control,
 --     extra action, invulnerable, gold, clone, remove, move-to-tile)
 --   * empty ground        -> the terrain page (summon, place hazard/trap/prop, change terrain)
+--
+-- DebugMenu.forItem -- the ITEM menu, wherever an item is on show: the Loadout grid and stash
+-- (ui/panels/party.lua), a vendor shelf (ui/panels/shop.lua, ui/panels/merchant.lua) and the acting
+-- unit's cards mid-fight (states/battle.lua). It answers the question you ask while reading an item
+-- and cannot answer from the tooltip: where does this thing LIVE, and why is it worth what it says?
+--   * Open <file>.lua    -- the blueprint in an editor (models/debug.lua)
+--   * Reload blueprint   -- re-read it off disk and re-stamp this copy, so an edit lands without a restart
+--   * Copy id            -- the id to the clipboard, for the grep the next question needs
+--   * Grade / price      -- what models/grade.lua makes of it, row by row, against the authored price
+-- Its first three rows KEEP the menu open and report what happened on the page's notice line: they are
+-- things you do to a file, not to the board, and closing on each one would make a reload-and-look loop
+-- three right-clicks long.
 --
 -- It is a navigable PAGE STACK rather than a single control: a submenu row pushes a page, right-click
 -- / Esc / Backspace / B pops one, and popping the root closes. Long lists (every status, the whole
@@ -27,6 +41,8 @@ local Combat = require("models.combat")
 local Status = require("models.status")
 local Character = require("models.character")
 local Item = require("models.item")
+local Debug = require("models.debug")
+local Grade = require("models.grade")
 local Growth = require("models.growth")
 local Trait = require("models.trait")
 local Hazard = require("models.hazard")
@@ -42,7 +58,7 @@ local MENU_W = 196
 local ROW_H = 22
 local HEADER_H = 20
 local PAD = 6
-local MAX_ROWS = 12 -- visible list rows before the window scrolls
+local MAX_ROWS = 12 -- visible list rows before the window scrolls (a page may raise its own; see listPage)
 local FONT_SIZE = 14
 
 -- ids of a `.defs` registry (Registry.load table), sorted for a stable, scannable list.
@@ -61,8 +77,21 @@ end
 -- "submenu" (build() returns the page to push), "action" (act() mutates, then the menu closes) or
 -- "info" (inert, read-only). `search` is the live type-to-filter string; `filtered` caches the
 -- matching subset (nil when the filter is empty and all rows show) -- see DebugMenu:applyFilter.
-local function listPage(title, rows)
-    return { kind = "list", title = title, rows = rows, cursor = 1, scroll = 0, search = "" }
+--
+-- Two options for a page that is a READOUT rather than a set of commands (the item menu's Grade page,
+-- and its root, which acts on files instead of the board):
+--   opts.w       a wider box, for rows that carry a label AND a figure
+--   opts.maxRows a taller window before it scrolls. A CATALOG scrolls -- there is no height that fits
+--                every status in the game, and type-to-search is how you get down it. A report is a
+--                fixed handful of lines that are read TOGETHER, and scrolling one is just hiding half
+--                the answer, so it gets the room instead.
+--   row.keep     an action that leaves the menu open, and whose act() may return a line of text --
+--                shown on the page's notice line, since a row that does not close has no other way to
+--                say it did anything. See DebugMenu:activate.
+local function listPage(title, rows, opts)
+    opts = opts or {}
+    return { kind = "list", title = title, rows = rows, cursor = 1, scroll = 0, search = "",
+        w = opts.w, maxRows = opts.maxRows }
 end
 
 -- The rows a list page currently shows: the filtered subset while a search is active, else every row.
@@ -82,16 +111,11 @@ local function stepperPage(title, opts)
     }
 end
 
--- opts:
---   x, y         the cursor position the menu drops from (its top-left, clamped on-screen)
---   combat       battle.combat
---   tile         { x, y } the right-clicked cell (always set)
---   unit         the living unit on that cell, or nil for the terrain menu
---   onClose      fn() -- clear battle.debugMenu
---   onPickTile   fn(fn(tx,ty)) -- close and arm board-targeting; the next left-click feeds tx,ty
---   refresh      fn() -- called after any mutation so the host re-derives the board/turn strip/tooltips
-function DebugMenu.new(opts)
-    opts = opts or {}
+-- Everything both flavours are made of, before either one has a page: where the box drops from, the
+-- font it reads in, and the three callbacks the host hands down. Split out so DebugMenu.forItem is a
+-- different ROOT PAGE and nothing else -- the stack, the layout, the drawing and all three input
+-- devices below are written against `page`, and never ask which menu they belong to.
+local function base(opts)
     local self = setmetatable({}, DebugMenu)
     self.combat = opts.combat
     self.unit = opts.unit
@@ -103,6 +127,20 @@ function DebugMenu.new(opts)
     self.ax = opts.x or Scale.WIDTH / 2
     self.ay = opts.y or Scale.HEIGHT / 2
     self.closed = false
+    return self
+end
+
+-- opts:
+--   x, y         the cursor position the menu drops from (its top-left, clamped on-screen)
+--   combat       battle.combat
+--   tile         { x, y } the right-clicked cell (always set)
+--   unit         the living unit on that cell, or nil for the terrain menu
+--   onClose      fn() -- clear battle.debugMenu
+--   onPickTile   fn(fn(tx,ty)) -- close and arm board-targeting; the next left-click feeds tx,ty
+--   refresh      fn() -- called after any mutation so the host re-derives the board/turn strip/tooltips
+function DebugMenu.new(opts)
+    opts = opts or {}
+    local self = base(opts)
 
     local combat, u, tile, menu = self.combat, self.unit, self.tile, self
 
@@ -428,6 +466,139 @@ function DebugMenu.new(opts)
     return self
 end
 
+-- ---------------------------------------------------------------------------
+-- The item menu
+-- ---------------------------------------------------------------------------
+
+local ITEM_MENU_W = 236  -- wider than the board menu: its rows carry a file name, not a verb
+local GRADE_PAGE_W = 300    -- wider again: every row is a label AND a figure, right-aligned
+local GRADE_PAGE_ROWS = 22  -- and taller: the readout is one answer, and half of it is not an answer
+
+-- One "label ....... figure" row for the grade readout. Inert by construction: the page is a report,
+-- and nothing on it is a control. `figure` is drawn right-aligned by DebugMenu:drawList off `row.rhs`.
+local function readout(label, figure)
+    return { label = label, kind = "info", rhs = figure and tostring(figure) or nil }
+end
+
+-- Round to one decimal, as a string, so a column of grades lines up instead of running to Lua's
+-- fourteen significant figures.
+local function fig(n)
+    if type(n) ~= "number" then return "-" end
+    return string.format("%.1f", n)
+end
+
+-- What models/grade.lua makes of this item, row by row: the total, the active/passive split that
+-- produced it, every contributing line of the breakdown, and finally what the item is AUTHORED at.
+--
+-- The last block is the point of the page. Price is derived -- what a thing is worth sets the slot it
+-- unlocks from, and the slot sets the price (docs/shelf.md) -- so the two figures that matter are the
+-- price the blueprint carries and the price its own authored slot implies. When they disagree, the
+-- shelf pass has not been run since somebody last touched this file, and the page says so rather than
+-- leaving it to `. grade-report` to find.
+local function gradePage(item)
+    local id = item.id
+    local def = Item.defs[id]
+    local value, breakdown = Grade.of(id)
+    if not value then
+        return listPage("Grade", { readout("(no grade: unknown item)") }, { w = GRADE_PAGE_W, maxRows = GRADE_PAGE_ROWS })
+    end
+
+    local rows = { readout("GRADE", fig(value)) }
+    if breakdown.blind then
+        -- BLIND, not weak: the dry run saw nothing because the item needs board state a boardless
+        -- replay cannot have (a planted charge, a weapon beside it, a purse). Grade.of is explicit
+        -- that this is a fact about the instrument, so the page must not present it as a judgement.
+        rows[#rows + 1] = readout("  blind -- needs board state")
+    elseif breakdown.estimated then
+        rows[#rows + 1] = readout("  estimated (un-weighted trait)")
+    end
+    rows[#rows + 1] = readout("  active", fig(breakdown.active))
+    rows[#rows + 1] = readout("  passive", fig(breakdown.passive))
+
+    rows[#rows + 1] = readout("-- breakdown --")
+    for _, r in ipairs(breakdown.rows) do
+        rows[#rows + 1] = readout("  " .. tostring(r[1]), fig(r[2]))
+    end
+
+    rows[#rows + 1] = readout("-- authored --")
+    rows[#rows + 1] = readout("  class", def.class or "(none)")
+    local slot = def.unlockQuests or 0
+    rows[#rows + 1] = readout("  slot (unlockQuests)", slot)
+    rows[#rows + 1] = readout("  price", def.price and (def.price .. "g") or "(unsold)")
+    if def.price then
+        local implied = Grade.priceFor(slot, def.type)
+        rows[#rows + 1] = readout("  price for that slot", implied .. "g")
+        if implied ~= def.price then
+            rows[#rows + 1] = readout("  ! stale: run grade-report apply")
+        end
+    end
+
+    return listPage(("Grade: %s"):format(def.name or id), rows, { w = GRADE_PAGE_W, maxRows = GRADE_PAGE_ROWS })
+end
+
+-- opts:
+--   x, y      the cursor position the menu drops from
+--   item      the right-clicked item INSTANCE (the live table, so a reload re-stamps the copy on show)
+--   unit      the combat unit holding it, when there is one -- priced tooltips only
+--   onClose   fn() -- clear the host's menu field
+--   refresh   fn() -- called after a reload so the host re-derives whatever it drew off the item
+--
+-- Returns nil in a release build and for an item whose blueprint the catalog does not know (a
+-- hand-built instance), so a host can write `menu = DebugMenu.forItem{...}` and let the nil say no.
+function DebugMenu.forItem(opts)
+    opts = opts or {}
+    local item = opts.item
+    if not Debug.enabled or not item or not item.id or not Item.defs[item.id] then return nil end
+
+    local self = base(opts)
+    self.item = item
+
+    local id = item.id
+    local rel = Item.paths[id]
+    local file = rel and (rel:match("([^/]+)$") or rel) or nil
+
+    local rows = {}
+
+    -- Row 1, and the reason the menu exists: the blueprint in an editor. The path is printed as well
+    -- as opened -- if nothing answers (no association for .lua, no $LOVETACTICS_EDITOR), the console
+    -- still says exactly where to go, which is the whole ask minus the convenience.
+    if file then
+        rows[#rows + 1] = { label = "Open " .. file, kind = "action", keep = true, act = function()
+            print(("item: %s"):format(rel))
+            return Debug.openFile(rel) and ("opened " .. file) or "no editor answered -- path in console"
+        end }
+    else
+        rows[#rows + 1] = readout("(no source file)")
+    end
+
+    -- Row 2 closes the loop row 1 opens: change a number in the editor, reload, look again. It swaps
+    -- the blueprint AND re-stamps this instance from it, because the copy in your hand was taken at
+    -- instantiate time and would otherwise still be showing the old figures -- a reload you cannot see
+    -- is indistinguishable from one that failed.
+    if rel then
+        rows[#rows + 1] = { label = "Reload blueprint", kind = "action", keep = true, act = function()
+            local ok, err, stale = Item.reload(id)
+            if not ok then return "reload failed: " .. tostring(err) end
+            Item.restamp(item, stale)
+            Grade.reset() -- the grade page memoizes; a reloaded blueprint invalidates every figure on it
+            return "reloaded " .. (file or id)
+        end }
+    end
+
+    rows[#rows + 1] = { label = "Copy id", kind = "action", keep = true, act = function()
+        local set = love.system and love.system.setClipboardText
+        if not set then return "no clipboard" end
+        set(id)
+        return "copied " .. id
+    end }
+
+    rows[#rows + 1] = { label = "Grade / price", kind = "submenu", build = function() return gradePage(item) end }
+
+    self.stack = { listPage(item.name or id, rows, { w = ITEM_MENU_W }) }
+    self:layout()
+    return self
+end
+
 function DebugMenu:top() return self.stack[#self.stack] end
 
 -- Recompute the box rect (and, for a stepper page, its control rects) from the current top page.
@@ -438,9 +609,13 @@ function DebugMenu:layout()
     if page.kind == "stepper" then
         bodyH = 3 * ROW_H
     else
-        bodyH = math.min(#page.rows, MAX_ROWS) * ROW_H
+        bodyH = math.min(#page.rows, page.maxRows or MAX_ROWS) * ROW_H
+        -- A `keep` row's notice sits under the list, in the box, so what just happened is reported
+        -- where the row that did it still is. It only ever costs the height once it has something to
+        -- say, so a page that has not been acted on is exactly as tall as its rows.
+        if page.notice then bodyH = bodyH + ROW_H end
     end
-    self.w = MENU_W
+    self.w = page.w or MENU_W
     self.h = PAD + HEADER_H + bodyH + PAD
     self.x = math.max(8, math.min(Scale.WIDTH - self.w - 8, math.floor(self.ax)))
     self.y = math.max(8, math.min(Scale.HEIGHT - self.h - 8, math.floor(self.ay)))
@@ -479,7 +654,7 @@ end
 function DebugMenu:update(dt) end
 
 -- The visible window of a list page and the row index under a pixel (or nil).
-function DebugMenu:visibleCount(page) return math.min(#viewRows(page), MAX_ROWS) end
+function DebugMenu:visibleCount(page) return math.min(#viewRows(page), page.maxRows or MAX_ROWS) end
 
 function DebugMenu:rowAt(x, y)
     local page = self:top()
@@ -545,9 +720,17 @@ function DebugMenu:activate(idx)
     if row.kind == "submenu" then
         self:push(row.build())
     elseif row.kind == "action" then
-        if row.act then row.act() end
+        local said = row.act and row.act() or nil
         self.refresh()
-        self:close()
+        -- A `keep` row acts on a FILE rather than the board: closing on each one would make an
+        -- open-edit-reload-look loop three right-clicks long. It stays, and whatever act() said goes
+        -- on the notice line, since a menu that does not close has no other way to report itself.
+        if row.keep then
+            page.notice = type(said) == "string" and said or nil
+            self:layout()
+        else
+            self:close()
+        end
     end
 end
 
@@ -601,6 +784,15 @@ function DebugMenu:draw()
         self:drawStepper(page, fh)
     else
         self:drawList(page, fh)
+        -- What the last `keep` row did, on its own line at the body's foot (layout has already made
+        -- room for it). Drawn out here rather than inside drawList so an empty filtered view still
+        -- reports it instead of swallowing it with the rows.
+        if page.notice then
+            local ny = self.y + PAD + HEADER_H + self:visibleCount(page) * ROW_H
+            Theme.set(Theme.accentAmber)
+            love.graphics.print(Theme.ellipsize(page.notice, self.font, self.w - 2 * PAD),
+                self.x + PAD, ny + (ROW_H - fh) / 2)
+        end
         self:drawItemTooltip(page)
     end
     love.graphics.setColor(1, 1, 1)
@@ -648,15 +840,25 @@ function DebugMenu:drawList(page, fh)
                 love.graphics.rectangle("line", self.x + 2, ry, self.w - 4, ROW_H)
                 love.graphics.setLineWidth(1)
             end
+            -- A readout row carries a figure as well as a label (the Grade page). It is measured
+            -- first and the label ellipsized against what is LEFT, so a long breakdown label loses
+            -- its tail rather than running under the number it belongs to.
+            local rhsW = 0
+            if row.rhs then rhsW = self.font:getWidth(row.rhs) + 10 end
             Theme.set(row.kind == "info" and Theme.muted or Theme.ink)
-            love.graphics.print(Theme.ellipsize(row.label, self.font, self.w - 2 * PAD - 12),
+            love.graphics.print(Theme.ellipsize(row.label, self.font, self.w - 2 * PAD - 12 - rhsW),
                 self.x + PAD, ry + (ROW_H - fh) / 2)
+            if row.rhs then
+                Theme.set(Theme.ink)
+                love.graphics.printf(row.rhs, self.x, ry + (ROW_H - fh) / 2, self.w - PAD, "right")
+            end
             if row.kind == "submenu" then
                 Theme.set(Theme.muted)
                 love.graphics.print(">", self.x + self.w - PAD - 8, ry + (ROW_H - fh) / 2)
             end
         end
     end
+
     -- Scroll hints when the list overflows its window.
     if #rows > vis then
         Theme.set(Theme.muted)
