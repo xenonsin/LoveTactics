@@ -954,9 +954,11 @@ end
 -- lying there rather than in proportion to how badly the player needs it.
 --
 -- ONE PILE PER TILE. A second wipe on the same square MERGES into the pile already there -- and
--- re-resolves its guard, because the pile just got bigger. Two markers on one cell would be one of them
--- invisible: states/game.lua's markBodies never draws a pack over an existing encounter, so the second
--- would sit on the run unreachable. Wipes on different tiles are different piles, which is the point.
+-- re-resolves its guard, because the pile just got bigger. One heap, one marker, one guard, one walk
+-- back; two piles side by side would be two fights for what was one mistake made twice. Wipes on
+-- different tiles are different piles, which is the point. Matched on the square the pile IS LYING ON
+-- (Descent.markPacks writes a slid pile's seat back onto it), never the square the bodies fell on --
+-- so the pile that merges is the one the player can see.
 --
 -- ONE PILE PER WIPE rather than one per body, unchanged: the company went down together, in a heap, and
 -- four markers on four adjacent tiles would be four walks for one mistake.
@@ -997,6 +999,94 @@ function Descent.dropsOn(run, floor)
         if d.floor == floor then out[#out + 1] = d end
     end
     return out
+end
+
+-- The blueprint that supplies a pile's fiction, keyed by the guard drawn when it fell
+-- (Descent.packGuard). A pile from before the guard existed names neither and stays a walk-on pickup.
+local PACK_BLUEPRINT = { scavengers = "encounter_pack_scavengers", drawn = "encounter_pack_drawn" }
+
+-- WHERE A PILE CAN ACTUALLY BE SEEN, given where it fell. Returns the cell to put the marker on, or nil
+-- if there is nowhere on the floor to put one.
+--
+-- A MARKER MUST NOT GO OVER ANOTHER STOP -- a pack drawn over the way up, or over a fight nobody has
+-- cleared yet, deletes the thing underneath it -- and for as long as that rule was the WHOLE of the
+-- answer, the common case had no marker at all. The common case is the point: a company wipes at a
+-- FIGHT, the fight is lost so its stop stays armed, and the pile lands on a tile that is already spoken
+-- for. The pack sat on the run, correctly bookkept and invisible, and the one thing the mode asks you
+-- to walk back down for was a coordinate the player had never been shown.
+--
+-- So the pile SLIDES. The nearest walkable tile with nothing on it, breadth-first from where they fell
+-- -- one step, in every case that matters: the doorway of the room they died in. It is also the honest
+-- fiction, since a pack does not stay neatly under the body that was carrying it.
+--
+-- HIDDEN GROUND IS NOT A SEAT. A marker behind a secret door the party has not found is drawn into
+-- black (Overworld:isHidden gates the reveal), which is the same invisibility this exists to end.
+function Descent.packSeat(grid, x, y)
+    if not (grid and x and y) then return nil end
+    local start = grid:get(x, y)
+    if not start then return nil end
+    if not (start.encounter or grid:isHidden(start)) then return start end
+    local seen = { [grid:cellKey(x, y)] = true }
+    local q, qi = { start }, 1
+    while qi <= #q do
+        local c = q[qi]; qi = qi + 1
+        for _, n in ipairs(grid:pathNeighbors(c.x, c.y)) do
+            local key = grid:cellKey(n.x, n.y)
+            if not seen[key] then
+                seen[key] = true
+                if not (n.encounter or grid:isHidden(n)) then return n end
+                q[#q + 1] = n
+            end
+        end
+    end
+    return nil
+end
+
+-- Put a marker on every pile lying on THIS floor, and take away the ones that have been lifted. Run
+-- whenever the list can have changed -- a floor entered, a pile picked up.
+--
+-- The marker is an `encounter` of kind "pack", for the reason the way up is one (models/overworld.lua's
+-- placeExit): the marker pipeline, the fog and the walk-onto-it seam all come free, and a bespoke cell
+-- field would have meant writing all three again. It carries the run entry itself, so the stop knows
+-- which pile it is standing on without searching.
+--
+-- THE SEAT IS WRITTEN BACK ONTO THE DROP. Where a pile lies is where its marker is, from the first
+-- moment anybody could have seen it -- so a pile that slid off a fight tile (Descent.packSeat) does not
+-- slide again on the next visit, a second wipe on the same fight leaves a second pile rather than
+-- merging into one the player can no longer find, and the tile the run names is the tile the marker is
+-- on. What is given up is the exact square the bodies fell on, which nothing reads and nobody is shown.
+function Descent.markPacks(run, grid, floor)
+    if not (run and grid) then return 0 end
+    -- Clear first, so a pack picked up leaves no marker behind and a re-entry does not double them.
+    for y = 1, grid.rows do
+        for x = 1, grid.cols do
+            local c = grid.cells[y][x]
+            if c.encounter and c.encounter.kind == "pack" then c.encounter = nil end
+        end
+    end
+    local n = 0
+    for _, drop in ipairs(Descent.dropsOn(run, floor)) do
+        -- Seated in list order, and each seat is taken as it is filled: two piles that would land on one
+        -- tile get one tile each, because the second one's search sees the first one's marker.
+        local c = Descent.packSeat(grid, drop.x, drop.y)
+        if c then
+            drop.x, drop.y = c.x, c.y
+            c.encounter = {
+                -- A PILE IS A FIGHT. `id` names the blueprint that supplies the fiction and
+                -- `composition` is the cast, drawn once when the company fell and kept on the drop
+                -- (Descent.packGuard) so the same company is standing there on the second attempt as on
+                -- the first. A drop from before this landed carries neither and stays a walk-on pickup:
+                -- a player who put a pack down under the old rules did not agree to fight for it.
+                kind = "pack",
+                name = "What You Dropped",
+                drop = drop,
+                id = PACK_BLUEPRINT[drop.guard],
+                composition = drop.guardIds,
+            }
+            n = n + 1
+        end
+    end
+    return n
 end
 
 -- ---------------------------------------------------------------------------

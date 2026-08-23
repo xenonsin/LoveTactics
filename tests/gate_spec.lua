@@ -29,6 +29,32 @@ local function company(n, gold)
     return p
 end
 
+-- A bare floor to seat markers on: every tile open trail, nothing standing on any of them. Built
+-- through Overworld.fromSnapshot rather than the generator because what is under test is where a marker
+-- lands, and a rolled board would put its own stops in the way of the answer.
+local function board(cols, rows)
+    local Overworld = require("models.overworld")
+    local cells = {}
+    for y = 1, rows do
+        cells[y] = {}
+        for x = 1, cols do cells[y][x] = { tile = "path" } end
+    end
+    return Overworld.fromSnapshot({
+        cols = cols, rows = rows, tilesetId = "forest", start = { x = 1, y = 1 }, cells = cells,
+    })
+end
+
+-- The tile the marker for `pile` is actually drawn on, or nil if the board has none.
+local function markerOf(grid, pile)
+    for y = 1, grid.rows do
+        for x = 1, grid.cols do
+            local e = grid.cells[y][x].encounter
+            if e and e.kind == "pack" and e.drop == pile then return grid.cells[y][x] end
+        end
+    end
+    return nil
+end
+
 return {
     { name = "a night at the inn restores the company and sets every bone", fn = function()
         -- The inn is the ONLY mender a descent has: wounds cap healing for the rest of a body's life
@@ -134,10 +160,10 @@ return {
         assert(#Descent.dropsOn(run, 6) == 1, "and taking one leaves the other where it is")
     end },
 
-    { name = "two deaths on ONE tile merge, because a second marker there would be invisible", fn = function()
-        -- states/game.lua's markBodies never draws a pack over a cell that already has an encounter, so
-        -- a second entry on the same square would sit on the run unreachable forever. Different tiles
-        -- are different piles; the same tile is one pile that got bigger.
+    { name = "two deaths on ONE tile merge, because one mistake is one walk", fn = function()
+        -- The company went down together, in a heap, and twice on the same square is the same heap.
+        -- Different tiles are different piles; the same tile is one pile that got bigger -- which is
+        -- also one marker and one guard rather than two of each side by side.
         local Item = require("models.item")
         local run = Descent.new(company(1, 0), 5)
 
@@ -149,6 +175,76 @@ return {
         assert(pile.count == 2, "holding both deaths' worth, got " .. tostring(pile.count))
         local back = Descent.takePack(run, pile)
         assert(#back == 2, "and it hands over everything in it")
+    end },
+
+    { name = "a pile is on the map, and one that fell on a fight slides off it rather than vanishing",
+      fn = function()
+        -- THE CASE THIS EXISTS FOR IS THE COMMON ONE. A company wipes at a FIGHT; the fight was lost, so
+        -- its stop is still armed; the pile lands on a tile that is already spoken for. A marker must
+        -- never be drawn over another stop -- it would delete the thing underneath, and the way up is
+        -- one of the things it could land on -- so for as long as that was the whole rule, the pack sat
+        -- on the run bookkept and INVISIBLE, and the one thing the mode asks you to walk back down for
+        -- was a coordinate nobody was ever shown.
+        local Item = require("models.item")
+        local run = Descent.new(company(1, 0), 5)
+        local grid = board(5, 5)
+        grid:get(3, 3).encounter = { kind = "combat", name = "The thing that killed you" }
+
+        Descent.dropPack(run, 2, 3, 3, { Item.instantiate("weapon_iron_sword") })
+        assert(Descent.markPacks(run, grid, 2) == 1, "the pile is marked")
+
+        assert(grid:get(3, 3).encounter.kind == "combat",
+            "and the fight is still standing on its own tile -- the marker never overwrites a stop")
+
+        local pile = Descent.dropsOn(run, 2)[1]
+        local cell = markerOf(grid, pile)
+        assert(cell, "there is a marker on the board for it")
+        assert(math.abs(cell.x - 3) + math.abs(cell.y - 3) == 1,
+            "one step from where they fell, not across the floor")
+        assert(pile.x == cell.x and pile.y == cell.y,
+            "and the run says the pile is where the marker is, so it does not move again next visit")
+        assert(cell.encounter.composition == pile.guardIds, "the guard drawn at the wipe is standing on it")
+        assert(cell.encounter.id, "and it names a blueprint for the fiction")
+    end },
+
+    { name = "a marked pile is lifted off the board when it is picked up", fn = function()
+        local Item = require("models.item")
+        local run = Descent.new(company(1, 0), 5)
+        local grid = board(5, 5)
+
+        Descent.dropPack(run, 1, 2, 2, { Item.instantiate("weapon_iron_sword") })
+        Descent.markPacks(run, grid, 1)
+        local pile = Descent.dropsOn(run, 1)[1]
+        assert(pile.x == 2 and pile.y == 2, "an empty tile seats the marker where they fell")
+
+        -- Twice over: re-entering a floor must not walk the pile one tile further every time.
+        Descent.markPacks(run, grid, 1)
+        assert(pile.x == 2 and pile.y == 2, "and a second pass leaves it exactly there")
+        assert(markerOf(grid, pile), "with one marker on it")
+
+        Descent.takePack(run, pile)
+        assert(Descent.markPacks(run, grid, 1) == 0 and not markerOf(grid, pile),
+            "and taking it up takes the marker with it")
+    end },
+
+    { name = "two piles that want one tile get a tile each", fn = function()
+        -- Only reachable because a pile slides: both of these fell on the same fight, on either side of
+        -- a save. They cannot merge (dropPack matches on the tile, and the first pile is no longer on
+        -- it), so what must not happen is the second one seating on top of the first and being lost.
+        local Item = require("models.item")
+        local run = Descent.new(company(1, 0), 5)
+        local grid = board(5, 5)
+        grid:get(3, 3).encounter = { kind = "combat", name = "The thing that killed you twice" }
+
+        Descent.dropPack(run, 2, 3, 3, { Item.instantiate("weapon_iron_sword") })
+        Descent.markPacks(run, grid, 2)
+        Descent.dropPack(run, 2, 3, 3, { Item.instantiate("consumable_healing_potion") })
+        assert(#Descent.dropsOn(run, 2) == 2, "precondition: two piles, because the first one moved")
+
+        assert(Descent.markPacks(run, grid, 2) == 2, "both are marked")
+        local a, b = Descent.dropsOn(run, 2)[1], Descent.dropsOn(run, 2)[2]
+        assert(not (a.x == b.x and a.y == b.y), "on tiles of their own")
+        assert(markerOf(grid, a) and markerOf(grid, b), "and both markers are on the board")
     end },
 
     { name = "a pile is guarded, and what is standing on it is drawn to how much was spilled", fn = function()

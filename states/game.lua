@@ -457,46 +457,16 @@ function game:applyVision()
     game.map.visionRadius = ((game.darkFor or 0) > 0) and 1 or base
 end
 
--- Put a marker on every tile of THIS floor that has a body on it, and take away the ones that have been
--- lifted. Run whenever the list can have changed -- a floor entered, a body left, a body taken up.
+-- Put a marker on every pile lying on THIS floor, and take away the ones that have been lifted. Run
+-- whenever the list can have changed -- a floor entered, a pile taken up.
 --
--- The marker is an `encounter` of kind "corpse", for the reason the way up is one (models/overworld.lua's
--- placeExit): the marker pipeline, the fog, and the walk-onto-it seam all come free, and a bespoke cell
--- field would have meant writing all three again. It carries the run entry itself so the stop knows
--- which body it is standing on without searching.
+-- The work is Descent.markPacks, in the model, because seating a marker is a decision about the run
+-- rather than about this screen -- where a pile can be seen, and what happens when the tile it fell on
+-- is already a fight (which is the tile a wipe lands on nearly every time). This screen's part is
+-- knowing which floor the company is standing on.
 function game:markBodies()
     if not (game.descent and game.grid) then return end
-    -- Clear first, so a pack picked up leaves no marker behind and a re-entry does not double them.
-    for y = 1, game.grid.rows do
-        for x = 1, game.grid.cols do
-            local c = game.grid.cells[y][x]
-            if c.encounter and c.encounter.kind == "pack" then c.encounter = nil end
-        end
-    end
-    for _, drop in ipairs(Descent.dropsOn(game.descent, Descent.depth(game.descent))) do
-        local c = drop.x and drop.y and game.grid:get(drop.x, drop.y)
-        -- Never over the top of something else. A pack dropped on the tile the way up stands on -- or on
-        -- a stop that has not been cleared yet -- keeps its entry on the run and simply goes unmarked;
-        -- the alternative is deleting the exit from the floor, which is unrecoverable.
-        if c and not c.encounter then
-            -- A PILE IS A FIGHT. `id` names the blueprint that supplies the fiction and `composition`
-            -- is the cast, drawn once when the company fell and kept on the drop (Descent.packGuard) so
-            -- the same company is standing there on the second attempt as on the first.
-            --
-            -- A drop from before this landed carries neither. It stays a walk-on pickup rather than
-            -- being handed a guard invented on the spot: a player who put a pack down under the old
-            -- rules did not agree to fight for it.
-            local blueprint = drop.guard == "scavengers" and "encounter_pack_scavengers"
-                or drop.guard == "drawn" and "encounter_pack_drawn" or nil
-            c.encounter = {
-                kind = "pack",
-                name = "What You Dropped",
-                drop = drop,
-                id = blueprint,
-                composition = drop.guardIds,
-            }
-        end
-    end
+    Descent.markPacks(game.descent, game.grid, Descent.depth(game.descent))
 end
 
 -- THE LANDING. The circle's guard is face-down on the stair, and the stair is open.
