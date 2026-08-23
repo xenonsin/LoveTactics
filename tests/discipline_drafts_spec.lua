@@ -7,6 +7,7 @@
 
 local Combat = require("models.combat")
 local Hazard = require("models.hazard")
+local Item = require("models.item")
 local Status = require("models.status")
 local Summon = require("models.summon")
 local Fixture = require("tests.support.fixture")
@@ -55,24 +56,54 @@ return {
 
     -- THIEF -----------------------------------------------------------------------------------------
     {
-        name = "Sap drains the target's stamina to fund the thief's own",
+        -- Sap used to drain STAMINA, which made it a second Cutpurse Knife -- same class, same range,
+        -- same rung, same two lines. What it moves now is the ARM: the victim's Damage comes off
+        -- (status_sapped) and the identical figure goes onto the thief (status_stolen_strength). The
+        -- claim under test is the LEDGER -- what one side loses the other gains, exactly -- and the cap
+        -- that keeps it a transfer rather than a grant.
+        name = "Sap moves the target's Damage onto the thief, capped at the arm it robs",
         fn = function()
-            local map = Fixture.new(8, 8)
-            local hero = Fixture.unit("character_clem", 2, 2, { isolate = "bare", items = { "ability_sap" } })
-            local foe = Fixture.unit("character_bandit", 2, 3, { isolate = "bare", stats = { defense = 0, health = 100 } })
-            local combat = Fixture.combat(map, hero, foe)
-            local h, f = combat.units[1], combat.units[2]
-            h.char.stats.stamina.max, h.char.stats.stamina.current = 99, 20 -- headroom so the restore isn't clamped
-            f.char.stats.stamina.max, f.char.stats.stamina.current = 30, 30
+            local function sap(foeDamage)
+                local map = Fixture.new(8, 8)
+                local hero = Fixture.unit("character_clem", 2, 2, { isolate = "bare", items = { "ability_sap" } })
+                local foe = Fixture.unit("character_bandit", 2, 3, { isolate = "bare",
+                    stats = { defense = 0, health = 500, damage = foeDamage } })
+                local combat = Fixture.combat(map, hero, foe)
+                local h, f = combat.units[1], combat.units[2]
+                h.char.stats.stamina.max, h.char.stats.stamina.current = 99, 99
 
-            local foeStam0, heroStam0, hp0 = f.char.stats.stamina.current, h.char.stats.stamina.current, f.char.stats.health.current
-            assert(Fixture.strike(combat, h, f, "ability_sap"), "Sap strikes the adjacent foe")
-            assert(f.char.stats.health.current < hp0, "Sap deals damage")
-            assert(f.char.stats.stamina.current < foeStam0, "and saps stamina out of the foe")
-            -- Sap costs 5 stamina to swing but drains 8 back: the thief ends the turn no poorer than it
-            -- started, which only holds because the theft more than funds the cast. (>= not ==: ending a
-            -- turn ticks a small regen onto every unit, so exact post-cast totals are not the claim.)
-            assert(h.char.stats.stamina.current >= heroStam0, "the sapped stamina lands in the thief's reserves, funding the swing")
+                local hp0 = f.char.stats.health.current
+                local foeAtk0, heroAtk0 = Combat.flatStat(f, "damage"), Combat.flatStat(h, "damage")
+                assert(Fixture.strike(combat, h, f, "ability_sap"), "Sap strikes the adjacent foe")
+                assert(f.char.stats.health.current < hp0, "Sap deals damage")
+                return { hero = h, foe = f,
+                    took = foeAtk0 - Combat.flatStat(f, "damage"),
+                    gained = Combat.flatStat(h, "damage") - heroAtk0 }
+            end
+
+            -- An unforged Sap is worth 4 of somebody's arm (4 + fx.level), and every point of it lands.
+            local strong = sap(20)
+            assert(strong.took == 4, "Sap takes 4 Damage off a strong arm, got " .. strong.took)
+            assert(strong.gained == strong.took, "and exactly that much lands on the thief, got " .. strong.gained)
+            assert(Status.has(strong.foe, "status_sapped"), "the victim carries the badge that says so")
+            assert(Status.has(strong.hero, "status_stolen_strength"), "and the thief carries the other half")
+
+            -- A transfer can only move what is there: rob the scribe and the swing is only a swing.
+            -- This is the line that makes Sap ask a different question from the Cutpurse Knife's.
+            local weak = sap(0)
+            assert(weak.took == 0, "a strengthless body yields no Damage, got " .. weak.took)
+            assert(weak.gained == 0, "so the thief gains none either -- nothing is created, got " .. weak.gained)
+
+            -- ...and the cap must never become a gate on the APPLY. Combat.abilityOutput's stand-in
+            -- target carries no attack stat, so an effect that skipped the statuses when the theft
+            -- came up empty would compute 0 here and drop both badges out of the item's own glossary
+            -- -- a card describing an ability that does nothing, visible nowhere but the shelf. The
+            -- effect applies both unconditionally and lets the magnitude be 0; this is what says so.
+            local out = Combat.abilityOutput(nil, Item.instantiate("ability_sap"))
+            local named = {}
+            for _, st in ipairs(out.statuses) do named[st.id] = true end
+            assert(named.status_sapped, "the shelf tooltip names Sapped")
+            assert(named.status_stolen_strength, "and Stolen Strength, the half the thief keeps")
         end,
     },
     {

@@ -182,6 +182,21 @@ Grade.STATUS_GRADE = {
     status_shared_burden = 0.9,  -- half of every wound borne by the one who swore it
     status_given_guard = 0.0,    -- the COST half of lending it: the giver stands thinner
 
+    -- Strength, taken and worn (data/items/ability/ability_sap.lua). The same two-badge shape as the
+    -- guard pair above, with one difference that decides both numbers: NEITHER half is a cost. Sap
+    -- takes Damage off a foe and puts it on the thief, so the debuff and the buff are both bought by
+    -- the same swing and both are priced at their weight -- unlike Given Guard, which is what the
+    -- lender pays and so grades at nothing.
+    --
+    -- Authored because the derivation cannot see either one: both route their magnitude through
+    -- `magnitudeStat` rather than a static `statBonus`, since the amount is decided per cast (capped
+    -- at the arm being robbed). The stat-swing branch below reads `statBonus` only, so a derived read
+    -- of these two would be a flat zero -- the whole ability graded as an ordinary jab, which is what
+    -- it did while it was still a stamina drain.
+    status_stolen_strength = 0.7, -- +4 Damage for 2.4 turns, on a body that CHOOSES to swing: more
+                                  -- than Empowered's one stored blow above, so it prices above it
+    status_sapped = 0.55,         -- the same 4 off a foe, discounted for the turns it may not swing
+
     -- Wearing another body: a whole second kit for a while. The `transform` verb prices the swap
     -- itself (Grade.VERB_TURNS), so these price only what the shape is worth once worn.
     status_wild_shape_bear = 1.2,
