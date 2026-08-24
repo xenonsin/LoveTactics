@@ -26,8 +26,8 @@ return {
         { "bastion", "A Lord Commander's stipend is four hundred a season and it is paid to people who understand the difference between a hard truth and a useful one.", tag = 14 },
         { "character_avatar", "...", tag = 15, choices = {
             { "\"Keep your stipend.\"", tag = 16, goto = "refuse" },
-            { "\"We understand each other.\"", tag = 17, goto = "took", effect = { gold = 400, take = "bastion" } },
-            { "\"Rowan holds the Aegis. Offer it to her.\"", tag = 18, goto = "with", effect = { gold = 400, take = "bastion", press = "bastion" } },
+            { "\"We understand each other.\"", tag = 17, goto = "took", effect = { gold = 400 } },
+            { "\"Rowan holds the Aegis. Offer it to her.\"", tag = 18, goto = "with", effect = { gold = 400 } },
         } },
         { "bastion", "Then you will find the second vault is not the only thing that stays shut to you.", tag = 19, id = "refuse", goto = "after" },
         { "bastion", "Sensible. It changes nothing about what she did and it keeps four hundred posts manned.", tag = 20, id = "took", goto = "after" },

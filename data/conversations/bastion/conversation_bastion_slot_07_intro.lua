@@ -36,8 +36,8 @@ return {
         { "bastion", "There is more on that shelf than one relief order. Muster rolls. Pay books. Fifteen years of the eastern posts.", tag = 11 },
         { "character_avatar", "...", tag = 12, choices = {
             { "\"We take the Greywatch file. Nothing else.\"", tag = 13, goto = "refuse" },
-            { "\"Take the shelf.\"", tag = 14, goto = "took", effect = { gold = 260, take = "bastion" } },
-            { "\"Rowan. You know what's worth taking. Pick.\"", tag = 15, goto = "with", effect = { gold = 260, take = "bastion", press = "bastion" } },
+            { "\"Take the shelf.\"", tag = 14, goto = "took", effect = { gold = 260 } },
+            { "\"Rowan. You know what's worth taking. Pick.\"", tag = 15, goto = "with", effect = { gold = 260 } },
         } },
         { "character_rowan", "One file. I came for one file.", tag = 16, id = "refuse", goto = "end" },
         { "character_rowan", "All of it, then. It is only paper and it is already forgotten.", tag = 17, id = "took", goto = "end" },

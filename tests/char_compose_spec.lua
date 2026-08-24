@@ -34,23 +34,17 @@ local KNOWN_KINDS = {
 -- two can never disagree about who is allowed to look like whom.
 --
 --   * saber_bout -- Saber as the debut bout fields her.
---   * *_caved    -- a companion the player spoiled across her own class line, fighting for the Hollow
---                   Crown at the Gate (models/temptation.lua). Reading as herself IS the beat: what
---                   tells the player is her side and her name, never a costume.
+--
+-- The seven `*_caved` companions were the other entry and are gone with models/temptation.lua. The
+-- table stays a table rather than collapsing to one comparison: the case it encodes -- one person, two
+-- blueprints -- is the recurring one, and it recurred once already.
 local ALIAS = {
     character_saber_bout = "character_saber",
-    character_rowan_caved = "character_rowan",
-    character_saber_caved = "character_saber",
-    character_amana_caved = "character_amana",
-    character_kaya_caved = "character_kaya",
-    character_gyeom_caved = "character_gyeom",
-    character_clem_caved = "character_clem",
-    character_ren_caved = "character_ren",
 }
 
 -- Are these two blueprints allowed to converge? The relation is symmetric, and it composes through the
--- alias target -- character_saber_bout and character_saber_caved are both Saber, so they may share with
--- each other as well as with her, which a bare one-hop lookup would have failed on.
+-- alias target, so a future third blueprint of somebody already aliased may share with both of them
+-- rather than only with the base -- which a bare one-hop lookup would have failed on.
 local function aliased(a, b)
     return (ALIAS[a] or a) == (ALIAS[b] or b)
 end

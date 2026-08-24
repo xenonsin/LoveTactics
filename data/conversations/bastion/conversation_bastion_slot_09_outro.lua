@@ -21,8 +21,8 @@ return {
         { "character_forsworn_captain", "You put down the one thing you are carrying that is costing you something, and you go on exactly as you are.", tag = 9 },
         { "character_avatar", "...", tag = 10, choices = {
             { "\"Forty-one. It stays forty-one.\"", tag = 11, goto = "refuse" },
-            { "\"What's the fee?\"", tag = 12, goto = "took", effect = { gold = 500, take = "bastion" } },
-            { "\"Rowan. Ask her what she put down.\"", tag = 13, goto = "with", effect = { gold = 500, take = "bastion", press = "bastion" } },
+            { "\"What's the fee?\"", tag = 12, goto = "took", effect = { gold = 500 } },
+            { "\"Rowan. Ask her what she put down.\"", tag = 13, goto = "with", effect = { gold = 500 } },
         } },
         { "character_forsworn_captain", "As you like. We are four miles up that road when you change your mind.", tag = 14, id = "refuse", goto = "after" },
         { "character_forsworn_captain", "There is no fee. That is the part nobody believes until afterwards.", tag = 15, id = "took", goto = "after" },

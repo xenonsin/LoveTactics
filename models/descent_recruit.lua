@@ -80,22 +80,29 @@ end
 -- a house's line; the plain class under it is what a player has from the very beginning, so the seven
 -- are the shallowest thing down here and there is no ladder above them to climb.
 --
--- THEY ARE PEOPLE TOO, and that is the point of reading them off Temptation.COMPANIONS rather than off
--- the class list. The generic templates (character_fighter, character_knight) are stat lines with no
--- portrait and no relic -- what the pool was full of before, and what it must never be full of again.
--- Each line's COMPANION is the named body built on that class: Saber for the fighter, Rowan for the
--- knight, Clem for the rogue. One per class, authored in one table a spec already walks
--- (tests/temptation_spec.lua), which is exactly the shape `hire` gives the disciplines.
+-- THEY ARE PEOPLE TOO, and that is the point of reading them off each house's authored `companion`
+-- rather than off the class list. The generic templates (character_fighter, character_knight) are stat
+-- lines with no portrait and no relic -- what the pool was full of before, and what it must never be
+-- full of again. Each house's COMPANION is the named body built on that class: Saber for the fighter,
+-- Rowan for the knight, Clem for the rogue. One per class, which is exactly the shape `hire` gives the
+-- disciplines.
+--
+-- IT USED TO READ Temptation.COMPANIONS, and moved when that model was cut. The pairing was never a
+-- temptation fact -- it is a vendor fact, sitting beside the `sin` and `class` those blueprints already
+-- declare (data/vendors/bastion.lua carries the rationale), so the table went to the houses rather than
+-- to whichever module happened to walk it.
 --
 -- Somebody already in the company is filtered at the slate (Recruit.offer), so a save that walked in
 -- with Rowan simply never meets her down here.
 local function rootHeroes()
-    local Temptation = require("models.temptation")
+    local Vendor = require("models.vendor")
     local ids = {}
-    -- Read in the authored line order rather than by `pairs`, for the reason that table is ordered:
-    -- a floor's slate must deal the same body from the same seed on any machine.
-    for _, line in ipairs(Temptation.LINES) do
-        local id = Temptation.COMPANIONS[line]
+    -- Walked in Descent.SINS order rather than by `pairs` over the vendor registry: a floor's slate must
+    -- deal the same body from the same seed on any machine, and that list is already the one ordered
+    -- statement of which house is which circle.
+    for _, sin in ipairs(Descent.SINS) do
+        local def = sin.vendor and Vendor.get(sin.vendor)
+        local id = def and def.companion
         if id then ids[#ids + 1] = id end
     end
     return ids

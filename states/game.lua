@@ -755,18 +755,6 @@ function game:previewObjectiveReward(objSpec)
     return Descent.objectiveReward(game.player, game.descent, objSpec)
 end
 
--- A class line's last quest settles its temptation ledger, and a companion whose line ended in `left`
--- walks HERE rather than inside Quest.complete -- she has to still be on the roster for the outro to
--- give her a farewell, and `when = { has = ... }` would have dropped her own goodbye out of her own
--- scene. The flag was stamped at completion; this is where the roster catches up with it. A no-op on
--- every quest that is not a line's tenth, which is why both completion paths can just call it.
-function game:settleTemptation(reward)
-    if reward and reward.temptation then
-        require("models.temptation").settle(game.player)
-        Player.save()
-    end
-end
-
 -- THE DAY ENDS HERE, and this is the only place it does.
 --
 -- Everything the run found has been in the stash all along -- live, equippable, spendable -- but
@@ -1412,11 +1400,8 @@ function game:openEncounter(cell, opts)
                 game:openLanding(cell)
                 return
             end
-            -- A `meet` objective pays exactly as a fought one does -- the settle for a line's last
-            -- quest included, and it happens immediately here because `meet` puts its scene BEFORE the
-            -- payout rather than after it, so the farewell has already played.
+            -- A `meet` objective pays exactly as a fought one does.
             game.reward = game:payObjective(cell, nil)
-            game:settleTemptation(game.reward)
             -- ...and leaves the day open if the ground still has work on it. A meeting is a piece of
             -- work like any other now; only the last one ends the expedition.
             if not game:tripCleared() then
@@ -1825,9 +1810,7 @@ function game:openEncounter(cell, opts)
                     for id, n in pairs(spoils and spoils.materials or {}) do salvage[id] = n end
 
                     -- THE PAYOUT SEAM, once per piece of work: gold, the relic, the companion, and the
-                    -- sponsor's standing, which is what opens their shelf. The temptation settle is
-                    -- deliberately NOT here -- it waits for the outro below, which needs the companion
-                    -- it may be about to take away.
+                    -- sponsor's standing, which is what opens their shelf.
                     local doneQuest
                     game.reward, doneQuest = game:payObjective(cell, salvage)
                     -- The sting that marks a piece of work actually ending.
@@ -1924,7 +1907,6 @@ function game:openEncounter(cell, opts)
                     -- The `meet` objective keeps the old route deliberately -- it has no victory screen
                     -- to be part of, being a scene walked into rather than a fight won.
                     local function goNext()
-                        game:settleTemptation(game.reward)
                         if not (game.player and game.reward) then route() return end
                         -- The map has to be back on screen for the panel to sit over: the battle state
                         -- is still current at this point, frozen on its last frame.

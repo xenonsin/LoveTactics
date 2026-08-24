@@ -75,10 +75,10 @@ The shades are summons, bound to the Crown. Kill it and they go with it, which i
 
 > **Authoring note — SUPERSEDED.** `data/traits/trait_hollow_crown.lua` used to hold a static `shades`
 > list, and this note used to say "that list is the fight; as each general is written, put it there."
-> All seven generals exist now, and the list is no longer static: `Temptation.shades` resolves it off
-> the live save, putting **the companions the player spoiled** ahead of the Crown's own dead. The
-> curated general trio (wrath, sloth, pride) is the fallback for a clean run. See
-> [docs/temptation.md](temptation.md).
+> All seven generals exist now. The list was briefly dynamic — `Temptation.shades` put **the companions
+> the player spoiled** ahead of the Crown's own dead — but that model is **cut**, so `shades` is the
+> curated general trio (wrath, sloth, pride) again and the trait reads it straight off its own
+> blueprint.
 
 ## The seven keys
 
@@ -191,7 +191,12 @@ lines asks the player, once per quest, whether they will take the Crown's offer 
 whether they will bring their companion along when they do. Take enough over her objection and she
 leaves the roster for good; take enough *with* her and she stays, wears the dead general's relic, is
 stronger for it, and is what the Hollow Crown puts on at the Gate. The seat a general vacates does not
-stay empty. See [docs/temptation.md](temptation.md); the Bastion is the worked line.
+stay empty.
+>
+> **CUT (2026-08-24).** `models/temptation.lua`, `docs/temptation.md` and the seven `*_caved`
+> blueprints are gone. The system was fully built and fully tested and no player could reach it: offers
+> were authored in one house only, three of them on live routes, against a fall line of four. The
+> paragraph above describes a mechanic the game no longer has.
 
 **The virtue is the spine, never the label.** A sin gets to be a personified abstraction — *Ira,
 the Unappeased*. A virtue does not; it is a person with an ordinary name, and the virtue shows in
@@ -1912,9 +1917,9 @@ men-at-arms) as gold-cost abilities and their blueprints; Clem's fully-passive h
 The two rules below say every general was a human who said yes. The campaign now asks the player the
 same question seventy times, in the same words, through whatever mouth each chapter supplies — and the
 finale's own closing lines ("*seven people said yes to it... it was asked of them, and every one of
-them answered*") are written to be heard as being about the party. What a companion is worth is
-settled by what the player answered on the way to her general. See
-[docs/temptation.md](temptation.md).
+them answered*") are written to be heard as being about the party. What a companion is worth was to be
+settled by what the player answered on the way to her general — **the system that settled it is cut**;
+the finale's lines stand, and are about the seven rather than about the party now.
 
 ## Every general is a fallen human, and every general fight has two phases
 

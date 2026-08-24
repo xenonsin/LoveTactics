@@ -470,19 +470,6 @@ function Save.snapshot(player)
         if set then flags = flags or {}; flags[flagId] = true end
     end
 
-    -- The temptation ledger, { [vendorId] = { taken = n, pressed = n } } (models/temptation.lua).
-    -- Stored as counts rather than as the outcome they resolve to, because the outcome is only decided
-    -- at a line's slot 10 and the counts have to survive the nine quests before it. A zero pair is
-    -- dropped: a line nobody has been offered anything in has nothing to say.
-    local temptation
-    for vendorId, ledger in pairs(player.temptation or {}) do
-        local taken, pressed = tonumber(ledger and ledger.taken) or 0, tonumber(ledger and ledger.pressed) or 0
-        if taken > 0 or pressed > 0 then
-            temptation = temptation or {}
-            temptation[vendorId] = { taken = taken, pressed = pressed }
-        end
-    end
-
     -- The red-dot ledgers: item ids that arrived in the stash, and item ids a quest put on a shelf,
     -- neither yet looked at (Player.markNew). Same shape and same additive rule as the flags above --
     -- Save.VERSION does not move, and an older save loads with nothing marked, which reads as a player
@@ -639,7 +626,6 @@ function Save.snapshot(player)
         announcedDisciplines = announcedDisciplines,
         seenDoors = seenDoors,
         flags = flags,
-        temptation = temptation,
         newItems = newItems,
         newStock = newStock,
         lastDeployed = lastDeployed,
@@ -883,18 +869,6 @@ function Save.restore(snap)
         if set and type(flagId) == "string" then flags[flagId] = true end
     end
 
-    -- The temptation ledger. A vendor that vanished from data/ drops its counts with it, the same rule
-    -- standing and wounds follow above -- a line that no longer exists cannot be resolved.
-    local temptation = {}
-    for vendorId, ledger in pairs(snap.temptation or {}) do
-        if known(require("models.vendor").defs, vendorId) and type(ledger) == "table" then
-            temptation[vendorId] = {
-                taken = tonumber(ledger.taken) or 0,
-                pressed = tonumber(ledger.pressed) or 0,
-            }
-        end
-    end
-
     -- The red-dot ledgers (Player.markNew). An id no longer in data/ is dropped like every other, so a
     -- removed item cannot leave a dot on nothing.
     local newItems, newStock = {}, {}
@@ -969,7 +943,6 @@ function Save.restore(snap)
         announcedDisciplines = announcedDisciplines,
         seenDoors = seenDoors,     -- nil on an older save, which is what the hub seeds off (see above)
         flags = flags,             -- absent on a save from before this existed; empty reads as unanswered
-        temptation = temptation,   -- ...and an empty ledger resolves every line as `held`, which is right
         newItems = newItems,
         newStock = newStock,
         lastDeployed = lastDeployed,

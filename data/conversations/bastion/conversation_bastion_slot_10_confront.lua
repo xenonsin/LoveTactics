@@ -34,8 +34,8 @@ return {
         { "character_general_sloth", "So finish it. Relieve her. She has done enough and there was never anybody coming, and you have known that longer than she has.", tag = 14 },
         { "character_avatar", "...", tag = 15, choices = {
             { "\"She's not yours to relieve.\"", tag = 16, goto = "refuse" },
-            { "\"You're not wrong. It changes nothing here.\"", tag = 17, goto = "took", effect = { gold = 300, take = "bastion" } },
-            { "\"Rowan. You've done enough.\"", tag = 18, goto = "with", effect = { gold = 300, take = "bastion", press = "bastion" } },
+            { "\"You're not wrong. It changes nothing here.\"", tag = 17, goto = "took", effect = { gold = 300 } },
+            { "\"Rowan. You've done enough.\"", tag = 18, goto = "with", effect = { gold = 300 } },
         } },
         { "character_general_sloth", "No. Nobody's ever is. That is what makes it so easy.", tag = 19, id = "refuse", goto = "hold" },
         { "character_general_sloth", "Then you have agreed with me and come anyway. How very much like the order.", tag = 20, id = "took", goto = "hold" },

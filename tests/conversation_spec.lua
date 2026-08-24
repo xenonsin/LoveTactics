@@ -48,14 +48,14 @@ local function fullContext()
     local ctx = Conversation.context(nil)
     setmetatable(ctx.roster, { __index = function() return true end })
     setmetatable(ctx.quests, { __index = function() return true end })
-    -- Story flags too (models/story_effect.lua, models/temptation.lua). "Fully unlocked" has to mean
-    -- every question answered as well as every quest done, or a scene block gated on an outcome flag
-    -- reads as unreachable and the reachability case below fails on correctly-authored content.
+    -- Story flags too (models/story_effect.lua). "Fully unlocked" has to mean every question answered
+    -- as well as every quest done, or a scene block gated on an outcome flag reads as unreachable and
+    -- the reachability case below fails on correctly-authored content.
     --
-    -- Note what this does and does not prove for MUTUALLY EXCLUSIVE branches -- a line's held / left /
-    -- caved endings, which can never all play in one save. Every one of them is reachable here, so a
-    -- typo'd flag id still fails loudly, which is what this case is for. It does not check that exactly
-    -- one of them fires; that is models/temptation.lua's job and tests/temptation_spec.lua proves it.
+    -- Note what this does and does not prove for MUTUALLY EXCLUSIVE branches -- the held / left / caved
+    -- blocks the cut temptation model left behind, which could never all play in one save. Every one of
+    -- them is reachable here, so a typo'd flag id still fails loudly, which is what this case is for.
+    -- It never checked that exactly one of them fires; that was the model's own spec, and both are gone.
     -- Which is also why those branches are all authored with POSITIVE `flag` conditions: a `notFlag`
     -- block is invisible in this context by construction and would fail the case below.
     setmetatable(ctx.flags, { __index = function() return true end })

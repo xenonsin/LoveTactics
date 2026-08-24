@@ -120,7 +120,8 @@ return {
             -- Recruit.pool would be the town minting a body the descent has no depth for, which is a rig that
             -- teaches the player a pull can do something a pull cannot.
             --
-            -- Saber qualifies because she is a LINE COMPANION (Temptation.COMPANIONS), and the seven of
+            -- Saber qualifies because she is a LINE COMPANION (a house's `companion`, data/vendors/),
+            -- and the seven of
             -- those stand on the first floor: a base class is what a player has from the beginning, so
             -- there is no ladder above it to climb.
             local shallow = false

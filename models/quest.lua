@@ -399,11 +399,10 @@ function Quest.available(player)
                 -- hub (states/game.lua). A flag rather than a quest id known to the engine, so an
                 -- alternate or additional ending is a data edit and nothing else.
                 endsCampaign = def.endsCampaign,
-                -- A class line's last quest: completing it settles what that line's ten offers came to
-                -- and decides whether its companion held, left, or caved (models/temptation.lua). Same
-                -- shape and same reasoning as endsCampaign above -- a data flag, never an id the
-                -- engine learns, so the ten slots can be renamed or renumbered freely.
-                endsLine = def.endsLine,
+                -- `endsLine` USED TO BE CARRIED HERE. It marked a class line's last quest so completing
+                -- it could settle that line's ten temptation offers; with models/temptation.lua cut
+                -- nothing reads it, so it is no longer copied onto the board entry. The blueprints that
+                -- still declare it are the slot-10 files, which go with the retired board.
                 -- How deep down its line this fight sits, expressed as the level its enemies may
                 -- never drop below (Quest.floorLevelFor). Carried on the board entry rather than
                 -- resolved at battle time so the quest board can WARN with it: a soft lock nobody
@@ -850,19 +849,6 @@ function Quest.complete(player, quest, carried, opts)
     -- with everything else this completion changed.
     local unlockedStock = Quest.markOpenedStock(player, quest.sponsor, shelfBefore)
 
-    -- A line's last quest settles what its ten offers came to (models/temptation.lua): held, left, or
-    -- caved. `endsLine` is a data flag on the slot-10 blueprint rather than a quest id this file knows,
-    -- the same shape `endsCampaign` takes for the finale -- so a line that moves, splits, or gains an
-    -- eleventh slot needs no engine edit.
-    --
-    -- Only the FLAG is stamped here. A companion who is leaving has an outro to say goodbye in and has
-    -- to still be on the roster to say it, so the actual release is a separate beat -- states/game.lua
-    -- calls Temptation.settle once that scene has finished playing.
-    local temptation
-    if quest.endsLine and quest.sponsor then
-        temptation = require("models.temptation").resolve(player, quest.sponsor)
-    end
-
     Player.save()
 
     local sponsorQuests = quest.sponsor and Quest.sponsorProgress(player, quest.sponsor)
@@ -888,10 +874,6 @@ function Quest.complete(player, quest, carried, opts)
         -- (models/experience.lua); see the note above where prestige used to be granted.
         sponsor = quest.sponsor,
         sponsorQuests = sponsorQuests, -- the sponsor's new finished-quest count (its standing), for the reward panel
-        -- "held" | "left" | "caved" on a line's last quest, nil on every other. Not a reward and not
-        -- shown on the reward panel -- the outro scene is what says it, in the companion's own voice.
-        -- It rides out here so states/game.lua knows a settle is owed once that scene ends.
-        temptation = temptation,
         mealSpent = mealSpent, -- the meal id this quest ate through, or nil if the company went hungry
         -- The wares this completion put on the sponsor's shelf, or nil when it opened none:
         -- { vendorId, vendor = shop name, items = { { id, name, type, price }, ... } }. The reward panel

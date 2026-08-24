@@ -19,8 +19,8 @@ return {
         { "character_rowan", "Forty-one people walked out of this fort and not one of them took a weapon with them.", tag = 8 },
         { "character_avatar", "...", tag = 9, choices = {
             { "\"Then it stays here.\"", tag = 10, goto = "refuse" },
-            { "\"Load it up.\"", tag = 11, goto = "took", effect = { grant = "weapon_exposing_pike", gold = 180, take = "bastion" } },
-            { "\"They didn't want it, Rowan. You should have it.\"", tag = 12, goto = "with", effect = { grant = "weapon_exposing_pike", gold = 180, take = "bastion", press = "bastion" } },
+            { "\"Load it up.\"", tag = 11, goto = "took", effect = { grant = "weapon_exposing_pike", gold = 180 } },
+            { "\"They didn't want it, Rowan. You should have it.\"", tag = 12, goto = "with", effect = { grant = "weapon_exposing_pike", gold = 180 } },
         } },
         { "character_rowan", "It stays. It is a grave, and that is grave goods.", tag = 13, id = "refuse", goto = "after" },
         { "character_rowan", "...Fine. It is only steel. She is not in it.", tag = 14, id = "took", goto = "after" },

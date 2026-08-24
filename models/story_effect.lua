@@ -15,10 +15,11 @@
 -- Fields compose: a single effect may cost, grant, and flag at once (the tradeoff shape). Pure
 -- logic, no love.graphics -- headless-testable. See tests/story_effect_spec.lua.
 --
--- `take` and `press` are the temptation ledger's two axes and are the only keys here that name a
--- VENDOR rather than an item, a number, or a flag id. They exist as a pair because accepting a bargain
--- and talking your companion into it are different acts with different consequences -- see
--- models/temptation.lua and docs/temptation.md for what the counts come to.
+-- `take` and `press` USED TO LIVE HERE -- the temptation ledger's two axes, the only keys that named a
+-- VENDOR rather than an item, a number, or a flag id. That model is cut, and both keys with it. An
+-- authored scene that still carries one is inert rather than an error, which is deliberate: the keys
+-- are being removed from the scenes in the same pass, and a hard failure would take a save down over a
+-- line of dialogue.
 
 local StoryEffect = {}
 
@@ -68,11 +69,6 @@ function StoryEffect.apply(effect, player)
         player.flags[effect.flag] = true
     end
 
-    -- The temptation ledger. Both keys name the VENDOR whose line the offer belongs to, and a single
-    -- choice commonly sets both -- taking a bargain your companion came along for is one act with two
-    -- consequences, so it records twice rather than needing a third key for the combination.
-    if effect.take then require("models.temptation").record(player, effect.take, "take") end
-    if effect.press then require("models.temptation").record(player, effect.press, "press") end
 end
 
 return StoryEffect

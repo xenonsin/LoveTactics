@@ -165,8 +165,10 @@ end
 --
 -- `flag` is the one predicate whose subject is a CHOICE rather than a state of the world. The other
 -- five ask what the player has: who is on the roster, what is finished, how far along they are. This
--- one asks what they answered. It is what makes a branching scene able to remember itself, and it is
--- how held / left / caved reach every scene downstream of a line (models/temptation.lua).
+-- one asks what they answered. It is what makes a branching scene able to remember itself. Its widest
+-- consumer used to be models/temptation.lua, whose held / left / caved outcomes reached downstream
+-- scenes as flags; that model is cut and the predicate is unchanged, because it was always the general
+-- mechanism and temptation was only its largest customer.
 local PREDICATES = {}
 PREDICATES.has = function(ctx, id) return ctx.roster[id] == true end
 PREDICATES.notHas = function(ctx, id) return ctx.roster[id] ~= true end

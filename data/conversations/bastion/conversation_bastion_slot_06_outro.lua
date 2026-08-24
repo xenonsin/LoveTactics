@@ -20,8 +20,8 @@ return {
         { "character_rowan", "He is not asking us to lie. He is asking us to write down sixty and let the season start.", tag = 5 },
         { "character_avatar", "...", tag = 6, choices = {
             { "\"Forty-four is what he has.\"", tag = 7, goto = "refuse" },
-            { "\"Write sixty.\"", tag = 8, goto = "took", effect = { gold = 220, take = "bastion" } },
-            { "\"You've been on a roll like that, Rowan. Sign it.\"", tag = 9, goto = "with", effect = { gold = 220, take = "bastion", press = "bastion" } },
+            { "\"Write sixty.\"", tag = 8, goto = "took", effect = { gold = 220 } },
+            { "\"You've been on a roll like that, Rowan. Sign it.\"", tag = 9, goto = "with", effect = { gold = 220 } },
         } },
         { "character_rowan", "Forty-four. He can explain the gap to somebody above him.", tag = 10, id = "refuse", goto = "after" },
         { "character_rowan", "Sixty on paper and forty-four on the line. I have seen where that ends.", tag = 11, id = "took", goto = "after" },

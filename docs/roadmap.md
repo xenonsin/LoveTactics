@@ -66,10 +66,12 @@ The bulk of the remaining authoring. 72 of 94 quests have no `intro`, `outro`, o
 
 9. **Scenes for the 72.** The Bastion is the worked example — 20 conversations, intro and outro on
    every slot. Copy its shape per line. Companions get `when = { has = ... }` blocks so every scene
-   is authored for the full roster. **These now have a spine to be written along:** every quest
-   carries one of the Crown's offers, and what the player answers decides whether that line's
-   companion holds, leaves, or caves — see [docs/temptation.md](temptation.md). The Bastion's ten
-   offers are built; the other six lines' sixty are the work.
+   is authored for the full roster. **The spine these were to be written along is gone:** every quest
+   used to carry one of the Crown's offers, deciding whether that line's companion held, left, or
+   caved. `models/temptation.lua`, `docs/temptation.md` and the seven `*_caved` blueprints are **cut**
+   — the system shipped fully built and fully tested with three reachable offers against a fall line
+   of four, so no player could ever move it. The Bastion's ten offer scenes keep their choices and
+   their branching replies; only the ledger keys are gone.
 10. **Slot 5 unbuyables.** Each line's slot 5 owes a register-style reward item; none are written,
     which is why those quests set no `rewardItems`.
 11. **Slot 8 second relics** for Saber, Kaya, Ren, Gyeom and Clem. Rowan's and Amana's exist.
@@ -81,8 +83,7 @@ The bulk of the remaining authoring. 72 of 94 quests have no `intro`, `outro`, o
     it with a `conversation`, and `states/game.lua` plays that scene as the whole encounter, choices and
     `effect` included. It predates this item. What is left is a content decision — whether each line's
     slot 7 becomes an event stop or stays the fight it currently ships as. The Bastion's slot 7 stays a
-    fight and carries its turn in the `intro` instead, where the temptation warning also lands
-    ([docs/temptation.md](temptation.md)).
+    fight and carries its turn in the `intro` instead.
 
 ## Phase 4 — the seven finales
 

@@ -14,6 +14,8 @@ return {
     class = "rogue",
     description = "No sign, no door you'd notice. Everything inside belonged to someone else.",
     sin = "greed",
+    -- The companion this house's line earns; see data/vendors/bastion.lua for why it is authored here.
+    companion = "character_clem",
     service = {
         id = "fence",
         label = "Fence",

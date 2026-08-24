@@ -20,8 +20,8 @@ return {
         { "character_rowan", "He said it does more good on a road than on a wall nobody is coming to.", tag = 8 },
         { "character_avatar", "...", tag = 9, choices = {
             { "\"He needs it more than we do.\"", tag = 10, goto = "refuse" },
-            { "\"Take it. He's right.\"", tag = 11, goto = "took", effect = { grant = { "consumable_healing_potion", "consumable_healing_potion" }, gold = 60, take = "bastion" } },
-            { "\"Rowan. You tell him. He'll believe a knight.\"", tag = 12, goto = "with", effect = { grant = { "consumable_healing_potion", "consumable_healing_potion" }, gold = 60, take = "bastion", press = "bastion" } },
+            { "\"Take it. He's right.\"", tag = 11, goto = "took", effect = { grant = { "consumable_healing_potion", "consumable_healing_potion" }, gold = 60 } },
+            { "\"Rowan. You tell him. He'll believe a knight.\"", tag = 12, goto = "with", effect = { grant = { "consumable_healing_potion", "consumable_healing_potion" }, gold = 60 } },
         } },
         { "character_rowan", "Then he keeps it. Four days is four days.", tag = 13, id = "refuse", goto = "after" },
         { "character_rowan", "He is right. I hate that he is right.", tag = 14, id = "took", goto = "after" },

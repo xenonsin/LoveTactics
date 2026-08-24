@@ -291,27 +291,9 @@ local CHARACTER_SILHOUETTE = {
     -- Off the priest's supplicant.
     amana = "cathelineau/nun-face",
 
-    -- THE CAVED COMPANIONS, and they are all aliases on purpose -- the same argument saber_bout makes
-    -- above, made seven more times. A caved companion is not a new body: she is the companion the
-    -- player spoiled across her own class line, wearing her dead general's relic and fighting for the
-    -- Hollow Crown at the Gate (models/temptation.lua). She has to READ as herself, because that is the
-    -- entire beat -- the woman who has been at your shoulder for twenty hours is standing on the other
-    -- side of the board, and what tells the player is her side and her name, not a costume.
-    --
-    -- Without these lines each one falls through to its CLASS bucket and collides with that class's
-    -- generic template (Rowan's caved form wore character_knight's banner, Clem's the generic rogue's
-    -- hood), which is the exact failure the bucket rule exists to prevent -- and it would also be the
-    -- wrong picture: a generic knight is the one thing she is not.
-    --
-    -- They inherit def.sprite from their base too, so both ride one composed file and nothing extra is
-    -- rendered for any of them.
-    rowan_caved = "cathelineau/swordwoman",
-    saber_caved = "lorc/saber-slash",
-    amana_caved = "cathelineau/nun-face",
-    kaya_caved  = "delapouite/bow-string",
-    gyeom_caved = "lorc/wizard-staff",
-    clem_caved  = "lorc/cloak-dagger",
-    ren_caved   = "lorc/standing-potion",
+    -- THE CAVED COMPANIONS USED TO BE ALIASED HERE -- seven of them, each pointing at its own base so a
+    -- companion the player had spoiled read as herself when the Hollow Crown turned her. Both the
+    -- blueprints and models/temptation.lua that produced them are cut, so the aliases went with them.
 
     -- Off the spectre, which the Gaunt Vigil (a hooded iron figure) keeps. The Blightstake is a planted
     -- stake that spits something foul, not a ghost.

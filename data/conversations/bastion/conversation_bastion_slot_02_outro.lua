@@ -33,8 +33,8 @@ return {
         { "character_rowan", "The contract says ended. It does not say returned. Nobody is coming out here to count it.", tag = 15 },
         { "character_avatar", "...", tag = 16, choices = {
             { "\"Leave them what they died in.\"", tag = 17, goto = "leave" },
-            { "\"Strip it. We can sell it in the city.\"", tag = 18, goto = "strip", effect = { gold = 140, take = "bastion" } },
-            { "\"Fifteen years of water, Rowan. Let the order buy you one drink.\"", tag = 19, goto = "with", effect = { gold = 140, take = "bastion", press = "bastion" } },
+            { "\"Strip it. We can sell it in the city.\"", tag = 18, goto = "strip", effect = { gold = 140 } },
+            { "\"Fifteen years of water, Rowan. Let the order buy you one drink.\"", tag = 19, goto = "with", effect = { gold = 140 } },
         } },
         { "character_rowan", "Good. I would not have argued, but I am glad you said it first.", tag = 20, id = "leave", goto = "after" },
         { "character_rowan", "You'll do what you'll do. I'm not touching it.", tag = 21, id = "strip", goto = "after" },

@@ -12,4 +12,6 @@ return {
     class = "alchemist",
     description = "Every jar is labelled with something else's name.",
     sin = "envy",
+    -- The companion this house's line earns; see data/vendors/bastion.lua for why it is authored here.
+    companion = "character_ren",
 }

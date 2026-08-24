@@ -36,8 +36,8 @@ return {
         { "character_forsworn_captain", "That is not my line. Somebody put it to her in that order, word for word, and she is under a gate now and I am out here on a road, and the difference between us is four days.", tag = 12 },
         { "character_avatar", "...", tag = 13, choices = {
             { "\"Keep your list.\"", tag = 14, goto = "refuse" },
-            { "\"I'll take the list. Say what you like.\"", tag = 15, goto = "took", effect = { gold = 200, take = "bastion" } },
-            { "\"Rowan. Answer him.\"", tag = 16, goto = "with", effect = { gold = 200, take = "bastion", press = "bastion" } },
+            { "\"I'll take the list. Say what you like.\"", tag = 15, goto = "took", effect = { gold = 200 } },
+            { "\"Rowan. Answer him.\"", tag = 16, goto = "with", effect = { gold = 200 } },
         } },
         { "character_forsworn_captain", "No. Of course not. Neither did I, the first four times.", tag = 17, id = "refuse", goto = "after" },
         { "character_forsworn_captain", "Written down and paid for. You are easier than she was.", tag = 18, id = "took", goto = "after" },

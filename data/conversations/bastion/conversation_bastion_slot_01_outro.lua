@@ -26,7 +26,7 @@ return {
         { "character_caravan_master", "His share is sitting in my book with nowhere to go, and I am not carrying it back down that road to hand to nobody. You want it, it's yours. Choose...", tag = 11 },
         { "character_avatar", "...", tag = 12, choices = {
             { "\"Put it in the Bastion's poor-box at Highwatch.\"", tag = 13 },
-            { "\"We'll take it.\"", tag = 14, effect = { gold = 90, take = "bastion" } },
+            { "\"We'll take it.\"", tag = 14, effect = { gold = 90 } },
         } },
         { "character_rowan", "Forgive me, {name}. I'm no use at this part of it.", tag = 8 },
         { "character_rowan", "Somebody arrived. That's all I have ever wanted a story to say.", tag = 9 },

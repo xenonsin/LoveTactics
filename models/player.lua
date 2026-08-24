@@ -248,9 +248,11 @@ end
 
 -- Lose a companion. The counterpart to Player.recruit, and for most of this game's life it did not
 -- exist -- the roster was strictly append-only, on the reasoning that a party member is earned and
--- never taken away. What changed that is models/temptation.lua: a companion whose line ends in `left`
--- has decided she will not follow the player any further, and a refusal that leaves her standing in
--- the party is not a refusal.
+-- never taken away. What changed that was models/temptation.lua, where a companion argued into enough
+-- bargains stopped following the player; that model is cut and this has NO CALLER now. It is kept
+-- rather than deleted because "a companion leaves, and here is exactly what she takes with her" is a
+-- decided question with a spec behind it (tests/extraction_spec.lua leans on the same bound-item rule),
+-- and re-deciding it later would be strictly harder than leaving the answer standing.
 --
 -- WHAT SHE LEAVES AND WHAT SHE TAKES. Ordinary equipment out of her grid goes back to the stash --
 -- that gear was bought with the company's gold and she is not a thief. Her BOUND items do not: a bound
@@ -415,11 +417,6 @@ function Player.new()
         -- happened once" ledger; the three above are older, narrower versions of the same idea that
         -- predate it and are left alone rather than folded in.
         flags = {},
-        -- The temptation ledger, as { [vendorId] = { taken = n, pressed = n } } -- how many of a
-        -- line's ten offers were accepted, and how many of those the line's companion was argued into
-        -- rather than overruled on. Resolved to held/left/caved when the line's slot 10 completes;
-        -- see models/temptation.lua and docs/temptation.md.
-        temptation = {},
         ngPlus = 0,           -- completed campaigns carried forward; see Player.newGamePlus
     }
 
@@ -1058,13 +1055,8 @@ end
 --   PERSISTS DELIBERATELY -- visited-vendor and discipline-announcement flags. Those exist to make a
 --   one-time scene play once; replaying eight shop introductions is not a reward.
 --
---   RESETS, for the same reason the quest ledger does -- the story flags and the temptation ledger
---   (models/temptation.lua). Every one of the seventy offers is back on the board, so the counts they
---   feed have to start from nothing or a second run would resolve every line on the first run's
---   answers. A companion who LEFT is not restored by this: she is off the roster, her recruit quest is
---   back on the board, and re-earning her is the intended way back. A companion who CAVED is still
---   carrying the relic she put on, which is the correct reading -- New Game+ carries the company as it
---   finished, and that is what it finished as.
+--   RESETS, for the same reason the quest ledger does -- the story flags. A one-time scene that a flag
+--   made play once has to be able to play again on a board that is back to its opening state.
 --
 -- Recruits are left in the roster rather than un-recruited. Their quests return to the board, and
 -- Player.recruit refuses a duplicate by design, so a re-run of a recruit quest pays its gold and its
@@ -1078,8 +1070,8 @@ end
 -- touches it. Anything gated on "have you beaten this" has to read a flag set by BEATING it, not by
 -- choosing to play again.
 --
--- Survives New Game+ on purpose, unlike the quest ledger, the flags and the temptation record, all of
--- which reset there so the campaign is a campaign again. What the player has done cannot un-happen: a
+-- Survives New Game+ on purpose, unlike the quest ledger and the flags, both of which reset there so
+-- the campaign is a campaign again. What the player has done cannot un-happen: a
 -- post-game door that closed when you started a second run would be the game taking a reward back.
 function Player.finishCampaign(player)
     player = player or Player.active
@@ -1117,7 +1109,6 @@ function Player.newGamePlus(player)
     player.runsStarted = 0
     player.completedQuests = {}
     player.flags = {}
-    player.temptation = {}
     -- The post-quest advancement overlay is owed to the run that just ended, not to the new one.
     player.pendingSummary = nil
     -- Every shelf just dropped back to its opening stock, so nothing on one is new any more. The

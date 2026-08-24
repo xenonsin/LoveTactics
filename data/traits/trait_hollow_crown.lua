@@ -7,30 +7,27 @@
 -- never summons the shade it was owed -- which is the correct reading: burst it down and it never gets
 -- to wear anything.
 --
--- WHOSE NAME IT REACHES FOR IS NOT FIXED ANY MORE, and that is the point of the whole campaign now.
--- `shades` below is the FALLBACK -- the Crown's own dead, the generals the player already put down --
--- and models/temptation.lua puts anyone the player spoiled in front of them. Every class line asks the
--- player ten times whether they will take the Crown's offer; a line whose companion CAVED ends with
--- her wearing the dead general's relic and still fighting at the player's shoulder, and this is where
--- that bill comes due. The Crown reaches past its own corpses for the woman standing on your side of
--- the board.
+-- WHOSE NAME IT REACHES FOR IS THE CROWN'S OWN DEAD -- `shades` below, the generals the player already
+-- put down, in the order it wants them.
 --
--- Which is also why there are two ways a name arrives:
+-- IT USED TO BE A CHOICE, and the history is worth keeping because the mechanism it left behind is
+-- still here. models/temptation.lua asked the player, once per quest for ten quests, whether they would
+-- take the Crown's offer; a line whose companion CAVED ended with her wearing her dead general's relic
+-- and still at the player's shoulder, and this hook reached past its own corpses for her. That model is
+-- cut, so the list is the generals and nothing else -- but `ctx.defect` below is untouched, because
+-- turning a body that is already deployed is the right move for ANY name on this list that happens to
+-- be standing there, and it costs nothing to leave working.
 --
---   * she is DEPLOYED -- `ctx.defect` re-bodies her where she stands and moves her onto the Crown's
---     side (models/trait.lua). No second copy: summoning a duplicate of a woman who is right there
---     would read as a bug rather than a betrayal.
---   * she was left at home -- there is nothing on the board to turn, so she comes through the Gate as
---     an ordinary summon, exactly as a general does.
+-- So there are still two ways a name arrives:
+--
+--   * it is DEPLOYED -- `ctx.defect` re-bodies it where it stands and moves it onto the Crown's side
+--     (models/trait.lua). No second copy: summoning a duplicate of something that is right there would
+--     read as a bug rather than a betrayal.
+--   * it is not on the board -- so it comes through the Gate as an ordinary summon.
 --
 -- A defector is NOT a summon, so it does not vanish with the Crown. Harmless: the objective is
 -- `assassinate`, so the fight ends on the Crown whoever else is still standing. The generals it
 -- summons still go with it, which is what keeps that objective honest.
--- models/temptation.lua and models/player.lua are required INSIDE the hook, never at the top of this
--- file. data/traits/ is swept by the registry from models/trait.lua's own require, so a blueprint that
--- reaches for a model at load time can close a cycle through whatever that model pulls in -- and the
--- failure lands as a nil index in an unrelated file. Every other model-touching data file in the tree
--- takes the same lazy shape for the same reason.
 
 -- The Crown's own dead, in the order it reaches for them when the player has given it nobody better.
 -- All seven generals are authored, so any of them could stand here; this curated trio is a deliberate
@@ -63,13 +60,9 @@ return {
         local hp = ctx.unit.char.stats.health
         local fraction = hp.current / hp.max
 
-        -- Resolved once per firing rather than cached on the trait: the list is a function of the save,
-        -- and reading it here keeps this file the only place the Crown's casting is decided. A battle
-        -- with no live player behind it (a spec fixture, the duel debug screen) falls back to the
-        -- generals, which is the behaviour this trait had before the ledger existed.
-        local Temptation = require("models.temptation")
-        local names = Temptation.shades(require("models.player").active,
-            ctx.def.shades or GENERALS, #ctx.def.thresholds)
+        -- Read off the blueprint rather than cached on the trait, so this file stays the only place the
+        -- Crown's casting is decided and an arena that authors its own `shades` is honoured.
+        local names = ctx.def.shades or GENERALS
 
         -- A single enormous blow can cross two thresholds at once, and should call up both.
         while ctx.trait.stacks < #ctx.def.thresholds
@@ -78,10 +71,13 @@ return {
 
             local shade = names[ctx.trait.stacks]
             if shade then
-                -- Was this name earned off a companion who is standing right there? Turn her where she
-                -- stands. Temptation.cavedId is the convention both ends of this agree on.
-                local companion = shade:match("^(.*)_caved$")
-                local standing = companion and fieldedAs(ctx, companion)
+                -- Is the body this name belongs to standing right there? Turn it where it stands.
+                --
+                -- It used to match a `_caved` suffix, because the only name that could be on the board
+                -- already was a companion the player had spoiled (models/temptation.lua, cut). The id is
+                -- compared directly now, which is the same rule with the special case taken out: a shade
+                -- already deployed defects, whoever authored it onto the list.
+                local standing = fieldedAs(ctx, shade)
                 if standing and ctx.defect(standing, shade) then
                     ctx.log("system", "The Crown remembers another name.")
                 else
