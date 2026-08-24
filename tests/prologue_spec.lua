@@ -15,8 +15,11 @@ local Conversation = require("models.conversation")
 -- it lives in the same folder and must resolve like any other. See states/hub.lua for the arrival.
 local PROLOGUE_SCENES = {
     "conversation_prologue_intro", "conversation_prologue_flee", "conversation_prologue_arrival",
-    "conversation_prologue_flier", "conversation_colosseum_slot_01_outro", "conversation_tutorial_village",
+    "conversation_colosseum_slot_01_outro", "conversation_tutorial_village",
 }
+-- `conversation_prologue_flier` was the sixth and is DELETED. `. content-report` reported it as an
+-- orphan -- no route in the game names it, and this list was the only thing that did, which is exactly
+-- the shape a scene takes when it is written and then never wired. Five spoken lines went with it.
 
 return {
     {

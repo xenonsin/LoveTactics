@@ -35,7 +35,9 @@ return {
     sponsor = "arcanum",
     rewardItems = { "weapon_reflecting_wand", "armor_witchlight_shroud" },
     rewardGold = 130,
-    requiredQuests = { "quest_arcanum_slot_02" }, -- slot 3: the line runs in order
+    -- The prerequisite chain DROPPED with the retired board: its only entry named a quest the descent
+    -- could never post, so the chain it belonged to no longer exists. The errand pool is the order now
+    -- (models/errand.lua's Errand.next, which only enforces a gate some house still asks for).
     requiredPrestige = 3,
     map = {
         biomes = { "forest", "swamp" },

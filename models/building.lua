@@ -69,11 +69,10 @@ Building.GRID = {
 -- building that predates the split needs no field.
 Building.DISTRICTS = { city = true, market = true }
 
--- DOORS THE CITY NO LONGER HAS. See the note in Building.list: the campaign is parked, not cut, and
--- this table is the whole of the parking. Everything a retired building led to is still on disk.
-Building.RETIRED = {
-    quest_board = true,
-}
+-- (Building.RETIRED held one entry -- the Quest Board -- and was the whole of "the campaign is parked,
+-- not cut": its blueprint stayed on disk and one table hid its door, so bringing the board back was
+-- deleting a line. It is cut now, blueprint and panel and Quest.available with it, so there is nothing
+-- left to park and no door to hide. A building the city does not have is a file that is not there.)
 
 -- WHOSE OPENING ERRAND OPENS A DOOR, or nil if none does.
 --
@@ -125,11 +124,9 @@ end
 --
 -- `opts.district` picks which board is being laid out -- "city" (the default) or "market". The shops all
 -- moved behind one Markets card and onto a board of their own; see Building.DISTRICTS.
--- `opts.includeRetired` lists the parked doors too, and exists for one caller: the specs that pin the
--- UNLOCK RULES of buildings the city no longer shows. Retiring hides a card; it does not change what
--- would open it, and those gates are still authored, still correct, and still what the campaign runs on
--- if it is ever brought back. Without this the parking would silently delete their coverage as well as
--- their card, which is the difference between parking something and losing it.
+-- (`opts.includeRetired` listed the parked doors too, for specs pinning the unlock rules of buildings
+-- the city no longer showed. Nothing is parked any more -- the one retired door was the Quest Board and
+-- it is deleted -- so the option has no doors to reveal and no caller. It is gone with the table.)
 function Building.list(playerOrPrestige, opts)
     local player = type(playerOrPrestige) == "table" and playerOrPrestige or nil
     -- Quests finished, on the authored scale (Player.standing). A bare number still works for the
@@ -139,14 +136,11 @@ function Building.list(playerOrPrestige, opts)
     local list = {}
     for id, def in pairs(Building.defs) do
         local locked = prestige < (def.unlockPrestige or 1)
-        -- RETIRED, not deleted. The Quest Board was the campaign's front door -- seven houses' work over
-        -- forty days -- and the city has one door now, and it goes down (data/buildings/the_gate.lua).
-        -- The board's blueprint, every quest, the calendar and the biome windows are all still on disk
-        -- and untouched; what changed is that nothing shows them. Bringing the campaign back is removing
-        -- this table, which is why parking it was worth doing rather than cutting it.
+        -- The Quest Board was the campaign's front door -- seven houses' work over forty days -- and the
+        -- city has one door now, and it goes down (data/buildings/the_gate.lua). It was hidden by a
+        -- RETIRED table for a while and is deleted outright now, so this filter is districts alone.
         local district = def.district or "city"
-        if (not Building.RETIRED[id] or (opts and opts.includeRetired))
-            and district == ((opts and opts.district) or "city") then
+        if district == ((opts and opts.district) or "city") then
             -- A HOUSE OPENS ON ITS OWN FIRST ERRAND, found on a floor. The seven shops were gated on the
             -- campaign's completed-quest count, which is parked at zero forever -- so as written they
             -- were seven cards reading "? (prestige 2)" that could never open. They were then moved onto

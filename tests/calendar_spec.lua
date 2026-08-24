@@ -106,32 +106,40 @@ return {
     },
 
     {
+        -- IT FELLED THEM BY COMPLETING quest_<house>_slot_10, seven times. Those went with the retired
+        -- board, and a general is put down on her circle's stair now -- credited to the run's `standing`
+        -- keyed by her house's vendor (models/descent.lua's clearFloor). Same count, one route.
         name = "every general left alive stands beside him at the end",
         fn = function()
+            local Descent = require("models.descent")
             local p = fresh()
             assert(Calendar.generalsStanding(p) == 7, "having felled none, all seven are waiting")
-            for i, id in ipairs(Quest.GENERAL_QUESTS) do
-                p.completedQuests[id] = true
+
+            p.descentRun = { standing = {} }
+            for i, sin in ipairs(Descent.SINS) do
+                p.descentRun.standing[sin.vendor] = 1
                 assert(Calendar.generalsStanding(p) == 7 - i,
-                    "felling one should leave one fewer standing")
+                    "sealing one circle should leave one fewer standing")
             end
             assert(Calendar.generalsStanding(p) == 0, "a clean sweep leaves him alone")
         end,
     },
     {
-        name = "the seven generals are real quests, one per house",
+        -- IT ASSERTED SEVEN REAL QUESTS, one per house, off Quest.GENERAL_QUESTS -- an authored list of
+        -- the seven line-enders, kept authored precisely because a renumbering would rot a derivation.
+        -- The list is deleted with the quests it named. The seven are Descent.SINS now, and the pairing
+        -- it guards is the same one in the other direction: seven circles, seven distinct houses.
+        name = "the seven circles are one per house, and every house is a real vendor",
         fn = function()
-            -- The list is authored rather than derived (see the note on Quest.GENERAL_QUESTS), which is
-            -- exactly the kind of thing a renumbering rots. The failure would be a finale quietly
-            -- getting easier, so it is checked here rather than trusted.
-            assert(#Quest.GENERAL_QUESTS == 7, "seven houses, seven generals")
+            local Descent = require("models.descent")
+            local Vendor = require("models.vendor")
+            assert(#Descent.SINS == 7, "seven sins, seven circles")
             local houses = {}
-            for _, id in ipairs(Quest.GENERAL_QUESTS) do
-                assert(Quest.defs[id], "no such quest: " .. id)
-                local house = Quest.defs[id].sponsor
-                assert(house, id .. " has no sponsoring house")
-                assert(not houses[house], "two generals sponsored by " .. tostring(house))
-                houses[house] = true
+            for _, sin in ipairs(Descent.SINS) do
+                assert(sin.vendor, sin.id .. " names no house")
+                assert(Vendor.defs[sin.vendor], sin.id .. " names an unknown house: " .. tostring(sin.vendor))
+                assert(not houses[sin.vendor], "two circles pay into " .. tostring(sin.vendor))
+                houses[sin.vendor] = true
             end
         end,
     },

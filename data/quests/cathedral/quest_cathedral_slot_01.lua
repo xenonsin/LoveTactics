@@ -17,7 +17,11 @@ return {
     -- and this house is not open to the player until they have been carried into it dead
     -- (data/quests/colosseum/quest_colosseum_slot_02.lua, and the building's own comment). The Mill
     -- surfaces the morning after the revival, with the acolyte who performed it already on the roster.
-    requiredQuests = { "quest_colosseum_slot_02" }, -- opens the morning after the revival
+    -- Gated on the DEBUT. This named the padded card (quest_colosseum_slot_02) until the retired
+    -- board took that quest with it, and the gate is the same one either way: the first-visit
+    -- board shows the Colosseum debut and nothing else, because a tutorial teaches by being the
+    -- only thing there. The debut is what survived, so the gate names the debut.
+    requiredQuests = { "quest_colosseum_slot_01" },
     requiredPrestige = 1,
     -- Overworld map generated when the quest starts (see models/overworld.lua).
     map = {

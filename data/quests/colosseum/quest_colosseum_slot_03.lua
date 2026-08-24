@@ -10,7 +10,11 @@ return {
     outro = "conversation_colosseum_slot_03_outro",
     rewardItems = { "weapon_bellfounders_hammer", "armor_rally_coat" },
     rewardGold = 300,
-    requiredQuests = { "quest_colosseum_slot_02" }, -- slot 3: the line runs in order
+    -- Gated on the DEBUT. This named the padded card (quest_colosseum_slot_02) until the retired
+    -- board took that quest with it, and the gate is the same one either way: the first-visit
+    -- board shows the Colosseum debut and nothing else, because a tutorial teaches by being the
+    -- only thing there. The debut is what survived, so the gate names the debut.
+    requiredQuests = { "quest_colosseum_slot_01" },
     requiredPrestige = 1,
     -- Overworld map generated when the quest starts (see models/overworld.lua).
     map = {

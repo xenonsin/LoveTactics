@@ -63,15 +63,11 @@ function love.load(args)
         return -- art-source sets its own exit code for the ship gate
     end
 
-    -- Progression ledger: `& "E:\LOVE\lovec.exe" . progression-report [full]`
-    -- Walks the campaign quest by quest under two play policies and reports what arrives at each --
-    -- levels, shelf rows, disciplines, companions, items -- so a dead stretch is measured rather than
-    -- guessed. The step-7 measurement in docs/progression.md. See tools/progression_report.
-    if args and args[1] == "progression-report" then
-        require("tools.progression_report").run({ select(2, unpack(args)) })
-        love.event.quit(0)
-        return
-    end
+    -- (`progression-report` stood here and is GONE WITH THE QUEST BOARD. It walked Quest.available
+    -- under two play policies -- "commit to one house" and "round-robin the houses" -- and both of those
+    -- are choices a player made at the board. A descent seats work on its floors; there is no policy to
+    -- walk. What it measured is still worth measuring, and an errand-pool version of it would be a new
+    -- tool asking a different question: what arrives as a company goes DOWN, not as it picks.)
 
     -- Balance ledger: `& "E:\LOVE\lovec.exe" . balance-report [full | sim [n]]`
     -- Measures the game's two number scales against each other: what the reference loadout throws at
@@ -134,15 +130,10 @@ function love.load(args)
         return
     end
 
-    -- Biome-window ledger: `& "E:\LOVE\lovec.exe" . biome-report [full]`
-    -- Walks all forty days under two play policies and reports whether every OPEN ground held live
-    -- work, plus the static census of authored ground against scheduled days. The instrument the
-    -- season table (data/biome_windows.lua) is tuned against. See tools/biome_report.
-    if args and args[1] == "biome-report" then
-        require("tools.biome_report").run({ select(2, unpack(args)) })
-        love.event.quit(0)
-        return
-    end
+    -- (`biome-report` stood here and is GONE WITH THE QUEST BOARD. It walked the forty-day season table
+    -- asking whether every open ground held live work -- a question about which GROUNDS a morning
+    -- offered, which was the board's whole job. The descent picks its ground from the circle it is on
+    -- (models/descent.lua's SINS), so there is no schedule left to tune.)
 
     -- Curve migration: `& "E:\LOVE\lovec.exe" . curve-migrate [apply | snapshot PATH]`
     -- Rewrites hand-typed per-level rows in data/items as models/curve.lua generator calls, and dumps

@@ -47,6 +47,16 @@ local function obtainableIds()
     for _, def in pairs(Encounter.defs) do add(def.loot) end
     add(require("data.player").startingItems)
 
+    -- AND WHAT A CIRCLE'S BODIES PAY. This source was missing and the omission was invisible while the
+    -- seven general relics were ALSO sitting in their generals' own `startingItems` -- the spec passed
+    -- for the wrong reason, off a grid nobody can loot, rather than off the drop table that actually
+    -- hands them over. It went red the moment the retired board's quest-only stock moved onto these
+    -- lists and had no second home to be found in.
+    for _, drop in pairs(require("models.descent").DROPS or {}) do
+        add(drop.general)
+        add(drop.minor)
+    end
+
     return got
 end
 

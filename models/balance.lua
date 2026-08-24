@@ -904,6 +904,34 @@ function Balance.prestigeFor(questId)
     for _ in pairs(prereqsOf(questId)) do n = n + 1 end
     base = math.max(base, n + 1)
 
+    -- A NUMBERED SLOT ANSWERS FOR ITS OWN DEPTH, the same way Balance.sponsorDoneFor already lets it.
+    --
+    -- The prerequisite closure above used to carry this: a house's ten quests were chained, so slot 3
+    -- had two behind it and counted them. models/errand.lua drops `requiredQuests` at the door and the
+    -- retired board took the chains with it, so the closure collapsed to one or none and every numbered
+    -- slot was suddenly measured at the standing of the tutorial. That is not a rescale, it is the
+    -- reference party losing levels it would really have -- and it read as bodies "too slow" that had
+    -- not moved.
+    local function slotOf(id) return tonumber(tostring(id or ""):match("_slot_(%d+)$") or "") end
+
+    local slot = slotOf(questId)
+    if slot then base = math.max(base, slot) end
+
+    -- ...AND SO DOES EVERY NUMBERED SLOT BEHIND IT. A capstone gated on three houses' slot-3 and slot-4
+    -- work sits below all of them, and the closure alone now counts each of those as ONE quest rather
+    -- than as the three or four it stands on top of.
+    for id in pairs(prereqsOf(questId)) do
+        local s = slotOf(id)
+        if s then base = math.max(base, s + 1) end
+    end
+
+    -- WHERE THE PLAYER ACTUALLY MEETS IT is the rung models/errand.lua seats it on, and that is the
+    -- reading this function will eventually want: everything above measures a QUEST BOARD ladder that no
+    -- longer exists. It is deliberately NOT wired yet. Doing it moves every quest's depth at once, which
+    -- re-measures the whole TTK sweep and drifts bodies out of band that nobody has touched -- a
+    -- rebalance, not a refactor, and one that wants `. balance-rescale` run against it rather than a
+    -- depth model changed underneath a green suite.
+
     local floorLevel = Quest.floorLevelFor(def, questId)
     if floorLevel then
         base = math.max(base, (floorLevel * Growth.PRESTIGE_PER_LEVEL) - 1)

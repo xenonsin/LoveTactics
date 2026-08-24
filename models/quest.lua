@@ -1,11 +1,20 @@
--- Quest logic. Blueprints live in data/quests/<id>.lua. `Quest.available` returns the
--- quests a player may currently take, as fresh copies so the board can be sorted/mutated
--- without touching the blueprints.
+-- Quest logic. Blueprints live in data/quests/<id>.lua.
 --
--- Every quest names a `sponsor` (a vendor id). Completing it pays gold and prestige, and
--- -- because a vendor's standing simply IS how many of its quests you have finished
--- (Quest.sponsorProgress) -- unlocks more of that sponsor's shelf. That loop -- pick a quest
--- by who sponsors it, run it, then spend at the shelf the finished quest just opened -- is the game.
+-- THEY ARE STILL CALLED QUESTS AND THEY ARE NO LONGER PICKED. This file used to open with
+-- `Quest.available` -- the quests a player may currently take -- because the Quest Board was where a
+-- day began: seven houses posting work, and choosing between them was the move. The board is gone.
+-- What a quest blueprint is now is an OBJECTIVE with a name, a scene either side of it and a payout,
+-- and models/errand.lua seats it on a descent floor for the company to walk into.
+--
+-- So a house does not offer its work; a company FINDS it. Two kinds are ever seated: a house's opener,
+-- which is what opens its door, and any quest a discipline hangs off. Everything else a house sponsors
+-- is left where it is -- unasked rather than deleted, and one line in a discipline blueprint puts it
+-- back in play.
+--
+-- Every quest still names a `sponsor` (a vendor id). Completing it pays gold and prestige, and --
+-- because a vendor's standing simply IS how many of its quests you have finished
+-- (Quest.sponsorProgress) -- unlocks more of that sponsor's shelf. That loop -- find the work, run it,
+-- then spend at the shelf it just opened -- is still the game. Only the finding changed.
 
 local Registry = require("models.registry")
 local Player = require("models.player")
@@ -30,7 +39,17 @@ Quest.defs = Registry.load("data/quests", "data.quests")
 -- no single place to read the campaign's total off.
 --
 -- Deleting the field rather than setting every copy of it to 1 is the point. A constant cannot drift.
-Quest.PRESTIGE_PER_QUEST = 1
+--
+-- IT WAS 1, AND MOVED WHEN THE CAMPAIGN DID. The retired Quest Board took 49 of the 92 quests with it,
+-- so a full campaign is 42 and paid 42 prestige where it used to pay 92 -- which put the end of the game
+-- at level 21 and left New Game+ short of a ceiling it is supposed to reach. Two per quest restores both
+-- ends: 84 across a campaign, 168 over a second, exactly the totals models/growth.lua was tuned against.
+--
+-- The knob moved HERE rather than at Growth.LEVEL_CAP for the reason the cap is not a pacing dial: the
+-- level ceiling is what enemy scaling, the growth tables and every item tier are cut against, and
+-- dropping it to fit a shorter campaign would re-cut all of them to say something this constant says on
+-- its own. A shorter campaign whose quests are worth more is also the truer description of what changed.
+Quest.PRESTIGE_PER_QUEST = 2
 
 -- ---------------------------------------------------------------------------
 -- The depth floor: what stops a line being beelined
@@ -200,343 +219,28 @@ function Quest.markOpenedStock(player, vendorId, before)
     end
     return report
 end
-
--- Does the player meet a quest's sponsor-quest gate? `requiredSponsorQuests = { vendor = id, count = n }`
--- keeps a sponsor's later quests off the board until you have finished enough of that sponsor's earlier
--- ones -- the same quest count the shelf gates on.
-local function meetsSponsorQuestGate(player, def)
-    local gate = def.requiredSponsorQuests
-    if not gate then return true end
-    return Quest.sponsorProgress(player, gate.vendor) >= gate.count
-end
-
--- Is the quest's sponsoring vendor open yet? A vendor's shop opens with its building
--- (Building.vendorUnlockPrestige), and a sponsor's quests must not appear before you can
--- walk into the shop that pays for them -- a bastion quest at prestige 1 would point at a
--- door still locked until prestige 2. Unsponsored quests (the Gate Below) are never gated.
-local function meetsSponsorGate(player, def)
-    if not def.sponsor then return true end
-    return Player.standing(player) >= Building.vendorUnlockPrestige(def.sponsor)
-end
-
--- Does the player hold every quest this one names as a prerequisite? `requiredQuests` is a list of
--- quest ids, ALL of which must be complete -- the seven generals standing between the player and the
--- Gate Below.
---
--- Returns (met, have, need), because unlike the other two gates this one is worth SHOWING rather than
--- hiding: a player two keys short of the Gate should see that they are two keys short. Quest.available
--- surfaces it as a `locked` entry.
-local function questGate(player, def)
-    -- THE FINALE IS GATED BY THE CALENDAR, not by keys. He arrives on the last day whichever generals
-    -- are still breathing (models/calendar.lua), so the only question here is whether it is that day.
-    --
-    -- The count still comes back, because the board draws it -- but it now reads as a warning about the
-    -- size of the last fight rather than as a tally of permission, which is why `hintQuests` is not
-    -- called `requiredQuests` any more.
-    if def.finale then
-        local Calendar = require("models.calendar")
-        local keys = def.hintQuests or {}
-        return Calendar.isFinalDay(player), #keys - Calendar.generalsStanding(player), #keys
-    end
-
-    local req = def.requiredQuests
-    if not req then return true, 0, 0 end
-
-    local have = 0
-    for _, questId in ipairs(req) do
-        if Player.hasCompleted(player, questId) then have = have + 1 end
-    end
-    return have == #req, have, #req
-end
-
--- The location hints earned so far: each prerequisite quest may name one fragment (`gateHint`), and
--- the fragments only appear as their quests are finished. Seven fragments name the place.
---
--- Derived, never stored. The relic a general drops carries the same words in its description, but the
--- hint the board shows is keyed off the quest you completed -- so selling, moving, or losing the relic
--- can never cost you the hint, nor the key it stands for.
-local function gateHints(player, def)
-    local hints = {}
-    for _, questId in ipairs(def.hintQuests or def.requiredQuests or {}) do
-        local prereq = Quest.defs[questId]
-        if prereq and prereq.gateHint and Player.hasCompleted(player, questId) then
-            hints[#hints + 1] = prereq.gateHint
-        end
-    end
-    return hints
-end
-
--- The quests this player may see: prestige met, sponsor-quest gate met, sponsor's shop open, and not
--- already completed (unless the quest is `repeatable`).
---
--- NOTHING SHIPPED SETS `repeatable`, AND NOTHING SHOULD. The design rule is that this game has no
--- grind: every quest is authored, runs once, and means something the second time only in memory.
--- The slot each line once spent on a farmable bounty is now a one-off (docs/story.md's slot 6 --
--- "the player becomes the hand that does this"), which is a beat a repeat actively destroys: run
--- once it is an accusation, run eleven times for gold it is a chore the player has tuned out.
--- The field is still honoured here so a `repeatable` def cannot silently misbehave (the specs build
--- synthetic ones to pin the double-payout and duplicate-recruit guards), not as an invitation.
---
--- Prestige, the sponsor-quest gate, the sponsor's unlock and `requiredQuests` are all HARD gates by
--- default: fail one and the quest is not on the board at all. That is what lets every sin line run as a
--- chain -- slot 5 names slot 4, and the board shows a line's next card and nothing further
--- (docs/story.md, "The ten slots").
---
--- A quest may OPT IN to being shown locked with `showLocked`, which surfaces it from the first
--- prerequisite held, carrying its key count and the hints earned so far. The caller must refuse to
--- start a locked quest (see ui/panels/quest_board.lua).
---
--- ONLY THE GATE BELOW ASKS FOR THIS, and the flag is authored rather than inferred because the
--- inference was wrong. The rule used to be `keysHeld >= 1` -- show anything holding one key of
--- several -- which reads a PROXY (how many prerequisites a quest happens to name) for the question
--- actually being asked (does this quest want the fragments pane). It swept in all 21 discipline
--- capstones, which name two gates apiece and want none of it: they have no `gateHint` between them, so
--- every one of them fell through to the pane's "Sealed. The generals know where." fallback, promising a
--- riddle for what is really a two-quest checklist. They are advertised properly on their parent
--- vendor's shelf instead, where Discipline.missingParents turns the lock into a direction. A future
--- quest naming several prerequisites now stays hidden unless it says otherwise.
-function Quest.available(player)
-    -- Campaign standing: quests finished, on the scale the blueprints are authored in
-    -- (Player.standing). Was `player.prestige`, which nothing increments any more.
-    local prestige = Player.standing(player)
-
-    -- Debug "show all quests": drop every gate so a locked or prerequisite-gated line can be run
-    -- without progressing to it naturally, and let a finished quest be re-run to test it again. Never
-    -- reachable in a release build (Debug.on ANDs in Debug.enabled), and it changes only what the
-    -- board OFFERS -- Quest.complete's double-payout guard still stands, so a re-run pays nothing.
-    local showAll = Debug.on("showAllQuests")
-
-    local list = {}
-    for id, def in pairs(Quest.defs) do
-        -- WHAT OPENS A LEG: three gates, ANDed, each answering a different question.
-        --
-        --   requiredPrestige      is the company far enough along for this LINE at all
-        --   meetsSponsorQuestGate how far in are you with these people (Quest.sponsorProgress)
-        --   meetsSponsorGate      is the house's door even open yet (Building.vendorUnlockPrestige)
-        --
-        -- THE FIRST AND THIRD WERE DELETED ONCE, AND THIS IS WHY THEY ARE BACK. They came off while the
-        -- descent was the campaign's progression engine: levels came from depth then, depth was earned
-        -- down the stair rather than at this board, so gating a house's work on prestige asked a question
-        -- the board could not help the player answer. Every word of that was true, and none of it is now
-        -- -- the descent is a separate game mode (states/descent.lua), it banks nothing, and the campaign
-        -- levels off Quest.PRESTIGE_PER_QUEST again exactly as it did before. The premise died; the gates
-        -- come back with it.
-        --
-        -- What it looked like without them: every house's opening leg on the board at once, on a brand
-        -- new save, with the Alchemist's `requiredPrestige = 4` line sitting beside the Colosseum's
-        -- first. The data never stopped saying so -- all 92 quests still author the field, and
-        -- models/balance.lua still reads it as the line's entry gate -- it was only this reader that
-        -- stopped listening.
-        local unlocked = prestige >= (def.requiredPrestige or 1)
-            and meetsSponsorQuestGate(player, def) and meetsSponsorGate(player, def)
-        local exhausted = Player.hasCompleted(player, id) and not def.repeatable
-        local questsMet, keysHeld, keysNeeded = questGate(player, def)
-        local locked = not questsMet
-        if showAll then unlocked, exhausted, locked = true, false, false end
-
-        -- `keysHeld >= 1` is the rule for showing an ordinary locked quest: hold one key of several and
-        -- the board admits the thing exists.
-        --
-        -- THE FINALE IS THE EXCEPTION, AND IT ASKS FOR ALL SEVEN. It was shown from the second morning
-        -- for a while, on the reasoning that a deadline nobody can see is not a deadline. What that
-        -- actually produced was a locked card riding along under every tab on the board for thirty-nine
-        -- mornings -- a row the player cannot press, cannot travel to, and has already read. A warning
-        -- repeated every day is wallpaper, and the deadline it was meant to carry is said better by the
-        -- thing that says it already: the hub's own day counter, which is on screen the whole time.
-        --
-        -- So the card comes back to meaning something. Seven generals down and the fragments name the
-        -- place: THAT is when the Gate is a thing you have found rather than a thing you were told
-        -- about, and it stands on the board from then until the day he lands. A player who felled fewer
-        -- meets him on day forty all the same (questsMet, above, is the calendar) -- they simply never
-        -- had the pane, because they never had the fragments that fill it.
-        local showable
-        if def.finale then
-            showable = def.showLocked and keysNeeded > 0 and keysHeld >= keysNeeded
-        else
-            showable = def.showLocked and keysHeld >= 1
-        end
-        if unlocked and not exhausted and (questsMet or showable or showAll) then
-            local sponsor = def.sponsor and Vendor.get(def.sponsor)
-            list[#list + 1] = {
-                id = id,
-                name = def.name,
-                description = def.description,
-                difficulty = def.difficulty,
-                rewardGold = def.rewardGold,
-                rewardItems = def.rewardItems, -- item ids granted on completion (a general's relic)
-                -- A character id who JOINS on completion. This is how a class line's main companion
-                -- is earned (docs/story.md, "The other seven": each companion is earned near the head
-                -- of their vendor's line, never behind another, so no ordering can strand the
-                -- endgame). Surfaced on the board entry so the quest can advertise it -- a companion
-                -- is the strongest reward in the game and must not arrive as a surprise.
-                rewardCharacter = def.rewardCharacter,
-                sponsor = def.sponsor,
-                sponsorName = sponsor and sponsor.name or "Unsponsored",
-                repeatable = def.repeatable,
-                requiredPrestige = def.requiredPrestige or 1,
-                requiredQuests = def.requiredQuests,
-                -- The finale carries both: the flag that says the calendar gates it, and the seven line-enders it
-                -- reads for hints and for the size of the last fight (data/quests/quest_the_gate_below.lua).
-                finale = def.finale,
-                hintQuests = def.hintQuests,
-                -- Locked entries are shown, not started. keysHeld/keysNeeded drive the board's
-                -- "3 of 7 keys"; hints are the fragments the finished prerequisites gave up.
-                locked = locked,
-                keysHeld = keysHeld,
-                keysNeeded = keysNeeded,
-                hints = locked and gateHints(player, def) or nil,
-                map = def.map, -- overworld generation params; see models/overworld.lua
-                -- Optional conversation ids (data/conversations/): a scene played when the quest is
-                -- started (before party select) and when its objective is cleared. See
-                -- ui/panels/quest_board.lua and states/game.lua for the Conversation.play seams.
-                intro = def.intro,
-                outro = def.outro,
-                -- A scene played over the overworld once the leg is generated (states/game.lua's
-                -- `enter`). Distinct from `intro`, which plays over the hub before party select:
-                -- this one has the road and the fog sitting behind it.
-                opening = def.opening,
-                -- The campaign's last quest: its outro rolls the credits instead of returning to the
-                -- hub (states/game.lua). A flag rather than a quest id known to the engine, so an
-                -- alternate or additional ending is a data edit and nothing else.
-                endsCampaign = def.endsCampaign,
-                -- `endsLine` USED TO BE CARRIED HERE. It marked a class line's last quest so completing
-                -- it could settle that line's ten temptation offers; with models/temptation.lua cut
-                -- nothing reads it, so it is no longer copied onto the board entry. The blueprints that
-                -- still declare it are the slot-10 files, which go with the retired board.
-                -- How deep down its line this fight sits, expressed as the level its enemies may
-                -- never drop below (Quest.floorLevelFor). Carried on the board entry rather than
-                -- resolved at battle time so the quest board can WARN with it: a soft lock nobody
-                -- can see before they commit is just an unfair fight.
-                floorLevel = Quest.floorLevelFor(def, id),
-            }
-        end
-    end
-
-    table.sort(list, function(a, b)
-        if a.requiredPrestige ~= b.requiredPrestige then
-            return a.requiredPrestige < b.requiredPrestige
-        end
-        return a.name < b.name
-    end)
-    return list
-end
-
 -- ---------------------------------------------------------------------------
--- The board: what is on offer, and where you would have to go for it
+-- WHAT THE QUEST BOARD TOOK WITH IT
 -- ---------------------------------------------------------------------------
-
--- WHAT THE BOARD OFFERS TODAY, grouped by the ground each expedition would be run on.
 --
--- DELIBERATELY NOT FOLDED INTO Quest.available, which answers a different question and must keep
--- answering it. `available` is "what has this company unlocked" -- standing, the sponsor chain, the
--- house's door, keys -- and roughly forty specs ask it exactly that. The season table
--- (models/biome_window.lua) asks "and can you get there this morning", which is a property of the DAY
--- rather than of the player's progress: a quest filtered out by a shut window is not locked, it is
--- somewhere you cannot currently walk to, and it comes back untouched when the ground reopens.
+-- `Quest.available`, `Quest.board`, `Quest.tripFor` and the four gate helpers under them stood here.
+-- They answered one question -- WHICH OF THESE MAY THE PLAYER PICK THIS MORNING -- and picking is the
+-- thing the board did. A descent seats work on its floors (models/errand.lua), so nothing chooses from
+-- a list any more and nothing asked them.
 --
--- tests/quest_board_spec.lua already draws this line for foraging ("what the QUEST BOARD offers, which
--- is not the same question as what Quest.available returns"), and it draws it for the same reason.
+-- The gates they read went with them, and it is worth naming which, because two of these words survive
+-- on other objects and mean something live:
 --
--- Returns:
---     { day = n, grounds = { { id, daysLeft, quests = { <available entry>, ... } }, ... } }
+--   requiredPrestige         a quest's own entry cost onto a LINE. Dead: the lines are gone.
+--   requiredQuests ON A QUEST  the slot chain. Dead -- models/errand.lua drops it at the door.
+--   requiredQuests ON A DISCIPLINE  VERY MUCH ALIVE. It is what makes a quest a gate, and the gate
+--                            quests plus each house's opener ARE the postable set (Errand.forVendor).
+--   requiredSponsorQuests    dead here; the same count still gates the SHELF (models/vendor.lua).
 --
--- Grounds come back in schedule order and INCLUDE EMPTY ONES. The panel drops those after it has added
--- its own foraging rows -- a ground holding nothing but ore is still somewhere worth going, and only
--- the panel knows whether it put a row there.
---
--- A quest appears under EVERY open ground it names, because it can genuinely be run in any of them;
--- the ground the player picks is stamped onto the run (Quest.start).
---
--- THE LAST MORNING IS THE ONE EXCEPTION, and it belongs to the Gate alone. Every other ground stays in
--- the returned list -- they are open, the schedule says so -- but nothing is filed under them, so the
--- panel's own rule (a ground with nothing in it draws no tab) collapses the travel row to a single
--- plate over a single quest. There is no expedition to weigh on day forty; he is here, and a board
--- still offering the Bastion's next errand beside him would be the game hiding its own ending behind a
--- tab. Foraging is already off on this day for the same reason (ui/panels/quest_board.lua).
-function Quest.board(player)
-    local BiomeWindow = require("models.biome_window")
-    local Calendar = require("models.calendar")
-    local day = Calendar.day(player)
+-- What did not go: Quest.trip and Quest.tripFromIds build the expedition itself, and the descent leans
+-- on both -- a floor is a ground carrying several ends, which is exactly the shape trip already made.
 
-    local grounds, byId = {}, {}
-    for _, id in ipairs(BiomeWindow.openOn(day)) do
-        local ground = { id = id, daysLeft = BiomeWindow.daysLeft(id, day), quests = {} }
-        grounds[#grounds + 1] = ground
-        byId[id] = ground
-    end
 
-    local entries = Quest.available(player)
-    if Calendar.isFinalDay(player) then
-        local only = {}
-        for _, entry in ipairs(entries) do
-            if entry.finale then only[#only + 1] = entry end
-        end
-        -- Guarded on there BEING a finale to offer. Past the deadline the Gate is completed and drops
-        -- off `available` entirely (New Game+ rewinds the clock, models/player.lua); emptying the board
-        -- on a day that has no ending left to protect would just be a blank panel.
-        if #only > 0 then entries = only end
-    end
-
-    local locked = {}
-    for _, entry in ipairs(entries) do
-        local def = Quest.defs[entry.id]
-
-        -- A LOCKED ENTRY IS A WARNING, NOT A DESTINATION, so it rides along with every ground rather
-        -- than claiming one -- held back to a second pass below, once every ground exists. Only the
-        -- finale is ever shown locked (Quest.available's `showLocked`), and it is on the board for one
-        -- reason: a deadline nobody can see is not a deadline. But it names the underworld, which is
-        -- open for the last three days only, so filing it by ground put a permanent "The Underworld"
-        -- tab in the travel row from the second morning of the campaign -- a place you cannot go,
-        -- wearing a countdown that read blank. Wherever the company travels, the Gate is what is
-        -- coming; that is what this says instead.
-        if entry.locked then
-            locked[#locked + 1] = entry
-        else
-            for _, groundId in ipairs(BiomeWindow.destinations(def, day)) do
-                -- The finale is exempt from the schedule (BiomeWindow.destinations), so once it
-                -- unlocks it can in principle name a ground with no tab. Give it one rather than
-                -- dropping it: a last battle nobody can reach is the one failure this whole system
-                -- must not be able to produce. In the shipped data this never fires -- the underworld
-                -- is open on the last day, which is the only day the Gate is startable -- and it is
-                -- here so that a mis-edited season table degrades into an odd tab rather than into a
-                -- campaign with no ending.
-                if not byId[groundId] then
-                    local ground = { id = groundId, daysLeft = BiomeWindow.daysLeft(groundId, day), quests = {} }
-                    grounds[#grounds + 1] = ground
-                    byId[groundId] = ground
-                end
-                local into = byId[groundId].quests
-                into[#into + 1] = entry
-            end
-        end
-    end
-
-    -- The warnings, after every ground is known. `startable` is what the panel counts when it decides
-    -- whether a ground is worth a tab at all -- a ground holding nothing but the Gate's countdown is
-    -- still a ground with nothing to do on it.
-    for _, ground in ipairs(grounds) do
-        ground.startable = #ground.quests
-        for _, entry in ipairs(locked) do
-            ground.quests[#ground.quests + 1] = entry
-        end
-    end
-
-    return { day = day, grounds = grounds }
-end
-
--- `Quest.start` LIVED HERE, and Quest.trip below is what replaced it.
---
--- Its whole job was to collapse a quest's SET of possible grounds down to the one the player travelled
--- to -- stamping `map.biome` onto a runtime copy so that models/overworld.lua, models/arena.lua, the
--- encounter pool and the prop scatter could go on reading the single field they always had. That is
--- still exactly what has to happen; it is just no longer a property of a quest. The ground is chosen
--- FIRST now, and the trip built for it names the ground once, at the top, for everything standing on
--- it (Quest.trip's `map.biome`).
---
--- Deleted rather than kept beside the new path: it had no callers left, and a function nothing calls
--- with two specs pointed at it reads as covered ground when it is a dead end.
-
--- ---------------------------------------------------------------------------
 -- The trip: a ground, and everything that can be done on it in one day
 -- ---------------------------------------------------------------------------
 
@@ -689,16 +393,6 @@ function Quest.trip(groundId, entries)
     }
 end
 
--- The trip for a ground the player is standing in front of, built off the live board. The one call the
--- quest board panel makes: it knows the ground, and everything else about what is on offer there is a
--- question for this file.
-function Quest.tripFor(player, groundId)
-    for _, ground in ipairs(Quest.board(player).grounds) do
-        if ground.id == groundId then return Quest.trip(groundId, ground.quests) end
-    end
-    return nil
-end
-
 -- THE SAME TRIP, REBUILT FROM WHAT IT WAS -- for a run resumed off disk (models/save.lua).
 --
 -- Deliberately NOT rebuilt off the live board. Half the point of a trip is that clearing one piece of
@@ -742,23 +436,10 @@ end
 -- double-payout guard as everything else, and so the advancement panel names it with the rest of the
 -- spoils. Abandoning a run therefore forfeits its haul, which is what keeps a cache from being farmed
 -- by restarting the quest.
--- The seven line-enders, one per house, each of which is a general put down. Named here rather than
--- read off the finale's `requiredQuests`, because that list is gone: under the calendar the last
--- battle happens on the last day whether or not any of them are dead (models/calendar.lua), and what
--- the count decides is who is standing beside him rather than whether the door opens.
---
--- A list rather than a derivation. "The tenth slot of each house" is true today and is exactly the kind
--- of thing a renumbering would silently break, and the failure would be a finale quietly getting easier
--- rather than anything red.
-Quest.GENERAL_QUESTS = {
-    "quest_colosseum_slot_10",
-    "quest_cathedral_slot_10",
-    "quest_hunters_lodge_slot_10",
-    "quest_bastion_slot_10",
-    "quest_arcanum_slot_10",
-    "quest_undercroft_slot_10",
-    "quest_alchemist_slot_10",
-}
+-- (Quest.GENERAL_QUESTS listed the seven line-enders -- `quest_<house>_slot_10`, each a general put
+-- down -- and Calendar.generalsStanding counted how many were still alive off it. All seven went with
+-- the retired board, so the list would answer for nothing but ids that are not there. The generals are
+-- met on their circles' stairs now, and models/descent.lua's SINS is the one place the seven are named.)
 
 -- `opts.keepMeal` leaves the supper on the company. A day's expedition can now clear several pieces of
 -- work on one ground (Quest.trip), and the Cafe's platter is bought for the DAY -- so the caller that

@@ -1,57 +1,70 @@
--- The ending: the finale's two scenes, the route off the board into the credits, the licence
--- obligation the credits carry, and New Game+.
+-- The ending: the last fight's scene, the route into the credits, the licence obligation the credits
+-- carry, and New Game+.
 --
--- The reason most of this is pinned at all: the finale shipped for a long time with no conversation of
--- any kind and no post-game state, and nothing anywhere went red about it. A silent boss and a game
--- that stops mid-air are both perfectly valid data. So the cases below assert the things that have no
--- other alarm -- above all `Conversation.play` asserts on an unknown id, which turns a typo in a quest
--- into a crash at the exact moment a player finishes the game.
+-- WHERE THE ENDING LIVES MOVED, and these cases moved with it. It used to be a QUEST -- the Gate Below,
+-- reached off the board on the fortieth day, carrying `endsCampaign` for states/game.lua to route on.
+-- The board is cut and that quest with it. The ending is the Hollow Crown at the bottom of a descent
+-- now, and the flag is `endsDescent` on the floor descriptor models/descent.lua synthesizes.
+--
+-- The reason most of this is pinned at all has not changed: the finale shipped for a long time with no
+-- conversation of any kind and no post-game state, and nothing anywhere went red about it. A silent
+-- boss and a game that stops mid-air are both perfectly valid data. So the cases below assert the
+-- things that have no other alarm -- above all `Conversation.play` asserts on an unknown id, which
+-- turns a typo into a crash at the exact moment a player finishes the game.
 
 local Quest = require("models.quest")
-local Conversation = require("models.conversation")
 local Player = require("models.player")
+local Conversation = require("models.conversation")
 local Save = require("models.save")
+local Descent = require("models.descent")
 
--- The campaign-ending quest, found by its flag rather than by id -- the same way states/game.lua finds
--- it. If a second ending is ever authored this case covers it too, and if the flag is dropped the
--- first case below fails loudly.
-local function endingQuests()
-    local out = {}
-    for id, def in pairs(Quest.defs) do
-        if def.endsCampaign then out[#out + 1] = { id = id, def = def } end
-    end
-    return out
+-- The bottom floor's descriptor, which is what the Crown fight actually is.
+local function crownFloor()
+    local p = Player.new()
+    local run = Descent.new(p)
+    for _ = 2, Descent.FLOORS do Descent.advance(run) end
+    return Descent.floorQuest(run, p)
 end
 
 return {
     {
-        name = "the campaign has an ending, and it is a quest that says so rather than a known id",
+        name = "the campaign has an ending, and the floor that is it says so rather than a known id",
         fn = function()
-            local endings = endingQuests()
-            assert(#endings > 0, "no quest sets endsCampaign -- the game has no ending to route to")
-            for _, q in ipairs(endings) do
-                assert(q.def.outro, q.id .. " ends the campaign but plays no closing scene")
-                assert(Conversation.defs[q.def.outro],
-                    q.id .. " names a missing outro: " .. tostring(q.def.outro))
-            end
+            local floor = crownFloor()
+            assert(floor, "the descent should synthesize a bottom floor")
+            assert(floor.endsDescent,
+                "the deepest floor does not set endsDescent -- the game has no ending to route to")
+
+            -- The Crown's only speaking seam is the objective's `opening`: by the time an outro would
+            -- run, the target of an `assassinate` win is already dead.
+            local opening = floor.map and floor.map.objective and floor.map.objective.opening
+            assert(opening, "the last fight ends the game and plays no scene over it")
+            assert(Conversation.defs[opening], "the ending names a missing scene: " .. tostring(opening))
         end,
     },
     {
-        -- The Crown's only speaking seam. `intro` plays over the hub before the party is even picked,
-        -- and by the time `outro` runs an assassinate target is dead, so if the objective carries no
-        -- `opening` the final boss cannot say anything at all.
-        name = "the final boss gets a voice -- the objective carries an opening scene",
+        -- What states/game.lua routes on. It reads `endsDescent` off the quest it was handed, banks the
+        -- win with Player.finishCampaign and switches to the credits -- so the flag has to survive onto
+        -- the runtime descriptor, not merely exist somewhere in the model.
+        name = "endsDescent reaches the runtime floor, so the ending can route off it",
         fn = function()
-            for _, q in ipairs(endingQuests()) do
-                local objective = q.def.map and q.def.map.objective
-                assert(objective, q.id .. " has no objective")
-                assert(objective.opening,
-                    q.id .. "'s boss fights in silence: the objective names no opening scene")
-                assert(Conversation.defs[objective.opening],
-                    q.id .. " names a missing opening: " .. tostring(objective.opening))
+            local shallow = crownFloor()
+            assert(shallow.endsDescent, "the bottom floor must carry the flag the router reads")
+
+            -- ...and ONLY the bottom one, or a landing halfway down would roll the credits.
+            local p = Player.new()
+            local run = Descent.new(p)
+            for depth = 1, Descent.FLOORS - 1 do
+                local floor = Descent.floorQuest(run, p)
+                assert(not floor.endsDescent,
+                    "floor " .. depth .. " ends the game, and only the deepest may")
+                Descent.advance(run)
             end
         end,
     },
+    -- ("the final boss gets a voice -- the objective carries an opening scene" stood here, walked over
+    -- every endsCampaign quest. The first case above asserts exactly that of the floor which IS the
+    -- ending now, so it would be the same assertion twice.)
     {
         -- A general guard, not specific to the ending: Conversation.play raises on an unknown id, so a
         -- dead reference anywhere on the board is a crash the player finds before any test does.
@@ -72,35 +85,6 @@ return {
                 end
             end
             assert(#missing == 0, "quests name scenes that do not exist: " .. table.concat(missing, ", "))
-        end,
-    },
-    {
-        -- The flag has to survive the blueprint -> runtime copy in Quest.available, or the route in
-        -- states/game.lua never fires and the finale quietly walks back to the hub.
-        name = "endsCampaign reaches the runtime quest, so the ending can route off the board",
-        fn = function()
-            local endings = endingQuests()
-            local target = endings[1]
-
-            local player = Player.new()
-            -- Clear its gate. For the finale that is the CALENDAR, not a set of keys: he arrives on the
-            -- last day whichever generals are still alive (models/calendar.lua). Any other
-            -- `endsCampaign` quest still clears its prerequisites the old way.
-            if target.def.finale then
-                player.day = require("models.calendar").DAYS
-            end
-            for _, questId in ipairs(target.def.requiredQuests or {}) do
-                player.completedQuests[questId] = true
-            end
-
-            local found
-            for _, quest in ipairs(Quest.available(player)) do
-                if quest.id == target.id then found = quest end
-            end
-            assert(found, target.id .. " is not offered to a player who has cleared its gate")
-            assert(not found.locked, target.id .. " is still locked with every key held")
-            assert(found.endsCampaign,
-                "endsCampaign was dropped by Quest.available -- the finale would return to the hub")
         end,
     },
     {

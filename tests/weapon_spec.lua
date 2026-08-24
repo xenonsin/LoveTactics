@@ -223,8 +223,14 @@ return {
     {
         -- Gates are per-QUEST now (tools/unlock_rescale), so the ceiling is per-HOUSE: an item may not
         -- ask for more quests than its own sponsor actually runs. Anything past that is stock nobody
-        -- can ever reach, and the last two quests of a line are the payoff rather than a gate -- so the
-        -- real ceiling is Q-2, the number the rescale spreads up to.
+        -- can ever reach.
+        --
+        -- THE CEILING WAS Q-2 and is Q-1 now, and the change is the ten-slot line ending rather than a
+        -- margin being given up. Q-2 encoded "the last two quests of a line are the payoff rather than
+        -- a gate", which was a true statement about a house that ran ten. A house runs SIX -- its opener
+        -- plus its discipline gates -- and the shelf was re-cut to six rungs, one per quest, gated 0..5.
+        -- Under Q-2 the top rung of every house in the game is unreachable stock, which is the opposite
+        -- of what this case exists to catch.
         name = "no item is gated past the quests its house actually sponsors",
         fn = function()
             local Vendor = require("models.vendor")
@@ -241,7 +247,7 @@ return {
                 if gate > 0 then
                     local vendorId = def.class and vendorOf[def.class]
                     local sponsored = vendorId and counts[vendorId] or 0
-                    assert(gate <= sponsored - 2,
+                    assert(gate <= sponsored - 1,
                         id .. " needs " .. gate .. " quests of a house that runs " .. sponsored)
                 end
             end

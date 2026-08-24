@@ -119,27 +119,24 @@ end
 -- every general you did not face is one who faces you at the end, all at once.
 --
 -- Returns the number still standing (0..7). The finale's own blueprint decides what to do with it.
--- A GENERAL IS DOWN BY EITHER ROUTE, and the second one is the descent's.
+-- A GENERAL IS DOWN BY ONE ROUTE NOW, and it is the descent's: her circle is sealed by felling her on
+-- her own floor, credited to `run.standing` keyed by the house's VENDOR (models/descent.lua's
+-- Descent.clearFloor).
 --
--- This used to read `completedQuests` alone, which was the whole story while the seven were reached at
--- the end of seven quest lines. A circle is now sealed by felling its general on her own floor, and that
--- is credited to `run.standing` keyed by the house's VENDOR (models/descent.lua's Descent.clearFloor) --
--- so a company that had walked the Colosseum's stratum still faced seven at the end, because it had
--- completed no quest.
+-- IT USED TO READ TWO. `completedQuests` answered for the seven `quest_<vendor>_slot_10` fights at the
+-- end of seven quest lines, and `run.standing` for the same seven met on their stairs -- one list
+-- serving both because the id shapes shared the vendor. The slot-10 quests went with the retired board,
+-- so that half can never be true again and the list it needed (Quest.GENERAL_QUESTS) is deleted rather
+-- than left to answer nil for seven ids that no longer exist.
 --
--- The two id shapes share the vendor (`quest_<vendor>_slot_10` against `standing[<vendor>]`), which is
--- what lets one list answer for both routes rather than a second table to keep in step.
---
--- Only the finale reads this (data/quests/quest_the_gate_below.lua sizes its escort off it); nothing
--- else in data asks, so widening it cannot move an ordinary fight.
+-- The circles are the authority instead, which is also the shorter statement of the same fact: there
+-- are seven of them because there are seven sins, and Descent.SINS is where that is said once.
 function Calendar.generalsStanding(player)
-    local Quest = require("models.quest")
-    local completed = (player and player.completedQuests) or {}
+    local Descent = require("models.descent")
     local sealed = (player and player.descentRun and player.descentRun.standing) or {}
     local standing = 0
-    for _, id in ipairs(Quest.GENERAL_QUESTS or {}) do
-        local vendor = id:match("^quest_(.+)_slot_10$")
-        if not (completed[id] or (vendor and (sealed[vendor] or 0) > 0)) then standing = standing + 1 end
+    for _, sin in ipairs(Descent.SINS) do
+        if (sealed[sin.vendor] or 0) <= 0 then standing = standing + 1 end
     end
     return standing
 end

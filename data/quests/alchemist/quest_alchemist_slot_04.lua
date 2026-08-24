@@ -34,7 +34,9 @@ return {
     sponsor = "alchemist",
     rewardItems = { "armor_everdraught_bandolier" },
     rewardGold = 180,
-    requiredQuests = { "quest_alchemist_slot_03" }, -- slot 4: the line runs in order
+    -- The prerequisite chain DROPPED with the retired board: its only entry named a quest the descent
+    -- could never post, so the chain it belonged to no longer exists. The errand pool is the order now
+    -- (models/errand.lua's Errand.next, which only enforces a gate some house still asks for).
     requiredPrestige = 4,
     requiredSponsorQuests = { vendor = "alchemist", count = 3 }, -- 3 of this house's quests done
     map = {

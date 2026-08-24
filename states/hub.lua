@@ -662,11 +662,12 @@ function hub.draw()
     --
     -- PARKED WITH THE CAMPAIGN IT COUNTED. The forty days were the Quest Board's deadline: every
     -- expedition spent one, and the number was on this screen because expeditions were chosen from it.
-    -- The board is retired (models/building.lua's RETIRED) and the one door out of the city goes down a
-    -- stair that spends no days, so a countdown here would be pressure from a clock nothing reads.
+    -- The board is deleted and the one door out of the city goes down a stair that spends no days, so a
+    -- countdown here would be pressure from a clock nothing reads.
     --
-    -- Left in place rather than deleted, exactly like the board itself: models/calendar.lua is
-    -- untouched, and bringing the campaign back is deleting this `if false` and the RETIRED entry.
+    -- Left in place rather than deleted: models/calendar.lua is untouched and still sets the level the
+    -- world fights at (models/encounter_battle.lua, models/muster.lua), so the DAY is live even though
+    -- nothing counts down to forty of them. This `if false` is the readout, not the clock.
     if false then
         local left = Calendar.remaining(hub.player)
         local text

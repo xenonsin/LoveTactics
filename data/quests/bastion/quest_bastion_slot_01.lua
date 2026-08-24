@@ -40,7 +40,11 @@ return {
     -- the hub (data/buildings/bastion.lua). Both gates are needed: a building's `unlockQuest` closes
     -- the shop, and Quest.available checks only the vendor's `unlockPrestige`, so without this the
     -- board would offer work at a house the player cannot walk into.
-    requiredQuests = { "quest_colosseum_slot_02" },
+    -- Gated on the DEBUT. This named the padded card (quest_colosseum_slot_02) until the retired
+    -- board took that quest with it, and the gate is the same one either way: the first-visit
+    -- board shows the Colosseum debut and nothing else, because a tutorial teaches by being the
+    -- only thing there. The debut is what survived, so the gate names the debut.
+    requiredQuests = { "quest_colosseum_slot_01" },
     -- weapon_second_rank is the column written as a weapon: its reach grows when an ally stands at
     -- your back, which is the relief column's whole shape -- the man behind you is also holding a pike.
     rewardItems = { "utility_relief_horn", "weapon_sworn_lance", "weapon_second_rank" },

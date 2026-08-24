@@ -1769,13 +1769,7 @@ function game:openEncounter(cell, opts)
                         -- descent can end on the player's terms. Every other ending is a wipe or a
                         -- walking away.
                         if game.quest and game.quest.endsDescent then
-                            local out = Descent.account(game.player, game.descent)
-                            if out then out.title = "The Crown Is Broken" end
-                            -- THE DEMON LORD IS DOWN, AND THE SAVE REMEMBERS IT. Banked here because
-                            -- this is the ending now: `endsCampaign` was the board's finale seam
-                            -- (data/quests/quest_the_gate_below.lua) and the board is retired, so the
-                            -- flag it wrote has had no writer since -- while the thing it means, "this
-                            -- company has reached the end", is precisely what breaking the Crown is.
+                            -- THE DEMON LORD IS DOWN, AND THE SAVE REMEMBERS IT.
                             --
                             -- WHAT IT OPENS is the shuffle: every descent after this one deals its own
                             -- order of the seven circles instead of walking Dante's
@@ -1783,13 +1777,28 @@ function game:openEncounter(cell, opts)
                             -- next run opened off this player is already the shuffled kind.
                             Player.finishCampaign(game.player)
                             clearRun()
-                            -- The descent's own terminal, NOT the credits. Rolling the campaign's ending
-                            -- here was right while the descent was the campaign's spine; it is a separate
-                            -- mode now, and beating its bottom finishes that mode's run rather than the
-                            -- game. The credits still belong to the campaign's finale
-                            -- (data/quests/quest_the_gate_below.lua), which is reached from the board and
-                            -- has nothing to do with this stair.
-                            endDescent("won", out)
+                            if game.player then game.player.descentRun = nil end
+                            Player.save()
+
+                            -- AND THIS IS THE END OF THE GAME, not the end of a mode.
+                            --
+                            -- It used to fall through to the descent's own terminal and land at the hub,
+                            -- on the reasoning that the credits belonged to the board's finale
+                            -- (`endsCampaign`, data/quests/quest_the_gate_below.lua) and this stair had
+                            -- nothing to do with it. The board is retired and that quest is deleted, so
+                            -- that reasoning outlived both of its terms: the note saying the descent "is
+                            -- a separate mode now" sat forty lines from states/gate.lua saying there is
+                            -- ONE company and ONE save and the descent IS the game.
+                            --
+                            -- So the Crown rolls the credits, and the roll carries the game-icons.net
+                            -- attribution that CC BY 3.0 requires -- which was reachable only through a
+                            -- quest nobody could post, and is now reachable by finishing the game.
+                            --
+                            -- New Game+ is offered because the run is, by definition, over.
+                            -- Player.finishCampaign above banks the win itself: watching the roll and
+                            -- going back to the menu still beat the game, and `ngPlus` counts only the
+                            -- separate act of choosing to play it again.
+                            State.switch(require("states.credits"), { newGamePlus = true })
                             return
                         end
                         game:openLanding(cell)

@@ -183,7 +183,7 @@ return {
         local Calendar = require("models.calendar")
         local p = Player.new()
         local all = Calendar.generalsStanding(p)
-        assert(all == #require("models.quest").GENERAL_QUESTS,
+        assert(all == #Descent.SINS,
             "a company that has felled nobody faces all seven")
         -- Seal one circle the way a descent does: stand on her floor and beat her.
         local run = Descent.new(p, 1234)

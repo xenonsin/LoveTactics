@@ -32,7 +32,9 @@ return {
     ladder = 1, -- which rung of the Lodge this job opens (models/errand.lua)
     rewardItems = { "weapon_windward" },
     rewardGold = 130,
-    requiredQuests = { "quest_hunters_lodge_slot_02" }, -- slot 3: the line runs in order
+    -- The prerequisite chain DROPPED with the retired board: its only entry named a quest the descent
+    -- could never post, so the chain it belonged to no longer exists. The errand pool is the order now
+    -- (models/errand.lua's Errand.next, which only enforces a gate some house still asks for).
     requiredPrestige = 2,
     map = {
         biome = "swamp",

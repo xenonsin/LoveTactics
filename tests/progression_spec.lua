@@ -85,7 +85,7 @@ return {
             assert(Quest.sponsorProgress(p, "colosseum") == 0, "unseen vendor should read 0")
             p.completedQuests = {
                 quest_colosseum_slot_01 = true,
-                quest_colosseum_slot_02 = true,
+                quest_colosseum_slot_03 = true,
                 quest_bastion_slot_01 = true, -- a different sponsor must not count toward the colosseum
             }
             assert(Quest.sponsorProgress(p, "colosseum") == 2, "only the colosseum's own quests count")
@@ -369,103 +369,32 @@ return {
 
     -- ------------------------------------------------------------------ quest
     {
-        name = "every sponsored quest names a vendor that exists, and only the finale is unsponsored",
+        -- EVERY quest is sponsored now, where one used to be exempt: the Gate Below answered to all
+        -- seven houses and so to none of them, and it went with the retired board. A house is what seats
+        -- a quest on a floor (models/errand.lua asks Errand.forVendor per vendor), so an unsponsored one
+        -- is unreachable by construction rather than special.
+        name = "every quest names a sponsoring vendor that exists",
         fn = function()
             for id, def in pairs(Quest.defs) do
-                if def.sponsor then
-                    assert(Vendor.defs[def.sponsor], id .. " names unknown sponsor " .. tostring(def.sponsor))
-                else
-                    -- Quest.available renders a sponsorless quest as "Unsponsored". Exactly one quest
-                    -- earns that: no vendor sends you through the Gate Below -- all seven of them did.
-                    assert(id == "quest_the_gate_below", id .. " has no sponsor")
-                end
+                assert(def.sponsor, id .. " has no sponsor, so no house can ever seat it")
+                assert(Vendor.defs[def.sponsor], id .. " names unknown sponsor " .. tostring(def.sponsor))
             end
         end,
     },
-    {
-        -- No shipped quest is `repeatable` (the game has no grind -- see models/quest.lua's header),
-        -- so this only has the drop half to check, which is what it always actually checked.
-        name = "Quest.available drops completed quests and opens the next slot",
-        fn = function()
-            local p = playerAt(1)
-
-            local function boardHas(id)
-                for _, q in ipairs(Quest.available(p)) do
-                    if q.id == id then return true end
-                end
-                return false
-            end
-
-            assert(boardHas("quest_colosseum_slot_01"), "the debut is the prestige-1 board")
-            assert(not boardHas("quest_colosseum_slot_02"), "slot 2 waits on slot 1")
-
-            p.completedQuests.quest_colosseum_slot_01 = true
-            assert(not boardHas("quest_colosseum_slot_01"), "a completed quest leaves the board")
-            -- ...and the slot behind it arrives, which is the whole point of the chain.
-            assert(boardHas("quest_colosseum_slot_02"), "clearing slot 1 opens slot 2")
-            -- The Cathedral is NOT among them. Its line opens on the PADDED CARD, not the debut: the
-            -- player is carried into that building dead at the end of slot 2 and wakes up in it
-            -- (data/quests/colosseum/quest_colosseum_slot_02.lua, data/buildings/cathedral.lua). Being
-            -- offered its work before that scene would sell a shop the story has not opened yet.
-            assert(not boardHas("quest_cathedral_slot_01"), "the debut alone does not open the Cathedral")
-
-            p.completedQuests.quest_colosseum_slot_02 = true
-            assert(boardHas("quest_cathedral_slot_01"), "the padded card opens the Cathedral's line")
-        end,
-    },
-    {
-        name = "Quest.available hides a sponsor-quest-gated quest until enough of the house's quests are done",
-        fn = function()
-            -- THE MECHANISM, ON A SYNTHETIC QUEST, AND DELIBERATELY NOT ON THE CAMPAIGN'S OWN DATA.
-            --
-            -- This case has now been wrong twice for the same reason, so it is worth writing down. It
-            -- was first pinned to quest_cathedral_slot_03, which asked for 3 of the house's quests when
-            -- only 2 could precede it -- the Cathedral was unfinishable from there down and the Gate
-            -- Below lost one of its seven keys. The case passed regardless, because it met the count
-            -- with a capstone that itself requires slot 3: a board position no player can reach. It was
-            -- then re-pinned to slot 6, which the solo-run work has since deleted.
-            --
-            -- Both times the case was really asserting a piece of AUTHORING while claiming to assert a
-            -- piece of MACHINERY. Since every surviving `requiredSponsorQuests` in the campaign is now
-            -- satisfied by its own line's chain -- slot 7 asks for 6 and the six before it supply 6 --
-            -- there is no real quest left that can demonstrate the gate holding, and pinning to one
-            -- would only wait for the next authoring pass to move it. So the gate gets a quest of its
-            -- own, built here, and the campaign's shape is guarded where it belongs, by the whole-board
-            -- walk in tests/progression_report_spec.lua.
-            local id = "quest_spec_sponsor_gate"
-            Quest.defs[id] = {
-                name = "The Spec's Own Errand",
-                sponsor = "cathedral",
-                requiredPrestige = 1,
-                requiredSponsorQuests = { vendor = "cathedral", count = 2 },
-                map = {},
-            }
-
-            local ok, err = pcall(function()
-                local p = playerAt(5) -- prestige is not the gate here; the sponsor-quest count is
-                local function boardHas(questId)
-                    for _, q in ipairs(Quest.available(p)) do
-                        if q.id == questId then return true end
-                    end
-                    return false
-                end
-
-                assert(not boardHas(id), "no Cathedral quests done: the gate should hold")
-
-                p.completedQuests.quest_colosseum_slot_01 = true
-                assert(not boardHas(id), "another house's quest must not count toward the Cathedral")
-
-                p.completedQuests.quest_cathedral_slot_01 = true
-                assert(not boardHas(id), "one of two is still short")
-
-                p.completedQuests.quest_cathedral_slot_02 = true
-                assert(boardHas(id), "two of this house's quests done: the gate should open")
-            end)
-
-            Quest.defs[id] = nil -- the registry is shared; leave it as it was found
-            assert(ok, err)
-        end,
-    },
+    -- ------------------------------------------- WHAT THE QUEST BOARD TOOK WITH IT
+    --
+    -- Six cases stood here and every one asked what the player may PICK today: whether
+    -- Quest.available dropped a finished quest and opened the next, whether it hid one behind a
+    -- sponsor gate, whether it copied requiredQuests and rewardItems onto its runtime entry, and
+    -- three about the Gate Below being hidden, then locked, then keyed.
+    --
+    -- Picking is what the board did. A descent seats work on its floors (models/errand.lua), so
+    -- Quest.available is gone and the Gate Below with it -- the ending is the Hollow Crown at the
+    -- bottom of a run, and tests/ending_spec.lua guards it now.
+    --
+    -- One rule they protected is worth writing down even with nowhere left to assert it: what
+    -- opened the endgame was the quest you FINISHED, never an item you were still holding, so
+    -- selling or re-equipping a trophy could not soft-lock the game.
     {
         name = "a house's opener is its own line's first slot, and it is reachable",
         fn = function()
@@ -524,10 +453,7 @@ return {
             local p = playerAt(1)
             p.gold = 0
 
-            local quest
-            for _, q in ipairs(Quest.available(p)) do
-                if q.id == "quest_colosseum_slot_01" then quest = q end
-            end
+            local quest = Quest.get("quest_colosseum_slot_01")
             assert(quest, "arena_debut should be available at prestige 1")
 
             local before = Quest.sponsorProgress(p, "colosseum")
@@ -583,131 +509,20 @@ return {
         end,
     },
 
-    -- ------------------------------------------------- the seven sins / the Gate Below
     {
-        -- Quest.available copies blueprint fields ONE AT A TIME. A field the loop forgets reads nil
-        -- at runtime and the gate silently opens (or the relic silently vanishes). Guard both.
-        name = "Quest.available carries requiredQuests and rewardItems through the field copy",
-        fn = function()
-            local p = playerAt(10)
-            -- All seven, because that is what SHOWS the Gate now: the card is the fragments, and the
-            -- fragments are only worth a pane once they name a place (models/quest.lua).
-            for _, id in ipairs(Quest.defs.quest_the_gate_below.hintQuests) do
-                p.completedQuests[id] = true
-            end
-
-            local gate, general
-            for _, q in ipairs(Quest.available(p)) do
-                if q.id == "quest_the_gate_below" then gate = q end
-                if q.id == "quest_colosseum_slot_10" then general = q end
-            end
-
-            assert(gate, "the Gate should be on the board once every general is dead")
-            assert(gate.hintQuests and #gate.hintQuests == 7,
-                "the Gate must carry the seven generals it names")
-
-            -- general_wrath is completed above, so read rewardItems off the blueprint's own copy.
-            assert(Quest.defs.quest_colosseum_slot_10.rewardItems[1] == "armor_mail_of_the_unappeased",
-                "Ira should drop her mail")
-            assert(general == nil, "and a completed, non-repeatable general leaves the board")
-        end,
-    },
-    {
-        name = "the Gate Below is hidden until every general is down, then locked until the day he lands",
-        fn = function()
-            local p = playerAt(10)
-
-            local function gateEntry()
-                for _, q in ipairs(Quest.available(p)) do
-                    if q.id == "quest_the_gate_below" then return q end
-                end
-                return nil
-            end
-
-            -- THE COUNT IS A WARNING, NOT A KEYRING. It used to gate the Gate: seven completed generals
-            -- and not one fewer. The calendar gates it instead (models/calendar.lua), because seven
-            -- lines to their slot 10 is about seventy expeditions against a budget of forty -- so the
-            -- old rule made the ending unreachable by construction. What the seven decide is how many
-            -- of them are standing beside him when you arrive.
-            --
-            -- What they ALSO decide is whether the card is on the board early, which is what this case
-            -- pins. A locked entry rides along under every ground (Quest.board), so showing it from the
-            -- first general down put an unpressable row under every tab for most of the campaign. It is
-            -- the fragments that earn the pane, and six fragments name nowhere.
-            local Calendar = require("models.calendar")
-            local keys = Quest.defs.quest_the_gate_below.hintQuests
-
-            assert(not gateEntry(), "nothing killed: he is coming, but the board has nothing to say yet")
-
-            for i = 1, #keys - 1 do p.completedQuests[keys[i]] = true end
-            assert(not gateEntry(), "six fragments are not a map -- the card is still off the board")
-
-            p.completedQuests[keys[#keys]] = true
-            local gate = gateEntry()
-            assert(gate, "the seventh fragment names the place, and the place goes on the board")
-            assert(gate.locked, "but showing it is not opening it -- the day does that")
-            assert(gate.keysHeld == 7 and gate.keysNeeded == 7,
-                "and every general is accounted for: held " .. tostring(gate.keysHeld) ..
-                " of " .. tostring(gate.keysNeeded))
-            -- Each fragment is the one its own general gave up -- the pane is a map assembled from the
-            -- dead, never a canned riddle.
-            assert(gate.hints and #gate.hints == 7, "all seven fragments are recited")
-            local said = {}
-            for _, hint in ipairs(gate.hints) do said[hint] = true end
-            for _, id in ipairs(keys) do
-                assert(said[Quest.defs[id].gateHint], id .. "'s fragment is missing from the pane")
-            end
-
-            -- The last day opens it.
-            p.day = Calendar.DAYS
-            gate = gateEntry()
-            assert(gate and not gate.locked, "on the last day it is the work that is on offer")
-        end,
-    },
-    {
-        name = "a player who felled one general still meets him on the last day, unwarned",
-        fn = function()
-            -- THE ENDING IS NOT BEHIND THE FRAGMENTS. Hiding the card until seven keys is about what
-            -- the board says beforehand; it must not become the old seven-of-seven lock by the back
-            -- door. A company that spent forty days on one house arrives at the same fight -- with six
-            -- generals standing beside him, which is the whole consequence (Calendar.generalsStanding).
-            local p = playerAt(10)
-            p.completedQuests.quest_colosseum_slot_10 = true
-
-            local function gateEntry()
-                for _, q in ipairs(Quest.available(p)) do
-                    if q.id == "quest_the_gate_below" then return q end
-                end
-                return nil
-            end
-
-            assert(not gateEntry(), "one fragment buys no pane")
-
-            p.day = require("models.calendar").DAYS
-            local gate = gateEntry()
-            assert(gate and not gate.locked, "the last day offers the fight to whoever shows up")
-            assert(gate.keysHeld == 1,
-                "and it still reports the six who will be waiting, rather than refusing the fight")
-        end,
-    },
-    {
-        name = "Quest.complete grants a relic into the stash exactly once",
+        -- IT WAS IRA'S MAIL, off quest_colosseum_slot_10 with the nine slots in front of it faked into
+        -- completedQuests. That quest went with the retired board, and a general's relic does not come
+        -- off a quest any more -- it comes off the body standing on her circle's stair (models/descent
+        -- .lua's DROPS, pinned by tests/sin_drops_spec.lua).
+        --
+        -- What is left here is the rule that was always this case's real subject and is asserted nowhere
+        -- else: Quest.complete puts a quest's rewardItems in the stash, once, and a second clear of the
+        -- same quest pays nothing. The debut carries rewardItems, so it does the job.
+        name = "Quest.complete grants a quest's items into the stash exactly once",
         fn = function()
             local p = playerAt(5)
-            -- A general is slot 10 of a line that runs in order, so the nine in front of it have to be
-            -- done. Its own gate wants ten Colosseum quests finished, so a capstone (the_fighting_cellar)
-            -- rounds the count out past the nine slots -- exactly how a real playthrough reaches it.
-            for _, id in ipairs({
-                "quest_colosseum_slot_01", "quest_colosseum_slot_02", "quest_colosseum_slot_03", "quest_colosseum_slot_04",
-                "quest_colosseum_slot_05", "quest_colosseum_slot_06", "quest_colosseum_slot_07", "quest_colosseum_slot_08",
-                "quest_colosseum_slot_09", "quest_colosseum_the_fighting_cellar",
-            }) do p.completedQuests[id] = true end
-
-            local quest
-            for _, q in ipairs(Quest.available(p)) do
-                if q.id == "quest_colosseum_slot_10" then quest = q end
-            end
-            assert(quest, "at Legend with the line behind her, Ira should be on the board")
+            local quest = Quest.get("quest_colosseum_slot_01")
+            assert(quest, "the debut should resolve")
 
             local function stashCount(id)
                 local n = 0
@@ -716,50 +531,15 @@ return {
                 end
                 return n
             end
-            assert(stashCount("armor_mail_of_the_unappeased") == 0, "the mail starts on Ira, not on you")
+            assert(stashCount("weapon_ledgemans_axe") == 0, "the axe starts on nobody")
 
             local reward = Quest.complete(p, quest)
-            assert(stashCount("armor_mail_of_the_unappeased") == 1, "killing her drops it into the stash")
-            assert(reward.received and reward.received[1].id == "armor_mail_of_the_unappeased",
+            assert(stashCount("weapon_ledgemans_axe") == 1, "finishing it drops the axe into the stash")
+            assert(reward.received and #reward.received > 0,
                 "and the summary names what was received, for the reward panel")
 
             assert(Quest.complete(p, quest) == nil, "a second clear pays nothing")
-            assert(stashCount("armor_mail_of_the_unappeased") == 1, "and mints no second relic")
-        end,
-    },
-    {
-        -- The relic is a trophy meant to be WORN. What opens the Gate is the quest you finished, so
-        -- moving the mail onto a knight -- or losing it entirely -- can never soft-lock the endgame.
-        name = "the Gate is keyed off the completed quest, not off holding the relic",
-        fn = function()
-            local p = playerAt(10)
-            for _, id in ipairs(Quest.defs.quest_the_gate_below.hintQuests) do
-                p.completedQuests[id] = true
-            end
-            Player.grantItem(p, "armor_mail_of_the_unappeased")
-
-            local function gateOpen()
-                for _, q in ipairs(Quest.available(p)) do
-                    if q.id == "quest_the_gate_below" then return not q.locked end
-                end
-                return false
-            end
-            -- The day is what opens it now, not the seven kills (models/calendar.lua). This case is
-            -- about the RELIC -- that carrying or selling the trophy a general dropped can never change
-            -- the ending's availability -- so it puts the player on the last day and then proves the
-            -- item moving around does nothing.
-            p.day = require("models.calendar").DAYS
-            assert(gateOpen(), "the last day opens the Gate")
-
-            -- Wear it: it leaves the stash for a character's 3x3 grid.
-            local mail = Player.takeFromStash(p, #p.stash)
-            Character.addItem(p.roster[1], mail)
-            assert(gateOpen(), "wearing the relic does not close the Gate")
-
-            -- Lose it entirely.
-            p.stash = {}
-            p.roster[1].inventory = {}
-            assert(gateOpen(), "nor does losing it")
+            assert(stashCount("weapon_ledgemans_axe") == 1, "and mints no second copy")
         end,
     },
     {
@@ -1107,10 +887,7 @@ return {
             -- asserted here: they are what replaced the prestige bar.
             local Calendar = require("models.calendar")
             local p = playerAt(1)
-            local quest
-            for _, q in ipairs(Quest.available(p)) do
-                if q.id == "quest_colosseum_slot_01" then quest = q end
-            end
+            local quest = Quest.get("quest_colosseum_slot_01")
             assert(quest, "arena_debut should be available on the first day")
             local fought = #p.roster
 
@@ -1203,10 +980,7 @@ return {
         fn = function()
             local Calendar = require("models.calendar")
             local p = playerAt(1)
-            local quest
-            for _, q in ipairs(Quest.available(p)) do
-                if q.id == "quest_colosseum_slot_01" then quest = q end
-            end
+            local quest = Quest.get("quest_colosseum_slot_01")
             assert(quest, "the fixture quest should be available")
 
             local reward = Quest.complete(p, quest)

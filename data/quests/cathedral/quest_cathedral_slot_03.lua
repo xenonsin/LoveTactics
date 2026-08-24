@@ -19,7 +19,9 @@ return {
     sponsor = "cathedral",
     rewardItems = { "weapon_sealed_censer", "armor_interceding_stole" },
     rewardGold = 220,
-    requiredQuests = { "quest_cathedral_slot_02" }, -- slot 3: the line runs in order
+    -- The prerequisite chain DROPPED with the retired board: its only entry named a quest the descent
+    -- could never post, so the chain it belonged to no longer exists. The errand pool is the order now
+    -- (models/errand.lua's Errand.next, which only enforces a gate some house still asks for).
     requiredPrestige = 1,
     map = {
         biome = "volcanic",

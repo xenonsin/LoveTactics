@@ -38,7 +38,9 @@ return {
     -- takes an armed man's arms. It belongs to the slot about a garrison drilled to hold its position.
     rewardItems = { "consumable_watchpost_draught", "weapon_unclosing_edge", "weapon_disarming_pike" },
     rewardGold = 130,
-    requiredQuests = { "quest_bastion_slot_02" }, -- slot 3: the line runs in order
+    -- The prerequisite chain DROPPED with the retired board: its only entry named a quest the descent
+    -- could never post, so the chain it belonged to no longer exists. The errand pool is the order now
+    -- (models/errand.lua's Errand.next, which only enforces a gate some house still asks for).
     requiredPrestige = 2,
     map = {
         biomes = { "castle", "tundra" },

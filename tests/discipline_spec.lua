@@ -98,31 +98,14 @@ end }
 -- decorative. Slot 3 is the floor: by then the line has introduced itself, handed over its companion,
 -- and asked for something.
 --
--- Slot is derived by walking the line's chain backwards from its general (the same walk
--- tests/quest_ladder_spec.lua uses), so this cannot drift out of step with the authored order.
+-- SLOT IS READ OFF THE ID. It used to be derived by walking the line's chain backwards from its
+-- general, which was exact while a house ran ten quests linked by requiredQuests. The retired board took
+-- both ends of that walk -- the generals are met on their circles now, and models/errand.lua drops the
+-- chain field at the door -- so the position is parsed from the id, which is what the chain spelled out.
 local SUBCLASS_GATE_FLOOR = 3
 
 local function slotOf(questId)
-    local sponsor = Quest.defs[questId] and Quest.defs[questId].sponsor
-    if not sponsor then return nil end
-    -- Find this sponsor's general, then walk back collecting the chain.
-    local general
-    for id, def in pairs(Quest.defs) do
-        if def.sponsor == sponsor and def.gateHint then general = id end
-    end
-    if not general then return nil end
-
-    local order, seen, cursor = {}, {}, general
-    while cursor and Quest.defs[cursor] and Quest.defs[cursor].sponsor == sponsor and not seen[cursor] do
-        seen[cursor] = true
-        table.insert(order, 1, cursor) -- walking backwards, so build the list front-first
-        local req = Quest.defs[cursor].requiredQuests
-        cursor = req and req[1] or nil
-    end
-    for i, id in ipairs(order) do
-        if id == questId then return i end
-    end
-    return nil -- not on the chain at all (a side bounty, a capstone)
+    return tonumber(tostring(questId or ""):match("_slot_(%d+)$") or "")
 end
 
 tests[#tests + 1] = { name = "a subclass gate sits at slot 3 or later in its line", fn = function()

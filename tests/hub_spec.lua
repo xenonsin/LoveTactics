@@ -6,7 +6,6 @@ local Building = require("models.building")
 local Quest = require("models.quest")
 local Player = require("models.player")
 
--- Quest.available filters on the whole player (standing, sponsor-quest gates, completed quests), so
 -- specs build a throwaway player pinned to the standing under test.
 --
 -- Standing is a COUNT of finished quests now (Player.standing) rather than a stored number, so it is
@@ -32,7 +31,7 @@ return {
     {
         name = "building registry discovers def files by filename",
         fn = function()
-            assert(Building.defs.quest_board, "quest_board missing")
+            assert(Building.defs.the_gate, "the_gate missing")
             assert(Building.defs.armory, "armory missing")
             assert(Building.defs.alchemist, "alchemist missing")
             assert(Building.defs.cafe, "cafe missing")
@@ -322,36 +321,12 @@ return {
             assert(not endsOn(p, 1)[opener], "an open house is still posting the job that opened it")
         end,
     },
-    {
-        -- THE CITY HAS ONE DOOR AND IT GOES DOWN. The prologue ends at the capital, the guard points
-        -- the party at the Adventurers' Guild, and a sponsor gets to them first
-        -- (conversation_prologue_sponsor) -- so the Quest Board is retired and the Gate stands in its
-        -- slot. This case is the inverse of the one it replaced, which asserted that no building could
-        -- ever name a `state`.
-        --
-        -- RETIRED, NOT DELETED, and that distinction is what the second half pins: the board's
-        -- blueprint, every quest, the calendar and the biome windows are all still on disk and
-        -- untouched. Bringing the campaign back is removing one entry from Building.RETIRED, and this
-        -- fails loudly if somebody ever "tidies up" by deleting the data instead.
-        name = "the city's front door is the Gate, and the board is parked rather than cut",
-        fn = function()
-            local gate, board
-            for _, b in ipairs(Building.list(1)) do
-                if b.id == "the_gate" then gate = b end
-                if b.id == "quest_board" then board = b end
-            end
-            assert(gate, "the Gate is a card in the city")
-            assert(gate.state == "gate", "and it opens a whole screen rather than a pop-up")
-            assert(not gate.locked, "the city's only door is never gated")
-            assert(board == nil, "the Quest Board is retired from the city")
-
-            -- ...but still entirely there, which is the whole point of parking it.
-            assert(Building.defs.quest_board, "the board's blueprint must survive being retired")
-            assert(Building.RETIRED.quest_board, "and it is the retirement that hides it, not a deletion")
-            assert(next(Quest.defs) ~= nil, "the campaign's quests are still on disk")
-            assert(Building.defs.draft_yard == nil, "the Draft Yard left the city with Draft")
-        end,
-    },
+    -- ("the city's front door is the Gate, and the board is parked rather than cut" stood here. It
+    -- pinned the board as RETIRED-not-deleted: its blueprint still on disk, hidden by one entry in
+    -- Building.RETIRED, so bringing the campaign back was a one-line change. The board is CUT now --
+    -- panel, blueprint, Quest.available, Quest.board and the season table -- so there is no parked
+    -- thing left to assert. The Gate standing alone in the plaza is covered by the case below, which
+    -- counts the doors the city opens on.)
     {
         -- THE CITY GROWS ON WHAT THE COMPANY HAS DONE. Four of the eight cards on the plaza do nothing
         -- on a fresh save -- there is no bone to set, no shelf to browse, no supper worth buying for a
@@ -428,112 +403,21 @@ return {
             assert(Quest.defs.quest_colosseum_slot_03, "warlord_keep missing")
         end,
     },
+    -- (Four cases stood here, all about what the BOARD would show: that Quest.available gated on
+    -- prestige AND standing rather than either alone, that a quest which had not asked to be shown
+    -- locked was hidden instead, that the Gate Below waited for all seven generals before taking a row,
+    -- and that listing and availability left blueprints untouched.
+    --
+    -- Quest.available is gone with the board. The blueprint-immutability half is kept, asked of
+    -- Building.list alone, because that is the mutation this file exists to catch.)
     {
-        name = "Quest.available gates on prestige AND standing, not one or the other",
+        name = "blueprints are untouched after Building.list",
         fn = function()
-            -- THIS CASE HAS BEEN REVERSED TWICE, so it is worth saying which way it points and why.
-            -- The prestige gate came off while the descent was the campaign's progression engine:
-            -- levels came from depth then, so asking the board about prestige asked a question it could
-            -- not help the player answer. The descent is a separate game mode now (states/descent.lua),
-            -- it banks nothing, and the campaign levels off finished quests again -- so the gate is back,
-            -- and without it every house's opening leg sat on the board of a brand new save at once.
-            --
-            -- A chain HEAD is the thing to check -- every sin quest after the first chains off the one
-            -- before it, so a later slot would be testing the chain instead of the gate.
-            local function boardHas(player, id)
-                for _, q in ipairs(Quest.available(player)) do
-                    if q.id == id then return true end
-                end
-                return false
-            end
-
-            -- The Undercroft's line asks for prestige 3 and its door opens at 3. A starting company has
-            -- neither, and must not be shown work it cannot take.
-            assert(not boardHas(playerAt(1), "quest_undercroft_slot_01"),
-                "a line whose entry prestige is unmet must stay off the board")
-            assert(boardHas(playerAt(3), "quest_undercroft_slot_01"),
-                "...and appear once the company is far enough along for it")
-
-            -- The Colosseum opens at 1: the campaign has to start somewhere, and that somewhere is on
-            -- the board from the first visit.
-            assert(boardHas(playerAt(1), "quest_colosseum_slot_01"),
-                "the opening line must be available to a company that has done nothing yet")
-
-            -- The other gate still holds independently: the SECOND leg wants the first one done, at any
-            -- level. Prestige opens a line; standing walks it.
-            assert(not boardHas(playerAt(20), "quest_undercroft_slot_02"),
-                "slot 2 must stay off the board until slot 1 is done, whatever the company's level")
-        end,
-    },
-    {
-        -- The board shows a locked card only when the quest ASKS to be seen locked (`showLocked`),
-        -- which the Gate Below alone sets. The rule used to be inferred from holding one key of
-        -- several, and that swept in all 21 discipline capstones -- they name two gates apiece, carry
-        -- no `gateHint` between them, and so recited the fragments pane's "the generals know where"
-        -- fallback at a player whose real answer was a two-quest checklist. A capstone is advertised
-        -- on its parent vendor's shelf instead, where the lock names the class still missing.
-        name = "a quest that has not asked to be shown locked is hidden, not locked",
-        fn = function()
-            -- One key of several capstones (the Colosseum's first subclass gate), and prestige past
-            -- every gate, so anything willing to show locked would be on the board here.
-            local p = playerAt(10)
-            p.completedQuests.quest_colosseum_slot_03 = true
-
-            for _, q in ipairs(Quest.available(p)) do
-                assert(not q.locked or Quest.defs[q.id].showLocked,
-                    q.id .. " is shown locked without asking to be -- see Quest.available")
-            end
-
-            local seen = {}
-            for _, q in ipairs(Quest.available(p)) do seen[q.id] = true end
-            assert(not seen.quest_colosseum_the_fighting_cellar,
-                "a capstone one key short belongs off the board, not on it wearing a riddle")
-        end,
-    },
-    {
-        name = "the Gate Below waits for all seven generals before it takes a row on the board",
-        fn = function()
-            local p = playerAt(10)
-            p.completedQuests.quest_colosseum_slot_10 = true
-
-            local function gate()
-                for _, q in ipairs(Quest.available(p)) do
-                    if q.id == "quest_the_gate_below" then return q end
-                end
-                return nil
-            end
-
-            -- A locked entry rides along under EVERY ground (Quest.board), so a card shown early is a
-            -- row the player cannot press repeated across the whole travel row, every morning. One
-            -- general down does not earn that; the fragments do, and it takes seven to name a place.
-            assert(not gate(), "one general down must not put the Gate Below on the board")
-
-            for _, id in ipairs(Quest.defs.quest_the_gate_below.hintQuests) do
-                p.completedQuests[id] = true
-            end
-            local entry = gate()
-            assert(entry, "seven generals down must put it there")
-            assert(entry.locked, "and it is locked -- the day he lands is what opens it")
-            assert(entry.keysHeld == 7 and entry.keysNeeded == 7,
-                string.format("the count reads 7 of 7, got %s of %s",
-                    tostring(entry.keysHeld), tostring(entry.keysNeeded)))
-            -- The dead generals' fragments, so the pane recites a place instead of the fallback.
-            assert(entry.hints and #entry.hints == 7,
-                "the finished prerequisites owe the board their location fragments")
-        end,
-    },
-    {
-        name = "blueprints are untouched after list/available",
-        fn = function()
+            Building.list(3)
+            local named = Building.defs.the_gate.name
             Building.list(1)
-            Quest.available(playerAt(3))
-            assert(Building.defs.quest_board.locked == nil, "building blueprint mutated")
-            -- Read off the registry rather than restated: this case is about a blueprint not being
-            -- mutated by being listed, and it should not also be asserting what the card is called.
-            local named = Building.defs.quest_board.name
-            Building.list(1)
-            assert(Building.defs.quest_board.name == named, "building name changed")
-            assert(Quest.defs.quest_colosseum_slot_03.id == nil, "quest blueprint mutated")
+            assert(Building.defs.the_gate.name == named, "building name changed")
+            assert(Building.defs.the_gate.locked == nil, "building blueprint mutated")
         end,
     },
 }

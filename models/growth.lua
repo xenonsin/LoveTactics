@@ -138,21 +138,29 @@ end
 
 -- A character's ceiling, and how fast prestige walks toward it. Levels are DERIVED from the player's
 -- global prestige (Player.syncLevels) rather than earned per character, so without a cap a character's
--- level is just the campaign's prestige total. Prestige is now a flat count of quests completed
--- (Quest.PRESTIGE_PER_QUEST), so that total is exactly 92 -- and New Game+ carries it forward
--- (Player.newGamePlus resets only the quest ledger), so a second run reaches 184.
+-- level is just the campaign's prestige total. Prestige is a flat payout per quest completed
+-- (Quest.PRESTIGE_PER_QUEST), so a 42-quest campaign totals exactly 84 -- and New Game+ carries it
+-- forward (Player.newGamePlus resets only the quest ledger), so a second run reaches 168.
 --
--- At 2 prestige per level the campaign ends at level 46, comfortably UNDER the cap. That is deliberate:
+-- THOSE TOTALS ARE HELD BY THE PAYOUT, NOT BY THIS FILE. The campaign was 92 quests paying 1 apiece
+-- until the retired board took 49 of them; the payout went to 2 so the two numbers this cap is tuned
+-- against -- where a campaign ends, and whether a second one reaches the ceiling -- did not move.
+--
+-- At 2 prestige per level the campaign ends at level 42, comfortably UNDER the cap. That is deliberate:
 -- a cap reached before the last quest leaves a dead stretch where finishing a quest grants nothing,
 -- which is exactly what a cap should avoid. The remaining levels are headroom New Game+ grows into, so
 -- the ceiling does its real job -- bounding a prestige total that otherwise never stops -- without ever
 -- being felt as a wall on a first playthrough.
 --
--- 2, not 3, because the payout flattened. The campaign used to pay 138 prestige over those same 92
--- quests (1, 2 or 3 apiece, back-loaded) and 3-per-level landed level 46. Flat 1s pay 92, so holding
--- 3 would have quietly ended the campaign at level 31; 2 reproduces the old endpoint exactly. What
--- changed is not the destination but the REGULARITY -- a level every second quest, always, instead of
--- scattered wherever the authored weights happened to cross a threshold.
+-- 2, not 3, because the payout flattened. The campaign used to pay 138 prestige over 92 quests (1, 2 or
+-- 3 apiece, back-loaded) and 3-per-level landed level 46. Flat payouts pay a round number, so holding 3
+-- would have quietly ended the campaign a dozen levels short; 2 reproduces the old endpoint. What
+-- changed is not the destination but the REGULARITY -- a level at a fixed number of quests, always,
+-- instead of scattered wherever the authored weights happened to cross a threshold.
+--
+-- At 42 quests paying 2 apiece that cadence is a level EVERY quest, where it was every second quest at
+-- 92 paying 1. The regularity is the property being held, not the interval: a campaign half as long
+-- whose every stop advances the company is the same promise kept at the new length.
 Growth.LEVEL_CAP = 50
 Growth.PRESTIGE_PER_LEVEL = 2
 

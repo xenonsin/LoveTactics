@@ -306,24 +306,8 @@ return {
             assert(p.meal == nil, "the exit is what spends it")
         end,
     },
-    {
-        name = "the last day's trip is the Gate alone",
-        fn = function()
-            local p = Player.new()
-            p.completedQuests = { quest_colosseum_slot_01 = true }
-            p.day = Calendar.DAYS
-
-            local board = Quest.board(p)
-            local trips = 0
-            for _, ground in ipairs(board.grounds) do
-                local trip = Quest.trip(ground.id, ground.quests)
-                if trip then
-                    trips = trips + 1
-                    assert(#trip.quests == 1 and trip.quests[1].id == "quest_the_gate_below",
-                        "the only work on the last day is the Gate")
-                end
-            end
-            assert(trips == 1, "and there is exactly one ground to take it on, got " .. trips)
-        end,
-    },
+    -- ("the last day's trip is the Gate alone" stood here. It asked Quest.board what day forty
+    -- offered and asserted the finale was the only thing on it. There is no board to ask, no fortieth
+    -- day to ask about, and no Gate Below to be alone on it -- the ending is the Hollow Crown at the
+    -- bottom of a descent. Quest.trip itself is unchanged and every case above still exercises it.)
 }

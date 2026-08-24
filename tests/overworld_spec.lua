@@ -795,10 +795,7 @@ return {
             player.completedQuests.quest_colosseum_slot_01 = true
             player.completedQuests.quest_colosseum_slot_02 = true
 
-            local found
-            for _, q in ipairs(Quest.available(player)) do
-                if q.id == "quest_colosseum_slot_03" then found = q end
-            end
+            local found = Quest.get("quest_colosseum_slot_03")
             assert(found, "warlord_keep not available once slots 1-2 are done")
             assert(found.map and found.map.keyCount == 2, "warlord_keep map params not carried")
             -- blueprint still intact

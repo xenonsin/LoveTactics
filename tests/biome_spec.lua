@@ -272,17 +272,28 @@ return {
         end,
     },
     {
+        -- IT READ THROUGH BiomeWindow.biomesOf, which went with the Quest Board -- that module was the
+        -- season table, and a season is a thing a board has. The two shapes it resolved are still what
+        -- quests author, so the reader is four lines and lives here now.
+        --
+        -- WORTH KEEPING EVEN THOUGH THE DESCENT PICKS ITS OWN GROUND off the circle it is on
+        -- (models/descent.lua's SINS): the field is still authored on every quest, and authored data
+        -- that nothing validates is exactly how a typo sits in a file for a year. If the field is ever
+        -- deliberately retired, this case is where that decision gets recorded.
         name = "every quest names a biome that exists",
         fn = function()
             local Quest = require("models.quest")
-            -- Read through BiomeWindow.biomesOf rather than off `map.biome`: a quest may now name a
-            -- SET of grounds it can be run on (models/biome_window.lua), and the old single field is
-            -- one of the two shapes that reads. Every ground in the set has to exist, not just the
-            -- first -- a typo in the second entry would otherwise sit there silently until the day
-            -- its window opened.
-            local BiomeWindow = require("models.biome_window")
+
+            local function biomesOf(def)
+                local map = def and def.map
+                if not map then return {} end
+                if type(map.biomes) == "table" and #map.biomes > 0 then return map.biomes end
+                if map.biome then return { map.biome } end
+                return {}
+            end
+
             for id, def in pairs(Quest.defs) do
-                local named = BiomeWindow.biomesOf(def)
+                local named = biomesOf(def)
                 assert(#named > 0, id .. " names no biome")
                 for _, biome in ipairs(named) do
                     assert(Biome.defs[biome], id .. " names an unknown biome: " .. tostring(biome))
@@ -296,47 +307,12 @@ return {
             end
         end,
     },
-    {
-        name = "no sponsor's line runs entirely on one biome",
-        fn = function()
-            -- The Colosseum was 13/13 castle and the Lodge 13/13 forest before the biome pass; a line
-            -- that never changes ground is the monotony this whole layer exists to fix.
-            local Quest = require("models.quest")
-            local BiomeWindow = require("models.biome_window")
-            local byLine = {}
-            for _, def in pairs(Quest.defs) do
-                local sponsor = def.sponsor
-                if sponsor then
-                    byLine[sponsor] = byLine[sponsor] or {}
-                    for _, biome in ipairs(BiomeWindow.biomesOf(def)) do
-                        byLine[sponsor][biome] = true
-                    end
-                end
-            end
-            for sponsor, biomes in pairs(byLine) do
-                local n = 0
-                for _ in pairs(biomes) do n = n + 1 end
-                assert(n >= 3, sponsor .. " runs on only " .. n .. " biome(s); a line wants variety")
-            end
-        end,
-    },
-    {
-        name = "every biome is somewhere in the campaign",
-        fn = function()
-            -- A biome nothing uses is dead weight carrying an art debt: 6 tiles nobody will ever see.
-            local Quest = require("models.quest")
-            local BiomeWindow = require("models.biome_window")
-            local used = {}
-            for _, def in pairs(Quest.defs) do
-                for _, biome in ipairs(BiomeWindow.biomesOf(def)) do
-                    used[biome] = (used[biome] or 0) + 1
-                end
-            end
-            for id in pairs(Biome.defs) do
-                assert(used[id], "no quest is set in the " .. id .. " biome")
-            end
-        end,
-    },
+
+    -- (Two cases stood here: "no sponsor's line runs entirely on one biome" and "every biome is
+    -- somewhere in the campaign". Both asked about VARIETY ACROSS A LINE -- ten quests spread over
+    -- several grounds so a house's run did not look the same twice -- and a line is ten quests no more.
+    -- A house asks for six pieces of work and the descent decides the ground each is fought on from the
+    -- circle it seats them in, so the spread is the circle order's now, not the quest author's.)
     {
         name = "every new tileset colours all six overworld roles",
         fn = function()

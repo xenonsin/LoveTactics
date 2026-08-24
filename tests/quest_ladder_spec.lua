@@ -114,49 +114,11 @@ return {
             assert(#bad == 0, table.concat(bad, "; "))
         end,
     },
-    {
-        -- THE LINE IS A CHAIN. A sin line runs in authored order: each slot names the one before it in
-        -- `requiredQuests`, and prestige gates only the line's ENTRY (its vendor's door). That is what
-        -- makes a line a story rather than a pile -- slot 7's reveal cannot be read before slot 5's
-        -- discovery, which was exactly what a pure prestige gate allowed.
-        --
-        -- Walked BACKWARDS from each general, because the general is the one end that is unambiguous:
-        -- follow the single prerequisite until the sponsor changes, and the walk must lay out that
-        -- line's ten slots with no repeats. A cycle shows up as a repeat; a break shows up as a short
-        -- walk; a fork shows up as a prerequisite count that is not one.
-        --
-        -- The Cathedral's head deliberately steps outside its own line (`haunted_mill` waits on
-        -- `arena_debut`, so the church opens after the debut on the sand) -- which is why the walk
-        -- stops on a sponsor change rather than on running out of prerequisites.
-        name = "each sin line is an unbroken chain of ten, walked back from its general",
-        fn = function()
-            local generals = {}
-            for id, def in pairs(Quest.defs) do
-                if def.gateHint then generals[#generals + 1] = id end
-            end
-            assert(#generals == 7, "expected seven generals, found " .. #generals)
-            table.sort(generals)
-
-            for _, generalId in ipairs(generals) do
-                local sponsor = Quest.defs[generalId].sponsor
-                local seen, walk, cursor = {}, {}, generalId
-                while cursor and Quest.defs[cursor] and Quest.defs[cursor].sponsor == sponsor do
-                    assert(not seen[cursor],
-                        sponsor .. ": the chain loops back on " .. cursor)
-                    seen[cursor] = true
-                    walk[#walk + 1] = cursor
-
-                    local req = Quest.defs[cursor].requiredQuests
-                    if not req then break end
-                    assert(#req == 1, cursor .. " has " .. #req
-                        .. " prerequisites; a slot in a line names exactly one")
-                    cursor = req[1]
-                end
-                assert(#walk == 10, sponsor .. ": walking back from " .. generalId
-                    .. " covers " .. #walk .. " slots, not 10 (" .. table.concat(walk, " <- ") .. ")")
-            end
-        end,
-    },
+    -- ("each sin line is an unbroken chain of ten, walked back from its general" stood here. It found
+    -- the seven generals by their gateHint and walked each line backwards through requiredQuests,
+    -- asserting the chain was ten long and unbroken. There are no lines: a house asks for its opener and
+    -- its discipline gates, six pieces of work with no order between them but the slot number
+    -- (models/errand.lua). The chain it walked is the field errands drop at the door.)
     {
         -- Prestige may gate a line's entry; it must not gate its running order. Two quests of the same
         -- sponsor that sit in the same chain therefore share a prestige requirement -- if a later slot
@@ -226,28 +188,9 @@ return {
             assert(#bad == 0, "quest(s) naming a missing character blueprint: " .. table.concat(bad, "; "))
         end,
     },
-    {
-        -- The finale's keys. Each of the seven generals must exist AND carry a `gateHint`, because the
-        -- hint the board shows is keyed off the completed quest rather than off the relic it dropped
-        -- (models/quest.lua's gateHints) -- a general without one silently costs the player a fragment
-        -- of the Gate's location with nothing to show it went missing.
-        name = "the Gate Below's seven prerequisites all exist and carry a gateHint",
-        fn = function()
-            local gate = Quest.defs.quest_the_gate_below
-            assert(gate, "quest_the_gate_below is missing")
-            -- `hintQuests`, not `requiredQuests`: the calendar gates the finale now, and the seven are
-            -- read for their fragments and for the size of the last fight rather than as keys
-            -- (data/quests/quest_the_gate_below.lua). Renamed precisely so nothing mistakes them again.
-            local req = gate.hintQuests or {}
-            assert(#req == 7, "the Gate Below names seven generals, not " .. #req)
-            for _, id in ipairs(req) do
-                local def = Quest.defs[id]
-                assert(def, "the Gate Below names '" .. id .. "', which does not exist")
-                assert(def.gateHint, id .. " is a Gate Below general with no gateHint")
-                assert(def.rewardItems and #def.rewardItems > 0, id .. " is a general that drops nothing")
-            end
-        end,
-    },
+    -- ("the Gate Below's seven prerequisites all exist and carry a gateHint" stood here. The Gate
+    -- Below is deleted and so are the seven slot-10 quests it named; the ending is the Hollow Crown at
+    -- the bottom of a descent and tests/ending_spec.lua guards it.)
     {
         -- Every quest points at a real vendor, and the sponsor gate is satisfiable: a quest whose
         -- prestige requirement is below its own vendor's building unlock can never appear, because

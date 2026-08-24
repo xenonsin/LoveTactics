@@ -40,7 +40,9 @@ return {
     outro = "conversation_colosseum_slot_06_outro",
     rewardItems = { "weapon_wolfs_portion", "weapon_unspent_blow" },
     rewardGold = 240,
-    requiredQuests = { "quest_colosseum_slot_05" }, -- slot 6: the line runs in order
+    -- The prerequisite chain DROPPED with the retired board: its only entry named a quest the descent
+    -- could never post, so the chain it belonged to no longer exists. The errand pool is the order now
+    -- (models/errand.lua's Errand.next, which only enforces a gate some house still asks for).
     requiredPrestige = 1,
     map = {
         biome = "colosseum", -- "Blood in the Sand": the sand is this one, and it is named in the title

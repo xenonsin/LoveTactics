@@ -37,7 +37,9 @@ return {
     intro = "conversation_bastion_slot_05_intro",
     outro = "conversation_bastion_slot_05_outro",
     rewardGold = 220,
-    requiredQuests = { "quest_bastion_slot_04" }, -- slot 5: the line runs in order
+    -- The prerequisite chain DROPPED with the retired board: its only entry named a quest the descent
+    -- could never post, so the chain it belonged to no longer exists. The errand pool is the order now
+    -- (models/errand.lua's Errand.next, which only enforces a gate some house still asks for).
     requiredPrestige = 2,
     requiredSponsorQuests = { vendor = "bastion", count = 3 }, -- 3 of this house's quests done
     rewardItems = { "utility_greywatch_muster_roll", "weapon_answering_bell", "weapon_rimebell" },

@@ -106,10 +106,7 @@ return {
             local Quest = require("models.quest")
             local p = Player.new()
             p.completedQuests = {}
-            local quest
-            for _, q in ipairs(Quest.available(p)) do
-                if q.id == "quest_colosseum_slot_01" then quest = q end
-            end
+            local quest = Quest.get("quest_colosseum_slot_01")
             assert(quest, "the debut should be available on a fresh save")
 
             local r = Quest.complete(p, quest)

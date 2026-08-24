@@ -224,7 +224,6 @@ return {
     "weapon_iron_crook",
     "weapon_knell_point",
     "weapon_knell_shaft",
-    "weapon_ledgemans_axe",
     "weapon_lending_blade",
     "weapon_limning_bow",
     "weapon_litany_staff",

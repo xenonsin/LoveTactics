@@ -27,8 +27,22 @@ end
 
 local function unit(id, x, y) return { char = Character.instantiate(id), x = x, y = y } end
 
+-- IT WAS READ OFF quest_colosseum_slot_02, the padded card, whose win was overruled by Ira walking on
+-- through the far gate. That quest was reachable only through the Quest Board and went with it, and no
+-- shipped quest authors an `overrule` today -- so the fixture is written here instead of borrowed.
+--
+-- Written out in full rather than trimmed to the fields this file happens to read: the block is the
+-- CONTRACT between a quest's objective and states/battle.lua's fireOverrule, and a fixture carrying
+-- only half of it would let the other half rot unnoticed the next time somebody authors one.
 local function overruleBlock()
-    return Quest.defs["quest_colosseum_slot_02"].map.objective.win.overrule
+    return {
+        composition = { "character_general_wrath" },
+        from = "top",
+        scene = "conversation_colosseum_slot_02_overrule",
+        fell = "character_survivor",
+        unkillable = "character_general_wrath",
+        win = { type = "killAll", text = "The house has sent its patron" },
+    }
 end
 
 return {
