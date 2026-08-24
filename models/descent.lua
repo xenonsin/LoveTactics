@@ -175,18 +175,70 @@ Descent.SINS = {
 -- out on a second playthrough, and Descent.dropFor then returns nil and the landing pays the house's
 -- forge stock. That is the same path an unauthored piece would take, which is why adding to these lists
 -- is safe and forgetting to is survivable.
+-- AND THE LISTS GREW, exactly as the paragraph above said they were meant to. When the retired Quest
+-- Board's 49 unpostable quests came out, sixty-four unpriced pieces came out with them: a house's
+-- "quest-only shelf stock", handed over by a slot nobody could reach, carrying no price so no cache and
+-- no merchant could ever pay one instead (models/spoils.lua draws its pool from PRICED items only).
+--
+-- They are in the right place here and it is not a consolation prize. Every one already belongs to a
+-- house, every house is a circle, and a circle's guardian is the thing at the bottom of it -- so the
+-- piece a line's seventh quest used to hand over is now what the sin at the end of that line pays for
+-- being put down. Descent.dropFor walks the list and pays the first piece not already owned, so these
+-- are what a SECOND and a fifth descent are paid in, which is the run-again loop this table was built
+-- for and had nothing to spend on.
+--
+-- ORDER IS THE AUTHORED RELIC FIRST, then the rest alphabetically. The first entry is the one the
+-- fiction promises -- kill Ira, wear her mail -- so it must never be displaced by a piece that happens
+-- to sort ahead of it. Everything after it is ordered only so two machines agree.
+--
+-- `. content-report items` is the check: it reports what a deletion would strand, and it counts these
+-- lists as a live source.
 Descent.DROPS = {
-    gluttony = { general = { "utility_maw_of_the_unfed" },     minor = { "utility_larder_hook" } },
-    lust     = { general = { "utility_reliquary_unbidden" },   minor = { "utility_beggars_bowl" } },
-    greed    = { general = { "utility_bottomless_purse" },     minor = { "utility_tally_stick" } },
-    envy     = { general = { "utility_envious_glass" },        minor = { "utility_second_vessel" } },
-    wrath    = { general = { "armor_mail_of_the_unappeased" }, minor = { "utility_anvils_face" } },
+    gluttony = { minor = { "utility_larder_hook" }, general = {
+        "utility_maw_of_the_unfed",
+        "armor_bogwalkers_coat", "armor_raveners_hide", "weapon_corvids_bow", "weapon_held_breath",
+        "weapon_last_word", "weapon_sunfall", "weapon_unravelling_shaft", "weapon_witchlight_bow",
+    } },
+    lust     = { minor = { "utility_beggars_bowl" }, general = {
+        "utility_reliquary_unbidden",
+        "armor_hem_of_the_stayed_hand", "armor_reliquary_mantle", "armor_robes_unbidden",
+        "weapon_censer_of_the_grasping_hollow", "weapon_censer_of_the_hollow_dark",
+        "weapon_censer_of_the_unravelling", "weapon_renewal_staff",
+    } },
+    greed    = { minor = { "utility_tally_stick" }, general = {
+        "utility_bottomless_purse",
+        "armor_slipstep_leathers", "armor_smokecloth_wrap", "armor_unlit_hood",
+        "weapon_nightjar", "weapon_slipknife", "weapon_throughline",
+    } },
+    envy     = { minor = { "utility_second_vessel" }, general = {
+        "utility_envious_glass",
+        "armor_choking_apron", "armor_ichor_coat", "armor_volatile_carapace",
+    } },
+    wrath    = { minor = { "utility_anvils_face" }, general = {
+        "armor_mail_of_the_unappeased",
+        "armor_adrenal_harness", "armor_blood_fever_mail", "armor_last_stand_plate",
+        "weapon_anvil_of_the_ninth", "weapon_carrion_axe", "weapon_given_hour", "weapon_hollow_arc",
+        "weapon_kingsfall", "weapon_long_count", "weapon_mired_maul", "weapon_reapers_due",
+        "weapon_tempo_debt", "weapon_the_stillness", "weapon_whitening",
+    } },
     -- Acedia's relic is her PIKE, and it took a second look to see it: it is tagged
     -- { "spear", "pierce", "physical", "melee", "relic" }, so a search for the bare `tags = { "relic" }`
     -- the other six wear reports her as the one general with nothing to pay. She is not. The set is
     -- whole.
-    sloth    = { general = { "weapon_forsworn_pike" },         minor = { "utility_unblown_horn" } },
-    pride    = { general = { "utility_codex_unanswered" },     minor = { "utility_marginal_gloss" } },
+    sloth    = { minor = { "utility_unblown_horn" }, general = {
+        "weapon_forsworn_pike",
+        "armor_aegis_unbidden", "armor_given_guard", "armor_kept_wound_shield", "armor_martyrs_shield",
+        "armor_reflecting_shield", "consumable_bannerets_steel", "utility_closed_entry",
+        "utility_forty_one_marks", "utility_names_he_kept", "utility_relief_order",
+        "utility_struck_name", "weapon_debt_bell", "weapon_knell_point", "weapon_lending_blade",
+        "weapon_shepherds_crook", "weapon_splitglass_saber", "weapon_sunderers_answer",
+        "weapon_suspension_mace", "weapon_tidesbreak", "weapon_wardens_tongue",
+    } },
+    pride    = { minor = { "utility_marginal_gloss" }, general = {
+        "utility_codex_unanswered",
+        "armor_sealed_coat", "armor_unravelling_habit", "weapon_overchannelled_staff",
+        "weapon_sealed_ward_wand", "weapon_swineherds_wand", "weapon_unravelling_wand",
+    } },
 }
 
 -- WHAT A SPENT SET PAYS INSTEAD, in units of the house's own forge stock.

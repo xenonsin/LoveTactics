@@ -117,10 +117,15 @@ return {
             assert(Descent.dropFor(p, wrath, false) == "utility_anvils_face",
                 "the Anvil pays its face")
 
-            -- Held in the STASH...
+            -- Held in the STASH... and what comes back is the NEXT unowned piece, not nothing. The list
+            -- was one entry long when this case was written; the retired board's quest-only stock moved
+            -- onto these bodies and made "the set is spent" a claim about a dozen pieces rather than one.
             Player.addToStash(p, Item.instantiate("armor_mail_of_the_unappeased"))
-            assert(Descent.dropFor(p, wrath, true) == nil,
+            local second = Descent.dropFor(p, wrath, true)
+            assert(second and second ~= "armor_mail_of_the_unappeased",
                 "a general handed over a second copy of something in the stash")
+            assert(second == Descent.DROPS.wrath.general[2],
+                "the walk skipped past the next piece in the list rather than paying it")
 
             -- ...and held in a GRID, which is the half that is easy to forget: a relic worn by the
             -- knight is not a relic the company is missing.

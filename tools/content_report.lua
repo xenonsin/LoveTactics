@@ -177,11 +177,158 @@ function M.questPool()
     return pool, all
 end
 
+-- WHAT DELETING THE UNPOSTABLE QUESTS WOULD COST THE SHELVES, which is the one question standing
+-- between "these 49 are unreachable" and actually removing them.
+--
+-- TWO WAYS AN ITEM DEPENDS ON A QUEST, and they are not the same shape:
+--
+--   * HANDED OVER. `rewardItems` on the quest. A quest that is deleted takes its grants with it, and
+--     an item granted nowhere else and sold nowhere else has no way into the game at all.
+--   * GATED BEHIND STANDING. `unlockQuests` on the ITEM is a COUNT -- how many of that house's quests
+--     must be finished before the shelf will sell it -- and a house's standing can never exceed the
+--     number of its quests that can actually be posted. So deleting quests lowers a ceiling, and every
+--     row gated above the new ceiling goes quietly unbuyable. This is the one that does not announce
+--     itself: nothing errors, the row simply never appears, and the shelf looks complete.
+--
+-- The second is why this is a report rather than a grep. `unlockQuests` names no quest, so no search
+-- over the doomed files can find what they were holding up.
+-- EVERY WAY AN UNPRICED ITEM CAN STILL REACH A PLAYER once its quest is gone. An unpriced item cannot
+-- come off a cache, a corpse or a merchant: models/spoils.lua draws its pool from PRICED items inside a
+-- price band, and says so. So the sources are finite and worth naming, because the first draft of this
+-- report knew about none of them and reported all seven general relics as orphaned when every one of
+-- them is paid off the body standing on its circle's stair.
+local function otherSources()
+    local Descent = require("models.descent")
+    local Recruit = require("models.descent_recruit")
+    local Character = require("models.character")
+    local out = {}
+
+    -- What a circle's guardian and its lieutenant hand over. This IS the re-home the retired board's
+    -- slot-10 quests used to do, already built (Descent.DROPS).
+    for _, drop in pairs(Descent.DROPS or {}) do
+        for _, list in pairs({ drop.general or {}, drop.minor or {} }) do
+            for _, itemId in ipairs(list) do out[itemId] = "a general or lieutenant drops it" end
+        end
+    end
+
+    -- What a hireable body walks in wearing. A recruit's bound piece arrives on her, so an item sitting
+    -- in a roster blueprint's grid has a source whatever happens to the quests.
+    for _, charId in ipairs(Recruit.roster() or {}) do
+        local def = Character.defs[charId]
+        -- `startingItems` is a GRID, so it carries `false` for an empty cell -- ipairs would stop at the
+        -- first hole and silently miss everything after it, which on Rowan is the back half of her kit.
+        for _, itemId in pairs((def and def.startingItems) or {}) do
+            if type(itemId) == "string" then
+                out[itemId] = out[itemId] or "a recruitable body carries it"
+            end
+        end
+    end
+
+    return out
+end
+
+local function shelfCost()
+    local Item = require("models.item")
+    local pool = M.questPool()
+    local elsewhere = otherSources()
+
+    local postable, doomed = {}, {}      -- vendorId -> count
+    local granted = {}                   -- itemId -> { live = n, doomed = n }
+    for id, def in pairs(Quest.defs) do
+        local v = def.sponsor
+        if v then
+            local livePost = pool[id] and true or false
+            if livePost then postable[v] = (postable[v] or 0) + 1
+            else doomed[v] = (doomed[v] or 0) + 1 end
+            for _, itemId in ipairs(def.rewardItems or {}) do
+                granted[itemId] = granted[itemId] or { live = 0, doomed = 0 }
+                local k = livePost and "live" or "doomed"
+                granted[itemId][k] = granted[itemId][k] + 1
+            end
+        end
+    end
+
+    local rows = {}                      -- vendorId -> { ceiling, stranded = {}, orphaned = {} }
+    for vendorId in pairs(Vendor.defs) do
+        rows[vendorId] = { ceiling = postable[vendorId] or 0, doomed = doomed[vendorId] or 0,
+                           stranded = {}, orphaned = {} }
+    end
+
+    for itemId, def in pairs(Item.defs) do
+        local vendorId = def.class and Vendor.forClass(def.class)
+        local row = vendorId and rows[vendorId]
+        if row then
+            -- Gated above what the house could still reach. `price` is the test for "the shelf sells
+            -- it at all": a relic carries no price and no class gate, and is never stranded by standing.
+            local gate = tonumber(def.unlockQuests) or 0
+            if def.price and gate > row.ceiling then
+                row.stranded[#row.stranded + 1] = string.format("%s (needs %d, ceiling %d)", itemId, gate, row.ceiling)
+            end
+        end
+        local g = granted[itemId]
+        if g and g.doomed > 0 and g.live == 0 and not def.price and not elsewhere[itemId] then
+            -- Handed over ONLY by a doomed quest, and on no shelf to buy instead.
+            local vid = (def.class and Vendor.forClass(def.class)) or "(no house)"
+            rows[vid] = rows[vid] or { ceiling = 0, doomed = 0, stranded = {}, orphaned = {} }
+            rows[vid].orphaned[#rows[vid].orphaned + 1] = itemId
+        end
+    end
+    return rows
+end
+
 function M.run(args)
     local full, mode = false, nil
     for _, a in ipairs(args or {}) do
         if a == "full" then full = true end
         if a == "quests" then mode = "quests" end
+        if a == "items" then mode = "items" end
+    end
+
+    if mode == "items" then
+        local rows = shelfCost()
+        local names = {}
+        for v in pairs(rows) do names[#names + 1] = v end
+        table.sort(names)
+
+        local totalStranded, totalOrphaned = 0, 0
+        print("")
+        print("What deleting the unpostable house quests would cost the shelves")
+        print("")
+        print("  house            postable  deleted   ceiling   stranded   orphaned")
+        print("  ---------------------------------------------------------------------")
+        for _, v in ipairs(names) do
+            local r = rows[v]
+            if r.doomed > 0 or #r.stranded > 0 or #r.orphaned > 0 then
+                print(string.format("  %-16s %8d %8d %9d %10d %10d",
+                    v, r.ceiling, r.doomed, r.ceiling, #r.stranded, #r.orphaned))
+            end
+            totalStranded = totalStranded + #r.stranded
+            totalOrphaned = totalOrphaned + #r.orphaned
+        end
+        print("  ---------------------------------------------------------------------")
+        print(string.format("  %-16s %8s %8s %9s %10d %10d", "TOTAL", "", "", "", totalStranded, totalOrphaned))
+        print("")
+        print("  stranded = on a shelf, gated behind more of that house's quests than would still exist.")
+        print("             Nothing errors; the row just never appears. Re-gate or the item is gone.")
+        print("  orphaned = handed over ONLY by a quest being deleted, and on no shelf to buy instead.")
+        print("             Needs a new source (floor loot, a surviving quest's rewardItems) first.")
+
+        if full then
+            for _, v in ipairs(names) do
+                local r = rows[v]
+                if #r.stranded > 0 or #r.orphaned > 0 then
+                    print("")
+                    print(string.format("== %s ==", v))
+                    table.sort(r.stranded); table.sort(r.orphaned)
+                    for _, s in ipairs(r.stranded) do print("  stranded  " .. s) end
+                    for _, o in ipairs(r.orphaned) do print("  orphaned  " .. o) end
+                end
+            end
+        else
+            print("")
+            print("  (`. content-report items full` names every one)")
+        end
+        return
     end
 
     if mode == "quests" then

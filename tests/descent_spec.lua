@@ -997,14 +997,29 @@ return {
         end
 
         -- ...and the walk itself: the first piece not already owned, and nothing once the set is spent.
+        --
+        -- "SPENT" MEANS THE WHOLE LIST, and this case used to say something narrower by accident. It
+        -- took the mail and asserted the very next call paid nothing -- true while wrath's list was one
+        -- entry, and a different claim the moment the retired board's quest-only stock moved onto these
+        -- bodies. Walked to exhaustion now, which is the rule it was always reaching for, and it cannot
+        -- go stale again as the lists grow.
         local p = Player.new()
         local wrath
         for _, sin in ipairs(Descent.SINS) do if sin.id == "wrath" then wrath = sin end end
         local first = Descent.dropFor(p, wrath, true)
         assert(first == "armor_mail_of_the_unappeased", "Ira pays her mail, not the heart she fights with")
-        Player.addToStash(p, Item.instantiate(first))
-        assert(Descent.dropFor(p, wrath, true) == nil,
-            "a general must not hand over a second copy of something the company already carries")
+
+        local paid, seen = 0, {}
+        local id = first
+        while id do
+            assert(not seen[id], "a general handed over " .. id .. " a second time")
+            seen[id] = true
+            paid = paid + 1
+            Player.addToStash(p, Item.instantiate(id))
+            id = Descent.dropFor(p, wrath, true)
+        end
+        assert(paid == #Descent.DROPS.wrath.general,
+            "the walk paid " .. paid .. " of " .. #Descent.DROPS.wrath.general .. " -- a piece was skipped")
     end },
 
     { name = "a boon undealt on a landing survives a save and is not re-dealt", fn = function()
