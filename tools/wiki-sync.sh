@@ -128,6 +128,32 @@ for i in "${!BASENAMES[@]}"; do
   echo "  $b.md -> $t.md"
 done
 
+# --- prune ------------------------------------------------------------------
+# A page whose source doc is gone. The sync copied and never removed, so deleting
+# docs/NAME.md left NAME's page standing on the public wiki forever -- still linked
+# from nothing, still the top Google hit for a mechanic that no longer exists.
+# Found the honest way: docs/temptation.md was deleted and Temptation.md stayed up.
+#
+# Only GENERATED pages are eligible. The banner is the proof of ownership: a page
+# this script wrote says so on its first line, so a hand-made wiki page (or one from
+# some future tool) is left alone no matter what docs/ holds. Home.md and _Sidebar.md
+# are skipped explicitly -- they carry a banner too, and they are regenerated below
+# rather than sourced from any one doc.
+declare -A KEEP=()
+for i in "${!TITLES[@]}"; do KEEP["${TITLES[$i]}.md"]=1; done
+KEEP["Home.md"]=1
+KEEP["_Sidebar.md"]=1
+
+shopt -s nullglob
+for page in "$WIKI_DIR"/*.md; do
+  pb="$(basename "$page")"
+  [ -n "${KEEP[$pb]:-}" ] && continue
+  head -n1 "$page" | grep -q 'GENERATED from docs/.* by tools/wiki-sync.sh' || continue
+  rm -f "$page"
+  echo "  pruned $pb (its source doc is gone)"
+done
+shopt -u nullglob
+
 # --- Home.md -----------------------------------------------------------------
 {
   banner_for "(generated index)"
