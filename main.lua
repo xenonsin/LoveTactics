@@ -45,6 +45,16 @@ function love.load(args)
         return
     end
 
+    -- Content reachability: `& "E:\LOVE\lovec.exe" . content-report [full]`
+    -- Which authored scenes a live route can actually play, asked through the model layer rather than
+    -- read off the call sites. Splits live / parked (the retired Quest Board) / orphan. See
+    -- tools/content_report -- and its header for the deletion that made it necessary.
+    if args and args[1] == "content-report" then
+        require("tools.content_report").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
     -- Silhouette SOURCE audit: `& "E:\LOVE\lovec.exe" . art-source [slugs | credits | ship]`
     -- Which set answers each slug the shipped composers draw -- art/bases/ (ours) vs vendor/game-icons
     -- (CC BY, dev only). `ship` exits nonzero while any vendored slug remains. See tools/art_source.
