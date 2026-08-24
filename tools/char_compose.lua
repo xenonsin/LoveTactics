@@ -33,15 +33,14 @@
 
 local Registry = require("models.registry")
 local Discipline = require("models.discipline")
+local Source = require("tools.icon_source")
 
 local M = {}
 
 local RESVG = "vendor/bin/resvg.exe"
-local ICON_ROOT = "vendor/game-icons"
 local PREVIEW_ROOT = "vendor/compose-preview/chars"
 local ASSET_ROOT = "assets/chars"
 local RENDER_SIZE = 256
-local BG_PATH = '<path d="M0 0h512v512H0z"/>'
 
 -- 1a. Direct creature/object silhouettes, matched as a substring of the blueprint id. Ordered by
 -- specificity: a longer, more specific key is tried before a shorter one it contains (dire_bear before
@@ -513,15 +512,12 @@ local function tintFor(def, id)
     return KIND_TINT[kind] or STEEL
 end
 
--- Pull the recoloured foreground out of a vendored game-icons SVG -- drop the <svg> wrapper and the
--- full-canvas background rect, recolour the #fff foreground. Same surgery as icon_compose.foreground.
+-- The recoloured foreground for one silhouette slug. Both the surgery and the choice of WHICH SET
+-- answers the slug live in tools/icon_source.lua -- a commissioned glyph under art/bases/ wins over the
+-- vendored game-icons one, so this composer names no source either.
 local function foreground(slug, tint)
-    local raw = love.filesystem.read(ICON_ROOT .. "/" .. slug .. ".svg")
-    if not raw then return nil, "no such icon: " .. slug end
-    local inner = raw:match("<svg[^>]*>(.*)</svg>")
-    if not inner then return nil, "unexpected SVG layout: " .. slug end
-    inner = inner:gsub(BG_PATH:gsub("%p", "%%%0"), "", 1)
-    inner = inner:gsub('fill="#fff"', string.format('fill="%s"', tint))
+    local inner, err = Source.foreground(slug, tint)
+    if not inner then return nil, err end
     return inner
 end
 

@@ -1,5 +1,26 @@
 # Portraits — Commission Brief
 
+> ## ⚠️ THIS COMMISSION IS NOT BEING PLACED — do not hand this brief to an artist.
+>
+> Two decisions retired it, and both are recorded elsewhere:
+>
+> 1. **The rig is the portrait.** The board sprites are Spine rigs, and the dialogue box shows one posed
+>    at rest rather than a separate painting — see
+>    [commission-board-sprites.md](commission-board-sprites.md#the-rig-is-also-the-portrait) and
+>    [art-assets.md](art-assets.md#the-named-cast--the-rig-is-the-portrait). The only thing this brief's
+>    technical spec still governs is the **470px** figure height, which now lands on the rig brief as an
+>    authoring requirement.
+> 2. **There is no cast to paint yet.** The dialogue prose these portraits would have illustrated is
+>    being rewritten, so commissioning paintings of this cast would be buying art for a script that is
+>    about to change.
+>
+> The vendor half is gone for a third reason: a counter wears its **house mark**, not a face
+> ([art-assets.md](art-assets.md#vendors-wear-a-mark-not-a-face)).
+>
+> Kept, not deleted, because the art direction and the dialogue-box constraints in it are still the
+> reference the rig brief points at — and because if a portrait commission is ever placed, this is where
+> it starts.
+
 A hand-off brief for commissioning the game's character portraits. Built from the engine's real
 constraints (`ui/dialogue.lua`, `data/characters/*.lua`) and the existing plan in
 [art-assets.md](art-assets.md), so delivered art drops straight in. Deep character context lives in

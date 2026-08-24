@@ -2,7 +2,6 @@
 return {
     name = "The Arcanum",
     class = "mage",
-    sprite = "assets/vendors/arcanum.png", -- shopkeeper portrait; falls back to a placeholder
     description = "A library that has outlived every scholar who swore he could read it safely.",
     sin = "pride",
 }

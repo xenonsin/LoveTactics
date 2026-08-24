@@ -18,6 +18,5 @@ return {
     name = "The Cafe",
     sells = false, -- sells no ITEMS; its whole offer is the meal menu (models/meal.lua)
     meals = true,  -- the kitchen: what ui/panels/cafe.lua opens onto
-    sprite = "assets/vendors/cafe.png", -- shopkeeper portrait; falls back to a placeholder
     description = "One hot meal before the road, and it stays with you the whole way out.",
 }

@@ -16,6 +16,5 @@
 return {
     name = "The Touchstone",
     sells = false, -- sells no ITEMS; its whole offer is the reading (models/identify.lua)
-    sprite = "assets/vendors/touchstone.png", -- shopkeeper portrait; falls back to a placeholder
     description = "Bring up what nobody can name. The stone will say what it is.",
 }

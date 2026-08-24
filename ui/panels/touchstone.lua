@@ -6,15 +6,14 @@
 -- the whole point of the room is that you cannot tell these apart yet.
 --
 -- BUT IT IS STILL A COUNTER WITH SOMEBODY BEHIND IT, so it wears the city's shop layout: a keeper column
--- on the left carrying the portrait, the purse and the house's own line, and the work on the right. Every
--- door in this city that sells anything -- a shelf, a supper, a reading -- is a person you stand in front
--- of, and a room that laid out its offer with nobody in it would be the one counter in the city that was
--- a vending machine. Modelled on ui/panels/cafe.lua, which is the closest sibling: a vendor that keeps a
--- keeper and no shelf at all (`sells = false`).
+-- on the left carrying the purse and the house's own line, and the work on the right. Modelled on
+-- ui/panels/cafe.lua, which is the closest sibling: a vendor that keeps a keeper and no shelf at all
+-- (`sells = false`).
 --
--- NO SIN TINT ON THE PLACEHOLDER, and the Cafe's note says why for both of them: the seven houses each
--- own a deadly sin and colour their missing portrait with it, and this counter is not one of the seven.
--- A borrowed hue here would be the only thing in the game that ever claimed it was.
+-- WHO IS BEHIND IT IS THE MARK ON THE NAME, not a face. Every counter in the city used to reserve a
+-- portrait pane down its left; none of them do now (ui/vendor_icons.lua drawNamed), and the house's own
+-- glyph rides on the title instead -- which also retires the borrowed-sin tint those placeholders wore,
+-- since a mark takes the house's own colour and the four counters outside the seven have colours too.
 --
 -- TWO LISTS BEHIND TWO TABS. The SATCHEL is what you are carrying, and it offers both verbs at one
 -- figure: Identify spends the fee, Sell pays it. The symmetry puts the choice where it belongs -- SELL
@@ -54,8 +53,8 @@ local Player = require("models.player")
 local Scale = require("scale")
 local Sound = require("models.sound")
 local Theme = require("ui.theme")
-local Vendor = require("models.vendor") -- only for the keeper's name, portrait and pitch
-local Sprite = require("models.sprite")
+local Vendor = require("models.vendor") -- only for the keeper's name and pitch
+local VendorIcons = require("ui.vendor_icons") -- the counter's mark, worn on its name in the header
 
 local Touchstone = {}
 Touchstone.__index = Touchstone
@@ -90,10 +89,6 @@ function Touchstone.new(opts)
     self.hoverRow = nil
     self.hoverBtn = nil
     self.notice = nil        -- what the last piece of work left behind, shown above the list
-
-    -- The keeper. A missing file resolves to its own path string rather than crashing
-    -- (models/sprite.lua), so the placeholder below draws until the art lands.
-    self.vendorSprite = self.def.sprite and Sprite.load(self.def.sprite) or nil
 
     self.titleFont = Theme.display(28)
     self.nameFont = Theme.display(19)
@@ -336,47 +331,32 @@ end
 
 -- The keeper's column: portrait, purse, and the house's own line. Laid out exactly as the Cafe's is, so
 -- a player who has stood at one counter already knows where to look at this one.
+-- NO PORTRAIT PANE, and the slot is measured off its content rather than running to the foot of the
+-- panel -- see the note in ui/panels/shop.lua, which this matches so two counters still look like two
+-- counters. The keeper's own NAME goes with the portrait too: it is printed across the header three
+-- inches above, and a column repeating it was only ever a caption for the picture underneath.
 function Touchstone:drawVendor()
     local x, y, w = self.colX, self.colY, VENDOR_W
-    local h = self.colBottom - y
+
+    local _, wrapped = self.subFont:getWrap(self.def.description or "", w - 24)
+    local h = 12 + 28 + #wrapped * self.subFont:getHeight() + 12
+
     Theme.set(Theme.slot)
     love.graphics.rectangle("fill", x, y, w, h, Theme.R, Theme.R)
     Theme.set(Theme.frame)
     love.graphics.rectangle("line", x, y, w, h, Theme.R, Theme.R)
 
-    local portraitH = h - 132
-    local pad = 12
-    local px, py, pw, ph = x + pad, y + pad, w - pad * 2, portraitH - pad * 2
-    if type(self.vendorSprite) == "userdata" then
-        love.graphics.setColor(1, 1, 1)
-        local sw, sh = self.vendorSprite:getDimensions()
-        local scale = math.min(pw / sw, ph / sh)
-        love.graphics.draw(self.vendorSprite, px + pw / 2, py + ph / 2, 0, scale, scale, sw / 2, sh / 2)
-    else
-        -- No sin tint: this counter is not one of the seven houses. See the header.
-        Theme.set(Theme.panel2)
-        love.graphics.rectangle("fill", px, py, pw, ph, 8, 8)
-        love.graphics.setFont(self.titleFont)
-        Theme.set(Theme.ink)
-        love.graphics.printf((self.def.name or "?"):sub(1, 1), px, py + ph / 2 - 20, pw, "center")
-    end
-
-    local ty = y + portraitH + 2
-    love.graphics.setFont(self.nameFont)
-    Theme.set(Theme.ink)
-    love.graphics.printf(Theme.ellipsize(self.def.name or "The Touchstone", self.nameFont, w - 24),
-        x + 12, ty, w - 24, "left")
-
+    local ty = y + 12
     -- The purse. Both verbs in this room move it and a player deciding between them is deciding against
     -- this number, so it sits in the fixed corner of the panel the city already trains them to read for
-    -- it -- under the portrait, exactly where the Cafe keeps theirs.
+    -- it -- the column's first line, exactly where the Cafe keeps theirs.
     love.graphics.setFont(self.promptFont)
     Theme.set(Theme.accentAmber)
-    love.graphics.print((self.player and self.player.gold or 0) .. " gold", x + 12, ty + 26)
+    love.graphics.print((self.player and self.player.gold or 0) .. " gold", x + 12, ty)
 
     love.graphics.setFont(self.subFont)
     Theme.set(Theme.muted)
-    love.graphics.printf(self.def.description or "", x + 12, ty + 54, w - 24, "left")
+    love.graphics.printf(self.def.description or "", x + 12, ty + 28, w - 24, "left")
 end
 
 -- The strip over the work column, or nothing at all when there is only one list. Each tab carries its
@@ -483,7 +463,7 @@ function Touchstone:draw()
 
     love.graphics.setFont(self.titleFont)
     Theme.set(Theme.accentAmber)
-    love.graphics.printf(self.title, bx, by + 18, BOX_W, "center")
+    VendorIcons.drawNamed(self.vendorId, self.title, self.titleFont, bx, by + 18, BOX_W)
 
     self:drawVendor()
 

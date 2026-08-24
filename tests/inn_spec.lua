@@ -2,7 +2,7 @@
 --
 -- Three things this room owes the player, and each is a rule the city keeps everywhere else:
 --
---   a keeper    a portrait, a name and a one-time greeting, off data/vendors/inn.lua -- the same terms
+--   a keeper    a mark, a name and a one-time greeting, off data/vendors/inn.lua -- the same terms
 --               the Cafe, the Touchstone and the Crossing stand on, and the reason the Inn declares a
 --               vendor id at all. It must NOT be a shelf: a vendor with a class is a market house
 --               (tests/hub_spec.lua refuses one standing in the city), and this one sells no items.
@@ -79,14 +79,22 @@ return {
         fn = function()
             local def = Vendor.get(INN)
             assert(def, "the Inn names a vendor that does not exist")
-            assert(def.name and def.sprite and def.description,
-                "a keeper is a name, a portrait and a line; the Inn is missing one")
+            -- A keeper is a NAME, a MARK and a LINE. It used to be a name, a *portrait* and a line, and
+            -- the portrait was the one of the three that never existed: no vendor art was ever
+            -- commissioned, so every counter drew a lettered plate where the face went. The panes are
+            -- gone (ui/vendor_icons.lua drawNamed) and the house's own glyph rides on the name instead,
+            -- so the thing to assert is that this counter HAS a mark -- which, unlike the sprite path,
+            -- is a claim about something that is actually drawn.
+            local VendorIcons = require("ui.vendor_icons")
+            assert(def.name and def.description,
+                "a keeper is a name and a line; the Inn is missing one")
+            assert(VendorIcons.has(INN), "the Inn has no mark, so its panel would title itself blank")
             assert(def.sells == false, "the Inn must sell no items at all")
             assert(not def.class, "a vendor with a class is a market house; the Inn stands in the city")
             assert(#Vendor.stock(INN, 99, {}, {}, {}) == 0, "something drifted onto the Inn's counter")
 
             -- The building is what wires the keeper to the door: without this the greeting never plays
-            -- and the panel has no portrait to draw.
+            -- and the panel has no keeper to title itself with.
             local Building = require("models.building")
             assert(Building.defs.the_inn.vendor == INN, "the Inn's blueprint names no keeper")
         end,

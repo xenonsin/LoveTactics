@@ -271,6 +271,49 @@ function VendorIcons.draw(vendorId, x, y, w, h, r, g, b, a)
     return true
 end
 
+-- THE MARK ON THE NAME: one unit of <mark> <name>, which is how a house titles the counter it keeps.
+--
+-- This is the whole of a vendor's "portrait" now. Every counter panel used to give its house a pane down
+-- the left with a standing figure in it -- and the figure was never drawn, so what a player actually met
+-- was a big tinted plate carrying this same mark at a third of the panel's width, saying exactly what a
+-- glyph beside the title says. The pane is gone. The mark moved onto the name, which is where the house
+-- is being read anyway, and the room it was taking went back to the shelf.
+--
+-- The mark takes the HOUSE'S colour and the text keeps whatever colour the caller set, so a title stays
+-- the title and the identity is the thing that is coloured. `align` is "center" (the default, matching
+-- every panel header) or "left". Returns the width the pair occupied, so a caller laying out beside it
+-- need not re-measure.
+function VendorIcons.drawNamed(vendorId, text, font, x, y, w, align)
+    text = text or ""
+    local tr, tg, tb, ta = love.graphics.getColor()
+    local textW = font:getWidth(text)
+    local size = font:getHeight() * 0.86
+    local gap = size * 0.42
+    local marked = VendorIcons.has(vendorId)
+    local total = textW + (marked and (size + gap) or 0)
+
+    local sx = x
+    if align == "left" then
+        sx = x
+    else
+        sx = x + (w - total) / 2
+    end
+
+    if marked then
+        local r, g, b = VendorIcons.color(vendorId)
+        -- A house with a mark but no colour would draw invisibly against the panel; fall back to the
+        -- caller's ink rather than guessing a hue this file has not authored.
+        VendorIcons.draw(vendorId, sx, y + (font:getHeight() - size) / 2, size, size,
+            r or tr, g or tg, b or tb, ta)
+        sx = sx + size + gap
+    end
+
+    love.graphics.setColor(tr, tg, tb, ta)
+    love.graphics.setFont(font)
+    love.graphics.print(text, sx, y)
+    return total
+end
+
 -- Every id this file has a mark for, for a spec that has to check the set both ways round.
 function VendorIcons.ids()
     local out = {}

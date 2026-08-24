@@ -88,6 +88,12 @@ The codebase is organized into layers loaded via `require()`. See
   path string rather than crashing, so art can land incrementally — which also means the art debt is
   invisible without a sweep. [docs/art-assets.md](docs/art-assets.md) holds the specs, sourcing and
   artist brief; `& "E:\LOVE\lovec.exe" . art-report` counts what is still outstanding.
+- **`art/`** — hand-made and commissioned art, **tracked** (where `assets/` is gitignored build output).
+  `. art-build` regenerates every composed icon and token unconditionally, then copies `art/` over
+  `assets/` so drawn art wins by landing second; `. art-build stale` fails when `assets/` is behind its
+  inputs — run it after any re-tier, since `repRank` drives an icon's frame and pips. `art/bases/` is the
+  exception: those SVGs are composer *input*, the drawn replacements for the game-icons.net stand-ins,
+  and `. art-source` reports how many of the 410 shipped silhouettes are still third-party.
 
 ### Hub city & pop-up panels
 

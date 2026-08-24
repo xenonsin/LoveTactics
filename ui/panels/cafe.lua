@@ -24,9 +24,9 @@ local CloseButton = require("ui.close_button")
 local ItemTooltip = require("ui.item_tooltip") -- printFlavor: the sheared italic story line, as everywhere else
 local Meal = require("models.meal")
 local Wound = require("models.wound") -- the other thing a kitchen is for: setting what a descent broke
-local Vendor = require("models.vendor") -- only for the shopkeeper's name, portrait and pitch
+local Vendor = require("models.vendor") -- only for the shopkeeper's name and pitch
 local Player = require("models.player")
-local Sprite = require("models.sprite")
+local VendorIcons = require("ui.vendor_icons") -- the counter's mark, worn on its name in the header
 local Scale = require("scale")
 local InputMode = require("input_mode")
 local Sound = require("models.sound")
@@ -84,7 +84,6 @@ function Cafe.new(opts)
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
     self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
 
-    self.vendorSprite = self.def.sprite and Sprite.load(self.def.sprite) or nil
 
     self.vendorX = self.boxX + 24
     self.vendorY = self.boxY + 64
@@ -268,7 +267,7 @@ function Cafe:draw()
 
     love.graphics.setFont(self.titleFont)
     Theme.set(Theme.accentAmber)
-    love.graphics.printf(self.title, self.boxX, self.boxY + 18, BOX_W, "center")
+    VendorIcons.drawNamed(self.vendorId, self.title, self.titleFont, self.boxX, self.boxY + 18, BOX_W)
 
     self:drawVendor()
     if self:hasRows() then
@@ -287,33 +286,21 @@ function Cafe:draw()
     love.graphics.setColor(1, 1, 1)
 end
 
+-- NO PORTRAIT PANE, and the slot is measured off its content rather than running to the foot of the
+-- panel -- see the note in ui/panels/shop.lua, which this matches so two counters still look like two
+-- counters. The Cafe's mark rides on its name in the header.
 function Cafe:drawVendor()
     local x, y, w = self.vendorX, self.vendorY, self.vendorW
-    local h = self.boxY + BOX_H - 44 - y
+
+    local _, wrapped = self.smallFont:getWrap(self.def.description or "", w - 24)
+    local h = 12 + 68 + #wrapped * self.smallFont:getHeight() + 12
+
     Theme.set(Theme.slot)
     love.graphics.rectangle("fill", x, y, w, h, Theme.R, Theme.R)
     Theme.set(Theme.frame)
     love.graphics.rectangle("line", x, y, w, h, Theme.R, Theme.R)
 
-    local portraitH = h - 104
-    local pad = 12
-    local px, py, pw, ph = x + pad, y + pad, w - pad * 2, portraitH - pad * 2
-    if type(self.vendorSprite) == "userdata" then
-        love.graphics.setColor(1, 1, 1)
-        local sw, sh = self.vendorSprite:getDimensions()
-        local scale = math.min(pw / sw, ph / sh)
-        love.graphics.draw(self.vendorSprite, px + pw / 2, py + ph / 2, 0, scale, scale, sw / 2, sh / 2)
-    else
-        -- No sin tint here, unlike a house's shop: the Cafe is the one counter in the city that is not
-        -- one of the seven, and giving it a borrowed hue would be the only place that ever said it was.
-        Theme.set(Theme.panel2)
-        love.graphics.rectangle("fill", px, py, pw, ph, 8, 8)
-        love.graphics.setFont(self.titleFont)
-        Theme.set(Theme.ink)
-        love.graphics.printf((self.def.name or "?"):sub(1, 1), px, py + ph / 2 - 20, pw, "center")
-    end
-
-    local ty = y + portraitH + 2
+    local ty = y + 12
     love.graphics.setFont(self.bodyFont)
     Theme.set(Theme.accentAmber)
     love.graphics.print((self.player and self.player.gold or 0) .. " gold", x + 12, ty)

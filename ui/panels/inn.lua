@@ -41,8 +41,7 @@
 local Choice = require("ui.panels.choice")
 local Gate = require("models.gate")
 local Player = require("models.player")
-local Sprite = require("models.sprite")
-local Vendor = require("models.vendor") -- only for the keeper's name, portrait and line
+local Vendor = require("models.vendor") -- only for the keeper's name and line
 local Wound = require("models.wound")
 
 local Inn = {}
@@ -51,11 +50,11 @@ function Inn.new(opts)
     opts = opts or {}
     local player = opts.player or Player.active
     local def = Vendor.get(opts.vendor or "inn") or {}
-    -- Tolerant: a missing file comes back as its own path string, which the keeper pane draws a lettered
-    -- plate for (models/sprite.lua). The art has not landed and this room works without it.
+    -- The keeper is named and marked, not pictured: the pane wears the house's own glyph on the name
+    -- (ui/vendor_icons.lua) where it used to reserve room for a portrait nobody was going to paint.
     local keeper = {
+        id = opts.vendor or "inn",
         name = def.name or "The Inn",
-        sprite = def.sprite and Sprite.load(def.sprite) or nil,
         line = def.description,
     }
 

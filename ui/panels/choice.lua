@@ -16,9 +16,9 @@
 -- player nothing but the door out, with no line saying why they came. It stays, dimmed, wearing the
 -- reason in its own description.
 --
--- A KEEPER PANE is optional and additive: pass `keeper = { name=, sprite=, line=, gold=? }` and the box
--- grows a recessed column down its left with the portrait fitted inside it, the counter's name under that
--- and its own sentence beneath -- the same shape every shelf in the city uses (ui/panels/cafe.lua,
+-- A KEEPER PANE is optional and additive: pass `keeper = { id=, name=, line=, gold=? }` and the box grows
+-- a recessed column down its left carrying the counter's name (wearing its house mark, off `id`) and its
+-- own sentence beneath -- the same shape every shelf in the city uses (ui/panels/cafe.lua,
 -- ui/panels/hiring.lua, ui/panels/touchstone.lua). It is what lets a counter whose whole offer is one
 -- yes-or-no still have a face behind it, without that counter growing a three-column panel it has no
 -- content for. Callers that pass no keeper are laid out exactly as they were.
@@ -34,6 +34,7 @@ local CloseButton = require("ui.close_button")
 local InputMode = require("input_mode")
 local Scale = require("scale")
 local Theme = require("ui.theme")
+local VendorIcons = require("ui.vendor_icons") -- the counter's mark, worn on its name
 
 local Choice = {}
 Choice.__index = Choice
@@ -44,20 +45,15 @@ local PAD = 26
 -- has learned to read at one size in four other rooms should not be smaller in the fifth.
 local KEEPER_W = 260
 local KEEPER_GAP = 22
--- The room a portrait needs to be a portrait, and it is NOT a number picked to look tall enough -- it is
--- back-solved from the shelves so the picture comes out the same size here as it does at a shop counter.
--- ui/panels/shop.lua fits its portrait into 236 x 356; this pane spends `pad * 2` (24) and a foot of 76
--- on the name and the line, so 356 + 24 + 76 + the 54/22 margins the box keeps above and below is 532.
+-- What the pane costs OUTSIDE its text: `pad * 2` (24) and the 54/22 margins the box keeps above and
+-- below. Nothing else, because there is no picture in it any more.
 --
--- IT WAS 360, and at 360 the same face was 196 x 184 -- a letterbox next to the shelves' standing
--- figure. A yes-or-no card is short (two options and a prompt is barely 300px) and a portrait fitted
--- into what is left over is always the thing that gets squeezed, which is why this height is fixed and
--- the card grows to meet it rather than the other way round.
---
--- Split so a purse line pays for its own room instead of eating the portrait's: the foot is what sits
--- under the picture (name, sentence, and the gold line when there is one) and the base is everything
--- else -- 356 of portrait, 24 of pad and the 54/22 margins the box keeps above and below.
-local KEEPER_BASE_H = 456
+-- IT WAS 456, back-solved so a portrait came out the same size here as at a shop counter (356 of picture
+-- plus the pad and margins). That made a yes-or-no card -- a prompt and two options, barely 300px --
+-- grow to 532 to hold a face that was never painted, and what actually stood in the space was a lettered
+-- plate. The vendor portrait is gone everywhere (ui/vendor_icons.lua drawNamed), so the card is free to
+-- be its natural height again and the pane is the name, the sentence and the purse.
+local KEEPER_BASE_H = 100
 local KEEPER_FOOT_H = 76
 local KEEPER_GOLD_H = 24
 -- A card's height, and the reason it is a default rather than a constant. 70 holds a label and ONE line of
@@ -161,11 +157,9 @@ end
 -- ui/panels/hiring.lua, ui/panels/touchstone.lua): a recessed slot down the left with the portrait
 -- fitted inside it, the counter's name under that and its own sentence beneath.
 --
--- `keeper.sprite` is whatever models/sprite.lua handed the caller, which is an image when the art has
--- landed and the path string when it has not -- so the lettered plate below is the ordinary case for
--- now and not an error path. NO SIN TINT on it, the same call the Cafe and the Rift make for the same
--- reason: the seven houses each borrow their sin's hue, and a counter that is not one of the seven
--- wearing a borrowed colour would be the only thing in the game claiming it was.
+-- `keeper.id` names the house, and the only thing drawn off it is the mark on the name: that mark takes
+-- the house's OWN colour (ui/vendor_icons.lua), which is why no counter here has to borrow a sin's hue --
+-- the four that are not one of the seven have colours of their own in that same table.
 function Choice:drawKeeper()
     local r = self.keeperRect
     if not r then return end
@@ -175,37 +169,28 @@ function Choice:drawKeeper()
     Theme.set(Theme.frame)
     love.graphics.rectangle("line", r.x, r.y, r.w, r.h, Theme.R, Theme.R)
 
-    local pad, footH = 12, self.keeperFootH
+    local pad = 12
     local px, py = r.x + pad, r.y + pad
-    local pw, ph = r.w - pad * 2, r.h - pad * 2 - footH
+    local pw = r.w - pad * 2
 
-    local sprite = self.keeper.sprite
-    if type(sprite) == "userdata" then
-        love.graphics.setColor(1, 1, 1)
-        local sw, sh = sprite:getDimensions()
-        local scale = math.min(pw / sw, ph / sh)
-        love.graphics.draw(sprite, px + pw / 2, py + ph / 2, 0, scale, scale, sw / 2, sh / 2)
-    else
-        Theme.set(Theme.panel2)
-        love.graphics.rectangle("fill", px, py, pw, ph, 8, 8)
-        love.graphics.setFont(self.titleFont)
-        Theme.set(Theme.ink, 0.55)
-        love.graphics.printf((self.keeper.name or "?"):sub(1, 1), px, py + ph / 2 - 20, pw, "center")
-    end
-
-    local ty = py + ph + 10
-    -- THE PURSE, in the shelves' amber and the shelves' position: first line under the portrait, so the
-    -- number a player reads before every price in the city does not move because this counter sells beds.
+    local ty = py
+    -- THE PURSE, in the shelves' amber and the shelves' position: the pane's first line, so the number a
+    -- player reads before every price in the city does not move because this counter sells beds.
     if self.keeper.gold then
         love.graphics.setFont(self.goldFont)
         Theme.set(Theme.accentAmber)
         love.graphics.print(self.keeper.gold .. " gold", px, ty)
         ty = ty + KEEPER_GOLD_H
     end
+    -- The counter's NAME, wearing its house mark. This is the whole of the picture now: the pane used to
+    -- fit a standing portrait above this line and the portrait was never drawn, so what stood there was a
+    -- lettered plate 260px wide. The mark says which counter this is in a glyph, and it says it in the
+    -- one place the name is already being read.
     if self.keeper.name then
         love.graphics.setFont(self.keeperFont)
         Theme.set(Theme.ink)
-        love.graphics.printf(Theme.ellipsize(self.keeper.name, self.keeperFont, pw), px, ty, pw, "left")
+        VendorIcons.drawNamed(self.keeper.id,
+            Theme.ellipsize(self.keeper.name, self.keeperFont, pw), self.keeperFont, px, ty, pw, "left")
         ty = ty + self.keeperFont:getHeight() + 4
     end
     -- The counter's own sentence, read off its blueprint by the caller rather than written again here,

@@ -36,6 +36,23 @@ function love.load(args)
         return
     end
 
+    -- Art BUILD: `& "E:\LOVE\lovec.exe" . art-build [overlay | stale]`
+    -- Regenerates every composed icon and token unconditionally, then copies art/ over assets/ so drawn
+    -- art wins by landing second. `stale` fails when assets/ is behind its inputs. See tools/art_build.
+    if args and args[1] == "art-build" then
+        require("tools.art_build").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
+    -- Silhouette SOURCE audit: `& "E:\LOVE\lovec.exe" . art-source [slugs | credits | ship]`
+    -- Which set answers each slug the shipped composers draw -- art/bases/ (ours) vs vendor/game-icons
+    -- (CC BY, dev only). `ship` exits nonzero while any vendored slug remains. See tools/art_source.
+    if args and args[1] == "art-source" then
+        require("tools.art_source").run({ select(2, unpack(args)) })
+        return -- art-source sets its own exit code for the ship gate
+    end
+
     -- Progression ledger: `& "E:\LOVE\lovec.exe" . progression-report [full]`
     -- Walks the campaign quest by quest under two play policies and reports what arrives at each --
     -- levels, shelf rows, disciplines, companions, items -- so a dead stretch is measured rather than

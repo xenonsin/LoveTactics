@@ -27,6 +27,7 @@
 
 local Registry = require("models.registry")
 local Item = require("models.item")
+local Source = require("tools.icon_source")
 
 -- The per-item glyph map (tools/icons/map.lua, mostly hand-corrected) -- the source of a UNIQUE
 -- silhouette per item. Weapons and armour are content to reuse a shared family/type shape, but every
@@ -42,10 +43,8 @@ end
 local M = {}
 
 local RESVG = "vendor/bin/resvg.exe"
-local ICON_ROOT = "vendor/game-icons"
 local OUT_ROOT = "vendor/compose-preview"
 local RENDER_SIZE = 256 -- larger than icon-build's 128: a composed icon has a frame and badge to keep crisp
-local BG_PATH = '<path d="M0 0h512v512H0z"/>'
 
 -- 1. BASE -- one canonical game-icons silhouette per weapon family. These are the ~15 shapes the whole
 -- item catalogue reduces to; verified present in the vendored set.
@@ -180,19 +179,13 @@ local function baseFor(def)
     return TYPE_BASE[def.type] or DEFAULT_BASE
 end
 
--- Pull the recoloured foreground out of a vendored game-icons SVG: drop the outer <svg>, drop the
--- full-canvas background rect, recolour the #fff foreground to `tint`. Returns the inner markup (a
--- run of <path>s) ready to drop into a <g>, or nil + why. Same surgery as icon-build's transform,
--- minus the re-wrap -- the caller nests it instead of shipping it whole.
+-- The recoloured foreground for one base slug, ready to nest in a <g>. The surgery and -- more to the
+-- point -- WHICH SET answers the slug both live in tools/icon_source.lua: a commissioned glyph under
+-- art/bases/ wins over the vendored game-icons one, so the composer never names a source.
 local function foreground(slug, tint)
-    local raw = love.filesystem.read(ICON_ROOT .. "/" .. slug .. ".svg")
-    if not raw then return nil, "no such icon: " .. slug end
-    local inner = raw:match("<svg[^>]*>(.*)</svg>")
-    if not inner then return nil, "unexpected SVG layout: " .. slug end
-    inner = inner:gsub(BG_PATH:gsub("%p", "%%%0"), "", 1)
-    -- Recolour explicit #fff fills; the enclosing <g fill> below catches any path that inherited.
-    inner = inner:gsub('fill="#fff"', string.format('fill="%s"', tint))
-    return inner
+    local inner, err = Source.foreground(slug, tint)
+    if not inner then return nil, err end
+    return inner -- drop the root name: which set answered is the audit's business, not the composer's
 end
 
 -- Compose the four layers into one 512x512 SVG. Everything here is a function of `def`.
@@ -377,5 +370,15 @@ function M.run(args)
         print("  (demo spread -- `. icon-compose all` for the full preview, `. icon-compose assets` to graduate)")
     end
 end
+
+-- The base-slug resolution is exposed so the source audit (tools/art_source.lua) can ask "which
+-- silhouette does this item actually draw?" through the SAME function the renderer uses. Asking any
+-- other way is how a report starts disagreeing with the pipeline it reports on.
+M.baseFor = baseFor
+M.tintFor = tintFor
+M.FAMILY_BASE = FAMILY_BASE
+M.TYPE_BASE = TYPE_BASE
+M.ABILITY_BASE = ABILITY_BASE
+M.DEFAULT_BASE = DEFAULT_BASE
 
 return M

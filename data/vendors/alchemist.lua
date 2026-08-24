@@ -10,7 +10,6 @@
 return {
     name = "The Crucible",
     class = "alchemist",
-    sprite = "assets/vendors/alchemist.png", -- shopkeeper portrait; falls back to a placeholder
     description = "Every jar is labelled with something else's name.",
     sin = "envy",
 }

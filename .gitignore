@@ -11,9 +11,15 @@ vendor/
 *.resvg.tmp.svg
 
 # Rendered/generated art is NOT committed (project decision). Item icons are reproducible from
-# blueprint tags with `. icon-compose assets`; other buckets are provided locally. A fresh clone
-# has no icons until the composer runs -- models/sprite.lua tolerates the gap (a missing file
-# resolves to its path string rather than crashing). See docs/art-assets.md.
+# blueprint tags with `. art-build`; other buckets are provided locally. A fresh clone has no icons
+# until the build runs -- models/sprite.lua tolerates the gap (a missing file resolves to its path
+# string rather than crashing). See docs/art-assets.md.
+#
+# DRAWN art does NOT live here. assets/ is build OUTPUT and every file in it is disposable: `. art-build`
+# regenerates the whole tree unconditionally, which is what lets a new base silhouette propagate to every
+# icon that composes from it. Hand-made and commissioned art is tracked in art/ instead, and the build
+# copies art/ over assets/ afterwards so drawn art wins by landing second. Anything paid for that lived
+# only here would be invisible to a fresh clone and one command from deletion.
 assets/
 
 # OS files

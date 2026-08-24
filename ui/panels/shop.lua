@@ -79,13 +79,8 @@ local TYPE_COLOR = {
 }
 local DEFAULT_COLOR = { 0.85, 0.85, 0.9 }
 
--- Placeholder tint for a missing vendor portrait, keyed by the vendor's deadly sin.
-local SIN_COLOR = {
-    wrath = { 0.52, 0.22, 0.22 }, gluttony = { 0.30, 0.44, 0.26 }, greed = { 0.50, 0.42, 0.18 },
-    sloth = { 0.28, 0.34, 0.46 }, envy = { 0.22, 0.44, 0.38 }, lust = { 0.46, 0.26, 0.44 },
-    pride = { 0.40, 0.28, 0.52 },
-}
-local SIN_DEFAULT = { 0.26, 0.28, 0.36 }
+-- (The sin-keyed placeholder tint that used to back the vendor portrait pane is gone with the pane. A
+-- house's colour lives in ui/vendor_icons.lua now, one table rather than two that could disagree.)
 
 local TARGET_LABEL = { enemy = "Enemy", ally = "Ally", self = "Self", tile = "Tile" }
 
@@ -120,7 +115,6 @@ function Shop.new(opts)
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
     self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
 
-    self.vendorSprite = self.def.sprite and Sprite.load(self.def.sprite) or nil
 
     -- Columns: vendor (left) | list (middle) | detail (right).
     self.vendorX = self.boxX + 24
@@ -774,9 +768,12 @@ function Shop:draw()
     Theme.set(Theme.frame)
     love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
 
+    -- The house's mark rides ON its name, which is the only place a vendor is pictured now. It is also
+    -- the place the mark is best learned: a player is standing still, reading the name, and will next
+    -- meet this same shape alone on a 32px tile out on the ground (ui/overworld_map.lua).
     love.graphics.setFont(self.titleFont)
     Theme.set(Theme.accentAmber)
-    love.graphics.printf(self.title, self.boxX, self.boxY + 18, BOX_W, "center")
+    VendorIcons.drawNamed(self.vendorId, self.title, self.titleFont, self.boxX, self.boxY + 18, BOX_W)
 
     self:drawVendor()
     self:drawModeSelector()
@@ -817,44 +814,28 @@ function Shop:draw()
     love.graphics.setColor(1, 1, 1)
 end
 
+-- NO PORTRAIT PANE. This column carried one for every house -- a tinted plate two thirds of its height,
+-- standing in for a painting that was never commissioned and now never will be. What the plate actually
+-- showed was the house's mark, which is a 20px shape; it does not need a third of the panel to be read,
+-- and it says the same thing sitting on the name in the header (VendorIcons.drawNamed, in Shop:draw).
+--
+-- AND THE SLOT SHRANK WITH IT. It used to run the full height of the panel because a portrait filled it;
+-- with the portrait gone, that same rect was three lines of text at the top and 450px of nothing under
+-- them -- which does not read as a spare column, it reads as a panel that failed to finish drawing. So
+-- the height is measured off the content, and the empty space is empty PANEL rather than an empty box.
 function Shop:drawVendor()
     local x, y, w = self.vendorX, self.vendorY, self.vendorW
-    local h = self.boxY + BOX_H - 44 - y
+
+    local descY = (self.def.sells ~= false) and 44 or 22
+    local _, wrapped = self.smallFont:getWrap(self.def.description or "", w - 24)
+    local h = 12 + descY + #wrapped * self.smallFont:getHeight() + 12
+
     Theme.set(Theme.slot)
     love.graphics.rectangle("fill", x, y, w, h, Theme.R, Theme.R)
     Theme.set(Theme.frame)
     love.graphics.rectangle("line", x, y, w, h, Theme.R, Theme.R)
 
-    local portraitH = h - 92
-    local pad = 12
-    local px, py, pw, ph = x + pad, y + pad, w - pad * 2, portraitH - pad * 2
-    if type(self.vendorSprite) == "userdata" then
-        love.graphics.setColor(1, 1, 1)
-        local sw, sh = self.vendorSprite:getDimensions()
-        local scale = math.min(pw / sw, ph / sh)
-        love.graphics.draw(self.vendorSprite, px + pw / 2, py + ph / 2, 0, scale, scale, sw / 2, sh / 2)
-    else
-        -- NO PORTRAIT YET, so the plate stands in for one -- and what it carries is the HOUSE'S OWN MARK
-        -- (ui/vendor_icons.lua), the same shape that stands on this house's work out on the ground.
-        --
-        -- It carried the name's first LETTER before, which was the closest thing this panel had to a bug
-        -- you could look straight at: six of the seven houses are "The something", so six shops in a row
-        -- showed a big "T". The mark tells them apart, and it is the one place a player is standing
-        -- still, looking at a shelf, with the house's name printed above -- which is where a mark that
-        -- has to be recognised on a 32px tile gets learned.
-        local tint = SIN_COLOR[self.def.sin] or SIN_DEFAULT
-        love.graphics.setColor(tint[1], tint[2], tint[3])
-        love.graphics.rectangle("fill", px, py, pw, ph, 8, 8)
-        local mark = math.min(pw, ph) * 0.52
-        if not VendorIcons.draw(self.vendorId, px + (pw - mark) / 2, py + (ph - mark) / 2, mark, mark,
-                Theme.ink[1], Theme.ink[2], Theme.ink[3]) then
-            love.graphics.setFont(self.titleFont)
-            Theme.set(Theme.ink)
-            love.graphics.printf((self.def.name or "?"):sub(1, 1), px, py + ph / 2 - 20, pw, "center")
-        end
-    end
-
-    local ty = y + portraitH + 2
+    local ty = y + 12
     love.graphics.setFont(self.bodyFont)
     Theme.set(Theme.accentAmber)
     love.graphics.print(self.player.gold .. " gold", x + 12, ty)
@@ -868,7 +849,7 @@ function Shop:drawVendor()
     end
     love.graphics.setFont(self.smallFont)
     Theme.set(Theme.muted)
-    love.graphics.printf(self.def.description or "", x + 12, ty + 44, w - 24, "left")
+    love.graphics.printf(self.def.description or "", x + 12, ty + descY, w - 24, "left")
 end
 
 function Shop:drawModeSelector()

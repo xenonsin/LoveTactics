@@ -13,14 +13,26 @@ Two halves, deliberately split so neither can rot:
 ```powershell
 & "E:\LOVE\lovec.exe" . art-report           # summary by bucket
 & "E:\LOVE\lovec.exe" . art-report missing   # ... and the outstanding filenames
+& "E:\LOVE\lovec.exe" . art-build            # regenerate everything composed, then overlay art/
+& "E:\LOVE\lovec.exe" . art-build stale       # ... or just ask whether it needs it
+& "E:\LOVE\lovec.exe" . art-source            # how much of what ships is still game-icons.net
 ```
+
+`art-report` counts **files**; `art-source` counts **drawings**, which is the number a commission is
+priced off. They answer different questions and disagree on purpose: a bucket can be "done" on disk and
+entirely third-party underneath.
 
 It sweeps every `assets/...` literal in the source and checks it against disk, so the moment a
 file lands the count moves on its own. Paste a fresh summary into the snapshot below when it does.
 
 ## Snapshot
 
-As of 2026-07-30 — **735 of 806 present**, 71 outstanding. Regenerate with the command above.
+As of 2026-08-24 — **981 of 1031 present**, 50 outstanding — plus 191 board rigs the sweep cannot see. Regenerate with the command above.
+
+> The snapshot before this one read *71 outstanding* and was three weeks stale; the sweep found **254**.
+> Nearly all of the gap was an **unrun regen** — 114 items and 83 tokens whose blueprints had been
+> authored since — which is exactly the failure mode `. art-build stale` now exists to catch. Regenerate
+> the numbers here from the tool, and never retype one from memory.
 
 `chars/` is now full, but with **composed placeholder tokens**, not painted art — every character
 blueprint resolves to a file so nothing renders as the bare letter fallback, yet the animated-character
@@ -35,28 +47,49 @@ characters share a token** (the sin generals were one picture between the seven 
 
 | Bucket | Have | Needed | Rendered at | Source |
 |---|---|---|---|---|
-| `items/` | 583 | 619 | 64px cell | **composed from tags** — [icon system](#the-permanent-icon-system--compose-dont-commission) ✅ |
-| `chars/` | 107 | 107 | ~52px on a 60px tile | **Spine rigs (commission)** — composed tokens stand in until each rig lands; see [Characters](#characters) |
+| `items/` | 729 | 733 | 64px cell | **composed from tags** — [icon system](#the-permanent-icon-system--compose-dont-commission); bases still vendored ⚠️ |
+| `chars/` | 191 | 191 | ~52px board, **470px dialogue** | **Spine rigs (commission)** — composed tokens stand in until each rig lands; see [Characters](#characters) |
 | ~~`hazards/`~~ | — | — | 64px tile, under units | **no art, ever** — [drawn by a shader](#hazards-are-not-icons) ✅ |
-| `portraits/` | 0 | 17 | 470px tall standing figure | **commission** |
-| `vendors/` | 0 | 9 | shop panel | **commission** |
+| `portraits/` | 0 | 17 | — | **commission CANCELLED** — the rig is the portrait; see [Characters](#the-named-cast--the-rig-is-the-portrait) |
+| ~~`vendors/`~~ | — | — | shop panel | **no art, ever** — [the mark is the keeper](#vendors-wear-a-mark-not-a-face) ✅ |
 | `traps/` | 6 | 6 | 64px tile | game-icons.net ✅ |
 | `overworld/` | 0 | 9 | one tilesheet per biome, see [Terrain](#terrain) | **commission** — [brief](commission-terrain-tileset.md) |
-| `materials/` | 3 | 3 | 64px cell | game-icons.net ✅ |
+| `materials/` | 6 | 10 | 64px cell | game-icons.net ✅ |
 | `props/` | 2 | 2 | 64px tile | game-icons.net ✅ |
-| `hub/` | 0 | 1 | 1280×720 | **commission** |
+| `hub/` | 0 | 2 | 1280×720 | **commission** (`the_gate` can stay a name plate) |
 | `fonts/` | 4 | 4 | — | `ui.ttf`, not art |
-| `audio/` | 43 | 48 | — | see [audio-assets.md](audio-assets.md) |
+| `audio/` | 43 | 56 | — | see [audio-assets.md](audio-assets.md) |
 
-The icon pipeline and the composed character tokens are **complete**; the 71 outstanding are the buckets
-that still need a human hand: painted portraits, vendors, backgrounds, terrain, and the last audio. The
-composed `chars/` tokens stand in until an animated **Spine rig** replaces each one (see
-[Characters](#characters)).
+The icon pipeline and the composed character tokens are **complete**. What is left needing a human hand
+is terrain, one background, the last audio — and the 191 board rigs, which the sweep above cannot see at
+all (see the migration note below).
 
-> **`chars/` is mid-migration to a new asset type.** A composed token is a single flat PNG, but a board
-> rig is a skeleton (`.json`/`.skel`) + `.atlas` + page PNG(s). The 94/94 count above is still the
-> composed-token PNGs; the `art-report` sweep will need a rule for the rig triple before it can count
-> real board art (see [Code follow-ups](#code-follow-ups-wiring-a-rig)).
+The **17 portraits still listed are a commission that will not be placed.** They stay in the count
+because the blueprints still name the paths and a sweep that quietly dropped them would be lying about
+what the source asks for; what changed is that a rig now answers them.
+
+> **`chars/` is mid-migration to a new asset type, and this is the one place the report is blind.** A
+> composed token is a single flat PNG, but a board rig is a skeleton (`.json`/`.skel`) + `.atlas` + page
+> PNG(s). The 191/191 above is the composed-token PNGs — **it says "done" about the largest outstanding
+> commission in the project.** `art-report` needs a rule for the rig triple before that row means
+> anything (see [Code follow-ups](#code-follow-ups-wiring-a-rig)).
+
+## Vendors wear a mark, not a face
+
+`assets/vendors/` was 11 shopkeeper portraits. It is now **not a bucket at all** — the `sprite` field is
+gone from every `data/vendors/*.lua`, and the counters draw the house's own vector mark on its name
+instead (`ui/vendor_icons.lua`'s `drawNamed`, used by the shop, Cafe, Touchstone, Crossing and Inn
+panels).
+
+The mark already existed and was already doing this job in three other surfaces — the writ on a ground,
+the day's checklist, the quest board — and each house already had a colour to draw it in. What the
+panels had was a *portrait pane*: a tinted plate holding that same mark at a third of the panel's width,
+standing in for a painting nobody had commissioned. Two panels were even sized around it — the Inn's
+card inflated to 532px tall to hold a lettered plate — so removing it gave the room back.
+
+The rule this follows is the one the marks were built on: **a mark is taught beside its name.** A player
+stands still at a counter, reads the house's name with its glyph on it, and meets that same glyph alone
+on a 32px tile out on the ground.
 
 `tests/` is excluded from the sweep — a spec's stand-in sprite path exists to prove the tolerant
 loader survives a missing file, so it is not art anyone owes.
@@ -95,19 +128,28 @@ portrait in the same role.
 
 ## Characters
 
-Every combatant on the board (~55) is slated for its own **animated Spine rig** — that is the whole
+Every combatant on the board (191) is slated for its own **animated Spine rig** — that is the whole
 `chars/` bucket, and its hand-off brief is [commission-board-sprites.md](commission-board-sprites.md).
 The named cast *also* has a static dialogue portrait in `portraits/`, but the two are now **separate
 assets**, not a crop relationship (see below). Until a unit's rig is delivered it shows a
 [composed token](#composed-tokens--the-budget-stand-in-same-philosophy-as-items).
 
-### The named cast — rig and portrait are separate now
+### The named cast — the rig IS the portrait
 
-The named cast appears in both `portraits/` (dialogue) and `chars/` (board). These used to be **one
-asset**: the board sprite was a square head crop of the commissioned portrait. **That coupling is
-retired.** The board sprite is now its own **Spine rig**, authored independently — so the portrait no
-longer has to reserve headroom or keep weapons clear of the face for a crop, and there is no
-crop-and-export step. The rig owns the board; the portrait owns the dialogue box.
+This has now gone round twice, so here is the whole history in one place:
+
+1. **One asset.** The board sprite was a square head crop of the commissioned portrait.
+2. **Two assets.** The crop coupling was retired: the board sprite became its own Spine rig, authored
+   independently, so the portrait no longer had to reserve headroom or keep weapons clear of the face.
+3. **One asset again, the other way round.** The **portrait commission is cancelled** — the prose it
+   would have illustrated is being rewritten, so there is no cast to paint yet — and the dialogue box
+   shows **the rig**, posed at rest.
+
+So the rig owns the board *and* the dialogue box, and the one thing that buys is a hard authoring
+requirement: a rig must stay crisp at **470px** (`ui/dialogue.lua`'s `PORTRAIT_H`), not merely at the
+~52px the board draws it at. That cannot be retrofitted, which is why it is in the brief now rather
+than when the first rig lands. See
+[The rig is also the portrait](commission-board-sprites.md#the-rig-is-also-the-portrait).
 
 > amana · avatar_1 · clem · gyeom · kaya · knight · ren · saber ·
 > general_envy · general_gluttony · general_greed · general_lust · general_pride · general_sloth ·
@@ -147,7 +189,7 @@ they should match the *terrain*, not the cast.
 
 ### Composed tokens — the budget stand-in, same philosophy as items
 
-Every one of the ~55 is awaiting a rig, and a nameless enemy or a background creature may wait a long
+Every one of the 191 is awaiting a rig, and a nameless enemy or a background creature may wait a long
 time. None of them sit meanwhile as the bare initial-in-a-disc fallback (`ui/battle_map.lua`
 drawUnits): they get a **composed token**, drawn as a pure function of fields the
 blueprint already carries — exactly the way an item's icon is a function of its family/element/class
@@ -250,14 +292,18 @@ breakdown and the art direction for each is in
 
 ## Sourcing
 
-Two hard constraints: **commercial use must be permitted**, and **no AI-generated art**.
+Two hard constraints: **commercial use must be permitted**, and **no AI-generated art**. A third, added
+later and stated plainly here because it governs the whole icon plan: **game-icons.net does not ship.**
+The set is recognisable — it is in a great many games — and shipping it as-is reads as an asset flip.
+It stays as the development stand-in and comes out of the build before release. See
+[Getting game-icons out of the build](#getting-game-icons-out-of-the-build).
 
 | Source | Covers | Terms |
 |---|---|---|
-| [game-icons.net](https://game-icons.net/) | items, hazards, traps, materials | CC BY 3.0 — **attribution required** |
+| [game-icons.net](https://game-icons.net/) | items, hazards, traps, materials — **development stand-in only** | CC BY 3.0 — **attribution required while it is in the build** |
 | [GameDev Market](https://www.gamedevmarket.net/) | terrain, props | Pro Licence; platform bans generative AI outright |
 | [NATHUHARUCA MEGA MONSTER PACK](https://plaza-us.komodo.jp/products/nathuharuca-mega-monster-pack) | interim creature stills / reference | "Engine of your choice", commercial OK, editable |
-| Commission — **Spine rigs** | all ~55 board sprites — [commission-board-sprites.md](commission-board-sprites.md) | full commercial buyout, no AI; **[Spine tooling](#spine-tooling--a-real-cost)** below |
+| Commission — **Spine rigs** | all 191 board sprites (~10 skeletons, 191 skins) — [commission-board-sprites.md](commission-board-sprites.md) | full commercial buyout, no AI; **[Spine tooling](#spine-tooling--a-real-cost)** below |
 | Commission — portraits | dialogue portraits, vendors, hub | — |
 
 ### Spine tooling — a real cost
@@ -274,9 +320,138 @@ The board rigs are a paid pipeline, not a free asset source, and that belongs al
 
 ### Attribution obligation
 
-game-icons.net is CC BY 3.0 and covers the majority of the file count. A credits screen must name
-**"Lorc, Delapouite & contributors"** with a link to game-icons.net. This is a licence condition,
-not a courtesy — build the credits panel early rather than at ship.
+game-icons.net is CC BY 3.0, so for as long as any of it is in the build a credits screen must name the
+artists with a link to game-icons.net. This is a licence condition, not a courtesy — build the credits
+panel early rather than at ship. The obligation retires exactly when the last vendored slug is replaced
+([below](#getting-game-icons-out-of-the-build)), and not before.
+
+`docs/credits-icons.md` is the generated list, and **it must be regenerated by `. art-source credits`,
+not by `. icon-build`.** icon-build is the superseded *sourcing* stage: it credits every glyph that
+stage ever rendered (632 of them), where the shipped composers draw 410. Both the licence exposure and
+the "how much game-icons is in this game" question had been answered off the wrong file.
+
+## Getting game-icons out of the build
+
+The stigma attaches to the **silhouette**, and composing does not launder it — `icon_source.foreground`
+inlines the source SVG's paths verbatim and only swaps the fill, so anyone who knows the set will clock
+the shape. What composing *does* buy is concentration: 962 shipped assets reduce to **410 distinct
+silhouettes**, because a family shape is shared by every weapon in it.
+
+```powershell
+& "E:\LOVE\lovec.exe" . art-source            # the exposure, by bucket and by artist
+& "E:\LOVE\lovec.exe" . art-source slugs      # every outstanding slug, most-used first
+& "E:\LOVE\lovec.exe" . art-source credits    # rewrite docs/credits-icons.md from this truth
+& "E:\LOVE\lovec.exe" . art-source ship       # exit 1 while any shipped slug is still vendored
+```
+
+| bucket | assets | distinct slugs |
+|---|---|---|
+| `items/` | 749 | 262 |
+| `chars/` | 199 | 191 |
+| `traps/` + `materials/` + `props/` | 14 | 11 |
+| **distinct across the project** | **962** | **410** |
+
+`items/` reduces hard (262 slugs for 749 icons) because weapons share a family shape. `chars/` does not
+reduce at all — `tests/char_compose_spec.lua` requires every blueprint to resolve to a *different*
+silhouette, so that bucket is 191 drawings however it is sourced. It is also the most visible exposure
+on screen, which is the argument for the board rigs having a date rather than an eventually.
+
+### 410 is not the commission — 268 is
+
+The buckets name 464 slugs between them, which are 410 distinct drawings, so 53 are **shared** and
+arrive with whichever bucket is drawn first. `. art-source` reports what each bucket needs *alone*:
+
+| bucket | drawings only it needs |
+|---|---|
+| `items/` | 209 |
+| `chars/` | **142** |
+| `materials/` | 4 |
+| `props/` | 2 |
+| `traps/` | 0 — every trap slug is shared |
+| shared by two or more | 53 |
+
+**The 142 chars-only glyphs should not be commissioned at all.** Those tokens are interim by design and
+are slated for replacement by Spine rigs ([commission-board-sprites.md](commission-board-sprites.md)) —
+drawing them flat is paying for art the plan already intends to throw away. Take the char bucket out and
+the flat-glyph commission is **268 drawings**, with the board handled as rigs instead.
+
+Which also means the two-register rule decides a budget, not just a look: rigging some bodies and leaving
+the rest as tokens is [already ruled out](#the-two-register-rule), so `chars/` is 191 rigs or 191 flat
+glyphs — never a mix, and never both.
+
+### Two roots, and a slug is an address
+
+`tools/icon_source.lua` resolves every slug against two roots, in order:
+
+| root | what it is |
+|---|---|
+| `art/bases/<slug>.svg` | **drawn art, tracked, ships** — preferred |
+| `vendor/game-icons/<slug>.svg` | CC BY 3.0 stand-in, gitignored, development only |
+
+So a delivered glyph takes over everywhere its slug is used the moment it lands — one file re-skins
+every asset that reduces to it — and the commission can be **accepted a glyph at a time** with the
+exposure watched down to zero, rather than landing as one all-or-nothing swap. Reusing the vendored
+slug as the address means no remapping table, no blueprint edits and no code change; the folder name in
+a slug is where the *stand-in* came from, never a claim about who drew the replacement.
+
+The deliverable is a **flat single-colour vector glyph**, not an illustration: `viewBox="0 0 512 512"`,
+one `#fff` foreground fill (the composers substitute it to tint by element — multi-colour art silently
+defeats that channel), no background rect, readable at 64px and again greyed. The full contract, and the
+order to draw them in, is [art/bases/README.md](../art/bases/README.md).
+
+### Order the work by what it buys
+
+`. art-source slugs` sorts by how many assets ride on each glyph, and the distribution is steep:
+
+| drawn | assets covered |
+|---|---|
+| top 10 | 24% |
+| top 20 | 35% |
+| top 40 | 48% |
+| top 80 | 60% |
+| all 410 | 100% |
+
+`delapouite/claws` alone dresses 73 assets and `lorc/round-bottom-flask` 44. Draw **down** the list.
+
+## The art build — regenerate, then let drawn art win
+
+```powershell
+& "E:\LOVE\lovec.exe" . art-build            # regenerate + overlay + stamp the manifest
+& "E:\LOVE\lovec.exe" . art-build overlay     # copy art/ over assets/ only
+& "E:\LOVE\lovec.exe" . art-build stale       # exit 1 if assets/ is behind its inputs
+```
+
+The obvious way to protect commissioned art from the composer is to make the composer skip files that
+already exist. **That is the wrong instinct, and it fails in both directions:**
+
+- It blocks the base swap the override exists for. Drop a new silhouette in `art/bases/` and a
+  skip-if-exists composer regenerates nothing, so the delivered glyph changes not one pixel.
+- It silently pins stale output. `char-compose assets` has skipped the committed tokens under
+  `assets/chars/` for exactly this reason — 15 of them were still drawn from silhouette tables that had
+  since moved, while the other 177 were current.
+
+So precedence is **build order**, not a filesystem check: compose everything unconditionally, then copy
+`art/` over `assets/`. Drawn art wins by landing second. `art/bases/` is the one subtree *not* copied —
+those SVGs are composer input, not art the game loads.
+
+This also retires a convention that was being held in a human's memory. The note below about bespoke art
+belonging "on its own path" existed because re-running the composer would overwrite it; under the
+overlay, drawn art is not in the composer's write path at all — and it is **tracked in git**, which
+`assets/` is not. `assets/` being gitignored is correct for generated output and was quietly wrong for
+paid work.
+
+### Staleness is a thing a build can fail on
+
+A composed icon is a pure function of its inputs, so whenever an input moves every output downstream is
+silently wrong. That is how 114 items sat with no icon at all — not a bug, an unrun regen. `. art-build`
+stamps `assets/.art-manifest` with a fingerprint of the inputs (`tools/art_hash.lua`: the *resolved*
+base slug and tint per asset, the fields the pips and badges read, and the bytes of every base SVG), and
+`. art-build stale` fails when they diverge.
+
+**A re-tier pass invalidates art every time.** `repRank` drives the frame thickness (`12 + repRank·4`)
+and the row of tier pips, so `balance-rescale apply` silently makes the icons of everything it moved
+wrong. Run `. art-build` after a rebalance, the same way [balance.md](balance.md) ends a re-tier on a
+rescale.
 
 ### Rejected, and why
 
@@ -295,7 +470,7 @@ not a courtesy — build the credits panel early rather than at ship.
 Two separate commissions now — the board rigs and the dialogue portraits are independent assets. The
 full hand-off for each lives in its own doc; the summary:
 
-**Board sprites (~55)** — animated **Spine rigs**, one per combatant, displayed at ~52px on a 60px
+**Board sprites (191)** — animated **Spine rigs**, one per combatant, displayed at ~52px on a 60px
 tile (`ui/battle_map.lua`). Full spec in [commission-board-sprites.md](commission-board-sprites.md):
 skeleton + atlas + page PNG delivery, the required animation set (idle/walk/attack/hit/cast/death),
 multi-cell scaling, and the Spine tooling/licence note above.
@@ -489,6 +664,12 @@ credits screen. See [Attribution obligation](#attribution-obligation).
 `tools/icon_compose.lua` (`. icon-compose assets`) from tags the blueprint already declares — the
 `icon-build` game-icons.net recolour was a *sourcing stage*, and this replaced it as the final look.
 
+> **What ships is the composition, not the current silhouettes.** The layering below is permanent; the
+> game-icons.net shapes feeding it are the development stand-in and come out before release. That is a
+> swap of **410 base glyphs**, not a commission of 749 icons — see
+> [Getting game-icons out of the build](#getting-game-icons-out-of-the-build). The distinction matters
+> because it is the difference between a small icon-design gig and an unaffordable one.
+
 No item's identity was ever carried by a unique drawing. It is carried by a handful of fields:
 
 - **family** — 15 total (`Item.ARCHETYPES`): sword, greatsword, axe, mace, hammer, dagger, spear,
@@ -585,9 +766,17 @@ you cannot see it yet" at 38px in a list row and again at 64px on a card.
 ### What still gets commissioned
 
 The signature relics (~8 per companion) and the generals' gear are the pieces a player studies in a
-panel; those earn bespoke art. `models/sprite.lua` loads by path, so a hand-drawn file dropped at an
-item's `sprite` path transparently replaces its composed icon — re-running `icon-compose assets` would
-overwrite it, so bespoke art belongs on its own path. Everything else stays composed.
+panel; those earn bespoke art. Everything else stays composed.
+
+Per-item bespoke art goes in **`art/items/<name>.png`**, not at the blueprint's `assets/` path: the
+[art build](#the-art-build--regenerate-then-let-drawn-art-win) copies `art/` over `assets/` *after*
+composing, so it wins by landing second and no longer depends on anybody remembering to keep it clear of
+the composer. (The old rule — "bespoke art belongs on its own path, because re-running `icon-compose
+assets` would overwrite it" — is retired with the convention that made it necessary.)
+
+Worth weighing before placing that commission: the argument in the next section applies to relics
+unchanged. 38 of the outstanding item icons are `sig_*`, and the cheaper route to a better relic icon is
+drawing the **base glyph** it composes from, which improves every item riding on that glyph too.
 
 ### Why this is not a downgrade
 

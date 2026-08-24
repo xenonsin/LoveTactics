@@ -37,8 +37,8 @@
 
 local CloseButton = require("ui.close_button")
 local Debug = require("models.debug")
-local Sprite = require("models.sprite")
-local Vendor = require("models.vendor") -- only for the keeper's portrait, name and pitch
+local VendorIcons = require("ui.vendor_icons") -- the counter's mark, worn on its name
+local Vendor = require("models.vendor") -- only for the keeper's name and pitch
 local HireReveal = require("ui.panels.hire_reveal")
 local InputMode = require("input_mode")
 local Player = require("models.player")
@@ -57,23 +57,18 @@ local PAD = 28
 local BTN_W, BTN_H = 340, 104
 
 -- THE KEEPER'S PANE, AT THE CITY'S OWN MEASUREMENTS. These three numbers are not chosen here -- they
--- are copied verbatim off ui/panels/shop.lua and ui/panels/cafe.lua, which both lay their shopkeeper
--- out at exactly `boxX + 24, boxY + 64, 260 wide`. A portrait a different size to every other
--- portrait in the city is the one thing that makes a panel read as belonging to a different game, and
--- it was 168 here until somebody stood the two panels side by side.
+-- are copied verbatim off ui/panels/shop.lua and ui/panels/cafe.lua, which both lay their keeper column
+-- out at exactly `boxX + 24, boxY + 64, 260 wide`. A column a different size to every other column in
+-- the city is the one thing that makes a panel read as belonging to a different game.
 --
 -- If those panels ever move, this moves with them: three counters agreeing by copy is a convention, and
 -- the day it needs to be a shared constant is the day a fourth one disagrees.
 local KEEPER_X, KEEPER_Y, KEEPER_W = 24, 64, 260
--- ...AND AT THEIR HEIGHT TOO, which the width alone did not buy. The shop's pane runs from `boxY + 64`
--- to 44 short of the bottom of a 580-tall box -- 472 -- and spends `pad * 2` (24) and a 92-high foot on
--- the purse and the counter's line, which fits the portrait into 236 x 356.
---
--- THIS ROOM IS SHORT AND THE PORTRAIT PAID FOR IT. The floor here was 236, which is the whole PANE, so
--- the picture inside it came out 236 x 120 -- a letterbox beside the standing figure four other counters
--- draw. A face is the one thing in a panel that has to be the same face everywhere, so the height is
--- fixed at the shelves' and the box grows to meet it rather than the portrait shrinking to fit the box.
-local KEEPER_PANE_H = 472
+-- There is deliberately no matching HEIGHT constant. There was one -- 472, fixed at the shelves'
+-- portrait height so a face came out the same size in every room -- and there is no face in any room
+-- now (ui/vendor_icons.lua drawNamed). Every counter measures its column off its own content instead,
+-- which is what the shops and the Touchstone do too, so the agreement is still real and is no longer a
+-- number that has to be kept in step.
 -- The dev row's little squares. Small enough that they never compete with the plate above them.
 local DBG_W, DBG_H, DBG_GAP = 30, 24, 6
 
@@ -112,16 +107,14 @@ function Hiring.new(opts)
     self.subFont = Theme.body(12)
     self.hintFont = Theme.body(13)
 
-    -- THE KEEPER. Every other counter in the city has a face behind it -- the Cafe, the Touchstone and
-    -- all seven houses draw a portrait pane down the left of their panel -- and this room was the one
-    -- that did not, which made it read as a machine rather than as a place with somebody in it.
+    -- THE KEEPER, which is a marked name and a sentence rather than a face -- the same as every other
+    -- counter in the city since the portrait panes came out (ui/vendor_icons.lua drawNamed).
     --
-    -- Read off the vendor blueprint (data/vendors/crossing.lua) rather than pointed at directly,
-    -- because that is where every other panel gets its shopkeeper and it is the seam the first-visit
-    -- greeting hangs off too. Sprite.load is tolerant -- a missing file comes back as its own path
-    -- string -- so the pane falls back to a lettered plate and the art can land later.
-    self.def = (opts.vendor and Vendor.get(opts.vendor)) or Vendor.get("crossing") or {}
-    self.keeper = Sprite.load(self.def.sprite)
+    -- Read off the vendor blueprint (data/vendors/crossing.lua) rather than pointed at directly, because
+    -- that is where every other panel gets its shopkeeper and it is the seam the first-visit greeting
+    -- hangs off too.
+    self.vendorId = opts.vendor or "crossing"
+    self.def = Vendor.get(self.vendorId) or Vendor.get("crossing") or {}
 
     self:layout()
     return self
@@ -175,25 +168,20 @@ function Hiring:layout()
         self.oSub = nil
         self.boxH = afterPrompt + self.hintFont:getHeight() + PAD
     end
-    -- A floor under the box, so the keeper always has room to stand at the size it stands everywhere
-    -- else (KEEPER_PANE_H). This room is a sentence and one plate, so the floor is what sets the height
-    -- every time -- the box is sized by its portrait rather than by its content, and that is deliberate.
-    --
-    -- THE SLACK GOES TO THE PLATE AND NOT TO THE SENTENCE, which is exactly how ui/panels/choice.lua
-    -- spends it for the Inn: the prompt keeps its place under the title, where a room's own line belongs,
-    -- and the thing you press floats to the middle of the column so it sits opposite the portrait's face
-    -- rather than hanging off the title with half a card of nothing under it.
-    --
-    -- BEFORE the hint is placed, not after, which is the bug this ordering fixes: the hint anchors to
-    -- the bottom margin, so computing it against the pre-floor height stranded "Esc leave" halfway up
-    -- an empty column with a hand's width of nothing under it.
-    local floorH = KEEPER_Y + KEEPER_PANE_H + 24
+    -- THE FLOOR IS GONE WITH THE PORTRAIT. There used to be a minimum height here (KEEPER_Y +
+    -- KEEPER_PANE_H + 24) whose whole job was to guarantee the keeper's picture came out the same size
+    -- as at every other counter -- "the box is sized by its portrait rather than by its content, and
+    -- that is deliberate". There is no picture at any counter now (ui/vendor_icons.lua drawNamed), so
+    -- that deliberate choice has nothing left to protect and this short room is its own height again.
+    local paneH = 24 + self:keeperTextH()
+    local floorH = KEEPER_Y + paneH + 24
     if self.boxH < floorH then
         local slack = (floorH - self.boxH) / 2
         if self.oButton then self.oButton = self.oButton + slack end
         if self.oSub then self.oSub = self.oSub + slack end
         self.boxH = floorH
     end
+    self.paneH = paneH
     self.oHint = self.boxH - PAD - self.hintFont:getHeight() + 4
 
     self.boxW = BOX_W
@@ -203,11 +191,12 @@ function Hiring:layout()
     self.colX = self.boxX + KEEPER_X + KEEPER_W + 24
     self.colW = colW
 
-    -- The pane starts UNDER the title and runs to the bottom margin, which is how the Cafe and the
-    -- shops lay theirs out: named once across the top, keeper standing beneath the name.
+    -- The pane starts UNDER the title and is measured off its own sentence, which is how the Cafe, the
+    -- Touchstone and the shops lay theirs out now: named once across the top with the house's mark on
+    -- the name, and a slot below holding only what there is to say.
     self.keeperRect = {
         x = self.boxX + KEEPER_X, y = self.boxY + KEEPER_Y,
-        w = KEEPER_W, h = self.boxH - KEEPER_Y - 24,
+        w = KEEPER_W, h = self.paneH,
     }
 
     if self.oButton then
@@ -400,44 +389,25 @@ function Hiring:drawKeeper()
     love.graphics.rectangle("line", r.x, r.y, r.w, r.h, Theme.R, Theme.R)
 
     local pad = 12
-    -- The strip under the portrait, at the shop panel's own reserve (`portraitH = h - 92`), so the
-    -- picture itself is the same size and shape here as on every other counter.
-    local pitchH = 92
     local px, py = r.x + pad, r.y + pad
-    local pw, ph = r.w - pad * 2, r.h - pad * 2 - pitchH
-
-    if type(self.keeper) == "userdata" then
-        love.graphics.setColor(1, 1, 1)
-        local sw, sh = self.keeper:getDimensions()
-        local scale = math.min(pw / sw, ph / sh)
-        love.graphics.draw(self.keeper, px + pw / 2, py + ph / 2, 0, scale, scale, sw / 2, sh / 2)
-    else
-        -- Art has not landed: a lettered plate, which is what every other counter falls back to
-        -- (models/sprite.lua hands back the path string rather than crashing).
-        Theme.set(Theme.panel2)
-        love.graphics.rectangle("fill", px, py, pw, ph, 8, 8)
-        love.graphics.setFont(self.titleFont)
-        Theme.set(Theme.ink, 0.55)
-        love.graphics.printf((self.def.name or "?"):sub(1, 1), px, py + ph / 2 - 20, pw, "center")
-    end
+    local pw = r.w - pad * 2
 
     -- The counter's own sentence, off the blueprint rather than written again here, so the keeper says
-    -- the same thing wherever they are quoted.
-    --
-    -- CENTRED IN THE FOOT rather than hung off the portrait, because this counter does not fill the foot
-    -- the shelves do. Their 92 holds a purse, an errand tally and a line; here there is only the line, and
-    -- pinning it to the top of the strip left a hand's width of empty pane under it. The strip stays the
-    -- shelves' size -- the portrait above it is what that number is protecting -- and the sentence sits in
-    -- the middle of what is left.
+    -- the same thing wherever they are quoted. It no longer needs centring in a foot: the pane is exactly
+    -- this text's height (Hiring:keeperTextH), so there is nothing left over to centre it in.
     if self.def.description then
         love.graphics.setFont(self.subFont)
         Theme.set(Theme.muted, 0.80)
-        local top = py + ph + 10
-        local _, wrapped = self.subFont:getWrap(self.def.description, pw)
-        local textH = #wrapped * self.subFont:getHeight()
-        local slack = math.max(0, (r.y + r.h - pad) - top - textH)
-        love.graphics.printf(self.def.description, px, top + slack / 2, pw, "center")
+        love.graphics.printf(self.def.description, px, py, pw, "center")
     end
+end
+
+-- The pane's content height: the keeper's sentence, wrapped to the pane's own width. Measured here
+-- rather than at the draw site because layout has to know the box's height before anything is drawn.
+function Hiring:keeperTextH()
+    if not self.def.description then return self.subFont:getHeight() end
+    local _, wrapped = self.subFont:getWrap(self.def.description, KEEPER_W - 24)
+    return #wrapped * self.subFont:getHeight()
 end
 
 function Hiring:draw()
@@ -451,7 +421,7 @@ function Hiring:draw()
 
     love.graphics.setFont(self.titleFont)
     Theme.set(Theme.accentAmber)
-    love.graphics.printf(self.title, bx, by + 18, self.boxW, "center")
+    VendorIcons.drawNamed(self.vendorId, self.title, self.titleFont, bx, by + 18, self.boxW)
 
     love.graphics.setFont(self.promptFont)
     Theme.set(Theme.muted)

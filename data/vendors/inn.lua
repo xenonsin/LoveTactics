@@ -20,6 +20,5 @@
 return {
     name = "The Inn",
     sells = false, -- sells no ITEMS; its whole offer is the night (models/gate.lua's Gate.rest)
-    sprite = "assets/vendors/inn.png", -- keeper portrait; falls back to a placeholder
     description = "A bed, a fire and a surgeon. Whatever came up broken goes back down whole.",
 }
