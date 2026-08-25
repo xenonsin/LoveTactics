@@ -900,24 +900,70 @@ Descent.OPENING_GOLD = 50
 -- does, so this file stays free of the player model; tests/descent_recruit_spec.lua pins the two
 -- together.
 --
--- IT IS NO LONGER THE ROSTER, and that is the change the whole hiring loop turns on. For as long as
--- the company grew by meeting people on the floors, this number capped the roster as well: four held,
--- ever, no bench, every body you found fought. The argument for it was clean -- a recruit is never a
--- spare -- and what it actually produced was a game that latched shut. Nothing ever left a company, so
--- the fourth body ended recruitment permanently: the floors stopped seating their stop, the hall
--- (stocked only by who you had refused) never took another name, and forty-five authored bodies went
--- unmet for the rest of the save.
+-- IT IS THE TRAVEL CAP, AND IT IS ITS OWN NUMBER. How many bodies go DOWN THE STAIR -- not how many
+-- stand on the board, which is Player.MAX_FIELD and happens to be the same four.
 --
--- So the roster is deep and the FIELD is four. You keep everyone the hall deals you (models/voucher.lua)
--- and you pick four to take down, which is what models/player.lua's roster was always shaped for --
--- "unbounded, and there is no second list beside it" -- and what the deployment phase and
--- ui/panels/bench_chooser.lua already do. A descent stopped being the one mode that disagreed.
+-- IT MEANT THE BOARD FOR ONE RELEASE, and the difference was invisible because the two numbers match.
+-- It mattered anyway: while this only capped the board, the whole roster walked down and the deployment
+-- phase picked four per fight, so a wounded body was somebody who sits out rather than a quarter of the
+-- company. models/wound.lua's FLOOR is priced for a company with NO bench underground -- its own header
+-- says so -- and that premise came back the moment the expedition became four.
 --
--- WHAT IT COST, stated so it is not rediscovered as a bug: benching is now free, so a wounded body is
--- no longer a quarter of your strength at a fraction of its health -- it is somebody who sits out. That
--- was load-bearing for models/wound.lua, whose FLOOR is set where it is precisely because there was no
--- bench, and it wants re-pricing now that there is.
+-- IT CAPPED THE ROSTER BEFORE THAT, which is a third meaning and the one that broke. Four held, ever,
+-- every body you found fought; nothing ever left a company, so the fourth body ended recruitment for
+-- good and the floors stopped seating anyone. Three distinct claims have worn this name, so: the ROSTER
+-- is unbounded, the EXPEDITION is this, and the FIELD is Player.MAX_FIELD.
 Descent.PARTY_MAX = 4
+
+-- WHO IS GOING DOWN: the bodies picked at the Gate, as roster instances.
+--
+-- Stored on the RUN as ids rather than on the player, because it is a fact about this expedition and
+-- not about the company -- climb out, swap two hurt bodies for two rested ones, and go back down is the
+-- loop the Gate exists for. Ids rather than instances so it survives a save without holding a second
+-- reference to a body the roster already owns.
+--
+-- An unset party is the first four of the roster. That is the honest default rather than a placeholder:
+-- a company that has never picked has not expressed a preference, and refusing to descend until it does
+-- would gate the stair on a screen the player has no reason to have opened yet.
+--
+-- Filtered against the live roster on the way out, so a party naming somebody who has since left (or a
+-- save from before this existed) degrades to whoever is really there rather than to a hole in the line.
+function Descent.party(run, player)
+    local roster = (player and player.roster) or {}
+    local picked = run and run.party
+    if not picked or #picked == 0 then
+        local out = {}
+        for _, char in ipairs(roster) do
+            if #out >= Descent.PARTY_MAX then break end
+            out[#out + 1] = char
+        end
+        return out
+    end
+
+    local byId = {}
+    for _, char in ipairs(roster) do byId[char.id] = char end
+    local out = {}
+    for _, id in ipairs(picked) do
+        if byId[id] and #out < Descent.PARTY_MAX then out[#out + 1] = byId[id] end
+    end
+    return out
+end
+
+-- Set who goes down, from a list of ids (or characters). Clamped to PARTY_MAX and silently deduped --
+-- a caller toggling rows should not be able to build an illegal party by pressing quickly.
+function Descent.setParty(run, ids)
+    if not run then return end
+    local seen, out = {}, {}
+    for _, entry in ipairs(ids or {}) do
+        local id = type(entry) == "table" and entry.id or entry
+        if id and not seen[id] and #out < Descent.PARTY_MAX then
+            seen[id] = true
+            out[#out + 1] = id
+        end
+    end
+    run.party = out
+    return out
+end
 
 -- The company a run walks in with: NOBODY. See the note above -- the player is a tactician, so there is
 -- no authored body that is theirs, and the first member is hired at the gate off the same slate the
@@ -2229,6 +2275,12 @@ function Descent.snapshot(run)
         -- The counter the pile ids come off. Carried, or a resumed run would start numbering at one
         -- again and mint a second "drop1" beside the pile still lying on floor three.
         dropSeq = run.dropSeq or nil,
+        -- WHO WALKED DOWN (Descent.party). A flat list of ids, and it has to ride: quitting on floor
+        -- four and resuming with a different four is a company the player did not send. Nil while
+        -- nobody has picked, which is what an older save reads as too -- and an unset party is the
+        -- roster's first four, so both degrade to the same honest default. Purely additive, so
+        -- Save.VERSION does not move.
+        party = (run.party and #run.party > 0) and run.party or nil,
         -- Every board this company has walked, whole. See `floors` on the run.
         floors = run.floors or {},
     }
@@ -2263,6 +2315,13 @@ function Descent.restore(snap)
         landing = landing,   -- nil unless the run was saved standing on a landing; see snapshot
         drops = drops,       -- ...and the packs, still lying where the company dropped them
         dropSeq = snap.dropSeq or nil, -- ...and the counter their ids come off; see snapshot
+        -- ...and who walked down. Copied rather than aliased, like every other list here: the restored
+        -- run must not share a table with the snapshot it was read from.
+        party = snap.party and (function()
+            local out = {}
+            for i, id in ipairs(snap.party) do out[i] = id end
+            return out
+        end)() or nil,
         floors = snap.floors or {}, -- ...and the maps it made of the floors it walked
         entry = nil, -- re-attached by Save.restoreRun from the run-level copy; see above
     }

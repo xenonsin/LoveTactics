@@ -63,12 +63,18 @@ return {
         assert(Descent.STARTING_BODY == nil,
             "there is no starting body constant: a body that is YOURS is what was removed")
 
-        -- PARTY_MAX IS THE FIELD AND NOT THE ROSTER, which is the reversal the Hiring Hall's pull was
-        -- built on (models/voucher.lua). It used to be both: four held, ever, no bench -- and that made
-        -- recruitment latch shut, because nothing ever left a company of four and the floors stopped
-        -- offering the moment it filled.
-        assert(Descent.PARTY_MAX == Player.MAX_FIELD,
-            "the board cap must be the field: " .. Descent.PARTY_MAX .. " vs " .. Player.MAX_FIELD)
+        -- PARTY_MAX IS THE EXPEDITION AND NOT THE ROSTER. Three claims have worn this name and only the
+        -- middle one is dead: it capped the ROSTER once (four held, ever, which made recruitment latch
+        -- shut because nothing left a company of four), then it meant the BOARD, and it is now how many
+        -- bodies go down the stair.
+        --
+        -- ASSERTED AS A CAP ON THE ROSTER RATHER THAN AS EQUAL TO MAX_FIELD, because those two numbers
+        -- are both four and the old assertion could not tell which fact it was pinning. What must hold
+        -- is that an expedition is smaller than the company it is drawn from -- that there IS a reserve.
+        assert(Descent.PARTY_MAX >= 1, "an expedition of nobody is not an expedition")
+        assert(Descent.PARTY_MAX <= Player.MAX_FIELD,
+            "an expedition may not be larger than the board it fights on: "
+                .. Descent.PARTY_MAX .. " vs " .. Player.MAX_FIELD)
 
         -- ...and the function that used to ask "is there room for one more" is GONE rather than always
         -- returning true. Pinned as an absence because a branch that cannot be false is the shape this

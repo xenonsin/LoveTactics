@@ -78,8 +78,16 @@ end
 -- Can this company descend at all? One living body is the whole test -- a descent opens with exactly
 -- one hire is the whole test: the player is a tactician and stands in no company (models/descent.lua),
 -- so a descent opens EMPTY and the gate is where it stops being empty.
-function Gate.canDescend(player)
-    return #((player and player.roster) or {}) > 0
+-- Can this company descend at all? SOMEBODY PICKED, which with no run and no picks is the first four of
+-- the roster (Descent.party), so a company that has never opened this screen still has a stair.
+--
+-- It used to ask only whether the roster was non-empty, which was the same question while everybody
+-- walked down. The expedition is four now and chosen, so a player who has unticked the last name is
+-- standing at a stair with nobody to send -- and the honest answer is that the stair does not open,
+-- rather than that it opens onto an empty board.
+function Gate.canDescend(player, run)
+    if #((player and player.roster) or {}) == 0 then return false end
+    return #require("models.descent").party(run, player) > 0
 end
 
 return Gate

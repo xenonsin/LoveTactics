@@ -1640,9 +1640,15 @@ function game:openEncounter(cell, opts)
             -- descent hardens on DEPTH rather than on the calendar (Descent.dangerLevel); absent it,
             -- states/battle.lua falls back to the day, which is the campaign's answer and unchanged.
             enemyLevel = game.quest and game.quest.dangerLevel or nil,
-            -- The whole marching company. Battle's deployment phase decides which of them take the field
-            -- and where; the rest wait on the bench and can be rotated in (docs/deployment.md).
-            party = game.player and game.player.roster or {},
+            -- WHO WALKED DOWN THE STAIR, which underground is four and not the roster (Descent.party).
+            -- The expedition is picked at the Gate and fixed for the run, so the deployment phase has
+            -- nothing left to choose: it places the four it is given. There is no bench down here, which
+            -- is the premise models/wound.lua is priced against.
+            --
+            -- Above ground the whole company still marches and the phase still picks -- the campaign
+            -- keeps the bench (docs/deployment.md).
+            party = (game.descent and Descent.party(game.descent, game.player))
+                or (game.player and game.player.roster) or {},
             player = game.player, -- so the phase can remember who was fielded (Player.noteDeployed)
             -- The supper bought at the Cafe before this quest (models/meal.lua): one platter, worn by
             -- the whole company at every fight of the run, and cleared when the run resolves. Read live

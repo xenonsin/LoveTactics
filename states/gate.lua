@@ -84,9 +84,54 @@ end
 --
 -- What is left is the stair, the way back, and a readout of who is about to walk down it -- which stays
 -- because the last thing a player wants before committing is to see the shape their company is in.
+-- THE COMPANY LIST IS THE PICKER, and that is one list doing two jobs on purpose.
+--
+-- This screen already drew the roster as a readout -- who is going down and what shape they are in --
+-- because the last thing a player wants before committing to a floor is that. Now that only FOUR of them
+-- go (Descent.PARTY_MAX), the same list has to be where you choose. Drawing a second column beside the
+-- first, one to read and one to press, would be two lists of the same eight names.
+--
+-- MENU ROWS RATHER THAN A PANEL, which is what makes this cheap: ui/menu.lua already carries mouse,
+-- keyboard and gamepad, so a toggle row is three-input by construction and the screen stays one focus
+-- target. The health and the wound count ride in the row's own label, where the readout used to print
+-- them.
+local function rosterRows(items)
+    local Wound = require("models.wound")
+    local going = {}
+    for _, char in ipairs(Descent.party(gate.run, gate.player)) do going[char.id] = true end
+
+    for _, char in ipairs((gate.player or {}).roster or {}) do
+        local hp = char.stats and char.stats.health
+        local cur = (type(hp) == "table" and hp.current) or 0
+        local max = (type(hp) == "table" and hp.max) or 0
+        local wounds = Wound.count(gate.player, char.id)
+        local label = (going[char.id] and "[x]  " or "[ ]  ")
+            .. (char.name or char.id) .. "   lv " .. (char.level or 1)
+            .. "   " .. cur .. " / " .. max
+            .. (wounds > 0 and ("   wounded x" .. wounds) or "")
+
+        items[#items + 1] = { label = label, action = function()
+            -- Rebuilt from the LIVE list every press rather than toggled in place, so the cap counts
+            -- what is actually going rather than what a stale copy thought was.
+            local picked = {}
+            for _, c in ipairs(Descent.party(gate.run, gate.player)) do
+                if c.id ~= char.id then picked[#picked + 1] = c.id end
+            end
+            -- Adding past the cap is a no-op rather than an error or a silent eviction: the row simply
+            -- does not take, and the count in the header says why.
+            if not going[char.id] and #picked < Descent.PARTY_MAX then
+                picked[#picked + 1] = char.id
+            end
+            Descent.setParty(gate.run, picked)
+            gate:build()
+        end }
+    end
+end
+
 function gate:build()
     local items = {}
-    if Gate.canDescend(gate.player) then
+    rosterRows(items)
+    if Gate.canDescend(gate.player, gate.run) then
         items[#items + 1] = {
             label = "Down to floor " .. Descent.depth(gate.run),
             action = descend,
@@ -95,7 +140,8 @@ function gate:build()
     items[#items + 1] = { label = "Back to the City", action = function()
         State.switch(require("states.hub"))
     end }
-    gate.menu = Menu.new(items, { startY = 420, buttonHeight = 52, spacing = 16 })
+    -- Kept on one screen without scrolling: eight bodies plus two actions at 34px a row runs 178..518.
+    gate.menu = Menu.new(items, { startY = 208, buttonHeight = 28, spacing = 6 })
 end
 
 function gate.enter(self, opts)
@@ -160,32 +206,22 @@ function gate.draw()
         love.graphics.printf(gate.notice, Scale.WIDTH / 2 - 340, 126, 680, "center")
     end
 
-    -- THE COMPANY, because the last thing a player wants before committing to a floor is the shape the
-    -- company is in. Health as a fraction rather than a bar: this is a ledger, not a fight, and the
-    -- number is what a decision about going one floor deeper is actually made on.
+    -- WHO GOES DOWN, and the count is the whole header. The list itself is the menu (gate:build's
+    -- rosterRows) -- it reads and it chooses, because drawing the eight names twice to do those two
+    -- jobs separately would be two lists of the same company.
+    --
+    -- The count is here rather than on a row because it is the thing that explains a press that did
+    -- nothing: at four of four, another name simply does not take.
     local p = gate.player or {}
     love.graphics.setFont(headFont)
     Theme.set(Theme.ink)
-    love.graphics.printf("The Company", Scale.WIDTH / 2 - 340, 178, 330, "left")
-    love.graphics.setFont(bodyFont)
-    local y = 208
-    local Wound = require("models.wound")
-    for _, char in ipairs(p.roster or {}) do
-        local hp = char.stats and char.stats.health
-        local cur = (type(hp) == "table" and hp.current) or 0
-        local max = (type(hp) == "table" and hp.max) or 0
-        local wounds = Wound.count(p, char.id)
-        Theme.set(Theme.ink)
-        love.graphics.printf((char.name or char.id) .. "  lv " .. (char.level or 1),
-            Scale.WIDTH / 2 - 340, y, 220, "left")
-        Theme.set(wounds > 0 and Theme.accentWeapon or Theme.muted)
-        love.graphics.printf(cur .. " / " .. max .. (wounds > 0 and ("   wounded x" .. wounds) or ""),
-            Scale.WIDTH / 2 - 120, y, 210, "left")
-        y = y + 22
-    end
+    local going = #Descent.party(gate.run, gate.player)
+    love.graphics.printf("Who goes down   " .. going .. " / " .. Descent.PARTY_MAX,
+        Scale.WIDTH / 2 - 340, 178, 330, "left")
     if #(p.roster or {}) == 0 then
+        love.graphics.setFont(bodyFont)
         Theme.set(Theme.muted)
-        love.graphics.printf("Nobody.", Scale.WIDTH / 2 - 340, y, 300, "left")
+        love.graphics.printf("Nobody.", Scale.WIDTH / 2 - 340, 208, 300, "left")
     end
 
     love.graphics.setFont(headFont)
