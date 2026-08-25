@@ -78,7 +78,7 @@ what the source asks for; what changed is that the board still now answers them.
 
 `assets/vendors/` was 11 shopkeeper portraits. It is now **not a bucket at all** — the `sprite` field is
 gone from every `data/vendors/*.lua`, and the counters draw the house's own vector mark on its name
-instead (`ui/vendor_icons.lua`'s `drawNamed`, used by the shop, Cafe, Touchstone, Crossing and Inn
+instead (`ui/vendor_icons.lua`'s `drawNamed`, used by the shop, Cafe, Touchstone and Inn
 panels).
 
 The mark already existed and was already doing this job in three other surfaces — the writ on a ground,

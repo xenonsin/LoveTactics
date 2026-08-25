@@ -176,7 +176,7 @@ bands nobody can reach, which is invisible in play and obvious in a spec.
 
 Three of the four are legibility and nothing else. The city dims through a flat darkening laid over the
 painted plaza (`CountMeter.CITY_DIM`), which is the cheapest true version of "the place is worse than it
-was" and needs no per-building state; boarded windows and a thinner queue at the Crossing are the same
+was" and needs no per-building state; boarded windows and a thinner queue at the markets are the same
 idea done properly, and they are art rather than code.
 
 ## What is not built

@@ -320,21 +320,26 @@ return {
         .. "and stay unseen until the killing one.",
     classes = { "rogue", "mage" },     -- 2 = multiclass; 1 = subclass
     exemplar = "character_kaen",       -- the NPC built AS this discipline, met in its unlock quest
-    hire = "character_miro",           -- the named hero who will WALK WITH YOU, met on a floor
     requiredQuests = { "quest_the_shadowless" },
 }
 ```
 
-**`exemplar` and `hire` are two different bodies and the difference is which side of the fight they
-stand on.** The exemplar is the one built *as* the discipline for you to face — a boss, met in the
-unlock quest. The hire is the discipline's entry on the [hall roster](../tests/hall_roster_spec.lua):
-one named hero apiece, each carrying **exactly one** bound relic — the object that makes the shelf a
-build, and the thing a duplicate levels when the Hiring Hall deals that body a second time
-([`models/voucher.lua`](../models/voucher.lua)). The hall's pull deals off `hire` and never off
-`exemplar` or the generic class templates — the company is grown out of people, not stat lines. The plain classes
-under the disciplines are met the same way, as the seven line **companions** (`Temptation.COMPANIONS`):
-Saber for the fighter, Rowan for the knight, Clem for the rogue. They hold the first floor by
-themselves, because a class is what a player has from the beginning and a discipline is earned.
+**`exemplar` is the body built *as* the discipline, and it stands on the far side of the fight.** It is
+a boss, met in the discipline's unlock quest — the path demonstrated by somebody who has walked it.
+
+**There was a second field, `hire`, and it is gone.** It named a hero apiece who would walk *with* you,
+dealt by the Hiring Hall off a voucher a beaten circle handed up, with a duplicate levelling that
+hero's bound relic. The Hall, the voucher and the Crossing are all retired: the roster is seven
+companions, one per house, and there is nothing left for a pull to deal. The 38 named hires were not
+deleted so much as turned around — `models/warband.lua` now fields each discipline's **exemplar**
+where its hire used to stand, so those bodies are met as enemies instead of bought as allies.
+
+The plain classes under the disciplines are met as those seven **companions** — Saber for the fighter,
+Rowan for the knight, Clem for the rogue. The pairing is authored on the houses themselves
+(`companion` in `data/vendors/*.lua`, read by `models/vendor_visit.lua`): you meet them at their
+house's posting on a floor, and they join at that house's counter in the city. They hold the first
+floor by themselves, because a class is what a player has from the beginning and a discipline is
+earned.
 
 **How deep a hero is met comes from `requiredQuests`, as an order rather than as a depth**: the slot a
 discipline is gated at ranks it against every other discipline, and the descent lays that ranked list
@@ -342,10 +347,10 @@ down the fourteen floors below the first at an even rate, so each opens two or t
 level-for-level instead, the twenty-one multiclass heroes all land on one floor — the campaign has no
 opinion about which multiclass comes first, and the lump is that absence showing through.
 
-That depth is what a **hiring voucher** is graded against. The floors no longer hand over bodies; a
-beaten circle hands up a voucher graded at the floor that finished it, and the hall spends one on a
-pull that mostly deals near that depth, sometimes shallower, and occasionally *deeper than the voucher
-was earned* — which is how a deep cut of the shelf turns up before the campaign would have opened it.
+That order is what the descent lays the disciplines down: a house's shelf opens as its line is
+walked, rather than being dealt out of a purse. **A voucher used to sit here** — a beaten circle
+handed one up, graded at the floor that finished it, and the Hall spent it on a pull that mostly
+dealt near that depth. It went with the Hall.
 
 **`description` is the mechanic said out loud** — what the path is, then the one thing it does, in a
 sentence or two (`Discipline.description`, pinned by `tests/discipline_spec.lua`). It is the same claim

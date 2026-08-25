@@ -426,9 +426,8 @@ learns each building at the moment it becomes useful — so a gate that is merel
 **An opened card coaches the player into it.** A card that quietly stops being locked is a feature
 delivered by not being mentioned — the one moment a door is interesting is the moment it appears, and by
 the next visit it is furniture. So the hub pins a coach bubble to it, exactly as the first visit does
-for the Crossing and the Rift, and while that bubble is up **that card is the only one that opens**.
-Walking in is what spends it; reading the bubble is not, for the same reason the first visit's hire
-stage is spent by the hire and not by the door. The ledger behind it is `player.seenDoors`
+for the Gate, and while that bubble is up **that card is the only one that opens**. Walking in is
+what spends it; reading the bubble is not. The ledger behind it is `player.seenDoors`
 (`models/building.lua`), seeded on the first look at the city so nothing that was already standing is
 ever coached.
 

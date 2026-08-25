@@ -1,8 +1,9 @@
 # Deployment, the field, and the bench
 
-You march **everyone**. You field **four**. Which four, and where they stand, is decided at the start
-of every battle — on the board, with the enemy already on it — and can be changed mid-fight by rotating
-someone off the line and someone else on.
+You bring **four**. You field **four**. *Which* four is decided at the Gate, before the stair
+(`Descent.party`); *where they stand* is decided at the start of every battle — on the board, with the
+enemy already on it. Once the bell rings nothing changes hands: there is no way back onto the field
+mid-fight.
 
 This replaced a persistent *marching grid* arranged once in the hub. Placement is a decision about
 **ground** — where the cover is, which flank is open, how far the enemy line is — and none of that
@@ -81,24 +82,13 @@ reinforcement walks on — and it is lit with one overlay (`BattleMap:drawDeploy
 blue, deliberately the same grammar as the enemy muster telegraph in its red. Same statement,
 different owner.
 
-### Rally ground: the same tiles, mid-fight
+### Rally ground — removed
 
-Once the bell has rung the zone is **rally ground**, and it stays on the board. Not as the phase's
-breathing fill — that is an invitation to act *now*, and this has to sit under the move and range
-overlays for a whole battle without competing with them — but as **one outline**, traced along the
-edges where the zone meets ground that is not yours (`BattleMap:drawRallyGround`). A boundary reads as
-*your lines*; eight lit boxes read as *these eight tiles matter*, which is the phase's sentence and not
-this one.
-
-It is drawn **only while somebody is on the bench** (`Combat.rallyGround`): with the last reserve
-spent, those tiles are ordinary ground again, and a mark that means nothing is a mark the player learns
-to ignore. Hovering one opens a **Rally Ground** box in the terrain slot of the tooltip column
-(`Combat.rallyTileInfo` → `ui/tile_tooltip.lua`) naming the move, its price, and how many are still in
-reserve. One rule, two surfaces — the outline and the box read the same function.
-
-That box is the only place the move is *taught*, which is why it rides on the terrain info rather than
-the occupant's: the terrain box never yields when the column runs short, and it opens on a tile with
-one of your own bodies standing on it — the exact moment falling back is a live option.
+The deploy zone used to stay on the board after the bell as **rally ground**: one quiet outline along
+its edge, drawn only while somebody was on the bench, with a **Rally Ground** box in the tooltip
+column teaching the Fall Back move. Both are gone with the move (`Combat.rallyGround`,
+`Combat.rallyTileInfo`, `BattleMap:drawRallyGround`). Nothing marks the zone once the fight starts,
+because nothing can happen there.
 
 ## The phase
 
@@ -181,58 +171,32 @@ nothing more. A benched body wearing a flag would have to be excluded from ~200 
 across the board. Worse, `Combat.inTimeline` warns what happens to a unit that rides the timeline and
 never acts: it pegs the rebase minimum at 0 and **freezes every duration in the battle**.
 
-Two ways onto the field, priced differently because they are different decisions:
+**Nothing comes back off it.** There were two ways onto the field mid-fight and both are removed:
 
-### Fall Back — costs the turn
+- **Fall Back** — a living unit standing on rally ground spent its turn to trade places with a reserve.
+- **Reinforce** — a slot opened by a death was filled free, and a *last-stand override* let you send
+  one in past the cap with nothing of yours left standing.
 
-A living unit **standing on rally ground** spends its turn to trade places with someone on the bench.
-The button **appears only while the move is on offer** — a body of yours standing on the ground, with a
-reserve to call. A plate greyed out for most of every fight is a permanent claim on the eye for a move
-that is rarely available; the board carries the standing statement instead (the outline above, and the
-tile's tooltip), and the panel says only *you can do this here*.
+They came out when the expedition became four. An expedition is four (`Descent.PARTY_MAX`) and the
+board holds four (`Combat.MAX_FIELD`), so there is never a body waiting to be sent for, and a control
+that can never be legal is deleted rather than left drawing greyed.
 
-It shares Wait's lane rather than taking one of its own: on the turns it is offered, the bar at the
-panel's foot halves and the two plates sit side by side. They are the same kind of move — end the turn
-without striking — so they read as one row of them, and an unavailable Fall Back costs no space at all
-while an available one shoves nothing, since the lane's edges never move.
+**One rule had to invert with them.** `Combat.eliminated` used to count the bench: a party with
+somebody benched had *not* lost, because a reserve could still be called. With no way to reach them
+that becomes a battle you can neither win nor lose — the turn loop has nobody to hand the turn to and
+nothing to resolve on, which is worse than either ending. It reads `aliveCount == 0` now.
 
-`Combat.canRotate` still returns `false, why` for every refusal, and each reason still names a fix
-("stand on your rally ground to fall back"); with the button gone those reach the player through
-`notify` rather than a dead plate.
+`Combat.reinforceTiles` **stays**, under a name that outlives its move: it is what `ui/deploy_phase.lua`
+and `models/encounter_battle.lua` lay the *opening* line out with, which is the job it was always
+really doing. `combat.bench` stays too — an arena still parks anybody it had no room to seat, and
+`Combat.benchCount` still reports it. What changed is that nothing brings them back.
 
-**The player never reads the word "rotate".** The move is *Fall Back* and the ground is *rally ground*
-on every surface. The model keeps the older `rotate` spelling for the mechanic itself — that is what
-this whole section, `tests/bench_spec.lua` and the bench API are written in, and renaming a mechanic is
-not the same job as naming it.
+## One derived rule
 
-The incoming body stands on the tile the outgoing one was holding, at the initiative that unit's turn
-would have cost (`turnMoveCost + tempoDebt + Combat.ROTATE_COST`). A rotation buys you a different
-body, not a free beat.
-
-`Combat.withdraw` mirrors `Combat.dismiss`: the channel breaks, its summons go with it, its ground and
-its held bodies are released. It is **not a death** — no `Trait.onDeath`, no `allyDown` tally, no
-corpse, nothing to revive. The board and the turn strip fade it out through an `exit` fx cue, silently:
-the death knell over somebody standing perfectly well on the bench would be a lie.
-
-### Reinforce — free
-
-A slot has opened (somebody fell), so filling it costs nothing — you already paid, with a body. The
-drawer entry lights when `Combat.canReinforce` is true; picking a body then picks a zone tile. The
-arrival takes `Combat.addUnit`'s natural-clamped-at-0 slot, so it cannot cut ahead of whoever is acting.
-
-The **last-stand override**: with nothing of yours left standing you may always send one in, even past
-the four-body cap. Without it, a field of four fallen bodies would be a defeat with a full bench in
-hand — and that body walking on to stand over its own dead is the whole reason the bench exists.
-
-## Two derived rules
-
-**Rotating is not a cleanse.** A withdrawn unit's statuses ride to the bench and come back on re-entry.
-They do not tick while off the board, for the plain reason that nothing off the board ticks — so
-falling back *parks* a poison rather than curing it.
-
-**HP, mana and cooldowns persist; the unit table does not.** Those live on the character instance.
-Coming back builds a new unit around the same `char`, so the turn-scoped bookkeeping (tallies, anchor
-tile, tempo debt) resets — correct, since what returns is an arrival.
+**HP, mana and cooldowns live on the character instance, not the unit table.** That was what made a
+body able to leave the board and come back as an arrival — the turn-scoped bookkeeping (tallies, anchor
+tile, tempo debt) resets, the durable state does not. Nothing returns mid-fight any more, but the split
+is unchanged and still the reason a body carries its wounds out of one battle and into the next.
 
 ## Defeat
 
@@ -242,14 +206,10 @@ One line, in `Combat.outcomeFor`:
 if Combat.eliminated(combat, side) then return "loss" end
 ```
 
-`Combat.eliminated` is *nothing standing **and** nobody left to send in*. Only the party has a bench
-(`Combat.benchCount` returns 0 for anyone else), so this reads exactly as it always did for every other
-side — and the enemy cannot win by clearing the four in front of them either, since `killAll` asks the
-same question.
-
-The UI half is `offerLastStand` in `states/battle.lua`, consulted **before** `Combat.evaluate` in
-`resolveAdvance`: when the player's last body falls with a reserve waiting, the bench chooser is raised
-instead of the defeat panel. One rule, two surfaces.
+`Combat.eliminated` is *nothing standing*, full stop — `aliveCount(combat, side) == 0`. It used to also
+ask whether the side had a reserve to send in, which is the rule that inverted when the two ways back
+onto the field came out (see [The bench](#the-bench)). Every other side always read it this way, since
+only the party ever had a bench.
 
 ## The front line
 
@@ -268,12 +228,10 @@ everyone who marched, and a benched member has to arrive already wearing it.
 | File | What |
 | --- | --- |
 | `models/arena.lua` | `arena.deployZone`, `Arena.DEPLOY_COLS`/`DEPLOY_DEPTH`/`DEPLOY_MIN`, the authored `deployZone` field |
-| `models/combat.lua` | `deferOpen` / `Combat.openBattle`, `deployUnit`, `undeployUnit`, `restampDeployed`, the bench section (`benchUnit`, `canRotate`, `rotate`, `withdraw`, `canReinforce`, `reinforceTiles`, `reinforce`, `fieldCount`, `benchCount`, `eliminated`), and the two rally-ground reads (`rallyGround`, `rallyTileInfo`) |
+| `models/combat.lua` | `deferOpen` / `Combat.openBattle`, `deployUnit`, `undeployUnit`, `restampDeployed`, and what is left of the bench section (`benchUnit`, `reinforceTiles`, `fieldCount`, `benchCount`, `eliminated`) |
 | `ui/deploy_phase.lua` | the phase: the strip, the drag, the placement, the column's control stack |
 | `ui/panels/party.lua` | the Loadout screen the phase opens (`fielded` badges the standing line) |
-| `ui/panels/bench_chooser.lua` | who comes on, for both routes |
-| `ui/battle_map.lua` | `drawDeployZone` (the phase), `drawRallyGround` (the fight) |
-| `ui/tile_tooltip.lua` | the Rally Ground box |
-| `ui/combat_panel.lua` | the Fall Back button (`canFallBack`, `drawFallBackButton`) |
-| `states/battle.lua` | `gutterRect`, `deployControlRect`, `commitDeploy`, `openDeployPhase`, `openDeployLoadout`, `rotateTurn`, `reinforceAt`, `offerLastStand`, the Reinforce drawer entry |
+| `ui/battle_map.lua` | `drawDeployZone` (the phase) |
+| `ui/combat_panel.lua` | the panel's layout, built and checked by `tests/combat_panel_spec.lua` |
+| `states/battle.lua` | `gutterRect`, `deployControlRect`, `commitDeploy`, `openDeployPhase`, `openDeployLoadout` |
 | `tests/deploy_spec.lua`, `tests/bench_spec.lua` | the rules above, headless |
