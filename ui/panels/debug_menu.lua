@@ -4,7 +4,7 @@
 --
 -- DebugMenu.new -- the BOARD menu, during a battle. Reads the tile under the pointer:
 --   * a living unit there -> the unit page (damage, kill, heal, statuses, items, initiative, control,
---     extra action, invulnerable, gold, clone, remove, move-to-tile)
+--     animations, extra action, invulnerable, gold, clone, remove, move-to-tile)
 --   * empty ground        -> the terrain page (summon, place hazard/trap/prop, change terrain)
 --
 -- DebugMenu.forItem -- the ITEM menu, wherever an item is on show: the Loadout grid and stash
@@ -29,6 +29,9 @@
 -- Every action calls the underlying
 -- Combat / Status / Hazard / ... model function directly -- the `fx.*` layer is per-cast state that
 -- only exists inside resolveCast, so a debug tool that pokes the board out-of-turn must not use it.
+-- The Animations page is not an exception to that: what it drives is the VIEW-side animation
+-- controller (ui/combat_fx.lua, handed down as opts.fx), a different thing that happens to share the
+-- name, and it moves no piece of the model at all.
 --
 -- Three-input + mouse-only by construction, mirroring ui/panels/windup_chooser.lua: click a row or a
 -- stepper control; arrows/Enter/Backspace on a keyboard; D-pad/A/B on a pad; right-click or a click
@@ -123,6 +126,7 @@ local function base(opts)
     self.onClose = opts.onClose or function() end
     self.onPickTile = opts.onPickTile
     self.refresh = opts.refresh or function() end
+    self.fx = opts.fx -- the board's animation controller, for the Animations page (optional)
     self.font = Theme.body(FONT_SIZE)
     self.ax = opts.x or Scale.WIDTH / 2
     self.ay = opts.y or Scale.HEIGHT / 2
@@ -369,6 +373,53 @@ function DebugMenu.new(opts)
             end })
     end
 
+    -- The six-clip animation set (ui/combat_fx.lua), fired on demand. These curves are the board's
+    -- whole character animation -- there is no rig -- and the only way to judge one is to watch it, so
+    -- this page exists to stop that meaning "start a battle and hope somebody takes a heavy hit".
+    --
+    -- The speed rows come FIRST and keep the menu open, because that is the order the page is used in:
+    -- an attack is sixteen frames at full speed and the wind-up inside it is three, so you slow it down
+    -- and THEN pick a clip. Each clip row closes the menu, since the next thing you want is the board.
+    -- Nothing here touches the model: a demonstrated collapse leaves a live unit standing.
+    local function animationsPage()
+        local fx = menu.fx
+        if not fx then
+            return listPage("Animations", { { label = "no animation controller", kind = "info" } })
+        end
+        -- Everything with a direction is aimed at the nearest OTHER body, so a lunge, a recoil and a
+        -- collapse all read against something that is actually on the board. With the field to itself
+        -- the controller falls back to a phantom tile to the east (CombatFx:demo).
+        local target, best
+        for _, o in ipairs(combat.units or {}) do
+            if o ~= u and o.alive then
+                local d = math.abs(o.x - u.x) + math.abs(o.y - u.y)
+                if not best or d < best then best, target = d, o end
+            end
+        end
+        local rows = {}
+        for _, s in ipairs({ 1, 0.5, 0.25, 0.1 }) do
+            rows[#rows + 1] = { label = string.format("Speed %gx", s), kind = "action", keep = true,
+                act = function() fx:setTimeScale(s) return string.format("playing at %gx", s) end }
+        end
+        rows[#rows + 1] = { label = "-- clips --", kind = "info" }
+        rows[#rows + 1] = { label = "Play all (in order)", kind = "action",
+            act = function() fx:demo(u, target) end }
+        for _, c in ipairs({
+            { "Walk (a step in)", "walk" },
+            { "Attack (wind-up, strike)", "attack" },
+            { "Hit -- a scratch", "hit" },
+            { "Hit -- a heavy blow", "heavy" },
+            { "Cast (aimed)", "cast" },
+            { "Cast (on itself)", "selfcast" },
+            { "Collapse", "death" },
+        }) do
+            rows[#rows + 1] = { label = c[1], kind = "action",
+                act = function() fx:demo(u, target, c[2]) end }
+        end
+        rows[#rows + 1] = { label = "-- idle runs on its own --", kind = "info" }
+        return listPage("Animations", rows, { maxRows = 15 })
+    end
+
     local function unitRoot()
         return listPage(string.format("%s (%s)", (u.char and u.char.name) or "Unit", u.side or "?"), {
             { label = "Damage", kind = "submenu", build = damagePage },
@@ -378,6 +429,7 @@ function DebugMenu.new(opts)
             { label = "Remove status", kind = "submenu", build = removeStatusPage },
             { label = "Items", kind = "submenu", build = itemsPage },
             { label = "Damage table", kind = "submenu", build = damageTablePage },
+            { label = "Animations", kind = "submenu", build = animationsPage },
             { label = "Level up to...", kind = "submenu", build = levelPage },
             { label = "Set initiative", kind = "submenu", build = initiativePage },
             { label = "Control", kind = "submenu", build = controlPage },

@@ -6466,6 +6466,7 @@ local function openDebugMenu(x, y)
         combat = battle.combat,
         tile = { x = cx, y = cy },
         unit = Combat.unitAt(battle.combat, cx, cy),
+        fx = battle.fx, -- for the unit page's Animations rows (ui/combat_fx.lua's :demo/:setTimeScale)
         onClose = function() battle.debugMenu = nil end,
         onPickTile = function(fn) battle.debugMenu = nil; battle.debugPickTile = fn end,
         refresh = function() refreshView() end,

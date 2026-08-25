@@ -1308,18 +1308,22 @@ function BattleMap:drawUnits()
         end
     end
     for _, u in ipairs(self.combat.units) do
-        -- Animation modifiers (models the combat controller feeds): a pixel offset (walk slide +
-        -- attack lunge + hit shake), a white/red hit flash, and a death fade. A dying unit is
+        -- Animation modifiers (the combat controller feeds them): a pixel offset, a rotation and a
+        -- non-uniform scale carrying the whole six-clip set -- idle, move, attack, hit, cast, death,
+        -- authored as curves rather than rigged (ui/combat_fx.lua) -- plus a white/red hit flash and a
+        -- death fade. Note the defaults: rot 0 and scale 1, NOT 0, so a board drawn without an fx
+        -- controller at all (a preview, a headless render) still draws its bodies. A dying unit is
         -- alive=false in the model yet still drawn here while its fade runs, darkening to black over
         -- the corpse token drawn above, before that token takes over. A unit felled by a counter the
         -- controller has not played yet (fx:awaiting) is likewise alive=false with its fade not begun,
         -- and must keep drawing untouched -- otherwise it would blink out and reappear to die.
         local offX, offY, flash, fade = 0, 0, 0, 0
+        local rot, sx, sy = 0, 1, 1
         local glow, gr, gg, gb = 0, 0, 0, 0
         local awaiting = false
         if self:heldUnit(u) then goto continue end -- a summon not yet revealed draws nothing
         if self.fx then
-            offX, offY, flash, fade = self.fx:spriteState(u, s)
+            offX, offY, flash, fade, rot, sx, sy = self.fx:spriteState(u, s)
             glow, gr, gg, gb = self.fx:castGlow(u)
             awaiting = self.fx:awaiting(u)
         end
@@ -1340,6 +1344,15 @@ function BattleMap:drawUnits()
             if type(sprite) == "userdata" then
                 local sw, sh = sprite:getDimensions()
                 local scale = math.min((bw - 8) / sw, (bh - 8) / sh)
+                -- The animation transform (ui/combat_fx.lua spriteState) pivots at the sprite's FEET,
+                -- never its centre: leaning, squashing and toppling are all things a body does while
+                -- standing on the ground, and rotating a token about its middle reads as a spinning
+                -- coin. So every pass below is bottom-anchored -- drawn on the foot line with the
+                -- origin at the sprite's bottom-centre -- which is arithmetically identical to the old
+                -- centred draw whenever rot/sx/sy are inert, and identical for the corpse and turn-card
+                -- draws elsewhere in this file, which stay centred because nothing animates them.
+                local footY = cy + sh * scale / 2
+                local dsx, dsy = scale * sx, scale * sy
                 -- A dying body burns away (dissolve) and a just-arrived one knits in (materialize),
                 -- both through shaders/sprite.lua, in place of the old flat fade-to-black. The shader
                 -- eats or reveals the sprite along a ragged edge lit by its boundary colour, so a death
@@ -1360,22 +1373,22 @@ function BattleMap:drawUnits()
                     end
                     shader:send("uTime", self.time or 0)
                     love.graphics.setColor(1, 1, 1, Status.untargetable(u) and 0.40 or 1)
-                    love.graphics.draw(sprite, cx, cy, 0, scale, scale, sw / 2, sh / 2)
+                    love.graphics.draw(sprite, cx, footY, rot, dsx, dsy, sw / 2, sh)
                     love.graphics.setShader()
                 else
                     love.graphics.setColor(tint, tint, tint, a)
-                    love.graphics.draw(sprite, cx, cy, 0, scale, scale, sw / 2, sh / 2)
+                    love.graphics.draw(sprite, cx, footY, rot, dsx, dsy, sw / 2, sh)
                 end
                 if flash > 0 then -- additive pop, so the sprite brightens rather than just recolors
                     love.graphics.setBlendMode("add")
                     love.graphics.setColor(flash * 0.9, flash * 0.5, flash * 0.45, a)
-                    love.graphics.draw(sprite, cx, cy, 0, scale, scale, sw / 2, sh / 2)
+                    love.graphics.draw(sprite, cx, footY, rot, dsx, dsy, sw / 2, sh)
                     love.graphics.setBlendMode("alpha")
                 end
                 if glow > 0 then -- the caster's own additive cast glow (a different color from the flash)
                     love.graphics.setBlendMode("add")
                     love.graphics.setColor(gr * glow, gg * glow, gb * glow, a)
-                    love.graphics.draw(sprite, cx, cy, 0, scale, scale, sw / 2, sh / 2)
+                    love.graphics.draw(sprite, cx, footY, rot, dsx, dsy, sw / 2, sh)
                     love.graphics.setBlendMode("alpha")
                 end
                 -- Side frame, traced onto the token's own plate. The plate is the token art's inner rect

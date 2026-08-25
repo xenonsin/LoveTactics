@@ -186,6 +186,88 @@ local function startMockBattle(layout)
     })
 end
 
+-- Debug: the ANIMATION GALLERY -- every sprite clip the board can play, running at once on a board
+-- arranged for looking at them. Sibling of the Field Gallery above and built the same way (a `fixed`
+-- arena named by a mock battle); see data/arenas/animation_gallery.lua for what each body is doing and
+-- what each row is arranged to prove.
+--
+-- Three things separate it from an ordinary mock battle, all of them in service of "it must hold
+-- still":
+--   * `deploy = false` commits the arena's own placement straight through. The gallery is a LAYOUT --
+--     which body stands where is the whole statement -- and a deployment phase would hand that to
+--     whoever opened it.
+--   * every enemy is set to `control = "none"` -- the game's own word for a body nobody drives (a
+--     scripted prop, a charmed-off construct). It hands its turn straight on, so the gallery never
+--     dissolves into a fight, and Combat.threatMap skips it, so seven foes in a rank do not wash the
+--     whole board red with threat tint. `timeless` would have stopped the turns too and left the
+--     threat picture standing; this stops both, and it is the flag that already means this.
+--   * the party carries NO kit and outspeeds everything, so it holds the opening turn and holds it.
+-- Loadouts are not randomized here the way the mock battle's are -- they are emptied. What is being
+-- looked at is the body, and a default action arming itself would throw an aim overlay across the
+-- board: exactly the clutter the arena's plain ground exists to avoid.
+local function startAnimationGallery()
+    local Character = require("models.character")
+    local CLIPS = {
+        -- clip, and the period it repeats on. Deliberately not multiples of each other -- see the
+        -- arena header on why a rank that fires together is its own kind of lockstep.
+        { "walk", 1.7 }, { "attack", 1.1 }, { "hit", 1.3 }, { "heavy", 1.9 },
+        { "cast", 1.5 }, { "selfcast", 2.1 }, { "death", 2.3 },
+    }
+    local party = {}
+    for i, id in ipairs({ "character_rowan", "character_mage", "character_archer", "character_priest" }) do
+        local char = Character.instantiate(id)
+        char.inventory = {}          -- see the header: an armed default action would cover the board
+        char.defaultActionSlot = nil
+        -- ...and neither may the MOVE band, which is the other overlay a held turn paints. A body that
+        -- cannot walk highlights only the tile it is standing on. Nothing in the gallery walks: the
+        -- one clip that looks like walking is played on the rank above, as a clip.
+        char.stats.movement = 0
+        -- Ahead of every body on the board, so the opening turn is the party's and it keeps it.
+        char.stats.speed = 90 + i
+        party[#party + 1] = char
+    end
+
+    State.switch(require("states.battle"), {
+        encounter = { kind = "objective", music = "music.battle" },
+        biome = "castle",
+        prestige = 3,
+        party = party,
+        deploy = false, -- the arena's own placement, committed straight through
+        quest = { map = { biome = "castle", objective = {
+            name = "Animation Gallery",
+            layout = "animation_gallery",
+            composition = function()
+                -- One body per driven clip, all the same blueprint on purpose: identical tokens mean
+                -- the ONLY difference down the rank is the motion, which is what is being compared.
+                local list = {}
+                for _ = 1, #CLIPS do list[#list + 1] = "character_bandit" end
+                return list
+            end,
+            win = { type = "killAll" },
+        } } },
+        onWin = function() State.switch(require("states.menu")) end,
+        onLoss = function() State.switch(require("states.menu")) end,
+    })
+
+    -- Wired AFTER the switch, because that is when the bodies exist: `deploy = false` seats everyone
+    -- during enter(), so combat.units is populated by the time this runs.
+    local battle = require("states.battle")
+    local foes = {}
+    for _, u in ipairs(battle.combat.units) do
+        if u.side ~= "party" then foes[#foes + 1] = u end
+    end
+    table.sort(foes, function(a, b) return a.x < b.x end) -- left to right, matching the arena header
+    for i, u in ipairs(foes) do
+        u.control = "none" -- stands there and is looked at: passes its turn, threatens nothing
+        local clip = CLIPS[i]
+        if clip and battle.fx then
+            -- Aimed at the idle rank below, so a lunge, a recoil and a collapse all read against
+            -- something that is actually on the board rather than a phantom tile.
+            battle.fx:loopClip(u, clip[1], { x = u.x, y = u.y + 3 }, clip[2])
+        end
+    end
+end
+
 -- Debug: run the localization string extractor (stamps ids + syncs data/lang/strings.lua). Same as
 -- `lovec . extract-strings`; surfaced here so it can be run from a normal windowed session. Reports
 -- the outcome in a short status line (there is no console under love.exe).
@@ -287,6 +369,10 @@ local function buildDebugMenu()
         -- Every tile-field pattern on one board, for looking at the shader rather than arguing about
         -- it. See data/arenas/field_gallery.lua for what each row is arranged to prove.
         { label = "Field Gallery", action = function() startMockBattle("field_gallery") end },
+        -- Every sprite clip on one board, for the same reason and in the same shape: the board's
+        -- animation is code rather than a rig, and code seen for a fifth of a second mid-fight cannot
+        -- be judged. See data/arenas/animation_gallery.lua.
+        { label = "Animation Gallery", action = startAnimationGallery },
         { label = "Character Editor", action = function() State.switch(require("states.debug_editor")) end },
         -- The credits roll is otherwise reachable only by finishing the campaign, which makes it the
         -- least-looked-at screen in the game and the one carrying a licence obligation (the
