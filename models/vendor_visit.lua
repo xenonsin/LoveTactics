@@ -26,6 +26,41 @@ local Vendor = require("models.vendor")
 
 local VendorVisit = {}
 
+-- THE HOUSE'S COMPANION JOINS AT ITS COUNTER, and this is the whole of how a company grows.
+--
+-- Each house names one body on its blueprint (`companion`, data/vendors/*.lua). You do not hire them
+-- and nobody deals them: you meet them underground at that house's OPENER -- the errand lying unasked
+-- on a floor, which is also the thing that opens the shop -- and then they are standing in the shop
+-- when you first walk into it.
+--
+-- IT REPLACED A PULL. The Crossing dealt 1-of-45 for a token off the floors; what that produced was a
+-- body with no reason to be yours, and a bond ladder nobody could climb (see the commit that removed
+-- it). A companion earned by doing that house's work arrives already meaning something, and the seven
+-- of them are the whole roster.
+--
+-- RECRUITED IN THE GREETING'S `before`, WHICH IS THE POINT rather than an implementation detail. The
+-- scene is authored for the full roster through `when = { has = ... }` blocks, so the companion has to
+-- BE in the company before their own lines can play -- and Player.recruit queues the
+-- "[X has joined your Party]" banner onto the next scene to run (models/conversation.lua's noteJoin),
+-- which is this one. Join, banner and first words all land in the same beat.
+--
+-- GATED ON THE DOOR, NOT ON THE VISIT. `Errand.doorOpen` is the same test that put the shop on the
+-- board at all, so this can only fire for a house whose opener has been run. Two companions arrive by
+-- other routes and reach their counter with the door still shut -- Rowan in the prologue and Saber off
+-- her quest's `rewardCharacter` -- and their houses stay shut until their work is done. Knowing
+-- somebody is not the same as being welcome in their hall.
+--
+-- Returns the joined character, or nil when there is nobody to join, the door is shut, or they are
+-- already held (Player.recruit refuses a duplicate outright).
+function VendorVisit.joinCompanion(player, vendorId)
+    if not (player and vendorId) then return nil end
+    local def = Vendor.get(vendorId)
+    local companion = def and def.companion
+    if not companion then return nil end
+    if not Errand.doorOpen(player, vendorId) then return nil end
+    return Player.recruit(player, companion)
+end
+
 -- The scenes this shop owes the player right now, as a flat list of { id, before } steps. `before` runs
 -- just ahead of its scene -- it is what records the flag, accepts the errand, or sets the token a line
 -- of dialogue reads. An empty list means open straight to the shelf.
@@ -37,11 +72,13 @@ function VendorVisit.steps(player, vendorId, deepest)
     if not (player and vendorId) then return steps end
     deepest = deepest or (player.descentRun and player.descentRun.cleared) or 0
 
-    -- 1. First-visit greeting (data/conversations/<id>/conversation_<id>_vendor_intro.lua).
+    -- 1. First-visit greeting (data/conversations/<id>/conversation_<id>_vendor_intro.lua), and it is
+    --    also where this house's companion joins -- see VendorVisit.joinCompanion.
     local introId = "conversation_" .. vendorId .. "_vendor_intro"
     if not Player.hasVisitedVendor(player, vendorId) and Conversation.defs[introId] then
         steps[#steps + 1] = { id = introId, before = function()
             Player.markVendorVisited(player, vendorId)
+            VendorVisit.joinCompanion(player, vendorId)
         end }
     end
 
