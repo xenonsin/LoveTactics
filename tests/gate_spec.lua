@@ -87,6 +87,36 @@ return {
         assert(char.stats.health.current == 1, "and nobody was healed on credit")
     end },
 
+    { name = "a night gives back what a body holds, never what it drank", fn = function()
+        -- A NIGHT TOPS UP THE BODY, NOT THE PACK. Health, mana and stamina are what the fighting SPENT
+        -- out of a person and what sleeping gives back; a flask is a thing that was owned and is now
+        -- gone, and an inn that refilled it would be handing out free consumables at twenty-five gold a
+        -- head -- cheaper than the shelf that sells them, and enough to make buying any of them a
+        -- mistake.
+        --
+        -- Pinned here because nothing in Player.restore names consumables, so the rule holds today only
+        -- by not being written down. The DRAFT mode does restock between rounds (models/draft_run.lua),
+        -- which is right there and is exactly the edit that could arrive here by analogy.
+        local Character, Item = require("models.character"), require("models.item")
+        local p = company(1, 1000)
+        local char = p.roster[1]
+        Character.addItem(char, Item.instantiate("consumable_healing_potion", 3))
+
+        local flask
+        for _, item in ipairs(Character.eachItem(char)) do
+            if item.id == "consumable_healing_potion" then flask = item end
+        end
+        assert(flask, "precondition: the body is carrying a draught")
+        flask.quantity = 1
+        char.stats.health.current = 1
+
+        assert(Gate.rest(p), "the company can afford a room")
+        assert(char.stats.health.current == char.stats.health.max,
+            "precondition: an unwounded body tops all the way up, so this case ran a real night")
+        assert(flask.quantity == 1, "a night refilled the flask: the inn is now the cheapest shelf in " ..
+            "the game")
+    end },
+
     { name = "a wipe drops the pack where it fell, and it is picked up exactly once", fn = function()
         -- DARK SOULS' BLOODSTAIN, and the only thing standing between "climb out" and "die" being the
         -- same move. The bodies always come back -- they wake at the temple, wounded -- so what has to
