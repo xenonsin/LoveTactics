@@ -87,7 +87,8 @@ Combat.random = DEFAULT_RANDOM
 -- differently, because the multiplier annihilates the seed.
 --
 -- It was found on a seven: a slate dealt over the seven house companions offered the same body for
--- eight different seeds (tests/descent_recruit_spec.lua). It had been latent for as long as this
+-- eight different seeds. That slate is deleted; the claim is pinned directly on the generator instead,
+-- in tests/combat_spec.lua, which is where it belonged. It had been latent for as long as this
 -- function has existed and was invisible while that roster was forty-five bodies wide -- 45 shares no
 -- factor with 16807, so the draw looked fine. Everything else this game counts in sevens (the houses,
 -- the sins, the classes) was one first-draw away from the same silence.

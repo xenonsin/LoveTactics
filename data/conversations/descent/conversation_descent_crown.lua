@@ -8,7 +8,7 @@
 -- data/conversations/gate/conversation_gate_below_confront.lua, which is the finale of a forty-day
 -- campaign: it is written for the avatar, and every one of its beats is the Crown quoting one of the
 -- seven dead back at the companion who knew her. A descent has no avatar and no companions
--- (models/descent_recruit.lua hands it generic bodies), so that scene played its avatar's lines with no
+-- (it was handed generic bodies), so that scene played its avatar's lines with no
 -- avatar in the company and skipped every `when = { has = }` block it is made of. What was left was a
 -- long scene about people nobody in the room had met.
 --

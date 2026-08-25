@@ -59,8 +59,8 @@ return {
     },
     defaultAction = "weapon_envenomed_kris",
     -- THE TWO ITEMS THAT ARE THIS UNIT, named for the same reason every hall hero names them: a base
-    -- class is met on a floor like any other body now (models/descent_recruit.lua), and this is the
-    -- pair its card is written from.
+    -- class is met at their house's own posting on a floor now (models/errand.lua) and joins at that
+    -- house's counter (models/vendor_visit.lua), and this is the pair its card is written from.
     signatureWeapon  = "weapon_borrowed_time",
     signatureAbility = "ability_shadow_strike",
     ai = {

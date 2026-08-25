@@ -7,7 +7,8 @@ return {
     sin = "sloth",
     -- The companion this house's line earns. Authored here rather than derived: the pairing is a design
     -- fact (docs/story.md -- a general and her foil are the same wound with two answers) stated nowhere
-    -- else in data. models/descent_recruit.lua reads it to seat the seven named heroes in the recruit
-    -- roster. Rowan is the Bastion's even though the prologue hands her over rather than this board.
+    -- else in data. models/vendor_visit.lua reads it to join this house's companion at its counter, the
+    -- first time the player walks in having run its errand. Rowan is the Bastion's even though the
+    -- prologue hands her over rather than this house's posting.
     companion = "character_rowan",
 }

@@ -791,7 +791,8 @@ return {
             local def = Conversation.defs[sin.scene]
             assert(def, sin.id .. " names a scene that does not exist: " .. tostring(sin.scene))
             -- One speaker and no companion blocks. A descent's company is generic bodies
-            -- (models/descent_recruit.lua), so a `when = { has = }` block could never fire and an
+            -- (the sins are fought by whoever the player brought), so a `when = { has = }` block keyed to a
+            -- specific companion could not be relied on and an
             -- avatar line would be spoken by somebody who is not in the room.
             assert(#def.cast == 1 and def.cast[1] == sin.guardian.lead,
                 sin.id .. "'s stair scene must be its own general alone")

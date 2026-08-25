@@ -97,7 +97,7 @@ return {
     -- Slot 2 was reachable only through the Quest Board and went with it. What that costs is worth
     -- writing down rather than quietly losing: Amana has no recruit scene any more, and the beat where
     -- a company is wiped on the sand and wakes on a Cathedral ceiling is not played by anything. She is
-    -- hireable at the Crossing like the other six companions (models/descent_recruit.lua reads each
+    -- met at the Cathedral's own posting like the other six companions (models/vendor_visit.lua reads each
     -- house's `companion`), so the character is reachable and the SCENE is what was lost.
     --
     -- The overrule mechanic itself is not lost with her: data/quests carries it as an objective field

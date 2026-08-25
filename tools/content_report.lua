@@ -199,7 +199,6 @@ end
 -- them is paid off the body standing on its circle's stair.
 local function otherSources()
     local Descent = require("models.descent")
-    local Recruit = require("models.descent_recruit")
     local Character = require("models.character")
     local out = {}
 
@@ -211,10 +210,18 @@ local function otherSources()
         end
     end
 
-    -- What a hireable body walks in wearing. A recruit's bound piece arrives on her, so an item sitting
-    -- in a roster blueprint's grid has a source whatever happens to the quests.
-    for _, charId in ipairs(Recruit.roster() or {}) do
-        local def = Character.defs[charId]
+    -- What a companion walks in wearing. A house's companion arrives carrying her bound piece, so an
+    -- item sitting in one of those blueprints' grids has a source whatever happens to the quests.
+    --
+    -- WALKED OFF THE VENDORS, which is where the pairing lives: each house names its `companion`
+    -- (data/vendors/*.lua) and models/vendor_visit.lua joins them at that counter. It used to walk
+    -- models/descent_recruit.lua's roster, which was the same seven bodies read through the floor slate
+    -- that dealt them -- and that slate is deleted, since a companion is met at a posting now rather
+    -- than offered on a stop.
+    local Vendor = require("models.vendor")
+    for _, sin in ipairs(Descent.SINS or {}) do
+        local vdef = sin.vendor and Vendor.get(sin.vendor)
+        local def = vdef and vdef.companion and Character.defs[vdef.companion]
         -- `startingItems` is a GRID, so it carries `false` for an empty cell -- ipairs would stop at the
         -- first hole and silently miss everything after it, which on Rowan is the back half of her kit.
         for _, itemId in pairs((def and def.startingItems) or {}) do

@@ -1519,4 +1519,50 @@ return {
             assert(not summon.alive and summon.char.stats.health.current == 0, "the summon is left down")
         end,
     },
+    {
+        name = "newRandom's first draw reads the seed, at every width the game counts in",
+        fn = function()
+            -- THE REGRESSION GUARD FOR A BUG THAT SHIPPED SILENTLY FOR MONTHS. The generator used to
+            -- draw with `state % n`, the low-order bits of a Park-Miller sequence -- the worst bits it
+            -- has. The multiplier is 16807, which is 7^5, so the first draw off a fresh generator has
+            -- state = 16807 * seed, and `rand(7)` came back 1 for every seed that did not overflow into
+            -- Schrage's reduction. It was found through a seven-body slate offering the same body for
+            -- eight seeds running. That spec is gone with the system it tested; the claim is pinned HERE
+            -- and pinned on the GENERATOR rather than on one caller, which is where it belonged.
+            --
+            -- SEEDED THE WAY THE GAME SEEDS, which is not a detail. models/seed.lua mints SIX DIGITS
+            -- (100000..999999) and every live caller folds that with a round or a depth, so those are the
+            -- inputs the guard has to hold for. Asking it with 1..40 instead would fail on a correct
+            -- generator: a Park-Miller state that small is still small after one step, so the first draw
+            -- sits in the bottom bucket at any width. That is a real weakness of the first draw off a
+            -- tiny seed and it is NOT what this pins -- see the note below it.
+            for n = 2, 12 do
+                local seen = {}
+                for i = 1, 40 do
+                    seen[Combat.newRandom(100003 + i * 53987)(n)] = true
+                end
+                local distinct = 0
+                for _ in pairs(seen) do distinct = distinct + 1 end
+                assert(distinct > 1, "rand(" .. n .. ") returned the same value for forty six-digit "
+                    .. "seeds -- the first draw is annihilating the seed, which is the 7^5 bug")
+            end
+
+            -- KNOWN AND DELIBERATELY NOT ASSERTED: a SMALL seed (a bare floor number, a stop index, a
+            -- literal 0) still yields a first draw of 1 at every width, because one step off a tiny state
+            -- is still a tiny state. Nothing seeds that way today -- every caller passes a six-digit seed
+            -- or a fold of one -- and the fix is a warm-up step in newRandom, which would move every
+            -- seeded outcome in the game and wants doing on purpose rather than as a side effect here.
+            assert(Combat.newRandom(1)(7) == 1,
+                "a tiny seed no longer bottoms out on its first draw -- if the generator was given a "
+                    .. "warm-up, delete this line and the note above it")
+
+            -- And the draw stays in range, which the low-bit version also did -- so range alone was
+            -- never enough to catch any of this.
+            local rand = Combat.newRandom(123457)
+            for _ = 1, 200 do
+                local v = rand(7)
+                assert(v >= 1 and v <= 7, "a draw left 1..7: got " .. tostring(v))
+            end
+        end,
+    },
 }

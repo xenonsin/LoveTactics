@@ -124,4 +124,38 @@ return {
                 "and they are the two who were picked, in the order they were picked")
         end,
     },
+    {
+        name = "the expedition is a cap on the roster, and no body is issued at the mouth",
+        fn = function()
+            -- CARRIED OVER FROM tests/descent_recruit_spec.lua, which is deleted with the floor slate it
+            -- tested. These four claims were the half of that file that had nothing to do with
+            -- recruitment, and dropping them with the rest would have quietly unpinned the shape of a
+            -- company.
+            assert(#Descent.startingCompany() == 0,
+                "a descent issues nobody at the mouth: the company is the roster you already have")
+            assert(Descent.STARTING_BODY == nil,
+                "there is no starting body constant -- the descent draws from player.roster, and the "
+                    .. "avatar is in it like anybody else")
+
+            -- PARTY_MAX IS THE EXPEDITION AND NOT THE ROSTER. Three claims have worn this name and only
+            -- the middle one is dead: it capped the ROSTER once (four held, ever), then it meant the
+            -- BOARD, and it is now how many bodies go down the stair.
+            --
+            -- ASSERTED AS A BOUND RATHER THAN AS EQUAL TO MAX_FIELD, because both numbers are four and
+            -- an equality could not say which fact it was pinning. What must hold is that an expedition
+            -- is no larger than the board it fights on -- that a reserve is possible.
+            assert(Descent.PARTY_MAX >= 1, "an expedition of nobody is not an expedition")
+            assert(Descent.PARTY_MAX <= Player.MAX_FIELD,
+                "an expedition may not be larger than the board it fights on: "
+                    .. Descent.PARTY_MAX .. " vs " .. Player.MAX_FIELD)
+
+            -- ...and the function that used to ask "is there room for one more" stays GONE rather than
+            -- always returning true. Pinned as an absence because a branch that cannot be false is the
+            -- shape that bug took the first time: every caller read it, every caller believed it, and
+            -- the answer had stopped being a question long before anybody noticed.
+            assert(Descent.hasRoom == nil,
+                "Descent.hasRoom must not come back: the roster is unbounded and the question has one "
+                    .. "answer")
+        end,
+    },
 }

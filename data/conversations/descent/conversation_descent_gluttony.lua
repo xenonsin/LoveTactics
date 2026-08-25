@@ -10,7 +10,7 @@
 -- A DESCENT HAS NONE OF THAT, and the scenes are shaped by what it does not have.
 --
 --   No avatar. A descent's company is one authored body plus whoever it found on the floors
---   (models/descent_recruit.lua). There is nobody here the general could recognise and nobody the
+--   (it was handed generic bodies). There is nobody here the general could recognise and nobody the
 --   player has a history with, so every one of these is ONE SPEAKER and no reply. A `when = { has = }`
 --   block would never fire; the cast is her alone.
 --

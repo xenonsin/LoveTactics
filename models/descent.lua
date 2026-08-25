@@ -865,7 +865,7 @@ Descent.FILE = "descent_run.lua"
 -- way past floor one would settle the run before a tile of it was walked.
 Descent.OPENING_GOLD = 50
 
--- WHO WALKS IN. One body, the same one every run.
+-- WHO WALKS IN. Four of the roster, chosen at the Gate before the stair (Descent.party).
 --
 -- A descent used to open on a MUSTER: a shelf of eleven candidates, a twelve-coin purse, and a company
 -- of up to eight bought at the mouth (models/descent_muster.lua, deleted with this). It was the mode's
@@ -873,33 +873,38 @@ Descent.OPENING_GOLD = 50
 -- comparing eleven bodies the player had never fought with, before a single tile was walked -- and every
 -- run after the first was that same screen again. What belongs at the mouth of a descent is a stair.
 --
--- So the company is one body and it grows on the road: a stop per floor where somebody still standing
--- down there joins it (models/descent_recruit.lua). A run's company is now something that HAPPENED --
--- who you found, in the order the floors offered them -- rather than something bought.
+-- So the company is not bought at all: it is the roster you already have, and FOUR of it go down the
+-- stair (Descent.party). It grows through the houses -- a companion is met at their own posting on a
+-- floor, and joins at that house's counter in the city (models/vendor_visit.lua's joinCompanion) --
+-- rather than at a stop that deals bodies.
 --
--- NOBODY ON THE BOARD IS YOU. A descent's player is a TACTICIAN: you direct the company, you never
--- stand in it, and there is no body anywhere in the mode that is your character.
+-- A FLOOR SLATE DID EXIST, one body offered per floor off an authored pool (models/descent_recruit.lua,
+-- deleted with its panel). It went with the pull it was built beside: two ways to gain a companion is
+-- one more than the mode can explain, and the posting is the better one because it is met while playing
+-- rather than chosen off a card.
 --
--- THIS REPLACED A CREATED AVATAR, and the reason is worth keeping. The descent briefly opened on
--- character creation and walked in with the body it produced -- which read well until you asked what
--- happens when it dies. Every answer was bad. Losing it outright ends the mode over one fight. Leaving
--- it recoverable means minting a SECOND you to go and fetch the first, and identity here is `char.id`,
--- so two bodies with one id is a company where half the ledger points at the wrong person. Protecting
--- it specially makes one member unkillable and quietly deletes the stake from the only body the player
--- is attached to.
+-- THE AVATAR STANDS IN THE COMPANY, and this file argued the opposite for a long time. The claim was
+-- that a descent's player is a TACTICIAN -- you direct the company, you never stand in it -- because
+-- every answer to "what happens when your body dies" looked bad: losing it outright ends the mode over
+-- one fight; leaving it recoverable means minting a SECOND you to fetch the first, and identity here is
+-- `char.id`, so two bodies with one id is a company where half the ledger points at the wrong person;
+-- protecting it specially makes one member unkillable.
 --
--- A tactician has none of those problems because a tactician cannot be on the floor. Every body in the
--- company is hired or found, all four are equally losable, and what the player owns is the company
--- rather than a member of it. It is also the older and better fit for this game: the party is a party,
--- and the person giving the orders is holding the map.
+-- What settled it was a third answer nobody had asked for: the avatar is never permanently lost, and it
+-- is also never REQUIRED. It can be fielded, benched, or left at home like anybody -- FFT's protagonist
+-- without FFT's mandatory slot. Nothing has to be minted, because nothing is gone; and no member is
+-- unkillable in a fight, because the recovery happens at the Gate rather than on the floor. The company
+-- is still what the player owns; it just has them in it.
 --
--- So there is no starting body constant. A company is built at the gate, out of the same authored
--- slate the floors offer (models/descent_recruit.lua), and Descent.startingCompany returns nothing.
+-- The one thing that survives from the tactician argument is the floor it puts under the roster: the
+-- avatar cannot be lost, so the roster can never reach zero -- which is what makes the Gate's forward
+-- guarantee structural rather than a special case (models/gate.lua, tests/gate_forward_spec.lua).
+--
+-- So there is no starting body constant, and Descent.startingCompany returns nothing.
 
 -- How many bodies STAND ON THE BOARD. Four, mirroring Player.MAX_FIELD the same way Combat.MAX_FIELD
--- does, so this file stays free of the player model; tests/descent_recruit_spec.lua pins the two
+-- does, so this file stays free of the player model; tests/descent_party_spec.lua pins the two
 -- together.
---
 -- IT IS THE TRAVEL CAP, AND IT IS ITS OWN NUMBER. How many bodies go DOWN THE STAIR -- not how many
 -- stand on the board, which is Player.MAX_FIELD and happens to be the same four.
 --
