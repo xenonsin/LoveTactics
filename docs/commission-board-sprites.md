@@ -1,7 +1,7 @@
 # Board Sprites — Commission Brief
 
-A hand-off brief for commissioning the game's on-board unit sprites: the animated characters that
-stand and fight on the tactics grid. Everything a delivered rig needs to drop straight into the game
+A hand-off brief for commissioning the game's on-board unit sprites: the characters that stand and
+fight on the tactics grid. Everything a delivered painting needs to drop straight into the game
 is here. Deeper character context — personalities, story roles, faction looks — lives in
 [story.md](story.md), and the matching dialogue portraits (a separate commission) in
 [commission-portraits.md](commission-portraits.md).
@@ -9,30 +9,35 @@ is here. Deeper character context — personalities, story roles, faction looks 
 ## The project
 
 **LoveTactics** — a 2D tactics RPG. Tone: **bright heroic fantasy**, not grim-dark. Battles play out
-on a grid of ~60px tiles, where each combatant is a small **animated sprite** that idles, moves,
-attacks, takes hits and falls — the readable, lively unit art of a game like *Fire Emblem Heroes*.
+on a grid of ~60px tiles, where each combatant is a small sprite that idles, moves, attacks, takes
+hits and falls — the readable, lively unit art of a game like *Fire Emblem Heroes*.
 
 ## What we're commissioning
 
-**Animated character rigs, one per combatant — and there are 191 of them**, not the ~55 an earlier
-version of this brief quoted. That number came from `data/characters/`, which has grown; regenerate it
-with `& "E:\LOVE\lovec.exe" . art-report` rather than trusting any figure typed here.
+**One painted still per combatant — and there are 154 of them.** Regenerate that figure with
+`& "E:\LOVE\lovec.exe" . art-report` rather than trusting any number typed here.
 
-**This is the whole art budget.** There is no separate portrait commission any more — see
-[The rig is also the portrait](#the-rig-is-also-the-portrait) — so these rigs are the only painted
-character art the game will have, and every place a person appears is one of them.
+**You are not animating anything.** The motion is already built, in code: idle, move, attack, hit,
+cast and death are transform curves the game applies to whatever picture it is given. What we need
+from you is the body, in one pose, painted well.
 
-191 bespoke rigs is not what we are asking for, because it is not what 191 bodies need. See
-[Skeletons and skins](#skeletons-and-skins-what-we-are-actually-buying) — the count we expect to pay
-rigging labour on is **the skeletons**, and the 191 are **skins** over them.
+> **This brief used to ask for Spine rigs** — ~10 skeletons with 191 skins over them, mesh
+> deformation, Spine Professional, and a per-artist editor licence. That is withdrawn. The deciding
+> fact is the display size below: **~52px on a 60px tile**, where mesh deformation is sub-pixel. The
+> *Fire Emblem Heroes* reference misleads — those sprites are displayed huge on a phone, which is what
+> pays for the rigging. **Painting labour is identical either way**, so the rig was pure surcharge.
+
+**This is the whole character art budget.** There is no separate portrait commission — see
+[The board still is also the portrait](#the-board-still-is-also-the-portrait) — so these are the only
+painted character art the game will have, and every place a person appears is one of them.
 
 ## Art direction
 
 - **Style: anime, bright fantasy.** Clean line, saturated but not garish, expressive. **Not pixel
   art** — author above final size and downscale.
-- **Fire Emblem Heroes-style animation.** Skeletal/mesh motion — a living idle, weight in the walk,
-  follow-through on a swing — not a stiff paper doll and not a frame-by-frame flipbook.
-- **One consistent cast.** Shared rendering style, line weight and proportion across all 191, and
+- **Fire Emblem Heroes-style *bodies*.** The liveliness comes from the code's motion; what the painting
+  owes is a pose with weight in it — planted, ready, never a stiff paper doll.
+- **One consistent cast.** Shared rendering style, line weight and proportion across all 154, and
   matched to the dialogue portraits of the named characters. Units are compared side by side on the
   board, so a mismatch reads immediately.
 - **Readable small, and readable darkened.** The sprite is displayed around 52px tall. Silhouette and
@@ -40,91 +45,42 @@ rigging labour on is **the skeletons**, and the 191 are **skins** over them.
   (fallen and inactive states tint it down). Avoid identity resting on fine low-contrast detail.
 - **Human-made only:** **no AI-generated content.** A contractual requirement, not a preference.
 
-## Skeletons and skins — what we are actually buying
-
-Spine skins are native to the tool, and they are the shape of this job. One **skeleton** per body plan,
-rigged and animated once; one **skin** per character, which is artwork attached to that skeleton and no
-rigging labour at all. The animation set below therefore gets authored **once per skeleton**, not 191
-times.
-
-The roster's own `kind` field already partitions it, and the split is lopsided in the direction that
-helps:
-
-| kind | bodies | note |
-|---|---|---|
-| humanoid | **113** | wants a few skeletons, split by stance/weapon (one-hand, two-hand, bow, staff) |
-| beast | 23 | quadruped, plus a flyer |
-| demon | 15 | mostly humanoid-adjacent; some may ride the humanoid skeletons |
-| construct | 15 | |
-| elemental | 12 | amorphous — one skeleton covers the set, recoloured |
-| object | 7 | barely animated: a banner, a totem, a straw sentry |
-| undead | 6 | can ride a humanoid skeleton with a different skin |
-
-We expect this to land somewhere around **10 skeletons**. Propose your own split — you will know better
-than us where a shared rig stops being convincing — but the deliverable we are pricing is *skeletons
-rigged and animated* plus *skins authored*, itemised separately, not a flat per-character rate.
-
-**Where the shared skeleton pays most:** 38 of the humanoids are the game's **discipline exemplars** —
-one hero per discipline, all human, differing in kit and silhouette rather than in build. A further 7
-are the named companions. Those 45 are the bodies a player recruits and looks at longest, and they are
-the single most skin-able group in the game.
-
-**Where it must not be pushed:** the seven generals and the final boss are the game's set-pieces. If a
-shared skeleton would make one of them read as a reskin of a rank-and-file body, rig it on its own and
-tell us — we would rather pay for eight distinctive silhouettes than have the bosses feel generic.
-
-## The rig is also the portrait
+## The board still is also the portrait
 
 The game tells its story visual-novel style, with a standing figure over a dialogue box at **470px
-tall**. There is no separate portrait commission: **that figure is the rig**, posed.
+tall**. There is no separate portrait commission: **that figure is the board still**, posed.
 
 This has one hard consequence for authoring, and it cannot be retrofitted:
 
-- **Author and export the atlas at portrait scale, not board scale.** The board draws a unit at ~52px.
-  A rig authored for 52px and scaled up 9× to fill a dialogue box is a blurred mess. Author the source
-  art large and deliver atlas pages that stay crisp at **470px tall**, then let the engine downscale for
+- **Author at portrait scale, not board scale.** The board draws a unit at ~52px.
+  A picture authored for 52px and scaled up 9x to fill a dialogue box is a blurred mess. Author the source
+  art large and deliver a file that stays crisp at **470px tall**, then let the engine downscale for
   the board — the same "never author small" rule as below, taken seriously enough to survive the larger
   of the two sizes.
 - **Compose so the figure reads at both sizes.** Silhouette and key colours carry the 52px board read;
   face and costume detail carry the 470px one. Detail that only exists at portrait scale is fine — detail
   the silhouette *depends* on is not.
-- **A neutral standing/idle pose is the portrait pose.** No separate portrait artwork is delivered; the
-  dialogue box shows the rig at rest.
+- **A neutral standing pose is the portrait pose.** No separate portrait artwork is delivered; the
+  dialogue box shows the same picture, at rest.
 
 Only the named cast is ever shown in a dialogue box, so if it changes the price, treat portrait-scale
 fidelity as a requirement for **Phase 1** and board-scale as sufficient for Phases 2–3.
 
 ## Format & delivery
 
-- **Authored and delivered as a Spine project** (Esoteric Software Spine). Mesh deformation and
-  weighted bones are expected for the FEH-style motion, so author in **Spine Professional**.
-- Deliver, per unit:
-  - the **Spine project / source** (`.spine`), and
-  - the **exported runtime files**: skeleton (`.json` or `.skel`), atlas (`.atlas`), and the atlas
-    **page PNG(s)** — transparent background.
-- **Name each rig to match the unit id** in the roster below (e.g. `general_wrath`, `dire_bear`).
-- **One texture atlas per rig** where practical; keep atlas pages to a sensible power-of-two size.
-- Keep the **origin/root at the feet, centred** — the sprite is placed by its footprint on a tile.
-- **Author facing one direction** (screen-right by convention). The game mirrors a rig for units
-  facing the other way, so the art need not be drawn both ways.
-
-## Animation set
-
-Every rig ships the same named clips, so a delivered unit works the moment it drops in. Match these
-names and loop settings:
-
-| Clip | Loop? | Reads as |
-|---|---|---|
-| `idle` | loop | At-rest breathing/sway. The state a unit spends most of its time in. |
-| `move` | loop | Walking/advancing between tiles. |
-| `attack` | one-shot | A committed strike — wind-up, hit, follow-through. Returns to `idle`. |
-| `hit` | one-shot | Taking a blow — a flinch/recoil. Returns to `idle`. |
-| `cast` | one-shot | Channelling an ability (magic, a shout, a heal). Returns to `idle`. |
-| `death` | one-shot | Being felled — a collapse/fade the unit ends on. Holds on the last pose. |
-
-- Keep clips **short and loopable at small scale** — motion should read at 52px, not rely on detail.
-- A creature with no spellcasting can play a second physical `attack` variation in place of `cast`;
-  flag any unit where a clip doesn't fit and we'll agree a substitute.
+- **One PNG per unit**, transparent background. That is the entire delivery — no project file, no
+  atlas, no export step.
+- **Name each file to match the unit id** in the roster below (e.g. `general_wrath.png`,
+  `dire_bear.png`). It drops into `assets/chars/` and the game picks it up with no wiring.
+- **Author at portrait scale** (see above) — deliver **≥1400px tall** so the same picture stays crisp
+  in the 470px dialogue box, and let the engine downscale to the board's ~52px.
+- **Compose the figure standing on its feet, centred.** The game pivots every animation at the
+  **feet** — a body that topples or squashes around its middle reads as a spinning coin — so the
+  footprint must sit at the bottom edge of the canvas with no padding under it.
+- **Author facing one direction** (screen-right by convention). The game mirrors the sprite for units
+  facing the other way, so it need not be drawn both ways.
+- **A neutral standing pose.** The code supplies motion; what it needs is a body at rest that reads as
+  ready, not mid-swing.
 
 ## Technical spec
 
@@ -135,27 +91,12 @@ names and loop settings:
 - **Transparent** throughout; no baked background, ground shadow, or tile.
 - No baked team colour or selection frame — the game draws allegiance rings and highlights itself.
 
-## The roster (191)
+## The roster (154)
 
 Unit ids match the game's data files; see [story.md](story.md) for who each character is. Suggested
-phasing runs most-seen first. **The lists below are not the whole 191** — they are the named bodies of
+phasing runs most-seen first. **The lists below are not the whole 154** — they are the named bodies of
 each phase; `& "E:\LOVE\lovec.exe" . art-report missing` prints the current full set, and it is the only
 figure that cannot go stale.
-
-### Phase 1.5 — the recruit roster (45)
-
-Slotted between the named cast and the enemies because it is what a player spends the most time
-*choosing between*, and because it is where [skins](#skeletons-and-skins-what-we-are-actually-buying)
-do the most work.
-
-- **The 7 companions** — already in Phase 1 below. One per story line.
-- **The 38 discipline exemplars** — one hero per discipline (`data/disciplines/*.lua`, field `hire`).
-  All human, all distinguished by kit and role rather than by build: a Necromancer, a Warlord, a
-  Trapper. These are the descent's hireable bodies, met one at a time at the Crossing, and studied on a
-  card when they arrive.
-
-A player sees these more often than any enemy in the game. They should be **skins of shared humanoid
-skeletons** and should still read as 45 different people.
 
 ### Phase 1 — the named cast (~18)
 
@@ -187,15 +128,15 @@ Recurring foes that must match the cast's style.
 > `bandit` · `bandit_chief` · `bastion_sworn` · `caravan_master` · `champion` ·
 > `forsworn_captain` · `forsworn_knight` · `ordnance_sentry` · `warlord`
 
-The generic soldier types — `knight`, `mage`, `archer`, `priest` — also need a rig as the game's
+The generic soldier types — `knight`, `mage`, `archer`, `priest` — also need a painting as the game's
 rank-and-file stand-ins; they can be plainer than the named cast.
 
 ### Phase 3 — the creatures (~78)
 
 Beasts, elementals, undead, demons and constructs — 23 + 12 + 6 + 15 + 15 by the roster's own `kind`
-field, plus the 7 inanimate objects below. Most read best with non-humanoid skeletons, and each of those
-skeletons covers a whole group: one quadruped serves every beast on four legs, one amorphous body serves
-all six elementals recoloured.
+field, plus the 7 inanimate objects below. Most are non-humanoid, and a shared body plan carries a whole
+group: the beasts on four legs read as one family, the amorphous ones as another. The six elementals are
+one body recoloured, and should be quoted that way.
 
 > `boar` · `dire_bear` · `hawk` · `pig` · `stag` · `wolf` · `wolf_alpha` ·
 > `earth` / `fire` / `ice` / `lightning` / `water` / `wind` elementals ·
@@ -205,11 +146,15 @@ all six elementals recoloured.
 ### Phase 4 — the objects (7)
 
 `banner` · `march_standard` · `straw_sentry` · `totem` and three others. Inanimate things that stand on
-the board and can be destroyed. They need a skeleton only in the loosest sense: a sway, a hit reaction
+the board and can be destroyed. They barely move at all: a sway, a hit reaction
 and a topple. Cheapest group in the game and worth quoting separately.
 
 ## Licensing
 
 **Full commercial rights / work-for-hire buyout** — use in a commercial game and its marketing, no
-project-count limit. **100% human-authored, no AI-generated content.** Delivery includes the editable
-Spine source so the rigs can be maintained. Credit welcome, not required.
+project-count limit. **100% human-authored, no AI-generated content.** Delivery includes the layered
+source (PSD or equivalent) so a body can be revised without repainting it. Credit welcome, not required.
+
+There is **no tooling requirement on either side** — no editor licence to hold, no runtime licence to
+ship. A PNG is the whole contract, which also means we are not restricted to artists who own or know a
+particular package.

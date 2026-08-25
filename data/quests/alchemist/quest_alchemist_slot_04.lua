@@ -32,7 +32,7 @@ return {
         "in one room, and they are better than they have any right to be.",
     difficulty = "Normal",
     sponsor = "alchemist",
-    rewardItems = { "armor_everdraught_bandolier" },
+    rewardItems = { "armor_everdraught_bandolier", "utility_short_fuse" },
     rewardGold = 180,
     -- The prerequisite chain DROPPED with the retired board: its only entry named a quest the descent
     -- could never post, so the chain it belonged to no longer exists. The errand pool is the order now

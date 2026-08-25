@@ -17,7 +17,6 @@ return {
     tags = { "signature", "impact" },
     class = "rogue",
     discipline = "saboteur",
-    bound = true,
     activeAbility = {
         target = "self",
         range = 0,

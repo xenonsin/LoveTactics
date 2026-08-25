@@ -32,7 +32,6 @@ return {
     tags = { "signature", "banner" },
     class = "fighter",
     discipline = "warlord",
-    bound = true,
     activeAbility = {
         target = "self",
         range = 0,

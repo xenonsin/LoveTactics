@@ -9,6 +9,5 @@ return {
     description = "The priest's zone nailed to a stake. Plant totems that project holy heal and negate fields around them.",
     classes = { "hunter", "priest" },
     exemplar = "character_totemist", -- NEW, pending
-    hire = "character_tuva",
     requiredQuests = { "quest_hunters_lodge_the_spirit_wood" },
 }

@@ -19,7 +19,6 @@ return {
     tags = { "signature", "primal" },
     class = "rogue",
     discipline = "poacher",
-    bound = true,
     activeAbility = {
         target = "self",
         range = 0,

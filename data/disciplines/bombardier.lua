@@ -12,6 +12,5 @@ return {
     description = "The thrower. Scatter bombs seed hazards at range and chain-detonate off each other.",
     classes = { "alchemist" },
     exemplar = "character_bombardier", -- NEW, pending
-    hire = "character_pol",
     requiredQuests = { "quest_alchemist_slot_04" },
 }

@@ -18,7 +18,6 @@ return {
     tags = { "signature", "arcane" },
     class = "knight",
     discipline = "spellbreaker",
-    bound = true,
     activeAbility = {
         target = "self",
         range = 0,

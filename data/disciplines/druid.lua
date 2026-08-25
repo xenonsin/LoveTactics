@@ -11,6 +11,5 @@ return {
     description = "The shapeshifter. Trades your whole kit for a beast form for a few turns. Bear to hold ground, wolf to cover it.",
     classes = { "hunter" },
     exemplar = "character_druid", -- NEW, pending
-    hire = "character_mira",
     requiredQuests = { "quest_hunters_lodge_slot_04" },
 }

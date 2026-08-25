@@ -15,7 +15,7 @@ return {
         "Read the names on your way out.",
     difficulty = "Hard",
     sponsor = "arcanum",
-    rewardItems = { "weapon_second_utterance_wand" },
+    rewardItems = { "weapon_second_utterance_wand", "utility_court_kept_waiting" },
     rewardGold = 220,
     requiredQuests = { "quest_arcanum_slot_04" }, -- slot 5: the line runs in order
     requiredPrestige = 3,

@@ -35,9 +35,6 @@ local RESOLVE_LABEL = {
     town = "Enter",
     treasure = "Open",
     rest = "Rest",
-    -- A heroic spirit is being LISTENED to, not fought or opened: what it gives up is a name
-    -- (data/encounters/encounter_heroic_spirit.lua).
-    spirit = "Listen",
 }
 
 function Encounter.new(opts)

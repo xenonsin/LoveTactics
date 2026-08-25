@@ -17,7 +17,7 @@ return {
     description = "The rite takes eight turns and cannot be hurried. Something in the dark knows it.",
     difficulty = "Hard",
     sponsor = "cathedral",
-    rewardItems = { "weapon_sealed_censer", "armor_interceding_stole" },
+    rewardItems = { "weapon_sealed_censer", "armor_interceding_stole", "utility_rite_unspoken" },
     rewardGold = 220,
     -- The prerequisite chain DROPPED with the retired board: its only entry named a quest the descent
     -- could never post, so the chain it belonged to no longer exists. The errand pool is the order now

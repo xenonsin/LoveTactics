@@ -21,7 +21,6 @@ return {
     tags = { "signature", "impact" },
     class = "rogue",
     discipline = "mammonite",
-    bound = true,
     activeAbility = {
         target = "enemy",
         range = 4,

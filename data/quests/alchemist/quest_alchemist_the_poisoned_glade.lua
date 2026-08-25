@@ -24,6 +24,7 @@ return {
         "working the middle of it with her sleeves rolled up.",
     difficulty = "Hard",
     sponsor = "alchemist",
+    rewardItems = { "utility_cullers_basket" },
     rewardGold = 250,
     -- Both parents, earned: "quest_hunters_lodge_slot_03" is the first hunter subclass gate on its line,
     -- "quest_alchemist_slot_04" the first alchemist. Holding either is impossible without them.

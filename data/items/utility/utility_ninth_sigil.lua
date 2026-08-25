@@ -22,7 +22,6 @@ return {
     tags = { "signature", "arcane" },
     class = "mage",
     discipline = "elementalist",
-    bound = true,
     activeAbility = {
         target = "self",
         range = 0,

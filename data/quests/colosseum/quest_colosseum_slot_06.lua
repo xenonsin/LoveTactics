@@ -38,7 +38,7 @@ return {
     sponsor = "colosseum",
     intro = "conversation_colosseum_slot_06_intro",
     outro = "conversation_colosseum_slot_06_outro",
-    rewardItems = { "weapon_wolfs_portion", "weapon_unspent_blow" },
+    rewardItems = { "weapon_wolfs_portion", "weapon_unspent_blow", "utility_red_account" },
     rewardGold = 240,
     -- The prerequisite chain DROPPED with the retired board: its only entry named a quest the descent
     -- could never post, so the chain it belonged to no longer exists. The errand pool is the order now

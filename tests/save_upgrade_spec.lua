@@ -30,31 +30,23 @@ return {
         -- the company rather than about the campaign, each opens a building, and each is a field nothing
         -- else in the save would notice going missing -- a door that quietly stopped opening after a
         -- quit-and-continue is exactly the failure that has no other symptom.
-        name = "the depth record, the wound mark and the hiring purse round-trip",
+        name = "the depth record and the wound mark round-trip",
         fn = function()
             local Descent = require("models.descent")
-            local Voucher = require("models.voucher")
             local Wound = require("models.wound")
 
             local player = Player.new()
             Descent.reached(player, 6)
             Wound.inflict(player, { { id = "character_rowan" } })
-            Voucher.stake(player, "character_saber")
-            Voucher.grant(player, 2)
 
             local restored = Save.restore(Save.snapshot(player))
             assert(Descent.deepest(restored) == 6,
                 "the depth record survives, got " .. tostring(Descent.deepest(restored)))
             assert(Wound.everWounded(restored), "the wound mark survives")
-            -- THE HIRING PURSE (models/voucher.lua), which is a COUNT: a token has no grade, so there
-            -- is nothing to carry across but how many. Three here -- the sponsor stakes one and two are
-            -- granted -- and a purse that reloaded short would silently rob the player.
-            assert(Voucher.count(restored) == 3,
-                "the purse survives a reload, got " .. Voucher.count(restored))
-            assert(restored.staked == true,
-                "the sponsor's clause stays paid: she does not stake a second time after a reload")
-            assert(restored.riggedPull == "character_saber",
-                "the opening pull is still rigged to the body the story picked")
+            -- THE HIRING PURSE WAS ASSERTED HERE, and it is gone with the Crossing: a staked voucher, a
+            -- count of tokens, and the rigged opening pull that named the body the story picked. The
+            -- save still CARRIES those fields so an old file loads, but nothing writes them any more,
+            -- so there is nothing left to round-trip.
 
             -- ...and paying the surgeon does not un-mark it. The ledger empties; the fact does not, or
             -- the city would lose the Inn the morning after it was used.
@@ -71,7 +63,6 @@ return {
         name = "an older save loads with no depth, no wound history and an empty purse",
         fn = function()
             local Descent = require("models.descent")
-            local Voucher = require("models.voucher")
             local Wound = require("models.wound")
 
             local snap = Save.snapshot(Player.new())
@@ -81,7 +72,6 @@ return {
             local restored = Save.restore(snap)
             assert(Descent.deepest(restored) == 0, "no record to beat")
             assert(not Wound.everWounded(restored), "nor any bones ever set")
-            assert(Voucher.count(restored) == 0, "nor anything in the hiring purse")
             assert(next(restored.bonds or {}) == nil, "nor anybody pulled twice")
             assert(restored.pulls == 0 and restored.pity == 0, "and the pull ledger reads as unused")
             assert(restored.staked == false,
@@ -96,14 +86,11 @@ return {
         -- already paid and must not pay again.
         name = "a save whose staked field is still a list loads as a sponsor who has already paid",
         fn = function()
-            local Voucher = require("models.voucher")
             local snap = Save.snapshot(Player.new())
             snap.staked = { "character_saber" }
 
             local restored = Save.restore(snap)
             assert(restored.staked == true, "an old list-shaped stake reads as paid")
-            assert(not Voucher.stake(restored, "character_saber"),
-                "...so she is not asked for a second voucher on load")
         end,
     },
     {

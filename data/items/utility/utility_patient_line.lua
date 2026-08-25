@@ -24,7 +24,6 @@ return {
     tags = { "signature", "primal" },
     class = "hunter",
     discipline = "trapper",
-    bound = true,
     activeAbility = {
         target = "self",
         range = 0,

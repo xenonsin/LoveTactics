@@ -24,6 +24,7 @@ return {
     difficulty = "Hard",
     sponsor = "hunters_lodge",
     ladder = 3, -- which rung of the Lodge this job opens (models/errand.lua)
+    rewardItems = { "utility_old_wind", "utility_standing_stone" },
     rewardGold = 250,
     -- Both parents, earned: "quest_hunters_lodge_slot_03" is the first hunter subclass gate on its line,
     -- "quest_arcanum_slot_03" the first mage. Holding either is impossible without them.

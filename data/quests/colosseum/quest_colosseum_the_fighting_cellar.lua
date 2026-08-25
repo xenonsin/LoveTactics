@@ -22,6 +22,7 @@ return {
         "issued a bandolier before they go on, and they drink the whole way through.",
     difficulty = "Hard",
     sponsor = "colosseum",
+    rewardItems = { "utility_last_call" },
     rewardGold = 250,
     -- Both parents, earned: "quest_colosseum_slot_03" is the first fighter subclass gate on its line,
     -- "quest_alchemist_slot_04" the first alchemist. Holding either is impossible without them.

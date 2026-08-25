@@ -24,7 +24,6 @@ return {
     tags = { "signature", "physical" },
     class = "priest",
     discipline = "monk",
-    bound = true,
     activeAbility = {
         target = "self",
         range = 0,

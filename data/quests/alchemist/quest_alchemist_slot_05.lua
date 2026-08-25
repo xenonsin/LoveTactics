@@ -12,6 +12,7 @@ return {
         "the philosophy costs the ones it is practised on.",
     difficulty = "Hard",
     sponsor = "alchemist",
+    rewardItems = { "utility_mother_vat" },
     rewardGold = 220,
     requiredQuests = { "quest_alchemist_slot_04" }, -- slot 5: the line runs in order
     requiredPrestige = 4,

@@ -33,7 +33,7 @@ return {
         "locked, the log is up to date, and they are annoyed that you knocked.",
     difficulty = "Normal",
     sponsor = "arcanum",
-    rewardItems = { "weapon_graven_circle_staff", "armor_gaunt_vigil_plate" },
+    rewardItems = { "weapon_graven_circle_staff", "armor_gaunt_vigil_plate", "utility_second_reading" },
     rewardGold = 180,
     requiredQuests = { "quest_arcanum_slot_03" }, -- slot 4: the line runs in order
     requiredPrestige = 3,

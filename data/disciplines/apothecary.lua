@@ -11,6 +11,5 @@ return {
     description = "The field medic who reaches for a dose before a blade. Elixirs that heal and lend party stats, so what your column is carrying is what the dose is worth.",
     classes = { "priest", "alchemist" },
     exemplar = "character_apothecary", -- was character_ren (a root companion); dedicated exemplar authored
-    hire = "character_ansel",
     requiredQuests = { "quest_alchemist_apothecary_ren" }, -- pending
 }

@@ -86,10 +86,21 @@ return {
         -- act. If this fails and the change was intended, update the vector -- but know what it means.
         name = "the draw sequence is the documented Park-Miller stream (golden vector)",
         fn = function()
-            -- Cross-checked against an independent Schrage implementation, not merely recorded from
-            -- ours. Note the stream starts from seed+1: Park-Miller's state must be non-zero, so
+            -- Note the stream starts from seed+1: Park-Miller's state must be non-zero, so
             -- Combat.newRandom maps the seed into 1..2147483646 before the first step.
-            local expected = { 23, 74, 43, 55, 62, 72 }
+            --
+            -- RE-BASELINED, and Netplay.VERSION went to 2 with it. The STATE sequence is untouched and
+            -- still canonical Park-Miller by Schrage -- an independent implementation would step through
+            -- exactly the same states, which is what the old vector was cross-checked against. What moved
+            -- is how a state becomes a draw in 1..n: `state % n` reads the low-order bits, and those are
+            -- structured badly enough that `rand(7)` returned 1 for every seed on a fresh generator
+            -- (16807 is 7^5, so the first state is always a multiple of seven). The draw scales off the
+            -- top of the range now.
+            --
+            -- So these numbers are ours rather than a third party's, and the property this case defends
+            -- is the one that actually matters here: the stream is STABLE, and changing it is a
+            -- deliberate act that costs a protocol bump.
+            local expected = { 10, 97, 71, 50, 55, 28 }
             local got = draws(Combat.newRandom(12345), #expected, 100)
             assert(sameList(got, expected),
                 "seed 12345 should draw " .. table.concat(expected, ", ")

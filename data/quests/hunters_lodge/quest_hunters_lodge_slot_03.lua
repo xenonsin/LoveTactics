@@ -30,7 +30,7 @@ return {
     difficulty = "Normal",
     sponsor = "hunters_lodge",
     ladder = 1, -- which rung of the Lodge this job opens (models/errand.lua)
-    rewardItems = { "weapon_windward" },
+    rewardItems = { "weapon_windward", "utility_second_leash" },
     rewardGold = 130,
     -- The prerequisite chain DROPPED with the retired board: its only entry named a quest the descent
     -- could never post, so the chain it belonged to no longer exists. The errand pool is the order now

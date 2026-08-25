@@ -32,7 +32,6 @@ local Discipline = require("models.discipline")
 local Errand = require("models.errand")   -- the small work a house asks for before it opens a rung
 local Item = require("models.item")
 local Identify = require("models.identify")
-local Voucher = require("models.voucher") -- the vouchers the floors hand up, and the pull that spends one
 local Wound = require("models.wound")     -- what a body carries up; the Inn's dot and the Inn's whole offer
 local VendorVisit = require("models.vendor_visit") -- what a shop says before it shows you the shelf
 local Locale = require("models.locale")
@@ -100,23 +99,11 @@ local BURGER_X, BURGER_Y = 18, 18
 -- The Gate stage was the Quest Board, which is retired (models/building.lua's RETIRED). Coaching a door
 -- the city no longer has would have left the arrival pointing at nothing and the coach bubble anchored
 -- to a rect that does not exist.
+-- THERE WAS A `hire` STAGE BEFORE THIS ONE, and it coached the Crossing: the sponsor's staked voucher,
+-- a rigged first pull that dealt Saber, and a lesson in what a pull looked like. The Crossing is retired
+-- and there is no pull to teach, so the arrival now hands straight to the Rift. Saber is earned at the
+-- Colosseum's own work like every other companion.
 local INTRO_STAGES = {
-    hire  = {
-        building = "hiring_hall",
-        -- WHO THE SPONSOR'S VOUCHER CALLS, named here rather than in the model because which body opens
-        -- the game is a content decision and models/voucher.lua has no opinion about content. Saber is a
-        -- free agent of the sand who fights for its own sake and belongs to no house, which makes her
-        -- the one companion who can answer a hired room on day one without a story having to explain
-        -- why (data/characters/character_saber.lua).
-        --
-        -- THE FIRST PULL IS RIGGED AND EVERY GAME IN THIS GENRE RIGS IT. What the player is being taught
-        -- here is what a pull LOOKS like -- the light, the tell, the body landing whole -- and a lesson
-        -- delivered by a roll would teach a different thing to every player and occasionally teach
-        -- nothing at all. Voucher.stake plants both halves: the voucher in the purse and the name the
-        -- next pull will deal whatever the bands say.
-        hire = "character_saber",
-        text = "the Crossing. The sponsor has paid for one already.",
-    },
     coach = {
         building = "the_gate",
         text = "the Rift. The sponsor is waiting.",
@@ -493,7 +480,6 @@ function hub.enter()
             -- a dot that cleared on the first look would stop reminding the player at the exact moment
             -- they decided to spend it later. It goes out when the purse empties, which is the same
             -- line the errand branch draws (cleared by being TAKEN ON, not by being seen).
-            if b.panel == "hiring" then return Voucher.count(hub.player) > 0 end
             -- A BODY THAT CAME UP BROKEN (models/wound.lua). Asked BEFORE the vendor branch for the
             -- third time on this board: the Inn declares a vendor id to keep a keeper without keeping a
             -- shelf (data/vendors/inn.lua), so the branch below would take it, ask a shelf question
@@ -572,13 +558,13 @@ function hub.enter()
     if hub.player.hubIntro == "arrival" then
         Conversation.play("conversation_prologue_arrival", function()
             Conversation.play("conversation_prologue_sponsor", function()
-                -- HER TERMS, MADE GOOD BEFORE THE SCENE HAS CLOSED. "I pay for the people you hire" is
-                -- the first clause of the deal the party just took, so the voucher she paid for is in
-                -- the purse by the time they turn round and look at the city. Staked here rather than
-                -- at the prologue's start because it is THIS scene that promises it, and a voucher
-                -- waiting in a city the party has not reached yet is a promise kept early.
-                Voucher.stake(hub.player, INTRO_STAGES.hire.hire)
-                hub.player.hubIntro = "hire"
+                -- HER TERMS USED TO BE MADE GOOD HERE -- "I pay for the people you hire" bought a staked
+                -- voucher before the party had turned round to look at the city. There is nothing to
+                -- spend it at now, so the arrival hands straight to the Rift.
+                --
+                -- The sponsor's scene still makes that promise in its prose. It wants rewriting, or she
+                -- is offering to pay for a thing the city no longer sells.
+                hub.player.hubIntro = "coach"
                 Player.save()
             end)
         end)

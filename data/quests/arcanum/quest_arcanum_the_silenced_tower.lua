@@ -23,6 +23,7 @@ return {
         "that is still in the stairwell, and they took an oath about people like you.",
     difficulty = "Hard",
     sponsor = "arcanum",
+    rewardItems = { "utility_dry_word" },
     rewardGold = 250,
     -- Both parents, earned: "quest_bastion_slot_03" is the first knight subclass gate on its line,
     -- "quest_arcanum_slot_03" the first mage. Holding either is impossible without them.

@@ -23,6 +23,7 @@ return {
         "is still there, and she is still holding it.",
     difficulty = "Hard",
     sponsor = "arcanum",
+    rewardItems = { "utility_folded_word" },
     rewardGold = 250,
     -- Both parents, earned: "quest_colosseum_slot_03" is the first fighter subclass gate on its line,
     -- "quest_arcanum_slot_03" the first mage. Holding either is impossible without them.

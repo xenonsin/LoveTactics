@@ -20,7 +20,6 @@ return {
     tags = { "signature", "impact" },
     class = "alchemist",
     discipline = "bombardier",
-    bound = true,
     activeAbility = {
         target = "self",
         range = 0,

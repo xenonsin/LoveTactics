@@ -17,7 +17,6 @@ return {
     tags = { "signature", "shadow" },
     class = "rogue",
     discipline = "ninja",
-    bound = true,
     activeAbility = {
         target = "self",
         range = 0,

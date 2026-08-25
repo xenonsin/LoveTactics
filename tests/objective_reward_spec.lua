@@ -10,7 +10,6 @@
 -- cannot be required without a window, which is why this arithmetic was moved out of it.
 
 local Descent = require("models.descent")
-local Voucher = require("models.voucher")
 local Player = require("models.player")
 local Quest = require("models.quest")
 local Item = require("models.item")
@@ -39,19 +38,6 @@ local function minorFloor()
 end
 
 return {
-    { name = "a floor's token count can be asked without being paid", fn = function()
-        local player = Player.new()
-        local floor = generalFloor()
-        local n = Voucher.forFloor(floor)
-        assert(n > 0, "a general's floor pays tokens")
-        assert(Voucher.count(player) == 0, "asking must not grant")
-        -- The preview and the grant are the same number by construction, not by coincidence: this is the
-        -- assertion that keeps them that way if either constant moves.
-        assert(Voucher.grantForFloor(player, floor) == n,
-            "the grant pays exactly what the preview named")
-        assert(Voucher.count(player) == n, "...and the purse holds it")
-        assert(Voucher.forFloor(minorFloor()) == 0, "a lieutenant's floor pays none")
-    end },
 
     { name = "a guardian's reward names her own piece, and takes nothing", fn = function()
         local player = Player.new()
@@ -66,11 +52,9 @@ return {
         assert(out.items[1] == Descent.dropFor(player, sin, true),
             "and it is the piece the grant would have handed over")
         assert(Item.defs[out.items[1]], "which is a real item")
-        assert(out.vouchers == Voucher.forFloor(floor), "the circle's tokens ride along")
 
         -- THE WHOLE POINT OF THE SPLIT: previewing is not taking. Nothing above may have moved the player.
         assert(#(player.stash or {}) == 0, "the piece is not in the stash yet")
-        assert(Voucher.count(player) == 0, "and no token has been paid")
         assert((player.gold or 0) == Player.new().gold, "and the purse is untouched")
     end },
 
@@ -114,7 +98,6 @@ return {
         assert(out, "an unfinished errand pays")
         assert(out.gold == (def.rewardGold or 0), "its purse is the def's, not a roll")
         assert(#out.items == #(def.rewardItems or {}), "and every authored good is named")
-        assert(out.vouchers == 0, "an errand is not a circle and pays no tokens")
 
         -- The same guard Errand.complete keeps as its first line: a cleared tile is worth nothing twice.
         player.completedQuests = { [id] = true }

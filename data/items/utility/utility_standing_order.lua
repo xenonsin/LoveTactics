@@ -21,7 +21,6 @@ return {
     tags = { "signature", "artifice" },
     class = "mage",
     discipline = "artificer",
-    bound = true,
     activeAbility = {
         target = "self",
         range = 0,

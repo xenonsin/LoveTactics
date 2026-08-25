@@ -42,7 +42,7 @@ return {
     -- (models/errand.lua's Errand.next, which only enforces a gate some house still asks for).
     requiredPrestige = 2,
     requiredSponsorQuests = { vendor = "bastion", count = 3 }, -- 3 of this house's quests done
-    rewardItems = { "utility_greywatch_muster_roll", "weapon_answering_bell", "weapon_rimebell" },
+    rewardItems = { "utility_greywatch_muster_roll", "weapon_answering_bell", "weapon_rimebell", "armor_standing_debt" },
     map = {
         biomes = { "castle", "tundra" },
         encounters = { min = 8, max = 11, always = { "encounter_forsworn" } },

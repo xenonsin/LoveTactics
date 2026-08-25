@@ -24,7 +24,6 @@ return {
     tags = { "signature", "shield" },
     class = "knight",
     discipline = "sentinel",
-    bound = true,
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     -- The wall's stance, like every shield on this shelf: its brace climbs with the forge.
     waitBehavior = { kind = "defend", speed = 3, defense = Curve.ramp(5, 15) },

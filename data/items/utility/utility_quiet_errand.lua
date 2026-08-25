@@ -21,7 +21,6 @@ return {
     tags = { "signature", "pierce", "physical" },
     class = "rogue",
     discipline = "assassin",
-    bound = true,
     activeAbility = {
         target = "enemy",
         range = 8,

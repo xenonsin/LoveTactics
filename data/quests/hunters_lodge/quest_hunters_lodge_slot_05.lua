@@ -18,7 +18,7 @@ return {
     difficulty = "Hard",
     sponsor = "hunters_lodge",
     ladder = 4, -- which rung of the Lodge this job opens (models/errand.lua)
-    rewardItems = { "weapon_knell_shaft", "armor_blindfold_cloak" },
+    rewardItems = { "weapon_knell_shaft", "armor_blindfold_cloak", "utility_patient_line" },
     rewardGold = 220,
     requiredQuests = { "quest_hunters_lodge_slot_04" }, -- slot 5: the line runs in order
     requiredPrestige = 2,

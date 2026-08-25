@@ -25,6 +25,7 @@ return {
         "has not been a knight for a long while, and the ground she walks is going soft.",
     difficulty = "Hard",
     sponsor = "bastion",
+    rewardItems = { "utility_sealed_bell" },
     rewardGold = 250,
     -- Both parents, earned: "quest_bastion_slot_03" is the first knight subclass gate on its line,
     -- "quest_alchemist_slot_04" the first alchemist. Holding either is impossible without them.

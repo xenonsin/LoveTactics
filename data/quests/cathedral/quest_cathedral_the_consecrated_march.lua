@@ -23,6 +23,7 @@ return {
         "asked if you are coming. They are not waiting for the answer.",
     difficulty = "Hard",
     sponsor = "cathedral",
+    rewardItems = { "armor_marching_vow" },
     rewardGold = 250,
     -- Both parents, earned: "quest_colosseum_slot_03" is the first fighter subclass gate on its line,
     -- "quest_cathedral_slot_03" the first priest. Holding either is impossible without them.

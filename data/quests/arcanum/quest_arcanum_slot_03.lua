@@ -33,7 +33,7 @@ return {
         "village it was practised on, which is still here, and still wrong.",
     difficulty = "Normal",
     sponsor = "arcanum",
-    rewardItems = { "weapon_reflecting_wand", "armor_witchlight_shroud" },
+    rewardItems = { "weapon_reflecting_wand", "armor_witchlight_shroud", "utility_ninth_sigil" },
     rewardGold = 130,
     -- The prerequisite chain DROPPED with the retired board: its only entry named a quest the descent
     -- could never post, so the chain it belonged to no longer exists. The errand pool is the order now

@@ -7,6 +7,5 @@ return {
     description = "Wrath read straight. Damage climbs as your own health falls, and the heaviest strikes are paid for in blood.",
     classes = { "fighter" },
     exemplar = "character_barbarian", -- NEW, pending
-    hire = "character_brann",
     requiredQuests = { "quest_colosseum_slot_06" },
 }

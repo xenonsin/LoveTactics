@@ -21,7 +21,6 @@ return {
     tags = { "signature", "impact" },
     class = "knight",
     discipline = "bulwark",
-    bound = true,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

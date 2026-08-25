@@ -36,7 +36,7 @@ return {
         "respectable firms to the same address. It is the one with its name on the hospital.",
     difficulty = "Normal",
     sponsor = "undercroft",
-    rewardItems = { "weapon_mired_kris" },
+    rewardItems = { "weapon_mired_kris", "utility_bag_of_holding" },
     rewardGold = 180,
     -- The prerequisite chain DROPPED with the retired board: its only entry named a quest the descent
     -- could never post, so the chain it belonged to no longer exists. The errand pool is the order now

@@ -86,29 +86,21 @@ Forge.CEILING_BASE = 3
 -- Consumables are not: they refine per-type through Forge.recipeCost/refineRecipe instead, because a
 -- stack of five potions is not five things to hammer.
 --
--- A BOUND ITEM IS NOT, AND THIS FILE USED TO ARGUE THE OPPOSITE AT LENGTH. The old reading was that
--- `bound` blocks moving and selling an item, never upgrading it -- so a signature relic forged in place
--- like any gear, which is the whole point of a build-around. That was right while the bench was the
--- only ladder there was.
+-- A BOUND ITEM IS, AND THAT IS THIS FILE'S ORIGINAL READING RESTORED RATHER THAN A NEW ONE. `bound`
+-- blocks MOVING and SELLING an item and has never meant anything else: a signature relic is welded to
+-- its bearer, and it is forged in place like any other gear, which is the whole point of a build-around.
 --
--- It is not any more. Every one of the forty-five bodies a company can hold carries exactly one bound
--- item, that object IS the body rather than its gear, and the thing that levels it now is the body
--- TURNING UP AGAIN -- a duplicate off the Hiring Hall's pull (models/voucher.lua's BONDS). Leaving the
--- bench open beside that would mean two ladders onto one object, one bought with technique and one
--- with luck, and the cheaper of the two would decide what the relic was worth.
+-- IT WAS CLOSED ONCE, FOR A LADDER THAT NO LONGER EXISTS. While the Hiring Hall dealt bodies, a
+-- duplicate levelled the relic of the body it dealt twice, and leaving the bench open beside that would
+-- have put two ladders on one object -- one bought with technique, one with luck -- with the cheaper of
+-- the two deciding what the relic was worth. The pull is gone and the bond ledger with it, so the
+-- second ladder is gone and the first one comes back.
 --
--- SO THE DIVISION OF LABOUR GETS A THIRD TERM. Gold buys BREADTH (a vendor hands you a thing you did
--- not have), technique buys DEPTH (a bench makes a thing you already carry better), and a bond buys
--- IDENTITY -- the one object nobody else can carry, paid for in the only currency that means you went
--- and found that person twice.
---
--- What it costs the bench is real and is worth naming: technique's deepest sink was a companion's own
--- relic, and that sink is gone. What it costs the PLAYER is that a body arrives with its build-around
--- at level 0 and stays there until the pull says otherwise -- see models/voucher.lua on why the rates
--- are set generous.
+-- WHICH LEAVES THE DIVISION OF LABOUR AT TWO TERMS, where it started. Gold buys BREADTH -- a vendor
+-- hands you a thing you did not have. Technique buys DEPTH -- a bench makes a thing you already carry
+-- better. A companion's own relic is technique's deepest sink again, which is what it was built to be.
 function Forge.canWork(item)
     if not item or not Item.isUpgradable(item) then return false end
-    if Item.isBound(item) then return false end
     return item.type == "weapon" or item.type == "armor"
         or item.type == "utility" or item.type == "ability"
 end

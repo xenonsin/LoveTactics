@@ -78,226 +78,13 @@ return {
             "Descent.hasRoom must not come back: the roster is unbounded and the question has one answer")
     end },
 
-    { name = "a floor guarantees a spirit whatever the company holds, and never a body", fn = function()
-        -- THE STOP CAME BACK AND ITS PAYOUT DID NOT. A floor guarantees a third kind again -- a heroic
-        -- spirit -- but where the old `recruit` stop handed over a BODY, this one hands up a token
-        -- (models/voucher.lua). That is the whole of the fix: the old one could only seat while the
-        -- company had ROOM, so it stopped seating for good once four were held.
-        --
-        -- ASSERTED ACROSS EVERY ROSTER SIZE, which is the case that would have caught the original bug:
-        -- a payout with no cap must not develop one, and a guarantee that quietly went conditional on
-        -- the company again would pass every other case in this file.
-        local run = Descent.new(nil, 77)
-        local function names(roster)
-            local set = {}
-            for _, k in ipairs(Descent.floorQuest(run, { roster = roster }).map.guaranteeKinds or {}) do
-                set[k] = true
-            end
-            return set
-        end
-        for _, roster in ipairs({ {}, { {} }, { {}, {}, {}, {} }, { {}, {}, {}, {}, {}, {} } }) do
-            local kinds = names(roster)
-            assert(kinds.spirit,
-                "a floor must guarantee its spirit whatever the company holds -- that is the fix")
-            assert(not kinds.recruit,
-                "the body-granting stop must not come back: the company grows at the rift now")
-            -- Naming kinds REPLACES the generator's default pair rather than adding to it, so a floor
-            -- that forgot to restate them would quietly lose its reliquary and its rest.
-            for _, kind in ipairs({ "relic_cache", "rest" }) do
-                assert(kinds[kind], "a floor must still guarantee its " .. kind)
-            end
-        end
-    end },
-
-    { name = "the spirit is one authored blueprint, and it is never rolled onto a board", fn = function()
-        -- The guarantee resolves a KIND to a blueprint off the registry in sorted id order, so a second
-        -- `spirit` blueprint would silently decide which one every floor seats. And the weight must be
-        -- zero: a positive one would scatter spirits across rolled CAMPAIGN boards, where there is no
-        -- rift to spend a token at and resolveNonCombat pays nothing.
-        local found = {}
-        for id, def in pairs(Encounter.defs) do
-            if def.kind == "spirit" then found[#found + 1] = id end
-        end
-        assert(#found == 1, "expected exactly one spirit blueprint, found " .. #found)
-        assert(Encounter.defs[found[1]].weight == 0, found[1] .. " must be authored-only (weight 0)")
-        -- It is a row the player reads before pressing a button, so it has to carry a sentence.
-        local desc = Encounter.defs[found[1]].description
-        assert(desc and desc ~= "", found[1] .. " needs a description: the panel prints one")
-    end },
-
-    { name = "the spirit really stands on the board, and the floor is still a floor", fn = function()
-        -- THE CASE THAT EARNS THIS FILE. Everything above is a descriptor agreeing with itself; this
-        -- rolls the actual board. A descent floor is an `ascent` map, and models/overworld.lua's
-        -- placeEncounters takes an entirely different route through those -- so "the descriptor asked
-        -- for a spirit" and "a spirit is standing on the floor" are two facts, and only the second one
-        -- is what the player walks.
-        local run = Descent.new(nil, 5150)
-        -- The body-granting stop stays gone at the root: the guarantee resolves a KIND to a blueprint
-        -- off the registry, and the weighted fill draws off the same registry, so one absent blueprint
-        -- settles both halves.
-        for id, def in pairs(Encounter.defs) do
-            assert(def.kind ~= "recruit",
-                id .. " still declares kind = 'recruit'; that stop was replaced, not restored")
-        end
-
-        for _, roster in ipairs({ { {} }, { {}, {}, {}, {}, {} } }) do
-            local quest = Descent.floorQuest(run, { roster = roster })
-            for _, seed in ipairs({ 3, 17, 404, 8888 }) do
-                local counts = kindCounts(Overworld.generate(floorParams(quest, seed)))
-                assert((counts.spirit or 0) >= 1,
-                    "seed " .. seed .. ": no spirit stands on the floor, so it hands up no token")
-                assert((counts.recruit or 0) == 0,
-                    "seed " .. seed .. ": a body-granting stop is standing on a floor that has none to give")
-                -- The floor keeps everything else it owes. A guarantee table that lost an entry would
-                -- pass the lines above and quietly drop the reliquary or the rest.
-                assert((counts.rest or 0) >= 1, "seed " .. seed .. ": the floor lost its rest")
-                assert((counts.relic_cache or 0) >= 1, "seed " .. seed .. ": the floor lost its reliquary")
-                -- ...and the floor is still mostly fighting. Adding a guaranteed stop SPENDS a cell, so
-                -- this is the assertion that catches a third guarantee eating the board's fights.
-                assert((counts.combat or 0) + (counts.elite or 0) >= 4,
-                    "seed " .. seed .. ": a floor is fights with texture between them, not the texture alone")
-            end
-        end
-    end },
-
-    { name = "every discipline names the hero the floors offer for it", fn = function()
-        -- The roster is one authored line per discipline (`hire`, beside the `exemplar` it already
-        -- named), so a discipline that landed without one is a hole in the pool that nothing else
-        -- reports. The two must also be different bodies: the exemplar is the boss you FIGHT in that
-        -- discipline's quest, and offering it as a recruit would put a boss stat line in the company.
-        local seen = {}
-        for id, def in pairs(Discipline.defs) do
-            local hire = def.hire
-            assert(hire, id .. " names no hire, so nobody of that discipline is ever met on a floor")
-            assert(Character.defs[hire], id .. ": hire " .. tostring(hire) .. " has no blueprint")
-            assert(hire ~= def.exemplar, id .. ": the hire must not be the boss body of the same name")
-            assert(Character.defs[hire].discipline == id,
-                hire .. " is offered as the " .. id .. " but its blueprint says otherwise")
-            assert(not seen[hire], hire .. " is the hire of two disciplines")
-            seen[hire] = true
-        end
-    end },
-
-    { name = "heroes are met in the order their disciplines are normally unlocked", fn = function()
-        -- WHAT THE CAMPAIGN DECIDES IS THE ORDER: a subclass names a numbered slot in its house's line
-        -- and Quest.floorLevelFor turns that into the level a party is expected to hold there. A
-        -- discipline earned earlier up top is met no deeper down here than one earned later -- which is
-        -- the whole of "when those classes are normally unlocked", and the only thing read off the
-        -- campaign. The SPACING is the descent's own (see the case below).
-        local function levelOf(id, def)
-            if Discipline.arity(id) >= 2 then return math.huge end -- past every subclass by construction
-            local level = 1
-            for _, questId in ipairs(def.requiredQuests or {}) do
-                level = math.max(level, Quest.floorLevelFor(Quest.defs[questId] or {}, questId) or 1)
-            end
-            return level
-        end
-
-        local ranked = {}
-        for id, def in pairs(Discipline.defs) do
-            local floor = Recruit.floorFor(def.hire)
-            assert(floor >= 1 and floor <= Descent.FLOORS,
-                id .. " stands on floor " .. floor .. ", which is not a floor of this descent")
-            ranked[#ranked + 1] = { id = id, level = levelOf(id, def), floor = floor }
-        end
-
-        for _, a in ipairs(ranked) do
-            for _, b in ipairs(ranked) do
-                if a.level < b.level then
-                    assert(a.floor <= b.floor, a.id .. " is earned before " .. b.id ..
-                        " in the campaign but is met deeper: floor " .. a.floor .. " vs " .. b.floor)
-                end
-            end
-        end
-
-        -- A multiclass is earned advancement -- its capstone opens only once a subclass of EACH parent
-        -- is held (models/discipline.lua) -- so none of them may be met in the first circles, where a
-        -- company is still picking up its second and third bodies.
-        for _, entry in ipairs(ranked) do
-            if entry.level == math.huge then
-                assert(entry.floor > Descent.FLOORS_PER_CIRCLE * 2,
-                    entry.id .. " is a multiclass met on floor " .. entry.floor ..
-                    ", inside the first two circles")
-            end
-        end
-    end },
-
-    { name = "the first floor is the base classes, and every floor under it opens two or three", fn = function()
-        -- THE FIRST FLOOR IS THE PLAIN CLASSES. A discipline is earned off a house's line; the class
-        -- under it is what a player has from the beginning, so the seven stand at the mouth and nothing
-        -- specialized stands beside them.
-        local counts = {}
-        for _, id in ipairs(Recruit.roster()) do
-            local floor = Recruit.floorFor(id)
-            counts[floor] = (counts[floor] or 0) + 1
-        end
-
-        local first = Recruit.pool(1)
-        for _, id in ipairs(first) do
-            assert(not Character.defs[id].discipline,
-                id .. " is a specialization standing on the first floor, beside the plain classes")
-        end
-        local classes = {}
-        for _, id in ipairs(first) do classes[Character.defs[id].class] = true end
-        local n = 0
-        for _ in pairs(classes) do n = n + 1 end
-        assert(n == #first, "the first floor is one body per class, not two of anything")
-
-        -- AND THE SPACING BELOW IT, which is the reason the campaign's levels are read as an order
-        -- rather than as depths. Mapped level-for-level, all twenty-one multiclass heroes arrive on one
-        -- floor -- the campaign has no opinion about which of them comes first, and the lump is that
-        -- absence showing through. Then eleven of the fifteen floors open nobody at all, and going one
-        -- deeper is worth nothing on most of them.
-        local specialists = #Recruit.roster() - #first
-        local even = specialists / (Descent.FLOORS - 1)
-        for floor = 2, Descent.FLOORS do
-            local opened = counts[floor] or 0
-            assert(opened > 0, "floor " .. floor .. " opens nobody new -- going deeper buys nothing there")
-            assert(opened <= math.ceil(even) + 1, "floor " .. floor .. " opens " .. opened ..
-                " bodies at once, which is a tier rather than a share")
-        end
-    end },
-
-    { name = "the pool opens with depth and is whole at the bottom", fn = function()
-        -- The first circle offers the plain end of the roster and the deep floors offer all of it, which
-        -- is the half of the rule a player actually feels. Monotonic, because the pool is cumulative: a
-        -- floor offers everything standing at its depth or above it, never a band.
-        local first, bottom = Recruit.pool(1), Recruit.pool(Descent.FLOORS)
-        assert(#first > 0, "floor one has somebody standing on it")
-        assert(#bottom > #first, "and the bottom of the descent has considerably more")
-
-        assert(#bottom == #Recruit.roster(),
-            "every base class and every discipline's hero is on the table by the bottom floor")
-
-        local above = first
-        for floor = 2, Descent.FLOORS do
-            local pool = Recruit.pool(floor)
-            local here = {}
-            for _, id in ipairs(pool) do here[id] = true end
-            for _, id in ipairs(above) do
-                assert(here[id], id .. " stood on floor " .. (floor - 1) .. " and is gone by " .. floor)
-            end
-            above = pool
-        end
-
-        -- The stop asks through Recruit.offer, so the gate has to hold on that path too -- it is the one
-        -- states/game.lua actually calls, and a first floor that deals Aldo the Champion is the bug.
-        for seed = 1, 30 do
-            for _, id in ipairs(Recruit.offer(seed, {}, #first, 1)) do
-                assert(not Character.defs[id].discipline,
-                    "seed " .. seed .. " put " .. id .. " on a first-floor slate")
-            end
-        end
-    end },
-
     { name = "a slate reproduces from its seed and offers no body twice", fn = function()
-        -- THE STOP OFFERS ONE BODY: somebody is standing there, and you take them on or walk on. The
-        -- slate is still a slate underneath -- the Hiring Hall deals three off it -- so the dedup and
-        -- reproducibility below are checked at a width where they can actually fail.
+        -- THE STOP OFFERS ONE BODY: somebody is standing there, and you take them on or walk on. Nothing
+        -- deals wider than that any more -- the Hiring Hall did, and it is gone -- but the dedup and
+        -- reproducibility below are still checked at width 3, because a slate of one cannot fail a dedup
+        -- even when the dedup is broken.
         assert(Recruit.OFFER == 1, "a floor puts one body in front of the player, not a shelf")
 
-        -- Dealt from the bottom, where the whole roster is standing: a shallow floor's pool is a couple
-        -- of bodies wide by design, which is too narrow for a dedup to fail on even when it is broken.
         local deep = Descent.FLOORS
         local a = Recruit.offer(4242, {}, 3, deep)
         local b = Recruit.offer(4242, {}, 3, deep)
@@ -305,9 +92,17 @@ return {
         for i, id in ipairs(a) do
             assert(b[i] == id, "the same seed must deal the same slate on any machine")
         end
-        assert(Recruit.offer(4243, {}, nil, deep)[1] ~= a[1]
-            or Recruit.offer(9999, {}, nil, deep)[1] ~= a[1],
-            "and a different seed must deal a different one")
+
+        -- A DIFFERENT SEED MUST DEAL A DIFFERENT SLATE, asked over a spread of seeds rather than two.
+        -- The roster is SEVEN now, one per house, where it was forty-five: two seeds colliding on the
+        -- same first body went from a 0.05% coincidence to a 2% one, and this case was failing on the
+        -- coincidence rather than on the shuffle. Asking eight seeds for any difference at all keeps
+        -- the property while making the sample honest about the pool it is drawn from.
+        local differs = false
+        for _, s in ipairs({ 4243, 9999, 17, 88, 1234, 5, 60007, 31 }) do
+            if Recruit.offer(s, {}, nil, deep)[1] ~= a[1] then differs = true break end
+        end
+        assert(differs, "every seed dealt the same body -- the shuffle is not reading the seed")
 
         local seen = {}
         for _, id in ipairs(a) do

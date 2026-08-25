@@ -36,7 +36,7 @@ return {
     outro = "conversation_bastion_slot_03_outro",
     -- weapon_disarming_pike is the Bastion's drill made a weapon -- a whole season on one motion that
     -- takes an armed man's arms. It belongs to the slot about a garrison drilled to hold its position.
-    rewardItems = { "consumable_watchpost_draught", "weapon_unclosing_edge", "weapon_disarming_pike" },
+    rewardItems = { "consumable_watchpost_draught", "weapon_unclosing_edge", "weapon_disarming_pike", "utility_doorstone" },
     rewardGold = 130,
     -- The prerequisite chain DROPPED with the retired board: its only entry named a quest the descent
     -- could never post, so the chain it belonged to no longer exists. The errand pool is the order now

@@ -18,7 +18,6 @@ return {
     tags = { "signature", "impact", "physical" },
     class = "knight",
     discipline = "vanguard",
-    bound = true,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

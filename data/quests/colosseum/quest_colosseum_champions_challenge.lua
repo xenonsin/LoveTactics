@@ -37,6 +37,7 @@ return {
         "explain the rules. Come at her together. She would prefer it.",
     difficulty = "Hard",
     sponsor = "colosseum",
+    rewardItems = { "armor_crowds_due" },
     rewardGold = 250,
     -- Both parents, earned: "quest_colosseum_slot_03" is the first fighter subclass gate on its line,
     -- "quest_bastion_slot_03" the first knight. Holding either is impossible without them.

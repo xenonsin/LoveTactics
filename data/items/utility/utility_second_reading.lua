@@ -19,7 +19,6 @@ return {
     tags = { "signature", "dark" },
     class = "mage",
     discipline = "necromancer",
-    bound = true,
     activeAbility = {
         target = "self",
         range = 0,

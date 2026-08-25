@@ -9,6 +9,5 @@ return {
     description = "The rampage. Chug a self-buff draught as a free action mid-swing, and keep swinging.",
     classes = { "fighter", "alchemist" },
     exemplar = "character_warbrewer", -- NEW, pending
-    hire = "character_hilde",
     requiredQuests = { "quest_colosseum_the_fighting_cellar" }, -- pending
 }

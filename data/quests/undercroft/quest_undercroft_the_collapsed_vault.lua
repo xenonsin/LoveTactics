@@ -27,6 +27,7 @@ return {
         "down whatever anyone does about it. Be outside when it does.",
     difficulty = "Hard",
     sponsor = "undercroft",
+    rewardItems = { "utility_the_signal" },
     rewardGold = 250,
     -- Both parents, earned: "quest_undercroft_slot_04" is the first rogue subclass gate on its line,
     -- "quest_alchemist_slot_04" the first alchemist. Holding either is impossible without them.

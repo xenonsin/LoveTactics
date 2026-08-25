@@ -23,7 +23,6 @@ return {
     tags = { "signature", "arcane" },
     class = "mage",
     discipline = "summoner",
-    bound = true,
     activeAbility = {
         target = "self",
         range = 0,

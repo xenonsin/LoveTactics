@@ -22,7 +22,6 @@ return {
     tags = { "signature", "physical" },
     class = "fighter",
     discipline = "barbarian",
-    bound = true,
     activeAbility = {
         target = "self",
         range = 0,

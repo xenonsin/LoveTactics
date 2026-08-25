@@ -23,7 +23,6 @@ return {
     tags = { "signature", "primal", "illusion" },
     class = "hunter",
     discipline = "druid",
-    bound = true,
     activeAbility = {
         target = "self",
         range = 0,

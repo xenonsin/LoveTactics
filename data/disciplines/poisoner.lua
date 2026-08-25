@@ -7,6 +7,5 @@ return {
     description = "The vat-master. Coatings: depleting weapon infusions applied between swings.",
     classes = { "alchemist" },
     exemplar = "character_poisoner", -- NEW, pending
-    hire = "character_zosia",
     requiredQuests = { "quest_alchemist_slot_05" },
 }

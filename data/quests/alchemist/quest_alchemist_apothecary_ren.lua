@@ -35,6 +35,7 @@ return {
         "come to the street outside. She is not leaving and she is not going to stop working.",
     difficulty = "Hard",
     sponsor = "alchemist",
+    rewardItems = { "utility_open_ward" },
     rewardGold = 250,
     -- Both parents, earned: "quest_cathedral_slot_03" is the first priest subclass gate on its line,
     -- "quest_alchemist_slot_04" the first alchemist. Holding either is impossible without them.

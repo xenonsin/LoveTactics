@@ -20,7 +20,6 @@ return {
     tags = { "signature", "alchemy" },
     class = "alchemist",
     discipline = "herbalist",
-    bound = true,
     activeAbility = {
         target = "self",
         range = 0,

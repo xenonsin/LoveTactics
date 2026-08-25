@@ -64,14 +64,14 @@ Warband.SETUPS = {
 -- PAYOFFS, indexed by the condition they are paid for. A body may appear under several: a barbarian's
 -- Fury is worth having against anything that cannot walk away, however it came to be stuck.
 Warband.PAYOFFS = {
-    poison     = { "character_battlemage", "character_cael", "character_nio", "character_garan" },
-    mark       = { "character_assassin", "character_rask", "character_duelist" },
+    poison     = { "character_battlemage", "character_necromancer", "character_elementalist", "character_battlemage" },
+    mark       = { "character_assassin", "character_poacher", "character_duelist" },
     root       = { "character_barbarian", "character_monk", "character_duelist", "character_crusader" },
     pull       = { "character_barbarian", "character_monk", "character_crusader" },
     guardbreak = { "character_barbarian", "character_assassin", "character_warbrewer" },
-    manaburn   = { "character_battlemage", "character_garan", "character_isa" },
-    ground     = { "character_poacher", "character_sela", "character_archer" },
-    coin       = { "character_mammonite", "character_cass" },
+    manaburn   = { "character_battlemage", "character_battlemage", "character_summoner" },
+    ground     = { "character_poacher", "character_trapper_ambusher", "character_archer" },
+    coin       = { "character_mammonite", "character_mammonite" },
 }
 
 -- The loose pool, for the fifth company that is a coincidence rather than a sentence. Every payoff
@@ -100,16 +100,16 @@ Warband.MULTIPLIERS = {
     "character_warden",   -- Warding Line: the flank you were going to use
     "character_totemist", -- Raise Totem: ground that is worth more to them than to you
     "character_shaman",   -- Call Spirit: another body, from nowhere
-    "character_ansel", "character_calla", "character_nell", "character_tuva",
+    "character_apothecary", "character_inquisitor", "character_exorcist", "character_totemist",
 }
 
 -- ANCHORS: the front rank. Repeated to fill out the head-count, so this list is the one place a
 -- company's bulk comes from.
 Warband.ANCHORS = {
     "character_knight", "character_crusader", "character_forsworn_knight", "character_bulwark",
-    "character_vanguard", "character_aldo", "character_dov", "character_dray", "character_ilse",
-    "character_ivo", "character_solene", "character_corin", "character_marek", "character_elio",
-    "character_brann", "character_fighter",
+    "character_vanguard", "character_champion", "character_bulwark", "character_vanguard", "character_sentinel",
+    "character_spellbreaker", "character_paladin", "character_warden", "character_warlord", "character_duelist",
+    "character_barbarian", "character_fighter",
 }
 
 -- ---------------------------------------------------------------------------

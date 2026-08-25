@@ -78,6 +78,23 @@ Combat.random = DEFAULT_RANDOM
 -- intermediate product under 2^31 so the arithmetic stays exact in a double and yields the same
 -- stream on every platform we ship. love.math is deliberately not used: this module is pure Lua
 -- (see the header) and has to load headless.
+-- THE DRAW READS THE HIGH BITS, NOT THE LOW ONES, and that is a bug fix rather than a preference.
+--
+-- This is Park-Miller (`state = 16807 * state mod 2147483647`, by Schrage's method), and its low-order
+-- bits are famously structured. Taking `state % n` walks straight into it: **16807 is 7^5**, so the
+-- FIRST draw off a fresh generator has `state = 16807 * seed`, which is a multiple of 7 whatever the
+-- seed is -- and `rand(7)` returned 1 for every seed in the game. No call site could fix it by seeding
+-- differently, because the multiplier annihilates the seed.
+--
+-- It was found on a seven: a slate dealt over the seven house companions offered the same body for
+-- eight different seeds (tests/descent_recruit_spec.lua). It had been latent for as long as this
+-- function has existed and was invisible while that roster was forty-five bodies wide -- 45 shares no
+-- factor with 16807, so the draw looked fine. Everything else this game counts in sevens (the houses,
+-- the sins, the classes) was one first-draw away from the same silence.
+--
+-- Scaling off the top of the range has no such structure and costs one divide. It also changes EVERY
+-- seeded sequence in the game -- board layouts, merchant stock, draft shops, arena rolls -- which is
+-- the expected outcome of the fix and not a side effect to be tuned back out.
 function Combat.newRandom(seed)
     local state = math.floor(math.abs(seed or 1)) % 2147483646 + 1
     return function(n)
@@ -86,7 +103,7 @@ function Combat.newRandom(seed)
         state = 16807 * lo - 2836 * hi
         if state <= 0 then state = state + 2147483647 end
         if not n or n <= 1 then return 1 end
-        return (state % n) + 1
+        return math.floor(state / 2147483647 * n) + 1
     end
 end
 

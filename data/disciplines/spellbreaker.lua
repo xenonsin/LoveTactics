@@ -9,6 +9,5 @@ return {
     description = "The anti-caster. Melee that interrupts a channel and negates the next spell cast nearby.",
     classes = { "knight", "mage" },
     exemplar = "character_spellbreaker", -- NEW, pending
-    hire = "character_ivo",
     requiredQuests = { "quest_arcanum_the_silenced_tower" }, -- pending
 }

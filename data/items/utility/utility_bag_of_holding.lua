@@ -25,7 +25,6 @@ return {
     tags = { "signature", "impact" },
     class = "rogue",
     discipline = "thief",
-    bound = true,
     -- Six, which is two thirds of a grid: enough that a good fight's takings all fit, small enough
     -- that a long one still makes her decide what to carry out.
     bag = { capacity = 6 },

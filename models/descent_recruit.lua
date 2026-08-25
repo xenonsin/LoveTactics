@@ -71,11 +71,6 @@ Recruit.OFFER = 1
 -- floor arrives whole, wearing the kit its blueprint authors, and joins a company you will keep. "A
 -- Fighter joins" is a stat line. "Brann joins, and the Red Account reads the health he has already
 -- spent" is somebody.
-local function heroOf(disciplineId)
-    local def = Discipline.defs[disciplineId]
-    return def and def.hire or nil
-end
-
 -- AND THE SEVEN BASE CLASSES, WHO STAND ON THE FIRST FLOOR. A discipline is a specialization earned off
 -- a house's line; the plain class under it is what a player has from the very beginning, so the seven
 -- are the shallowest thing down here and there is no ladder above them to climb.
@@ -161,51 +156,21 @@ local depths -- disciplineId -> the shallowest floor it may be met on. Built onc
 -- A multiclass has a capstone rather than a slot, and it is past every subclass by construction, so it
 -- ranks one level below the deepest of them. Which multiclass comes first is a question nothing in the
 -- game answers, so they hold that rank together and the spacing below deals them out.
-local function unlockLevel(id, def, deepestSlot)
-    local Quest = require("models.quest")
-    if Discipline.arity(id) >= 2 then return (deepestSlot or 1) + 1 end
-
-    local level = 1
-    for _, questId in ipairs(def.requiredQuests or {}) do
-        local gate = Quest.floorLevelFor(Quest.defs[questId] or {}, questId)
-        level = math.max(level, gate or 1)
-    end
-    return level
-end
-
+-- EVERY COMPANION STANDS AT THE FIRST FLOOR, and that is not a simplification of the old spread so much
+-- as a consequence of who is left.
+--
+-- This used to rank thirty-eight named hires by how deep their discipline unlocked and deal them evenly
+-- across floors 2..15, so a deeper body was a rarer meeting. That set is gone. What remains is the seven,
+-- one per house, and a companion is no longer MET at a depth at all -- they are met at their house's
+-- OPENER, which Descent.openersAt already seats in the first circle because an opener hands over slot 0.
+-- The depth that decides when you meet somebody is the opener's, not the body's.
+--
+-- Kept as a function rather than folded into a constant because Recruit.floorFor is still the honest
+-- question ("how deep before this body can appear"), and the answer being uniform today is a fact about
+-- the roster rather than about the caller.
 local function buildDepths()
-    -- The base classes hold the first floor, and nothing else does.
     local out = {}
     for _, id in ipairs(rootHeroes()) do out[id] = 1 end
-
-    -- The subclasses first, because the multiclass rank is defined against the deepest of them.
-    local deepestSlot = 1
-    for id, def in pairs(Discipline.defs) do
-        if Discipline.arity(id) < 2 then
-            deepestSlot = math.max(deepestSlot, unlockLevel(id, def, 0))
-        end
-    end
-
-    local ranked = {}
-    for id, def in pairs(Discipline.defs) do
-        if def.hire then
-            ranked[#ranked + 1] = { hire = def.hire, level = unlockLevel(id, def, deepestSlot) }
-        end
-    end
-    -- Ties broken by id, because `pairs` over a registry is unordered and a run must lay out the same
-    -- floors on any machine. Within a tie the campaign has said everything it has to say, so this is a
-    -- stable arbitrary rather than a hidden opinion.
-    table.sort(ranked, function(a, b)
-        if a.level ~= b.level then return a.level < b.level end
-        return a.hire < b.hire
-    end)
-
-    -- The even rate, over the floors BELOW the first: rank i of n opens on floor 2 + floor((i-1) *
-    -- (FLOORS - 1) / n). Every floor of the descent gets a share, and no floor gets a tier.
-    local span = math.max(1, Descent.FLOORS - 1)
-    for i, entry in ipairs(ranked) do
-        out[entry.hire] = 2 + math.floor((i - 1) * span / #ranked)
-    end
     return out
 end
 
@@ -216,14 +181,15 @@ function Recruit.floorFor(heroId)
     return depths[heroId] or 1
 end
 
--- Everybody the floors can ever offer: the seven base classes, then a hero per discipline.
+-- Everybody the floors can ever offer: the seven house companions, and nobody else.
+--
+-- IT USED TO BE FORTY-FIVE -- these seven plus one named hire per discipline, Brann the Barbarian and
+-- Pim the Thief and the rest. That set existed to stock a pull, and the pull is gone (see the note at
+-- the top of this file). The bodies themselves are not: they were the wrong thing to RECRUIT and are
+-- exactly the right thing to FIGHT, so they moved wholesale into models/warband.lua's buckets, where
+-- each one now stands in as its own discipline's exemplar.
 function Recruit.roster()
-    local ids = rootHeroes()
-    for id in pairs(Discipline.defs) do
-        local hero = heroOf(id)
-        if hero then ids[#ids + 1] = hero end
-    end
-    return ids
+    return rootHeroes()
 end
 
 -- The candidates standing at `floor` or above it, as character ids.

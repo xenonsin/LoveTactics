@@ -50,7 +50,6 @@ local Seed = require("models.seed") -- what this playthrough is made of; the gro
 local SeedReadout = require("ui.seed_readout") -- ...and what says so on screen, in a dev build only
 local Experience = require("models.experience") -- the one ladder: what turns banked xp into levels
 local Relic = require("models.relic")
-local Voucher = require("models.voucher") -- vouchers off the floors; the hall is what spends them
 local Meal = require("models.meal") -- the Cafe's supper: one platter, worn by the company all run
 local Wound = require("models.wound") -- what a body that went down carries out of the run
 local CoachBubble = require("ui.coach_bubble")
@@ -521,21 +520,13 @@ function game:openLanding(cell)
         end
     end
 
-    -- WHAT THE CIRCLE PAYS TOWARD THE COMPANY: vouchers, graded at the floor that finished it
-    -- (models/voucher.lua). This is the whole of how a descent grows its roster now -- the recruit stop
-    -- that used to stand on every floor is gone -- so it is credited on the same beat as the circle
-    -- itself and by the same test.
+    -- A CLEARED CIRCLE PAID CROSSING TOKENS HERE -- two of them, on the general's floor -- and that was
+    -- the whole of how a descent grew its roster. The Crossing is retired: a companion is met at their
+    -- house's opener and joins at that house's counter, so clearing a circle no longer pays toward the
+    -- company at all. What it still pays is the guardian's own piece, below.
     --
-    -- THE COUNT IS NOT KEPT, because nothing here says it any more: the victory screen named these tokens
-    -- a beat ago, off Voucher.forFloor, which is this same call with the granting taken out
-    -- (Descent.objectiveReward). Reporting them again in a toast would be the payout announced twice.
-    --
-    -- Granted on the PLAYER rather than on the run, because it has to outlive the run: a voucher earned
-    -- on floor six and carried up is the reward for having gone to floor six, and a wipe two floors
-    -- later does not un-earn it. A wipe takes a share of the coin and ore the run GAINED
-    -- (Player.loseHaul) and nothing else, so this needs no exemption written for it -- but it is worth
-    -- saying out loud that it is not an oversight: the circles you beat are yours.
-    Voucher.grantForFloor(game.player, Descent.depth(run))
+    -- WORTH SAYING OUT LOUD RATHER THAN LEAVING AS A GAP: this is a reward hole, not a tidy-up. A circle
+    -- used to hand over something that outlived the run, and now it does not.
 
     -- WHAT WAS ON THE BODY, and it is the body's OWN piece rather than a hand of cards.
     --
@@ -1507,13 +1498,9 @@ function game:openEncounter(cell, opts)
             -- relies on. Putting the roll anywhere else would give one of those three a different
             -- chance to the other two, and nothing would report it.
             --
-            -- Descent only: a token opens the Crossing, and the campaign has no tear to open.
-            if game.descent and game.player then
-                if Voucher.rollFromFight(game.player) then
-                    game:pushToast("A crossing token, off the body")
-                    Player.save()
-                end
-            end
+            -- A won fight used to roll a thin chance of a crossing token here. The Crossing is retired
+            -- and a companion is met at their house's opener instead, so a fight pays its spoils and
+            -- nothing else.
 
             -- Companion abilities react to the win (Amana heals, Ren distils a dose, Rowan banks a
             -- vigil, Clem takes her cut, Gyeom studies), then the relics do too (Pilgrim's Coin pays,
@@ -2903,19 +2890,6 @@ function game:resolveNonCombat(cell)
     local enc = cell.encounter
     if enc.kind == "rest" then game:restHeal() end -- back-compat: any path still routing rest here heals
 
-    -- A HEROIC SPIRIT hands up one crossing token (a token has no grade -- models/voucher.lua)
-    -- (data/encounters/encounter_heroic_spirit.lua). The third source, and the only one the player
-    -- steers: a circle pays on a schedule and a won fight rolls a chance, but this one is a place they
-    -- chose to walk to.
-    --
-    -- Guarded on `game.descent` even though only a descent seats the stop: the blueprint is in the
-    -- shared registry, and a campaign board that ever authored one would otherwise pay a token into a
-    -- purse the campaign has no rift to spend at.
-    if enc.kind == "spirit" and game.descent and game.player then
-        Voucher.grant(game.player, 1)
-        game:pushToast("The spirit gives up a name  ·  a crossing token")
-        Player.save()
-    end
 end
 
 -- A QUEST'S DOOR, and a descent can no longer come through it.

@@ -6,8 +6,8 @@
 >
 > 1. **The rig is the portrait.** The board sprites are Spine rigs, and the dialogue box shows one posed
 >    at rest rather than a separate painting — see
->    [commission-board-sprites.md](commission-board-sprites.md#the-rig-is-also-the-portrait) and
->    [art-assets.md](art-assets.md#the-named-cast--the-rig-is-the-portrait). The only thing this brief's
+>    [commission-board-sprites.md](commission-board-sprites.md#the-board-still-is-also-the-portrait) and
+>    [art-assets.md](art-assets.md#the-named-cast--the-board-still-is-the-portrait). The only thing this brief's
 >    technical spec still governs is the **470px** figure height, which now lands on the rig brief as an
 >    authoring requirement.
 > 2. **There is no cast to paint yet.** The dialogue prose these portraits would have illustrated is

@@ -23,6 +23,7 @@ return {
         "teaches. They are still in there, salting the ground behind them.",
     difficulty = "Hard",
     sponsor = "bastion",
+    rewardItems = { "utility_the_wedge" },
     rewardGold = 250,
     -- Both parents, earned: "quest_bastion_slot_03" is the first knight subclass gate on its line,
     -- "quest_undercroft_slot_04" the first rogue. Holding either is impossible without them.

@@ -16,7 +16,7 @@ return {
         "debt cost the ones who owed it.",
     difficulty = "Hard",
     sponsor = "undercroft",
-    rewardItems = { "armor_opportunists_harness" },
+    rewardItems = { "armor_opportunists_harness", "utility_quiet_errand" },
     rewardGold = 220,
     requiredQuests = { "quest_undercroft_slot_04" }, -- slot 5: the line runs in order
     requiredPrestige = 3,

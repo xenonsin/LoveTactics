@@ -22,7 +22,6 @@ return {
     tags = { "signature", "physical" },
     class = "hunter",
     discipline = "skirmisher",
-    bound = true,
     activeAbility = {
         target = "enemy",
         range = 1,

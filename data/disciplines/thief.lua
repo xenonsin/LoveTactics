@@ -11,6 +11,5 @@ return {
     description = "Larceny. Strikes take an item, a buff or a stat off the target and hand it to you.",
     classes = { "rogue" },
     exemplar = "character_thief", -- NEW, pending
-    hire = "character_pim",
     requiredQuests = { "quest_undercroft_slot_04" },
 }

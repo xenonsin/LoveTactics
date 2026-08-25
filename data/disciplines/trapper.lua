@@ -8,6 +8,5 @@ return {
     description = "The ambusher. Pre-places tile triggers that root or wound whoever walks into them.",
     classes = { "hunter" },
     exemplar = "character_trapper_ambusher", -- character_trapper is the Colosseum debut spotter; dedicated exemplar authored
-    hire = "character_sela",
     requiredQuests = { "quest_hunters_lodge_slot_05" },
 }

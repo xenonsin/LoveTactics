@@ -24,6 +24,7 @@ return {
         "lost. One at a time is the reason.",
     difficulty = "Normal",
     sponsor = "colosseum",
+    rewardItems = { "weapon_long_bout" },
     rewardGold = 250,
     -- Both parents, earned: "quest_colosseum_slot_03" is the first fighter subclass gate on its line,
     -- "quest_undercroft_slot_04" the first rogue. Holding either is impossible without them.

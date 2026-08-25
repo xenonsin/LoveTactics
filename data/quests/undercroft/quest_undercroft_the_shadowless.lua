@@ -23,6 +23,7 @@ return {
         "wrong. You get one guess per turn.",
     difficulty = "Hard",
     sponsor = "undercroft",
+    rewardItems = { "utility_fourth_shadow" },
     rewardGold = 250,
     -- Both parents, earned: "quest_undercroft_slot_04" is the first rogue subclass gate on its line,
     -- "quest_arcanum_slot_03" the first mage. Holding either is impossible without them.

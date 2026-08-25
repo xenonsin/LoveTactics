@@ -17,7 +17,6 @@ return {
     tags = { "signature", "holy" },
     class = "priest",
     discipline = "totemist",
-    bound = true,
     activeAbility = {
         target = "self",
         range = 0,

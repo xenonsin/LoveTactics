@@ -32,7 +32,13 @@ local Netplay = {}
 Netplay.__index = Netplay
 
 -- Bumped when the protocol changes shape. Peers refuse each other across a mismatch.
-Netplay.VERSION = 1
+--
+-- 2: the SHAPE did not change; the RANDOM STREAM did (models/combat.lua's Combat.newRandom draws off
+--    the high bits now, because `state % n` made every first draw at a multiple of seven return 1 --
+--    16807 is 7^5). Two peers agree on the wire and then diverge on the first roll, which is a desync
+--    with no message attached to it. Refusing the handshake is the honest failure, and it is what this
+--    number is for even though nothing about the packets moved.
+Netplay.VERSION = 2
 
 Netplay.STATE = { handshake = "handshake", playing = "playing", over = "over", desynced = "desynced" }
 

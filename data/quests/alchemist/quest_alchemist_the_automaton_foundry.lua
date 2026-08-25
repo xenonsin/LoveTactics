@@ -24,6 +24,7 @@ return {
         "either. Every turn you spend in here, there is one more of them.",
     difficulty = "Hard",
     sponsor = "alchemist",
+    rewardItems = { "utility_standing_order" },
     rewardGold = 250,
     -- Both parents, earned: "quest_arcanum_slot_03" is the first mage subclass gate on its line,
     -- "quest_alchemist_slot_04" the first alchemist. Holding either is impossible without them.

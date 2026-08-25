@@ -23,6 +23,7 @@ return {
     difficulty = "Hard",
     sponsor = "hunters_lodge",
     ladder = 5, -- which rung of the Lodge this job opens (models/errand.lua)
+    rewardItems = { "utility_ground_given", "utility_quarrys_end" },
     rewardGold = 250,
     -- Both parents, earned: "quest_colosseum_slot_03" is the first fighter subclass gate on its line,
     -- "quest_hunters_lodge_slot_03" the first hunter. Holding either is impossible without them.

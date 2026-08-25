@@ -83,39 +83,39 @@ return {
         end,
     },
     {
-        -- THE BENCH IS SHUT TO IT, AND THIS CASE USED TO ASSERT THE OPPOSITE. A signature relic forged
-        -- in place like any gear for most of this game's life -- `bound` blocked moving and selling it,
-        -- never upgrading it, which was the whole point of a build-around while the bench was the only
-        -- ladder there was.
+        -- THE BENCH TAKES IT, WHICH IS THIS FILE'S ORIGINAL CLAIM RESTORED. `bound` blocks moving and
+        -- selling an item and has never meant anything else; a signature relic is forged in place like
+        -- any gear, which is the whole point of a build-around.
         --
-        -- It is not any more. A duplicate off the Hiring Hall's pull is what levels a bound relic now
-        -- (models/voucher.lua's BONDS), and leaving the bench open beside that would put two ladders on
-        -- one object -- one bought with technique, one with luck -- with the cheaper of the two deciding
-        -- what the relic is worth.
+        -- IT WAS SHUT FOR ONE RELEASE AND THE ARGUMENT IS WORTH KEEPING, because it was a good one while
+        -- it held: a duplicate off the Hiring Hall's pull levelled a bound relic, so leaving the bench
+        -- open beside that would have put two ladders on one object -- one bought with technique, one
+        -- with luck -- and the cheaper of the two would have decided what the relic was worth. The pull
+        -- is retired and the bond ledger with it, so there is only one ladder again and it is this one.
         --
-        -- WHAT STILL HAS TO HOLD is everything about the relic AT a level: the curve, the trait and the
-        -- binding. The rungs are reached differently; a rung is the same rung.
-        name = "a signature relic is off the bench, and still climbs its authored curve",
+        -- WHAT STILL HAS TO HOLD either way is everything about the relic AT a level: the curve, the
+        -- trait and the binding. How a rung is reached changed twice; a rung is the same rung.
+        name = "a signature relic is worked at the bench, and climbs its authored curve",
         fn = function()
             local player = Player.new()
             player.gold = 1000
             local relic = Item.instantiate("armor_sworn_aegis")
             assert(Item.isUpgradable(relic), "the relic still has a stat to scale")
-            assert(not Forge.canWork(relic),
-                "the bench must refuse a bound relic: a bond is the only ladder onto one")
+            assert(Forge.canWork(relic),
+                "the bench must take a bound relic: technique is the only ladder onto one again")
 
-            -- ...and the refusal is about `bound` rather than about armor, or the lock is too wide.
+            -- ...and it is not taking it by accident of type -- ordinary armor still works too.
             local plain = Item.instantiate("armor_buckler")
             if plain and Item.isUpgradable(plain) then
                 assert(Forge.canWork(plain), "the bench stopped taking ordinary armor")
             end
 
-            -- The curve the bond climbs is the one the blueprint authored, read at the level a bond
-            -- would put it at -- which is exactly what Item.instantiate does for the pull
-            -- (Voucher.applyRelic re-instantiates into the same cell, as Forge.upgrade always did).
+            -- The curve is the one the blueprint authored, read at the level a forge would put it at --
+            -- Item.instantiate is how a level change is realized anywhere (Forge.upgrade does exactly
+            -- this, re-instantiating into the same cell).
             local up = Item.instantiate("armor_sworn_aegis", 1, 1)
-            assert(up.level == 1, "a bond's rung is an ordinary item level")
-            assert(Item.isBound(up), "the levelled relic is still bound")
+            assert(up.level == 1, "a forged rung is an ordinary item level")
+            assert(Item.isBound(up), "the levelled relic is still bound -- upgrading never unbinds")
             assert(up.traits[1] == "trait_oathward", "and still carries its trait")
             local curve = Item.defs.armor_sworn_aegis.bonus.defense
             assert(up.bonus.defense == curve[2], "+1 defense is the level-1 entry")

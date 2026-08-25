@@ -34,7 +34,6 @@ return {
     tags = { "signature", "poison" },
     class = "alchemist",
     discipline = "plague_knight",
-    bound = true,
     activeAbility = {
         target = "self",
         range = 0,

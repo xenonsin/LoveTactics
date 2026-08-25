@@ -18,7 +18,6 @@ return {
     tags = { "signature", "poison" },
     class = "alchemist",
     discipline = "poisoner",
-    bound = true,
     activeAbility = {
         target = "self",
         range = 0,

@@ -9,6 +9,5 @@ return {
     description = "Border control. Mark a zone, and anything that steps into it is Rooted or Halted.",
     classes = { "knight", "hunter" },
     exemplar = "character_warden", -- NEW, pending
-    hire = "character_corin",
     requiredQuests = { "quest_bastion_the_border_watch" }, -- pending
 }

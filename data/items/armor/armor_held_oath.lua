@@ -23,7 +23,6 @@ return {
     tags = { "signature", "holy", "shield" },
     class = "knight",
     discipline = "paladin",
-    bound = true,
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     waitBehavior = { kind = "defend", speed = 3, defense = Curve.ramp(5, 15) },
     activeAbility = {

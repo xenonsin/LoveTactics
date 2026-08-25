@@ -16,7 +16,7 @@ return {
         local list = {
             "character_spellbreaker", -- setup: Mana Sunder, and the whole company is priced on it
             "character_battlemage",   -- payoff: Arcane Cleave into a party that cannot reply
-            "character_garan",        -- multiplier: casting itself becomes expensive
+            "character_battlemage",        -- multiplier: casting itself becomes expensive
             "character_knight",
             "character_knight",
         }

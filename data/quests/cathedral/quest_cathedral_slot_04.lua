@@ -35,7 +35,7 @@ return {
         "Clear it -- and look at what you are clearing.",
     difficulty = "Normal",
     sponsor = "cathedral",
-    rewardItems = { "weapon_gag_crook" },
+    rewardItems = { "weapon_gag_crook", "utility_unheld_hand" },
     rewardGold = 180,
     requiredQuests = { "quest_cathedral_slot_03" }, -- slot 4: the line runs in order
     requiredPrestige = 1,

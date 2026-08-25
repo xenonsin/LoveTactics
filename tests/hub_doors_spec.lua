@@ -88,17 +88,20 @@ return {
             assert(Building.seeded(p), "seeding creates the ledger")
             assert(#Building.unannounced(p) == 0, "...and leaves nothing owed an announcement")
 
-            -- The three the plaza opens with. Two of them are the first visit's own business
-            -- (states/hub.lua's INTRO_STAGES coaches the hall and the stair); the third would be a
-            -- fourth thing to press before the player has pressed anything.
-            for _, id in ipairs({ "the_gate", "hiring_hall", "armory" }) do
+            -- The two the plaza opens with. One is the first visit's own business (states/hub.lua's
+            -- INTRO_STAGES coaches the stair); the other would be a third thing to press before the
+            -- player has pressed anything.
+            --
+            -- IT WAS THREE, and the third was `hiring_hall` -- the Crossing, coached alongside the stair
+            -- by an INTRO_STAGES entry that no longer exists. The building is deleted with the pull.
+            for _, id in ipairs({ "the_gate", "armory" }) do
                 assert(Building.seenDoor(p, id), id .. " is open on a fresh save and must be seeded")
             end
             -- ...and a seeded ledger is never EMPTY, which is what lets the save drop an empty one and
             -- still tell "unseeded" from "seeded".
             local n = 0
             for _ in pairs(p.seenDoors) do n = n + 1 end
-            assert(n >= 3, "a seeded ledger must be non-empty, or nil and empty stop being different")
+            assert(n >= 2, "a seeded ledger must be non-empty, or nil and empty stop being different")
         end,
     },
     {

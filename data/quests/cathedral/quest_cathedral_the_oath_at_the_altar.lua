@@ -24,6 +24,7 @@ return {
         "been holding it for two days. The next wave is at the door.",
     difficulty = "Hard",
     sponsor = "cathedral",
+    rewardItems = { "armor_held_oath", "utility_written_charge" },
     rewardGold = 250,
     -- Both parents, earned: "quest_bastion_slot_03" is the first knight subclass gate on its line,
     -- "quest_cathedral_slot_03" the first priest. Holding either is impossible without them.

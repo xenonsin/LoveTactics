@@ -8,7 +8,7 @@ return {
     sponsor = "colosseum",
     intro = "conversation_colosseum_slot_03_intro",
     outro = "conversation_colosseum_slot_03_outro",
-    rewardItems = { "weapon_bellfounders_hammer", "armor_rally_coat" },
+    rewardItems = { "weapon_bellfounders_hammer", "armor_rally_coat", "utility_last_order" },
     rewardGold = 300,
     -- Gated on the DEBUT. This named the padded card (quest_colosseum_slot_02) until the retired
     -- board took that quest with it, and the gate is the same one either way: the first-visit

@@ -33,7 +33,7 @@ return {
         "once. The firm is hiring out the overflow. Posted rate, paid on completion.",
     difficulty = "Hard",
     sponsor = "undercroft",
-    rewardItems = { "weapon_thin_place" },
+    rewardItems = { "weapon_thin_place", "utility_with_interest" },
     rewardGold = 240,
     requiredQuests = { "quest_undercroft_slot_05" }, -- slot 6: the line runs in order
     requiredPrestige = 3,

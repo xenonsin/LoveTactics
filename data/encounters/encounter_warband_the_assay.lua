@@ -16,7 +16,7 @@ return {
         local list = {
             "character_mammonite",   -- payoff: output priced in coin, and it is holding yours
             "character_thief",       -- setup: Pickpocket, which is where the coin comes from
-            "character_cass",        -- multiplier: interest, on everything the other two took
+            "character_mammonite",        -- multiplier: interest, on everything the other two took
             "character_bandit_chief", -- the body that makes standing still expensive
         }
         -- FILLER REPEATS A BODY ALREADY LISTED, and that is a rule rather than a preference:

@@ -18,7 +18,6 @@ return {
     tags = { "signature", "primal" },
     class = "mage",
     discipline = "shaman",
-    bound = true,
     activeAbility = {
         target = "self",
         range = 0,

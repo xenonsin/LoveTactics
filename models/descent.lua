@@ -302,14 +302,14 @@ end
 --   a guardian  pays the first piece of hers this player does not already own (Descent.dropFor above,
 --               which is pure), and the house's stock when the list is exhausted -- openLanding's own
 --               fallback, and the gold beneath that when even the house has no material;
---   the tokens  are Voucher.forFloor, which is grantForFloor with the granting taken out.
+--   (a cleared circle paid crossing tokens here too, until the Crossing was retired.)
 --
 -- IT LIVES HERE RATHER THAN ON THE STATE that calls it because states/game.lua cannot be required under
 -- the headless runner (it pulls ui/theme.lua, which wants a window), so a payout written there is a
 -- payout no spec can read. This is arithmetic over a run and a player, which is what a model is.
 function Descent.objectiveReward(player, run, objSpec)
     if not (player and run) then return nil end
-    local out = { gold = 0, items = {}, materials = {}, vouchers = 0 }
+    local out = { gold = 0, items = {}, materials = {} }
 
     -- AN ERRAND, tried first and returned from -- the same order states/game.lua's onWin takes, and for
     -- the same reason: a floor carries the stair AND whatever a house asked for down here, each on its own
@@ -339,8 +339,6 @@ function Descent.objectiveReward(player, run, objSpec)
             out.gold = require("models.relic").BARE_SHELF_GOLD
         end
     end
-    -- Lazy: voucher -> descent -> here. Same cycle every other require in this file steps around.
-    out.vouchers = require("models.voucher").forFloor(depth)
     return out
 end
 
@@ -1641,32 +1639,22 @@ end
 
 -- WHAT A FLOOR IS GUARANTEED TO HOLD, whatever the weighted draw does with the rest of it.
 --
--- The first two are the generator's own default (models/overworld.lua's placeEncounters), restated
--- because naming a third REPLACES the list rather than adding to it -- a floor that asked only for a
--- recruit would lose its reliquary and its rest.
+-- These are the generator's own default (models/overworld.lua's placeEncounters), restated because
+-- naming any of them REPLACES the list rather than adding to it -- a floor that asked only for one
+-- would lose the others.
 --
--- THE THIRD IS A HEROIC SPIRIT, and it is the old recruit stop rebuilt around a different payout.
+-- A THIRD STOP STOOD HERE TWICE AND IS GONE BOTH TIMES. First a RECRUIT: somebody standing where you
+-- came through, taken on or walked past. It latched shut -- it could only seat while the company had
+-- ROOM, and nothing ever left a company, so it stopped seating for good once four bodies were held,
+-- which was the second floor of the first run. Then a HEROIC SPIRIT, the same place rebuilt around a
+-- payout that could not fill up: a crossing token, which had no cap.
 --
--- That stop handed over a BODY -- somebody standing where you came through, taken on or walked past --
--- and it had to be removed because it latched shut. It could only seat while the company had ROOM, and
--- nothing ever left a company, so it stopped seating for good once four bodies were held, which was the
--- second floor of the first run. Everything downstream starved with it.
---
--- WHAT WAS WRONG WAS THE PAYOUT, NOT THE PLACE. A floor wants a stop that grows the company; what it
--- cannot have is one whose reward the player can run out of room for. A token has no cap
--- (models/voucher.lua), so this can be guaranteed on every floor forever and never has to ask whether
--- there is space for what it is about to give.
---
--- ONE PER FLOOR, which is the cadence the recruit stop had. It is a walk: the spirit stands somewhere
--- on the board and the stair does not wait, so what the guarantee actually buys is a reason to open the
--- floor up rather than beeline the way down -- which is the board's whole offer.
---
--- IT IS THE THIRD SOURCE OF TOKENS AND THE ONLY ONE THE PLAYER STEERS. A circle pays two on a schedule
--- (Voucher.grantForFloor) and a won fight rolls a thin chance (Voucher.FIGHT_CHANCE); both happen TO
--- the player. This one is a place on a map they choose to walk to, which is the half the other two
--- cannot supply.
+-- The Crossing is retired and the token with it, so the spirit was a stop that paid nothing. What it
+-- was FOR is worth keeping in view if a third stop is ever wanted here: a reason to open the floor up
+-- rather than beeline the stair, and a reward the player steers toward rather than one that happens to
+-- them.
 local function guaranteeKinds(player, floor)
-    return { "relic_cache", "rest", "spirit" }
+    return { "relic_cache", "rest", "merchant" }
 end
 
 function Descent.floorQuest(run, player)

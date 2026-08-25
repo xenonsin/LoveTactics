@@ -18,7 +18,6 @@ return {
     tags = { "signature", "primal" },
     class = "hunter",
     discipline = "beastmaster",
-    bound = true,
     activeAbility = {
         target = "self",
         range = 0,

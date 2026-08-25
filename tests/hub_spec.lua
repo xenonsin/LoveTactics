@@ -332,7 +332,7 @@ return {
         -- on a fresh save -- there is no bone to set, no shelf to browse, no supper worth buying for a
         -- road nobody has walked and nothing in the bag to forge -- so each arrives on the deed that
         -- gives it a job. Pinned card by card, because the whole value of the staging is the ORDER.
-        name = "the plaza opens on three doors, and the rest arrive on the deeds that give them work",
+        name = "the plaza opens on two doors, and the rest arrive on the deeds that give them work",
         fn = function()
             local Descent = require("models.descent")
             local Errand = require("models.errand")
@@ -352,8 +352,8 @@ return {
                 if not b.locked then open[#open + 1] = b.id end
             end
             table.sort(open)
-            assert(table.concat(open, ",") == "armory,hiring_hall,the_gate",
-                "a fresh city should open on the hall, the armory and the stair; got " ..
+            assert(table.concat(open, ",") == "armory,the_gate",
+                "a fresh city should open on the armory and the stair; got " ..
                 table.concat(open, ", "))
 
             -- THE INN, on the first wound. Setting a bone is the only thing it does, so a company that
