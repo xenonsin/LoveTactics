@@ -1,22 +1,25 @@
--- The bench: the four of the company who did not take the field, and the two ways they get onto it.
+-- THE BENCH: the bodies an arena had no room for, and the fact that nothing brings them back.
 --
---   ROTATE     a living unit standing in the deploy zone spends its TURN to trade places
---   REINFORCE  a slot has opened (somebody fell), so filling it costs nothing
+-- TWO MOVES USED TO. ROTATE spent a living unit's turn to trade places with a reserve, from inside the
+-- deploy zone -- FALL BACK on every surface the player read. REINFORCE filled a slot a death had opened,
+-- free. Both are deleted: an expedition is four (Descent.PARTY_MAX) and the board holds four
+-- (Combat.MAX_FIELD), so there is never anybody off the field to send for.
 --
--- Covers the rules that are easy to get wrong and expensive to get wrong quietly:
---   * a benched member is NOT on the board or the timeline, and does not freeze the clock;
---   * a rotation costs a turn, and the body coming on inherits that bill;
---   * a rotation is refused outside your own lines, with a reason;
---   * statuses ride out and back -- falling back parks a poison rather than curing it;
---   * a withdrawal is not a death (no corpse, no allyDown tally);
---   * the field cap holds, except for the last-stand override;
---   * a party with a body still benched has NOT lost, and an empty bench still loses.
--- Pure model logic, so it runs headless.
+-- WHAT IS LEFT IS STILL WORTH PINNING. `combat.bench` did not go with them -- models/encounter_battle.lua
+-- still parks anybody the arena could not seat -- and the rules about what a benched body IS are the
+-- ones that were expensive to get wrong quietly: it is not on the board, not on the timeline, and does
+-- not freeze the clock.
+--
+-- AND ONE RULE INVERTED, which is why this file kept its name rather than being deleted with the moves.
+-- A party with somebody benched had NOT lost, because a reserve could still be called. Combat.eliminated
+-- no longer reads the bench: a body nobody can reach cannot hold a fight open, and a battle you can
+-- neither win nor lose is worse than either ending. The two cases at the bottom are that reversal, kept
+-- side by side with what did not change.
 
-local Character = require("models.character")
 local Combat = require("models.combat")
-local Status = require("models.status")
+local Character = require("models.character")
 local Fixture = require("tests.support.fixture")
+
 
 -- A board whose deploy zone is the two near rows, built the way Arena.build would hand one over.
 local function zoneRows(cols, rows, n)
@@ -81,150 +84,6 @@ return {
         end,
     },
     {
-        name = "a rotation costs a turn, and the body coming on inherits the bill",
-        fn = function()
-            local c = fight()
-            local hero = c.units[1]
-            openTurn(c, hero)
-            local turns = c.turnCount
-            local arrival = Combat.rotate(c, hero, 1)
-            assert(arrival, "the rotation went through")
-            assert(arrival.x == 2 and arrival.y == 6, "the newcomer stands where the swapper stood")
-            assert(not hero.alive and hero.withdrawn, "the swapper is off the board, withdrawn")
-            assert(c.turnCount == turns + 1, "a turn was spent")
-            assert(c.turn == nil, "and it is over")
-            assert(arrival.initiative > 0, "the newcomer waits out the turn the rotation cost")
-            -- A trade, not a withdrawal: the bench is the same size, holding the other body now.
-            assert(Combat.benchCount(c, "party") == 1, "the bench still holds one -- they swapped")
-            assert(c.bench[1].char == hero.char, "and it is the one who fell back")
-        end,
-    },
-    {
-        name = "a rotation is refused outside your own lines, and says why",
-        fn = function()
-            local c = fight({ party = { { "character_knight", 3, 3 } } }) -- mid-board, out of the zone
-            local hero = c.units[1]
-            openTurn(c, hero)
-            local ok, why = Combat.canRotate(c, hero)
-            assert(not ok, "a unit out in the field cannot trade places")
-            assert(type(why) == "string" and #why > 0, "and the refusal names a reason")
-            local done = Combat.rotate(c, hero, 1)
-            assert(done == false, "the rotation itself is refused too")
-            assert(hero.alive, "and costs the unit nothing")
-            assert(c.turnCount == 0, "no turn was spent on a refusal")
-        end,
-    },
-    {
-        name = "a rotation is refused with an empty bench",
-        fn = function()
-            local c = fight({ bench = {} })
-            local hero = c.units[1]
-            openTurn(c, hero)
-            local ok, why = Combat.canRotate(c, hero)
-            assert(not ok and why, "nobody to trade with, and it says so")
-        end,
-    },
-    {
-        name = "statuses ride out and back -- falling back parks a poison, it does not cure it",
-        fn = function()
-            local c = fight()
-            local hero = c.units[1]
-            Status.apply(c, hero, "status_poison")
-            assert(Status.has(hero, "status_poison"), "precondition: the hero is poisoned")
-            openTurn(c, hero)
-            Combat.rotate(c, hero, 1)
-            -- The hero is now the only bench entry, carrying what they walked off with.
-            local entry = c.bench[1]
-            assert(entry and entry.char == hero.char, "the withdrawn body is the one on the bench")
-            assert(entry.statuses and next(entry.statuses), "and it took its statuses with it")
-
-            -- Rotate them back on: the poison is still there. (The mage who came on is now the swapper,
-            -- and stands in the zone, so the trade runs in reverse.)
-            local mage = c.units[#c.units]
-            openTurn(c, mage)
-            local back = Combat.rotate(c, mage, 1)
-            assert(back, "the body comes back on")
-            assert(back.char == hero.char, "and it is the poisoned one")
-            assert(Status.has(back, "status_poison"), "still poisoned -- a rotation is not a cleanse")
-        end,
-    },
-    {
-        name = "a withdrawal is not a death: no corpse, no body to revive, no ally-down tally",
-        fn = function()
-            local c = fight()
-            local hero = c.units[1]
-            openTurn(c, hero)
-            Combat.rotate(c, hero, 1)
-            assert(not hero.corpse, "a body that walked off leaves no corpse")
-            assert(not hero.incapacitated, "and is not lying there waiting for a revive")
-            assert(Combat.corpseAt(c, 2, 6) == nil, "there is nothing to harvest where it stood")
-            assert(Combat.downedAt(c, 2, 6) == nil, "and nothing to revive")
-        end,
-    },
-    {
-        name = "reinforce is free, lands only inside the zone, and refuses a full field",
-        fn = function()
-            local c = fight({
-                party = { { "character_knight", 1, 6 }, { "character_knight", 2, 6 },
-                          { "character_knight", 3, 6 }, { "character_knight", 4, 6 } },
-                bench = { "character_mage" },
-            })
-            assert(Combat.fieldCount(c, "party") == Combat.MAX_FIELD, "precondition: the line is full")
-            local ok, why = Combat.canReinforce(c)
-            assert(not ok and why, "a full line takes nobody, and says so")
-
-            -- Fell one. The slot opens the moment the body drops.
-            local fallen = c.units[1]
-            fallen.alive = false
-            assert(Combat.fieldCount(c, "party") == Combat.MAX_FIELD - 1, "a fallen body holds no slot")
-            assert(Combat.canReinforce(c), "so a reserve may come in")
-
-            local turns = c.turnCount
-            local bad = Combat.reinforce(c, 1, 3, 3) -- mid-board, outside the zone
-            assert(bad == false, "a reinforcement cannot walk in through the middle of the board")
-            local unit = Combat.reinforce(c, 1, 5, 6)
-            assert(unit and unit.x == 5 and unit.y == 6, "it comes in on its own ground")
-            assert(c.turnCount == turns, "and costs no turn")
-            assert(unit.initiative >= 0, "arriving clamped, so it cannot cut ahead of whoever is acting")
-        end,
-    },
-    {
-        name = "with nothing standing, a reserve may always come in -- the last-stand override",
-        fn = function()
-            local c = fight()
-            c.units[1].alive = false
-            assert(Combat.aliveCount(c, "party") == 0, "precondition: nothing of the player's stands")
-            assert(Combat.canReinforce(c), "the bench is the difference between a rally and a wipe")
-        end,
-    },
-    {
-        name = "a party with a body still benched has not lost",
-        fn = function()
-            local c = fight()
-            c.units[1].alive = false
-            assert(Combat.aliveCount(c, "party") == 0, "precondition: the line is broken")
-            assert(Combat.outcomeFor(c, "party") ~= "loss", "but the company is not beaten")
-            assert(Combat.evaluate(c) ~= "loss", "and the fight reads the same way")
-        end,
-    },
-    {
-        name = "an empty bench and an empty field is still a loss",
-        fn = function()
-            local c = fight({ bench = {} })
-            c.units[1].alive = false
-            assert(Combat.outcomeFor(c, "party") == "loss", "nobody standing and nobody left to send")
-        end,
-    },
-    {
-        name = "the enemy cannot win by clearing a line the bench can replace",
-        fn = function()
-            local c = fight()
-            c.units[1].alive = false
-            assert(Combat.outcomeFor(c, "enemy") ~= "win",
-                "killAll reads the party's bench too -- the far side has not finished them")
-        end,
-    },
-    {
         name = "a summon does not count against the four-body field cap",
         fn = function()
             local c = fight()
@@ -235,67 +94,33 @@ return {
         end,
     },
     {
-        name = "a battle with no deploy zone simply refuses to rotate",
+        -- THE REVERSAL. This case asserted the opposite until the ways back on were removed: a company
+        -- with a body still benched had not lost, on the reasoning that "the fight is over when there is
+        -- no one left to send in, not when the four who happened to be standing have fallen".
+        --
+        -- That reasoning was sound while somebody could be sent in. Nobody can, so a bench that once
+        -- bought a rally now only buys a fight that cannot end -- the loop has nothing to hand the turn
+        -- to and nothing to resolve on.
+        name = "a bench nobody can reach does not hold a fight open",
         fn = function()
             local c = fight()
-            c.deployZone = nil
-            local hero = c.units[1]
-            openTurn(c, hero)
-            local ok, why = Combat.canRotate(c, hero)
-            assert(not ok and why, "a duel or a scripted fight has no ground to fall back to")
-        end,
-    },
-    -- RALLY GROUND: the board's standing statement about where a body may fall back from, and the only
-    -- place the move is taught now that the button appears solely where it can be pressed. The mark and
-    -- the tooltip read the same function, so neither can outlive the reserve that gives it meaning.
-    {
-        name = "rally ground is the deploy zone while a reserve waits, and nothing once it is spent",
-        fn = function()
-            local c = fight()
-            assert(#Combat.rallyGround(c) == #c.deployZone, "your lines are the ground you deployed onto")
-            c.bench = {}
-            assert(#Combat.rallyGround(c) == 0, "with nobody to send in the tiles are ground again")
-            local nozone = fight()
-            nozone.deployZone = nil
-            assert(#Combat.rallyGround(nozone) == 0, "a duel has no lines to mark")
-        end,
-    },
-    {
-        name = "the rally tooltip opens only on your own ground, and counts the reserve",
-        fn = function()
-            local c = fight()
-            local hero = c.units[1] -- standing at 2,6, inside the zone
-            assert(not Combat.rallyTileInfo(c, 3, 1), "the far rows are not your lines")
-            local info = Combat.rallyTileInfo(c, 2, 6)
-            assert(info and info.reserves == 1, "it names how many are still in reserve")
-            assert(info.occupant == hero, "and who of yours is standing on it")
-            openTurn(c, hero)
-            assert(Combat.rallyTileInfo(c, 2, 6).canFallBack, "who, mid-turn, could trade places")
-            c.bench = {}
-            assert(not Combat.rallyTileInfo(c, 2, 6), "a spent bench closes the box with the mark")
-        end,
-    },
-    {
-        -- `slotOpen` is what makes a rally tile CLICKABLE mid-fight: the board lights exactly these, the
-        -- tooltip reads its sentence off the same flag, and a click on one sends a reserve in there. One
-        -- answer feeding three surfaces, so none of them can offer a tile the others would refuse.
-        name = "a free rally tile reports the open slot; an occupied one still talks about falling back",
-        fn = function()
-            local c = fight()
-            local occupied = Combat.rallyTileInfo(c, 2, 6) -- the hero is standing here
-            assert(occupied and not occupied.slotOpen, "a tile with a body on it is not one to send a body to")
-            assert(Combat.rallyTileInfo(c, 5, 6).slotOpen, "free ground with a slot open is a tile you can click")
-            assert(not Combat.rallyTileInfo(c, 3, 1), "and the far rows are still not your lines at all")
-
-            -- Fill the line. The slot is what the offer hangs on, so closing it closes the offer -- the
-            -- same ground, still yours, still outlined, with nothing to send onto it.
-            for x = 1, Combat.MAX_FIELD - 1 do
-                assert(Combat.addUnit(c, Character.instantiate("character_knight"), "party", x, 5),
-                    "precondition: the filler stands")
+            for _, u in ipairs(c.units) do
+                if u.side == "party" then u.alive = false end
             end
-            assert(Combat.fieldCount(c, "party") == Combat.MAX_FIELD, "precondition: the line is full")
-            assert(not Combat.rallyTileInfo(c, 5, 6).slotOpen,
-                "a full line offers no tile to come in on, however free the ground is")
+            assert(Combat.benchCount(c, "party") == 1, "somebody is still on the bench")
+            assert(Combat.eliminated(c, "party"), "and the party is still eliminated")
+            assert(Combat.outcomeFor(c, "party") == "loss", "which is a loss, not a stalemate")
+        end,
+    },
+    {
+        name = "clearing the line is the win it looks like, from the other side",
+        fn = function()
+            local c = fight()
+            for _, u in ipairs(c.units) do
+                if u.side == "party" then u.alive = false end
+            end
+            assert(Combat.outcomeFor(c, "enemy") == "win",
+                "the enemy has cleared the board and there is nobody coming")
         end,
     },
 }

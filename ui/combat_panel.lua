@@ -194,11 +194,6 @@ local function drawResourceBar(x, y, w, h, cur, max, color, delta, lethal, reser
 end
 
 -- Does this fight have a bench to rotate with? Only a campaign battle does; a duel, a draft and a
--- scripted lesson field exactly who they were given. Read as a fact about the model rather than a flag
--- the caller passes, so the button appears exactly when the action is possible.
-function CombatPanel:hasBench()
-    return #((self.combat and self.combat.bench) or {}) > 0
-end
 
 function CombatPanel.new(combat, opts)
     opts = opts or {}
@@ -208,7 +203,6 @@ function CombatPanel.new(combat, opts)
     self.onHoverItem = opts.onHoverItem
     self.onHoverUnit = opts.onHoverUnit
     self.onWait = opts.onWait -- the long Wait/Focus/Defend button under the item grid
-    self.onRotate = opts.onRotate -- the Fall Back button above it (trade places with the bench)
     self.onInspectUnit = opts.onInspectUnit -- a turn-strip card clicked: read that body
 
     -- Chrome wears the display face (Theme.display -> the engraved serif, falling back to the default
@@ -234,13 +228,6 @@ function CombatPanel.new(combat, opts)
     self.waitBtn = { x = self.gridX, w = self.gridW, h = 34 }
     self.waitBtn.y = Scale.HEIGHT - 16 - self.waitBtn.h
     self.waitHover = false
-    -- FALL BACK: trade places with the bench (models/combat.lua's Combat.rotate). It draws only where
-    -- the move is actually available: a body of yours standing on rally ground with a reserve to call.
-    -- The reasons it is NOT on offer are said by the board instead (ui/battle_map.lua drawRallyGround,
-    -- and the rally tile's own tooltip), which is a lesson the player can read before they need it.
-    self.hasRotate = self:hasBench()
-    self.rotateHover = false
-    self.gridY = self.waitBtn.y - 14 - self.gridH
     -- Turn strip lives above the item grid; stripTop leaves the "Turn Order" caption clear breathing
     -- room above it (top + bottom margin around the header).
     self.stripTop = 52
@@ -507,62 +494,19 @@ function CombatPanel:draw()
 
     self:drawTurnStrip()
     self:drawItemGrid()
-    self:drawFallBackButton()
     self:drawWaitButton()
     love.graphics.setColor(1, 1, 1)
 end
 
--- Can the acting unit fall back this instant? The one question the button's whole existence hangs on --
--- asked of the model, so the plate can never offer a move Combat.rotate would refuse. False on an enemy
--- turn, off rally ground, mid-cast, and in every fight with no bench.
-function CombatPanel:canFallBack()
-    if not self.hasRotate then return false end
-    local unit = self.view.isPartyTurn and self.view.current or nil
-    if not unit then return false end
-    return (Combat.canRotate(self.combat, unit)) and true or false
-end
-
--- How the bottom lane is split this frame: the Wait plate, then the Fall Back plate or nil.
+-- The bottom lane: the Wait plate, holding all of it.
 --
--- Wait holds the whole lane by default. The instant Fall Back is on offer the lane halves and the two
--- sit side by side -- they are the same KIND of move (end the turn without striking), so they read as
--- one row of them. Splitting rather than stacking means an unavailable Fall Back costs no space at all,
--- and an available one shoves nothing: the lane's edges never move, whichever way it is divided.
-local BAR_GAP = 6
+-- IT USED TO SPLIT. Fall Back sat beside Wait whenever the move was on offer -- the same KIND of move,
+-- ending a turn without striking, so they read as one row -- and the lane halved to make room. Fall Back
+-- is gone (models/combat.lua), and with nothing to share with, the split went too. Kept as a function
+-- rather than folded into `self.waitBtn` at its two call sites, because "how is the lane divided" is a
+-- question this panel should keep answering in one place if anything ever shares it again.
 function CombatPanel:bottomBarRects()
-    local lane = self.waitBtn
-    if not self:canFallBack() then return lane, nil end
-    local half = math.floor((lane.w - BAR_GAP) / 2)
-    return { x = lane.x, y = lane.y, w = half, h = lane.h },
-        { x = lane.x + lane.w - half, y = lane.y, w = half, h = lane.h }
-end
-
--- The FALL BACK button: trade places with someone on the bench, at the cost of this turn. Drawn only
--- while the move is on offer -- the acting unit is standing on its own rally ground with a reserve to
--- call -- so the plate means "you can do this here", not "there is a rule about this somewhere".
-function CombatPanel:drawFallBackButton()
-    local _, b = self:bottomBarRects()
-    if not b then return end
-    local hot = self.rotateHover
-
-    Theme.set(hot and Theme.panel or Theme.panel2)
-    love.graphics.rectangle("fill", b.x, b.y, b.w, b.h, 6, 6)
-    if hot then Theme.set(Theme.accentAmber) else Theme.set(Theme.frame) end
-    love.graphics.setLineWidth(hot and 2 or 1)
-    love.graphics.rectangle("line", b.x, b.y, b.w, b.h, 6, 6)
-    love.graphics.setLineWidth(1)
-
-    love.graphics.setFont(self.nameFont)
-    if hot then Theme.set(Theme.accentAmber) else Theme.set(Theme.ink) end
-    Theme.printTracked("FALL BACK", b.x, b.y + b.h / 2 - 9, b.w)
-end
-
--- Is (px, py) over the Fall Back button? False whenever the button is not drawn -- on those turns Wait
--- holds the whole lane, and the click belongs to it.
-function CombatPanel:overRotate(px, py)
-    local _, b = self:bottomBarRects()
-    if not b then return false end
-    return px >= b.x and px <= b.x + b.w and py >= b.y and py <= b.y + b.h
+    return self.waitBtn
 end
 
 -- The long Wait button under the item grid. Its label mirrors the acting unit's wait behavior
@@ -1670,13 +1614,11 @@ function CombatPanel:mousemoved(x, y)
     if not self:contains(x, y) then
         self:setHover(nil, nil, nil)
         self.waitHover = false
-        self.rotateHover = false
         return false
     end
     local item, i = self:usableItemAt(x, y)
     self:setHover(item, i, self:unitAt(x, y))
     self.waitHover = self.view.isPartyTurn and self:overWait(x, y) or false
-    self.rotateHover = self:overRotate(x, y) -- false unless the button is actually on offer
     return true
 end
 
@@ -1685,12 +1627,6 @@ function CombatPanel:mousepressed(x, y, button)
     if button ~= 1 or not self:contains(x, y) then return false end
     if self.view.isPartyTurn and self:overWait(x, y) then
         if self.onWait then self.onWait() end
-        return true
-    end
-    -- Only reachable while the plate is drawn (overRotate answers the same question drawFallBackButton
-    -- does), so a click here can never land on a move the model would turn away.
-    if self:overRotate(x, y) then
-        if self.onRotate then self.onRotate() end
         return true
     end
     -- Route the click on ANY ability slot, usable or not: the state arms it, or refuses it with a

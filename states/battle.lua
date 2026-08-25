@@ -49,7 +49,6 @@ local Theme = require("ui.theme")
 local BattleSummary = require("ui.panels.battle_summary")
 local WindupChooser = require("ui.panels.windup_chooser")
 local SpendChooser = require("ui.panels.spend_chooser")
-local BenchChooser = require("ui.panels.bench_chooser")
 local DebugMenu = require("ui.panels.debug_menu")
 local CloseButton = require("ui.close_button")
 local Debug = require("models.debug")
@@ -154,7 +153,6 @@ local autoButton = { x = 16, y = 236, w = 130, h = 36 }
 -- which is the only beat at which a slot opens. This is the way back to it -- after a prompt was
 -- declined, or in a fight that deployed under the cap and so never had a body fall to announce one.
 -- That is the right job for a menu entry, and the wrong one for a play the player has to notice.
-local reinforceButton = { x = 16, y = 280, w = 130, h = 36 }
 -- Opens the settings overlay (volumes, tooltips, effects) over the paused fight -- so a player can
 -- turn the music down mid-battle without abandoning the encounter.
 local settingsButton = { x = 16, y = 324, w = 130, h = 36 }
@@ -261,7 +259,7 @@ local function overMenuEntry(x, y)
         or pointIn(battle.turnLeftButton, x, y) or pointIn(battle.turnRightButton, x, y)
         or (autoAllowed() and pointIn(autoButton, x, y)) or pointIn(settingsButton, x, y)
         or (autoAllowed() and battle.autoAll and pointIn(speedButton, x, y))
-        or (battle.hasBench and pointIn(reinforceButton, x, y))
+        or false
         or (Debug.enabled and pointIn(winButton, x, y))
 end
 
@@ -286,7 +284,6 @@ local function hoveredMenuButton(x, y)
     if pointIn(battle.turnLeftButton, x, y) then return "turnleft" end
     if pointIn(battle.turnRightButton, x, y) then return "turnright" end
     if autoAllowed() and pointIn(autoButton, x, y) then return "auto" end
-    if battle.hasBench and pointIn(reinforceButton, x, y) then return "reinforce" end
     if pointIn(settingsButton, x, y) then return "settings" end
     if autoAllowed() and battle.autoAll and pointIn(speedButton, x, y) then return "speed" end
     if Debug.enabled and pointIn(winButton, x, y) then return "win" end
@@ -1435,12 +1432,7 @@ local offerLastStand
 local refreshView
 
 -- The bench chooser's open/close pair, defined far below with the rest of the rotation UI. Declared up
--- here, rather than beside them, because confirm() now reaches openBenchChooser as well: a click on lit
--- rally ground sends a reserve in. A local declared AFTER its caller is not a forward declaration at
--- all -- the call would compile against a nil GLOBAL, and Lua would only mention it at the instant a
--- player actually clicked the tile. Moving the declaration costs nothing (the same two names, read
--- earlier) and this file has no room for a third.
-local closeBenchChooser, openBenchChooser
+-- here, rather than beside them, because confirm() reaches the board's own actions: a click on lit
 
 -- Claimed once from the lesson rather than checked against the board, because a spawned unit can
 -- die: "is it already here?" has no honest answer, so the lesson remembers instead.
@@ -3108,11 +3100,6 @@ local function confirm()
     -- sets the cursor from the click), and the keyboard and pad through their own confirm. refreshView
     -- already withheld every tile the acting unit could walk to, so this cannot eat a move.
     local rx, ry = battle.map.cursor.x, battle.map.cursor.y
-    if battle.reinforceHere and rx and battle.reinforceHere[rx .. "," .. ry]
-        and not battle.over and not busy() then
-        openBenchChooser("reinforce", false, "Send someone in  --  free", { x = rx, y = ry })
-        return
-    end
     local current = battle.current
     if battle.over or busy() or not current or not Combat.isPlayerControlled(current) then return end
     local cx, cy = battle.map.cursor.x, battle.map.cursor.y
@@ -3233,217 +3220,24 @@ local function waitTurn()
         advanceTurn()
     end
 end
-
 -- ---------------------------------------------------------------------------
--- Rotation: trading the field for the bench, mid-fight
+-- The bench, and why nothing brings it back
 -- ---------------------------------------------------------------------------
 --
--- Two ways a benched member takes the field, both routed through the same chooser (see
--- ui/panels/bench_chooser.lua) because the question -- which of these people -- is the same one:
+-- TWO MOVES STOOD HERE. ROTATE spent the acting unit's turn to trade places with a reserve, and
+-- had to be made from the deploy zone -- called FALL BACK on every surface the player read. 
+-- REINFORCE filled a slot a death had opened, free, off a drawer button and off a prompt raised
+-- automatically when nothing of the player's was left standing.
 --
---   ROTATE     the acting unit spends its TURN to trade places, and must be standing in the deploy zone
---              (its own lines). Called FALL BACK everywhere the player can read it -- the button under
---              the item grid, which appears only once a body of theirs is standing on rally ground.
---   REINFORCE  a slot has opened, so filling it is FREE. The drawer button, and -- when nothing of the
---              player's is left standing -- a prompt raised automatically, because a company with a body
---              still on the bench has not lost and the turn loop has nobody to hand the turn to.
+-- Both are gone. An expedition is four (Descent.PARTY_MAX) and the board holds four
+-- (Combat.MAX_FIELD), so there is never a body off the field to send for -- and a control that
+-- can never be legal is deleted rather than left drawing greyed.
 --
--- Neither is spoken over the network: a duel would need a Command kind for it (models/command.lua) or the
--- two peers desync. Rotation is a campaign feature and the deployment phase it belongs to is skipped in
--- every duel and draft, so there is nothing to speak.
-
-closeBenchChooser = function()
-    battle.benchChooser = nil
-end
-
--- Rotate: the acting unit falls back and `index` comes on where it stood. Ends the turn.
-local function rotateTurn(index)
-    local current = battle.current
-    if battle.over or busy() or not current or not Combat.isPlayerControlled(current) then return end
-    if tutorialRefuses("rotate") then return end
-    local ok, why = Combat.rotate(battle.combat, current, index)
-    if not ok then
-        if why then notify(why) end
-        return
-    end
-    Sound.play("battle.wait") -- a fall-back and a hand-off; the same soft pass a wait makes
-    observeAction("wait", current, current.x, current.y)
-    advanceTurn()
-end
-
--- Reinforce: `index` walks on at (x, y), free. Not a turn -- nobody acted -- so the turn in progress (if
--- any) simply carries on, and a battle that had nobody to act is handed back to the turn loop.
-local function reinforceAt(index, x, y)
-    local unit, why = Combat.reinforce(battle.combat, index, x, y)
-    if not unit then
-        if why then notify(why) end
-        return false
-    end
-    Sound.play("battle.start")
-    battle.reinforcePick = nil
-    -- The line just grew: reconcile the baseline here rather than waiting for the next hand-off, so the
-    -- body that walked on can never read as a drop, and the next real one still does.
-    battle.slotOffer = false
-    battle.lastFieldCount = Combat.fieldCount(battle.combat, battle.combat.playerSide or "party")
-    -- With nothing of the player's standing, the fight was waiting on this body: hand the turn loop
-    -- back its actor. Otherwise the current turn is untouched and only the view needs to catch up.
-    if not battle.current or not battle.current.alive then advanceTurn() else refreshView() end
-    return true
-end
-
--- Raise the chooser. `mode` is "rotate" (costs the acting unit's turn) or "reinforce" (free, fills an
--- open slot). A reinforce pick is followed by a TILE pick, since there is no vacated tile to inherit.
+-- The one thing that had to move with them: Combat.eliminated no longer counts the bench. A
+-- company with somebody benched used to have NOT lost, because a reserve could still be called;
+-- a bench nobody can reach would instead hold a fight open forever.
 --
--- `mandatory` marks the LAST-STAND prompt: nothing of the player's is standing, so the fight is waiting
--- on this one decision and there is no turn to hand back. Backing out of it would leave the turn loop
--- with no actor and no way to reach one, so it simply cannot be backed out of -- Esc, B, the X and a
--- click-off all re-raise it. Every other chooser cancels normally.
---
--- `title` overrides the default line. Only offerOpenSlot passes one: a chooser the player OPENED says
--- what the move costs, but one that arrived on its own has to say what just happened first, or it reads
--- as an interruption rather than an answer to the body that dropped.
---
--- `at` is a tile the caller has ALREADY chosen -- the lit rally tile a click landed on. It collapses the
--- flow to one decision: the ground was named by the press that opened the card, so the pick lands the
--- body there and the tile step never happens. It also anchors the card on that tile, which is the more
--- honest place for it than the acting unit -- after a death the "acting unit" is usually the enemy that
--- did the killing, halfway across the board from the ground the body is about to walk in on.
--- Returns true if it actually opened one. The caller has to know: offerLastStand below is holding the
--- turn loop on the promise that this chooser is up, and a silent refusal there strands the fight.
-openBenchChooser = function(mode, mandatory, title, at)
-    if battle.benchChooser or battle.over or busy() then return false end
-    local combat = battle.combat
-    if #(combat.bench or {}) == 0 then notify("No one is on the bench.") return false end
-
-    local anchorUnit = battle.current
-    if mode == "rotate" then
-        local ok, why = Combat.canRotate(combat, anchorUnit)
-        if not ok then notify(why or "You cannot fall back right now.") return false end
-    else
-        local ok, why = Combat.canReinforce(combat)
-        if not ok then notify(why or "There is no room to bring anyone in.") return false end
-    end
-
-    local m = battle.map
-    -- With nothing of the player's left standing there is no body to anchor to; the card goes to the
-    -- middle of the board, which is where the eye already is.
-    local ax, ay = Scale.WIDTH / 2, Scale.HEIGHT / 2
-    if at then
-        ax, ay = m:cellCenter(at.x, at.y)
-    elseif anchorUnit and anchorUnit.alive then
-        ax, ay = m:cellCenter(anchorUnit.x, anchorUnit.y)
-    end
-
-    title = title or (mode == "rotate" and "Fall Back  --  costs this turn" or "Reinforce  --  free")
-    if mandatory then title = "Your line is broken" end -- the log carries the rest; the card is narrow
-
-    battle.benchChooser = BenchChooser.new({
-        entries = combat.bench,
-        title = title,
-        mandatory = mandatory,
-        anchorX = ax, anchorY = ay, tileSize = m.size,
-        onCancel = function()
-            closeBenchChooser()
-            battle.reinforcePick = nil
-            -- Declining is a real answer -- holding the reserve, or waiting for better ground, is often
-            -- the play -- so the open slot stops asking. The drawer's Reinforce entry is the way back.
-            battle.slotOffer = false
-            refreshView()
-        end,
-        onPick = function(index)
-            closeBenchChooser()
-            if mode == "rotate" then
-                rotateTurn(index)
-            else
-                battle.slotOffer = false -- answered; the next body to fall raises the next one
-                -- The ground was named by the click that opened this card: land them and be done.
-                if at then reinforceAt(index, at.x, at.y) return end
-                -- Pick the ground next. One free tile means there is no decision to make, so it is made.
-                local tiles = Combat.reinforceTiles(battle.combat)
-                if #tiles == 1 then
-                    reinforceAt(index, tiles[1].x, tiles[1].y)
-                else
-                    battle.reinforcePick = { index = index, tiles = tiles, mandatory = mandatory }
-                    notify("Choose where they come in.")
-                    refreshView()
-                end
-            end
-        end,
-    })
-    return true
-end
-
--- The turn loop found nobody of the player's to act. If there is a body on the bench, the fight is not
--- over -- it is waiting for the player to send someone in, and the chooser is raised for them rather than
--- the defeat panel. Returns true when it took over, so the caller holds off deciding the fight.
--- (Forward-declared above resolveAdvance, which consults it.)
---
--- The blow that broke the line is usually still animating when this runs, and openBenchChooser refuses
--- while the board is busy -- so a refusal RE-ARMS the advance rather than giving up. Without that the
--- fight would sit with no actor, no chooser and nothing scheduled to produce either: the exact hang
--- this function exists to prevent, reached by the exact path it exists for.
-offerLastStand = function()
-    if battle.over then return false end
-    if battle.benchChooser or battle.reinforcePick then return true end -- already in the player's hands
-    local combat = battle.combat
-    local side = combat.playerSide or "party"
-    if Combat.aliveCount(combat, side) > 0 then return false end
-    if not Combat.canReinforce(combat, side) then return false end
-    if not openBenchChooser("reinforce", true) then
-        battle.pendingAdvance = { hold = 0 } -- try again next frame, once the board has settled
-        return true
-    end
-    Combat.logEvent(combat, "system", "Your line is broken -- send someone in.")
-    return true
-end
-
--- A body of the player's has dropped and the company still has someone waiting: raise the chooser at the
--- moment the slot opens, instead of leaving the move greyed inside the hamburger drawer. That drawer
--- holds Forfeit, Log, Threats, Auto and Settings -- things about the SESSION -- and Reinforce was the
--- only actual play among them, three clicks deep in a menu nobody opens looking for one. The last-stand
--- prompt already proved the shape: the game knows how to put this decision in front of the player. It
--- was only doing it at zero alive, where reinforcing is a formality, and hiding it across the range
--- where it is a tactic.
---
--- Fires on the TRANSITION, never on the state. `Combat.canReinforce` is true from the opening bell of
--- any fight that deployed fewer than four, so asking IT would greet the player with a chooser before a
--- blow had landed. `battle.lastFieldCount` is the count this was last reconciled against; a DROP below
--- it is the event, and `battle.slotOffer` carries that event until the player answers it either way.
--- Both cleared on an answer, so a declined prompt stays declined until another body falls -- a modal
--- that re-raises itself every hand-off is worse than the drawer it replaced.
---
--- One prompt per hand-off, deliberately: an area attack that fells two opens two slots, and two cards
--- back to back is nagging. The first is offered, the drawer covers the second.
---
--- A field on `battle` rather than a file local for the reason at the top of this file: this chunk is
--- within a handful of names of Lua 5.1's ceiling of 200 locals, and going over it is a SYNTAX error at
--- load. Being a field also spares it a forward declaration -- resolveAdvance is defined long before
--- this line and reaches it through `battle`, which is resolved when it is called, not when it is read.
-battle.offerOpenSlot = function()
-    local combat = battle.combat
-    local side = combat.playerSide or "party"
-    local n = Combat.fieldCount(combat, side)
-    if n < (battle.lastFieldCount or n) then battle.slotOffer = true end
-    battle.lastFieldCount = n
-    if not battle.slotOffer then return false end
-    -- offerLastStand owns the nothing-standing case and its prompt cannot be declined. Never shadow it
-    -- with a cancellable second copy of the same question.
-    if Combat.aliveCount(combat, side) == 0 then return false end
-    -- Auto-battle is a fight the player is WATCHING, at up to 3x. A card sitting there waiting on a
-    -- click is the one thing that must not appear in one; models/autobattle.lua sends a body in on its
-    -- own when the line actually breaks.
-    if battle.autoAll then return false end
-    -- The line refilled itself, the bench emptied, or there is nowhere to come in: the slot is no longer
-    -- open, so the event is spent rather than held for a later hand-off that has nothing to do with it.
-    if not Combat.canReinforce(combat, side) then battle.slotOffer = false return false end
-    -- A refusal here is the board still settling (openBenchChooser declines while busy). Leave the offer
-    -- standing and let the next hand-off raise it -- unlike offerLastStand there is no turn loop waiting
-    -- on this, so it re-arms nothing and cannot hang.
-    if not openBenchChooser("reinforce", false, "A slot is open  --  free") then return false end
-    Combat.logEvent(combat, "system", "A slot is open -- send someone in, or hold the reserve.")
-    return true
-end
-
+-- Neither was ever spoken over the network, so nothing in models/command.lua goes with them.
 -- The keyboard Wait (Space / 0 / numpad-0 with nothing aimed) is a two-press action, mirroring how the
 -- mouse already reads: the first press ARMS a preview -- the delay slot lit on the timeline, exactly the
 -- ghost the mouse shows on Wait-button hover (battle.waitPreview feeds it, see the ghost block in
@@ -4244,7 +4038,6 @@ refreshView = function()
     -- Your OWN ground, lit only while a reinforcement is being placed -- the same overlay the deployment
     -- phase draws, so the invitation reads identically whether it is the opening bell or the moment after
     -- a body dropped. Not lit the rest of the time: a permanently glowing home band would be noise.
-    if battle.reinforcePick then overlays.deployZone = battle.reinforcePick.tiles end
 
     -- Walls (conjured blockers) are always visible to both sides too. Keep a per-frame "x,y" lookup
     -- for click-to-strike (wallAt), mirroring battle.trapCells. The RENDER list withholds a wall a cast
@@ -4441,44 +4234,6 @@ refreshView = function()
         end
     end
 
-    -- Your own lines, outlined quietly for the whole fight (ui/battle_map.lua drawRallyGround) -- but
-    -- only while somebody is still on the bench, which Combat.rallyGround decides. It is the standing
-    -- statement that replaced the always-there Fall Back plate: the ground says where the move can be
-    -- made from, the tile's tooltip says what it does, and the button appears once a body is on it.
-    local rally = Combat.rallyGround(battle.combat)
-    overlays.rally = #rally > 0 and rally or nil
-
-    -- SEND SOMEONE IN, from the board. While a slot stands open the free rally tiles stop being a quiet
-    -- outline and become the control: click one and the chooser opens anchored on it, already knowing
-    -- where the body lands. They wear the deployment phase's own breathing fill, because that overlay's
-    -- sentence is "an invitation to act NOW" -- which docs/deployment.md reserved for the phase on the
-    -- grounds that a permanent glow is noise. An open slot is not permanent. It is the one moment
-    -- mid-fight when the phase's sentence is true again, so it gets the phase's mark.
-    --
-    -- A tile the acting unit could WALK to is left out. Moving home and reinforcing home are both honest
-    -- readings of a click on your own back rows, and the move is the older and far more frequent one --
-    -- so it keeps every tile it can reach, and this takes only what would otherwise be inert. That makes
-    -- the lit set exactly the clickable set: no tile is ever marked for something it will not do.
-    battle.reinforceHere = nil
-    if not battle.reinforcePick and not battle.over and Combat.canReinforce(battle.combat) then
-        local here, cells = {}, {}
-        for _, t in ipairs(Combat.reinforceTiles(battle.combat)) do
-            if not (battle.reachable and battle.reachable[t.x .. "," .. t.y]) then
-                cells[#cells + 1] = t
-                here[t.x .. "," .. t.y] = true
-            end
-        end
-        if #cells > 0 then
-            battle.reinforceHere = here
-            overlays.deployZone = cells
-            -- This fill can be a strict SUBSET of the rally ground (the withheld reachable tiles), and
-            -- drawRallyGround otherwise stands down entirely the moment a deploy overlay exists. Left
-            -- alone, a partial fill would rub the outline off the tiles it does not cover and your lines
-            -- would appear to have holes in them. The flag says "some of it, not all" -- so the boundary
-            -- keeps tracing the whole zone and the fill marks the live tiles inside it.
-            overlays.deployZonePartial = #cells < #rally or nil
-        end
-    end
 
     battle.map:setOverlays(overlays)
 end
@@ -4620,14 +4375,12 @@ local function commitDeploy(opts, deployed, front, placed)
     -- Whether this fight has a bench AT ALL, fixed here rather than read live, so the drawer's
     -- Reinforce entry cannot appear and vanish as reserves are spent.
     -- False in every duel, draft and scripted lesson, which field exactly who they were given.
-    battle.hasBench = #(battle.combat.bench or {}) > 0
 
     -- The baseline battle.offerOpenSlot measures a fallen body against: whoever is standing at the bell.
     -- Seeded from the committed line rather than from MAX_FIELD, so a player who deliberately fielded
     -- three and kept a reserve back is not greeted by a chooser before a blow has landed -- the prompt
     -- answers a DROP below this number, and there has not been one.
     battle.lastFieldCount = Combat.fieldCount(battle.combat, battle.combat.playerSide or "party")
-    battle.slotOffer = false
 
     -- Ring the bell: passives, reservations, the stamina refill and every battle-opener trait, once,
     -- with the company standing where it is going to stand. See Combat.openBattle.
@@ -4670,7 +4423,6 @@ local function commitDeploy(opts, deployed, front, placed)
         onHoverItem = function(item) battle.hoverItem = item end,
         onHoverUnit = function(unit) battle.hoverUnit = unit end,
         onWait = function() waitTurn() end, -- the long Wait button under the item grid
-        onRotate = function() openBenchChooser("rotate") end, -- FALL BACK: trade places with the bench
         -- A click on a turn-strip card asks to INSPECT that body. Only an assayed foe has anything to
         -- answer with (its kit card); everyone else's click is a no-op, which is why the strip has
         -- never done anything with one until now.
@@ -5348,17 +5100,6 @@ function battle.update(dt)
             and battle.fx:hpSettled() and battle.fx:floatersDone() then
             resolveAdvance()
         end
-    elseif battle.benchChooser or battle.reinforcePick then
-        -- The fight is waiting on the player: a card is up asking who comes on, or the board is asking
-        -- where they land. The two branches BELOW this one are the only things that move a battle
-        -- forward without input -- a channel detonating and the AI's think-pause -- and either resolving
-        -- behind the card would play a turn the player never saw. That was survivable while the chooser
-        -- was something they went to the drawer to open; now that a broken line raises it on its own,
-        -- and the blow that broke it was usually an enemy's, it is the common path.
-        --
-        -- A branch that does nothing rather than an early return: the board, fx and notices above still
-        -- tick, so the frame keeps breathing behind the card. This holds the simulation, not the screen.
-        -- (The mandatory last-stand prompt sits under the same guard, and wants it for the same reason.)
     elseif not battle.over and battle.current and battle.current.channel then
         -- The current unit is mid-channel: once the timeline has finished reshuffling into the new
         -- order, count the think-pause down, then detonate the spell and hand off. Checked before the
@@ -5672,7 +5413,6 @@ function battle.draw()
     -- The spend chooser is the same kind of modal for a purchasable blow (The Gilded Wound).
     if battle.spendChooser then battle.spendChooser:draw() end
     -- The bench chooser, while a rotation or a reinforcement is picking who comes on.
-    if battle.benchChooser then battle.benchChooser:draw() end
     -- The right-click debug menu (debug builds only) sits on top of every board overlay.
     if battle.debugMenu then battle.debugMenu:draw() end
     -- The overruled ending's fade, over absolutely everything -- board, HUD, tooltips, panels -- and it
@@ -5842,7 +5582,7 @@ function battle.drawTileTooltip(mx, my)
                           -- Rally ground rides here for the same reason the objective does: the terrain
                           -- box never yields, and the read matters MOST on a tile with one of your own
                           -- bodies already on it -- that is the moment falling back is a live option.
-                          rally = Combat.rallyTileInfo(battle.combat, cx, cy) }
+                          rally = nil }
     local objInfo
     -- Same precedence actionPreviewFor picks a strike target with (trap, then wall, then prop), so the
     -- box that opens describes the very thing a click would hit.
@@ -6035,10 +5775,6 @@ function battle.drawHud()
     -- Reinforce: only in a fight that HAS a bench, and lit only while a slot is actually open. Greyed
     -- the rest of the time rather than hidden, so the option is something the player learns is there
     -- before the moment they need it.
-    if battle.hasBench then
-        local canReinforce = Combat.canReinforce(battle.combat)
-        battle.drawMenuEntry(reinforceButton, "Reinforce", canReinforce, { 0.42, 0.66, 0.92 })
-    end
 
     -- Settings: a plain entry (never a toggle state), opening the overlay over the paused fight.
     battle.drawMenuEntry(settingsButton, "Settings", false, { 0.70, 0.70, 0.78 })
@@ -6212,7 +5948,6 @@ function battle.keypressed(key)
     if key == "e" then battle.turnBoard(1); return end
     if battle.deploy then battle.deploy:keypressed(key); return end
     -- The bench chooser owns the keyboard while someone is being picked off the bench.
-    if battle.benchChooser then battle.benchChooser:keypressed(key); return end
     -- The wind-up chooser eats every key while a chargeable swing is being sized (arrows/+- adjust,
     -- Enter commits the blow, Esc backs out and leaves it armed).
     if battle.spendChooser then battle.spendChooser:keypressed(key); return end
@@ -6317,7 +6052,6 @@ function battle.gamepadpressed(joystick, button)
     end
     if battle.deployLoadout then battle.deployLoadout:gamepadpressed(joystick, button); return end
     if battle.deploy then battle.deploy:gamepadpressed(joystick, button); return end
-    if battle.benchChooser then battle.benchChooser:gamepadpressed(joystick, button); return end
     -- The wind-up chooser owns the pad while a chargeable swing is being sized (D-pad / bumpers adjust,
     -- A commits, B backs out).
     if battle.spendChooser then battle.spendChooser:gamepadpressed(joystick, button); return end
@@ -6394,7 +6128,6 @@ function battle.mousemoved(x, y, dx, dy)
         battle.deploy:mousemoved(x, y)
         return
     end
-    if battle.benchChooser then battle.benchChooser:mousemoved(x, y); return end
     if battle.spendChooser then battle.spendChooser:mousemoved(x, y); return end
     if battle.bagPanel then battle.bagPanel:mousemoved(x, y); return end
     if battle.windupChooser then battle.windupChooser:mousemoved(x, y); return end
@@ -6425,7 +6158,6 @@ function battle.wheelmoved(dx, dy)
     -- an unbounded one overflows the strip, which then pages sideways (ui/deploy_phase.lua).
     if battle.deployLoadout then battle.deployLoadout:wheelmoved(dx, dy); return end
     if battle.deploy then battle.deploy:wheelmoved(dx, dy); return end
-    if battle.benchChooser then battle.benchChooser:wheelmoved(dx, dy); return end
     -- The wind-up chooser owns the wheel while it is up: scrolling tunes the depth on the rung ladder.
     if battle.spendChooser then battle.spendChooser:wheelmoved(dx, dy); return end
     if battle.windupChooser then battle.windupChooser:wheelmoved(dx, dy); return end
@@ -6499,21 +6231,6 @@ function battle.mousepressed(x, y, button)
             return
         end
         battle.deploy:mousepressed(x, y, button)
-        return
-    end
-    if battle.benchChooser then battle.benchChooser:mousepressed(x, y, button); return end
-    -- Placing a reinforcement: the next board click on a lit tile lands them. A click anywhere else --
-    -- or a right-click -- puts the pick back on the bench rather than stranding the player in a mode.
-    -- Except on the last-stand prompt, which cannot be backed out of (see openBenchChooser): there the
-    -- click is simply ignored until it lands on ground somebody can come in on.
-    if battle.reinforcePick then
-        local cx, cy = battle.map:cellAt(x, y)
-        if button == 1 and cx then
-            reinforceAt(battle.reinforcePick.index, cx, cy)
-        elseif not battle.reinforcePick.mandatory then
-            battle.reinforcePick = nil
-            refreshView()
-        end
         return
     end
     -- The settings overlay is the top-most modal: its X or a click on the dim backdrop closes it, a
@@ -6594,11 +6311,6 @@ function battle.mousepressed(x, y, button)
         end
         if autoAllowed() and pointIn(autoButton, x, y) then
             toggleAutoAll()
-            return
-        end
-        if battle.hasBench and pointIn(reinforceButton, x, y) then
-            openBenchChooser("reinforce")
-            return
         end
         if pointIn(settingsButton, x, y) then
             openSettings()
@@ -6667,7 +6379,6 @@ function battle.cursorKind()
     if battle.logReview then
         return battle.logReview.close:contains(mx, my) and "hand" or "arrow"
     end
-    if battle.benchChooser then return battle.benchChooser:cursorKind(mx, my) end
     if battle.spendChooser then return battle.spendChooser:cursorKind(mx, my) end
     if battle.bagPanel then return battle.bagPanel:cursorKind(mx, my) end
     if battle.windupChooser then return battle.windupChooser:cursorKind(mx, my) end
@@ -6683,10 +6394,6 @@ function battle.cursorKind()
     -- turn -- so the hand has to outrank the "wait" the enemy's turn would otherwise show. Read straight
     -- off the same lookup confirm() claims the press with, so the pointer cannot promise a click the
     -- board would then refuse.
-    if battle.reinforceHere and not busy() then
-        local rx, ry = battle.map:cellAt(mx, my)
-        if rx and battle.reinforceHere[rx .. "," .. ry] then return "hand" end
-    end
     -- Enemy turn, a walk animation, or a channel resolving: a board click does nothing.
     if busy() or (battle.current and not Combat.isPlayerControlled(battle.current)) then
         return battle.map:cellAt(mx, my) and "wait" or "arrow"

@@ -5504,42 +5504,8 @@ function Combat.inDeployZone(combat, x, y)
     end
     return false
 end
-
--- The ground marked as RALLY GROUND right now: the deploy zone, but only while somebody is still on the
--- bench to send in. Once the last reserve has taken the field those tiles are ordinary ground again and
--- the board stops marking them -- a mark that means nothing is a mark the player learns to ignore.
--- One rule, two surfaces: the board overlay and the hover tooltip both read this.
-function Combat.rallyGround(combat)
-    if Combat.benchCount(combat, "party") == 0 then return {} end
-    return (combat and combat.deployZone) or {}
-end
-
--- What the hover tooltip says about the rally tile (x, y), or nil when it is not your ground (or the
--- bench is spent). The read side of Combat.inDeployZone, shaped like Combat.objectiveTileInfo so
--- states/battle.lua feeds the two the same way and this can be tested headless:
---
---   { reserves,     -- how many of the company are waiting off the board
---     occupant,     -- your own unit standing on the tile right now, if any
---     canFallBack,  -- whether that occupant could trade places this instant (Combat.canRotate)
---     slotOpen }    -- free ground, with a slot standing open: a reserve can be sent in HERE, free
-function Combat.rallyTileInfo(combat, x, y)
-    if #Combat.rallyGround(combat) == 0 then return nil end
-    if not Combat.inDeployZone(combat, x, y) then return nil end
-    local info = { reserves = Combat.benchCount(combat, "party") }
-    local unit = Combat.unitAt(combat, x, y)
-    if unit and unit.side == "party" and Combat.isPlayerControlled(unit) then
-        info.occupant = unit
-        info.canFallBack = (Combat.canRotate(combat, unit)) and true or false
-    end
-    -- Empty ground while a slot is open: this exact tile is one a reserve may walk in on, which is what
-    -- makes it clickable on the board (states/battle.lua's battle.reinforceHere). Answered here, beside
-    -- the fall-back read, so the mark, the tooltip and the click can never disagree about which tiles
-    -- are live -- the same one-rule-two-surfaces the rest of this bag is built on.
-    if not unit and Combat.footprintFree(combat, 1, 1, x, y) and Combat.canReinforce(combat, "party") then
-        info.slotOpen = true
-    end
-    return info
-end
+-- (RALLY GROUND was marked here, and the tooltip that read it. Both existed to show where a
+-- reserve could walk in; Fall Back and Reinforce are gone, so there is nowhere to mark.)
 
 -- How many bodies `side` has ON THE FIELD, against the MAX_FIELD cap. Summons don't count -- the cap is
 -- about the company you deploy, and a conjured wolf is not a member of it. Neither does a fallen body:
@@ -5571,144 +5537,22 @@ function Combat.benchUnit(combat, entry)
     return combat.bench[#combat.bench]
 end
 
--- May `unit` fall back right now? Returns true, or false plus the reason to show. The player-facing
--- name of this move is FALL BACK and the ground it is made from is RALLY GROUND; the model keeps the
--- older `rotate` spelling for the mechanic itself (see the section header). The button appears only
--- where this returns true, so the reasons below reach the player through `notify` rather than a
--- greyed plate -- and every one of them still names a fix.
-function Combat.canRotate(combat, unit)
-    if not (unit and unit.alive) then return false, "no one is acting" end
-    if unit.side ~= "party" or not Combat.isPlayerControlled(unit) then
-        return false, "only your own company falls back"
-    end
-    if unit.summoned then return false, "a summon has no one to trade with" end
-    if Combat.benchCount(combat, unit.side) == 0 then return false, "no one is on the bench" end
-    if not (combat.deployZone and #combat.deployZone > 0) then
-        return false, "there is no rally ground to fall back to"
-    end
-    if not Combat.inDeployZone(combat, unit.x, unit.y) then
-        return false, "stand on your rally ground to fall back"
-    end
-    if unit.channel then return false, "not in the middle of a cast" end
-    return true
-end
-
--- Take `unit` off the field WITHOUT killing it, keeping everything it is on the bench. The mirror of
--- Combat.dismiss for a body that walked off rather than winked out: same unwinding (its channel breaks,
--- its summons go with it, its ground and its held bodies are released), but it is not a death -- no
--- Trait.onDeath, no allyDown tally, no corpse. Nothing on this board should treat a rotation as a
--- casualty, least of all the objectives.
+-- FALL BACK AND REINFORCE ARE GONE, and what is left of this section is the bench itself.
 --
--- The unit table stays in `combat.units` flagged `withdrawn`, because that list only ever grows
--- (unit.index is a stable identity the AoE dedupe and the turn strip both key off). Coming back builds a
--- NEW unit around the same char: HP, mana and cooldowns live on the character and persist, while the
--- turn-scoped bookkeeping (tallies, anchor, tempo debt) resets -- correct, since what returns is an
--- arrival. The statuses are the exception, and are carried across deliberately (see the section header).
-function Combat.withdraw(combat, unit, text)
-    if not (unit and unit.alive) then return nil end
-    unit.alive = false
-    unit.withdrawn = true
-    if unit.channel then Combat.interruptChannel(combat, unit, "withdrawn") end
-    -- Animation cue: fade the body (and its timeline card) out where it stood. The same fade a death
-    -- plays -- a card that simply blinks out of the strip reads as a glitch either way -- but its own
-    -- cue, because this is not a death: no death sound, and nothing left lying on the tile.
-    Combat.pushFx(combat, { type = "exit", unit = unit })
-    Combat.logEvent(combat, "wait", text or string.format("%s falls back to the line.", unitName(unit)), unit)
-    correctDecoyRecord(unit)
-    for _, u in ipairs(combat.units) do
-        if u.alive and u.summoner == unit then Combat.dismiss(combat, u) end
-    end
-    Hazard.dropOwnedBy(combat, unit)
-    Combat.releaseHeldBy(combat, unit)
-    -- A body on the bench is holding no turn either (see leaveTurn). Combat.rotate -- the one caller
-    -- today -- ends the turn itself a few lines later, and reads the move cost off the record BEFORE
-    -- this; stated here anyway so the rule holds for whoever withdraws a unit next.
-    leaveTurn(combat, unit)
-
-    combat.bench = combat.bench or {}
-    local entry = { char = unit.char, relicTraits = unit.relicTraits, meal = unit.meal, statuses = unit.statuses }
-    combat.bench[#combat.bench + 1] = entry
-    return entry
-end
-
--- Bring bench entry `index` onto the board at (x, y). Shared by both routes on. `initiative` is where the
--- newcomer lands on the timeline: a rotation passes the bill its predecessor ran up, a reinforcement
--- passes nothing and takes Combat.addUnit's natural-clamped-at-0 slot (it cannot cut ahead of whoever is
--- mid-turn). Returns the new unit, or nil if the entry or the ground is no good.
-local function sendIn(combat, index, x, y, initiative)
-    local entry = combat.bench and combat.bench[index]
-    if not entry then return nil end
-    local fp = entry.char.footprint or { w = 1, h = 1 }
-    if not Combat.footprintFree(combat, fp.w, fp.h, x, y) then return nil end
-    table.remove(combat.bench, index)
-    local unit = Combat.addUnit(combat, entry.char, "party", x, y,
-        { relicTraits = entry.relicTraits, meal = entry.meal })
-    -- Whatever they were carrying when they stepped out is still on them when they step back in.
-    if entry.statuses then unit.statuses = entry.statuses end
-    if initiative then unit.initiative = initiative end
-    Combat.logEvent(combat, "action", string.format("%s takes the field.", unitName(unit)), unit)
-    return unit
-end
-
--- ROTATE: the acting unit trades places with bench entry `index`, and the turn ends. The one coming on
--- stands on the tile the one leaving was holding, at the initiative that unit's turn would have cost --
--- so a rotation buys you a different body, not a free beat. Returns the new unit, or false plus a reason.
-function Combat.rotate(combat, unit, index)
-    local ok, why = Combat.canRotate(combat, unit)
-    if not ok then return false, why end
-    local entry = combat.bench and combat.bench[index]
-    if not entry then return false, "nobody there" end
-    local fp = entry.char.footprint or { w = 1, h = 1 }
-    if fp.w > (unit.w or 1) or fp.h > (unit.h or 1) then
-        -- A bigger body cannot squeeze into the space the smaller one was holding. Checked before
-        -- anything is spent, so a refused rotation costs nothing.
-        if not Combat.footprintFree(combat, fp.w, fp.h, unit.x, unit.y, unit) then
-            return false, "no room there for " .. (entry.char.name or "them")
-        end
-    end
-
-    -- Priced exactly as a wait is: the ground covered this turn, plus any debt an interrupted channel
-    -- banked (a rotation can no more dodge it than a wait can), plus the rotation's own cost.
-    local cost = turnMoveCost(combat, unit) + (unit.tempoDebt or 0) + Combat.ROTATE_COST
-    unit.tempoDebt = nil
-    Status.onTurnEnd(combat, unit)
-
-    local x, y = unit.x, unit.y
-    Combat.withdraw(combat, unit)
-    local arrival = sendIn(combat, index, x, y, cost)
-    if not arrival then
-        -- The tile turned out to be unusable after the withdrawal (a footprint clash). The body is on the
-        -- bench and the field is one short; a reinforcement fills the slot, which is exactly the state a
-        -- casualty leaves behind. Deliberately not rolled back -- half-undoing a turn is worse than a
-        -- legible one-slot hole.
-        Combat.logEvent(combat, "system", "There was no room to trade places.")
-    end
-
-    combat.turnCount = combat.turnCount + 1
-    combat.turn = nil
-    Combat.rebase(combat)
-    return arrival or false
-end
-
--- Is there a slot to fill and somebody to fill it? The cap is on LIVING bodies, so a casualty opens a
--- slot the moment it drops.
+-- Both let a benched body onto the board mid-fight: Fall Back traded the acting unit for a reserve
+-- at the cost of its turn, Reinforce filled a slot a death had opened, free. They are removed because
+-- there is no bench any more -- an expedition is four (Descent.PARTY_MAX) and the board holds four
+-- (Combat.MAX_FIELD), so every body that walks down stands on it. A control that can never be legal
+-- is deleted rather than left drawing greyed.
 --
--- The one override: with nothing of yours left standing, you may always send one in. Without it, a field
--- of four fallen bodies would be a defeat with a full bench in hand -- and that body walking on to stand
--- over its own dead is the whole reason a company is eight.
-function Combat.canReinforce(combat, side)
-    side = side or "party"
-    if Combat.benchCount(combat, side) == 0 then return false, "no one is on the bench" end
-    if Combat.aliveCount(combat, side) == 0 then return true end
-    if Combat.fieldCount(combat, side) >= Combat.MAX_FIELD then
-        return false, "your line is already full"
-    end
-    if #Combat.reinforceTiles(combat) == 0 then return false, "there is no room to come in" end
-    return true
-end
-
--- Free, standable tiles in the deploy zone -- where a reinforcement may land. Ordered as the zone is, so
--- the pick is stable.
+-- `combat.bench` STAYS: models/encounter_battle.lua still parks anybody the arena had no room for,
+-- and Combat.benchCount still reports it. What changed is that nothing brings them back.
+-- FREE, STANDABLE GROUND IN THE DEPLOY ZONE -- where a body of `w` x `h` may be placed. Ordered as the
+-- zone is, so a pick over it is stable.
+--
+-- Named for a move that no longer exists, and kept under that name deliberately: it is called from
+-- ui/deploy_phase.lua and models/encounter_battle.lua to lay the OPENING line out, which is the job it
+-- was always really doing. Renaming it would touch three files to say the same thing.
 function Combat.reinforceTiles(combat, w, h)
     w, h = w or 1, h or 1
     local out = {}
@@ -5716,18 +5560,6 @@ function Combat.reinforceTiles(combat, w, h)
         if Combat.footprintFree(combat, w, h, t.x, t.y) then out[#out + 1] = { x = t.x, y = t.y } end
     end
     return out
-end
-
--- REINFORCE: send bench entry `index` in on (x, y) at no cost in tempo. Not a turn -- nobody acted -- so
--- the turn count does not move and nothing is rebased, exactly as a summon arriving mid-turn does not.
--- Returns the new unit, or false plus a reason.
-function Combat.reinforce(combat, index, x, y)
-    local ok, why = Combat.canReinforce(combat)
-    if not ok then return false, why end
-    if not Combat.inDeployZone(combat, x, y) then return false, "come in through your own lines" end
-    local unit = sendIn(combat, index, x, y, nil)
-    if not unit then return false, "there is no room there" end
-    return unit
 end
 
 -- Everything that follows from a unit dropping: mark it dead, log the kill, and unwind whatever
@@ -10812,8 +10644,13 @@ Combat.OPPOSING = { party = "enemy", enemy = "party" }
 -- ask about a side's existence, so the bench is honoured everywhere at once: a party with a body still
 -- benched has not lost, and neither has the enemy won by clearing the four in front of them. Identical
 -- to "aliveCount == 0" for any side without a bench, which is every side but the party.
+--
+-- IT READ THE BENCH UNTIL THE WAYS IN WENT. A party with somebody benched had not lost, because a
+-- reserve could still be sent for -- Fall Back and Reinforce. Both are removed (the expedition is four
+-- and the board holds four, so there is never anybody off it), and a bench nobody can reach must not
+-- hold a fight open: that is a battle you can neither win nor lose, which is worse than either.
 function Combat.eliminated(combat, side)
-    return Combat.aliveCount(combat, side) == 0 and Combat.benchCount(combat, side) == 0
+    return Combat.aliveCount(combat, side) == 0
 end
 
 -- Has `side` won, lost, or neither? Returns "win", "loss", or nil for a fight still in progress.

@@ -69,18 +69,12 @@ local function takeTurn(combat, unit)
     if not acted and unit.alive then Combat.pass(combat, unit) end
 end
 
--- The company's last stand, taken automatically. A party whose field is empty but whose bench is not
--- has NOT lost (Combat.outcomeFor agrees -- a side with a bench is not eliminated), so a loop that
--- only evaluated would spin until the guard tripped. The battle state answers this by offering the
--- player a rotation; with nobody at the keyboard the next body simply walks in, which is the same
--- decision anyone would make when the alternative is the run.
-local function lastStand(combat)
-    if Combat.aliveCount(combat, "party") > 0 then return false end
-    if not Combat.canReinforce(combat, "party") then return false end
-    local tiles = Combat.reinforceTiles(combat)
-    if #tiles == 0 then return false end
-    return Combat.reinforce(combat, 1, tiles[1].x, tiles[1].y) and true or false
-end
+-- THE LAST STAND IS GONE WITH THE MOVE THAT MADE IT. A party whose field was empty but whose bench
+-- was not had NOT lost, so a loop that only evaluated would spin until the guard tripped -- and this
+-- walked the next body in, which is what a player would have done.
+--
+-- Combat.eliminated no longer reads the bench (there is no way back onto the board), so an empty
+-- field IS a loss and the loop resolves on its own.
 
 -- Run `combat` to a decision. Returns `result, turns`:
 --   "win" | "loss" -- what Combat.evaluate settled on
@@ -98,7 +92,6 @@ function Autobattle.run(combat, opts)
         if turns >= maxTurns then return nil, turns end
         turns = turns + 1
 
-        lastStand(combat)
 
         -- A FREE action (or a surged extra one) leaves combat.turn OPEN on the same unit rather than
         -- ending it. Resume that turn rather than opening a new one: Combat.startTurn clears
