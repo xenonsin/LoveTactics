@@ -341,13 +341,13 @@ return {
         assert(Wound.healShare(player, char.id) == Wound.FLOOR,
             "wounds stop biting at the floor -- a body nobody can field is not a decision")
 
-        -- And gold sets one. Paid at the Cafe (ui/panels/cafe.lua), but the rule is here.
+        -- ...and a STAY sets them, one a day. Gold used to, at a counter, instantly -- see
+        -- tests/wound_rest_spec.lua for why that shape was the problem rather than its price.
         player.wounds[char.id] = 1
-        player.gold = Wound.MEND_COST - 1
-        local ok, why = Wound.mend(player, char.id)
-        assert(not ok and why == "gold", "a mend that cannot be paid for does not happen")
-        player.gold = Wound.MEND_COST
-        assert(Wound.mend(player, char.id), "and one that can, does")
+        player.gold = 10000
+        require("models.gate").lodge(player, char.id)
+        Wound.rest(player)
+        require("models.gate").dischargeMended(player)
         assert(Wound.count(player, char.id) == 0, "the wound is gone")
         assert(player.wounds[char.id] == nil, "and left no zero behind to accumulate")
         assert(hp.current == hp.max, "and the body is whole again at once, not at the next hub entry")

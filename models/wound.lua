@@ -75,10 +75,13 @@ Wound.DAMAGE_PER_WOUND = 2
 -- measured in ticks, so it does not tick down -- what ends it is the inn.
 Wound.LASTING = 9999
 
--- What it costs to set one, in gold. Deliberately dear enough to compete with the shelf: the whole
--- point of the meter is that a run's takings have somewhere else they are needed, so mending has to
--- be a real alternative to a purchase rather than a rounding error on the way past.
-Wound.MEND_COST = 120
+-- WHAT ONE COSTS IS NOT A NUMBER IN THIS FILE ANY MORE. It was 120 gold, set "dear enough to compete
+-- with the shelf" -- and it was not, against a 345g median item, so the meter never bit. Raising it
+-- would not have fixed the shape: a wound you can settle at a counter costs a decision once and
+-- nothing after.
+--
+-- The price is a stay at the Inn now: coin at the door (models/gate.lua's LODGE_PER_WOUND) and a day
+-- per wound in a bed, during which that body is not in the company. See Wound.rest.
 
 -- How many wounds `charId` carries.
 function Wound.count(player, charId)
@@ -202,36 +205,33 @@ function Wound.everWounded(player)
     return (player and player.wounded) == true
 end
 
--- A DAY PASSES AND THE BENCH MENDS: one wound off every body that did not go down.
+-- A DAY PASSES AND THE INN MENDS: one wound off every body lodged there, and nobody else.
 --
--- THIS IS WHAT THE METER IS PAID IN NOW. A wound cost gold and nothing else, and the whole ladder --
--- the reserve share, Wounded at two, Crippled at three -- came off for at most a hundred (Gate.rest
--- clears the entire roster's ledger for min(#roster, 4) x INN_PER_HEAD). Against a 345g median item
--- that is not a meter, it is a toll booth, and a company past the first shop never felt it.
+-- THIS IS WHERE THE METER IS PAID. A wound cost gold at a counter and came off instantly, which made
+-- the whole ladder above -- the reserve share, Wounded at two, Crippled at three -- a toll booth rather
+-- than a meter. What replaces it is a BED: gold opens the door and days do the mending, and a day is
+-- the scarcest thing the campaign has (Calendar.DAYS is forty).
 --
--- Time cannot be bought off. A day is the campaign's scarcest thing (Calendar.DAYS is forty), so a
--- three-wound body is seven percent of a playthrough spent in a bed -- and the player never SPENDS that
--- day on healing, which is the distinction that keeps this off the calendar's own rule that a day is
--- not a second currency. Days go on expeditions; the bench mends while they do.
+-- BEING SOMEWHERE IS THE COST. A body at the Inn is not in the company -- they cannot be picked for an
+-- expedition while they are in it -- so a three-wound body is three days of being a company of six
+-- instead of seven, on top of the coin. That is the whole meter: not the price, the absence.
 --
--- `going` is who walked down that day, as characters or ids -- they were working, and work is not rest.
--- That is the second cost of a descent and the reason a reserve is worth keeping: the four you send are
--- four who do not heal.
+-- IT MENDS ONLY THE LODGED, and this is the reversal worth naming because the first cut had it the
+-- other way round: everybody who did NOT walk down that day healed, free, automatically. That is a
+-- company that repairs itself for standing still, which asks the player nothing -- and it made the Inn
+-- redundant on the day it was written. Resting is a thing you arrange and pay for.
 --
 -- Returns the ids that mended, so a caller can say so.
-function Wound.rest(player, going)
+function Wound.rest(player)
     if not (player and player.wounds) then return {} end
-    local out = {}
-    for _, entry in ipairs(going or {}) do
-        out[type(entry) == "table" and entry.id or entry] = true
-    end
+    local lodged = (player.atInn or {})
 
     local mended = {}
     for id, n in pairs(player.wounds) do
-        if not out[id] then
+        if lodged[id] then
             local left = n - 1
-            -- Cleared to nil rather than left at zero, for the reason Wound.mend clears it: save drops
-            -- empty entries, and a table of zeroes would grow with every body ever hurt once.
+            -- Cleared to nil rather than left at zero: models/save.lua drops empty entries, and a table
+            -- of zeroes would grow forever with every body that has ever been hurt once.
             player.wounds[id] = left > 0 and left or nil
             mended[#mended + 1] = id
         end
@@ -240,22 +240,16 @@ function Wound.rest(player, going)
     return mended
 end
 
--- Set one wound, for gold. Returns true when it was paid and mended, or nil plus a reason:
---   "unhurt" | "gold"
-function Wound.mend(player, charId)
-    if Wound.count(player, charId) <= 0 then return nil, "unhurt" end
-    local Player = require("models.player")
-    if (player.gold or 0) < Wound.MEND_COST then return nil, "gold" end
-    Player.spendGold(player, Wound.MEND_COST)
-    local left = player.wounds[charId] - 1
-    -- Cleared to nil rather than left at zero: models/save.lua drops empty entries, and a table full
-    -- of zeroes would grow forever with every body that has ever been hurt once.
-    player.wounds[charId] = left > 0 and left or nil
-    -- Give the mended share back at once rather than at the next hub entry. Paying for a repair and
-    -- watching nothing change is the shape of a bug even when it is not one.
-    Player.restore(player)
-    return true
-end
+-- THERE IS NO Wound.mend ANY MORE, and the absence is the design rather than an omission.
+--
+-- It set one wound for gold, instantly, from a row on the Cafe's list -- and the price was 120 against
+-- a 345g median item, so the whole ladder above came off for pocket change and the meter never bit. The
+-- fix is not a bigger number: a wound you can pay off at a counter is a wound that costs a decision
+-- once and nothing thereafter, however much it costs.
+--
+-- A body MENDS BY BEING SOMEWHERE INSTEAD. You leave them at the Inn, you pay for the stay, and they
+-- are gone from the company while they take it (models/gate.lua's Gate.lodge). Gold still opens the
+-- door -- it just cannot buy back the days.
 
 -- Everyone on the roster carrying at least one, as { { char, count }, ... } in roster order. What the
 -- party sheet and the Cafe's mend list both walk.

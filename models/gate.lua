@@ -42,6 +42,95 @@ local Gate = {}
 -- inn is for is the four who went down, so it bills the four who went down.
 Gate.INN_PER_HEAD = 25
 
+-- ---------------------------------------------------------------------------
+-- The Inn: a bed, and what it costs to put somebody in one
+-- ---------------------------------------------------------------------------
+
+-- WHAT A STAY COSTS, per wound. Paid once, at the door, for the whole stay -- so a three-wound body is
+-- three times this and three days in a bed, and the player sees the whole bill before agreeing to it.
+--
+-- Per WOUND rather than per night, because a nightly charge is the same total arriving in instalments
+-- and adds a way to fail halfway: a company that ran out of gold on day two would have somebody turned
+-- out mid-mend, which is a rule nobody wants to discover. One price, one decision.
+--
+-- Priced against an errand's purse (a 250g median) rather than against the shelf: a full three-wound
+-- stay is most of a day's takings, which is what makes "go short-handed instead" a real answer.
+Gate.LODGE_PER_WOUND = 60
+
+-- What lodging `charId` would cost right now. Zero for a body with nothing to mend -- the Inn does not
+-- take money for a bed nobody needs.
+function Gate.lodgePrice(player, charId)
+    local Wound = require("models.wound")
+    return Wound.count(player, charId) * Gate.LODGE_PER_WOUND
+end
+
+-- Is this body in a bed? A lodged body is NOT in the company: it cannot be picked for an expedition
+-- (Descent.party filters them out), which is the real cost of the stay.
+function Gate.isLodged(player, charId)
+    return ((player or {}).atInn or {})[charId] == true
+end
+
+-- Everybody currently in a bed, as ids in roster order -- so a surface listing them agrees with every
+-- other surface that lists the company.
+function Gate.lodged(player)
+    local out = {}
+    for _, char in ipairs((player or {}).roster or {}) do
+        if Gate.isLodged(player, char.id) then out[#out + 1] = char.id end
+    end
+    return out
+end
+
+-- Put a body to bed, for coin. Returns true, or false plus a reason ("unhurt" | "gold" | "already").
+--
+-- Charged in full on arrival, and NOT refunded on the way out: a bed taken is a bed paid for, and a
+-- player who checked somebody out a day early to get half their money back would be playing the ledger
+-- rather than the company.
+function Gate.lodge(player, charId)
+    if not (player and charId) then return false, "unhurt" end
+    if Gate.isLodged(player, charId) then return false, "already" end
+    local price = Gate.lodgePrice(player, charId)
+    if price <= 0 then return false, "unhurt" end
+    if (player.gold or 0) < price then return false, "gold" end
+
+    local Player = require("models.player")
+    Player.spendGold(player, price)
+    player.atInn = player.atInn or {}
+    player.atInn[charId] = true
+    return true
+end
+
+-- Take somebody out of a bed, mended or not. Free, and deliberately allowed mid-stay: a company that
+-- suddenly needs a fourth body should be able to pull one out half-healed and pay for it in wounds.
+function Gate.checkout(player, charId)
+    if not (player and player.atInn) then return false end
+    if not player.atInn[charId] then return false end
+    player.atInn[charId] = nil
+    if next(player.atInn) == nil then player.atInn = nil end
+    return true
+end
+
+-- A body whose last wound has just been set walks out on its own. Called on the same beat the day
+-- advances, so a mended body is back in the company by the time the player looks at it -- leaving them
+-- lodged at zero wounds would be a bed that has to be swept up by hand, and a company one short for a
+-- reason the screen no longer shows.
+function Gate.dischargeMended(player)
+    local Wound = require("models.wound")
+    local out = {}
+    for _, id in ipairs(Gate.lodged(player)) do
+        if Wound.count(player, id) <= 0 then
+            Gate.checkout(player, id)
+            out[#out + 1] = id
+        end
+    end
+    -- WALKING OUT OF A BED IS WALKING OUT WHOLE. Setting the last bone gives the reserved share back
+    -- (models/wound.lua), but the pool it un-reserves is still only as full as it was -- so without
+    -- this a body leaves the Inn at the health they went in with and the player has paid for a number
+    -- that did not move. Wound.mend used to restore for exactly this reason; the beat moved, the
+    -- obligation did not.
+    if #out > 0 then require("models.player").restore(player) end
+    return out
+end
+
 function Gate.innPrice(player)
     local Player = require("models.player")
     local n = math.min(#((player and player.roster) or {}), Player.MAX_FIELD)

@@ -66,6 +66,17 @@ function Picker:slotRect(i)
     return self.x + (i - 1) * (TILE + SLOT_GAP), self.y, TILE, TILE
 end
 
+-- THE INN IS THE FIFTH PLATE, set apart to the right. A body dropped here is left in a bed: it costs
+-- coin at the door and a day per wound, and they are out of the company until they are mended.
+--
+-- On the same row as the expedition rather than somewhere else on the screen, because it is the same
+-- gesture answering the same question -- where does this body go today -- and the two destinations
+-- compete. Gapped wider than the plates are from each other so it does not read as a fifth seat.
+function Picker:innRect()
+    local x = self.x + Descent.PARTY_MAX * (TILE + SLOT_GAP) + SLOT_GAP * 2
+    return x, self.y, TILE, TILE
+end
+
 function Picker:rosterTop()
     return self.y + TILE + 42
 end
@@ -199,6 +210,26 @@ function Picker:mousereleased(px, py, button)
     -- A PRESS THAT DID NOT TRAVEL IS A CLICK, whichever half of the screen it happened on.
     if not drag.moved then
         self:toggle(drag.char.id)
+        return true
+    end
+
+    -- DROPPED ON THE INN: a bed, for coin. Refused rather than half-done when the purse is short or
+    -- there is nothing to mend -- the body simply goes back where it was, and the message says why.
+    if inRect(px, py, self:innRect()) then
+        local Gate = require("models.gate")
+        local ok, why = Gate.lodge(self.player, drag.char.id)
+        if ok then
+            -- A body cannot be in a bed and on the stair at once, so leaving the Inn is also leaving
+            -- the expedition. Done here rather than inside Gate.lodge: the model has no opinion about
+            -- who was going down, and Descent.party already filters the lodged out on the way past --
+            -- this only keeps the stored pick honest so it does not come back when they check out.
+            self:remove(drag.char.id)
+            if self.onChange then self.onChange() end
+        else
+            self.message = (why == "gold" and "Not enough gold for the bed.")
+                or (why == "unhurt" and "Nothing to mend.")
+                or "Already in a bed."
+        end
         return true
     end
 
@@ -336,21 +367,48 @@ function Picker:draw()
         end
     end
 
+    -- THE INN'S PLATE, and what is in it. Drawn as a stack rather than one bed: several bodies can be
+    -- lodged at once and the plate has to say how many, or a company would lose track of who it is
+    -- waiting on.
+    local Gate = require("models.gate")
+    local ix, iy, iw, ih = self:innRect()
+    local lodged = Gate.lodged(self.player)
+    Theme.set(Theme.slot)
+    love.graphics.rectangle("fill", ix, iy, iw, ih, Theme.R or 4, Theme.R or 4)
+    Theme.set(#lodged > 0 and Theme.accentWeapon or Theme.hairline)
+    love.graphics.rectangle("line", ix, iy, iw, ih, Theme.R or 4, Theme.R or 4)
+    if #lodged > 0 then
+        local first
+        for _, c in ipairs(self:roster()) do if c.id == lodged[1] then first = c end end
+        drawBody(first, ix, iy, iw, self.font, true)
+        love.graphics.setFont(self.font)
+        Theme.set(Theme.accentWeapon)
+        love.graphics.printf(#lodged > 1 and ("x" .. #lodged) or "", ix, iy + ih - 18, iw - 5, "right")
+    end
+
     love.graphics.setFont(self.smallFont)
     Theme.set(Theme.muted)
     local sx = self:slotRect(1)
     love.graphics.printf("The expedition", sx, self.y + TILE + 8, self.cols * (TILE + GAP), "left")
+    love.graphics.printf("The Inn", ix, self.y + TILE + 8, TILE + 40, "left")
+
+    -- Why a drop was refused, said where the drop happened rather than in a corner.
+    if self.message then
+        Theme.set(Theme.accentWeapon)
+        love.graphics.printf(self.message, sx, self.y - 20, 420, "left")
+    end
 
     -- THE COMPANY. Anybody already on a plate is drawn dimmed and still in place rather than removed
     -- from the list: a roster that reflowed as you picked would move the tile you were reaching for.
     for i, char in ipairs(self:roster()) do
         local x, y, w, h = self:rosterRect(i)
         local going = self:isGoing(char.id)
+        local abed = require("models.gate").isLodged(self.player, char.id)
         Theme.set(Theme.panel)
         love.graphics.rectangle("fill", x, y, w, h, Theme.R or 4, Theme.R or 4)
-        Theme.set(going and Theme.hairline or Theme.frame)
+        Theme.set((going or abed) and Theme.hairline or Theme.frame)
         love.graphics.rectangle("line", x, y, w, h, Theme.R or 4, Theme.R or 4)
-        drawBody(char, x, y, w, self.font, going)
+        drawBody(char, x, y, w, self.font, going or abed)
 
         -- A wound is the one fact that changes who you send, so it is on the tile rather than a hover.
         local wounds = Wound.count(self.player, char.id)

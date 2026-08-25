@@ -48,9 +48,10 @@ return {
             -- save still CARRIES those fields so an old file loads, but nothing writes them any more,
             -- so there is nothing left to round-trip.
 
-            -- ...and paying the surgeon does not un-mark it. The ledger empties; the fact does not, or
+            -- ...and a stay at the Inn does not un-mark it. The ledger empties; the fact does not, or
             -- the city would lose the Inn the morning after it was used.
-            Wound.mend(restored, "character_rowan")
+            restored.atInn = { character_rowan = true }
+            Wound.rest(restored)
             local again = Save.restore(Save.snapshot(restored))
             assert(#Wound.wounded(again) == 0, "the ledger is clear")
             assert(Wound.everWounded(again), "and the mark is one-way")

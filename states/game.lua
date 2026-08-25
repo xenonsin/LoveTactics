@@ -1147,12 +1147,12 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     local freshExpedition = not game.descent or not game.descent.entry
     if runResumable() and quest and quest.id and not resume and freshExpedition then
         Calendar.spend(game.player)
-        -- ...AND THE BENCH MENDS WHILE THEY WORK. One wound off everybody who did not walk down, which
-        -- is the second cost of taking somebody: the four you send are four who do not heal. This is
-        -- the only thing that sets a bone now -- gold used to, for about a hundred, which made the
-        -- whole wound ladder a toll booth (models/wound.lua's Wound.rest).
-        Wound.rest(game.player, game.descent and Descent.party(game.descent, game.player)
-            or game.player.roster)
+        -- ...AND A NIGHT PASSES AT THE INN. One wound off everybody lodged there, and only them: a
+        -- company does not repair itself for standing still (models/wound.lua's Wound.rest). Whoever
+        -- has run out of wounds walks out on the same beat, so a mended body is back in the company by
+        -- the time the player next looks at it.
+        Wound.rest(game.player)
+        require("models.gate").dischargeMended(game.player)
     end
 
     if runResumable() and quest and quest.id then

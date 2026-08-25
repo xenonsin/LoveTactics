@@ -101,8 +101,11 @@ return {
         for _ = 1, 3 do Wound.inflict(p, { char }) end
         assert(#Wound.combatEffects(p, char.id) == 2, "precondition: three wounds, two debuffs")
 
-        p.gold = Wound.MEND_COST * 3
-        for _ = 1, 3 do Wound.mend(p, char.id) end
+        -- Three days in a bed, which is what three wounds costs now (tests/wound_rest_spec.lua).
+        p.gold = 10000
+        require("models.gate").lodge(p, char.id)
+        for _ = 1, 3 do Wound.rest(p) end
+        require("models.gate").dischargeMended(p)
 
         assert(Wound.count(p, char.id) == 0, "the wounds are gone")
         assert(#Wound.combatEffects(p, char.id) == 0, "and so are the debuffs")

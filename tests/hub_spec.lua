@@ -362,9 +362,10 @@ return {
             local hurt = Player.new()
             Wound.inflict(hurt, { { id = "character_rowan" } })
             assert(not shut(hurt, "the_inn"), "the first wound puts the sign up")
-            -- ...and it stays up. The ledger empties when the surgeon is paid and the MARK does not, or
+            -- ...and it stays up. The ledger empties when the stay is over and the MARK does not, or
             -- the city would lose a building the morning after it was used.
-            Wound.mend(hurt, "character_rowan")
+            hurt.atInn = { character_rowan = true }
+            Wound.rest(hurt)
             assert(#Wound.wounded(hurt) == 0, "the ledger is clear")
             assert(not shut(hurt, "the_inn"), "a door the player has learned the way to stays put")
 

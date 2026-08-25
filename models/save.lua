@@ -418,6 +418,12 @@ function Save.snapshot(player)
     for charId, n in pairs(player.wounds or {}) do
         if (tonumber(n) or 0) > 0 then wounds[charId] = n end
     end
+    -- Who is in a bed at the Inn (models/gate.lua). Written only for a body that is really
+    -- there, so an empty Inn puts no table in the file.
+    local atInn = {}
+    for charId, v in pairs(player.atInn or {}) do
+        if v then atInn[charId] = true end
+    end
     local completedQuests = {}
     for questId, done in pairs(player.completedQuests or {}) do
         if done then completedQuests[questId] = true end
@@ -604,6 +610,10 @@ function Save.snapshot(player)
         -- that outlives the run -- including a wipe, which states/game.lua's rollbackRun holds this
         -- key across on purpose.
         wounds = wounds,
+        -- ...and who is lying in a bed being mended of them (models/gate.lua). Nil while the Inn is
+        -- empty, which is what an older save reads as -- and an older save HAS no lodgers, so both
+        -- degrade to the same answer. Purely additive; Save.VERSION does not move.
+        atInn = next(atInn) and atInn or nil,
         -- ...and whether anybody ever has been (models/wound.lua's Wound.everWounded), which the ledger
         -- above stops being able to answer the moment the surgeon is paid. The Inn is the door it opens.
         -- Purely additive, so Save.VERSION does not move: an older save restores unmarked, and the first
@@ -799,6 +809,12 @@ function Save.restore(snap)
         -- standing above follows: nothing should carry an injury that no body can be mended of.
         if require("models.character").defs[charId] then wounds[charId] = tonumber(n) or 0 end
     end
+    -- ...and who is in a bed. Filtered against the blueprints exactly as the wounds above are:
+    -- a body that left the data cannot be lying in an Inn nobody can check them out of.
+    local atInn = {}
+    for charId, v in pairs(snap.atInn or {}) do
+        if v and require("models.character").defs[charId] then atInn[charId] = true end
+    end
     -- The hiring purse (models/voucher.lua). Vouchers carry one number and are rebuilt rather than
     -- copied through, so a hand-edited save cannot put a table in the list; bonds are filtered against
     -- the blueprints exactly as wounds are one block up.
@@ -931,6 +947,7 @@ function Save.restore(snap)
         standing = standing,          -- absent on a save from before the descent; an empty table reads the same
         deepest = snap.deepest or 0,  -- ...and a company that has never been down has no record to beat
         wounds = wounds,              -- ...nor any bones to set
+        atInn = next(atInn) and atInn or nil, -- ...nor anybody in a bed being mended of them
         wounded = snap.wounded == true, -- ...and no history of any, which is what an older save reads as
         climbedOut = snap.climbedOut == true, -- ...and has never turned back, which is what one reads as too
         tallyTaught = snap.tallyTaught == true, -- ...so nobody has had to explain the tally to them yet

@@ -928,8 +928,16 @@ Descent.PARTY_MAX = 4
 --
 -- Filtered against the live roster on the way out, so a party naming somebody who has since left (or a
 -- save from before this existed) degrades to whoever is really there rather than to a hole in the line.
+-- A BODY IN A BED IS NOT IN THE COMPANY. Anyone lodged at the Inn is filtered out on the way through
+-- (models/gate.lua's Gate.isLodged), so a party picked before somebody was put to bed cannot walk them
+-- back down -- and that absence is the real cost of the stay, coin being only the door fee.
 function Descent.party(run, player)
-    local roster = (player and player.roster) or {}
+    local Gate = require("models.gate")
+    local roster = {}
+    for _, char in ipairs((player and player.roster) or {}) do
+        if not Gate.isLodged(player, char.id) then roster[#roster + 1] = char end
+    end
+
     local picked = run and run.party
     if not picked or #picked == 0 then
         local out = {}

@@ -115,16 +115,17 @@ function gate:build()
     -- the way out, and it is deliberately the same price as an expedition: one day, the campaign's
     -- scarcest thing (Calendar.DAYS is forty).
     --
-    -- Hidden while nobody is hurt rather than greyed, because then it is a button whose only effect is
-    -- to lose. A control draws where it can be used.
+    -- Hidden unless somebody is actually IN A BED, rather than merely hurt. Waiting mends nobody who is
+    -- not lodged, so offering it to a company with three wounded and none of them at the Inn is a button
+    -- that spends a day for nothing. A control draws where it can be used.
     local Wound = require("models.wound")
-    if #Wound.wounded(gate.player) > 0 then
+    if #Gate.lodged(gate.player) > 0 then
         items[#items + 1] = {
             label = "Wait a day",
             action = function()
                 require("models.calendar").spend(gate.player)
-                -- Nobody went down, so nobody is exempt: the whole company mends a wound.
-                Wound.rest(gate.player, {})
+                Wound.rest(gate.player)
+                Gate.dischargeMended(gate.player)
                 Player.restore(gate.player)
                 Player.save()
                 gate:build()
