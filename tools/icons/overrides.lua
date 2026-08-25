@@ -266,6 +266,30 @@ return {
     -- consumable_war_drums stays unmatched on purpose: `drum` is blocklisted (the set's drums are a
     -- modern kit), and a war drum deserves real art rather than a percussion icon in the wrong register.
 
+    -- ------------------------------------------- vocabulary pass, 2026-08-25
+    -- The composer now GATES this file: a glyph reaches the renderer only if it is in
+    -- BASE_VOCABULARY (tools/icon_compose.lua), and anything else falls through to what the ability
+    -- does, or when the charm fires, or the type base. So an entry here is only worth writing when it
+    -- names a slug the vocabulary holds -- `delapouite/caltrops` and `lorc/fire-bomb` are perfectly
+    -- good matches that now draw nothing, because one item is not enough to buy a drawing.
+    --
+    -- These are the dozen the fall-through read wrong: a thrown flask is not a blast, a net is not a
+    -- curse, and wine is not a ward.
+    ["items/fire_bomb.png"] = "smoke-bomb",          -- the thrown-flask family, not a bare explosion
+    ["items/ice_bomb.png"] = "smoke-bomb",
+    ["items/ball_bearings.png"] = "stone-sphere",    -- scattered underfoot; `marbles` is off the shelf
+    ["items/spiteful_caltrops.png"] = "mantrap",     -- ground denial, which is what a trap glyph says
+    ["items/net.png"] = "mantrap",                   -- a snare, not a hex
+    ["items/scent_marker.png"] = "rune-stone",       -- a mark left on the ground
+    ["items/wine.png"] = "round-potion",             -- a drink is a drink
+    ["items/consumable_elixir_of_the_giant.png"] = "round-potion",
+    ["items/consumable_elixir_of_the_adept.png"] = "round-potion",
+    ["items/revive_scroll.png"] = "tied-scroll",
+    -- War drums were left unmatched above on the reasoning that no icon beats a wrong one. Under the
+    -- gate there is no such thing as no icon -- an unmatched consumable now composes as the ward shield
+    -- -- so it takes the rally instead, and the note above still holds for why it is not a drum.
+    ["items/consumable_war_drums.png"] = "knight-banner",
+
     -- ---------------------------------------------------------------- props
     -- Board furniture. These sit on the terrain layer rather than the character layer, so an
     -- iconic treatment is the right register -- see the two-register rule in docs/art-assets.md.

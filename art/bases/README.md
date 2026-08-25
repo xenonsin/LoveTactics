@@ -56,10 +56,15 @@ first few dozen silhouettes carry most of the screen:
 
 | drawn | assets covered |
 |---|---|
-| top 10 | 24% |
-| top 20 | 35% |
-| top 40 | 48% |
-| top 80 | 60% |
-| all 410 | 100% |
+| top 10 | 37% |
+| top 20 | 53% |
+| top 40 | 73% |
+| top 80 | 85% |
+| all 215 | 100% |
 
 `delapouite/claws` alone dresses 73 assets. Draw down the list, not across the catalogue.
+
+The item half of that list — 62 slugs, phased by what each one buys — is written up as a hand-off
+brief in [docs/commission-item-icons.md](../../docs/commission-item-icons.md). What bounds it at 62
+is the vocabulary in `tools/icon_compose.lua`: a mapped glyph is only drawn when four or more items
+share it, so a slug that is not on this list is not art anybody owes.

@@ -82,6 +82,58 @@ case("every character silhouette slug is a well-formed address", function()
     assert(#bad == 0, "malformed silhouette slug(s): " .. table.concat(bad, ", ", 1, math.min(#bad, 8)))
 end)
 
+-- 1b. THE VOCABULARY --------------------------------------------------------------------------------
+--
+-- The drawing set is a DECLARED list (tools/icon_compose.lua's BASE_VOCABULARY), not whatever 749
+-- blueprints happen to resolve to. Before the gate the catalogue drew 262 silhouettes, 164 of them for
+-- exactly one item, and every new ability added another without anybody deciding to. These three cases
+-- are what keeps that from coming back.
+
+case("every silhouette an item draws is in the vocabulary", function()
+    local Registry = require("models.registry")
+    local items = Registry.load("data/items", "data.items")
+    local outside = {}
+    for id, def in pairs(items) do
+        local slug = Icon.baseFor(def)
+        if not Icon.BASE_VOCABULARY[slug] then
+            outside[#outside + 1] = id .. " -> " .. tostring(slug)
+        end
+    end
+    assert(#outside == 0, "slug(s) outside the vocabulary: "
+        .. table.concat(outside, ", ", 1, math.min(#outside, 8)))
+end)
+
+-- The other direction, and the one that actually costs money: an entry nobody draws is a drawing on the
+-- commission that no item is waiting for. Structural fallbacks are exempt -- a type base for a type the
+-- catalogue does not contain yet (no ability costs health) is a promise, not an order.
+case("no vocabulary entry is idle except a structural fallback", function()
+    local Registry = require("models.registry")
+    local items = Registry.load("data/items", "data.items")
+    local used = {}
+    for _, def in pairs(items) do used[Icon.baseFor(def)] = true end
+
+    local structural = {}
+    for _, slug in pairs(Icon.FAMILY_BASE) do structural[slug] = true end
+    for _, slug in pairs(Icon.TYPE_BASE) do structural[slug] = true end
+    for _, slug in pairs(Icon.ABILITY_BASE) do structural[slug] = true end
+    for _, slug in pairs(Icon.VERB_BASE) do structural[slug] = true end
+    for _, slug in pairs(Icon.HOOK_BASE) do structural[slug] = true end
+    for _, row in ipairs(Icon.FIELD_BASE) do structural[row[2]] = true end
+    structural[Icon.DEFAULT_BASE] = true
+
+    local idle = {}
+    for slug in pairs(Icon.BASE_VOCABULARY) do
+        if not used[slug] and not structural[slug] then idle[#idle + 1] = slug end
+    end
+    assert(#idle == 0, "vocabulary entr(ies) nothing draws: "
+        .. table.concat(idle, ", ", 1, math.min(#idle, 8)))
+end)
+
+case("the bespoke list stays under its cap", function()
+    assert(#Icon.BESPOKE <= Icon.BESPOKE_CAP,
+        string.format("%d bespoke silhouettes, cap is %d", #Icon.BESPOKE, Icon.BESPOKE_CAP))
+end)
+
 -- 2. THE OVERLAY ------------------------------------------------------------------------------------
 
 case("drawn art under art/ overlays onto the matching assets/ path", function()
