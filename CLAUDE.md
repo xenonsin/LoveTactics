@@ -27,6 +27,17 @@ list of `{ name, fn }` cases; `fn` uses `assert(...)` and is run under `pcall`. 
 0 when all pass, 1 otherwise. See `tests/data_spec.lua` and `tests/hub_spec.lua` for the style.
 Keep model/data logic free of `love.graphics` at require-time so it loads under headless tests.
 
+A **syntax check alone** is much faster than the suite (which takes minutes) and is the right
+first move after any hand edit to a `.lua` file:
+
+```powershell
+& "E:\LOVE\lovec.exe" . parse            # every .lua in the tree
+& "E:\LOVE\lovec.exe" . parse models/gate.lua
+```
+
+It loads each file without running it and prints the first syntax error with its line; exit 1
+if any file is bad.
+
 ## Wiki
 
 The [GitHub wiki](https://github.com/xenonsin/LoveTactics/wiki) is a **generated mirror** of
