@@ -1418,12 +1418,6 @@ end
 -- a summon arrives through, so the newcomer joins the turn order, the board and every query with no
 -- further wiring; it gets a script key off its spawn cell exactly like the units placed at start.
 --
--- The player's line is broken but their company is not: raise the bench chooser instead of letting the
--- fight be decided. Defined further down, with the rest of the rotation UI (it leans on the chooser,
--- notify and refreshView); declared here because resolveAdvance below has to consult it BEFORE it asks
--- Combat.evaluate anything. See the rotation section.
-local offerLastStand
-
 -- Recompute the turn-order preview + battlefield overlays and hand them to the widgets. Defined far
 -- below (it leans on nearly every helper in this file); declared here because the rotation section --
 -- which sits between the turn loop and it -- has to call it after a swap changes what is on the board.
@@ -1718,11 +1712,12 @@ local function resolveAdvance()
     -- with the very check it exists to forestall.
     spawnReinforcements()
     spawnWaves() -- timed enemy reinforcements (objective.waves), before the objective is judged
-    -- The player's last body just fell, but the company still has someone on the bench: the fight is not
-    -- decided, it is waiting. Ahead of Combat.evaluate for the same reason the lesson's reinforcement is
-    -- -- otherwise the defeat is declared a beat before the answer to it. Combat.outcomeFor agrees (a
-    -- side with a bench is not eliminated), so this is the UI half of one rule, not a second rule.
-    if offerLastStand() then return end
+    -- TWO CALLS THAT USED TO STAND HERE ARE GONE WITH THE MOVES THEY OFFERED, and both outlived their
+    -- definitions for a while: `offerLastStand()` raised the bench chooser when the player's last body
+    -- fell, and `battle.offerOpenSlot()` offered the free reinforcement the moment a slot opened. The
+    -- bench cannot answer either question now -- Combat.eliminated is `aliveCount == 0`, so nobody is
+    -- held off the board and there is nothing to send in -- and every action's hand-off runs through
+    -- here, so leaving the calls behind meant a nil call on the first blow of every fight.
     local result = Combat.evaluate(battle.combat)
     -- THE WIN MAY BE OVERRULED, once, by the objective itself. Asked here rather than anywhere else
     -- because this is the only place a win is declared, and the whole point is that it is not: the
@@ -1734,11 +1729,6 @@ local function resolveAdvance()
     if result == "loss" and battle.overruled then battle.endOverruled() return end
     if result == "win" then win() return
     elseif result == "loss" then lose() return end
-    -- A body of the player's fell and the fight goes on: offer the free reinforcement now, where the
-    -- player is already looking, rather than leaving it greyed in the drawer. AFTER the objective is
-    -- judged, because a slot that opened on the same blow that ended the fight is not a decision
-    -- anyone needs to make. See battle.offerOpenSlot for why this fires on the drop and not the state.
-    battle.offerOpenSlot()
     -- A FREE action (or a surged extra action) leaves the model's `combat.turn` open on the same unit
     -- rather than ending it; a normal action nils it in endTurn. So a still-set turn here means "carry
     -- on the open turn", not "begin a new one" -- resume it (see beginTurn) so the per-turn latches the

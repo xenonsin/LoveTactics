@@ -228,6 +228,12 @@ function CombatPanel.new(combat, opts)
     self.waitBtn = { x = self.gridX, w = self.gridW, h = 34 }
     self.waitBtn.y = Scale.HEIGHT - 16 - self.waitBtn.h
     self.waitHover = false
+    -- The item grid sits above the bottom lane. THIS LINE WENT OUT WITH FALL BACK and had
+    -- nothing to do with it -- it sat between two of that button's fields, so the cut took it
+    -- too, and every battle since has died constructing this panel (`arithmetic on field
+    -- 'gridY' (a nil value)`). Nothing caught it: no spec builds a real panel, and the
+    -- headless suite never opens one.
+    self.gridY = self.waitBtn.y - 14 - self.gridH
     -- Turn strip lives above the item grid; stripTop leaves the "Turn Order" caption clear breathing
     -- room above it (top + bottom margin around the header).
     self.stripTop = 52
