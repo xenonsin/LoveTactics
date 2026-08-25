@@ -227,7 +227,54 @@ function love.load(args)
         return
     end
 
+    -- PARSE-ONLY: `& "E:\LOVE\lovec.exe" . parse [path ...]`
+    --
+    -- Loads each file WITHOUT running it and reports the first syntax error, or checks every .lua in the
+    -- tree when given no paths. Exit 0 clean, 1 on the first failure.
+    --
+    -- IT EXISTS BECAUSE THE SUITE IS THE ONLY PARSER OTHERWISE, and it takes two and a half minutes. A
+    -- session spent five full gate cycles diagnosing five syntax errors -- each one a stray `end` or a
+    -- duplicated `{` left by a bad line-range edit -- and every one of them would have been named in
+    -- seconds by this. `luac` is not installed; LÖVE has always been able to do it.
+    if args and args[1] == "parse" then
+        local paths, bad = {}, 0
+        for i = 2, #args do paths[#paths + 1] = args[i] end
+        if #paths == 0 then
+            local function walk(dir)
+                for _, name in ipairs(love.filesystem.getDirectoryItems(dir)) do
+                    local p = (dir == "" and name) or (dir .. "/" .. name)
+                    local info = love.filesystem.getInfo(p)
+                    if info and info.type == "directory" then
+                        if name ~= ".git" and name ~= "vendor" then walk(p) end
+                    elseif p:match("%.lua$") then paths[#paths + 1] = p end
+                end
+            end
+            walk("")
+        end
+        -- pcall'd, and that is not belt-and-braces: love.filesystem.load RAISES on a syntax error rather
+        -- than returning nil plus a message, so an unguarded call hands the bad file straight to LÖVE's
+        -- error handler -- which draws it to a window nobody is watching and waits. A checker that hangs
+        -- on exactly the input it exists to catch is worse than no checker.
+        for _, p in ipairs(paths) do
+            local ok, chunk, err = pcall(love.filesystem.load, p)
+            if not ok then err = chunk chunk = nil end
+            if not chunk then print("PARSE " .. p .. ": " .. tostring(err)) bad = bad + 1 end
+        end
+        print(string.format("parse: %d file(s), %d bad", #paths, bad))
+        love.event.quit(bad > 0 and 1 or 0)
+        return
+    end
+
+    -- A SCREENSHOT HARNESS, and development only -- gated exactly as the duel harness above is
+    -- (models/debug.lua is a build constant). It boots straight past the menu so a screen can be driven
+    -- and captured; `.claude/skills/verify` rewrites the body of this branch for whatever it needs to
+    -- look at, and reverts. A shipping build has no reason to carry an entry point that skips the game.
     if args and args[1] == "shot" then
+        if not require("models.debug").enabled then
+            print("the screenshot harness is available in development builds only")
+            love.event.quit(1)
+            return
+        end
         love.filesystem.setIdentity("lovetactics_verify")
         print("SAVEDIR: " .. love.filesystem.getSaveDirectory())
         State.switch(require("states.debug_editor"))

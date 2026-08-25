@@ -14,7 +14,7 @@ hits and falls — the readable, lively unit art of a game like *Fire Emblem Her
 
 ## What we're commissioning
 
-**One painted still per combatant — and there are 154 of them.** Regenerate that figure with
+**One painted still per combatant — and there are 153 of them.** Regenerate that figure with
 `& "E:\LOVE\lovec.exe" . art-report` rather than trusting any number typed here.
 
 **You are not animating anything.** The motion is already built, in code: idle, move, attack, hit,
@@ -37,7 +37,7 @@ painted character art the game will have, and every place a person appears is on
   art** — author above final size and downscale.
 - **Fire Emblem Heroes-style *bodies*.** The liveliness comes from the code's motion; what the painting
   owes is a pose with weight in it — planted, ready, never a stiff paper doll.
-- **One consistent cast.** Shared rendering style, line weight and proportion across all 154, and
+- **One consistent cast.** Shared rendering style, line weight and proportion across all 153, and
   matched to the dialogue portraits of the named characters. Units are compared side by side on the
   board, so a mismatch reads immediately.
 - **Readable small, and readable darkened.** The sprite is displayed around 52px tall. Silhouette and
@@ -91,10 +91,10 @@ fidelity as a requirement for **Phase 1** and board-scale as sufficient for Phas
 - **Transparent** throughout; no baked background, ground shadow, or tile.
 - No baked team colour or selection frame — the game draws allegiance rings and highlights itself.
 
-## The roster (154)
+## The roster (153)
 
 Unit ids match the game's data files; see [story.md](story.md) for who each character is. Suggested
-phasing runs most-seen first. **The lists below are not the whole 154** — they are the named bodies of
+phasing runs most-seen first. **The lists below are not the whole 153** — they are the named bodies of
 each phase; `& "E:\LOVE\lovec.exe" . art-report missing` prints the current full set, and it is the only
 figure that cannot go stale.
 

@@ -27,8 +27,7 @@ file lands the count moves on its own. Paste a fresh summary into the snapshot b
 
 ## Snapshot
 
-As of 2026-08-24 — **981 of 1031 present**, 50 outstanding. Regenerate with the command above.
-Counts predate the 38 hire deletions; rerun `art-report` before quoting them.
+As of 2026-08-25 — **943 of 993 present**, 50 outstanding. Regenerate with the command above.
 
 > The snapshot before this one read *71 outstanding* and was three weeks stale; the sweep found **254**.
 > Nearly all of the gap was an **unrun regen** — 114 items and 83 tokens whose blueprints had been
@@ -49,7 +48,7 @@ characters share a token** (the sin generals were one picture between the seven 
 | Bucket | Have | Needed | Rendered at | Source |
 |---|---|---|---|---|
 | `items/` | 729 | 733 | 64px cell | **composed from tags** — [icon system](#the-permanent-icon-system--compose-dont-commission); bases still vendored ⚠️ |
-| `chars/` | 154 | 154 | ~52px board, **470px dialogue** | **painted stills (commission)**, animated in code — composed tokens stand in and animate identically; see [Characters](#characters) |
+| `chars/` | 153 | 153 | ~52px board, **470px dialogue** | **painted stills (commission)**, animated in code — composed tokens stand in and animate identically; see [Characters](#characters) |
 | ~~`hazards/`~~ | — | — | 64px tile, under units | **no art, ever** — [drawn by a shader](#hazards-are-not-icons) ✅ |
 | `portraits/` | 0 | 17 | — | **commission CANCELLED** — the board still is the portrait; see [Characters](#the-named-cast--the-board-still-is-the-portrait) |
 | ~~`vendors/`~~ | — | — | shop panel | **no art, ever** — [the mark is the keeper](#vendors-wear-a-mark-not-a-face) ✅ |
@@ -62,7 +61,7 @@ characters share a token** (the sin generals were one picture between the seven 
 | `audio/` | 43 | 56 | — | see [audio-assets.md](audio-assets.md) |
 
 The icon pipeline and the composed character tokens are **complete**. What is left needing a human hand
-is terrain, one background, the last audio — and the 154 board stills.
+is terrain, one background, the last audio — and the 153 board stills.
 
 The **17 portraits still listed are a commission that will not be placed.** They stay in the count
 because the blueprints still name the paths and a sweep that quietly dropped them would be lying about
@@ -138,14 +137,14 @@ portrait in the same role.
 
 ## Characters
 
-Every combatant on the board (**154**) is slated for its own **painted still** — that is the whole
+Every combatant on the board (**153**) is slated for its own **painted still** — that is the whole
 `chars/` bucket, and its hand-off brief is [commission-board-sprites.md](commission-board-sprites.md).
 The named cast *also* has a static dialogue portrait in `portraits/`, but the two are **separate
 assets**, not a crop relationship (see below). Until a unit's picture is delivered it shows a
 [composed token](#composed-tokens--the-budget-stand-in-same-philosophy-as-items), which animates
 identically.
 
-> **The count fell from 191 to 154.** The 38 named discipline hires — Brann the Barbarian, Pim the
+> **The count fell from 191 to 153.** The 38 named discipline hires — Brann the Barbarian, Pim the
 > Thief and the rest — were the Crossing's stock, and the Crossing is retired. Their bodies were
 > the wrong thing to recruit and the right thing to fight, so `models/warband.lua` now draws each
 > discipline's **exemplar** where its hire used to stand. One body per discipline instead of two.
@@ -205,7 +204,7 @@ they should match the *terrain*, not the cast.
 
 ### Composed tokens — the budget stand-in, same philosophy as items
 
-Every one of the 154 is awaiting a painting, and a nameless enemy or a background creature may wait a long
+Every one of the 153 is awaiting a painting, and a nameless enemy or a background creature may wait a long
 time. None of them sit meanwhile as the bare initial-in-a-disc fallback (`ui/battle_map.lua`
 drawUnits): they get a **composed token**, drawn as a pure function of fields the
 blueprint already carries — exactly the way an item's icon is a function of its family/element/class
@@ -319,7 +318,7 @@ It stays as the development stand-in and comes out of the build before release. 
 | [game-icons.net](https://game-icons.net/) | items, hazards, traps, materials — **development stand-in only** | CC BY 3.0 — **attribution required while it is in the build** |
 | [GameDev Market](https://www.gamedevmarket.net/) | terrain, props | Pro Licence; platform bans generative AI outright |
 | [NATHUHARUCA MEGA MONSTER PACK](https://plaza-us.komodo.jp/products/nathuharuca-mega-monster-pack) | interim creature stills / reference | "Engine of your choice", commercial OK, editable |
-| Commission — **board stills** | all 154 board sprites, one painting each — [commission-board-sprites.md](commission-board-sprites.md) | full commercial buyout, no AI |
+| Commission — **board stills** | all 153 board sprites, one painting each — [commission-board-sprites.md](commission-board-sprites.md) | full commercial buyout, no AI |
 | Commission — portraits | dialogue portraits, vendors, hub | — |
 
 ### No tooling cost — and there was one
@@ -391,7 +390,7 @@ drawing them flat is paying for art the plan already intends to throw away. Take
 the flat-glyph commission is **268 drawings**, with the board handled as paintings instead.
 
 Which also means the two-register rule decides a budget, not just a look: painting some bodies and leaving
-the rest as tokens is [already ruled out](#the-two-register-rule), so `chars/` is 154 paintings or 154 flat
+the rest as tokens is [already ruled out](#the-two-register-rule), so `chars/` is 153 paintings or 153 flat
 glyphs — never a mix, and never both.
 
 ### Two roots, and a slug is an address
@@ -485,7 +484,7 @@ rescale.
 Two separate commissions now — the board stills and the dialogue portraits are independent assets. The
 full hand-off for each lives in its own doc; the summary:
 
-**Board sprites (154)** — **painted stills**, one per combatant, displayed at ~52px on a 60px
+**Board sprites (153)** — **painted stills**, one per combatant, displayed at ~52px on a 60px
 tile (`ui/battle_map.lua`). Full spec in [commission-board-sprites.md](commission-board-sprites.md):
 one PNG per body, the pose it is painted in, and
 multi-cell scaling. The six clips (idle/move/attack/hit/cast/death) are code and need nothing from the artist.
@@ -510,7 +509,7 @@ because the delivered asset was a different *kind* of thing from the placeholder
 A painted still is the same kind of thing: one PNG at the path the blueprint already names.
 `models/sprite.lua` loads it, `ui/battle_map.lua` draws it, `shaders/sprite.lua` wraps it, and
 `ui/combat_fx.lua` animates it — all exactly as they already do for the composed token. **Drop the file
-in and it is done**, which is also why art can land one body at a time instead of all 154 at once.
+in and it is done**, which is also why art can land one body at a time instead of all 153 at once.
 
 The one thing that still wants checking when real paintings arrive: the tilt constants
 (`DEATH_TILT` and its neighbours) were tuned against composed tokens — emblems on a baked plate — and
