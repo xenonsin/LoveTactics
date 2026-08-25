@@ -26,6 +26,7 @@ local Scale = require("scale")
 local Menu = require("ui.menu")
 local Theme = require("ui.theme")
 local SeedReadout = require("ui.seed_readout") -- the numbers behind the stair, in a dev build only
+local Picker = require("ui.expedition_picker") -- four plates over the company; who goes down
 
 local gate = {}
 
@@ -84,53 +85,23 @@ end
 --
 -- What is left is the stair, the way back, and a readout of who is about to walk down it -- which stays
 -- because the last thing a player wants before committing is to see the shape their company is in.
--- THE COMPANY LIST IS THE PICKER, and that is one list doing two jobs on purpose.
+-- THE PICKER IS A BOARD, NOT A LIST (ui/expedition_picker.lua).
 --
--- This screen already drew the roster as a readout -- who is going down and what shape they are in --
--- because the last thing a player wants before committing to a floor is that. Now that only FOUR of them
--- go (Descent.PARTY_MAX), the same list has to be where you choose. Drawing a second column beside the
--- first, one to read and one to press, would be two lists of the same eight names.
+-- This asked with toggle rows first, and rows are the wrong shape for it. A party has POSITIONS in it
+-- and a company is a thing you look across; a column of ticked labels says neither, and reads as a
+-- settings screen for a decision that is really "these four, and that one stays home". Four plates over
+-- the roster says it in one glance, and the body moves between them.
 --
--- MENU ROWS RATHER THAN A PANEL, which is what makes this cheap: ui/menu.lua already carries mouse,
--- keyboard and gamepad, so a toggle row is three-input by construction and the screen stays one focus
--- target. The health and the wound count ride in the row's own label, where the readout used to print
--- them.
-local function rosterRows(items)
-    local Wound = require("models.wound")
-    local going = {}
-    for _, char in ipairs(Descent.party(gate.run, gate.player)) do going[char.id] = true end
-
-    for _, char in ipairs((gate.player or {}).roster or {}) do
-        local hp = char.stats and char.stats.health
-        local cur = (type(hp) == "table" and hp.current) or 0
-        local max = (type(hp) == "table" and hp.max) or 0
-        local wounds = Wound.count(gate.player, char.id)
-        local label = (going[char.id] and "[x]  " or "[ ]  ")
-            .. (char.name or char.id) .. "   lv " .. (char.level or 1)
-            .. "   " .. cur .. " / " .. max
-            .. (wounds > 0 and ("   wounded x" .. wounds) or "")
-
-        items[#items + 1] = { label = label, action = function()
-            -- Rebuilt from the LIVE list every press rather than toggled in place, so the cap counts
-            -- what is actually going rather than what a stale copy thought was.
-            local picked = {}
-            for _, c in ipairs(Descent.party(gate.run, gate.player)) do
-                if c.id ~= char.id then picked[#picked + 1] = c.id end
-            end
-            -- Adding past the cap is a no-op rather than an error or a silent eviction: the row simply
-            -- does not take, and the count in the header says why.
-            if not going[char.id] and #picked < Descent.PARTY_MAX then
-                picked[#picked + 1] = char.id
-            end
-            Descent.setParty(gate.run, picked)
-            gate:build()
-        end }
-    end
-end
-
+-- The two actions stay a menu underneath. Tab (or a shoulder) moves focus between the two, which is the
+-- same hand-off ui/panels/party.lua keeps between a character's grid and the stash.
 function gate:build()
+    gate.picker = Picker.new({
+        x = Scale.WIDTH / 2 - 260, y = 206,
+        player = gate.player, run = gate.run,
+        onChange = function() gate:build() end,
+    })
+
     local items = {}
-    rosterRows(items)
     if Gate.canDescend(gate.player, gate.run) then
         items[#items + 1] = {
             label = "Down to floor " .. Descent.depth(gate.run),
@@ -140,8 +111,11 @@ function gate:build()
     items[#items + 1] = { label = "Back to the City", action = function()
         State.switch(require("states.hub"))
     end }
-    -- Kept on one screen without scrolling: eight bodies plus two actions at 34px a row runs 178..518.
-    gate.menu = Menu.new(items, { startY = 208, buttonHeight = 28, spacing = 6 })
+    gate.menu = Menu.new(items, {
+        startY = gate.picker.y + gate.picker:height() + 28,
+        buttonHeight = 44, spacing = 12,
+    })
+    gate.focus = gate.focus or "picker"
 end
 
 function gate.enter(self, opts)
@@ -222,6 +196,8 @@ function gate.draw()
         love.graphics.setFont(bodyFont)
         Theme.set(Theme.muted)
         love.graphics.printf("Nobody.", Scale.WIDTH / 2 - 340, 208, 300, "left")
+    elseif gate.picker then
+        gate.picker:draw()
     end
 
     love.graphics.setFont(headFont)
@@ -252,8 +228,25 @@ local function route(name, ...)
     if target and target[name] then return target[name](target, ...) end
 end
 
-function gate.mousemoved(x, y) return route("mousemoved", x, y) end
-function gate.mousepressed(x, y, b) return route("mousepressed", x, y, b) end
+-- THE PICKER GETS FIRST REFUSAL ON THE MOUSE, and the menu takes whatever it declines. A pointer needs
+-- no focus model -- it is already pointing at the thing it means -- so the Tab hand-off below exists
+-- only for the two inputs that cannot.
+local function pickerFirst(name, ...)
+    if gate.panel then return route(name, ...) end
+    local p = gate.picker
+    if p and p[name] and p[name](p, ...) then return true end
+    return route(name, ...)
+end
+
+function gate.mousemoved(x, y)
+    if not gate.panel and gate.picker then gate.picker:mousemoved(x, y) end
+    return route("mousemoved", x, y)
+end
+function gate.mousepressed(x, y, b) return pickerFirst("mousepressed", x, y, b) end
+function gate.mousereleased(x, y, b)
+    if gate.panel then return route("mousereleased", x, y, b) end
+    if gate.picker then return gate.picker:mousereleased(x, y, b) end
+end
 function gate.wheelmoved(dx, dy) return route("wheelmoved", dx, dy) end
 function gate:cursorKind(x, y)
     local target = gate.panel or gate.menu
@@ -261,15 +254,35 @@ function gate:cursorKind(x, y)
     return "arrow"
 end
 
+-- TAB AND THE SHOULDERS MOVE BETWEEN THE TWO HALVES of this screen -- the plates and the two actions --
+-- which is the hand-off ui/panels/party.lua already keeps between a character's grid and the stash. It
+-- exists for the keyboard and the pad alone; a pointer is always already on the half it means.
+local function toggleFocus()
+    gate.focus = (gate.focus == "menu") and "picker" or "menu"
+    return true
+end
+
 function gate.keypressed(key)
     if gate.panel then return route("keypressed", key) end
-    if key == "escape" then return State.switch(require("states.hub")) end
+    if key == "escape" then
+        -- A held body is put down before the screen is left, or Escape would mean two things at once.
+        if gate.picker and gate.picker.held then gate.picker.held = nil return true end
+        return State.switch(require("states.hub"))
+    end
+    if key == "tab" then return toggleFocus() end
+    if gate.focus == "picker" and gate.picker and gate.picker:keypressed(key) then return true end
     return route("keypressed", key)
 end
 
 function gate.gamepadpressed(joystick, button)
     if gate.panel then return route("gamepadpressed", joystick, button) end
-    if button == "b" then return State.switch(require("states.hub")) end
+    if button == "leftshoulder" or button == "rightshoulder" then return toggleFocus() end
+    if button == "b" then
+        if gate.picker and gate.picker.held then gate.picker.held = nil return true end
+        return State.switch(require("states.hub"))
+    end
+    if gate.focus == "picker" and gate.picker
+        and gate.picker:gamepadpressed(joystick, button) then return true end
     return route("gamepadpressed", joystick, button)
 end
 
