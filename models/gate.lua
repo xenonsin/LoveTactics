@@ -141,6 +141,37 @@ function Gate.dischargeMended(player)
     return out
 end
 
+-- ---------------------------------------------------------------------------
+-- A night passing
+-- ---------------------------------------------------------------------------
+
+-- WHAT A NIGHT IS, in one place, because two things cause one: going down the stair and waiting here.
+--
+-- The three calls were written inline on the descend beat (states/game.lua) and were the only definition
+-- of a night the game had -- which is why the ONLY way to move the calendar was to walk into a descent.
+-- That is fine while the loop is "go down, come up, go down"; it stops being fine the moment the loop
+-- includes losing. A company that wipes wakes at the temple wounded (states/game.lua's onLoss), and the
+-- one thing that mends a wound is a day spent in a bed -- so a beaten company had to go back down, hurt,
+-- to buy the days that would have healed them. The cure was on the far side of the thing it was for.
+--
+-- So the night is a named beat and the counter can sell one (Gate.rest). Both callers get the same three
+-- things in the same order, which is the property that matters: a day, a wound off everybody abed, and
+-- whoever that finished walking out of their room.
+--
+-- ORDER IS LOAD-BEARING. Wound.rest before dischargeMended, or a body whose last bone was set tonight
+-- stays lodged until the night after and the player is short a member for a day they already paid for.
+--
+-- Returns the ids that mended, so a caller can say whose night it was.
+function Gate.night(player)
+    local Calendar = require("models.calendar")
+    local Wound = require("models.wound")
+    if not player then return {} end
+    Calendar.spend(player)
+    local mended = Wound.rest(player)
+    Gate.dischargeMended(player)
+    return mended
+end
+
 function Gate.innPrice(player)
     local Player = require("models.player")
     local n = math.min(#((player and player.roster) or {}), Player.MAX_FIELD)
@@ -159,18 +190,37 @@ end
 -- leave a body here, pay per wound, and they are out of the company a day for each one (Gate.lodge).
 -- Gold buys the first and opens the door to the second; it cannot buy back the days.
 --
--- Returns true, or false plus a reason ("gold", "nobody").
+-- ...AND THE NIGHT ACTUALLY PASSES NOW (Gate.night). It did not, which made the split above only half
+-- true: a bed was priced in days and the only way to spend a day was to walk into a descent, so the
+-- mending a beaten company needed was on the far side of the fight they were too hurt to take. Buying
+-- the night is buying the day; what the day does is mend one wound off everybody who is in a bed, which
+-- is the same beat and the same rule as going down (Wound.rest mends the lodged and nobody else -- a
+-- company does not repair itself for standing still).
+--
+-- SO THIS IS STILL NOT A SURGEON. Nothing about the ledger changed: a body who is not abed sleeps here
+-- and wakes with every bone exactly as broken. What is buyable is the passage of time, and the days are
+-- still the scarcest thing the campaign has -- forty of them, and this spends one.
+--
+-- Returns true plus the ids that mended, or false plus a reason ("gold", "nobody", "over").
 function Gate.rest(player)
     if not (player and player.roster and #player.roster > 0) then return false, "nobody" end
     local Player = require("models.player")
+    -- There is no night after the last day. Refused rather than absorbed, because a night that took the
+    -- coin and moved no clock would be a bed the player could rent forever on the wrong side of the
+    -- deadline (Calendar.isOver).
+    if require("models.calendar").isOver(player) then return false, "over" end
     local price = Gate.innPrice(player)
     if (player.gold or 0) < price then return false, "gold" end
     Player.spendGold(player, price)
+    local mended = Gate.night(player)
     -- Player.restore reads each body's wound cap as it refills, so a wounded body tops up to its
     -- WOUNDED ceiling and no further. That is now the honest result rather than an ordering hazard:
     -- the night gives back what the fighting cost, and the wound is still a wound.
+    --
+    -- AFTER the night rather than before it, so a body whose last bone was set tonight tops up against
+    -- the ceiling they woke with instead of the one they went to bed with.
     Player.restore(player)
-    return true
+    return true, mended
 end
 
 -- ---------------------------------------------------------------------------

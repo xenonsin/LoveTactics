@@ -578,23 +578,37 @@ return {
         -- catching the thing this case exists to catch, and modelling one that cannot exist yet would
         -- harden the shallow floors against nobody.
         --
-        -- WHAT CAN BE STANDING THERE is now a schedule rather than a guess. The company walks to the
-        -- stair as THREE -- the prologue's pair, plus the hireling the sponsor staked at the Hiring Hall
-        -- (models/voucher.lua's Voucher.stake) -- and the fourth arrives through a voucher, which is paid
-        -- for CLEARING A CIRCLE. So four is unreachable until the first circle is behind you.
+        -- WHAT CAN BE STANDING THERE is a schedule rather than a guess, and it is read off the one route
+        -- a company grows by: a house's posting is met on a floor, and its companion joins at that
+        -- house's counter in the city (models/vendor_visit.lua's joinCompanion).
         --
-        -- It used to grow the company by walking guaranteeKinds looking for a recruit stop. That stop is
-        -- gone, and the loop silently stopped adding anybody -- which left this rating a company of three
-        -- against every floor including the deep ones a company of four walks.
+        -- So THE OPENING FLOOR IS WALKED BY TWO. The avatar and Rowan, and nobody else -- every other
+        -- body in the game is on the far side of a door that has to be opened underground and walked
+        -- through up top, which cannot have happened before the first floor has been. One climb-out
+        -- later a third is reachable, and by the second circle a fourth.
+        --
+        -- IT SAID THREE ON THE FIRST FLOOR, and that is the stale premise this case was built on: the
+        -- third body was "the hireling the sponsor staked at the Hiring Hall", off a models/voucher.lua
+        -- that no longer ships. The Hall went with the Crossing, so the number it justified was the only
+        -- thing left of it -- and floor one was tuned against a company that could not exist
+        -- (models/descent.lua's OPENING_CAP, which is the other half of this correction).
+        --
+        -- Before that it grew the company by walking guaranteeKinds looking for a recruit stop. That stop
+        -- is gone too, and the loop silently stopped adding anybody -- which left this rating a company of
+        -- three against every floor including the deep ones a company of four walks.
         local function companyAt(floor)
             local p = Player.new()
             p.roster = { Character.instantiate("character_avatar"),
                          Character.instantiate("character_rowan") }
-            Player.recruit(p, "character_saber")
+            if not Descent.isOpeningFloor(floor) then
+                Player.recruit(p, "character_saber")
+            end
             if floor > Descent.FLOORS_PER_CIRCLE then
                 Player.recruit(p, "character_kaya")
             end
-            local want = floor > Descent.FLOORS_PER_CIRCLE and Descent.PARTY_MAX or Descent.PARTY_MAX - 1
+            local want = Descent.PARTY_MAX - 2
+            if floor > Descent.FLOORS_PER_CIRCLE then want = Descent.PARTY_MAX
+            elseif not Descent.isOpeningFloor(floor) then want = Descent.PARTY_MAX - 1 end
             assert(#p.roster == want, string.format(
                 "floor %d's reference company should hold %d, got %d", floor, want, #p.roster))
             for _, c in ipairs(p.roster) do
@@ -1059,5 +1073,127 @@ return {
         assert(out.depth == 2, "`depth` is where it was standing")
         assert(out.title == nil and out.outcome == nil,
             "the account carries no title: how a run ended is the caller's knowledge, not this table's")
+    end },
+
+    { name = "the opening floor is fought by the pair that walks onto it", fn = function()
+        -- THE OTHER HALF OF THE WALK-OVER CASE, and the reason both are needed: that one asks whether
+        -- anything on a floor is too LIGHT to be worth playing, and nothing asked whether anything was
+        -- too heavy to be played at all. Floor one is where that gap cost something, because it is the
+        -- one board whose company is known before it is rolled -- the avatar and Rowan, and nobody else,
+        -- since every other body is behind a door that has to be opened underground and walked through
+        -- up top (models/vendor_visit.lua's joinCompanion).
+        --
+        -- Measured before Descent.OPENING_CAP existed: A Rival Company stood at 40% of that pair, and the
+        -- two openers that HAND OVER the third body at 65% and 67% -- so the fight gating the company's
+        -- growth was priced for the company it would grow into.
+        local Muster = require("models.muster")
+        local Growth = require("models.growth")
+        local Character = require("models.character")
+        local Encounter = require("models.encounter")
+        local Arena = require("models.arena")
+
+        -- ...AT THE LEVEL ACT 0 LEAVES THEM, which is the other half of knowing this company. The case
+        -- above rates every floor at its own floorLevel, and for floor one that is a level the player is
+        -- never standing on: the prologue's four fights bank enough to exit within a level of
+        -- OPENING_DANGER, which tests/experience_spec.lua asserts against these same two constants. Rating
+        -- the pair at level 1 would harden this floor against a company that does not exist, which is the
+        -- mistake being corrected rather than a second copy of it.
+        local p = Player.new()
+        p.roster = { Character.instantiate("character_avatar"),
+                     Character.instantiate("character_rowan") }
+        assert(#p.roster == Descent.PARTY_MAX - 2,
+            "the opening floor's company is a pair -- nothing can have joined before it")
+        for _, c in ipairs(p.roster) do Growth.resolve(c, Descent.OPENING_DANGER) end
+        local ours = Muster.company(Muster.fielded(p))
+
+        local run = Descent.new(p, 4242)
+        run.floor = 1
+        local quest = Descent.floorQuest(run, p)
+        assert(quest.enemyCap == Descent.OPENING_CAP,
+            "the opening floor names its own body ceiling")
+
+        -- THE FLOOR IS BOUNDED AT BOTH ENDS, and the ceiling is only half of why. Nothing on it stands
+        -- more than a step above the pair -- one step is a fight, two is a wall, and a wall on the floor
+        -- that has to be cleared to get a third body is a stopped campaign. And nothing on it can be
+        -- WALKED OVER either, which is the failure a ceiling introduces rather than fixes: cutting a
+        -- fight authored as a lead plus a swarm down far enough leaves a lead and one gnat, and the game
+        -- starts offering to resolve the shallowest floor in the mode without a board. Both bounds move
+        -- together off Descent.OPENING_CAP, so neither can be tuned without the other being re-read.
+        local day = math.max(1, math.floor(1 / Descent.FLOORS * 40))
+        local rated = 0
+        local function bound(what, margin)
+            assert(margin, "nothing on the opening floor may be unrateable: " .. what)
+            assert(Muster.stepsAbove(margin) <= 1, string.format(
+                "the opening floor seats %s at %.0f%% -- %s",
+                what, margin, Muster.BAND_LABEL[Muster.band(margin)] or "unrateable"))
+            assert(not Muster.canWalkOver(margin), string.format(
+                "the opening floor seats %s at %.0f%% -- the pair can skip it outright", what, margin))
+        end
+        for _, e in ipairs(Descent.floorPool({ day = day, biome = quest.map.biome, quest = quest })) do
+            if e.kind == "combat" or e.kind == "elite" then
+                rated = rated + 1
+                bound(e.id, Muster.margin(ours, Muster.encounter(Encounter.get(e.id), {
+                    day = day, floorLevel = quest.floorLevel,
+                    enemyLevel = quest.dangerLevel, quest = quest,
+                })))
+            end
+        end
+        assert(rated >= 5, "the opening floor draws from only " .. rated .. " rateable fights")
+
+        -- ...AND SO DOES EVERY END ON IT, the stair included. The errands are the doors, so a pair that
+        -- cannot open one is a pair that stays a pair; the stair is allowed to be the hardest of them
+        -- (Descent.OPENING_GUARD) and is still not allowed to be a wall.
+        for i, spec in ipairs(quest.map.objectives or {}) do
+            local ids = Arena.clampComposition(
+                Arena.resolveComposition(spec.composition, { day = day, prestige = p.prestige }),
+                Arena.enemyCap({ quest = quest }, nil, spec.enemyCap))
+            local theirs = 0
+            for _, id in ipairs(ids) do
+                local ok, ch = pcall(Growth.spawn, id, quest.dangerLevel, spec.floorLevel or quest.floorLevel)
+                if ok and ch then theirs = theirs + Muster.rate(ch) end
+            end
+            bound(string.format("end %d (%s)", i, tostring(spec.name)), Muster.margin(ours, theirs))
+        end
+    end },
+
+    { name = "the opening floor's ceiling only ever cuts, and only there", fn = function()
+        -- THREE CLAIMS, and each is a way the ceiling could be wrong rather than merely wrong-sized.
+        local Arena = require("models.arena")
+        local p = Player.new()
+
+        -- ONE: no floor below the first names one. The cap is a statement about a company that has not
+        -- been assembled yet, and a company IS assembled by the time floor two is walked.
+        for floor = 1, 4 do
+            local run = Descent.new(p, 4242)
+            run.floor = floor
+            local quest = Descent.floorQuest(run, p)
+            if Descent.isOpeningFloor(floor) then
+                assert(quest.enemyCap == Descent.OPENING_CAP, "floor " .. floor .. " names the ceiling")
+            else
+                assert(not quest.enemyCap, "floor " .. floor .. " must name no ceiling")
+            end
+        end
+
+        -- TWO: it is a ceiling. A quest naming one can only ever take bodies off a fight, so no
+        -- descriptor can grow a skirmish into a set-piece through this field.
+        local skirmish = Arena.CAP_BY_KIND.combat
+        assert(Arena.enemyCap({ quest = { enemyCap = 99 }, encounterKind = "combat" }) == skirmish,
+            "a ceiling above the tier's own cap changes nothing")
+        assert(Arena.enemyCap({ quest = { enemyCap = 2 }, encounterKind = "combat" }) == 2,
+            "a ceiling below it binds")
+
+        -- THREE: the two exemptions, which are the whole shape of the opening floor -- the fights a
+        -- short-handed company walks around and comes back for once an opener has paid out.
+        assert(Arena.enemyCap({ quest = { enemyCap = 2 }, encounterKind = "elite" }) == Arena.ELITE_CAP,
+            "an elite is a tier of its own and the floor's ceiling does not trim it")
+        assert(Arena.enemyCap({ quest = { enemyCap = 2 } }, nil, false) == Arena.DEFAULT_ENEMY_CAP,
+            "a fight naming `enemyCap = false` on its spec keeps what the circle gave it")
+
+        -- ...and the stair is the fight that names it, on both seams the descriptor carries it on.
+        local run = Descent.new(p, 4242)
+        run.floor = 1
+        local quest = Descent.floorQuest(run, p)
+        assert(quest.map.objective.enemyCap == false, "the descriptor's own stair is exempt")
+        assert(quest.map.objectives[1].enemyCap == false, "...and so is the one on the ends list")
     end },
 }

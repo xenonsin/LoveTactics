@@ -503,6 +503,26 @@ Descent.MIN_SHARE = 0.55
 -- of the board happens to weigh -- see the note above for the thin-pool case this exists to catch.
 Descent.MIN_BODIES = 2
 
+-- ...AND THE CEILING OVER IT, which exists for one reason: a cap does not always bite.
+--
+-- Arena.clampComposition cuts a fight to the floor's ceiling by dropping repeated FILLER, and where the
+-- distinct cast alone is already over the ceiling it yields rather than truncate -- a winnability rule,
+-- since 43 quests win by assassinating a body the truncation would have deleted. So the opening floor's
+-- cap of two silently does nothing to the fights made entirely of named bodies, which on a first circle
+-- is exactly the wrong set: A Rival Company is four discipline exemplars in full loadouts (992 muster
+-- against a pair's 296), and the Press-Gang is a four-part combo whose every piece is distinct.
+--
+-- A floor that cannot cut a fight to its own size does not seat it. Stated as a property of the CUT
+-- rather than as a second worth threshold, so it needs no ratio of its own and cannot disagree with the
+-- cap it is enforcing -- and it is inert on every floor that names no cap, which today is every floor
+-- but the first.
+local function overCap(def, ctx, cap)
+    if not cap then return false end
+    local Arena = require("models.arena")
+    local ids = Arena.resolveComposition(def.composition, ctx)
+    return #Arena.clampComposition(ids, cap) > cap
+end
+
 -- Below this many rateable fights the SHARE is not applied at all. A median over two or three entries is
 -- not a median. The body floor still holds there, which is the whole reason it is safe to stand down.
 Descent.SHARE_FLOOR_N = 6
@@ -558,6 +578,13 @@ function Descent.floorPool(ctx)
                 local comp = Encounter.get(e.id).composition
                 local ids = type(comp) == "function" and comp(ctx) or comp
                 if type(ids) == "table" and #ids < Descent.MIN_BODIES then light = true end
+            end
+            -- ...and the ceiling, which drops what the floor cannot cut down to its own size. An elite
+            -- is exempt from the cap (Arena.UNCAPPED_KINDS) and so is exempt from this: it is the one
+            -- fight the opening floor is allowed to be too big for.
+            if not light and e.kind ~= "elite"
+                and overCap(Encounter.get(e.id), ctx, ctx.quest and ctx.quest.enemyCap) then
+                light = true
             end
         end
         if not light then
@@ -733,6 +760,94 @@ Descent.LEVEL_PER_FLOOR = 1
 -- it was brought in for. THREE is where a company that has fought its way onto the stair actually
 -- stands, so floor 1 opens as a fight rather than a formality.
 Descent.OPENING_DANGER = 3
+
+-- HOW MANY BODIES THE OPENING FLOOR FIELDS, and the number that fixes a floor priced for a company
+-- nobody has yet.
+--
+-- Floor one is walked by TWO: the avatar and Rowan (data/player.lua's startingRoster), at the level Act
+-- 0 leaves them -- within one of OPENING_DANGER, which tests/experience_spec.lua pins. Every other body
+-- in the game is met at a house's posting down here and joins at that house's counter in the city
+-- (models/vendor_visit.lua's joinCompanion), so the company cannot be three until the first floor has
+-- been cleared AND climbed out of -- which makes the opening floor the one board in the mode whose
+-- headcount is known before it is rolled.
+--
+-- The tuning it met assumed four. Measured through Muster against that pair: the floor's heaviest stops
+-- were A Rival Company at 40%, the Broken Column at 53% and the Press-Gang at 54% -- and the two openers
+-- that HAND OVER the third body read 65% and 67%, so the fight gating the company's growth was priced
+-- for the company it would grow into. The same floor against four reads 110% on those openers, which is
+-- where it was aimed.
+--
+-- THE GAP IS A HEADCOUNT, NOT A LEVEL, which is what rules out the two dials that already existed:
+-- dropping OPENING_DANGER from 3 to 1 moves the median stop by three points, because
+-- Growth.ENEMY_LEVEL_LAG flattens the first two levels into the same stock, and pulling the depth->day
+-- mapping back to day one lands in the same place while re-opening the seating bug that mapping was
+-- added to fix. Bodies are the only dial with any authority left.
+--
+-- So the opening floor names its own ceiling and every ordinary fight on it is cut to fit
+-- (Arena.enemyCap honours it as a `math.min`, so it can only ever take bodies off).
+--
+-- THREE RATHER THAN TWO, and the difference is a floor with a shape against a floor with none. Two put
+-- every stop within a hair of every other -- and it cut a fight authored as A LEAD PLUS A SWARM down to
+-- a lead and one gnat, which is not a smaller version of that fight, it is a different and much easier
+-- one. The Carrion Flight fell to 158 and the Drift to 198 against a pair worth 365, so both crossed
+-- Muster.WALK_OVER and the game began offering to resolve them without a board: the "one floor nobody
+-- had to play" failure that OPENING_DANGER was raised to fix, walked back in through the ceiling.
+--
+-- At three, nothing on the floor is skippable anywhere in Act 0's exit band and nothing stands more than
+-- a step above: the spread runs 62% (the Broken Column) to 146% (the Drift) against a level-3 pair, with
+-- the two openers at 75% and 78%. Measured, in tests/descent_spec.lua's opening-floor case.
+--
+-- TWO THINGS ARE EXEMPT, and they are the floor's whole shape. An ELITE is a tier of its own
+-- (Arena.UNCAPPED_KINDS) and the STAIR names `enemyCap = false` on its spec: those are what a pair walks
+-- around and comes back for once an opener has paid out, which is the only reason a floor tuned for two
+-- still has somewhere to grow into. See OPENING_GUARD.
+Descent.OPENING_CAP = 3
+
+-- WHAT STANDS ON THE OPENING STAIR, in filler, and why it is stated here rather than left to the
+-- guardian formula.
+--
+-- guardianComposition sizes a lieutenant's guard at `2 + floorLevel/3`, minus one for not being the
+-- general -- which at floorLevel 1 is ONE body, and a minor circle's filler is swarm stock priced at a
+-- third of a bandit (petal-drift 53, gorge-fly 47, coin-chitter 52). So the thing at the end of the
+-- first road was worth 202 against a floor whose median stop was 443: the lightest fight on the board
+-- was the one it ended on, and that is true of every minor stair, not just Lust's.
+--
+-- Five, which puts the opening stair at 412 muster: an even fight for the trio it is meant for, and 89%
+-- for the pair who have not climbed out yet -- so it is a fight at the end of the road rather than the
+-- gap in it, and it is a reason to do an opener FIRST. It is deliberately not the heaviest thing on the
+-- floor; an ogre or a warband is allowed to outweigh a lieutenant, and the difference between them is
+-- that only one of the three is mandatory.
+--
+-- FIVE RATHER THAN SIX BECAUSE A COUNT IS ALSO A CLAIM. Six put seven bodies on the opening stair, which
+-- is what the deepest general's own guard fields (`2 + floorLevel/3` at floorLevel 14) -- and "deeper
+-- stairs are held harder" is an invariant with a case on it. That claim is still true by WORTH at seven
+-- gnats, and asserting worth where a body count is asserted today is a separate argument; five keeps the
+-- count climbing and costs about a tenth of the fight.
+--
+-- THE SWARM IS THE RIGHT BODY TO THICKEN IT WITH, not a second lead. A drift is authored to be worth
+-- nothing to kill and to charge you for holding your turn (data/characters/character_petal_drift.lua) --
+-- so six of them is the fight that circle was written to be rather than merely a bigger one, and the
+-- muster ruler UNDERPRICES it either way: it reads stats, and a body whose whole threat is a Charm on
+-- contact rates as nine health. Expect this stair to play harder than 465 says.
+--
+-- A FLAT BODY COUNT IS SAFE HERE FOR A REASON WORTH WRITING DOWN. The seven minor bands do not field
+-- comparable filler -- a cinder-kin is worth three petal-drifts -- so six of one is not six of another,
+-- and at these numbers Wrath's opening stair would read 1100 where Lust's reads 465. It cannot happen to
+-- the company this constant is for: a first descent walks Dante's order (Descent.INFERNO), so floor one
+-- is ALWAYS Lust until the Crown is broken, and the shuffle that could seat any other circle first is
+-- only dealt to a lap that carries its veteran company across (Player.newGamePlus). The cheap filler and
+-- the level-one pair are the same case, every time.
+--
+-- Scoped to the opening floor because that is the floor whose company is known. Every minor stair below
+-- it is met by whatever the player has assembled, and re-pricing those is a separate argument.
+Descent.OPENING_GUARD = 5
+
+-- Is this the floor a descent opens on -- the one board walked by a company that has not been assembled
+-- yet? Its own call rather than `floor == 1` spelled out at four sites, so the three rules that key off
+-- it (the cap, the stair's guard, and the pool's own filter) cannot drift apart.
+function Descent.isOpeningFloor(floor)
+    return (floor or 1) <= 1
+end
 
 -- The level the world fights at on this floor -- the descent's Calendar.dangerLevel, and the number
 -- states/battle.lua takes as `enemyLevel`. Fed in as the TRACKED level rather than as a battleFloor,
@@ -1650,10 +1765,11 @@ end
 -- an objective, so the cap falls through to the quest's difficulty (Arena.DEFAULT_ENEMY_CAP, nine) and
 -- the skirmish tier never touches it. That fall-through was written for the campaign's objectives and
 -- is doing the same job here for free.
-local function guardianComposition(sin, floorLevel, isGeneral)
+local function guardianComposition(sin, floorLevel, isGeneral, floor)
     -- Both halves resolved HERE, outside the closure, so the returned function reads no upvalue that
     -- could have moved by the time the fight is built.
     local band = isGeneral and sin.guardian or sin.minor
+    local opening = not isGeneral and Descent.isOpeningFloor(floor)
     return function()
         local list = { band.lead }
         -- Two at the top of the descent, climbing to a full set-piece at the bottom. Read off the floor
@@ -1664,6 +1780,9 @@ local function guardianComposition(sin, floorLevel, isGeneral)
         -- A lieutenant's stair is a smaller thing than his general's, and it has to read that way from
         -- outside: same house, same ground, one body fewer behind it.
         if not isGeneral then n = math.max(1, n - 1) end
+        -- ...except on the stair a descent OPENS on, where that subtraction left one swarm body holding
+        -- the end of the road and made it the lightest fight on the board. See Descent.OPENING_GUARD.
+        if opening then n = math.max(n, Descent.OPENING_GUARD) end
         for _ = 1, n do list[#list + 1] = band.filler end
         return list
     end
@@ -1784,6 +1903,11 @@ function Descent.floorQuest(run, player)
         -- MINIMUM a set-piece can raise; this is the level ordinary stock is grown to. See
         -- Descent.dangerLevel for why the day cannot do this job.
         dangerLevel = Descent.dangerLevel(run),
+        -- ...and how many bodies it fields them in. Nil on every floor but the first, which is the one
+        -- board whose company is known in advance. Read by Arena.enemyCap as a ceiling, so it reaches
+        -- the rolled fight, the errand at its dead end, and the marker each is drawn from, all through
+        -- the one field. See Descent.OPENING_CAP.
+        enemyCap = Descent.isOpeningFloor(floor) and Descent.OPENING_CAP or nil,
         -- The field states/game.lua keys the whole feature off. Carried by reference: the state reads it
         -- to know it is in a descent and to park it on player.activeRun.
         descent = run,
@@ -1820,7 +1944,10 @@ function Descent.floorQuest(run, player)
                 -- would have the general talking through a body she is standing two floors below. A
                 -- minor floor opens in silence, which is also what makes hers land.
                 opening = general and sin.scene or nil,
-                composition = guardianComposition(sin, floorLevel, general),
+                composition = guardianComposition(sin, floorLevel, general, floor),
+                -- The stair opts out of the floor's own body ceiling (Descent.OPENING_CAP). What the
+                -- circle put on it is what stands there.
+                enemyCap = false,
                 win = { type = "killAll" },
             },
             -- ...AND WHATEVER A HOUSE HAS ASKED FOR DOWN HERE. See Descent.floorObjectives.
@@ -1845,7 +1972,11 @@ function Descent.floorObjectives(player, floor, sin, floorLevel, general, run)
     local stair = {
         name = general and sin and ("The Stair Down — " .. sin.name) or "The Stair Down",
         opening = general and sin and sin.scene or nil,
-        composition = guardianComposition(sin, floorLevel, general),
+        composition = guardianComposition(sin, floorLevel, general, floor),
+        -- Exempt from the opening floor's ceiling, exactly as the descriptor's own `objective` is: a
+        -- floor cut to the size of the company that walks in still ends on the fight the circle put
+        -- there. See Descent.OPENING_CAP.
+        enemyCap = false,
         win = { type = "killAll" },
         floorLevel = floorLevel,
     }

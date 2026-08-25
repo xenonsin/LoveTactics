@@ -171,6 +171,15 @@ Arena.ELITE_CAP = 6
 -- is a hard fight; it is not a boss.
 Arena.CAP_BY_KIND = { combat = Arena.SKIRMISH_CAP, elite = Arena.ELITE_CAP, pack = Arena.ELITE_CAP }
 
+-- WHICH TIERS A FLOOR'S OWN CEILING MAY NOT CUT (`quest.enemyCap`, below).
+--
+-- An elite is the exception a floor is measured against rather than a stop on it -- the thing a
+-- short-handed company walks around and comes back for -- so a ceiling written to size the ORDINARY
+-- fight has no business trimming it. Everything else the floor seats is fair game; the one other way
+-- out is a fight naming `enemyCap = false` on its own spec, which is how a stair guardian keeps the
+-- guard the circle gave it (models/descent.lua's floorObjectives).
+Arena.UNCAPPED_KINDS = { elite = true }
+
 -- How many tiles of standing room one enemy is worth. The board a fight is now taken on is a window of
 -- the map rather than a fixed rectangle, so a defile and a hall no longer field the same number: this
 -- converts the walkable ground the box actually holds into a ceiling. Floored at 2, because an encounter
@@ -179,7 +188,10 @@ Arena.CAP_BY_KIND = { combat = Arena.SKIRMISH_CAP, elite = Arena.ELITE_CAP, pack
 local TILES_PER_ENEMY = 6
 local MIN_CAP_ON_THIN_GROUND = 2
 
-function Arena.enemyCap(ctx, usable)
+-- `override` is the fight's OWN ceiling, off its spec, and it beats the quest's: `false` opts a single
+-- fight out of a floor-wide cut, a number replaces it. Nil (every caller that does not pass one) reads
+-- the quest.
+function Arena.enemyCap(ctx, usable, override)
     -- The kind wins where it has an opinion. Read off ctx rather than off a blueprint so the two
     -- callers that must agree -- the real fight (Arena.build) and the rating the overworld marker is
     -- drawn from (Muster.encounter) -- cannot drift: a marker that priced a nine-body fight the player
@@ -187,6 +199,26 @@ function Arena.enemyCap(ctx, usable)
     local byKind = ctx and ctx.encounterKind and Arena.CAP_BY_KIND[ctx.encounterKind]
     local quest = ctx and ctx.quest
     local cap = byKind or (quest and Arena.ENEMY_CAP[quest.difficulty]) or Arena.DEFAULT_ENEMY_CAP
+
+    -- ...AND A GROUND MAY FIELD A SMALLER FIGHT THAN ITS TIER SAYS.
+    --
+    -- The tiers above describe what a fight IS -- a skirmish, a set-piece -- which is a fact about the
+    -- encounter table and the same on every board. What it cannot say is how many bodies are standing
+    -- opposite, and the shallow end of a descent is walked by a company that has not been assembled yet
+    -- (models/descent.lua's OPENING_CAP): two, against a skirmish tier written for four. Action economy
+    -- is super-linear in both directions -- the argument ENEMY_CAP already makes about the far side is
+    -- the same one that makes a four-body fight a different game when you brought two -- so the opening
+    -- floor names a ceiling and everything seated on it is cut to fit.
+    --
+    -- A CEILING, NEVER A RAISE. `math.min`, so a quest naming one can only ever take bodies off a fight;
+    -- there is no way to grow a skirmish into a set-piece from here, which is the property that makes it
+    -- safe to stamp on a synthesized descriptor.
+    local floorCap = override
+    if floorCap == nil then floorCap = quest and quest.enemyCap end
+    if floorCap and not Arena.UNCAPPED_KINDS[(ctx and ctx.encounterKind) or ""] then
+        cap = math.min(cap, floorCap)
+    end
+
     -- `usable` is nil for every caller with no map under it, which keeps their cap exactly what it was.
     if usable then
         cap = math.min(cap, math.max(MIN_CAP_ON_THIN_GROUND, math.floor(usable / TILES_PER_ENEMY)))
@@ -1149,7 +1181,7 @@ function Arena.build(ctx, spec)
     -- menu's mock), which keeps their cap exactly what it has always been.
     local usable = spec.grid and spec.at and Arena.boxUsable(spec.grid, spec.at.x, spec.at.y) or nil
     local enemyIds = Arena.clampComposition(
-        Arena.resolveComposition(spec.composition, ctx), Arena.enemyCap(ctx, usable))
+        Arena.resolveComposition(spec.composition, ctx), Arena.enemyCap(ctx, usable, spec.enemyCap))
 
     -- THE BOARD IS THE MAP, where there is a map. A campaign fight and a descent floor carve their 8x8
     -- out of the tiles the company walked over; a draft match, a duel, the menu's mock and the debug

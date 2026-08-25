@@ -1146,13 +1146,15 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     --     is already false for a scripted leg, which is why the spend sits inside that branch.
     local freshExpedition = not game.descent or not game.descent.entry
     if runResumable() and quest and quest.id and not resume and freshExpedition then
-        Calendar.spend(game.player)
-        -- ...AND A NIGHT PASSES AT THE INN. One wound off everybody lodged there, and only them: a
-        -- company does not repair itself for standing still (models/wound.lua's Wound.rest). Whoever
-        -- has run out of wounds walks out on the same beat, so a mended body is back in the company by
-        -- the time the player next looks at it.
-        Wound.rest(game.player)
-        require("models.gate").dischargeMended(game.player)
+        -- A NIGHT PASSES, which is the day itself plus what the day does at the Inn: one wound off
+        -- everybody lodged there and only them (a company does not repair itself for standing still),
+        -- and whoever ran out of wounds walking out of their room on the same beat.
+        --
+        -- THROUGH Gate.night RATHER THAN THE THREE CALLS INLINE, because this is no longer the only
+        -- thing that causes one -- the Inn sells a night over the counter now (Gate.rest), and a company
+        -- that wipes has to be able to buy the days that mend it without walking back into the fight
+        -- that broke them. Two callers, one definition, one order.
+        require("models.gate").night(game.player)
     end
 
     if runResumable() and quest and quest.id then

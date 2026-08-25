@@ -646,24 +646,26 @@ function hub.draw()
     -- reads as accomplishment; "28 days remain" is a deadline and reads as pressure, which is the
     -- thing this number is for. The last week turns amber, and the final day says so in words.
     --
-    -- PARKED WITH THE CAMPAIGN IT COUNTED. The forty days were the Quest Board's deadline: every
-    -- expedition spent one, and the number was on this screen because expeditions were chosen from it.
-    -- The board is deleted and the one door out of the city goes down a stair that spends no days, so a
-    -- countdown here would be pressure from a clock nothing reads.
+    -- IT WAS PARKED BEHIND `if false` AND IT IS BACK, which is worth recording because the reasoning
+    -- that parked it was true of a game that no longer ships. The note said the forty days were the
+    -- Quest Board's deadline, that the board was deleted, and that "the one door out of the city goes
+    -- down a stair that spends no days" -- so a countdown here would be pressure from a clock nothing
+    -- reads.
     --
-    -- Left in place rather than deleted: models/calendar.lua is untouched and still sets the level the
-    -- world fights at (models/encounter_battle.lua, models/muster.lua), so the DAY is live even though
-    -- nothing counts down to forty of them. This `if false` is the readout, not the clock.
-    if false then
-        local left = Calendar.remaining(hub.player)
-        local text
-        if Calendar.isOver(hub.player) then text = "He has come"
-        elseif left <= 1 then text = "The last day"
-        else text = left .. " days remain" end
-        love.graphics.setFont(dayFont)
-        Theme.set(left <= 7 and Theme.accentWeapon or Theme.muted)
-        love.graphics.printf(text, 0, 62, screenW, "center")
-    end
+    -- The stair spends one. states/game.lua charges a day at the mouth of every expedition and has
+    -- since the descent became the campaign, so the clock was never idle; what was missing was anybody
+    -- telling the player. And the Inn sells a night over the counter now (models/gate.lua's Gate.rest),
+    -- which is the only way a wounded company mends -- so a day is a thing the player deliberately
+    -- SPENDS in this city, from a card on this screen, and a cost paid on a screen that does not show
+    -- the balance is a cost nobody can weigh.
+    local left = Calendar.remaining(hub.player)
+    local text
+    if Calendar.isOver(hub.player) then text = "He has come"
+    elseif left <= 1 then text = "The last day"
+    else text = left .. " days remain" end
+    love.graphics.setFont(dayFont)
+    Theme.set(left <= 7 and Theme.accentWeapon or Theme.muted)
+    love.graphics.printf(text, 0, 62, screenW, "center")
 
     map:draw()
 
