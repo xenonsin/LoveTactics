@@ -1137,12 +1137,22 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- THREE THINGS THIS MUST NOT DO, each of which is a way of getting a day back for nothing:
     --   a RESUME must not re-charge. Quitting to the menu mid-quest and pressing Continue is the same
     --     expedition, and the day was spent when it began.
-    --   a DESCENT must not charge at all. It is a separate mode with its own company and no calendar
-    --     behind it -- and its second floor is a fresh game.enter, so it would bill a day per floor.
+    --   a DESCENT must charge ONCE, at the mouth. It used to be exempt entirely -- a separate mode with
+    --     no calendar behind it -- and the danger the exemption dodged is real: the second floor is a
+    --     fresh game.enter, so a naive charge bills a day per floor. `descent.entry` is nil at exactly
+    --     one moment, the top of an expedition (states/gate.lua's descend clears it), which is the same
+    --     test the rollback point below is taken on. One walk in, one day.
     --   the PROLOGUE must not charge. It runs before the campaign the calendar measures; `runResumable`
     --     is already false for a scripted leg, which is why the spend sits inside that branch.
-    if runResumable() and quest and quest.id and not resume and not game.descent then
+    local freshExpedition = not game.descent or not game.descent.entry
+    if runResumable() and quest and quest.id and not resume and freshExpedition then
         Calendar.spend(game.player)
+        -- ...AND THE BENCH MENDS WHILE THEY WORK. One wound off everybody who did not walk down, which
+        -- is the second cost of taking somebody: the four you send are four who do not heal. This is
+        -- the only thing that sets a bone now -- gold used to, for about a hundred, which made the
+        -- whole wound ladder a toll booth (models/wound.lua's Wound.rest).
+        Wound.rest(game.player, game.descent and Descent.party(game.descent, game.player)
+            or game.player.roster)
     end
 
     if runResumable() and quest and quest.id then

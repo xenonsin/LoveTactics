@@ -202,6 +202,44 @@ function Wound.everWounded(player)
     return (player and player.wounded) == true
 end
 
+-- A DAY PASSES AND THE BENCH MENDS: one wound off every body that did not go down.
+--
+-- THIS IS WHAT THE METER IS PAID IN NOW. A wound cost gold and nothing else, and the whole ladder --
+-- the reserve share, Wounded at two, Crippled at three -- came off for at most a hundred (Gate.rest
+-- clears the entire roster's ledger for min(#roster, 4) x INN_PER_HEAD). Against a 345g median item
+-- that is not a meter, it is a toll booth, and a company past the first shop never felt it.
+--
+-- Time cannot be bought off. A day is the campaign's scarcest thing (Calendar.DAYS is forty), so a
+-- three-wound body is seven percent of a playthrough spent in a bed -- and the player never SPENDS that
+-- day on healing, which is the distinction that keeps this off the calendar's own rule that a day is
+-- not a second currency. Days go on expeditions; the bench mends while they do.
+--
+-- `going` is who walked down that day, as characters or ids -- they were working, and work is not rest.
+-- That is the second cost of a descent and the reason a reserve is worth keeping: the four you send are
+-- four who do not heal.
+--
+-- Returns the ids that mended, so a caller can say so.
+function Wound.rest(player, going)
+    if not (player and player.wounds) then return {} end
+    local out = {}
+    for _, entry in ipairs(going or {}) do
+        out[type(entry) == "table" and entry.id or entry] = true
+    end
+
+    local mended = {}
+    for id, n in pairs(player.wounds) do
+        if not out[id] then
+            local left = n - 1
+            -- Cleared to nil rather than left at zero, for the reason Wound.mend clears it: save drops
+            -- empty entries, and a table of zeroes would grow with every body ever hurt once.
+            player.wounds[id] = left > 0 and left or nil
+            mended[#mended + 1] = id
+        end
+    end
+    table.sort(mended)
+    return mended
+end
+
 -- Set one wound, for gold. Returns true when it was paid and mended, or nil plus a reason:
 --   "unhurt" | "gold"
 function Wound.mend(player, charId)

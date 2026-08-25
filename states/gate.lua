@@ -108,6 +108,29 @@ function gate:build()
             action = descend,
         }
     end
+    -- WAIT A DAY, and it draws only when there is something to wait FOR.
+    --
+    -- Days advance on walking into the stair, so a company too hurt to send has no way to reach the
+    -- morning it is waiting for -- which is a softlock wearing the clothes of a hard decision. This is
+    -- the way out, and it is deliberately the same price as an expedition: one day, the campaign's
+    -- scarcest thing (Calendar.DAYS is forty).
+    --
+    -- Hidden while nobody is hurt rather than greyed, because then it is a button whose only effect is
+    -- to lose. A control draws where it can be used.
+    local Wound = require("models.wound")
+    if #Wound.wounded(gate.player) > 0 then
+        items[#items + 1] = {
+            label = "Wait a day",
+            action = function()
+                require("models.calendar").spend(gate.player)
+                -- Nobody went down, so nobody is exempt: the whole company mends a wound.
+                Wound.rest(gate.player, {})
+                Player.restore(gate.player)
+                Player.save()
+                gate:build()
+            end,
+        }
+    end
     items[#items + 1] = { label = "Back to the City", action = function()
         State.switch(require("states.hub"))
     end }
