@@ -291,7 +291,7 @@ function Advancement:rewardLine()
 
     -- NOTHING ELSE GOES ON THIS LINE. It used to also name the houses a DESCENT banked standing with,
     -- from a `standing` table of vendor -> circles that a descent's extraction once returned here.
-    -- Two things ended that. A run's account is drawn by states/descent.lua off its own `circles` field
+    -- Two things ended that. A run's account is drawn by Descent.account off its own `circles` field
     -- and never reaches this overlay, and `standing` on a quest reward is a NUMBER -- the company's
     -- finished-quest count (models/quest.lua) -- so the surviving loop was walking `pairs` over an
     -- integer and taking the panel down on every completed quest. The sponsor this quest advanced is

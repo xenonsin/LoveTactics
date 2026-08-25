@@ -143,7 +143,7 @@ return {
         end,
     },
     {
-        name = "taking the rooms sets every bone, and the row goes dark under the player's hand",
+        name = "taking the rooms rests the company, sets no bone, and stays available",
         fn = function()
             stubFonts(function()
                 local p = company(3, 2)
@@ -153,10 +153,12 @@ return {
 
                 panel:choose(1)
                 assert(p.gold == purse - price, "the night was not paid for")
-                assert(#Wound.wounded(p) == 0, "somebody came down to breakfast still broken")
-                -- The card is rebuilt in place (the proxy forwards to whichever is current), so the row
-                -- the player just pressed is the one that has to be dark now.
-                assert(rooms(panel).disabled, "the rooms stayed live with nothing left to set")
+                -- A NIGHT SETS NO BONES. It used to clear the whole ledger for this one bill; mending
+                -- is a bed now, per wound and a day each (models/gate.lua Gate.lodge).
+                assert(#Wound.wounded(p) > 0, "a bed is not a surgeon")
+                -- The card is rebuilt in place (the proxy forwards to whichever is current). The row stays
+                -- LIVE, because a night is worth taking again tomorrow -- it is not a one-shot repair.
+                assert(rooms(panel), "the rooms are still on offer")
             end)
         end,
     },

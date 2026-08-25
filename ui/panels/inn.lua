@@ -101,7 +101,7 @@ function Inn.new(opts)
             options = {
                 {
                     label = "Take the rooms  (" .. price .. "g)",
-                    desc = why or "They come down to breakfast whole.",
+                    desc = why or "They come down to breakfast rested. A bed is not a surgeon.",
                     disabled = why ~= nil,
                     accent = { 0.83, 0.73, 0.45 },
                     cb = function()

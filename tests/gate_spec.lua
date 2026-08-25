@@ -56,7 +56,7 @@ local function markerOf(grid, pile)
 end
 
 return {
-    { name = "a night at the inn restores the company and sets every bone", fn = function()
+    { name = "a night at the inn gives back what the fighting cost, and sets no bone", fn = function()
         -- The inn is the ONLY mender a descent has: wounds cap healing for the rest of a body's life
         -- (models/wound.lua) and nothing underground sets one. Both halves for one bill, because a
         -- four-body company with no bench cannot field around a wounded member.
@@ -69,10 +69,10 @@ return {
         local before = p.gold
         assert(Gate.rest(p), "the company can afford a room")
         assert(p.gold < before, "and it is paid for")
-        assert(Wound.count(p, char.id) == 0, "the bone is set")
-        assert(char.stats.health.current == char.stats.health.max,
-            "and they are whole -- not capped at the wounded ceiling, which is the ordering this " ..
-            "function exists to get right")
+        assert(Wound.count(p, char.id) > 0, "a bed is not a surgeon: the wound is still there")
+        assert(char.stats.health.current == math.floor(char.stats.health.max * Wound.healShare(p, char.id)),
+            "and they top up to their WOUNDED ceiling and no further -- which used to be an ordering " ..
+            "hazard this function worked around, and is now the honest result")
     end },
 
     { name = "an inn that cannot be paid for changes nothing", fn = function()

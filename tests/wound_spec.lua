@@ -112,20 +112,27 @@ return {
         assert(Combat.unreservedMax(char, "health") == whole, "and the body is its whole size again")
     end },
 
-    { name = "a night at the inn clears the whole ledger at once", fn = function()
-        -- The descent's mender, against the campaign's per-wound bill. A four-body company with no bench
-        -- cannot field around a wounded member, so pricing each wound separately would just mean a
-        -- player who could not afford the second one stopped descending.
+    { name = "a night at the inn leaves every wound exactly where it was", fn = function()
+        -- THIS CASE ASSERTED THE OPPOSITE. A night cleared the WHOLE company's ledger for one bill --
+        -- at most a hundred gold -- on the reasoning that a four-body company with no bench cannot field
+        -- around a wounded member, so pricing each wound separately would stop a poor player descending.
+        --
+        -- That was the cheapest wound-eraser in the game and it outlived Wound.mend, which was deleted
+        -- for being exactly the same thing at a worse price. A bed mends now: per wound, a day each, and
+        -- the body out of the company while it takes them (models/gate.lua's Gate.lodge).
         local Gate = require("models.gate")
         local p = company(2)
         p.gold = 1000
         for _ = 1, 3 do Wound.inflict(p, { p.roster[1], p.roster[2] }) end
         assert(Gate.rest(p), "the room is paid for")
         for _, char in ipairs(p.roster) do
-            assert(Wound.count(p, char.id) == 0, (char.id) .. " is still carrying wounds")
-            assert(Combat.unreservedMax(char, "health") == char.stats.health.max,
-                (char.id) .. " did not get their whole body back")
-            assert(char.stats.health.current == char.stats.health.max, (char.id) .. " is not whole")
+            assert(Wound.count(p, char.id) == 3, (char.id) .. " should still carry all three")
+            assert(#Wound.combatEffects(p, char.id) == 2, (char.id) .. " still fights wounded and crippled")
+            -- ...and the night gives back what it can: topped to the wounded ceiling, not past it.
+            assert(char.stats.health.current == Combat.unreservedMax(char, "health"),
+                (char.id) .. " did not get back what the fighting cost")
+            assert(Combat.unreservedMax(char, "health") < char.stats.health.max,
+                (char.id) .. " is not still reserved -- the wound stopped biting")
         end
     end },
 

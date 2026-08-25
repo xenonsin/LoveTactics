@@ -508,7 +508,7 @@ function game:openLanding(cell)
     -- a different order each run, so the only way to equip a class was to go deeper than that class's
     -- gear would have carried you. A house opens on the first errand it posts on a floor now
     -- (models/errand.lua) and this number is read by exactly one thing: the "Circles beaten:" line on the
-    -- terminal card (states/descent.lua).
+    -- terminal card (models/descent.lua's Descent.account).
     --
     -- Credited ONCE per circle, on the general's floor, by the same test the run's own tally uses --
     -- getting past her honour guard is not getting past her.

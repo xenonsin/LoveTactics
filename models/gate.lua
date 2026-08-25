@@ -6,19 +6,29 @@
 -- was a single push with no reason to ever stop pushing, which is what the extraction prompt kept
 -- failing to be (see models/descent.lua's Descent.account on why that button was hollow).
 --
--- THREE COUNTERS, and each answers a cost the floors impose that the floors cannot undo:
+-- ONE COUNTER, answering the one cost the floors impose that the floors cannot undo:
 --
---   the inn      wounds. Falling in a fight caps a body's healing for the rest of its life
---                (models/wound.lua) and nothing underground sets a bone. The inn is the only mender.
---   the temple   the dead. A WIPE leaves the whole company on the floor it fell on, to be carried
---                out by whoever goes down next (the rescue stop); the temple is what turns a body in
---                a sack back into somebody who can hold a sword.
---   the store    everything else, and deliberately almost nothing: a descent's gear comes off its
---                FLOORS, so the shelf is draughts and a spare blade (data/vendors/gate_store.lua).
+--   the inn      wounds, and it is a BED rather than a counter. Falling in a fight caps a body's
+--                healing (models/wound.lua) and nothing underground sets a bone; you leave them here,
+--                pay for the stay, and they mend a wound a day while they are out of the company
+--                (Gate.lodge). Gold opens the door and cannot buy back the days.
+--
+-- TWO OF THESE WERE PROSE AND NOTHING ELSE, which is worth recording because they read for a long time
+-- as things the game had:
+--
+--   the temple   was described here as what "turns a body in a sack back into somebody who can hold a
+--                sword", carried out by a rescue stop on a later dive. Neither was ever written. A wipe
+--                does not leave bodies underground -- the company wakes here, wounded, and only the HAUL
+--                stays on the floor (states/game.lua's onLoss). Stranding was designed in full during
+--                the descent-loop pass and cut: an absent body dominates a degraded one, so it would
+--                have made the wound ladder decoration.
+--
+--   the store    "draughts and a spare blade" off data/vendors/gate_store.lua. There is no store at this
+--                screen; the shops are cards in the city (states/markets.lua).
 --
 -- PURE MODEL. No love.graphics, no state switching -- the prices, the eligibility and the spends live
 -- here so a spec can drive them, and states/gate.lua is the screen over the top. Same split
--- models/descent.lua keeps against states/descent.lua.
+-- models/descent.lua keeps against the screens that draw it.
 
 local Gate = {}
 
@@ -31,8 +41,8 @@ local Gate = {}
 -- change by the seventh -- which is backwards, since a full company is exactly when a night is worth
 -- most.
 --
--- Deliberately cheaper than mending. A rest is the thing you do every time you come up; setting a bone
--- is the thing you save for, and Wound.MEND_COST is what that costs.
+-- Deliberately cheap. A rest is the thing you do every time you come up, and it sets no bones at all:
+-- mending is a stay in a bed, priced per wound (Gate.LODGE_PER_WOUND below).
 --
 -- PER FIELDED HEAD RATHER THAN PER ROSTER HEAD, and that distinction did not exist until the Hiring
 -- Hall started dealing (models/voucher.lua). The roster used to BE the field -- four, capped -- so "the
@@ -137,13 +147,17 @@ function Gate.innPrice(player)
     return math.max(Gate.INN_PER_HEAD, n * Gate.INN_PER_HEAD)
 end
 
--- A night at the inn: everything restored, every wound set.
+-- A night at the inn: health and mana back, and NOT a single bone set.
 --
--- BOTH, for one bill, and that is a departure from the campaign worth naming. The city heals free and
--- charges per wound (Wound.mend), because there the company is permanent and a wound is a scar you
--- choose to carry. A descent company is four bodies deep with no bench: a wounded one is not a body
--- you field around, it is a quarter of your fighting strength at a fraction of its health, and pricing
--- each one separately would just mean a player who could not afford the second one stopped descending.
+-- IT USED TO CLEAR THE WHOLE LEDGER -- `player.wounds = {}` -- for one bill of at most a hundred, which
+-- made it by far the cheapest way to undo a wound in the game and quietly the only one that mattered.
+-- Wound.mend was deleted for being a counter you could settle a wound at; this was the same thing at a
+-- better price, and it survived the cut because nothing named it in the same breath.
+--
+-- SO THE TWO ARE SPLIT, and the split is the whole point. A NIGHT tops a company back up: it is the
+-- thing you do every time you come up, it is cheap, and it touches resources only. A BED mends: you
+-- leave a body here, pay per wound, and they are out of the company a day for each one (Gate.lodge).
+-- Gold buys the first and opens the door to the second; it cannot buy back the days.
 --
 -- Returns true, or false plus a reason ("gold", "nobody").
 function Gate.rest(player)
@@ -152,10 +166,9 @@ function Gate.rest(player)
     local price = Gate.innPrice(player)
     if (player.gold or 0) < price then return false, "gold" end
     Player.spendGold(player, price)
-    -- Wounds first: Player.restore reads the wound cap when it refills, so clearing them in the other
-    -- order would top everybody up to their WOUNDED ceiling and then remove the ceiling, leaving a
-    -- rested company short and the bill paid.
-    player.wounds = {}
+    -- Player.restore reads each body's wound cap as it refills, so a wounded body tops up to its
+    -- WOUNDED ceiling and no further. That is now the honest result rather than an ordering hazard:
+    -- the night gives back what the fighting cost, and the wound is still a wound.
     Player.restore(player)
     return true
 end

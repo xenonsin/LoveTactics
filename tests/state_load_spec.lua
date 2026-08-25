@@ -20,7 +20,6 @@ local STATES = {
     "states/hub.lua",
     "states/game.lua",
     "states/battle.lua",
-    "states/descent.lua",
     "states/draft.lua",
     "states/prologue.lua",
     "states/credits.lua",

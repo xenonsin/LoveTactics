@@ -1383,26 +1383,14 @@ function Descent.newProfile(chars)
     return profile
 end
 
--- Is there an unfinished run on disk? Asked by states/descent.lua before it opens a new one.
-function Descent.hasRun()
-    return require("models.save").exists(Descent.FILE)
-end
-
--- The saved run's company, or nil if there is none (or it is unreadable). The floor stack and board come
--- back on `resumeRun`, exactly as the campaign's Continue reads them (models/save.lua Save.restoreRun);
--- `saveFile` is re-stamped here because Save.snapshot does not write it -- where a file lives is not
--- something to read out of the file.
-function Descent.loadProfile()
-    local profile = require("models.save").read(Descent.FILE)
-    if not profile then return nil end
-    profile.saveFile = Descent.FILE
-    return profile
-end
-
--- The run is over -- climbed out, wiped, or abandoned. Nothing carries, so the file goes.
-function Descent.clearSaved()
-    require("models.save").clear(Descent.FILE)
-end
+-- THREE FUNCTIONS STOOD HERE -- hasRun, loadProfile and clearSaved -- and states/descent.lua was
+-- the only thing that ever called them. They read and cleared Descent.FILE, the throwaway save
+-- the standalone mode kept beside the campaign's; that mode was promoted into the campaign and
+-- its screen is deleted, so the three went with it.
+--
+-- Descent.FILE ITSELF STAYS. Descent.newProfile still stamps it onto a profile's `saveFile`, and
+-- tests/descent_spec.lua pins that a run's company never writes save.lua -- which is the rule the
+-- separate file existed to keep, and it outlived the screen that read it.
 
 -- How deep the party is standing, 1-based. The only number the difficulty ladder reads.
 function Descent.depth(run)
@@ -2165,7 +2153,8 @@ function Descent.clearFloor(run)
     return run.cleared
 end
 
--- THE ACCOUNT OF A RUN THAT HAS ENDED, however it ended: read by states/descent.lua's terminal card,
+-- THE ACCOUNT OF A RUN THAT HAS ENDED, however it ended. It was read by the standalone mode's terminal
+-- card, which is deleted; what still asks is states/game.lua and ui/panels/advancement.lua,
 -- which is the only place any of it is ever said.
 --
 -- THIS USED TO BE `Descent.extract` AND IT USED TO BANK, and both of those going is the mode.

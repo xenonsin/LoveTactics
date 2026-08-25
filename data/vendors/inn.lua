@@ -20,5 +20,5 @@
 return {
     name = "The Inn",
     sells = false, -- sells no ITEMS; its whole offer is the night (models/gate.lua's Gate.rest)
-    description = "A bed, a fire and a surgeon. Whatever came up broken goes back down whole.",
+    description = "A bed and a fire. What the fighting cost comes back; what it broke needs longer.",
 }
