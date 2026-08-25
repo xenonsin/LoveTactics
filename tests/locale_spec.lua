@@ -30,7 +30,18 @@ return {
         name = "get() uses the current language, falls back to inline English, and is identity in English",
         fn = function()
             local saved = Locale.current
-            local key, english = "line.conversation_colosseum_slot_01_intro.1", "So. Fresh blood ..."
+            -- FOUND RATHER THAN NAMED, and that is a fix rather than a tidy-up. This pinned
+            -- "line.conversation_colosseum_slot_01_intro.1" by hand, and passed for as long as it did
+            -- only because the grid still carried rows for a scene that had been deleted with the Quest
+            -- Board. The row was dead, the spec was reading it, and the first `. extract-strings` since
+            -- pruned all 51 such scenes and took the fixture with them.
+            --
+            -- So: take any row that really has a ja cell. There is no key here to go stale.
+            local key, english
+            for k, row in pairs(Locale.strings()) do
+                if type(row.ja) == "string" and #row.ja > 0 then key, english = k, row.en break end
+            end
+            assert(key, "no row in the grid carries a ja translation to test against")
             Locale.set("ja")
             assert(Locale.get(key, english) == Locale.raw(key, "ja"), "ja cell should win over the fallback")
             assert(Locale.get("line.does.not.exist", english) == english, "an untranslated id falls back to English")

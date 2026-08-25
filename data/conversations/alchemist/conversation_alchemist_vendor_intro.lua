@@ -6,6 +6,9 @@ return {
 
     script = {
         { "alchemist", "The consignment came in intact. Seals whole. I have been told to stop mentioning it and I will not.", tag = 8 },
+        { when = { has = "character_ren" }, script = {
+            { "character_ren", "You finished it. I said to ask for me here -- so I am asking. I go with you.", tag = 9 },
+        } },
         { "alchemist", "The Crucible. We refine your gear and brew your medicine, and we teach the one truth the others are too timid for: excellence is a substance, not a self. No one is born better. Anything can be transferred.", tag = 1 },
         { "character_avatar", "Transferred from whom?", tag = 2 },
         { "alchemist", "From a source. Does a formula have feelings? A self is inventory, friend, and we are the only ones honest enough to say so. Buy, and be improved.", tag = 3 },

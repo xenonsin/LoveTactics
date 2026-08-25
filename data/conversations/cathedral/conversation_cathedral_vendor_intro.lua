@@ -6,6 +6,9 @@ return {
 
     script = {
         { "cathedral", "The mill business. That was you. Word came up the road before you did.", tag = 7 },
+        { when = { has = "character_amana" }, script = {
+            { "character_amana", "You finished it. I said to ask for me here -- so I am asking. I go with you.", tag = 8 },
+        } },
         { "cathedral", "You come armed and you come clean. The faithful arm those who purge. Wards, relics, water that burns what should not walk. Kneel when you take them, and the taking is made holy.", tag = 1 },
         { "character_avatar", "I'll take them standing.", tag = 2 },
         { when = { has = "character_amana" }, script = {

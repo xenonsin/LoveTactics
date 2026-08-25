@@ -6,6 +6,9 @@ return {
 
     script = {
         { "hunters_lodge", "The stag is on the wall. Fourteen points, and every one of them yours.", tag = 8 },
+        { when = { has = "character_kaya" }, script = {
+            { "character_kaya", "You finished it. I said to ask for me here -- so I am asking. I go with you.", tag = 9 },
+        } },
         { "hunters_lodge", "The Lodge. We clear the beasts that would eat your children and feed your town on what's left. Honest work, honest coin. The board's always open. Take a bounty, take a trophy.", tag = 1 },
         { "character_avatar", "Always open. It never closes?", tag = 2 },
         { "hunters_lodge", "The wild always makes more game. That is the mercy of it. There is always another beast worth killing. Rank up, and one day you'll be a Grand Hunter, and they'll carve your name on the wall.", tag = 3 },

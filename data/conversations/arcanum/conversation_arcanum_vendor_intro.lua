@@ -6,6 +6,9 @@ return {
 
     script = {
         { "arcanum", "The grimoire is drying on a table upstairs. Four pages are legible. You brought us four more than we had.", tag = 8 },
+        { when = { has = "character_gyeom" }, script = {
+            { "character_gyeom", "You finished it. I said to ask for me here -- so I am asking. I go with you.", tag = 9 },
+        } },
         { "arcanum", "The Arcanum. We win the wars the crown cannot and turn back the plagues its physicians can't name. Buy what you like. Everything on this shelf was earned by someone.", tag = 1 },
         { "character_avatar", "Earned by whom?", tag = 2 },
         { "arcanum", "Does it matter, so long as it works? No one else can do what we do. That is the beginning and end of the question.", tag = 3 },
