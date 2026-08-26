@@ -168,6 +168,23 @@ function PartyStatus.stripHeight(n)
     return n * ROW_H + 8
 end
 
+-- WHERE ONE MEMBER'S ROW SITS, in the same logical space the strip was drawn at -- for anything that
+-- has to point AT a body rather than at the readout as a whole. The overworld's first-wound coach
+-- bubble anchors here (states/game.lua's drawCoach): the mark it is explaining is the dark cap on
+-- that row's health bar, so the bubble has to name that row and not the corner it lives in.
+--
+-- Takes the strip's origin rather than assuming it, because the caller is the one that chose it, and
+-- a bubble anchored to a row the strip is not actually drawn on would point at empty map. Nil for a
+-- body that is not in the marching company at all.
+function PartyStatus.rowRect(player, charId, x, y)
+    for i, char in ipairs(shownParty(player)) do
+        if char.id == charId then
+            return { x = x or 16, y = (y or 60) + (i - 1) * ROW_H, w = STRIP_W, h = ROW_H }
+        end
+    end
+    return nil
+end
+
 local stripFont, stripHeadFont
 function PartyStatus.drawStrip(player, x, y, mx, my, abilityState)
     local party = shownParty(player)

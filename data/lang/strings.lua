@@ -443,6 +443,7 @@ return {
     ["line.conversation_tutorial_village.7"] = { en = "While it's stunned, {name}. Let's finish this!", ja = "" },  -- TODO
     ["line.conversation_tutorial_village.8"] = { en = "Not that, {name}. Do as I showed you.", ja = "" },  -- TODO
     ["line.conversation_tutorial_village.9"] = { en = "{select} on the imp to move in range and attack with your weapon.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_wound.1"] = { en = "They were carried out of that fight. The dark band on their health bar is held back now - nothing out here will fill it again.", ja = "" },  -- TODO
     ["line.conversation_undercroft_discipline_unlocked.1"] = { en = "The {discipline}'s trade is yours now, {name}. The firm keeps stock off the open book for a hand that reaches it, and you reached it. Quietly, mind.", ja = "" },  -- TODO
     ["line.conversation_undercroft_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_undercroft_discipline_unlocked.3"] = { en = "Took me years to get shown that rack. You did it faster. Don't get sloppy with it.", ja = "" },  -- TODO
@@ -554,6 +555,7 @@ return {
     ["title.conversation_touchstone_vendor_intro"] = { en = "The Touchstone", ja = "" },  -- TODO
     ["title.conversation_tutorial_flight"] = { en = "The Open Road", ja = "" },  -- TODO
     ["title.conversation_tutorial_village"] = { en = "Rowan's Lesson", ja = "" },  -- TODO
+    ["title.conversation_tutorial_wound"] = { en = "Carried Out", ja = "" },  -- TODO
     ["title.conversation_undercroft_discipline_unlocked"] = { en = "Off the Book", ja = "" },  -- TODO
     ["title.conversation_undercroft_errand_found"] = { en = "A Posting Nobody Took", ja = "" },  -- TODO
     ["title.conversation_undercroft_slot_01_outro"] = { en = "The Third Door", ja = "" },  -- TODO

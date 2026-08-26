@@ -63,17 +63,24 @@ local game = {}
 local titleFont = Theme.display(22)
 local hudFont = Theme.body(16)
 
--- Flight-leg coach lines (data/conversations/tutorial/conversation_tutorial_flight.lua), keyed by node
--- id and resolved through Locale so {select}/localization behave exactly as in a spoken line. Loaded once.
-local FLIGHT_HINTS
-local function hintNode(id)
-    if not FLIGHT_HINTS then
-        FLIGHT_HINTS = {}
-        for _, node in ipairs(require("data.conversations.tutorial.conversation_tutorial_flight").script) do
-            if node.id then FLIGHT_HINTS[node.id] = node end
+-- Coach lines, keyed by conversation and node id and resolved through Locale so {select}/localization
+-- behave exactly as in a spoken line. Two files feed the map: the prologue's flight leg, and the one
+-- line the campaign teaches out here (the first wound). Each is walked once and cached.
+local HINT_FILES = {
+    conversation_tutorial_flight = "data.conversations.tutorial.conversation_tutorial_flight",
+    conversation_tutorial_wound  = "data.conversations.tutorial.conversation_tutorial_wound",
+}
+local hintNodes = {}
+local function hintNode(convId, id)
+    local nodes = hintNodes[convId]
+    if not nodes then
+        nodes = {}
+        for _, node in ipairs(require(HINT_FILES[convId]).script) do
+            if node.id then nodes[node.id] = node end
         end
+        hintNodes[convId] = nodes
     end
-    return FLIGHT_HINTS[id]
+    return nodes[id]
 end
 
 -- The Loadout button is opened by I (keyboard) / Y (gamepad) / a click (mouse) -- NOT the confirm key
@@ -86,6 +93,11 @@ end
 
 -- Where a coach bubble is allowed to live: clear of the top HUD (title + buttons) and the bottom hint.
 local COACH_BOUNDS = { x = 20, y = 70, w = Scale.WIDTH - 40, h = Scale.HEIGHT - 70 - 44 }
+
+-- Where the always-on party strip is drawn (ui/party_status.lua). A constant rather than two literals
+-- because something now has to POINT at a row of it: the first-wound coach bubble anchors through
+-- PartyStatus.rowRect, which can only find the row if it is handed the origin the strip was drawn at.
+local STRIP_X, STRIP_Y = 16, 60
 
 -- THE HUD'S BUTTON ROW: Back, then Items, then Use, LAID OUT OVER THE ONES ACTUALLY THERE.
 --
@@ -394,11 +406,10 @@ end
 -- over the result is unspecified.
 function game:payoutPhrase(enc)
     -- `pack` is a fight and salvages like one (see onWin), so the marker telegraphs the same stock. A
-    -- pile with no cast on it is not a fight and promises nothing.
-    if not (enc and (enc.kind == "combat" or enc.kind == "elite" or enc.kind == "objective"
-        or (enc.kind == "pack" and enc.composition))) then
-        return nil
-    end
+    -- pile with no cast on it is not a fight and promises nothing. The third reading of the one question
+    -- (Encounter.opensBattle) -- what pays salvage is what runs the arena, and a hover that promised
+    -- stock off a wider test than the branch that hands it over would be the same lie the border is.
+    if not EncounterModel.opensBattle(enc) then return nil end
     local got = Spoils.materials({
         kind = enc.kind, tier = enc.tier, houseMaterial = game.houseMaterial,
     })
@@ -427,8 +438,16 @@ end
 --
 -- The toast is the point of doing this here rather than silently in a model: an injury nobody is told
 -- about is a bug report about the hub's healing.
-function game:inflictWounds()
-    local fallen = require("states.battle").fallen
+--
+-- `chars` is who fell, for the one caller that has no battle state to read it off: a fight WALKED OFF
+-- (Muster.canWalkOver) is resolved against a combat object nobody ever entered a state for, so
+-- states/battle.lua's field would hold whatever the last real fight left in it. Everything else omits
+-- it and takes that field, which is the ordinary case.
+function game:inflictWounds(chars)
+    -- Asked BEFORE the ledger moves, because Wound.inflict is what writes the one-way mark. See the
+    -- coach below: this is the only moment the answer is still "never".
+    local firstEver = not Wound.everWounded(game.player)
+    local fallen = chars or require("states.battle").fallen
     local hurt = Wound.inflict(game.player, fallen)
     -- Named off the instances the battle handed back rather than looked up by id: these ARE the
     -- roster's own tables, and a companion's name can be the one the player typed at creation.
@@ -437,6 +456,24 @@ function game:inflictWounds()
     for _, id in ipairs(hurt) do
         local char = byId[id]
         game:pushToast(((char and char.name) or "Someone") .. " is wounded")
+    end
+
+    -- THE FIRST ONE IS TAUGHT, and only the first. A toast says who; it does not say what a wound IS,
+    -- and the mark it leaves -- the dark cap on that body's bar in the party strip -- is a thing the
+    -- player has never seen before and will now be routing around for the rest of the expedition. So
+    -- the very first time anybody in the company is carried out, the strip's own row gets a coach
+    -- bubble naming it (drawCoach's "wound" branch).
+    --
+    -- ARMED HERE, WHICH IS ALSO WHY A WIPE NEVER SEES IT. Every wipe path calls this and then leaves
+    -- the map inside the same function -- the haul is cut, the run is dropped, and the next screen is
+    -- the city (or the Gate). A bubble pinned to an overworld that is already gone draws nothing, and
+    -- the lesson a wiped company needs is a DOOR rather than a mark: the Inn grows on this same first
+    -- wound (data/buildings/the_inn.lua) and states/hub.lua coaches it on arrival like any other new
+    -- card. So the split falls out of where each path ends rather than out of a flag: a company still
+    -- standing on the board learns the mark, a company standing in the city learns the room.
+    if firstEver and hurt[1] then
+        game.coach = "wound"
+        game.coachChar = hurt[1] -- whose row the bubble points at; the toasts name the rest
     end
     return hurt
 end
@@ -1051,6 +1088,15 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
         onArrive = function(cell, revealed)
             fireAbility("step", { cell = cell, revealed = revealed })
             fireRelics("step", { cell = cell, revealed = revealed })
+            -- THE FIRST-WOUND LESSON IS SPENT BY WALKING ON, and a step is the only honest thing to
+            -- spend it on. Every other coach step out here is cleared by the player doing the thing it
+            -- asked for; this one asks for nothing -- a wound cannot be answered on the board -- so
+            -- what it is waiting for is to have been READ. Taking a step is the player saying so, and
+            -- it is the same beat the bubble was put up to inform: the next stop is chosen by a
+            -- company that is now short of that much.
+            if game.coach == "wound" then
+                game.coach, game.coachChar = nil, nil
+            end
             -- A DOOR IS FOUND BY BEING BESIDE IT. Wizardry makes you stand at a wall and press Search,
             -- and the turns are the cost; there is no turn economy on this board to spend, so the cost
             -- is having WALKED there -- down a dead end that looked like it ended. A company that never
@@ -1125,6 +1171,7 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- useVisible and the combat onWin below). True from the start everywhere else.
     game.useUnlocked = (mp.tutorial ~= "flight")
     game.coach = nil
+    game.coachChar = nil
 
     -- Autosave the run so quitting mid-quest resumes onto the map (states/menu.lua's Continue). Only a
     -- board quest is resumable (runResumable) -- a scripted/tutorial leg has no hub to return to. The live
@@ -1437,7 +1484,12 @@ function game:openEncounter(cell, opts)
     -- dropped under.
     local guardedPack = kind == "pack" and cell.encounter.composition ~= nil
 
-    if guardedPack or kind == "combat" or kind == "elite" or kind == "objective" then
+    -- ASKED THROUGH THE MODEL rather than restated here, and the reason is the marker. The overworld
+    -- draws a shared combat border on every stop that opens the arena (ui/overworld_map.lua's
+    -- COMBAT_BORDER), which is a PROMISE about this branch -- so the two have to be one question or the
+    -- board eventually advertises a fight that does not happen. The `meet` walk-out returns above this
+    -- and Encounter.opensBattle excludes it too, which is the same answer reached twice on purpose.
+    if EncounterModel.opensBattle(cell.encounter) then
         -- Everything that has to know WHO IS STANDING WHERE, resolved once the deployment phase commits
         -- and handed back to the battle. It cannot be computed here any more: the player chooses which of
         -- the company take the field, and on which tiles, over the real board (docs/deployment.md), so
@@ -2365,11 +2417,13 @@ function game:openEncounter(cell, opts)
                     -- path takes, so a pack recovered either way is recovered identically.
                     takeGuardedPack()
                     grantSideSpoils(spoils)
-                    -- A walked-off fight wounds exactly as a played one does. Read off THIS combat
-                    -- object rather than states/battle.lua's field, because no battle state was ever
-                    -- entered here -- the fight was resolved with nobody watching, and the field would
-                    -- hold whatever the last real battle left in it.
-                    Wound.inflict(game.player, Combat.fallenParty(combat))
+                    -- A walked-off fight wounds exactly as a played one does, and is TOLD exactly as
+                    -- one is -- the toast naming who, and the coach bubble the first time it happens
+                    -- at all. Through the same seam with the fallen handed in, rather than a bare
+                    -- Wound.inflict: this combat object is the only record of who went down, since no
+                    -- battle state was ever entered here and states/battle.lua's field would hold
+                    -- whatever the last watched fight left in it.
+                    game:inflictWounds(Combat.fallenParty(combat))
                     game:refreshMuster() -- the fight was paid for in health and potions; re-rate
                     saveRun()
                 end } },
@@ -3185,17 +3239,30 @@ function game.draw()
     game.drawCoach()
 end
 
--- The flight tutorial's gold coach bubble, pinned to whatever the current step is about. Nil on any
--- other quest (game.coach stays nil), so this is a no-op everywhere but the prologue's flight leg.
+-- The gold coach bubble, pinned to whatever the current step is about. Three of the four steps are the
+-- prologue's flight leg and draw nowhere else; the fourth ("wound") is the campaign's, and fires once
+-- ever, on the first body carried out of a fight (game:inflictWounds).
 function game.drawCoach()
     local step = game.coach
     if not step then return end
+    -- The first wound, named on the row of the body that took it. Held off while a panel is open for
+    -- the same reason the move hint is: the strip it is pointing at is behind that panel, so a bubble
+    -- drawn over the top would be an arrow into a menu. Nothing spends it -- it waits (game:onArrive).
+    if step == "wound" and not game.activePanel and partyVisible() then
+        local anchor = PartyStatus.rowRect(game.player, game.coachChar, STRIP_X, STRIP_Y)
+        local node = hintNode("conversation_tutorial_wound", "wound_hint")
+        if anchor and node then
+            CoachBubble.draw(Locale.text("conversation_tutorial_wound", node), anchor,
+                { prefer = "right", bounds = COACH_BOUNDS })
+        end
+        return
+    end
     if step == "move" and not game.activePanel then
-        local node = hintNode("move_hint")
+        local node = hintNode("conversation_tutorial_flight", "move_hint")
         CoachBubble.draw(Locale.text("conversation_tutorial_flight", node), game.map:tokenRect(),
             { prefer = "above", bounds = COACH_BOUNDS })
     elseif step == "loadout" and not game.activePanel and game.itemsVisible then
-        local node = hintNode("loadout_hint")
+        local node = hintNode("conversation_tutorial_flight", "loadout_hint")
         -- The Items button lives in the top HUD strip, above COACH_BOUNDS; give this one bubble a
         -- bounds that reaches up to the button so it can sit directly BELOW it, tail pointing up.
         -- The LIVE rect, not the authored lane: the flight tutorial hides Back, so Items sits in the
@@ -3208,7 +3275,7 @@ function game.drawCoach()
     elseif step == "equip" and game.activePanel and game.activePanel.coachAnchor then
         local anchor = game.activePanel:coachAnchor()
         if anchor then
-            local node = hintNode("equip_hint")
+            local node = hintNode("conversation_tutorial_flight", "equip_hint")
             local text, key = Locale.coachLine("conversation_tutorial_flight", node)
             CoachBubble.draw(text, anchor, { prefer = "above", key = key, bounds = COACH_BOUNDS })
         end
@@ -3239,7 +3306,7 @@ end
 -- strip is read every time a fight is weighed up and this is read once a spur; the one consulted more
 -- keeps the corner.
 function game:checklistTop()
-    return 60 + PartyStatus.stripHeight(#(game.player and game.player.roster or {})) + 8
+    return STRIP_Y + PartyStatus.stripHeight(#(game.player and game.player.roster or {})) + 8
 end
 
 -- A ROW IS A SENTENCE NOW, so it is allowed to wrap. It used to be a title, which always fitted on one
@@ -3358,7 +3425,7 @@ function game.drawHud()
     if partyVisible() then
         local mx, my
         if InputMode.isMouse() then mx, my = Scale.toGame(love.mouse.getPosition()) end
-        PartyStatus.drawStrip(game.player, 16, 60, mx, my, game.abilityState)
+        PartyStatus.drawStrip(game.player, STRIP_X, STRIP_Y, mx, my, game.abilityState)
         -- Run relics carried this quest, top-right (models/relic.lua) -- the snowball, legible while routing.
         RelicStrip.draw(game.relicState, Scale.WIDTH - 16, 60, mx, my)
 
