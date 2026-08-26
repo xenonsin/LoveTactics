@@ -397,15 +397,22 @@ return {
                 .. "shallow to read over a run", pc, pr, cols, rows))
     end },
 
-    { name = "the growth reaches the board, and the stop count does not follow it", fn = function()
+    { name = "the growth reaches the board, and the stop count climbs on its own terms", fn = function()
         -- Through the real descriptor, at three depths, and THE BOTTOM IS THE ONE THAT WOULD ROT: the
         -- Hollow Crown's floor is built by a second, separate branch of Descent.floorQuest with its own
         -- literal map table, so a size that only reached the sinned branch would leave the deepest floor
         -- in the game the size of the first.
         --
-        -- The second half is the load-bearing one. A floor is a sitting, its deep fights are already the
-        -- long ones, and stops scaled to the area would put floor 15 at twenty-seven of them. The
-        -- sparseness IS the growth; a later retune that quietly re-couples them is what this catches.
+        -- THE SECOND HALF INVERTED, and the old claim is worth recording because it was half right. It
+        -- read "the stop count does not follow it": a floor is a sitting, its deep fights are already the
+        -- long ones, and stops scaled to the AREA would put floor 15 at twenty-seven of them. That much
+        -- still holds and is what the assert below is really guarding -- the count is not a function of
+        -- the rectangle. What was wrong was the conclusion drawn from it, that the count should therefore
+        -- be flat: floor fifteen then laid out exactly as many fights as floor one on a board a third
+        -- larger, and a number that never moves is a number the player stops reading. So it climbs, by an
+        -- AUTHORED three over the whole run (Descent.FLOOR_FIGHTS_DEEP) rather than by anything the board
+        -- can tell it. Re-derived from the floor and its ends here, so a ramp that started reading the
+        -- dimensions would still fail this.
         local run = Descent.new(Player.new(), 909)
         for _, f in ipairs({ 1, Descent.CIRCLE_FLOORS, Descent.FLOORS }) do
             run.floor = f
@@ -413,13 +420,63 @@ return {
             local c, r = Descent.floorDims(f)
             assert(mp.cols == c and mp.rows == r, string.format(
                 "floor %d is rolled on %dx%d, not the %dx%d its depth asks for", f, mp.cols, mp.rows, c, r))
-            assert(mp.encounters.min == Descent.FLOOR_STOPS.min
-                and mp.encounters.max == Descent.FLOOR_STOPS.max,
+            local want = Descent.floorBudget(#(mp.objectives or { mp.objective }), f)
+            assert(mp.encounters.min == want.min and mp.encounters.max == want.max,
                 "floor " .. f .. "'s stop count moved with its board")
             assert(mp.cacheCount.min == Descent.FLOOR_CACHES.min
                 and mp.cacheCount.max == Descent.FLOOR_CACHES.max,
                 "floor " .. f .. "'s cache count moved with its board")
         end
+    end },
+
+    { name = "the fight budget climbs with depth, steadily and by a little", fn = function()
+        -- FOUR CLAIMS, and each is a different way the ramp could go wrong.
+        --
+        -- The first two are the shape the request named: it climbs, and it never turns back. A budget
+        -- that dipped in the middle would be a bottom that asks for less than the floor above it, which
+        -- is the one reading no player would accept.
+        local prev = nil
+        for f = 1, Descent.FLOORS do
+            local n = Descent.floorFights(f)
+            assert(not prev or n >= prev,
+                string.format("floor %d holds %d fights against floor %d's %d -- the ramp runs backward",
+                    f, n, f - 1, prev or 0))
+            prev = n
+        end
+        assert(Descent.floorFights(Descent.FLOORS) > Descent.floorFights(1),
+            "the bottom asks for no more fights than the first floor")
+
+        -- The third is "not by much", pinned as a number rather than left to a reading. Difficulty
+        -- already climbs on every other axis down here -- the stock is grown to Descent.dangerLevel, the
+        -- stair carries a general, the company has no hub to go home to -- so a count that doubled would
+        -- be charging twice for the same descent.
+        assert(Descent.floorFights(Descent.FLOORS) - Descent.floorFights(1) <= 3, string.format(
+            "the ramp climbs %d fights over the run, which is no longer 'not by much'",
+            Descent.floorFights(Descent.FLOORS) - Descent.floorFights(1)))
+
+        -- ...and the fourth is that it is STEADY, which is the half a span alone cannot say. Three rungs
+        -- reached in one jump at the bottom is the same span and a different feature. Every step is one
+        -- fight, so the climb is read as the descent asking for more rather than as a wall.
+        for f = 2, Descent.FLOORS do
+            local step = Descent.floorFights(f) - Descent.floorFights(f - 1)
+            assert(step <= 1, string.format(
+                "floor %d jumps %d fights over floor %d -- the ramp is a step, not a climb", f, step, f - 1))
+        end
+    end },
+
+    { name = "a run's whole fight bill stays inside a sitting", fn = function()
+        -- THE ONE FIGURE NEITHER CONSTANT STATES, and the reason the flat six was picked in the first
+        -- place: there is no hub anywhere in the stack, so a per-floor number is spent Descent.FLOORS
+        -- times over and the only honest unit is the RUN. Summed here rather than derived, because the
+        -- rounding in Descent.floorFights means the total is not the mean times the count.
+        --
+        -- The ceiling is what the shape this replaced was measured at (~200 fights a run, `. board-report
+        -- 60 descent`) with a wide margin under it. It is not a target -- it is the wall that says a
+        -- later retune of either endpoint has quietly rebuilt the thing the budget was cut to fix.
+        local total = 0
+        for f = 1, Descent.FLOORS do total = total + Descent.floorFights(f) end
+        assert(total >= 90 and total <= 140, string.format(
+            "a descent bills %d fights end to end, outside the 90-140 the budget was cut to", total))
     end },
 
     { name = "the deepest floor is still one connected place", fn = function()

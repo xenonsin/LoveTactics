@@ -358,28 +358,122 @@ end
 -- finishes. Fifteen is long enough that the way up is a decision and short enough to be walked.
 Descent.FLOORS_PER_CIRCLE = 2
 
--- How many STOPS a floor's board hosts -- not how many fights. models/overworld.lua's combatShare caps
--- combat at a share of this and re-seats the rest as texture (a rest, a cache, a merchant), so the
--- number here buys density rather than battles.
+-- HOW MANY FIGHTS A FLOOR HOLDS, and it counts EVERY fight -- the stair, the errands, the openers and
+-- the rolled stops between them. That is the whole of what changed here, and it is worth saying why the
+-- old shape could not be tuned into this one.
 --
--- Deliberately low for now. The plan's target is a Dream Quest board of 10-12 stops, and that only
--- becomes playable once an ordinary fight is a two-minute skirmish rather than a six-minute set-piece
--- (the skirmish tier). Raising this before that lands would produce a forty-minute floor. One constant,
--- so that stage is a one-line change here.
+-- This used to be a STOP count (14-18) with a combat SHARE over it, and the ends were placed by a
+-- different pass entirely (models/overworld.lua's placeObjectiveAndGates), after the share had already
+-- had its say. So a floor's ends were free: the stair cost nothing, an errand cost nothing, and the
+-- three door-openers dealt onto floor one (Descent.openersAt) cost nothing. The budget governed the
+-- half of the board the player cared about least.
 --
--- The Dream Quest target, now that an ordinary stop is a skirmish rather than a set-piece: the
--- generator's combat share (0.6) turns ten-to-twelve stops into roughly eight fights, and GUARANTEE
--- seats the rests and the relic cache among the rest. About twenty-seven minutes of floor.
--- RAISED WITH THE BOARD, and measured rather than guessed. At 10-12 on the dungeon carve's 30x30 grid a
--- floor came out with TWO fights on it: five of the stops are spoken for before the draw begins (the
--- reliquary, the rest and the recruit are guaranteed, and the stair and the way up are fixtures), so
--- ten stops leave five to roll and the combat share is a CAP on those rather than a floor under them.
--- Two fights and a boss is not a floor of a dungeon, it is a corridor with a boss at the end.
+-- MEASURED, at 14-18 stops and a 0.75 share (`. board-report 60 descent`): 11.33 rolled fights a floor.
+-- The header this replaced claimed that setting "lands six or seven fights" -- a figure derived by
+-- multiplying two constants and never rolled -- and it is out by nearly double, because the guarantee
+-- pass seats far fewer texture stops than the arithmetic assumed and a CAP does not bind when the pool
+-- is fight-heavy underneath it. Add the ends the instrument could not see (board-report builds its floor
+-- from a nil player, which seats the stair and nothing else) and a real floor one is 11.3 + a stair + 3
+-- openers = FIFTEEN fights. Fifteen floors of that is about two hundred fights in a run.
 --
--- Sixteen leaves eleven to roll, which lands six or seven fights -- the number the pacing note below was
--- written against -- and on ~440 walkable tiles it is one stop per twenty-seven, still sparse enough
--- that the floor reads as ground with things on it rather than a string of stops.
-Descent.FLOOR_STOPS = { min = 14, max = 18 }
+-- And the density was buying nothing. At 11.3 fights only 20.9% of them stood in front of a reward --
+-- nine loose fights a floor guarding nothing at all. At 5 the same pass puts 48% of them on a guard: a
+-- thinner board makes each fight MORE likely to mean something, because guardBoons is supply-limited by
+-- the boons rather than by the fights.
+--
+-- SIX, and the number comes off the games this is modelled on rather than off the constants. The board
+-- is Dream Quest's (see models/overworld.lua's DIM_MAX note) and a Dream Quest level is six to ten
+-- fights before the stairs -- for a whole three-level run. The attrition is Darkest Dungeon's
+-- (models/wound.lua), where a Short dungeon is four to six fights, a Medium seven to nine, and a Long
+-- ten to twelve -- and a Long is the opt-in, high-risk one you go HOME after. Hades runs fourteen
+-- chambers to a biome, but a chamber is forty seconds and a skirmish here is two minutes, so it is not
+-- the same unit. Wizardry (Descent.FLOORS_PER_CIRCLE) is what sets fifteen floors, not what fills one.
+--
+-- Fifteen is the multiplier that settles it: there is no hub anywhere in the stack, so whatever number
+-- stands here is spent fifteen times over. Six is a Dream Quest level and a Darkest Dungeon medium, and
+-- fifteen of them is ninety fights -- a long run. Eleven was a Long dungeon fifteen times.
+--
+-- THE FIRST FLOOR'S, and the bottom's is below. See Descent.floorFights for the climb between them.
+Descent.FLOOR_FIGHTS = 6
+
+-- WHAT THE BOTTOM HOLDS, and the whole argument is in how little it is above the top.
+--
+-- A floor gets harder with depth on every axis that is not this one: the stock is grown to
+-- Descent.dangerLevel, the stair carries a general rather than a lieutenant, the board itself widens a
+-- tile a floor (Descent.floorDims), and the company walking it has been walking since floor one with no
+-- hub to go home to. So the fight COUNT is the last place difficulty needs to come from, and a steep
+-- ramp here would be charging twice for the same descent.
+--
+-- But flat was wrong too, and reading it on a board says why: floor fifteen laid out exactly as many
+-- fights as floor one on a rectangle a third larger, which is not "the same dungeon, sparser" so much as
+-- a bottom that stops asking for more than the top did. A count that never moves is a count the player
+-- stops reading.
+--
+-- THREE, over fourteen floors. It lands as 6/6/6/7/7/7/7/8/8/8/8/8/9/9/9 -- four rungs, each held for
+-- three or four floors, which is long enough that arriving on a new one registers as the descent asking
+-- for more rather than as noise. And it is small: 113 fights across a run against 90 flat, where the
+-- shape this replaced was about 200.
+--
+-- Authored as the bottom rather than as a per-floor step, because the run's LENGTH is the thing most
+-- likely to move (Descent.FLOORS_PER_CIRCLE is one constant away from twenty-two floors) and a step
+-- would silently re-price the bottom every time it did. An endpoint holds its meaning: whatever the
+-- stack turns out to be, the last floor of it asks for nine.
+Descent.FLOOR_FIGHTS_DEEP = 9
+
+-- How many fights floor `f` may hold in all -- its ends included. Linear between the two constants
+-- above and rounded, so the climb is the same shape whatever the run's length turns out to be.
+function Descent.floorFights(f)
+    local span = math.max(1, Descent.FLOORS - 1)
+    local t = math.min(1, math.max(0, ((f or 1) - 1) / span))
+    return math.floor(Descent.FLOOR_FIGHTS
+        + t * (Descent.FLOOR_FIGHTS_DEEP - Descent.FLOOR_FIGHTS) + 0.5)
+end
+
+-- ...AND THE FLOOR UNDER THE ROLLED SHARE. A floor deep in the errand ladder can carry the stair and
+-- four asked jobs, which spends the whole budget on ends before the pool is dealt a card -- and a board
+-- whose only fights are its objectives is four markers on dead ends with empty trail between them.
+--
+-- So the budget is a ceiling on the ROLLED fights and the ends are subtracted from it, but never below
+-- this: an errand-heavy floor overshoots six and is the longer sitting, which is the right way round.
+-- The ends are the work the player chose to come down for; the two rolled fights are the ground.
+Descent.FLOOR_ROLLED_MIN = 2
+
+-- HOW MANY NON-FIGHT STOPS A FLOOR HOLDS, which is the other half of what the old stop count was doing
+-- and the half nobody is complaining about. The rest, the reliquary, the recruit, a merchant, a shrine,
+-- a crossroads, a find: the service and texture side. It should not move because the fight count did --
+-- a sparser floor is meant to be a floor with less FIGHTING on it, not a floor with less on it.
+--
+-- SIX, because that is what the old board actually held, and the first number tried here was ten -- read
+-- off the report's `boons` row, which counts CACHE TILES. A cache is not a stop: `cacheCount` is its own
+-- pin (Descent.FLOOR_CACHES) and the caches land whatever this says. The non-fight STOPS at 14-18 were
+-- 4.4 services plus 1.2 finds, and the ten put five phantom stops on the board -- which the combat cap
+-- then filled with the only thing left in the pool, so a floor came out with nine merchants on it.
+--
+-- Held flat and ADDED to the rolled fights rather than shared with them, which is the inversion that
+-- makes the budget mean what it says: a stop count with a share over it lets a fight and a cache compete
+-- for the same tile, so capping the fights hard would have re-seated all of them as merchants and left a
+-- floor with ten shops on it. Two separate numbers cannot do that to each other.
+Descent.FLOOR_TEXTURE = 6
+
+-- The board's stop count and its absolute fight cap, for a floor carrying `ends` objectives -- the stair
+-- plus whatever Descent.floorObjectives seated beside it. Returns both because they are one decision:
+-- the generator sizes and fills the board off the stop count and holds combat to the budget, and a stop
+-- count that did not move with the budget would just re-seat the difference as texture.
+--
+-- `ends` counts the stair, so the ordinary first floor passes 1 and rolls five.
+--
+-- THE RAMP REACHES THE ERRAND FLOORS FIRST, which is the reason it is applied here rather than to the
+-- rolled count alone. The budget is a ceiling the ends are taken out of, so a deeper floor does not
+-- merely deal more fights -- it has more ROOM for the work a house asked for before FLOOR_ROLLED_MIN
+-- starts overshooting. Floor 3 carrying the stair and three errands rolls the minimum two and comes to
+-- six; floor 11 carrying the same four ends rolls four and comes to eight. The climb lands where the
+-- ladder is thickest, which is where a company notices it.
+function Descent.floorBudget(ends, floor)
+    local rolled = math.max(Descent.FLOOR_ROLLED_MIN,
+        Descent.floorFights(floor) - math.max(1, ends or 1))
+    local stops = Descent.FLOOR_TEXTURE + rolled
+    return { min = stops, max = stops }, rolled
+end
 
 -- CACHES ARE PINNED, and this is the thing the density bump above would otherwise have moved in
 -- silence. Overworld.generate derives the cache count from the stop count at about one per two stops,
@@ -433,14 +527,15 @@ Descent.TEXTURE_SCALE = 0.2
 -- fix; carrying the campaign's density down here reintroduced it one board lower.
 --
 -- So: one, and it is a statement about the SHAPE of a floor rather than about its size -- the breather
--- before the stair. Raising FLOOR_STOPS must not quietly multiply it, which is what a `per` would do.
+-- before the stair. Raising the stop count must not quietly multiply it, which is what a `per` would do.
 Descent.FLOOR_RESTS = 1
 
--- What share of a floor's stops may be fights. The generator's own cap (0.6) is a roadside's share; a
--- floor wants nearly every stop that is not a guaranteed rest or reliquary to be one. Still a CAP -- it
--- re-seats the overflow as texture and never invents fights -- so it works with the weights above
--- rather than instead of them.
-Descent.COMBAT_SHARE = 0.75
+-- (`Descent.COMBAT_SHARE` stood here and is GONE. It was a fraction of the stop count -- 0.75 of it --
+-- and a fraction is exactly the wrong instrument for this question: it could not see the objectives at
+-- all (they are placed by a different pass), it did not bind when the pool was fight-heavy underneath
+-- it, and its product with the stop count was not readable from either number. A floor names an
+-- absolute fight budget now and the generator takes it as `combatBudget`, which wins over the share.
+-- See Descent.FLOOR_FIGHTS for the measurement that retired it.)
 
 -- THE FOUR HAZARDS, and the weight each gets on a descent floor.
 --
@@ -670,17 +765,20 @@ Descent.FLOOR_COLS, Descent.FLOOR_ROWS = 26, 26
 --   floors are differently SHAPED (33x32 is not 32x33 to walk), which is free variety off a rule that
 --   was going to be there anyway.
 --
--- THE STOP COUNT DOES NOT FOLLOW IT, which is the load-bearing half of this and the thing a later
--- retune must not undo. Measured over forty floors each (`. board-report 40 descent floor=N`):
+-- THE STOP COUNT DOES NOT FOLLOW IT -- it climbs on its own terms, which is a different statement and
+-- the one a later retune must not blur. Measured over forty floors each (`. board-report 40 descent
+-- floor=N`):
 --
---   floor 1, 26x26   385 walkable tiles   17.8 stops   one per 21.6 tiles   3.3 arena sites
---   floor 15, 33x33  589 walkable tiles   17.8 stops   one per 33.1 tiles   5.5 arena sites
+--   floor 1, 26x26   385 walkable tiles   13.0 stops   one per 29.6 tiles   3.4 arena sites   6 fights
+--   floor 15, 33x33  589 walkable tiles   16.0 stops   one per 36.8 tiles   5.5 arena sites   9 fights
 --
--- The sparseness is deliberate. A floor is a SITTING, and the deep ones are already the long ones:
--- their fights stand a dozen levels above the shallow floors' and take proportionally longer to win.
--- Scaling stops with the area on top of that would put the last floor of a fifteen-floor run at
--- twenty-seven stops of level-14 fighting, which is the forty-minute floor Descent.FLOOR_STOPS' own
--- header refuses. So a deep floor is the same amount of dungeon spread over more of it, which is what
+-- The board grows by 53% and the stops by 23%, because the three extra stops are the AUTHORED fight
+-- ramp (Descent.FLOOR_FIGHTS_DEEP) and not a reading of the rectangle. That distinction is the whole of
+-- what this note protects: a floor is a SITTING, and the deep ones are already the long ones -- their
+-- fights stand a dozen levels above the shallow floors' and take proportionally longer to win -- so
+-- scaling stops with the AREA on top of that would put the last floor of a fifteen-floor run at
+-- twenty-seven stops of level-14 fighting, which is the forty-minute floor Descent.FLOOR_FIGHTS' own
+-- header refuses. A deep floor is a little more dungeon spread over rather more of it, which is what
 -- makes crossing one a decision rather than a formality.
 --
 -- And nothing the floor is judged on went backwards on the way down: the camp stays at one, guarded
@@ -1842,6 +1940,12 @@ function Descent.floorQuest(run, player)
     -- Wider the further down. See Descent.floorDims.
     local cols, rows = Descent.floorDims(floor)
 
+    -- EVERY END THIS FLOOR CARRIES, resolved BEFORE the board is described rather than inside it, because
+    -- the ends are now part of the board's own budget: each one is a fight the pool does not get to deal
+    -- (Descent.floorBudget). The Crown has no houses posting work on it and carries the one end below.
+    local objectives = sin and Descent.floorObjectives(player, floor, sin, floorLevel, general, run) or nil
+    local stops, rolled = Descent.floorBudget(objectives and #objectives or 1, floor)
+
     if not sin then
         return {
             id = Descent.floorId(floor),
@@ -1862,7 +1966,7 @@ function Descent.floorQuest(run, player)
                 ascent = true,
                 cols = cols,
                 rows = rows,
-                encounters = { min = Descent.FLOOR_STOPS.min, max = Descent.FLOOR_STOPS.max },
+                encounters = stops,
                 cacheCount = { min = Descent.FLOOR_CACHES.min, max = Descent.FLOOR_CACHES.max },
                 keyCount = 0,
                 -- The way back up, standing on the tile the party walks in on. See EXIT below.
@@ -1875,7 +1979,9 @@ function Descent.floorQuest(run, player)
                 -- A warren cut into the rock, not the sin's own country. See Descent.FLOOR_CARVE.
                 carve = Descent.FLOOR_CARVE,
                 spacing = Descent.FLOOR_SPACING,
-                combatShare = Descent.COMBAT_SHARE,
+                -- An absolute cap, not a share -- and the Crown's own end is already subtracted from it
+                -- above. See Descent.FLOOR_FIGHTS.
+                combatBudget = rolled,
                 guaranteeKinds = guaranteeKinds(player, floor),
                 guarantee = { rest = { count = Descent.FLOOR_RESTS } },
                 objective = {
@@ -1927,7 +2033,8 @@ function Descent.floorQuest(run, player)
             -- stop count and the cache count stay put and the floor gets sparser as it gets deeper.
             cols = cols,
             rows = rows,
-            encounters = { min = Descent.FLOOR_STOPS.min, max = Descent.FLOOR_STOPS.max },
+            -- The texture count plus whatever fights the ends left unspent. See Descent.floorBudget.
+            encounters = stops,
             cacheCount = { min = Descent.FLOOR_CACHES.min, max = Descent.FLOOR_CACHES.max },
             -- keyCount 0 because a floor is not a lock puzzle: the stair is always reachable.
             keyCount = 0,
@@ -1941,7 +2048,10 @@ function Descent.floorQuest(run, player)
             -- A warren cut into the rock, not the sin's own country. See Descent.FLOOR_CARVE.
             carve = Descent.FLOOR_CARVE,
             spacing = Descent.FLOOR_SPACING,
-            combatShare = Descent.COMBAT_SHARE,
+            -- HOW MANY FIGHTS THE POOL MAY DEAL, absolute, and the stair and every errand and opener on
+            -- this floor have already been taken off it (Descent.floorBudget). A share could not do this
+            -- job: the ends are seated by a different pass and were never inside the fraction.
+            combatBudget = rolled,
             -- The reliquary, the rest, and -- while there is room in the company -- somebody to join it.
             guaranteeKinds = guaranteeKinds(player, floor),
             -- ...and how many of each, where a floor differs from a ground. See Descent.FLOOR_RESTS.
@@ -1958,8 +2068,9 @@ function Descent.floorQuest(run, player)
                 enemyCap = false,
                 win = { type = "killAll" },
             },
-            -- ...AND WHATEVER A HOUSE HAS ASKED FOR DOWN HERE. See Descent.floorObjectives.
-            objectives = Descent.floorObjectives(player, floor, sin, floorLevel, general, run),
+            -- ...AND WHATEVER A HOUSE HAS ASKED FOR DOWN HERE. See Descent.floorObjectives. Resolved at
+            -- the top of this function rather than here, because the fight budget above is spent on it.
+            objectives = objectives,
         },
     }
 end

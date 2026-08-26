@@ -344,8 +344,10 @@ end
 -- the rebase was against. Head-count never fed this half, so shrinking the fights could not cut it.
 --
 -- What DOES move it is the number of caches, which is derived from the stop count (Overworld.generate,
--- about one per two stops) and so triples the moment a floor gets dense. See Descent.FLOOR_STOPS,
--- where that bump is a one-line change and this is the thing it has to be checked against.
+-- about one per two stops) -- except on a descent floor, which pins it (Descent.FLOOR_CACHES) for
+-- exactly this reason, so the fight budget can move without the material income following it. Measured
+-- across the cut from eleven rolled fights to five, cache craft held at 16.7 against 17.4. See
+-- Descent.FLOOR_FIGHTS, where the number is a one-line change and this is what it is checked against.
 local SALVAGE_CRAFT = { combat = 1, elite = 2, objective = 2 }
 -- House stock -- the GATE half of the economy, the one that decides which house's bench a haul feeds
 -- -- is the reward for the fights you could have walked around, and for the one you came for. A common

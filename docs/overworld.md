@@ -407,8 +407,65 @@ camps. Three is not a little more than one: camps compound, so three return abou
 cost against 25% for one, and fifteen floors of that is the free attrition `CAMP_SHARE` was cut to fix,
 reintroduced one board lower. So a map may pin a flat `count` per kind via `params.guarantee`, overlaid
 on the defaults rather than replacing them (`Descent.FLOOR_RESTS = 1` — the breather before the stair).
-The two freed stops did not vanish: they fell to the combat-share cap, taking a floor from 8.5 fights
-to 10.1.
+
+## A fight budget, not a combat share
+
+`params.combatShare` holds combat to a fraction of the stop count and re-seats the overflow as texture.
+That is the right instrument for a **roadside**, where the question really is what fraction of a walk is
+fighting, and the board's one objective is the day's work rather than part of the mix.
+
+It is the wrong one wherever a caller has to count the fights on the **whole** board, and a descent floor
+is exactly that caller. Its ends are seated by `placeObjectiveAndGates` — a different pass, running after
+`placeEncounters` — so no fraction of the stop count can see them. And a floor has several: the stair,
+one per errand a house has asked for down here, and one per door still shut on the first circle
+(`Descent.floorObjectives`). Under a share those were **free**.
+
+Measured, at the 14–18 stops and 0.75 share this replaced:
+
+| | rolled fights | ends | fights in all |
+|---|---|---|---|
+| floor 1 | 11.3 | stair + 3 openers | **15.7** |
+| floors 3–11 | 11.3 | stair + up to 4 errands | 12–16 |
+| deep floors | 11.3 | stair | 12.3 |
+
+Measured after, at floors 1 / 4 / 8 / 12 / 15: **6 / 7 / 8 / 8 / 9** fights in all, with `services` flat
+at 5.6–5.8 throughout.
+
+Fifteen floors of that is about two hundred fights in a run. The header that justified the setting
+claimed it "lands six or seven fights" — derived by multiplying two constants, never rolled — and it was
+out by nearly double, because the guarantee pass seats far fewer texture stops than the arithmetic
+assumed and a cap does not bind when the pool is fight-heavy underneath it.
+
+The density was also buying nothing. At 11.3 fights only **20.9%** stood in front of a reward; at 5 the
+same pass puts **45%** on a guard, because `guardBoons` is supply-limited by the boons rather than by the
+fights. A thinner board makes each fight *more* likely to mean something.
+
+So a floor names an **absolute** budget and the generator takes it as `params.combatBudget`, which wins
+over the share where both are given:
+
+- `Descent.FLOOR_FIGHTS = 6` — every fight on the **first** floor, ends included. Six is a Dream Quest
+  level and a Darkest Dungeon medium dungeon, and there is no hub in the stack, so it is spent fifteen
+  times over.
+- `Descent.FLOOR_FIGHTS_DEEP = 9` — and what the bottom holds. `Descent.floorFights(f)` interpolates and
+  rounds: **6/6/6/7/7/7/7/8/8/8/8/8/9/9/9**, four rungs held three or four floors apart. The climb is
+  deliberately small, because depth already buys difficulty on every other axis — the stock is grown to
+  `Descent.dangerLevel`, the stair carries a general rather than a lieutenant, the board widens a tile a
+  floor, and the company has been walking since floor one. A steep ramp here charges twice for the same
+  descent. But *flat* was wrong too: floor fifteen laid out exactly as many fights as floor one on a
+  rectangle a third larger, and a count that never moves is a count the player stops reading. The
+  endpoint is authored rather than a per-floor step, so changing `FLOORS_PER_CIRCLE` restretches the ramp
+  instead of silently re-pricing the bottom. Whole run: **113 fights**, against 90 flat and ~200 before.
+- `Descent.FLOOR_ROLLED_MIN = 2` — the floor under it. A board whose only fights are its objectives is
+  four markers on dead ends with empty trail between them, so an errand-heavy floor overshoots six and is
+  the longer sitting. The ends are the work you came down for; the two rolled fights are the ground.
+- `Descent.FLOOR_TEXTURE = 6` — the non-fight stops, **added** to the rolled fights rather than shared
+  with them. A stop count with a share over it lets a fight and a merchant compete for the same tile, so
+  capping the fights hard would have re-seated all of them as merchants; two separate numbers cannot do
+  that to each other. (Caches are pinned separately again — `Descent.FLOOR_CACHES` — so material income
+  does not move: cache craft held at 16.7 against 17.4 across the cut.)
+
+`. board-report N descent` counts the ends now (`ends`, `FIGHTS IN ALL`) and takes `ends=N` to stand in
+for the errands a nil player cannot have asked for. It had never once seen one before.
 
 ## Getting out
 

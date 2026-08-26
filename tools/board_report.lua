@@ -425,6 +425,7 @@ function M.run(args)
     args = args or {}
     local n = tonumber(args[1]) or 200
     local wantTiers, braid, cacheDiv, combatWeight = false, nil, nil, nil
+    local stopsOverride, fightsOverride, endsOverride = nil, nil, nil
     local wantContracts, wantXp, wantDescent = false, false, false
     local descentFloor = 1
     -- Which ground(s). `all` walks every blueprint in data/biomes; `biome=x` reports one; the bare
@@ -442,6 +443,22 @@ function M.run(args)
         local b = tostring(a):match("^braid=([%d%.]+)$"); if b then braid = tonumber(b) end
         local d = tostring(a):match("^cachediv=([%d%.]+)$"); if d then cacheDiv = tonumber(d) end
         local w = tostring(a):match("^cw=([%d%.]+)$"); if w then combatWeight = tonumber(w) end
+        -- THE KNOBS THAT DECIDE HOW MANY FIGHTS A FLOOR HOLDS, swept here for exactly the reason the
+        -- three above are. The retired Descent.FLOOR_STOPS carried a hand-derived fight count in its own
+        -- header -- "sixteen leaves eleven to roll, which lands six or seven fights" -- and the boards
+        -- said eleven. A stop count and a combat share multiply into a fight count through the guarantee
+        -- pass, and that product is not readable from either constant.
+        --
+        -- `ends=N` is the one that was missing and is the reason the old figure was wrong twice over. A
+        -- floor's board is built here from a NIL PLAYER, and Descent.floorObjectives answers a nil player
+        -- with the stair and nothing else -- so the instrument had never once seen an errand or a
+        -- door-opener, which are three or four more fights on a real floor one. This seats N ends instead
+        -- of the one, so an errand-heavy floor can be measured rather than imagined.
+        --
+        --     . board-report 60 descent stops=12 fights=4 ends=4
+        local st = tostring(a):match("^stops=([%d%.]+)$"); if st then stopsOverride = tonumber(st) end
+        local fg = tostring(a):match("^fights=([%d%.]+)$"); if fg then fightsOverride = tonumber(fg) end
+        local en = tostring(a):match("^ends=([%d%.]+)$"); if en then endsOverride = tonumber(en) end
         -- `descent` measures a FLOOR rather than a campaign ground: the dungeon carve at its own
         -- spacing, the floor's stop count and cache pins, its reweighted pool and its guarantees.
         -- Without this the instrument could only ever report on the half of the game that is parked.
@@ -509,19 +526,38 @@ function M.run(args)
         }
         if wantDescent then
             local mp = dq.map
-            encN = mp.encounters
+            encN = stopsOverride and { min = stopsOverride, max = stopsOverride } or mp.encounters
             params.cols, params.rows = mp.cols, mp.rows
             params.layout, params.spacing = mp.carve, mp.spacing
             params.encounterCount = encN
             params.cacheCount = cacheDiv
                 and math.max(1, math.floor(((encN.min + encN.max) / 2) / cacheDiv)) or mp.cacheCount
             params.combatShare = mp.combatShare
+            params.combatBudget = fightsOverride or mp.combatBudget
             params.guaranteeKinds = mp.guaranteeKinds
             params.guarantee = mp.guarantee
             params.ascent, params.keyCount = true, 0
             params.secrets, params.exitAtStart = mp.secrets, mp.exitAtStart
             params.guardBoons = mp.guardBoons
             params.objective = mp.objective
+            -- EVERY END THE FLOOR CARRIES, which is the half of the board this tool used to leave on the
+            -- floor. `mp.objectives` was never passed at all, so the generator laid one end where a real
+            -- floor lays four, and the fight ledger under it was measuring a board nobody plays.
+            params.objectives = mp.objectives
+            -- ...and `ends=N` stands in for the errands a nil player cannot have asked for. The stair is
+            -- copied, because what is being measured is how many ENDS the board can seat and what the
+            -- budget does when they take it -- not which fight is on each one.
+            if endsOverride and endsOverride > 1 then
+                local ends = { mp.objective }
+                for _ = 2, endsOverride do ends[#ends + 1] = mp.objective end
+                params.objectives = ends
+                local stops, rolled = Descent.floorBudget(endsOverride, descentFloor)
+                params.combatBudget = fightsOverride or rolled
+                -- The stop count moves with the budget for the same reason it does in the model: fewer
+                -- rolled fights on the same number of stops is not a sparser floor, it is a floor of
+                -- merchants. An explicit `stops=` still wins.
+                if not stopsOverride then encN, params.encounterCount = stops, stops end
+            end
         end
         local grid = Overworld.generate(params)
         local r = measure(grid)
@@ -552,7 +588,9 @@ function M.run(args)
     local function per(v) return v / n end
     local function ratio(a, b) return b > 0 and (a / b) or 0 end
 
-    local stopSpec = wantDescent and dq.map.encounters or DEFAULT_ENCOUNTERS
+    local stopSpec = wantDescent
+        and (stopsOverride and { min = stopsOverride, max = stopsOverride } or dq.map.encounters)
+        or DEFAULT_ENCOUNTERS
     print(string.format("BOARD REPORT -- %d rolled %s, %s, %d-%d stops, day %d",
         n, wantDescent and ("floor " .. descentFloor .. "s, " .. dq.map.cols .. "x" .. dq.map.rows)
             or "boards", biome,
@@ -561,6 +599,16 @@ function M.run(args)
     print(string.format("  %-22s %8s  %s", "", "per board", "note"))
     print(string.format("  %-22s %8.2f", "stops", per(tot.stops)))
     print(string.format("  %-22s %8.2f", "fights", per(tot.fights)))
+    -- THE ENDS ARE FIGHTS TOO, and leaving them off this ledger is how a floor came to be shipped at
+    -- fifteen while the report read eleven. An objective is not a stop the pool DEALT -- which is why it
+    -- is outside `fights` above and outside `services` in measure() -- but it is unambiguously a fight
+    -- the player takes, and on a descent floor there are several: the stair, one per errand a house has
+    -- asked for down here, and one per door still shut on the first circle (Descent.floorObjectives).
+    -- Reported as its own row plus a total, so both questions stay answerable from one run.
+    print(string.format("  %-22s %8.2f  %s", "ends", per(tot.endN),
+        "the stair, the errands, the openers -- fights the pool never dealt"))
+    print(string.format("  %-22s %8.2f  %s", "FIGHTS IN ALL", per(tot.fights + tot.endN),
+        "what a sitting on this floor actually costs"))
     print(string.format("  %-22s %8.2f  %s", "boons", per(tot.boons),
         string.format("%.2f caches + %.2f finds", per(tot.caches), per(tot.boons - tot.caches))))
     print(string.format("  %-22s %8.2f", "services", per(tot.services)))

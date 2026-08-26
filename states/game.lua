@@ -952,6 +952,10 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
             -- ...and raises the share cap to match. Absent (every campaign leg) the generator keeps
             -- its own 0.6.
             combatShare = mp.combatShare,
+            -- A descent floor gives an ABSOLUTE fight cap instead, because its budget has to cover the
+            -- ends this same table passes as `objectives` -- the stair, the errands, the openers -- and a
+            -- share of the stop count cannot see them (models/descent.lua's Descent.FLOOR_FIGHTS).
+            combatBudget = mp.combatBudget,
             -- Which texture kinds the board is guaranteed to hold whatever the draw does. Absent (every
             -- campaign leg) the generator keeps its own default of a reliquary and a rest; a descent
             -- floor names that pair plus a recruit stop while the company has room (Descent.floorQuest).

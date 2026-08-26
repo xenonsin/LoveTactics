@@ -2288,8 +2288,17 @@ function Overworld:placeEncounters(params)
     -- handful of texture ones), so weighted-random alone leaves a run mostly fights. Hold combat to at most
     -- ~60% of the stops; a fight rolled past the cap is re-seated as a non-combat stop -- the same move the
     -- spine rule makes -- so the pool's caches, rests and stops fill the gaps. Tunable via params.combatShare.
+    --
+    -- ...OR AN ABSOLUTE ONE, via `params.combatBudget`, which wins outright where it is given. A share is
+    -- the right instrument for a ROADSIDE, where the question really is "what fraction of this walk is
+    -- fighting" and the board's ends are the day's work rather than part of the mix. It is the wrong one
+    -- wherever a caller has to count the fights on the whole board, because the objectives are seated by
+    -- placeObjectiveAndGates -- a different pass, running after this one -- and no fraction of the stop
+    -- count can see them. A descent floor carries the stair plus one end per errand and per house-opener
+    -- and needs those inside its budget, so it subtracts them itself and hands the remainder down as a
+    -- number (models/descent.lua's Descent.floorBudget).
     local isFight = function(k) return k == "combat" or k == "elite" end
-    local combatCap = math.floor(target * (params.combatShare or 0.6))
+    local combatCap = params.combatBudget or math.floor(target * (params.combatShare or 0.6))
     local combatPlaced = 0
     for _, p in ipairs(placed) do if isFight(p.encounter.kind) then combatPlaced = combatPlaced + 1 end end
 
