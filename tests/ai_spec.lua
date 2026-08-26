@@ -231,6 +231,37 @@ return {
         end,
     },
     {
+        name = "the escortee a map is staked on holds ground -- `defensive` would post it to itself",
+        fn = function()
+            -- The real blueprint, because this is a claim about that file: a body named by a
+            -- `protect` clause is the one thing on the board the party cannot let wander, and it
+            -- spent the whole Bastion gate fight strolling off to punch raiders.
+            --
+            -- `defensive` is the posture of a unit posted to something ELSE. Asked for the post of
+            -- the body the objective protects, AI.post hands it ITSELF (AI.postedUnit reads
+            -- obj.protect on its own side and finds the reader) -- so the leash is the two tiles
+            -- around wherever it currently stands and it re-anchors every turn. That is a treadmill,
+            -- not a hold, which is the counterfactual below.
+            local objective = { type = "killAll", protect = "character_caravan_master" }
+
+            local c = Combat.new(arena(12, 12, objective),
+                { unit("character_caravan_master", 5, 5) }, { unit(swordsman(), 5, 8) })
+            local master, raider = c.units[1], c.units[2]
+            setHp(master, hpOf(master) - 1) -- somebody has already taken a swing at the wagon
+            local plan = AI.plan(c, master)
+            assert(not plan.move, "the wagon does not walk at the fight: " .. AI.explain(plan))
+
+            local loose = Combat.new(arena(12, 12, objective),
+                { unit("character_caravan_master", 5, 5, function(ch) ch.archetype = "defensive" end) },
+                { unit(swordsman(), 5, 8) })
+            setHp(loose.units[1], hpOf(loose.units[1]) - 1)
+            local drift = AI.plan(loose, loose.units[1])
+            assert(drift.move and Combat.cellGap(drift.move.x, drift.move.y, loose.units[2])
+                < Combat.cellGap(5, 5, raider),
+                "and the posture it used to carry is what closed that distance")
+        end,
+    },
+    {
         name = "defensive holds until provoked, then commits",
         fn = function()
             local guard = Character.instantiate("character_bandit")

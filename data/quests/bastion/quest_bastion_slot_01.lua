@@ -97,8 +97,8 @@ return {
                 return list
             end,
             -- Two wagons at the gate, and unlike the road legs they dig in: `character_caravan_master`
-            -- is `defensive`, so it holds where it lands instead of walking into the breach. The
-            -- climb is over -- there is nowhere further up to go.
+            -- is `holdGround`, so it never leaves the tile it lands on rather than creeping into the
+            -- breach. The climb is over -- there is nowhere further up to go.
             allies = { "character_caravan_master", "character_caravan_master" },
             -- Both conditions at once, which is what `protect` is for: it is a composable LOSS
             -- condition checked before the win type (Combat.evaluate), so this reads "kill the
