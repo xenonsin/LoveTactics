@@ -6410,11 +6410,15 @@ function Combat.dealDamage(combat, user, target, item, opts)
         -- creature it fields -- the Wolfsong Horn fills as Kaya's wolf draws blood (companionDamage).
         if user.summoner then Combat.tally(user.summoner, "companionDamage", dealt) end
         -- BATTLE CASTING (the Battlemage's), the other half: steel feeds the working. A non-magical blow
-        -- hands a little mana back, so a battlemage out of spells is not out of the fight -- it is one
-        -- swing away from being back in it. Only physical blows, or a mage would be refunding itself for
-        -- casting.
-        if not magical and Trait.flag(user, "strikesRefundMana") then
-            Combat.restoreResource(user.char, "mana", 3)
+        -- hands mana back, so a battlemage out of spells is not out of the fight -- it is one swing away
+        -- from being back in it. Only physical blows, or a mage would be refunding itself for casting.
+        --
+        -- The amount is read off the trait rather than typed here, so the number the description quotes
+        -- and the number the blow pays are one fact. Flat at every rung, unlike the discount beside it:
+        -- a refund climbing a point a level would reach 13 mana a swing, which is a different item.
+        local refund = Trait.flag(user, "strikesRefundMana")
+        if not magical and refund then
+            Combat.restoreResource(user.char, "mana", Trait.param(refund, "strikeRefund", 3))
         end
         -- ...and every ALLY standing next to the body that just took it banks "allyStruck". The
         -- counterpart to hitTaken, seen from one tile over: what a formation charge pool fills on when
@@ -6720,6 +6724,43 @@ function Combat.fallenParty(combat)
         if u.side == "party" and not u.alive and (u.incapacitated or u.corpse)
             and not u.summoned and not u.decoyOf and u.char then
             out[#out + 1] = u.char
+        end
+    end
+    return out
+end
+
+-- SPENT: alive, and only just. What a LOST fight charges on top of its fallen.
+--
+-- A DEFEAT DOES NOT ALWAYS LEAVE BODIES ON THE FLOOR, and that is the hole this closes. An escort whose
+-- charge was killed, a defend whose charge was, a control run out on the clock, a company that broke off
+-- before it was destroyed -- every one of those ends with the party still standing, and the wound meter
+-- reads `fallen` (models/wound.lua), so a rout at a sliver of health walked back into the city
+-- indistinguishable from a fight that never happened. The bodies were free.
+--
+-- SO THE LINE IS DRAWN AT A THIRD of what the body can still USE. Below it the fight ended before the
+-- blow that would have put them down rather than because it wouldn't -- the same condition a fall
+-- records, arrived at one hit earlier. Above it the company walked off a fight it was losing, which is a
+-- decision rather than an injury and is charged as one.
+--
+-- MEASURED AGAINST Combat.unreservedMax RATHER THAN `stats.health.max`, which is the whole of why this
+-- reads correctly on a company that has been down before: a body already carrying wounds has a smaller
+-- pool to be a third of, and judging it against the pool it used to have would let a veteran walk out at
+-- a share a fresh recruit would be charged for.
+--
+-- ON A DEFEAT ONLY -- states/battle.lua's lose() is the sole caller, and must stay it. Holding the field
+-- at three health when the last enemy drops is a win, and a win charges falls alone.
+Combat.SPENT_SHARE = 1 / 3
+
+function Combat.spentParty(combat, share)
+    share = share or Combat.SPENT_SHARE
+    local out = {}
+    for _, u in ipairs((combat and combat.units) or {}) do
+        -- The same exclusions fallenParty makes, for the same reason: a summon, a decoy or anything
+        -- without a character behind it has no id worth remembering and no history to accrue.
+        if u.side == "party" and u.alive and not u.summoned and not u.decoyOf and u.char then
+            local max = Combat.unreservedMax(u.char, "health")
+            local hp = (u.char.stats.health or {}).current or 0
+            if max > 0 and hp <= max * share then out[#out + 1] = u.char end
         end
     end
     return out
@@ -8026,7 +8067,10 @@ function Combat.spendCost(combat, unit, cost)
             for _, u in ipairs(combat.units or {}) do
                 if u.alive and u.side ~= unit.side
                     and math.max(math.abs(u.x - unit.x), math.abs(u.y - unit.y)) <= 1 then
-                    local off = (bc.def and bc.def.magnitude or 30) / 100
+                    -- Read off the GRANTING ITEM before the trait's own default (Trait.param), because
+                    -- the discount is what the charm's forge buys: the bench raises `meleeDiscount` a
+                    -- point a rung, and this is the seam that spends it.
+                    local off = Trait.param(bc, "meleeDiscount", 30) / 100
                     cost = { stat = cost.stat, amount = math.max(1, math.floor(cost.amount * (1 - off))) }
                     break
                 end

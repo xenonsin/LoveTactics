@@ -11,7 +11,11 @@
 --              trap = <revealed trap|nil>, wall = <wall|nil>, prop = <prop|nil>,
 --              reinforce = <{ edge, ticksUntil, char }|nil>,   -- a telegraphed muster landing tile
 --              objective = <Combat.objectiveTileInfo bag|nil>, -- marked objective ground
---              rally = <Combat.rallyTileInfo bag|nil> }        -- your own lines (the fall-back ground)
+--              rally = <Combat.rallyTileInfo bag|nil>,         -- your own lines (the fall-back ground)
+--              blocks = <prebuilt block list|nil> }            -- a caller that is not a tile at all
+--
+-- `blocks` is the seam a non-tile readout comes in through: hand in an assembled list and this draws,
+-- measures and clamps it exactly as it does its own (ui/body_tooltip.lua, the Gate's roster card).
 --
 -- Content is assembled once into an ordered list of blocks that is both measured and drawn, so the
 -- computed box height can never drift from what's rendered. No love.graphics at require-time.
@@ -422,7 +426,23 @@ end
 --   head  { text, color }              -- section heading (demoted terrain name)
 --   stat  { label, value, valueColor } -- label (left) + value (right)
 --   bar   { label, cur, max, color }   -- resource pool bar
+-- Is there anything to describe? Asked in three places (measure, draw, and buildBlocks' own guard),
+-- and it was written out longhand in two of them -- so a new source of content had to be added to
+-- each by hand or the box measured one thing and drew another.
+local function describable(info)
+    if not info then return false end
+    return (info.blocks and #info.blocks > 0) or info.cell or (info.unit and info.unit.char)
+        or info.trap or info.wall or info.prop or info.reinforce or info.objective or info.rally
+end
+
 local function buildBlocks(info)
+    -- A CALLER THAT IS NOT A TILE brings its own blocks. The block vocabulary below -- title, stat,
+    -- bar with a reserved tail, head, sep, desc -- is the game's readout grammar rather than anything
+    -- about ground, and the box that renders it clamps, docks and measures itself; a campaign screen
+    -- describing a roster body (ui/body_tooltip.lua) wants all of that and none of the terrain. So it
+    -- assembles its own list and hands it in, rather than a second renderer growing beside this one.
+    if info.blocks then return info.blocks end
+
     local blocks = {}
     local unit = info.unit
     if unit and unit.char then
@@ -620,7 +640,7 @@ end
 -- draw, so it can't disagree with what gets drawn. Lets a caller stacking several boxes into a fixed
 -- column work out what fits BEFORE it commits any of them to the screen (states/battle.lua).
 function TileTooltip.measure(info, width)
-    if not info or not (info.cell or (info.unit and info.unit.char) or info.trap or info.wall or info.prop or info.reinforce or info.objective or info.rally) then return 0 end
+    if not describable(info) then return 0 end
     local _, body = fonts()
     return measureBlocks(buildBlocks(info), ((width or 210) - 9 * 2), body)
 end
@@ -631,7 +651,7 @@ end
 -- so it never covers the board highlights (the blast footprint) the player is reading. No-op when
 -- there is no tile to describe.
 function TileTooltip.draw(info, mx, my, maxRight, opts)
-    if not info or not (info.cell or (info.unit and info.unit.char) or info.trap or info.wall or info.prop or info.reinforce or info.objective or info.rally) then return end
+    if not describable(info) then return end
     local title, body, small = fonts()
     local pad, w = 9, (opts and opts.width) or 210
     local innerW = w - pad * 2
@@ -712,7 +732,12 @@ function TileTooltip.draw(info, mx, my, maxRight, opts)
             -- size.
             local curN = math.floor(b.cur + 0.5)
             local valueText = curN .. " / " .. b.max
-            if b.reserved then valueText = valueText .. " (" .. b.reserved .. " res.)" end
+            -- A reservation names ITSELF where it is not the battle's own: what holds a summon back is
+            -- "res.", what a wound has taken off the top says so in the word the player is being
+            -- charged in (ui/body_tooltip.lua). Same slice of bar, two different debts.
+            if b.reserved then
+                valueText = valueText .. " (" .. b.reserved .. " " .. (b.reservedLabel or "res.") .. ")"
+            end
             love.graphics.setColor(VALUE[1], VALUE[2], VALUE[3], 1)
             love.graphics.printf(valueText, bx + pad, ty, innerW, "right")
             local barY = ty + bodyH

@@ -209,8 +209,12 @@ end
 --
 -- THIS IS WHERE THE METER IS PAID. A wound cost gold at a counter and came off instantly, which made
 -- the whole ladder above -- the reserve share, Wounded at two, Crippled at three -- a toll booth rather
--- than a meter. What replaces it is a BED: gold opens the door and days do the mending, and a day is
--- the scarcest thing the campaign has (Calendar.DAYS is forty).
+-- than a meter. What replaces it is a BED: gold opens the door and days do the mending.
+--
+-- AND IT DID NOT NEED THE DEADLINE, which is worth saying now that there isn't one. A day used to be
+-- one of forty (models/calendar.lua); the cost of a bed was read as scarcity, and the retirement of the
+-- calendar looked from a distance like it made beds free. It does not, because the cost was never the
+-- day -- see BEING SOMEWHERE below.
 --
 -- BEING SOMEWHERE IS THE COST. A body at the Inn is not in the company -- they cannot be picked for an
 -- expedition while they are in it -- so a three-wound body is three days of being a company of six

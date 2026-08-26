@@ -12,6 +12,14 @@ because they answer different questions and were rewritten at different times.
 > its reasoning; what was reversed is recorded as reversed, because the arguments are worth more than
 > the conclusions and several of them are still load-bearing.
 
+> **And the deadline it was rewritten around is itself retired.** Everything below that reads *forty
+> days*, *a day buys a ground*, or *the last day* was written for a campaign bought off a Quest Board,
+> and the board is gone — the descent is the campaign ([docs/the-count.md](the-count.md)). The day is
+> still a real unit and still passes; what it no longer is is a budget. What presses on a company now
+> is **the count**, and the ending it points at is the breach. `models/calendar.lua` carries the whole
+> argument. The sections marked below are corrected; the rest of this document still describes the
+> board and is being rewritten against the descent.
+
 ## The three numbers
 
 Prestige was one number doing three jobs badly. It is gone. Each job has its own now, and they cannot
@@ -19,7 +27,7 @@ be confused because they are not even the same kind of thing:
 
 | | What it is | Where |
 |---|---|---|
-| **The day** | How long there is. Spent by *entering a ground*, never given back | `models/calendar.lua` |
+| **The day** | ~~How long there is~~ — how many nights have passed. Spent at the stair and over the Inn's counter, and it is what mends a wound. Uncapped | `models/calendar.lua` |
 | **Experience** | How strong a body is. Earned by acting and by felling, per character | `models/experience.lua` |
 | **Standing** | How far into the story you are. A count of finished quests | `Player.standing` |
 
@@ -28,7 +36,18 @@ so every roster member was interchangeable at a given moment and a day spent any
 grew nobody. Under a deadline the second half is fatal: a day that clears no objective — one spent
 walking a ground for its caches and turning back — has to still be worth taking.
 
-## The clock
+## The clock — **superseded**
+
+> **Forty days is gone.** The paragraphs in this section are kept because their arguments are the ones
+> the replacement had to answer, and because most of them survived the move. What did not survive is the
+> date: there is no fortieth day, no last day, and no state of being past one. The pressure is the count
+> and the ending is the breach ([docs/the-count.md](the-count.md)) — the same last fight, sized by the
+> same reading (`Calendar.generalsStanding`), reached by what the company did rather than by a date.
+>
+> What survived intact: **entering costs, not clearing** (a night passes at the mouth of a descent,
+> `Gate.night`); **walking out is free**; **there is no fail state**; **the hub is free** — except that
+> the Inn now sells a night over its counter, which is the only way a wounded company mends, and *that*
+> is the one place a day is deliberately spent in town.
 
 **Forty days, and then he arrives.** There are more quests than there are days, so the campaign stops
 being *finish everything* and becomes *choose what to finish* — which is the decision seven houses were
@@ -161,10 +180,16 @@ would teach exactly the habit the rotating field exists to break.
 
 ## What the world does
 
-**The world hardens on the calendar, not on the company.** `Calendar.dangerLevel` ramps 1 → 22 across
-the campaign and reads nothing about the party. That is the load-bearing half of the deadline: scaling
-danger to the player refunds every day they squandered, because the fights get easier exactly as fast
-as you fall behind.
+**The world hardens on its own clock, not on the company.** `Calendar.dangerLevel` ramps 1 → 22 across
+the day axis and reads nothing about the party. That was the load-bearing half of the deadline: scaling
+danger to the player refunds every day they squandered.
+
+> **Which clock, now that the deadline is gone.** A descent carries its own — `Descent.dangerLevel`,
+> which ramps on DEPTH and is passed as `enemyLevel` at every fight underground — so the ramp above is
+> the fallback for everything standing outside a run, and `Calendar.SPAN` is the length of the day axis
+> rather than a budget. The ramp **holds** at its endpoint instead of climbing, which is what keeps a
+> night at the Inn free of consequence: unbounded nights against a world that hardened on every one of
+> them would be a deadline wearing a different name.
 
 Measured end to end: day 1 fields two wolves at level 1, day 20 four at level 10, day 40 four at 19.
 (Ordinary stock sits under the headline because `Growth.ENEMY_LEVEL_LAG` still applies underneath —
@@ -212,12 +237,19 @@ bargain the disciplines make: committing buys depth, and the rest is what a seco
 
 ## How it ends
 
+> **There are two roads to one ending, and neither is a date.** The bottom of the rift — the Hollow
+> Crown on floor fifteen — and **the breach**, which is the same fight coming up the stair to meet a
+> company that let the floors it walked away from fill ([docs/the-count.md](the-count.md)). The
+> paragraph below describes the third, retired road: the fortieth day. Its argument is the reason the
+> other two are shaped as they are, so it stays.
+
 **He comes on the last day whether anyone is ready or not.** The Gate Below used to require all seven
 generals dead — seven keys, a count climbing from 1 of 7 that was the last stretch of the game. A
 calendar cannot carry that: seven lines to their slot 10 is about seventy expeditions.
 
 So the lock is gone and **the count changed job. It was permission; it is consequence.** Every general
-still breathing stands beside him:
+still breathing stands beside him — and this is the half that outlived the deadline entirely.
+`Calendar.generalsStanding` sizes the breach today, reading the descent's own seals:
 
 | Generals felled | Bodies in the last fight |
 |---|---|
@@ -234,8 +266,10 @@ seventy finished quests, so anything asking "how deep is this fight" read it off
 the keys gone that inference collapsed and the last fight in the game started measuring as an opening
 skirmish, which is how the balance suite noticed.
 
-**New Game+ hands the time back.** It resets the calendar and the supper along with the quest ledger,
-because a deadline is not a possession; it carries the company and its experience. `campaignsFinished`
+**New Game+ starts the clock over.** It resets the day and the supper along with the quest ledger — not
+because a deadline is a thing to hand back (there is none) but because a second campaign reporting the
+first one's day count is bookkeeping leaking into a fresh start, and the day is still what an
+encounter's `minDay` reads. It carries the company and its experience. `campaignsFinished`
 is deliberately *not* reset — beating the game once cannot be undone by playing it again, and it is
 what opens the Descent on the main menu.
 
@@ -334,15 +368,20 @@ is in the code.
 
 ## Known debt
 
-- **`docs/story.md` has not been re-read against the deadline.** The campaign now has a fixed span and
-  an ending that fires on schedule with a variable final fight. Whether the story as written survives
-  that framing is an authoring question nobody has asked yet, and it is the largest open item here.
-- **The tuning is first-pass and wants play, not more measurement.** `Calendar.DAYS = 40`,
-  `FINAL_DANGER = 22`, `Experience.STEP = 10`, `Player.CAMP_SHARE = 0.5`. The instruments exist; whether
-  forty days *feels* like pressure or like a leash is the one question none of them answer.
-- **The day's span has not been re-priced against a ground buying several quests.** See
-  *Where forty came from*. Everything downstream of "forty days is about thirty quests" needs walking
-  again with `. progression-report`, and this is the one item that could move `Calendar.DAYS` itself.
+- **This document still describes the board.** Grounds, day-windows, the row-per-ground calendar and
+  most of *The clock* were written for a campaign bought off a Quest Board that no longer exists; the
+  descent is the campaign. The sections that assert something now false are banner-marked, but a real
+  rewrite against [docs/the-count.md](the-count.md) is owed and is the largest open item here.
+- **`docs/story.md` has not been re-read against either ending.** There are two roads to the last fight
+  now — the bottom of the rift and the breach — and both hand the player a variable final cast. Whether
+  the story as written survives that framing is an authoring question nobody has asked yet.
+- **The tuning is first-pass and wants play, not more measurement.** `Calendar.SPAN = 40`,
+  `FINAL_DANGER = 22`, `Experience.STEP = 10`, `Player.CAMP_SHARE = 0.5`. The span is a scale for the
+  day axis rather than a budget now, so what wants playing is no longer "does forty days feel like
+  pressure" but **does the count**: it is a ceiling only a shuttling company reaches, by design
+  ([docs/the-count.md](the-count.md) measures all four play styles), and whether a campaign whose only
+  pressure is self-inflicted has enough of it is the open question the retirement of the deadline
+  created. The dial if it does not is `COUNT_SEAL`, not `COUNT_MAX`.
 - **A ground can hold seven houses' live work at once**, and `. board-report` says roughly 8% of ends
   already land on open trail instead of a spur because the board ran out of dead ends. It degrades
   gracefully and it is counted, but if a full board reads as a slog the honest fix is a cap on how many

@@ -26,7 +26,6 @@ local ItemTooltip = require("ui.item_tooltip")
 local Scale = require("scale")
 local InputMode = require("input_mode")
 local Theme = require("ui.theme")
-local ProgressBar = require("ui.progress_bar")
 local Growth = require("models.growth")
 local Discipline = require("models.discipline")
 local Material = require("models.material")
@@ -37,14 +36,15 @@ Advancement.__index = Advancement
 local BOX_W = 560
 local ROW_H = 46
 
--- Everything above the level-up list (title, rewards, the prestige bar, the section heading) and
--- everything below it (the footer prompt). The box is sized to its CONTENT between them: a quest that
--- levelled nobody is a short panel rather than a tall one with a hole in it, which matters now that
--- most quests are exactly that.
-local HEAD_H, FOOT_H = 205, 56
+-- Everything above the level-up list (title, rewards, the section heading) and everything below it (the
+-- footer prompt). The box is sized to its CONTENT between them: a quest that levelled nobody is a short
+-- panel rather than a tall one with a hole in it, which matters now that most quests are exactly that.
+--
+-- IT WAS 54PX TALLER, AND A BAR LIVED IN THE DIFFERENCE. See SECTION_Y.
+local HEAD_H, FOOT_H = 151, 56
 local MAX_ROWS = 6
 
--- The two boxed sections that sit between the prestige bar and the level-up list, stacked in this
+-- The two boxed sections that sit between the reward header and the level-up list, stacked in this
 -- order and each costing no height at all on a quest that has none of it:
 --
 --   "Items gained"                 what the quest HANDED OVER (reward.received) -- named, because they
@@ -56,7 +56,7 @@ local MAX_ROWS = 6
 --                                  told which shop moved and reads the goods at the shop itself.
 local SEC_HEAD_H = 22 -- a section heading ("Items gained", "New items unlocked at <shop>")
 local SEC_ROW_H = 19  -- one plain text row under a heading (the "+N more" line)
-local SEC_TOP_PAD = 10 -- clearance above a section (under the prestige bar's caption row)
+local SEC_TOP_PAD = 10 -- clearance above a section
 local SEC_PAD = 12    -- gap between a section and whatever sits under it
 local GAIN_MAX_ROWS = 4
 
@@ -68,14 +68,21 @@ local GAIN_MAX_ROWS = 4
 local GAIN_ROW_H = 28
 local GAIN_ICON = 22
 
--- Where the first section starts, as an offset from the box top: just below the prestige bar, which is
--- also where "The company grows" sits when there is no section at all (hence the shared 177).
-local SECTION_Y = 177
-
--- The prestige bar's fill: a beat to read the starting state, then the climb. Slow enough that a
--- single prestige is a visible movement rather than a jump -- the whole point of the bar is that a
--- quest which levels nobody still shows the company advancing.
-local BAR_HOLD, BAR_FILL = 0.35, 0.9
+-- Where the first section starts, as an offset from the box top: just below the reward header, which is
+-- also where "The company grows" sits when there is no section at all (hence the shared number).
+--
+-- TWO BARS HAVE STOOD IN THE 54PX THIS RECLAIMS, and the second is worth recording because the first
+-- one's deletion is what invented it. It was a PRESTIGE step -- a level cost several prestige while a
+-- quest paid one, so most quests levelled nobody and the bar was the only thing that said the company
+-- had advanced at all. Prestige went; the DAY took the slot, on the argument that an expedition always
+-- spends one, so it was the reading that could never come back empty. Then the deadline went too
+-- (models/calendar.lua) and a bar that fills toward nothing is a bar that promises an end it cannot
+-- deliver -- "He comes" over a campaign nobody is counting down to.
+--
+-- SO THE SLOT IS CLOSED RATHER THAN REFILLED A THIRD TIME. What is left on this panel is what the run
+-- actually handed over, and the empty-list line below says where the levels went. A third number
+-- invented to keep a rectangle occupied is how the first two got here.
+local SECTION_Y = 123
 
 -- Stat display names + a stable order, matching the Loadout panel's sheet (ui/panels/party.lua).
 local STAT_LABEL = {
@@ -197,25 +204,7 @@ function Advancement.new(opts)
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
     self.boxY = Scale.HEIGHT / 2 - self.boxH / 2
 
-    -- THE BAR IS THE CALENDAR NOW. It was a prestige step -- how far the company had climbed toward its
-    -- next level -- and it existed for exactly one reason: a level cost several prestige while a quest
-    -- paid one, so most quests levelled nobody and would otherwise have reported nothing at all.
-    --
-    -- Both halves of that stopped being true at once. Prestige is gone (models/calendar.lua), and
-    -- levels are earned in the fighting now rather than handed out at the payout (models/experience.lua)
-    -- -- so `reward.advancement` is always empty here and the bar had nothing left to fill from.
-    --
-    -- The day replaces it, and is a better answer to the question the bar was really asking. An
-    -- expedition ALWAYS spends one, whatever it found, so this is the one reading that can never come
-    -- back empty -- and under a deadline it is also the reading that matters most.
-    self.dayTo = self.reward.day
-    self.days = self.reward.days
-    self.dayFrom = self.dayTo and math.max(0, self.dayTo - 1)
-    self.hasBar = type(self.dayTo) == "number" and type(self.days) == "number"
-    self.shownDay = self.dayFrom or 0
-    self.barT = 0
-
-    -- List viewport: below the reward header and the bar, above the footer prompt. Sized from
+    -- List viewport: below the reward header, above the footer prompt. Sized from
     -- `visible` above rather than the other way round, so the box wraps the rows instead of the rows
     -- being fitted into a fixed box.
     self.listX = self.boxX + 24
@@ -256,17 +245,6 @@ end
 
 function Advancement:scrollBy(delta)
     self.scroll = math.max(0, math.min(self:maxScroll(), self.scroll + delta))
-end
-
--- Ease the DISPLAYED day from the morning the expedition set out to the evening it came back. One
--- running number feeds the fill, the caption and the days-remaining colour, so nothing can disagree
--- about how much of the calendar is gone.
-function Advancement:update(dt)
-    if not self.hasBar then return end
-    self.barT = self.barT + (dt or 0)
-    local t = math.max(0, math.min(1, (self.barT - BAR_HOLD) / BAR_FILL))
-    local eased = 1 - (1 - t) ^ 3
-    self.shownDay = self.dayFrom + (self.dayTo - self.dayFrom) * eased
 end
 
 -- The one-line reward header: gold and the forging stock the run banked -- the caches the
@@ -334,7 +312,6 @@ function Advancement:draw()
             self.boxX + 24, self.boxY + 92, BOX_W - 48, "center")
     end
 
-    self:drawPrestigeBar()
     self:drawGained()
     self:drawStock()
 
@@ -353,52 +330,6 @@ function Advancement:draw()
         ItemTooltip.draw(hovered, self.mx, self.my, Scale.WIDTH)
     end
     love.graphics.setColor(1, 1, 1)
-end
-
--- The company's climb toward its next level, filling live. This exists because a level costs several
--- prestige while a quest pays one or two, so MOST quests advance the company without levelling anyone
--- -- and before the bar, those quests said "No advancement this time" and read as wasted.
-function Advancement:drawPrestigeBar()
-    if not self.hasBar then return end
-
-    local x, w = self.listX, self.listW
-    local y = self.boxY + 122
-    local spent = math.min(self.shownDay, self.days)
-    local left = math.max(0, self.days - spent)
-    local last = left <= 0
-
-    -- Endpoints: where the calendar stands, and what it is running toward. Named rather than numbered
-    -- on the right, because "Day 40" is a date and what it actually is is the deadline.
-    love.graphics.setFont(self.smallFont)
-    Theme.set(Theme.ink)
-    love.graphics.print("Day " .. math.floor(spent), x, y)
-    Theme.set(Theme.muted)
-    love.graphics.printf("He comes", x, y, w, "right")
-
-    -- The day just spent is the lit slice, so the eye lands on the cost rather than on the total.
-    local gained = self.shownDay - (self.dayFrom or 0)
-    ProgressBar.draw(x, y + 20, w, 14, spent, self.days, {
-        gain = math.min(gained, spent),
-        full = last,
-    })
-
-    love.graphics.setFont(self.smallFont)
-    -- The last week reads hostile, the same threshold and the same colour the hub's own line uses --
-    -- a deadline should not change its voice depending on which screen is saying it.
-    Theme.set(left <= 7 and Theme.accentWeapon or Theme.muted)
-    local caption
-    if last then caption = "There are no days left"
-    elseif left == 1 then caption = "One day remains"
-    else caption = string.format("%d days remain", left) end
-    love.graphics.print(caption, x, y + 40)
-
-    do
-        Theme.set(Theme.accentAmber)
-        -- "this quest" only when it WAS one. A descent is not a quest and does not read as one
-        -- (models/descent.lua).
-        local occasion = self.reward.title and " this run" or " this expedition"
-        love.graphics.printf("a day spent" .. occasion, x, y + 40, w, "right")
-    end
 end
 
 -- "Items gained" -- what the quest itself handed over (reward.received: a general's relic, whatever a
@@ -493,7 +424,7 @@ end
 -- much of it. The panel used to say only that stock had appeared *somewhere*, which left the player to
 -- go door-knocking for it; naming the shop is what makes the quest read as the thing that bought the
 -- goods. The goods themselves stay unnamed -- reading them is what the visit to the shop is for. Sits
--- directly under the prestige bar: what the company earned, then where it may now spend, then who grew.
+-- directly under the reward header: what the company earned, then where it may now spend, then who grew.
 function Advancement:drawStock()
     if not self.stock then return end
 
@@ -530,10 +461,8 @@ function Advancement:drawList()
         -- The ordinary case now, and permanently: levels are earned in the fighting and announced
         -- there, so this list is empty on every quest. Rather than a denial, say where they went --
         -- a player who reads "no advancement" after a won expedition will believe it.
-        local line = self.hasBar
-            and "Levels are earned in the fighting. What this cost you was the day."
-            or "No advancement this time."
-        love.graphics.printf(line, self.listX, self.listY + 8, self.listW, "left")
+        love.graphics.printf("Levels are earned in the fighting, and were paid out where they were won.",
+            self.listX, self.listY + 8, self.listW, "left")
         return
     end
 

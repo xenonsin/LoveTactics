@@ -465,6 +465,53 @@ function Errand.postingScene(posting)
     return Errand.SCENES[posting.kind]
 end
 
+-- ---------------------------------------------------------------------------
+-- The first-clear bonus
+-- ---------------------------------------------------------------------------
+--
+-- AN ERRAND PAYS A BONUS THE FIRST TIME IT IS CLEARED, AND FAILING IT ONCE SPENDS THAT BONUS FOREVER.
+-- The work itself is untouched: the end stays standing where it was met, the company can walk back onto
+-- it, and finishing it opens the rung, hands over the goods, grants the discipline and plays the outro
+-- exactly as it always did. What does not come back is the purse.
+--
+-- WHY THE PURSE AND NOTHING ELSE, and it is a constraint rather than a preference. An errand's
+-- `rewardItems` are that slot's share of its line's quest-only shelf stock -- the pieces a vendor's
+-- shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua) -- so withholding them
+-- would delete items from the run rather than charge for a loss. The rung behind the job is a discipline
+-- gate, and gating THAT on winning first time would shut a class out of a run over one bad fight, which
+-- is the exact failure this whole model was written to undo (see the header). Gold is the one field an
+-- errand carries that nothing else is standing on.
+--
+-- SO IT IS A DECISION AND NEVER A NEED. A player who never loses never notices this; a player who does
+-- is out a purse and still has every door they were walking toward.
+--
+-- KEYED ON THE PLAYER RATHER THAN THE RUN, beside `errands` itself, because a descent is a thing you
+-- come back from and the bonus must not quietly reappear when you do.
+function Errand.fail(player, errandId)
+    if not (player and errandId) then return false end
+    -- A job already finished has already been paid; there is no bonus left to spend and nothing to
+    -- record. Guarded here rather than at the caller so no exit can write a mark on settled work.
+    if (player.completedQuests or {})[errandId] then return false end
+    player.errandsFailed = player.errandsFailed or {}
+    -- Returns true only on the FIRST failure, so a caller with somewhere to say it can name the loss
+    -- once rather than on every attempt after.
+    if player.errandsFailed[errandId] then return false end
+    player.errandsFailed[errandId] = true
+    return true
+end
+
+-- Has this errand already been failed -- i.e. is its first-clear bonus gone?
+--
+-- TWO CALLERS AND THEY MUST AGREE: the grant (states/game.lua's errand payout) and the preview
+-- (models/descent.lua's Descent.objectiveReward, which draws the victory screen's reward cards). A
+-- preview wider than its grant promises a payout the beat never pays, and this file has watched that
+-- happen before -- the Beggar's Bowl was named after every win on a lust floor and handed over at none
+-- of them. One function, asked from both sides.
+function Errand.failedOnce(player, errandId)
+    if not (player and errandId) then return false end
+    return ((player.errandsFailed or {})[errandId]) == true
+end
+
 -- Finished. Writes the SHELF'S OWN LEDGER rather than a second one, so the stock opens by the path it
 -- always did (Quest.shelfRung -> Vendor.stock), and drops the open-errand entry so the shop stops
 -- listing a floor to go to.
@@ -486,6 +533,9 @@ function Errand.complete(player, errandId)
     player.completedQuests = player.completedQuests or {}
     player.completedQuests[errandId] = true
     if player.errands then player.errands[errandId] = nil end
+    -- `errandsFailed` is deliberately NOT dropped here, however tidy that would look beside the line
+    -- above. The payout that follows this call is what asks Errand.failedOnce -- clearing the mark on the
+    -- way past would hand the first-clear bonus to the one company that had already lost it.
     return true, Quest.markOpenedStock(player, vendorId, before)
 end
 

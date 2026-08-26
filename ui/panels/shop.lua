@@ -1028,6 +1028,10 @@ function Shop:drawDetail()
     local primaryValue, primaryLabel = Item.primaryStat(item)
     if primaryValue then statLine(primaryLabel, tostring(primaryValue), { 0.95, 0.72, 0.48 }) end
     if out and out.heal > 0 then statLine("Heal", "+" .. out.heal, { 0.55, 0.90, 0.58 }) end
+    -- A standing rule's own magnitude (Item.traitRows), at the level on the shelf. For a charm that is
+    -- nothing but a passive it is the ONLY number on the card -- there is no primary stat and no ability
+    -- to quote -- and this is the counter where the buying decision gets made.
+    for _, traitRow in ipairs(Item.traitRows(item)) do statLine(traitRow.label, traitRow.value) end
     if ab then
         if ab.target then statLine("Target", TARGET_LABEL[ab.target] or ab.target) end
         statLine("Range", tostring(ab.range or 1))

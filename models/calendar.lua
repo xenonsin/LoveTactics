@@ -1,136 +1,119 @@
--- THE CALENDAR: how long there is, and what spends it.
+-- THE CALENDAR: the day, and what a day is worth.
 --
--- The campaign used to be a checklist. Ninety-two quests, all of them reachable, all of them walked by
--- both play policies (`. progression-report`), and nothing anywhere that made running one quest instead
--- of another cost anything. Every rule the game had about commitment -- the solo-line rule most of all,
--- which docs/progression.md settled as "a player may take one sin's line to its end without touching
--- the other six" -- was true and free, and a rule that is free is a rule nobody feels.
+-- IT USED TO BE A DEADLINE, and that is the thing to know before reading anything below. The demon lord
+-- landed on day forty; there were more quests than there were days, so the campaign stopped being
+-- "finish everything" and became "choose what to finish", and every rule the game had about commitment
+-- -- the solo-line rule most of all -- bit because of it.
 --
--- A deadline is what makes those rules bite. The demon lord returns on a fixed day. There are more
--- quests than there are days, so the campaign stops being "finish everything" and becomes "choose what
--- to finish", which is the decision the seven houses were built to offer and never got to ask.
+-- THE BOARD IT MEASURED IS GONE. Forty days were forty expeditions bought off a Quest Board, and the
+-- board was retired: the descent is the campaign now (models/descent.lua). A run is not an expedition,
+-- it is fifteen floors and every trip up and down between them, so a clock that counted expeditions had
+-- nothing left to count -- and a countdown over a loop that does not spend it is pressure with no
+-- decision underneath, which is the one thing a deadline may never be.
 --
--- THE UNIT IS AN EXPEDITION, AND ENTERING SPENDS IT. Not clearing the objective -- entering. Take the
--- boss, break off with a Smoke Bolt, or get wiped: the day is gone all three ways. That is the whole
--- greed dial. "Push on or go home with what I have" only means something if going home costs the same
--- day that pushing on would have, and it is why the hub is free (below).
+-- WHAT PRESSES INSTEAD IS THE COUNT (models/descent.lua, docs/the-count.md): what forms on the floors
+-- the company is not standing on. It is deliberately not a schedule -- it moves both ways, it is paid
+-- down by going deeper, and a company that presses on never watches it climb. What it prices is the one
+-- decision in the loop that has an alternative, which is coming back up early. And at its ceiling the
+-- stair stops being an exit: what is down there comes up it, with every general still unsealed beside
+-- it, and THAT is the ending the fortieth day used to be -- reached by what the player did rather than
+-- by a date (states/game.lua's ascent branch, and Calendar.generalsStanding below, which was written to
+-- size exactly that fight).
 --
--- THERE IS NO FAIL STATE. The last day is not a loss screen; it is the last battle, fought with
--- whatever company and whatever allies the player managed to assemble. You always get an ending. The
--- generals you felled are simply not standing beside him -- see Calendar.finaleStrength.
+-- SO WHAT IS LEFT HERE IS THE DAY ITSELF, which never was the deadline and is worth keeping without one:
 --
--- WHAT THE DAY IS *NOT*. It is not a second currency. Shopping, forging, the Loadout, mending a wound
--- and eating at the Cafe all cost nothing, deliberately: a hub that spent days would turn every visit
--- to a shelf into arithmetic, and the interesting decision is which expedition to take, not whether to
--- walk to a building.
+--     the night     a day passes when a company walks into the stair and when the Inn sells one
+--                   (models/gate.lua's Gate.night). It is the only thing that mends a wound -- a body in
+--                   a bed is out of the company for a day per bone (models/wound.lua) -- and THAT is the
+--                   cost: the absence, not the scarcity. It never needed a ceiling to bite.
+--     the axis      `day` is the number an encounter blueprint's `minDay` is authored against and the
+--                   number Calendar.dangerLevel reads. A descent keeps its own clock and passes it
+--                   outright (Descent.dangerLevel); what it borrows from here is the SCALE, mapping its
+--                   fifteen floors onto Calendar.SPAN so the two ladders speak one unit.
+--     standing      ...is not here and never was. How far into the story you are is quests finished
+--                   (Player.questsCompleted), which is a thing you do rather than a thing done to you.
 --
--- WHAT REPLACED PRESTIGE. `player.prestige` is gone, and its two tangled jobs went to two different
--- numbers, because they were never the same question:
---
---     the difficulty dial   -> THE DAY (Calendar.day). Enemy level, encounter gating, head-count,
---                              loot band, the muster rating. The world hardens on the calendar rather
---                              than on the company, so a wasted week is a week the world pulled ahead.
---                              This is the load-bearing half of the deadline: scaling danger to the
---                              party instead would refund every day the player squandered.
---     campaign standing     -> QUESTS COMPLETED (Player.questsCompleted). Building unlocks, quest
---                              gates, conversation predicates. Those ask "how far into the story are
---                              you", which is a thing you do rather than a thing that happens to you.
+-- WHAT WAS DELETED, named so nobody goes looking: `remaining`, `isFinalDay` and `isOver`. There is no
+-- last day, so there is nothing to be past. Anything that used to refuse on a spent calendar -- the
+-- Inn's counter most of all -- refuses on its own terms now or does not refuse at all.
 --
 -- Pure model -- no love.graphics -- so it loads under the headless runner.
 
 local Calendar = {}
 
--- How many expeditions there are before he lands. Forty is derived rather than picked: a house's line
--- reaches its slot 10 in ten to thirteen quests including its zero-to-three on-ramp
--- (`. progression-report`), so forty days at roughly three quarters on story work is a little under
--- three lines -- which is the shape the solo-line rule describes, with room to forage.
+-- THE LENGTH OF THE DAY AXIS, AND IT IS A SCALE RATHER THAN A BUDGET. Nothing runs out at forty and
+-- Calendar.day is not capped by it: a company that spends a hundred nights at the Inn is on day a
+-- hundred and one, and the world is no worse for it (dangerLevel holds at its endpoint).
 --
--- It is the single number the whole difficulty curve is anchored on (Calendar.dangerLevel below and
--- models/experience.lua's STEP), so moving it means re-reading both.
-Calendar.DAYS = 40
+-- It is forty because that is the axis every `minDay` in data/encounters was authored against, and
+-- because the descent maps its depth onto it (states/game.lua) so a floor and a day can be compared at
+-- all. Moving it re-reads both, plus the ramp below.
+--
+-- IT WAS `Calendar.DAYS`, which was an honest name for a budget and a lie about a scale.
+Calendar.SPAN = 40
 
--- The level the WORLD fights at on the last day. Anchored on what the company can actually reach in
--- forty days of fighting (models/experience.lua): a body earns something over forty experience a day,
--- which on the campaign curve arrives at the deadline somewhere in the mid twenties. The world is set a
--- shade under that, so a player who spends their days fighting walks into the finale with an edge they
--- earned, and one who squandered them does not.
+-- The level the WORLD fights at at the top of the axis. Anchored on what a company can actually reach
+-- in forty days of fighting (models/experience.lua): a body earns something over forty experience a
+-- day, which on the campaign curve arrives in the mid twenties, and the world is set a shade under
+-- that.
 --
 -- THIS IS THE HEADLINE NUMBER, NOT WHAT ORDINARY STOCK FIGHTS AT. Growth.combatantLevel still applies
--- ENEMY_LEVEL_LAG (0.9) underneath, so a common body on the last day spawns around 19 rather than 22 --
--- measured, not assumed. The lag has lost its original meaning (it held enemies just behind a party
--- whose level was a global given, and no such number exists now) but it has kept a useful one: it is
--- the gap between the road's ordinary traffic and what the calendar says the world is capable of, which
--- is what leaves room for an elite or a floorLevel to reach the headline and mean something by it.
+-- ENEMY_LEVEL_LAG (0.9) underneath, so a common body at the top of the axis spawns around 19 rather
+-- than 22 -- measured, not assumed. The lag has lost its original meaning (it held enemies just behind
+-- a party whose level was a global given, and no such number exists now) but it has kept a useful one:
+-- it is the gap between the road's ordinary traffic and what the axis says the world is capable of,
+-- which is what leaves room for an elite or a floorLevel to reach the headline and mean something by it.
 Calendar.FINAL_DANGER = 22
 
--- The world's level on `day`. Linear from 1 on the first morning to FINAL_DANGER on the last, so the
--- ramp is legible -- a player can look at the calendar and know roughly what is out there.
+-- The world's level on `day`. Linear from 1 at the bottom of the axis to FINAL_DANGER at the top.
 --
--- Clamped at both ends: day 0 (a fresh save, before the first expedition) reads as day 1 rather than as
--- level 0, and nothing past the deadline climbs, because there is nothing past the deadline.
+-- Clamped at both ends: day 0 (a fresh save, before anything) reads as day 1 rather than as level 0,
+-- and past the top of the axis it HOLDS rather than climbing -- which is what makes a night at the Inn
+-- free of consequence now that nights are unbounded. A company that rests a great deal is not a company
+-- the world hardens against; that was the deadline's job and the deadline is gone.
+--
+-- The descent does not read this at all: it carries its own dial and passes it as `enemyLevel` at every
+-- fight (Descent.dangerLevel). This is the fallback for everything standing outside a run.
 function Calendar.dangerLevel(day)
-    local d = math.max(1, math.min(Calendar.DAYS, day or 1))
-    if Calendar.DAYS <= 1 then return Calendar.FINAL_DANGER end
-    local t = (d - 1) / (Calendar.DAYS - 1)
+    local d = math.max(1, math.min(Calendar.SPAN, day or 1))
+    if Calendar.SPAN <= 1 then return Calendar.FINAL_DANGER end
+    local t = (d - 1) / (Calendar.SPAN - 1)
     return math.max(1, math.floor(1 + t * (Calendar.FINAL_DANGER - 1) + 0.5))
 end
 
--- The day the player is standing on. One-based: a fresh save is on day 1 with every day still to spend.
+-- The day the player is standing on. One-based: a fresh save is on day 1.
 function Calendar.day(player)
     return math.max(1, (player and player.day) or 1)
 end
 
--- Expeditions left INCLUDING the one about to be taken. Zero once the deadline has passed.
-function Calendar.remaining(player)
-    return math.max(0, Calendar.DAYS - Calendar.day(player) + 1)
-end
-
--- Is this the last day? The finale is fought on it, so the quest board says so and the hub stops
--- offering an ordinary expedition.
-function Calendar.isFinalDay(player)
-    return Calendar.day(player) >= Calendar.DAYS
-end
-
--- Has the deadline passed -- i.e. has the finale been fought? Distinct from isFinalDay: on the last day
--- there is still one expedition to take.
-function Calendar.isOver(player)
-    return Calendar.day(player) > Calendar.DAYS
-end
-
--- Spend a day. THE ONE SEAM, called when an expedition is ENTERED rather than when it resolves, so a
--- run walked out of costs exactly what a run completed does. Returns the new day.
+-- A night passes. THE ONE SEAM, and it has exactly one caller -- models/gate.lua's Gate.night, which is
+-- what a night IS (a day, a bone off everybody abed, and whoever that finished walking out of a room).
+-- Nothing else may move the clock without doing the other two.
 --
--- Deliberately not idempotent and deliberately not guarded against overrun: a caller that spends twice
--- for one expedition is a bug that should show up as a day disappearing, not be silently absorbed here.
--- The one thing it will not do is spend a day that does not exist.
+-- Deliberately not idempotent and deliberately unguarded: a caller that spends twice for one night is a
+-- bug that should show up as a day appearing, not be silently absorbed here. It used to refuse a day
+-- past the deadline; there is no deadline, so it refuses nothing.
 function Calendar.spend(player)
     if not player then return 1 end
-    if Calendar.isOver(player) then return Calendar.day(player) end
     player.day = Calendar.day(player) + 1
     return player.day
 end
 
--- How the last battle is composed: one general fewer beside him for each of the seven felled.
+-- How the last fight is composed: one general fewer beside him for each of the seven felled.
 --
--- THIS IS WHAT REPLACED THE GATE'S SEVEN-OF-SEVEN LOCK. That gate could not survive a deadline -- seven
--- lines to their slot 10 is about seventy expeditions on its own, so the ending would have been
--- unreachable by construction. Deleting the lock without replacing it would have made the seven lines
--- decorative in the other direction, so the count moved from being PERMISSION to being CONSEQUENCE:
--- every general you did not face is one who faces you at the end, all at once.
+-- THIS IS WHAT REPLACED THE GATE'S SEVEN-OF-SEVEN LOCK. That gate could not survive a campaign that
+-- ends before the seventh circle, so the count moved from being PERMISSION to being CONSEQUENCE: every
+-- general you did not face is one who faces you at the end, all at once.
 --
--- Returns the number still standing (0..7). The finale's own blueprint decides what to do with it.
--- A GENERAL IS DOWN BY ONE ROUTE NOW, and it is the descent's: her circle is sealed by felling her on
--- her own floor, credited to `run.standing` keyed by the house's VENDOR (models/descent.lua's
--- Descent.clearFloor).
+-- AND IT IS FINALLY READ. It has been threaded onto every composition ctx since the finale quest was
+-- written and nothing has ever called it -- the day-forty finale it sized was retired with the board.
+-- The breach is what it sizes now: at the count's ceiling the stair stops being an exit, and what comes
+-- up it brings everyone still standing (models/descent.lua's Descent.breachComposition).
 --
--- IT USED TO READ TWO. `completedQuests` answered for the seven `quest_<vendor>_slot_10` fights at the
--- end of seven quest lines, and `run.standing` for the same seven met on their stairs -- one list
--- serving both because the id shapes shared the vendor. The slot-10 quests went with the retired board,
--- so that half can never be true again and the list it needed (Quest.GENERAL_QUESTS) is deleted rather
--- than left to answer nil for seven ids that no longer exist.
---
--- The circles are the authority instead, which is also the shorter statement of the same fact: there
--- are seven of them because there are seven sins, and Descent.SINS is where that is said once.
+-- Returns the number still standing (0..7). A GENERAL IS DOWN BY ONE ROUTE, and it is the descent's:
+-- her circle is sealed by felling her on her own floor, credited to `run.standing` keyed by the house's
+-- VENDOR (Descent.clearFloor). The circles are the authority because that is the shorter statement of
+-- the same fact -- there are seven of them because there are seven sins, and Descent.SINS says it once.
 function Calendar.generalsStanding(player)
     local Descent = require("models.descent")
     local sealed = (player and player.descentRun and player.descentRun.standing) or {}

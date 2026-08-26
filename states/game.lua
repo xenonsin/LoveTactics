@@ -718,7 +718,7 @@ function game:payObjective(cell, materials)
     local quest = questAt(cell)
     if not quest then return nil end
     local reward = quest.request
-        and Request.payout(game.player, quest, materials, game.day, Calendar.DAYS)
+        and Request.payout(game.player, quest, materials)
         or Quest.complete(game.player, quest, materials, { keepMeal = true })
     if quest.id then game.tripDone[quest.id] = true end
     return reward, quest
@@ -854,7 +854,7 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- the day is back to the one job it was brought in for: which blueprints may appear at all.
     if game.descent then
         game.day = (resume and resume.day)
-            or math.max(1, math.floor(Descent.depth(game.descent) / Descent.FLOORS * Calendar.DAYS))
+            or math.max(1, math.floor(Descent.depth(game.descent) / Descent.FLOORS * Calendar.SPAN))
         -- THE COMPANY'S HIGH-WATER MARK, written here because this is the line where a floor descriptor
         -- stops being a plan and becomes a board somebody is standing on. Every way down arrives here --
         -- the Gate's stair, the landing's "go down", a floor that gives way -- so a fourth one cannot
@@ -1634,6 +1634,12 @@ function game:openEncounter(cell, opts)
             -- player reads this line at the worst moment of a run, and it was telling them they had lost
             -- fifteen floors they had not lost.
             lossLabel = game.descent and "Wake at the Gate" or nil,
+            -- ...and what that same exit is called when the company is still standing. A rout is not a
+            -- wipe -- it falls back onto the floor it came from with every find it made -- so a button
+            -- reading "Wake at the Gate" would be naming a price this exit does not charge. Which of the
+            -- two is shown is decided by the board at the moment the fight is decided, since only it knows
+            -- whether anybody was left (states/battle.lua's lose stamps `battle.routed`).
+            routedLabel = game.descent and "Fall Back" or nil,
             -- The sponsor's stock, for the salvage every won fight leaves behind (models/spoils.lua).
             -- Same value the map's caches were laid out with, so a run's fights and its dead ends pay
             -- into the same house.
@@ -1693,6 +1699,31 @@ function game:openEncounter(cell, opts)
                 -- which the authored trail makes the defence (states/prologue.lua's FLIGHT_QUEST,
                 -- stop 3) -- rather than keyed to an encounter id typed a second time over here.
                 if game.tutorial == "flight" then game.useUnlocked = true end
+
+                -- THE BREACH, BEATEN. What came up the stair was the Hollow Crown and whichever
+                -- generals were still standing behind it (models/descent.lua's breachComposition), so
+                -- putting it down IS beating the game -- met three floors up in a corridor instead of
+                -- on its own ground, because the company let the floors below fill.
+                --
+                -- IT ENDS EXACTLY WHERE THE BOTTOM ENDS: finishCampaign banks the win (and opens the
+                -- shuffle for the next descent), the run is cleared, and the credits roll with New
+                -- Game+ offered. Two roads, one ending, and neither of them is a date on a calendar.
+                --
+                -- The tile is handed back its stair first. Nothing walks off this board -- the credits
+                -- are the next screen -- but a floor is snapshotted by several paths and a cell left
+                -- carrying a spent breach would come back as a fight with no way out behind it.
+                if cell.encounter and cell.encounter.breach then
+                    cell.encounter = cell.wasAscent or cell.encounter
+                    cell.wasAscent = nil
+                    cell.cleared = false
+                    Player.finishCampaign(game.player)
+                    clearRun()
+                    if game.player then game.player.descentRun = nil end
+                    Player.save()
+                    State.switch(require("states.credits"), { newGamePlus = true })
+                    return
+                end
+
                 if kind == "objective" then
                     game.complete = true
                     -- Prologue (or any scripted caller) reroute: hand the cleared objective back to
@@ -1747,7 +1778,15 @@ function game:openEncounter(cell, opts)
                             -- payout seam and knows about days, standing and a board this mode does not
                             -- have. What an errand owes is its purse and its goods.
                             if def then
-                                if (def.rewardGold or 0) > 0 then
+                                -- THE PURSE IS PAID ONCE, TO A COMPANY THAT DID NOT HAVE TO COME BACK.
+                                -- Losing this fight spends the first-clear bonus for good
+                                -- (models/errand.lua's Errand.fail); everything else an errand owes --
+                                -- the goods, the rung, the discipline behind it, the outro -- lands on
+                                -- whichever attempt finishes the work. Same condition the victory
+                                -- screen's card is drawn from (Descent.objectiveReward), asked through
+                                -- the same function so the two cannot drift.
+                                if (def.rewardGold or 0) > 0
+                                    and not Errand.failedOnce(game.player, errandId) then
                                     Player.addGold(game.player, def.rewardGold)
                                 end
                                 for _, itemId in ipairs(def.rewardItems or {}) do
@@ -1995,6 +2034,88 @@ function game:openEncounter(cell, opts)
             -- return to -- the prologue's flight leg (game.tutorial) has none yet, so there the panel
             -- shows Try Again alone.
             onLoss = (not game.tutorial) and function()
+                -- THE STAIR IS GIVEN BACK BEFORE ANYTHING ELSE HAPPENS, and it has to be here rather
+                -- than only on the winning side. The breach turns the way-up tile into a fight for the
+                -- length of that fight (see the ascent branch); losing it snapshots the floor into the
+                -- company's map book a dozen lines below, and a tile stored as a spent breach would come
+                -- back on the recovery dive as an encounter with no stair behind it -- a floor with no
+                -- way out, written by the one path that was always going to run.
+                --
+                -- The tally is untouched by this. It is still full, so walking back onto the tile asks
+                -- the same question again, which is correct: what changed is not the rift, it is that
+                -- the company lost. The way down is the way out of it.
+                if cell.encounter and cell.encounter.breach then
+                    cell.encounter = cell.wasAscent or cell.encounter
+                    cell.wasAscent = nil
+                    cell.cleared = false
+                end
+
+                -- A COMPANY THAT IS STILL STANDING WALKS BACK ONTO THE FLOOR. It did not die; it lost.
+                --
+                -- FOUR THINGS END A FIGHT THE PARTY IS STILL ON ITS FEET FOR -- an escort whose charge was
+                -- killed, a defend whose charge was, a control run out on the clock, and Fall Back -- and
+                -- every one of them used to be answered with the WIPE below: pack dropped on the floor,
+                -- the run's coin and ore gone, the company woken at the Gate. That is charging a rout what
+                -- a destruction costs, and Descent.climbOut's note says exactly why it must not happen --
+                -- a wipe already takes the haul, the purse and a wound on every head, and charging the
+                -- failure twice is the thing this design is built not to do.
+                --
+                -- WHAT A ROUT COSTS INSTEAD IS THE STATE THEY ARE IN, and that is the whole of it. There
+                -- is no rollback here and no Player.restore: whoever walked off that board at four health
+                -- is standing on the map at four health, the potions they drank are drunk, and
+                -- Combat.spentParty has already written a wound for everybody the fight emptied
+                -- (states/battle.lua's lose). The second attempt is made by the company the first one left
+                -- behind, which is a real price and the only one that needs no bookkeeping to collect.
+                --
+                -- THE END IS NOT SPENT. `cell.cleared` is deliberately untouched, so the marker is still
+                -- standing and walking back onto it starts the same fight. Moving the posting was tried on
+                -- paper and thrown out: a reseat has to stay inside the circle the work was met in (the
+                -- rung it opens is balanced for that circle), which means seating onto floors already in
+                -- the map book, which means a second placement rule -- all of it to relocate a fight the
+                -- player can simply walk back to. What a house's work loses is its FIRST-CLEAR BONUS
+                -- instead (models/errand.lua's Errand.fail): the purse is paid once, to a company that did
+                -- not have to come back. The goods, the shelf rung, the discipline and the outro all still
+                -- land on whichever attempt finishes it.
+                --
+                -- CAMPAIGN GROUND IS UNCHANGED and falls through to wipeRun below. There are no errands up
+                -- there, a quest is a day rather than a floor, and a lost day is the shape that mode has
+                -- always had.
+                if game.descent and require("states.battle").routed then
+                    local errandId = objSpec and objSpec.questId
+                    -- Errand.fail answers true on the FIRST failure only, which is exactly when there is
+                    -- news: a bonus spent is spent once. Said here, beside the wound toasts, because it
+                    -- has to be told at the moment it is lost -- a purse that quietly fails to arrive an
+                    -- hour later reads as a bug rather than as a price. The work itself is untouched and
+                    -- the line says so, so the player is not sent looking for a marker that has moved.
+                    if errandId and Errand.fail(game.player, errandId) then
+                        local def = Quest.defs[errandId]
+                        game:pushToast(((def and def.name) or "The work") ..
+                            " still stands - the first-clear bonus is spent")
+                    end
+                    -- Before the return, and the ordering is the same one the wipe branch keeps: the
+                    -- ledger moves while the battle's list of who fell is still the last one written.
+                    game:inflictWounds()
+                    -- The tutorial's Try Again path with the rewind deleted -- drop the defeat grey and
+                    -- the low-HP vignette the loss froze on screen, step the token back onto the tile it
+                    -- came from, and resume THIS overworld through State.current so game.enter does not
+                    -- re-run and roll the board out from under the party.
+                    ScreenFx.reset()
+                    game.activePanel = nil
+                    if game.map and game.map.retreatFromEncounter then
+                        game.map:retreatFromEncounter()
+                    end
+                    require("models.sound").music("music.overworld")
+                    game:refreshMuster() -- the fight was paid for in health and potions; re-rate
+                    -- BOTH saves, because a rout moves both halves: the board (a token stepped back off
+                    -- the marker) and the profile (wounds, and a bonus that is now spent). This is the
+                    -- exit that would have been missing them -- of the ways out of a fight, the losing one
+                    -- is where the bookkeeping goes unwritten.
+                    saveRun()
+                    Player.save()
+                    State.current = game
+                    return
+                end
+
                 -- A DESCENT WIPE LEAVES THE COMPANY WHERE IT FELL, and does not end the descent.
                 --
                 -- IT USED TO END EVERYTHING -- the company, the floors, the file -- and that was right
@@ -2568,6 +2689,73 @@ function game:openEncounter(cell, opts)
         if not run then cell.cleared = true; return end
         local carried = game:haulPhrase()
         local depth = Descent.depth(run)
+
+        -- THE STAIR IS NOT AN EXIT AT THE CEILING, which is the thing the tally has been counting toward
+        -- since it was written (models/descent.lua's Descent.isBreached, docs/the-count.md).
+        --
+        -- It is the same card in the same place, and that is deliberate: the player walks back to the
+        -- tile they have always walked back to, presses it the way they always have, and what has
+        -- changed is the answer. A separate screen for the breach would announce it before the tile
+        -- did; a marker on the map would let it be avoided, and the whole point is that the way out is
+        -- what filled up.
+        --
+        -- IT IS OPENED AS A FIGHT ON THIS BOARD rather than as a mode of its own. The tile is turned
+        -- into an elite encounter carrying its own cast (the same seam a dropped pack's guard uses --
+        -- `enc.composition` beats a blueprint's, models/encounter_battle.lua) and re-dispatched through
+        -- the ordinary fight path, so the deployment, the spoils, the wounds and -- the one that
+        -- matters -- the WIPE all behave exactly as they do everywhere else. Losing the breach is a
+        -- wipe: the company wakes at the Gate with the run intact and the tally still full, which is
+        -- what makes this a state to fight out of rather than a game over.
+        --
+        -- THE ONLY THING SPECIAL-CASED IS THE WIN, and it is handled where every other win is
+        -- (`cell.encounter.breach` in the battle's onWin). Beating what came up the stair is beating
+        -- the Crown, wherever it was met.
+        if Descent.isBreached(run) then
+            local standing = Calendar.generalsStanding(game.player)
+            game.activePanel = Choice.new({
+                title = "The Stair",
+                prompt = "The way up is full of them. " ..
+                    (standing > 0
+                        and ("The Hollow Crown has come up to meet the company, and " .. standing ..
+                             (standing == 1 and " general still stands beside it."
+                                            or " generals still stand beside it."))
+                        or "The Hollow Crown has come up to meet the company, and it comes alone.") ..
+                    "\nThere is no climbing out of this one. Every floor below still prunes: the count " ..
+                    "goes down by going down.",
+                options = {
+                    {
+                        label = "Cut your way out",
+                        desc = "Fight what is on the stair. Everything the company is carrying is at " ..
+                            "stake, exactly as it would be against anything else down here.",
+                        accent = { 0.86, 0.36, 0.30 },
+                        cb = function()
+                            game.activePanel = nil
+                            -- The tile stops being a way up for exactly as long as the fight lasts.
+                            -- Restored in onWin before the floor is put away, so a board snapshotted
+                            -- with a spent breach on it does not come back as a fight nobody can win.
+                            cell.wasAscent = cell.encounter
+                            cell.encounter = {
+                                kind = "elite",
+                                name = "The Breach",
+                                breach = true,
+                                composition = Descent.breachComposition(
+                                    game.player, Descent.floorLevel(run)),
+                            }
+                            game:openEncounter(cell)
+                        end,
+                    },
+                    {
+                        label = "Stay down",
+                        desc = "The floor is not finished with, and neither is the one below it.",
+                        accent = { 0.83, 0.73, 0.45 },
+                        cb = function() game.activePanel = nil end,
+                    },
+                },
+                onClose = function() game.activePanel = nil end,
+            })
+            return
+        end
+
         game.activePanel = Choice.new({
             title = "The Way Up",
             -- WHAT THE WAY UP COSTS, said where the decision is made, as a TRANSITION rather than an
@@ -3263,6 +3451,31 @@ function game.drawHud()
         love.graphics.setFont(hudFont)
         love.graphics.setColor(0.72, 0.72, 0.66)
         love.graphics.printf(line, 0, total > 0 and 72 or 52, Scale.WIDTH, "center")
+    else
+        -- ...AND THE SAME LINE FOR A PIECE OF POSTED WORK, which is where the FIRST-CLEAR BONUS is told.
+        --
+        -- An errand pays a purse the first time it is cleared and losing the fight spends that purse for
+        -- good (models/errand.lua's Errand.fail), so it is a figure the player weighs BEFORE committing --
+        -- exactly the thing this readout was added for, and exactly the thing that cannot go on the
+        -- marker: at a 32px tile a mark is under two pixels across, which is the lesson the muster pips
+        -- already paid for. So the bonus is named here, in words, at the moment of deciding, and once it
+        -- is spent the clause is simply absent -- every errand carries one, so its absence is the mark.
+        --
+        -- The NUMBER rather than "bonus rewards", because a figure is what a decision is made against: 80
+        -- gold is worth walking into a fight under-strength for and a word is not.
+        local work = game.map:hoveredWork()
+        local def = work and Quest.defs[work.encounter.questId]
+        if def then
+            local line = work.encounter.name or def.name or "Somebody's work"
+            if (def.rewardGold or 0) > 0 and not Errand.failedOnce(game.player, work.encounter.questId) then
+                line = line .. "  -  first clear pays " .. def.rewardGold .. " gold"
+            end
+            local pays = game:payoutPhrase(work.encounter)
+            if pays then line = line .. "  -  leaves " .. pays end
+            love.graphics.setFont(hudFont)
+            love.graphics.setColor(0.72, 0.72, 0.66)
+            love.graphics.printf(line, 0, total > 0 and 72 or 52, Scale.WIDTH, "center")
+        end
     end
 
     love.graphics.setFont(hudFont)

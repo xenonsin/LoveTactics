@@ -883,9 +883,8 @@ return {
             -- (models/experience.lua), resolved at the end of every battle -- so by the time the
             -- objective pays out, the levelling has happened and been announced where it was earned.
             --
-            -- What the panel reads instead is the calendar and the standing, which is why both are
-            -- asserted here: they are what replaced the prestige bar.
-            local Calendar = require("models.calendar")
+            -- What the panel reads instead is the standing, which is what is asserted here: it is the
+            -- last of three things to have replaced the prestige bar and the only one still standing.
             local p = playerAt(1)
             local quest = Quest.get("quest_colosseum_slot_01")
             assert(quest, "arena_debut should be available on the first day")
@@ -895,8 +894,8 @@ return {
             assert(reward.advancement == nil,
                 "a quest hands out no levels -- they were earned in the fight and reported there")
             assert(reward.prestige == nil, "and prestige is gone entirely, not merely unused")
-            assert(reward.day == Calendar.day(p) and reward.days == Calendar.DAYS,
-                "the panel needs which day of how many this was")
+            assert(reward.days == nil,
+                "nor a campaign length: there is no deadline to be a fraction of")
             assert(reward.standing == reward.standingBefore + 1,
                 "finishing one quest advances standing by exactly one")
             assert(reward.recruited and #p.roster == fought + 1,
@@ -974,19 +973,17 @@ return {
     {
         -- A quest that levels nobody is the ORDINARY case, and always was -- so the reward table has to
         -- carry something that moved, or half of all quests report nothing at all. That used to be a
-        -- prestige step filling a bar. Under the calendar it is the day: an expedition always spends
-        -- one, whatever it found, which makes it the one reading that can never come back empty.
+        -- prestige step filling a bar, then the day filling the same bar. Neither survives: what is left
+        -- is STANDING, which moves by exactly one on every quest that finishes and is what the town
+        -- reads anyway.
         name = "Quest.complete always reports something that moved, even when nobody levels",
         fn = function()
-            local Calendar = require("models.calendar")
             local p = playerAt(1)
             local quest = Quest.get("quest_colosseum_slot_01")
             assert(quest, "the fixture quest should be available")
 
             local reward = Quest.complete(p, quest)
 
-            assert(reward.day and reward.days, "the panel is told which day of how many this was")
-            assert(reward.day >= 1 and reward.day <= reward.days, "and it is a day on the calendar")
             assert(reward.standing == reward.standingBefore + 1,
                 "standing moved by one, which is what the town reads")
             assert(#(reward.advancement or {}) == 0,

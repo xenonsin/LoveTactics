@@ -139,7 +139,7 @@ Two one-way marks, and they are deliberately not one:
 | Low | 1–5 | green | — | unchanged |
 | Climbing | 6–10 | yellow | — | the lamps begin to go out |
 | Unpruned | 11–14 | orange | **Breach imminent** | darker still |
-| — | 15 | red | **Breach imminent** | darkest |
+| — | 15 | red | **It is on the stair** | darkest |
 
 **The row is a ladder, coloured per mark rather than per reading.** Mark *i* wears the colour of the band
 a count of *i* falls into, so the meter has a fixed geography a player can learn: you can see the orange
@@ -162,9 +162,11 @@ carries a sentence has no way to raise its voice when it needs to. So the bottom
 alone and the warning is the only text this readout ever draws — appearing two thirds of the way up,
 where the number stops being bookkeeping, so that **its arrival is the signal**.
 
-The top two share the one string rather than escalating to a second. "Breach imminent" is as true at the
-ceiling as one below it, and what a full tally ought to say differently is the ending firing, which is
-not built — a second string invented now would be a promise to keep later.
+The top two **used to** share one string, on the argument that "Breach imminent" is as true at the ceiling
+as one below it and that what a full tally ought to say differently is the ending firing — which was not
+built, and a second string invented early is a promise to keep later. It is built (see **The breach**
+below), so the promise is kept: the ceiling names the event and the band under it goes on warning, which
+is the ladder doing its job. The orange band is the last morning on which the stair is still a way home.
 
 The row of marks sits at the same y whether or not the warning is above it. A meter that slid up when
 its text went away would be a readout that changes place, and the player would be re-finding it every
@@ -179,16 +181,49 @@ painted plaza (`CountMeter.CITY_DIM`), which is the cheapest true version of "th
 was" and needs no per-building state; boarded windows and a thinner queue at the markets are the same
 idea done properly, and they are art rather than code.
 
-## What is not built
+## The breach
 
-**What happens at the maximum.** The design is that the stair stops being an exit: take it and what is
-down there comes up with you, with every general still unsealed beside it — `Calendar.generalsStanding`
-already sizes that fight and now counts the descent's own seals as well as completed quests, so the
-number is honest. But the ending itself is not wired, which is why the top band still reads **Breach
-imminent** rather than announcing one: a readout saying *"it is coming up the stair"* over a stair that
-politely goes to town would be the game making a claim it does not keep. When the ending lands, the top
-band earns a string of its own, and that is the point at which it should stop sharing one with the band
-below it.
+**At the maximum the stair stops being an exit.** Take it and what is down there comes up with you, with
+every general still unsealed beside it. `Descent.isBreached` is the one question that asks, and
+`states/game.lua`'s ascent branch is where it is answered.
+
+**It is the same tile and the same card.** The player walks back to the way up they have always walked
+back to and presses it the way they always have; what changed is the answer. A screen of its own would
+announce the breach before the tile did, and a marker on the map would let it be avoided — the whole
+point is that the way out is what filled up.
+
+**Who comes up** is `Descent.breachComposition`: the Hollow Crown, one general per unsealed circle, and a
+horde of champions behind them that thickens with depth. Sized by what the player did, through the same
+reading the retired day-forty finale was sized by (`Calendar.generalsStanding`) — seven standing is a
+wall, none standing is a duel, and the only thing that shortens the list is having gone down and sealed
+circles. The named bodies are listed first because `Arena.clampComposition` keeps one of every distinct id
+ahead of repeated filler and yields outright when the distinct cast exceeds the ceiling: the generals
+cannot be trimmed off by an arena cap, and the champions behind them are exactly what a cap is for.
+
+**Winning it is winning the game.** It is the Crown, met three floors up in a corridor rather than on its
+own ground, so it ends where the bottom ends — `Player.finishCampaign`, the run cleared, the credits with
+New Game+ offered. Two roads, one ending.
+
+**Losing it is a wipe**, with no special case at all: the company wakes at the Gate with the run intact,
+the haul on the floor as a guarded pack, and the tally still full. That is what makes the breach a state
+to fight out of rather than a game over — and the way out is down. Every new floor prunes a mark and every
+circle sealed prunes two, so a company that walked itself into the ceiling can always walk itself back
+under it. `tests/breach_spec.lua` pins that, along with the one thing the failure route could silently
+skip: the way-up tile is borrowed for the length of the fight, and **both** exits hand it back, because
+the losing one is the one that snapshots the floor into the company's map book.
+
+### This is what replaced the deadline
+
+The campaign used to end on a date. Forty days, bought one expedition at a time off a Quest Board, with
+the demon lord landing on the fortieth and every unfelled general standing beside him. The board was
+retired and the descent became the campaign; a clock that counted expeditions had nothing left to count,
+and `models/calendar.lua` says what the day is now (a real unit — nights pass, wounds mend by them — with
+no ceiling on it).
+
+The ending it was pointing at did not need the date. This is the same fight, reached by what the company
+did instead of by what the calendar said, which is also the harder thing to arrive at by accident.
+
+## What is not built
 
 **Fog decay**, held in reserve: cleared stops stay cleared, but fog closes over ground the company had not
 reached while it was away. It prices the trip in the trip, which is what the ascent tile always intended.

@@ -165,17 +165,78 @@ return {
     {
         -- The way out is the X in the corner, Esc and B -- the same exit every panel in the game keeps.
         -- A "Not tonight" row was the door drawn twice, and this is what stops it coming back.
-        name = "the card offers the rooms and nothing else, and still lets the player leave",
+        name = "the card offers the rooms and the beds and nothing else, and still lets the player leave",
         fn = function()
             stubFonts(function()
                 local closed = false
                 local Inn = require("ui.panels.inn")
                 local panel = Inn.new({ player = company(3, 2), vendor = INN,
                     onClose = function() closed = true end })
-                assert(#panel.options == 1, "the Inn's card carries a row that is not the rooms")
+                -- The rooms, and one bed per broken body. Anything past that is a row this counter does
+                -- not sell -- which is what the decline row was.
+                assert(#panel.options == 3, "the Inn's card carries a row that is not the rooms or a bed")
 
                 panel:close()
                 assert(closed, "the only way out of the Inn does not open")
+            end)
+        end,
+    },
+    {
+        -- THE BEDS ARE BOUGHT HERE, not at the Gate. They were a drop target on the departure row and
+        -- nowhere else, so the counter that sells the night sold no beds and the screen that asks who
+        -- goes down answered two questions.
+        name = "a bed is offered per broken body, and taking one lodges them for coin",
+        fn = function()
+            stubFonts(function()
+                local p = company(3, 2)
+                local first = p.roster[1]
+                local panel = openInn(p)
+
+                local bed = panel.options[2]
+                assert(bed and bed.label:find(first.name, 1, true),
+                    "the first bed is not named for the first broken body")
+                assert(bed.label:find(tostring(Gate.lodgePrice(p, first.id)), 1, true),
+                    "a bed does not carry its price")
+
+                local purse = p.gold
+                panel:choose(2)
+                assert(Gate.isLodged(p, first.id), "the bed did not put anybody in it")
+                assert(p.gold == purse - Gate.LODGE_PER_WOUND, "the stay was not paid for")
+
+                -- A BODY IN A BED IS NOT OFFERED A SECOND ONE, and is not in the company either.
+                for _, o in ipairs(panel.options) do
+                    assert(not (o.label:find("A bed for", 1, true) and o.label:find(first.name, 1, true)),
+                        "the counter is selling a room to somebody already in one")
+                end
+                assert(panel.prompt:find(first.name, 1, true), "the card does not say what just happened")
+                -- Re-opened, the standing prompt counts the ones in beds: a player who paid yesterday
+                -- has to be able to see what the company is waiting on.
+                assert(openInn(p).prompt:find("already abed"),
+                    "the card does not say who it is waiting on")
+
+                local Descent = require("models.descent")
+                for _, char in ipairs(Descent.party(nil, p)) do
+                    assert(char.id ~= first.id, "a lodged body walked back down the stair")
+                end
+            end)
+        end,
+    },
+    {
+        -- A purse that cannot cover a stay deadens that row alone: the rooms are a different price, and
+        -- a company short for a three-wound bed can still afford the night.
+        name = "a bed nobody can pay for is drawn and refused",
+        fn = function()
+            stubFonts(function()
+                local p = company(3, 1)
+                p.gold = Gate.LODGE_PER_WOUND - 1
+                local panel = openInn(p)
+                local bed = panel.options[2]
+                assert(bed.disabled, "a bed was offered to a company that cannot pay for it")
+                assert(bed.desc:find("cover"), "the dead bed does not say why")
+
+                panel:choose(2)
+                assert(not Gate.isLodged(p, p.roster[1].id), "nobody is put to bed on credit")
+                assert(p.gold == Gate.LODGE_PER_WOUND - 1, "a refused bed took the money anyway")
             end)
         end,
     },

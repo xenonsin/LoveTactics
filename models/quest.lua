@@ -533,7 +533,6 @@ function Quest.complete(player, quest, carried, opts)
     Player.save()
 
     local sponsorQuests = quest.sponsor and Quest.sponsorProgress(player, quest.sponsor)
-    local Calendar = require("models.calendar")
     return {
         gold = gold,
         received = received, -- item instances, for the reward panel to name
@@ -542,13 +541,10 @@ function Quest.complete(player, quest, carried, opts)
         -- The reward panel should announce this LOUDEST -- it is the only reward that changes who
         -- the player is fielding.
         recruited = recruited,
-        -- WHERE THE COMPANY STANDS, in the two units that replaced prestige. `day` is what was spent
-        -- to be here and `days` what there is, so the panel can say "the eleventh of forty" -- the
-        -- reading that used to be a prestige bar. `standing` is quests finished, which is what the
-        -- town reads; it moves by exactly one here, and the pair is kept rather than the delta because
-        -- a repeatable quest moves it by none.
-        day = Calendar.day(player),
-        days = Calendar.DAYS,
+        -- WHERE THE COMPANY STANDS. It used to report `day` and `days` too -- the eleventh of forty --
+        -- for a bar on the advancement panel; there is no fortieth day and no bar (models/calendar.lua).
+        -- `standing` is quests finished, which is what the town reads; it moves by exactly one here, and
+        -- the pair is kept rather than the delta because a repeatable quest moves it by none.
         standingBefore = standingBefore,
         standing = Player.questsCompleted(player),
         -- Level-ups are NOT reported here. They were earned and shown in the fighting

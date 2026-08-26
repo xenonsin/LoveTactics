@@ -742,9 +742,9 @@ function M.run(args)
         print(string.format("  EXPERIENCE A DAY -- %d boards fought, %d fights resolved, %d refused",
             BOARDS, fought, refused))
         print(string.format("    %-24s %8.1f", "xp a body a day", perDay))
-        print(string.format("    %-24s %8d", "over the campaign", math.floor(perDay * Calendar.DAYS)))
+        print(string.format("    %-24s %8d", "over the campaign", math.floor(perDay * Calendar.SPAN)))
         print(string.format("    %-24s %8d  %s", "which reaches level",
-            Experience.levelFor(perDay * Calendar.DAYS),
+            Experience.levelFor(perDay * Calendar.SPAN),
             "against a world ending at " .. Calendar.FINAL_DANGER))
         print(string.format("    %-24s %8d", "at Experience.STEP", Experience.STEP))
     end

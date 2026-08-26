@@ -15,8 +15,15 @@
 -- IT OWNS NO STATE. The party lives on the run (Descent.party / Descent.setParty) and this widget reads
 -- it every frame, so nothing here can disagree with what walks down the stair -- the same rule
 -- ui/pool_grid.lua keeps against the stash.
+--
+-- A TILE IS A FACE AND NOTHING ELSE, so hovering one opens the body's card (ui/body_tooltip.lua) --
+-- pools, what a wound has taken off the top, the stats with the gear folded in, and the kit by name.
+-- Drawn by :drawHover, which the host calls after everything else on the screen.
 
+local BodyTooltip = require("ui.body_tooltip") -- the hovered body's pools, stats and kit
 local Descent = require("models.descent")
+local InputMode = require("input_mode")
+local Scale = require("scale")
 local Theme = require("ui.theme")
 
 local Picker = {}
@@ -66,17 +73,14 @@ function Picker:slotRect(i)
     return self.x + (i - 1) * (TILE + SLOT_GAP), self.y, TILE, TILE
 end
 
--- THE INN IS THE FIFTH PLATE, set apart to the right. A body dropped here is left in a bed: it costs
--- coin at the door and a day per wound, and they are out of the company until they are mended.
+-- THE INN IS NOT ON THIS ROW ANY MORE. It was a fifth plate out to the right, and a body dropped on it
+-- was put to bed for coin -- which made the departure row answer two questions at once and read as five
+-- seats with a gap in it. A bed is bought at the Inn now (ui/panels/inn.lua), in the city, at the
+-- counter that already sells the night. This screen asks the one thing it is for: who goes down.
 --
--- On the same row as the expedition rather than somewhere else on the screen, because it is the same
--- gesture answering the same question -- where does this body go today -- and the two destinations
--- compete. Gapped wider than the plates are from each other so it does not read as a fifth seat.
-function Picker:innRect()
-    local x = self.x + Descent.PARTY_MAX * (TILE + SLOT_GAP) + SLOT_GAP * 2
-    return x, self.y, TILE, TILE
-end
-
+-- A LODGED BODY STILL SHOWS HERE, dimmed among the company, because they are on the roster and not
+-- available -- Descent.party filters them out of the expedition (models/gate.lua's Gate.isLodged), and a
+-- name that vanished from the company while it mended would look like somebody had left.
 function Picker:rosterTop()
     return self.y + TILE + 42
 end
@@ -107,6 +111,35 @@ function Picker:rosterAt(px, py)
     for i = 1, #self:roster() do
         if inRect(px, py, self:rosterRect(i)) then return i end
     end
+end
+
+-- WHO THE CARD IS BEING DRAWN FOR, and where to hang it: the body under the POINTER while the mouse is
+-- the live device, and the body under the keyboard/pad CURSOR otherwise. Two devices, one readout --
+-- the same rule ui/panels/party.lua keeps for its own hovers, and the reason a pad player is not asked
+-- to remember what a tile is carrying.
+--
+-- Anchored on the pointer for a mouse (where every tooltip in the game sits) and on the TILE's right
+-- edge for a cursor, since a selection has a place on the screen and the pointer may be parked
+-- anywhere -- or nowhere, on a pad.
+function Picker:hoveredBody()
+    if InputMode.isMouse() then
+        if not self.mx then return nil end
+        local slot = self:slotAt(self.mx, self.my)
+        if slot then return self:party()[slot], self.mx, self.my end
+        local ri = self:rosterAt(self.mx, self.my)
+        if ri then return self:roster()[ri], self.mx, self.my end
+        return nil
+    end
+
+    local char = self:charAtCursor()
+    if not char then return nil end
+    local x, y, w
+    if self.cursor <= Descent.PARTY_MAX then
+        x, y, w = self:slotRect(self.cursor)
+    else
+        x, y, w = self:rosterRect(self.cursor - Descent.PARTY_MAX)
+    end
+    return char, x + w, y
 end
 
 -- ---------------------------------------------------------------------------
@@ -196,6 +229,9 @@ function Picker:mousepressed(px, py, button)
 end
 
 function Picker:mousemoved(px, py)
+    -- Tracked whether or not anything is in hand: the pointer's resting place is what the hover card
+    -- is drawn for, and a screen with no drag in progress still has to know where the mouse is.
+    self.mx, self.my = px, py
     if not self.drag then return end
     self.drag.x, self.drag.y = px, py
     local dx, dy = px - self.drag.ox, py - self.drag.oy
@@ -210,26 +246,6 @@ function Picker:mousereleased(px, py, button)
     -- A PRESS THAT DID NOT TRAVEL IS A CLICK, whichever half of the screen it happened on.
     if not drag.moved then
         self:toggle(drag.char.id)
-        return true
-    end
-
-    -- DROPPED ON THE INN: a bed, for coin. Refused rather than half-done when the purse is short or
-    -- there is nothing to mend -- the body simply goes back where it was, and the message says why.
-    if inRect(px, py, self:innRect()) then
-        local Gate = require("models.gate")
-        local ok, why = Gate.lodge(self.player, drag.char.id)
-        if ok then
-            -- A body cannot be in a bed and on the stair at once, so leaving the Inn is also leaving
-            -- the expedition. Done here rather than inside Gate.lodge: the model has no opinion about
-            -- who was going down, and Descent.party already filters the lodged out on the way past --
-            -- this only keeps the stored pick honest so it does not come back when they check out.
-            self:remove(drag.char.id)
-            if self.onChange then self.onChange() end
-        else
-            self.message = (why == "gold" and "Not enough gold for the bed.")
-                or (why == "unhurt" and "Nothing to mend.")
-                or "Already in a bed."
-        end
         return true
     end
 
@@ -367,36 +383,10 @@ function Picker:draw()
         end
     end
 
-    -- THE INN'S PLATE, and what is in it. Drawn as a stack rather than one bed: several bodies can be
-    -- lodged at once and the plate has to say how many, or a company would lose track of who it is
-    -- waiting on.
-    local Gate = require("models.gate")
-    local ix, iy, iw, ih = self:innRect()
-    local lodged = Gate.lodged(self.player)
-    Theme.set(Theme.slot)
-    love.graphics.rectangle("fill", ix, iy, iw, ih, Theme.R or 4, Theme.R or 4)
-    Theme.set(#lodged > 0 and Theme.accentWeapon or Theme.hairline)
-    love.graphics.rectangle("line", ix, iy, iw, ih, Theme.R or 4, Theme.R or 4)
-    if #lodged > 0 then
-        local first
-        for _, c in ipairs(self:roster()) do if c.id == lodged[1] then first = c end end
-        drawBody(first, ix, iy, iw, self.font, true)
-        love.graphics.setFont(self.font)
-        Theme.set(Theme.accentWeapon)
-        love.graphics.printf(#lodged > 1 and ("x" .. #lodged) or "", ix, iy + ih - 18, iw - 5, "right")
-    end
-
     love.graphics.setFont(self.smallFont)
     Theme.set(Theme.muted)
     local sx = self:slotRect(1)
     love.graphics.printf("The expedition", sx, self.y + TILE + 8, self.cols * (TILE + GAP), "left")
-    love.graphics.printf("The Inn", ix, self.y + TILE + 8, TILE + 40, "left")
-
-    -- Why a drop was refused, said where the drop happened rather than in a corner.
-    if self.message then
-        Theme.set(Theme.accentWeapon)
-        love.graphics.printf(self.message, sx, self.y - 20, 420, "left")
-    end
 
     -- THE COMPANY. Anybody already on a plate is drawn dimmed and still in place rather than removed
     -- from the list: a roster that reflowed as you picked would move the tile you were reaching for.
@@ -409,6 +399,15 @@ function Picker:draw()
         Theme.set((going or abed) and Theme.hairline or Theme.frame)
         love.graphics.rectangle("line", x, y, w, h, Theme.R or 4, Theme.R or 4)
         drawBody(char, x, y, w, self.font, going or abed)
+
+        -- WHY THIS ONE IS GREYED. A body in a bed is dimmed like a body already on a plate, and with the
+        -- Inn's plate gone off this row there is nothing else on the screen saying which of the two it
+        -- is -- so the tile says it. One word, in the corner the wound count does not use.
+        if abed then
+            love.graphics.setFont(self.smallFont)
+            Theme.set(Theme.accentWeapon)
+            love.graphics.printf("abed", x + 5, y + h - 15, w, "left")
+        end
 
         -- A wound is the one fact that changes who you send, so it is on the tile rather than a hover.
         local wounds = Wound.count(self.player, char.id)
@@ -428,6 +427,22 @@ function Picker:draw()
     if self.drag and self.drag.moved then
         drawBody(self.drag.char, self.drag.x - TILE / 2, self.drag.y - TILE / 2, TILE, self.font, false)
     end
+end
+
+-- WHAT THIS BODY IS WORTH, under the cursor (ui/body_tooltip.lua). The tiles say who; a company picked
+-- four at a time is a decision about pools, wounds and kit, and without this the player answers it from
+-- memory or from a trip to the Armory and back.
+--
+-- A SEPARATE CALL rather than the tail of :draw, because a full card -- three pools, six stats and nine
+-- items -- is most of the screen tall, and everything the host draws after the company would be drawn
+-- over the top of it. The host calls this last (states/gate.lua), under its own modals.
+--
+-- NOT WHILE SOMETHING IS IN HAND: a card that followed a dragged body would ride over the plates being
+-- aimed at, and the question during a drag is where they land, not what they carry.
+function Picker:drawHover()
+    if self.drag and self.drag.moved then return end
+    local char, ax, ay = self:hoveredBody()
+    if char then BodyTooltip.draw(self.player, char, ax, ay, Scale.WIDTH) end
 end
 
 return Picker

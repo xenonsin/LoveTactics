@@ -1,13 +1,15 @@
--- THE CALENDAR (models/calendar.lua): how long there is, what spends it, and what the world does with
--- the number. The foundation of the campaign re-premise -- see the module header for the argument, and
--- docs/progression.md for what it replaced.
+-- THE CALENDAR (models/calendar.lua): the day, what moves it, and what the world does with the number.
 --
--- These cases pin the CONTRACT rather than the tuning. Calendar.DAYS and Calendar.FINAL_DANGER are
--- meant to be moved; the properties below have to survive the move, so nothing here asserts either
--- constant's value directly.
+-- IT USED TO PIN A DEADLINE -- forty days, a last one, and a state of being past it. The Quest Board
+-- those days were bought off is retired and the deadline went with it: what presses on a company now is
+-- the count (models/descent.lua, docs/the-count.md), which is a price on a decision rather than a
+-- schedule. So the cases below pin the two things that survived -- an uncapped day, and a danger ramp
+-- that is a pure function of it -- plus the one that arrived: the day no longer running out.
+--
+-- These pin the CONTRACT rather than the tuning. Calendar.SPAN and Calendar.FINAL_DANGER are meant to
+-- be moved; nothing here asserts either constant's value directly.
 
 local Calendar = require("models.calendar")
-local Quest = require("models.quest")
 local Save = require("models.save")
 local Character = require("models.character")
 
@@ -15,13 +17,10 @@ local function fresh() return { day = 1, completedQuests = {} } end
 
 return {
     {
-        name = "a fresh save stands on the first day with every expedition still to spend",
+        name = "a fresh save stands on the first morning",
         fn = function()
             local p = fresh()
             assert(Calendar.day(p) == 1, "the first morning is day 1, not day 0")
-            assert(Calendar.remaining(p) == Calendar.DAYS,
-                "day one has every day left, got " .. Calendar.remaining(p))
-            assert(not Calendar.isFinalDay(p) and not Calendar.isOver(p))
         end,
     },
     {
@@ -35,40 +34,43 @@ return {
         end,
     },
     {
-        name = "spending walks the calendar to the deadline and then stops",
+        name = "the day does not run out, and nothing hardens for being rested through",
         fn = function()
+            -- THE CASE THAT REPLACED THE DEADLINE. `spend` used to refuse a day past the fortieth, and
+            -- the Inn refused a night on the same test. Nights are unbounded now: a beaten company can
+            -- buy as many as it can pay for, which is the whole reason the counter exists (a company too
+            -- hurt to descend had no other way to reach a morning).
             local p = fresh()
-            for _ = 1, Calendar.DAYS - 1 do Calendar.spend(p) end
-            assert(Calendar.isFinalDay(p), "the last expedition is still to be taken on the final day")
-            assert(not Calendar.isOver(p), "the final day is a day, not the end of one")
-            assert(Calendar.remaining(p) == 1, "one expedition left, got " .. Calendar.remaining(p))
+            for _ = 1, Calendar.SPAN * 3 do Calendar.spend(p) end
+            assert(Calendar.day(p) == Calendar.SPAN * 3 + 1,
+                "every night passes, got day " .. Calendar.day(p))
 
-            Calendar.spend(p)
-            assert(Calendar.isOver(p), "past the last day the deadline has passed")
-            assert(Calendar.remaining(p) == 0)
-
-            -- The one thing spend refuses: a day that does not exist. Overrunning would put the
-            -- danger curve past its own endpoint.
-            local past = Calendar.day(p)
-            Calendar.spend(p); Calendar.spend(p)
-            assert(Calendar.day(p) == past, "the calendar does not run past the deadline")
+            -- ...and the world is no worse for it. The ramp holds at its endpoint rather than climbing,
+            -- so resting is not a soft deadline wearing a different name.
+            assert(Calendar.dangerLevel(Calendar.day(p)) == Calendar.dangerLevel(Calendar.SPAN),
+                "past the top of the axis the world holds where it is")
         end,
     },
     {
-        name = "the world hardens on the calendar, monotonically, and lands where it is aimed",
+        name = "spending with no player is a no-op rather than an error",
+        fn = function()
+            assert(Calendar.spend(nil) == 1, "there is no clock on nobody")
+        end,
+    },
+    {
+        name = "the world hardens along the axis, monotonically, and lands where it is aimed",
         fn = function()
             local last = 0
-            for d = 1, Calendar.DAYS do
+            for d = 1, Calendar.SPAN do
                 local lv = Calendar.dangerLevel(d)
                 assert(lv >= last, string.format("danger fell from %d to %d on day %d", last, lv, d))
                 last = lv
             end
             assert(Calendar.dangerLevel(1) == 1, "the first morning is the gentlest")
-            assert(Calendar.dangerLevel(Calendar.DAYS) == Calendar.FINAL_DANGER,
-                "the last day fights at the level it is anchored on")
-            -- THE PROPERTY THAT MAKES THE DEADLINE BITE. Danger is a function of the day alone -- it
-            -- reads nothing about the company -- so squandering a week is a week the world pulled
-            -- ahead. Scaling to the party would refund exactly what the clock is charging for.
+            assert(Calendar.dangerLevel(Calendar.SPAN) == Calendar.FINAL_DANGER,
+                "the top of the axis fights at the level it is anchored on")
+            -- Danger reads the day and nothing about the company: a descent that wants to harden on
+            -- depth passes its own number (Descent.dangerLevel) rather than bending this one.
             assert(Calendar.dangerLevel(20) == Calendar.dangerLevel(20),
                 "danger is a pure function of the day")
         end,
@@ -76,14 +78,14 @@ return {
     {
         name = "the danger curve survives its own constants being retuned",
         fn = function()
-            local days, final = Calendar.DAYS, Calendar.FINAL_DANGER
-            Calendar.DAYS, Calendar.FINAL_DANGER = 12, 30
+            local span, final = Calendar.SPAN, Calendar.FINAL_DANGER
+            Calendar.SPAN, Calendar.FINAL_DANGER = 12, 30
             local ok, err = pcall(function()
                 assert(Calendar.dangerLevel(1) == 1)
                 assert(Calendar.dangerLevel(12) == 30)
                 assert(Calendar.dangerLevel(99) == 30, "past the end it holds rather than climbing")
             end)
-            Calendar.DAYS, Calendar.FINAL_DANGER = days, final
+            Calendar.SPAN, Calendar.FINAL_DANGER = span, final
             assert(ok, tostring(err))
         end,
     },
@@ -99,7 +101,7 @@ return {
             p.completedQuests.quest_a = true
             p.completedQuests.quest_b = true
             assert(Player.questsCompleted(p) == 2, "two finished, got " .. Player.questsCompleted(p))
-            -- Spending days must not advance standing: a week of foraging finishes no quests.
+            -- Spending days must not advance standing: a week of resting finishes no quests.
             Calendar.spend(p); Calendar.spend(p)
             assert(Player.questsCompleted(p) == 2, "the calendar does not finish quests for you")
         end,
@@ -145,22 +147,19 @@ return {
     },
 
     {
-        name = "New Game+ gives the time back, because a deadline is not a possession",
+        name = "New Game+ opens in the morning rather than on the last campaign's bookkeeping",
         fn = function()
             local Player = require("models.player")
             local p = { roster = {}, stash = {}, gold = 0, completedQuests = { a = true },
-                        day = Calendar.DAYS + 1, meal = "meal_hunters_stew" }
-            assert(Calendar.isOver(p), "the fixture is a finished campaign")
+                        day = 214, meal = "meal_hunters_stew" }
 
             Player.finishCampaign(p)
             Player.newGamePlus(p)
 
-            -- WITHOUT THIS, NEW GAME+ IS A CAMPAIGN ZERO DAYS LONG: the clock is spent, the deadline
-            -- has already passed, and the player arrives at a hub offering one expedition -- the
-            -- finale -- against a board full of quests they can never reach.
-            assert(Calendar.day(p) == 1, "the calendar starts over")
-            assert(Calendar.remaining(p) == Calendar.DAYS, "with every expedition back on the table")
-            assert(not Calendar.isOver(p) and not Calendar.isFinalDay(p))
+            -- Nothing breaks if the number carries -- there is no deadline to be past any more -- but a
+            -- second campaign reporting the first one's day count is bookkeeping leaking into a fresh
+            -- start, and the day is still what an encounter's `minDay` reads.
+            assert(Calendar.day(p) == 1, "the clock starts over")
 
             -- A supper is bought for one expedition; the last run's is not owed to the first day of
             -- the next.

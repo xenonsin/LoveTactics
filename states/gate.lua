@@ -112,20 +112,22 @@ function gate:build()
     --
     -- Days advance on walking into the stair, so a company too hurt to send has no way to reach the
     -- morning it is waiting for -- which is a softlock wearing the clothes of a hard decision. This is
-    -- the way out, and it is deliberately the same price as an expedition: one day, the campaign's
-    -- scarcest thing (Calendar.DAYS is forty).
+    -- the way out, and what it costs is what any night costs: the bodies in the beds are out of the
+    -- company for one more of them.
+    --
+    -- THROUGH Gate.night, not the three calls spelled out again. It used to spend the day, rest the
+    -- wounds and discharge the mended inline -- a fourth copy of the beat, written before there was one
+    -- definition of a night (models/gate.lua). Player.restore stays here rather than moving in there:
+    -- waiting at the Gate is standing in a town, and Gate.rest tops the company up for the same reason.
     --
     -- Hidden unless somebody is actually IN A BED, rather than merely hurt. Waiting mends nobody who is
     -- not lodged, so offering it to a company with three wounded and none of them at the Inn is a button
     -- that spends a day for nothing. A control draws where it can be used.
-    local Wound = require("models.wound")
     if #Gate.lodged(gate.player) > 0 then
         items[#items + 1] = {
             label = "Wait a day",
             action = function()
-                require("models.calendar").spend(gate.player)
-                Wound.rest(gate.player)
-                Gate.dischargeMended(gate.player)
+                Gate.night(gate.player)
                 Player.restore(gate.player)
                 Player.save()
                 gate:build()
@@ -234,6 +236,12 @@ function gate.draw()
     end
 
     if gate.menu then gate.menu:draw() end
+
+    -- The hovered body's card, LAST of the screen's own layers. A full one is most of the screen tall
+    -- (ui/body_tooltip.lua), so drawn with the company it would be clipped by the two buttons under it;
+    -- and it is skipped entirely while a panel is up, since a modal owns the screen it opened over.
+    if gate.picker and not gate.panel then gate.picker:drawHover() end
+
     if gate.panel then gate.panel:draw() end
 
     -- The numbers behind the stair, in a development build only (ui/seed_readout.lua). Here as well as

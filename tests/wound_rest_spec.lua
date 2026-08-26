@@ -142,7 +142,7 @@ return {
     {
         -- THE CLOCK IS THE PRICE, pinned against the calendar rather than in the abstract: three wounds
         -- is three of forty days, which is the number the design is arguing about.
-        name = "a wound costs a day of a forty-day campaign",
+        name = "a wound costs a day per bone, and the body is out of the company for each",
         fn = function()
             local p = company()
             local before = Calendar.day(p)
@@ -158,9 +158,12 @@ return {
             end
             assert(days == 3, "three wounds cost three days, got " .. days)
             assert(Calendar.day(p) == before + 3, "and the clock moved by three")
-            assert(Calendar.DAYS == 40,
-                "the campaign is forty days, so that is 7.5% of it -- if this number moves, the "
-                    .. "wound cost moved with it")
+            -- IT USED TO ASSERT THE CAMPAIGN WAS FORTY DAYS, so that three of them read as 7.5% of it.
+            -- There is no campaign length to be a share of (models/calendar.lua) -- what a bed costs is
+            -- three mornings on which this body is not in the company, which is what the loop above
+            -- measures and the one thing the retirement of the deadline did not change.
+            assert(Gate.isLodged(p, "character_rowan"),
+                "they are in the bed for every one of those mornings, and out of the company for them")
         end,
     },
     {

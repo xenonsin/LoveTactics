@@ -598,6 +598,18 @@ local function buildBlocks(item, actor, innerW, out, owner)
         blocks[#blocks + 1] = { kind = "stat", label = "Resist", value = table.concat(parts, ", ") }
     end
 
+    -- A standing rule's own magnitude (Item.traitRows), resolved to this copy's upgrade level. The
+    -- tooltip draws no trait section -- the description above speaks for the passive -- so a charm whose
+    -- whole function is a rule has nowhere else to print the figure the rule turns on, and the
+    -- description cannot carry it: the bench raises it, so it is a different number at every rung.
+    local traitRows = Item.traitRows(item)
+    if #traitRows > 0 then
+        blocks[#blocks + 1] = { kind = "sep" }
+        for _, row in ipairs(traitRows) do
+            blocks[#blocks + 1] = { kind = "stat", label = row.label, value = row.value }
+        end
+    end
+
     -- A guard charm reserves a share of the bearer's health for the whole battle, and the armor above is
     -- what that locked health buys. Named as a cost (WARN) with the lock spelled out, because a reserve
     -- is not a wound you heal off -- Combat.unreservedMax lowers the ceiling, so the health cannot come

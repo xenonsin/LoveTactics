@@ -50,7 +50,7 @@ local function floorCtx(floor)
     local run = { floor = floor, seed = 4242 }
     local quest = Descent.floorQuest(run, Player.new())
     return {
-        day = math.max(1, math.floor(floor / Descent.FLOORS * Calendar.DAYS)),
+        day = math.max(1, math.floor(floor / Descent.FLOORS * Calendar.SPAN)),
         enemyLevel = quest.dangerLevel,
         quest = quest,
         floorLevel = quest.floorLevel,
@@ -174,7 +174,7 @@ return {
             -- The first stair by name, because that is the floor the whole change was reported from and
             -- a derived sweep could drift off it without anyone noticing.
             assert(Descent.dangerLevel({ floor = 1 })
-                > Calendar.dangerLevel(math.max(1, math.floor(Calendar.DAYS / Descent.FLOORS))),
+                > Calendar.dangerLevel(math.max(1, math.floor(Calendar.SPAN / Descent.FLOORS))),
                 "floor 1 is back on the day's level, which is where stock spawned blueprint-exact")
         end,
     },

@@ -24,7 +24,7 @@ end
 
 -- The containers models/item.lua's eachMagnitude walks, so the sweep below sees every tuned row.
 local CONTAINERS = { "activeAbility", "bonus", "resist", "maxBonus", "unarmedBonus", "waitBehavior",
-                     "incense", "aura" }
+                     "incense", "aura", "traitParams" }
 
 -- The magnitudes counted in WHOLE STEPS, where a point per level is not a stronger item but a broken
 -- one: a ward that swallows eleven blows, a boot granting eleven tiles of movement, a spell reaching
@@ -43,6 +43,11 @@ local STEP_CURVES = {
     utility_quickened_sigil = { ["aura.speedBonus"] = true },
     utility_shadow_fist = { ["unarmedBonus.range"] = true },
     utility_swift_fist = { ["unarmedBonus.hits"] = true },
+    -- Battle Casting's refund is paid per BODY a blow lands on, so a cleave collects it three times in
+    -- one swing: ramp(3, 13) would hand an axe 39 mana a turn and make the sword the spell budget
+    -- rather than the reason for one. Its Spell Discount, on the same item, is an ordinary ramp -- the
+    -- exception is bought for the one magnitude that counts in whole steps, not for the item.
+    utility_battle_casting = { ["traitParams.strikeRefund"] = true },
 }
 
 -- Every per-level row of every item, as (id, path, values). A footprint's shape/length/width/radius is

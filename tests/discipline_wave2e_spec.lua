@@ -219,8 +219,46 @@ return {
 
             Combat.teleportUnit(combat, f, 3, 4) -- into the battlemage's face
             Combat.spendCost(combat, h, { stat = "mana", amount = 20 })
-            assert(h.char.stats.mana.current > 60,
-                "and costs less where a mage would least like to be standing")
+            -- The exact figure, not merely "cheaper": 30% off 20 is 14, and the charm's tooltip prints
+            -- that 30 as its Spell Discount row. A case asserting only `> 60` passed just as happily
+            -- while the number the player is shown and the number the pool loses were different facts.
+            assert(h.char.stats.mana.current == 66,
+                "and the discount is the percentage the charm prints: 20 paid as 14")
+        end,
+    },
+
+    {
+        name = "and the bench buys a deeper discount -- the charm's one growth axis",
+        fn = function()
+            local Character = require("models.character")
+            local Item = require("models.item")
+
+            -- The charm carries no ability, no bonus and no aura: its `traitParams.meleeDiscount` curve
+            -- is the whole of what a level raises, so this is also the case that keeps the forge willing
+            -- to take it in at all.
+            assert(Item.isUpgradable(Item.instantiate("utility_battle_casting")),
+                "the charm has a magnitude for a level to move")
+
+            local map = Fixture.new(12, 12)
+            local hero = Fixture.unit("character_mage", 3, 3, { isolate = "bare" })
+            Character.addItem(hero.char, Item.instantiate("utility_battle_casting", 1, Item.MAX_LEVEL))
+            Character.addItem(hero.char, Item.instantiate("weapon_iron_sword"))
+            local foe = Fixture.unit("character_bandit", 3, 4, { isolate = "bare" })
+            local combat = Fixture.combat(map, hero, foe)
+            local h, f = combat.units[1], combat.units[2]
+            h.char.stats.mana.max, h.char.stats.mana.current = 100, 100
+
+            -- 40% fully forged against the base 30: 20 paid as 12 rather than 14.
+            Combat.spendCost(combat, h, { stat = "mana", amount = 20 })
+            assert(h.char.stats.mana.current == 88,
+                "a fully forged charm takes 40% off, not the base 30")
+
+            -- ...and the steel that funds the sorcery is forged with it: 8 mana off a landed swing
+            -- where a base charm hands back 3. The refund climbs in whole steps rather than a point a
+            -- rung (tests/curve_spec.lua's STEP_CURVES) because it is paid per body a blow lands on.
+            assert(Fixture.strike(combat, h, f, "weapon_iron_sword"), "the swing lands")
+            assert(h.char.stats.mana.current == 96,
+                "a fully forged charm hands 8 mana back off a physical blow, not the base 3")
         end,
     },
 

@@ -564,7 +564,15 @@ local function finishBattle(result)
         actions[#actions + 1] = action("Continue", battle.onWin, spoils)
     else
         if battle.onRetry then actions[#actions + 1] = action("Try Again", battle.onRetry) end
-        if battle.onLoss then actions[#actions + 1] = action(battle.lossLabel or "Return to Hub", battle.onLoss) end
+        -- A BUTTON HAS TO NAME WHAT IT DOES, and a lost fight now has two exits behind one callback: a
+        -- company still standing falls back onto the floor with everything it was carrying, a company
+        -- with nobody left wakes at the Gate having dropped its pack. Same onLoss, two prices, so the
+        -- launcher supplies both labels and the board -- which is the only thing that knows which of them
+        -- just happened -- picks between them.
+        if battle.onLoss then
+            local label = (battle.routed and battle.routedLabel) or battle.lossLabel or "Return to Hub"
+            actions[#actions + 1] = action(label, battle.onLoss)
+        end
         -- A decided fight must always offer a way out, even if a launcher wired neither exit.
         if #actions == 0 then actions[#actions + 1] = action("Continue", nil) end
     end
@@ -595,7 +603,10 @@ local function finishBattle(result)
         -- What the overworld run was carrying, named on a defeat so the cost of the loss is on the panel
         -- that announces it rather than discovered later in the stash. Supplied by the launcher
         -- (states/game.lua) because only it knows what the expedition has picked up; nil everywhere else.
-        lost = result == "loss" and battle.lostHaul or nil,
+        -- ...and NOT on a rout, which is the half this line used to get wrong the moment a defeat stopped
+        -- always being a wipe. The haul is taken by the Gate branch alone; a company that falls back keeps
+        -- every find it made, so naming them here would be pricing a loss the player is not being charged.
+        lost = result == "loss" and not battle.routed and battle.lostHaul or nil,
         -- The log survives the fight; let the player read back how it went before leaving the panel.
         onReviewLog = openLogReview,
     })
@@ -636,7 +647,22 @@ local function lose()
     Combat.logEvent(battle.combat, "system", "Defeat.")
     -- Nobody is carried out of a lost fight, but everyone who fell in it is still hurt. Recorded on
     -- the same field the win writes, so the launcher reads one thing however the fight ended.
+    --
+    -- ...AND EVERYONE IT SPENT, which is the other half and the one only a defeat can produce. A fight
+    -- lost with the party still on its feet leaves nobody on the floor, so this field came back empty and
+    -- the meter never moved for it. Combat.spentParty adds whoever walked off the board under a third of
+    -- the pool they can still use. Appended rather than merged: Wound.inflict keys on character id and
+    -- dedupes there, so a body that is both fallen and spent is charged once.
     battle.fallen = Combat.fallenParty(battle.combat)
+    for _, char in ipairs(Combat.spentParty(battle.combat)) do
+        battle.fallen[#battle.fallen + 1] = char
+    end
+    -- A ROUT OR A WIPE? The launcher forks on it (states/game.lua's onLoss): a company with somebody left
+    -- standing walks back onto the overworld it came from, and only one with nobody left to send in wakes
+    -- at the Gate having dropped its pack. Stamped here because this is the last beat at which the board
+    -- still exists to be asked, and read off the LOCAL player's side rather than "party" so a duel that
+    -- ever reaches this line answers about the side this machine is holding.
+    battle.routed = not Combat.eliminated(battle.combat, battle.combat.playerSide or "party")
     -- The colour drains out of the world as the defeat panel closes over it -- a grey that says the run
     -- is lost more plainly than any banner. Not motion, so it plays even under reduced effects; cleared
     -- when the next battle enters or the player retries (see battle.enter). See ui/screen_fx.lua.
@@ -4527,6 +4553,10 @@ function battle.enter(self, opts)
     -- is a button that lies about where it goes. The launcher names it (states/game.lua); the default
     -- keeps every existing caller reading exactly as it did.
     battle.lossLabel = opts.lossLabel
+    -- ...and what the SAME exit is called when the company is still standing. One callback, two prices:
+    -- a rout falls back onto the floor keeping everything it was carrying, a wipe wakes at the Gate
+    -- having dropped its pack. finishBattle picks between them off `battle.routed`.
+    battle.routedLabel = opts.routedLabel
     battle.onRetry = opts.onRetry
     -- A phrase naming what the overworld run stands to lose here ("4 items, 210 gold"), shown on the
     -- defeat panel. Passed down rather than computed, since the fight knows nothing about the run.
@@ -4565,6 +4595,7 @@ function battle.enter(self, opts)
     battle.enemyLevel = opts.enemyLevel or require("models.calendar").dangerLevel(battle.day)
     battle.floorLevel = opts.floorLevel
     battle.fallen = nil                  -- who went down in THIS fight, for the launcher's wounds
+    battle.routed = nil                  -- ...and whether the loss left anybody standing (see lose)
     battle.summary = nil                 -- the victory/defeat overlay, once the fight is decided
     battle.overruled = nil               -- has the objective's `overrule` already fired (once a fight)
     battle.fadeOut = nil                 -- the overruled ending's fade, 0..1 while the lights go out

@@ -127,19 +127,20 @@ return {
         assert(not ok2 and why2 == "nobody", "a company of nobody takes no rooms")
         assert(Calendar.day(empty) == 1, "and spends no day doing it")
 
-        -- ...AND THERE IS NO NIGHT AFTER THE LAST DAY. Calendar.spend will not spend one that does not
-        -- exist, so without this refusal the counter would sell a night, take the coin, move no clock
-        -- and mend nobody -- a bed rentable forever on the wrong side of the deadline.
+        -- ...AND THERE WAS A THIRD REFUSAL, "over": forty days, and no night to sell past the last one.
+        -- The deadline is retired (models/calendar.lua) and this is what replaced that case -- a company
+        -- deep past where the fortieth day used to be can still buy a night, because the alternative was
+        -- a beaten company with no way to reach a morning at all.
         local late = company(2, 5000)
         hurt(late, late.roster[1], 1)
         assert(Gate.lodge(late, late.roster[1].id), "the bed is taken")
-        late.day = Calendar.DAYS + 1
-        assert(Calendar.isOver(late), "precondition: the deadline is behind them")
+        late.day = 400
         local before = late.gold
-        local ok3, why3 = Gate.rest(late)
-        assert(not ok3 and why3 == "over", "the night is refused: there are none left")
-        assert(late.gold == before, "and the purse is untouched")
-        assert(Wound.count(late, late.roster[1].id) == 1, "and the bone is still broken")
+        local ok3 = Gate.rest(late)
+        assert(ok3, "the night is sold, however many have passed")
+        assert(late.gold < before, "the purse pays for it")
+        assert(Calendar.day(late) == 401, "the clock moves")
+        assert(Wound.count(late, late.roster[1].id) == 0, "and the bone is set by morning")
     end },
 
     { name = "a night with nobody abed still costs the day it is sold for", fn = function()

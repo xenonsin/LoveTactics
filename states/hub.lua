@@ -39,24 +39,19 @@ local Scale = require("scale")
 local ScreenFx = require("ui.screen_fx")
 local Sound = require("models.sound")
 local Theme = require("ui.theme")
-local Calendar = require("models.calendar") -- the days-remaining line under the title
 local CountMeter = require("ui.count_meter") -- Iselle's tally, on the Rift's plate
 local Descent = require("models.descent")    -- ...and what it reads, plus the mark that reveals it
 
 local hub = {}
 
 local titleFont = Theme.display(28)
--- The days-remaining line. Theme.body rather than Theme.display: it is a standalone numeral, and the
--- display face is Alegreya with OLD-STYLE figures, so its digits sit at x-height and "3" hangs below
--- the baseline (see ui/theme.lua).
-local dayFont = Theme.body(16)
 
--- ISELLE'S TALLY, drawn on the Rift's own plate rather than under the title. The parked day counter
--- below sat centred in the header because expeditions were chosen from a board and the clock belonged
--- to the screen; this number belongs to one hole in the ground, so it rides the card that hole is drawn
--- on -- dead centre of the plaza, already the one card drawn larger, and exactly where the eye is when
--- the player is deciding whether to press it. Held at file scope so the arrival beat fires on a real
--- change rather than on every visit to the city (ui/count_meter.lua).
+-- ISELLE'S TALLY, drawn on the Rift's own plate rather than under the title. The day counter that used
+-- to sit centred in the header did so because expeditions were chosen from a board and the clock
+-- belonged to the screen; this number belongs to one hole in the ground, so it rides the card that hole
+-- is drawn on -- dead centre of the plaza, already the one card drawn larger, and exactly where the eye
+-- is when the player is deciding whether to press it. It is the only clock the city keeps now. Held at
+-- file scope so the arrival beat fires on a real change rather than on every visit (ui/count_meter.lua).
 local countMeter = CountMeter.new()
 
 local map           -- BuildingMap widget
@@ -638,35 +633,18 @@ function hub.draw()
     Theme.set(Theme.accentAmber)
     love.graphics.printf("The Hub", 0, 24, screenW, "center")
 
-    -- THE CLOCK, under the title. A cost the player cannot see is not a cost they can weigh, and the
-    -- day is now the scarcest thing they have -- every expedition spends one whether it goes well or
-    -- badly (models/calendar.lua), so it belongs on the screen where expeditions are chosen from.
+    -- NO CLOCK UNDER THE TITLE, AND THAT IS THE SECOND TIME THIS LINE HAS COME OFF THE SCREEN.
     --
-    -- Phrased as what is LEFT rather than as what has been used. "Day 12 of 40" is a progress bar and
-    -- reads as accomplishment; "28 days remain" is a deadline and reads as pressure, which is the
-    -- thing this number is for. The last week turns amber, and the final day says so in words.
+    -- It read "39 days remain", counting down to the fortieth expedition and the demon lord's landing.
+    -- Both of those were the Quest Board's -- forty days were forty grounds bought off it -- and the
+    -- board is retired. The deadline went with it (models/calendar.lua): the day is still a real unit,
+    -- it still passes at the stair and over the Inn's counter, and it still mends bones. What it no
+    -- longer is is a budget, so there is no balance to print.
     --
-    -- IT WAS PARKED BEHIND `if false` AND IT IS BACK, which is worth recording because the reasoning
-    -- that parked it was true of a game that no longer ships. The note said the forty days were the
-    -- Quest Board's deadline, that the board was deleted, and that "the one door out of the city goes
-    -- down a stair that spends no days" -- so a countdown here would be pressure from a clock nothing
-    -- reads.
-    --
-    -- The stair spends one. states/game.lua charges a day at the mouth of every expedition and has
-    -- since the descent became the campaign, so the clock was never idle; what was missing was anybody
-    -- telling the player. And the Inn sells a night over the counter now (models/gate.lua's Gate.rest),
-    -- which is the only way a wounded company mends -- so a day is a thing the player deliberately
-    -- SPENDS in this city, from a card on this screen, and a cost paid on a screen that does not show
-    -- the balance is a cost nobody can weigh.
-    local left = Calendar.remaining(hub.player)
-    local text
-    if Calendar.isOver(hub.player) then text = "He has come"
-    elseif left <= 1 then text = "The last day"
-    else text = left .. " days remain" end
-    love.graphics.setFont(dayFont)
-    Theme.set(left <= 7 and Theme.accentWeapon or Theme.muted)
-    love.graphics.printf(text, 0, 62, screenW, "center")
-
+    -- WHAT THE PLAYER READS INSTEAD IS ON THE RIFT'S OWN PLATE, a few hundred pixels below this, and it
+    -- is the better readout for the same reason it is the harder one to earn: the tally is a thing the
+    -- company did rather than a thing the world is doing to them. Two countdowns on one screen, both
+    -- claiming to be the end of the world, was the collision this deletion resolves.
     map:draw()
 
     -- ISELLE'S TALLY, over the Rift's plate. Drawn HERE rather than inside ui/building_map.lua so the

@@ -319,7 +319,15 @@ function Descent.objectiveReward(player, run, objSpec)
         if (player.completedQuests or {})[errandId] then return nil end
         local def = require("models.quest").defs[errandId]
         if not def then return nil end
-        out.gold = def.rewardGold or 0
+        -- THE PURSE IS THE FIRST-CLEAR BONUS, so it is named only while it is still on offer. A company
+        -- that has already lost this fight once has spent it (models/errand.lua's Errand.fail), and a
+        -- card promising it here would be the Beggar's Bowl again: a reward named on the victory screen
+        -- and handed over by nobody. The condition is READ FROM THE SAME FUNCTION the grant reads
+        -- (states/game.lua's errand payout), which is the only way two sides of a payout stay agreed.
+        out.gold = require("models.errand").failedOnce(player, errandId) and 0 or (def.rewardGold or 0)
+        -- The GOODS are not a bonus and are never withheld -- they are this slot's share of the line's
+        -- quest-only shelf stock (tests/obtainable_spec.lua), so a failure that took them would delete
+        -- an item from the run rather than charge for a loss.
         for _, itemId in ipairs(def.rewardItems or {}) do out.items[#out.items + 1] = itemId end
         return (out.gold > 0 or #out.items > 0) and out or nil
     end
@@ -2144,16 +2152,15 @@ Descent.COUNT_SEAL = 2
 -- happen -- two thirds of the way up -- so its arrival IS the signal. The player learns the marks first
 -- and the words only when it matters.
 --
--- THE TOP TWO SHARE IT rather than escalating to a second line. "Breach imminent" is as true at the
--- ceiling as it is one below it, and what a full tally ought to say differently is the ending firing,
--- which is not built (see COUNT_MAX). A second string invented now would be a promise to keep later.
+-- THE TOP TWO USED TO SHARE ONE STRING, and this is the note that said when they would stop. "Breach
+-- imminent" was as true at the ceiling as one below it, and what a full tally ought to say differently
+-- was the ending firing -- which was not built. A readout announcing "it is coming up the stair" over a
+-- stair that politely went to town would have been the game making a claim it does not keep, so the top
+-- band reported the state and promised nothing.
 --
--- THE TOP BAND SAYS THE STATE, NOT THE EVENT, AND THAT IS TEMPORARY. What is meant to happen at the top
--- is that the stair stops being an exit -- take it and what is down there comes up with you, with every
--- general still unsealed beside it. That is not built yet, so the line here reports where the tally
--- stands and promises nothing. A readout that said "It is coming up the stair" over a stair that
--- politely went to town would be the game making a claim it does not keep, which is worse than a flat
--- line. When the ending lands, this is the string that changes.
+-- IT IS BUILT (Descent.isBreached, and states/game.lua's ascent branch), so the promise is kept and the
+-- top band says the event. The one below it goes on warning, which is the whole ladder working: the
+-- orange band is the last morning on which the stair is still a way home.
 --
 -- SPACED TO THE READOUT'S GROUPS OF FIVE, not to arithmetic thirds. The marks are drawn in fives
 -- (ui/count_meter.lua) and each mark wears its own band's colour, so a boundary that falls inside a
@@ -2166,7 +2173,7 @@ Descent.COUNT_SEAL = 2
 -- drops is three bands nobody can reach and one that is the whole meter. tests/count_spec.lua walks
 -- every value from nought to the maximum against them.
 Descent.COUNT_BANDS = {
-    { at = 15, id = "up",       phrase = "Breach imminent" },
+    { at = 15, id = "up",       phrase = "It is on the stair" },
     { at = 11, id = "unpruned", phrase = "Breach imminent" },
     { at = 6,  id = "climbing" },
     { at = 0,  id = "low" },
@@ -2213,6 +2220,67 @@ end
 -- exact thing this design is built not to do.
 function Descent.climbOut(run)
     return Descent.countBy(run, 1)
+end
+
+-- ---------------------------------------------------------------------------
+-- The breach: what the tally is counting toward
+-- ---------------------------------------------------------------------------
+
+-- IS THE STAIR STILL AN EXIT? At the ceiling it is not, and this is the one question that asks.
+--
+-- THIS IS WHAT THE COUNT WAS ALWAYS FOR, and until now it was the one thing about it that was not built
+-- -- docs/the-count.md said so under "What is not built", and COUNT_BANDS' top band was left sharing a
+-- warning with the band below it precisely so the readout would not promise an event nothing delivered.
+-- It delivers now, so the top band has a line of its own.
+--
+-- IT IS ALSO WHAT REPLACED THE FORTIETH DAY. The campaign had a deadline once -- the demon lord landed
+-- on a date, and every general left unfelled stood beside him (models/calendar.lua) -- and that clock
+-- measured a Quest Board that no longer exists. This is the same ending arrived at the other way round:
+-- not a date, but a company that shuttled up and down until the floors it kept walking away from filled.
+--
+-- A COMPANY THAT PRESSES ON NEVER SEES IT. That is the design, not an oversight: one withdrawal a floor
+-- is cancelled by the stair's own payback and two are cancelled by the seals, so the ceiling is reached
+-- only by shuttling (docs/the-count.md measures all four play styles). Which also means this is never a
+-- softlock -- the way back down is always open, every new floor pays a mark off, and every circle sealed
+-- pays two. The company that meets the breach walked itself into it and can walk itself out.
+function Descent.isBreached(run)
+    return Descent.count(run) >= Descent.COUNT_MAX
+end
+
+-- WHO COMES UP THE STAIR. The Hollow Crown, and every general whose circle is still unsealed.
+--
+-- Iselle's own line is the spec (data/conversations/prologue/conversation_prologue_sponsor.lua): the
+-- deep floors go unpruned, the count climbs, and what is down there comes up and out into the country.
+-- What is down there is what is at the bottom, so the fight is the bottom's -- met on floor three in a
+-- corridor rather than on its own ground, which is the point.
+--
+-- SIZED BY WHAT THE PLAYER DID, through the same reading the retired finale was sized by
+-- (Calendar.generalsStanding): felling a general on her own floor seals her circle and takes her out of
+-- this list. Seven standing is a wall; none standing is a duel. Neither is arbitrary -- both are the
+-- campaign's own record of the run, and the only thing that shortens the list is having gone down.
+--
+-- NAMED BODIES FIRST, and that is load-bearing rather than tidy. Arena.clampComposition keeps one of
+-- every DISTINCT id ahead of any repeated filler and yields outright when the distinct cast alone
+-- exceeds the ceiling, so the generals cannot be trimmed off by an arena cap -- while the champions
+-- behind them are exactly what a cap is for. A breach that quietly dropped three of the seven would be
+-- a fight reporting a threat it did not field.
+--
+-- Returns a PLAIN LIST OF IDS rather than the composition function a descriptor carries, and that is a
+-- storage fact: this cast is written onto a cell (states/game.lua's ascent branch) and a cell rides in a
+-- save, so a function could never survive the trip. It is the same reason a dropped pack's guard is
+-- drawn once and kept (Descent.packGuard) -- and it has the same welcome side effect, that the fight
+-- standing on the stair is the same fight on the second attempt as on the first.
+function Descent.breachComposition(player, floorLevel)
+    local list = { "character_demon_lord" }
+    local sealed = (player and player.descentRun and player.descentRun.standing) or {}
+    for _, sin in ipairs(Descent.SINS) do
+        if (sealed[sin.vendor] or 0) <= 0 then
+            list[#list + 1] = sin.guardian.lead
+        end
+    end
+    -- The horde behind them, thickening with depth exactly as the Crown's own guard does.
+    for _ = 1, 2 + math.floor((floorLevel or 1) / 4) do list[#list + 1] = "character_champion" end
+    return list
 end
 
 -- Has this company ever come back up early? A ONE-WAY MARK ON THE PLAYER rather than a reading of the

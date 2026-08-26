@@ -564,6 +564,14 @@ function Save.snapshot(player)
         --
         -- Purely additive, so Save.VERSION does not move: an older save restores having taken none on.
         errands = player.errands,
+        -- ...AND THE ONES THIS COMPANY LOST A FIGHT OVER, as a set of ids (models/errand.lua's
+        -- Errand.fail). An errand pays a bonus the first time it is cleared and failing it once spends
+        -- that bonus for good, so the mark has to outlive the descent it was earned in -- a company that
+        -- surfaces and comes back must not find the purse waiting for it again.
+        --
+        -- Purely additive, so Save.VERSION does not move: an older save restores having failed none, which
+        -- is a company still owed every bonus it has not yet collected.
+        errandsFailed = player.errandsFailed,
         -- THE HIRING PURSE (models/voucher.lua). Four fields, and all four are on the PROFILE rather than
         -- on a run for the same reason: a run ends, the town does not, and a voucher earned on floor six
         -- is the reward for having gone to floor six.
@@ -926,6 +934,7 @@ function Save.restore(snap)
         name = snap.name,
         authorId = snap.authorId, -- nil on an older save; Player.authorId mints one on demand
         errands = snap.errands or {},
+        errandsFailed = snap.errandsFailed or {}, -- ...and whose first-clear bonus is already spent
         -- THE HIRING PURSE. Absent on a save from before the hall dealt this way, and an empty purse
         -- reads as a company that has never pulled -- which is what it is.
         --

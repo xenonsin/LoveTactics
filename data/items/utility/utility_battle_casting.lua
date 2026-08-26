@@ -13,9 +13,26 @@
 --
 -- The refund is small, and physical only -- a mage refunding itself for casting would be an engine for
 -- infinite spells rather than a reason to carry a sword.
+--
+-- IT CLIMBS IN WHOLE STEPS rather than a point a rung, and it is the one magnitude on this charm that
+-- does. The refund is paid per BODY a blow lands on (models/combat.lua pays it inside dealDamage), so
+-- a cleave collects it three times in one swing; ramp(3, 13) would put 39 mana a turn on an axe and
+-- make the sword the spell budget rather than the reason for one. Five steps from 3 to 8 over the
+-- whole ladder keeps a forged swing worth taking without paying for the working twice. Named in
+-- tests/curve_spec.lua's STEP_CURVES, which is where the exception is bought and checked.
+--
+-- BOTH FIGURES ARE WHAT THE BENCH BUYS, and until they were authored as curves there was nothing on
+-- this charm for a level to raise at all -- no ability, no bonus, no aura -- so Item.isUpgradable
+-- refused it and the forge would not take it in. `traitParams` is the seam (models/trait.lua's
+-- Trait.param): the item names the trait's tunables, models/item.lua resolves them per level like any
+-- other magnitude, and the Spell Discount and Strike Refund rows quote what this copy is actually
+-- worth. Which is also why the description names neither number -- 30% and 3 at the base, 40% and 8
+-- fully forged, and prose can only ever say one of them.
+local Curve = require("models.curve")
+
 return {
     name = "Battle Casting",
-    description = "Spells cost less while a foe is adjacent, and your weapon strikes restore mana.",
+    description = "Reduces the mana cost of your spells while a foe is adjacent. On damage dealt with a weapon: restore mana.",
     flavor = "The safe distance is a convention. She has read the same books and drawn a different line.",
     sprite = "assets/items/utility_battle_casting.png",
     type = "utility",
@@ -25,4 +42,10 @@ return {
     price = 345,
     unlockQuests = 2,
     traits = { "trait_battle_casting" },
+    traitParams = {
+        meleeDiscount = Curve.ramp(30, 40), -- percent off a working thrown in somebody's face
+        -- Mana handed back by a landed non-magical blow. A literal list because it counts in whole
+        -- steps: see the note up top, and tests/curve_spec.lua's STEP_CURVES, which names it.
+        strikeRefund = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 },
+    },
 }

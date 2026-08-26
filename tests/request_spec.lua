@@ -13,7 +13,6 @@ local Player = require("models.player")
 local Quest = require("models.quest")
 local Vendor = require("models.vendor")
 local Material = require("models.material")
-local Calendar = require("models.calendar")
 
 local function company()
     return { roster = {}, stash = {}, gold = 0, materials = {}, completedQuests = {} }
@@ -71,7 +70,7 @@ return {
             local standingBefore = Player.questsCompleted(p)
             local sponsorBefore = Quest.sponsorProgress(p, "bastion")
 
-            local reward = Request.payout(p, q, { [house] = 4 }, 12, Calendar.DAYS)
+            local reward = Request.payout(p, q, { [house] = 4 })
 
             assert(p.gold == Request.GOLD, "the day pays its coin")
             assert(Player.materialCount(p, house) == 4, "and banks what the ground gave up")
@@ -86,14 +85,19 @@ return {
         end,
     },
     {
-        name = "a request reports the day, because a day is what it cost",
+        -- IT PINNED `day` AND `days` HERE, because a request run reported the calendar exactly as a
+        -- quest did and the advancement panel drew a bar from the pair. There is no deadline and no bar
+        -- (models/calendar.lua); what a payout still owes the panel is a standing that did not move,
+        -- reported rather than omitted -- an absent field and an unmoved one read the same to a caller
+        -- and mean opposite things.
+        name = "a request reports standing that did not move rather than omitting it",
         fn = function()
             local p = company()
-            local reward = Request.payout(p, Request.quest("arcanum"), {}, 9, Calendar.DAYS)
-            assert(reward.day == 9 and reward.days == Calendar.DAYS,
-                "the advancement bar fills from this, exactly as a quest's does")
+            local reward = Request.payout(p, Request.quest("arcanum"), {})
             assert(reward.standing == reward.standingBefore,
-                "and it reports standing that did not move, rather than omitting it")
+                "a foraging day finishes no quest, and says so")
+            assert(reward.day == nil and reward.days == nil,
+                "and it does not report a calendar reading nothing reads")
         end,
     },
     {
@@ -103,7 +107,7 @@ return {
             assert(q.rewardItems == nil, "a relic is what a LINE hands over")
             assert(q.rewardCharacter == nil, "and so is a companion")
             assert(q.endsLine == nil and q.endsCampaign == nil, "a foraging day ends nothing")
-            local reward = Request.payout(company(), q, {}, 1, Calendar.DAYS)
+            local reward = Request.payout(company(), q, {})
             assert(#reward.received == 0, "so there is nothing for the panel to announce")
         end,
     },

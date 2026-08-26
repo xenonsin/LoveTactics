@@ -198,17 +198,17 @@ end
 -- company does not repair itself for standing still).
 --
 -- SO THIS IS STILL NOT A SURGEON. Nothing about the ledger changed: a body who is not abed sleeps here
--- and wakes with every bone exactly as broken. What is buyable is the passage of time, and the days are
--- still the scarcest thing the campaign has -- forty of them, and this spends one.
+-- and wakes with every bone exactly as broken. What is buyable is the passage of time, and what time
+-- costs is not a place on a calendar -- it is the body who is not in the company while it passes.
 --
--- Returns true plus the ids that mended, or false plus a reason ("gold", "nobody", "over").
+-- IT USED TO REFUSE A THIRD WAY, "over": there were forty days and none left to sell. The deadline is
+-- retired (models/calendar.lua) and nights are unbounded, so the two refusals left are both about this
+-- company rather than about the world.
+--
+-- Returns true plus the ids that mended, or false plus a reason ("gold", "nobody").
 function Gate.rest(player)
     if not (player and player.roster and #player.roster > 0) then return false, "nobody" end
     local Player = require("models.player")
-    -- There is no night after the last day. Refused rather than absorbed, because a night that took the
-    -- coin and moved no clock would be a bed the player could rent forever on the wrong side of the
-    -- deadline (Calendar.isOver).
-    if require("models.calendar").isOver(player) then return false, "over" end
     local price = Gate.innPrice(player)
     if (player.gold or 0) < price then return false, "gold" end
     Player.spendGold(player, price)

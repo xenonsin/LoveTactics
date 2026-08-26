@@ -385,6 +385,29 @@ local ABILITY_SECONDARY_MAGNITUDES = {
 -- shield braces harder. `covers` already rides this list and does double duty as Gather's lent share.
 local WAIT_BEHAVIOR_MAGNITUDES = { "defense", "power", "mana", "stamina", "covers", "duration", "amount" }
 
+-- A TRAIT's tunable, authored on the item that grants it (`traitParams`, read by Trait.param), and the
+-- only growth axis a purely passive charm has: an item whose whole function is a standing rule carries
+-- no ability, no bonus and no aura, so the bench had nothing on it to raise and refused the thing
+-- outright (Item.isUpgradable reads exactly these).
+--
+-- Each entry names the ROW that quotes the figure, because a magnitude the forge moves and nothing
+-- prints is the empty-ladder bug Gather Power had -- and because a description cannot carry a number
+-- that changes at every rung (docs/item-text.md). A param with no row here is still resolved per level;
+-- authoring one as a CURVE without adding its row is the mistake to avoid.
+local TRAIT_PARAM_ROWS = {
+    -- Battle Casting's pair, the Battlemage's charm: what a working costs in somebody's face, and what
+    -- a landed swing hands back. Both move with the bench, so neither can be named in the description.
+    meleeDiscount = { label = "Spell Discount", suffix = "%" },
+    strikeRefund = { label = "Strike Refund", prefix = "+", suffix = " Mana" },
+}
+
+-- Is `v` a magnitude at all -- a plain number, or a per-level list of them? Guards the traitParams walk,
+-- whose values are whatever the granting item names: resolveLevel would index a non-numeric map and
+-- silently return nil.
+local function isMagnitude(v)
+    return type(v) == "number" or (type(v) == "table" and type(v[1]) == "number")
+end
+
 -- Every place an item carries a scaling magnitude, as get/set pairs, so one walk resolves them all at
 -- instantiate. This is the definition of "a derived magnitude": an ability's damage/healing/etc.,
 -- armor's stat bonuses and resists, a resource ceiling, a wait-swap's payoff, and an aura's
@@ -415,6 +438,13 @@ local function eachMagnitude(item, fn)
     if item.resist then for k, v in pairs(item.resist) do fn(v, function(x) item.resist[k] = x end) end end
     if item.maxBonus then for k, v in pairs(item.maxBonus) do fn(v, function(x) item.maxBonus[k] = x end) end end
     if item.unarmedBonus then for k, v in pairs(item.unarmedBonus) do fn(v, function(x) item.unarmedBonus[k] = x end) end end
+    if item.traitParams then
+        for _, k in ipairs(sortedKeys(item.traitParams)) do
+            if isMagnitude(item.traitParams[k]) then
+                fn(item.traitParams[k], function(x) item.traitParams[k] = x end)
+            end
+        end
+    end
     -- A wait-swap's payoff scales with its item's level too, so a forged shield braces harder and a
     -- forged staff meditates deeper: `defense` (Combat.defend feeds it to the Defending status as its
     -- magnitude), `mana` (Combat.focus restores it), `stamina` (Combat.overwatch's per-shot budget).
@@ -549,6 +579,14 @@ local function statBreakdown(item)
     if item.unarmedBonus then
         for _, k in ipairs(sortedKeys(item.unarmedBonus)) do add("Fist " .. titleCase(k), "fist:" .. k, item.unarmedBonus[k]) end
     end
+    -- A trait tunable the forge raises, under the row its entry names (TRAIT_PARAM_ROWS). The suffix is
+    -- the tooltip's business; the growth sheet charts the bare number, like every other stat here.
+    if item.traitParams then
+        for _, k in ipairs(sortedKeys(item.traitParams)) do
+            local row = TRAIT_PARAM_ROWS[k]
+            if row then add(row.label, "trait:" .. k, item.traitParams[k]) end
+        end
+    end
     local wb = item.waitBehavior
     if wb then
         add("Brace", "wb:defense", wb.defense)
@@ -571,6 +609,24 @@ local function statBreakdown(item)
         add("Aura Tempo", "aura:speed", aura.speedBonus)
         add("Lifesteal", "aura:lifesteal", aura.lifesteal)
         if aura.status and aura.status.opts then add("Aura Effect", "aura:status", aura.status.opts.magnitude) end
+    end
+    return out
+end
+
+-- The trait tunables this instance quotes as tooltip rows, at ITS level: { label, value } with the
+-- value already carrying its unit ("30%"). The tooltip prints no trait section at all -- an item's
+-- description is its passive's whole voice -- so a standing rule's magnitude has nowhere else to be
+-- said, and saying it in the description would be a number that stops being true at the first rung.
+function Item.traitRows(item)
+    local out = {}
+    local params = item and item.traitParams
+    if not params then return out end
+    for _, k in ipairs(sortedKeys(params)) do
+        local row = TRAIT_PARAM_ROWS[k]
+        if row and type(params[k]) == "number" then
+            out[#out + 1] = { label = row.label,
+                value = (row.prefix or "") .. params[k] .. (row.suffix or "") }
+        end
     end
     return out
 end

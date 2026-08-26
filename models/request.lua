@@ -382,7 +382,11 @@ function Request.settle(player, quest, run)
     return met, missed, gold
 end
 
-function Request.payout(player, quest, carried, day, days)
+-- IT TOOK `day, days` AND REPORTED THEM BACK. That pair filled the advancement panel's bar -- how far
+-- into a campaign of forty this run stood -- and both the bar and the forty are retired
+-- (models/calendar.lua). Dropped from the signature rather than left accepted and ignored, so nothing
+-- passes a reading into a function that no longer has one.
+function Request.payout(player, quest, carried)
     local Player = require("models.player")
     local gold = (quest and quest.rewardGold) or Request.GOLD
     Player.addGold(player, gold)
@@ -404,10 +408,6 @@ function Request.payout(player, quest, carried, day, days)
         gold = gold,
         materials = materials,
         received = {},
-        -- The calendar reading the advancement panel fills its bar from. A request run spends a day
-        -- like anything else, so it reports one like anything else.
-        day = day,
-        days = days,
         standingBefore = standing, -- unchanged: a request finishes no quest
         standing = standing,
         sponsor = quest and quest.sponsor,

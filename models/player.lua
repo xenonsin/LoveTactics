@@ -1115,14 +1115,11 @@ function Player.newGamePlus(player)
     -- stash's own marks carry, along with the stash.
     player.newStock = {}
 
-    -- THE CALENDAR STARTS OVER, and without this New Game+ would be a campaign zero days long: the
-    -- clock is spent, `Calendar.isOver` is already true, and the player would arrive at a hub that
-    -- offers one expedition -- the finale -- against a board full of quests they can never reach.
-    --
-    -- It resets rather than carrying, unlike almost everything else here, because a deadline is not a
-    -- possession. What New Game+ carries is the company and what it has learned; what it gives back is
-    -- the time to use it, and the campaign is worth replaying precisely because forty days was never
-    -- enough to see all of it.
+    -- THE CLOCK STARTS OVER. It used to be load-bearing: there were forty days, the last campaign had
+    -- spent all of them, and without this line New Game+ opened on a hub that was already past its own
+    -- deadline. The deadline is retired (models/calendar.lua) so nothing breaks if the number carries --
+    -- but a second campaign that opens on day 214 is reporting the first one's bookkeeping, and the day
+    -- is still what an encounter's `minDay` reads. A new campaign begins in the morning.
     --
     -- `campaignsFinished` is deliberately NOT reset (see Player.finishCampaign): the post-game door it
     -- opens is a thing the player did, and doing it again cannot un-do it.

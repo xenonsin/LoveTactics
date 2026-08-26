@@ -14,8 +14,14 @@
 -- armour.
 return {
     name = "Battle Casting",
-    description = "Spells cost less while a foe is adjacent, and your weapon strikes hand a little mana back.",
-    magnitude = 30, -- percent off a mana cost while a foe is adjacent
+    description = "Reduces the mana cost of your spells while a foe is adjacent. On damage dealt with a weapon: restore mana.",
+    -- Both figures are read through Trait.param, so the granting item may raise them and both seams in
+    -- models/combat.lua spend what the item actually says. These are the floor a granter that names
+    -- neither would run on; the Battle Casting charm authors both as curves and the bench climbs them,
+    -- which is why the description quotes neither -- no single number is true across the forge, so the
+    -- item's Spell Discount and Strike Refund rows carry them (docs/item-text.md).
+    meleeDiscount = 30, -- percent off a mana cost while a foe is adjacent
+    strikeRefund = 3,   -- mana handed back by a non-magical blow that lands
     cheaperInMelee = true,
     strikesRefundMana = true,
 }

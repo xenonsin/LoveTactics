@@ -1224,4 +1224,31 @@ function OverworldMap:hoveredFight()
     return nil
 end
 
+-- THE PIECE OF POSTED WORK the player is weighing up, or nil. The same two answers hoveredFight gives
+-- and for the same two reasons, over a different set of stops.
+--
+-- A SEPARATE QUESTION RATHER THAN A WIDER `isFight`, and the reason is in that function's own note: it
+-- is shared with the marker pass, so widening it to admit an objective would change what the board
+-- DRAWS as a live fight, not just what the HUD names. An end is a set-piece and reads as one; what it
+-- shares with a roadside fight is only that the player stands next to it deciding.
+--
+-- ONLY WORK SOMEBODY POSTED (`questId`), which is the same discriminator markerKind splits on: the
+-- board's own end -- the stair guardian -- carries none, and it has nothing to say that the readout
+-- above the map does not already say. What this is FOR is the first-clear bonus on a house's errand,
+-- which is a figure the player weighs before committing and which nothing on the board could carry.
+function OverworldMap:hoveredWork()
+    local function workAt(c)
+        local e = c and c.encounter
+        if not (e and e.kind == "objective" and e.questId and not c.cleared) then return nil end
+        return c
+    end
+
+    if InputMode.isMouse() then return workAt(self:lit(self.hoverX, self.hoverY)) end
+    for _, d in ipairs({ { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } }) do
+        local c = workAt(self:lit(self.px + d[1], self.py + d[2]))
+        if c then return c end
+    end
+    return nil
+end
+
 return OverworldMap
