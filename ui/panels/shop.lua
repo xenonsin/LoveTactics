@@ -1,7 +1,18 @@
--- Shop pop-up panel: a decluttered vendor screen with no member data on it. A prominent vendor
--- portrait sits on the left; the middle is a single Buy / Sell list; the right is a detail pane for
--- the highlighted row. It replaces the store half of the old unified Party screen (arranging gear
--- onto characters is the Armory's job, ui/panels/party.lua).
+-- Shop pop-up panel: a decluttered vendor screen with no member data on it. The vendor's card sits on
+-- the left; the rest of the box is the shelf. It replaces the store half of the old unified Party
+-- screen (arranging gear onto characters is the Armory's job, ui/panels/party.lua).
+--
+-- THE MARKET IS A GRID OF ITEMS, in the same widget the stash is drawn in (ui/pool_grid.lua): an icon
+-- on a plate, the name under it, the price in the corner, and the full reading in the hover tooltip
+-- (ui/item_tooltip.lua) that opens as the cursor crosses a cell. It used to be a list of "name - 40g"
+-- rows with a description column bolted to the right of them, which meant the same item wore two
+-- shapes in one city -- a row here, a tile in the Armory -- and taught the player two screens to ask
+-- one question. One rack per section, stacked: Today Only first, then the standing counter.
+--
+-- The old list survives for a vendor with a SHELF: a house's stock bands by discipline, folds per
+-- band, and reads its ladder out of a header and a section blurb, none of which is a thing a grid of
+-- tiles can say. No house has a door in the city any more (data/buildings/), so what that path draws
+-- is Vendor.stock's own coverage and not a screen the player can walk into.
 --
 -- A vendor SELLS. Upgrading anything -- gear, abilities, consumable recipes -- happens at The Forge
 -- (ui/panels/forge.lua), the city's one bench. This screen used to carry an Upgrade tab for abilities
@@ -27,6 +38,7 @@ local QuantityPopup = require("ui.quantity_popup")
 local Choice = require("ui.panels.choice") -- the generic yes/no modal, hosted here as the buy confirmation
 local DebugMenu = require("ui.panels.debug_menu") -- the right-click item menu (development builds only)
 local CloseButton = require("ui.close_button")
+local PoolGrid = require("ui.pool_grid") -- the stash's grid of item tiles; the market's counter is one
 local ItemTooltip = require("ui.item_tooltip") -- printFlavor (sheared italic story line) + printDiscipline
 local GlossaryPanel = require("ui.glossary_panel")
 local Glossary = require("models.glossary")
@@ -52,6 +64,17 @@ local ROW_H, ROW_SPACING, MAX_VISIBLE = 38, 6, 9
 -- Matches ui/menu.lua's VALUE_PAD, so the path state on a section header lines up with the name Menu
 -- prints on the other side of the same row.
 local HEADER_PAD = 18
+
+-- The grid shelf's own chrome: the room a rack's name takes above its tiles, and the gap between one
+-- rack and the next. A rack that is not the last one is sized to its content (capped at two rows, so a
+-- rotation that grew could never crowd the standing counter out); the last one takes what is left, and
+-- the standing rack is last precisely because it is the one worth giving the room to.
+local SECTION_LABEL_H = 20
+local SECTION_GAP = 12
+local SECTION_MAX_ROWS = 2
+-- What a rack with no header of its own is called. Buy always bands (models/market.lua deals two
+-- racks); Sell is the stash with a price on it, and says so.
+local GRID_SECTION_LABEL = { buy = "Stock", sell = "Your Stash" }
 
 -- Buy and Sell, and nothing here upgrades: every ladder in the game is climbed at The Forge
 -- (ui/panels/forge.lua), which is also the only screen that spends materials -- see the header of
@@ -128,6 +151,18 @@ function Shop.new(opts)
     self.detailX = self.listLeft + self.listW + 24
     self.detailY = self.boxY + 112
     self.detailW = self.boxX + BOX_W - 24 - self.detailX
+
+    -- The grid shelf takes the list column AND the detail column, because it no longer needs a detail
+    -- column: what the pane used to print is what the tooltip prints, over the box, at the tile.
+    self.gridLeft = self.listLeft
+    self.gridW = self.boxX + BOX_W - 24 - self.gridLeft
+    self.gridTop = self.boxY + 112
+    self.gridBottom = self.boxY + BOX_H - 62 -- clear of the message line and the input hint
+    self.sections = {}
+    self.focusIndex = 1
+    -- Cursor + scroll per rack, kept ACROSS a rebuild: buying changes no tile's index, so the shelf
+    -- must not appear to move under the player's hand (the same rule the list's scroll carry keeps).
+    self.gridState = {}
 
     -- This house's tabs: Buy, Sell, and its service if it has one.
     self.modes = { BASE_MODES[1], BASE_MODES[2] }
@@ -313,6 +348,187 @@ function Shop:buildMarketRows()
     end
 end
 
+-- ---------------------------------------------------------------------------
+-- The grid shelf (the Market)
+-- ---------------------------------------------------------------------------
+
+-- Is this shelf drawn as tiles rather than as a list? The market is, on both of its tabs: what it
+-- sells is a flat rack with no ladder to read out, and what it buys back is the stash, which is
+-- already a grid everywhere else in the game. A house's banded, folding, blurb-carrying shelf is not
+-- (see the file header).
+function Shop:usesGrid()
+    return self.def.sellsAll == true and (self.mode == "buy" or self.mode == "sell")
+end
+
+-- Cut self.rows into racks and give each one a pool. The rows were built by the same code the list
+-- builds from -- headers included -- so the two shelves can never disagree about what is on the
+-- counter; all this does is turn "a header and the rows under it" into "a labelled grid".
+function Shop:buildSections()
+    local groups, current = {}, nil
+    local function open(key, label)
+        current = { key = key, label = label, rows = {} }
+        groups[#groups + 1] = current
+        return current
+    end
+    for _, row in ipairs(self.rows) do
+        if row.header then
+            open(row.key or row.label, row.label)
+        else
+            if not current then open(self.mode, GRID_SECTION_LABEL[self.mode] or "Stock") end
+            current.rows[#current.rows + 1] = row
+        end
+    end
+    -- An empty shelf still gets its rack: the pool draws its own "Nothing for sale" / "Stash is empty"
+    -- inside the well, which is the same answer in the same place as a full one.
+    if #groups == 0 then open(self.mode, GRID_SECTION_LABEL[self.mode] or "Stock") end
+
+    local cols = PoolGrid.colsFor(self.gridW)
+    local y = self.gridTop
+    for i, g in ipairs(groups) do
+        local h
+        if i == #groups then
+            h = math.max(PoolGrid.heightForRows(1), self.gridBottom - (y + SECTION_LABEL_H))
+        else
+            local rows = math.min(SECTION_MAX_ROWS, math.ceil(#g.rows / cols))
+            h = PoolGrid.heightForRows(rows)
+        end
+        g.pool = self:newPool(y + SECTION_LABEL_H, h)
+        g.labelY = y
+        self:fillPool(g)
+        y = y + SECTION_LABEL_H + h + SECTION_GAP
+    end
+
+    self.sections = groups
+    self:setFocus(self.focusIndex)
+end
+
+-- One rack's grid. The unseen dot and its clearing ride on the ROW rather than on the item, because
+-- what the ledger marks is a piece of STOCK a quest opened (Player.NEW_STOCK) and the tile is showing
+-- a display copy of it.
+function Shop:newPool(y, h)
+    return PoolGrid.new({
+        x = self.gridLeft, y = y, w = self.gridW, h = h,
+        isNew = function(_, cell)
+            local row = cell and cell.entry and cell.entry.row
+            return (row and row.isNew) or false
+        end,
+        onSeen = function(_, cell)
+            local row = cell and cell.entry and cell.entry.row
+            if not (row and row.isNew and row.entry) then return end
+            row.isNew = false
+            if Player.seeNew(self.player, Player.NEW_STOCK, row.entry.id) then Player.save() end
+        end,
+        -- Sell only: what the counter will give for a piece already in the stash. A piece nothing
+        -- here will take carries no badge -- pressing it says so in the footer -- rather than a "--"
+        -- dressed up in the gold the price wears.
+        priceOf = (self.mode == "sell") and function(item)
+            local value = Vendor.sellValue(item)
+            return value > 0 and (value .. "g") or nil
+        end or nil,
+    })
+end
+
+-- Hand a rack's rows to its pool: buy is a store (each tile a ware with a price on it), sell is the
+-- stash itself. Either way the cell index maps 1:1 to `g.rows`, so a press turns straight back into
+-- the row the transaction code already knows how to run.
+function Shop:fillPool(g)
+    if self.mode == "sell" then
+        local items = {}
+        for _, row in ipairs(g.rows) do items[#items + 1] = row.item end
+        g.pool:setItems(items)
+    else
+        local entries = {}
+        for _, row in ipairs(g.rows) do
+            entries[#entries + 1] = {
+                id = row.entry and row.entry.id,
+                price = row.entry and row.entry.price or 0,
+                locked = row.locked,
+                item = row.item, -- already instantiated at the level it sells at
+                row = row,
+            }
+        end
+        g.pool:setStore(entries)
+    end
+    local saved = self.gridState[g.key]
+    if saved then
+        g.pool.cursor = math.max(1, math.min(math.max(1, g.pool:count()), saved.cursor))
+        g.pool.offset = math.max(0, math.min(g.pool:maxOffset(), saved.offset))
+    end
+end
+
+-- Where every rack's cursor and scroll were, so a rebuild can put them back.
+function Shop:rememberGrid()
+    for _, g in ipairs(self.sections or {}) do
+        if g.pool then self.gridState[g.key] = { cursor = g.pool.cursor, offset = g.pool.offset } end
+    end
+end
+
+-- Single writer for which rack holds the cursor, keeping the pools' focus rings in sync (only the
+-- focused pool draws one, so region-focus reads as one mark rather than two).
+function Shop:setFocus(index)
+    local n = #self.sections
+    if n == 0 then self.focusIndex = 1 return end
+    index = math.max(1, math.min(n, index or 1))
+    -- Never park the cursor on an empty rack: it has no tile to describe and no press to answer.
+    if self.sections[index].pool:count() == 0 then
+        for i = 1, n do
+            if self.sections[i].pool:count() > 0 then index = i break end
+        end
+    end
+    self.focusIndex = index
+    for i, g in ipairs(self.sections) do g.pool.focused = (i == index) end
+end
+
+function Shop:focusedSection() return self.sections[self.focusIndex] end
+
+-- Step to the rack above or below, landing on the row nearest the one being left: leaving downward
+-- lands on the new rack's top row, leaving upward on its bottom one, keeping the column. A rack with
+-- nothing in it is stepped over.
+function Shop:moveFocus(delta)
+    local from = self:focusedSection()
+    local col = from and ((from.pool.cursor - 1) % from.pool.cols) or 0
+    local i = self.focusIndex + delta
+    while self.sections[i] and self.sections[i].pool:count() == 0 do i = i + delta end
+    local to = self.sections[i]
+    if not to then return false end
+
+    local pool = to.pool
+    local row = (delta > 0) and 0 or (pool:totalRows() - 1)
+    pool.cursor = math.max(1, math.min(pool:count(), row * pool.cols + col + 1))
+    pool:scrollToCursor()
+    pool:see(pool.cursor)
+    self:setFocus(i)
+    return true
+end
+
+-- A vertical step at a rack's EDGE belongs to the shelf rather than to the rack: the pool would clamp
+-- it and leave the cursor against a wall with another rack on the far side. Everything else is the
+-- pool's own, and it hands back the cell to act on when confirm is pressed.
+function Shop:gridNav(button, joystick)
+    local g = self:focusedSection()
+    if not g then return end
+    local pool = g.pool
+    local pad = joystick ~= nil
+    local row = math.floor((pool.cursor - 1) / pool.cols)
+    local up = pad and button == "dpup" or (not pad and (button == "up" or button == "w"))
+    local down = pad and button == "dpdown" or (not pad and (button == "down" or button == "s"))
+    if up and row == 0 and self:moveFocus(-1) then return end
+    if down and row >= pool:totalRows() - 1 and self:moveFocus(1) then return end
+
+    local sel
+    if pad then sel = pool:gamepadpressed(joystick, button) else sel = pool:keypressed(button) end
+    if sel then self:activateRow(g.rows[sel]) end
+end
+
+-- Which rack the pointer is over, and which cell of it, or nil.
+function Shop:cellUnder(x, y)
+    for _, g in ipairs(self.sections) do
+        local i = g.pool:indexAt(x, y)
+        if i then return g, i end
+    end
+    return nil
+end
+
 -- What a section header says about the PATH it bands, beside its name: the shape of the discipline and
 -- where the player stands in it. Nil for the base shelf, which is not a path and has nothing to stand in.
 --
@@ -375,6 +591,7 @@ function Shop:refresh()
     -- the list must not appear to move at all. `setMode` drops the menu first, so a mode switch still
     -- starts at the top.
     local scroll = self.menu and self.menu.scroll or 0
+    self:rememberGrid() -- the grid shelf's equivalent of the two lines above
     self.questsDone = Quest.sponsorProgress(self.player, self.vendorId)
     -- What the SHELF reads, one below the standing above it: the opener bought the door this panel is
     -- being drawn inside, not a band of stock (Quest.shelfRung). The two are kept apart here rather than
@@ -396,6 +613,14 @@ function Shop:refresh()
                 locked = value <= 0,
             }
         end
+    end
+
+    -- The grid shelf stops here: it reads the same rows, and a Menu built over them would be a second
+    -- cursor on the same list with nothing drawing it.
+    if self:usesGrid() then
+        self.menu = nil
+        self:buildSections()
+        return
     end
 
     local items = {}
@@ -449,6 +674,9 @@ function Shop:setMode(mode)
     self.mode = mode
     self.swapFrom = nil -- leaving the fence puts down whatever was being traded
     self.menu = nil
+    -- A new tab opens at its top, on its first rack: the carried cursor is a promise about the list
+    -- you were reading, and this is a different one.
+    self.sections, self.gridState, self.focusIndex = {}, {}, 1
     self:refresh()
 end
 
@@ -722,6 +950,7 @@ function Shop:update(dt)
     -- the stick directly, so leaving it ticking would let the list scroll under the question.
     if self.confirm then return end
     if self.quantityPopup then self.quantityPopup:update(dt) return end
+    if self:usesGrid() then return end -- a pool has no tick: it moves only when it is pressed
     if self:hasRows() then
         self.menu:update(dt)
         self:seeSelectedRow()
@@ -759,7 +988,9 @@ function Shop:draw()
 
     self:drawVendor()
     self:drawModeSelector()
-    if self:hasRows() then
+    if self:usesGrid() then
+        self:drawSections()
+    elseif self:hasRows() then
         self.menu:draw()
         self:drawHeaderMeta()
         self:drawLockedOverlay()
@@ -780,6 +1011,9 @@ function Shop:draw()
 
     self:drawFooter()
     self.closeButton:draw()
+    -- Over the box and under the modals: the tooltip IS the detail pane now, and a pane that a
+    -- confirmation could print through would be worse than no pane at all.
+    if self:usesGrid() then self:drawGridTooltip() end
     if self.quantityPopup then self.quantityPopup:draw() end
     if self.confirm then self.confirm:draw() end
     if self.itemDebug then self.itemDebug:draw() end -- last: it is modal over everything above
@@ -843,6 +1077,43 @@ function Shop:drawModeSelector()
         Theme.set(active and Theme.accentAmber or Theme.muted)
         love.graphics.printf(MODE_LABEL[m], r.x, r.y + r.h / 2 - 10, r.w, "center")
     end
+end
+
+-- The grid shelf: one labelled rack per section, stacked. The label carries the rack's own count, the
+-- way the stash's header does (ui/panels/party.lua) -- same phrase, same place, same two screens.
+function Shop:drawSections()
+    love.graphics.setFont(self.smallFont)
+    for _, g in ipairs(self.sections) do
+        Theme.set(Theme.muted)
+        love.graphics.print(g.label .. " (" .. #g.rows .. ")", g.pool.x, g.labelY)
+        g.pool:draw()
+    end
+    love.graphics.setColor(1, 1, 1)
+end
+
+-- The reading, sourced by the device in use so it never lingers out of place: with the mouse it hangs
+-- off the pointer and shows only while a tile is hovered; with keyboard/gamepad it sits at the focused
+-- rack's cursor cell. Same rule, and the same call, as the Armory's stash (Party:drawActiveTooltip) --
+-- which is the whole point of drawing the counter as tiles.
+--
+-- No `owner`: a shop has no focused body to price a piece against. What can carry it is the Armory's
+-- question, one door down.
+function Shop:drawGridTooltip()
+    if self.confirm or self.quantityPopup or self.itemDebug then return end
+    local item, ax, ay
+    if InputMode.isMouse() then
+        for _, g in ipairs(self.sections) do
+            if g.pool.hover then item, ax, ay = g.pool:itemAt(g.pool.hover), self.mx, self.my break end
+        end
+    else
+        local g = self:focusedSection()
+        if g then
+            item = g.pool:itemAt(g.pool.cursor)
+            local cx, cy, cw = g.pool:cellRect(g.pool.cursor)
+            if cx then ax, ay = cx + cw, cy end
+        end
+    end
+    if item and ax then ItemTooltip.draw(item, ax, ay, Scale.WIDTH) end
 end
 
 -- The path state on each section header, drawn beside the name Menu:drawHeader already printed: the
@@ -1095,9 +1366,12 @@ function Shop:drawFooter()
     -- and Sell, but a house with a service has three, and "Buy/Sell" would tell that player the third
     -- one is unreachable from the keyboard.
     local cycle = "switch list"
+    -- On the grid the third clause names what the sticks and the arrow keys DO -- they walk the tiles
+    -- rather than scroll a column, and on the keyboard they are no longer the way across the tabs.
+    local grid = self:usesGrid()
     local hint = InputMode.isGamepad()
-        and ("A: confirm    LB/RB: " .. cycle .. "    D-pad: scroll    B: close")
-        or ("Enter: confirm    Tab: " .. cycle .. "    Wheel: scroll    Esc: close")
+        and ("A: confirm    LB/RB: " .. cycle .. (grid and "    D-pad: move" or "    D-pad: scroll") .. "    B: close")
+        or ("Enter: confirm    Tab: " .. cycle .. (grid and "    Arrows: move" or "    Wheel: scroll") .. "    Esc: close")
     love.graphics.printf(hint, self.boxX, self.boxY + BOX_H - 30, BOX_W, "center")
 end
 
@@ -1114,9 +1388,14 @@ end
 -- yet" is one of the questions the menu's grade page exists to answer -- so the lookup goes through
 -- Menu:indexAt, which does not care whether the row can be activated.
 function Shop:openItemDebug(x, y)
-    if not self:hasRows() then return false end
-    local i = self.menu:indexAt(x, y)
-    local row = i and self.rows[i]
+    local row
+    if self:usesGrid() then
+        local g, i = self:cellUnder(x, y)
+        row = g and g.rows[i]
+    elseif self:hasRows() then
+        local i = self.menu:indexAt(x, y)
+        row = i and self.rows[i]
+    end
     if not row or not row.item then return false end
     local menu = DebugMenu.forItem({
         x = x, y = y,
@@ -1132,11 +1411,16 @@ function Shop:openItemDebug(x, y)
 end
 
 function Shop:mousemoved(x, y)
+    self.mx, self.my = x, y -- where the tooltip hangs while the mouse is the device in use
     if self.itemDebug then self.itemDebug:mousemoved(x, y) return end
     if self.confirm then self.confirm:mousemoved(x, y) return end
     if self.quantityPopup then self.quantityPopup:mousemoved(x, y) return end
     self.closeButton:mousemoved(x, y)
-    if self:hasRows() then self.menu:mousemoved(x, y) end
+    if self:usesGrid() then
+        for _, g in ipairs(self.sections) do g.pool:mousemoved(x, y) end
+    elseif self:hasRows() then
+        self.menu:mousemoved(x, y)
+    end
 end
 
 -- Hand over the close X, the Buy/Sell mode tabs, or any item row; arrow elsewhere. When the
@@ -1149,6 +1433,12 @@ function Shop:cursorKind(x, y)
     for _, m in ipairs(self.modes) do
         if pointIn(self.segRects[m], x, y) then return "hand" end
     end
+    if self:usesGrid() then
+        for _, g in ipairs(self.sections) do
+            if g.pool:contains(x, y) then return "hand" end -- cells and the two scroll arrows
+        end
+        return "arrow"
+    end
     if self:hasRows() and self.menu:mouseOverItem(x, y) then return "hand" end
     return "arrow"
 end
@@ -1157,6 +1447,18 @@ function Shop:wheelmoved(dx, dy)
     if self.itemDebug then self.itemDebug:wheelmoved(dx, dy) return end
     if self.confirm then return end -- the list must not scroll out from under the question
     if self.quantityPopup then self.quantityPopup:wheelmoved(dy) return end
+    if self:usesGrid() then
+        -- The rack UNDER THE POINTER scrolls, not the focused one: with two racks stacked, a wheel
+        -- that moved the other one would read as the shelf ignoring the mouse.
+        for _, g in ipairs(self.sections) do
+            if g.pool:contains(self.mx or -1, self.my or -1) then
+                g.pool:wheelmoved(dy)
+                g.pool:mousemoved(self.mx, self.my)
+                return
+            end
+        end
+        return
+    end
     if self:hasRows() then self.menu:wheelmoved(dx, dy) end
 end
 
@@ -1170,6 +1472,19 @@ function Shop:mousepressed(x, y, button)
     for _, m in ipairs(self.modes) do
         if pointIn(self.segRects[m], x, y) then self:setMode(m) return end
     end
+    if self:usesGrid() then
+        for i, g in ipairs(self.sections) do
+            local hit, cell = g.pool:mousepressed(x, y, button)
+            if hit then
+                -- A press on a tile is the transaction; a press on a scroll arrow is not, and the
+                -- pool answers the second one itself.
+                if cell then self:setFocus(i); self:activateRow(g.rows[cell]) end
+                return
+            end
+        end
+        if not pointIn({ x = self.boxX, y = self.boxY, w = BOX_W, h = BOX_H }, x, y) then self:close() end
+        return
+    end
     if self:hasRows() then
         self.menu:mousepressed(x, y, button)
         -- Keep the detail/selection in sync even if the click missed a row.
@@ -1182,9 +1497,12 @@ function Shop:keypressed(key)
     if self.itemDebug then self.itemDebug:keypressed(key) return end
     if self.confirm then self.confirm:keypressed(key) return end
     if self.quantityPopup then self.quantityPopup:keypressed(key) return end
-    if key == "escape" then self:close()
-    elseif key == "tab" then self:cycleMode(1)
-    elseif key == "left" or key == "a" then self:cycleMode(-1)
+    if key == "escape" then self:close() return end
+    if key == "tab" then self:cycleMode(1) return end
+    -- On the grid shelf left/right walk the tiles, so Tab (and the shoulders) are the only way across
+    -- the tabs. A list has one column and can spare the two keys; a grid cannot.
+    if self:usesGrid() then self:gridNav(key) return end
+    if key == "left" or key == "a" then self:cycleMode(-1)
     elseif key == "right" or key == "d" then self:cycleMode(1)
     elseif self:hasRows() then self.menu:keypressed(key) end
 end
@@ -1196,6 +1514,7 @@ function Shop:gamepadpressed(joystick, button)
     if button == "b" then self:close()
     elseif button == "leftshoulder" then self:cycleMode(-1)
     elseif button == "rightshoulder" then self:cycleMode(1)
+    elseif self:usesGrid() then self:gridNav(button, joystick or true)
     elseif self:hasRows() then self.menu:gamepadpressed(joystick, button) end
 end
 

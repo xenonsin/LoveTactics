@@ -1,11 +1,20 @@
 -- Reusable scrolling grid of items with hover tooltips: the shared "pool" surface for the Party
--- screen (ui/panels/party.lua). It is the grid-shaped successor to ui/stash_list.lua's vertical
--- list, and renders one of two backing sources:
+-- screen (ui/panels/party.lua) and for the Market's counter (ui/panels/shop.lua). It is the
+-- grid-shaped successor to ui/stash_list.lua's vertical list, and renders one of two backing sources:
 --
 --   * a STASH -- real owned Item instances (setItems(player.stash)); cell index maps 1:1 to the
 --     stash list, and a stackable consumable shows an "xN" count.
 --   * a STORE -- catalog entries from Vendor.stock (setStore(entries)); each cell is a buyable
---     TYPE (never consumed), showing its price and a greyed overlay when quest-locked.
+--     TYPE (never consumed), showing its price and a greyed overlay when quest-locked. An entry may
+--     carry its own display `item` when the host has already built one (the shop instantiates each
+--     ware at the level it is sold at); absent that, the id is instantiated plain.
+--
+-- ONE ITEM LANGUAGE. A thing the player owns and a thing they could own are the same object with a
+-- different question attached, so they are drawn the same way in the same widget: an icon on a plate,
+-- its name under it, one number in the corner, and the full reading in the hover tooltip the host
+-- opens off :itemAt. That is why the shop's counter is this grid and not a list with a description
+-- column beside it -- an item that changed shape between the stash and the shelf made the player learn
+-- the screen twice.
 --
 -- Like the grid and the old list it is PICK-THEN-PLACE: activating a cell picks it up (`picked`);
 -- the host panel reads that and performs the actual transfer (a plain move, a buy, or a sell). It
@@ -51,6 +60,14 @@ local TYPE_COLOR = {
 }
 local DEFAULT_COLOR = { 0.80, 0.80, 0.86 }
 
+-- The two measurements a host needs BEFORE it builds a pool, so it can lay several of them out in a
+-- fixed column (the shop stacks one per rack) without duplicating the cell metrics here.
+function PoolGrid.colsFor(w) return math.max(1, math.floor((w + GAP) / (CELL + GAP))) end
+function PoolGrid.heightForRows(rows)
+    rows = math.max(1, rows)
+    return ARROW_H * 2 + rows * CELL + (rows - 1) * GAP
+end
+
 function PoolGrid.new(opts)
     opts = opts or {}
     local self = setmetatable({}, PoolGrid)
@@ -71,6 +88,11 @@ function PoolGrid.new(opts)
     -- (models/player.lua's Player.atRisk). Optional and nil outside a descent, so a campaign Loadout
     -- and every shop shelf draw exactly what they always did.
     self.isAtRisk = opts.isAtRisk
+    -- `priceOf(item, cell) -> string|nil` puts a gold badge on a STASH cell: the shop's Sell shelf is
+    -- the stash with a price on it, and what a piece is worth is the whole of the decision there. A
+    -- store cell has its price already (from the entry) and never asks; a pool given neither draws no
+    -- badge at all, which is every other stash in the game.
+    self.priceOf = opts.priceOf
     self.nameFont = Theme.body(11)
     self.smallFont = Theme.body(11)
     self.bigFont = Theme.display(20)
@@ -100,13 +122,17 @@ end
 -- Point this pool at a vendor's stock (Vendor.stock entries). Each entry becomes a buyable cell;
 -- a preview Item instance is built so the icon/name/tooltip render like any other item, while
 -- price/locked come from the entry.
+--
+-- An entry that already carries an `item` hands its own display copy over instead. A shelf sells a
+-- ware at a LEVEL (Item.instantiate(id, nil, entry.level)), and a cell that re-instantiated the bare
+-- id would quote the plain piece's name and stats under the levelled one's price.
 function PoolGrid:setStore(entries)
     self.mode = "store"
     self.source = entries or {}
     self.cells = {}
     for _, entry in ipairs(self.source) do
         self.cells[#self.cells + 1] = {
-            item = Item.instantiate(entry.id),
+            item = entry.item or Item.instantiate(entry.id),
             entry = entry,
             price = entry.price,
             locked = entry.locked,
@@ -291,12 +317,21 @@ function PoolGrid:drawCell(i, sx, sy)
     local unseen = self.isNew and self.isNew(item, cell) or false
     local badgeInset = unseen and 16 or 4
     love.graphics.setFont(self.smallFont)
-    if self.mode == "store" then
+    local price = (self.mode == "store") and (tostring(cell.price) .. "g")
+        or (self.priceOf and self.priceOf(item, cell)) or nil
+    local qty = (item.quantity or 1) > 1 and ("x" .. item.quantity) or nil
+    if price then
         Theme.set(Theme.accentAmber, dim)
-        love.graphics.printf(tostring(cell.price) .. "g", sx, sy + 3, CELL - badgeInset, "right")
-    elseif (item.quantity or 1) > 1 then
+        love.graphics.printf(price, sx, sy + 3, CELL - badgeInset, "right")
+        -- A priced stack sends its count to the OPPOSITE corner: two numbers stacked in one corner
+        -- read as one number, and the count is the smaller question of the two.
+        if qty then
+            Theme.set(Theme.ink, dim)
+            love.graphics.print(qty, sx + 5, sy + 3)
+        end
+    elseif qty then
         Theme.set(Theme.ink, dim)
-        love.graphics.printf("x" .. item.quantity, sx, sy + 3, CELL - badgeInset, "right")
+        love.graphics.printf(qty, sx, sy + 3, CELL - badgeInset, "right")
     end
 
     -- Quest-locked store cell: greyed, so seeing what more quests will buy is still possible.

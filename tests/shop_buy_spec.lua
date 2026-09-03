@@ -45,12 +45,23 @@ local function shopFor(vendorId, gold)
     })
 end
 
+-- The one shop that sells everything (data/vendors/market.lua). It is the only vendor with a door in
+-- the city, and the only one whose shelf is drawn as a grid of tiles.
+local function marketId()
+    for _, def in ipairs(Vendor.list()) do
+        if (Vendor.get(def.id) or {}).sellsAll then return def.id end
+    end
+end
+
 -- The first priced, unlocked row on any shipped shelf, so the test names no vendor and no item by hand
 -- and cannot rot when a house's stock is re-cut. Returns the panel, the row, and its index.
-local function anyBuyableRow(gold, minRows)
+--
+-- `listOnly` skips the market: what it hands back is a panel with a Menu behind it, and the market has
+-- none -- its counter is a grid (Shop:usesGrid), which is a different set of assertions.
+local function anyBuyableRow(gold, minRows, listOnly)
     for _, def in ipairs(Vendor.list()) do
-        local panel = shopFor(def.id, gold)
-        if #panel.rows >= (minRows or 0) then
+        local panel = (not (listOnly and (Vendor.get(def.id) or {}).sellsAll)) and shopFor(def.id, gold)
+        if panel and #panel.rows >= (minRows or 0) then
             for i, row in ipairs(panel.rows) do
                 if not row.header and not row.locked and row.entry and row.entry.price > 0 then
                     return panel, row, i
@@ -131,7 +142,7 @@ return {
             -- selected row scraped in at its bottom edge -- which, forty rows down a shelf, reads as
             -- the list snapping back. Buying changes no row's index, so nothing may appear to move.
             stubFonts(function()
-                local panel, row = anyBuyableRow(9999, 20)
+                local panel, row = anyBuyableRow(9999, 20, true)
                 assert(panel, "no shipped shelf runs 20 rows -- the fixture has rotted")
                 panel.menu.scroll = 8
                 panel.menu.selected = 12
@@ -142,6 +153,61 @@ return {
                     "the scroll window holds: " .. scroll .. " -> " .. panel.menu.scroll)
                 assert(panel.menu.selected == selected,
                     "and so does the cursor: " .. selected .. " -> " .. panel.menu.selected)
+            end)
+        end,
+    },
+    {
+        name = "the market's counter is a grid of tiles, and every tile names its own row",
+        fn = function()
+            -- ONE ITEM LANGUAGE: the counter is drawn in the widget the stash is drawn in
+            -- (ui/pool_grid.lua), so a piece looks the same in the shop as it does in the Armory and
+            -- the reading is the same hover tooltip. What this pins is the seam -- cell index to shelf
+            -- row -- because that mapping is what turns a press on a tile into a purchase.
+            stubFonts(function()
+                local panel = shopFor(marketId(), 9999)
+                assert(panel:usesGrid(), "the market draws its counter as a grid")
+                assert(panel.menu == nil, "and builds no list menu behind it")
+                assert(#panel.sections > 0, "with a rack for each band of stock")
+
+                local rack
+                for _, s in ipairs(panel.sections) do
+                    if s.pool:count() > 0 then rack = s break end
+                end
+                assert(rack, "the counter has something on it")
+                assert(rack.pool:count() == #rack.rows,
+                    "every row is a tile: " .. rack.pool:count() .. " tiles, " .. #rack.rows .. " rows")
+                for i = 1, rack.pool:count() do
+                    assert(rack.pool:cellAt(i).entry.row == rack.rows[i], "tile " .. i .. " names its row")
+                    assert(rack.pool:itemAt(i) == rack.rows[i].item,
+                        "and shows the copy the shelf instantiated, at the level it sells at")
+                end
+            end)
+        end,
+    },
+    {
+        name = "a purchase leaves the grid's cursor and scroll exactly where the player put them",
+        fn = function()
+            -- The same complaint the list case above makes, in the shelf the player can actually walk
+            -- into: buying changes no tile's index, so nothing may appear to move.
+            stubFonts(function()
+                local panel = shopFor(marketId(), 9999)
+                local rack
+                for _, s in ipairs(panel.sections) do
+                    if s.pool:count() > 1 then rack = s break end
+                end
+                assert(rack, "no market rack carries two wares -- the fixture has rotted")
+
+                rack.pool.cursor = 2
+                local cursor, offset = rack.pool.cursor, rack.pool.offset
+                panel:commitBuy(rack.rows[1].entry)
+
+                local after
+                for _, s in ipairs(panel.sections) do if s.key == rack.key then after = s end end
+                assert(after, "the rack survives the rebuild")
+                assert(after.pool.cursor == cursor,
+                    "the cursor holds: " .. cursor .. " -> " .. after.pool.cursor)
+                assert(after.pool.offset == offset,
+                    "and so does the scroll: " .. offset .. " -> " .. after.pool.offset)
             end)
         end,
     },

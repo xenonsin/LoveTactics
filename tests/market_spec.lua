@@ -150,6 +150,27 @@ return {
         end,
     },
     {
+        name = "today's rack is dealt first: the perishable rack takes the top of the counter",
+        fn = function()
+            -- The standing rack will be there tomorrow and the day after; the three rolled rows will
+            -- not. So the rack that is gone by morning is the one the eye lands on, and nothing has to
+            -- be scrolled past to reach it.
+            local p = Player.new()
+            recruitAll(p)
+
+            local stock = Market.stock(p, 5)
+            assert(#stock > Market.ROTATION, "the counter carries both racks")
+            for i = 1, Market.ROTATION do
+                assert(stock[i].rack == Market.TODAY,
+                    "row " .. i .. " is off the " .. tostring(stock[i].rack) .. " rack, not today's")
+            end
+            for i = Market.ROTATION + 1, #stock do
+                assert(stock[i].rack == Market.COUNTER,
+                    "the standing rack follows today's, unbroken; row " .. i .. " is not on it")
+            end
+        end,
+    },
+    {
         name = "the rotation is the same all day, and different tomorrow",
         fn = function()
             local p = Player.new()

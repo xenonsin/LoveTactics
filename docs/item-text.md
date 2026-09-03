@@ -258,12 +258,14 @@ speak for it and omits this.
 | Surface | description | flavor |
 |---|---|---|
 | Item tooltip (`ui/item_tooltip.lua`) | under the headline stat | italic, last, after a separator |
-| Shop panel (`ui/panels/shop.lua`) | yes | italic, beneath it |
+| Shop panel, house shelf (`ui/panels/shop.lua`) | yes | italic, beneath it |
+| The Market's counter (`ui/panels/shop.lua`) | in the hover tooltip — the counter is a grid of tiles | as the tooltip renders it |
 | Forge panel (`ui/panels/forge.lua`) | yes | italic, beneath it |
 
 A **status** or **keyword** description is item text too, and it reaches the player through the same
 two surfaces: the glossary (`ui/glossary_panel.lua`) prints the `description` off `data/status/*.lua`
-and `data/keywords/*.lua` verbatim beside the item tooltip and at the foot of the shop's detail pane.
+and `data/keywords/*.lua` verbatim beside the item tooltip and at the foot of the shop's detail pane
+(which the Market reaches the first way: its tiles hover the tooltip, and the column opens beside it).
 Write those lines to the rules above — mechanical, one sentence, no flavor. Keep them **short**: the
 shop's docked form runs the name and the description together on one wrapped line in a 344px column,
 so a rambling status description is what pushes a third definition off the panel.

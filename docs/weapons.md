@@ -449,7 +449,8 @@ it for free. Prefer one over hand-rolling the same logic in an `effect`.
 
 **A keyword owes the player a definition.** Every surface that names one also defines it
 (`models/glossary.lua` → `ui/glossary_panel.lua`): the item tooltip opens a glossary column beside
-itself, and the shop's detail pane closes with a docked one. So a word can be read on the spot rather
+itself — which is what the Market's counter shows, its tiles hovering the same tooltip the stash does —
+and the house shelf's detail pane closes with a docked one. So a word can be read on the spot rather
 than looked up in this file. A **new keyword therefore needs two things**: a
 `data/keywords/keyword_<name>.lua` blueprint (`{ name, description }`) and its field listed in
 `models/keyword.lua`. `tests/glossary_spec.lua` fails a field that names no blueprint.
