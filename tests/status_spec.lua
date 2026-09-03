@@ -74,6 +74,38 @@ return {
         end,
     },
     {
+        -- The other end of the badge from the case above: a stun is the delay and nothing else, so it
+        -- is spent the moment the delay has been served. A unit sits at initiative 0 when its turn
+        -- opens, which IS "the shove has run out", and the badge must not survive that -- a stun whose
+        -- duration was stretched to cover a big shove (Status.apply's floor: Jolt shoves 10 and badges
+        -- 15) otherwise leaves the target taking a whole turn while visibly Stunned.
+        name = "a stun ends when the delayed turn it bought finally arrives",
+        fn = function()
+            local c = Combat.new(arena(8, 8),
+                { unit("character_rowan", 1, 1), unit("character_knight", 2, 1) },
+                { unit("character_bandit", 7, 7) })
+            Combat.openBattle(c)
+            local bandit = c.units[3]
+            Status.apply(c, bandit, "status_stun", { magnitude = 10 })
+            -- The floor still holds: the badge is stretched past the 10-tick shove it just landed.
+            assert(Status.get(bandit, "status_stun").remaining > 10,
+                "the badge outlasts the shove, so it cannot expire before the delayed turn")
+
+            -- Play the party's turns out until the bandit finally comes back around.
+            local acted
+            for _ = 1, 12 do
+                local u = Combat.startTurn(c)
+                if not u then break end
+                if u == bandit then acted = true break end
+                Combat.pass(c, u)
+            end
+            assert(acted, "the bandit's delayed turn arrived within the run")
+            assert(bandit.initiative == 0, "a unit whose turn has opened stands at initiative 0")
+            assert(not Status.has(bandit, "status_stun"),
+                "the stun is spent by the turn it delayed -- no acting while Stunned")
+        end,
+    },
+    {
         name = "Status.initiativeShove reports the delay a hard-control status lands (0 for the rest)",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, { unit("character_bandit", 1, 2) })
