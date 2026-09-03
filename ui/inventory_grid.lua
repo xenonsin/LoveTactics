@@ -295,8 +295,9 @@ function InventoryGrid:draw()
             -- Name band along the bottom, scaled to fit on one line.
             love.graphics.setColor(0, 0, 0, 0.6)
             love.graphics.rectangle("fill", sx + 1, sy + sh - 16, sw - 2, 15, 0, 0, 6, 6)
-            -- Fit the name on a native sans font (never scaled -- a scaled font blurs); long names step down.
-            local font, name = Theme.fitText(Theme.body, item.name or "?", sw - 8, 11, 8)
+            -- One size for every tile in the grid (never scaled -- a scaled font blurs); a name too
+            -- long for the band ellipsizes rather than shrinking out of step with its neighbours.
+            local font, name = Theme.itemTileName(item.name or "?", sw - 8)
             love.graphics.setFont(font)
             Theme.set(Theme.ink)
             love.graphics.print(name, sx + sw / 2 - font:getWidth(name) / 2, sy + sh - 15)

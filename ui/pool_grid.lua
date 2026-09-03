@@ -311,8 +311,9 @@ function PoolGrid:drawCell(i, sx, sy)
     -- Name band along the bottom, scaled to fit one line.
     love.graphics.setColor(0, 0, 0, 0.55)
     love.graphics.rectangle("fill", sx + 1, sy + CELL - 15, CELL - 2, 14, 0, 0, 6, 6)
-    -- Fit the name on a native sans font (never scaled -- a scaled font blurs); long names step down.
-    local font, name = Theme.fitText(Theme.body, item.name or "?", CELL - 6, 11, 8)
+    -- One size for every cell in the pool (never scaled -- a scaled font blurs); a name too long for
+    -- the band ellipsizes.
+    local font, name = Theme.itemTileName(item.name or "?", CELL - 6)
     love.graphics.setFont(font)
     love.graphics.setColor(col[1] * dim, col[2] * dim, col[3] * dim)
     love.graphics.print(name, sx + CELL / 2 - font:getWidth(name) / 2, sy + CELL - 14)

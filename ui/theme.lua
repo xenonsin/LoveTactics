@@ -196,6 +196,20 @@ function Theme.ellipsize(text, font, maxW)
     return text .. "..."
 end
 
+-- The name band under an item TILE, at one size for the whole grid.
+--
+-- Not Theme.fitText: a per-name step-down sizes every tile independently, so a grid of items reads
+-- as ragged -- and it sizes them backwards, since the longest name (the one that most needs the
+-- room) ends up the smallest type on the board. The size here comes from the band's width alone, so
+-- every tile of a given grid gets the same one and the same tile gets the same one on every surface
+-- it appears on; a name too long for it ellipsizes, and the full name is a hover away in the item
+-- tooltip. Returns font + text to print at native scale, like Theme.fitText.
+function Theme.itemTileName(text, maxW)
+    local size = (maxW >= 80 and 11) or (maxW >= 62 and 10) or 9
+    local font = Theme.body(size)
+    return font, Theme.ellipsize(text, font, maxW)
+end
+
 -- Fill a rounded panel/plate in a surface colour. `Theme.fill(Theme.panel, x, y, w, h)`.
 function Theme.fill(surface, x, y, w, h, r)
     Theme.set(surface)

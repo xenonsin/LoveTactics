@@ -131,9 +131,11 @@ function Bag:drawCell(i, focused)
         return
     end
 
-    -- The name never scales -- it steps down a size and then ellipsizes (Theme.fitText), the rule
-    -- every printed string in this project follows.
-    local font, label = Theme.fitText(Theme.display, held.name or held.id or "Item", r.w - 20, 17, 13)
+    -- The name never scales, and every cell prints at the SAME size -- a step-down would size each
+    -- name against its own length, which reads as a ragged grid. A name too long for the cell
+    -- ellipsizes instead.
+    local font = Theme.display(17)
+    local label = Theme.ellipsize(held.name or held.id or "Item", font, r.w - 20)
     love.graphics.setFont(font)
     love.graphics.setColor(0.94, 0.93, 0.89)
     love.graphics.printf(label, r.x + 10, r.y + 12, r.w - 20, "center")

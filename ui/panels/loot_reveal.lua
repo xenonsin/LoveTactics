@@ -400,8 +400,10 @@ function LootReveal:drawCard(item, count, cx, cy, alpha, scale, focused)
 
     love.graphics.setColor(0, 0, 0, 0.6 * alpha)
     love.graphics.rectangle("fill", x + 1, y + h - 17 * scale, w - 2, 16 * scale, 0, 0, 6, 6)
-    -- Fit the name on a native font (never scaled -- a scaled font blurs); long names step down a size.
-    local font, name = Theme.fitText(Theme.body, item.name or "?", w - 8, 13, 10)
+    -- One size for every card (never scaled -- a scaled font blurs); a name too long for the band
+    -- ellipsizes. Sized off the card's RESTING width, not `w`, so the pop-in animation grows the
+    -- card without stepping the name through two sizes on the way.
+    local font, name = Theme.itemTileName(item.name or "?", CARD_W - 8)
     love.graphics.setFont(font)
     love.graphics.setColor(0.92, 0.92, 0.96, alpha)
     love.graphics.print(name, cx - font:getWidth(name) / 2, y + h - 16 * scale)

@@ -1364,9 +1364,9 @@ function CombatPanel:drawItemGrid()
             -- Name band overlaid along the bottom, single line scaled to fit.
             love.graphics.setColor(0, 0, 0, 0.6 * dim)
             love.graphics.rectangle("fill", sx + 1, sy + sh - NAME_H, sw - 2, NAME_H - 1, 0, 0, 5, 5)
-            -- Fit the name to the slot on a native font (never scaled); long names step down a size or
-            -- two and ellipsize past that. The sans data face, not the serif.
-            local font, name = Theme.fitText(Theme.body, item.name or "?", sw - 8, 11, 8)
+            -- One size for every slot in the grid, on a native font (never scaled); a name too long
+            -- for the band ellipsizes. The sans data face, not the serif.
+            local font, name = Theme.itemTileName(item.name or "?", sw - 8)
             love.graphics.setFont(font)
             local nw, nh = font:getWidth(name), font:getHeight()
             love.graphics.setColor(0.94 * dim + 0.05, 0.94 * dim + 0.05, 0.96 * dim + 0.05)
