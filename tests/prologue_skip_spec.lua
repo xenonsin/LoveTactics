@@ -141,4 +141,52 @@ return {
             assert(player.hubIntro == nil, "the skip does not stage the hub's first-visit intro")
         end,
     },
+    {
+        name = "the skip's technique opens the two houses Act 0 is fought in, and no others",
+        fn = function()
+            local player = skipped()
+            local Class = require("models.class")
+            local Building = require("models.building")
+            local Character = require("models.character")
+
+            -- The company arrives having SWUNG two houses: Rowan is declared knight and the avatar's
+            -- starting sword is the Bastion's shelf, while the avatar's own badge is fighter
+            -- (Growth.NEUTRAL_CLASS -- it declares no class). Level 1 is what a house door asks for.
+            for _, class in ipairs({ "knight", "fighter" }) do
+                assert(Class.rosterLevel(player, class) >= 1,
+                    "Act 0 is fought in " .. class .. ", and the company arrives at class level "
+                    .. Class.rosterLevel(player, class))
+            end
+
+            -- The road hands over an opener for all seven classes, which is not the same as having cast
+            -- them: the other five houses are still shut, exactly as a PLAYED Act 0 leaves them.
+            local open = 0
+            for _, def in pairs(Building.defs) do
+                if def.unlockClassLevel then
+                    local vendor = require("models.vendor").defs[def.vendor]
+                    local class = vendor and vendor.class
+                    if class and Class.rosterLevel(player, class) >= def.unlockClassLevel then
+                        open = open + 1
+                    end
+                end
+            end
+            assert(open == 2, "two of the seven houses open on a skipped Act 0, got " .. open)
+
+            -- Nothing is banked above what the fights could physically have paid: the per-fight ceiling
+            -- a real fight enforces, over the four fights the road holds.
+            local ceiling = 4 * Class.TECHNIQUE_PER_BATTLE
+            for _, char in ipairs(player.roster) do
+                for key, amount in pairs(char.technique or {}) do
+                    assert(amount <= ceiling, char.name .. " banked " .. amount .. " " .. key
+                        .. ", over what four fights can pay (" .. ceiling .. ")")
+                end
+                -- The level already landed, so the level-up reading is caught up rather than sitting on
+                -- a fight's worth of progress the company has not made since (Growth.resolve's snapshot).
+                for key in pairs(char.technique or {}) do
+                    assert(Character.techniqueSinceLevel(char, key) == 0,
+                        char.name .. " reaches the city owing a level-up in " .. key)
+                end
+            end
+        end,
+    },
 }

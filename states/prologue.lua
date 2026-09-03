@@ -350,6 +350,79 @@ prologue.SCENE_FLAGS = { "met_the_survivor" }
 -- one does rather than three below the danger the first floor fights at.
 prologue.SKIP_XP = 80
 
+-- How many ACTIONS a body takes in one of those fights, which is the other figure the data cannot
+-- state: technique is banked per action (Class.TECHNIQUE_PER_ACTION), and nothing in Act 0 records how
+-- many were spent. Ten is what a short scripted fight of a two-body company gets through -- twenty
+-- technique a fight, two thirds of the ceiling a fight can pay (Class.TECHNIQUE_PER_BATTLE), so the
+-- estimate never sits against the cap and reads as a clamp rather than a count.
+prologue.SKIP_ACTIONS_PER_FIGHT = 10
+
+-- WHAT THE FIGHTING BANKS IN THE HOUSES: the half of Act 0's pay that decides what the city LOOKS like
+-- when the skip lands in it. Each of the seven class shelves opens at class level 1 in its own class,
+-- held by any body on the roster (`unlockClassLevel` on data/buildings/bastion.lua and its six
+-- siblings, read through Class.rosterLevel), and a class level is nothing but cumulative technique
+-- (Class.classLevel). Experience alone left every body at nought in every house, so a skipped company
+-- reached a houses board with all seven doors shut and no way to open one short of a descent -- the
+-- opposite of what the button is for.
+--
+-- PAID THE WAY A FIGHT PAYS IT (Combat.awardTechnique): every action banks TECHNIQUE_PER_ACTION, split
+-- between the house of the thing in the hand and the body's DECLARED house, which takes
+-- TECHNIQUE_DECLARED_SHARE of it -- all of it when the two are the same. So the badge rides every
+-- action and a body's technique concentrates where it is declared, which is why the company reaches the
+-- city holding the Bastion (Rowan, declared knight, and the avatar's starting sword is the Bastion's
+-- shelf too) and the Colosseum (the avatar's own badge, fighter by Growth.NEUTRAL_CLASS) and not the
+-- other five. The road INTRODUCES all seven classes, one opener apiece -- but introducing is not
+-- swinging, and a played Act 0 does not open those doors either.
+--
+-- WHAT IS APPROXIMATED is the mix, because nothing recorded it: the actions divide evenly across the
+-- castable classes on the body's grid -- `activeAbility`, since an item with no cast is never the thing
+-- in the hand. Capped per house at what the fights could physically have paid, the same per-fight
+-- ceiling a real fight enforces.
+local function bankTechnique(player, fights)
+    local Class = require("models.class")
+    local Growth = require("models.growth")
+
+    local budget = fights * prologue.SKIP_ACTIONS_PER_FIGHT
+    local ceiling = fights * Class.TECHNIQUE_PER_BATTLE
+
+    for _, char in ipairs(player.roster) do
+        -- The houses this body could have been swinging, in grid order and without repeats.
+        local keys = {}
+        for _, item in ipairs(Character.eachItem(char)) do
+            local key = item.activeAbility and Class.growthClasses(item)[1]
+            if key then
+                local seen = false
+                for _, held in ipairs(keys) do if held == key then seen = true end end
+                if not seen then keys[#keys + 1] = key end
+            end
+        end
+
+        local declared = Growth.classOf(char)
+        local banked = {}
+        local function bank(key, amount)
+            if not key then return end
+            amount = math.min(amount, ceiling - (banked[key] or 0))
+            if amount <= 0 then return end
+            banked[key] = (banked[key] or 0) + amount
+            Character.recordTechnique(char, key, amount)
+        end
+
+        if #keys == 0 then
+            -- A body carrying nothing castable still fought: the whole action goes to the badge, which
+            -- is what Combat.awardTechnique pays when the hands vote for nothing.
+            bank(declared, budget * Class.TECHNIQUE_PER_ACTION)
+        else
+            for i, key in ipairs(keys) do
+                -- The even split, with the remainder on the first houses rather than lost to floor().
+                local actions = math.floor(budget / #keys) + ((i <= budget % #keys) and 1 or 0)
+                local share = (declared ~= key) and Class.TECHNIQUE_DECLARED_SHARE or 0
+                bank(key, actions * (Class.TECHNIQUE_PER_ACTION - share))
+                bank(declared, actions * share)
+            end
+        end
+    end
+end
+
 -- Apply everything Act 0 grants to `player`, in the order the beats grant it, and leave the city in
 -- free play. Called INSTEAD of prologue.begin -- this state never runs.
 function prologue.skip(player)
@@ -425,9 +498,14 @@ function prologue.skip(player)
     local function payFight(count)
         Player.addGold(player, Spoils.roll({ count = count, day = 1 }).gold)
     end
+    -- Counted rather than typed, because the technique below is priced per fight: the village lane to
+    -- start with, a stop for every route entry that fields a composition, and the champion at the end.
+    -- A road that gains or loses a fight moves both payouts without either figure being touched.
+    local fights = 1
     for _, stop in ipairs(stops) do
         local def = Encounter.defs[stop.id]
         if def and def.composition then
+            fights = fights + 1
             payFight(#def.composition({ day = 1 }))
             local rescue = def.rescue
             if rescue then
@@ -440,7 +518,13 @@ function prologue.skip(player)
         end
     end
     -- ...and the champion at the end of the trail, whose fight is the map's objective rather than a stop.
+    fights = fights + 1
     payFight(#FLIGHT_QUEST.map.objective.composition({ day = 1 }))
+
+    -- What those same fights bank in the houses -- see bankTechnique. Banked BEFORE the levels below,
+    -- as a fight banks it: Growth.resolve snapshots the ledger when a level lands, and technique added
+    -- after the snapshot would read as a level's worth of progress the company has not made since.
+    bankTechnique(player, fights)
 
     -- The experience those fights pay, resolved into levels through Growth exactly as a won fight
     -- resolves it (states/game.lua's post-fight seam). Awarded after the recruit, so Rowan is not handed
