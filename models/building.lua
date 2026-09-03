@@ -104,6 +104,33 @@ function Building.anyHouseOpen(player)
     return false
 end
 
+-- THE HOUSE THAT TEACHES A CLASS -- its card in the square, whether its door is open for this player,
+-- and the class level it is waiting for. The Roll sends a body to its trainer from the class it is
+-- reading (ui/class_editor.lua), and that button needs all three: where to go, whether it may, and what
+-- to say when it may not.
+--
+-- Asked of the CLASS and answered through the vendor, the same hop houseOpen takes: a shelf belongs to
+-- exactly one class (data/vendors/<id>.lua) and the card names the shelf, so the class is never written
+-- on the building. Nil when the class has no house, which is every subclass and crossing -- ask this
+-- about the ROOT the class hangs off, not about the class itself.
+function Building.houseForClass(class, player)
+    if not class then return nil end
+    local vendorId = require("models.vendor").forClass(class)
+    if not vendorId then return nil end
+    for id, def in pairs(Building.defs) do
+        if def.vendor == vendorId then
+            return {
+                id = id,
+                name = def.name,
+                class = class,
+                need = def.unlockClassLevel,
+                open = houseOpen(def, player),
+            }
+        end
+    end
+    return nil
+end
+
 -- (Building.RETIRED held one entry -- the Quest Board -- and was the whole of "the campaign is parked,
 -- not cut": its blueprint stayed on disk and one table hid its door, so bringing the board back was
 -- deleting a line. It is cut now, blueprint and panel and Quest.available with it, so there is nothing

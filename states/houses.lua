@@ -77,7 +77,8 @@ function houses.enter(self, opts)
     require("models.sound").music("music.hub")
     require("ui.screen_fx").reset()
 
-    map = BuildingMap.new(Building.list(houses.player, { district = "houses" }), {
+    local cards = Building.list(houses.player, { district = "houses" })
+    map = BuildingMap.new(cards, {
         onActivate = openHouse,
         -- The red unseen dot: this shelf is carrying wares the player has never looked at -- a rung
         -- their class level opened while they were underground, which is the one thing a square of
@@ -88,6 +89,21 @@ function houses.enter(self, opts)
         end,
     })
     back = CloseButton.new(Scale.WIDTH - 24, 24)
+
+    -- ARRIVING ON ONE COUNTER. The Roll walks a body to the house that teaches the class it is standing
+    -- on (ui/class_editor.lua), and that walk should land AT the shelf: the player has already made the
+    -- choice the square is for, and a board with the right card merely highlighted would ask it again.
+    -- It is the same door either way -- the greeting plays, the shelf is the shelf -- and closing it
+    -- leaves them here, in the square, which is where they now are.
+    --
+    -- A shut card is not opened by naming it. The button that sends them here is drawn shut too, so
+    -- this can only be reached past an open door; the guard is for a caller that goes stale, not for
+    -- a player.
+    if opts.open then
+        for _, card in ipairs(cards) do
+            if card.id == opts.open and not card.locked then openHouse(card) end
+        end
+    end
 end
 
 function houses.update(dt)

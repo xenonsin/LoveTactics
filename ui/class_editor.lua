@@ -48,6 +48,7 @@
 
 local Theme = require("ui.theme")
 local ProgressBar = require("ui.progress_bar")
+local Building = require("models.building")
 local Class = require("models.class")
 local Growth = require("models.growth")
 local Item = require("models.item")
@@ -58,6 +59,7 @@ ClassEditor.__index = ClassEditor
 
 local ROW_H = 30
 local BUTTON_H = 34
+local BUTTON_GAP = 8
 
 -- The stats a growth table may buy, in the order the character sheet prints them, so a player moving
 -- between the two readouts reads the same rows in the same places (ui/panels/party.lua's STAT_ROWS).
@@ -286,6 +288,15 @@ function ClassEditor.new(opts)
     local self = setmetatable({}, ClassEditor)
     self.x, self.y, self.w, self.h = opts.x, opts.y, opts.w, opts.h
     self.fonts = opts.fonts
+    -- The company, for the one question on this tab that is not about the body in front of it: a house
+    -- opens on the ROSTER's level in its class (Building.houseForClass), because a shelf is the town's
+    -- and not one member's.
+    self.player = opts.player
+    -- WHO CAN ACTUALLY WALK THERE. The trainer button is a door in the city, so it is offered only by
+    -- the host that has a city to open -- the Armory (states/hub.lua). The same panel opens on the
+    -- overworld and under a battle's deployment, where the town is a day's march away and a button
+    -- onto it would be a control that never works.
+    self.onVisitTrainer = opts.onVisitTrainer
 
     -- Split: the class list on the left, the highlighted class in full on the right. The same
     -- proportion the rule editor next door uses, so a tab change does not re-cut the column.
@@ -331,6 +342,46 @@ function ClassEditor:changeClass()
 end
 
 -- ---------------------------------------------------------------------------
+-- The trainer
+-- ---------------------------------------------------------------------------
+
+-- THE HOUSE BEHIND THE HIGHLIGHTED CLASS -- where it is taught, sold and climbed. Asked of the ROOT the
+-- row hangs off rather than of the row: the seven houses are the seven base classes, and a subclass or
+-- a crossing is shelved by the parent whose group it is drawn under (models/vendor.lua).
+--
+-- Nil when this panel was not opened somewhere a player can walk out of, which is the same condition
+-- the button draws on -- one reader, so the offer and the act can never disagree about whether there
+-- is a town.
+function ClassEditor:trainer()
+    if not self.onVisitTrainer then return nil end
+    local row = self:currentRow()
+    if not row then return nil end
+    return Building.houseForClass(row.kind == "class" and row.id or row.parent, self.player)
+end
+
+-- Walk to it. The host owns everything past this point -- shutting the panel, crossing to the square,
+-- playing the house's greeting -- because a widget that knew how to switch states would be a seam built
+-- for one room.
+function ClassEditor:visitTrainer()
+    local house = self:trainer()
+    if not (house and house.open) then return false end
+    self.onVisitTrainer(house.id, house.class)
+    return true
+end
+
+-- The floor every readout in the detail column stops at: the top of the button stack under it. One
+-- reader, because the stack is one plate tall on the overworld and two in the city, and a blurb that
+-- measured itself against a guess at that would run under the buttons on exactly one of them.
+function ClassEditor:changeY()
+    return self.y + self.h - BUTTON_H - 22
+end
+
+function ClassEditor:buttonsTop()
+    if self:trainer() then return self:changeY() - BUTTON_H - BUTTON_GAP end
+    return self:changeY()
+end
+
+-- ---------------------------------------------------------------------------
 -- Column-editor contract (see Party:columnEditor)
 -- ---------------------------------------------------------------------------
 
@@ -355,6 +406,13 @@ function ClassEditor:confirm()
     self:changeClass()
 end
 
+-- THE TAB'S SECOND ACT, on the seam the rule editor next door already uses for its own (F / X, routed
+-- by Party:keypressed). A second verb needs a second button on every device, and this one is free on
+-- both: the roll has no rule to enable, which is what F does on the other column editor.
+function ClassEditor:altConfirm()
+    self:visitTrainer()
+end
+
 function ClassEditor:cancel()
     return false -- nothing here is held open, so Esc belongs to the panel
 end
@@ -369,6 +427,7 @@ function ClassEditor:mousemoved(x, y)
         if hit(r, x, y) then self.hoverRow = i break end
     end
     self.hoverChange = hit(self.changeRect, x, y)
+    self.hoverTrainer = hit(self.trainerRect, x, y)
 end
 
 function ClassEditor:wheelmoved(dy)
@@ -387,11 +446,24 @@ function ClassEditor:mousepressed(x, y)
         self:changeClass()
         return true
     end
+    -- A shut trainer's plate still swallows the click. It is drawn, so it is a thing the mouse lands
+    -- on; letting the press fall through to the panel behind it would read as the panel misbehaving
+    -- rather than as the door being shut.
+    if hit(self.trainerRect, x, y) then
+        self:visitTrainer()
+        return true
+    end
     return false
 end
 
 function ClassEditor:cursorKind(x, y)
     if hit(self.changeRect, x, y) then return "hand" end
+    -- The hand appears over an OPEN door only. A shut trainer's plate is a notice, and a pointer that
+    -- turned into a hand over it would promise a press that does nothing.
+    if hit(self.trainerRect, x, y) then
+        local house = self:trainer()
+        return (house and house.open) and "hand" or "arrow"
+    end
     for i, r in pairs(self.rowRects) do
         if hit(r, x, y) and self:isSelectable(i) then return "hand" end
     end
@@ -406,6 +478,10 @@ function ClassEditor:prompts()
     -- The one verb, offered only where it is legal: a body already standing in the highlighted class
     -- has nothing to press, and a prompt for it would read as the press having failed.
     if self:canChange() then add(pad and "A" or "Enter", "Change class") end
+    -- Same rule for the walk: the prompt stands while the door does. A shut house keeps its plate on
+    -- the column, because the plate is what says how to open it -- but there is nothing to press.
+    local house = self:trainer()
+    if house and house.open then add(pad and "X" or "F", "Class trainer") end
     return out
 end
 
@@ -574,7 +650,7 @@ function ClassEditor:drawLineage(row, x, y, w)
     -- The strip yields rather than drawing through the button: a blurb runs as long as it runs, and
     -- the two readouts under this one (where the body stands, what the class grows) are numbers the
     -- decision is made against, where this is the shape around them.
-    local avail = math.floor(((self.y + self.h - BUTTON_H - 46) - y) / LINE_H)
+    local avail = math.floor(((self:buttonsTop() - 24) - y) / LINE_H)
     if avail < 2 then return y end
 
     local parents = Class.parents(row.id)
@@ -772,10 +848,10 @@ function ClassEditor:drawTechniqueRule(row, x, y, w)
 
     local _, lines = small:getWrap(text, w)
     local h = small:getHeight() * math.max(1, #lines)
-    -- Measured against the BUTTON's own top edge (see drawDetail), not a guess at it: the strip above
-    -- reserved an extra two dozen pixels it did not need, and the first thing that cost was this line
-    -- going silently missing on a pane that had room for it.
-    if y + h > self.y + self.h - BUTTON_H - 28 then return y end
+    -- Measured against the BUTTON STACK's own top edge (see drawDetail), not a guess at it: the strip
+    -- above reserved an extra two dozen pixels it did not need, and the first thing that cost was this
+    -- line going silently missing on a pane that had room for it.
+    if y + h > self:buttonsTop() - 6 then return y end
 
     love.graphics.setFont(small)
     Theme.set(Theme.muted)
@@ -786,7 +862,7 @@ end
 function ClassEditor:drawDetail()
     local x, y, w = self.detailX, self.y, self.detailW
     local row, char = self:currentRow(), self.char
-    self.changeRect = nil
+    self.changeRect, self.trainerRect = nil, nil
     if not row then return end
     local small, body = self.fonts.small, self.fonts.body
 
@@ -853,11 +929,40 @@ function ClassEditor:drawDetail()
         end
     end
 
+    -- THE OTHER DOOR OUT OF THIS COLUMN: the house where this class is taught, sold and climbed. It
+    -- stands above the act, because changing class is what you do HERE and the trainer is where you go
+    -- next.
+    --
+    -- AND IT IS DRAWN SHUT, which is the one greyed plate on this tab and deliberately the exception to
+    -- the rule under it. A house that has not opened is not refusing the press, it is naming the level
+    -- that opens it -- "Unlock trainer at Knight lvl 1" is the only place in the game that sentence is
+    -- said on the class's own screen, and it is said to the player who is standing there deciding
+    -- whether to climb. Take the plate away and the gate is invisible until the door appears.
+    local house = self:trainer()
+    if house then
+        local by = self:buttonsTop()
+        self.trainerRect = { x = x, y = by, w = w, h = BUTTON_H }
+        Theme.plate(x, by, w, BUTTON_H, 4, (house.open and self.hoverTrainer) and Theme.panel or Theme.panel2)
+        Theme.set(Theme.frame, house.open and 1 or 0.4)
+        love.graphics.rectangle("line", x, by, w, BUTTON_H, 4, 4)
+        love.graphics.setFont(body)
+        if house.open then
+            Theme.set(Theme.ink)
+            love.graphics.printf("Go to Class Trainer", x, by + 9, w, "center")
+        else
+            -- The class is named because it is not the class on the row: a subclass is taught at its
+            -- parent's house, so "lvl 1" alone would read as a level in the thing being looked at.
+            Theme.set(Theme.muted, 0.55)
+            love.graphics.printf(string.format("Unlock trainer at %s lvl %d",
+                Item.classDisplayName(house.class) or house.class, house.need or 1), x, by + 9, w, "center")
+        end
+    end
+
     -- THE ONE ACT ON THIS TAB, and it draws only where it is legal: a body already standing in this
     -- class has nothing to press. A greyed plate would be a control that is never pressable pretending
-    -- to be one that is.
+    -- to be one that is -- where the trainer's plate above is not a control at all while it is shut.
     if self:canChange() then
-        local by = self.y + self.h - BUTTON_H - 22
+        local by = self:changeY()
         self.changeRect = { x = x, y = by, w = w, h = BUTTON_H }
         Theme.plate(x, by, w, BUTTON_H, 4, self.hoverChange and Theme.panel or Theme.panel2)
         Theme.set(Theme.accentAmber)

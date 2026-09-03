@@ -326,6 +326,16 @@ local function launchPanel(building)
         -- The tutorial's staked pull plays its beats in full. It is the only pull in the game that
         -- cannot be skipped, and it is the one teaching what a pull looks like (INTRO_STAGES.hire).
         hold = hub.player and hub.player.hubIntro == "hire",
+        -- THE ARMORY'S ROLL SENDS A BODY TO ITS TRAINER (ui/class_editor.lua). The Loadout panel is
+        -- opened from three places and only this one stands in the city, so only this one hands over a
+        -- way to walk out of it -- the square where the seven shelves are, with the class's own house
+        -- already open on the counter. The panel shuts behind the walk rather than waiting under it:
+        -- what is being left is a screen, not a modal that should still be there on the way back.
+        onVisitTrainer = function(houseId)
+            activePanel = nil
+            Player.active = hub.player
+            State.switch(require("states.houses"), { player = hub.player, open = houseId })
+        end,
         onClose = dismissPanel,
     })
     activePanel = opened

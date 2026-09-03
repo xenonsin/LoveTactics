@@ -440,10 +440,16 @@ function Party.new(opts)
         w = self.boxX + BOX_W - 24 - self.focusX,
         h = bottom - contentY,
         char = self.chars[self.charIndex],
+        player = self.player, -- the roll asks the COMPANY whether a house has opened (ui/class_editor)
         fonts = { head = self.headFont, body = self.bodyFont, small = self.smallFont, tiny = self.tinyFont },
         -- Which rule list the Tactics tab edits: the player's overlay in-game (nil -> the editor's own
         -- default), or the blueprint's `ai` directly in the debug character editor. See ui/tactics_editor.
         ownKey = opts.tacticsOwn,
+        -- THE WALK TO A CLASS'S HOUSE, offered only by a host that has a city to open. The Armory in
+        -- town passes it (states/hub.lua); the same panel on the overworld and under a deployment does
+        -- not, and the Roll draws no trainer plate there. `(houseId, class)` -- where to go, and what
+        -- for; everything about getting there belongs to whoever handed this in.
+        onVisitTrainer = opts.onVisitTrainer,
     }
     self.editors = { tactics = TacticsEditor.new(column) }
     if opts.classes ~= false then self.editors.classes = ClassEditor.new(column) end
@@ -2641,7 +2647,11 @@ function Party:keypressed(key)
     elseif key == "down" or (key == "s" and not editor) then self:navigate(0, 1)
     elseif key == "f" then
         if editor and self.focus == "editor" then
-            if editor.toggleEnabled then editor:toggleEnabled(editor.cursor) end
+            -- ONE SEAM FOR "THE TAB'S SECOND ACT". On Tactics that is enabling the cursored rule; on
+            -- the Roll it is the walk to the class's trainer. Neither editor has the other's verb, so
+            -- the two never collide and the key means one thing per tab.
+            if editor.toggleEnabled then editor:toggleEnabled(editor.cursor)
+            elseif editor.altConfirm then editor:altConfirm() end
         elseif self.focus == "grid" then
             self.grid:setDefaultAt(self.grid.cursor)
         end
@@ -2681,7 +2691,8 @@ function Party:gamepadpressed(joystick, button)
     elseif button == "dpdown" then self:navigate(0, 1)
     elseif button == "x" then
         if editor and self.focus == "editor" then
-            if editor.toggleEnabled then editor:toggleEnabled(editor.cursor) end
+            if editor.toggleEnabled then editor:toggleEnabled(editor.cursor)
+            elseif editor.altConfirm then editor:altConfirm() end -- the keyboard's F; see there
         elseif self.focus == "grid" then
             self.grid:setDefaultAt(self.grid.cursor)
         end

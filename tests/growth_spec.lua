@@ -501,8 +501,19 @@ return {
             -- picking a real ninja blade would couple it to whatever the shelf happens to stock. Any
             -- real class id will do -- the probe carries it in `class`, which is the only taxonomy
             -- field an item has since the fold (docs/class-fold.md).
-            local classId = next(Class.defs)
-            assert(classId, "there is at least one class")
+            --
+            -- THREE HOUSES, PICKED OFF A SORTED LIST AND ALL DIFFERENT: the one this body stands in,
+            -- one it does not, and a third for the per-key cap at the bottom. It took `next(Class.defs)`
+            -- and then NAMED the other two ("fighter", "priest"), which held only for as long as the
+            -- hash handed its keys back in an order where those three differed -- `pairs` promises none,
+            -- and the order moves when an unrelated module interns its strings earlier in the run. When
+            -- the first key came back as the house the last assert names, that assert read a ledger
+            -- capped two lines above and the case failed for a rule it was not testing.
+            local ids = {}
+            for id in pairs(Class.defs) do ids[#ids + 1] = id end
+            table.sort(ids)
+            local classId, offHouse, thirdHouse = ids[1], ids[2], ids[3]
+            assert(classId and offHouse and thirdHouse, "there are at least three classes")
             local probe = { class = classId }
 
             -- Stood in the house the probe belongs to, so nothing is split off and the award is whole:
@@ -524,12 +535,12 @@ return {
             -- action's worth, the hands take what is left after the badge's share, and the badge takes
             -- the rest. See Class.TECHNIQUE_DECLARED_SHARE.
             local hands = Class.TECHNIQUE_PER_ACTION - Class.TECHNIQUE_DECLARED_SHARE
-            assert(Combat.awardTechnique(c, knight, { class = "fighter" })
+            assert(Combat.awardTechnique(c, knight, { class = offHouse })
                 == Class.TECHNIQUE_PER_ACTION, "a plain class cast still banks one action's worth")
-            assert(knight.char.technique.fighter == hands, "the hands take their share onto the ledger")
+            assert(knight.char.technique[offHouse] == hands, "the hands take their share onto the ledger")
             assert(knight.char.technique[classId] == first + Class.TECHNIQUE_DECLARED_SHARE,
                 "and the class this body is standing in takes the rest, whatever it is holding")
-            assert(c.techniqueAward.discipline == "fighter", "and arms the same one floater...")
+            assert(c.techniqueAward.discipline == offHouse, "and arms the same one floater...")
             assert(c.techniqueAward.also and c.techniqueAward.also.discipline == classId,
                 "...which names the badge's half too, or the rule is invisible")
 
@@ -546,8 +557,9 @@ return {
             assert(knight.char.technique[classId] == Class.TECHNIQUE_PER_BATTLE,
                 "the ledger never exceeds what the fight was allowed to pay")
 
-            -- The cap is PER KEY, so a capped discipline does not stop a different house banking.
-            assert(Combat.awardTechnique(c, knight, { class = "priest" }) > 0,
+            -- The cap is PER KEY, so a capped discipline does not stop a different house banking. A
+            -- THIRD id, so this is asking about a house neither of the two above has touched.
+            assert(Combat.awardTechnique(c, knight, { class = thirdHouse }) > 0,
                 "another house still banks after the first has capped")
 
             -- A class-less, discipline-less item (a natural weapon) banks nothing and floats nothing.
