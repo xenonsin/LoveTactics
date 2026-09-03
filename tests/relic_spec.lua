@@ -500,6 +500,27 @@ return {
         end,
     },
     {
+        -- The Merchant's shelf offers relics the run does NOT hold, and handed that count (0) to the
+        -- reading -- which took the "not held" branch and printed the authored "%d" on the card. A zero
+        -- stack is an offer, and an offer reads at the one copy taking it would grant.
+        name = "an unheld relic reads at one copy rather than printing its placeholder",
+        fn = function()
+            for id, def in pairs(Relic.defs) do
+                if def.blurb and def.blurb:find("%%d") then
+                    local zero, none = Relic.blurbAt(id, 0), Relic.blurbAt(id)
+                    assert(not zero:find("%%d"), id .. "'s blurb printed its placeholder at zero: " .. zero)
+                    assert(zero == Relic.blurbAt(id, 1), id .. " reads differently unheld than at one copy")
+                    assert(none == zero, id .. "'s blurb differs with no stack at all: " .. none)
+                end
+                if def.cost and def.cost:find("%%d") then
+                    local zero = Relic.costAt(id, 0)
+                    assert(not zero:find("%%d"), id .. "'s cost printed its placeholder at zero: " .. zero)
+                    assert(zero == Relic.costAt(id, 1), id .. "'s price differs unheld from at one copy")
+                end
+            end
+        end,
+    },
+    {
         name = "a price line ladders with the stack, exactly as the effect line does",
         fn = function()
             -- The Keen Edge is +3/-3 at one copy and +5/-5 at two; both halves must move together, or a

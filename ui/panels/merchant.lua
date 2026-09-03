@@ -234,7 +234,11 @@ function Merchant:draw()
         if entry.relic then
             -- The relic's own dwell surface (ui/relic_card.lua), which is the same one the overworld
             -- tray draws -- so a relic held twice reads the same on the shelf as it does in the tray.
-            RelicCard.tooltip(bx + self.boxW + TIP_GAP, entry.rect.y - 8, entry.relic, entry.held)
+            -- Read at `held + 1`: a shelf quotes the stack BUYING would leave you on, which is what the
+            -- Reliquary's cards already do -- and on the ordinary row, where nothing is held yet, it is
+            -- the difference between "+2 damage and skill" and a literal "%d".
+            RelicCard.tooltip(bx + self.boxW + TIP_GAP, entry.rect.y - 8, entry.relic, entry.held,
+                { at = (entry.held or 0) + 1 })
         else
             ItemTooltip.draw(entry.item, bx + self.boxW, entry.rect.y - 24, Scale.WIDTH)
         end

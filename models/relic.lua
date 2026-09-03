@@ -634,7 +634,12 @@ function Relic.blurbAt(id, n)
     if not def then return "" end
     local blurb = def.blurb or ""
     local s = def.scale
-    if not (s and n and n > 0) then return blurb end
+    if not s then return blurb end
+    -- A RELIC NOBODY HOLDS YET STILL READS AS A NUMBER. n = 0/nil is an OFFER surface -- the Merchant's
+    -- shelf, a cache slate -- and the only honest reading there is what one copy does. Returning the
+    -- authored string on a zero stack put a literal "%d" in front of the player, which is worse than
+    -- vague: the one thing every card on this shelf promises is that its figures are figures.
+    n = (n and n > 0) and n or 1
     local ok, out = pcall(string.format, blurb, Relic.magnitude(n, s[1], s[2]))
     return ok and out or blurb
 end
@@ -684,7 +689,8 @@ function Relic.costAt(id, n)
     local def = type(id) == "table" and id or Relic.defs[id]
     if not def or not def.cost then return nil end
     local s = def.costScale
-    if not (s and n and n > 0) then return def.cost end
+    if not s then return def.cost end
+    n = (n and n > 0) and n or 1 -- an unheld relic quotes the price of its first copy, never a raw "%d"
     local ok, out = pcall(string.format, def.cost, Relic.magnitude(n, s[1], s[2]))
     return ok and out or def.cost
 end

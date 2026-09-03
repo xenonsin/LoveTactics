@@ -104,11 +104,15 @@ function RelicCard.tooltip(x, y, info, count, opts)
     local bodyFont = Theme.body(12)
     local W, PAD = opts.width or 250, 8
 
+    -- `opts.at` is the stack the READING quotes; `count` is the stack actually held. They part on an
+    -- OFFER surface: the Merchant's shelf quotes what buying would leave the company on (held + 1), the
+    -- same number relic_offer's cards quote, while the badge below still says what the run carries.
+    local at = opts.at or count
     local key = info.id or info.def or info
-    local blurb = Relic.blurbAt(key, count)
-    -- The price resolved at THIS stack too, not the authored base -- a card reading "-3 defense" over a
+    local blurb = Relic.blurbAt(key, at)
+    -- The price resolved at THAT stack too, not the authored base -- a card reading "-3 defense" over a
     -- relic held twice is the same broken promise as one reading "+3 damage" over it.
-    local cost = Relic.costAt(key, count) or info.cost
+    local cost = Relic.costAt(key, at) or info.cost
     local _, blurbLines = bodyFont:getWrap(blurb, W - PAD * 2)
     local costLines = {}
     if cost then _, costLines = bodyFont:getWrap(cost, W - PAD * 2) end
