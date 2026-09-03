@@ -31,6 +31,11 @@ return {
     sprite = "assets/chars/kaya.png",
     portrait = "assets/portraits/kaya.png", -- large VN portrait for conversations (falls back if missing)
     class = "hunter",
+    -- PERSONAL GROWTH (models/growth.lua): two points a level she keeps in any class, both of them on
+    -- the shot. Temperance is not frailty -- she takes no more than the shot needs, and the answer to
+    -- that over a career is that the shot needs less. Spent on one stat rather than spread, which is
+    -- the same restraint said in how the points are allocated.
+    personalGrowth = { damage = 2 },
     stats = {
         health = 66, mana = 20, stamina = 15,
         staminaRegen = 2,

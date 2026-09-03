@@ -1,11 +1,27 @@
 -- Rest, as a decision. Opened when the player steps onto a Rest tile (states/game.lua's openEncounter).
--- A rest used to just refill the party; now it forces a choice between three ways to spend the breather --
+-- A rest used to just refill the party; now it forces a choice between ways to spend the breather --
 -- Heal the party, Sharpen a lasting combat edge, or Study the ground -- so a safe stop is a real weigh,
 -- and the companions plug in (Amana strengthens Heal, Gyeom strengthens Study). One only; the others are
 -- forgone. Modeled on ui/panels/loot_reveal.lua: a state owns it as game.activePanel and forwards input;
 -- three-input + mouse-only.
 --
---   RestChoice.new({ title=, onHeal=, onSharpen=, onStudy=, onClose= })
+--   RestChoice.new({ title=, onHeal=, onSharpen=, onStudy=, onBind=, onClose= })
+--
+-- BIND IS THE FOURTH AND IT IS NOT ALWAYS THERE. It sets a bone off every body carrying one
+-- (models/wound.lua), and it is the only thing underground that does -- the surface used to have a
+-- building for it and the price on that building is what took the building away. A wound is a condition
+-- of the expedition now, so the way to shed one mid-dive has to be a DECISION with an alternative, which
+-- is exactly the shape this panel already is: binding is taken instead of healing, sharpening or
+-- studying.
+--
+-- Passed as a callback rather than gated in here, so the row draws only when somebody is actually
+-- carrying a wound (states/game.lua asks Wound.wounded before it hands one over). A whole company is
+-- told that binding is not on offer by the row not being there, which is the same rule every other
+-- conditional control in the game draws under -- and it keeps this panel free of the wound model.
+--
+-- APPENDED RATHER THAN INSERTED, on purpose: the three that were always here keep their positions and
+-- their accents, so a player who has learned "Heal is the top one" is never wrong. The row that comes
+-- and goes is the one at the bottom, where its arrival cannot move anything else.
 
 local CloseButton = require("ui.close_button")
 local InputMode = require("input_mode")
@@ -20,9 +36,13 @@ local PAD = 26
 local OPT_H = 78
 local OPT_GAP = 12
 
--- Each option's accent, so the three read apart at a glance: Heal jade (restore), Sharpen amber (power),
--- Study steel-blue (knowledge).
-local ACCENTS = { { 0.42, 0.80, 0.62 }, { 0.86, 0.66, 0.30 }, { 0.50, 0.68, 0.92 } }
+-- Each option's accent, so they read apart at a glance: Heal jade (restore), Sharpen amber (power),
+-- Study steel-blue (knowledge), Bind bone-pale (repair). Bind is deliberately NOT jade: it sits next to
+-- Heal in the list and the two do different things to the same bar -- one fills it, one gives back the
+-- part that would not fill -- so sharing a colour would be the panel saying they are the same offer.
+local ACCENTS = {
+    { 0.42, 0.80, 0.62 }, { 0.86, 0.66, 0.30 }, { 0.50, 0.68, 0.92 }, { 0.88, 0.83, 0.72 },
+}
 
 local function inRect(r, x, y) return x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h end
 
@@ -37,6 +57,12 @@ function RestChoice.new(opts)
         { label = "Sharpen", desc = "Gain Honed Edge -- the front line opens every fight emboldened.", cb = opts.onSharpen },
         { label = "Study",   desc = "Lift the fog from the objective and every Reliquary.",     cb = opts.onStudy },
     }
+    -- ...and the one that comes and goes. See the header: no wound in the company, no row.
+    if opts.onBind then
+        self.options[#self.options + 1] = { label = "Bind",
+            desc = "Set one wound on everybody carrying one. The held-back part of their bar comes back.",
+            cb = opts.onBind }
+    end
     self.focus = 1
 
     self.titleFont = Theme.display(28)

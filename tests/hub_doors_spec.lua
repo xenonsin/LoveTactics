@@ -46,13 +46,17 @@ return {
         -- added without one would have failed silently, which is the one failure mode a dead field
         -- reliably produces when it stops being dead.
         --
-        -- Every CITY card, not every building: the seven shops are on their own board (states/markets.lua)
+        -- Every CITY card, not every building: the seven shops are on their own board (states/houses.lua)
         -- and each already introduces itself in its keeper's own voice the first time it is opened
         -- (models/vendor_visit.lua). This board has no such scene, which is the whole reason it needs one.
         name = "every city card says what its room is for, in a line that fits the bubble",
         fn = function()
             local city = Building.list(Player.new(), { district = "city" })
-            assert(#city >= 8, "the plaza should be laying out its whole ring, not a couple of cards")
+            -- Seven, and it was eight until the Inn was deleted along with the wound toll it charged
+            -- for (models/wound.lua). A floor rather than an exact count, so adding a card does not
+            -- fail here -- what this guards is the layout coming back with a couple of doors because
+            -- something upstream filtered wrongly, not the size of the ring.
+            assert(#city >= 7, "the plaza should be laying out its whole ring, not a couple of cards")
             for _, b in ipairs(city) do
                 local d = b.description
                 assert(type(d) == "string" and d ~= "",
@@ -121,23 +125,28 @@ return {
         end,
     },
     {
-        -- THE WHOLE LOOP, on the door whose gate is a single flag: a wound is taken below, the company
-        -- comes up, the Inn is on the plaza and is owed its announcement -- once.
+        -- THE WHOLE LOOP, on a door whose gate is a single number: the company gets two floors down, it
+        -- comes up, the Cafe is on the plaza and is owed its announcement -- once.
+        --
+        -- IT WAS THE INN, gated on the first wound, and both are deleted (models/wound.lua): a wound is
+        -- a condition of the expedition now and the surface ends it, so there was no bone left for that
+        -- building to set. The Cafe is the same shape -- shut on a fresh save, opened by a deed done
+        -- underground -- which is all this case was ever about.
         name = "a door earned below is announced exactly once",
         fn = function()
             local p = seededPlayer()
-            assert(not contains(Building.unannounced(p), "the_inn"),
-                "nobody has been carried up broken yet")
+            assert(not contains(Building.unannounced(p), "cafe"),
+                "nobody has been down two floors yet")
 
-            p.wounded = true -- what Wound.mark leaves behind; the Inn's gate (models/building.lua)
+            p.deepest = 2 -- the Cafe's gate (models/building.lua's unlockDepth)
             local owed = Building.unannounced(p)
-            assert(contains(owed, "the_inn"),
-                "the first wound opens the Inn, so the city owes an announcement for it: got "
+            assert(contains(owed, "cafe"),
+                "the second floor opens the Cafe, so the city owes an announcement for it: got "
                     .. table.concat(idsOf(owed), ", "))
 
             -- Spent by being WALKED INTO (states/hub.lua's openPanel), not by the bubble being read.
-            Building.markSeen(p, "the_inn")
-            assert(not contains(Building.unannounced(p), "the_inn"),
+            Building.markSeen(p, "cafe")
+            assert(not contains(Building.unannounced(p), "cafe"),
                 "a door walked through is never announced again")
         end,
     },
@@ -148,16 +157,15 @@ return {
         name = "several doors opening at once are announced in board order",
         fn = function()
             local p = seededPlayer()
-            p.wounded = true    -- the Inn (order 3)
-            p.deepest = 4       -- the Cafe (order 7) and the Forge (order 6)
+            p.deepest = 4       -- the Forge (order 6) and the Cafe (order 7), in one trip
 
             local owed = Building.unannounced(p)
-            assert(#owed >= 3, "three doors opened; got " .. table.concat(idsOf(owed), ", "))
+            assert(#owed >= 2, "two doors opened; got " .. table.concat(idsOf(owed), ", "))
             for i = 2, #owed do
                 assert(owed[i - 1].order < owed[i].order,
                     "announcements are out of board order: " .. table.concat(idsOf(owed), ", "))
             end
-            assert(owed[1].id == "the_inn", "the Inn sorts first of the three")
+            assert(owed[1].id == "forge", "the Forge sorts ahead of the Cafe, which is board order")
         end,
     },
     {
@@ -168,12 +176,12 @@ return {
         name = "the shown-door ledger survives a save, and an older save stays unseeded",
         fn = function()
             local p = seededPlayer()
-            p.wounded = true
-            Building.markSeen(p, "the_inn")
+            p.deepest = 2
+            Building.markSeen(p, "cafe")
 
             local restored = Save.restore(Save.snapshot(p))
             assert(Building.seeded(restored), "a seeded ledger must come back seeded")
-            assert(Building.seenDoor(restored, "the_inn"), "...and remember the Inn was walked into")
+            assert(Building.seenDoor(restored, "cafe"), "...and remember the Cafe was walked into")
             assert(Building.seenDoor(restored, "the_gate"), "...and everything it was seeded with")
             assert(#Building.unannounced(restored) == 0,
                 "a loaded save owes no announcement for a door it has already shown")

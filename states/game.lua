@@ -324,7 +324,7 @@ local function openLoadout()
         tactics = game.tutorial ~= "flight",
         -- The roll is the city's lesson too: a body on the flight leg has one job and no ladder to
         -- read, so the tab arrives with the town that explains it.
-        jobs = game.tutorial ~= "flight",
+        classes = game.tutorial ~= "flight",
         -- Clear the equip coach the instant the player equips something, not on panel close.
         onEquip = function()
             if game.coach == "equip" then game.coach = nil end
@@ -604,10 +604,11 @@ function game:inflictWounds(chars)
     -- ARMED HERE, WHICH IS ALSO WHY A WIPE NEVER SEES IT. Every wipe path calls this and then leaves
     -- the map inside the same function -- the haul is cut, the run is dropped, and the next screen is
     -- the city (or the Gate). A bubble pinned to an overworld that is already gone draws nothing, and
-    -- the lesson a wiped company needs is a DOOR rather than a mark: the Inn grows on this same first
-    -- wound (data/buildings/the_inn.lua) and states/hub.lua coaches it on arrival like any other new
-    -- card. So the split falls out of where each path ends rather than out of a flag: a company still
-    -- standing on the board learns the mark, a company standing in the city learns the room.
+    -- there is nothing left for it to point at either: the surface sets every bone the moment the
+    -- company is standing on it (models/wound.lua's Wound.clear), so a wiped company has no mark on any
+    -- bar to be taught. The split falls out of where each path ends rather than out of a flag -- a
+    -- company still standing on the board learns the mark, a company standing in a town has nothing to
+    -- learn yet and will be taught by the first body carried out of a fight it survives.
     if firstEver and hurt[1] then
         game.coach = "wound"
         game.coachChar = hurt[1] -- whose row the bubble points at; the toasts name the rest
@@ -1371,14 +1372,13 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     --     is already false for a scripted leg, which is why the spend sits inside that branch.
     local freshExpedition = not game.descent or not game.descent.entry
     if runResumable() and quest and quest.id and not resume and freshExpedition then
-        -- A NIGHT PASSES, which is the day itself plus what the day does at the Inn: one wound off
-        -- everybody lodged there and only them (a company does not repair itself for standing still),
-        -- and whoever ran out of wounds walking out of their room on the same beat.
+        -- A NIGHT PASSES, which is now the day itself and nothing else. It used to be three things --
+        -- the day, a wound off everybody lodged at the Inn, and whoever that finished walking out of
+        -- their room -- and the Inn is deleted along with the whole toll (models/wound.lua).
         --
-        -- THROUGH Gate.night RATHER THAN THE THREE CALLS INLINE, because this is no longer the only
-        -- thing that causes one -- the Inn sells a night over the counter now (Gate.rest), and a company
-        -- that wipes has to be able to buy the days that mend it without walking back into the fight
-        -- that broke them. Two callers, one definition, one order.
+        -- STILL THROUGH Gate.night rather than reaching for Calendar.spend directly. This is the only
+        -- caller left, and the indirection is deliberately kept: "a night passes" is a fact about the
+        -- loop, and the day is only the part of it the calendar happens to own.
         require("models.gate").night(game.player)
     end
 
@@ -3231,6 +3231,21 @@ function game:openEncounter(cell, opts)
                     if type(hp) == "table" then hp.current = math.max(1, (hp.current or hp.max) - n) end
                 end
             end,
+            -- SET A BONE, and it is the one helper here that can pay nothing through no fault of the
+            -- dilemma: a company with no wounds has none to set. It answers with the count it actually
+            -- moved rather than with true, so a resolve can say "there was nothing here you needed" in
+            -- its own voice instead of leaving the player looking at a stop that reported silence.
+            --
+            -- Only two things underground can do this and this is the second (the first is a Rest spent
+            -- on Bind). Both are the same shape on purpose -- taken INSTEAD of something -- because a
+            -- wound that can be shed for free as often as you like is not a meter (models/wound.lua).
+            mendWound = function(n)
+                local mended = Wound.mend(game.player, n or 1)
+                if #mended > 0 then
+                    game:pushToast((#mended == 1) and "A bone is set" or (#mended .. " bones are set"))
+                end
+                return #mended
+            end,
             grantRelic = function(tier)
                 local id = Relic.roll(Relic.pool({ prestige = game.day, tier = tier,
                     sin = game.quest and game.quest.sin }))
@@ -3281,12 +3296,24 @@ function game:openEncounter(cell, opts)
         return
     end
 
-    -- A Rest is a DECISION, not just a breather: Heal the party, Sharpen a lasting run edge, or Study the
-    -- ground (models/relic.lua + the fog reveal). One only; leaving (X/Esc) forgoes it and leaves the cell
-    -- to reconsider. The companions plug in here later (Amana strengthens Heal, Gyeom strengthens Study).
+    -- A Rest is a DECISION, not just a breather: Heal the party, Sharpen a lasting run edge, Study the
+    -- ground (models/relic.lua + the fog reveal), or Bind the company's wounds. One only; leaving (X/Esc)
+    -- forgoes it and leaves the cell to reconsider. The companions plug in here later (Amana strengthens
+    -- Heal, Gyeom strengthens Study).
+    --
+    -- BIND IS OFFERED ONLY TO A COMPANY THAT HAS SOMETHING TO BIND, which is why the callback is handed
+    -- over conditionally rather than gated inside the panel: the row simply is not there for a whole
+    -- company, and a control draws where it can be used. It is also the only bone-setting the floors
+    -- have -- the Inn that used to do it for coin is gone (models/wound.lua) -- so it has to be spent
+    -- INSTEAD of the heal, the whetstone or the map, which is the property a counter never had.
     if kind == "rest" then
         game.activePanel = RestChoice.new({
             title = cell.encounter.name or "Make Camp",
+            onBind = (#Wound.wounded(game.player) > 0) and function()
+                cell.cleared = true
+                game:restBind()
+                saveRun()
+            end or nil,
             onHeal = function()
                 cell.cleared = true
                 game:restHeal()
@@ -3792,6 +3819,50 @@ function game:restHeal()
     else
         game.activePanel = nil
     end
+end
+
+-- BIND (a rest's fourth choice, and only offered when there is something to bind): set one wound off
+-- every body carrying one (models/wound.lua's Wound.mend).
+--
+-- IT IS THE ONLY BONE-SETTING BELOW GROUND, and it has to be a choice rather than a service. The Inn
+-- did this at a counter for coin, and the price landed only ever on the player who had needed it -- so
+-- the building went and the wound became a condition of the expedition instead, ended free by the walk
+-- home. What that leaves is a company that is worse for the rest of a dive it may not want to abandon,
+-- and this is the answer to that: spend the camp on the bandage and you do not get the whetstone, the
+-- map or the refill.
+--
+-- IT GIVES BACK THE CEILING, NOT THE HEALTH, and the distinction is the whole reason it sits beside
+-- Heal rather than replacing it. A wound RESERVES a slice of the pool (Combat.unreservedMax reads the
+-- share Wound.stamp writes); binding hands the slice back, and what is standing in it is whatever the
+-- body already had. So the dark band on the party strip retreats and the bar does not rise -- you have
+-- room again, and filling it is a different stop. Anything else would make this strictly better than
+-- Heal and collapse a four-way weigh into a one-way one.
+--
+-- WHICH IS ALSO WHY THERE IS NO REVEAL PANEL. restHeal's animates each bar from where the fights left
+-- it to where the camp put it, and this moves no bar at all; playing that reveal over four still bars
+-- would be the game claiming to have done something it did not (the same reason the unpaid tithe below
+-- refuses to play it). A toast naming who was bound is the honest report.
+function game:restBind()
+    if not game.player then return end
+    local mended = Wound.mend(game.player, 1)
+    -- Named off the roster rather than by id, for the same reason the wound toasts are: a companion's
+    -- name can be the one the player typed at creation, and an id is not a person.
+    local byId = {}
+    for _, char in ipairs(game.player.roster or {}) do byId[char.id] = char end
+    local names = {}
+    for _, id in ipairs(mended) do
+        local char = byId[id]
+        names[#names + 1] = (char and char.name) or "Someone"
+    end
+    if #names > 0 then
+        game:pushToast("You bind " .. table.concat(names, ", "))
+    else
+        -- Reachable only if the ledger emptied between the panel opening and this firing, which nothing
+        -- on this screen can do. Said rather than passed over in silence, because a stop the player
+        -- spent that reports nothing is indistinguishable from a bug.
+        game:pushToast("There is nothing left to bind")
+    end
+    game.activePanel = nil
 end
 
 -- STUDY (a rest's third choice): lift the fog off the objective and every Reliquary on the board, so the

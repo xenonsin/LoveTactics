@@ -2,234 +2,64 @@
 --
 -- Wizardry's castle is not decoration on its dungeon, it is the other side of it: an expedition ends by
 -- walking back to the stair, and what makes that walk worth making is that there is somewhere to spend
--- what you carried out and somewhere to put what you carried out on a stretcher. Without it the descent
--- was a single push with no reason to ever stop pushing, which is what the extraction prompt kept
--- failing to be (see models/descent.lua's Descent.account on why that button was hollow).
+-- what you carried out and somewhere to put down what you carried out on a stretcher. Without it the
+-- descent was a single push with no reason to ever stop pushing, which is what the extraction prompt
+-- kept failing to be (see models/descent.lua's Descent.account on why that button was hollow).
 --
--- ONE COUNTER, answering the one cost the floors impose that the floors cannot undo:
+-- WHAT IT HAS IS NO LONGER A COUNTER. Coming up the stair IS the treatment: the surface sets every bone
+-- the dive broke, free and without being asked (models/wound.lua's Wound.clear, called from this
+-- screen's enter and from the city's). So a company that walks out of a floor at half strength is whole
+-- the moment it is standing in a town, and the only thing that follows it up is the count.
 --
---   the inn      wounds, and it is a BED rather than a counter. Falling in a fight caps a body's
---                healing (models/wound.lua) and nothing underground sets a bone; you leave them here,
---                pay for the stay, and they mend a wound a day while they are out of the company
---                (Gate.lodge). Gold opens the door and cannot buy back the days.
+-- THREE THINGS WERE PROSE OR A TOLL AND ARE NEITHER NOW, which is worth recording because each read for
+-- a long time as something the game had:
 --
--- TWO OF THESE WERE PROSE AND NOTHING ELSE, which is worth recording because they read for a long time
--- as things the game had:
+--   the inn      wounds, as a BED: you left a body here, paid per wound at the door, and they mended a
+--                wound a day while they were out of the company. It is gone, building and all, and
+--                models/wound.lua's header holds the argument -- a price on recovery only ever lands on
+--                the player who needed to recover, and a wipe wounds the whole expedition by
+--                construction, so the company that could least afford the bill was the one always
+--                handed it. What paces the campaign instead is Descent.count, which cannot lock
+--                anybody out.
 --
 --   the temple   was described here as what "turns a body in a sack back into somebody who can hold a
 --                sword", carried out by a rescue stop on a later dive. Neither was ever written. A wipe
---                does not leave bodies underground -- the company wakes here, wounded, and only the HAUL
---                stays on the floor (states/game.lua's onLoss). Stranding was designed in full during
---                the descent-loop pass and cut: an absent body dominates a degraded one, so it would
---                have made the wound ladder decoration.
+--                does not leave bodies underground -- the company wakes here and only the HAUL stays on
+--                the floor (states/game.lua's onLoss). Stranding was designed in full during the
+--                descent-loop pass and cut: an absent body dominates a degraded one.
 --
 --   the store    "draughts and a spare blade" off data/vendors/gate_store.lua. There is no store at this
---                screen; the shops are cards in the city (states/markets.lua).
+--                screen; the shops are cards in the city (states/houses.lua).
 --
--- PURE MODEL. No love.graphics, no state switching -- the prices, the eligibility and the spends live
--- here so a spec can drive them, and states/gate.lua is the screen over the top. Same split
--- models/descent.lua keeps against the screens that draw it.
+-- PURE MODEL. No love.graphics, no state switching -- the eligibility and the beats live here so a spec
+-- can drive them, and states/gate.lua is the screen over the top. Same split models/descent.lua keeps
+-- against the screens that draw it.
 
 local Gate = {}
-
--- ---------------------------------------------------------------------------
--- The inn
--- ---------------------------------------------------------------------------
-
--- WHAT A NIGHT COSTS, per body FIELDED. Priced per head rather than flat because the company grows
--- from one to four over the first circles, and a flat bill would be crushing at the mouth and pocket
--- change by the seventh -- which is backwards, since a full company is exactly when a night is worth
--- most.
---
--- Deliberately cheap. A rest is the thing you do every time you come up, and it sets no bones at all:
--- mending is a stay in a bed, priced per wound (Gate.LODGE_PER_WOUND below).
---
--- PER FIELDED HEAD RATHER THAN PER ROSTER HEAD, and that distinction did not exist until the Hiring
--- Hall started dealing (models/voucher.lua). The roster used to BE the field -- four, capped -- so "the
--- company" had one meaning and this counted it. A roster is deep now and a pull adds to it, so counting
--- roster heads would price a night at three hundred and seventy-five for a player who had been lucky,
--- and a bill that climbs with how many people you have COLLECTED is a tax on collecting them. What the
--- inn is for is the four who went down, so it bills the four who went down.
-Gate.INN_PER_HEAD = 25
-
--- ---------------------------------------------------------------------------
--- The Inn: a bed, and what it costs to put somebody in one
--- ---------------------------------------------------------------------------
-
--- WHAT A STAY COSTS, per wound. Paid once, at the door, for the whole stay -- so a three-wound body is
--- three times this and three days in a bed, and the player sees the whole bill before agreeing to it.
---
--- Per WOUND rather than per night, because a nightly charge is the same total arriving in instalments
--- and adds a way to fail halfway: a company that ran out of gold on day two would have somebody turned
--- out mid-mend, which is a rule nobody wants to discover. One price, one decision.
---
--- Priced against an errand's purse (a 250g median) rather than against the shelf: a full three-wound
--- stay is most of a day's takings, which is what makes "go short-handed instead" a real answer.
-Gate.LODGE_PER_WOUND = 60
-
--- What lodging `charId` would cost right now. Zero for a body with nothing to mend -- the Inn does not
--- take money for a bed nobody needs.
-function Gate.lodgePrice(player, charId)
-    local Wound = require("models.wound")
-    return Wound.count(player, charId) * Gate.LODGE_PER_WOUND
-end
-
--- Is this body in a bed? A lodged body is NOT in the company: it cannot be picked for an expedition
--- (Descent.party filters them out), which is the real cost of the stay.
-function Gate.isLodged(player, charId)
-    return ((player or {}).atInn or {})[charId] == true
-end
-
--- Everybody currently in a bed, as ids in roster order -- so a surface listing them agrees with every
--- other surface that lists the company.
-function Gate.lodged(player)
-    local out = {}
-    for _, char in ipairs((player or {}).roster or {}) do
-        if Gate.isLodged(player, char.id) then out[#out + 1] = char.id end
-    end
-    return out
-end
-
--- Put a body to bed, for coin. Returns true, or false plus a reason ("unhurt" | "gold" | "already").
---
--- Charged in full on arrival, and NOT refunded on the way out: a bed taken is a bed paid for, and a
--- player who checked somebody out a day early to get half their money back would be playing the ledger
--- rather than the company.
-function Gate.lodge(player, charId)
-    if not (player and charId) then return false, "unhurt" end
-    if Gate.isLodged(player, charId) then return false, "already" end
-    local price = Gate.lodgePrice(player, charId)
-    if price <= 0 then return false, "unhurt" end
-    if (player.gold or 0) < price then return false, "gold" end
-
-    local Player = require("models.player")
-    Player.spendGold(player, price)
-    player.atInn = player.atInn or {}
-    player.atInn[charId] = true
-    return true
-end
-
--- Take somebody out of a bed, mended or not. Free, and deliberately allowed mid-stay: a company that
--- suddenly needs a fourth body should be able to pull one out half-healed and pay for it in wounds.
-function Gate.checkout(player, charId)
-    if not (player and player.atInn) then return false end
-    if not player.atInn[charId] then return false end
-    player.atInn[charId] = nil
-    if next(player.atInn) == nil then player.atInn = nil end
-    return true
-end
-
--- A body whose last wound has just been set walks out on its own. Called on the same beat the day
--- advances, so a mended body is back in the company by the time the player looks at it -- leaving them
--- lodged at zero wounds would be a bed that has to be swept up by hand, and a company one short for a
--- reason the screen no longer shows.
-function Gate.dischargeMended(player)
-    local Wound = require("models.wound")
-    local out = {}
-    for _, id in ipairs(Gate.lodged(player)) do
-        if Wound.count(player, id) <= 0 then
-            Gate.checkout(player, id)
-            out[#out + 1] = id
-        end
-    end
-    -- WALKING OUT OF A BED IS WALKING OUT WHOLE. Setting the last bone gives the reserved share back
-    -- (models/wound.lua), but the pool it un-reserves is still only as full as it was -- so without
-    -- this a body leaves the Inn at the health they went in with and the player has paid for a number
-    -- that did not move. Wound.mend used to restore for exactly this reason; the beat moved, the
-    -- obligation did not.
-    if #out > 0 then require("models.player").restore(player) end
-    return out
-end
 
 -- ---------------------------------------------------------------------------
 -- A night passing
 -- ---------------------------------------------------------------------------
 
--- WHAT A NIGHT IS, in one place, because two things cause one: going down the stair and waiting here.
+-- WHAT A NIGHT IS, in one place, so the one thing that causes one does not spell it out inline.
 --
--- The three calls were written inline on the descend beat (states/game.lua) and were the only definition
--- of a night the game had -- which is why the ONLY way to move the calendar was to walk into a descent.
--- That is fine while the loop is "go down, come up, go down"; it stops being fine the moment the loop
--- includes losing. A company that wipes wakes at the temple wounded (states/game.lua's onLoss), and the
--- one thing that mends a wound is a day spent in a bed -- so a beaten company had to go back down, hurt,
--- to buy the days that would have healed them. The cure was on the far side of the thing it was for.
+-- IT USED TO BE THREE CALLS AND IS ONE. A night spent the day, mended a wound off everybody lying in an
+-- Inn bed, and walked out whoever that finished. The Inn is gone (see the header) and with it the only
+-- reason a night had to touch the wound ledger at all -- a dive's wounds end when the company reaches
+-- the surface, not when it sleeps -- so what is left is the day itself.
 --
--- So the night is a named beat and the counter can sell one (Gate.rest). Both callers get the same three
--- things in the same order, which is the property that matters: a day, a wound off everybody abed, and
--- whoever that finished walking out of their room.
---
--- ORDER IS LOAD-BEARING. Wound.rest before dischargeMended, or a body whose last bone was set tonight
--- stays lodged until the night after and the player is short a member for a day they already paid for.
---
--- Returns the ids that mended, so a caller can say whose night it was.
+-- KEPT AS A NAMED BEAT rather than folded back into its one caller, because "a night passes" is a fact
+-- about the loop and the calendar is not the only thing that will ever want to hear it. models/calendar
+-- names this function as its one caller and that stays true.
 function Gate.night(player)
-    local Calendar = require("models.calendar")
-    local Wound = require("models.wound")
-    if not player then return {} end
-    Calendar.spend(player)
-    local mended = Wound.rest(player)
-    Gate.dischargeMended(player)
-    return mended
-end
-
-function Gate.innPrice(player)
-    local Player = require("models.player")
-    local n = math.min(#((player and player.roster) or {}), Player.MAX_FIELD)
-    return math.max(Gate.INN_PER_HEAD, n * Gate.INN_PER_HEAD)
-end
-
--- A night at the inn: health and mana back, and NOT a single bone set.
---
--- IT USED TO CLEAR THE WHOLE LEDGER -- `player.wounds = {}` -- for one bill of at most a hundred, which
--- made it by far the cheapest way to undo a wound in the game and quietly the only one that mattered.
--- Wound.mend was deleted for being a counter you could settle a wound at; this was the same thing at a
--- better price, and it survived the cut because nothing named it in the same breath.
---
--- SO THE TWO ARE SPLIT, and the split is the whole point. A NIGHT tops a company back up: it is the
--- thing you do every time you come up, it is cheap, and it touches resources only. A BED mends: you
--- leave a body here, pay per wound, and they are out of the company a day for each one (Gate.lodge).
--- Gold buys the first and opens the door to the second; it cannot buy back the days.
---
--- ...AND THE NIGHT ACTUALLY PASSES NOW (Gate.night). It did not, which made the split above only half
--- true: a bed was priced in days and the only way to spend a day was to walk into a descent, so the
--- mending a beaten company needed was on the far side of the fight they were too hurt to take. Buying
--- the night is buying the day; what the day does is mend one wound off everybody who is in a bed, which
--- is the same beat and the same rule as going down (Wound.rest mends the lodged and nobody else -- a
--- company does not repair itself for standing still).
---
--- SO THIS IS STILL NOT A SURGEON. Nothing about the ledger changed: a body who is not abed sleeps here
--- and wakes with every bone exactly as broken. What is buyable is the passage of time, and what time
--- costs is not a place on a calendar -- it is the body who is not in the company while it passes.
---
--- IT USED TO REFUSE A THIRD WAY, "over": there were forty days and none left to sell. The deadline is
--- retired (models/calendar.lua) and nights are unbounded, so the two refusals left are both about this
--- company rather than about the world.
---
--- Returns true plus the ids that mended, or false plus a reason ("gold", "nobody").
-function Gate.rest(player)
-    if not (player and player.roster and #player.roster > 0) then return false, "nobody" end
-    local Player = require("models.player")
-    local price = Gate.innPrice(player)
-    if (player.gold or 0) < price then return false, "gold" end
-    Player.spendGold(player, price)
-    local mended = Gate.night(player)
-    -- Player.restore reads each body's wound cap as it refills, so a wounded body tops up to its
-    -- WOUNDED ceiling and no further. That is now the honest result rather than an ordering hazard:
-    -- the night gives back what the fighting cost, and the wound is still a wound.
-    --
-    -- AFTER the night rather than before it, so a body whose last bone was set tonight tops up against
-    -- the ceiling they woke with instead of the one they went to bed with.
-    Player.restore(player)
-    return true, mended
+    if not player then return end
+    require("models.calendar").spend(player)
 end
 
 -- ---------------------------------------------------------------------------
 -- Going back down
 -- ---------------------------------------------------------------------------
 
--- Can this company descend at all? One living body is the whole test -- a descent opens with exactly
--- one hire is the whole test: the player is a tactician and stands in no company (models/descent.lua),
--- so a descent opens EMPTY and the gate is where it stops being empty.
 -- Can this company descend at all? SOMEBODY PICKED, which with no run and no picks is the first four of
 -- the roster (Descent.party), so a company that has never opened this screen still has a stair.
 --

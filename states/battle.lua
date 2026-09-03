@@ -4547,7 +4547,7 @@ function battle.openDeployLoadout(player)
         tactics = not battle.tutorial,
         -- ...and the roll with it, for the same reason: on the flight leg this screen is the equip
         -- lesson and nothing else.
-        jobs = not battle.tutorial,
+        classes = not battle.tutorial,
         onClose = function()
             battle.deployLoadout = nil
             -- A body snapshots what its gear decides at the moment it is stood up (its initiative is
@@ -5061,9 +5061,17 @@ local function bankGrowthAward()
     combat.techniqueAward = nil
     -- The key is a class id OR a discipline id, so resolve it the way every other surface does:
     -- "plague_knight" is "Plague Knight", which title-casing alone would render "Plague_knight".
-    local key = award.discipline
-    local name = Class.displayName(key) or (key:gsub("^%l", string.upper))
-    battle.pendingAward = { unit = award.unit, text = "+" .. award.amount .. " " .. name }
+    local function phrase(a)
+        local name = Class.displayName(a.discipline) or (a.discipline:gsub("^%l", string.upper))
+        return "+" .. a.amount .. " " .. name
+    end
+    -- ONE FLOATER, TWO HOUSES WHEN THE ACTION SPLIT. A body standing in a class it is not swinging
+    -- banks into both (Combat.awardTechnique), and the second half is the whole visible consequence of
+    -- the badge -- float only the first and the rule the player is being taught is invisible. Two
+    -- floaters would be two amber texts racing each other off the same head, so they share one line.
+    local text = phrase(award)
+    if award.also then text = text .. "   " .. phrase(award.also) end
+    battle.pendingAward = { unit = award.unit, text = text }
 end
 
 -- Float a parked award -- but only once the action that earned it has finished being an action.

@@ -42,6 +42,11 @@ return {
     -- (First Motion and the bolas are stamina, which is what the 20/+2 is for), and the fighter growth
     -- table grows neither mana nor magicDamage -- so this is a starting floor she never climbs, the same
     -- token pool every other fighter walks around with.
+    -- PERSONAL GROWTH (models/growth.lua): two points a level she keeps in any class. The professional,
+    -- plainly: the biggest body in the company hits harder and lasts longer every year she keeps
+    -- turning up. Deliberately NOT armour -- that is Rowan's, who stands in front of somebody; Saber
+    -- stands in the middle of it because there is nowhere she would rather be.
+    personalGrowth = { health = 1, damage = 1 },
     stats = {
         health = 84, mana = 5, stamina = 20,
         staminaRegen = 2,

@@ -53,6 +53,7 @@ local Prop = require("models.prop")
 local Character = require("models.character")
 local Item = require("models.item") -- for Item.costs: the one place an ability's costs are normalized
 local Class = require("models.class") -- growthClasses: which classes a use tallies
+local Growth = require("models.growth") -- classOf: the class a body stands in, which takes a share of every award
 local Experience = require("models.experience") -- what a body earns for acting; the descent spends it
 
 local Combat = {}
@@ -5316,13 +5317,13 @@ Combat.CLASS_MASTERY_STEP = 0.03
 -- `value` as the body actually delivers it: the item's authored magnitude raised by the wielder's level
 -- in that item's own class or discipline (Class.classLevel).
 --
--- Keyed on the ITEM's class, not the wielder's declared job, and the two are deliberately different
--- questions -- a knight-declared body casting a mage spell gets its MAGE level out of that spell. The
--- badge says how a body grows; the hands say what it has got good at (models/growth.lua's Growth.jobOf).
+-- Keyed on the ITEM's class, not the class the wielder is STANDING in, and the two are deliberately
+-- different questions -- a knight casting a mage spell gets its MAGE level out of that spell. The badge
+-- says how a body grows; the hands say what it has got good at (models/growth.lua's Growth.classOf).
 --
 -- A classless item -- creature kit, an unarmed strike, a trap -- has no ladder to read and is returned
--- untouched rather than being credited to the wielder's job, which would let a body's commitment leak
--- into things that belong to nobody.
+-- untouched rather than being credited to the class the wielder stands in, which would let a body's
+-- commitment leak into things that belong to nobody.
 function Combat.classScaled(unit, item, value)
     if not value or value == 0 then return value end
     local key = item and item.class
@@ -9542,42 +9543,69 @@ end
 -- until it says which of the four earned it. `combat.techniqueAward` is the LAST award only -- a
 -- one-shot the battle state drains to float "+2 Ninja" over the caster (states/battle.lua) and then
 -- clears, so a capped-out action floats nothing rather than a misleading zero.
+-- SPLIT BETWEEN THE HANDS AND THE BADGE. An action banks against the class of the thing in the hand,
+-- as it always has -- and when the body is standing in a DIFFERENT class, that class takes
+-- Class.TECHNIQUE_DECLARED_SHARE out of the same award (FFT's rule; see the constant for the argument
+-- and for why it is a split rather than a bonus). A body swinging its own house's gear is unaffected in
+-- every respect, which is what keeps the ladder anchored where it was authored.
+--
+-- Each half is capped independently, because the cap is per house across the whole field -- so a capped
+-- hand does not stop the badge earning, and either half alone still arms the floater.
 function Combat.awardTechnique(combat, unit, item)
     combat.techniqueAward = nil
     local key = Class.growthClasses(item)[1]
     if not key then return 0 end
 
     combat.techniqueEarned = combat.techniqueEarned or {}
-    local earned = combat.techniqueEarned[key] or 0
-    local amount = math.min(Class.TECHNIQUE_PER_ACTION,
-        Class.TECHNIQUE_PER_BATTLE - earned)
-    if amount <= 0 then return 0 end
-
-    Character.recordTechnique(unit.char, key, amount)
-    combat.techniqueEarned[key] = earned + amount
-    combat.techniqueAward = { unit = unit, discipline = key, amount = amount }
-
     -- Linear scans, not maps keyed by char/key: a fight banks for a handful of bodies across a handful
     -- of houses, and an ordered list is what both the display and a stable reading want anyway.
     combat.techniqueByActor = combat.techniqueByActor or {}
-    local actor
-    for _, a in ipairs(combat.techniqueByActor) do
-        if a.char == unit.char then actor = a; break end
+
+    local function bank(house, want)
+        if not house or want <= 0 then return 0 end
+        local earned = combat.techniqueEarned[house] or 0
+        local amount = math.min(want, Class.TECHNIQUE_PER_BATTLE - earned)
+        if amount <= 0 then return 0 end
+
+        Character.recordTechnique(unit.char, house, amount)
+        combat.techniqueEarned[house] = earned + amount
+
+        local actor
+        for _, a in ipairs(combat.techniqueByActor) do
+            if a.char == unit.char then actor = a; break end
+        end
+        if not actor then
+            actor = { char = unit.char, name = unitName(unit), houses = {} }
+            combat.techniqueByActor[#combat.techniqueByActor + 1] = actor
+        end
+        local row
+        for _, h in ipairs(actor.houses) do
+            if h.key == house then row = h; break end
+        end
+        if not row then
+            row = { key = house, amount = 0 }
+            actor.houses[#actor.houses + 1] = row
+        end
+        row.amount = row.amount + amount
+        return amount
     end
-    if not actor then
-        actor = { char = unit.char, name = unitName(unit), houses = {} }
-        combat.techniqueByActor[#combat.techniqueByActor + 1] = actor
-    end
-    local house
-    for _, h in ipairs(actor.houses) do
-        if h.key == key then house = h; break end
-    end
-    if not house then
-        house = { key = key, amount = 0 }
-        actor.houses[#actor.houses + 1] = house
-    end
-    house.amount = house.amount + amount
-    return amount
+
+    local declared = Growth.classOf(unit.char)
+    local share = (declared ~= key) and Class.TECHNIQUE_DECLARED_SHARE or 0
+
+    -- The hands are named first so the floater leads with the house the player just SWUNG; the badge
+    -- rides behind it. Only when the hands bank nothing does the badge take the front, which is the
+    -- one case where leading with the item's house would print a zero.
+    local awards = {}
+    local hands = bank(key, Class.TECHNIQUE_PER_ACTION - share)
+    if hands > 0 then awards[#awards + 1] = { discipline = key, amount = hands } end
+    local badge = bank(declared, share)
+    if badge > 0 then awards[#awards + 1] = { discipline = declared, amount = badge } end
+    if #awards == 0 then return 0 end
+
+    combat.techniqueAward = { unit = unit,
+        discipline = awards[1].discipline, amount = awards[1].amount, also = awards[2] }
+    return hands + badge
 end
 
 -- Perform an item action: validate range + target kind + resource cost, spend the cost,

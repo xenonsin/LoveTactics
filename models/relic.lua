@@ -116,6 +116,16 @@ function Relic.magnitude(n, base, step)
     return base + (n - 1) * (step or base)
 end
 
+-- The figure a card prints at `n` copies. A ladder is USUALLY `{ base, step }` -- every gain and nearly
+-- every price on this shelf climbs in a straight line -- but a def whose figure is a SHARE of something
+-- the stack keeps shrinking (The Whetted Vow's health) does not, and stating it as the raw divisor
+-- instead pushes the arithmetic onto the player. Such a def authors `function(n) -> number` in place of
+-- the pair, and everything downstream reads the same way.
+local function figureAt(scale, n)
+    if type(scale) == "function" then return scale(n) end
+    return Relic.magnitude(n, scale[1], scale[2])
+end
+
 -- ---------------------------------------------------------------------------
 -- Drop pool
 -- ---------------------------------------------------------------------------
@@ -640,7 +650,7 @@ function Relic.blurbAt(id, n)
     -- authored string on a zero stack put a literal "%d" in front of the player, which is worse than
     -- vague: the one thing every card on this shelf promises is that its figures are figures.
     n = (n and n > 0) and n or 1
-    local ok, out = pcall(string.format, blurb, Relic.magnitude(n, s[1], s[2]))
+    local ok, out = pcall(function() return string.format(blurb, figureAt(s, n)) end)
     return ok and out or blurb
 end
 
@@ -683,15 +693,16 @@ end
 -- 3 defense at one copy and 5 at two; a fixed "-3 defense" would be a lie the moment a second is taken,
 -- and it is precisely the lie the stack-aware blurb was written to prevent on the other half of the card.
 --
--- A def declares `costScale = { base, step }` beside a `cost` containing one `%d`; without it the line
--- is returned as authored (for the prices that genuinely do not move -- a rule fires once).
+-- A def declares `costScale = { base, step }` (or a `function(n)`, for a price that does not climb in a
+-- straight line -- see figureAt) beside a `cost` containing one `%d`; without it the line is returned as
+-- authored (for the prices that genuinely do not move -- a rule fires once).
 function Relic.costAt(id, n)
     local def = type(id) == "table" and id or Relic.defs[id]
     if not def or not def.cost then return nil end
     local s = def.costScale
     if not s then return def.cost end
     n = (n and n > 0) and n or 1 -- an unheld relic quotes the price of its first copy, never a raw "%d"
-    local ok, out = pcall(string.format, def.cost, Relic.magnitude(n, s[1], s[2]))
+    local ok, out = pcall(function() return string.format(def.cost, figureAt(s, n)) end)
     return ok and out or def.cost
 end
 

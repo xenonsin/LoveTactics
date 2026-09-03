@@ -8,13 +8,23 @@
 -- ctx = {
 --   grantRelic(tier?) -> names the relic granted (or nil if the shelf was bare),
 --   grantSealed()     -> true if an unread piece was handed up (models/identify.lua),
---   addGold(n), gold() -> the purse, drainParty(n) (a wound, floored so it never fells),
+--   addGold(n), gold() -> the purse, drainParty(n) (blood, floored so it never fells),
+--   mendWound(n) -> how many bodies it set a bone on (models/wound.lua; 0 for a whole company),
 --   reveal() (study the ground), rnd() -> [0,1), notify(msg),
+--
+-- drainParty AND mendWound ARE NOT OPPOSITES, and a resolve that treats them as one will read wrong.
+-- Draining takes HEALTH out of the bar. Mending gives back the part of the bar a wound had RESERVED --
+-- room, not blood. So a dilemma can honestly do both at once ("set the fast way") and the company comes
+-- out of it with more capacity and less in it, which is a trade rather than a wash.
+--
+-- MENDING IS RARE ON PURPOSE. It and a Rest spent on Bind are the only two things below ground that
+-- shed a wound, and both are taken INSTEAD of something else; a wound that could be shed for free as
+-- often as it was met would not be a meter at all (models/wound.lua's header).
 -- }
 -- A resolve returns nothing; it speaks its own outcome through ctx.notify / the grant's own toast.
 --
 -- ---------------------------------------------------------------------------
--- WHY THERE ARE TWENTY-ONE OF THESE AND THERE USED TO BE FOUR
+-- WHY THERE ARE TWENTY-THREE OF THESE AND THERE USED TO BE FOUR
 -- ---------------------------------------------------------------------------
 --
 -- Four, against roughly thirty draws in a fifteen-floor run, is each one met about seven times -- so the
@@ -22,7 +32,7 @@
 -- is the Darkest Dungeon curio borrow and the count comes off it: that game runs about twenty-five
 -- distinct curios over a far shorter run than this one.
 --
--- SEVEN SHARED AND TWO A CIRCLE. A floor draws from nine -- the shared set plus its own sin's pair --
+-- NINE SHARED AND TWO A CIRCLE. A floor draws from eleven -- the shared set plus its own sin's pair --
 -- which puts a circle's own voice on roughly half of what it meets while keeping the total something a
 -- person can actually write and keep in voice. No dilemma is met more than about twice in a run.
 --
@@ -116,6 +126,35 @@ Crossroads.SHARED = {
                     end
                 end },
             { label = "Brick it back", desc = "Somebody did this on purpose. Do them the courtesy.", resolve = function() end },
+        },
+    },
+    {
+        prompt = "A dig-company's medicine chest, still strapped shut. The seal is a house that stopped sending people down years ago.",
+        options = {
+            { label = "Open it here", desc = "Splints, spirit and a bone-saw. It is worth more used than sold.",
+                resolve = function(ctx)
+                    if ctx.mendWound(1) == 0 then
+                        ctx.notify("Nobody here needs it yet -- and it does not keep")
+                    end
+                end },
+            { label = "Carry it out whole", desc = "An unbroken seal from a dead house. The city will bid on it.",
+                resolve = function(ctx) ctx.addGold(40) end },
+        },
+    },
+    {
+        prompt = "Somebody has been living in this stretch a long while. They look at the company's walking wounded before they look at the company.",
+        options = {
+            { label = "Let them work", desc = "Fast, and not gentle. What they hand back is room in the body, not blood.",
+                resolve = function(ctx)
+                    if ctx.mendWound(2) > 0 then
+                        ctx.drainParty(6)
+                        ctx.notify("Done the fast way. The company stands straighter and bleeds for it.")
+                    else
+                        ctx.notify("They look the company over and find nothing worth their splints")
+                    end
+                end },
+            { label = "Buy what they have hoarded", desc = "Years of walking this floor. Some of it is ore.",
+                resolve = function(ctx) ctx.addGold(28) end },
         },
     },
     {

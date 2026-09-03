@@ -150,16 +150,16 @@ local function normalized(charSnap, level, itemLevel)
     -- level-up carried: all three are re-derived below. Keeping any would bake in the climb this is
     -- meant to erase.
     --
-    -- `snap.job` is deliberately NOT dropped. The declared job is what growth is now taken from
-    -- (Growth.jobOf), so it is not part of the climb being erased -- it is the build's own statement of
-    -- what this body is, and a rebuild that discarded it would hand every normalized body the same
-    -- innate-class growth and quietly delete the author's decision.
+    -- `snap.declaredClass` is deliberately NOT dropped. The declared class is what growth is now taken
+    -- from (Growth.classOf), so it is not part of the climb being erased -- it is the build's own
+    -- statement of what this body is, and a rebuild that discarded it would hand every normalized body
+    -- the same innate-class growth and quietly delete the author's decision.
     snap.level, snap.growth, snap.growthCarry = nil, nil, nil
 
     -- The level checkpoint goes for tidiness rather than for correctness now. Growth used to be
     -- apportioned across the stretch of the ledger since the last level-up, so a snapshot taken
     -- mid-climb held a partial reading and a rebuild that read it grew the character on whatever its
-    -- author happened to be doing that evening. Growth reads one declared job today, so the rebuild is
+    -- author happened to be doing that evening. Growth reads one declared class today, so the rebuild is
     -- deterministic whatever the checkpoint says -- and clearing it keeps the level-up summary of a
     -- rebuilt body measuring from its own start.
     snap.techniqueAtLevel = nil

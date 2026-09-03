@@ -224,13 +224,13 @@ return {
         -- playstyle starts to show, by exactly this mechanism.
         name = "the class tally decides the rebuild's growth, wherever the duelling level is set",
         fn = function()
-            local function played(tally, level, job)
+            local function played(tally, level, class)
                 local c = Character.instantiate("character_rowan")
                 c.level, c.technique = 30, tally
-                -- The JOB is what growth reads now (Growth.jobOf), and it is what a build has to
-                -- carry across normalization: the ledger below sets the class LEVEL, which scales
-                -- what gear does rather than how the body grows.
-                c.job = job
+                -- The DECLARED CLASS is what growth reads now (Growth.classOf), and it is what a
+                -- build has to carry across normalization: the ledger below sets the class LEVEL,
+                -- which scales what gear does rather than how the body grows.
+                c.declaredClass = class
                 return assert(Build.restore(roundTrip({ c }), { level = level }))[1]
             end
 
@@ -262,10 +262,9 @@ return {
             local function played(tally)
                 local c = Character.instantiate("character_rowan")
                 c.level, c.technique = 30, tally
-                -- The JOB is what growth reads now (Growth.jobOf), and it is what a build has to
-                -- carry across normalization: the ledger below sets the class LEVEL, which scales
-                -- what gear does rather than how the body grows.
-                c.job = job
+                -- No declared class on either body: growth falls back to the blueprint's innate one
+                -- (Growth.classOf), so the ledger below is the only thing separating the two
+                -- histories -- which is exactly what this case is asking about.
                 return assert(Build.restore(roundTrip({ c })))[1]
             end
             local a, b = played({ fighter = 25 }).stats, played({ mage = 25 }).stats

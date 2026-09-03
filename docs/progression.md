@@ -22,11 +22,11 @@ because they answer different questions and were rewritten at different times.
 
 > **And the houses that posted the work are classes now.** The seven vendors — the Bastion, the Arcanum,
 > the Cathedral, the Colosseum, the Crucible, the Hunter's Lodge, the Undercroft — are the seven base
-> classes of a forty-five job ladder, and a class is something a BODY climbs by playing its gear rather
+> classes of a forty-five class ladder, and a class is something a BODY climbs by playing its gear rather
 > than a room a company unlocks. Nobody posts errands; nobody runs a line. **Anything below that reads
 > *a house's line*, *an errand*, *the shelf climbs a quest at a time* or *standing is a quest count* is
 > describing a system that no longer ships.** [docs/shelf.md](shelf.md) is rewritten against what does;
-> `models/discipline.lua` and `models/errand.lua` carry the arguments. The sections marked below are
+> `models/class.lua` and `models/errand.lua` carry the arguments. The sections marked below are
 > corrected.
 
 ## The four numbers
@@ -36,7 +36,7 @@ be confused because they are not even the same kind of thing:
 
 | | What it is | Where |
 |---|---|---|
-| **The day** | ~~How long there is~~ — how many nights have passed. Spent at the stair and over the Inn's counter, and it is what mends a wound. Uncapped | `models/calendar.lua` |
+| **The day** | ~~How long there is~~ — how many nights have passed. Spent at the stair, and nowhere else since the Inn was deleted. Not a currency: nothing is bought with it and nothing waits for it | `models/calendar.lua` |
 | **Experience** | How strong a body is. Earned by acting and by felling, per character | `models/experience.lua` |
 | **A class level** | What a body has got GOOD at, per class. Cumulative technique, banked by swinging that class's gear. Opens the shelf, the disciplines and the forge, and scales what the gear does | `Discipline.classLevel` |
 | **Standing** | How far into the campaign you are. ~~A count of finished quests~~ — total class levels across the roster | `Player.standing` |
@@ -65,9 +65,10 @@ so not one of the sixty authored `requiredPrestige` / `unlockPrestige` gates had
 > same reading (`Calendar.generalsStanding`), reached by what the company did rather than by a date.
 >
 > What survived intact: **entering costs, not clearing** (a night passes at the mouth of a descent,
-> `Gate.night`); **walking out is free**; **there is no fail state**; **the hub is free** — except that
-> the Inn now sells a night over its counter, which is the only way a wounded company mends, and *that*
-> is the one place a day is deliberately spent in town.
+> `Gate.night`); **walking out is free**; **there is no fail state**; **the hub is free** — and that
+> last one is now unqualified. The Inn sold a night over its counter for a while as the only way a
+> wounded company mended; it is deleted, and a wound ends when the company reaches the surface
+> ([models/wound.lua](../models/wound.lua)). No day is ever spent in town.
 
 **Forty days, and then he arrives.** There are more quests than there are days, so the campaign stops
 being *finish everything* and becomes *choose what to finish* — which is the decision seven houses were
@@ -207,9 +208,11 @@ danger to the player refunds every day they squandered.
 > **Which clock, now that the deadline is gone.** A descent carries its own — `Descent.dangerLevel`,
 > which ramps on DEPTH and is passed as `enemyLevel` at every fight underground — so the ramp above is
 > the fallback for everything standing outside a run, and `Calendar.SPAN` is the length of the day axis
-> rather than a budget. The ramp **holds** at its endpoint instead of climbing, which is what keeps a
+> rather than a budget. The ramp **holds** at its endpoint instead of climbing, which is what kept a
 > night at the Inn free of consequence: unbounded nights against a world that hardened on every one of
-> them would be a deadline wearing a different name.
+> them would be a deadline wearing a different name. The Inn is gone and nothing sells a night now, so
+> the property has no caller left — but it is the reason the ramp holds, and deleting the hold would
+> quietly re-arm the deadline for whatever sells one next.
 
 Measured end to end: day 1 fields two wolves at level 1, day 20 four at level 10, day 40 four at 19.
 (Ordinary stock sits under the headline because `Growth.ENEMY_LEVEL_LAG` still applies underneath —
@@ -405,7 +408,7 @@ is in the code.
   descent is the campaign. The sections that assert something now false are banner-marked, but a real
   rewrite against [docs/the-count.md](the-count.md) is owed and is the largest open item here.
 - **...and the sections about the seven HOUSES are the second layer of that.** The houses are classes
-  (`models/discipline.lua`), so every mention below of a house's *line*, its *errands*, or a shelf that
+  (`models/class.lua`), so every mention below of a house's *line*, its *errands*, or a shelf that
   climbs a quest at a time is describing a system that no longer ships. *The three numbers* and *The
   shelf* are corrected; *Where you can go this morning*, *Foraging* and the opening-funnel paragraphs
   are not, and they still name doors and grounds the city does not have.

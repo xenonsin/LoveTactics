@@ -943,9 +943,9 @@ return {
                 -- One ledger, read as the career title AND as what the next level-up apportions
                 -- (models/growth.lua). Nothing is checkpointed yet, so all of it is outstanding.
                 knight.technique = { mage = 12 }
-                -- DECLARED a mage, which is what growth reads now (Growth.jobOf). The ledger
+                -- DECLARED a mage, which is what growth reads now (Growth.classOf). The ledger
                 -- above is what the class LEVEL is read off and no longer steers the table.
-                knight.job = "mage"
+                knight.declaredClass = "mage"
                 -- Banked experience rather than prestige: a body earns its own level now
                 -- (models/experience.lua), so the fixture buys the level it wants outright.
                 local Experience = require("models.experience")
@@ -968,7 +968,7 @@ return {
                 assert(loadedKnight.technique.mage == 12, "the ledger should survive")
                 assert(loadedKnight.stats.magicDamage == grownMagic, "growth should re-bake onto magic")
                 assert(loadedKnight.stats.health.max == grownHealthMax, "growth should re-bake onto the HP pool")
-                assert(Growth.jobOf(loadedKnight) == "mage", "the loaded knight still grows as a mage")
+                assert(Growth.classOf(loadedKnight) == "mage", "the loaded knight still grows as a mage")
             end)
         end,
     },
@@ -1062,7 +1062,7 @@ return {
             -- that had never levelled. The class level is read off `technique` now
             -- (Class.classLevel), which these saves already carried, so there is nothing to invent.
             assert(loaded.growthBy == nil, "the retired ledger is not rebuilt")
-            assert(loaded.job == nil, "an old save arrives undeclared, and grows as its innate class")
+            assert(loaded.declaredClass == nil, "an old save arrives undeclared, and grows as its innate class")
 
         end,
     },
@@ -1103,7 +1103,7 @@ return {
 
             -- A pre-merge save carries no declaration, so it arrives growing as its innate class.
             -- The ledger it DID carry is what the class level is read off, and that survived above.
-            assert(loaded.job == nil, "an old save arrives undeclared")
+            assert(loaded.declaredClass == nil, "an old save arrives undeclared")
         end,
     },
 

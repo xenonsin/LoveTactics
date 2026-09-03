@@ -177,7 +177,7 @@ function Class.subclassesOf(class)
 end
 
 -- ---------------------------------------------------------------------------
--- The class level: how far one BODY has got in one job
+-- The class level: how far one BODY has got in one class
 -- ---------------------------------------------------------------------------
 --
 -- FFT's job level, and it is read off cumulative technique EARNED -- `char.technique[key]`, banked two
@@ -368,6 +368,28 @@ end
 -- gear -- so a run spent committing to something accumulates into that thing rather than into a
 -- number. That earmarking is the whole reason this is a second currency rather than a discount.
 Class.TECHNIQUE_PER_ACTION = 2
+
+-- WHAT THE CLASS A BODY IS STANDING IN TAKES OUT OF EVERY ACTION, whatever its hands are holding.
+--
+-- FFT'S RULE, and the reason the badge is a decision rather than a label. There, the JP an action earns
+-- goes to the job the unit is standing in, and every other unlocked job gets a quarter of it -- so
+-- changing job changes where the climb goes, which is the entire weight of that screen. Ours banked
+-- purely off the item's own house, which left the declaration reading nothing but a growth table: a
+-- second commitment beside the technique ladder, and the free one.
+--
+-- OUT OF THE SAME AWARD, NEVER ON TOP OF IT. CLASS_LEVEL_STEP above is anchored on a committed descent
+-- banking about 840 -- "mastering one class is one committed descent" -- and an additive bonus would
+-- pay a body carrying somebody else's gear MORE per action than one carrying its own, which is both
+-- backwards and a move on every number that anchor holds. A split conserves it exactly: a body standing
+-- in the house it is swinging banks the full 2 into it, precisely as before, and a body swinging
+-- somebody else's splits the same 2 between the hands and the badge.
+--
+-- One, not FFT's quarter, because the award is only 2 and a ladder authored in whole numbers should not
+-- start carrying halves. So the cost of not committing is half your climb in the house you are actually
+-- using, and the reward for declaring what you are climbing TOWARD is that it climbs off whatever you
+-- happen to hold -- which is what makes standing in the far parent of a crossing a real play rather
+-- than a slower version of grinding it directly.
+Class.TECHNIQUE_DECLARED_SHARE = 1
 
 -- The ceiling on what ONE battle can bank in a single discipline. The anti-grind clause, and the
 -- reason this does not reopen the door models/growth.lua deliberately shut ("no way to grind away a

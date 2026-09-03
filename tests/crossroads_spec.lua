@@ -18,6 +18,10 @@ local Descent = require("models.descent")
 local BOUND = {
     rnd = true, notify = true, gold = true, addGold = true,
     reveal = true, drainParty = true, grantRelic = true, grantSealed = true,
+    -- Sets a bone off everybody carrying one (models/wound.lua). One of exactly two things underground
+    -- that sheds a wound -- the other is a Rest spent on Bind -- and both are taken instead of
+    -- something else, which is the property the deleted Inn never had.
+    mendWound = true,
 }
 
 local function source(path)
@@ -30,13 +34,16 @@ end
 -- strictly stronger than asserting it did not raise, and the two cases at the bottom are that spec's,
 -- rehomed onto the dilemmas that replaced the ones they were written against.
 local function recorder(rndValue)
-    local log = { gold = 0, drained = 0, revealed = false, relics = 0, sealed = 0, notes = {} }
+    local log = { gold = 0, drained = 0, mended = 0, revealed = false, relics = 0, sealed = 0, notes = {} }
     return log, {
         rnd = function() return rndValue or 0 end,
         notify = function(m) log.notes[#log.notes + 1] = m end,
         gold = function() return 100 end,
         addGold = function(n) log.gold = log.gold + n end,
         drainParty = function(n) log.drained = log.drained + n end,
+        -- Answers with a body count rather than a boolean, exactly as the real bind does, so a resolve
+        -- that branches on "was anybody hurt" is exercised on the paying side here.
+        mendWound = function(n) log.mended = log.mended + (n or 1); return 1 end,
         reveal = function() log.revealed = true end,
         grantRelic = function() log.relics = log.relics + 1; return "Test Relic" end,
         grantSealed = function() log.sealed = log.sealed + 1; return true end,
@@ -82,21 +89,23 @@ return {
         end,
     },
     {
-        name = "seven shared dilemmas, and two for every circle the descent has",
+        name = "nine shared dilemmas, and two for every circle the descent has",
         fn = function()
-            assert(#Crossroads.SHARED == 7,
-                ("%d shared dilemmas, not 7"):format(#Crossroads.SHARED))
+            assert(#Crossroads.SHARED == 9,
+                ("%d shared dilemmas, not 9"):format(#Crossroads.SHARED))
             for _, sin in ipairs(Descent.SINS) do
                 local own = Crossroads.BY_SIN[sin.id]
                 assert(own, ("the %s circle has no dilemmas of its own"):format(sin.id))
                 assert(#own == 2, ("%s has %d dilemmas, not 2"):format(sin.id, #own))
             end
-            -- Twenty-one in all, which is the figure the count was argued to: four entries against ~30
-            -- draws a run was each one met seven times, and the Darkest Dungeon curio set this borrows
-            -- from runs about twenty-five over a shorter run.
+            -- Twenty-three in all. The figure the count was argued to was twenty-one -- four entries
+            -- against ~30 draws a run was each one met seven times, and the Darkest Dungeon curio set
+            -- this borrows from runs about twenty-five over a shorter run. The two above it are the
+            -- shared pair that can set a bone (`ctx.mendWound`), which had to be shared rather than a
+            -- circle's: shedding a wound is the one outcome every floor of every circle may need.
             local total = #Crossroads.SHARED
             for _, sin in ipairs(Descent.SINS) do total = total + #Crossroads.BY_SIN[sin.id] end
-            assert(total == 21, ("%d dilemmas in all, not 21"):format(total))
+            assert(total == 23, ("%d dilemmas in all, not 23"):format(total))
         end,
     },
     {
@@ -104,7 +113,7 @@ return {
         fn = function()
             for _, sin in ipairs(Descent.SINS) do
                 local pool = Crossroads.pool(sin.id)
-                assert(#pool == 9, ("%s draws from %d, not 9"):format(sin.id, #pool))
+                assert(#pool == 11, ("%s draws from %d, not 11"):format(sin.id, #pool))
                 -- Its own pair is in there, and no other circle's is.
                 local mine = {}
                 for _, d in ipairs(Crossroads.BY_SIN[sin.id]) do mine[d] = true end
@@ -129,8 +138,8 @@ return {
             -- The campaign's grounds pass no sin, and an unfinished circle would pass one with nothing
             -- written for it. Both have to degrade to the shared set rather than to an empty pool, or a
             -- crossroads on a campaign board opens a modal with no options in it.
-            assert(#Crossroads.pool(nil) == 7, "a sinless board draws no dilemmas")
-            assert(#Crossroads.pool("a_circle_nobody_wrote") == 7, "an unwritten circle breaks the pool")
+            assert(#Crossroads.pool(nil) == 9, "a sinless board draws no dilemmas")
+            assert(#Crossroads.pool("a_circle_nobody_wrote") == 9, "an unwritten circle breaks the pool")
             local d = Crossroads.roll(function() return 0.5 end, nil)
             assert(d and d.prompt and d.options and #d.options == 2, "a sinless roll produced no dilemma")
         end,

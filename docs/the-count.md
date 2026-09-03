@@ -11,9 +11,19 @@ Every other event in the descent's loop was already priced, and priced well:
 | Event | What it is | What it costs |
 |---|---|---|
 | Healing | a need | nothing, and it stays that way |
-| A bed at the Inn | a need | 25 a head (`Gate.INN_PER_HEAD`), and wounds are 120 (`Wound.MEND_COST`) |
+| Setting a bone | a need | nothing, and it did not always — see below |
 | A wipe | a failure | the haul as a guarded pack, most of the purse, a wound on every head |
 | **Climbing out** | **a decision** | **nothing at all** |
+
+> **The second row used to break the law this page states**, and it took two passes to notice. Mending
+> a wound was 120 gold at a counter; then it was a bed at the Inn, 60 a wound at the door plus a day
+> per wound with the body out of the company. Both are a price on *needing to recover* — and a wipe
+> wounds the whole expedition by construction, so the bill always landed on the company that had just
+> lost. The Inn is deleted, the toll with it. A wound lasts the **expedition** and the surface ends it
+> for free (`models/wound.lua`); underground it is shed only by a decision with an alternative — a Rest
+> spent on Bind instead of on Heal, Sharpen or Study, or a crossroads dilemma that offers it. That
+> leaves the count as the campaign's only cross-run meter, which is the whole of what this page argues
+> it should be.
 
 So the optimal play was to walk back to the ascent tile after every fight, go up, take the city's free
 `Player.restore`, and come back down to a floor already cleared and already lit — `Descent.keepFloor`
@@ -28,7 +38,8 @@ cheaper designs were built and thrown away against it:
 > game looks like.
 
 Healing, beds and rests all fail that test — the first two are needs and the third is a need with a
-timer. So does a **bounded allowance** (one bed per floor reached, *Darkest Dungeon 2*'s inn), which is
+timer. (The Inn was built anyway and then deleted for exactly this reason; see the note above the
+table.) So does a **bounded allowance** (one bed per floor reached, *Darkest Dungeon 2*'s inn), which is
 the same defect wearing a counter: a cap is equal in supply and unequal in impact, and only the
 struggling player ever reaches it. The failure case is exempt here for the same reason — a wipe already
 costs more than a retreat, and charging it twice would make dying the cheaper move.

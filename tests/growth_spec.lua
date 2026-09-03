@@ -120,28 +120,105 @@ return {
         end,
     },
 
-    -- ------------------------------------------------------------ the declared job
+    -- ------------------------------------------------------------ personal growth
     {
-        name = "jobOf takes the declaration, then the innate class, then the neutral default",
+        -- Fire Emblem's class-plus-character arithmetic (Growth.personal). Every rule the class tables
+        -- are held to applies here for the same reasons, plus a budget of its own -- a personal table
+        -- big enough to out-buy a class would make the forty-five-class ladder decoration.
+        name = "a personal growth table is real stats, inside its budget, and never movement",
+        fn = function()
+            local knownStat = {
+                health = true, mana = true, stamina = true, staminaRegen = true,
+                damage = true, magicDamage = true, defense = true, magicDefense = true,
+            }
+            local authored = 0
+            for id, def in pairs(Character.defs) do
+                local personal = def.personalGrowth
+                if personal then
+                    authored = authored + 1
+                    local sum = 0
+                    for stat, amount in pairs(personal) do
+                        -- Movement, skill and luck are excluded exactly as they are from a class table,
+                        -- and for the identical reasons -- a fixed grid, and accuracy read as a
+                        -- difference. A stat held still on one side of the arithmetic and grown on the
+                        -- other is the same bug wearing a character's name.
+                        assert(knownStat[stat], id .. " grows unknown or forbidden stat '" .. stat .. "'")
+                        assert(type(amount) == "number" and amount > 0 and amount % 1 == 0,
+                            id .. " grows '" .. stat .. "' by something that is not a whole positive number")
+                        sum = sum + amount
+                    end
+                    assert(sum > 0, id .. " has an empty personalGrowth -- omit the field instead")
+                    assert(sum <= Growth.PERSONAL_BUDGET, string.format(
+                        "%s spends %d personal growth a level, over the budget of %d. It is an identity,"
+                        .. " not a second class -- see Growth.PERSONAL_BUDGET.",
+                        id, sum, Growth.PERSONAL_BUDGET))
+                end
+            end
+
+            -- REACHED, not merely allowed. The mechanism is worth nothing if no blueprint uses it, and
+            -- an unread data field is this project's commonest silent failure -- see the note in
+            -- models/trait.lua about a blueprint's own `traits`.
+            assert(authored >= 8, "the avatar and the companions should each carry a personal table")
+        end,
+    },
+    {
+        name = "personal growth lands on top of the class table, in the forecast and in the level",
+        fn = function()
+            -- Rowan is a knight who carries health and defense of her own, so both halves are visible
+            -- in one body: the class buys what a knight buys, and she buys a point more of each.
+            local rowan = Character.instantiate("character_rowan")
+            local personal = Growth.personal(rowan)
+            assert(personal and next(personal), "Rowan carries a personal table")
+
+            local class = Growth.defs[Growth.classOf(rowan)]
+            local preview = Growth.previewLevel(rowan)
+            for stat, amount in pairs(personal) do
+                assert(preview[stat] == (class[stat] or 0) + amount,
+                    "the forecast adds her own points to her class's, on " .. stat)
+            end
+
+            -- ...and the level that actually lands is the forecast, which is previewLevel's whole
+            -- contract: a body that grew by less than the sheet promised is the bug this pins.
+            local before = rowan.stats.health.max
+            local gained = Growth.resolve(rowan, (rowan.level or 1) + 1)
+            assert(gained, "she advanced")
+            assert(gained.gains.health == preview.health, "the level applies exactly what was forecast")
+            assert(rowan.stats.health.max == before + preview.health, "and it is baked into the pool")
+
+            -- A body with no table of its own is untouched: the mechanism must be opt-in, or every
+            -- enemy in the bestiary quietly gains points nobody authored.
+            local bandit = Character.instantiate("character_bandit")
+            assert(Growth.personal(bandit) == nil, "ordinary stock carries none")
+            local plain = Growth.previewLevel(bandit)
+            local banditClass = Growth.defs[Growth.classOf(bandit)]
+            for stat, amount in pairs(plain) do
+                assert(amount == banditClass[stat], "and grows exactly its class, on " .. stat)
+            end
+        end,
+    },
+
+    -- ------------------------------------------------------------ the declared class
+    {
+        name = "classOf takes the declaration, then the innate class, then the neutral default",
         fn = function()
             local knight = Character.instantiate("character_rowan") -- innate class = knight
 
             -- Undeclared: the blueprint's own class, which is what this body has been growing as all
             -- along. A fresh recruit is never left standing still waiting to be told what it is.
-            assert(Growth.jobOf(knight) == "knight", "an undeclared body grows as its innate class")
+            assert(Growth.classOf(knight) == "knight", "an undeclared body grows as its innate class")
 
             -- A declaration wins outright, and nothing else is consulted. This is the whole of the
             -- change: growth used to be a reading of what the body had swung, so the ledger below could
             -- move it. It cannot now, and that is the point -- a body's growth is a decision.
-            knight.job = "mage"
+            knight.declaredClass = "mage"
             knight.technique = { fighter = 400 }
-            assert(Growth.jobOf(knight) == "mage", "the declaration beats both the ledger and the innate class")
+            assert(Growth.classOf(knight) == "mage", "the declaration beats both the ledger and the innate class")
 
             -- A declaration naming no real growth table falls through rather than crashing a level-up:
             -- an id can go stale under a rename, and a body that cannot level is worse than one that
             -- levels as the default.
-            knight.job = "no_such_job"
-            assert(Growth.jobOf(knight) == "knight", "an unknown job falls back to the innate class")
+            knight.declaredClass = "no_such_class"
+            assert(Growth.classOf(knight) == "knight", "an unknown class falls back to the innate class")
         end,
     },
     {
@@ -149,14 +226,14 @@ return {
         fn = function()
             local zombie = Character.instantiate("character_zombie") -- no innate class
             assert(zombie.class == nil, "the zombie declares no class")
-            assert(Growth.jobOf(zombie) == Growth.NEUTRAL_CLASS,
+            assert(Growth.classOf(zombie) == Growth.NEUTRAL_CLASS,
                 "no declaration and no innate class falls back to the neutral default")
         end,
     },
 
     -- --------------------------------------------------------------- resolve
     {
-        name = "resolve grows a character along the job it is declared in, whatever it has been swinging",
+        name = "resolve grows a character along the class it is declared in, whatever it has been swinging",
         fn = function()
             local knight = Character.instantiate("character_rowan")
             local baseMagic = knight.stats.magicDamage
@@ -167,7 +244,7 @@ return {
             -- ledger is deliberately loaded the other way to prove it: growth reads the badge, and the
             -- hands are a different question entirely (they set the class LEVEL -- see
             -- Class.classLevel -- which scales what the gear does rather than how the body grows).
-            knight.job = "mage"
+            knight.declaredClass = "mage"
             knight.technique = { knight = 400 }
             local mage = Growth.defs.mage
 
@@ -178,11 +255,16 @@ return {
             assert(summary.class == "mage", "it grew as a mage, because that is what it was declared as")
             assert(summary.levels == 4, "the summary counts the levels it credited")
 
-            -- 4 level-ups (1->5) of mage growth, baked onto the base stats.
-            assert(knight.stats.magicDamage == baseMagic + 4 * mage.magicDamage, "magic grew 4x")
-            assert(knight.stats.mana.max == baseManaMax + 4 * mage.mana, "mana pool grew 4x")
-            assert(knight.stats.health.max == baseHealthMax + 4 * mage.health, "health pool grew 4x")
-            assert(summary.gains.magicDamage == 4 * mage.magicDamage, "the summary totals the gains")
+            -- 4 level-ups (1->5) of mage growth, baked onto the base stats -- PLUS the points Rowan
+            -- carries wherever she stands (Growth.personal). The case has to read through both now, or
+            -- it is asserting the bare mage table against a body that is not only a mage.
+            local own = Growth.personal(knight) or {}
+            local function per(stat) return (mage[stat] or 0) + (own[stat] or 0) end
+
+            assert(knight.stats.magicDamage == baseMagic + 4 * per("magicDamage"), "magic grew 4x")
+            assert(knight.stats.mana.max == baseManaMax + 4 * per("mana"), "mana pool grew 4x")
+            assert(knight.stats.health.max == baseHealthMax + 4 * per("health"), "health pool grew 4x")
+            assert(summary.gains.magicDamage == 4 * per("magicDamage"), "the summary totals the gains")
         end,
     },
     {
@@ -201,18 +283,19 @@ return {
         end,
     },
     {
-        name = "a multi-level jump applies the job's table once per level, and checkpoints once",
+        name = "a multi-level jump applies the class table once per level, and checkpoints once",
         fn = function()
             local knight = Character.instantiate("character_rowan")
-            knight.job = "fighter"
+            knight.declaredClass = "fighter"
             knight.technique = { fighter = 3, mage = 1 }
             local fighter = Growth.defs.fighter
             local baseHealth = knight.stats.health.max
 
             local summary = Growth.resolve(knight, 3)
-            assert(summary.class == "fighter", "the declared job heads the summary")
+            assert(summary.class == "fighter", "the declared class heads the summary")
             assert(summary.levels == 2, "the summary counts the levels it credited")
-            assert(knight.stats.health.max == baseHealth + 2 * fighter.health,
+            local own = Growth.personal(knight) or {}
+            assert(knight.stats.health.max == baseHealth + 2 * (fighter.health + (own.health or 0)),
                 "two levels are two whole applications of one table, not one batched application")
 
             -- The checkpoint is caught up ONCE rather than per level, and it is expressed as a snapshot
@@ -377,9 +460,10 @@ return {
             local c = Combat.new(arena(6, 6), { unit("character_rowan", 2, 2) }, { unit("character_bandit", 3, 2) })
             local knight, bandit = c.units[1], c.units[2]
 
-            -- Deliberately an OFF-CLASS weapon: a knight swinging a Colosseum hammer. The ledger must
-            -- follow the ITEM's class, not the character's own -- with a knight-class weapon in a
-            -- knight's hands, a ledger that wrongly read char.class would pass this by coincidence.
+            -- Deliberately an OFF-CLASS weapon: a knight swinging a Colosseum hammer. This is the case
+            -- the split exists for -- the hands and the badge disagree, so the award goes two ways
+            -- (Class.TECHNIQUE_DECLARED_SHARE). With a knight-class weapon in a knight's hands the
+            -- whole rule collapses to one house and the test would pass by coincidence.
             local hammer = Item.instantiate("weapon_iron_hammer")
             Character.addItem(knight.char, hammer)
             assert(hammer.class == "fighter", "the hammer is a fighter weapon")
@@ -388,9 +472,11 @@ return {
             openTurn(c, knight)
             local ok = Combat.useItem(c, knight, hammer, bandit.x, bandit.y)
             assert(ok, "the strike should resolve")
-            assert(knight.char.technique and knight.char.technique.fighter > 0,
-                "a player strike banks under the WEAPON's house")
-            assert(not knight.char.technique.knight, "and never the wielder's own class")
+            assert(knight.char.technique and knight.char.technique.fighter
+                == Class.TECHNIQUE_PER_ACTION - Class.TECHNIQUE_DECLARED_SHARE,
+                "the hands bank what is left of the award under the WEAPON's house")
+            assert(knight.char.technique.knight == Class.TECHNIQUE_DECLARED_SHARE,
+                "and the class the body is STANDING in takes the rest, off gear that is not its own")
 
             -- The bandit striking back (AI-controlled) must not accrue anything on its transient char.
             local bWeapon = Combat.defaultWeapon(bandit.char)
@@ -419,19 +505,33 @@ return {
             assert(classId, "there is at least one class")
             local probe = { class = classId }
 
+            -- Stood in the house the probe belongs to, so nothing is split off and the award is whole:
+            -- the committed case, which is the one Class.CLASS_LEVEL_STEP is anchored on.
+            knight.char.declaredClass = classId
+
             local first = Combat.awardTechnique(c, knight, probe)
             assert(first == Class.TECHNIQUE_PER_ACTION, "one action banks one action's worth")
             assert(knight.char.technique[classId] == first, "onto the caster's own ledger")
             assert(c.techniqueEarned[classId] == first, "and onto the fight's ledger")
             assert(c.techniqueAward and c.techniqueAward.unit == knight, "the floater one-shot is armed")
+            assert(c.techniqueAward.also == nil, "a body swinging its own house splits nothing off")
 
             -- PLAIN CLASS STOCK banks too -- the opening-campaign case that used to bank and float
             -- nothing at all, since only 233 of 638 item files declare a discipline and disciplines are
             -- locked content. A discipline item still banks its discipline rather than its class.
+            --
+            -- It is also OFF-HOUSE for this body, so it is the split: the action still costs one
+            -- action's worth, the hands take what is left after the badge's share, and the badge takes
+            -- the rest. See Class.TECHNIQUE_DECLARED_SHARE.
+            local hands = Class.TECHNIQUE_PER_ACTION - Class.TECHNIQUE_DECLARED_SHARE
             assert(Combat.awardTechnique(c, knight, { class = "fighter" })
-                == Class.TECHNIQUE_PER_ACTION, "a plain class cast banks its class")
-            assert(knight.char.technique.fighter == Class.TECHNIQUE_PER_ACTION, "onto the same ledger")
-            assert(c.techniqueAward.discipline == "fighter", "and arms the same one floater")
+                == Class.TECHNIQUE_PER_ACTION, "a plain class cast still banks one action's worth")
+            assert(knight.char.technique.fighter == hands, "the hands take their share onto the ledger")
+            assert(knight.char.technique[classId] == first + Class.TECHNIQUE_DECLARED_SHARE,
+                "and the class this body is standing in takes the rest, whatever it is holding")
+            assert(c.techniqueAward.discipline == "fighter", "and arms the same one floater...")
+            assert(c.techniqueAward.also and c.techniqueAward.also.discipline == classId,
+                "...which names the badge's half too, or the rule is invisible")
 
             -- Run one key's battle ledger to the cap: banking stops while play carries on. The cap now
             -- bounds the level-up reading too, since they are one number.
@@ -473,6 +573,11 @@ return {
                 { unit("character_bandit", 5, 2) })
             local rowan, saber = c.units[1], c.units[2]
 
+            -- Declared rather than left to the blueprints, because the split reads the class a body is
+            -- STANDING in (Class.TECHNIQUE_DECLARED_SHARE) and this case is about the ledger's shape,
+            -- not about what two character files happen to say.
+            rowan.char.declaredClass, saber.char.declaredClass = "knight", "rogue"
+
             Combat.awardTechnique(c, rowan, { class = "knight" })
             Combat.awardTechnique(c, saber, { class = "rogue" })
             Combat.awardTechnique(c, rowan, { class = "fighter" })
@@ -489,7 +594,14 @@ return {
                 if house.key == "fighter" then fighter = house end
             end
             assert(#ledger[1].houses == 2, "a body's houses are one row each, not one per cast")
-            assert(knight.amount == fighter.amount * 2, "and each row totals that body's casts in it")
+
+            -- Two whole knight casts plus the share the badge took out of the fighter one, against what
+            -- was left of that cast for the hands. The old reading here was "knight is twice fighter",
+            -- which was the same claim under a rule where the badge took nothing.
+            assert(knight.amount == 2 * Class.TECHNIQUE_PER_ACTION + Class.TECHNIQUE_DECLARED_SHARE,
+                "the declared house totals its own casts plus its share of the off-house one")
+            assert(fighter.amount == Class.TECHNIQUE_PER_ACTION - Class.TECHNIQUE_DECLARED_SHARE,
+                "and the off-house row carries only what the hands kept")
             assert(#ledger[2].houses == 1 and ledger[2].houses[1].key == "rogue",
                 "the second body carries only what it earned")
 
@@ -500,11 +612,11 @@ return {
     {
         -- The property the earned/spent split exists for, end to end: paying a real Forge bill must not
         -- move the career title or what the next level-up will apply.
-        name = "forging spends the wallet without touching the job or the class level",
+        name = "forging spends the wallet without touching the declared class or the class level",
         fn = function()
             local Class = require("models.class")
             local char = Character.instantiate("character_rowan")
-            char.job = "mage"
+            char.declaredClass = "mage"
             Character.recordTechnique(char, "mage", Class.classLevelCost(3))
             Character.recordTechnique(char, "knight", 20)
             local player = { roster = { char } }
@@ -517,7 +629,7 @@ return {
             assert(Class.technique(player, "mage") == 0, "the wallet fell by what was billed")
 
             -- The two things a forge must never charge: what a body IS, and how far it has got.
-            assert(Growth.jobOf(char) == "mage", "the declared job did not move")
+            assert(Growth.classOf(char) == "mage", "the declared class did not move")
             assert(Class.classLevel(char, "mage") == beforeLevel,
                 "spending the whole bank left the class level exactly where it was")
         end,

@@ -1,6 +1,6 @@
 -- Tests for models/gate.lua and the pieces of the descent that only mean anything because there is a
--- town at the top of the stair: the inn that sets bones, the pack a wipe leaves behind, and the floors a
--- company keeps.
+-- town at the top of the stair: the bones the surface sets for free, the pack a wipe leaves behind, and
+-- the floors a company keeps.
 --
 -- Driven through the models rather than states/gate.lua, which cannot run headless. What is pinned here
 -- is every decision underneath that screen.
@@ -56,43 +56,36 @@ local function markerOf(grid, pile)
 end
 
 return {
-    { name = "a night at the inn gives back what the fighting cost, and sets no bone", fn = function()
-        -- The inn is the ONLY mender a descent has: wounds cap healing for the rest of a body's life
-        -- (models/wound.lua) and nothing underground sets one. Both halves for one bill, because a
-        -- four-body company with no bench cannot field around a wounded member.
-        local p = company(1, 1000)
+    { name = "reaching a town sets every bone, free and unasked", fn = function()
+        -- THE LAW THE INN BROKE. A cost on recovery is a tax on needing to recover, and a wipe wounds
+        -- the whole expedition by construction -- so the company least able to pay was always the one
+        -- handed the bill (models/wound.lua, docs/the-count.md). What replaces it is scope: a wound
+        -- lasts the expedition it was taken on, and the two town screens end it on the way in.
+        --
+        -- Driven through Wound.clear + Player.restore in that order, which is exactly the pair
+        -- states/hub.lua and states/gate.lua each run at their door. Order is load-bearing: clear first,
+        -- or the refill fills to a wounded ceiling that is about to stop existing.
+        local p = company(1, 0) -- and NO GOLD, which is the whole point: recovery is not for sale
         local char = p.roster[1]
-        Wound.inflict(p, { char })
+        for _ = 1, 3 do Wound.inflict(p, { char }) end
         char.stats.health.current = 1
-        assert(Wound.count(p, char.id) > 0, "precondition: somebody is wounded")
+        assert(Wound.count(p, char.id) == 3, "precondition: somebody is badly hurt")
 
-        local before = p.gold
-        assert(Gate.rest(p), "the company can afford a room")
-        assert(p.gold < before, "and it is paid for")
-        assert(Wound.count(p, char.id) > 0, "a bed is not a surgeon: the wound is still there")
-        assert(char.stats.health.current == math.floor(char.stats.health.max * Wound.healShare(p, char.id)),
-            "and they top up to their WOUNDED ceiling and no further -- which used to be an ordering " ..
-            "hazard this function worked around, and is now the honest result")
+        local mended = Wound.clear(p)
+        Player.restore(p)
+        assert(#mended == 1 and mended[1] == char.id, "the clear names who it set")
+        assert(Wound.count(p, char.id) == 0, "and left nothing on the ledger")
+        assert(char.woundShare == nil, "nor any reserve stamped on the body")
+        assert(char.stats.health.current == char.stats.health.max,
+            "and the refill fills the WHOLE pool, not the wounded ceiling it walked in with")
+        assert(p.gold == 0, "and it took nothing to do it")
     end },
 
-    { name = "an inn that cannot be paid for changes nothing", fn = function()
-        local p = company(1, 0)
-        local char = p.roster[1]
-        Wound.inflict(p, { char })
-        char.stats.health.current = 1
-
-        local ok, why = Gate.rest(p)
-        assert(not ok and why == "gold", "the room is refused for want of gold")
-        assert(Wound.count(p, char.id) > 0, "and nothing was set")
-        assert(char.stats.health.current == 1, "and nobody was healed on credit")
-    end },
-
-    { name = "a night gives back what a body holds, never what it drank", fn = function()
-        -- A NIGHT TOPS UP THE BODY, NOT THE PACK. Health, mana and stamina are what the fighting SPENT
-        -- out of a person and what sleeping gives back; a flask is a thing that was owned and is now
-        -- gone, and an inn that refilled it would be handing out free consumables at twenty-five gold a
-        -- head -- cheaper than the shelf that sells them, and enough to make buying any of them a
-        -- mistake.
+    { name = "a town tops up what a body holds, never what it drank", fn = function()
+        -- COMING HOME TOPS UP THE BODY, NOT THE PACK. Health, mana and stamina are what the fighting
+        -- SPENT out of a person and what resting gives back; a flask is a thing that was owned and is
+        -- now gone, and a town that refilled it would be handing out free consumables to anyone who
+        -- walked in -- which would make buying any of them a mistake.
         --
         -- Pinned here because nothing in Player.restore names consumables, so the rule holds today only
         -- by not being written down. The DRAFT mode does restock between rounds (models/draft_run.lua),
@@ -110,11 +103,12 @@ return {
         flask.quantity = 1
         char.stats.health.current = 1
 
-        assert(Gate.rest(p), "the company can afford a room")
+        Wound.clear(p)
+        Player.restore(p)
         assert(char.stats.health.current == char.stats.health.max,
-            "precondition: an unwounded body tops all the way up, so this case ran a real night")
-        assert(flask.quantity == 1, "a night refilled the flask: the inn is now the cheapest shelf in " ..
-            "the game")
+            "precondition: an unwounded body tops all the way up, so this case ran a real rest")
+        assert(flask.quantity == 1, "coming home refilled the flask: the town is now the cheapest " ..
+            "shelf in the game")
     end },
 
     { name = "a wipe drops the pack where it fell, and it is picked up exactly once", fn = function()

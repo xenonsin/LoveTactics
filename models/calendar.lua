@@ -22,10 +22,11 @@
 --
 -- SO WHAT IS LEFT HERE IS THE DAY ITSELF, which never was the deadline and is worth keeping without one:
 --
---     the night     a day passes when a company walks into the stair and when the Inn sells one
---                   (models/gate.lua's Gate.night). It is the only thing that mends a wound -- a body in
---                   a bed is out of the company for a day per bone (models/wound.lua) -- and THAT is the
---                   cost: the absence, not the scarcity. It never needed a ceiling to bite.
+--     the night     a day passes when a company walks into the stair (models/gate.lua's Gate.night).
+--                   It used to mend as well -- a wounded body took a bed and was out of the company for
+--                   a day a bone -- and that toll is deleted along with the Inn (models/wound.lua): a
+--                   wound is a condition of the expedition now and the surface ends it for free. So the
+--                   day is a day, and it is the axis below rather than a currency.
 --     the axis      `day` is the number an encounter blueprint's `minDay` is authored against and the
 --                   number Calendar.dangerLevel reads. A descent keeps its own clock and passes it
 --                   outright (Descent.dangerLevel); what it borrows from here is the SCALE, mapping its
@@ -87,8 +88,9 @@ function Calendar.day(player)
 end
 
 -- A night passes. THE ONE SEAM, and it has exactly one caller -- models/gate.lua's Gate.night, which is
--- what a night IS (a day, a bone off everybody abed, and whoever that finished walking out of a room).
--- Nothing else may move the clock without doing the other two.
+-- what a night IS. That used to be three things (a day, a bone off everybody abed, and whoever that
+-- finished walking out of a room) and is one now that the Inn is gone; the indirection stays because
+-- "a night passes" is a fact about the loop and this file only knows about days.
 --
 -- Deliberately not idempotent and deliberately unguarded: a caller that spends twice for one night is a
 -- bug that should show up as a day appearing, not be silently absorbed here. It used to refuse a day

@@ -30,6 +30,10 @@ return {
     class = "alchemist",
     boss = true,
     archetype = "support", -- she heals before she strikes (models/ai.lua)
+    -- PERSONAL GROWTH (models/growth.lua): two points a level she keeps in any class, both in the pool
+    -- she spends on other people. She lifts rather than kills and she does it by spending herself, so
+    -- what grows is how much of herself there is to spend.
+    personalGrowth = { mana = 2 },
     stats = {
         health = 60, mana = 46, stamina = 11,
         staminaRegen = 2,

@@ -347,24 +347,6 @@ return {
     ["line.conversation_hunters_lodge_vendor_intro.7"] = { en = "As you like. The board's open. There's always another beast worth killing.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_vendor_intro.8"] = { en = "The stag is on the wall. Fourteen points, and every one of them yours.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_vendor_intro.9"] = { en = "You finished it. I said to ask for me here -- so I am asking. I go with you.", ja = "" },  -- TODO
-    ["line.conversation_inn_vendor_intro.1"] = { en = "You came up the street the way they all come up it. Sit down before you fall down.", ja = "" },  -- TODO
-    ["line.conversation_inn_vendor_intro.10"] = { en = "Do you ask where the money comes from?", ja = "" },  -- TODO
-    ["line.conversation_inn_vendor_intro.11"] = { en = "I ask where it hurts.", ja = "" },  -- TODO
-    ["line.conversation_inn_vendor_intro.12"] = { en = "How long before a bone is right again?", ja = "" },  -- TODO
-    ["line.conversation_inn_vendor_intro.13"] = { en = "One night, if you give me the whole of it. Longer if you sit up arguing with me.", ja = "" },  -- TODO
-    ["line.conversation_inn_vendor_intro.14"] = { en = "Count the hurt before you pay. You are buying the night, not the beds.", ja = "" },  -- TODO
-    ["line.conversation_inn_vendor_intro.15"] = { en = "Splints and sleep. No decanting, no transfer, nothing taken off anybody else.", ja = "" },  -- TODO
-    ["line.conversation_inn_vendor_intro.16"] = { en = "I would not know how.", ja = "" },  -- TODO
-    ["line.conversation_inn_vendor_intro.17"] = { en = "I know. That is what I said.", ja = "" },  -- TODO
-    ["line.conversation_inn_vendor_intro.18"] = { en = "The fire stays lit. Bring them up here before you bring them anywhere else.", ja = "" },  -- TODO
-    ["line.conversation_inn_vendor_intro.2"] = { en = "We only need the beds.", ja = "" },  -- TODO
-    ["line.conversation_inn_vendor_intro.3"] = { en = "You need the beds and the rest of it. I set what the hole broke. That is the trade, {name}: a bed for every head, a fire, and me working through the night on whoever cannot straighten up.", ja = "" },  -- TODO
-    ["line.conversation_inn_vendor_intro.4"] = { en = "The price is by the head, so a full company costs more than three of you limping. I will not charge you for a night nobody needed. Come when somebody is carrying something, and come before you go down again.", ja = "" },  -- TODO
-    ["line.conversation_inn_vendor_intro.5"] = { en = "Take the rooms when they are offered, {name}. A wound you carry down is a wound you carry into every fight after it.", ja = "" },  -- TODO
-    ["line.conversation_inn_vendor_intro.6"] = { en = "I have slept on worse and fought the next morning.", ja = "" },  -- TODO
-    ["line.conversation_inn_vendor_intro.7"] = { en = "Badly. I fought badly.", ja = "" },  -- TODO
-    ["line.conversation_inn_vendor_intro.8"] = { en = "You work nights on strangers and you charge them a bed's price for it.", ja = "" },  -- TODO
-    ["line.conversation_inn_vendor_intro.9"] = { en = "The bed is what they came for. The rest I would do anyway.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.1"] = { en = "There it is. Walls still standing, gates still shut. The capital.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.10"] = { en = "It's been like this for weeks. The demons push, a village burns, and everyone still breathing runs for the capital. The city's fit to burst, work's gone dry, and food with it.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.11"] = { en = "But coin still moves for those who can hold a blade. Register with the Adventurers' Guild. The quest board takes anyone who'll take a contract. Pays a good deal better than queuing for bread.", ja = "" },  -- TODO
@@ -474,7 +456,7 @@ return {
     ["line.conversation_tutorial_village.7"] = { en = "While it's stunned, {name}. Let's finish this!", ja = "" },  -- TODO
     ["line.conversation_tutorial_village.8"] = { en = "Not that, {name}. Do as I showed you.", ja = "" },  -- TODO
     ["line.conversation_tutorial_village.9"] = { en = "{select} on the imp to move in range and attack with your weapon.", ja = "" },  -- TODO
-    ["line.conversation_tutorial_wound.1"] = { en = "They were carried out of that fight. The dark band on their health bar is held back now - nothing out here will fill it again.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_wound.1"] = { en = "They were carried out of that fight. The dark band on their bar stays held back until we are above ground again - or until we spend a camp binding it instead of resting.", ja = "" },  -- TODO
     ["line.conversation_undercroft_discipline_unlocked.1"] = { en = "The {discipline}'s trade is yours now, {name}. The firm keeps stock off the open book for a hand that reaches it, and you reached it. Quietly, mind.", ja = "" },  -- TODO
     ["line.conversation_undercroft_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_undercroft_discipline_unlocked.3"] = { en = "Took me years to get shown that rack. You did it faster. Don't get sloppy with it.", ja = "" },  -- TODO
@@ -586,7 +568,6 @@ return {
     ["title.conversation_hunters_lodge_errand_found"] = { en = "The White Stag", ja = "" },  -- TODO
     ["title.conversation_hunters_lodge_slot_01_outro"] = { en = "The Antlers", ja = "" },  -- TODO
     ["title.conversation_hunters_lodge_vendor_intro"] = { en = "The Hunter's Lodge", ja = "" },  -- TODO
-    ["title.conversation_inn_vendor_intro"] = { en = "The Inn", ja = "" },  -- TODO
     ["title.conversation_prologue_arrival"] = { en = "The Capital", ja = "" },  -- TODO
     ["title.conversation_prologue_flee"] = { en = "Ashes", ja = "" },  -- TODO
     ["title.conversation_prologue_intro"] = { en = "Bellmere", ja = "" },  -- TODO

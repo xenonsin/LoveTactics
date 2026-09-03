@@ -38,6 +38,10 @@ return {
     -- She does not kill (damage 5), so she must not be left on the aggressive default that would send
     -- her up to punch. `support` reads the company's wounds before the enemy's throats (models/ai.lua).
     archetype = "support",
+    -- PERSONAL GROWTH (models/growth.lua): two points a level she keeps in any class. What she gives
+    -- and what she will not be taken by -- the trust deepens, and the ward against the magic her line
+    -- traffics in holds. Nothing offensive, which is the same sentence her damage stat already makes.
+    personalGrowth = { mana = 1, magicDefense = 1 },
     stats = {
         health = 62, mana = 40, stamina = 13,
         staminaRegen = 2,

@@ -12,8 +12,10 @@
 -- and the split is the reference's own: Wizardry's castle holds the tavern, the inn, Boltac's and the
 -- temple, and the dungeon entrance sits at the edge of town where there is nothing to do but enter.
 --
--- AFTER A WIPE this is where the game lands -- at the temple, with the whole company alive, wounded, and
--- carrying nothing. Everything they had is in a heap on the floor they fell on (models/descent.lua's
+-- AFTER A WIPE this is where the game lands -- at the temple, with the whole company alive, whole, and
+-- carrying nothing. Whole because being above ground is what sets a bone now (models/wound.lua), so
+-- what a wipe takes is the haul and the run and not the bodies' next expedition as well.
+-- Everything they had is in a heap on the floor they fell on (models/descent.lua's
 -- `drops`), so the next expedition has somewhere it very much wants to go. Dark Souls' bloodstain, and
 -- the only thing that stops "climb out" and "die" being the same move.
 
@@ -21,7 +23,6 @@ local State = require("states")
 local Choice = require("ui.panels.choice")
 local Descent = require("models.descent")
 local Gate = require("models.gate")
-local Mule = require("models.mule")            -- what comes back up the stair, and how wide it is
 local Player = require("models.player")
 local Scale = require("scale")
 local Menu = require("ui.menu")
@@ -109,54 +110,19 @@ function gate:build()
             action = descend,
         }
     end
-    -- WAIT A DAY, and it draws only when there is something to wait FOR.
+    -- THERE IS NO "WAIT A DAY" ROW, and its deletion is the design rather than a tidy-up.
     --
-    -- Days advance on walking into the stair, so a company too hurt to send has no way to reach the
-    -- morning it is waiting for -- which is a softlock wearing the clothes of a hard decision. This is
-    -- the way out, and what it costs is what any night costs: the bodies in the beds are out of the
-    -- company for one more of them.
+    -- It existed to let a company too hurt to descend reach the morning that would mend them, because
+    -- the only other way to spend a day was to walk into the stair -- a cure on the far side of the
+    -- fight you were too hurt to take. Nothing waits for a morning any more: the surface sets every bone
+    -- the moment the company is standing on it (Wound.clear, in gate.enter below), so a button that
+    -- spends a day and mends nobody is a control with nothing left to do. A control draws where it can
+    -- be used, and this one no longer can be.
     --
-    -- THROUGH Gate.night, not the three calls spelled out again. It used to spend the day, rest the
-    -- wounds and discharge the mended inline -- a fourth copy of the beat, written before there was one
-    -- definition of a night (models/gate.lua). Player.restore stays here rather than moving in there:
-    -- waiting at the Gate is standing in a town, and Gate.rest tops the company up for the same reason.
-    --
-    -- Hidden unless somebody is actually IN A BED, rather than merely hurt. Waiting mends nobody who is
-    -- not lodged, so offering it to a company with three wounded and none of them at the Inn is a button
-    -- that spends a day for nothing. A control draws where it can be used.
-    if #Gate.lodged(gate.player) > 0 then
-        items[#items + 1] = {
-            label = "Wait a day",
-            action = function()
-                Gate.night(gate.player)
-                Player.restore(gate.player)
-                Player.save()
-                gate:build()
-            end,
-        }
-    end
-    -- WIDEN THE MULE (models/mule.lua). Drawn only where the move is legal -- there is a rung above the
-    -- one this company stands on, and the gold is in hand -- rather than as a greyed plate quoting a
-    -- price nobody can pay. A company that cannot afford it is told by the row not being there, which is
-    -- the same rule "Wait a day" above is drawn under.
-    --
-    -- HERE RATHER THAN IN THE CITY because this is the counter the mule is standing at: it is the thing
-    -- that carries what comes back up this stair, and the decision to widen it is made looking at the
-    -- hole. The Forge bills in technique and the shops in standing; this is gold, plainly, for a bigger
-    -- bag.
-    local nextRung = Mule.nextRung(gate.player)
-    if nextRung and (gate.player.gold or 0) >= nextRung.price then
-        items[#items + 1] = {
-            label = "Widen the mule  " .. Mule.capacity(gate.player) .. " \226\134\146 " ..
-                nextRung.capacity .. "   (" .. nextRung.price .. "g)",
-            action = function()
-                if Mule.upgrade(gate.player) then
-                    Player.save()
-                    gate:build()
-                end
-            end,
-        }
-    end
+    -- AND NOTHING IS SOLD HERE EITHER. "Widen the mule" was a row on this menu and is gone for the same
+    -- reason the inn and the store are: this screen is a hole in the ground and a look at the company,
+    -- not a counter. The mule's ladder (models/mule.lua) still exists -- it just does not get bought at
+    -- the mouth of the stair.
     items[#items + 1] = { label = "Back to the City", action = function()
         State.switch(require("states.hub"))
     end }
@@ -170,6 +136,15 @@ end
 function gate.enter(self, opts)
     opts = opts or {}
     gate.player = opts.player or Player.active
+    -- STANDING HERE IS BEING OUT OF THE HOLE, so the dive's injuries end here (models/wound.lua's
+    -- Wound.clear) and the company is topped back up to the ceiling that leaves them.
+    --
+    -- BOTH TOWN SCREENS DO THIS, not one, and the pair is not redundant: a company that takes the stair
+    -- up lands here, a company that is beaten on campaign ground lands in the city (states/hub.lua does
+    -- the same two calls at its own door), and a wiped descent lands here with `opts.wiped` set. Whoever
+    -- arrives first sets the bones; the other finds nothing to do and costs a table walk.
+    require("models.wound").clear(gate.player)
+    Player.restore(gate.player)
     -- THE RUN LIVES ON THE PLAYER, and that is the whole of the descent joining the campaign save.
     --
     -- It used to be a throwaway profile in a file of its own (Descent.FILE), because the descent was a

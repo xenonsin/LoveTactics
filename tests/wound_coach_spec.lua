@@ -8,8 +8,10 @@
 --
 -- A WIPE SKIPS IT, and by construction rather than by a flag: every wipe path wounds and then leaves
 -- the map inside the same function, so a bubble pinned to an overworld that is already gone draws
--- nothing -- and the lesson a wiped company needs is a DOOR, which the city teaches on arrival when
--- the Inn grows on this same first wound (data/buildings/the_inn.lua, states/hub.lua's coachNextDoor).
+-- nothing. There is nothing left for it to point at either -- a wiped company is standing in a town,
+-- and reaching a town sets every bone (models/wound.lua's Wound.clear), so the mark the bubble teaches
+-- is not on any bar to be taught. The lesson waits for the first body carried out of a fight the
+-- company survives, which is the fight where it means something.
 --
 -- None of that is reachable from a headless spec -- drawCoach is a love.graphics path hanging off a
 -- state that mints fonts at require-time -- so what is pinned here is the three things a rename or a
@@ -79,12 +81,17 @@ return {
             local text = Locale.text(CONV, node)
             assert(type(text) == "string" and #text > 0, "the hint resolves to real text")
 
-            -- IT TEACHES THE MARK, NOT THE ROOM. The Inn cannot be reached from the map, so an
-            -- instruction naming it out here is a thing to remember rather than a thing to do -- and
-            -- the city already coaches that card the moment it grows it, off the building's own
-            -- description. The split is the whole reason this line is separate from that one.
+            -- IT TEACHES THE MARK, NOT A ROOM. It used to be careful not to name the Inn, which could
+            -- not be reached from the map; there is no Inn now and no building anywhere that sets a
+            -- bone (models/wound.lua), so a line pointing at one would be sending the player to a door
+            -- that does not exist. The rule is unchanged and the reason got stronger.
             assert(not text:lower():find("inn", 1, true),
                 "the map's line must not send the player to a door they cannot walk to")
+            -- ...and it must say what a wound actually is now, which is a thing with an END: held until
+            -- the company is above ground, or until a camp is spent binding it. A line that still reads
+            -- "nothing will fill it again" is describing the permanent ledger this design replaced.
+            assert(text:lower():find("above ground", 1, true) or text:lower():find("bind", 1, true),
+                "the line no longer tells the player how a wound ends")
 
             local src = assert(love.filesystem.read("states/game.lua"), "should be able to read the state")
             assert(src:find('hintNode("' .. CONV .. '", "wound_hint")', 1, true),

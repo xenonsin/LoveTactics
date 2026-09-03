@@ -56,8 +56,8 @@ return {
             -- door on one is locked here whatever its threshold and this case has nothing to say about
             -- it. Listed rather than spelled out one by one, so a sixth kind of deed added to the model
             -- and forgotten here fails loudly instead of quietly widening what this case claims.
-            local deeds = { "unlockQuest", "unlockDepth", "unlockWound",
-                            "unlockUnidentified" }
+            local deeds = { "unlockQuest", "unlockDepth", "unlockUnidentified",
+                "unlockClassLevel", "unlockAnyHouse" }
             for _, b in ipairs(Building.list(1)) do
                 local def = Building.defs[b.id]
                 local onDeed = false
@@ -219,8 +219,8 @@ return {
     -- counts the doors the city opens on.)
     {
         -- THE CITY GROWS ON WHAT THE COMPANY HAS DONE. Five of the eight cards on the plaza do nothing
-        -- on a fresh save -- there is no bone to set, no shelf to browse, no supper worth buying for a
-        -- road nobody has walked and nothing in the bag to forge -- so each arrives on the deed that
+        -- on a fresh save -- there is no shelf to browse, no supper worth buying for a road nobody has
+        -- walked and nothing in the bag to forge -- so each arrives on the deed that
         -- gives it a job. Pinned card by card, because the whole value of the staging is the ORDER.
         name = "the plaza opens on two doors, and the rest arrive on the deeds that give them work",
         fn = function()
@@ -243,23 +243,20 @@ return {
             end
             table.sort(open)
             -- Three, not four: the roll was a card of its own for a while and is a tab of the Armory
-            -- now (ui/jobs_editor.lua), which is the same door the question was always behind.
+            -- now (ui/class_editor.lua), which is the same door the question was always behind.
             assert(table.concat(open, ",") == "armory,market,the_gate",
                 "a fresh city opens on the armory, the market and the stair; got " ..
                 table.concat(open, ", "))
 
-            -- THE INN, on the first wound. Setting a bone is the only thing it does, so a company that
-            -- has never had anybody go down has nothing to buy in there.
-            assert(shut(fresh, "the_inn"), "an unhurt company has nothing to buy at the inn")
+            -- THE INN IS NOT A CARD ANY MORE, and its absence is asserted rather than assumed: it was
+            -- gated on the first wound, and setting a bone was the only thing it did. A wound is a
+            -- condition of the expedition now and the surface ends it for free (models/wound.lua), so
+            -- the building had nothing left to sell and went with the toll. Checked here because
+            -- `shut` raises on a card the city does not have, which is exactly the answer wanted.
             local hurt = Player.new()
             Wound.inflict(hurt, { { id = "character_rowan" } })
-            assert(not shut(hurt, "the_inn"), "the first wound puts the sign up")
-            -- ...and it stays up. The ledger empties when the stay is over and the MARK does not, or
-            -- the city would lose a building the morning after it was used.
-            hurt.atInn = { character_rowan = true }
-            Wound.rest(hurt)
-            assert(#Wound.wounded(hurt) == 0, "the ledger is clear")
-            assert(not shut(hurt, "the_inn"), "a door the player has learned the way to stays put")
+            assert(not pcall(shut, hurt, "the_inn"),
+                "the Inn is still a card in the city -- the wound toll is supposed to be gone with it")
 
             -- THE CAFE at floor two and THE FORGE at floor four, off the company's own depth record.
             for id, need in pairs({ cafe = 2, forge = 4 }) do
@@ -282,7 +279,7 @@ return {
             -- standing 20 is past every threshold this city has ever had.
             local decorated = Player.new()
             decorated.completedQuests = standingOf(20)
-            for _, id in ipairs({ "the_inn", "cafe", "forge" }) do
+            for _, id in ipairs({ "cafe", "forge" }) do
                 assert(shut(decorated, id), id .. " opened on standing rather than on its deed")
             end
         end,

@@ -172,14 +172,14 @@ local function snapshotCharacter(char)
     end
     if next(carry) then snap.growthCarry = carry end
 
-    -- The declared job (Growth.jobOf). One string, omitted while the body has never been declared into
+    -- The declared class (Growth.classOf). One string, omitted while the body has never been stood in
     -- one, which is how a fresh recruit keeps growing as its blueprint's innate class.
     --
     -- It replaced `growthBy`, the per-key ledger of levels credited in shares. Nothing migrates: the
     -- class level that ledger gated is read off `technique` now (Class.classLevel), which is
     -- persisted just below and has always been, so an old save comes back with its class levels intact
     -- and simply undeclared.
-    if char.job then snap.job = char.job end
+    if char.declaredClass then snap.declaredClass = char.declaredClass end
 
     -- THE LEDGER and its two companions (Character.recordTechnique). Earned is monotonic; spent and the
     -- level checkpoint both only ever rise toward it. Each omitted while empty, like their neighbours
@@ -729,7 +729,9 @@ local function restoreCharacter(snap)
         level = snap.level,
         growth = snap.growth,
         growthCarry = snap.growthCarry,
-        job = snap.job,
+        -- `snap.job` is the field's old name, read for saves written before it was one word with the
+        -- rest of the game (the screen that sets it calls it a class, so the file does too).
+        declaredClass = snap.declaredClass or snap.job,
         technique = snap.technique,
         techniqueSpent = snap.techniqueSpent,
         techniqueAtLevel = snap.techniqueAtLevel,

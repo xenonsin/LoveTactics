@@ -12,11 +12,17 @@ return {
     name = "The Whetted Vow",
     blurb = "The company deals %dx damage.",
     tier = "rare", mark = "Wv",
-    -- Both halves are the SAME ladder, so the price says the same number the gain does: x2 damage for
-    -- 1/2 the health, x3 for 1/3, x4 for 1/4. Stated as the divisor rather than as "halved again",
-    -- which is a rule the player would have to apply themselves to find out what they hold.
-    cost = "Maximum health divided by %d.",
-    costScale = { 2, 1 },
+    -- THE DIVISOR IS THE RULE; THE SHARE IS WHAT THE PLAYER READS. "Maximum health divided by 3" is the
+    -- mechanic stated exactly, and it is still arithmetic the player has to do before this card can be
+    -- compared with any other price on the shelf -- every one of which is already a straight figure off
+    -- a stat. So the line says the same ladder as the share it takes: 50% at one copy, 67% at two, 75%
+    -- at three.
+    --
+    -- A share of a pool the divisor keeps shrinking does NOT climb in a straight line, so this is the
+    -- one ladder on the shelf authored as a function rather than as { base, step } -- 100 - 100/(1+n),
+    -- the exact inverse of the divisor in `ruleScale` below.
+    cost = "-%d%% maximum health.",
+    costScale = function(n) return math.floor(100 - 100 / (1 + n) + 0.5) end,
     scale = { 2, 1 },
     -- ONE NUMBER, DECLARED TWICE, because it is doing two jobs and an implicit second reader would be a
     -- mechanic nobody could find: `halveMaxHealth` is the DIVISOR on the ceiling and `damageMultiplier`

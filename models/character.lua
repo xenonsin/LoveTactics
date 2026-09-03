@@ -485,16 +485,20 @@ function Character.instantiate(id, progress)
         technique = (progress and progress.technique) or {},
         techniqueSpent = (progress and progress.techniqueSpent) or {},
         techniqueAtLevel = (progress and progress.techniqueAtLevel) or {},
-        -- THE DECLARED JOB: the one thing that decides how this body grows on a level-up
-        -- (Growth.jobOf). Nil until the player declares one, and the blueprint's innate `class` is the
+        -- THE DECLARED CLASS: the one thing that decides how this body grows on a level-up
+        -- (Growth.classOf). Nil until the player picks one, and the blueprint's innate `class` is the
         -- fallback until they do -- so a fresh recruit grows as what it was minted as rather than
         -- standing still waiting to be told.
+        --
+        -- A SEPARATE FIELD FROM `class`, which is the blueprint's own and never moves. The player may
+        -- stand a body anywhere on the ladder it has opened; what it was minted as is still what it
+        -- falls back to, so the two cannot be one field.
         --
         -- This replaced `growthBy`, a per-key ledger of levels credited in shares, back when growth was
         -- apportioned across everything a body had swung. The class level that ledger fed is read off
         -- cumulative technique now (Class.classLevel), so the two questions -- how does this body
         -- grow, what has it got good at -- are answered by two fields that cannot drift apart.
-        job = (progress and progress.job) or nil,
+        declaredClass = (progress and progress.declaredClass) or nil,
         inventory = {},
         -- Hidden fallback weapon (never in inventory, never shown in the item grid). Sourced
         -- from the blueprint's `unarmed` id or the generic default; explicitly `false` for a body

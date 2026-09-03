@@ -302,7 +302,7 @@ function draft.openLoadout(focusChar)
         player = synthetic,
         title = "Loadout",
         tactics = false, -- draft is player-piloted; the grid (and its adjacency) is the whole point here
-        jobs = false, -- a drafted unit is bought as a chassis and never climbs a ladder; there is no roll
+        classes = false, -- a drafted unit is bought as a chassis and never climbs a ladder; no roll
         persist = false, -- a synthetic player must never reach the save file
         onClose = function() draft.panel = nil end,
     })

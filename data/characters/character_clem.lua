@@ -41,6 +41,10 @@ return {
     -- anything), so an empty pool silently made every mana-costed item unusable on her. Her whole loop
     -- is stamina (kris 5, Borrowed Time 8, the shadow kit 4 each -- which is what the 17/+3 buys), and
     -- the rogue growth table grows neither mana nor magicDamage, so this is a floor she never climbs.
+    -- PERSONAL GROWTH (models/growth.lua): two points a level she keeps in any class. The fixer's edge
+    -- and the wind to keep using it -- her whole loop is stamina (the note above says so) and her whole
+    -- job is opening the wound. Nothing defensive: she must never be caught, not survive being caught.
+    personalGrowth = { damage = 1, stamina = 1 },
     stats = {
         health = 54, mana = 8, stamina = 17,
         staminaRegen = 3,

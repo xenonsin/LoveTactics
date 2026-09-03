@@ -177,15 +177,10 @@ function Marks.market(x, y, w, h, r, g, b, a)
     love.graphics.rectangle("fill", x + w * 0.52, y + h * 0.58, w * 0.34, h * 0.16, 2, 2)
 end
 
--- THE INN -- a bed, seen from the side. A bed, a fire and a surgeon; the bed is the part you buy.
-function Marks.inn(x, y, w, h, r, g, b, a)
-    love.graphics.setColor(r, g, b, a)
-    love.graphics.rectangle("fill", x, y + h * 0.26, w * 0.16, h * 0.62, 2, 2)          -- headboard
-    love.graphics.rectangle("fill", x, y + h * 0.60, w, h * 0.28, 2, 2)                 -- mattress
-    love.graphics.rectangle("fill", x + w * 0.20, y + h * 0.44, w * 0.30, h * 0.18, 2, 2) -- pillow
-    love.graphics.setColor(r * 0.35, g * 0.35, b * 0.35, a)
-    love.graphics.rectangle("fill", x + w * 0.20, y + h * 0.58, w * 0.80, h * 0.05)
-end
+-- (THE INN -- a bed seen from the side -- stood here, and is deleted with the house. Setting a bone was
+-- the only thing that building did, and a wound is a condition of the expedition now: the surface ends
+-- it for free (models/wound.lua). A mark with no vendor behind it is an orphan the icon spec catches,
+-- which is why it goes rather than being left drawable "in case".)
 
 -- THE CROSSING -- the tear itself, held open. A jagged vertical shard: the one mark here that is not an
 -- object at all, because what the Crossing sells is a hole in the world lasting long enough to walk
@@ -265,7 +260,6 @@ local Colors = {
     -- thing I came for". A stall is not a prize.
     market        = { 0.68, 0.54, 0.34 }, -- leather and canvas: a stall, not a house
     cafe          = { 0.96, 0.56, 0.52 }, -- a hot plate
-    inn           = { 0.72, 0.78, 0.94 }, -- a cold room and a warm bed
     crossing      = { 0.30, 0.30, 0.88 }, -- the deep indigo of what comes through the tear
     touchstone    = { 0.58, 0.64, 0.72 }, -- the stone
 }

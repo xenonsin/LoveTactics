@@ -22,7 +22,7 @@
 
 local InventoryGrid = require("ui.inventory_grid")
 local TacticsEditor = require("ui.tactics_editor")
-local JobsEditor = require("ui.jobs_editor")
+local ClassEditor = require("ui.class_editor")
 local PoolGrid = require("ui.pool_grid")
 local AdjacencyLinks = require("ui.adjacency_links")
 local Glyphs = require("ui.glyphs")
@@ -121,7 +121,7 @@ Party.SORTS = SORTS -- exposed for tests/loadout_sort_spec.lua
 local SORT_ROW_H = 22
 
 -- The tabs. `loadout` is the original screen, unchanged; `tactics` swaps the grid/stash columns for
--- the rule editor (ui/tactics_editor.lua), `jobs` for the roll (ui/jobs_editor.lua), and the optional
+-- the rule editor (ui/tactics_editor.lua), `classes` for the roll (ui/class_editor.lua), and the optional
 -- `stats` tab (opts.stats -- the debug character editor) for the blueprint field editor. The portrait
 -- rail stays up in ALL of them, so switching character works the same way whichever tab is open -- a
 -- tab is a view of one member, not a different screen. Segment pattern follows ui/panels/shop.lua's
@@ -132,11 +132,11 @@ local SORT_ROW_H = 22
 -- member carries and what a member IS are the same question asked twice, and the rail down the left of
 -- this panel is already the roster that screen drew for itself.
 --
--- `tactics`, `jobs` and `stats` are all COLUMN EDITORS: one widget claiming the whole area right of
+-- `tactics`, `classes` and `stats` are all COLUMN EDITORS: one widget claiming the whole area right of
 -- the rail, driven through a common interface (see Party:columnEditor). Everything below branches on
 -- "is there a column editor" rather than on the tab's name, so a fourth one costs a table entry
 -- rather than another dozen `mode == "..."` tests.
-local MODE_LABEL = { loadout = "Loadout", tactics = "Tactics", jobs = "Jobs", stats = "Stats" }
+local MODE_LABEL = { loadout = "Loadout", tactics = "Tactics", classes = "Classes", stats = "Stats" }
 local MODE_H = 28
 
 -- Semantic prompt-glyph tints, kept across input modes (the glyph text changes A<->Enter, the
@@ -177,24 +177,24 @@ local function classLabel(class)
     return Class.displayName(class) or (class:gsub("^%l", string.upper))
 end
 
--- The job this member is DECLARED in, as the words the sheet prints. Never empty: an undeclared body
--- falls back to its blueprint's innate class (Growth.jobOf), which is what it has been growing as all
--- along.
+-- The class this member is STANDING in, as the words the sheet prints. Never empty: a body that has
+-- never been moved falls back to its blueprint's innate class (Growth.classOf), which is what it has
+-- been growing as all along.
 --
 -- IT USED TO BE A RANKING, and the ranking is what made the old sheet confusing. Growth was apportioned
 -- across everything cast since the last level-up, so the title line named the leader of one reading
 -- while the column under it printed the split of another -- "Growing as Hunter" over
 -- "Alchemist 33% - Hunter 25%" is two true statements about two different windows of time, with nothing
--- on the sheet to say which was which. One declared job answers the question once.
-function Party.jobLabel(char)
-    return classLabel(Growth.jobOf(char))
+-- on the sheet to say which was which. One declared class answers the question once.
+function Party.declaredClassLabel(char)
+    return classLabel(Growth.classOf(char))
 end
 
 -- What the member has GOT GOOD AT, ranked: { key, name, level, held, needed }, highest class level
 -- first and then by name.
 --
--- The other half of the pair, and deliberately a different question from the job above. The job is what
--- the player declared and is what stat growth is taken from; this is what the body has actually been
+-- The other half of the pair, and deliberately a different question from the class above. The class is
+-- what the player chose and is what stat growth is taken from; this is what the body has actually been
 -- swinging, read off cumulative technique (Class.classLevel). A body declared knight while casting
 -- mage gear shows "Knight" on its title line and a Mage level in this list, and both are true.
 --
@@ -296,8 +296,8 @@ function Party.new(opts)
     --   stats    (opt-in) add the blueprint field editor tab (states/debug_editor.lua)
     --   tactics  (opt-out, default on) the rule-editor tab; the flight tutorial passes false so the
     --            Tactics tab stays hidden until the player has reached the hub city and it is taught
-    --   jobs     (opt-out, default on) the roll: what each body is declared as and what it may become.
-    --            Draft passes false -- a drafted unit is bought as a chassis and never climbs a job
+    --   classes  (opt-out, default on) the roll: what class each body stands in and what it may become.
+    --            Draft passes false -- a drafted unit is bought as a chassis and never climbs a class
     --            ladder -- and so does the flight tutorial, for the reason Tactics does
     --   persist  false to skip the Player.save() on close -- a synthetic player must never be able
     --            to overwrite the real save
@@ -307,7 +307,7 @@ function Party.new(opts)
     --            control, Sort, needs nothing from the host and is always offered (see SORTS)
     self.modes = { "loadout" }
     if opts.tactics ~= false then self.modes[#self.modes + 1] = "tactics" end
-    if opts.jobs ~= false then self.modes[#self.modes + 1] = "jobs" end
+    if opts.classes ~= false then self.modes[#self.modes + 1] = "classes" end
     if opts.stats then self.modes[#self.modes + 1] = "stats" end
     self.persist = opts.persist ~= false
     self.fielded = opts.fielded
@@ -446,7 +446,7 @@ function Party.new(opts)
         ownKey = opts.tacticsOwn,
     }
     self.editors = { tactics = TacticsEditor.new(column) }
-    if opts.jobs ~= false then self.editors.jobs = JobsEditor.new(column) end
+    if opts.classes ~= false then self.editors.classes = ClassEditor.new(column) end
     if opts.stats then
         -- Required lazily: the stat editor is debug-only content, and the shipped Loadout screen
         -- should not pay to load it.
@@ -1830,16 +1830,16 @@ function Party:drawFocus()
     Theme.set(Theme.ink)
     love.graphics.printf(char.name or "?", x, y + ps + 6, self.focusW, "center")
 
-    -- Level + the job this body is declared in, which is the one thing its stat growth is taken from
-    -- (Growth.jobOf). The clause used to name whichever house led a ranking of what the member had been
-    -- casting; growth is a declaration now, so the line states it rather than inferring it.
+    -- Level + the class this body stands in, which is the one thing its stat growth is taken from
+    -- (Growth.classOf). The clause used to name whichever house led a ranking of what the member had
+    -- been casting; growth is a choice now, so the line states it rather than inferring it.
     --
     -- The clause is also a HANDLE. Point at it and the stats below show where that level is taking them
     -- (Party:growthPeeking); its own hit rect is stashed for the hover test and for the click that pins
     -- the peek open. Lit to full ink while it is engaged, so the handle says it is one.
     love.graphics.setFont(self.smallFont)
     local heading = "Lv " .. tostring(char.level or 1)
-    local clause = "  -  " .. Party.jobLabel(char)
+    local clause = "  -  " .. Party.declaredClassLabel(char)
     local hy = y + ps + 30
     self.growthRect = nil
     if clause then

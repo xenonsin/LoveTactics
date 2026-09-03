@@ -40,6 +40,11 @@ return {
     -- 56 health next to a swordsman is a body. Like every mage she keeps her distance (models/ai.lua),
     -- which is also how the single bolt she shows keeps finding range turn after turn.
     archetype = "skirmish",
+    -- PERSONAL GROWTH (models/growth.lua): two points a level she keeps in any class, and hers is the
+    -- one this whole mechanic was worth adding for. Gyeom showed no gift; she trained every day and
+    -- grew formidable. A body that gets better BY LEVELLING, in the working and in the reserve to keep
+    -- doing it, is that sentence written as arithmetic rather than said in a header.
+    personalGrowth = { magicDamage = 1, mana = 1 },
     stats = {
         health = 56, mana = 46, stamina = 10,
         staminaRegen = 2,

@@ -419,15 +419,15 @@ tests[#tests + 1] = { name = "a discipline-heavy build grows along the disciplin
     --
     -- IT USED TO BE A READING OF WHAT THEY CAST. This case asserted that casting mostly ninja stock made
     -- a body grow as a ninja, and that the ninja share was the larger half of the next level. Growth is
-    -- a declaration now (Growth.jobOf) -- what a body swings sets its class LEVEL and how much it gets
+    -- a declaration now (Growth.classOf) -- what a body swings sets its class LEVEL and how much it gets
     -- out of that gear (Combat.classScaled), not how it grows. So the ledger is loaded the other way
     -- here deliberately: the body has swung rogue gear and grows as a ninja, because that is what it
     -- was declared as.
     local c = Character.instantiate("character_clem") -- innate rogue
-    c.job = "ninja"
+    c.declaredClass = "ninja"
     Character.recordTechnique(c, "rogue", Class.TECHNIQUE_PER_BATTLE)
 
-    assert(Growth.jobOf(c) == "ninja", "the declaration decides the table")
+    assert(Growth.classOf(c) == "ninja", "the declaration decides the table")
 
     local before = c.growth and c.growth.magicDamage or 0
     Growth.applyLevel(c, "ninja")

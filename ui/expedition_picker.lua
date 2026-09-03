@@ -73,14 +73,16 @@ function Picker:slotRect(i)
     return self.x + (i - 1) * (TILE + SLOT_GAP), self.y, TILE, TILE
 end
 
--- THE INN IS NOT ON THIS ROW ANY MORE. It was a fifth plate out to the right, and a body dropped on it
--- was put to bed for coin -- which made the departure row answer two questions at once and read as five
--- seats with a gap in it. A bed is bought at the Inn now (ui/panels/inn.lua), in the city, at the
--- counter that already sells the night. This screen asks the one thing it is for: who goes down.
+-- THE INN IS NOT ON THIS ROW, AND IT IS NOT ANYWHERE ELSE EITHER. It was a fifth plate out to the
+-- right, and a body dropped on it was put to bed for coin -- which made the departure row answer two
+-- questions at once and read as five seats with a gap in it. It moved to a card in the city and was
+-- then deleted outright with the whole toll (models/wound.lua): a dive's wounds end when the company
+-- reaches the surface, free. So this screen asks the one thing it was left with, and it is the one
+-- thing it is for: who goes down.
 --
--- A LODGED BODY STILL SHOWS HERE, dimmed among the company, because they are on the roster and not
--- available -- Descent.party filters them out of the expedition (models/gate.lua's Gate.isLodged), and a
--- name that vanished from the company while it mended would look like somebody had left.
+-- EVERY BODY ON THE ROSTER IS PICKABLE, which is what falls out of that. There is no state a member can
+-- be in that takes them out of the company, so the plates below are the roster and nothing is strained
+-- out of them on the way to Descent.party.
 function Picker:rosterTop()
     return self.y + TILE + 42
 end
@@ -393,21 +395,16 @@ function Picker:draw()
     for i, char in ipairs(self:roster()) do
         local x, y, w, h = self:rosterRect(i)
         local going = self:isGoing(char.id)
-        local abed = require("models.gate").isLodged(self.player, char.id)
         Theme.set(Theme.panel)
         love.graphics.rectangle("fill", x, y, w, h, Theme.R or 4, Theme.R or 4)
-        Theme.set((going or abed) and Theme.hairline or Theme.frame)
+        Theme.set(going and Theme.hairline or Theme.frame)
         love.graphics.rectangle("line", x, y, w, h, Theme.R or 4, Theme.R or 4)
-        drawBody(char, x, y, w, self.font, going or abed)
+        drawBody(char, x, y, w, self.font, going)
 
-        -- WHY THIS ONE IS GREYED. A body in a bed is dimmed like a body already on a plate, and with the
-        -- Inn's plate gone off this row there is nothing else on the screen saying which of the two it
-        -- is -- so the tile says it. One word, in the corner the wound count does not use.
-        if abed then
-            love.graphics.setFont(self.smallFont)
-            Theme.set(Theme.accentWeapon)
-            love.graphics.printf("abed", x + 5, y + h - 15, w, "left")
-        end
+        -- GREYED MEANS ONE THING ON THIS ROW: already on a plate. A body used to be dimmed for a second
+        -- reason as well -- lying in a bed at the Inn -- and needed a word in the corner to say which of
+        -- the two it was. The Inn is gone (models/wound.lua) and no body is ever lodged, so the dimming
+        -- answers itself and the word is deleted with the building.
 
         -- A wound is the one fact that changes who you send, so it is on the tile rather than a hover.
         local wounds = Wound.count(self.player, char.id)

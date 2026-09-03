@@ -407,10 +407,11 @@ Identify.VENDOR = "touchstone"
 --
 -- TWO CLAUSES, AND THE SECOND ONE IS WHAT KEEPS THE DOOR STANDING. The first is the arrival: a husk in
 -- the stash, so the card goes up the night the first unreadable thing is carried in -- the player finds
--- the thing, cannot read it, and THEN the door is there, which is the same lesson the Inn teaches on the
--- first wound. The second is memory: once the counter has been walked into it stays, because a door that
--- came off the plaza the morning after it was used would be the bug data/buildings/the_inn.lua records
--- about reading the wound ledger instead of the mark.
+-- the thing, cannot read it, and THEN the door is there. The second is memory: once the counter has been
+-- walked into it stays, because a door that came off the plaza the morning after it was used is a city
+-- that gains and loses a building every time the company happens to be carrying one of something. (The
+-- Inn was the other door built this way, gated on the first wound. It is deleted -- see models/wound.lua
+-- -- and this is the last door of the kind, which is why the rule now lives here.)
 --
 -- The memory is `visitedVendors`, which the first-visit greeting already sets and models/save.lua already
 -- persists (models/vendor_visit.lua). No new flag, no new save field: the house was given a vendor id for

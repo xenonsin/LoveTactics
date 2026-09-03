@@ -116,10 +116,10 @@ function Cafe:refresh()
         self.rows[#self.rows + 1] = row
     end
 
-    -- THE KITCHEN NO LONGER SETS BONES. A wounded body was mended here for gold, on a row appended
-    -- after the dishes -- and a wound settled at a counter costs a decision once and nothing after, so
-    -- the whole ladder in models/wound.lua never bit. Mending is a STAY at the Inn now: coin at the
-    -- door, a day per wound, and the body out of the company while it takes them (models/gate.lua).
+    -- THE KITCHEN NO LONGER SETS BONES, and neither does anywhere else in the city. A wounded body was
+    -- mended here for gold, on a row appended after the dishes; that moved to the Inn as a bed priced
+    -- per wound, and then the whole toll was deleted (models/wound.lua). A wound lasts the expedition
+    -- and the surface ends it, free -- so there is nothing here to sell, and this house sells suppers.
 
     local items = {}
     for i, row in ipairs(self.rows) do

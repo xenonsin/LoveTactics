@@ -1,31 +1,26 @@
 -- THE GATE ALWAYS OFFERS A WAY FORWARD.
 --
--- Two things can happen at the mouth of the stair and each has a condition on it: you may DESCEND while
--- somebody is picked and not in a bed (Gate.canDescend), and you may WAIT A DAY while somebody is in
--- one -- the wait draws nowhere else, because waiting mends nobody who is not lodged and a button that
--- spends a day for nothing is a button that only loses.
+-- WHAT THIS FILE USED TO GUARD, because the shape of the danger is worth keeping even though the danger
+-- is gone. Two controls stood at the mouth of the stair, each with a condition on it: you could DESCEND
+-- while somebody was picked and not in a bed, and you could WAIT A DAY while somebody WAS in one. The
+-- two had to cover every state between them or the Gate became a room with a stair you could not take
+-- and a bed you could not wait out -- a softlock reachable by ordinary play, at the exact moment the
+-- player was already losing.
 --
--- THOSE TWO CONDITIONS MUST COVER EVERY STATE BETWEEN THEM, and it is not obvious that they do. The
--- company is seven at most; an expedition takes four and a bed takes as many as the purse allows, so a
--- player can absolutely arrive at a morning with nobody healthy and nothing to send. If BOTH controls
--- were hidden there, the Gate would be a room with a stair you cannot take and a bed you cannot wait
--- out -- a softlock reachable by ordinary play, at the exact moment the player is already losing.
+-- BOTH THE BED AND THE WAIT ARE DELETED (models/wound.lua). A wound is a condition of the expedition
+-- now and the surface ends it for free, so no body is ever unavailable, nothing is ever waiting for a
+-- morning, and the gap the two conditions had to cover between them does not exist to be opened.
 --
--- The cover is structural rather than lucky: descending needs an unlodged body and waiting needs a
--- lodged one, so the only way to hide both is to hold neither, which is an empty roster -- and the
--- avatar cannot be lost (it is `startingRoster` and nothing removes it). This file is what stops a
--- later change to either condition quietly opening the gap.
+-- SO THE INVARIANT IS ONE CONTROL AND ONE CONDITION, and it is pinned here for the same reason the pair
+-- was: a later change to Gate.canDescend or to Descent.party's filtering must not be able to close the
+-- only door this screen has. The cover is structural rather than lucky -- every body on the roster is
+-- pickable, and the avatar cannot be lost (it is `startingRoster` and nothing removes it) -- so the only
+-- way to shut the stair is an empty roster, which no route reaches.
 
 local Gate = require("models.gate")
 local Wound = require("models.wound")
 local Player = require("models.player")
 local Descent = require("models.descent")
-
--- Can the Gate's "Wait a day" row draw? Mirrors states/gate.lua's own test, which is the point: if that
--- condition is edited, this file has to be edited with it, and the case below says why.
-local function canWait(player)
-    return #Gate.lodged(player) > 0
-end
 
 local function company(n)
     local p = Player.new()
@@ -46,77 +41,55 @@ end
 
 return {
     {
-        name = "a company with nobody in a bed can always descend",
+        name = "a company can always descend, however badly hurt",
         fn = function()
             local p = company(7)
             local run = Descent.new(p, 11)
             assert(Gate.canDescend(p, run), "an unpicked company takes the first four")
 
-            -- ...and wounded is not the same as unavailable: a hurt body may still be sent, which is
-            -- the whole choice the wound meter offers.
+            -- WOUNDED IS NOT UNAVAILABLE, and that is the whole choice the wound meter offers: a hurt
+            -- body may still be sent, worse than they were. There is no longer any other kind of
+            -- answer -- a body cannot be put anywhere that takes them out of the company.
             for _, char in ipairs(p.roster) do hurt(p, char.id, 3) end
             assert(Gate.canDescend(p, run), "a company of walking wounded may still go down")
-            assert(not canWait(p), "and is offered no wait, because a wait would mend nobody")
+            assert(#Descent.party(run, p) == Descent.PARTY_MAX,
+                "and the expedition is still full: nothing strains a wounded body out of it")
         end,
     },
     {
-        -- THE STATE THE WHOLE FILE IS ABOUT: everybody in a bed. The stair shuts, and the wait is what
-        -- is left -- which is the correct pair, because the days ARE the way out of this.
-        name = "a company entirely in beds cannot descend, and can wait",
+        -- THE CASE THE OLD PAIR EXISTED FOR, asked of the one control that is left: the state where
+        -- every single body is carrying the worst the ladder has. It used to shut the stair (they would
+        -- all have been in beds); it must not now.
+        name = "a company at the bottom of the wound ladder still has a stair",
         fn = function()
             local p = company(7)
             local run = Descent.new(p, 12)
+            for _, char in ipairs(p.roster) do hurt(p, char.id, 5) end
+
             for _, char in ipairs(p.roster) do
-                hurt(p, char.id, 1)
-                assert(Gate.lodge(p, char.id), "everybody takes a bed")
+                assert(Wound.healShare(p, char.id) == Wound.FLOOR,
+                    char.id .. " should be floored, so this case ran at the bottom rung")
             end
-
-            assert(#Descent.party(run, p) == 0, "nobody is available to go down")
-            assert(not Gate.canDescend(p, run), "so the stair does not open")
-            assert(canWait(p), "and the wait is offered, which is the way out")
+            assert(#Descent.party(run, p) > 0, "somebody is available to go down")
+            assert(Gate.canDescend(p, run), "so the stair opens")
         end,
     },
     {
-        -- The cover, stated as the invariant rather than as two cases: whatever is lodged and whatever
-        -- is picked, at least one of the two controls draws.
-        name = "every arrangement of beds leaves at least one way forward",
-        fn = function()
-            local p = company(7)
-            local run = Descent.new(p, 13)
-            for _, char in ipairs(p.roster) do hurt(p, char.id, 1) end
-
-            for i = 0, #p.roster do
-                -- Empty the Inn, then put the first `i` of them back in it.
-                for _, char in ipairs(p.roster) do Gate.checkout(p, char.id) end
-                for k = 1, i do Gate.lodge(p, p.roster[k].id) end
-
-                local forward = Gate.canDescend(p, run) or canWait(p)
-                assert(forward, i .. " in beds and the Gate offers nothing at all")
-            end
-        end,
-    },
-    {
-        -- AND IT HOLDS WITH A PICK STANDING. A party chosen before somebody was put to bed must not be
-        -- able to strand the company: Descent.party filters the lodged out, so the pick degrades rather
-        -- than pointing at bodies that cannot go.
-        name = "a stale pick full of lodged bodies still leaves a way forward",
+        -- AND A STALE PICK CANNOT STRAND THE COMPANY EITHER. A party chosen earlier still names bodies
+        -- who are all on the roster and all sendable, so the pick degrades to itself rather than to a
+        -- hole in the line.
+        name = "a pick made before the fighting still walks down after it",
         fn = function()
             local p = company(7)
             local run = Descent.new(p, 14)
-            for _, char in ipairs(p.roster) do hurt(p, char.id, 1) end
 
             local four = {}
             for k = 1, 4 do four[k] = p.roster[k].id end
             Descent.setParty(run, four)
-            for k = 1, 4 do Gate.lodge(p, four[k]) end
+            for _, id in ipairs(four) do hurt(p, id, 3) end
 
-            assert(#Descent.party(run, p) == 0, "the pick names four bodies who are all in beds")
-            assert(not Gate.canDescend(p, run), "so it cannot be walked down")
-            assert(canWait(p), "and the wait is there instead")
-
-            -- ...and taking one back out re-opens the stair without the pick being touched.
-            Gate.checkout(p, four[1])
-            assert(Gate.canDescend(p, run), "one body back on their feet re-opens the stair")
+            assert(#Descent.party(run, p) == 4, "the pick still names four bodies who can go")
+            assert(Gate.canDescend(p, run), "so it can be walked down")
         end,
     },
 }

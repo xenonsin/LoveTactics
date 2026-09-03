@@ -341,15 +341,15 @@ return {
         assert(Wound.healShare(player, char.id) == Wound.FLOOR,
             "wounds stop biting at the floor -- a body nobody can field is not a decision")
 
-        -- ...and a STAY sets them, one a day. Gold used to, at a counter, instantly -- see
-        -- tests/wound_rest_spec.lua for why that shape was the problem rather than its price.
+        -- ...and REACHING A TOWN sets every one of them, free. Gold used to, at a counter; then a bed
+        -- did, per wound and per day. Both priced needing to recover, which is the one thing this loop
+        -- is built not to charge for (models/wound.lua's header).
         player.wounds[char.id] = 1
-        player.gold = 10000
-        require("models.gate").lodge(player, char.id)
-        Wound.rest(player)
-        require("models.gate").dischargeMended(player)
+        player.gold = 0
+        Wound.clear(player)
+        Player.restore(player)
         assert(Wound.count(player, char.id) == 0, "the wound is gone")
         assert(player.wounds[char.id] == nil, "and left no zero behind to accumulate")
-        assert(hp.current == hp.max, "and the body is whole again at once, not at the next hub entry")
+        assert(hp.current == hp.max, "and the body is whole again, against its WHOLE pool")
     end },
 }

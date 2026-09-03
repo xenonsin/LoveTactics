@@ -49,6 +49,10 @@ return {
     -- On a side of nothing but hitters the ranking names nobody, and she is a plain defender holding
     -- until the fight reaches her.
     guards = "priority",
+    -- PERSONAL GROWTH (models/growth.lua): two points a level this body keeps in any class, so Rowan
+    -- is never merely whatever house she is standing in. The oath, in the two stats it is made of --
+    -- she steps in front of the body she swore to, and she is still standing afterwards.
+    personalGrowth = { health = 1, defense = 1 },
     stats = {
         health = 70, mana = 15, stamina = 15, -- resource stats
         staminaRegen = 2, -- stamina recovered per elapsed tick (a flat stat, not a resource)

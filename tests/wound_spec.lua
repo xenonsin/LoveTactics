@@ -101,39 +101,58 @@ return {
         for _ = 1, 3 do Wound.inflict(p, { char }) end
         assert(#Wound.combatEffects(p, char.id) == 2, "precondition: three wounds, two debuffs")
 
-        -- Three days in a bed, which is what three wounds costs now (tests/wound_rest_spec.lua).
-        p.gold = 10000
-        require("models.gate").lodge(p, char.id)
-        for _ = 1, 3 do Wound.rest(p) end
-        require("models.gate").dischargeMended(p)
+        -- Three camps spent on Bind rather than on the heal, the whetstone or the map -- which is the
+        -- only way to shed one without reaching the surface (models/wound.lua's Wound.mend).
+        for _ = 1, 3 do Wound.mend(p, 1) end
 
         assert(Wound.count(p, char.id) == 0, "the wounds are gone")
         assert(#Wound.combatEffects(p, char.id) == 0, "and so are the debuffs")
         assert(Combat.unreservedMax(char, "health") == whole, "and the body is its whole size again")
     end },
 
-    { name = "a night at the inn leaves every wound exactly where it was", fn = function()
-        -- THIS CASE ASSERTED THE OPPOSITE. A night cleared the WHOLE company's ledger for one bill --
-        -- at most a hundred gold -- on the reasoning that a four-body company with no bench cannot field
-        -- around a wounded member, so pricing each wound separately would stop a poor player descending.
-        --
-        -- That was the cheapest wound-eraser in the game and it outlived Wound.mend, which was deleted
-        -- for being exactly the same thing at a worse price. A bed mends now: per wound, a day each, and
-        -- the body out of the company while it takes them (models/gate.lua's Gate.lodge).
-        local Gate = require("models.gate")
+    { name = "binding a camp sets one bone on everybody, and never more than one", fn = function()
+        -- THE ONLY BONE-SETTING THE FLOORS HAVE, and it is a decision rather than a service: the camp
+        -- that binds is a camp that did not heal, sharpen or study (states/game.lua's restBind). One
+        -- rung at a time, so a company three fights into a bad dive cannot buy the whole ladder back at
+        -- one stop.
         local p = company(2)
-        p.gold = 1000
         for _ = 1, 3 do Wound.inflict(p, { p.roster[1], p.roster[2] }) end
-        assert(Gate.rest(p), "the room is paid for")
+
+        local mended = Wound.mend(p, 1)
+        assert(#mended == 2, "both bodies were carrying something, so both were set")
         for _, char in ipairs(p.roster) do
-            assert(Wound.count(p, char.id) == 3, (char.id) .. " should still carry all three")
-            assert(#Wound.combatEffects(p, char.id) == 2, (char.id) .. " still fights wounded and crippled")
-            -- ...and the night gives back what it can: topped to the wounded ceiling, not past it.
-            assert(char.stats.health.current == Combat.unreservedMax(char, "health"),
-                (char.id) .. " did not get back what the fighting cost")
+            assert(Wound.count(p, char.id) == 2, (char.id) .. " should be down to two, not clear")
+            assert(#Wound.combatEffects(p, char.id) == 1,
+                (char.id) .. " sheds Crippled at the third rung and keeps Wounded at the second")
             assert(Combat.unreservedMax(char, "health") < char.stats.health.max,
                 (char.id) .. " is not still reserved -- the wound stopped biting")
         end
+
+        -- ...AND IT PAYS NOTHING TO A COMPANY THAT IS WHOLE, which is what the control reads before it
+        -- draws at all: no wound, no row.
+        Wound.mend(p, 9)
+        assert(#Wound.mend(p, 1) == 0, "a whole company has nothing to bind")
+    end },
+
+    { name = "reaching a town clears the ledger outright, whatever is on it", fn = function()
+        -- A WOUND LASTS THE EXPEDITION AND NO LONGER (models/wound.lua's header). It used to be
+        -- permanent until it was paid off -- a surgeon's counter, then an Inn priced per wound and per
+        -- day -- and both were a price on needing to recover, landing hardest on the company that had
+        -- just been wiped. There is no bill and no door: standing above ground is the whole of it.
+        local p = company(2)
+        p.gold = 0
+        for _ = 1, 4 do Wound.inflict(p, { p.roster[1], p.roster[2] }) end
+
+        local mended = Wound.clear(p)
+        assert(#mended == 2, "the clear names everybody it set")
+        for _, char in ipairs(p.roster) do
+            assert(Wound.count(p, char.id) == 0, (char.id) .. " walked in carrying four and kept one")
+            assert(#Wound.combatEffects(p, char.id) == 0, (char.id) .. " still fights under something")
+            assert(char.woundShare == nil, (char.id) .. " still has a reserve stamped on them")
+            assert(Combat.unreservedMax(char, "health") == char.stats.health.max,
+                (char.id) .. " is not their whole size again")
+        end
+        assert(p.gold == 0, "and it cost nothing, which is the entire design")
     end },
 
     { name = "the reserve is stamped onto bodies, never read off the player by combat", fn = function()

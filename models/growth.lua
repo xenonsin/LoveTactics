@@ -301,7 +301,7 @@ function Growth.bossHitShare(level, ref) return shareAt(level, Growth.BOSS_FLOOR
 -- supposed to mean the same thing, and Class.classLevel would have to choose between them.
 local function stampClassLevel(char, level)
     local Class = require("models.class")
-    local key = Growth.jobOf(char)
+    local key = Growth.classOf(char)
     local span = math.max(1, Growth.LEVEL_CAP - 1)
     local n = math.floor(Class.CLASS_LEVEL_CAP * math.max(0, (level or 1) - 1) / span + 0.5)
     char.technique = char.technique or {}
@@ -361,14 +361,14 @@ end
 
 -- The class leading a usage tally, with `innate` (the blueprint's own class) as both tie-breaker and
 -- fallback. Shared by the readings below so they can never drift apart in how they settle a tie.
--- THE JOB A BODY IS DECLARED IN, which is the one thing that decides how it grows.
+-- THE CLASS A BODY IS DECLARED IN, which is the one thing that decides how it grows.
 --
 -- IT USED TO BE A TALLY OF WHAT THE BODY HAD SWUNG. A level was apportioned across every house cast
 -- since the last one (Growth.shares) and baked as a blend, with the fractions carried in
 -- char.growthCarry until they added up to a point. That machinery is gone, and the argument that
 -- retired it is worth keeping: a body that grows by what it happened to hold has no answer to "what is
--- she", and the answer to that question is exactly what a job system is for. Declaring it makes growth
--- a decision rather than a readout of one.
+-- she", and the answer to that question is exactly what a class system is for. Standing the body in
+-- one makes growth a decision rather than a readout of one.
 --
 -- WHAT DID NOT MOVE WITH IT is the class LEVEL (Class.classLevel), which still follows the items
 -- actually used -- Combat.awardTechnique banks against the class of the thing in the hand. The two
@@ -378,13 +378,13 @@ end
 --
 -- Falls back to the innate class, then to NEUTRAL_CLASS, so an enemy minted by Growth.spawn with no
 -- declaration at all grows exactly as it did before.
--- Each candidate is tried in turn rather than being coalesced into one lookup: a declared job whose id
--- has gone stale under a rename must fall through to the innate class, not past it to the neutral
+-- Each candidate is tried in turn rather than being coalesced into one lookup: a declared class whose
+-- id has gone stale under a rename must fall through to the innate class, not past it to the neutral
 -- default. Coalescing first and checking once looked identical and quietly demoted every body whose
 -- declaration had drifted.
-function Growth.jobOf(char)
+function Growth.classOf(char)
     if char then
-        if char.job and Growth.defs[char.job] then return char.job end
+        if char.declaredClass and Growth.defs[char.declaredClass] then return char.declaredClass end
         if char.class and Growth.defs[char.class] then return char.class end
     end
     return Growth.NEUTRAL_CLASS
@@ -409,21 +409,53 @@ local function bake(char, gains)
     end
 end
 
--- Apply one level's worth of `class` growth to `char`, whole and undiluted. The single-class path,
--- kept for callers that mean exactly one table. Returns the per-stat gains applied; unknown class is a
--- no-op.
+-- WHO THIS BODY IS, on top of what it is standing in.
+--
+-- FIRE EMBLEM'S MODEL, and its arithmetic: a unit's growth there is its CLASS's growth PLUS a personal
+-- one the character carries wherever it goes, which is why two knights at the same level are not the
+-- same knight. Ours is the same idea without the dice -- growth here is deterministic on purpose (see
+-- the header: prestige-lockstep gives no way to reroll, so permanence favours predictability) -- so a
+-- personal table is whole points a level rather than a percentage chance of one.
+--
+-- READ OFF THE BLUEPRINT, NEVER COPIED ONTO THE INSTANCE. It is a fact about the character, not about
+-- the run: a body minted fresh, restored from a save, or rebuilt by models/build.lua all answer the
+-- same table from the same file, so there is nothing to persist and nothing to migrate. What the save
+-- carries is `char.growth`, the accumulated total this bakes into, exactly as before.
+--
+-- Most blueprints have none, and that is the normal case: a bandit is what its class makes it. The
+-- companions and the avatar are the bodies the player lives with for a campaign, and they are the ones
+-- worth telling apart from the generic that shares their house.
+function Growth.personal(char)
+    local def = char and char.id and Character.defs[char.id]
+    return def and def.personalGrowth or nil
+end
+
+-- What a personal table may add per level, summed over every stat it names.
+--
+-- Small on purpose: it is an identity, not a second class. A class table buys eleven or twelve points a
+-- level, so two is a clear thumb on the scale -- eighty-four over a full campaign -- without ever being
+-- the reason a build works. Enforced over every blueprint by tests/growth_spec.lua: a table that wants
+-- more is asking to be a class, and classes are the thing there are forty-five of.
+Growth.PERSONAL_BUDGET = 2
+
+-- Apply one level's worth of `class` growth to `char`, whole and undiluted, plus whatever the body
+-- carries of its own. The single-class path, kept for callers that mean exactly one table. Returns the
+-- per-stat gains applied; unknown class is a no-op.
 function Growth.applyLevel(char, class)
     local def = Growth.defs[class]
     if not def then return {} end
 
     local gains = {}
     for stat, amount in pairs(def) do gains[stat] = amount end
+    for stat, amount in pairs(Growth.personal(char) or {}) do
+        gains[stat] = (gains[stat] or 0) + amount
+    end
     bake(char, gains)
     return gains
 end
 
 -- What the next level would add, per stat, if it landed right now -- `{ health = 2, damage = 1 }`.
--- The character sheet's forecast (ui/panels/party.lua), answering what the declared job on the line
+-- The character sheet's forecast (ui/panels/party.lua), answering what the declared class on the line
 -- above it actually buys.
 --
 -- Side-effect-free, so a panel may call it every frame, and it is not an ESTIMATE of the coming level:
@@ -436,39 +468,44 @@ end
 function Growth.previewLevel(char)
     if not char then return {} end
     local gains = {}
-    for stat, amount in pairs(Growth.defs[Growth.jobOf(char)] or {}) do gains[stat] = amount end
+    for stat, amount in pairs(Growth.defs[Growth.classOf(char)] or {}) do gains[stat] = amount end
+    -- The body's own table too, or the forecast would promise less than the level delivers -- and this
+    -- function's whole contract is that it cannot drift from what Growth.resolve applies.
+    for stat, amount in pairs(Growth.personal(char) or {}) do
+        gains[stat] = (gains[stat] or 0) + amount
+    end
     return gains
 end
 -- Catch `char` up to `targetLevel`. Idempotent: never runs backward, so calling it again at the same
 -- level does nothing. Returns { fromLevel, toLevel, class, levels, gains } when the character actually
--- advanced, or nil when it was already caught up. `class` is the job the growth was taken from, which
--- is now the job the body is DECLARED in rather than a reading of what it swung.
+-- advanced, or nil when it was already caught up. `class` is the class the growth was taken from,
+-- which is now the class the body is DECLARED in rather than a reading of what it swung.
 --
 -- WHAT THIS USED TO DO, because the shape of the function still carries the marks. A level was
 -- apportioned across everything cast since the last one and baked as a share-weighted blend, with the
 -- remainder carried in char.growthCarry and a per-key ledger of credited levels written to
--- char.growthBy. All three are retired: the blend because growth is a declaration now (Growth.jobOf),
+-- char.growthBy. All three are retired: the blend because growth is a declaration now (Growth.classOf),
 -- and growthBy because the class level it fed is read off cumulative technique instead
 -- (Class.classLevel), which is one ledger where there were two that could disagree.
 --
 -- Levels already credited are still never revisited, so a stat can only ever go UP. That mattered more
 -- under the blend -- re-apportioning history against a changed reading could have taken max health off
--- a body that switched direction -- and it holds here for the same reason: a player who re-declares a
--- job keeps everything the old one grew.
+-- a body that switched direction -- and it holds here for the same reason: a player who changes class
+-- keeps everything the old one grew.
 --
 -- The technique checkpoint stays. It is no longer what growth reads, but it is what the battle summary
 -- reports a level against (Character.techniqueSinceLevel), and it is a SNAPSHOT rather than a wipe:
 -- the ledger is also the wallet and the class level, so clearing it would pay for a level by deleting
 -- money and history.
 --
--- A multi-level jump (a roster catching up on load) applies the job's table once PER LEVEL rather than
+-- A multi-level jump (a roster catching up on load) applies the class's table once PER LEVEL rather than
 -- as one batch, so three levels at once land exactly where three separate levels would.
 function Growth.resolve(char, targetLevel)
     char.level = char.level or 1
     if char.level >= targetLevel then return nil end
 
     local fromLevel = char.level
-    local class = Growth.jobOf(char)
+    local class = Growth.classOf(char)
 
     -- Checkpoint: from here on the level-up reading is the delta above these amounts.
     char.techniqueAtLevel = char.techniqueAtLevel or {}

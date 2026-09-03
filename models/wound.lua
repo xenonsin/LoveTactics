@@ -1,50 +1,75 @@
--- WOUNDS: what a body carries out of a fight it lost.
+-- WOUNDS: what a body carries while it is still underground.
 --
--- The descent needed a meter that degrades the company, and it had none. Measured against the
--- references, that was the missing third of the loop: Hades gets away without one because a run is
--- twenty-five minutes, and Darkest Dungeon has four (light, stress, food, afflictions). Here the hub
--- free-healed everyone on entry and a downed member simply stood back up at a fifth of their health,
--- so nothing a run did to the company outlived the run. A wipe cost the haul and nothing else.
+-- The descent needed a meter that degrades the company as an expedition runs long, and it had none.
+-- Every fight refilled at the next camp, so the sixth fight of a dive cost no more than the first and
+-- "push on or take the stair" had one answer.
 --
 -- A WOUND RESERVES PART OF THE BODY, AND STACKS DEBUFFS AS THEY ACCUMULATE. Two halves:
 --
 --   the reserve   a share of the body's health pool is set aside and cannot be healed into, in the
 --                 fight as well as out of it (Wound.reserveShare -> `char.woundShare`, read by
 --                 Combat.unreservedMax alongside every other reservation). A wounded body does not
---                 merely start a fight short -- it cannot be topped back up past the wound by anything,
---                 which is what makes the injury a condition rather than a bad opening.
+--                 merely start a fight short -- it cannot be topped back up past the wound by anything
+--                 the floors have, which is what makes the injury a condition rather than a bad opening.
 --   the debuffs   at two wounds the body fights Wounded (data/status/status_wounded.lua, a damage
 --                 penalty that scales with the count); at three it is Crippled as well. Stamped at
 --                 spawn through the same seam a relic's opening boon uses, so nothing in combat had to
 --                 learn what a wound is.
 --
--- IT IS THE STAKE THE MODE RUNS ON, and it took that job over from something harsher. A descent briefly
--- lost a body outright when its downed count ran out -- gone from the roster in a fight the company
--- WON -- and that made the countdown the whole game. Wounds do the same work along a curve instead: a
--- body that keeps going down keeps getting harder to field, until fielding it is the mistake. The only
--- thing that ever costs a body now is a WIPE, and even then they lie where they fell to be fetched.
+-- IT LASTS AN EXPEDITION, AND THE TOWN IS WHERE IT ENDS (Wound.clear). That scope is the whole design
+-- and it was arrived at the hard way, so it is worth writing down what it replaced.
 --
--- The alternative was a penalty on max health, and it was rejected twice over: max health is derived
--- (level, growth, gear), so a wound written into it has to be un-written exactly on the way out and
--- fights every recomputation in between; and a body whose CEILING drops reads as permanently
--- diminished rather than as hurt. A reservation says the right thing instead -- the pool is the size it
--- always was, and part of it is not available to you -- and it rides machinery that already exists.
+-- A wound used to be PERMANENT until it was paid off -- first at a surgeon's counter for gold, then at
+-- an Inn, where a body took a bed for a day a wound and was out of the company while it lay in one.
+-- Both were the same defect wearing different clothes, and it is stated in docs/the-count.md as a law
+-- this file was breaking:
 --
--- WHY IT BITES THE PERMANENT CORE. Wounds are keyed by character id on the PLAYER, not on the roster
--- instance, for three reasons that all point the same way: the id survives the roster being rebuilt
--- from a save, a wipe's rollback restores the whole player and would otherwise hand the wounds back
--- with the loot (states/game.lua's rollbackRun preserves this one key explicitly), and the heroes
--- bound to a single descent are on the run rather than the roster, so they cannot accumulate a
--- history the way the avatar and the seven companions do. Nothing here needs to know about that
--- distinction -- it falls out of who has an id worth remembering.
+--     A cost on recovery is a tax on NEEDING to recover, and needing to recover is what being bad at
+--     the game looks like.
+--
+-- The Inn charged coin at the door and days in the bed, and a wipe wounds the whole expedition by
+-- construction -- everybody fell, that is what a wipe is. So a company that lost badly woke poorer,
+-- worse, and holding a bill; and with a roster of two to four bodies (the seven companions arrive at
+-- their houses' openers, one circle at a time) there was nobody to rotate in and no way to earn the
+-- coin except to go back down hurt. That is a spiral, and it is entered by losing.
+--
+-- WHAT PACES THE CAMPAIGN INSTEAD IS THE COUNT (models/descent.lua's Descent.count), which did not
+-- exist when this file was written. It rides on the player rather than the run, it climbs on the one
+-- event in the loop that is a decision with an alternative -- coming back up early -- and it can never
+-- lock anybody out, because every floor descended pays a mark off. There is no longer any need for a
+-- second cross-run attrition meter, and this one was the worse of the two: four ledgers instead of one
+-- number, and the only one of them that could make a company unable to continue.
+--
+-- SO THE TWO CLOCKS HAVE TWO SCOPES. The wound paces one dive -- it is what makes the fourth fight
+-- since the last camp a real question -- and the count paces the campaign. Neither compounds into the
+-- other, and going home is once again the thing that makes you whole.
+--
+-- UNDERGROUND THERE IS STILL A WAY BACK, and it has to be a decision rather than a service. A Rest
+-- stop's fourth option binds bones instead of healing, sharpening or studying (states/game.lua's
+-- restBind), and a handful of crossroads dilemmas offer the same through `ctx.mendWound`. Both are
+-- taken INSTEAD of something, which is the property the Inn never had.
+--
+-- The alternative to a reservation was a penalty on max health, and it was rejected twice over: max
+-- health is derived (level, growth, gear), so a wound written into it has to be un-written exactly on
+-- the way out and fights every recomputation in between; and a body whose CEILING drops reads as
+-- permanently diminished rather than as hurt. A reservation says the right thing instead -- the pool is
+-- the size it always was, and part of it is not available to you -- and it rides machinery that already
+-- exists.
+--
+-- WHY IT IS STILL KEYED TO THE PERMANENT CORE. Wounds are keyed by character id on the PLAYER, not on
+-- the roster instance, and that survives the scope change for the reasons that always applied: the id
+-- survives the roster being rebuilt from a save mid-expedition, and the heroes bound to a single
+-- descent are on the run rather than the roster, so they cannot accumulate a history the way the avatar
+-- and the seven companions do. Nothing here needs to know about that distinction -- it falls out of who
+-- has an id worth remembering.
 
 local Wound = {}
 
 -- What one wound reserves, as a share of the body's health pool. Three wounds leave a body at 55% of
 -- itself and the fourth changes nothing (see FLOOR), which is deliberate: the meter is meant to make
--- the player weigh a descent, never to make the company unplayable. A body that cannot fight is a body
--- the player benches, and a descent has no bench -- so a wound that made somebody unfieldable would
--- take a quarter of the company off the board as surely as killing them.
+-- the player weigh going deeper, never to make the company unplayable. A body that cannot fight is a
+-- body the player benches, and a descent has no bench -- so a wound that made somebody unfieldable
+-- would take a quarter of the company off the board as surely as killing them.
 Wound.PER_WOUND = 0.15
 
 -- The most a body can be reduced to, however many times it has fallen. Below about half, a member is
@@ -58,7 +83,7 @@ Wound.FLOOR = 0.55
 -- should not start a spiral. From the SECOND the body also fights Wounded, and from the third it is
 -- Crippled on top -- so the shape is a cost that grows teeth rather than a switch, and a player reading
 -- two badges on one member knows without being told that this is the third fight they have been carried
--- out of.
+-- out of ON THIS DIVE.
 --
 -- Cripple is the catalogue's existing movement cut (data/status/status_cripple.lua) rather than a
 -- second authored wound status, because it is exactly the same thing happening for a different reason
@@ -72,16 +97,8 @@ Wound.CRIPPLE_AT = 3
 Wound.DAMAGE_PER_WOUND = 2
 
 -- Long past any battle's length. A wound is a condition the body ARRIVED with, not a tempo cost
--- measured in ticks, so it does not tick down -- what ends it is the inn.
+-- measured in ticks, so it does not tick down -- what ends it is a bound bone or the walk home.
 Wound.LASTING = 9999
-
--- WHAT ONE COSTS IS NOT A NUMBER IN THIS FILE ANY MORE. It was 120 gold, set "dear enough to compete
--- with the shelf" -- and it was not, against a 345g median item, so the meter never bit. Raising it
--- would not have fixed the shape: a wound you can settle at a counter costs a decision once and
--- nothing after.
---
--- The price is a stay at the Inn now: coin at the door (models/gate.lua's LODGE_PER_WOUND) and a day
--- per wound in a bed, during which that body is not in the company. See Wound.rest.
 
 -- How many wounds `charId` carries.
 function Wound.count(player, charId)
@@ -114,8 +131,8 @@ end
 -- player behind them at all. So the share is written onto `char.woundShare` by whoever does know the
 -- player, exactly as `char.maxBonus` is written by the grid pass.
 --
--- Called from every seam that can move a wound or rebuild a body: inflict, mend, Player.restore, and
--- the gate's inn. Cheap enough (a walk of four bodies) to call freely rather than to reason about.
+-- Called from every seam that can move a wound or rebuild a body: inflict, mend, clear and
+-- Player.restore. Cheap enough (a walk of four bodies) to call freely rather than to reason about.
 function Wound.stamp(player)
     for _, char in ipairs((player and player.roster) or {}) do
         local share = Wound.reserveShare(player, char.id)
@@ -177,86 +194,81 @@ function Wound.inflict(player, chars)
     -- The reserve moves the instant the ledger does. Without this a body wounded at the end of a fight
     -- would walk to the next stop still able to heal into ground it has just lost.
     Wound.stamp(player)
-    -- ...and the city learns it has a use for an inn. See Wound.everWounded: the mark is one-way, so the
-    -- first wound writes it and every one after changes nothing.
+    -- ...and the mark that arms the one-time coach. See Wound.everWounded.
     if #hurt > 0 then player.wounded = true end
     return hurt
 end
 
 -- HAS THIS COMPANY EVER BEEN HURT? A one-way mark, written the first time anybody takes a wound and
--- never cleared -- not by paying the surgeon, not by mending the last one on the roster.
+-- never cleared -- not by binding the last bone, not by walking home.
 --
--- THE INN IS THE DOOR IT OPENS (data/buildings/the_inn.lua). Setting a bone is the only thing that
--- building does, so a city that has never seen a wound has no use for it and does not show it; the
--- first body carried up broken is what puts it on the plaza.
+-- WHAT READS IT IS THE COACH (states/game.lua's inflictWounds): the dark cap a wound draws across a
+-- body's bar in the party strip is a thing the player has never seen before and will be routing around
+-- for the rest of the dive, so the very first one gets a bubble naming it. Once, ever.
 --
--- ONE-WAY RATHER THAN LIVE, and that is the decision worth stating. Reading `#Wound.wounded(player) > 0`
--- instead would be the same sentence in the present tense, and it would take the Inn back off the map
--- the morning after it was used -- so the city would gain and lose a building every time the company got
--- hurt and paid to stop being. A door the player has learned the way to stays where they learned it.
+-- IT USED TO OPEN A DOOR as well -- the Inn grew on the plaza the night the first body was carried up
+-- broken -- and that building is gone with the ledger it charged for (see the header). The mark stays
+-- because the lesson does.
 --
 -- A FIELD OF ITS OWN rather than an entry in `player.flags`, and the reason is New Game+. Flags are the
 -- general-purpose "something happened once" ledger and they RESET there, along with the quest ledger and
 -- the temptation record, because those are the campaign starting over. This is not a thing the campaign
--- did, it is a thing that happened to these bodies -- and New Game+ carries the company as it finished,
--- `wounds` included. On a flag, a second run would open on a company holding wounds and no door to set
--- them. It sits beside `player.deepest` instead: two facts about the company that outlive everything.
+-- did, it is a thing that happened to these bodies. It sits beside `player.deepest` instead: two facts
+-- about the company that outlive everything.
 function Wound.everWounded(player)
     return (player and player.wounded) == true
 end
 
--- A DAY PASSES AND THE INN MENDS: one wound off every body lodged there, and nobody else.
+-- TAKE `n` WOUNDS OFF EVERY BODY THAT IS CARRYING ONE. What the floors' own bone-setting runs through:
+-- a Rest stop's fourth option and the crossroads dilemmas that offer it (`ctx.mendWound`).
 --
--- THIS IS WHERE THE METER IS PAID. A wound cost gold at a counter and came off instantly, which made
--- the whole ladder above -- the reserve share, Wounded at two, Crippled at three -- a toll booth rather
--- than a meter. What replaces it is a BED: gold opens the door and days do the mending.
+-- THE WHOLE COMPANY RATHER THAN A CHOSEN BODY, and that is a decision rather than a shortcut. Picking
+-- a head would open a second modal on top of a modal, and it would turn a stop that is meant to be a
+-- weigh -- bind, or heal, or sharpen, or study -- into a small optimisation puzzle about which of four
+-- bars to nudge. The expedition is four bodies and they are all carrying the same dive.
 --
--- AND IT DID NOT NEED THE DEADLINE, which is worth saying now that there isn't one. A day used to be
--- one of forty (models/calendar.lua); the cost of a bed was read as scarcity, and the retirement of the
--- calendar looked from a distance like it made beds free. It does not, because the cost was never the
--- day -- see BEING SOMEWHERE below.
---
--- BEING SOMEWHERE IS THE COST. A body at the Inn is not in the company -- they cannot be picked for an
--- expedition while they are in it -- so a three-wound body is three days of being a company of six
--- instead of seven, on top of the coin. That is the whole meter: not the price, the absence.
---
--- IT MENDS ONLY THE LODGED, and this is the reversal worth naming because the first cut had it the
--- other way round: everybody who did NOT walk down that day healed, free, automatically. That is a
--- company that repairs itself for standing still, which asks the player nothing -- and it made the Inn
--- redundant on the day it was written. Resting is a thing you arrange and pay for.
---
--- Returns the ids that mended, so a caller can say so.
-function Wound.rest(player)
+-- Returns the ids it actually moved, sorted, so a caller can name them. Nobody hurt returns an empty
+-- list, which is why the controls that call this draw only when somebody is.
+function Wound.mend(player, n)
     if not (player and player.wounds) then return {} end
-    local lodged = (player.atInn or {})
-
+    n = n or 1
     local mended = {}
-    for id, n in pairs(player.wounds) do
-        if lodged[id] then
-            local left = n - 1
+    for _, char in ipairs(player.roster or {}) do
+        local have = player.wounds[char.id]
+        if have and have > 0 then
+            local left = have - n
             -- Cleared to nil rather than left at zero: models/save.lua drops empty entries, and a table
             -- of zeroes would grow forever with every body that has ever been hurt once.
-            player.wounds[id] = left > 0 and left or nil
-            mended[#mended + 1] = id
+            player.wounds[char.id] = left > 0 and left or nil
+            mended[#mended + 1] = char.id
         end
     end
+    Wound.stamp(player)
     table.sort(mended)
     return mended
 end
 
--- THERE IS NO Wound.mend ANY MORE, and the absence is the design rather than an omission.
+-- THE TOWN SETS EVERY BONE, FREE. Called on arrival at the city and at the Gate (states/hub.lua,
+-- states/gate.lua) -- the two screens that are above ground -- so an expedition's damage ends with the
+-- expedition however it ended: by the stair, by walking out, or by being carried out.
 --
--- It set one wound for gold, instantly, from a row on the Cafe's list -- and the price was 120 against
--- a 345g median item, so the whole ladder above came off for pocket change and the meter never bit. The
--- fix is not a bigger number: a wound you can pay off at a counter is a wound that costs a decision
--- once and nothing thereafter, however much it costs.
+-- FREE AND UNCONDITIONAL, which is the point rather than an oversight. See the header: a price on this
+-- lands only on the player who needed it, and the campaign's pacing is the count's job now.
 --
--- A body MENDS BY BEING SOMEWHERE INSTEAD. You leave them at the Inn, you pay for the stay, and they
--- are gone from the company while they take it (models/gate.lua's Gate.lodge). Gold still opens the
--- door -- it just cannot buy back the days.
+-- Returns the ids it mended, so a caller can say so -- though both callers are a screen the player
+-- walked into rather than a button they pressed, and neither needs to.
+function Wound.clear(player)
+    if not (player and player.wounds) then return {} end
+    local mended = {}
+    for id in pairs(player.wounds) do mended[#mended + 1] = id end
+    player.wounds = {}
+    Wound.stamp(player)
+    table.sort(mended)
+    return mended
+end
 
 -- Everyone on the roster carrying at least one, as { { char, count }, ... } in roster order. What the
--- party sheet and the Cafe's mend list both walk.
+-- party sheet walks, and what the controls that bind bones ask before they draw.
 function Wound.wounded(player)
     local out = {}
     for _, char in ipairs((player and player.roster) or {}) do

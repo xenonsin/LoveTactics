@@ -48,10 +48,10 @@ return {
             -- save still CARRIES those fields so an old file loads, but nothing writes them any more,
             -- so there is nothing left to round-trip.
 
-            -- ...and a stay at the Inn does not un-mark it. The ledger empties; the fact does not, or
-            -- the city would lose the Inn the morning after it was used.
-            restored.atInn = { character_rowan = true }
-            Wound.rest(restored)
+            -- ...and walking home does not un-mark it. The ledger empties every time the company
+            -- reaches a town (Wound.clear); the FACT that somebody was once carried out does not, or
+            -- the one-time coach that teaches the mark would be taught again on the next dive.
+            Wound.clear(restored)
             local again = Save.restore(Save.snapshot(restored))
             assert(#Wound.wounded(again) == 0, "the ledger is clear")
             assert(Wound.everWounded(again), "and the mark is one-way")

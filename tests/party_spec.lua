@@ -268,7 +268,7 @@ return {
             assert(#rows == 3, "one row per class this body has touched, got " .. #rows)
 
             -- THE LEVEL, not a share of the coming level-up. Growth is a declaration now
-            -- (Growth.jobOf), so the proportions this list used to print answered a question nothing
+            -- (Growth.classOf), so the proportions this list used to print answered a question nothing
             -- asks any more; what the ladder decides is how much a body gets out of that class's gear
             -- (Combat.classScaled), and that is a level.
             assert(rows[1].level == 4 and rows[2].level == 2 and rows[3].level == 1,
