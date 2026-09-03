@@ -335,6 +335,16 @@ Grade.TRAIT_GRADE = {
     -- and only past half health. Graded BELOW its parent for all three reasons at once.
     trait_lesser_reflection =           0.5,  -- Lesser Reflection
     trait_formation_fighter =           1.0,  -- Formation Fighter
+    -- THE PENALTY HALF of The Standing Order (data/relics/relic_standing_order.lua). It is the only
+    -- entry in this table that is a pure DOWNSIDE -- a defense cut while its bearer stands alone -- and
+    -- it is graded at 0 rather than negative on purpose: this table weighs what a thing is WORTH to
+    -- whoever carries it, and every consumer sums it into a positive value. A negative here would let a
+    -- kit buy budget by taking penalties, which is a door worth leaving shut.
+    --
+    -- Zero is also honest about where the cost is actually priced. The relic pairs this with
+    -- trait_formation_fighter above and its blueprint is graded as that pair; the drawback is part of
+    -- the bargain the player accepted at the offer, not a separate thing the bench should pay for.
+    trait_standing_order_alone =        0.0,  -- Standing Order (the penalty half)
     trait_gleaning =                    1.0,  -- Gleaning
     trait_grave_cold =                  1.0,  -- Grave-Cold
     trait_kept_faith =                  1.0,  -- Kept Faith

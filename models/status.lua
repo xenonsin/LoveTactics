@@ -1040,7 +1040,27 @@ function Status.tick(combat, elapsed)
 
     for _, e in ipairs(entries) do
         local s = e.status
-        if not s.source then
+        -- THE OPEN WOUND (a rare relic): nothing the company is wearing ever runs out -- every buff is
+        -- permanent for the fight, and so is every burn, poison and curse. Skipping the countdown rather
+        -- than setting a huge `remaining` on purpose: a duration of math.huge would have to survive every
+        -- rebase and every arithmetic that touches it, where simply not counting down is exactly what
+        -- "never expires" means and cannot drift.
+        --
+        -- Reads the unit's own bag, so it holds for the company and no one else -- an enemy's Burn on
+        -- one of them lasts forever too, which is the half of the bargain that makes it a rare.
+        --
+        -- HARD CONTROL IS EXEMPT, and it is the one carve-out this relic gets. A Stun or a Freeze that
+        -- never lapses is not a steep price, it is a body that has stopped being a character: it can
+        -- never counter, parry or dodge again for the rest of the fight, and nothing the player does can
+        -- lift it. Every other permanent debuff here is something you can still fight through, which is
+        -- what makes the bargain a bargain -- a permanent disable is just the fight being over for
+        -- somebody. Keyed on `disablesReactions` because that flag already names exactly this set (Stun,
+        -- Frozen, and any future Sleep) and models/trait.lua already gates every reflex on it, so the
+        -- carve-out and the thing it protects read off one field rather than two lists that can drift.
+        local persists = e.unit.relicBonus and e.unit.relicBonus.rules
+            and e.unit.relicBonus.rules.statusesPersist
+            and not s.def.disablesReactions
+        if not s.source and not persists then
             s.remaining = s.remaining - elapsed
             if s.remaining <= 0 then
                 -- Through Status.remove, so a status that unwinds unit state on its way out (Charm

@@ -4362,9 +4362,26 @@ local function commitDeploy(opts, deployed, front, placed)
         -- who marched, so unlike the relic traits it needs no per-char map -- and it goes onto the
         -- BENCH too, since a member rotated in mid-fight ate the same meal as the four who opened.
         local meal = opts.meal
+        -- The run's relics as one flat-stat bag (models/relic.lua), resolved once by states/game.lua
+        -- with every stack already multiplied out. Like the meal it is ONE table for the whole company
+        -- rather than a per-char map, because a relic is worn by everyone who marched.
+        --
+        -- Stamped here and then folded by Combat.applyUnitPassives, which has to run AGAIN for it: the
+        -- units were built (and their passives folded) before resolveOpening was called, so a bag
+        -- stamped now would sit on the unit unread. Re-folding is free and idempotent -- that function
+        -- rebuilds unit.bonus from scratch every time by design.
+        local relicBonus = resolved.relicBonus or opts.relicBonus
         for _, p in ipairs(placed) do
             p.unit.relicTraits = traits and traits[p.char] or nil
             p.unit.meal = meal
+            p.unit.relicBonus = relicBonus
+        end
+        if relicBonus then
+            Combat.applyPassives(battle.combat)
+            -- ...and then the rare tier's structural inversions, which move the POOLS rather than the
+            -- stats and so cannot be a fold. Applied after applyPassives on purpose: both of them read
+            -- Combat.unreservedMax, which is only correct once every bonus and maxBonus is in place.
+            Combat.applyRelicRules(battle.combat)
         end
 
         -- Whoever was not placed waits on the bench, in company order, and can be rotated in.
@@ -4373,7 +4390,8 @@ local function commitDeploy(opts, deployed, front, placed)
         for _, char in ipairs(opts.party or {}) do
             if not standing[char] then
                 Combat.benchUnit(battle.combat,
-                    { char = char, relicTraits = traits and traits[char] or nil, meal = meal })
+                    { char = char, relicTraits = traits and traits[char] or nil, meal = meal,
+                      relicBonus = relicBonus })
             end
         end
 
@@ -4715,6 +4733,9 @@ function battle.enter(self, opts)
                 -- The quest's meal (models/meal.lua). Nil on every fight launched outside a campaign
                 -- run -- a duel, a draft, a build match -- which is the correct reading: nobody ate.
                 meal = opts.meal,
+                -- The run's relics as one aggregated flat-stat bag. Nil for the same fights the meal
+                -- is nil for, and for a run that has picked nothing up yet.
+                relicBonus = opts.relicBonus,
             }
         end
     end

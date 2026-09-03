@@ -99,6 +99,16 @@ local COACH_BOUNDS = { x = 20, y = 70, w = Scale.WIDTH - 40, h = Scale.HEIGHT - 
 -- PartyStatus.rowRect, which can only find the row if it is handed the origin the strip was drawn at.
 local STRIP_X, STRIP_Y = 16, 60
 
+-- WHAT THE WEEPING STONE CHARGES: a tenth of every roster member's maximum health, permanently, for the
+-- rest of the descent. A share rather than a flat number so it costs the same on floor one and floor
+-- eight and can never scale into the absurd against a company that has grown.
+--
+-- A tenth because the run has to be able to pay it more than once and still be a run. A company that
+-- buys three rare relics off this stone has given up nearly a third of its ceiling -- steep, felt on
+-- every remaining floor, and survivable if that is the build it wanted. Half again and it would be a
+-- stop nobody could use twice; a twentieth and it would be free.
+game.STONE_SHARE = 0.10
+
 -- THE HUD'S BUTTON ROW: Back, then Items, then Use, LAID OUT OVER THE ONES ACTUALLY THERE.
 --
 -- Each of the three used to hold a hardcoded lane -- 16, 138, 260 -- and keep it whether or not the
@@ -619,7 +629,7 @@ function game:openLanding(cell)
             if houseMat then
                 Player.addMaterial(game.player, houseMat, Descent.SPENT_SET_STOCK)
             else
-                Player.addGold(game.player, Relic.BARE_SHELF_GOLD)
+                Player.addGold(game.player, Descent.SPENT_SET_GOLD)
             end
         end
     end
@@ -1530,6 +1540,22 @@ function game:openEncounter(cell, opts)
                 -- rotate on. Only frontRow scope narrows, to the line actually put forward.
                 relicTraits = Relic.combatTraitsByChar(game.relicState, game.player,
                     game.player and game.player.roster, front or deployed),
+                -- THE FLAT STATS the run's relics grant, aggregated once with every stack already
+                -- multiplied out (models/relic.lua's base + (n-1) * step). One bag for the whole
+                -- company -- a relic is worn by everyone who marched -- so unlike relicTraits it needs
+                -- no per-char map, and battle setup folds it beside the meal.
+                relicBonus = {
+                    bonus = Relic.statBonus(game.relicState),
+                    maxBonus = Relic.maxBonus(game.relicState),
+                    resist = Relic.resistBonus(game.relicState),
+                    -- Per-relic rows for the damage-breakdown tooltip, resolved here rather than on
+                    -- hover: that tooltip reads flatStat every frame the mouse is over a body.
+                    parts = Relic.bonusParts(game.relicState),
+                    -- THE RARE TIER'S INVERSIONS, with every magnitude already laddered. Resolved once
+                    -- here so no hot path -- a stat read, a damage preview, a move overlay -- ever walks
+                    -- the shelf. Nil for a run carrying no rare.
+                    rules = Relic.resolvedRules(game.relicState),
+                },
             }
         end
 
@@ -2517,12 +2543,21 @@ function game:openEncounter(cell, opts)
         return
     end
 
-    -- A Reliquary: builds a SLATE of three run relics (models/relic.lua's Relic.slate -- a Vice against two
-    -- Virtues where the shelf allows) and takes exactly ONE. The two refused are the price of the one kept,
-    -- which is the whole reason the stop exists: a single free relic was never a decision. The slate is
-    -- rolled ONCE and pinned to the cell (like the Merchant's shelf), so LEAVE -- which leaves the cell
-    -- uncleared to reconsider -- can't be walked off and back onto for a fresh roll. An empty shelf (the
-    -- run already holds everything eligible) pays a small gold consolation rather than an empty panel.
+    -- A Reliquary: deals a SLATE of three relics (models/relic.lua's Relic.slate) and takes exactly ONE.
+    -- The two refused are the price of the one kept, which is the whole reason the stop exists: a single
+    -- free relic was never a decision. The slate is rolled ONCE and pinned to the cell (like the
+    -- Merchant's shelf), so LEAVE -- which leaves the cell uncleared to reconsider -- can't be walked off
+    -- and back onto for a fresh roll.
+    --
+    -- A PLAIN RARITY ROLL, and held relics are IN it. That inversion is what makes stacking happen at all:
+    -- draw something you already carry and taking it deepens what you have (Relic.magnitude), which is how
+    -- a run commits to a build rather than collecting one of everything. The old code excluded held
+    -- relics and then filtered the pinned slate against them a second time -- two guards against the
+    -- outcome the system now wants.
+    --
+    -- AND THE BARE-SHELF BRANCH IS GONE WITH THEM. It paid a gold consolation when the run held
+    -- everything eligible, which was reachable only because a relic could be held exactly once; a
+    -- thirty-six-deep shelf that stacks has no empty state to answer.
     if kind == "relic_cache" then
         local enc = cell.encounter
         local def = enc.id and EncounterModel.get(enc.id)
@@ -2531,36 +2566,26 @@ function game:openEncounter(cell, opts)
                 day = game.day,
                 sin = game.quest and game.quest.sin, -- this circle's shelf leans toward its own
                 tier = enc.tier or (def and def.tier) or nil,
-                exclude = game.relicState,
             }, 3)
         end
-        -- The pinned slate can go stale: a relic on it may have been taken at a Sin's Altar or won at a
-        -- Crossroads since. Drop what the run already holds rather than offering a duplicate.
         local offer = {}
         for _, id in ipairs(enc.offer) do
-            if not Relic.has(game.relicState, id) then
-                offer[#offer + 1] = { id = id, info = Relic.info(id) }
-            end
-        end
-        -- Shelf exhausted: don't strand the player on an empty reliquary. NOT `guaranteed` -- a reliquary
-        -- is furniture and an empty one is an honest answer, where a boss's stair is a body and has to be
-        -- carrying something (game:openLanding). Both pay the same consolation when they are bare.
-        if #offer == 0 then
-            cell.cleared = true
-            if game.player then
-                Player.addGold(game.player, Relic.BARE_SHELF_GOLD)
-                game:pushToast("The reliquary is bare  +" .. Relic.BARE_SHELF_GOLD .. "g")
-            end
-            saveRun()
-            return
+            -- The count is what the card previews against: a relic already held reads as the transition
+            -- its next copy buys (+2 -> +3), never as a bare repeat of the authored base.
+            offer[#offer + 1] = { id = id, info = Relic.info(id), held = Relic.count(game.relicState, id) }
         end
         game.activePanel = RelicOffer.new({
             title = enc.name or "Reliquary",
             offer = offer,
             onTake = function(entry)
                 cell.cleared = true
-                Relic.grant(game.relicState, entry.id)
-                game:pushToast("Relic taken: " .. (Relic.info(entry.id).name or entry.id))
+                local _, n = Relic.grant(game.relicState, entry.id)
+                local name = Relic.info(entry.id).name or entry.id
+                -- A duplicate says so, because "Relic taken: Whetstone Tithe" over a card the player
+                -- knows they already hold reads as the stop having done nothing.
+                game:pushToast((n and n > 1)
+                    and ("Relic deepened: " .. name .. "  x" .. n)
+                    or ("Relic taken: " .. name))
                 game.activePanel = nil
                 saveRun()
             end,
@@ -2570,27 +2595,187 @@ function game:openEncounter(cell, opts)
         return
     end
 
-    -- A Sin's Altar: rolls a VICE relic and offers it for an upfront toll in gold. Pay and it's yours
-    -- (power with a standing cost); leave and the coin -- and the temptation -- stays in your purse. The
-    -- greed gamble made into a stop. An empty vice-shelf just clears (nothing to tempt with).
+    -- THE ALTAR: pay a fixed toll and take a relic you do not get to see first. The gamble verb.
+    --
+    -- IT USED TO SELL VICES, which is a premise the shelf no longer has -- there is one pool now and a
+    -- downside is a property a relic may carry rather than a category it belongs to. What is left when
+    -- the moral framing goes is the thing that was always actually good about the stop: a price, and no
+    -- preview. It is cheaper than the Merchant's named stock, and that gap IS the wager.
+    --
+    -- Held relics stay in the pool exactly as at a Reliquary, so a gamble can deepen what you carry.
     if kind == "shrine" then
-        local id = Relic.roll(Relic.pool({
-            day = game.day, alignment = "vice", exclude = game.relicState,
+        local title = cell.encounter.name or "The Altar"
+        -- The unseen relic is rolled ONCE and pinned to the cell, so backing out and stepping on again
+        -- cannot reroll the gamble. That is the whole of what makes it a wager.
+        local enc = cell.encounter
+        enc.gamble = enc.gamble or Relic.roll(Relic.pool({
+            day = game.day,
             sin = game.quest and game.quest.sin,
         }))
-        if not id then cell.cleared = true; saveRun(); return end
+        local id = enc.gamble
         local price = 20 + game.day * 8
-        local canPay = game.player and (game.player.gold or 0) >= price
+        local held = Relic.held(game.relicState)
+
+        -- THE GAMBLE: pay, and take a relic you did not get to see. Cheaper than the Merchant's named
+        -- stock, and that gap IS the wager.
+        local function openGamble()
+            if not id then game.activePanel = nil; return end
+            game.activePanel = RelicReveal.new({
+                title = title,
+                relic = { id = id, info = Relic.info(id), held = Relic.count(game.relicState, id) },
+                priceLabel = "Offering: " .. price .. " gold",
+                canPay = game.player and (game.player.gold or 0) >= price,
+                onTake = function()
+                    if not (game.player and Player.spendGold(game.player, price)) then return end
+                    cell.cleared = true
+                    local _, n = Relic.grant(game.relicState, id)
+                    local name = Relic.info(id).name or id
+                    game:pushToast("The altar takes " .. price .. "g and gives: " .. name
+                        .. ((n and n > 1) and ("  x" .. n) or ""))
+                    game.activePanel = nil
+                    saveRun()
+                end,
+                onLeave = function() game.activePanel = nil end,
+            })
+        end
+
+        -- THE TRADE: give up two relics, take one of your choosing from the rung above. The run's only
+        -- REMOVAL, which is what turns a relic with a downside from a permanent regret into a debt you
+        -- can pay off -- and the only way to steer the pile rather than take what falls.
+        --
+        -- Built as three ordinary pick-one panels in sequence rather than a bespoke multi-select: give
+        -- one, give another, take one. Each step is the same question the player already knows how to
+        -- answer from a Reliquary, and backing out of any of them costs nothing, because NOTHING IS SPENT
+        -- UNTIL THE LAST PICK -- the two given relics are only removed once a replacement is chosen. A
+        -- trade abandoned halfway must not eat the relics it was halfway through taking.
+        local function relicRows(exclude)
+            local rows = {}
+            for _, e in ipairs(Relic.held(game.relicState)) do
+                if e.id ~= exclude then
+                    local info = Relic.info(e.def)
+                    info.id = e.id
+                    rows[#rows + 1] = { id = e.id, info = info, held = e.count }
+                end
+            end
+            return rows
+        end
+
+        local openTrade
+        local function openTakeStep(giveA, giveB)
+            -- One rung up from what this floor would otherwise deal. A rare traded for is the same rare a
+            -- Reliquary could have dealt; what the two relics bought is the CHOICE of which.
+            local up = { common = "uncommon", uncommon = "rare", rare = "rare" }
+            local best = "common"
+            for _, gid in ipairs({ giveA, giveB }) do
+                local t = (Relic.get(gid) or {}).tier or "common"
+                if t == "rare" or (t == "uncommon" and best ~= "rare") then best = t end
+            end
+            local slate = Relic.slate({ day = game.day, tier = up[best],
+                sin = game.quest and game.quest.sin }, 3)
+            local offer = {}
+            for _, sid in ipairs(slate) do
+                offer[#offer + 1] = { id = sid, info = Relic.info(sid), held = Relic.count(game.relicState, sid) }
+            end
+            if #offer == 0 then game.activePanel = nil; return end
+            game.activePanel = RelicOffer.new({
+                title = "Take one",
+                offer = offer,
+                onTake = function(entry)
+                    cell.cleared = true
+                    Relic.forget(game.relicState, giveA)
+                    Relic.forget(game.relicState, giveB)
+                    local _, n = Relic.grant(game.relicState, entry.id)
+                    local name = Relic.info(entry.id).name or entry.id
+                    game:pushToast("Traded two for " .. name .. ((n and n > 1) and ("  x" .. n) or ""))
+                    game.activePanel = nil
+                    saveRun()
+                end,
+                onLeave = function() openTrade() end, -- back out: nothing has been given up yet
+            })
+        end
+
+        openTrade = function()
+            local rows = relicRows(nil)
+            if #rows < 2 then game.activePanel = nil; return end
+            game.activePanel = RelicOffer.new({
+                title = "Give up a relic",
+                offer = rows,
+                onTake = function(a)
+                    local rest = relicRows(a.id)
+                    game.activePanel = RelicOffer.new({
+                        title = "And another",
+                        offer = rest,
+                        onTake = function(b) openTakeStep(a.id, b.id) end,
+                        onLeave = function() openTrade() end,
+                    })
+                end,
+                onLeave = function() game.activePanel = nil end,
+            })
+        end
+
+        -- The stop asks which verb first, because the two spend different things and a panel that showed
+        -- one of them would be hiding the other. A trade needs two relics to give; below that the row is
+        -- simply not offered rather than opening onto a refusal.
+        local options = {}
+        if id then
+            options[#options + 1] = { label = "Gamble  (" .. price .. "g)",
+                desc = "Pay, and take a relic you do not get to see first.", cb = openGamble }
+        end
+        if #held >= 2 then
+            options[#options + 1] = { label = "Trade  (two relics)",
+                desc = "Give up two of what you carry, and choose one from the rung above.", cb = openTrade }
+        end
+        if #options == 0 then cell.cleared = true; saveRun(); return end
+        game.activePanel = Choice.new({
+            title = title,
+            prompt = "The stone takes something, and gives something back.",
+            options = options,
+            onClose = function() game.activePanel = nil end,
+        })
+        return
+    end
+
+    -- THE WEEPING STONE: a relic a rung above what this floor would deal, sold for a permanent cut to
+    -- the company's MAXIMUM health.
+    --
+    -- Maximum rather than current, and that is the whole design of the stop. A camp hands back half of
+    -- everything missing (Player.CAMP_SHARE), so a current-health price is one the floor's own rest
+    -- undoes -- you would pay nothing and know it within two stops. A ceiling that does not come back is
+    -- a decision every remaining floor has to be fought around, and it reads in the same register a
+    -- wound does.
+    --
+    -- Priced as a SHARE rather than a flat number so it costs the same fraction on floor one and floor
+    -- eight, and can never scale into the absurd against a company that has grown. Floored so that it
+    -- always takes something, and so that it can never reduce a body below a single point.
+    if kind == "weeping_stone" then
+        local enc = cell.encounter
+        enc.offer = enc.offer or Relic.slate({ day = game.day, tier = "rare",
+            sin = game.quest and game.quest.sin }, 1)
+        local id = enc.offer[1]
+        if not id then cell.cleared = true; saveRun(); return end
+        local roster = (game.player and game.player.roster) or {}
+        local toll = {}
+        for _, char in ipairs(roster) do
+            local hp = char.stats and char.stats.health
+            if type(hp) == "table" and (hp.max or 0) > 1 then
+                toll[#toll + 1] = { char = char, amount = math.max(1, math.floor((hp.max or 0) * game.STONE_SHARE)) }
+            end
+        end
         game.activePanel = RelicReveal.new({
-            title = cell.encounter.name or "Sin's Altar",
-            relic = { id = id, info = Relic.info(id) },
-            priceLabel = "Offering: " .. price .. " gold",
-            canPay = canPay,
+            title = cell.encounter.name or "The Weeping Stone",
+            relic = { id = id, info = Relic.info(id), held = Relic.count(game.relicState, id) },
+            priceLabel = "Offering: " .. math.floor(game.STONE_SHARE * 100) .. "% of every maximum, for the run",
+            canPay = #toll > 0,
             onTake = function()
-                if not (game.player and Player.spendGold(game.player, price)) then return end
                 cell.cleared = true
-                Relic.grant(game.relicState, id)
-                game:pushToast("The altar takes " .. price .. "g and gives: " .. (Relic.info(id).name or id))
+                for _, t in ipairs(toll) do
+                    local hp = t.char.stats.health
+                    hp.max = math.max(1, (hp.max or 0) - t.amount)
+                    hp.current = math.min(hp.current or hp.max, hp.max)
+                end
+                local _, n = Relic.grant(game.relicState, id)
+                local name = Relic.info(id).name or id
+                game:pushToast("The stone takes its due: " .. name .. ((n and n > 1) and ("  x" .. n) or ""))
                 game.activePanel = nil
                 saveRun()
             end,
@@ -2610,6 +2795,18 @@ function game:openEncounter(cell, opts)
             for _, id in ipairs(Spoils.shelf({ prestige = game.day, count = 3 })) do
                 enc.stock[#enc.stock + 1] = { id = id, price = Item.defs[id].price, bought = false }
             end
+            -- ...AND A RELIC SHELF BESIDE THE GEAR. The road is the shop (see the encounter blueprint's
+            -- own header), and until now the only thing a run could do with foraged gold was buy a
+            -- weapon -- so every relic in the game arrived as something that happened TO the player
+            -- rather than something they chose to spend on.
+            --
+            -- Two, priced by rung and by depth (Relic.price). Rolled off the same pool a Reliquary deals
+            -- from, held relics INCLUDED: buying a second copy of something you already carry is a
+            -- perfectly good use of a purse, and it is how a run commits to a build.
+            for _, id in ipairs(Relic.slate({ day = game.day, sin = game.quest and game.quest.sin }, 2)) do
+                enc.stock[#enc.stock + 1] =
+                    { id = id, relic = true, price = Relic.price(id, game.day), bought = false }
+            end
         end
         if #enc.stock == 0 then cell.cleared = true; saveRun(); return end
         local stock = {}
@@ -2617,7 +2814,16 @@ function game:openEncounter(cell, opts)
             -- A shelf pinned to the cell can outlive the blueprint it names (a removed item, an older
             -- save), so a row whose id no longer resolves is simply not offered rather than crashing the
             -- panel that would have instantiated it.
-            if Item.defs[s.id] then
+            if s.relic then
+                -- A relic row carries its info and how many the company already holds, so the shelf can
+                -- say "held x2" and its reading can resolve the magnitude at that stack.
+                local info = Relic.info(s.id)
+                if info then
+                    info.id = s.id
+                    stock[#stock + 1] = { id = s.id, relic = info, price = s.price, bought = s.bought,
+                                          held = Relic.count(game.relicState, s.id), src = s }
+                end
+            elseif Item.defs[s.id] then
                 stock[#stock + 1] = { id = s.id, price = s.price, bought = s.bought, src = s }
             end
         end
@@ -2626,14 +2832,22 @@ function game:openEncounter(cell, opts)
             stock = stock,
             gold = function() return (game.player and game.player.gold) or 0 end,
             onBuy = function(entry)
-                if game.player and Player.spendGold(game.player, entry.price) then
+                if not (game.player and Player.spendGold(game.player, entry.price)) then return false end
+                if entry.relic then
+                    -- Straight onto the run, not into the stash: a relic is carried for this descent and
+                    -- is not a thing the hub ever holds.
+                    local _, n = Relic.grant(game.relicState, entry.id)
+                    local name = entry.relic.name or entry.id
+                    game:pushToast((n and n > 1)
+                        and ("Relic deepened: " .. name .. "  x" .. n)
+                        or ("Relic bought: " .. name))
+                else
                     Player.grantItem(game.player, entry.id) -- straight into the stash, like any find
-                    if entry.src then entry.src.bought = true end -- persist the sale on the cell's shelf
                     game:pushToast("Bought: " .. (entry.item and entry.item.name or entry.id))
-                    saveRun()
-                    return true
                 end
-                return false
+                if entry.src then entry.src.bought = true end -- persist the sale on the cell's shelf
+                saveRun()
+                return true
             end,
             onClose = function() game.activePanel = nil; saveRun() end,
         })
@@ -2658,15 +2872,34 @@ function game:openEncounter(cell, opts)
                 end
             end,
             grantRelic = function(tier)
-                local id = Relic.roll(Relic.pool({ prestige = game.day, tier = tier, exclude = game.relicState,
+                local id = Relic.roll(Relic.pool({ prestige = game.day, tier = tier,
                     sin = game.quest and game.quest.sin }))
                 if not id then return nil end
-                Relic.grant(game.relicState, id)
-                game:pushToast("You gain: " .. (Relic.info(id).name or id))
-                return Relic.info(id).name or id
+                local _, n = Relic.grant(game.relicState, id)
+                local name = Relic.info(id).name or id
+                game:pushToast("You gain: " .. name .. ((n and n > 1) and ("  x" .. n) or ""))
+                return name
+            end,
+            -- AN UNREAD PIECE, which is the one stake that exists because you are in the rift rather
+            -- than on a road. It costs no new balance surface -- what a seal hides is the forge level,
+            -- and every magnitude already resolves per level off an authored curve -- and it puts a
+            -- second beat on the find, back at the Touchstone. Returns false on a campaign board (no
+            -- floorLevel) so a dilemma can say so rather than silently paying nothing.
+            grantSealed = function()
+                local floor = game.quest and game.quest.floorLevel
+                if not floor then return false end
+                local got = Spoils.rollSealed({ kind = "offer", floorLevel = floor })
+                for _, find in ipairs(got) do Identify.grant(game.player, find.id, find.floor) end
+                if #got == 0 then return false end
+                game:pushToast("Sealed -- nobody here can read it")
+                return true
             end,
         }
-        local dilemma = Crossroads.roll(rnd)
+        -- THE CIRCLE PICKS THE QUESTION. `quest.sin` is on the floor descriptor already (models/
+        -- descent.lua) and is read three lines up to filter the relic shelf; a floor draws the shared
+        -- dilemmas plus its own sin's, so roughly half of what a player meets down here is Gluttony's or
+        -- Pride's rather than nobody's.
+        local dilemma = Crossroads.roll(rnd, game.quest and game.quest.sin)
         local options = {}
         for _, o in ipairs(dilemma.options) do
             options[#options + 1] = {
@@ -2701,8 +2934,14 @@ function game:openEncounter(cell, opts)
             end,
             onSharpen = function()
                 cell.cleared = true
-                local got = Relic.grant(game.relicState, "relic_honed_edge")
-                game:pushToast(got and "You hone your edge  (Honed Edge)" or "Your edge is already keen")
+                -- SHARPENING TWICE NOW MEANS SOMETHING. This used to answer a second camp with "your
+                -- edge is already keen" and pay nothing, because a relic could be held exactly once --
+                -- so the choice was dead from the second rest onward. It stacks, so a company that
+                -- keeps choosing the whetstone over the bandage opens harder every time.
+                local _, n = Relic.grant(game.relicState, "relic_honed_edge")
+                game:pushToast((n and n > 1)
+                    and ("You hone your edge again  (Honed Edge x" .. n .. ")")
+                    or "You hone your edge  (Honed Edge)")
                 game.activePanel = nil
                 saveRun()
             end,
@@ -3084,6 +3323,20 @@ end
 -- going home is supposed to be the thing that makes you whole.
 function game:restHeal()
     if not game.player then return end
+    -- THE UNPAID TITHE (a rare relic): the company recovers nothing between fights, and a camp is the
+    -- loudest thing that would otherwise quietly disagree with that.
+    --
+    -- Told rather than silently zeroed. The relic hooks are gagged inside ctx.restore and simply pay
+    -- nothing, which is right for a passive that fires on its own -- but this is a button the player
+    -- deliberately pressed, and a rest that plays its whole reveal animation over four bars that do not
+    -- move is the game claiming to have done something it did not. Say why, and leave the stop
+    -- unspent so the other two choices are still there to take.
+    local rules = Relic.resolvedRules(game.relicState)
+    if rules and rules.noRecovery then
+        game:pushToast("The tithe is unpaid -- the company recovers nothing")
+        game.activePanel = nil
+        return
+    end
     -- Snapshot each shown member's wound BEFORE the heal: the reveal animates from it, and once
     -- Player.camp runs the live stat has already moved, so this is the only place the "before" exists.
     -- The whole roster marches, so the whole roster is healed and shown.
@@ -3420,14 +3673,22 @@ function game.drawHud()
     -- Potions button (drink a draught), beside Items. Same visibility gate save for the flight tutorial.
     if useVisible() then drawRowButton(useRect(), "Potions") end
 
+    -- Send Mule, last in the row and only where it is legal (muleVisible).
+    if muleVisible() then drawRowButton(muleRect(), "Send Mule") end
+
     -- Always-on party HP/mana strip: the run's attrition, legible while routing (models/player.lua).
     -- Pass the mouse (logical space) so the per-companion ability badge shows its tooltip on hover.
     if partyVisible() then
         local mx, my
         if InputMode.isMouse() then mx, my = Scale.toGame(love.mouse.getPosition()) end
         PartyStatus.drawStrip(game.player, STRIP_X, STRIP_Y, mx, my, game.abilityState)
-        -- Run relics carried this quest, top-right (models/relic.lua) -- the snowball, legible while routing.
-        RelicStrip.draw(game.relicState, Scale.WIDTH - 16, 60, mx, my)
+        -- THE RELIC TRAY, directly under the vitals rather than in the opposite corner. Both readouts
+        -- answer the same question -- how is this expedition doing -- and a pile parked across the screen
+        -- from the company carrying it is a pile the player checks once and then forgets while routing.
+        -- Chips rather than named rows, because the shelf stacks now and a dozen named rows is half the
+        -- screen (see ui/relic_strip.lua's header for the whole argument).
+        RelicStrip.draw(game.relicState, STRIP_X,
+            STRIP_Y + PartyStatus.stripHeight(#((game.player and game.player.roster) or {})) + 6, mx, my)
 
         -- WHAT THIS RUN IS CARRYING. Stacked under the relics, because both answer the same question --
         -- what has this expedition accrued -- and because the decision it feeds is taken out here on the
@@ -3437,10 +3698,12 @@ function game.drawHud()
         --
         -- Absent entirely when the run has found nothing yet -- an empty ledger is not information, and
         -- a row of zeroes would read as a broken readout.
+        -- No longer offset by the relic readout: the tray moved to the left column under the vitals, so
+        -- the right edge is the haul's alone and it starts where the relics used to.
+        local x = Scale.WIDTH - 16
+        local y = 60
+        love.graphics.setFont(hudFont)
         if game.haul then
-            local x = Scale.WIDTH - 16
-            local y = 60 + RelicStrip.height(#Relic.held(game.relicState)) + (game.haul and 8 or 0)
-            love.graphics.setFont(hudFont)
             -- Named for what it IS, not what it counts: "carried" says the thing the number turns on --
             -- that none of this is yours yet.
             love.graphics.setColor(Theme.muted)

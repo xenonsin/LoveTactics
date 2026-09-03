@@ -635,8 +635,26 @@ end
 -- something happened. Pure, and 0 for any body carrying no such trait, which is nearly all of them.
 local function flatStat(unit, name)
     local base = unit.char.stats[name] or 0
-    return base + ((unit.bonus and unit.bonus[name]) or 0) + Status.statBonus(unit, name)
+    local v = base + ((unit.bonus and unit.bonus[name]) or 0) + Status.statBonus(unit, name)
         + Trait.liveBonus(unit, name)
+    -- THE HELD BREATH (a rare relic): health is pinned at 1 and both armours climb by a rate per point
+    -- of the ceiling the body is now missing. A fifth term rather than a bonus banked at setup, for the
+    -- same reason Trait.liveBonus is one -- it is a claim about the body AS IT STANDS, and the pinned
+    -- pool is what a heal or a Full Skin would move under it.
+    --
+    -- Reads unreservedMax so it measures against the ceiling the rest of the shelf actually raised: a
+    -- company holding The Full Skin is missing MORE, and so is armoured more, which is the interaction
+    -- the relic should have and would silently lose if this read the base `max`.
+    if name == "defense" or name == "magicDefense" then
+        local rate = unit.relicBonus and unit.relicBonus.rules and unit.relicBonus.rules.pinHealth
+        if type(rate) == "number" then
+            local hp = unit.char.stats.health
+            local max = Combat.unreservedMax(unit.char, "health")
+            local current = (type(hp) == "table") and (hp.current or 0) or max
+            v = v + math.floor(math.max(0, max - current) * rate)
+        end
+    end
+    return v
 end
 
 -- The per-item breakdown of the equipment bonus to `name`: one { label, value } per grid item that
@@ -650,6 +668,18 @@ local function equipmentStatParts(unit, name)
     for _, item in ipairs(Character.eachItem(unit.char)) do
         local v = item.bonus and item.bonus[name]
         if v and v ~= 0 then parts[#parts + 1] = { label = item.name or "Equipment", value = v } end
+    end
+    -- THE RUN'S RELICS, named one by one rather than lumped under the unattributed remainder. A relic's
+    -- +2 defense is folded into the same unit.bonus a coat's is (applyUnitPassives), so without this the
+    -- breakdown would show the number and be unable to say where it came from -- and a number the player
+    -- cannot point at is a number they do not believe.
+    --
+    -- Read off the pre-aggregated bag stamped at setup rather than from the relic state, so this stays a
+    -- pure function of the unit and the tooltip never reaches into a run. `parts` names the relic and its
+    -- stack count, because a row reading +3 against a card that says +1 is a bug report waiting to be
+    -- filed.
+    for _, part in ipairs((unit.relicBonus and unit.relicBonus.parts and unit.relicBonus.parts[name]) or {}) do
+        parts[#parts + 1] = part
     end
     return parts
 end
@@ -665,6 +695,13 @@ end
 -- means nothing in any of them. Deliberately clamped here rather than in applyUnitPassives, so the
 -- Loadout screen can still show a -5 and tell the player what they have done to themselves.
 function Combat.moveBudget(unit)
+    -- THE ROOTED OATH (a rare relic): the company does not move at all, and every ability reaches
+    -- further and hits harder for it. Checked ahead of the fold rather than as a large negative bonus,
+    -- because a bonus big enough to guarantee zero would also read as "-97 movement" on the Loadout
+    -- screen -- and the clamp below would then be hiding an authored number rather than expressing one.
+    -- This is a rule, so it answers as a rule.
+    local rules = unit.relicBonus and unit.relicBonus.rules
+    if rules and rules.noMove then return 0 end
     local m = flatStat(unit, "movement")
     return m > 0 and m or 0
 end
@@ -746,6 +783,14 @@ function Combat.abilityRange(combat, unit, ab, x, y)
     end
     local range = base + Combat.fieldRangeBonus(combat, ab and ab.requiresSight,
         x or unit.x, y or unit.y)
+    -- A relic that lengthens every reach the company has: The Far Mark buys a tile and charges for
+    -- contact, the Rooted Oath buys three and charges the whole movement system. Both land here, on the
+    -- one reader every ability's reach resolves through, so a bow, a spell and a bare fist all grow
+    -- together -- and nil for every enemy, since only the party carries relics.
+    if unit and unit.relicBonus and unit.relicBonus.rules then
+        local bonus = unit.relicBonus.rules.abilityRange
+        if type(bonus) == "number" then range = range + bonus end
+    end
     -- A range-cutting debuff (Blind) shortens the reach, but never below 1: a blinded unit is groping
     -- in the dark, not disarmed, so it can still strike an adjacent foe.
     if unit then range = range - Status.rangeMalus(unit) end
@@ -923,11 +968,116 @@ local function applyUnitPassives(unit)
             maxBonus[stat] = (maxBonus[stat] or 0) + amount
         end
     end
+    -- THE RUN'S RELICS (models/relic.lua), stamped onto the unit at spawn by battle setup as an already
+    -- aggregated bag -- so this fold never learns what a relic is, only that something handed it flat
+    -- stats. Folded in HERE, beside the meal and for exactly the same reason its comment gives: a
+    -- relic's +2 defense has to be the same quantity a coat's +2 is, or the damage breakdown, the
+    -- mitigation maths and the loadout tooltip would each need a case of their own.
+    --
+    -- Nil for every enemy, and for any fight the company walks into carrying nothing. Rebuilt from
+    -- scratch every setup like everything above it, so a relic never compounds across the fights of a
+    -- floor -- the pile is re-read at each bell, which is what lets one picked up mid-floor take effect
+    -- at the next fight without anything having to go back and patch the units already built.
+    local relics = unit.relicBonus
+    if relics then
+        for stat, amount in pairs(relics.bonus or {}) do
+            unit.bonus[stat] = (unit.bonus[stat] or 0) + amount
+        end
+        for tag, amount in pairs(relics.resist or {}) do
+            unit.resist[tag] = (unit.resist[tag] or 0) + amount
+        end
+        for stat, amount in pairs(relics.maxBonus or {}) do
+            maxBonus[stat] = (maxBonus[stat] or 0) + amount
+        end
+    end
     unit.char.maxBonus = maxBonus
+    -- The rare tier's inversions, onto the CHARACTER as well as the unit. Combat.unreservedMax is asked
+    -- about a char rather than a unit -- it is called from the hub, the loadout screen and the wound
+    -- ledger, none of which have a board -- so a rule that moves a ceiling has to arrive the way
+    -- `maxBonus` and `woundShare` already do. Cleared to nil rather than left stale when a fight is
+    -- fought without them, so a relic traded away stops applying the moment the next setup runs.
+    unit.char.relicRules = relics and relics.rules or nil
 end
 
 function Combat.applyPassives(combat)
     for _, unit in ipairs(combat.units) do applyUnitPassives(unit) end
+end
+
+-- THE RARE TIER'S STRUCTURAL INVERSIONS -- the two that move the POOLS rather than the stats, and so
+-- cannot ride the flat-stat fold. Run once at setup, after applyPassives, because both read
+-- Combat.unreservedMax and that is only correct once every bonus and maxBonus is in place.
+--
+-- THE YOKED COMPANY: the company fights from one shared health pool equal to the sum of their maxima,
+-- plus a surcharge per copy. Implemented by giving every member the SAME pool -- one ceiling, one
+-- current -- rather than by redirecting reads, and the reason is reach: health is read in something like
+-- forty places (mitigation, the bars, the AI's threat sums, the downed check, the spoils screen) and a
+-- redirect would have to be right in all of them. Give them one number and every one of those reads is
+-- already correct. `sharedPool` on the unit then keeps them equal as the fight moves them.
+--
+-- THE HELD BREATH: health pinned at 1. The armour it buys is NOT applied here -- it is a live term in
+-- flatStat, because it measures against a ceiling other relics raise and a pool a heal can move.
+-- Resolving it once at setup would freeze it at the opening bell and quietly lose every interaction it
+-- has. All this does is set the pool.
+--
+-- Applied in Relic.RULE_ORDER's sequence -- maxima, then pooling, then the pin -- which is why the pin
+-- reads last and always does exactly what its card says.
+function Combat.applyRelicRules(combat)
+    local party, rules = {}, nil
+    for _, unit in ipairs(combat.units) do
+        if unit.side == "party" and unit.relicBonus and unit.relicBonus.rules then
+            party[#party + 1] = unit
+            rules = rules or unit.relicBonus.rules
+        end
+    end
+    if not rules or #party == 0 then return end
+
+    local surcharge = rules.sharedPool
+    if type(surcharge) == "number" then
+        local pool = 0
+        for _, unit in ipairs(party) do
+            pool = pool + Combat.unreservedMax(unit.char, "health")
+        end
+        pool = math.max(1, math.floor(pool * (1 + surcharge / 100)))
+        for _, unit in ipairs(party) do
+            local hp = unit.char.stats.health
+            if type(hp) == "table" then
+                hp.max, hp.current = pool, pool
+                -- The grid's and the relics' own health maxBonus is already inside `pool`; leaving it on
+                -- the char as well would add it a second time through unreservedMax.
+                if unit.char.maxBonus then unit.char.maxBonus.health = nil end
+            end
+            unit.sharedPool = true
+        end
+    end
+
+    if rules.pinHealth then
+        for _, unit in ipairs(party) do
+            local hp = unit.char.stats.health
+            if type(hp) == "table" then hp.current = 1 end
+        end
+    end
+end
+
+-- Keep a yoked company's bars equal after any of them moves. One pool means a blow on anyone is a blow
+-- on everyone, and a heal on anyone heals everyone -- so rather than teach every damage and heal path
+-- what a shared pool is, the lowest current is written back across the company the moment anything has
+-- touched one of them. Called from the damage funnel and from the heal, which between them are every
+-- path that can move a health pool.
+--
+-- LOWEST WINS, deliberately. Damage must propagate (that is the relic) and a heal must not outrun the
+-- wound the same beat delivered, so taking the minimum is correct in both directions and needs no flag
+-- saying which just happened.
+function Combat.syncSharedPool(combat)
+    local low, members = nil, {}
+    for _, unit in ipairs(combat.units or {}) do
+        if unit.sharedPool and unit.char and type(unit.char.stats.health) == "table" then
+            members[#members + 1] = unit
+            local cur = unit.char.stats.health.current or 0
+            if not low or cur < low then low = cur end
+        end
+    end
+    if not low or #members < 2 then return end
+    for _, unit in ipairs(members) do unit.char.stats.health.current = low end
 end
 
 -- The health an item wants to lock at setup: a share of the bearer's MAX health (item.healthReserve
@@ -1042,6 +1192,7 @@ function Combat.addUnit(combat, char, side, x, y, opts)
         -- against the promise in models/relic.lua's own header.
         relicTraits = opts.relicTraits,
         meal = opts.meal,
+        relicBonus = opts.relicBonus,
     }
     unit.index = #combat.units + 1
     combat.units[unit.index] = unit
@@ -1086,6 +1237,11 @@ local function buildOpeningUnit(combat, u, side)
         -- The meal blueprint the company ate before this quest (models/meal.lua), stamped by battle
         -- setup. One platter for the whole party, so unlike relicTraits it needs no per-char map.
         meal = u.meal,
+        -- The run's relics as one already-aggregated flat-stat bag (models/relic.lua's Relic.statBonus /
+        -- maxBonus / resistBonus), stamped by battle setup. Like the meal and unlike relicTraits it is
+        -- one table for the whole company, because a relic is worn by everyone who marched -- the
+        -- stacking arithmetic was already resolved before it got here.
+        relicBonus = u.relicBonus,
     }
     unit.index = #combat.units + 1
     combat.units[unit.index] = unit
@@ -1133,6 +1289,7 @@ function Combat.deployUnit(combat, char, x, y, opts)
         control = opts.control,
         relicTraits = opts.relicTraits,
         meal = opts.meal,
+        relicBonus = opts.relicBonus,
         coffer = opts.coffer,
     }, opts.side or "party")
 end
@@ -2630,6 +2787,23 @@ function Combat.startTurn(combat)
         -- ledger to hold its way through.
         if unit.char then unit.char.spentThisTurn = 0 end
     end
+    -- THE LONG WAIT (a rare relic): the company acts in BURSTS -- several full actions when its turn
+    -- comes up, against a turn that costs a multiple of the timeline (charged at the settle, in endTurn).
+    --
+    -- IT IS AUTHORED IN INITIATIVE BECAUSE THERE ARE NO ROUNDS. Combat is an initiative countdown (see
+    -- this file's header) and "every other round" cannot be said here; "your turn costs double" is the
+    -- same trade in the currency the timeline actually has. Both halves are numbers on the blueprint
+    -- rather than one emerging from the other -- see data/relics/relic_long_wait.lua for why the
+    -- emergent version was a wash.
+    --
+    -- Granted at turn start (n - 1, since the turn already carries its own action) and only to the
+    -- company, since only the party holds relics.
+    if unit and unit.alive and unit.relicBonus and unit.relicBonus.rules then
+        local actions = unit.relicBonus.rules.burstActions
+        if type(actions) == "number" and actions > 1 then
+            Combat.grantExtraAction(unit, math.floor(actions) - 1)
+        end
+    end
     if unit then Status.onTurnStart(combat, unit) end
     -- The idle veil, granted past the expiry sweep above (see where `veil` is decided): a ninja who
     -- drew no blood last turn opens this one out of sight. After onTurnStart, or the sweep that ends
@@ -2770,7 +2944,14 @@ local function endTurn(combat, unit, actionCost, defer)
     -- Defend would lapse early, an objective counting turns would double-count).
     if (unit.extraActions or 0) > 0 and unit.alive then
         unit.extraActions = unit.extraActions - 1
-        unit.tempoDebt = (unit.tempoDebt or 0) + moveCost + actionCost
+        -- THE LONG WAIT pays for its burst with an AUTHORED multiplier on the whole turn (applied at
+        -- the settle below) rather than by banking each action's price here. Banking as well would
+        -- charge twice for the same actions -- and the emergent price was a wash anyway, which is the
+        -- reason that relic states its cost instead of inheriting one. Every other source of an extra
+        -- action (a fighter's Surge, a boss phase) still banks normally.
+        if not (unit.relicBonus and unit.relicBonus.rules and unit.relicBonus.rules.initiativeCost) then
+            unit.tempoDebt = (unit.tempoDebt or 0) + moveCost + actionCost
+        end
         -- `moved = true`: a surge buys an ACTION, never a second walk. The unit acts from where the
         -- first action left it, which is what keeps it a burst rather than a free double turn.
         combat.turn = { unit = unit, moved = true, moveCost = 0, startX = unit.x, startY = unit.y }
@@ -2787,7 +2968,19 @@ local function endTurn(combat, unit, actionCost, defer)
         unit.tempoDebt = nil
     end
     Status.onTurnEnd(combat, unit)
-    unit.initiative = unit.initiative + moveCost + actionCost
+    -- THE LONG WAIT: the turn's whole price, multiplied. Applied to the settled total (move + action +
+    -- any deferred debt) rather than to one term, because what the relic sells is a longer wait for the
+    -- WHOLE turn, however that turn was spent -- a burst of four swings and a single step both cost
+    -- double. Nil for everyone else and for every fight fought carrying no relics.
+    --
+    -- A WAIT IS NOT MULTIPLIED, and that is deliberate rather than an oversight: Combat.wait settles on
+    -- its own path above, and its whole definition is "land one tick after the next unit". Doubling that
+    -- would not make the wait longer, it would make it land somewhere the player did not ask for and
+    -- break the one promise the control makes. Passing the turn stays cheap; ACTING is what costs.
+    local turnCost = moveCost + actionCost
+    local mult = unit.relicBonus and unit.relicBonus.rules and unit.relicBonus.rules.initiativeCost
+    if type(mult) == "number" and mult > 1 then turnCost = math.floor(turnCost * mult + 0.5) end
+    unit.initiative = unit.initiative + turnCost
     combat.turnCount = combat.turnCount + 1
     combat.turn = nil
     unit.extraActions = nil -- a surge unspent when the turn really ends does not keep
@@ -5534,7 +5727,8 @@ function Combat.benchUnit(combat, entry)
     combat.bench = combat.bench or {}
     local e = entry.char and entry or { char = entry }
     combat.bench[#combat.bench + 1] =
-        { char = e.char, relicTraits = e.relicTraits, meal = e.meal, statuses = nil }
+        { char = e.char, relicTraits = e.relicTraits, meal = e.meal, relicBonus = e.relicBonus,
+          statuses = nil }
     return combat.bench[#combat.bench]
 end
 
@@ -6104,6 +6298,8 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     if dmg <= 0 then return 0 end
     local hp = target.char.stats.health
     hp.current = hp.current - dmg
+    -- A YOKED COMPANY shares one bar, so a blow on any of them is a blow on all of them.
+    if target.sharedPool then Combat.syncSharedPool(combat) end
     -- Who last drew blood, kept on the body so killUnit can name a killer to the hooks that pay one
     -- (Status.onDeath -> the Struck Ledger's bounty). Stamped on every landed blow rather than only on
     -- the lethal one, because the lethal one is not distinguishable here -- and stamped only for a
@@ -6326,6 +6522,36 @@ local function tryWardSpell(combat, user, target, item, tags, base, opts)
     return true
 end
 
+-- THE RUN'S RELICS ON AN OUTGOING BLOW: the assembled power, adjusted for whatever the company is
+-- carrying. Applied to the WHOLE swing (stat, weapon, charms, ability) rather than to one term of it,
+-- because that is what "the company deals double damage" means.
+--
+--   * The Far Mark charges for contact -- it bought a longer reach and takes it back from anything
+--     standing in the company's face. Subtracted BEFORE the multiplier, so a run holding it and the
+--     Rooted Oath together pays the penalty once rather than multiplying it.
+--   * damageMultiplier is the Whetted Vow, the Rooted Oath and the Unpaid Tithe, already COMPOSED into
+--     one number by Relic.resolvedRules -- each is a separate bargain and taking two should pay twice.
+--
+-- Floored at 1: a company that has bought an enormous reach must still be able to hurt what closes with
+-- it, and a zero here reads as a broken swing rather than as a price.
+--
+-- ONE FUNCTION, TWO CALLERS, and that is the whole reason it exists rather than being inlined:
+-- Combat.dealDamage lands the blow and Combat.computeDamage previews it, and that preview carries an
+-- explicit instruction to mirror the real hit exactly or the hover under-promises. Two copies of this
+-- arithmetic is the drift that instruction is warning about.
+local function relicOutgoing(user, target, base)
+    local rr = user and user.relicBonus and user.relicBonus.rules
+    if not rr then return base end
+    local pen = rr.contactPenalty
+    if type(pen) == "number" and target and user.x and target.x
+        and math.max(math.abs(user.x - target.x), math.abs(user.y - target.y)) <= 1 then
+        base = math.max(1, base - pen)
+    end
+    local mult = rr.damageMultiplier
+    if type(mult) == "number" and mult ~= 1 then base = math.floor(base * mult + 0.5) end
+    return base
+end
+
 function Combat.dealDamage(combat, user, target, item, opts)
     opts = opts or {}
     local tags = collectTags(item, opts)
@@ -6350,6 +6576,7 @@ function Combat.dealDamage(combat, user, target, item, opts)
     -- preview never disagrees with the blow. See Trait.outgoingDamageBonus.
     local charmBonus = Trait.outgoingDamageBonus(combat, user, target, item, tags)
     local base = (opts.amount or (ab and ab.damage) or 0) + flatStat(user, atkStat) + unarmedDamageBonus(user, item) + charmBonus
+    base = relicOutgoing(user, target, base)
     -- Name where that pre-mitigation power came from, so the combat-log hover can spell it out: the
     -- attacker's attack stat, the weapon/ability's own damage, and any bare-fist bonus. Rides along on
     -- opts (like opts.area below) to the flat path, which folds it into the damage line's breakdown.
@@ -6468,6 +6695,7 @@ function Combat.computeDamage(combat, user, target, item, opts)
     -- Mirror dealDamage exactly, charm bonus included, or the hover would under-promise the real hit.
     local charmBonus = Trait.outgoingDamageBonus(combat, user, target, item, tags)
     local base = (opts.amount or (ab and ab.damage) or 0) + flatStat(user, atkStat) + unarmedDamageBonus(user, item) + charmBonus
+    base = relicOutgoing(user, target, base)
     return Combat.mitigatedDamage(target, base, tags, opts)
 end
 
@@ -6553,6 +6781,8 @@ function Combat.applyHeal(combat, target, amount)
     local before = hp.current
     hp.current = math.min(Combat.unreservedMax(target.char, "health"), hp.current + (amount or 0))
     local healed = math.max(0, hp.current - before)
+    -- ...and a heal on any of them lifts all of them, the same way (Combat.syncSharedPool).
+    if target.sharedPool then Combat.syncSharedPool(combat) end
     if healed > 0 then
         Combat.logEvent(combat, "heal", string.format("%s is healed for %d.", unitName(target), healed), target)
         Combat.pushFx(combat, { type = "heal", unit = target, amount = healed })
@@ -8040,6 +8270,45 @@ end
 function Combat.spendCost(combat, unit, cost)
     if not cost then return end
     local char = unit.char
+    -- THE RUN'S RELICS, applied FIRST so everything below taxes or discounts the price the company
+    -- actually pays. Three rules land here, all on the one spend path every action routes through:
+    --
+    --   * The Quick Draw / The Overreach -- a flat surcharge on stamina or mana. Deliberately here and
+    --     not in costBlock, exactly as the Dampening Oath below is: affordability is checked against the
+    --     PRINTED price, so a company that could just afford an action commits to it and then finds the
+    --     pool emptier than it planned. That is the trade the relic sold.
+    --   * The Overdraft -- mana stops being the currency entirely and the price is paid in health at a
+    --     fraction that falls as the relic is deepened. Rewritten before the mana branch below, so a
+    --     cast under the Overdraft is not a mana cost any more and the oath, the battle-casting discount
+    --     and the potion reflex correctly stop applying to it. That is the point of an inversion.
+    local rr = unit.relicBonus and unit.relicBonus.rules
+    if rr and cost.amount and cost.amount > 0 then
+        if cost.stat == "mana" and type(rr.manaToHealth) == "number" then
+            local paid = math.max(1, math.floor(cost.amount * rr.manaToHealth + 0.5))
+            -- IT WOUNDS BUT NEVER FELLS, which is the standing rule for every relic toll (see
+            -- models/relic.lua's ctx.drain) and is load-bearing here rather than decorative.
+            --
+            -- Overchannel pays a shortfall in blood too, and it is guarded at costBlock -- "health has
+            -- to CLEAR the gap rather than merely meet it". This conversion cannot be guarded there:
+            -- the surcharge and the swap are applied AFTER affordability on purpose, exactly as the
+            -- Dampening Oath's tax is, so that committing to an action you could just afford is a real
+            -- risk. That is survivable when the tax empties a mana pool and is not survivable when it
+            -- empties a body -- a caster reduced to 0 here would not even die properly, since nothing
+            -- on this path runs killUnit. So the floor is the guard, and it leaves the caster on one.
+            local spare = math.max(0, resourceValue(char, "health") - 1)
+            cost = { stat = "health", amount = math.min(paid, spare) }
+            if cost.amount <= 0 then return end
+        else
+            local sur = (cost.stat == "mana" and rr.manaSurcharge)
+                or (cost.stat == "stamina" and rr.staminaSurcharge)
+            -- A surcharge may empty a pool but never take it below nothing: a negative reserve reads as
+            -- a debt in every caller that sums one, and no relic on the shelf sells a debt.
+            if type(sur) == "number" then
+                local have = resourceValue(char, cost.stat)
+                cost = { stat = cost.stat, amount = math.min(cost.amount + sur, math.max(0, have)) }
+            end
+        end
+    end
     -- A DAMPENING OATH standing within reach doubles what a working costs (the Spellbreaker's). A tax
     -- rather than a denial, which is the whole shape of that shelf: the caster still gets to cast, the
     -- enemy AI is not deadlocked, and what the spellbreaker has bought is that the other side runs dry
@@ -8246,6 +8515,17 @@ function Combat.unreservedMax(char, stat)
     -- when the bone is set, and every recomputation of max from level and gear stays untouched.
     if stat == "health" and (char.woundShare or 0) > 0 then
         max = math.max(1, math.floor(max * (1 - char.woundShare)))
+    end
+    -- THE WHETTED VOW (a rare relic): the company hits for twice and holds half the health -- a third at
+    -- two copies, a quarter at three. Applied to the CEILING here beside the wound share and for the
+    -- same reason: `max` itself is never written, so nothing has to be un-done when the relic is traded
+    -- away and every recomputation of max from level and gear stays untouched.
+    --
+    -- Floored at 1, because a divisor deep enough to reach zero would fell the company by arithmetic
+    -- rather than by anything that happened in a fight.
+    if stat == "health" then
+        local div = char.relicRules and char.relicRules.halveMaxHealth
+        if type(div) == "number" and div > 1 then max = math.max(1, math.floor(max / div)) end
     end
     return math.max(0, max - Combat.reservedAmount(char, stat))
 end

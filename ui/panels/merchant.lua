@@ -24,6 +24,7 @@ local GlossaryPanel = require("ui.glossary_panel") -- only for WIDTH: the room t
 local InputMode = require("input_mode")
 local ItemTooltip = require("ui.item_tooltip")
 local Item = require("models.item")
+local RelicCard = require("ui.relic_card") -- a relic row's colour, chip and dwell surface
 local Scale = require("scale")
 local Theme = require("ui.theme")
 
@@ -95,7 +96,12 @@ function Merchant.new(opts)
     self.closeButton = CloseButton.new(self.boxX + BOX_W, self.boxY)
 
     for i, entry in ipairs(self.stock) do
-        entry.item = entry.item or Item.instantiate(entry.id) -- display copy: icon, type line, tooltip
+        -- A RELIC ROW carries its own info and never touches Item: it is not an item, has no icon and
+        -- no type line, and its reading is RelicCard.tooltip rather than ItemTooltip. The branch is
+        -- here and at the four draw points below; everything else about a row is shared.
+        if not entry.relic then
+            entry.item = entry.item or Item.instantiate(entry.id) -- display copy: icon, type line, tooltip
+        end
         entry.rect = {
             x = self.boxX + PAD, y = self.boxY + 84 + (i - 1) * (ROW_H + ROW_GAP),
             w = BOX_W - PAD * 2, h = ROW_H,
@@ -160,7 +166,8 @@ function Merchant:draw()
     for i, entry in ipairs(self.stock) do
         local r = entry.rect
         local item = entry.item
-        local accent = TYPE_COLOR[item.type] or DEFAULT_COLOR
+        local relic = entry.relic
+        local accent = relic and RelicCard.accentOf(relic) or (TYPE_COLOR[item.type] or DEFAULT_COLOR)
         local focused = (i == self.focus)
         local afford = not entry.bought and myGold >= (entry.price or 0)
 
@@ -172,19 +179,34 @@ function Merchant:draw()
         love.graphics.setLineWidth(1)
 
         local dim = entry.bought and 0.45 or 1
-        self:drawIcon(item, r.x + 12, r.y + r.h / 2 - ICON / 2, accent, dim)
+        if relic then
+            RelicCard.chip(r.x + 12, r.y + r.h / 2 - ICON / 2, ICON, relic, entry.held, { dim = dim })
+        else
+            self:drawIcon(item, r.x + 12, r.y + r.h / 2 - ICON / 2, accent, dim)
+        end
 
         -- A long name steps down a size rather than running under the price (never a scale factor on a
         -- font -- Theme.fitText swaps the face, since a scaled one blurs).
         local nameX = r.x + 12 + ICON + 12
-        local nameFont, name = Theme.fitText(Theme.display, item.name or entry.id, r.w - (nameX - r.x) - 90, 18, 14)
+        local label = relic and (relic.name or entry.id) or (item.name or entry.id)
+        local nameFont, name = Theme.fitText(Theme.display, label, r.w - (nameX - r.x) - 90, 18, 14)
         love.graphics.setFont(nameFont)
         love.graphics.setColor(0.95 * dim, 0.94 * dim, 0.9 * dim, 1)
         love.graphics.print(name, nameX, r.y + 10)
 
+        -- The under-line: a ware says what it IS and whose rack it came off; a relic says its rung, and
+        -- how many the company already holds, because a duplicate DEEPENS what you carry and that is the
+        -- one other fact that changes the purchase.
         love.graphics.setFont(self.tagFont)
         love.graphics.setColor(accent[1], accent[2], accent[3], 0.85 * dim)
-        love.graphics.print(tagLine(item), nameX, r.y + 38)
+        local tag
+        if relic then
+            tag = "Relic  -  " .. (relic.tier or "common")
+            if (entry.held or 0) > 0 then tag = tag .. "  -  held x" .. entry.held end
+        else
+            tag = tagLine(item)
+        end
+        love.graphics.print(tag, nameX, r.y + 38)
 
         -- Price / state, right-aligned.
         love.graphics.setFont(self.priceFont)
@@ -209,7 +231,13 @@ function Merchant:draw()
     -- driving, and a box that followed the mouse would read differently for the pad than for the hand.
     local entry = self.stock[self.focus]
     if entry and not self.itemDebug then
-        ItemTooltip.draw(entry.item, bx + self.boxW, entry.rect.y - 24, Scale.WIDTH)
+        if entry.relic then
+            -- The relic's own dwell surface (ui/relic_card.lua), which is the same one the overworld
+            -- tray draws -- so a relic held twice reads the same on the shelf as it does in the tray.
+            RelicCard.tooltip(bx + self.boxW + TIP_GAP, entry.rect.y - 8, entry.relic, entry.held)
+        else
+            ItemTooltip.draw(entry.item, bx + self.boxW, entry.rect.y - 24, Scale.WIDTH)
+        end
     end
     if self.itemDebug then self.itemDebug:draw() end -- modal over the shelf, and over the reading
     love.graphics.setColor(1, 1, 1)
@@ -221,7 +249,9 @@ end
 -- what the shelf is drawing and nothing the player owns -- which is the right half to touch here.
 function Merchant:openItemDebug(x, y)
     for _, entry in ipairs(self.stock) do
-        if inRect(entry.rect, x, y) then
+        -- A relic row has no item behind it, and the debug menu is an ITEM inspector -- so a right-click
+        -- on one is simply not a gesture rather than a nil handed to DebugMenu.forItem.
+        if not entry.relic and inRect(entry.rect, x, y) then
             local menu = DebugMenu.forItem({
                 x = x, y = y,
                 item = entry.item,

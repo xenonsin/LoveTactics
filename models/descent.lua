@@ -249,6 +249,16 @@ Descent.DROPS = {
 -- deeper. One constant, because the right answer is a tuning question and will move.
 Descent.SPENT_SET_STOCK = 4
 
+-- ...and what a stair pays when even the house stock cannot be resolved (a general with no vendor, which
+-- is only the bottom floor and any test fixture). The last-resort coin, and deliberately small: this is
+-- the branch nothing should reach.
+--
+-- IT USED TO LIVE ON models/relic.lua as BARE_SHELF_GOLD, shared with a Reliquary that had run out of
+-- shelf to offer. That second caller is gone -- relics stack now, so a pool can never be exhausted and
+-- an empty reliquary is not a state the game has any more -- and a constant with one caller belongs to
+-- that caller. Moved rather than deleted because the stair's own empty case is still real.
+Descent.SPENT_SET_GOLD = 15
+
 -- Does this company already hold `itemId` -- in the stash, or in anybody's grid?
 --
 -- Asked of the WHOLE company rather than of a ledger of its own, because that is what "already got this"
@@ -344,7 +354,7 @@ function Descent.objectiveReward(player, run, objSpec)
         if houseMat then
             out.materials[houseMat] = Descent.SPENT_SET_STOCK
         else
-            out.gold = require("models.relic").BARE_SHELF_GOLD
+            out.gold = Descent.SPENT_SET_GOLD
         end
     end
     return out
@@ -1926,6 +1936,17 @@ end
 -- rather than beeline the stair, and a reward the player steers toward rather than one that happens to
 -- them.
 local function guaranteeKinds(player, floor)
+    -- THE WEEPING STONE IS GUARANTEED FROM THE SECOND FLOOR, and the depth gate is the whole of why it
+    -- is listed conditionally rather than always. It sells a relic for a permanent cut to the company's
+    -- maximum health, and a company that has not yet been hurt has nothing to weigh that against -- on
+    -- floor one it is a number, and by floor two it is a decision.
+    --
+    -- Guaranteed rather than left to the weights because it is the only stop that prices a relic in
+    -- something a purse cannot cover. A run that never met one would never be offered that trade at all,
+    -- and a way to spend that turns up sometimes is a way to spend nobody builds around.
+    if floor and floor >= 2 then
+        return { "relic_cache", "rest", "merchant", "weeping_stone" }
+    end
     return { "relic_cache", "rest", "merchant" }
 end
 

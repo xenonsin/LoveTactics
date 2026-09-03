@@ -1,9 +1,12 @@
--- Single-relic reveal, with an optional toll. Opened by a Sin's Altar (a `shrine` encounter -- see
--- states/game.lua's openEncounter), which rolls ONE Vice and sells it for gold; the Reliquary now offers a
--- choice of three instead and has its own panel (ui/panels/relic_offer.lua). A Virtue reads cool and
--- clean, a Vice reads warm with its standing cost spelled out -- so the greed of opening one at all is
--- legible before you commit. Modeled on ui/panels/loot_reveal.lua: a state owns it as game.activePanel
+-- Single-relic reveal, with an optional toll. Two stops open it: the ALTAR's gamble (pay gold for a
+-- relic you do not get to see first) and the WEEPING STONE (a relic a rung up, priced in a permanent cut
+-- to the company's maximum health). The Reliquary offers a choice of three instead and has its own panel
+-- (ui/panels/relic_offer.lua). Modeled on ui/panels/loot_reveal.lua: a state owns it as game.activePanel
 -- and forwards input while it is open; three-input + mouse-only.
+--
+-- The card wears its RUNG as its colour (ui/relic_card.lua) and states its effect and its standing price
+-- in digits, both resolved at the stack taking it would leave the company on -- so what is on the panel
+-- is what the button grants. (It used to read "a Virtue cool, a Vice warm"; that axis is deleted.)
 --
 --   local panel = RelicReveal.new({
 --       title    = "Sin's Altar",            -- optional; titles the panel
@@ -34,8 +37,22 @@ function RelicReveal.new(opts)
     self.onLeave = opts.onLeave
     self.finished = false
     self.title = opts.title or "Reliquary"
-    self.info = opts.relic and opts.relic.info or { name = "Relic", blurb = "", alignment = "virtue", tier = "common" }
-    self.isVice = self.info.alignment == "vice"
+    self.info = opts.relic and opts.relic.info or { name = "Relic", blurb = "", tier = "common" }
+    -- How many the run already carries, so the reveal can say "x2" rather than presenting a relic the
+    -- player owns as a discovery. Nil/0 for the ordinary case.
+    self.held = opts.relic and opts.relic.held or 0
+    -- Whether this relic asks a standing price. A property now, not a category -- there is one shelf.
+    self.hasCost = self.info.cost ~= nil
+    -- BOTH LINES RESOLVED AT `held + 1`: the stack taking this would leave the company on. A reveal that
+    -- quoted the authored base over a relic already carried twice would be advertising a different relic
+    -- from the one the Pay button grants.
+    do
+        local Relic = require("models.relic")
+        local key = (opts.relic and opts.relic.id) or self.info
+        local at = (self.held or 0) + 1
+        self.blurbText = Relic.blurbAt(key, at) or self.info.blurb or ""
+        self.costText = Relic.costAt(key, at) or self.info.cost
+    end
     self.accent = RelicCard.accentOf(self.info)
     self.focus = "take" -- "take" | "leave"
     -- A Shrine charges an upfront toll to take its gift: `priceLabel` is shown as a warning line and turns
@@ -56,11 +73,11 @@ function RelicReveal.new(opts)
     self.boxW = BOX_W
     local lineH = self.bodyFont:getHeight()
     self.oGem, self.oName, self.oBadge, self.oBlurb = 60, 116, 150, 184
-    local _, blurbLines = self.bodyFont:getWrap(self.info.blurb or "", BOX_W - PAD * 2)
+    local _, blurbLines = self.bodyFont:getWrap(self.blurbText, BOX_W - PAD * 2)
     local afterBlurb = self.oBlurb + math.max(1, #blurbLines) * lineH
-    if self.isVice and self.info.cost then
+    if self.hasCost then
         self.oCost = afterBlurb + 8
-        local _, costLines = self.bodyFont:getWrap("Cost: " .. self.info.cost, BOX_W - PAD * 2)
+        local _, costLines = self.bodyFont:getWrap("Cost: " .. self.costText, BOX_W - PAD * 2)
         afterBlurb = self.oCost + math.max(1, #costLines) * lineH
     end
     if self.priceLabel then
@@ -138,18 +155,18 @@ function RelicReveal:draw()
     love.graphics.setColor(0.96, 0.95, 0.92)
     love.graphics.printf(self.info.name, bx + PAD, by + self.oName, self.boxW - PAD * 2, "center")
 
-    -- Badges: alignment, tier, affinity -- centred as a row.
-    RelicCard.badges(bx + self.boxW / 2, by + self.oBadge, self.info, self.badgeFont)
+    -- The rung, and a held count when the run already carries one. Centred as a row.
+    RelicCard.badges(bx + self.boxW / 2, by + self.oBadge, self.info, self.badgeFont, self.held)
 
     -- Blurb.
     love.graphics.setFont(self.bodyFont)
     love.graphics.setColor(0.82, 0.83, 0.88)
-    love.graphics.printf(self.info.blurb or "", bx + PAD, by + self.oBlurb, self.boxW - PAD * 2, "center")
+    love.graphics.printf(self.blurbText, bx + PAD, by + self.oBlurb, self.boxW - PAD * 2, "center")
 
     -- A Vice spells out its standing cost in its own warm colour.
     if self.oCost then
         love.graphics.setColor(self.accent[1], self.accent[2], self.accent[3], 0.95)
-        love.graphics.printf("Cost: " .. self.info.cost, bx + PAD, by + self.oCost, self.boxW - PAD * 2, "center")
+        love.graphics.printf("Cost: " .. self.costText, bx + PAD, by + self.oCost, self.boxW - PAD * 2, "center")
     end
 
     -- A Shrine's upfront toll, in a warning amber, and (when unaffordable) called out as such.

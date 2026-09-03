@@ -1,9 +1,17 @@
 -- The Reliquary. Opened when the player steps onto a `relic_cache` (see states/game.lua's openEncounter),
 -- which has already built a SLATE of up to three run relics (models/relic.lua's Relic.slate). This panel
 -- lays them out as three cards and takes exactly ONE -- the two refused are the price of the one kept, so
--- the stop is a decision rather than a free gift with a confirm button. The slate is composed to contrast
--- (a Vice against two Virtues where the shelf allows), and this panel spells that out on the cards: cool
--- jade Virtue, warm crimson Vice with its standing cost printed.
+-- the stop is a decision rather than a free gift with a confirm button.
+--
+-- WHAT A CARD SAYS, and every word of it is a number. The rung (its colour, ui/relic_card.lua), the
+-- effect resolved AT THE STACK THE COMPANY WOULD HOLD, and the price on the same terms. A card offering a
+-- relic already carried twice reads "+5 damage / -5 defense", not the authored "+3 / -3" -- because what
+-- taking it actually buys is the next copy, and a card that quoted the base would be advertising a
+-- different relic from the one the button grants.
+--
+-- (The slate used to be composed to contrast -- one Vice against two Virtues -- and the cards said so in
+-- cool jade and warm crimson. That axis is deleted: there is one shelf, the slate is a plain rarity roll,
+-- and the colour is the rung.)
 --
 -- Taking is IRREVERSIBLE, so a mouse click on a card only FOCUSES it; the Take button below commits. A
 -- keyboard/pad focus already lives on a card, so Enter/A takes the focused one outright. Same panel
@@ -77,13 +85,20 @@ function RelicOffer.new(opts)
     self.oBadge = self.oName + nameH + 10
     self.oBlurb = self.oBadge + self.badgeFont:getHeight() + 6 + 12
 
+    -- Both lines are resolved at the stack the company WOULD hold, here as well as at the draw, so the
+    -- card is sized against the text it actually prints. Taking a relic held twice grants a third, so
+    -- `held + 1` is the number every line on this card is quoting.
+    local Relic = require("models.relic")
     local tallest = 0
     for _, entry in ipairs(self.offer) do
         local info = entry.info or {}
-        local _, blurbLines = self.bodyFont:getWrap(info.blurb or "", textW)
+        local at = (entry.held or 0) + 1
+        entry.blurbText = Relic.blurbAt(entry.id or info, at)
+        entry.costText = Relic.costAt(entry.id or info, at) or info.cost
+        local _, blurbLines = self.bodyFont:getWrap(entry.blurbText or "", textW)
         local h = self.oBlurb + math.max(1, #blurbLines) * lineH
-        if info.alignment == "vice" and info.cost then
-            local _, costLines = self.bodyFont:getWrap("Cost: " .. info.cost, textW)
+        if entry.costText then
+            local _, costLines = self.bodyFont:getWrap("Cost: " .. entry.costText, textW)
             h = h + 8 + math.max(1, #costLines) * lineH
         end
         if h > tallest then tallest = h end
@@ -160,18 +175,26 @@ function RelicOffer:drawCard(entry, focused)
     love.graphics.setColor(0.96, 0.95, 0.92)
     love.graphics.printf(label, r.x + CARD_PAD, r.y + self.oName, textW, "center")
 
-    RelicCard.badges(cx, r.y + self.oBadge, info, self.badgeFont)
+    -- The rung, plus a HELD count when this card is something the run already carries. Taking a
+    -- duplicate deepens it (models/relic.lua), so at the moment of the offer "you have two of these"
+    -- is the one other fact that changes the decision.
+    RelicCard.badges(cx, r.y + self.oBadge, info, self.badgeFont, entry.held)
 
+    -- Both lines were resolved in the constructor at `held + 1` -- the stack this card would leave the
+    -- company on -- so what is printed is what taking it actually buys.
+    local blurb = entry.blurbText or info.blurb or ""
     love.graphics.setFont(self.bodyFont)
     love.graphics.setColor(0.82, 0.83, 0.88)
-    love.graphics.printf(info.blurb or "", r.x + CARD_PAD, r.y + self.oBlurb, textW, "center")
+    love.graphics.printf(blurb, r.x + CARD_PAD, r.y + self.oBlurb, textW, "center")
 
-    -- A Vice spells out its standing cost in its own warm colour, under the blurb.
-    if info.alignment == "vice" and info.cost then
-        local _, blurbLines = self.bodyFont:getWrap(info.blurb or "", textW)
+    -- A relic that costs you something spells the price out under its blurb, in the same digits the gain
+    -- is stated in. Not a category any more -- there is one shelf -- just a second sentence on the
+    -- relics that have one.
+    if entry.costText then
+        local _, blurbLines = self.bodyFont:getWrap(blurb, textW)
         local y = r.y + self.oBlurb + math.max(1, #blurbLines) * self.bodyFont:getHeight() + 8
         love.graphics.setColor(accent[1], accent[2], accent[3], 0.95)
-        love.graphics.printf("Cost: " .. info.cost, r.x + CARD_PAD, y, textW, "center")
+        love.graphics.printf("Cost: " .. entry.costText, r.x + CARD_PAD, y, textW, "center")
     end
 end
 

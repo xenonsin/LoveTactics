@@ -512,4 +512,25 @@ return {
                 "seed " .. seed .. ": the deepest floor's stair cannot be walked to from the entrance")
         end
     end },
+    -- THE THREE WAYS TO SPEND ON THE PILE all have to actually turn up on a floor, or a relic economy
+    -- exists only in the code. The Reliquary and the Merchant have been guaranteed since the descent
+    -- landed; the Weeping Stone joins them from the second floor down, because it prices a relic in a
+    -- permanent cut to the company's maximum health and a company that has not been hurt yet has nothing
+    -- to weigh that against.
+    { name = "every floor carries its ways to spend, and the blood-priced one waits for the second",
+      fn = function()
+        for seed = 1, 12 do
+            local first = floorGrid(seed, { floor = 1 })
+            assert(countKind(first, "relic_cache") >= 1, "seed " .. seed .. ": floor 1 has no Reliquary")
+            assert(countKind(first, "merchant") >= 1, "seed " .. seed .. ": floor 1 has no Merchant")
+            assert(countKind(first, "weeping_stone") == 0,
+                "seed " .. seed .. ": the Weeping Stone must not stand on the first floor")
+
+            local deeper = floorGrid(seed, { floor = 4 })
+            assert(countKind(deeper, "relic_cache") >= 1, "seed " .. seed .. ": floor 4 has no Reliquary")
+            assert(countKind(deeper, "merchant") >= 1, "seed " .. seed .. ": floor 4 has no Merchant")
+            assert(countKind(deeper, "weeping_stone") >= 1,
+                "seed " .. seed .. ": floor 4 has no Weeping Stone")
+        end
+    end },
 }
