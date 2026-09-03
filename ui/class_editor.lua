@@ -8,12 +8,27 @@
 -- (see Party:columnEditor), a third view of one member beside Loadout and Tactics, and the portrait
 -- rail is the roster it used to draw for itself.
 --
--- TWO COLUMNS, and each answers one question:
+-- THREE COLUMNS, and each answers one question:
 --
---   WHAT   every class in the game, grouped under the base class it hangs off: the ones open to this
---          body by name, level and rung, and the ones still shut by the requirement that opens them.
+--   WHERE  the seven houses and nothing else, each with the level this body holds in it and what it
+--          has open. Seven rows, so this column never scrolls and never moves.
+--   WHAT   one house's shelf: the base class, the cuts of it this body has opened, and the ones still
+--          shut by the requirement that opens them.
 --   WHY    the highlighted class in full -- what the path is, what it grows, and what this body has
 --          done in it.
+--
+-- THE HOUSES COLUMN IS WHAT THE LIST USED TO SCROLL PAST. Forty-five classes under seven parents,
+-- with every crossing filed under BOTH of them, is sixty-six rows -- and on a body just hired,
+-- fifty-nine of those are shut rows carrying nothing but the requirement that opens them. Thirteen
+-- fit the column. So the ladder was five screens of grey, and the shape of a house -- which is the
+-- thing the player is actually choosing between -- was the one thing that could not be seen at once.
+-- Cutting the houses out into a column of their own puts the whole game on screen in seven rows and
+-- leaves the second column holding one house at a time, which fits without scrolling at all.
+--
+-- A HOUSE ROW COUNTS WHAT IS BEHIND IT, and that is not the same concession the header below refuses.
+-- "2 open, 6 ahead" is a count standing IN FRONT OF the rows it counts, one keypress away and still
+-- drawn one at a time in the next column -- where the count this file rejected was offered INSTEAD of
+-- those rows, as the only thing the player would ever be told.
 --
 -- IT IS A LIST, NOT A LATTICE, and that is a decision rather than a shortcut. Forty-five classes across
 -- seven parents with twenty-one crossings between them is a real graph, and drawn as one at 1280x720
@@ -58,6 +73,12 @@ local ClassEditor = {}
 ClassEditor.__index = ClassEditor
 
 local ROW_H = 30
+local HOUSE_ROW_H = 40 -- two lines: the name and its level, then what the house has open
+local COL_GAP = 20
+-- The shelf's left gutter, holding the level in THIS house that opens each row. Every row on the shelf
+-- shares it -- open ones included -- because a column of integers is only readable as a ladder if the
+-- rungs already climbed are standing in it too.
+local GUTTER_W = 30
 local BUTTON_H = 34
 local BUTTON_GAP = 8
 
@@ -149,31 +170,72 @@ local function childrenOf(class, char)
     return open, shut
 end
 
--- WHAT OPENS A CLASS THIS BODY CANNOT HAVE YET, in the words of the ladder it is standing on: every
--- class named in `requires`, at the level it is wanted. This is the whole of the row that is drawn in
--- place of a locked class's name, and the only thing it is told.
+-- WHAT OPENS A CLASS THIS BODY CANNOT HAVE YET, split into the two halves the row draws in different
+-- places: the level wanted in the house whose shelf this is, and -- for a crossing -- the OTHER house
+-- and the level wanted there.
+--
+-- THE WORD "REQUIRES" IS GONE, AND SO IS THE HOUSE'S OWN NAME. Every gate under a house is a level in
+-- that house, so a shelf of nine rows used to print "Requires Knight lvl" nine times and vary one
+-- integer; sixty-six rows of that was most of what the screen said. The column is captioned with the
+-- house now, and the integer stands in a gutter of its own, which is a column the eye can run down.
+-- What is left on the row is the only part that differs between two shut rows: the second house.
 --
 -- IT NAMES THE LEVELS AND STOPS THERE, though a crossing is also gated on holding a subclass of each
 -- parent (Class.isUnlocked). That second rule is not dropped, it is implied: the cheapest subclass in
 -- every house opens at 3, and no crossing asks less than 5 of a parent -- so a body that meets the
 -- levels has met the subclass rule on the way past. A second clause would be a line the player can
 -- never fail.
-local function lockLabel(id)
+local function lockParts(id, house)
     local requires = (Class.defs[id] or {}).requires or {}
-    local parts = {}
+    local gate = requires[house]
+    local tail
     for _, parent in ipairs(Class.parents(id)) do
-        parts[#parts + 1] = Item.classDisplayName(parent) .. " lvl " .. tostring(requires[parent] or 0)
+        if parent ~= house then
+            tail = "+ " .. Item.classDisplayName(parent) .. " " .. tostring(requires[parent] or 0)
+        end
     end
-    if #parts == 0 then return nil end
-    return "Requires " .. table.concat(parts, " + ")
+    return gate, tail
 end
 
 -- ---------------------------------------------------------------------------
 -- The rows
 -- ---------------------------------------------------------------------------
 
--- Every class this body may stand in, flattened into drawable rows: each base class, then whichever of
--- its subclasses and crossings this body has opened.
+-- THE SEVEN HOUSES, which is the whole game in seven rows. Every figure on one is about the ROOT
+-- rather than about what hangs off it -- the level this body holds in it, and how much of its shelf is
+-- open -- because the choice this column is for is which house to read, not which class to take.
+function ClassEditor:buildHouses()
+    self.houses = {}
+    for _, id in ipairs(classOrder()) do
+        local held, needed, level = 0, 0, 0
+        if self.char then held, needed, level = Class.classProgress(self.char, id) end
+        local open, shut = childrenOf(id, self.char)
+        self.houses[#self.houses + 1] = {
+            id = id, name = Item.classDisplayName(id),
+            level = level, held = held, needed = needed,
+            open = #open, shut = #shut,
+        }
+    end
+end
+
+function ClassEditor:currentHouse()
+    return self.houses and self.houses[self.house]
+end
+
+-- Is the body standing in this house? A crossing hangs off two of them and is marked on BOTH, which is
+-- the same answer the shelf gives about where it is sold (models/vendor.lua).
+function ClassEditor:standsIn(houseId)
+    local declared = self.char and Growth.classOf(self.char)
+    if not declared then return false end
+    if declared == houseId then return true end
+    for _, parent in ipairs(Class.parents(declared)) do
+        if parent == houseId then return true end
+    end
+    return false
+end
+
+-- Every class on ONE house's shelf, flattened into drawable rows: the base class, then whichever of
+-- its subclasses and crossings this body has opened, then the ones it has not.
 --
 -- THE BASE CLASS IS ITS OWN GROUP HEADING. It used to be two rows -- a chrome caption reading
 -- "ALCHEMIST" and, directly under it, a pickable row reading "Alchemist" -- which spent a third of the
@@ -182,10 +244,12 @@ end
 --
 -- Built fresh per body rather than once per panel, because every number on a row -- level, progress --
 -- is a question about ONE character, and a cached list would answer it about whoever was on the rail
--- when the tab was first opened.
+-- when the tab was first opened. Rebuilt again on every house change, for the same reason.
 function ClassEditor:buildRows()
     self.rows = {}
     local char = self.char
+    local house = self:currentHouse()
+    if not house then return end
 
     local function entry(id, kind, parent)
         local held, needed, level = 0, 0, 0
@@ -201,8 +265,12 @@ function ClassEditor:buildRows()
             end
         end
 
+        -- An opened row keeps the gate that opened it, so the gutter reads as one ladder rather than as
+        -- a column that only fills in below the standing. A base class is ungated and has none.
+        local gate = parent and (lockParts(id, parent))
+
         self.rows[#self.rows + 1] = {
-            id = id, kind = kind, parent = parent, cross = cross,
+            id = id, kind = kind, parent = parent, cross = cross, gate = gate,
             name = kind == "class" and Item.classDisplayName(id) or Class.displayName(id),
             level = level, held = held, needed = needed,
         }
@@ -212,25 +280,25 @@ function ClassEditor:buildRows()
     -- else. It carries no name and no id: everything downstream reads a row by asking what it IS, and
     -- an unnamed row that quietly knew its own id is one careless field away from printing it.
     local function shutEntry(id, parent)
+        local gate, tail = lockParts(id, parent)
         self.rows[#self.rows + 1] = {
-            kind = "shut", parent = parent, locked = lockLabel(id),
+            kind = "shut", parent = parent, gate = gate, locked = tail,
             level = 0, held = 0, needed = 0,
         }
     end
 
-    for _, class in ipairs(classOrder()) do
-        local open, shut = childrenOf(class, char)
+    local class = house.id
+    local open, shut = childrenOf(class, char)
 
-        -- A base class is never gated itself -- everyone may be a knight -- so it is always the named,
-        -- pickable head of its group, whatever is still shut underneath it.
-        entry(class, "class", nil)
+    -- A base class is never gated itself -- everyone may be a knight -- so it is always the named,
+    -- pickable head of its shelf, whatever is still shut underneath it.
+    entry(class, "class", nil)
 
-        for _, id in ipairs(open) do
-            entry(id, Class.arity(id) == 2 and "multiclass" or "subclass", class)
-        end
-        for _, id in ipairs(shut) do
-            shutEntry(id, class)
-        end
+    for _, id in ipairs(open) do
+        entry(id, Class.arity(id) == 2 and "multiclass" or "subclass", class)
+    end
+    for _, id in ipairs(shut) do
+        shutEntry(id, class)
     end
 
     if not self:isSelectable(self.cursor) then
@@ -298,18 +366,27 @@ function ClassEditor.new(opts)
     -- onto it would be a control that never works.
     self.onVisitTrainer = opts.onVisitTrainer
 
-    -- Split: the class list on the left, the highlighted class in full on the right. The same
-    -- proportion the rule editor next door uses, so a tab change does not re-cut the column.
-    self.listX = self.x
-    self.listW = math.floor(self.w * 0.56)
-    self.detailX = self.listX + self.listW + 20
-    self.detailW = self.w - self.listW - 20
+    -- Three columns across what the Armory gives this tab: the houses, one house's shelf, and the
+    -- highlighted class in full. FIXED WIDTHS rather than shares, because the first two are sized by
+    -- what they hold -- seven house names, and one shelf of class names -- and only the last one has
+    -- any use for whatever is left over.
+    self.houseX, self.houseW = self.x, 216
+    self.listX = self.houseX + self.houseW + COL_GAP
+    self.listW = 300
+    self.detailX = self.listX + self.listW + COL_GAP
+    self.detailW = self.x + self.w - self.detailX
     self.listY = self.y + 24
 
+    self.house = 1
+    -- Which column the keyboard is in. It opens on the houses, because that is the first question the
+    -- screen asks and the one the second column is an answer to.
+    self.region = "houses"
     self.cursor = 1
     self.scroll = 0
     self.rows = {}
+    self.houses = {}
     self.rowRects = {}
+    self.houseRects = {}
 
     self:setChar(opts.char)
     return self
@@ -319,8 +396,25 @@ function ClassEditor:setChar(char)
     self.char = char
     self.cursor = 1
     self.scroll = 0
-    self.hoverRow, self.hoverChange = nil, nil
+    self.hoverRow, self.hoverHouse, self.hoverChange = nil, nil, nil
+    self:buildHouses()
     self:buildRows()
+end
+
+-- Open a house's shelf. The cursor goes back to the top of it rather than holding its index across the
+-- change: the row that was under it belonged to the house being left, and a cursor that stayed put
+-- would land on an unrelated class of the same depth.
+function ClassEditor:setHouse(i)
+    i = math.max(1, math.min(#self.houses, i))
+    if i == self.house then return end
+    self.house = i
+    self.cursor = 1
+    self.scroll = 0
+    self:buildRows()
+end
+
+function ClassEditor:stepHouse(dir)
+    self:setHouse((self.house or 1) + dir)
 end
 
 -- ---------------------------------------------------------------------------
@@ -385,24 +479,39 @@ end
 -- Column-editor contract (see Party:columnEditor)
 -- ---------------------------------------------------------------------------
 
--- One region, so Tab has nothing of its own to walk: the host is told the walk is over on the first
--- press and takes the focus back out to the rail.
+-- Two regions now, so Tab walks them: houses, then the shelf, then out. Returning false is how the
+-- host is told the walk ran off its end (Party:cycleEditorRegion), and the region is put back to the
+-- first on the way out so the next entry starts where the screen's first question is.
 function ClassEditor:cycleRegion()
+    if self.region == "houses" then
+        self.region = "classes"
+        return true
+    end
+    self.region = "houses"
     return false
 end
 
 function ClassEditor:isFirstRegion()
-    return true
+    return self.region == "houses"
 end
 
 function ClassEditor:navigate(dc, dr)
-    -- Left/right has nothing to change on a row: the list is the only axis here, and crossing left back
-    -- to the rail is the host's business (Party:navigate reads isFirstRegion).
-    local _ = dc
-    if dr ~= 0 then self:step(dr) end
+    -- Left/right crosses between the two columns. Pushing left off the houses is the host's business:
+    -- that is the edge of the editor, and it leads back to the portrait rail (Party:navigate reads
+    -- isFirstRegion), which is why this only handles the crossing it owns.
+    if dc > 0 and self.region == "houses" then self.region = "classes" return end
+    if dc < 0 and self.region == "classes" then self.region = "houses" return end
+    if dr == 0 then return end
+    if self.region == "houses" then self:stepHouse(dr) else self:step(dr) end
 end
 
+-- Confirm means "the thing this column is for". On the houses that is opening the shelf, which is what
+-- a press on a row of doors should do; on the shelf it is the one act on the tab.
 function ClassEditor:confirm()
+    if self.region == "houses" then
+        self.region = "classes"
+        return
+    end
     self:changeClass()
 end
 
@@ -422,9 +531,12 @@ function ClassEditor:contains(x, y)
 end
 
 function ClassEditor:mousemoved(x, y)
-    self.hoverRow = nil
+    self.hoverRow, self.hoverHouse = nil, nil
     for i, r in pairs(self.rowRects) do
         if hit(r, x, y) then self.hoverRow = i break end
+    end
+    for i, r in pairs(self.houseRects) do
+        if hit(r, x, y) then self.hoverHouse = i break end
     end
     self.hoverChange = hit(self.changeRect, x, y)
     self.hoverTrainer = hit(self.trainerRect, x, y)
@@ -436,8 +548,18 @@ function ClassEditor:wheelmoved(dy)
 end
 
 function ClassEditor:mousepressed(x, y)
+    -- A house opens on the press that picks it: there is no second click for "open", because the shelf
+    -- beside it is already the thing a player clicked the house to see.
+    for i, r in pairs(self.houseRects) do
+        if hit(r, x, y) then
+            self.region = "houses"
+            self:setHouse(i)
+            return true
+        end
+    end
     for i, r in pairs(self.rowRects) do
         if hit(r, x, y) and self:isSelectable(i) then
+            self.region = "classes"
             self.cursor = i
             return true
         end
@@ -467,6 +589,9 @@ function ClassEditor:cursorKind(x, y)
     for i, r in pairs(self.rowRects) do
         if hit(r, x, y) and self:isSelectable(i) then return "hand" end
     end
+    for _, r in pairs(self.houseRects) do
+        if hit(r, x, y) then return "hand" end
+    end
     return "arrow"
 end
 
@@ -474,7 +599,13 @@ function ClassEditor:prompts()
     local pad = InputMode.isGamepad()
     local out = {}
     local function add(glyph, label) out[#out + 1] = { glyph = glyph, label = label } end
+    if self.region == "houses" then
+        add(pad and "D-pad" or "Up/Down", "Pick house")
+        add(pad and "A" or "Enter", "Open house")
+        return out
+    end
     add(pad and "D-pad" or "Up/Down", "Pick class")
+    add("Left", "Houses")
     -- The one verb, offered only where it is legal: a body already standing in the highlighted class
     -- has nothing to press, and a prompt for it would read as the press having failed.
     if self:canChange() then add(pad and "A" or "Enter", "Change class") end
@@ -495,13 +626,71 @@ local function levelColor(level)
     return Theme.muted
 end
 
-function ClassEditor:drawList(focused)
-    local x, y, w = self.listX, self.listY, self.listW
-    local small, body = self.fonts.small, self.fonts.body
+-- THE SEVEN HOUSES. Two lines to a row, because a house answers two different questions and they are
+-- not the same kind of fact: the level this body holds in it, which is a number it has earned, and how
+-- much of its shelf stands open, which is a number about the game.
+--
+-- THE COUNT SAYS ITS OWN NOUNS. "2 · 6" is a pair of figures that needs a legend somewhere else on the
+-- screen to be read at all, and a legend is a thing the player has to go and find; "2 open · 6 ahead"
+-- is the same width in practice and needs nothing.
+function ClassEditor:drawHouses(focused)
+    local x, y, w = self.houseX, self.listY, self.houseW
+    local small = self.fonts.small
 
     love.graphics.setFont(small)
     Theme.set(Theme.muted)
-    love.graphics.print("CLASSES", x, self.y)
+    Theme.printTracked("HOUSES", x, self.y, w, 1)
+
+    self.houseRects = {}
+    for i, house in ipairs(self.houses) do
+        local ry = y + (i - 1) * HOUSE_ROW_H
+        self.houseRects[i] = { x = x, y = ry, w = w, h = HOUSE_ROW_H - 4 }
+
+        local on = i == self.house
+        if on then
+            Theme.plate(x, ry, w, HOUSE_ROW_H - 4, 3, Theme.panel)
+            -- Steel while the keyboard is in this column, bronze once it has moved on: the house stays
+            -- picked either way, and the ring is the only thing that says which column a press lands in.
+            Theme.set(focused and Theme.cursor or Theme.frame)
+            love.graphics.rectangle("line", x, ry, w, HOUSE_ROW_H - 4, 3, 3)
+        elseif i == self.hoverHouse then
+            Theme.set(Theme.frame, 0.5)
+            love.graphics.rectangle("line", x, ry, w, HOUSE_ROW_H - 4, 3, 3)
+        end
+
+        -- The mark the shelf uses for the class being applied, put on the house that teaches it.
+        if self:standsIn(house.id) then
+            Theme.set(Theme.accentAmber)
+            love.graphics.circle("fill", x + 8, ry + 12, 3)
+        end
+
+        Theme.set(levelColor(house.level))
+        local font, name = Theme.fitText(Theme.display, house.name, w - 60, 16, 12)
+        love.graphics.setFont(font)
+        love.graphics.print(name, x + 16, ry + 3)
+
+        love.graphics.setFont(small)
+        Theme.set(levelColor(house.level))
+        love.graphics.printf(tostring(house.level), x, ry + 5, w - 8, "right")
+
+        Theme.set(Theme.muted, 0.8)
+        love.graphics.print(string.format("%d open", house.open), x + 16, ry + 21)
+        if house.shut > 0 then
+            love.graphics.printf(string.format("%d ahead", house.shut), x, ry + 21, w - 8, "right")
+        end
+    end
+end
+
+function ClassEditor:drawList(focused)
+    local x, y, w = self.listX, self.listY, self.listW
+    local small, body = self.fonts.small, self.fonts.body
+    local house = self:currentHouse()
+
+    love.graphics.setFont(small)
+    Theme.set(Theme.muted)
+    -- The column is one house's shelf now, so it is captioned with the house rather than with the word
+    -- CLASSES -- which was true of a list holding all forty-five and is a caption on nothing here.
+    Theme.printTracked(string.upper(house and house.name or "CLASSES"), x, self.y, w, 1)
     love.graphics.printf("LEVEL", x, self.y, w, "right")
 
     local span = self:visibleRows()
@@ -513,24 +702,34 @@ function ClassEditor:drawList(focused)
         self.rowRects[i] = { x = x, y = ry, w = w, h = ROW_H - 2 }
 
         local base = row.kind == "class"
-        -- The rule that used to belong to the caption row, moved onto the class it captioned: it opens
-        -- the group rather than closing the one above, so it goes over the row, not under it.
-        if base and i > 1 then
-            Theme.set(Theme.frame)
-            love.graphics.line(x, ry - 3, x + w, ry - 3)
-        end
-
         -- AN EMPTY SLOT, AND IT LOOKS LIKE ONE. A shut class gets the same rectangle every other row
         -- stands in -- so the list shows the whole ladder at its true length from the first morning --
         -- but drawn as an outline on the stock rather than a filled plate, and never with the cursor's
         -- edge: it is a place waiting to be taken, not a control refusing to be pressed.
         if row.kind == "shut" then
             Theme.set(Theme.frame, 0.35)
-            love.graphics.rectangle("line", x + 24, ry, w - 24, ROW_H - 2, 3, 3)
+            love.graphics.rectangle("line", x + GUTTER_W, ry, w - GUTTER_W, ROW_H - 2, 3, 3)
             love.graphics.setFont(small)
+            -- The gate, in the gutter every row on the shelf shares. It is the house's own level, and
+            -- it is amber once this body has passed it -- which happens on a row that is still shut,
+            -- because a crossing has a second house to satisfy and the gutter answers for one.
+            if row.gate then
+                Theme.set(row.gate <= (house and house.level or 0) and Theme.accentAmber or Theme.muted,
+                    0.85)
+                love.graphics.printf(tostring(row.gate), x, ry + 7, GUTTER_W - 9, "right")
+            end
+            -- THE MARK IS WHAT MAKES AN EMPTY BOX READ AS A SLOT. A shut subclass has only one parent,
+            -- so it has no second house to name and the row is left with nothing inside it -- and an
+            -- empty rounded rectangle in a column of full ones reads as a row that failed to draw
+            -- rather than as a place waiting to be taken. The mark is the same on every shut row, so
+            -- what a crossing adds beside it is legible as the extra thing it is.
+            Theme.set(Theme.frame, 0.8)
+            love.graphics.rectangle("line", x + GUTTER_W + 11, ry + 11, 7, 7, 1, 1)
             Theme.set(Theme.muted, 0.75)
-            love.graphics.print(Theme.ellipsize(row.locked or "Requires more", small, w - 24 - 20),
-                x + 34, ry + 7)
+            if row.locked then
+                love.graphics.print(Theme.ellipsize(row.locked, small, w - GUTTER_W - 40),
+                    x + GUTTER_W + 26, ry + 7)
+            end
         else
             local on = i == self.cursor
             if on then
@@ -545,10 +744,18 @@ function ClassEditor:drawList(focused)
             -- base class above them, one from a single parent and one from two, and they are the same
             -- rung. So depth says rank, and a crossing says what it is with the name of its OTHER
             -- parent instead, in the shape the shop and the lineage strip both use ("x Priest").
-            local indent = base and 10 or 24
+            --
+            -- The step is the gutter itself now: an earned class hangs off a gate and its name starts
+            -- where the gate column ends, while the base class has no gate and stands to the left of it.
+            local indent = base and 10 or (GUTTER_W + 10)
+            if row.gate then
+                love.graphics.setFont(small)
+                Theme.set(Theme.muted, 0.85)
+                love.graphics.printf(tostring(row.gate), x, ry + 6, GUTTER_W - 9, "right")
+            end
             -- The one tail a named row carries: a crossing's other parent. What is still shut behind a
-            -- house used to be counted here and is not counted anywhere now -- it is standing in the list
-            -- in its own rows, which is a better answer than a number was.
+            -- house is counted on the house's own row in the column to the left, which is a place a
+            -- count can stand without standing instead of the rows it counts.
             local tail = row.cross and ("  x " .. row.cross)
             local tailW = tail and small:getWidth(tail) or 0
 
@@ -973,7 +1180,12 @@ function ClassEditor:drawDetail()
 end
 
 function ClassEditor:draw(focused)
-    self:drawList(focused ~= false)
+    -- Only the column the keyboard is actually in wears the steel ring. Both columns keep their
+    -- selection drawn -- a house stays picked while the cursor is off reading its shelf -- so the ring
+    -- is the one thing on the tab that says where the next press lands.
+    local on = focused ~= false
+    self:drawHouses(on and self.region == "houses")
+    self:drawList(on and self.region == "classes")
     self:drawDetail()
     love.graphics.setColor(1, 1, 1)
 end
