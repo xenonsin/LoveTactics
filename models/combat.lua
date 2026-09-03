@@ -3510,6 +3510,14 @@ end
 -- can drop it as a landing spot. Returns `{ [key]= { x, y, cost, steps, fromKey, occupied } }`,
 -- keyed "x,y", INCLUDING the origin (cost 0) so a path can be traced back through it. Private: the
 -- public Combat.reachable filters this down to the tiles a unit may actually stop on.
+--
+-- `tolls` (Hazard.tollMap) is the ROUTE-ONLY surcharge, and the split it draws is the whole of why it
+-- can exist at all. Given one, the search minimises `weight` -- cost plus the toll of every tile the
+-- body's footprint crosses -- while the budget still spends the honest `cost`, so a walk bends around
+-- fire without a single tile of reach or a single point of initiative changing hands. Nothing that
+-- answers "how far can I go" ever passes it; only Combat.hazardRoute does, which is where the caveat
+-- lives (a node the tolled search reaches by a dearer road can fall outside the budget and simply not
+-- appear -- the caller falls back to the plain walk).
 -- Does `unit` carry something that lifts it off the ground (the `flying` tag -- the Zephyr Striders)?
 -- A flier ignores the ground entirely: every tile costs 1 to enter whatever it is made of, and terrain
 -- that is merely UNWALKABLE (a river, a chasm, a bog) is crossed as if it were open field. Mirrors
@@ -3545,7 +3553,7 @@ function Combat.isPhasing(unit)
     return false
 end
 
-local function moveGraph(combat, unit)
+local function moveGraph(combat, unit, tolls)
     local arena = combat.arena
     local budget = flatStat(unit, "movement")
     local flying = Combat.isFlying(unit)
@@ -3560,16 +3568,28 @@ local function moveGraph(combat, unit)
     -- one-tile gap. 1×1 collapses to the single-tile logic this always was.
     local w, h = unit.w or 1, unit.h or 1
 
+    -- What the ground under this anchor charges ON TOP of its cost, summed over the footprint (a 2x2
+    -- body straddling two burning tiles is twice as keen to be elsewhere). Zero, and free, when no
+    -- toll map was handed in -- which is every caller but Combat.hazardRoute.
+    local function anchorToll(x, y)
+        if not tolls then return 0 end
+        local t = 0
+        for _, c in ipairs(Combat.cellsAt(w, h, x, y)) do t = t + (tolls[key(c.x, c.y)] or 0) end
+        return t
+    end
+
     local best = {}
-    local origin = { x = unit.x, y = unit.y, cost = 0, steps = 0 }
+    -- `weight` is what the search ORDERS by and `cost` what it SPENDS; they are the same number for
+    -- an untolled search, which is what keeps the ordinary graph bit-for-bit what it always was.
+    local origin = { x = unit.x, y = unit.y, cost = 0, steps = 0, weight = 0 }
     best[key(unit.x, unit.y)] = origin
     local frontier = { origin }
 
     while #frontier > 0 do
-        -- Pop the lowest-cost frontier node.
+        -- Pop the lowest-weight frontier node.
         local bi = 1
         for i = 2, #frontier do
-            if frontier[i].cost < frontier[bi].cost then bi = i end
+            if frontier[i].weight < frontier[bi].weight then bi = i end
         end
         local cur = table.remove(frontier, bi)
 
@@ -3599,12 +3619,15 @@ local function moveGraph(combat, unit)
                     -- Priced by the shared reader rather than in the loop above: the legality question
                     -- (may this body stand here) and the cost question (what does standing here cost)
                     -- are different, and only the second one grows terms. See stepTerrainCost.
-                    local ncost = cur.cost + stepTerrainCost(combat, unit, nx, ny, flying)
+                    local step = stepTerrainCost(combat, unit, nx, ny, flying)
+                    local ncost = cur.cost + step
                     if ncost <= budget then
                         local nk = key(nx, ny)
+                        local nweight = cur.weight + step + anchorToll(nx, ny)
                         local existing = best[nk]
-                        if not existing or ncost < existing.cost then
+                        if not existing or nweight < existing.weight then
                             local node = { x = nx, y = ny, cost = ncost, steps = cur.steps + 1,
+                                           weight = nweight,
                                            fromKey = key(cur.x, cur.y), occupied = otherUnit }
                             best[nk] = node
                             frontier[#frontier + 1] = node
@@ -3670,8 +3693,9 @@ end
 -- since none of those wander off.
 --
 -- `goal` is a unit (a wide one seeds every cell it covers) or a plain { x, y }. Entering a tile costs
--- that tile's `moveCost` (a flier pays a flat 1), the same currency Combat.reachable spends, so a
--- field cost and a move cost are comparable numbers. Returns `{ [key] = cost }` keyed "x,y" like
+-- that tile's `moveCost` (a flier pays a flat 1) plus whatever a hostile zone standing on it charges
+-- to be walked through (Hazard.tollMap), the same currency Combat.reachable spends, so a field cost
+-- and a move cost are comparable numbers -- and a road through fire is honestly the longer road. Returns `{ [key] = cost }` keyed "x,y" like
 -- Combat.reachable; a MISSING key means no road at all from that tile, which the caller answers for
 -- itself (models/ai.lua ranks the roadless behind everything, by straight line).
 --
@@ -3697,15 +3721,25 @@ function Combat.travelField(combat, unit, goal, ignore)
         return true
     end
 
-    -- What it costs to walk INTO this anchor: the roughest ground under the body, matching moveGraph.
+    -- What it costs to walk INTO this anchor: the roughest ground under the body, matching moveGraph,
+    -- plus what every hostile zone under the footprint charges to be walked through.
+    --
+    -- The toll belongs HERE and not in the move budget for the reason Combat.hazardRoute sets out: this
+    -- field is a planner's private ruler, read by nobody but models/ai.lua, so a road that runs through
+    -- fire can honestly read as the longer road without any body's reach or initiative moving. It is
+    -- also the half of the answer the route alone cannot give -- hazardRoute bends THIS turn's walk
+    -- around a fire it can see past, while this is what stops a body two turns out from setting off
+    -- into the burning half of the board in the first place.
+    local tolls = Hazard.tollMap(combat)
     local function stepCost(x, y)
-        local worst = 0
+        local worst, toll = 0, 0
         for _, c in ipairs(Combat.cellsAt(w, h, x, y)) do
             local cell = arena.tiles[c.y] and arena.tiles[c.y][c.x]
             local mc = flying and 1 or ((cell and cell.moveCost) or 1)
             if mc > worst then worst = mc end
+            if tolls then toll = toll + (tolls[key(c.x, c.y)] or 0) end
         end
-        return worst
+        return worst + toll
     end
 
     -- Seeded at cost 0 on the goal's own cells whether or not the body would FIT there -- the goal is
@@ -3921,19 +3955,13 @@ function Combat.moveInitiative(unit, cost)
     return math.floor((cost or 0) * Status.costMultiplier(unit) + 0.5)
 end
 
--- The walk a unit would take to reach (x, y): `{ unit, path, cost }`, where `path` is the
--- ORIGIN-FIRST list of `{ x, y }` tiles it steps through and `cost` the raw terrain-weighted path
--- cost. Pure -- nothing is mutated -- so one legality gate serves both the instant Combat.moveUnit
--- and the battle state's tile-at-a-time walk. Returns nil + a reason when the move is illegal.
-function Combat.planMove(combat, unit, x, y)
-    if not unit.alive then return nil, "dead" end
-    if not combat.turn or combat.turn.unit ~= unit then return nil, "not this unit's turn" end
-    if combat.turn.moved then return nil, "already moved" end
-    if Status.blocksMove(unit) then return nil, "rooted" end
-    -- Trace through the full graph (allies are walk-through transit nodes), not the filtered
-    -- reachable set, so a path may route past a friendly unit -- but the destination itself must be
-    -- a tile the unit can stop on (the origin has no fromKey; an ally's tile is `occupied`).
-    local graph = moveGraph(combat, unit)
+-- Read a finished movement graph backwards into the walk it describes: the ORIGIN-FIRST list of
+-- `{ x, y }` tiles the feet take to (x, y), plus the destination node (whose `cost` is what the walk
+-- bills). Returns nil + a reason for a tile no legal walk ends on. Shared by the plain plan and the
+-- hazard-avoiding one so the two read the same graph the same way -- two copies of a chain-walk that
+-- disagreed about where a path starts is the sort of thing that puts a unit's feet on one route and
+-- its cues on another.
+local function tracePath(graph, unit, x, y)
     local node = graph[key(x, y)]
     if not node or not node.fromKey then return nil, "unreachable" end
     if node.occupied then return nil, "occupied" end
@@ -3949,8 +3977,46 @@ function Combat.planMove(combat, unit, x, y)
     end
     local path = { { x = unit.x, y = unit.y } }
     for i = #back, 1, -1 do path[#path + 1] = { x = back[i].x, y = back[i].y } end
+    return path, node
+end
+
+-- The walk a unit would take to reach (x, y): `{ unit, path, cost }`, where `path` is the
+-- ORIGIN-FIRST list of `{ x, y }` tiles it steps through and `cost` the raw terrain-weighted path
+-- cost. Pure -- nothing is mutated -- so one legality gate serves both the instant Combat.moveUnit
+-- and the battle state's tile-at-a-time walk. Returns nil + a reason when the move is illegal.
+function Combat.planMove(combat, unit, x, y)
+    if not unit.alive then return nil, "dead" end
+    if not combat.turn or combat.turn.unit ~= unit then return nil, "not this unit's turn" end
+    if combat.turn.moved then return nil, "already moved" end
+    if Status.blocksMove(unit) then return nil, "rooted" end
+    -- Trace through the full graph (allies are walk-through transit nodes), not the filtered
+    -- reachable set, so a path may route past a friendly unit -- but the destination itself must be
+    -- a tile the unit can stop on (the origin has no fromKey; an ally's tile is `occupied`).
+    local path, node = tracePath(moveGraph(combat, unit), unit, x, y)
+    if not path then return nil, node end
 
     return { unit = unit, path = path, cost = node.cost }
+end
+
+-- The route to (x, y) a body should take when the ground in between is ON FIRE: the same search
+-- Combat.planMove runs, with every hostile zone charging Hazard.PATH_TOLL on top of its terrain, so a
+-- Dijkstra that used to cut the corner through a burning tile takes the long way round. Returns an
+-- origin-first cell list for Combat.planMoveVia -- which re-checks it against the real budget and
+-- bills the real cost of the detour -- or nil when there is nothing to route around, or no tolled
+-- route the budget can afford. A nil is not a failure: the caller takes the plain plan.
+--
+-- WHY A ROUTE AND NOT A PRICE. The toll is deliberately kept OUT of stepTerrainCost, the one place a
+-- tile is priced, because that number is the player's movement budget and the initiative a walk bills.
+-- Charging fire against it would shrink the blue band and slow the timeline for everybody, which is a
+-- change to the game's rules. This is a change to how a PLANNER picks between two walks that are both
+-- legal and both cost the same reach, so only a planner asks for it -- the enemy turn in
+-- states/battle.lua and the headless one in models/autobattle.lua. A player steering a walk by hand
+-- can see the fire.
+function Combat.hazardRoute(combat, unit, x, y)
+    if not (combat and unit) then return nil end
+    local tolls = Hazard.tollMap(combat)
+    if not tolls then return nil end
+    return (tracePath(moveGraph(combat, unit, tolls), unit, x, y))
 end
 
 -- Validate an EXPLICIT, caller-supplied route for `unit` this turn: the same legality gate as

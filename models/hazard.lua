@@ -75,6 +75,20 @@ Hazard.defs = Registry.load("data/hazards", "data.hazards")
 Hazard.HOSTILE_BIAS = 6
 Hazard.FRIENDLY_BIAS = 6
 
+-- What a hostile zone adds to the cost of walking INTO its tile, in the same currency as terrain
+-- `moveCost` (see Hazard.tollMap). The bias above is the other half of the same idea and was, until
+-- now, the only half there was: it scores the tile a body STOPS on, so a planner declined to end its
+-- turn in fire and then cheerfully cut the corner through it on the way somewhere else. Every hostile
+-- def in data/hazards/ carries a comment promising "the enemy AI paths around it"; this is the number
+-- that makes the promise true.
+--
+-- 4 is read off the two figures it sits between. The roughest walkable ground on the board charges 3
+-- (models/terrain.lua's mountain), so a zone is dearer than the worst footing there is and a detour is
+-- always worth taking when one exists. A body's whole move is 3-5, so the detour it will pay for is
+-- bounded by one turn's walking: a body properly hemmed in by fire walks through and takes the burn
+-- rather than standing still forever, which is the failure the hard stop would have.
+Hazard.PATH_TOLL = 4
+
 -- Orthogonal neighbor offsets (matches the movement DIRS in models/combat.lua); used by spread.
 local DIRS = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }
 
@@ -552,6 +566,33 @@ function Hazard.tileBias(combat, x, y, side)
         end
     end
     return score
+end
+
+-- Every tile a body should pay extra to WALK INTO, keyed "x,y", each charging Hazard.PATH_TOLL per
+-- hostile zone standing on it -- or nil when the board holds none, which is most fights and most
+-- turns. The nil is the point: a route-finder handed nil skips its whole tolled pass rather than
+-- carrying a lookup that can only ever answer 0.
+--
+-- No `side`, unlike Hazard.tileBias, and for the reason that function already states: fire burns
+-- whoever walks in, so a hostile zone is a hostile zone to the side that lit it. A friendly zone and a
+-- neutral one both charge nothing -- standing in a sanctuary is a reason to END a walk there
+-- (tileBias), never a reason to bend one, and the ground you are drawn to is not the ground you route
+-- around.
+--
+-- Built ONCE per search and handed to the Dijkstra as a map, rather than asked per tile: Hazard.allAt
+-- allocates a fresh table on every call and a route search asks about every tile on the board, which
+-- is precisely the shape that once turned a twenty-second test suite into one that never finished
+-- (see Combat.terrainEase's cache).
+function Hazard.tollMap(combat)
+    local out, any = {}, false
+    for _, h in ipairs((combat and combat.hazards) or {}) do
+        if h.alive and h.def and h.def.disposition == "hostile" then
+            local k = h.x .. "," .. h.y
+            out[k] = (out[k] or 0) + Hazard.PATH_TOLL
+            any = true
+        end
+    end
+    return any and out or nil
 end
 
 -- Dry-run a hazard blueprint's onEnter against a stand-in occupant to report what standing in it does

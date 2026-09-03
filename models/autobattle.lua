@@ -47,7 +47,13 @@ local function takeTurn(combat, unit)
 
     -- The plan aims from the tile the unit walks to, so the walk resolves first.
     if plan.move then
-        local route = Combat.planMove(combat, unit, plan.move.x, plan.move.y)
+        -- Around the fire rather than through it, where there is fire and a way around it inside the
+        -- budget: Combat.hazardRoute answers nil otherwise, and planMoveVia re-checks the detour it
+        -- does hand back. The same two lines states/battle.lua's enemy turn takes, so a headless run
+        -- and a watched one walk the same feet.
+        local cells = Combat.hazardRoute(combat, unit, plan.move.x, plan.move.y)
+        local route = (cells and Combat.planMoveVia(combat, unit, cells))
+            or Combat.planMove(combat, unit, plan.move.x, plan.move.y)
         if route then Combat.runMove(combat, route) end
     end
     -- Cut down on the approach (a trap, an overwatch shot): the turn is over with them, and passing

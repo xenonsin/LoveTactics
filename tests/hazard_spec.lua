@@ -653,4 +653,100 @@ return {
             end
         end,
     },
+    {
+        name = "tollMap charges a hostile zone the path toll and leaves friendly and neutral ground free",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) }, {})
+            assert(Hazard.tollMap(c) == nil, "a board with no zones on it tolls nothing at all")
+
+            Hazard.place(c, 4, 4, "hazard_fire")
+            Hazard.place(c, 5, 5, "hazard_heal", { side = "party" })
+            Hazard.place(c, 6, 6, "hazard_rain")
+            local tolls = Hazard.tollMap(c)
+            assert(tolls, "fire on the board raises a toll map")
+            assert(tolls["4,4"] == Hazard.PATH_TOLL, "fire charges to be walked through")
+            assert(tolls["5,5"] == nil, "a sanctuary is ground to stop on, never ground to bend around")
+            assert(tolls["6,6"] == nil, "rain harms nobody, so it charges nobody")
+
+            -- Two hostile zones on one tile are twice the reason to be elsewhere, as tileBias doubles.
+            Hazard.place(c, 4, 4, "hazard_quicksand")
+            assert(Hazard.tollMap(c)["4,4"] == Hazard.PATH_TOLL * 2, "two hostile zones on a tile toll twice")
+        end,
+    },
+    {
+        name = "an AI walk routes AROUND a fire the shortest path cuts through, at the real cost of the detour",
+        fn = function()
+            -- (2,4) to (4,4) with fire on (3,4): straight through is two tiles, and going round one
+            -- tile always adds two, never one -- four, inside a movement of 4. So the detour is
+            -- affordable, costs less than the toll on the fire, and must be the one taken.
+            local c = Combat.new(arena(8, 8), { walker(2, 4) }, {})
+            local u = c.units[1]
+            -- Set through flatStat rather than off the blueprint: the archer's kit lends and costs
+            -- movement, and the whole case turns on the budget being exactly able to afford four tiles.
+            u.char.stats.movement = u.char.stats.movement + (4 - Combat.flatStat(u, "movement"))
+            assert(Combat.flatStat(u, "movement") == 4, "the walker has a movement of 4 in hand")
+            Hazard.place(c, 3, 4, "hazard_fire")
+            openTurn(c, u)
+
+            local function crosses(path, x, y)
+                for _, cell in ipairs(path or {}) do
+                    if cell.x == x and cell.y == y then return true end
+                end
+                return false
+            end
+
+            local plain = Combat.planMove(c, u, 4, 4)
+            assert(plain and crosses(plain.path, 3, 4), "the plain shortest walk goes straight through the fire")
+
+            local route = Combat.hazardRoute(c, u, 4, 4)
+            assert(route, "a route around the fire exists inside the budget")
+            assert(not crosses(route, 3, 4), "and it does not set a foot in the fire")
+            assert(route[1].x == u.x and route[1].y == u.y, "the route reads origin-first, as planMoveVia wants")
+            assert(route[#route].x == 4 and route[#route].y == 4, "and it still arrives where the plan aimed")
+
+            -- The detour is walked at its own price: planMoveVia accepts it and bills the extra tiles.
+            local plan = Combat.planMoveVia(c, u, route)
+            assert(plan, "the steered detour is a legal walk")
+            assert(plan.cost == plain.cost + 2, "and costs the two extra tiles it spends, got " .. tostring(plan.cost))
+        end,
+    },
+    {
+        name = "hemmed in by fire with no way around, the walk goes through rather than standing still",
+        fn = function()
+            -- A wall of fire across the whole board: there is no detour to buy, so the toll must not
+            -- become a hard stop. A cost degrades; a refusal is how a body freezes for the fight.
+            local c = Combat.new(arena(3, 8), { walker(2, 4) }, {})
+            local u = c.units[1]
+            for x = 1, 3 do Hazard.place(c, x, 5, "hazard_fire") end
+            openTurn(c, u)
+
+            local route = Combat.hazardRoute(c, u, 2, 6)
+            assert(route, "the walk still happens with fire the only road")
+            assert(route[#route].x == 2 and route[#route].y == 6, "and it arrives")
+            assert(Combat.planMoveVia(c, u, route), "the route through the fire is a legal walk")
+        end,
+    },
+    {
+        name = "the reachable band and the initiative a walk bills are untouched by a fire in the way",
+        fn = function()
+            -- The whole reason the toll is a route-only surcharge: the blue band and the timeline are
+            -- the player's numbers, and fire must not quietly move either of them.
+            local clean = Combat.new(arena(8, 8), { walker(4, 4) }, {})
+            local burning = Combat.new(arena(8, 8), { walker(4, 4) }, {})
+            Hazard.place(burning, 4, 5, "hazard_fire")
+
+            local a, b = Combat.reachable(clean, clean.units[1]), Combat.reachable(burning, burning.units[1])
+            local n, m = 0, 0
+            for k, node in pairs(a) do
+                n = n + 1
+                assert(b[k] and b[k].cost == node.cost, "tile " .. k .. " reaches for the same cost with fire on the board")
+            end
+            for _ in pairs(b) do m = m + 1 end
+            assert(n == m and n > 0, "and the band is exactly as wide, got " .. n .. " vs " .. m)
+
+            openTurn(burning, burning.units[1])
+            local plan = Combat.planMove(burning, burning.units[1], 4, 6)
+            assert(plan and plan.cost == 2, "a player's own walk through the fire still bills two tiles")
+        end,
+    },
 }

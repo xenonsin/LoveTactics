@@ -3512,7 +3512,11 @@ local function executeEnemyAction()
     -- With an approach, the walk and the action both resolve against the model here, in that order,
     -- and only the playback is left for the clock -- the same shape the player's strike takes above.
     -- Without one, there is nothing to replay and act_ resolves inline as it always did.
-    if act.move and startWalk(current, act.move.x, act.move.y, nil) then
+    -- Around the fire rather than through it. startWalk takes a steered route exactly as it does from
+    -- the player's own move path, and falls back to the shortest walk on a nil -- which is what
+    -- Combat.hazardRoute answers unless a hostile zone is genuinely in the way with a way around it.
+    local detour = act.move and Combat.hazardRoute(battle.combat, current, act.move.x, act.move.y)
+    if act.move and startWalk(current, act.move.x, act.move.y, nil, detour) then
         -- After the approach is spent, before the action resolves: only the ground THIS action lays is
         -- held back through the walk, exactly as the player's strike above (holdLanding's `pre`).
         local pre = boardObjects()
