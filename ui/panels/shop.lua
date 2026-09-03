@@ -867,6 +867,21 @@ end
 --
 -- Affordability is settled BEFORE the question is asked. Being walked through a confirmation and only
 -- then told no is a worse answer than being told no on the press.
+-- What the company already holds of a thing, in one line under its price. It is the other half of "is
+-- this worth 30 gold": a second Mana Potion is worth what the first one is, a second copy of a piece
+-- only one body can wear is worth much less, and the shelf cannot tell the player which of those they
+-- are looking at. The split is named because the two halves spend differently -- what is in the pile is
+-- there to be handed out, what is in a grid is already somebody's -- and a total with no split would
+-- read as "you have four of these" to a player carrying four on four different bodies.
+function Shop:heldLine(itemId)
+    local total, stashed, worn = Player.ownedCount(self.player, itemId)
+    if total <= 0 then return "You have none." end
+    local parts = {}
+    if stashed > 0 then parts[#parts + 1] = stashed .. " in the stash" end
+    if worn > 0 then parts[#parts + 1] = worn .. " carried" end
+    return "You have " .. total .. " already: " .. table.concat(parts, ", ") .. "."
+end
+
 function Shop:buy(row)
     local entry = row.entry
     if entry.locked then
@@ -879,9 +894,18 @@ function Shop:buy(row)
         return
     end
     local item = Item.instantiate(entry.id, nil, entry.level)
+    -- The reading comes WITH the question. The tile the player pressed carried its tooltip under the
+    -- cursor and the confirmation used to cover it with a name and a number, which is the least of what
+    -- an item is -- and on the pad and the keyboard there was never a cursor holding it open at all. It
+    -- is measured once here rather than per frame; nothing about the item changes while the box is up.
+    local layout = ItemTooltip.measure(item)
     self.confirm = Choice.new({
         title = "Confirm Purchase",
-        prompt = (item.name or "?") .. "  -  " .. entry.price .. " gold",
+        prompt = (item.name or "?") .. "  -  " .. entry.price .. " gold\n" .. self:heldLine(entry.id),
+        pane = layout and {
+            w = layout.w, h = layout.h,
+            draw = function(x, y) ItemTooltip.paint(layout, x, y) end,
+        } or nil,
         options = {
             { label = "Buy", accent = { 0.42, 0.80, 0.62 },
                 cb = function() self.confirm = nil; self:commitBuy(entry) end },

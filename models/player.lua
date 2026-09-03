@@ -216,6 +216,31 @@ function Player.takeFromStash(player, index)
     return table.remove(stash, index)
 end
 
+-- How many of `itemId` the company already holds, counted the way the player would count it: every
+-- copy loose in the stash plus every copy worn in a body's grid, with a stack worth its `quantity`.
+-- Returns the total and, beside it, the two halves it is made of, because they are not the same fact
+-- to a player -- three potions in the pile are three potions to spend, three potions spread over three
+-- grids are already committed -- and the caller decides which of that is worth saying (ui/panels/shop.lua
+-- names the split under a price).
+--
+-- Unidentified husks count. A husk IS a copy of whatever it turns out to be, and one already in the
+-- stash is exactly the reason not to buy another (models/identify.lua re-stamps in place, so the id is
+-- true the whole time it is unread).
+function Player.ownedCount(player, itemId)
+    if not (player and itemId) then return 0, 0, 0 end
+    local stashed, worn = 0, 0
+    for _, item in ipairs(player.stash or {}) do
+        if item and item.id == itemId then stashed = stashed + (item.quantity or 1) end
+    end
+    for _, char in ipairs(player.roster or {}) do
+        for cell = 1, Character.MAX_INVENTORY do
+            local item = (char.inventory or {})[cell]
+            if item and item.id == itemId then worn = worn + (item.quantity or 1) end
+        end
+    end
+    return stashed + worn, stashed, worn
+end
+
 -- Gain a companion. The one path by which the player ADDS a character to the roster after the
 -- starting roster -- a prologue recruit (the knight sworn in the village, the gladiator bested on the
 -- sand), and how a class line's main companion joins. Instantiates a fresh copy from the blueprint,

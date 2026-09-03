@@ -23,6 +23,15 @@
 -- yes-or-no still have a face behind it, without that counter growing a three-column panel it has no
 -- content for. Callers that pass no keeper are laid out exactly as they were.
 --
+-- A PANE is the other optional column, and unlike the keeper this widget draws none of it: pass
+-- `pane = { w=, h=, draw=function(x, y) end }` and the box grows a column of that size down its left,
+-- calling back to paint it at the corner it reserved. It exists so a question ABOUT SOMETHING can carry
+-- the something -- the shop's buy confirmation hands it the item's own hover tooltip (ui/item_tooltip.lua,
+-- measure once at ask-time, paint here), so the reading the player was looking at when they pressed Buy
+-- is still on screen while they answer, in the one shape items wear everywhere in this game. A caller
+-- that already knows how to draw a thing should not have to teach this widget, and this widget should
+-- not grow a dependency on the item layer to host a yes-or-no.
+--
 -- `keeper.gold` is the player's purse and it draws in the SAME PLACE it draws at every other counter:
 -- the first amber line under the portrait, above the name, not tucked in beside the price. A counter that
 -- charges is a counter where "can I afford the next one too" is the question being asked, and the answer
@@ -45,6 +54,9 @@ local PAD = 26
 -- has learned to read at one size in four other rooms should not be smaller in the fifth.
 local KEEPER_W = 260
 local KEEPER_GAP = 22
+-- Where a side column starts: under the title, level with the prompt, so the columns and the question
+-- share a top edge.
+local SIDE_TOP = 54
 -- What the pane costs OUTSIDE its text: `pad * 2` (24) and the 54/22 margins the box keeps above and
 -- below. Nothing else, because there is no picture in it any more.
 --
@@ -95,33 +107,60 @@ function Choice.new(opts)
     local keeperCol = self.keeper and (KEEPER_W + KEEPER_GAP) or 0
     self.keeperFootH = KEEPER_FOOT_H + ((self.keeper and self.keeper.gold) and KEEPER_GOLD_H or 0)
 
-    self.boxW = BOX_W + keeperCol
+    -- The caller-drawn pane takes a column of its own, outboard of the keeper's, so a counter that has
+    -- both a face and a thing on the table lays out as three columns rather than two overlapping ones.
+    self.pane = opts.pane
+    local paneCol = self.pane and (self.pane.w + KEEPER_GAP) or 0
+
+    self.boxW = BOX_W + keeperCol + paneCol
     -- Prompt wraps above the options; height follows it.
     self.promptH = 0
     if self.prompt then
-        local _, lines = self.promptFont:getWrap(self.prompt, BOX_W - PAD * 2)
-        self.promptH = math.max(1, #lines) * self.promptFont:getHeight() + 12
+        -- Measured a written line at a time, so a prompt that breaks its own lines (the shop asks a
+        -- price and then says what you already hold) is counted the way printf will draw it. Leaving
+        -- the newlines to getWrap alone is a bet on which of the two it counts.
+        local drawn = 0
+        for line in (self.prompt .. "\n"):gmatch("([^\n]*)\n") do
+            local _, wrapped = self.promptFont:getWrap(line, BOX_W - PAD * 2)
+            drawn = drawn + math.max(1, #wrapped)
+        end
+        self.promptH = math.max(1, drawn) * self.promptFont:getHeight() + 12
     end
     self.optTop = 58 + self.promptH
     self.optH = opts.optionHeight or OPT_H
     local natural = self.optTop + #self.options * (self.optH + OPT_GAP) + 22
     self.boxH = natural
-    if self.keeper then
-        self.boxH = math.max(natural, KEEPER_BASE_H + self.keeperFootH)
+    -- What the side columns ask of the box's height, whichever asks for more.
+    local sideH = 0
+    if self.keeper then sideH = math.max(sideH, KEEPER_BASE_H + self.keeperFootH) end
+    if self.pane then sideH = math.max(sideH, SIDE_TOP + self.pane.h + 22) end
+    if sideH > 0 then
+        self.boxH = math.max(natural, sideH)
         -- The slack the portrait bought is split above and below the stack rather than all dumped
         -- under it: options left hanging off the title read as a card that lost its bottom half.
         self.optTop = self.optTop + (self.boxH - natural) / 2
     end
     self.boxX = Scale.WIDTH / 2 - self.boxW / 2
-    self.boxY = Scale.HEIGHT / 2 - self.boxH / 2
+    -- Centred, but never off the top: a pane is as tall as whatever the caller measured, and an item
+    -- with a long ability reading can out-grow half the screen.
+    self.boxY = math.max(8, Scale.HEIGHT / 2 - self.boxH / 2)
     self.closeButton = CloseButton.new(self.boxX + self.boxW, self.boxY)
 
     -- Everything that is not the portrait lives in a column of the card's own width, offset past it.
-    self.colX = self.boxX + keeperCol
+    self.colX = self.boxX + keeperCol + paneCol
+    if self.pane then
+        -- Centred against the column it was given, so a short reading sits in the middle of the card
+        -- rather than hanging off its title.
+        local room = self.boxH - SIDE_TOP - 22
+        self.paneRect = {
+            x = self.boxX + PAD, y = self.boxY + SIDE_TOP + math.max(0, (room - self.pane.h) / 2),
+            w = self.pane.w, h = self.pane.h,
+        }
+    end
     if self.keeper then
         self.keeperRect = {
-            x = self.boxX + PAD, y = self.boxY + 54,
-            w = KEEPER_W, h = self.boxH - 54 - 22,
+            x = self.boxX + PAD + paneCol, y = self.boxY + SIDE_TOP,
+            w = KEEPER_W, h = self.boxH - SIDE_TOP - 22,
         }
     end
 
@@ -213,6 +252,9 @@ function Choice:draw()
     love.graphics.rectangle("line", bx, by, self.boxW, self.boxH, Theme.R, Theme.R)
 
     self:drawKeeper()
+    -- The caller's own column, painted at the corner reserved for it. Drawn before the options so a
+    -- pane that measured taller than it drew cannot print over them.
+    if self.pane and self.pane.draw then self.pane.draw(self.paneRect.x, self.paneRect.y) end
 
     local cx = self.colX
     love.graphics.setFont(self.titleFont)
@@ -262,7 +304,7 @@ function Choice:draw()
 
     local leaveHint = self.onClose and (InputMode.isGamepad() and "  -  B leave" or "  -  Esc leave") or ""
     -- A one-row card has nothing to walk between, and telling the player to walk it is the hint teaching
-    -- a control that does nothing. Confirm and leave are the whole of it (ui/panels/inn.lua).
+    -- a control that does nothing. Confirm and leave are the whole of it.
     local pad = InputMode.isGamepad()
     local hint
     if #self.options <= 1 then

@@ -211,4 +211,35 @@ return {
             end)
         end,
     },
+    {
+        name = "the confirmation carries the item's reading, and what the company already holds",
+        fn = function()
+            -- A name and a price is the least of what an item is, and the tooltip the player was
+            -- reading when they pressed Buy is the thing the question covered up. It comes with the
+            -- question now (as a measured pane the shop paints), and under the price sits the other
+            -- half of "is this worth 30 gold": how many are already in the company, and where.
+            stubFonts(function()
+                local Item = require("models.item")
+                local panel, row = anyBuyableRow(9999)
+                assert(panel, "no shipped vendor sells anything -- the fixture has rotted")
+
+                panel:activateRow(row)
+                local pane = panel.confirm.pane
+                assert(pane and pane.w > 0 and pane.h > 0, "the question reserves a column for the reading")
+                assert(pane.draw, "and hands the panel back a way to paint it")
+                assert(panel.confirm.prompt:find("You have none"),
+                    "a first copy says so plainly: " .. panel.confirm.prompt)
+                option(panel, "Cancel").cb()
+
+                -- One loose in the pile and one on a body: the same total, two different facts.
+                panel.player.stash = { Item.instantiate(row.entry.id) }
+                panel.player.roster = { { id = "probe", inventory = { Item.instantiate(row.entry.id) } } }
+                panel:activateRow(row)
+                local prompt = panel.confirm.prompt
+                assert(prompt:find("2 already"), "the count is the total: " .. prompt)
+                assert(prompt:find("1 in the stash") and prompt:find("1 carried"),
+                    "and it names the split: " .. prompt)
+            end)
+        end,
+    },
 }
