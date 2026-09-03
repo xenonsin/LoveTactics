@@ -69,6 +69,13 @@ local DEFAULT_COLOR = { 0.80, 0.80, 0.86 }
 -- The two measurements a host needs BEFORE it builds a pool, so it can lay several of them out in a
 -- fixed column (the shop stacks one per rack) without duplicating the cell metrics here.
 function PoolGrid.colsFor(w) return math.max(1, math.floor((w + GAP) / (CELL + GAP))) end
+-- The inverse, for a host laying a COLUMN out around a rack rather than a rack inside a column: the
+-- shop sets its detail column to a whole number of cells so the house shelf and the Market wrap the
+-- same stock the same way (ui/panels/shop.lua).
+function PoolGrid.widthForCols(cols)
+    cols = math.max(1, cols)
+    return cols * CELL + (cols - 1) * GAP
+end
 function PoolGrid.heightForRows(rows)
     rows = math.max(1, rows)
     return ARROW_H * 2 + rows * CELL + (rows - 1) * GAP
@@ -99,6 +106,9 @@ function PoolGrid.new(opts)
     -- store cell has its price already (from the entry) and never asks; a pool given neither draws no
     -- badge at all, which is every other stash in the game.
     self.priceOf = opts.priceOf
+    -- `purse() -> gold`, optional: what the company can spend, for reddening a store price it cannot
+    -- reach. A function rather than a number because the figure moves with every purchase.
+    self.purse = opts.purse
     self.nameFont = Theme.body(11)
     self.smallFont = Theme.body(11)
     self.bigFont = Theme.display(20)
@@ -328,7 +338,13 @@ function PoolGrid:drawCell(i, sx, sy)
         or (self.priceOf and self.priceOf(item, cell)) or nil
     local qty = (item.quantity or 1) > 1 and ("x" .. item.quantity) or nil
     if price then
-        Theme.set(Theme.accentAmber, dim)
+        -- PRICED AGAINST THE PURSE. A store cell the company cannot afford draws its figure in the
+        -- refusal colour rather than the gold every other price wears -- so "what can I take home" is
+        -- answered by scanning the rack instead of by pressing each tile and being told no. Gold is read
+        -- through a getter because it changes under a shelf that is not rebuilt (`purse`, optional: a
+        -- pool given none prices everything in amber, which is every rack outside a shop).
+        local afford = not (self.purse and cell.price and cell.price > (self.purse() or 0))
+        Theme.set(afford and Theme.accentAmber or Theme.accentWeapon, dim)
         love.graphics.printf(price, sx, sy + 3, CELL - badgeInset, "right")
         -- A priced stack sends its count to the OPPOSITE corner: two numbers stacked in one corner
         -- read as one number, and the count is the smaller question of the two.

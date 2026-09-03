@@ -68,6 +68,9 @@ function Menu.new(items, opts)
     self.startY = opts.startY
     self.centerX = opts.centerX
     self.font = opts.font or Theme.display(24)
+    -- The face for a header's second line (see Menu:drawHeader). Falls back to the row face, so a menu
+    -- that sets no `sub` on anything never notices this exists.
+    self.subFont = opts.subFont
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
     self.axisActive = false  -- edge detection so a held stick moves one step
 
@@ -306,24 +309,47 @@ end
 -- ring around gold text is not a highlight. Steel here also says the same thing it says everywhere
 -- else in the UI -- this is where the cursor is standing.
 local CARET = 9
+-- A header may carry a SECOND LINE (`sub`), muted, under its name: the shop's band rail sets the path's
+-- gate there ("Knight 8 + Hunter 8"), which will not fit beside a name in a 248px rail and is a
+-- different KIND of fact from the name anyway. The pair is centred in the row as one block, and the
+-- name's own baseline is published back on the item (`labelY`) so a host drawing a third thing on that
+-- line -- the shop's stock count -- lines up with it rather than guessing at the metrics.
 function Menu:drawHeader(item, active)
     love.graphics.setFont(self.font)
     local th = self.font:getHeight()
+    local sub = item.sub
+    local subFont = self.subFont or self.font
     local ty = item.y + item.h / 2 - th / 2
+    if sub then ty = item.y + item.h / 2 - (th + subFont:getHeight() - 3) / 2 end
+    item.labelY = ty
     local lx = item.x + VALUE_PAD
+    -- `noCaret` is for a header the cursor may LAND on that opens nothing -- the shop's locked bands,
+    -- which are selectable so their pane can be read but have no stock to walk into (ui/panels/shop.lua).
+    -- A disclosure mark on one would promise a section that is never coming.
     if item.action then
-        local cy = item.y + item.h / 2
-        Theme.set(active and Theme.cursor or Theme.accentAmber)
-        if item.collapsed then
-            love.graphics.polygon("fill", lx, cy - CARET * 0.5, lx, cy + CARET * 0.5, lx + CARET * 0.8, cy)
-        else
-            love.graphics.polygon("fill", lx - 1, cy - CARET * 0.4, lx + CARET - 1, cy - CARET * 0.4,
-                lx + CARET * 0.5 - 1, cy + CARET * 0.45)
+        if not item.noCaret then
+            local cy = item.y + item.h / 2
+            Theme.set(active and Theme.cursor or Theme.accentAmber)
+            if item.collapsed then
+                love.graphics.polygon("fill", lx, cy - CARET * 0.5, lx, cy + CARET * 0.5, lx + CARET * 0.8, cy)
+            else
+                love.graphics.polygon("fill", lx - 1, cy - CARET * 0.4, lx + CARET - 1, cy - CARET * 0.4,
+                    lx + CARET * 0.5 - 1, cy + CARET * 0.45)
+            end
         end
+        -- The indent is taken whether the caret drew or not: a `noCaret` header in a list of ordinary
+        -- ones is still a row in the same column, and a name that started 17px to the left of every
+        -- other name would read as a different kind of thing rather than as one that opens nothing.
         lx = lx + CARET + 8
     end
     Theme.set(Theme.accentAmber)
     love.graphics.printf((item.label or ""):upper(), lx, ty, item.x + item.w - VALUE_PAD - lx, "left")
+    if sub then
+        love.graphics.setFont(subFont)
+        Theme.set(Theme.muted, 0.9)
+        love.graphics.printf(sub, lx, ty + th - 3, item.x + item.w - VALUE_PAD - lx, "left")
+        love.graphics.setFont(self.font)
+    end
     Theme.set(Theme.frame, 0.7)
     love.graphics.line(item.x, item.y + item.h - 2, item.x + item.w, item.y + item.h - 2)
     -- A shut section hides its rows, dots and all, so the band carries the mark for what is under it.

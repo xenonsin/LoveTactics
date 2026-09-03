@@ -36,16 +36,18 @@
 -- too, for the same reason: what a player actually does here is compare one class's level against the
 -- rung above it, and a list puts those two numbers on one line.
 --
--- A LOCKED CLASS STANDS IN THE LIST UNNAMED. It holds the place it will take and carries the one thing
--- worth knowing about it while it is shut: what opens it. "Requires Knight lvl 3" is a direction the
--- player can act on this afternoon; the NAME is the thing the work is for, so the name is the half
--- withheld. A count per house ("3 more open further along") named neither, and a greyed-out tree names
--- everything -- this is the middle. Every path is on the list, every shut one is a job you can read
--- straight off its row, and none of them is spoiled.
+-- A LOCKED CLASS STANDS IN THE LIST NAMED. It holds the place it will take and carries both halves of
+-- what a player wants off it: WHAT it is, and what opens it. The name was withheld for a while -- a
+-- shut row printed its gate and nothing else, on the theory that the name is the thing the work is for
+-- and so the thing to keep back. That is a good rule for a reward and a bad one for a DESTINATION:
+-- "Knight 5 + Rogue 5" is a price with nothing named on the other side of it, and a player deciding
+-- which house to climb this afternoon is choosing between names. The shop's shelf names the same paths
+-- on the same gates (ui/panels/shop.lua), so the two screens now say one thing.
 --
--- AN UNNAMED ROW IS NOT PICKABLE. The cursor steps over it and the mouse will not take it, because
--- selecting a row opens the detail column on it -- the name, the blurb, the lineage, which is exactly
--- what the row is holding back.
+-- A SHUT ROW IS STILL NOT PICKABLE. The cursor steps over it and the mouse will not take it: what
+-- selecting a row does is open the detail column -- the blurb, the lineage, the growth table, every
+-- figure of which is about a class this body HAS. The row says what it is and what it costs, which is
+-- the whole of what can be true about it yet.
 --
 -- A MULTICLASS IS FILED UNDER BOTH ITS PARENTS. Shopping both shelves is literally how you build one
 -- (models/vendor.lua says the same about its stock), so hiding it under one parent would make half the
@@ -131,8 +133,9 @@ local function crossingsOf(class)
 end
 
 -- The deepest rung a class asks of any parent -- what it costs to reach, as one number. It is what the
--- shut rows are ordered on: a name is the usual sort key and a shut row has no name, so alphabetical
--- would be an order the player cannot see and the group would read as a shuffled pile.
+-- shut rows are ordered on, in preference to their names: what a player reads a shut group for is what
+-- to climb NEXT, and cheapest-first is that order -- alphabetical would scatter the near ones through
+-- the far ones and the group would read as a pile.
 local function gateLevel(id)
     local deepest = 0
     for _, need in pairs((Class.defs[id] or {}).requires or {}) do
@@ -276,13 +279,15 @@ function ClassEditor:buildRows()
         }
     end
 
-    -- A place on the list for a class this body has not opened, holding its requirement and nothing
-    -- else. It carries no name and no id: everything downstream reads a row by asking what it IS, and
-    -- an unnamed row that quietly knew its own id is one careless field away from printing it.
+    -- A place on the list for a class this body has not opened: its name, and what opens it. It carries
+    -- no id, which is not the same withholding the name used to be -- an id is how the panel asks
+    -- questions ABOUT a body's standing in a class (the detail column, the growth table, the change
+    -- press), and every one of those is a question this row has no answer to.
     local function shutEntry(id, parent)
         local gate, tail = lockParts(id, parent)
         self.rows[#self.rows + 1] = {
             kind = "shut", parent = parent, gate = gate, locked = tail,
+            name = Class.displayName(id) or id,
             level = 0, held = 0, needed = 0,
         }
     end
@@ -422,7 +427,7 @@ end
 -- ---------------------------------------------------------------------------
 
 -- Can this body take the highlighted class as its own? Only an opened class can be highlighted at all
--- (a shut row is unnamed and unpickable), so the only refusal left is the one it is already standing in.
+-- (a shut row is named but unpickable), so the only refusal left is the one it is already standing in.
 function ClassEditor:canChange()
     local row = self:currentRow()
     if not (row and self.char) then return false end
@@ -718,17 +723,23 @@ function ClassEditor:drawList(focused)
                     0.85)
                 love.graphics.printf(tostring(row.gate), x, ry + 7, GUTTER_W - 9, "right")
             end
-            -- THE MARK IS WHAT MAKES AN EMPTY BOX READ AS A SLOT. A shut subclass has only one parent,
-            -- so it has no second house to name and the row is left with nothing inside it -- and an
-            -- empty rounded rectangle in a column of full ones reads as a row that failed to draw
-            -- rather than as a place waiting to be taken. The mark is the same on every shut row, so
-            -- what a crossing adds beside it is legible as the extra thing it is.
-            Theme.set(Theme.frame, 0.8)
-            love.graphics.rectangle("line", x + GUTTER_W + 11, ry + 11, 7, 7, 1, 1)
-            Theme.set(Theme.muted, 0.75)
+            -- THE NAME, IN THE COLUMN EVERY OTHER NAME STANDS IN -- same indent, so the shelf reads as
+            -- one ladder of classes rather than as a list of things and a list of prices. Muted rather
+            -- than levelled: it is the only ink on the row that is not about a rung this body holds.
+            -- (A small empty square used to stand here instead, to keep the outline from reading as a
+            -- row that failed to draw. A name does that better and says something as well.)
+            local nameFont, shutName = Theme.fitText(Theme.body, row.name or "", w - GUTTER_W - 100, 15, 12)
+            love.graphics.setFont(nameFont)
+            Theme.set(Theme.muted, 0.9)
+            love.graphics.print(shutName, x + GUTTER_W + 10, ry + 5)
+            -- The crossing's OTHER half, after the name exactly as an opened crossing carries it.
             if row.locked then
-                love.graphics.print(Theme.ellipsize(row.locked, small, w - GUTTER_W - 40),
-                    x + GUTTER_W + 26, ry + 7)
+                love.graphics.setFont(small)
+                Theme.set(Theme.muted, 0.7)
+                love.graphics.print(Theme.ellipsize("  " .. row.locked, small, w - GUTTER_W - 20
+                    - nameFont:getWidth(shutName)),
+                    x + GUTTER_W + 10 + nameFont:getWidth(shutName),
+                    ry + 5 + nameFont:getHeight() - small:getHeight())
             end
         else
             local on = i == self.cursor
@@ -890,9 +901,10 @@ function ClassEditor:drawLineage(row, x, y, w)
     -- A ROOT: what it opens, fanned out. Same reading as the rows below its header, so what this adds
     -- is the OTHER parent of each crossing -- the half of a crossing the list is structurally unable to
     -- print, since it files the same class under two houses and shows one at a time.
-    -- ONLY WHAT IS OPEN IS FANNED. What is shut is named nowhere, here least of all: this strip draws
-    -- names, and a name is the one thing a shut class does not give up (see the header). The list is
-    -- where those stand, as their requirement.
+    -- ONLY WHAT IS OPEN IS FANNED. Not because a shut class is unnameable here -- the list beside this
+    -- names every one of them -- but because a fan is a picture of what this body HAS made of a house,
+    -- and every node on it carries a level. The shut ones are counted on the house row and named in
+    -- full on the list, which is the place that can also say what opens them.
     local open = childrenOf(row.id, char)
     local fan = {}
     local cap = math.min(LINEAGE_MAX, avail)

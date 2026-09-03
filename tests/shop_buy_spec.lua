@@ -56,16 +56,21 @@ end
 -- The first priced, unlocked row on any shipped shelf, so the test names no vendor and no item by hand
 -- and cannot rot when a house's stock is re-cut. Returns the panel, the row, and its index.
 --
--- `listOnly` skips the market: what it hands back is a panel with a Menu behind it, and the market has
--- none -- its counter is a grid (Shop:usesGrid), which is a different set of assertions.
-local function anyBuyableRow(gold, minRows, listOnly)
+-- IT LOOKS INSIDE A BAND. The Market's counter is a flat list of item rows; a house's is a list of
+-- BANDS, each carrying the rows its rack draws (ui/panels/shop.lua), so a walk that only read the top
+-- level would find nothing at all on six of the seven shelves.
+--
+-- `housesOnly` skips the market, for the assertions that are about the band shelf specifically.
+local function anyBuyableRow(gold, housesOnly)
+    local function priced(row)
+        return not row.header and not row.locked and row.entry and row.entry.price > 0
+    end
     for _, def in ipairs(Vendor.list()) do
-        local panel = (not (listOnly and (Vendor.get(def.id) or {}).sellsAll)) and shopFor(def.id, gold)
-        if panel and #panel.rows >= (minRows or 0) then
-            for i, row in ipairs(panel.rows) do
-                if not row.header and not row.locked and row.entry and row.entry.price > 0 then
-                    return panel, row, i
-                end
+        local panel = (not (housesOnly and (Vendor.get(def.id) or {}).sellsAll)) and shopFor(def.id, gold)
+        for i, row in ipairs(panel and panel.rows or {}) do
+            if priced(row) then return panel, row, i end
+            for j, sub in ipairs(row.rows or {}) do
+                if priced(sub) then return panel, sub, j, row end
             end
         end
     end
@@ -126,6 +131,10 @@ return {
                 local row
                 for _, r in ipairs(panel.rows) do
                     if r.entry and r.entry.id == probeRow.entry.id then row = r break end
+                    for _, sub in ipairs(r.rows or {}) do
+                        if sub.entry and sub.entry.id == probeRow.entry.id then row = sub break end
+                    end
+                    if row then break end
                 end
                 assert(row, "the same row is on the same shelf")
 
@@ -136,23 +145,32 @@ return {
         end,
     },
     {
-        name = "a purchase leaves the list exactly where the player scrolled it",
+        name = "a purchase leaves the house shelf exactly where the player put it",
         fn = function()
-            -- A rebuild that kept only the selection dragged the scroll window forward until the
-            -- selected row scraped in at its bottom edge -- which, forty rows down a shelf, reads as
-            -- the list snapping back. Buying changes no row's index, so nothing may appear to move.
+            -- A rebuild that kept only the selection dragged the window forward until the selected
+            -- thing scraped in at an edge -- which, deep into a shelf, reads as the screen snapping
+            -- back. Buying changes no index on either half of this shelf, so neither the band the
+            -- player is standing on nor the rack beside it may appear to move.
             stubFonts(function()
-                local panel, row = anyBuyableRow(9999, 20, true)
-                assert(panel, "no shipped shelf runs 20 rows -- the fixture has rotted")
-                panel.menu.scroll = 8
-                panel.menu.selected = 12
-                local scroll, selected = panel.menu.scroll, panel.menu.selected
+                local panel, row = anyBuyableRow(9999, true)
+                assert(panel, "no shipped house sells anything -- the fixture has rotted")
+                local band = panel.rows[panel.menu.selected]
+                local rack = panel.sections[1]
+                assert(rack and rack.pool:count() > 1, "the opening band carries more than one piece")
+
+                rack.pool.cursor = 2
+                local cursor, offset, selected = rack.pool.cursor, rack.pool.offset, panel.menu.selected
 
                 panel:commitBuy(row.entry)
-                assert(panel.menu.scroll == scroll,
-                    "the scroll window holds: " .. scroll .. " -> " .. panel.menu.scroll)
                 assert(panel.menu.selected == selected,
-                    "and so does the cursor: " .. selected .. " -> " .. panel.menu.selected)
+                    "the band holds: " .. selected .. " -> " .. panel.menu.selected)
+                assert(panel.rows[panel.menu.selected].key == band.key, "and it is the same band")
+                local after = panel.sections[1]
+                assert(after and after.key == band.key, "the rack survives the rebuild")
+                assert(after.pool.cursor == cursor,
+                    "the cursor holds: " .. cursor .. " -> " .. after.pool.cursor)
+                assert(after.pool.offset == offset,
+                    "and so does the scroll: " .. offset .. " -> " .. after.pool.offset)
             end)
         end,
     },
