@@ -225,7 +225,7 @@ return {
     -- thing left to assert. The Gate standing alone in the plaza is covered by the case below, which
     -- counts the doors the city opens on.)
     {
-        -- THE CITY GROWS ON WHAT THE COMPANY HAS DONE. Four of the eight cards on the plaza do nothing
+        -- THE CITY GROWS ON WHAT THE COMPANY HAS DONE. Five of the eight cards on the plaza do nothing
         -- on a fresh save -- there is no bone to set, no shelf to browse, no supper worth buying for a
         -- road nobody has walked and nothing in the bag to forge -- so each arrives on the deed that
         -- gives it a job. Pinned card by card, because the whole value of the staging is the ORDER.
@@ -249,8 +249,10 @@ return {
                 if not b.locked then open[#open + 1] = b.id end
             end
             table.sort(open)
-            assert(table.concat(open, ",") == "armory,market,the_gate,the_roll",
-                "a fresh city opens on the armory, the market, the stair and the roll; got " ..
+            -- Three, not four: the roll was a card of its own for a while and is a tab of the Armory
+            -- now (ui/jobs_editor.lua), which is the same door the question was always behind.
+            assert(table.concat(open, ",") == "armory,market,the_gate",
+                "a fresh city opens on the armory, the market and the stair; got " ..
                 table.concat(open, ", "))
 
             -- THE INN, on the first wound. Setting a bone is the only thing it does, so a company that

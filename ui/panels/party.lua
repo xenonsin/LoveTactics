@@ -22,6 +22,7 @@
 
 local InventoryGrid = require("ui.inventory_grid")
 local TacticsEditor = require("ui.tactics_editor")
+local JobsEditor = require("ui.jobs_editor")
 local PoolGrid = require("ui.pool_grid")
 local AdjacencyLinks = require("ui.adjacency_links")
 local Glyphs = require("ui.glyphs")
@@ -120,17 +121,22 @@ Party.SORTS = SORTS -- exposed for tests/loadout_sort_spec.lua
 local SORT_ROW_H = 22
 
 -- The tabs. `loadout` is the original screen, unchanged; `tactics` swaps the grid/stash columns for
--- the rule editor (ui/tactics_editor.lua), and the optional `stats` tab (opts.stats -- the debug
--- character editor) swaps them for the blueprint field editor. The portrait rail stays up in ALL of
--- them, so switching character works the same way whichever tab is open -- a tab is a view of one
--- member, not a different screen. Segment pattern follows ui/panels/shop.lua's Buy/Sell/Upgrade
--- selector.
+-- the rule editor (ui/tactics_editor.lua), `jobs` for the roll (ui/jobs_editor.lua), and the optional
+-- `stats` tab (opts.stats -- the debug character editor) for the blueprint field editor. The portrait
+-- rail stays up in ALL of them, so switching character works the same way whichever tab is open -- a
+-- tab is a view of one member, not a different screen. Segment pattern follows ui/panels/shop.lua's
+-- Buy/Sell/Upgrade selector.
 --
--- `tactics` and `stats` are both COLUMN EDITORS: one widget claiming the whole area right of the
--- rail, driven through a common interface (see Party:columnEditor). Everything below branches on
--- "is there a column editor" rather than on the tab's name, so a third one costs a table entry
+-- THE ROLL CAME IN AS A TAB rather than as a door of its own. It had one for a while -- the card under
+-- the Gate on the plaza -- and one card for one question about a body was a card too many: what a
+-- member carries and what a member IS are the same question asked twice, and the rail down the left of
+-- this panel is already the roster that screen drew for itself.
+--
+-- `tactics`, `jobs` and `stats` are all COLUMN EDITORS: one widget claiming the whole area right of
+-- the rail, driven through a common interface (see Party:columnEditor). Everything below branches on
+-- "is there a column editor" rather than on the tab's name, so a fourth one costs a table entry
 -- rather than another dozen `mode == "..."` tests.
-local MODE_LABEL = { loadout = "Loadout", tactics = "Tactics", stats = "Stats" }
+local MODE_LABEL = { loadout = "Loadout", tactics = "Tactics", jobs = "Jobs", stats = "Stats" }
 local MODE_H = 28
 
 -- Semantic prompt-glyph tints, kept across input modes (the glyph text changes A<->Enter, the
@@ -290,6 +296,9 @@ function Party.new(opts)
     --   stats    (opt-in) add the blueprint field editor tab (states/debug_editor.lua)
     --   tactics  (opt-out, default on) the rule-editor tab; the flight tutorial passes false so the
     --            Tactics tab stays hidden until the player has reached the hub city and it is taught
+    --   jobs     (opt-out, default on) the roll: what each body is declared as and what it may become.
+    --            Draft passes false -- a drafted unit is bought as a chassis and never climbs a job
+    --            ladder -- and so does the flight tutorial, for the reason Tactics does
     --   persist  false to skip the Player.save() on close -- a synthetic player must never be able
     --            to overwrite the real save
     --   fielded  the members standing on the board right now, badged on the rail (see Party:isFielded);
@@ -298,6 +307,7 @@ function Party.new(opts)
     --            control, Sort, needs nothing from the host and is always offered (see SORTS)
     self.modes = { "loadout" }
     if opts.tactics ~= false then self.modes[#self.modes + 1] = "tactics" end
+    if opts.jobs ~= false then self.modes[#self.modes + 1] = "jobs" end
     if opts.stats then self.modes[#self.modes + 1] = "stats" end
     self.persist = opts.persist ~= false
     self.fielded = opts.fielded
@@ -436,6 +446,7 @@ function Party.new(opts)
         ownKey = opts.tacticsOwn,
     }
     self.editors = { tactics = TacticsEditor.new(column) }
+    if opts.jobs ~= false then self.editors.jobs = JobsEditor.new(column) end
     if opts.stats then
         -- Required lazily: the stat editor is debug-only content, and the shipped Loadout screen
         -- should not pay to load it.
@@ -1706,7 +1717,9 @@ function Party:draw()
     self:drawRail()
     local editor = self:columnEditor()
     if editor then
-        editor:draw()
+        -- Whether the cursor in there is the live one or a parked one -- the rail can hold the focus on
+        -- any tab. An editor that draws its own selection the same either way ignores the argument.
+        editor:draw(self.focus == "editor")
     else
         self:drawFocus()
         self:drawMemberGrid()

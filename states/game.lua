@@ -322,6 +322,9 @@ local function openLoadout()
         -- The Tactics tab is taught later, at the hub; hide it on the flight leg (before the player has
         -- ever reached the city) so the overworld Loadout is just the equip lesson.
         tactics = game.tutorial ~= "flight",
+        -- The roll is the city's lesson too: a body on the flight leg has one job and no ladder to
+        -- read, so the tab arrives with the town that explains it.
+        jobs = game.tutorial ~= "flight",
         -- Clear the equip coach the instant the player equips something, not on panel close.
         onEquip = function()
             if game.coach == "equip" then game.coach = nil end

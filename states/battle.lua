@@ -4541,6 +4541,9 @@ function battle.openDeployLoadout(player)
         -- Rule lists are the city's lesson: before the flight tutorial has reached it, this screen is
         -- the equip screen and nothing else -- the same line states/game.lua draws over the overworld.
         tactics = not battle.tutorial,
+        -- ...and the roll with it, for the same reason: on the flight leg this screen is the equip
+        -- lesson and nothing else.
+        jobs = not battle.tutorial,
         onClose = function()
             battle.deployLoadout = nil
             -- A body snapshots what its gear decides at the moment it is stood up (its initiative is

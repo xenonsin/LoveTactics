@@ -1,7 +1,7 @@
 -- THE CITY COACHING A DOOR IT HAS JUST GROWN (models/building.lua's seenDoors block, states/hub.lua's
 -- coachNextDoor).
 --
--- Six of the nine cards on the plaza are shut on a fresh save and each opens on a deed done
+-- Five of the eight cards on the plaza are shut on a fresh save and each opens on a deed done
 -- underground. The player comes up, a card that was three question marks is a name, and without this
 -- nothing says it happened or what the room is for. So the city puts a bubble on the card -- the same
 -- one the first visit puts on the hall and the stair -- and refuses every other card until it has been
