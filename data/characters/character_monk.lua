@@ -1,7 +1,7 @@
 -- Monk exemplar (priest subclass). Chi: unarmed strikes bank a charge spent on a burst. Met as a
 -- fist-and-litany ascetic, a mentor. No weapon -- it fights bare-handed (that IS the discipline); the
 -- fist charms scale the punches and chi feeds Flurry and Asura Strike. Kit from
--- data/disciplines/monk.lua.
+-- data/classes/monk.lua.
 return {
     name = "Monk",
     kind = "humanoid",

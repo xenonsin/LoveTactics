@@ -21,6 +21,7 @@ return {
     flavor = "Most of a circle went in here. None of it made the thing faster.",
     sprite = "assets/items/distended_hide.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_boss_phases" },

@@ -26,6 +26,7 @@ return {
     flavor = "A lesser demon's whole argument, and it makes it from as far back as it can.",
     sprite = "assets/items/cinder_spit.png",
     type = "weapon",
+    class = "creature",
     -- `magical` routes the damage through magicDamage/magicDefense; `natural` is the family (a
     -- creature's body, never sold and never stolen), and the only archetype tag here.
     tags = { "natural", "fire", "magical" },

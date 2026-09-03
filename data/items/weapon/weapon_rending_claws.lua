@@ -27,6 +27,7 @@ return {
     flavor = "An imp spits at you from across the lane. This one comes and takes hold.",
     sprite = "assets/items/rending_claws.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "slash", "physical", "melee" },
     noSteal = true, -- a creature's body is not loot
     activeAbility = {

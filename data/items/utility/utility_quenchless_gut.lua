@@ -8,6 +8,7 @@ return {
     flavor = "It went into the rift to put itself out. It came back with a taste for it.",
     sprite = "assets/items/quenchless_gut.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_drinks_the_fire" },

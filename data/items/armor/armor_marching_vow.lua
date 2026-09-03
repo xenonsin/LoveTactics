@@ -19,8 +19,7 @@ return {
     sprite = "assets/items/sig_marching_vow.png",
     type = "armor",
     tags = { "signature", "holy" },
-    class = "priest",
-    discipline = "crusader",
+    class = "crusader",
     bonus = { defense = Curve.ramp(2, 12), movement = -1 },
     -- It declares the pool it spends. Without this the relic would be INERT until the crusader also
     -- happened to own Vow of the March or the Tabard -- a signature that only works if you bought

@@ -26,8 +26,7 @@ return {
     sprite = "assets/items/ability_bind_spirit.png",
     type = "ability",
     tags = { "summon", "lightning" },
-    class = "mage",
-    discipline = "shaman",
+    class = "shaman",
     price = 740,
     unlockQuests = 8,
     activeAbility = {

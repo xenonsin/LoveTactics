@@ -18,8 +18,7 @@ return {
     sprite = "assets/items/ability_the_question.png",
     type = "ability",
     tags = { "guile" },
-    class = "rogue",
-    discipline = "inquisitor",
+    class = "inquisitor",
     price = 165,
     unlockQuests = 1,
     activeAbility = {

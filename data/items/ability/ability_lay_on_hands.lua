@@ -22,8 +22,7 @@ return {
     sprite = "assets/items/ability_lay_on_hands.png",
     type = "ability",
     tags = { "holy" },
-    class = "priest",
-    discipline = "paladin",
+    class = "paladin",
     price = 660,
     unlockQuests = 7,
     activeAbility = {

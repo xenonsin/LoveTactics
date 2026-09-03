@@ -4,7 +4,7 @@
 -- THIS FILE USED TO BE A LADDER, and most of it is gone. Every house posted a line of errands -- its
 -- opener plus one job per discipline gate -- and running them was what climbed that house's shelf. The
 -- houses are classes now (docs/classes.md): a class is something a BODY climbs by playing its gear
--- (models/discipline.lua's Discipline.classLevel), not a room you unlock and not a shelf you buy a rung
+-- (models/class.lua's Class.classLevel), not a room you unlock and not a shelf you buy a rung
 -- of at a time. So there is no ladder left to lay, no door left to open, and no shop left to ask from.
 --
 -- WHY THE FILE SURVIVES AT ALL. One thing the ladder carried was worth keeping and had nowhere else to

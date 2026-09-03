@@ -27,8 +27,7 @@ return {
     sprite = "assets/items/ability_detonate.png", -- placeholder until its own art exists
     type = "ability",
     tags = { "fire", "explosive" },
-    class = "alchemist",
-    discipline = "bombardier", -- deeper cut of the shelf: buyable only once the bombardier gate is cleared
+    class = "bombardier", -- deeper cut of the shelf: buyable only once the bombardier gate is cleared
     price = 165,
     unlockQuests = 1,
     activeAbility = {

@@ -9,6 +9,7 @@ return {
     flavor = "You cannot pocket the sea. It sets up its own next blow, and never hurries.",
     sprite = "assets/items/tide_fists.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "water", "magical", "melee" },
     noSteal = true,
     activeAbility = {

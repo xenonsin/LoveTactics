@@ -282,7 +282,7 @@ function Growth.bossShare(level, ref) return shareAt(level, Growth.BOSS_FLOOR_SH
 function Growth.bossHitShare(level, ref) return shareAt(level, Growth.BOSS_FLOOR_SHARE_HIT, ref) end
 
 -- THE CLASS LEVEL A SPAWNED BODY FIGHTS AT, on the same 0..CLASS_LEVEL_CAP ladder a player's bodies
--- climb (Discipline.classLevel), spread across the whole level range.
+-- climb (Class.classLevel), spread across the whole level range.
 --
 -- WHY AN ENEMY NEEDS ONE AT ALL. A class level scales what an item does for the body holding it
 -- (Combat.classScaled). Left at nought, every enemy in the game would swing at the item's authored
@@ -298,14 +298,14 @@ function Growth.bossHitShare(level, ref) return shareAt(level, Growth.BOSS_FLOOR
 --
 -- STAMPED AS CAREER TECHNIQUE rather than as a class level of its own, so there is ONE ledger and one
 -- reader. A second field saying "this body is Knight 5" could disagree with the technique that is
--- supposed to mean the same thing, and Discipline.classLevel would have to choose between them.
+-- supposed to mean the same thing, and Class.classLevel would have to choose between them.
 local function stampClassLevel(char, level)
-    local Discipline = require("models.discipline")
+    local Class = require("models.class")
     local key = Growth.jobOf(char)
     local span = math.max(1, Growth.LEVEL_CAP - 1)
-    local n = math.floor(Discipline.CLASS_LEVEL_CAP * math.max(0, (level or 1) - 1) / span + 0.5)
+    local n = math.floor(Class.CLASS_LEVEL_CAP * math.max(0, (level or 1) - 1) / span + 0.5)
     char.technique = char.technique or {}
-    local earned = Discipline.classLevelCost(n)
+    local earned = Class.classLevelCost(n)
     if earned > (char.technique[key] or 0) then char.technique[key] = earned end
 end
 
@@ -370,7 +370,7 @@ end
 -- she", and the answer to that question is exactly what a job system is for. Declaring it makes growth
 -- a decision rather than a readout of one.
 --
--- WHAT DID NOT MOVE WITH IT is the class LEVEL (Discipline.classLevel), which still follows the items
+-- WHAT DID NOT MOVE WITH IT is the class LEVEL (Class.classLevel), which still follows the items
 -- actually used -- Combat.awardTechnique banks against the class of the thing in the hand. The two
 -- readings are deliberately different questions: the badge says how this body grows, the hands say what
 -- it has got good at. A body declared knight while casting mage gear takes knight growth and mage class
@@ -449,7 +449,7 @@ end
 -- remainder carried in char.growthCarry and a per-key ledger of credited levels written to
 -- char.growthBy. All three are retired: the blend because growth is a declaration now (Growth.jobOf),
 -- and growthBy because the class level it fed is read off cumulative technique instead
--- (Discipline.classLevel), which is one ledger where there were two that could disagree.
+-- (Class.classLevel), which is one ledger where there were two that could disagree.
 --
 -- Levels already credited are still never revisited, so a stat can only ever go UP. That mattered more
 -- under the blend -- re-apportioning history against a changed reading could have taken max health off

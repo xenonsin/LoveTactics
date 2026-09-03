@@ -1355,7 +1355,7 @@ Grade.SLOT_PINS = {
     -- CADENCE: the Colosseum's rung 2, which the re-cut left opening a single plain row.
     --
     -- The shelf was cut into six rungs and is cut into nine now -- one per rung of the class ladder that
-    -- opens it (Discipline.CLASS_LEVEL_CAP) -- and spreading the same stock over three more bands left
+    -- opens it (Class.CLASS_LEVEL_CAP) -- and spreading the same stock over three more bands left
     -- exactly one house with a gate that barely moves: a player climbs a whole rogue... fighter level and
     -- the arena's shop shows them one new row. `tests/balance_spec.lua`'s fair-share case is what caught
     -- it, and this is the fix that file's own note prescribes.
@@ -1380,7 +1380,7 @@ Grade.SLOT_PINS = {
     ability_ledgers_due = { at = 2, why = "a Mammonite earner: buyable by the time the gate clears" },
     ability_price_on_the_head = { max = 2, why = "a Mammonite earner" },
     -- THE GATE MOVED, SO THE HALVES MOVED WITH IT. These four wait past the Mammonite's own gate
-    -- and the gate is a rogue level now (data/disciplines/mammonite.lua), not the Undercroft's
+    -- and the gate is a rogue level now (data/classes/mammonite.lua), not the Undercroft's
     -- sixth job -- so a `min` of 4 that used to sit two tiers ahead of it now sits two behind.
     -- The claim is unchanged and is an ORDERING: the earners are on sale by the time you can
     -- walk in, and the spenders are Aurea's own art, still ahead of you when you do.

@@ -18,6 +18,7 @@ return {
     flavor = "What is left when everything else is gone. It has never once been enough.",
     sprite = "assets/items/unarmed.png", -- never rendered (hidden from the grid); ok if missing
     type = "weapon",
+    class = "creature",
     tags = { "unarmed", "physical", "melee" },
     activeAbility = {
         target = "enemy",

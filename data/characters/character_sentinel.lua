@@ -1,7 +1,7 @@
 -- Sentinel exemplar (knight subclass). Intercept: redirect adjacent allies' incoming hits onto
 -- yourself. Met as a mentor -- the Knight in Grey shows this discipline in its unlock quest, but that
 -- body (character_grey_knight) is a deliberately minimal, story-disguised encounter unit, so the
--- discipline exemplar is authored here with the full Sentinel kit. Kit from data/disciplines/sentinel.lua.
+-- discipline exemplar is authored here with the full Sentinel kit. Kit from data/classes/sentinel.lua.
 return {
     name = "Sentinel",
     kind = "humanoid",

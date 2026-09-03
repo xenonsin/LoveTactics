@@ -15,6 +15,7 @@ return {
     flavor = "The bog does not pull you under all at once. It simply stops letting go.",
     sprite = "assets/items/swallowing_grip.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "impact", "physical", "melee" },
     noSteal = true,
     activeAbility = {

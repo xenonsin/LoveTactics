@@ -13,6 +13,7 @@ return {
     flavor = "It has been reaching for the same thing since before the ice came. It is in no hurry.",
     sprite = "assets/items/drift_touch.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "ice", "magical", "melee" },
     noSteal = true,
     activeAbility = {

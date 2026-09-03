@@ -28,7 +28,7 @@
 local Character = require("models.character")
 local CloseButton = require("ui.close_button")
 local Colors = require("ui.colors")
-local Discipline = require("models.discipline")
+local Class = require("models.class")
 local FootprintDiagram = require("ui.footprint_diagram")
 local Forge = require("models.forge")
 local ForgeTrack = require("ui.forge_track")
@@ -165,7 +165,7 @@ end
 -- Knight", which title-casing alone would render "Plague_knight".
 local function keyLabel(key)
     if not key then return "" end
-    return Discipline.displayName(key) or (key:gsub("^%l", string.upper))
+    return Class.displayName(key) or (key:gsub("^%l", string.upper))
 end
 
 -- The cost in a card's right column: what the NEXT rung costs, or why there isn't one. Anything
@@ -363,19 +363,22 @@ function ForgePanel:ceilingReason(item)
 end
 
 -- What this thing's ladder is measured against: the bank that bills it and who on the roster is
--- carrying that bank. A DISCIPLINE item stops there -- it has no ceiling left, and the only question is
--- whether the technique is there. A plain class item adds the ceiling its house's standing sets, which
--- is a separate gate from the price and survives it (see Forge.ceilingFor).
+-- carrying that bank. An EARNED class's item stops there -- it has no ceiling left, and the only
+-- question is whether the technique is there. A ROOT class's item adds the ceiling its house's standing
+-- sets, which is a separate gate from the price and survives it (see Forge.ceilingFor).
+--
+-- Both readings came off `item.discipline` before the fold; one field now, and the earned/root split is
+-- the predicate (docs/class-fold.md). Left as a truthiness check it would have printed a ceiling on
+-- every deep cut in the game -- true, since Forge.ceilingFor answers the top for them, and meaningless.
 function ForgePanel:standingLine(item)
-    local key = (item.discipline and Discipline.defs[item.discipline] and item.discipline)
-        or Item.classOf(item)
+    local key = Item.classOf(item)
     if not key then return nil end
 
     local name = keyLabel(key)
-    local holder, held = Discipline.techniqueHolder(self.player, key)
+    local holder, held = Class.techniqueHolder(self.player, key)
     local bank = holder and (held .. " held by " .. (holder.name or "?")) or "none banked yet"
 
-    if item.discipline and Discipline.defs[item.discipline] then
+    if Class.isEarned(key) then
         return name .. " - " .. bank
     end
     return name .. " - " .. bank .. ", ceiling +" .. Forge.ceilingFor(self.player, item)
@@ -388,8 +391,7 @@ end
 function ForgePanel:refusal(reason, item)
     if reason == "gold" then return "Not enough gold." end
     if reason == "technique" then
-        local key = (item.discipline and Discipline.defs[item.discipline] and item.discipline)
-            or Item.classOf(item)
+        local key = Item.classOf(item)
         local name = key and keyLabel(key) or "that house"
         return "Not enough technique. Fight with " .. name .. " gear to bank more."
     end
@@ -678,10 +680,11 @@ function ForgePanel:drawDetail()
     love.graphics.print(name, hx, y - 2)
 
     local bits = { row.kind == "recipe" and "recipe" or item.type }
-    local disc = item.discipline and Discipline.defs[item.discipline]
-        and (Discipline.displayName(item.discipline) or item.discipline)
+    -- One class since the fold (docs/class-fold.md), so this names it once rather than choosing
+    -- between a deeper cut and the shelf under it. Through the display name so a two-word class reads
+    -- as two words rather than as its slug.
     local class = Item.classOf(item)
-    if disc then bits[#bits + 1] = disc elseif class then bits[#bits + 1] = class end
+    if class then bits[#bits + 1] = Item.classDisplayName(class) or class end
     if row.kind ~= "recipe" then bits[#bits + 1] = row.where end
     love.graphics.setFont(self.bodyFont)
     Theme.set(Theme.muted)

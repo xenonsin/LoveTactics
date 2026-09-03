@@ -23,6 +23,7 @@ return {
     flavor = "Slung on the wall by the stair, where the watch could reach it without standing up.",
     sprite = "assets/items/unblown_horn.png",
     type = "utility",
+    class = "creature",
     tags = { "relic" },
     noSteal = true,
     traits = { "trait_kept_watch" },

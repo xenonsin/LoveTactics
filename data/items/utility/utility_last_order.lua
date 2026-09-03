@@ -30,8 +30,7 @@ return {
     sprite = "assets/items/sig_last_order.png",
     type = "utility",
     tags = { "signature", "banner" },
-    class = "fighter",
-    discipline = "warlord",
+    class = "warlord",
     activeAbility = {
         target = "self",
         range = 0,

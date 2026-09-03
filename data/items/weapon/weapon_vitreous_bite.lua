@@ -15,6 +15,7 @@ return {
     flavor = "It has eaten a great deal of what other people made. It has never once made anything.",
     sprite = "assets/items/vitreous_bite.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "pierce", "physical", "melee" },
     noSteal = true,
     activeAbility = {

@@ -305,7 +305,7 @@ end
 
 -- Bank `amount` technique under `key` on this character. Fired from Combat.useItem whenever a party
 -- member resolves an action with a class- or discipline-tagged item. `key` is a class id OR a
--- discipline id, whichever the item votes for (Discipline.growthClasses).
+-- discipline id, whichever the item votes for (Class.growthClasses).
 --
 -- ONE LEDGER, read three ways. This used to be three counters -- a career tally, a since-level tally,
 -- and a separate discipline wallet -- on the reasoning that "a vote and a bank cannot share a counter",
@@ -316,7 +316,7 @@ end
 --   `technique`         earned, per key, never decremented. What this character has BEEN, across its
 --                       whole career -- so it drives the displayed title (Growth.dominantClass) -- and
 --                       simultaneously the numerator of everything below.
---   `techniqueSpent`    what the Forge has billed (Discipline.spendTechnique). Available to spend is
+--   `techniqueSpent`    what the Forge has billed (Class.spendTechnique). Available to spend is
 --                       `technique - techniqueSpent`; forging can never move the two readings above it.
 --   `techniqueAtLevel`  a SNAPSHOT of `technique` taken when the last level landed, so the level-up
 --                       reads the delta since (models/growth.lua). A checkpoint, not a counter -- which
@@ -330,10 +330,10 @@ end
 -- PER CHARACTER, because that is what makes specializing pay. A pooled roster-wide total would make
 -- putting one cheap discipline item on all four bodies accrue four times as fast, so spreading would
 -- strictly dominate committing -- the exact inversion the old max-across-roster read of
--- Discipline.level existed to prevent. The bill spends from whichever body holds the most
--- (Discipline.techniqueHolder), so gear stays free to circulate while the pressure stays on the body.
+-- Class.level existed to prevent. The bill spends from whichever body holds the most
+-- (Class.techniqueHolder), so gear stays free to circulate while the pressure stays on the body.
 --
--- No `Discipline` require here: this module stays dependency-light, and only the caller
+-- No `Class` require here: this module stays dependency-light, and only the caller
 -- (Combat.useItem) needs to know a key is a real discipline. It is stored as handed over.
 function Character.recordTechnique(char, key, amount)
     if not (char and key) or (amount or 0) <= 0 then return 0 end
@@ -428,7 +428,7 @@ function Character.instantiate(id, progress)
         -- fails the build when a body's health drifts out of the band it claims
         -- (tests/bestiary_spec.lua).
         tier = def.tier,
-        -- The discipline this body IS, for a body built as one (data/disciplines/*.lua). Sparse: most
+        -- The discipline this body IS, for a body built as one (data/classes/*.lua). Sparse: most
         -- bodies carry none, and the ones that do are the discipline exemplars plus the Elite-rung
         -- humanoids that read as a deeper cut of their faction. Declared rather than derived from the
         -- kit, so the spec can check the kit against it instead of trusting it -- an Elite that claims
@@ -492,7 +492,7 @@ function Character.instantiate(id, progress)
         --
         -- This replaced `growthBy`, a per-key ledger of levels credited in shares, back when growth was
         -- apportioned across everything a body had swung. The class level that ledger fed is read off
-        -- cumulative technique now (Discipline.classLevel), so the two questions -- how does this body
+        -- cumulative technique now (Class.classLevel), so the two questions -- how does this body
         -- grow, what has it got good at -- are answered by two fields that cannot drift apart.
         job = (progress and progress.job) or nil,
         inventory = {},

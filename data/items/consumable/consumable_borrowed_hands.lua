@@ -24,8 +24,7 @@ return {
     -- No `potion` tag: the Cafe resells anything wearing it and ignores standing entirely, so a
     -- gated elixir tagged `potion` would be on the grocer's shelf turn one (docs/classes.md).
     tags = { "elixir" },
-    class = "alchemist",
-    discipline = "apothecary",
+    class = "apothecary",
     price = 65,
     unlockQuests = 1,
     maxStack = 3,

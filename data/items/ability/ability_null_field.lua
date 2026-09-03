@@ -8,8 +8,7 @@ return {
     sprite = "assets/items/ability_null_field.png",
     type = "ability",
     tags = { "utility" },
-    class = "mage",
-    discipline = "spellbreaker", -- knight x mage; the Counterspell mechanic's first stock
+    class = "spellbreaker", -- knight x mage; the Counterspell mechanic's first stock
     price = 495,
     unlockQuests = 5,
     activeAbility = {

@@ -16,6 +16,7 @@ return {
     flavor = "It has no use for money. It has a very firm opinion about who else should have it.",
     sprite = "assets/items/cutpurse_nip.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "pierce", "physical", "melee" },
     noSteal = true,
     activeAbility = {

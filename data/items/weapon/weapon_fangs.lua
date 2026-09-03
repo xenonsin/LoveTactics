@@ -9,6 +9,7 @@ return {
     flavor = "A wolf is born holding it, and nothing alive can take it away.",
     sprite = "assets/items/fangs.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "bite", "physical", "melee" },
     noSteal = true, -- a pickpocket cannot lift the teeth out of a wolf's head
     activeAbility = {

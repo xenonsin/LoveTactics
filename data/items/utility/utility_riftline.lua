@@ -16,6 +16,7 @@ return {
     flavor = "The seam it came out of has not closed either.",
     sprite = "assets/items/riftline.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_boss_phases" },

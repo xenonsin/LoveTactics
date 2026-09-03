@@ -15,8 +15,7 @@ return {
     sprite = "assets/items/sig_fourth_shadow.png",
     type = "utility",
     tags = { "signature", "shadow" },
-    class = "rogue",
-    discipline = "ninja",
+    class = "ninja",
     activeAbility = {
         target = "self",
         range = 0,

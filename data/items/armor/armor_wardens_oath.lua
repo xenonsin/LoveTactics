@@ -10,8 +10,7 @@ return {
     sprite = "assets/items/wardens_oath.png",
     type = "armor",
     tags = { "plate" },
-    class = "knight",
-    discipline = "sentinel", -- the Intercept mechanic itself -- soak the blow aimed at the ally beside you
+    class = "sentinel", -- the Intercept mechanic itself -- soak the blow aimed at the ally beside you
     price = 495,
     unlockQuests = 5,
     traits = { "trait_oathward" },

@@ -29,8 +29,7 @@ return {
     sprite = "assets/items/ability_break_off.png",
     type = "ability",
     tags = { "pierce", "physical" },
-    class = "hunter",
-    discipline = "skirmisher", -- fighter x hunter; Hit-and-run -- the strike that buys the band back
+    class = "skirmisher", -- fighter x hunter; Hit-and-run -- the strike that buys the band back
     price = 330,
     unlockQuests = 3,
     activeAbility = {

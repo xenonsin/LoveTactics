@@ -11,8 +11,7 @@ return {
     sprite = "assets/items/ability_zealous_charge.png",
     type = "ability",
     tags = { "holy", "slash" },
-    class = "fighter",
-    discipline = "crusader", -- fighter x priest; the Smite mechanic's first stock
+    class = "crusader", -- fighter x priest; the Smite mechanic's first stock
     price = 575,
     unlockQuests = 6,
     activeAbility = {

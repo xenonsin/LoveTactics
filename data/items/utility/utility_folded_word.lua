@@ -16,8 +16,7 @@ return {
     sprite = "assets/items/sig_folded_word.png",
     type = "utility",
     tags = { "signature", "arcane" },
-    class = "mage",
-    discipline = "battlemage",
+    class = "battlemage",
     activeAbility = {
         target = "self",
         range = 0,

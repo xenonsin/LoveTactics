@@ -20,6 +20,7 @@ return {
     flavor = "Cast in one piece, and not well. It has been coming apart since the day it cooled.",
     sprite = "assets/items/fracture_line.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_boss_phases" },

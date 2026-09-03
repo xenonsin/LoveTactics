@@ -11,6 +11,7 @@ return {
     flavor = "Surround it with blades and it lands like all of them at once.",
     sprite = "assets/items/ability_omnislash.png",
     type = "ability",
+    class = "creature",
     tags = { "slash", "physical" },
     activeAbility = {
         target = "enemy",

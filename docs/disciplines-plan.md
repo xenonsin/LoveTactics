@@ -37,10 +37,10 @@ return {
 
 ## System status — built and green
 
-The discipline **system** is implemented and passes `tests/discipline_spec.lua`. What remains is
+The discipline **system** is implemented and passes `tests/class_ladder_spec.lua`. What remains is
 *content*: the exemplar characters, the capstone quests, and the item rosters below.
 
-- **Loader** — `models/discipline.lua` loads `data/disciplines/`; all 38 blueprints exist (17 subclasses
+- **Loader** — `models/class.lua` loads `data/classes/`; all 38 blueprints exist (17 subclasses
   + 21 multiclasses).
 - **Its own growth path** — every discipline has a `data/growth/<id>.lua` table, and a discipline item
   tallies the *discipline* (`Combat.useItem` → `Discipline.growthClasses`), so a Ninja build grows on
@@ -77,7 +77,7 @@ One existing quest per discipline, no reuse, and — the rule that moved nine of
 than slot 3 of its line**. A discipline handed over on a line's first or second quest is not earned
 advancement; it is a welcome gift, collected before the player has done anything with the base shelf,
 and it makes this whole lattice decorative. By slot 3 a line has introduced itself, handed over its
-companion, and asked for something. `tests/discipline_spec.lua` derives the slot by walking the line's
+companion, and asked for something. `tests/class_ladder_spec.lua` derives the slot by walking the line's
 chain and fails the build below the floor.
 
 **E** = exemplar already exists in the roster; **N** = needs a new character blueprint.
@@ -116,7 +116,7 @@ subclass of each satisfies the gate), then a **capstone quest** that stages the 
 **All 21 capstones are now on disk** and the table below names the real file for each. Until they
 were, every multiclass was permanently locked rather than merely unbuilt: `Player.hasCompleted`
 returns false for an id nothing defines, so `Discipline.isUnlocked` could never return true and all
-42 multiclass items were unreachable stock. `tests/discipline_spec.lua` now fails the build if a gate
+42 multiclass items were unreachable stock. `tests/class_ladder_spec.lua` now fails the build if a gate
 names a missing quest.
 
 Each is a first pass — premise, objective and gates, with the fight staged around the discipline's
@@ -253,7 +253,7 @@ parent; new signature/mechanic item → author it tagged.
 **All 16 subclass rosters are now tagged** (82 existing items, drawn from each parent's deep shelf and
 assigned by signature mechanic). Before this pass every subclass unlocked an *empty* cut: the 21
 multiclasses carried their two items each, but the 16 subclasses had zero, so the first sixteen rungs
-of the earned-advancement lattice paid out nothing. `tests/discipline_spec.lua` now fails the build if
+of the earned-advancement lattice paid out nothing. `tests/class_ladder_spec.lua` now fails the build if
 any discipline has no priced item.
 
 The **Mammonite** (17th subclass) was retagged later and by the same rules — 7 priced wares plus the
@@ -330,7 +330,7 @@ Three rules governed the pass, and the first is the one that cost the most:
 - **Both parent shelves must be stocked.** Six multiclasses had all their items on one parent, which
   meant the other vendor unlocked a discipline and then sold nothing for it. Artificer (mage) and
   Plague Knight (alchemist) were the worst — a completely empty parent.
-  `tests/discipline_spec.lua` now fails the build on it.
+  `tests/class_ladder_spec.lua` now fails the build on it.
 - **Each item owes the mechanic, not the shelf.** A `+n` on the right vendor is still the thing the
   forge already sells. Where a pitch could only produce one, the answer was to move the behaviour out
   of an item entirely — which is where the five rules below came from.
@@ -424,7 +424,7 @@ new stock.
 | Artificer | Field Assembly — build a construct from a consumable; it attacks with its effect *(mage · ability)* S4 | Recall Construct — dismiss for half refund, redeploy in range *(mage · ability)* ✓ | Salvage Rig — a destroyed construct bursts and refunds mana *(alchemist · utility)* ~ |
 | Apothecary | Borrowed Hands — your magic attack becomes the party's highest *(alchemist · consumable)* ✓ | The Shared Ledger — those you heal borrow your defense *(priest · utility)* ~ | The Tithe — copy every buff your allies carry onto yourself *(alchemist · consumable)* ~ |
 
-**Built and green.** All 37 disciplines now stock five or more (`tests/discipline_spec.lua` pins the
+**Built and green.** All 37 disciplines now stock five or more (`tests/class_ladder_spec.lua` pins the
 floor and the per-parent rule), and every multiclass sells something at *both* its parents. The five
 systems shipped as four and a half — S5 shrank to `fx.dispelUnit` when the interrupt half turned out to
 have no consumer.
@@ -627,7 +627,7 @@ spelling belongs in quest stock, not on the rack), not an oversight. Priest 33 �
   a monk and nobody else wants it.
 - ~~**The rogue's purse kit stays base.** Blood Money, The Gilded Wound, Grease Palms, Skimmer's Cut and
   The Ledger's Due are the greed identity itself, not a deeper cut of it.~~ **Reversed — it is the
-  Mammonite** (`data/disciplines/mammonite.lua`, a 17th subclass, gated on Quarter-End · slot 6). The
+  Mammonite** (`data/classes/mammonite.lua`, a 17th subclass, gated on Quarter-End · slot 6). The
   call was right about the identity and wrong about the shelf. The kit grew to eight wares on one
   resource nothing else in the game touches (`Combat.spendPurse` / `Combat.bounty`), and a resource that
   changes how you fight the *whole battle* is not a flavour of rogue — it is an opt-in with its own
@@ -654,8 +654,8 @@ demonstrates nothing — and demonstration is the entire argument for having cap
 
 The tree enforces most of it: no multiclass ships before both its parents have a subclass.
 
-1. **Plumbing** — `data/disciplines/` loader, `discipline`/`exemplar` fields wired into item + vendor
-   models, `tests/discipline_spec.lua`. Ship with **Elementalist** as the first live blueprint.
+1. **Plumbing** — `data/classes/` loader, `discipline`/`exemplar` fields wired into item + vendor
+   models, `tests/class_ladder_spec.lua`. Ship with **Elementalist** as the first live blueprint.
 2. **Tier-A subclasses** — Elementalist, Poisoner, Bulwark (stock already exists; see classes.md).
 3. **Remaining subclasses**, each with its exemplar + existing gate quest. Druid & Beastmaster wait on
    a shapeshift / animal-summon mechanic.

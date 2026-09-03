@@ -23,8 +23,7 @@ return {
     sprite = "assets/items/ability_shout.png", -- placeholder until its own art exists
     type = "ability",
     tags = { "impact" },
-    class = "knight",
-    discipline = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
+    class = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
     price = 245,
     unlockQuests = 2,
     activeAbility = {

@@ -17,8 +17,7 @@ return {
     sprite = "assets/items/pincer_banner.png",
     type = "utility",
     tags = { "banner" },
-    class = "fighter",
-    discipline = "warlord", -- a banner is a Paladin or Warlord object (docs/classes.md), whatever it delivers
+    class = "warlord", -- a banner is a Paladin or Warlord object (docs/classes.md), whatever it delivers
     price = 495,
     unlockQuests = 5,
     traits = { "trait_follow_up" },

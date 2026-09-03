@@ -15,6 +15,7 @@ return {
     flavor = "It cannot make anything. It is extremely good at the other thing.",
     sprite = "assets/items/glass_shard.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "slash", "physical", "melee" },
     noSteal = true,
     activeAbility = {

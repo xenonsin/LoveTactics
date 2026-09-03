@@ -7,11 +7,11 @@ local Item = require("models.item")
 local Character = require("models.character")
 local Player = require("models.player")
 local Forge = require("models.forge")
-local Discipline = require("models.discipline")
+local Class = require("models.class")
 local Vendor = require("models.vendor")
 
 -- Bank `amount` of `key` on the player's first roster body, and return what it now holds. The Forge
--- bills technique off a real character (Discipline.techniqueHolder), so a test that wants to pay for a
+-- bills technique off a real character (Class.techniqueHolder), so a test that wants to pay for a
 -- rung has to put it somewhere a body can carry it.
 local function bank(player, key, amount)
     local char = player.roster[1]
@@ -275,17 +275,17 @@ return {
             local player = Player.new()
             player.gold = 5000
             player.materials = setmetatable({}, { __index = function() return 99 end })
-            local disciplineId = Forge.recipeCost(player, "consumable_acid_bomb").techniqueId
-            assert(disciplineId, "the acid bomb is discipline stock")
+            local classId = Forge.recipeCost(player, "consumable_acid_bomb").techniqueId
+            assert(classId, "the acid bomb is discipline stock")
 
             -- Bank exactly enough for the first two rungs and not the third.
             local need = 0
-            for tier = 1, 2 do need = need + Discipline.techniqueCost(tier) end
-            local char = bank(player, disciplineId, need)
+            for tier = 1, 2 do need = need + Class.techniqueCost(tier) end
+            local char = bank(player, classId, need)
 
             assert(Forge.refineRecipe(player, "consumable_acid_bomb") == 1)
             assert(Forge.refineRecipe(player, "consumable_acid_bomb") == 2)
-            assert(Character.techniqueAvailable(char, disciplineId) == 0, "both rungs came out of the bank")
+            assert(Character.techniqueAvailable(char, classId) == 0, "both rungs came out of the bank")
 
             local up3, reason = Forge.refineRecipe(player, "consumable_acid_bomb")
             assert(up3 == nil and reason == "technique",

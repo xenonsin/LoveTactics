@@ -24,6 +24,7 @@ return {
     flavor = "Branded into the champion's chest by the Lord it serves. It does not come off.",
     sprite = "assets/items/sig_unappeased_heart.png", -- placeholder until its own art exists
     type = "utility", -- `bound` (not the type) is what locks it in the center cell
+    class = "creature",
     tags = { "signature", "relic" },
     bound = true,
     traits = { "trait_boss_phases", "trait_melee_counter" },

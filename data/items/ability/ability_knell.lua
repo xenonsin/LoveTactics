@@ -35,8 +35,7 @@ return {
     sprite = "assets/items/ability_knell.png",
     type = "ability",
     tags = { "magical", "dark" },
-    class = "mage",
-    discipline = "necromancer", -- deeper cut of the shelf: buyable only once the necromancer gate is cleared
+    class = "necromancer", -- deeper cut of the shelf: buyable only once the necromancer gate is cleared
     price = 575,
     unlockQuests = 6,
     activeAbility = {

@@ -20,8 +20,7 @@ return {
     sprite = "assets/items/ability_grease_palms.png",
     type = "ability",
     tags = { "guile" }, -- the rogue's word; the purse is the header's business, as on Blood Money
-    class = "rogue",
-    discipline = "mammonite", -- a spender: the gate opens the shelf, this half completes it at quest 9
+    class = "mammonite", -- a spender: the gate opens the shelf, this half completes it at quest 9
     price = 660,
     -- Gated to the END of the greed line: on sale only once all ten Undercroft quests are cleared -- i.e.
     -- Aurea is beaten (slot 10). The whole money kit is her art, earned by taking it off her.

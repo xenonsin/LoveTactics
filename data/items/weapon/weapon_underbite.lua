@@ -20,6 +20,7 @@ return {
     flavor = "The ground gives once. By the time it gives twice you are already in it.",
     sprite = "assets/items/underbite.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "pierce", "physical" },
     noSteal = true, -- a creature's body is not loot
     activeAbility = {

@@ -12,8 +12,7 @@ return {
     sprite = "assets/items/ability_desperate_strike.png",
     type = "ability",
     tags = { "slash", "physical" },
-    class = "fighter",
-    discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
+    class = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
     price = 165,
     unlockQuests = 1,
     activeAbility = {

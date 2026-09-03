@@ -13,6 +13,7 @@ return {
     flavor = "It has never been second at anything and does not intend to begin in a corridor.",
     sprite = "assets/items/first_blade.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_single_combat" },

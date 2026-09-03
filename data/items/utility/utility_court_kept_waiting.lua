@@ -21,8 +21,7 @@ return {
     sprite = "assets/items/sig_court_kept_waiting.png",
     type = "utility",
     tags = { "signature", "arcane" },
-    class = "mage",
-    discipline = "summoner",
+    class = "summoner",
     activeAbility = {
         target = "self",
         range = 0,

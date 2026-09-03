@@ -86,7 +86,7 @@ return {
                 assert(def, id .. " exists")
                 assert(def.noSteal, id .. " cannot be lifted off a body")
                 assert(def.price == nil, id .. " is sold by nobody")
-                assert(def.class == nil, id .. " belongs to no shelf")
+                assert(def.class == "creature", id .. " belongs to no shelf")
             end
         end,
     },

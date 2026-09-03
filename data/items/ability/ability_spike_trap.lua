@@ -8,8 +8,7 @@ return {
     sprite = "assets/items/ability_spike_trap.png",
     type = "ability",
     tags = { "trap", "utility" },
-    class = "rogue",
-    discipline = "poacher", -- rogue x hunter; the rogue half of Snare-execute -- the trap that sets up the finish
+    class = "poacher", -- rogue x hunter; the rogue half of Snare-execute -- the trap that sets up the finish
     price = 245,
     unlockQuests = 2,
     activeAbility = {

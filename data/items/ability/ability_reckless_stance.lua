@@ -25,8 +25,7 @@ return {
     sprite = "assets/items/ability_fury.png", -- placeholder until its own art exists
     type = "ability",
     tags = { "impact" },
-    class = "fighter",
-    discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
+    class = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
     price = 575,
     unlockQuests = 6,
     activeAbility = {

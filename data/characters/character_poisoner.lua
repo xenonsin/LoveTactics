@@ -1,5 +1,5 @@
 -- Poisoner exemplar (alchemist subclass). Coatings: depleting weapon infusions applied between swings.
--- Met as a vat-master, a boss. Kit from data/disciplines/poisoner.lua.
+-- Met as a vat-master, a boss. Kit from data/classes/poisoner.lua.
 return {
     name = "Poisoner",
     kind = "humanoid",

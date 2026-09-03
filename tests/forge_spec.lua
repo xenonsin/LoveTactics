@@ -7,7 +7,7 @@
 
 local Forge = require("models.forge")
 local Material = require("models.material")
-local Discipline = require("models.discipline")
+local Class = require("models.class")
 local Character = require("models.character")
 local Item = require("models.item")
 local Player = require("models.player")
@@ -17,19 +17,19 @@ local Errand = require("models.errand") -- the rungs a house asks for, which are
 
 -- A player with unlimited stock, so a test about the BILL is never really a test about the purse. The
 -- technique holder is a real roster member with a bottomless ledger: the bill reads earned minus spent
--- off one body (Discipline.techniqueHolder), so a bare number on the player would not be seen at all.
+-- off one body (Class.techniqueHolder), so a bare number on the player would not be seen at all.
 -- A company that can pay for anything, at a stated place on every class ladder.
 --
 -- THE WALLET AND THE LADDER ARE ONE NUMBER NOW, which is why this takes an argument. Career technique
 -- is what the Forge bills (less what it has already billed) AND what a class level is read off
--- (Discipline.classLevel) -- so "rich" and "unlevelled" is not a state a body can be in, and a fixture
+-- (Class.classLevel) -- so "rich" and "unlevelled" is not a state a body can be in, and a fixture
 -- that handed out infinite technique was quietly asserting a mastered company. `level` says where on
 -- the ladder this company stands; the gold and materials stay bottomless because those are not what
 -- any of these cases are about.
 local function richPlayer(level)
-    local Discipline = require("models.discipline")
-    level = level or Discipline.CLASS_LEVEL_CAP
-    local bank = Discipline.classLevelCost(level)
+    local Class = require("models.class")
+    level = level or Class.CLASS_LEVEL_CAP
+    local bank = Class.classLevelCost(level)
     local p = Player.new()
     p.gold = 100000
     p.materials = setmetatable({}, { __index = function() return 9999 end })
@@ -44,7 +44,9 @@ end
 local function anyDisciplineItem()
     local ids = {}
     for itemId, d in pairs(Item.defs) do
-        if d.discipline and Discipline.defs[d.discipline] and Item.isUpgradable(Item.instantiate(itemId)) then
+        -- An item's class IS its class since the fold (docs/class-fold.md); "an earned one" is what
+        -- `d.discipline` used to mean here.
+        if Class.isEarned(d.class) and Item.isUpgradable(Item.instantiate(itemId)) then
             ids[#ids + 1] = itemId
         end
     end
@@ -94,7 +96,7 @@ return {
     {
         name = "every class has a house stock, and only house stock carries a class",
         fn = function()
-            for class in pairs(Item.CLASSES) do
+            for class in pairs(Class.roots()) do
                 local id = Material.houseFor(class)
                 assert(id, class .. " has no house material")
                 assert(Material.get(id), "and its blueprint exists: " .. tostring(id))
@@ -119,7 +121,7 @@ return {
             -- The currency track is its HOUSE's technique, not gold -- a knight blade is forged by
             -- having fought as a knight (models/forge.lua's header).
             assert(cost.level == 1 and cost.gold == 0, "+1 costs no gold")
-            assert(cost.technique == Discipline.techniqueCost(1) and cost.techniqueId == "knight",
+            assert(cost.technique == Class.techniqueCost(1) and cost.techniqueId == "knight",
                 "+1 costs a rung of knight technique")
             assert(cost.materials.material_iron_scrap == 2, "and 2 of the grade its price draws on")
             assert(cost.materials[Material.houseFor("knight")] == 1, "plus 1 of the Bastion's stock")
@@ -138,7 +140,7 @@ return {
             -- bill rather than a lock: you cannot forge it deep without having run both houses.
             local id, def
             for itemId, d in pairs(Item.defs) do
-                if d.discipline and Discipline.arity(d.discipline) == 2 and d.price
+                if Class.arity(d.class) == 2 and d.price
                     and Item.isUpgradable(Item.instantiate(itemId)) then
                     id, def = itemId, d
                     break
@@ -147,7 +149,7 @@ return {
             assert(id, "the shelf has at least one upgradable multiclass item")
 
             local cost = Forge.upgradeCost(p, Item.instantiate(id))
-            local parents = Discipline.parents(def.discipline)
+            local parents = Class.parents(def.class)
             assert(#parents == 2, "a multiclass has two parents")
             for _, parent in ipairs(parents) do
                 assert(cost.materials[Material.houseFor(parent)] == 1,
@@ -165,7 +167,7 @@ return {
             local p = richPlayer()
             local id
             for itemId, d in pairs(Item.defs) do
-                if not d.class and not d.discipline and d.price and Item.isUpgradable(Item.instantiate(itemId)) then
+                if not d.class and d.price and Item.isUpgradable(Item.instantiate(itemId)) then
                     id = itemId
                     break
                 end
@@ -184,7 +186,7 @@ return {
     {
         name = "a class item's ceiling is the company's level in the class that made it",
         fn = function()
-            local Disc = require("models.discipline")
+            local Disc = require("models.class")
             local sword = Item.instantiate("weapon_iron_sword") -- knight gear
             assert(Forge.houseVendorFor("knight") == "bastion", "the knight's house is the Bastion")
 
@@ -218,8 +220,8 @@ return {
 
             local cost = Forge.upgradeCost(p, item)
             assert(cost.gold == 0, "and it costs no gold at all")
-            assert(cost.technique == Discipline.techniqueCost(cost.level), "the currency track is technique")
-            assert(cost.techniqueId == def.discipline, "billed in its OWN discipline")
+            assert(cost.technique == Class.techniqueCost(cost.level), "the currency track is technique")
+            assert(cost.techniqueId == def.class, "billed in its OWN discipline")
             assert(not cost.locked, "never locked -- only unaffordable")
 
             -- Plain class stock rides the same track, billed to its CLASS instead. The discipline is
@@ -229,8 +231,17 @@ return {
             local plainCost = Forge.upgradeCost(p, plain)
             assert(plainCost.gold == 0, "plain stock costs no gold either")
             assert(plainCost.techniqueId == "knight", "it is billed to its own house")
-            assert(def.class and def.class ~= def.discipline, "the discipline item carries a class too")
-            assert(cost.techniqueId ~= def.class, "and its bill went to the discipline, not that class")
+            -- THE OLD PAIR OF ASSERTIONS SAID: the deep-cut item carries a class as well, and its bill
+            -- went to the discipline rather than to that class -- which was the thing worth pinning
+            -- while an item wore two taxonomy fields and the bill had to choose between them. There is
+            -- one field now (docs/class-fold.md), so the claim that survives is the one that was
+            -- actually being protected: an earned class is billed to ITSELF, and never to the house it
+            -- was cut from, or generic knight play would pay for the deep cut.
+            assert(Class.isEarned(def.class), "the fixture item is an earned class's")
+            for _, parent in ipairs(Class.parents(def.class)) do
+                assert(cost.techniqueId ~= parent,
+                    "an earned class's bill must not fall on its parent " .. parent)
+            end
         end,
     },
     {
@@ -248,25 +259,25 @@ return {
 
             -- Split the bill's worth across two characters: each falls short, so the forge refuses --
             -- even though the roster TOTAL is more than enough. This is the whole point of the rule.
-            p.roster[1].technique = { [def.discipline] = need - 1 }
+            p.roster[1].technique = { [def.class] = need - 1 }
             p.roster[1].techniqueSpent = {}
-            p.roster[2].technique = { [def.discipline] = need - 1 }
+            p.roster[2].technique = { [def.class] = need - 1 }
             p.roster[2].techniqueSpent = {}
-            assert(Discipline.technique(p, def.discipline) == need - 1, "the read is the max, not the sum")
+            assert(Class.technique(p, def.class) == need - 1, "the read is the max, not the sum")
             local ok, why = Forge.upgrade(p, item)
             assert(ok == nil and why == "technique", "a pooled bill is refused: " .. tostring(why))
 
             -- Commit one body instead and it pays, off that body only.
-            p.roster[1].technique = { [def.discipline] = need + 5 }
+            p.roster[1].technique = { [def.class] = need + 5 }
             local newItem = Forge.upgrade(p, item)
             assert(newItem and newItem.level == cost.level, "the specialist's bank forges the rung")
             -- Booked as SPENDING, not as a decrement: the earned figure is also the career title and the
             -- level-up reading, so a bill that lowered it would charge growth for gear.
-            assert(p.roster[1].technique[def.discipline] == need + 5, "the earned ledger is untouched")
-            assert(p.roster[1].techniqueSpent[def.discipline] == need, "the bill was recorded as spent")
-            assert(Character.techniqueAvailable(p.roster[1], def.discipline) == 5,
+            assert(p.roster[1].technique[def.class] == need + 5, "the earned ledger is untouched")
+            assert(p.roster[1].techniqueSpent[def.class] == need, "the bill was recorded as spent")
+            assert(Character.techniqueAvailable(p.roster[1], def.class) == 5,
                 "and what is left to spend fell by exactly the bill")
-            assert(Character.techniqueAvailable(p.roster[2], def.discipline) == need - 1,
+            assert(Character.techniqueAvailable(p.roster[2], def.class) == need - 1,
                 "the other body is untouched")
             assert(p.gold == 100000, "no gold was spent")
         end,
@@ -277,7 +288,7 @@ return {
             local p = richPlayer()
             local id
             for itemId, d in pairs(Item.defs) do
-                if not d.class and not d.discipline and Item.isUpgradable(Item.instantiate(itemId)) then
+                if not d.class and Item.isUpgradable(Item.instantiate(itemId)) then
                     id = itemId
                     break
                 end
@@ -293,13 +304,13 @@ return {
             for questId in pairs(Quest.defs) do p.completedQuests[questId] = true end
             for _, char in ipairs(p.roster) do
                 -- Mastered in every class, which is what the ceiling actually reads
-                -- (Discipline.classLevel, off career technique). It set `growthBy` until that
+                -- (Class.classLevel, off career technique). It set `growthBy` until that
                 -- ledger was retired with the play-share blend, at which point this fixture was
                 -- setting a field nothing consults -- so the case passed while asserting nothing
                 -- about a decorated company at all.
                 char.technique = {}
-                for class in pairs(Item.CLASSES) do
-                    char.technique[class] = Discipline.classLevelCost(Discipline.CLASS_LEVEL_CAP)
+                for class in pairs(Class.roots()) do
+                    char.technique[class] = Class.classLevelCost(Class.CLASS_LEVEL_CAP)
                 end
             end
             for id, d in pairs(Item.defs) do
@@ -421,7 +432,7 @@ return {
         fn = function()
             -- Short of mastery on purpose: the ceiling has to be a real wall for this case to have
             -- anything to run into, and the wallet and the ladder are one number now (richPlayer).
-            local p = richPlayer(require("models.discipline").CLASS_LEVEL_CAP - 2)
+            local p = richPlayer(require("models.class").CLASS_LEVEL_CAP - 2)
             local item = Item.instantiate("weapon_iron_greatsword", 1, 0)
             local ceiling = Forge.ceilingFor(p, item)
             assert(ceiling < Item.MAX_LEVEL, "a fresh player has not earned the whole ladder")
@@ -444,7 +455,7 @@ return {
             -- climb the player never got.
             -- Short of mastery on purpose: the ceiling has to be a real wall for this case to have
             -- anything to run into, and the wallet and the ladder are one number now (richPlayer).
-            local p = richPlayer(require("models.discipline").CLASS_LEVEL_CAP - 2)
+            local p = richPlayer(require("models.class").CLASS_LEVEL_CAP - 2)
             local item = Item.instantiate("weapon_iron_greatsword", 1, 0)
             local target = Forge.ceilingFor(p, item)
             assert(target >= 2, "need at least a two-rung climb to test a partial spend")
@@ -453,7 +464,7 @@ return {
             -- Afford every rung but the last. A real ledger rather than the bottomless probe, since
             -- what is under test is the refusal.
             -- The BANK is short by one, not the ladder. Career technique is both the wallet and
-            -- the class level now (Discipline.classLevel), so cutting the earned figure would
+            -- the class level now (Class.classLevel), so cutting the earned figure would
             -- lower the forge ceiling too and the refusal would come back "locked" rather than
             -- "technique" -- a different rule, passing for this one.
             local bank = p.roster[1].technique[full.techniqueId]

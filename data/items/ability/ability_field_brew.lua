@@ -10,8 +10,7 @@ return {
     sprite = "assets/items/ability_field_brew.png",
     type = "ability",
     tags = { "restorative" },
-    class = "alchemist",
-    discipline = "herbalist", -- hunter x alchemist; the Field-brewing mechanic's first stock
+    class = "herbalist", -- hunter x alchemist; the Field-brewing mechanic's first stock
     price = 245,
     unlockQuests = 2,
     activeAbility = {

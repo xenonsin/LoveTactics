@@ -15,7 +15,7 @@
 --     so any number there is dead data.
 --   * the BASE shelf and the DISCIPLINE cut are spread separately. The base shelf takes 0 .. Q-2; the
 --     discipline cut starts at 3, because no discipline unlocks before a line's third quest anyway
---     (see data/disciplines) -- so a discipline item down at gate 0 is a locked row sitting in front
+--     (see data/classes) -- so a discipline item down at gate 0 is a locked row sitting in front
 --     of the stock a newcomer can actually buy, saying nothing its discipline lock did not.
 --   * ONE EXCEPTION, pinned after the spread: every house must sell a WEAPON at gate 0. A class you
 --     cannot buy a weapon from before running a single quest is a class you cannot start playing
@@ -28,6 +28,7 @@
 -- Writes into the PROJECT source tree (not the LOVE save dir), exactly as tools/curve_migrate does.
 
 local Item = require("models.item")
+local Class = require("models.class") -- isEarned: deep stock vs the open rack, since the fold
 local Vendor = require("models.vendor")
 local Quest = require("models.quest")
 
@@ -39,7 +40,7 @@ local TAIL_MARGIN = 2
 
 -- The earliest quest a discipline item's gate may name. No subclass unlocks before its line's third
 -- quest ("a discipline handed over on a line's first or second quest is not earned advancement, it is
--- a welcome gift" -- data/disciplines/bombardier.lua), so nothing below this could ever be buyable.
+-- a welcome gift" -- data/classes/bombardier.lua), so nothing below this could ever be buyable.
 local DISCIPLINE_FLOOR = 3
 
 local function sourcePath(rel)
@@ -143,7 +144,9 @@ function M.run(args)
         -- what is left once the disciplines can actually be unlocked.
         local base, deep = {}, {}
         for _, row in ipairs(rows) do
-            if row.def.discipline then deep[#deep + 1] = row else base[#base + 1] = row end
+            -- Deep stock is an EARNED class's since the fold (docs/class-fold.md); reading a
+            -- `discipline` field here would put the whole catalogue in `base` and say nothing.
+            if Class.isEarned(row.def.class) then deep[#deep + 1] = row else base[#base + 1] = row end
         end
         local wants = {}
         for i, row in ipairs(base) do wants[row.id] = gateFor(i, #base, 0, maxGate) end
@@ -157,7 +160,7 @@ function M.run(args)
             -- its discipline, so pinning one there would satisfy the letter of the rule and arm nobody.
             local openingWeapon, cheapest
             for _, row in ipairs(rows) do
-                if row.def.type == "weapon" and not row.def.discipline then
+                if row.def.type == "weapon" and not Class.isEarned(row.def.class) then
                     if wants[row.id] <= 0 then openingWeapon = row end
                     if not cheapest or row.def.price < cheapest.def.price then cheapest = row end
                 end

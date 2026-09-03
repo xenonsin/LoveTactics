@@ -21,8 +21,7 @@ return {
     sprite = "assets/items/ability_running_shot.png",
     type = "ability",
     tags = { "ranged", "physical", "pierce" },
-    class = "hunter",
-    discipline = "skirmisher",
+    class = "skirmisher",
     price = 330,
     unlockQuests = 3,
     activeAbility = {

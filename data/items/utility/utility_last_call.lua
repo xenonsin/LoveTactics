@@ -16,8 +16,7 @@ return {
     sprite = "assets/items/sig_last_call.png",
     type = "utility",
     tags = { "signature", "alchemy" },
-    class = "alchemist",
-    discipline = "warbrewer",
+    class = "warbrewer",
     activeAbility = {
         target = "self",
         range = 0,

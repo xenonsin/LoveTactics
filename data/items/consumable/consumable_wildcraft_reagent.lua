@@ -19,6 +19,7 @@ return {
     flavor = "Whatever the ground was doing, it was doing it very vigorously. That is most of herbalism.",
     sprite = "assets/items/consumable_wildcraft_reagent.png",
     type = "consumable",
+    class = "creature",
     tags = { "draught", "restorative" },
     ephemeral = true, -- belt and braces: the grant stamps the instance too
     maxStack = 5,

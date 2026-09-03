@@ -22,8 +22,7 @@ return {
     sprite = "assets/items/ability_field_assembly.png",
     type = "ability",
     tags = { "summon" },
-    class = "mage",
-    discipline = "artificer",
+    class = "artificer",
     price = 330,
     unlockQuests = 3,
     activeAbility = {

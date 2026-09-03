@@ -218,9 +218,9 @@ local function rollLoot(day, kind, override, enemyUnits, scale, floorLevel)
     -- the gold multiplier above is: floor one pays what floor one is worth however decorated the
     -- company that walks it. An elite reaches one tier deeper, exactly as it reaches a richer
     -- price band.
-    local Discipline = require("models.discipline")
+    local Class = require("models.class")
     local depth = math.max(1, math.floor((floorLevel or day or 1) * bump + (elite and 1 or 0)))
-    local tier = math.min(Discipline.CLASS_LEVEL_CAP, depth)
+    local tier = math.min(Class.CLASS_LEVEL_CAP, depth)
     local band = lootCandidates(maxPrice, tier)
     local carried = carriedCandidates(enemyUnits)
 

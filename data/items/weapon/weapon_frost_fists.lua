@@ -9,6 +9,7 @@ return {
     flavor = "Cold you could never keep, off a thing that has nothing else to give.",
     sprite = "assets/items/frost_fists.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "ice", "magical", "melee" },
     noSteal = true,
     activeAbility = {

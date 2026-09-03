@@ -19,8 +19,7 @@ return {
     sprite = "assets/items/sig_with_interest.png",
     type = "utility",
     tags = { "signature", "impact" },
-    class = "rogue",
-    discipline = "mammonite",
+    class = "mammonite",
     activeAbility = {
         target = "enemy",
         range = 4,

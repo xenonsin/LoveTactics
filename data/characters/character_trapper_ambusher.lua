@@ -1,10 +1,10 @@
 -- Trapper exemplar (hunter subclass). Hidden traps: pre-placed tile triggers that fire on enemy entry.
--- Met as a woodland ambusher, a boss. Kit from data/disciplines/trapper.lua.
+-- Met as a woodland ambusher, a boss. Kit from data/classes/trapper.lua.
 --
 -- NOTE the id: `character_trapper` already belongs to the Colosseum debut-bout spotter
 -- (data/characters/character_trapper.lua -- a deliberately soft body tuned for that one fight and
 -- asserted by tests/saber_debut_spec.lua). This is the discipline EXEMPLAR, a distinct body with the
--- full trap kit; data/disciplines/trapper.lua's `exemplar` points here.
+-- full trap kit; data/classes/trapper.lua's `exemplar` points here.
 return {
     name = "Ambusher",
     kind = "humanoid",

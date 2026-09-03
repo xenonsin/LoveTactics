@@ -23,8 +23,7 @@ return {
     sprite = "assets/items/ability_totem_of_renewal.png",
     type = "ability",
     tags = { "holy", "summon" },
-    class = "priest",
-    discipline = "totemist",
+    class = "totemist",
     price = 740,
     unlockQuests = 8,
     activeAbility = {

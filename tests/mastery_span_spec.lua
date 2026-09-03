@@ -15,7 +15,7 @@
 -- this is what says whether the result is still a bonus or has become the whole fight.
 
 local Combat = require("models.combat")
-local Discipline = require("models.discipline")
+local Class = require("models.class")
 
 -- The band the assertion holds. Mastery is a REWARD for committing, not a second weapon: under 1.2x
 -- delivered it is a rounding error nobody would steer a build for, and over 2.0x an untrained body is
@@ -31,7 +31,7 @@ local function target(defense)
 end
 
 local function wielder(level)
-    return { char = { technique = { knight = Discipline.classLevelCost(level) } } }
+    return { char = { technique = { knight = Class.classLevelCost(level) } } }
 end
 
 return {
@@ -43,13 +43,13 @@ return {
             for _, raw in ipairs({ 1, 8, 20, 60 }) do
                 assert(Combat.classScaled(untrained, item, raw) == raw,
                     "a body with no class level must get exactly what the blueprint says, at " .. raw)
-                assert(Combat.classScaled(wielder(Discipline.CLASS_LEVEL_CAP), item, raw) >= raw,
+                assert(Combat.classScaled(wielder(Class.CLASS_LEVEL_CAP), item, raw) >= raw,
                     "and mastery must never take anything away, at " .. raw)
             end
 
             -- A classless item -- creature kit, an unarmed strike, a trap -- sits on no ladder and is
             -- returned untouched, so a body's commitment cannot leak into things that belong to nobody.
-            assert(Combat.classScaled(wielder(Discipline.CLASS_LEVEL_CAP), { }, 20) == 20,
+            assert(Combat.classScaled(wielder(Class.CLASS_LEVEL_CAP), { }, 20) == 20,
                 "a classless item is on nobody's ladder")
         end,
     },
@@ -60,7 +60,7 @@ return {
             local raw = 14 -- a mid-ladder weapon's authored magnitude
             local tags = { "physical" }
             local base = Combat.classScaled({ char = {} }, item, raw)
-            local top = Combat.classScaled(wielder(Discipline.CLASS_LEVEL_CAP), item, raw)
+            local top = Combat.classScaled(wielder(Class.CLASS_LEVEL_CAP), item, raw)
 
             -- THE RANGE IS BOUNDED AT HALF THE MAGNITUDE, and that bound is the finding rather than a
             -- convenience. Measured across ALL armour this reads 2.5x at defense 12 -- but at defense 12
@@ -104,7 +104,7 @@ return {
                 if anchors then
                     local shelfSpan = anchors.top - anchors.base
                     local raw = anchors.top
-                    local gained = Combat.classScaled(wielder(Discipline.CLASS_LEVEL_CAP), item, raw) - raw
+                    local gained = Combat.classScaled(wielder(Class.CLASS_LEVEL_CAP), item, raw) - raw
                     assert(gained >= shelfSpan * 0.2, string.format(
                         "%s: mastery adds %d against a shelf span of %d -- too small to steer a build for",
                         fam, gained, shelfSpan))
@@ -133,7 +133,7 @@ return {
             local item = { class = "knight" }
             for _, raw in ipairs({ 4, 6, 14, 24, 50 }) do
                 local prev = -1
-                for level = 0, Discipline.CLASS_LEVEL_CAP do
+                for level = 0, Class.CLASS_LEVEL_CAP do
                     local here = Combat.classScaled(wielder(level), item, raw)
                     assert(here >= prev, "rung " .. level .. " landed under the one below, at raw " .. raw)
                     prev = here

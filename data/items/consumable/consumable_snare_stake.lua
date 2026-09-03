@@ -16,8 +16,7 @@ return {
     sprite = "assets/items/snare_stake_kit.png",
     type = "consumable",
     tags = { "trap" },
-    class = "hunter",
-    discipline = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
+    class = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
     price = 100,
     unlockQuests = 2,
     activeAbility = {

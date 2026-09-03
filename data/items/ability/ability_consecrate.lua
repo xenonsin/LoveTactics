@@ -9,8 +9,7 @@ return {
     sprite = "assets/items/ability_consecrate.png",
     type = "ability",
     tags = { "holy" },
-    class = "priest",
-    discipline = "paladin", -- knight x priest; the Ward-aura mechanic's first stock
+    class = "paladin", -- knight x priest; the Ward-aura mechanic's first stock
     price = 165,
     unlockQuests = 1,
     activeAbility = {

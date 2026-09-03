@@ -23,8 +23,7 @@ return {
     sprite = "assets/items/sig_bound_mile.png",
     type = "utility",
     tags = { "signature", "primal" },
-    class = "knight",
-    discipline = "warden",
+    class = "warden",
     activeAbility = {
         target = "self",
         range = 0,

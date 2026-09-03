@@ -1,7 +1,7 @@
 -- Elementalist exemplar (mage subclass). Dedicated body so the discipline reads as itself on the board
 -- rather than borrowing the generic mage's (Gyeom) -- companions stay roots-only (docs/disciplines-plan.md,
 -- "starred reuse" open call, resolved toward a fresh NPC). Met as a MENTOR: a sigil-adept who reshapes a
--- spell by where it is cast. Home shelf is mage. Kit from data/disciplines/elementalist.lua. Signature
+-- spell by where it is cast. Home shelf is mage. Kit from data/classes/elementalist.lua. Signature
 -- mechanic: Sigils -- aura tiles that reshape spells cast beside them (careful / twin / range / speed). No
 -- VN portrait (a template, not a companion) -- it falls back to its composed token.
 return {

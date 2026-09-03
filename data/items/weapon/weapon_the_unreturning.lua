@@ -16,7 +16,7 @@
 -- that merely wounds does nothing at all, which is correct -- it is the death that is final, not the
 -- hit. On a foe that could never be revived anyway (a demon) it is simply a plain dark bolt.
 --
--- Quest-only cut of the mage shelf: `discipline = "necromancer"`, buyable only once the necromancer
+-- Quest-only cut of the mage shelf: `class = "necromancer"`, buyable only once the necromancer
 -- gate is cleared.
 local Curve = require("models.curve")
 
@@ -27,8 +27,7 @@ return {
     sprite = "assets/items/the_unreturning.png",
     type = "weapon",
     tags = { "wand", "dark", "magical" }, -- magical: routes through magicDamage / magicDefense
-    class = "mage",
-    discipline = "necromancer",
+    class = "necromancer",
     price = 245,
     unlockQuests = 2,
     activeAbility = {

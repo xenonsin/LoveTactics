@@ -27,6 +27,7 @@ return {
     flavor = "The Lodge left it in the fen with the rest of the offal. It has been opening things ever since.",
     sprite = "assets/items/gralloch_hook.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_engorge", "trait_boss_phases" },

@@ -8,8 +8,7 @@ return {
     sprite = "assets/items/veterans_resolve.png",
     type = "utility",
     tags = { "charm" },
-    class = "fighter",
-    discipline = "warlord", -- deeper cut of the shelf: buyable only once the warlord gate is cleared
+    class = "warlord", -- deeper cut of the shelf: buyable only once the warlord gate is cleared
     price = 495,
     unlockQuests = 5,
     traits = { "trait_last_stand" },

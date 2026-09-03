@@ -27,8 +27,7 @@ return {
     sprite = "assets/items/utility_miasma_flask.png",
     type = "utility",
     tags = { "poison" },
-    class = "alchemist",
-    discipline = "poisoner", -- deeper cut of the shelf: buyable only once the poisoner gate is cleared
+    class = "poisoner", -- deeper cut of the shelf: buyable only once the poisoner gate is cleared
     price = 495,
     unlockQuests = 5,
     -- The `incense` contract (see Combat.layIncense): a hazard, a radius, and a magnitude, laid around

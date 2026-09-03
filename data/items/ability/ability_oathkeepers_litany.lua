@@ -21,8 +21,7 @@ return {
     sprite = "assets/items/ability_oathkeepers_litany.png",
     type = "ability",
     tags = { "holy" },
-    class = "priest",
-    discipline = "paladin",
+    class = "paladin",
     price = 165,
     unlockQuests = 1,
     activeAbility = {

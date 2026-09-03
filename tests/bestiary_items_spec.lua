@@ -71,7 +71,7 @@ return {
             local def = Item.defs.weapon_carrion_jaws
             assert(def, "the jaws exist")
             assert(def.noSteal, "teeth do not come out of a head")
-            assert(not def.price and not def.class and not def.discipline,
+            assert(not def.price and def.class == "creature",
                 "creature kit sits outside every shelf (tests/bestiary_spec.lua)")
         end,
     },

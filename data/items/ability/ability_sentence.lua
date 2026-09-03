@@ -21,8 +21,7 @@ return {
     sprite = "assets/items/ability_sentence.png",
     type = "ability",
     tags = { "holy" },
-    class = "priest",
-    discipline = "inquisitor",
+    class = "inquisitor",
     price = 410,
     unlockQuests = 4,
     activeAbility = {

@@ -1,6 +1,6 @@
 -- Herbalist exemplar (hunter x alchemist multiclass). Field brewing: convert field hazards / plants
 -- into consumables mid-fight, to heal or to poison. Met as a field-apothecary, a recruit. Home shelf
--- is hunter. Kit from data/disciplines/herbalist.lua.
+-- is hunter. Kit from data/classes/herbalist.lua.
 return {
     name = "Herbalist",
     kind = "humanoid",

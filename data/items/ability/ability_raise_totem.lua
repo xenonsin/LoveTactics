@@ -10,8 +10,7 @@ return {
     sprite = "assets/items/ability_raise_totem.png",
     type = "ability",
     tags = { "holy", "summon", "restorative" },
-    class = "priest",
-    discipline = "totemist", -- hunter x priest; the Ward-totems mechanic's first stock
+    class = "totemist", -- hunter x priest; the Ward-totems mechanic's first stock
     price = 740,
     unlockQuests = 8,
     activeAbility = {

@@ -11,8 +11,7 @@ return {
     sprite = "assets/items/ability_pickpocket.png",
     type = "ability",
     tags = { "thievery", "utility" },
-    class = "rogue",
-    discipline = "thief", -- deeper cut of the shelf: buyable only once the thief gate is cleared
+    class = "thief", -- deeper cut of the shelf: buyable only once the thief gate is cleared
     price = 245,
     unlockQuests = 2,
     activeAbility = {

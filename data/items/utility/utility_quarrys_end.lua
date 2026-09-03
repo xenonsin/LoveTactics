@@ -17,8 +17,7 @@ return {
     sprite = "assets/items/sig_quarrys_end.png",
     type = "utility",
     tags = { "signature", "primal" },
-    class = "rogue",
-    discipline = "poacher",
+    class = "poacher",
     activeAbility = {
         target = "self",
         range = 0,

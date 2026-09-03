@@ -32,8 +32,7 @@ return {
     sprite = "assets/items/ability_shakedown.png",
     type = "ability",
     tags = { "guile", "physical" }, -- `guile`, the rogue's own word for a conditional multiplier
-    class = "rogue",
-    discipline = "thief", -- deeper cut of the shelf: buyable only once the thief gate is cleared
+    class = "thief", -- deeper cut of the shelf: buyable only once the thief gate is cleared
     price = 575,
     unlockQuests = 6,
     activeAbility = {

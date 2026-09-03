@@ -16,6 +16,7 @@ return {
     flavor = "Alone it is a suit of armour with opinions. Six of them are a wall with a schedule.",
     sprite = "assets/items/rank_and_file.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_formation_fighter", "trait_close_ranks" },

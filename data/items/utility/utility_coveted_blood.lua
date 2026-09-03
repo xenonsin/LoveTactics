@@ -32,8 +32,7 @@ return {
     sprite = "assets/items/utility_coveted_blood.png",
     type = "utility",
     tags = { "charm", "poison" },
-    class = "alchemist",
-    discipline = "apothecary", -- priest + alchemist; the Lent-vitality mechanic's first stock
+    class = "apothecary", -- priest + alchemist; the Lent-vitality mechanic's first stock
     price = 410,
     unlockQuests = 4,
     -- The cloud: laid around the bearer on every move and re-laid from Combat.rebase for one that

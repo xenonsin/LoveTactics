@@ -16,6 +16,7 @@ return {
     flavor = "Four hundred years of other people's savings, worn as a back.",
     sprite = "assets/items/coffer_shell.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "impact", "physical", "melee" },
     noSteal = true,
     activeAbility = {

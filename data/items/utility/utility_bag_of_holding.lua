@@ -23,8 +23,7 @@ return {
     sprite = "assets/items/sig_bag_of_holding.png",
     type = "utility",
     tags = { "signature", "impact" },
-    class = "rogue",
-    discipline = "thief",
+    class = "thief",
     -- Six, which is two thirds of a grid: enough that a good fight's takings all fit, small enough
     -- that a long one still makes her decide what to carry out.
     bag = { capacity = 6 },

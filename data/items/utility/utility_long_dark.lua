@@ -12,6 +12,7 @@ return {
     flavor = "It is not waiting for anything. It has simply outlasted everything that was.",
     sprite = "assets/items/long_dark.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_boss_phases" },

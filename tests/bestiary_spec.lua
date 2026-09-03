@@ -18,7 +18,7 @@
 
 local Character = require("models.character")
 local Combat = require("models.combat")
-local Discipline = require("models.discipline")
+local Class = require("models.class")
 local Item = require("models.item")
 
 local tests = {}
@@ -99,7 +99,7 @@ tests[#tests + 1] = { name = "a declared class is one of the seven", fn = functi
     -- the next person to rediscover through tests/enemy_scaling_spec.lua.
     for id, def in pairs(Character.defs) do
         if def.class then
-            assert(Item.CLASSES[def.class], id .. ": unknown class " .. tostring(def.class))
+            assert(Class.roots()[def.class], id .. ": unknown class " .. tostring(def.class))
             assert(def.kind == "humanoid", id .. ": a " .. tostring(def.kind) .. " has no shelf. "
                 .. "Creature kit is natural weapons only.")
         end
@@ -109,17 +109,18 @@ end }
 tests[#tests + 1] = { name = "a declared discipline is real, and its parent is the body's class", fn = function()
     for id, def in pairs(Character.defs) do
         if def.discipline then
-            local d = Discipline.defs[def.discipline]
+            local d = Class.defs[def.discipline]
             assert(d, id .. ": unknown discipline " .. tostring(def.discipline))
             assert(def.class, id .. ": declares discipline " .. def.discipline .. " but no class")
-            -- The same invariant an ITEM obeys (tests/discipline_spec.lua): a body built as a
+            -- The same invariant an ITEM obeys (tests/class_ladder_spec.lua): a body built as a
             -- discipline fights off one of its parent shelves, and that is the shelf it grows on.
             local ok = false
-            for _, parent in ipairs(d.classes or {}) do
+            for _, parent in ipairs(Class.parents(def.discipline)) do
                 if parent == def.class then ok = true end
             end
             assert(ok, string.format("%s: class %q is not a parent of discipline %q (%s)",
-                id, def.class, def.discipline, table.concat(d.classes or {}, "+")))
+                id, def.class, def.discipline,
+                table.concat(Class.parents(def.discipline), "+")))
         end
     end
 end }
@@ -130,7 +131,9 @@ tests[#tests + 1] = { name = "a body that claims a discipline carries it", fn = 
             local found
             for _, itemId in ipairs(kitOf(def)) do
                 local item = Item.defs[itemId]
-                if item and item.discipline == def.discipline then found = itemId; break end
+                -- The item's own class is the claim now (docs/class-fold.md): a Ninja blade is
+                -- `class = "ninja"`, where it used to be rogue stock wearing a second field.
+                if item and item.class == def.discipline then found = itemId; break end
             end
             assert(found, string.format(
                 "%s: declares discipline %q but carries none of its stock. The Elite rung IS the "
@@ -145,11 +148,23 @@ tests[#tests + 1] = { name = "creatures carry no discipline gear", fn = function
         if def.kind ~= "humanoid" then
             assert(not def.discipline, id .. ": a " .. def.kind .. " cannot BE a discipline. "
                 .. "A wolf is not a Beastmaster; a wolf is what a Beastmaster has.")
+            -- The gear test reads the item's class now, and it asks EXACTLY what it asked before: no
+            -- earned class's gear on a creature (docs/class-fold.md restates "has a discipline" as
+            -- "is not a root").
+            --
+            -- THE STRONGER FORM -- `item.class == "creature"`, a creature carries only its own kit --
+            -- was written here first and reverted, because it is a different claim and it fails today:
+            -- character_miller_ghost carries ability_fireball, which is mage stock. That may well be a
+            -- content bug, and the old check could not see it (a root class was invisible to a test
+            -- that read the sparse second field). It is not this pass's to decide, and widening a
+            -- contract while migrating the field it is written in is how a refactor acquires an
+            -- argument it did not need to have.
             for _, itemId in ipairs(kitOf(def)) do
                 local item = Item.defs[itemId]
-                assert(not (item and item.discipline), string.format(
+                assert(not (item and Class.isEarned(item.class)), string.format(
                     "%s (%s) carries %s, which is %s stock. Creature kit is natural weapons only -- "
-                    .. "unpriced, noSteal, outside every shelf.", id, def.kind, itemId, item.discipline))
+                    .. "unpriced, noSteal, outside every shelf.", id, def.kind, itemId,
+                    tostring(item and item.class)))
             end
         end
     end

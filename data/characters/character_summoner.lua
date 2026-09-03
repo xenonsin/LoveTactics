@@ -1,5 +1,5 @@
 -- Summoner exemplar (mage subclass). Reserve court: bank mana to field independent elementals. Met as
--- a conjurer with an elemental court, a boss. Kit from data/disciplines/summoner.lua.
+-- a conjurer with an elemental court, a boss. Kit from data/classes/summoner.lua.
 return {
     name = "Summoner",
     kind = "humanoid",

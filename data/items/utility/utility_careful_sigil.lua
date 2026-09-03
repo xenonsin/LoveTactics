@@ -25,8 +25,7 @@ return {
     sprite = "assets/items/utility_careful_sigil.png",
     type = "utility",
     tags = { "arcane", "sigil" },
-    class = "mage",
-    discipline = "elementalist", -- deeper cut of the shelf: buyable only once the elementalist gate is cleared
+    class = "elementalist", -- deeper cut of the shelf: buyable only once the elementalist gate is cleared
     price = 330,
     unlockQuests = 3,
     -- "The Arcanum grades third-years on it." The aura is care aimed at your own side; the Skill is the

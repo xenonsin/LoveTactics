@@ -16,6 +16,7 @@ return {
     flavor = "The ground a priest stands on is consecrated by the standing. It never leaves your hand.",
     sprite = "assets/items/sig_hallowed_censer.png",
     type = "utility", -- a censer: `bound` (not the type) is what locks it in place
+    class = "creature",
     tags = { "signature" },
     bound = true,
     traits = { "trait_sanctified_presence" },

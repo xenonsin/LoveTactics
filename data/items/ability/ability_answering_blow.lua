@@ -23,8 +23,7 @@ return {
     sprite = "assets/items/ability_answering_blow.png",
     type = "ability",
     tags = { "impact", "physical" },
-    class = "fighter",
-    discipline = "champion",
+    class = "champion",
     price = 660,
     unlockQuests = 7,
     -- Shallower than Defiant Stand's 6 and Crowd's Favour's 8: the spender opens the pool, the rest of

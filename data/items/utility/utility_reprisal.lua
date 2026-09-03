@@ -14,8 +14,7 @@ return {
     sprite = "assets/items/utility_reprisal.png",
     type = "utility",
     tags = { "charm" },
-    class = "fighter",
-    discipline = "champion", -- fighter x knight; the Riposte-wall mechanic's first stock
+    class = "champion", -- fighter x knight; the Riposte-wall mechanic's first stock
     price = 660,
     unlockQuests = 7,
     traits = { "trait_whirl_answer" },

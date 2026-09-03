@@ -20,8 +20,7 @@ return {
     sprite = "assets/items/sig_ninth_sigil.png",
     type = "utility",
     tags = { "signature", "arcane" },
-    class = "mage",
-    discipline = "elementalist",
+    class = "elementalist",
     activeAbility = {
         target = "self",
         range = 0,

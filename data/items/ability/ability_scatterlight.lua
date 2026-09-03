@@ -20,8 +20,7 @@ return {
     sprite = "assets/items/ability_scatterlight.png",
     type = "ability",
     tags = { "illusion", "utility" },
-    class = "mage",
-    discipline = "ninja",
+    class = "ninja",
     price = 740,
     unlockQuests = 8,
     activeAbility = {

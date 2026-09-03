@@ -52,7 +52,7 @@ local Wall = require("models.wall")
 local Prop = require("models.prop")
 local Character = require("models.character")
 local Item = require("models.item") -- for Item.costs: the one place an ability's costs are normalized
-local Discipline = require("models.discipline") -- growthClasses: which classes a use tallies
+local Class = require("models.class") -- growthClasses: which classes a use tallies
 local Experience = require("models.experience") -- what a body earns for acting; the descent spends it
 
 local Combat = {}
@@ -5314,7 +5314,7 @@ end
 Combat.CLASS_MASTERY_STEP = 0.03
 
 -- `value` as the body actually delivers it: the item's authored magnitude raised by the wielder's level
--- in that item's own class or discipline (Discipline.classLevel).
+-- in that item's own class or discipline (Class.classLevel).
 --
 -- Keyed on the ITEM's class, not the wielder's declared job, and the two are deliberately different
 -- questions -- a knight-declared body casting a mage spell gets its MAGE level out of that spell. The
@@ -5325,9 +5325,9 @@ Combat.CLASS_MASTERY_STEP = 0.03
 -- into things that belong to nobody.
 function Combat.classScaled(unit, item, value)
     if not value or value == 0 then return value end
-    local key = item and (item.discipline or item.class)
+    local key = item and item.class
     if not key then return value end
-    local level = Discipline.classLevel(unit and unit.char, key)
+    local level = Class.classLevel(unit and unit.char, key)
     if level <= 0 then return value end
     return math.floor(value * (1 + level * Combat.CLASS_MASTERY_STEP) + 0.5)
 end
@@ -9506,7 +9506,7 @@ function Combat.strikeWith(combat, user, weapon, tx, ty)
 end
 
 -- Bank technique for a roster member's action with `item`, and record it on the battle so the summary
--- can name what the fight earned. Keyed by what the item votes for (Discipline.growthClasses): a
+-- can name what the fight earned. Keyed by what the item votes for (Class.growthClasses): a
 -- discipline item banks its DISCIPLINE (a Ninja weapon grows data/growth/ninja.lua, not its two
 -- parents), a plain item banks its single `class`. No-op for stock with neither.
 --
@@ -9517,7 +9517,7 @@ end
 -- precedence rule so one action was never reported twice under one name. Now that every house banks
 -- the same currency there is one thing to report, so the rule and its second floater are gone.
 --
--- CAPPED PER BATTLE, per key (Discipline.TECHNIQUE_PER_BATTLE). The cap is the whole reason this does
+-- CAPPED PER BATTLE, per key (Class.TECHNIQUE_PER_BATTLE). The cap is the whole reason this does
 -- not reopen the grind door models/growth.lua deliberately shut: a `free` ability bills no initiative
 -- and leaves the turn open, and nothing obliges a player to finish a fight, so the action count in one
 -- encounter is not bounded by anything the rules enforce. Past the cap the player keeps playing and
@@ -9544,13 +9544,13 @@ end
 -- clears, so a capped-out action floats nothing rather than a misleading zero.
 function Combat.awardTechnique(combat, unit, item)
     combat.techniqueAward = nil
-    local key = Discipline.growthClasses(item)[1]
+    local key = Class.growthClasses(item)[1]
     if not key then return 0 end
 
     combat.techniqueEarned = combat.techniqueEarned or {}
     local earned = combat.techniqueEarned[key] or 0
-    local amount = math.min(Discipline.TECHNIQUE_PER_ACTION,
-        Discipline.TECHNIQUE_PER_BATTLE - earned)
+    local amount = math.min(Class.TECHNIQUE_PER_ACTION,
+        Class.TECHNIQUE_PER_BATTLE - earned)
     if amount <= 0 then return 0 end
 
     Character.recordTechnique(unit.char, key, amount)
@@ -10631,7 +10631,7 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         end
     end
 
-    -- Bank a class-tagged action on the actor's ledger (models/growth.lua, models/discipline.lua). A
+    -- Bank a class-tagged action on the actor's ledger (models/growth.lua, models/class.lua). A
     -- weapon strike, a spell, or a thrown consumable all land here. Only a real player roster member
     -- counts: `control == "player"` excludes AI escortees, and `not summoned` excludes summons (both
     -- use transient char instances that would never persist the ledger anyway).
@@ -10640,7 +10640,7 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         -- Experience for the ACTION, on the same gate and for the same reason: a body grows by what it
         -- does, and an escortee or a summon is not a body the player is growing. Distinct from the
         -- technique above rather than folded into it -- technique is capped per house per battle
-        -- (Discipline.TECHNIQUE_PER_BATTLE), because it is a specialization ledger and a long fight
+        -- (Class.TECHNIQUE_PER_BATTLE), because it is a specialization ledger and a long fight
         -- should not let one house run away with a build; experience is not capped, because it measures
         -- the fight itself. A body still acting on turn twelve is still earning.
         --

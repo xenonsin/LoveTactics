@@ -32,8 +32,7 @@ return {
     sprite = "assets/items/skeptics_harness.png",
     type = "armor",
     tags = { "heavy" },
-    class = "knight",
-    discipline = "spellbreaker", -- knight x mage; the sword-oath's own plate -- forswear the craft, ward against it
+    class = "spellbreaker", -- knight x mage; the sword-oath's own plate -- forswear the craft, ward against it
     price = 660,
     unlockQuests = 7,
     traits = { "trait_magic_denial" }, -- lays Magic Denied at the bell; see data/status/magic_denied.lua

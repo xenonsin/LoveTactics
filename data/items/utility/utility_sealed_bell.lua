@@ -32,8 +32,7 @@ return {
     sprite = "assets/items/sig_sealed_bell.png",
     type = "utility",
     tags = { "signature", "poison" },
-    class = "alchemist",
-    discipline = "plague_knight",
+    class = "plague_knight",
     activeAbility = {
         target = "self",
         range = 0,

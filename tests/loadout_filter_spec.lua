@@ -22,7 +22,7 @@ local function weaponGroup(selected)
         valueOf = function(it) return Item.archetype(it) end }
 end
 local function disciplineGroup(selected)
-    return { label = "Discipline", options = {}, selected = selected or {},
+    return { label = "Class", options = {}, selected = selected or {},
         valueOf = function(it) return it.discipline end }
 end
 

@@ -230,7 +230,7 @@ Three findings about how the engine currently handles that, in ascending order o
 imply.
 
 **1. The discipline gate is a purchase gate, not an equip gate — so this already works.**
-`Discipline.isUnlocked` is consulted only inside `models/discipline.lua`, driving vendor stocking. It
+`Discipline.isUnlocked` is consulted only inside `models/class.lua`, driving vendor stocking. It
 never reaches equip. So a looted discipline item is usable the moment it drops, which is coherent
 with the "anyone carries anything" core in [classes.md](classes.md): **the lattice gates reliable
 supply, not access.** You can carry the Necromancer's reliquary off her corpse; you cannot *shop* for

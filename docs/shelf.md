@@ -160,7 +160,7 @@ and it is preview-safe by construction.
 
 Each class's stock is ranked weakest-first and spread across `0 .. rungs - 1`, where **a rung is a level
 of the class ladder** — `Discipline.CLASS_LEVEL_CAP`, nine rungs at every class. `tools/grade_report.lua`
-reads the count off `models/discipline.lua`, so the shelf cannot disagree with the thing that opens it.
+reads the count off `models/class.lua`, so the shelf cannot disagree with the thing that opens it.
 
 > **This is the second re-cut, and the first one is worth keeping in view.** A rung used to be *a job the
 > house asked for* — its opener plus every quest a discipline hung off, six per house — and before that
@@ -190,7 +190,7 @@ slot 3. Spreading them together and clamping afterwards piles every low-grading 
 that one slot and starves the rungs beneath it — which
 [balance.md](balance.md)'s rule 10 reads as a gate that opened nothing.
 
-> No subclass unlocks before its parent class's third level (`requiredLevel`, `data/disciplines/*.lua`),
+> No subclass unlocks before its parent class's third level (`requiredLevel`, `data/classes/*.lua`),
 > so a discipline row at slot 0 is a *locked* row sitting in front of the stock a newcomer can actually
 > buy. `Vendor.stock` sorts by slot then price, so a cheap one there becomes the first thing the shop
 > shows and the first thing they cannot have.

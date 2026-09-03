@@ -17,8 +17,7 @@ return {
     sprite = "assets/items/ability_the_long_prayer.png",
     type = "ability",
     tags = { "holy" },
-    class = "priest",
-    discipline = "theurge",
+    class = "theurge",
     price = 165,
     unlockQuests = 1,
     activeAbility = {

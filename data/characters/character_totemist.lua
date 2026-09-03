@@ -1,6 +1,6 @@
 -- Totemist exemplar (hunter x priest multiclass). Ward totems: planted totems projecting holy heal /
 -- negate zones. Met as a ward-carver, a mentor. Home shelf is hunter. Kit from
--- data/disciplines/totemist.lua.
+-- data/classes/totemist.lua.
 return {
     name = "Totemist",
     kind = "humanoid",

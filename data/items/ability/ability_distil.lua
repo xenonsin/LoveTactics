@@ -21,8 +21,7 @@ return {
     sprite = "assets/items/ability_distil.png",
     type = "ability",
     tags = { "utility" },
-    class = "alchemist",
-    discipline = "herbalist",
+    class = "herbalist",
     price = 410,
     unlockQuests = 4,
     activeAbility = {

@@ -13,6 +13,7 @@ return {
     flavor = "Something walked north until it stopped being an animal, and kept walking.",
     sprite = "assets/items/hoarfrost_antlers.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "ice", "physical", "melee" },
     noSteal = true,
     activeAbility = {

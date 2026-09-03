@@ -11,8 +11,7 @@ return {
     sprite = "assets/items/ability_mana_sunder.png",
     type = "ability",
     tags = { "impact", "physical" },
-    class = "knight",
-    discipline = "spellbreaker", -- knight x mage; the Counterspell mechanic's first stock
+    class = "spellbreaker", -- knight x mage; the Counterspell mechanic's first stock
     price = 660,
     unlockQuests = 7,
     activeAbility = {

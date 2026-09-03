@@ -28,8 +28,7 @@ return {
     sprite = "assets/items/saviors_watch.png",
     type = "utility",
     tags = { "charm", "holy" },
-    class = "fighter",
-    discipline = "crusader", -- deeper cut of the shelf: buyable only once the crusader gate is cleared
+    class = "crusader", -- deeper cut of the shelf: buyable only once the crusader gate is cleared
     price = 245,
     unlockQuests = 2,
     traits = { "trait_saviors_watch" },

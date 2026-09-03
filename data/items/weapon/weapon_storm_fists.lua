@@ -9,6 +9,7 @@ return {
     flavor = "The storm is not yours to take, and it has never been anyone's to keep.",
     sprite = "assets/items/storm_fists.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "lightning", "magical", "melee" },
     noSteal = true,
     activeAbility = {

@@ -19,6 +19,7 @@ local Party = require("ui.panels.party")
 local NameEntry = require("ui.name_entry")
 local Character = require("models.character")
 local Item = require("models.item")
+local Class = require("models.class") -- roots(): the class filter's options
 local Writer = require("tools.write_character")
 local Scale = require("scale")
 
@@ -169,7 +170,7 @@ function editor.enter()
 
     local types = { "weapon", "armor", "consumable", "ability", "utility" }
     local classes = {}
-    for c in pairs(Item.CLASSES) do classes[#classes + 1] = c end
+    for c in pairs(Class.roots()) do classes[#classes + 1] = c end
     table.sort(classes)
     filters = {
         { label = "Type", options = types, selected = {} },

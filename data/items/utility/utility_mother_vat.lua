@@ -16,8 +16,7 @@ return {
     sprite = "assets/items/sig_mother_vat.png",
     type = "utility",
     tags = { "signature", "poison" },
-    class = "alchemist",
-    discipline = "poisoner",
+    class = "poisoner",
     activeAbility = {
         target = "self",
         range = 0,

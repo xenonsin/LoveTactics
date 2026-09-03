@@ -27,8 +27,7 @@ return {
     sprite = "assets/items/ability_silence.png", -- placeholder until its own art exists
     type = "ability",
     tags = { "magical", "dark" },
-    class = "mage",
-    discipline = "necromancer", -- deeper cut of the shelf: buyable only once the necromancer gate is cleared
+    class = "necromancer", -- deeper cut of the shelf: buyable only once the necromancer gate is cleared
     price = 165,
     unlockQuests = 1,
     activeAbility = {

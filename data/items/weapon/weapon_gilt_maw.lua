@@ -13,6 +13,7 @@ return {
     flavor = "It ate the vault, then the vault's owners, and has been slowly becoming both.",
     sprite = "assets/items/gilt_maw.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "impact", "physical", "melee" },
     noSteal = true,
     activeAbility = {

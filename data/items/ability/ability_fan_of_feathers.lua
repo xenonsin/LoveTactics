@@ -25,6 +25,7 @@ return {
     flavor = "Everything it has, at once, at whatever walked into the wings.",
     sprite = "assets/items/ability_fan_of_feathers.png",
     type = "ability",
+    class = "creature",
     tags = { "natural", "pierce", "physical" },
     noSteal = true,
     activeAbility = {

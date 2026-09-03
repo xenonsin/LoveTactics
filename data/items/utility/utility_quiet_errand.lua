@@ -19,8 +19,7 @@ return {
     sprite = "assets/items/sig_quiet_errand.png",
     type = "utility",
     tags = { "signature", "pierce", "physical" },
-    class = "rogue",
-    discipline = "assassin",
+    class = "assassin",
     activeAbility = {
         target = "enemy",
         range = 8,

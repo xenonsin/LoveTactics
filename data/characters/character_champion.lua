@@ -1,6 +1,6 @@
 -- Champion exemplar (fighter x knight multiclass), and the tough foe behind an `elite` encounter.
 -- Riposte-wall: taunt the crowd, then counter every striker; Defiance banks per hit taken. Home shelf
--- is knight for the taunt, fighter for the reprisal. Kit from data/disciplines/champion.lua.
+-- is knight for the taunt, fighter for the reprisal. Kit from data/classes/champion.lua.
 -- (Tests that use this body bare() its grid first, so the enriched kit below is safe.)
 return {
     name = "Champion",

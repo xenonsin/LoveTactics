@@ -10,7 +10,7 @@ local Vendor = require("models.vendor")
 local Quest = require("models.quest")
 local Item = require("models.item")
 local Forge = require("models.forge")
-local Discipline = require("models.discipline")
+local Class = require("models.class")
 local Save = require("models.save")
 local Character = require("models.character")
 local Combat = require("models.combat")
@@ -105,7 +105,7 @@ return {
         -- finished ladder opens the whole bench -- and in between it may only climb.
         name = "a house's forge ceiling climbs with its class level and tops out at the ladder's end",
         fn = function()
-            local Disc = require("models.discipline")
+            local Disc = require("models.class")
             local p = Player.new()
             local sword = Item.instantiate("weapon_iron_sword") -- knight gear -> the knight ladder
 
@@ -202,14 +202,12 @@ return {
             local ids = {}
             for _, entry in ipairs(stock) do
                 ids[entry.id] = true
-                -- A discipline item is a legitimate guest on a parent's shelf even when its own `class`
-                -- is the OTHER parent (docs/classes.md): a Poacher item (rogue x hunter) sits on the
-                -- rogue shelf whether its home class is rogue or hunter.
+                -- An earned class's item is a legitimate guest on each parent's shelf: a Poacher item
+                -- (rogue x hunter) sits on the rogue shelf and on the hunter's. Since the fold that is
+                -- one question -- does this class descend from the rogue -- rather than a home class
+                -- plus a list of parents to check against it (docs/class-fold.md).
                 local bp = Item.defs[entry.id]
-                local onShelf = bp.class == "rogue"
-                for _, p in ipairs(bp.discipline and Discipline.parents(bp.discipline) or {}) do
-                    if p == "rogue" then onShelf = true end
-                end
+                local onShelf = Class.descendsFrom(bp.class, "rogue")
                 assert(onShelf, entry.id .. " is on the rogue shelf without being a rogue item or a rogue-discipline guest")
                 assert(entry.price, entry.id .. " is for sale with no price")
             end
@@ -243,13 +241,13 @@ return {
         fn = function()
             local Errand = require("models.errand")
             for vendorId, vdef in pairs(Vendor.defs) do
-                if vdef.sells ~= false and Discipline.CLASS_LEVEL_CAP > 0 then
+                if vdef.sells ~= false and Class.CLASS_LEVEL_CAP > 0 then
                     -- THE LINE IS THE LADDER, not the count of quests a house sponsors. A house asks for
                     -- the work that OPENS something -- its opener and the jobs its disciplines hang off
                     -- (models/errand.lua) -- and the rest of what it sponsors is not on any shelf's
                     -- ladder at all, so walking every sponsored quest here reads the plain numbered
                     -- fights as gates that opened nothing.
-                    local rungs = Discipline.CLASS_LEVEL_CAP
+                    local rungs = Class.CLASS_LEVEL_CAP
                     -- How many rows each rung newly unlocks, walked up the ladder.
                     local seen, silent = 0, {}
                     for done = 0, rungs - 1 do
@@ -271,7 +269,7 @@ return {
     {
         name = "every class has a vendor, and every vendor has an opening-shelf item to sell",
         fn = function()
-            for class in pairs(Item.CLASSES) do
+            for class in pairs(Class.roots()) do
                 local vendorId
                 for id, def in pairs(Vendor.defs) do
                     if def.class == class then vendorId = id end
@@ -285,14 +283,21 @@ return {
         end,
     },
     {
-        name = "every priced item has a shelf, and every shelf is a class vendor",
+        name = "every priced item names a real class, and a price with no class is dead data",
         fn = function()
             -- There is no general store any more. The Cafe was one -- classless goods plus a potion
             -- resale rack -- and it sells suppers now (models/meal.lua), so a price with no class is
             -- once again unbuyable dead data with nowhere to go.
+            --
+            -- IT USED TO ASK FOR ONE OF THE SEVEN, which was the same question while a class WAS a
+            -- house. Since the fold an item may name any of the forty-six (docs/class-fold.md) -- a
+            -- Ninja blade is `class = "ninja"` and no house sells it directly -- so what is pinned here
+            -- is that the class is REAL. Which shelf reaches it is Vendor.sells's job, and the case
+            -- above is where "every house has something to sell" is kept.
             for id, def in pairs(Item.defs) do
                 if def.class then
-                    assert(Item.CLASSES[def.class], id .. " has unknown class '" .. def.class .. "'")
+                    assert(Class.defs[def.class],
+                        id .. " has unknown class '" .. def.class .. "'")
                 else
                     assert(not def.price,
                         id .. " has a price but no class -- no vendor can stock it (docs/classes.md)")
@@ -358,11 +363,15 @@ return {
         end,
     },
     {
-        name = "class survives instantiation and is absent on universal items",
+        name = "class survives instantiation, and kit belonging to no house says so",
         fn = function()
             assert(Item.instantiate("weapon_iron_sword").class == "knight", "class should reach the instance")
             assert(Item.classOf(Item.instantiate("weapon_iron_sword")) == "knight", "classOf should read it")
-            assert(Item.instantiate("weapon_unarmed").class == nil, "the unarmed fallback belongs to no class")
+            -- The hidden fist used to answer nil here, which meant "no class" -- a real state while the
+            -- taxonomy was sparse. Every item names a class since the fold (docs/class-fold.md), and
+            -- the thing that was being pinned -- no house sells this -- is now said out loud.
+            assert(Item.instantiate("weapon_unarmed").class == "creature",
+                "the unarmed fallback belongs to no house")
         end,
     },
     {
@@ -570,7 +579,7 @@ return {
             local function shelf()
                 local locked = {}
                 for _, entry in ipairs(Vendor.stock("colosseum", Quest.shelfRung(p, "colosseum"),
-                        p.recipes, Discipline.unlockedSet(p), Discipline.levelSet(p))) do
+                        p.recipes, Class.unlockedSet(p), Class.levelSet(p))) do
                     locked[entry.id] = entry.locked
                 end
                 return locked
@@ -972,26 +981,26 @@ return {
         name = "a save round trip preserves banked discipline technique",
         fn = function()
             withScratchSave(function()
-                local Discipline = require("models.discipline")
-                local disciplineId = next(Discipline.defs)
-                assert(disciplineId, "there is at least one discipline")
+                local Class = require("models.class")
+                local classId = next(Class.defs)
+                assert(classId, "there is at least one discipline")
 
                 local p = Player.new()
-                p.roster[1].technique = { [disciplineId] = 34 }
+                p.roster[1].technique = { [classId] = 34 }
 
                 Save.write(p)
                 local loaded = Save.read()
                 assert(loaded, "the save should read back")
-                assert(loaded.roster[1].technique[disciplineId] == 34, "the wallet should survive the trip")
+                assert(loaded.roster[1].technique[classId] == 34, "the wallet should survive the trip")
 
                 -- A wallet spent back to nothing drops out entirely, and reads as zero rather than nil
                 -- on the far side -- the same shape an untouched discipline has.
-                p.roster[1].technique = { [disciplineId] = 0 }
+                p.roster[1].technique = { [classId] = 0 }
                 Save.write(p)
                 local emptied = Save.read()
-                assert((emptied.roster[1].technique or {})[disciplineId] == nil,
+                assert((emptied.roster[1].technique or {})[classId] == nil,
                     "a spent-out discipline is omitted, like an unearned one")
-                assert(Discipline.technique(emptied, disciplineId) == 0, "and reads back as zero")
+                assert(Class.technique(emptied, classId) == 0, "and reads back as zero")
             end)
         end,
     },
@@ -1051,7 +1060,7 @@ return {
             -- used to reconstruct a `growthBy` ledger from the save's dominant class, because the class
             -- level was read off that ledger and an old save would otherwise have looked like a body
             -- that had never levelled. The class level is read off `technique` now
-            -- (Discipline.classLevel), which these saves already carried, so there is nothing to invent.
+            -- (Class.classLevel), which these saves already carried, so there is nothing to invent.
             assert(loaded.growthBy == nil, "the retired ledger is not rebuilt")
             assert(loaded.job == nil, "an old save arrives undeclared, and grows as its innate class")
 
@@ -1064,8 +1073,8 @@ return {
         -- because a mismatch throws the whole save away for a change that reads forward exactly.
         name = "a pre-merge save folds its two tallies into the one ledger",
         fn = function()
-            local Discipline = require("models.discipline")
-            local rate = Discipline.TECHNIQUE_PER_ACTION
+            local Class = require("models.class")
+            local rate = Class.TECHNIQUE_PER_ACTION
 
             local loaded = Save.restoreCharacter({
                 id = "character_rowan",

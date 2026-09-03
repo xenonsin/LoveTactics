@@ -9,7 +9,7 @@
 
 local Shop = require("ui.panels.shop")
 local Vendor = require("models.vendor")
-local Discipline = require("models.discipline")
+local Class = require("models.class")
 
 -- A shelf built for `vendorId` as seen by a player who has finished nothing: no quests, so every
 -- discipline this house touches is still locked.
@@ -45,7 +45,7 @@ end
 local function vendorWithLockedPath()
     for _, def in ipairs(Vendor.list()) do
         for _, s in ipairs(sections(shelf(def.id))) do
-            if s.header.discipline and not Discipline.isUnlocked({ completedQuests = {} }, s.header.discipline) then
+            if s.header.discipline and not Class.isUnlocked({ completedQuests = {} }, s.header.discipline) then
                 return def.id, s.header.discipline
             end
         end
@@ -56,28 +56,28 @@ return {
     {
         name = "a locked path folds shut by default: its header shows, its stock does not",
         fn = function()
-            local vendorId, disciplineId = vendorWithLockedPath()
+            local vendorId, classId = vendorWithLockedPath()
             assert(vendorId, "no shipped vendor bands a locked discipline -- the fixture has rotted")
 
             for _, s in ipairs(sections(shelf(vendorId))) do
-                if s.header.discipline == disciplineId then
-                    assert(s.header.collapsed, disciplineId .. ": a locked path should start shut")
-                    assert(#s.rows == 0, disciplineId .. ": a shut path shows no rows, got " .. #s.rows)
-                    assert(s.header.total > 0, disciplineId .. ": the header still counts what is behind it")
+                if s.header.discipline == classId then
+                    assert(s.header.collapsed, classId .. ": a locked path should start shut")
+                    assert(#s.rows == 0, classId .. ": a shut path shows no rows, got " .. #s.rows)
+                    assert(s.header.total > 0, classId .. ": the header still counts what is behind it")
                     return
                 end
             end
-            error(disciplineId .. " lost its band on the second build")
+            error(classId .. " lost its band on the second build")
         end,
     },
     {
         name = "the player can open a locked path and read every row behind it",
         fn = function()
-            local vendorId, disciplineId = vendorWithLockedPath()
-            local opened = shelf(vendorId, { [disciplineId] = false })
+            local vendorId, classId = vendorWithLockedPath()
+            local opened = shelf(vendorId, { [classId] = false })
 
             for _, s in ipairs(sections(opened)) do
-                if s.header.discipline == disciplineId then
+                if s.header.discipline == classId then
                     assert(not s.header.collapsed, "an opened path draws its caret down")
                     assert(#s.rows == s.header.total,
                         "an opened path shows all " .. s.header.total .. " of its rows, got " .. #s.rows)
@@ -87,7 +87,7 @@ return {
                     return
                 end
             end
-            error(disciplineId .. " lost its band once opened")
+            error(classId .. " lost its band once opened")
         end,
     },
     {
@@ -110,14 +110,14 @@ return {
             -- The fold state records only what the PLAYER set, so the default is re-read every build:
             -- a path that opens mid-session must not stay shut because it happened to be locked when
             -- the shelf was first drawn.
-            local vendorId, disciplineId = vendorWithLockedPath()
+            local vendorId, classId = vendorWithLockedPath()
             local panel = shelf(vendorId)
-            assert(panel:isFolded(disciplineId), "locked and untouched: shut")
+            assert(panel:isFolded(classId), "locked and untouched: shut")
 
-            local def = Discipline.defs[disciplineId]
+            local def = Class.defs[classId]
             for _, q in ipairs(def.requiredQuests or {}) do panel.player.completedQuests[q] = true end
-            if Discipline.isUnlocked(panel.player, disciplineId) then
-                assert(not panel:isFolded(disciplineId), "unlocked and untouched: open")
+            if Class.isUnlocked(panel.player, classId) then
+                assert(not panel:isFolded(classId), "unlocked and untouched: open")
             end
         end,
     },

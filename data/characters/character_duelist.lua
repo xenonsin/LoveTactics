@@ -1,6 +1,6 @@
 -- Duelist exemplar (fighter x rogue multiclass). Duel stance: a bonus that escalates while locked
 -- 1v1 with one foe. Met as a swaggering blade-for-hire, a recruit. Home shelf is rogue (Main-Gauche),
--- and it grows both parents. Kit from data/disciplines/duelist.lua.
+-- and it grows both parents. Kit from data/classes/duelist.lua.
 return {
     name = "Duelist",
     kind = "humanoid",

@@ -7,6 +7,7 @@ return {
     flavor = "It weighed the party before they came through the door, and found them worth the trouble.",
     sprite = "assets/items/assay_scales.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_assayed" },

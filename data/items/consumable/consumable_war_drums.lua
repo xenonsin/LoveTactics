@@ -19,8 +19,7 @@ return {
     sprite = "assets/items/consumable_war_drums.png",
     type = "consumable",
     tags = { "rally" },
-    class = "fighter",
-    discipline = "warlord", -- deeper cut of the shelf: buyable only once the warlord gate is cleared
+    class = "warlord", -- deeper cut of the shelf: buyable only once the warlord gate is cleared
     price = 65,
     unlockQuests = 1,
     activeAbility = {

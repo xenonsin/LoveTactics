@@ -16,7 +16,7 @@
 -- (data/items/ability/ability_coup_de_grace.lua) -- the Coup finishes the wounded and this makes the
 -- finish permanent, so an assassin carrying both closes the contract and seals it in one turn.
 --
--- Quest-only cut of the rogue shelf: `discipline = "assassin"`, buyable only once the assassin gate is
+-- Quest-only cut of the rogue shelf: `class = "assassin"`, buyable only once the assassin gate is
 -- cleared.
 local Curve = require("models.curve")
 
@@ -27,8 +27,7 @@ return {
     sprite = "assets/items/quietus.png",
     type = "weapon",
     tags = { "dagger", "pierce", "physical", "melee" },
-    class = "rogue",
-    discipline = "assassin",
+    class = "assassin",
     price = 660,
     unlockQuests = 7,
     activeAbility = {

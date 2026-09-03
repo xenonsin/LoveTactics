@@ -19,6 +19,7 @@ return {
         "here, and all of them were behind.",
     sprite = "assets/items/tally_stick.png",
     type = "utility",
+    class = "creature",
     tags = { "relic" },
     noSteal = true,
     traits = { "trait_assayers_tally" },

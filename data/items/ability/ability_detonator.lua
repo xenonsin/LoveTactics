@@ -20,8 +20,7 @@ return {
     sprite = "assets/items/ability_detonator.png",
     type = "ability",
     tags = { "utility" },
-    class = "rogue",
-    discipline = "saboteur",
+    class = "saboteur",
     price = 165,
     unlockQuests = 1,
     activeAbility = {

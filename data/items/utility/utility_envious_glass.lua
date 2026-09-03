@@ -26,6 +26,7 @@ return {
         "\"below the vats, where the shapeless envy the shaped\".",
     sprite = "assets/items/envious_glass.png",
     type = "utility",
+    class = "creature",
     tags = { "relic" },
     noSteal = true, -- nothing takes this off you; you took it off her
     traits = { "trait_covetous_reflection" },

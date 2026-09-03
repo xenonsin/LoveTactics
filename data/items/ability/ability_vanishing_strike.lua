@@ -10,8 +10,7 @@ return {
     sprite = "assets/items/ability_vanishing_strike.png",
     type = "ability",
     tags = { "pierce", "physical", "guile" },
-    class = "rogue",
-    discipline = "ninja", -- rogue x mage; the Shadowclone mechanic's first stock
+    class = "ninja", -- rogue x mage; the Shadowclone mechanic's first stock
     price = 740,
     unlockQuests = 8,
     activeAbility = {

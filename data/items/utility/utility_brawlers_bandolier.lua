@@ -10,8 +10,7 @@ return {
     sprite = "assets/items/utility_brawlers_bandolier.png",
     type = "utility",
     tags = { "charm" },
-    class = "fighter",
-    discipline = "warbrewer", -- fighter x alchemist; the Combat-draught mechanic's first stock
+    class = "warbrewer", -- fighter x alchemist; the Combat-draught mechanic's first stock
     price = 410,
     unlockQuests = 4,
     traits = { "trait_brawlers_bandolier" },

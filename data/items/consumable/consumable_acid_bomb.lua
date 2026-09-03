@@ -14,8 +14,7 @@ return {
     sprite = "assets/items/acid_bomb.png",
     type = "consumable",
     tags = { "acid" },
-    class = "alchemist",
-    discipline = "bombardier", -- deeper cut of the shelf: buyable only once the bombardier gate is cleared
+    class = "bombardier", -- deeper cut of the shelf: buyable only once the bombardier gate is cleared
     price = 295,
     unlockQuests = 8,
     activeAbility = {

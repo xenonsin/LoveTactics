@@ -14,8 +14,7 @@ return {
     sprite = "assets/items/consumable_wildcraft_poultice.png",
     type = "consumable",
     tags = { "restorative" },
-    class = "hunter",
-    discipline = "herbalist", -- hunter x alchemist; the Field-brewing mechanic's first stock
+    class = "herbalist", -- hunter x alchemist; the Field-brewing mechanic's first stock
     price = 230,
     unlockQuests = 6,
     activeAbility = {

@@ -1,5 +1,5 @@
 -- Battlemage exemplar (fighter x mage multiclass). Spellstrike: a cantrip folded into a melee swing.
--- Met as a spell-and-steel veteran, a boss. Home shelf is mage. Kit from data/disciplines/battlemage.lua.
+-- Met as a spell-and-steel veteran, a boss. Home shelf is mage. Kit from data/classes/battlemage.lua.
 return {
     name = "Battlemage",
     kind = "humanoid",

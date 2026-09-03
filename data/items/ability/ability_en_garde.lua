@@ -12,8 +12,7 @@ return {
     sprite = "assets/items/ability_en_garde.png",
     type = "ability",
     tags = { "slash", "physical" },
-    class = "fighter",
-    discipline = "duelist", -- fighter x rogue; the Duel-stance mechanic's first stock
+    class = "duelist", -- fighter x rogue; the Duel-stance mechanic's first stock
     price = 245,
     unlockQuests = 2,
     activeAbility = {

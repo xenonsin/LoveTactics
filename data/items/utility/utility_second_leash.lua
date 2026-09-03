@@ -16,8 +16,7 @@ return {
     sprite = "assets/items/sig_second_leash.png",
     type = "utility",
     tags = { "signature", "primal" },
-    class = "hunter",
-    discipline = "beastmaster",
+    class = "beastmaster",
     activeAbility = {
         target = "self",
         range = 0,

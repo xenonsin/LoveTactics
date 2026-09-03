@@ -1,7 +1,7 @@
 -- Kaen -- the Ninja exemplar (rogue x mage multiclass), the marquee fusion the codebase named years
 -- before it could sell it. Shadowclone: blink between decoys, vanish from sight, strike from stealth.
 -- Met as a boss. Home shelf is rogue; the mage half is the illusion-work. Kit from
--- data/disciplines/ninja.lua.
+-- data/classes/ninja.lua.
 return {
     name = "Kaen",
     kind = "humanoid",

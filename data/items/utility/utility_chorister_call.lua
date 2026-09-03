@@ -7,6 +7,7 @@ return {
     flavor = "It is not singing to you. You are simply standing where the song is.",
     sprite = "assets/items/chorister_call.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_lure" },

@@ -14,6 +14,7 @@ return {
     flavor = "Not quite out. It never is, down here.",
     sprite = "assets/items/ember_husk.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_cinderfall" },

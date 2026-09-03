@@ -1,6 +1,6 @@
 -- Artificer exemplar (mage x alchemist multiclass). Constructs: deploy autonomous sentries / turrets.
 -- Met as a sentry-engine builder, a boss/mentor. Home shelf is mage. Kit from
--- data/disciplines/artificer.lua.
+-- data/classes/artificer.lua.
 return {
     name = "Artificer",
     kind = "humanoid",

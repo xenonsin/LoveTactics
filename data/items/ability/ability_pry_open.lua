@@ -10,8 +10,7 @@ return {
     sprite = "assets/items/ability_pry_open.png",
     type = "ability",
     tags = { "pierce", "physical", "guile" },
-    class = "rogue",
-    discipline = "vanguard", -- knight x rogue; the Breach mechanic's first stock
+    class = "vanguard", -- knight x rogue; the Breach mechanic's first stock
     price = 660,
     unlockQuests = 7,
     activeAbility = {

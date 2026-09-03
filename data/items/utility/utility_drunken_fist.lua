@@ -11,8 +11,7 @@ return {
     sprite = "assets/items/drunken_fist.png",
     type = "utility",
     tags = { "fist" },
-    class = "priest",
-    discipline = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
+    class = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
     price = 245,
     unlockQuests = 2,
     unarmedBonus = { drunkDamage = Curve.ramp(6, 16) },

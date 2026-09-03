@@ -15,6 +15,7 @@ return {
     flavor = "Whatever is in the cloth was alive once, and is now extremely motivated.",
     sprite = "assets/items/weapon_blight_spitter.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "poison", "physical" },
     noSteal = true, -- it is part of the stake, not equipment
     activeAbility = {

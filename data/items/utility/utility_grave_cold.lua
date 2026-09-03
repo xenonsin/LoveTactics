@@ -16,6 +16,7 @@ return {
     flavor = "The Arcanum's first lesson on the raised: do not send the priest. Send another shovel.",
     sprite = "assets/items/utility_grave_cold.png",
     type = "utility",
+    class = "creature",
     tags = { "dark" },
     noSteal = true, -- it is what the body IS, not equipment
     traits = { "trait_grave_cold" },

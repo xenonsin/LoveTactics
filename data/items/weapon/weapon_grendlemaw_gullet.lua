@@ -21,6 +21,7 @@ return {
     flavor = "The fen has one bad idea and has been having it for a very long time.",
     sprite = "assets/items/grendlemaw_gullet.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "bite", "physical", "melee" },
     noSteal = true,
     activeAbility = {

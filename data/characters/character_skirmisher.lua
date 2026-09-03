@@ -1,6 +1,6 @@
 -- Skirmisher exemplar (fighter x hunter multiclass). Hit-and-run: reposition after a strike, and the
 -- shot that does not close your move. Met as a raider outrider, a boss. Home shelf is hunter
--- (Harrier's Bow). Kit from data/disciplines/skirmisher.lua.
+-- (Harrier's Bow). Kit from data/classes/skirmisher.lua.
 return {
     name = "Skirmisher",
     kind = "humanoid",

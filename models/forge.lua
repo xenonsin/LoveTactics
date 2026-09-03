@@ -11,7 +11,7 @@
 -- THE BILL is three tracks (see models/material.lua for the two material families):
 --   technique      what stock belonging to a HOUSE is forged with: the currency a character banks by
 --                  playing that house, keyed on the item's discipline if it has one and its class
---                  otherwise (models/discipline.lua).
+--                  otherwise (models/class.lua).
 --   gold           only for stock belonging to no house at all -- a natural weapon. Never both; the
 --                  two are alternatives on one track, not a surcharge.
 --   craft stock    the grade the ITEM's own quality draws on, times a count that climbs
@@ -19,8 +19,8 @@
 --                  material at double the rate. That is the discipline gate: the deep cut of the shelf
 --                  costs stock from both lines it descends from, so you must have run them.
 --
--- WHY THE BENCH STOPPED TAKING GOLD. Discipline gear used to cost gold like everything else and be
--- held back by a CEILING of `Discipline.level + 2` -- so a quest spent playing a ninja bought,
+-- WHY THE BENCH STOPPED TAKING GOLD. Class gear used to cost gold like everything else and be
+-- held back by a CEILING of `Class.level + 2` -- so a quest spent playing a ninja bought,
 -- eventually and invisibly, the right to pay the same gold a knight pays for a knight thing. That is a
 -- permission slip, not a reward, and permission slips are not felt. Billing the play itself closes the
 -- loop where the player can see it: fight as a ninja, bank ninja technique, forge the ninja kit.
@@ -35,7 +35,7 @@
 -- THE CEILING is keyed on the item, not on where you stand (the old Vendor.abilityLevelCap gated by
 -- whichever shop happened to be open). See Forge.ceilingFor.
 
-local Discipline = require("models.discipline")
+local Class = require("models.class")
 local Errand = require("models.errand") -- how many rungs a house asks for; the ladder the ceiling is laid on
 local Item = require("models.item")
 local Material = require("models.material")
@@ -46,7 +46,7 @@ local Vendor = require("models.vendor")
 local Forge = {}
 
 -- What a rung costs in gold -- reached ONLY by classless stock now (see currencyFor). Everything with
--- a house is billed in technique at Discipline.techniqueCost, which was tuned against this number so
+-- a house is billed in technique at Class.techniqueCost, which was tuned against this number so
 -- the ladder kept its shape when the currency moved.
 Forge.GOLD_PER_LEVEL = 40
 
@@ -112,20 +112,24 @@ end
 -- How far `player` may take `item` up the ladder right now. Three rules, in order of how specific the
 -- item is about where it came from:
 --
---   discipline item   NO ceiling. It used to be `Discipline.level + 2`; the technique price replaced
+--   earned class      NO ceiling. It used to be `Class.level + 2`; the technique price replaced
 --                     it, and keeping both would be charging twice for the same permission -- you
 --                     cannot buy a rung you have not played for, because the currency IS the playing.
 --                     A brake the player watches fill beats a lock that silently opens.
---   class item        the standing of the house that sells it -- Quest.sponsorProgress, laid across the
+--   root class        the standing of the house that sells it -- Quest.sponsorProgress, laid across the
 --                     rungs that house asks for, the same ladder its shelf opens on. This SURVIVED the
---                     move to a technique price, and is not the double-charge the discipline ceiling
+--                     move to a technique price, and is not the double-charge the earned ceiling
 --                     was: that one measured play, which is exactly what the price now measures, while
 --                     this one measures campaign standing. Two different axes, one of each.
 --   classless         no ceiling. Nothing gates it but the materials.
 --
--- The discipline branch is FIRST and explicit, not a fall-through: discipline stock carries a `class`
--- too (a Ninja blade is rogue stock), so letting it drop into the branch below would quietly reinstate
--- a ceiling on top of the price.
+-- THE EARNED BRANCH IS FIRST AND EXPLICIT, not a fall-through, and it is now the only thing keeping
+-- those two apart. It used to test `item.discipline`, which worked because earned stock carried a
+-- `class` too (a Ninja blade was rogue stock) and the second field was the tell. The fold deleted that
+-- second field, so the tell is the class itself: a root is a house, and anything above one is earned
+-- (docs/class-fold.md). Read the predicate as the sentence it always was -- "did you play for this, or
+-- did the city sell it to you" -- and note that swapping it back to a truthiness check on a field that
+-- no longer exists would silently hand every item in the game an unlimited ceiling.
 --
 -- WHAT A CLASS ITEM'S STANDING BUYS is the rest of the ladder above CEILING_BASE, divided by the number
 -- of errands the house has to ask (Forge.CEILING_BASE's note). Both ends are fixed -- an unworked house
@@ -141,13 +145,13 @@ end
 -- Returns Item.MAX_LEVEL at most, always.
 function Forge.ceilingFor(player, item)
     if not item then return 0 end
-    if item.discipline and Discipline.defs[item.discipline] then
+    if item.class and Class.defs[item.class] and not Class.isRoot(item.class) then
         return Item.MAX_LEVEL
     end
     local class = Item.classOf(item)
     if class then
         -- HOW FAR THE COMPANY HAS GOT IN THIS ITEM'S OWN CLASS, on the 0..CLASS_LEVEL_CAP ladder
-        -- (Discipline.classLevel), read as the roster's best holder for the same reason every other
+        -- (Class.classLevel), read as the roster's best holder for the same reason every other
         -- company-facing reading of it is: specializing one body opens the deep end, and spreading the
         -- same tally over four does not.
         --
@@ -161,8 +165,8 @@ function Forge.ceilingFor(player, item)
         -- the game at +9 without saying so. Reading a ladder that is always populated -- every body has
         -- a class level in everything it has ever swung, even if it is nought -- is what closes that
         -- whole family of bug.
-        local rungs = Discipline.CLASS_LEVEL_CAP
-        local held = math.min(Discipline.rosterLevel(player, class), rungs)
+        local rungs = Class.CLASS_LEVEL_CAP
+        local held = math.min(Class.rosterLevel(player, class), rungs)
         local climb = Item.MAX_LEVEL - Forge.CEILING_BASE
         return math.min(Item.MAX_LEVEL, Forge.CEILING_BASE + math.floor(held * climb / rungs + 0.5))
     end
@@ -180,10 +184,18 @@ end
 -- The bill
 -- ---------------------------------------------------------------------------
 
--- The material half of a bill for taking something of quality `price`, class `class` and discipline
--- `discipline` up to `target`. Split out because a recipe bills off a blueprint and an instance bills
--- off an item, but both pay the same three tracks.
-local function materialsFor(target, price, class, discipline)
+-- The material half of a bill for taking something of quality `price` and class `class` up to
+-- `target`. Split out because a recipe bills off a blueprint and an instance bills off an item, but
+-- both pay the same three tracks.
+--
+-- IT TOOK TWO TAXONOMY ARGUMENTS and now takes one. Under the old pair of fields an earned item
+-- carried both -- a Ninja blade was `class = "rogue", discipline = "ninja"` -- and the house branch
+-- read the second while the plain branch read the first. The fold left one field (docs/class-fold.md),
+-- and passing it as the old `discipline` argument would have been fine while passing it as the old
+-- `class` argument silently billed NOTHING: Material.houseFor("ninja") is nil, `add` ignores a nil id,
+-- and a crossing's gear would have forged with no house stock at all. One argument cannot be given to
+-- the wrong parameter.
+local function materialsFor(target, price, class)
     local materials = {}
     local function add(id, n)
         if id then materials[id] = (materials[id] or 0) + n end
@@ -192,10 +204,11 @@ local function materialsFor(target, price, class, discipline)
     -- Craft stock: the grade is the item's own quality, the count is the depth.
     add(Material.gradeFor({ price = price }), target + 1)
 
-    -- House stock. A discipline item pays EVERY parent house at double the plain rate -- both lines,
-    -- steeply, which is what makes the deep cut something you had to go and earn.
-    if discipline and Discipline.defs[discipline] then
-        for _, parent in ipairs(Discipline.parents(discipline)) do
+    -- House stock. An EARNED class's gear pays every parent house at double the plain rate -- both
+    -- lines, steeply, which is what makes the deep cut something you had to go and earn. A root's gear
+    -- pays its own house at half.
+    if class and Class.defs[class] and not Class.isRoot(class) then
+        for _, parent in ipairs(Class.parents(class)) do
             add(Material.houseFor(parent), target)
         end
     elseif class then
@@ -205,18 +218,20 @@ local function materialsFor(target, price, class, discipline)
     return materials
 end
 
--- The currency half of a bill. TECHNIQUE for anything that belongs to a house -- its discipline if it
--- has one, else its class -- and gold only for stock that belongs to no house at all. Never both.
--- Returns the whole set the panel needs to draw the row and say who would pay it:
+-- The currency half of a bill. TECHNIQUE for anything that belongs to a class, and gold only for stock
+-- that belongs to none at all. Never both. Returns the whole set the panel needs to draw the row and
+-- say who would pay it:
 --   gold, technique, techniqueId, techniqueHolder, techniqueHeld
 --
--- The discipline is preferred over the class because it is the more specific claim: a Ninja blade is
--- rogue stock too, and billing it as rogue would let generic rogue play pay for the deep cut.
-local function currencyFor(player, target, discipline, class)
-    local key = (discipline and Discipline.defs[discipline] and discipline) or class
+-- IT USED TO PICK BETWEEN TWO FIELDS -- the discipline if there was one, else the class -- because a
+-- Ninja blade was rogue stock as well, and billing it as rogue would have let generic rogue play pay
+-- for the deep cut. The fold made that choice impossible to get wrong: there is one field, and it
+-- already names the most specific claim (docs/class-fold.md).
+local function currencyFor(player, target, class)
+    local key = class and Class.defs[class] and class or nil
     if key then
-        local holder, held = Discipline.techniqueHolder(player, key)
-        return 0, Discipline.techniqueCost(target), key, holder, held
+        local holder, held = Class.techniqueHolder(player, key)
+        return 0, Class.techniqueCost(target), key, holder, held
     end
     -- Classless stock (a natural weapon) has no house to have played for, so there is nothing to bill
     -- but coin. The last thing gold buys at this bench.
@@ -235,7 +250,7 @@ function Forge.upgradeCost(player, item)
     if target > Item.MAX_LEVEL then return nil end
     local ceiling = Forge.ceilingFor(player, item)
     local gold, technique, techId, holder, held =
-        currencyFor(player, target, item.discipline, Item.classOf(item))
+        currencyFor(player, target, Item.classOf(item))
     return {
         level = target,
         gold = gold,
@@ -243,7 +258,7 @@ function Forge.upgradeCost(player, item)
         techniqueId = techId,
         techniqueHolder = holder,
         techniqueHeld = held,
-        materials = materialsFor(target, item.price, Item.classOf(item), item.discipline),
+        materials = materialsFor(target, item.price, Item.classOf(item)),
         locked = target > ceiling,
         ceiling = ceiling,
     }
@@ -265,9 +280,9 @@ function Forge.upgrade(player, item)
 
     Player.spendGold(player, cost.gold)
     -- Comes off ONE body -- the strongest holder, the same one the bill named. See
-    -- Discipline.spendTechnique for why it is never pooled across the roster.
+    -- Class.spendTechnique for why it is never pooled across the roster.
     if cost.technique > 0 then
-        Discipline.spendTechnique(player, cost.techniqueId, cost.technique)
+        Class.spendTechnique(player, cost.techniqueId, cost.technique)
     end
     Player.spendMaterials(player, cost.materials)
     return Item.instantiate(item.id, item.quantity, cost.level)
@@ -295,16 +310,16 @@ function Forge.costTo(player, item, target)
     if target <= from then return nil end
 
     local ceiling = Forge.ceilingFor(player, item)
-    local class, discipline = Item.classOf(item), item.discipline
+    local class = Item.classOf(item)
     local gold, technique, techId, holder, held = 0, 0, nil, nil, 0
     local materials, blockedAt = {}, nil
 
     for lvl = from + 1, target do
-        local g, t, id, h, bank = currencyFor(player, lvl, discipline, class)
+        local g, t, id, h, bank = currencyFor(player, lvl, class)
         gold = gold + g
         technique = technique + t
         techId, holder, held = id, h, bank
-        for mid, n in pairs(materialsFor(lvl, item.price, class, discipline)) do
+        for mid, n in pairs(materialsFor(lvl, item.price, class)) do
             materials[mid] = (materials[mid] or 0) + n
         end
         if not blockedAt and lvl > ceiling then blockedAt = lvl end
@@ -377,10 +392,10 @@ function Forge.recipeCost(player, itemId)
     if not def then return nil end
     local target = Player.recipeLevel(player, itemId) + 1
     if target > Item.MAX_LEVEL then return nil end
-    local probe = { discipline = def.discipline, class = def.class, type = def.type }
+    local probe = { class = def.class, type = def.type }
     local ceiling = Forge.ceilingFor(player, probe)
     local gold, technique, techId, holder, held =
-        currencyFor(player, target, def.discipline, def.class)
+        currencyFor(player, target, def.class)
     return {
         level = target,
         gold = gold,
@@ -388,7 +403,7 @@ function Forge.recipeCost(player, itemId)
         techniqueId = techId,
         techniqueHolder = holder,
         techniqueHeld = held,
-        materials = materialsFor(target, def.price, def.class, def.discipline),
+        materials = materialsFor(target, def.price, def.class),
         locked = target > ceiling,
         ceiling = ceiling,
     }
@@ -415,7 +430,7 @@ function Forge.refineRecipe(player, itemId)
 
     Player.spendGold(player, cost.gold)
     if cost.technique > 0 then
-        Discipline.spendTechnique(player, cost.techniqueId, cost.technique)
+        Class.spendTechnique(player, cost.techniqueId, cost.technique)
     end
     Player.spendMaterials(player, cost.materials)
     Player.setRecipeLevel(player, itemId, cost.level)

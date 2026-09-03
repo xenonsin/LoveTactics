@@ -29,8 +29,7 @@ return {
     sprite = "assets/items/ability_blood_money.png",
     type = "ability",
     tags = { "physical", "guile" }, -- guile: the rogue's own word, so the shelf reads correct; the coin is the header's business
-    class = "rogue",
-    discipline = "mammonite", -- the purse is one earned shelf, not eight loose wares (data/disciplines/mammonite.lua)
+    class = "mammonite", -- the purse is one earned shelf, not eight loose wares (data/classes/mammonite.lua)
     price = 660,
     -- Gated to the END of the greed line: on sale only once all ten Undercroft quests are cleared -- i.e.
     -- Aurea is beaten (slot 10). The money kit is the general of Greed's own art; you earn it by taking it

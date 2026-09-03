@@ -13,6 +13,7 @@ return {
     flavor = "It wants nothing at all. That is most of the trouble with it.",
     sprite = "assets/items/petal_touch.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "slash", "magical", "melee" },
     noSteal = true,
     activeAbility = {

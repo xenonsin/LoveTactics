@@ -25,8 +25,37 @@ local function rowNamed(page, prefix)
     return nil
 end
 
+-- Fonts are stubbed the way tests/advancement_spec.lua and tests/inn_spec.lua do it: DebugMenu.new
+-- bakes one in the constructor (Theme.body) and love.graphics.newFont throws with no window. Nothing
+-- here draws.
+--
+-- IT WAS NOT STUBBED AND STILL PASSED, which is worth recording because it is the more dangerous of the
+-- two states. Theme.body memoizes by size, and several specs that run earlier in the alphabet stub
+-- newFont around their own panel construction -- so a STUB font was landing in the shared cache at the
+-- size this menu happens to ask for, and these three cases were reading it. Green for a reason that had
+-- nothing to do with them: the spec failed on its own the whole time, and would have started failing in
+-- the full run the moment an unrelated panel changed its font size.
+local function stubFonts(fn)
+    local gfx = love.graphics
+    local real = gfx.newFont
+    gfx.newFont = function()
+        return {
+            getHeight = function() return 18 end,
+            getWidth = function(_, s) return #tostring(s or "") * 8 end,
+            getWrap = function(_, text, _) return text, { text } end,
+        }
+    end
+    local ok, err = pcall(fn)
+    gfx.newFont = real
+    if not ok then error(err, 0) end
+end
+
 local function menuFor(id, level)
-    return DebugMenu.forItem({ item = Item.instantiate(id, 1, level or 0), x = 100, y = 100 })
+    local menu
+    stubFonts(function()
+        menu = DebugMenu.forItem({ item = Item.instantiate(id, 1, level or 0), x = 100, y = 100 })
+    end)
+    return menu
 end
 
 return {

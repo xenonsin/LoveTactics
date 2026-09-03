@@ -26,6 +26,7 @@ return {
         "gate that was opened from within\".",
     sprite = "assets/items/forsworn_pike.png",
     type = "weapon",
+    class = "creature",
     tags = { "spear", "pierce", "physical", "melee", "relic" },
     hands = 2, -- a two-handed polearm, like every spear (Dual Wield pairs it only once forged to +5)
     noSteal = true, -- nothing takes this off you; you took it off her

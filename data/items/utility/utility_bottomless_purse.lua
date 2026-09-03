@@ -25,6 +25,7 @@ return {
         "\"beneath the vault that was never full\".",
     sprite = "assets/items/bottomless_purse.png",
     type = "utility",
+    class = "creature",
     tags = { "relic" },
     noSteal = true, -- you took it off her; nothing takes it back
     bonus = { defense = Curve.ramp(2, 12) },

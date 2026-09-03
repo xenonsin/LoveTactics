@@ -14,8 +14,7 @@ return {
     sprite = "assets/items/weapon_confessors_needle.png",
     type = "weapon",
     tags = { "dagger", "pierce", "physical", "holy", "melee" },
-    class = "rogue",
-    discipline = "inquisitor", -- rogue x priest; the Judgment mechanic's first stock
+    class = "inquisitor", -- rogue x priest; the Judgment mechanic's first stock
     price = 660,
     unlockQuests = 7,
     activeAbility = {

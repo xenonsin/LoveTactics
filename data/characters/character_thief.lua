@@ -1,5 +1,5 @@
 -- Thief exemplar (rogue subclass). Larceny: strikes steal an item, buff, or stat. Met as a guild
--- fence, a recruit/mentor. Kit from data/disciplines/thief.lua.
+-- fence, a recruit/mentor. Kit from data/classes/thief.lua.
 return {
     name = "Thief",
     kind = "humanoid",

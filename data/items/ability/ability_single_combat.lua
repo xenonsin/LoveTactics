@@ -29,8 +29,7 @@ return {
     sprite = "assets/items/ability_single_combat.png",
     type = "ability",
     tags = { "physical" },
-    class = "knight",
-    discipline = "sentinel", -- deeper cut of the shelf: buyable only once the sentinel gate is cleared
+    class = "sentinel", -- deeper cut of the shelf: buyable only once the sentinel gate is cleared
     price = 575,
     unlockQuests = 6,
     activeAbility = {

@@ -23,8 +23,7 @@ return {
     sprite = "assets/items/ability_aegis.png", -- placeholder until its own art exists
     type = "ability",
     tags = { "impact" },
-    class = "knight",
-    discipline = "sentinel", -- deeper cut of the shelf: buyable only once the sentinel gate is cleared
+    class = "sentinel", -- deeper cut of the shelf: buyable only once the sentinel gate is cleared
     price = 330,
     unlockQuests = 3,
     activeAbility = {

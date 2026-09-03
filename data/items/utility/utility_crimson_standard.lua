@@ -29,8 +29,7 @@ return {
     sprite = "assets/items/utility_crimson_standard.png",
     type = "utility",
     tags = { "banner" },
-    class = "fighter",
-    discipline = "warlord", -- deeper cut of the shelf: buyable only once the warlord gate is cleared
+    class = "warlord", -- deeper cut of the shelf: buyable only once the warlord gate is cleared
     price = 330,
     unlockQuests = 3,
     -- Radius 1: the smoke reaches the bodies actually beside the bearer, and no further. The forge

@@ -18,8 +18,7 @@ return {
     sprite = "assets/items/ability_push.png",
     type = "ability",
     tags = { "impact", "physical" },
-    class = "knight",
-    discipline = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
+    class = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
     price = 575,
     unlockQuests = 6,
     activeAbility = {

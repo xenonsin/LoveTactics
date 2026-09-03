@@ -16,8 +16,7 @@ return {
     sprite = "assets/items/sig_old_wind.png",
     type = "utility",
     tags = { "signature", "primal" },
-    class = "mage",
-    discipline = "shaman",
+    class = "shaman",
     activeAbility = {
         target = "self",
         range = 0,

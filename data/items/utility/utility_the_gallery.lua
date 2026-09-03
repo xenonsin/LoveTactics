@@ -17,6 +17,7 @@ return {
     flavor = "The hall was hung with them. It is not obvious which one anybody was ever looking at.",
     sprite = "assets/items/the_gallery.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_formation_fighter", "trait_close_ranks", "trait_boss_phases" },

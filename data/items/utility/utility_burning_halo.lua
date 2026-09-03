@@ -27,8 +27,7 @@ return {
     sprite = "assets/items/utility_burning_halo.png",
     type = "utility",
     tags = { "fire" },
-    class = "priest",
-    discipline = "crusader", -- fighter x priest; the armed faithful's ring -- it asks a priest to stand in the line
+    class = "crusader", -- fighter x priest; the armed faithful's ring -- it asks a priest to stand in the line
     price = 495,
     unlockQuests = 5,
     incense = { hazard = "hazard_burning_halo", radius = 1,

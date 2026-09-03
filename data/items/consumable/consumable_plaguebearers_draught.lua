@@ -24,8 +24,7 @@ return {
     -- discipline-locked draught tagged `potion` would sit on the grocer's shelf from the first visit,
     -- which unlocks the gated item without the gate.
     tags = { "draught", "poison" },
-    class = "alchemist",
-    discipline = "plague_knight",
+    class = "plague_knight",
     price = 100,
     unlockQuests = 2,
     maxStack = 3,

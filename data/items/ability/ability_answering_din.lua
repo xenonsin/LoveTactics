@@ -29,8 +29,7 @@ return {
     sprite = "assets/items/ability_answering_din.png",
     type = "ability",
     tags = { "earth", "impact", "magical" },
-    class = "mage",
-    discipline = "elementalist", -- the earth storm, beside Blizzard / Meteor Storm / Thunder Storm
+    class = "elementalist", -- the earth storm, beside Blizzard / Meteor Storm / Thunder Storm
     price = 660,
     unlockQuests = 7,
     activeAbility = {

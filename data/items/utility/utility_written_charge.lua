@@ -18,8 +18,7 @@ return {
     sprite = "assets/items/sig_written_charge.png",
     type = "utility",
     tags = { "signature", "holy" },
-    class = "priest",
-    discipline = "inquisitor",
+    class = "inquisitor",
     activeAbility = {
         target = "self",
         range = 0,

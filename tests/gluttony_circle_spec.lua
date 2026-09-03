@@ -264,7 +264,10 @@ return {
                 assert(def, id .. " does not exist")
                 assert(def.noSteal, id .. ": a pickpocket cannot lift a creature's own body off it")
                 assert(not def.price, id .. ": creature kit is unpriced")
-                assert(not def.class and not def.discipline,
+                -- A hound is not an Alchemist. Since the fold that is said by naming the bucket rather
+                -- than by naming nothing: `class = "creature"` (data/classes/creature.lua), which
+                -- is a job no shelf sells and no body takes up.
+                assert(def.class == "creature",
                     id .. ": a hound is not an Alchemist -- creature kit sits outside every shelf")
                 local natural = false
                 for _, tag in ipairs(def.tags or {}) do

@@ -10,8 +10,7 @@ return {
     sprite = "assets/items/vampiric_strike.png",
     type = "utility",
     tags = { "charm" },
-    class = "fighter",
-    discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
+    class = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
     price = 410,
     unlockQuests = 4,
     aura = {

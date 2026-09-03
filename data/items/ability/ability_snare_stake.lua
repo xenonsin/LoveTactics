@@ -25,8 +25,7 @@ return {
     sprite = "assets/items/ability_snare_stake.png",
     type = "ability",
     tags = { "physical" },
-    class = "hunter",
-    discipline = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
+    class = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
     price = 245,
     unlockQuests = 2,
     activeAbility = {

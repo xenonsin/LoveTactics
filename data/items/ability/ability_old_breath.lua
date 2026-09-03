@@ -26,6 +26,7 @@ return {
     flavor = "Older than the wood, and it has been breathing the wood in the whole time.",
     sprite = "assets/items/old_breath.png",
     type = "ability",
+    class = "creature",
     tags = { "natural", "primal" },
     noSteal = true,
     activeAbility = {

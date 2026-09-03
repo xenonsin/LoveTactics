@@ -31,6 +31,7 @@ return {
     flavor = "It cannot catch you. It can decide where you are willing to stand.",
     sprite = "assets/items/ability_fireball.png", -- placeholder until its own art exists
     type = "ability",
+    class = "creature",
     tags = { "fire", "magical" }, -- `magical` routes the damage through magicDamage/magicDefense
     activeAbility = {
         target = "tile", -- ground, not a body: what it is aimed at is the retreat, not the retreater

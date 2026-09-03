@@ -12,8 +12,7 @@ return {
     sprite = "assets/items/utility_spirit_fetish.png",
     type = "utility",
     tags = { "charm", "morale" },
-    class = "hunter",
-    discipline = "shaman", -- hunter x mage; the Spirit-totems mechanic's first stock
+    class = "shaman", -- hunter x mage; the Spirit-totems mechanic's first stock
     price = 495,
     unlockQuests = 5,
     incense = { hazard = "hazard_rally", radius = 1, amount = Curve.ramp(2, 12) },

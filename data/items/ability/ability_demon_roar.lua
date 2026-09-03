@@ -19,6 +19,7 @@ return {
     flavor = "The horde answers the loudest throat.",
     sprite = "assets/items/ability_meteor_storm.png", -- placeholder until its own art exists
     type = "ability",
+    class = "creature",
     tags = { "summon" },
     activeAbility = {
         target = "tile",

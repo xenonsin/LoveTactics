@@ -14,8 +14,7 @@ return {
     sprite = "assets/items/utility_spellstrike.png",
     type = "utility",
     tags = { "charm", "fire" },
-    class = "mage",
-    discipline = "battlemage", -- fighter x mage; the Spellstrike mechanic's first stock
+    class = "battlemage", -- fighter x mage; the Spellstrike mechanic's first stock
     price = 410,
     unlockQuests = 4,
     aura = {

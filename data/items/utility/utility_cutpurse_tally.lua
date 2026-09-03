@@ -14,8 +14,7 @@ return {
     sprite = "assets/items/cutpurse_tally.png",
     type = "utility",
     tags = { "charm" },
-    class = "rogue",
-    discipline = "thief", -- deeper cut of the shelf: buyable only once the thief gate is cleared
+    class = "thief", -- deeper cut of the shelf: buyable only once the thief gate is cleared
     price = 495,
     unlockQuests = 5,
     traits = { "trait_cutpurse_tally" },

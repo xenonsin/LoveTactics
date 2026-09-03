@@ -19,6 +19,7 @@
 
 local Character = require("models.character")
 local Item = require("models.item")
+local Class = require("models.class") -- roots(): the seven a body's growth can be keyed to
 local InputMode = require("input_mode")
 
 local StatEditor = {}
@@ -135,7 +136,7 @@ local IDENTITY_FIELDS = {
         key = "class", label = "Growth Class", kind = "cycle",
         options = function()
             local out = { false } -- class-less is real: the avatar ships without one
-            for _, c in ipairs(sortedKeys(Item.CLASSES)) do out[#out + 1] = c end
+            for _, c in ipairs(sortedKeys(Class.roots())) do out[#out + 1] = c end
             return out
         end,
         get = function(char) return char.class or false end,

@@ -19,8 +19,7 @@ return {
     sprite = "assets/items/sig_doorstone.png",
     type = "utility",
     tags = { "signature", "impact" },
-    class = "knight",
-    discipline = "bulwark",
+    class = "bulwark",
     activeAbility = {
         target = "tile",
         allowOccupied = true,

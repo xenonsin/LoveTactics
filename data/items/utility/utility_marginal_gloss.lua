@@ -22,6 +22,7 @@ return {
     flavor = "One line, in a hand that is not the author's, beside a passage the author got wrong.",
     sprite = "assets/items/marginal_gloss.png",
     type = "utility",
+    class = "creature",
     tags = { "relic" },
     noSteal = true,
     traits = { "trait_glossed" },

@@ -9,6 +9,7 @@ return {
     flavor = "There is nothing solid to lift off it, and nothing solid to strike back at.",
     sprite = "assets/items/gale_fists.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "wind", "magical", "melee" },
     noSteal = true,
     activeAbility = {

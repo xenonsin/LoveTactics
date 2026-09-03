@@ -16,8 +16,7 @@ return {
     sprite = "assets/items/ability_bolas.png",
     type = "ability",
     tags = { "pierce", "physical" },
-    class = "hunter",
-    discipline = "poacher", -- rogue x hunter; the Snare-execute mechanic's first stock
+    class = "poacher", -- rogue x hunter; the Snare-execute mechanic's first stock
     price = 660,
     unlockQuests = 7,
     activeAbility = {

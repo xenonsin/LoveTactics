@@ -254,7 +254,7 @@ the same "guess, then override" split the icon pipeline uses. No mass edit of bl
 **One tier sits above the creature/`kind` guessing: the discipline.** `class` picks a whole shelf's body
 (all seven mage-disciplines would otherwise share the wizard), so a `DISCIPLINE_SILHOUETTE` table gives
 each of the 37 disciplines its own game-icons shape (a Necromancer's skull-staff, a Warlord's banner). It
-fires only for a discipline's `exemplar` character — keyed off the pointer in `data/disciplines/*.lua`, not
+fires only for a discipline's `exemplar` character — keyed off the pointer in `data/classes/*.lua`, not
 a loose substring, so a `demon_champion` is never mistaken for the Champion — and a boss exemplar keeps its
 discipline body while still earning the gold badge (`warlord` → banner, not the overlord lift). The picks
 were reviewed shape-by-shape; `tests/char_compose_spec.lua` guards them.

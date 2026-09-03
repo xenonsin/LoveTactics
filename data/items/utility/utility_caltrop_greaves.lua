@@ -24,8 +24,7 @@ return {
     sprite = "assets/items/caltrop_greaves.png",
     type = "utility",
     tags = { "boots" },
-    class = "hunter",
-    discipline = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
+    class = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
     price = 410,
     unlockQuests = 4,
     -- No `duration`: a trap is an object left lying there, not ground that ages out. It waits.

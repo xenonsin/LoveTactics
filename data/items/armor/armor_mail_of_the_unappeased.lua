@@ -22,6 +22,7 @@ return {
         "roaring was loudest\".",
     sprite = "assets/items/mail_of_the_unappeased.png",
     type = "armor",
+    class = "creature",
     tags = { "relic" },
     noSteal = true, -- nothing takes this off you; you took it off her
     traits = { "trait_wrath_rising" },

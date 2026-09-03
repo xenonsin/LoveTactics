@@ -25,8 +25,7 @@ return {
     sprite = "assets/items/ability_flurry.png",
     type = "ability",
     tags = { "fist", "physical" },
-    class = "priest",
-    discipline = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
+    class = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
     price = 740,
     unlockQuests = 8,
     activeAbility = {

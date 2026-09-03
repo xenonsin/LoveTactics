@@ -311,7 +311,7 @@ identity is emergent" true even though a discipline now *does* something. The fu
 exemplars and rosters is the authoring plan in [disciplines-plan.md](disciplines-plan.md); this section
 is the contract it obeys.
 
-Blueprints live in `data/disciplines/<id>.lua`:
+Blueprints live in `data/classes/<id>.lua`:
 
 ```lua
 return {
@@ -353,7 +353,7 @@ handed one up, graded at the floor that finished it, and the Hall spent it on a 
 dealt near that depth. It went with the Hall.
 
 **`description` is the mechanic said out loud** — what the path is, then the one thing it does, in a
-sentence or two (`Discipline.description`, pinned by `tests/discipline_spec.lua`). It is the same claim
+sentence or two (`Discipline.description`, pinned by `tests/class_ladder_spec.lua`). It is the same claim
 as the "Signature mechanic" line in each blueprint's header comment, written for the player instead of
 for us. The shop's Buy list collapses a locked path to its header, so the section detail is the only
 room a player has to read what a discipline is *before* paying the gate for it: without this, that pane
@@ -396,7 +396,7 @@ too, once unlocked. One class, two shelves.
 **Growth is where a discipline item is not "one class."** Using it tallies **all** of its discipline's
 parent classes (`Combat.useItem` → `Discipline.growthClasses`), so a Ninja weapon grows *both* rogue and
 mage — a multiclass advances the fusion, not one half of it. That is still "what you become is decided by
-what you cast": the cast simply counts for both houses. `tests/discipline_spec.lua` enforces the
+what you cast": the cast simply counts for both houses. `tests/class_ladder_spec.lua` enforces the
 class-parent invariant, so a mistagged item fails the build instead of silently vanishing off its shelf.
 
 **Every surface that shows an item names its discipline.** The hover tooltip carries a `Discipline` row
@@ -405,11 +405,11 @@ rewards, since they all hover the same tooltip. The two panels that build their 
 of hovering — the shop shelf (`ui/panels/shop.lua`) and the forge (`ui/panels/forge.lua`) — print the
 name opposite the item's type line, via `ItemTooltip.printDiscipline`. That helper and
 `Discipline.displayName` are the single owners of the wording and the tint, so no surface can drift or
-print a raw id; `tests/discipline_spec.lua` pins that every tagged item resolves to a name.
+print a raw id; `tests/class_ladder_spec.lua` pins that every tagged item resolves to a name.
 
 ### Every discipline stocks five, on both parents' shelves
 
-Two floors, both enforced by `tests/discipline_spec.lua`:
+Two floors, both enforced by `tests/class_ladder_spec.lua`:
 
 > **A discipline stocks at least five priced items** — and **a multiclass stocks at least one on each
 > parent's shelf.**
@@ -695,10 +695,10 @@ Recorded here so it stays a decision rather than drift:
   the old rank name, and each locked row says how many more of the house's quests (or which discipline
   path) unlock it. The waves open at `Vendor.TIERS = { 0, 3, 6, 10 }`, which also caps the
   ability/recipe upgrade bench. See *The ten slots* in [story.md](story.md).
-- ~~**`data/disciplines/` does not exist yet.**~~ **Built.** All 38 blueprints (17 subclasses + 21
-  multiclasses) load through `models/discipline.lua`, growth tallies both parents, the vendor gate
+- ~~**`data/classes/` does not exist yet.**~~ **Built.** All 38 blueprints (17 subclasses + 21
+  multiclasses) load through `models/class.lua`, growth tallies both parents, the vendor gate
   greys locked stock, and every gate quest — both the 17 subclass gates and all 21 multiclass
-  capstones — exists on disk. `tests/discipline_spec.lua` pins the structure and both gate tiers.
+  capstones — exists on disk. `tests/class_ladder_spec.lua` pins the structure and both gate tiers.
   What remains is content rather than plumbing: ~27 exemplar NPCs are still stand-ins, and about
   half the signature mechanics are approximations their item headers admit to. See
   [disciplines-plan.md](disciplines-plan.md).

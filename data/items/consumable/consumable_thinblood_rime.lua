@@ -33,8 +33,7 @@ return {
     -- distinction between a coating and a charm was originally drawn for.
     type = "consumable",
     tags = { "coating", "ice" },
-    class = "alchemist",
-    discipline = "poisoner", -- deeper cut of the shelf: buyable only once the poisoner gate is cleared
+    class = "poisoner", -- deeper cut of the shelf: buyable only once the poisoner gate is cleared
     price = 130,
     unlockQuests = 3,
     maxStack = 4, -- the charges: each sharpened working that lands spends one

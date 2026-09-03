@@ -170,7 +170,7 @@ return {
             for _, id in ipairs({ "utility_envys_pane", "utility_second_wash" }) do
                 local def = Item.defs[id]
                 assert(def, id .. " exists")
-                assert(def.noSteal and not def.price and not def.class,
+                assert(def.noSteal and not def.price and def.class == "creature",
                     id .. ": creature kit sits outside every shelf")
                 local carries = false
                 for _, t in ipairs(def.traits or {}) do

@@ -18,8 +18,7 @@ return {
     sprite = "assets/items/utility_charnel_reliquary.png",
     type = "utility",
     tags = { "charm" },
-    class = "mage",
-    discipline = "necromancer", -- deeper cut of the shelf: buyable only once the necromancer gate is cleared
+    class = "necromancer", -- deeper cut of the shelf: buyable only once the necromancer gate is cleared
     price = 410,
     unlockQuests = 4,
     traits = { "trait_deaths_dividend" },

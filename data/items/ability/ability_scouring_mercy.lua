@@ -31,8 +31,7 @@ return {
     sprite = "assets/items/ability_scouring_mercy.png",
     type = "ability",
     tags = { "holy", "magical" },
-    class = "priest",
-    discipline = "exorcist", -- deeper cut of the shelf: buyable only once the exorcist gate is cleared
+    class = "exorcist", -- deeper cut of the shelf: buyable only once the exorcist gate is cleared
     price = 660,
     unlockQuests = 7,
     activeAbility = {

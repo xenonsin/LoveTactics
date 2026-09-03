@@ -18,8 +18,7 @@ return {
     sprite = "assets/items/sig_short_fuse.png",
     type = "utility",
     tags = { "signature", "impact" },
-    class = "alchemist",
-    discipline = "bombardier",
+    class = "bombardier",
     activeAbility = {
         target = "self",
         range = 0,

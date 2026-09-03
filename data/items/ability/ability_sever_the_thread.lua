@@ -13,7 +13,7 @@
 -- that merely wounds does nothing (it is the death that is final, not the hit), and against a foe that
 -- was never revivable anyway (a demon) it is simply a heavy dark bolt.
 --
--- Quest-only cut of the mage shelf: `discipline = "necromancer"`.
+-- Quest-only cut of the mage shelf: `class = "necromancer"`.
 local Curve = require("models.curve")
 
 return {
@@ -23,8 +23,7 @@ return {
     sprite = "assets/items/ability_sever_the_thread.png",
     type = "ability",
     tags = { "dark", "magical" },
-    class = "mage",
-    discipline = "necromancer",
+    class = "necromancer",
     price = 245,
     unlockQuests = 2,
     activeAbility = {

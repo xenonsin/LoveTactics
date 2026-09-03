@@ -17,6 +17,7 @@ return {
     flavor = "Nobody is holding it. It has been at the correct angle for four hundred years.",
     sprite = "assets/items/gilded_pike.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "pierce", "physical", "melee" },
     noSteal = true,
     activeAbility = {

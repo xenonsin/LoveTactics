@@ -10,6 +10,7 @@ return {
     flavor = "A thing made of fire has never needed to pick anything up.",
     sprite = "assets/items/flame_fists.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "fire", "magical", "melee" },
     noSteal = true,
     activeAbility = {

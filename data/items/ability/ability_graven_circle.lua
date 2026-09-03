@@ -24,8 +24,7 @@ return {
     sprite = "assets/items/ability_graven_circle.png",
     type = "ability",
     tags = { "magical", "arcane" },
-    class = "mage",
-    discipline = "elementalist", -- the sigils are Elementalist's own (docs/classes.md); this is the circle they are cut in
+    class = "elementalist", -- the sigils are Elementalist's own (docs/classes.md); this is the circle they are cut in
     price = 165,
     unlockQuests = 1,
     activeAbility = {

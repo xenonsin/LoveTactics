@@ -14,6 +14,7 @@ return {
     flavor = "It draws the blow back far enough that you can see it coming. Whether you move is your affair.",
     sprite = "assets/items/great_claws.png", -- placeholder until its own art exists
     type = "ability",
+    class = "creature",
     tags = { "slash", "physical", "melee" },
     activeAbility = {
         target = "tile",       -- aim an adjacent tile: it sets the facing the arc sweeps

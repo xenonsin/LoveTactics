@@ -13,8 +13,7 @@ return {
     sprite = "assets/items/consumable_berserkers_brew.png",
     type = "consumable",
     tags = { "restorative" },
-    class = "alchemist",
-    discipline = "warbrewer", -- fighter x alchemist; the Combat-draught mechanic's first stock
+    class = "warbrewer", -- fighter x alchemist; the Combat-draught mechanic's first stock
     price = 295,
     unlockQuests = 8,
     activeAbility = {

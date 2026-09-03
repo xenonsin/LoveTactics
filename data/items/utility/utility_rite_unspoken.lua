@@ -19,8 +19,7 @@ return {
     sprite = "assets/items/sig_rite_unspoken.png",
     type = "utility",
     tags = { "signature", "holy" },
-    class = "priest",
-    discipline = "exorcist",
+    class = "exorcist",
     activeAbility = {
         target = "self",
         range = 0,

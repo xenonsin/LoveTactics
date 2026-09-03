@@ -18,6 +18,7 @@ return {
     flavor = "Come and hit me properly. Not fast. Every blow you land wakes a little more of me up.",
     sprite = "assets/items/ability_desperate_strike.png", -- placeholder until its own art exists
     type = "ability",
+    class = "creature",
     tags = { "slash", "physical", "melee" },
     activeAbility = {
         target = "enemy",

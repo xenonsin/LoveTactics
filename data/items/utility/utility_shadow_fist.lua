@@ -10,8 +10,7 @@ return {
     sprite = "assets/items/shadow_fist.png",
     type = "utility",
     tags = { "fist" },
-    class = "priest",
-    discipline = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
+    class = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
     price = 245,
     unlockQuests = 2,
     unarmedBonus = { range = { 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2 } },

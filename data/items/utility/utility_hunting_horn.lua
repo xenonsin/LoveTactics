@@ -28,8 +28,7 @@ return {
     sprite = "assets/items/hunting_horn.png",
     type = "utility",
     tags = { "horn" },
-    class = "hunter",
-    discipline = "beastmaster", -- deeper cut of the shelf: buyable only once the beastmaster gate is cleared
+    class = "beastmaster", -- deeper cut of the shelf: buyable only once the beastmaster gate is cleared
     price = 575,
     unlockQuests = 6,
     waitBehavior = {

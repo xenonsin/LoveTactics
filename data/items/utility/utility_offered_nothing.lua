@@ -30,6 +30,7 @@ return {
     flavor = "It has been holding the bowl out for a very long time and has stopped minding what goes in.",
     sprite = "assets/items/offered_nothing.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_unasked", "trait_boss_phases" },

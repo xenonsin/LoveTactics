@@ -10,8 +10,7 @@ return {
     sprite = "assets/items/ability_carved_stake.png",
     type = "ability",
     tags = { "summon" },
-    class = "hunter",
-    discipline = "totemist", -- hunter x priest; the Ward-totems mechanic's first stock
+    class = "totemist", -- hunter x priest; the Ward-totems mechanic's first stock
     price = 740,
     unlockQuests = 8,
     activeAbility = {

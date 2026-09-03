@@ -29,8 +29,7 @@ return {
     sprite = "assets/items/weapon_harriers_bow.png",
     type = "weapon",
     tags = { "bow", "pierce", "physical", "ranged" },
-    class = "hunter",
-    discipline = "skirmisher",
+    class = "skirmisher",
     price = 740,
     unlockQuests = 8,
     hands = 2, -- the family contract: every bow is two-handed (docs/weapons.md)

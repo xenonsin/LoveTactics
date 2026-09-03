@@ -21,8 +21,7 @@ return {
     sprite = "assets/items/sig_borrowed_pelt.png",
     type = "utility",
     tags = { "signature", "primal", "illusion" },
-    class = "hunter",
-    discipline = "druid",
+    class = "druid",
     activeAbility = {
         target = "self",
         range = 0,

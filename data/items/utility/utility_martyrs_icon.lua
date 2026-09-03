@@ -8,8 +8,7 @@ return {
     sprite = "assets/items/martyrs_icon.png",
     type = "utility",
     tags = { "holy" },
-    class = "priest",
-    discipline = "paladin", -- knight x priest; the Ward aura's thesis -- your body in place of the one beside you
+    class = "paladin", -- knight x priest; the Ward aura's thesis -- your body in place of the one beside you
     price = 330,
     unlockQuests = 3,
     traits = { "trait_martyrs_vow" },

@@ -1,5 +1,5 @@
 -- Necromancer exemplar (mage subclass). Corpse-raise: the slain rise as your undead; corpses feed
--- Corpse Burst. Met as an Adept of the inner circle, a boss. Kit from data/disciplines/necromancer.lua.
+-- Corpse Burst. Met as an Adept of the inner circle, a boss. Kit from data/classes/necromancer.lua.
 return {
     name = "Necromancer",
     kind = "humanoid",

@@ -13,6 +13,7 @@ return {
     flavor = "Not cold enough to kill. Cold enough to be late.",
     sprite = "assets/items/rime_nip.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "ice", "magical", "melee" },
     noSteal = true,
     activeAbility = {

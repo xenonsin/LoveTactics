@@ -26,8 +26,7 @@ return {
     sprite = "assets/items/ability_grasping_hollow.png",
     type = "ability",
     tags = { "earth" },
-    class = "knight",
-    discipline = "warden", -- the Lockdown zone itself -- ground that Roots whatever crosses it
+    class = "warden", -- the Lockdown zone itself -- ground that Roots whatever crosses it
     price = 245,
     unlockQuests = 2,
     activeAbility = {

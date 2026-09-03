@@ -25,8 +25,7 @@ return {
     sprite = "assets/items/armor_mirrorsilk.png",
     type = "armor",
     tags = { "cloth", "arcane" },
-    class = "mage",
-    discipline = "spellbreaker", -- knight x mage; the same deflection worn rather than carried
+    class = "spellbreaker", -- knight x mage; the same deflection worn rather than carried
     price = 495,
     unlockQuests = 5,
     traits = { "trait_counter_magic" },

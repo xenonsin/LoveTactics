@@ -12,6 +12,7 @@ return {
     flavor = "The rift did not make it. The rift is simply where it stopped going down.",
     sprite = "assets/items/rift_jaws.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "fire", "physical", "melee" },
     noSteal = true,
     activeAbility = {

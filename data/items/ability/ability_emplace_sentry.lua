@@ -19,7 +19,7 @@
 -- comes to it. The `duration` is generous for the same reason -- it needs the turns to earn back a lane
 -- it can never re-choose.
 --
--- The Artificer's (mage + alchemist) -- the folder exists now (data/disciplines/artificer.lua), so this
+-- The Artificer's (mage + alchemist) -- the folder exists now (data/classes/artificer.lua), so this
 -- is the first real discipline-tagged item: the construct-builder's autonomous turret. Its home shelf
 -- stays alchemist (where the other two constructs are, and its growth tally); the discipline puts it on
 -- the mage shelf too, and locks it until Artificer is unlocked (see docs/classes.md, "Disciplines").
@@ -30,8 +30,7 @@ return {
     sprite = "assets/items/ability_emplace_sentry.png",
     type = "ability",
     tags = { "summon" },
-    class = "alchemist",
-    discipline = "artificer", -- mage + alchemist; the Constructs mechanic's first stock
+    class = "artificer", -- mage + alchemist; the Constructs mechanic's first stock
     price = 740,
     unlockQuests = 8,
     activeAbility = {

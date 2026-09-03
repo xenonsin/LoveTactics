@@ -34,7 +34,7 @@
 
 local Registry = require("models.registry")
 local Item = require("models.item")
-local Discipline = require("models.discipline")
+local Class = require("models.class")
 
 local Vendor = {}
 
@@ -104,15 +104,16 @@ function Vendor.sells(def, item)
     -- (models/market.lua).
     if def.sellsAll then return true end
 
-    if Item.classOf(item) == def.class then return true end
-    -- A discipline item also lands on each of its discipline's parent shelves. That is how a multiclass
-    -- item (whose `class` is one parent, its home tally) appears on the OTHER parent's shelf too --
-    -- shopping both shelves is literally how you build the thing. Derived from the discipline's
-    -- `classes`, never authored per-shelf. (Whether it is buyable yet is Vendor.stock's `locked` job.)
-    if item.discipline then
-        for _, parent in ipairs(Discipline.parents(item.discipline)) do
-            if parent == def.class then return true end
-        end
+    local class = Item.classOf(item)
+    if class == def.class then return true end
+    -- An EARNED class's stock also lands on each of its parent shelves. That is how a crossing's item
+    -- appears on both houses it is cut from -- shopping both shelves is literally how you build the
+    -- thing. Read off the class's own `classes` list, never authored per-shelf. (Whether it is buyable
+    -- yet is Vendor.stock's `locked` job.)
+    --
+    -- The parents loop is harmless for a root, which has none, so this needs no guard of its own.
+    for _, parent in ipairs(Class.parents(class)) do
+        if parent == def.class then return true end
     end
     return false
 end
@@ -132,12 +133,12 @@ end
 -- upgraded item.
 --
 -- Returns fresh tables, never the blueprints (which stay immutable).
--- `unlocked` is an optional bare set { disciplineId = true } of the player's unlocked disciplines
--- (Discipline.unlockedSet). A discipline item is stocked either way but stays `locked` -- greyed like a
+-- `unlocked` is an optional bare set { classId = true } of the player's unlocked disciplines
+-- (Class.unlockedSet). A discipline item is stocked either way but stays `locked` -- greyed like a
 -- quest-locked ware -- until its discipline is unlocked, because seeing the deeper cut you can earn is
 -- the point, same as the quest ladder.
 --
--- `levels` is the matching bare map { disciplineId = level } (Discipline.levelSet). The broad shelf
+-- `levels` is the matching bare map { classId = level } (Class.levelSet). The broad shelf
 -- gates on QUEST COUNT; the deepest cut of a discipline gates on how far that discipline has actually
 -- GROWN, via an optional `unlockLevel` on the item (default 0, so nothing gates on it until authored).
 -- Two different questions -- "have you worked with this house" and "have you specialized" -- and the
@@ -160,12 +161,20 @@ function Vendor.stock(vendorId, questsDone, recipes, unlocked, levels)
         if item.price and Vendor.sells(def, item) then
             local unlockQuests = item.unlockQuests or 0
             local level = (recipes and recipes[id]) or 0
-            -- A discipline item is locked until its discipline is unlocked, on top of any quest gate --
-            -- and, if it names an unlockLevel, until that discipline has grown that far.
-            local disciplineLocked = item.discipline ~= nil and not (unlocked and unlocked[item.discipline])
-            local unlockLevel = item.discipline and item.unlockLevel or nil
-            if unlockLevel and ((levels and levels[item.discipline] or 0) < unlockLevel) then
-                disciplineLocked = true
+            -- AN EARNED CLASS'S STOCK is locked until that class is unlocked, on top of any quest gate
+            -- -- and, if it names an unlockLevel, until the class has grown that far.
+            --
+            -- `earned` is the fold's one predicate (docs/class-fold.md): a ROOT is held from the first
+            -- morning and its stock is never locked by this, an earned class is the deeper cut and its
+            -- stock is. It used to read `item.discipline ~= nil`, which meant the same thing while
+            -- there were two fields; with one, a bare truthiness check would lock the entire catalogue
+            -- behind a gate that does not exist and leave the counter with nothing to deal.
+            local class = item.class
+            local earned = class ~= nil and not Class.isRoot(class) and Class.defs[class] ~= nil
+            local classLocked = earned and not (unlocked and unlocked[class])
+            local unlockLevel = earned and item.unlockLevel or nil
+            if unlockLevel and ((levels and levels[class] or 0) < unlockLevel) then
+                classLocked = true
             end
             stock[#stock + 1] = {
                 id = id,
@@ -176,9 +185,14 @@ function Vendor.stock(vendorId, questsDone, recipes, unlocked, levels)
                 level = level,
                 price = Vendor.priceFor(item.price, level),
                 unlockQuests = unlockQuests,
-                discipline = item.discipline,
+                class = class,
+                -- The row's own name for "this is a deeper cut, not the open rack": the class when it
+                -- is an earned one, nil when it is a root. Downstream this is what bands a shelf into
+                -- sections and what a lock reason points at, and both of those want the earned half
+                -- only -- so the check is made once, here, rather than at each reader.
+                discipline = earned and class or nil,
                 unlockLevel = unlockLevel,
-                locked = (rungOf(item) < unlockQuests) or disciplineLocked,
+                locked = (rungOf(item) < unlockQuests) or classLocked,
             }
         end
     end

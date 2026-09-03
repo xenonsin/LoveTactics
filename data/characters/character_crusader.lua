@@ -1,6 +1,6 @@
 -- Crusader exemplar (fighter x priest multiclass). Smite: holy melee against demon/undead, healing on
 -- the kill; Zeal banks on any kill or nearby heal. Met as a holy-blade zealot, mentor/boss. Home shelf
--- is fighter for its steel, priest for the smite. Kit from data/disciplines/crusader.lua.
+-- is fighter for its steel, priest for the smite. Kit from data/classes/crusader.lua.
 return {
     name = "Crusader",
     kind = "humanoid",

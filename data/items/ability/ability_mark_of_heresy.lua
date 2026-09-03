@@ -9,8 +9,7 @@ return {
     sprite = "assets/items/ability_mark_of_heresy.png",
     type = "ability",
     tags = { "utility", "holy" },
-    class = "priest",
-    discipline = "inquisitor", -- rogue x priest; the Judgment mechanic's first stock
+    class = "inquisitor", -- rogue x priest; the Judgment mechanic's first stock
     price = 575,
     unlockQuests = 6,
     activeAbility = {

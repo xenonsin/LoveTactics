@@ -18,6 +18,7 @@ return {
     flavor = "Too young to aim it. Old enough that aiming is not the point.",
     sprite = "assets/items/wyrmling_breath.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "fire", "magical", "ranged" },
     noSteal = true,
     activeAbility = {

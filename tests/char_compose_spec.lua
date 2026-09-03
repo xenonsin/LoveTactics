@@ -165,7 +165,7 @@ return {
     {
         -- The whole point of the discipline tier: a discipline's exemplar wears its OWN body, distinct
         -- from its class shelf. necromancer/summoner/etc. are all class = mage but must not share the
-        -- wizard token. Keyed off the exemplar pointer in data/disciplines/*.lua.
+        -- wizard token. Keyed off the exemplar pointer in data/classes/*.lua.
         name = "a discipline's exemplar reads as its discipline silhouette, not its class",
         fn = function()
             assert(slug("character_necromancer") == "delapouite/skull-staff", "necromancer -> skull staff, not wizard")

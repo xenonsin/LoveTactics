@@ -17,6 +17,7 @@ return {
     flavor = "As it fails, it wears the dead. It had no sin of its own. The seven were its appetites.",
     sprite = "assets/items/sig_hollow_crown.png",
     type = "armor", -- a crown: `bound` (not the type) is what locks it in place
+    class = "creature",
     tags = { "signature", "relic" },
     bound = true,
     traits = { "trait_hollow_crown" },

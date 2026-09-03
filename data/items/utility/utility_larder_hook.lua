@@ -19,6 +19,7 @@ return {
     flavor = "The Gralloch hung its catch on this. Nothing on it was ever taken down.",
     sprite = "assets/items/larder_hook.png",
     type = "utility",
+    class = "creature",
     tags = { "relic" },
     noSteal = true,
     traits = { "trait_larder" },

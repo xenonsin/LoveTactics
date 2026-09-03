@@ -1,6 +1,6 @@
 -- Warbrewer exemplar (fighter x alchemist multiclass). Combat draught: chug an elixir as a free action
 -- mid-fight, then brawl. Met as a berserker-draught brawler, a boss. Home shelf is fighter. Kit from
--- data/disciplines/warbrewer.lua.
+-- data/classes/warbrewer.lua.
 return {
     name = "Warbrewer",
     kind = "humanoid",

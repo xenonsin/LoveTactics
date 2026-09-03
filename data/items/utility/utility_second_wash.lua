@@ -27,6 +27,7 @@ return {
     flavor = "Everything worth keeping came out on the first pass. This is what the Crucible poured away.",
     sprite = "assets/items/second_wash.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     -- The reflection IS the phase, so the trait carries its own 50% gate and no boss_phases table is

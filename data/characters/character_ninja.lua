@@ -2,7 +2,7 @@
 -- board -- distinct from Kaen (character_kaen), who stays the marquee boss of the unlock quest while this
 -- is the plain discipline stand-in the draft and stray encounters field. Met as a BOSS: a shape that
 -- keeps not being where you strike. Home shelf is rogue; the mage half is the illusion-work (clones,
--- misdirection, vanishing -- not the elements). Kit from data/disciplines/ninja.lua. Signature mechanic:
+-- misdirection, vanishing -- not the elements). Kit from data/classes/ninja.lua. Signature mechanic:
 -- Shadowclone -- blink between decoys, vanish from sight, strike from stealth. No VN portrait (a template,
 -- not a companion) -- it falls back to its composed token.
 return {

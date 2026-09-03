@@ -16,6 +16,7 @@ return {
     flavor = "It has eaten most of a circle. It has not moved far to do it.",
     sprite = "assets/items/glutted_bulk.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "impact", "physical", "melee" },
     noSteal = true,
     activeAbility = {

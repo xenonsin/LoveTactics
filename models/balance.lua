@@ -353,18 +353,18 @@ Balance.FAMILY_BASE = {
 --
 -- It used to seed `completedQuests` with the first N quests a vendor sponsored, because a shelf climbed
 -- on finished work. A shelf climbs on the class level of the body holding the gear
--- (Discipline.classLevel), so the reference company is given one body standing at that rung -- and the
+-- (Class.classLevel), so the reference company is given one body standing at that rung -- and the
 -- ledger it is given is career technique, which is the one field the level is read off, so nothing here
 -- can drift from what the shop will actually do.
 function Balance.playerAt(prestige, vendorId, sponsorDone)
     local player = { prestige = prestige or 1, completedQuests = {}, roster = {} }
     local class = vendorId and (require("models.vendor").defs[vendorId] or {}).class
     if class and (sponsorDone or 0) > 0 then
-        local Discipline = require("models.discipline")
-        local level = math.max(0, math.min(Discipline.CLASS_LEVEL_CAP, sponsorDone))
+        local Class = require("models.class")
+        local level = math.max(0, math.min(Class.CLASS_LEVEL_CAP, sponsorDone))
         player.roster[1] = {
             level = 1,
-            technique = { [class] = Discipline.classLevelCost(level) },
+            technique = { [class] = Class.classLevelCost(level) },
         }
     end
     return player

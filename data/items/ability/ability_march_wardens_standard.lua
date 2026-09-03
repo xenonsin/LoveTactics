@@ -10,8 +10,7 @@ return {
     sprite = "assets/items/ability_march_wardens_standard.png",
     type = "ability",
     tags = { "summon" },
-    class = "knight",
-    discipline = "warden", -- knight x hunter; the Lockdown-zone mechanic's first stock
+    class = "warden", -- knight x hunter; the Lockdown-zone mechanic's first stock
     price = 740,
     unlockQuests = 8,
     activeAbility = {

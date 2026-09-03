@@ -22,8 +22,7 @@ return {
     sprite = "assets/items/envenom.png",
     type = "consumable", -- a coating: the vial empties as the blade beside it is used
     tags = { "poison", "coating" },
-    class = "alchemist",
-    discipline = "poisoner", -- deeper cut of the shelf: buyable only once the poisoner gate is cleared
+    class = "poisoner", -- deeper cut of the shelf: buyable only once the poisoner gate is cleared
     price = 130,
     unlockQuests = 3,
     aura = {

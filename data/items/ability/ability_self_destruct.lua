@@ -37,6 +37,7 @@ return {
     flavor = "It was never meant to come home. It has stopped pretending otherwise.",
     sprite = "assets/items/ability_blast_charge.png", -- placeholder until its own art exists
     type = "ability",
+    class = "creature",
     tags = { "fire", "explosive" },
     bound = true, -- what the thing IS; never lifted off it
     activeAbility = {

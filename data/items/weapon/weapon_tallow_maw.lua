@@ -15,6 +15,7 @@ return {
     flavor = "Rendered fat, and the animal it was rendered out of, still walking.",
     sprite = "assets/items/tallow_maw.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "bite", "physical", "melee" },
     noSteal = true,
     activeAbility = {

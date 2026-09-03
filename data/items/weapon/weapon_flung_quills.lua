@@ -22,6 +22,7 @@ return {
     flavor = "It sheds them on purpose. Whatever is left in the wing is the part it still needs.",
     sprite = "assets/items/flung_quills.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "pierce", "physical", "ranged" },
     noSteal = true, -- a creature's body is not loot
     activeAbility = {

@@ -33,7 +33,7 @@ local Character = require("models.character")
 local Quest = require("models.quest")
 local Item = require("models.item")
 local Vendor = require("models.vendor")
-local Discipline = require("models.discipline")
+local Class = require("models.class")
 local Forge = require("models.forge")
 local Growth = require("models.growth")
 
@@ -199,15 +199,17 @@ function M.walkCadence()
         local prevPlain, prevAll = nil, nil
         for done = 0, lineLength do
             local player = Balance.playerAt(math.max(1, done), v.id, done)
-            local unlocked = Discipline.unlockedSet(player)
-            local levels = Discipline.levelSet(player)
+            local unlocked = Class.unlockedSet(player)
+            local levels = Class.levelSet(player)
 
             local plain, all = 0, 0
             for _, entry in ipairs(Vendor.stock(v.id, done, nil, unlocked, levels)) do
                 if not entry.locked then
                     all = all + 1
                     local def = entry.item or Item.defs[entry.id]
-                    if not (def and def.discipline) then plain = plain + 1 end
+                    -- "Plain" is the open rack: a ROOT class's stock. Since the fold there is no
+                    -- second field to read (docs/class-fold.md).
+                    if not (def and Class.isEarned(def.class)) then plain = plain + 1 end
                 end
             end
 
@@ -215,7 +217,7 @@ function M.walkCadence()
             local sample = nil
             for _, entry in ipairs(Vendor.stock(v.id, done, nil, unlocked, levels)) do
                 local def = entry.item or Item.defs[entry.id]
-                if def and def.type == "weapon" and not def.discipline and not entry.locked then
+                if def and def.type == "weapon" and not Class.isEarned(def.class) and not entry.locked then
                     sample = def
                     break
                 end
@@ -283,7 +285,7 @@ function M.walkItems()
 
                 rows[#rows + 1] = {
                     id = id, gate = gate, price = def.price, kind = kind, mag = mag,
-                    class = def.class, discipline = def.discipline,
+                    class = def.class, discipline = Class.isEarned(def.class) and def.class or nil,
                     family = (item.tags or {})[1],
                     stat = stat, share = stat > 0 and (mag / stat) or 0,
                 }
@@ -321,7 +323,7 @@ function M.walkPace()
             local byGate = {}
             for id, def in pairs(Item.defs) do
                 if def.price and (def.type == "weapon" or def.type == "ability")
-                    and not def.discipline and def.class == class then
+                    and not Class.isEarned(def.class) and def.class == class then
                     local g = def.unlockQuests or 0
                     local item = Item.instantiate(id, 1, 0)
                     local power = (item.activeAbility and item.activeAbility.damage) or 0
@@ -393,7 +395,7 @@ function M.walkForgeEconomy()
         local sample
         for id, def in pairs(Item.defs) do
             if def.class and Forge.houseVendorFor(def.class) == v.id
-                and def.type == "weapon" and not def.discipline and def.price
+                and def.type == "weapon" and not Class.isEarned(def.class) and def.price
                 and (def.unlockQuests or 0) == 0 then
                 if not sample or id < sample.id then sample = { id = id, def = def } end
             end

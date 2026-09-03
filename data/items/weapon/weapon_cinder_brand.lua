@@ -13,6 +13,7 @@ return {
     flavor = "Whatever it was made of has mostly finished burning. It has not finished swinging.",
     sprite = "assets/items/cinder_brand.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "fire", "physical", "melee" },
     noSteal = true,
     activeAbility = {

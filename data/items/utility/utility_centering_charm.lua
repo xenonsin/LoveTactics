@@ -17,8 +17,7 @@ return {
     sprite = "assets/items/centering_charm.png",
     type = "utility",
     tags = { "fist" },
-    class = "priest",
-    discipline = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
+    class = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
     price = 575,
     unlockQuests = 6,
     waitBehavior = { kind = "gather", speed = 3, power = Curve.ramp(4, 14) },

@@ -21,7 +21,7 @@ local Item = require("models.item")
 local Vendor = require("models.vendor")
 local Quest = require("models.quest")
 local Trait = require("models.trait")
-local Discipline = require("models.discipline") -- CLASS_LEVEL_CAP: the rung count the shelf is cut into
+local Class = require("models.class") -- CLASS_LEVEL_CAP: the rung count the shelf is cut into
 
 local M = {}
 
@@ -29,7 +29,7 @@ local M = {}
 --
 -- It used to be `Errand.tiers(vendorId) - 1` -- the count of jobs the house asked for, less its opener.
 -- Houses do not ask for work any more; a class is something a BODY climbs
--- (Discipline.classLevel), so the shelf is cut into as many bands as that ladder has rungs and the two
+-- (Class.classLevel), so the shelf is cut into as many bands as that ladder has rungs and the two
 -- are the same list counted from two ends exactly as they were before.
 --
 -- IT IS THE SAME NUMBER FOR EVERY SHELF NOW, where it used to be per-house, and nothing here objects:
@@ -38,12 +38,12 @@ local M = {}
 -- owed after this lands -- `. grade-report apply` then `. balance-rescale apply 0`, finishing on the
 -- rescale and never on the grade.
 local function maxGateFor()
-    return math.max(0, Discipline.CLASS_LEVEL_CAP)
+    return math.max(0, Class.CLASS_LEVEL_CAP)
 end
 
 -- The earliest slot a DISCIPLINE item may name. No subclass opens on a house's opener -- that job is the
 -- door itself -- so nothing at slot 0 could ever be buyable. It was 3 of 12 when the band was twelve
--- rungs long; the gates now sit on tiers 1..5 (data/disciplines/*.lua), and this is the first of them.
+-- rungs long; the gates now sit on tiers 1..5 (data/classes/*.lua), and this is the first of them.
 local DISCIPLINE_FLOOR = 1
 
 -- class -> vendor id, and how many quests each house sponsors.
@@ -264,7 +264,8 @@ local function planFor(class, maxGate, pinned)
     local PLAIN_FLOOR = 2
     local baseQ, deepQ, bi, di = {}, {}, 1, 1
     for _, row in ipairs(spread) do
-        if row.def.discipline then deepQ[#deepQ + 1] = row else baseQ[#baseQ + 1] = row end
+        -- Deep stock is an EARNED class's since the fold (docs/class-fold.md).
+        if Class.isEarned(row.def.class) then deepQ[#deepQ + 1] = row else baseQ[#baseQ + 1] = row end
     end
     for s = 0, maxGate do
         local placed = 0
@@ -315,7 +316,7 @@ local function planFor(class, maxGate, pinned)
     -- the opening weapon should be the plainest thing on the rack.
     local hasOpener = false
     for _, row in ipairs(asc) do
-        if row.def.type == "weapon" and row.want <= 0 and not row.def.discipline then hasOpener = true end
+        if row.def.type == "weapon" and row.want <= 0 and not Class.isEarned(row.def.class) then hasOpener = true end
     end
     if not hasOpener then
         -- CHOSEN ON RAW GRADE, not on the adjusted order, and that is the difference between a rule and
@@ -326,7 +327,7 @@ local function planFor(class, maxGate, pinned)
         -- construction, so this settles on the same weapon every time.
         local opener
         for _, row in ipairs(asc) do
-            if row.def.type == "weapon" and not row.def.discipline then
+            if row.def.type == "weapon" and not Class.isEarned(row.def.class) then
                 if not opener or row.value < opener.value
                     or (row.value == opener.value and row.id < opener.id) then
                     opener = row

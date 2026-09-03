@@ -29,8 +29,7 @@ return {
     sprite = "assets/items/ability_held_reaction.png",
     type = "ability",
     tags = { "fire", "explosive" },
-    class = "alchemist",
-    discipline = "bombardier", -- deeper cut of the shelf: buyable only once the bombardier gate is cleared
+    class = "bombardier", -- deeper cut of the shelf: buyable only once the bombardier gate is cleared
     price = 660,
     unlockQuests = 7,
     activeAbility = {

@@ -416,24 +416,22 @@ function Player.new()
         -- lost anything, which is what a lucky one reads as too.
         lostPacks = {},
         -- What each body is still carrying from a fight it went down in, as { [charId] = count }
-        -- (models/wound.lua). Caps the hub's free heal until somebody pays to set it, and is the one
-        -- thing a wipe does not roll back.
+        -- (models/wound.lua). Caps the healing anything underground can do, and empties the moment the
+        -- company is standing in a town -- a wound lasts the expedition it was taken on and no longer.
         wounds = {},
-        -- ...and whether anybody ever has been, which the ledger above cannot answer once the surgeon is
-        -- paid. THE INN IS WHAT READS IT (models/building.lua's `unlockWound`): setting a bone is the
-        -- only thing that building does, so a company that has never had one broken has no use for the
-        -- door and does not see it. One-way, so the city does not lose a building the morning after it
-        -- was used.
+        -- ...and whether anybody ever has been, which the ledger above cannot answer once the company
+        -- has walked up the stair. What reads it is the one-time coach that teaches the mark on the bar
+        -- (states/game.lua's inflictWounds). One-way, so the lesson is taught exactly once ever.
         wounded = false,
         meal = nil,           -- the one supper bought at the Cafe and not yet eaten through (models/meal.lua)
         materials = {},       -- material id -> count; spent at the Blacksmith (see models/material.lua)
         recipes = {},         -- item id -> tier level; a consumable bought at its vendor comes at this level
         newItems = {},        -- item id -> true; arrived in the stash and not yet looked at (Player.markNew)
         newStock = {},        -- item id -> true; put on a vendor's shelf by a quest and not yet looked at
-        -- The rung each class had reached the last time the counter was asked what that opened
-        -- (Market.markOpened). A watermark rather than a diff: a shelf rung is a class level now,
-        -- and a class level rises mid-fight, so there is no event to wrap.
-        shelfRung = {},
+        -- Which classes' racks the counter has already announced (Market.markOpened). A watermark
+        -- rather than a diff: a companion joins on a floor, far from the city where their class's
+        -- blades appear, so there is no moment standing in the shop to wrap.
+        marketRacks = {},
         visitedVendors = {},  -- vendor id -> true; a shop plays its intro scene the first time only (states/hub.lua)
         -- WHICH CITY DOORS THE PLAYER HAS BEEN SHOWN (models/building.lua's seenDoors block) is
         -- deliberately ABSENT here rather than an empty table. Nil means "has not looked at the city
@@ -561,11 +559,11 @@ end
 -- on COMMITTING where it used to climb on FINISHING. A broad company reads as further along than a deep
 -- one, which is arguably right and is certainly different.
 function Player.standing(player)
-    local Discipline = require("models.discipline")
+    local Class = require("models.class")
     local total = 0
     for _, char in ipairs((player and player.roster) or {}) do
         for key in pairs(char.technique or {}) do
-            total = total + Discipline.classLevel(char, key)
+            total = total + Class.classLevel(char, key)
         end
     end
     return total + 1
@@ -593,14 +591,14 @@ end
 -- parent vendor (states/hub.lua); this flag keeps it to once, across a save/load. A discipline with
 -- two parents announces at whichever vendor is opened first -- the flag is per discipline, not per
 -- shelf, so the second parent does not repeat it. Unknown disciplines read as un-announced.
-function Player.hasAnnouncedDiscipline(player, disciplineId)
-    return (player.announcedDisciplines or {})[disciplineId] == true
+function Player.hasAnnouncedDiscipline(player, classId)
+    return (player.announcedDisciplines or {})[classId] == true
 end
 
 -- Record that the discipline-unlocked scene has now played, so it never plays again.
-function Player.markDisciplineAnnounced(player, disciplineId)
+function Player.markDisciplineAnnounced(player, classId)
     player.announcedDisciplines = player.announcedDisciplines or {}
-    player.announcedDisciplines[disciplineId] = true
+    player.announcedDisciplines[classId] = true
 end
 
 -- This player's identity to OTHER players, minted on first use and kept from then on.
@@ -672,9 +670,10 @@ end
 -- ---------------------------------------------------------------------------
 
 -- Refill every roster member's resource stats to full. Health and mana carry across the
--- battles *within* a quest -- attrition over a run is the point -- but returning to the hub
--- rests the whole company. Called from states/hub.lua on entry, so a quest won or lost always
--- leaves the party whole, and this is why models/save.lua need not persist current resources.
+-- battles *within* a quest -- attrition over a run is the point -- but reaching a town rests the whole
+-- company. Called from states/hub.lua and states/gate.lua on entry, each beside a Wound.clear, so a
+-- quest won or lost always leaves the party whole and this is why models/save.lua need not persist
+-- current resources.
 function Player.restore(player)
     local Wound = require("models.wound")
     -- The reserve, re-stamped onto the bodies before anything reads a ceiling. A save/load rebuilds
@@ -683,11 +682,15 @@ function Player.restore(player)
     -- whole, which is exactly the set of moments the stamp can be stale at. See Wound.stamp.
     Wound.stamp(player)
     for _, char in ipairs(player.roster or {}) do
-        -- A WOUND IS A CAP ON THIS REFILL, and this is the only seam it has (models/wound.lua). The
-        -- hub still heals for free; a body that came out of a fight on its back is topped up to less
-        -- than full and walks into the next descent short. Health alone -- mana and stamina come back
-        -- whole, because a wound is an injury rather than exhaustion, and taking the caster's pool
-        -- would silently disarm them instead of hurting them.
+        -- A WOUND IS A CAP ON THIS REFILL, and this is the only seam it has (models/wound.lua). Health
+        -- alone -- mana and stamina come back whole, because a wound is an injury rather than
+        -- exhaustion, and taking the caster's pool would silently disarm them instead of hurting them.
+        --
+        -- THE TWO TOWN CALLERS SEE NO CAP AT ALL, and that is not this function being bypassed: both
+        -- states/hub.lua and states/gate.lua run Wound.clear on the way in, so by the time they reach
+        -- here the ledger is empty and every share is 1. The cap is for the callers that are still
+        -- underground or mid-fight -- a battle retry, a body rebuilt from a resumed save -- which is
+        -- exactly the set of moments a wound is supposed to still be true.
         local share = Wound.healShare(player, char.id)
         for _, stat in ipairs(Character.RESOURCE_STATS) do
             local resource = char.stats[stat]

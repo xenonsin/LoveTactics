@@ -1,7 +1,7 @@
 -- Beastmaster exemplar (hunter subclass). Dedicated body so the discipline reads as itself on the board
 -- rather than borrowing Kaya's -- companions stay roots-only (docs/disciplines-plan.md, "starred reuse"
 -- open call, resolved toward a fresh NPC). Met as a RECRUIT: a houndmaster who calls the pack. Home shelf
--- is hunter. Kit from data/disciplines/beastmaster.lua. Signature mechanic: Bond -- a persistent summoned
+-- is hunter. Kit from data/classes/beastmaster.lua. Signature mechanic: Bond -- a persistent summoned
 -- beast that acts each turn under command. No VN portrait (a template, not a companion) -- it falls back
 -- to its composed token.
 return {

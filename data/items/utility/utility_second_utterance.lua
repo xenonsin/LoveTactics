@@ -20,8 +20,7 @@ return {
     sprite = "assets/items/second_utterance.png",
     type = "utility",
     tags = { "charm" },
-    class = "mage",
-    discipline = "theurge", -- mage x priest; the Channelled miracle's other half, beside Vigil Beads
+    class = "theurge", -- mage x priest; the Channelled miracle's other half, beside Vigil Beads
     price = 245,
     unlockQuests = 2,
     traits = { "trait_second_utterance" },

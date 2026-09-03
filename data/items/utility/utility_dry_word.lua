@@ -16,8 +16,7 @@ return {
     sprite = "assets/items/sig_dry_word.png",
     type = "utility",
     tags = { "signature", "arcane" },
-    class = "knight",
-    discipline = "spellbreaker",
+    class = "spellbreaker",
     activeAbility = {
         target = "self",
         range = 0,

@@ -26,8 +26,7 @@ return {
     sprite = "assets/items/tidewalker_boots.png",
     type = "utility",
     tags = { "boots", "water" },
-    class = "mage",
-    discipline = "elementalist", -- element as terrain; the water twin of the Cinderstride
+    class = "elementalist", -- element as terrain; the water twin of the Cinderstride
     price = 410,
     unlockQuests = 4,
     trail = { hazard = "hazard_rain", duration = 8 },

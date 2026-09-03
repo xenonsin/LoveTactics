@@ -15,6 +15,7 @@ return {
     flavor = "Every mark on it is a thing that hit it. It kept all of them.",
     sprite = "assets/items/forge_scar.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_kindling" },

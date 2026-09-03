@@ -14,8 +14,7 @@ return {
     sprite = "assets/items/counter_magic.png",
     type = "utility",
     tags = { "arcane" },
-    class = "mage",
-    discipline = "spellbreaker", -- knight x mage; Counterspell -- the aimed spell is unravelled outright
+    class = "spellbreaker", -- knight x mage; Counterspell -- the aimed spell is unravelled outright
     price = 495,
     unlockQuests = 5,
     traits = { "trait_counter_magic" },

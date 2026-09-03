@@ -12,6 +12,7 @@ return {
     flavor = "Stag-headed, and wearing the wood the way somebody wears a name they were given.",
     sprite = "assets/items/antler_crown.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "pierce", "physical", "melee" },
     noSteal = true,
     activeAbility = {

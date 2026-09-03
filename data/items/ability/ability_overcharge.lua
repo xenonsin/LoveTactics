@@ -10,8 +10,7 @@ return {
     sprite = "assets/items/ability_overcharge.png",
     type = "ability",
     tags = { "utility" },
-    class = "alchemist",
-    discipline = "artificer", -- mage x alchemist; the Constructs mechanic's first stock
+    class = "artificer", -- mage x alchemist; the Constructs mechanic's first stock
     price = 575,
     unlockQuests = 6,
     activeAbility = {

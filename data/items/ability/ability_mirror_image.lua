@@ -9,8 +9,7 @@ return {
     sprite = "assets/items/ability_mirror_image.png",
     type = "ability",
     tags = { "illusion", "utility" },
-    class = "mage",
-    discipline = "ninja", -- rogue x mage; the Shadowclone mechanic's first stock
+    class = "ninja", -- rogue x mage; the Shadowclone mechanic's first stock
     price = 740,
     unlockQuests = 8,
     activeAbility = {

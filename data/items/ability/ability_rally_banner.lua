@@ -15,8 +15,7 @@ return {
     sprite = "assets/items/ability_rally_banner.png",
     type = "ability",
     tags = { "banner", "rally" },
-    class = "fighter",
-    discipline = "warlord", -- deeper cut of the shelf: buyable only once the warlord gate is cleared
+    class = "warlord", -- deeper cut of the shelf: buyable only once the warlord gate is cleared
     price = 740,
     unlockQuests = 8,
     activeAbility = {

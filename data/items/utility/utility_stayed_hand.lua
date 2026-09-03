@@ -27,8 +27,7 @@ return {
     sprite = "assets/items/utility_stayed_hand.png",
     type = "utility",
     tags = { "holy" },
-    class = "priest",
-    discipline = "exorcist", -- Banish, turned inward -- it strips what is riding the body and lifts it out of reach
+    class = "exorcist", -- Banish, turned inward -- it strips what is riding the body and lifts it out of reach
     price = 495,
     unlockQuests = 5,
     traits = { "trait_stayed_hand" },

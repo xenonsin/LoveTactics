@@ -27,8 +27,7 @@ return {
     sprite = "assets/items/utility_red_thirst.png",
     type = "utility",
     tags = { "dark" },
-    class = "fighter",
-    discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
+    class = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
     price = 165,
     unlockQuests = 1,
     activeAbility = {

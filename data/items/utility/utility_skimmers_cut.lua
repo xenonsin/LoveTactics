@@ -27,8 +27,7 @@ return {
     sprite = "assets/items/skimmers_cut.png",
     type = "utility",
     tags = { "charm" },
-    class = "rogue",
-    discipline = "mammonite", -- an earner: the half of the shelf that opens with the gate itself
+    class = "mammonite", -- an earner: the half of the shelf that opens with the gate itself
     price = 330,
     unlockQuests = 3,
     traits = { "trait_skimmers_cut" },

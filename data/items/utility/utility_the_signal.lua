@@ -15,8 +15,7 @@ return {
     sprite = "assets/items/sig_the_signal.png",
     type = "utility",
     tags = { "signature", "impact" },
-    class = "rogue",
-    discipline = "saboteur",
+    class = "saboteur",
     activeAbility = {
         target = "self",
         range = 0,

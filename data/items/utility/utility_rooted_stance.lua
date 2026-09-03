@@ -27,8 +27,7 @@ return {
     sprite = "assets/items/rooted_stance.png",
     type = "utility",
     tags = { "charm" },
-    class = "knight",
-    discipline = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
+    class = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
     price = 245,
     unlockQuests = 2,
     statusImmunity = { "status_stun" },

@@ -29,8 +29,7 @@ return {
     sprite = "assets/items/ability_gaunt_vigil.png",
     type = "ability",
     tags = { "dark" },
-    class = "knight",
-    discipline = "spellbreaker", -- knight x mage; a standing tax on casting, the anti-mage answer that spends no turn
+    class = "spellbreaker", -- knight x mage; a standing tax on casting, the anti-mage answer that spends no turn
     price = 740,
     unlockQuests = 8,
     activeAbility = {

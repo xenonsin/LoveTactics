@@ -23,6 +23,7 @@ return {
     flavor = "The relief never came. It has decided this is the same as not needing one.",
     sprite = "assets/items/unkept_watch.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_torpor", "trait_boss_phases" },

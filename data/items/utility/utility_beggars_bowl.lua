@@ -18,6 +18,7 @@ return {
     flavor = "Carried through the nave for a hundred years. It has never held anything.",
     sprite = "assets/items/beggars_bowl.png",
     type = "utility",
+    class = "creature",
     tags = { "relic" },
     noSteal = true,
     traits = { "trait_beggars_due" },

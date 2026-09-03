@@ -24,6 +24,7 @@ return {
     flavor = "It has been keeping the accounts of everyone who came down here. All of them are behind.",
     sprite = "assets/items/the_reckoning.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_assayed", "trait_boss_phases" },

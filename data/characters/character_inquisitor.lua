@@ -1,6 +1,6 @@
 -- Inquisitor exemplar (rogue x priest multiclass). Judgment: mark a heretic, then execute for holy
 -- damage that also dispels. Met as a witch-finder, a boss. Home shelf is rogue (Confessor's Needle).
--- Kit from data/disciplines/inquisitor.lua.
+-- Kit from data/classes/inquisitor.lua.
 return {
     name = "Inquisitor",
     kind = "humanoid",

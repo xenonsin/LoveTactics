@@ -18,8 +18,7 @@ return {
     sprite = "assets/items/sig_cullers_basket.png",
     type = "utility",
     tags = { "signature", "alchemy" },
-    class = "alchemist",
-    discipline = "herbalist",
+    class = "herbalist",
     activeAbility = {
         target = "self",
         range = 0,

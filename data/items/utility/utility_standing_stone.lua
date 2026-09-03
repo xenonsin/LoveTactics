@@ -15,8 +15,7 @@ return {
     sprite = "assets/items/sig_standing_stone.png",
     type = "utility",
     tags = { "signature", "holy" },
-    class = "priest",
-    discipline = "totemist",
+    class = "totemist",
     activeAbility = {
         target = "self",
         range = 0,

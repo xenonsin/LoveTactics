@@ -10,8 +10,7 @@ return {
     sprite = "assets/items/ability_sacred_banner.png",
     type = "ability",
     tags = { "banner", "holy" },
-    class = "priest",
-    discipline = "paladin", -- knight x priest; a banner is a Paladin or Warlord object (docs/classes.md)
+    class = "paladin", -- knight x priest; a banner is a Paladin or Warlord object (docs/classes.md)
     price = 740,
     unlockQuests = 8,
     activeAbility = {

@@ -1,7 +1,7 @@
 -- Bulwark exemplar (knight subclass). Shove-lock: knockback that also Halts the displaced. Met as a
 -- mentor/ally -- the Road-Captain shows it in its unlock quest, but that body
 -- (character_greywatch_captain) is a story-disguised, encounter-tuned unit, so the discipline exemplar
--- is authored here with the full Bulwark kit. Kit from data/disciplines/bulwark.lua.
+-- is authored here with the full Bulwark kit. Kit from data/classes/bulwark.lua.
 return {
     name = "Bulwark",
     kind = "humanoid",
@@ -25,7 +25,7 @@ return {
     -- ONE plate, not two. The Halting Rank and the Unyielding Harness are each `movement = -2`, and
     -- worn together on a base of 4 they left the exemplar with none at all -- a wall that moves
     -- everyone else and cannot cross the room to be shoved past. The Rank is the one that stays: Halt
-    -- is the discipline's own word (data/disciplines/bulwark.lua), so the plate that says it to a
+    -- is the discipline's own word (data/classes/bulwark.lua), so the plate that says it to a
     -- whole ring is the shove-lock stated as armour. The Harness was the better cuirass and the
     -- wrong one to spend the last two tiles on.
     startingItems = {

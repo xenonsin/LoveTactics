@@ -21,6 +21,7 @@ return {
     flavor = "What she bought with her freedom, beating in the place her own heart was.",
     sprite = "assets/items/sig_unappeased_heart.png", -- shares the Heart's art until its own exists
     type = "utility", -- `bound` (not the type) is what locks it in place
+    class = "creature",
     tags = { "signature", "relic" },
     bound = true,
     traits = { "trait_wrath_rising" },

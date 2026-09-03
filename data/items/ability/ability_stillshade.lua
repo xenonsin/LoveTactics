@@ -26,8 +26,7 @@ return {
     sprite = "assets/items/ability_stillshade.png",
     type = "ability",
     tags = { "dark" },
-    class = "rogue",
-    discipline = "assassin", -- deeper cut of the shelf: buyable only once the assassin gate is cleared
+    class = "assassin", -- deeper cut of the shelf: buyable only once the assassin gate is cleared
     price = 740,
     unlockQuests = 8,
     -- The exit price rides on the item, because a trait only ever attaches from a grid item (see

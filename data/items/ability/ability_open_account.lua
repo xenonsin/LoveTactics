@@ -22,7 +22,7 @@
 -- each end is what makes leaving it open a commitment.
 --
 -- WHY IT IS THE ROGUE'S, and specifically the MAMMONITE's. The purse kit is the greed shelf's, and it is
--- the whole of the rogue's money subclass (data/disciplines/mammonite.lua) -- eight wares on one resource
+-- the whole of the rogue's money subclass (data/classes/mammonite.lua) -- eight wares on one resource
 -- nothing else in the game touches. It was this ability that tipped the kit over: an earlier call had it
 -- stay base stock (docs/disciplines-plan.md, "the greed identity itself, not a deeper cut of it"), which
 -- was right about the identity and wrong about the shelf. Gated at the end of the greed line like the
@@ -60,8 +60,7 @@ return {
     sprite = "assets/items/ability_open_account.png",
     type = "ability",
     tags = { "guile" }, -- the rogue's own word, so the shelf reads right; the purse is the header's business
-    class = "rogue",
-    discipline = "mammonite", -- deeper cut of the shelf: buyable only once the mammonite gate is cleared
+    class = "mammonite", -- deeper cut of the shelf: buyable only once the mammonite gate is cleared
     price = 660,
     -- Gated to the END of the greed line: on sale only once all ten Undercroft quests are cleared -- i.e.
     -- Aurea is beaten (slot 10). Her gold ward is the one piece of her fight this is a straight copy of.

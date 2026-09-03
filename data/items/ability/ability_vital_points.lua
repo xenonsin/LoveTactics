@@ -34,8 +34,7 @@ return {
     sprite = "assets/items/ability_vital_points.png",
     type = "ability",
     tags = { "holy" },
-    class = "priest",
-    discipline = "theurge", -- multiclass: stocked on the mage's shelf too once the gate is cleared
+    class = "theurge", -- multiclass: stocked on the mage's shelf too once the gate is cleared
     price = 245,
     unlockQuests = 2,
     -- Banked off what a priest does anyway, so the acolyte arrives at the payoff whether the fight

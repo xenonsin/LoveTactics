@@ -14,6 +14,7 @@ return {
     flavor = "The heavy end of the beast shelf: a bear swings once where a wolf bites twice.",
     sprite = "assets/items/great_claws.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "slash", "physical", "melee" },
     noSteal = true, -- a pickpocket cannot lift the claws off a bear's hands
     activeAbility = {

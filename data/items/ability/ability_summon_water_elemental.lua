@@ -8,8 +8,7 @@ return {
     sprite = "assets/items/ability_summon_water_elemental.png",
     type = "ability",
     tags = { "summon", "water" },
-    class = "mage",
-    discipline = "summoner", -- deeper cut of the shelf: buyable only once the summoner gate is cleared
+    class = "summoner", -- deeper cut of the shelf: buyable only once the summoner gate is cleared
     price = 740,
     unlockQuests = 8,
     activeAbility = {

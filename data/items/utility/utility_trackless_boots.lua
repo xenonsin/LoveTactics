@@ -35,8 +35,7 @@ return {
     sprite = "assets/items/trackless_boots.png",
     type = "utility",
     tags = { "boots" },
-    class = "hunter",
-    discipline = "druid", -- deeper cut of the shelf: buyable only once the druid gate is cleared
+    class = "druid", -- deeper cut of the shelf: buyable only once the druid gate is cleared
     price = 245,
     unlockQuests = 2,
     -- The cap, flat rather than a Curve: 1 is open field and there is nowhere below it to climb to.

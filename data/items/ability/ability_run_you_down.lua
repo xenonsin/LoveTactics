@@ -16,6 +16,7 @@ return {
     flavor = "There is nowhere on this sand you have not already lost. Come back and lose it here.",
     sprite = "assets/items/ability_gaff_line.png", -- placeholder until its own art exists
     type = "ability",
+    class = "creature",
     tags = { "physical" },
     activeAbility = {
         target = "enemy",

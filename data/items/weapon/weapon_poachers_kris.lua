@@ -14,8 +14,7 @@ return {
     sprite = "assets/items/weapon_poachers_kris.png",
     type = "weapon",
     tags = { "dagger", "pierce", "physical", "melee" },
-    class = "rogue",
-    discipline = "poacher", -- rogue x hunter; the Snare-execute mechanic's first stock
+    class = "poacher", -- rogue x hunter; the Snare-execute mechanic's first stock
     price = 660,
     unlockQuests = 7,
     activeAbility = {

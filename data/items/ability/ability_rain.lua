@@ -9,6 +9,7 @@ return {
     flavor = "The setup for a Jolt, and the Arcanum's one concession to patience.",
     sprite = "assets/items/ability_rain.png",
     type = "ability",
+    class = "creature",
     tags = { "water", "magical" },
     activeAbility = {
         target = "tile",

@@ -28,6 +28,7 @@ return {
         "stops watching.",
     sprite = "assets/items/sig_unappeased_heart.png", -- placeholder until its own art exists
     type = "utility", -- `bound` (not the type) is what locks it in the center cell
+    class = "creature",
     tags = { "signature", "relic" },
     bound = true,
     traits = { "trait_boss_phases" },

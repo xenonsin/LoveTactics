@@ -18,8 +18,7 @@ return {
     sprite = "assets/items/sig_crowds_due.png",
     type = "armor",
     tags = { "signature", "shield" },
-    class = "knight",
-    discipline = "champion",
+    class = "champion",
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     waitBehavior = { kind = "defend", speed = 3, defense = Curve.ramp(6, 16) },
     activeAbility = {

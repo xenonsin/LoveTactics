@@ -1,6 +1,6 @@
 -- Barbarian exemplar (fighter subclass). Rage: damage climbs as its own HP falls, and some strikes
 -- are paid for in blood. Met as a boss -- an arena berserker who fights harder the closer it is to
--- dying. Kit drawn from the Barbarian shelf (data/disciplines/barbarian.lua).
+-- dying. Kit drawn from the Barbarian shelf (data/classes/barbarian.lua).
 return {
     name = "Barbarian",
     kind = "humanoid",

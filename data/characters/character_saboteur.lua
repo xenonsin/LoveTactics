@@ -1,6 +1,6 @@
 -- Saboteur exemplar (rogue x alchemist multiclass). Planted charges: stealth-place delayed bombs, then
 -- detonate on cue. Met as a demolitions ghost, a recruit. Home shelf is rogue. Kit from
--- data/disciplines/saboteur.lua.
+-- data/classes/saboteur.lua.
 return {
     name = "Saboteur",
     kind = "humanoid",

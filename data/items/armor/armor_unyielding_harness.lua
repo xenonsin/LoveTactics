@@ -28,8 +28,7 @@ return {
     sprite = "assets/items/armor_unyielding_harness.png",
     type = "armor",
     tags = { "heavy", "plate" },
-    class = "knight",
-    discipline = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
+    class = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
     price = 575,
     unlockQuests = 6,
     traits = { "trait_unyielding" },

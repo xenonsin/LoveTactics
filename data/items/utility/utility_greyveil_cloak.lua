@@ -25,8 +25,7 @@ return {
     sprite = "assets/items/utility_greyveil_cloak.png",
     type = "utility",
     tags = { "dark" },
-    class = "rogue",
-    discipline = "assassin", -- deeper cut of the shelf: buyable only once the assassin gate is cleared
+    class = "assassin", -- deeper cut of the shelf: buyable only once the assassin gate is cleared
     price = 740,
     unlockQuests = 8,
     activeAbility = {

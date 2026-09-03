@@ -24,6 +24,7 @@ return {
         "the horn: \"at the heart of the wood the hunt hollowed out\".",
     sprite = "assets/items/maw_of_the_unfed.png",
     type = "utility",
+    class = "creature",
     tags = { "relic" },
     noSteal = true, -- nothing takes this off you; you took it off her
     traits = { "trait_ravenous" },

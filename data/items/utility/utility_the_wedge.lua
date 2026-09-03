@@ -16,8 +16,7 @@ return {
     sprite = "assets/items/sig_the_wedge.png",
     type = "utility",
     tags = { "signature", "impact", "physical" },
-    class = "knight",
-    discipline = "vanguard",
+    class = "vanguard",
     activeAbility = {
         target = "tile",
         allowOccupied = true,

@@ -15,6 +15,7 @@ return {
     flavor = "One is a nuisance. The nuisance is not what it is for.",
     sprite = "assets/items/gorge_bite.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "bite", "physical", "melee" },
     noSteal = true,
     activeAbility = {

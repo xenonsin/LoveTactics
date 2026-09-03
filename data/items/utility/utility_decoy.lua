@@ -25,6 +25,7 @@ return {
     flavor = "The log will say you simply took a step. The deception has to hold there too.",
     sprite = "assets/items/decoy.png",
     type = "utility",
+    class = "creature",
     tags = { "trick", "illusion" },
     stealPriority = 10,
     noCopy = true,

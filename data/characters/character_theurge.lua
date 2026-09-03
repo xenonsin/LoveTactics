@@ -1,6 +1,6 @@
 -- Theurge exemplar (mage x priest multiclass). Channelled miracle: wind-up holy spells that scale with
 -- the turns channelled. Met as a channelling divine, a mentor. Home shelf is mage. Kit from
--- data/disciplines/theurge.lua.
+-- data/classes/theurge.lua.
 return {
     name = "Theurge",
     kind = "humanoid",

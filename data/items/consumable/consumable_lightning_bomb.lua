@@ -14,8 +14,7 @@ return {
     sprite = "assets/items/lightning_bomb.png",
     type = "consumable",
     tags = { "lightning" },
-    class = "alchemist",
-    discipline = "bombardier", -- deeper cut of the shelf: buyable only once the bombardier gate is cleared
+    class = "bombardier", -- deeper cut of the shelf: buyable only once the bombardier gate is cleared
     price = 265,
     unlockQuests = 7,
     activeAbility = {

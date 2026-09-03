@@ -8,9 +8,13 @@
 --
 -- THE CITY GROWS AS THE COMPANY WORKS, and that is no longer prestige. The shelves moved onto the market
 -- board and each opens on the first errand its house posts on a descent floor (models/errand.lua); this
--- board's own cards open on the deeds that give them something to do -- the Inn on the first wound, the
--- Markets on the first house, the Cafe on the second floor, the Forge on the fourth. See the gate table
--- in models/building.lua for the whole list and why there is one.
+-- board's own cards open on the deeds that give them something to do -- the Markets on the first house,
+-- the Cafe on the second floor, the Forge on the fourth, the Touchstone on the first thing nobody can
+-- read. See the gate table in models/building.lua for the whole list and why there is one.
+--
+-- (An INN stood on this plaza too, opened by the first body carried up broken, and setting a bone was
+-- the only thing it did. It is deleted with the toll it charged: a wound lasts the expedition now and
+-- reaching this screen ends it, free -- see models/wound.lua and the Wound.clear in hub.enter.)
 --
 -- SO A FRESH SAVE ARRIVES AT THREE DOORS, and the first visit is coached through two of them: hire
 -- somebody, then go down (INTRO_STAGES below).
@@ -28,11 +32,11 @@ local BuildingMap = require("ui.building_map")
 local BurgerButton = require("ui.burger_button")
 local CoachBubble = require("ui.coach_bubble")
 local Conversation = require("models.conversation")
-local Discipline = require("models.discipline")
+local Class = require("models.class")
 local Vendor = require("models.vendor")  -- hasMarkedStock: the unread half of a shop's dot
 local Item = require("models.item")
 local Identify = require("models.identify")
-local Wound = require("models.wound")     -- what a body carries up; the Inn's dot and the Inn's whole offer
+local Wound = require("models.wound")     -- what a dive broke, and this door-step is where it stops being true
 local VendorVisit = require("models.vendor_visit") -- what a shop says before it shows you the shelf
 local Locale = require("models.locale")
 local Scale = require("scale")
@@ -220,7 +224,11 @@ local function armoryFilters(player)
         if item.type then typeSet[item.type] = true end
         local a = Item.archetype(item)
         if a then archSet[a] = true end
-        if item.discipline and Discipline.defs[item.discipline] then discSet[item.discipline] = true end
+        -- Every class in the stash, roots included: the fold left one taxonomy (docs/class-fold.md),
+        -- and a player filtering their kit wants "show me the knight things" every bit as much as
+        -- "show me the ninja things". Before, only the earned half could be filtered on, because only
+        -- the earned half had a field of its own.
+        if item.class and Class.defs[item.class] then discSet[item.class] = true end
     end
 
     local types, archs, discs = {}, {}, {}
@@ -230,7 +238,7 @@ local function armoryFilters(player)
     table.sort(types)
     table.sort(archs)
     table.sort(discs, function(a, b)
-        return (Discipline.displayName(a) or a) < (Discipline.displayName(b) or b)
+        return (Class.displayName(a) or a) < (Class.displayName(b) or b)
     end)
 
     local groups = {}
@@ -250,9 +258,9 @@ local function armoryFilters(player)
     end
     if #discs > 0 then
         groups[#groups + 1] = {
-            label = "Discipline", options = discs, selected = {},
-            valueOf = function(item) return item.discipline end,
-            format = function(id) return Discipline.displayName(id) or id end,
+            label = "Class", options = discs, selected = {},
+            valueOf = function(item) return item.class end,
+            format = function(id) return Class.displayName(id) or id end,
         }
     end
     return (#groups > 0) and groups or nil
@@ -422,7 +430,14 @@ function hub.enter()
         hub.player.resumeRun = nil
         Player.save()
     end
-    -- Coming home rests the company: health and mana refill. Attrition lasts a quest, not forever.
+    -- COMING HOME MAKES THE COMPANY WHOLE, and that is now both halves of it rather than one.
+    --
+    -- Health and mana refill (Player.restore) as they always have: attrition lasts a quest, not forever.
+    -- And every bone the dive broke is set, free (models/wound.lua's Wound.clear) -- a wound is a
+    -- condition of the expedition it was taken on, and this is where the expedition ends. BEFORE the
+    -- restore, so the refill fills against the whole body rather than against the wounded ceiling and
+    -- the player is not left looking at a bar that stops short for a reason no longer on the sheet.
+    Wound.clear(hub.player)
     Player.restore(hub.player)
     activePanel = nil
     -- The town is the safe home a battle hands back to, so clear any screen effect the last fight left
@@ -469,19 +484,11 @@ function hub.enter()
             -- a dot that cleared on the first look would stop reminding the player at the exact moment
             -- they decided to spend it later. It goes out when the purse empties, which is the same
             -- line the errand branch draws (cleared by being TAKEN ON, not by being seen).
-            -- A BODY THAT CAME UP BROKEN (models/wound.lua). Asked BEFORE the vendor branch for the
-            -- third time on this board: the Inn declares a vendor id to keep a keeper without keeping a
-            -- shelf (data/vendors/inn.lua), so the branch below would take it, ask a shelf question
-            -- about a house that stocks nothing, and answer false forever.
+            -- THERE IS NO WOUND DOT, and there is no door for it to sit on. The Inn is gone with the
+            -- ledger it charged for (models/wound.lua): a dive's wounds end the moment the company is
+            -- standing in a town, so by the time this board is drawn there is never anybody carrying
+            -- one and a dot here could only ever be dark.
             --
-            -- THE PLAINEST STATE DOT OF THE THREE, and the one the city most owes the player. A wound
-            -- is carried into every fight after it and nothing underground undoes one, so a company
-            -- that walks out of the plaza with three of them broken has made the descent harder in a
-            -- way no screen out here would otherwise mention. It goes out when the last bone is set --
-            -- by a night here, or by the Cafe's mend list -- and never on a sighting: a wound looked at
-            -- is still a wound, and a dot that cleared on the first glance would stop reminding the
-            -- player at the exact moment they decided they could not afford it yet.
-            if b.panel == "inn" then return #Wound.wounded(hub.player) > 0 end
             -- A SHELF WITH SOMETHING ON IT NOBODY HAS READ. The dot used to carry two halves -- this
             -- house is asking for work, or it is holding wares you have not seen -- and the asking half
             -- is gone with the errands. What is left is the shelf, which clears on being read

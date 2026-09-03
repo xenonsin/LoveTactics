@@ -22,6 +22,7 @@ return {
     flavor = "It does not go around. Going around is a surface idea.",
     sprite = "assets/items/tunnel.png",
     type = "ability",
+    class = "creature",
     tags = { "natural", "primal", "utility" },
     noSteal = true,
     activeAbility = {

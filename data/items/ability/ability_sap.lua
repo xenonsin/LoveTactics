@@ -28,8 +28,7 @@ return {
     sprite = "assets/items/ability_sap.png",
     type = "ability",
     tags = { "guile", "physical" },
-    class = "rogue",
-    discipline = "thief", -- deeper cut of the shelf: buyable only once the thief gate is cleared
+    class = "thief", -- deeper cut of the shelf: buyable only once the thief gate is cleared
     price = 740,
     unlockQuests = 8,
     activeAbility = {

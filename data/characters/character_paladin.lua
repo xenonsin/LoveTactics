@@ -1,6 +1,6 @@
 -- Paladin exemplar (knight x priest multiclass). Ward aura: a persistent damage-reduction bubble on
 -- adjacent allies; pull their debuffs onto yourself. Met as a sworn holy knight, a mentor. Home shelf
--- is knight. Kit from data/disciplines/paladin.lua.
+-- is knight. Kit from data/classes/paladin.lua.
 return {
     name = "Paladin",
     kind = "humanoid",

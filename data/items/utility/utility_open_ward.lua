@@ -18,8 +18,7 @@ return {
     sprite = "assets/items/sig_open_ward.png",
     type = "utility",
     tags = { "signature", "holy" },
-    class = "priest",
-    discipline = "apothecary",
+    class = "apothecary",
     activeAbility = {
         target = "self",
         range = 0,

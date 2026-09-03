@@ -35,7 +35,7 @@ local Character = require("models.character")
 local Identify = require("models.identify")
 local Item = require("models.item")
 local Trait = require("models.trait")
-local Discipline = require("models.discipline")
+local Class = require("models.class")
 local Trap = require("models.trap")
 local Hazard = require("models.hazard")
 local Glossary = require("models.glossary")
@@ -179,14 +179,15 @@ end
 -- The inline detail columns -- the shop shelf, the forge -- build their own text rather than hovering
 -- this tooltip, so they call this instead of repeating the lookup: one owner for both the wording and
 -- the tint means the deeper cut (and the shelf under it) read identically wherever an item is shown.
+-- ONE FIELD, TWO TINTS. There is a single class now (docs/class-fold.md), so what used to be a choice
+-- between two fields is a choice of colour on one: an EARNED class wears the deeper-cut tint, a root
+-- wears the shelf tint. The distinction the two tints were drawing is unchanged -- "you played for
+-- this" against "the city sold it to you" -- and it is the only thing the reader ever took from them.
 function ItemTooltip.printDiscipline(item, x, y, w, font)
-    local name = item and Discipline.displayName(item.discipline)
-    local tint = DISC
-    if not name and item then
-        name = Item.classDisplayName(item.class)
-        tint = CLASS
-    end
+    local class = item and item.class
+    local name = class and Item.classDisplayName(class)
     if not name then return false end
+    local tint = Class.isRoot(class) and CLASS or DISC
     local _, _, small = fonts()
     love.graphics.setFont(font or small)
     love.graphics.setColor(tint[1], tint[2], tint[3], 1)
@@ -280,17 +281,16 @@ local function buildBlocks(item, actor, innerW, out, owner)
             value = "Floor " .. Identify.floorOf(item) }
     end
 
-    -- The taxonomy this item belongs to (a shop taxonomy; docs/classes.md). If it carries a discipline
-    -- -- the locked deeper cut -- that names the row; otherwise its base shelf `class` does, since a
-    -- discipline is sparse (most items carry none) but nearly everything sits on some shelf. Only a
-    -- truly class-less good (a natural weapon, a universal supply) shows neither.
-    local discName = Discipline.displayName(item.discipline)
-    if discName then
+    -- The class this item belongs to (docs/classes.md). ONE ROW, ALWAYS CALLED CLASS -- there used to
+    -- be two labels here, Class for the locked deeper cut and Class for the base shelf, and the
+    -- fold left one taxonomy of forty-six for them to be two names of (docs/class-fold.md). Two words
+    -- for one mechanic is exactly what a player has to learn twice, so the deeper cut is now said in
+    -- the colour rather than in the label. Only a truly class-less good shows no row at all.
+    if item.class then
         blocks[#blocks + 1] = { kind = "sep" }
-        blocks[#blocks + 1] = { kind = "stat", label = "Discipline", value = discName, valueColor = DISC }
-    elseif item.class then
-        blocks[#blocks + 1] = { kind = "sep" }
-        blocks[#blocks + 1] = { kind = "stat", label = "Class", value = Item.classDisplayName(item.class), valueColor = CLASS }
+        blocks[#blocks + 1] = { kind = "stat", label = "Class",
+            value = Item.classDisplayName(item.class),
+            valueColor = Class.isRoot(item.class) and CLASS or DISC }
     end
 
     if item.tags and #item.tags > 0 then

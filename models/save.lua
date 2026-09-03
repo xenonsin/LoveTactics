@@ -176,7 +176,7 @@ local function snapshotCharacter(char)
     -- one, which is how a fresh recruit keeps growing as its blueprint's innate class.
     --
     -- It replaced `growthBy`, the per-key ledger of levels credited in shares. Nothing migrates: the
-    -- class level that ledger gated is read off `technique` now (Discipline.classLevel), which is
+    -- class level that ledger gated is read off `technique` now (Class.classLevel), which is
     -- persisted just below and has always been, so an old save comes back with its class levels intact
     -- and simply undeclared.
     if char.job then snap.job = char.job end
@@ -219,10 +219,10 @@ end
 local function migrateLedger(snap)
     if not snap.classUse or snap.techniqueSpent then return end
 
-    local Discipline = require("models.discipline")
+    local Class = require("models.class")
     local technique = snap.technique or {}
     for key, count in pairs(snap.classUse) do
-        local reconstructed = (count or 0) * Discipline.TECHNIQUE_PER_ACTION
+        local reconstructed = (count or 0) * Class.TECHNIQUE_PER_ACTION
         if reconstructed > (technique[key] or 0) then technique[key] = reconstructed end
     end
     snap.technique = next(technique) and technique or nil
@@ -232,7 +232,7 @@ local function migrateLedger(snap)
     -- from the earned figure minus what the old since-level tally says is still outstanding.
     local atLevel = {}
     for key, amount in pairs(snap.technique or {}) do
-        local outstanding = ((snap.classUseSinceLevel or {})[key] or 0) * Discipline.TECHNIQUE_PER_ACTION
+        local outstanding = ((snap.classUseSinceLevel or {})[key] or 0) * Class.TECHNIQUE_PER_ACTION
         local checkpoint = amount - outstanding
         if checkpoint > 0 then atLevel[key] = checkpoint end
     end
@@ -419,12 +419,9 @@ function Save.snapshot(player)
     for charId, n in pairs(player.wounds or {}) do
         if (tonumber(n) or 0) > 0 then wounds[charId] = n end
     end
-    -- Who is in a bed at the Inn (models/gate.lua). Written only for a body that is really
-    -- there, so an empty Inn puts no table in the file.
-    local atInn = {}
-    for charId, v in pairs(player.atInn or {}) do
-        if v then atInn[charId] = true end
-    end
+    -- (`atInn` -- who was in a bed at the Inn -- is gone with the building. A wound is a condition of the
+    -- expedition now and the surface sets it for free, so no body is ever lodged anywhere. An old save
+    -- carrying the table simply drops it on the way through; nothing reads it.)
     local completedQuests = {}
     for questId, done in pairs(player.completedQuests or {}) do
         if done then completedQuests[questId] = true end
@@ -450,8 +447,8 @@ function Save.snapshot(player)
     end
 
     local announcedDisciplines = {}
-    for disciplineId, seen in pairs(player.announcedDisciplines or {}) do
-        if seen then announcedDisciplines[disciplineId] = true end
+    for classId, seen in pairs(player.announcedDisciplines or {}) do
+        if seen then announcedDisciplines[classId] = true end
     end
 
     -- WHICH CITY DOORS HAVE BEEN SHOWN (models/building.lua's seenDoors block). A door the city grows is
@@ -614,19 +611,16 @@ function Save.snapshot(player)
         -- company that has never gone down, which is exactly what it is.
         standing = standing,
         deepest = player.deepest or 0,
-        -- What each body is still carrying from a fight it lost, as { [charId] = count }
-        -- (models/wound.lua). Persisted rather than derived because it is the one thing about a run
-        -- that outlives the run -- including a wipe, which states/game.lua's rollbackRun holds this
-        -- key across on purpose.
+        -- What each body is still carrying from a fight it went down in, as { [charId] = count }
+        -- (models/wound.lua). Persisted rather than derived because a save can be written mid-dive:
+        -- the ledger no longer outlives the expedition -- the surface clears it -- but it very much
+        -- outlives the app being closed on floor nine, and a resume that handed the company back whole
+        -- would make quitting the cheapest bandage in the game.
         wounds = wounds,
-        -- ...and who is lying in a bed being mended of them (models/gate.lua). Nil while the Inn is
-        -- empty, which is what an older save reads as -- and an older save HAS no lodgers, so both
-        -- degrade to the same answer. Purely additive; Save.VERSION does not move.
-        atInn = next(atInn) and atInn or nil,
         -- ...and whether anybody ever has been (models/wound.lua's Wound.everWounded), which the ledger
-        -- above stops being able to answer the moment the surgeon is paid. The Inn is the door it opens.
-        -- Purely additive, so Save.VERSION does not move: an older save restores unmarked, and the first
-        -- wound taken after loading writes it.
+        -- above stops being able to answer the moment the company walks up the stair. What reads it is
+        -- the one-time coach that teaches the mark. Purely additive, so Save.VERSION does not move: an
+        -- older save restores unmarked, and the first wound taken after loading writes it.
         wounded = player.wounded or nil,
         -- ...and whether this company has ever come back up the stair early. The same shape and the
         -- same reason as `wounded` above: a one-way mark rather than a ledger reading, because
@@ -671,12 +665,13 @@ function Save.snapshot(player)
         seenDoors = seenDoors,
         flags = flags,
         newItems = newItems,
-        -- THE SHELF WATERMARK: the rung each class had reached the last time the counter was
-        -- asked what had opened (Market.markOpened). Without it a load re-announces every ware
-        -- the company has ever unlocked, which is a dot that means nothing on the morning it
-        -- matters most. Purely additive -- absent on an older save, which reads as nought and
-        -- lets the first call absorb the opening band silently.
-        shelfRung = player.shelfRung and next(player.shelfRung) and player.shelfRung or nil,
+        -- THE COUNTER WATERMARK: which classes' racks the market has already announced
+        -- (Market.markOpened). Without it a load re-announces every blade the company has ever
+        -- earned, which is a dot that means nothing on the morning it matters most. Purely
+        -- additive -- absent on an older save, which reads as "nothing announced yet" and is
+        -- absorbed by the next call. (`shelfRung` stood here and watermarked class LEVELS, which
+        -- stopped meaning anything when a rung stopped putting a named ware on the counter.)
+        marketRacks = player.marketRacks and next(player.marketRacks) and player.marketRacks or nil,
         newStock = newStock,
         lastDeployed = lastDeployed,
         roster = roster,
@@ -840,12 +835,9 @@ function Save.restore(snap)
         -- standing above follows: nothing should carry an injury that no body can be mended of.
         if require("models.character").defs[charId] then wounds[charId] = tonumber(n) or 0 end
     end
-    -- ...and who is in a bed. Filtered against the blueprints exactly as the wounds above are:
-    -- a body that left the data cannot be lying in an Inn nobody can check them out of.
-    local atInn = {}
-    for charId, v in pairs(snap.atInn or {}) do
-        if v and require("models.character").defs[charId] then atInn[charId] = true end
-    end
+    -- (An older save's `atInn` -- who was lying in a bed at the Inn -- is read past and dropped. The
+    -- building is gone and no body is ever lodged, so restoring the table would only carry a fact
+    -- nothing can act on.)
     -- The hiring purse (models/voucher.lua). Vouchers carry one number and are rebuilt rather than
     -- copied through, so a hand-edited save cannot put a table in the list; bonds are filtered against
     -- the blueprints exactly as wounds are one block up.
@@ -887,11 +879,11 @@ function Save.restore(snap)
         if seen then visitedVendors[vendorId] = true end
     end
 
-    -- Discipline-unlocked announcement flags (states/hub.lua). Same shape and same forgiving default:
+    -- Class-unlocked announcement flags (states/hub.lua). Same shape and same forgiving default:
     -- nil on an older save loads empty, so an already-unlocked discipline simply announces once more.
     local announcedDisciplines = {}
-    for disciplineId, seen in pairs(snap.announcedDisciplines or {}) do
-        if seen then announcedDisciplines[disciplineId] = true end
+    for classId, seen in pairs(snap.announcedDisciplines or {}) do
+        if seen then announcedDisciplines[classId] = true end
     end
 
     -- Shown-door flags (models/building.lua's seenDoors block). NOT forgiving in the same way as the two
@@ -979,7 +971,6 @@ function Save.restore(snap)
         standing = standing,          -- absent on a save from before the descent; an empty table reads the same
         deepest = snap.deepest or 0,  -- ...and a company that has never been down has no record to beat
         wounds = wounds,              -- ...nor any bones to set
-        atInn = next(atInn) and atInn or nil, -- ...nor anybody in a bed being mended of them
         wounded = snap.wounded == true, -- ...and no history of any, which is what an older save reads as
         climbedOut = snap.climbedOut == true, -- ...and has never turned back, which is what one reads as too
         tallyTaught = snap.tallyTaught == true, -- ...so nobody has had to explain the tally to them yet
@@ -1015,10 +1006,10 @@ function Save.restore(snap)
         seenDoors = seenDoors,     -- nil on an older save, which is what the hub seeds off (see above)
         flags = flags,             -- absent on a save from before this existed; empty reads as unanswered
         newItems = newItems,
-        -- The shelf watermark, restored as written. A class that has since been renamed away
+        -- The counter watermark, restored as written. A class that has since been renamed away
         -- simply never matches a live one and is inert, which is the same forgiving default the
         -- dots above take.
-        shelfRung = snap.shelfRung or {},
+        marketRacks = snap.marketRacks or {},
         newStock = newStock,
         lastDeployed = lastDeployed,
         roster = roster,

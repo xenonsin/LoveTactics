@@ -11,8 +11,7 @@ return {
     sprite = "assets/items/survivors_reflex.png",
     type = "utility",
     tags = { "satchel" },
-    class = "alchemist",
-    discipline = "warbrewer", -- fighter x alchemist; the Combat draught -- a quaff that costs no turn
+    class = "warbrewer", -- fighter x alchemist; the Combat draught -- a quaff that costs no turn
     price = 495,
     unlockQuests = 5,
     traits = { "trait_survivors_reflex" },

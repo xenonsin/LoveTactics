@@ -3,7 +3,7 @@
 -- "starred reuse" open call, resolved toward a fresh NPC). Met as a RECRUIT: a field-medic who heals
 -- before she strikes, which is what this discipline already is. Home shelf is alchemist (the lancet and
 -- the coveted-blood line); Transfusion and the Shared Ledger are the priest half. Kit from
--- data/disciplines/apothecary.lua. Signature mechanic: Lent vitality -- elixirs that heal AND lend party
+-- data/classes/apothecary.lua. Signature mechanic: Lent vitality -- elixirs that heal AND lend party
 -- stats. No VN portrait (a template, not a companion) -- it falls back to its composed token.
 return {
     name = "Apothecary",

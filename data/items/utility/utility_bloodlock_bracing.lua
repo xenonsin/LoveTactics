@@ -17,7 +17,7 @@
 -- carry the charm: a fat pit-fighter and a slight duelist each give up the same FRACTION of themselves,
 -- so the trade never quietly turns free on a big health bar or ruinous on a small one.
 --
--- WHY THE BARBARIAN'S. The barbarian subclass (data/disciplines/barbarian.lua) prices power in blood --
+-- WHY THE BARBARIAN'S. The barbarian subclass (data/classes/barbarian.lua) prices power in blood --
 -- Rage: damage that rises as HP falls, strikes that cost life to land harder. This is that same currency
 -- turned inside out: where the rest of the discipline spends blood for a heavier blow, this spends it for
 -- a wall -- broad Defense AND Magic Defense, the one thing wrath's own shelf never sold, bought with the
@@ -41,8 +41,7 @@ return {
     sprite = "assets/items/bloodlock_bracing.png",
     type = "utility",
     tags = { "charm" },
-    class = "fighter",
-    discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
+    class = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
     price = 495,
     unlockQuests = 5,
     -- The armor the locked blood buys, forged deeper level by level. Defense and Magic Defense move

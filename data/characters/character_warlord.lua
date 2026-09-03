@@ -21,7 +21,7 @@ return {
     -- Enriched with the banner ACTIVES (Muster/Rally banner, War Drums) so it demonstrates the
     -- discipline; the weapon and its stat line are left exactly as the quest boss was tuned (the aura
     -- charm banners are deliberately NOT added, so nothing passively changes its combat numbers -- see
-    -- combat_spec / breakdown_spec, which spar against this body). Kit tag: data/disciplines/warlord.lua.
+    -- combat_spec / breakdown_spec, which spar against this body). Kit tag: data/classes/warlord.lua.
     startingItems = {
         "weapon_iron_sword",  "ability_muster_banner", "ability_rally_banner",
         "consumable_war_drums", "utility_last_order",                 false,

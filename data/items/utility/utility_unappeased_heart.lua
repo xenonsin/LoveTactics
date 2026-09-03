@@ -24,6 +24,7 @@ return {
     flavor = "Ira's heart, still fighting for a freedom the fight can no longer give. It does not come off her.",
     sprite = "assets/items/sig_unappeased_heart.png",
     type = "utility", -- `bound` (not the type) is what locks it in place
+    class = "creature",
     tags = { "signature", "relic" },
     bound = true,
     traits = { "trait_wrath_rising", "trait_boss_phases" },

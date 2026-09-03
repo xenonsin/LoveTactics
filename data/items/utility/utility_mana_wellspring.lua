@@ -8,8 +8,7 @@ return {
     sprite = "assets/items/mana_wellspring.png",
     type = "utility",
     tags = { "arcane" },
-    class = "mage",
-    discipline = "summoner", -- deeper cut of the shelf: buyable only once the summoner gate is cleared
+    class = "summoner", -- deeper cut of the shelf: buyable only once the summoner gate is cleared
     price = 245,
     unlockQuests = 2,
     traits = { "trait_arcane_reservoir" },

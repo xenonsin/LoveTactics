@@ -11,6 +11,7 @@
 
 local Character = require("models.character")
 local Item = require("models.item")
+local Class = require("models.class") -- isEarned(): what sits outside a family's ten
 local Combat = require("models.combat")
 local Status = require("models.status")
 local Trait = require("models.trait")
@@ -188,10 +189,17 @@ return {
                 -- `natural` is a creature's own body and `unarmed` is the player's single hidden fist;
                 -- neither is shoppable and neither owes a roster (docs/weapons.md).
                 if family and family ~= "natural" and family ~= "unarmed" then
-                    -- Signatures, generals' relics, AND discipline weapons sit OUTSIDE the family ten:
-                    -- a discipline weapon is additive, locked stock, not part of a base family's 5-on-a-
-                    -- shelf + 5-quest balance (docs/classes.md treats them exactly as it treats relics).
-                    local excluded = def.discipline ~= nil
+                    -- Signatures, generals' relics, AND an EARNED class's weapons sit OUTSIDE the family
+                    -- ten: earned stock is additive and locked, not part of a base family's 5-on-a-shelf
+                    -- + 5-quest balance (docs/classes.md treats them exactly as it treats relics).
+                    --
+                    -- THIS PREDICATE INVERTS ON THE FOLD, and silently. It read `def.discipline ~= nil`,
+                    -- which was the tell while an earned item carried a second field; with one field
+                    -- (docs/class-fold.md) that test is false for everything, every earned weapon joins
+                    -- its family's count, and thirteen rosters of five quietly become rosters of eight
+                    -- and nine. The question has not changed -- is this the open rack or the deep cut --
+                    -- only where it is read from.
+                    local excluded = Class.isEarned(def.class)
                     for _, tag in ipairs(def.tags or {}) do
                         if tag == "signature" or tag == "relic" then excluded = true end
                     end
@@ -226,15 +234,15 @@ return {
         -- The rule is unchanged and worth restating: an item whose gate sits above the top of the ladder
         -- that opens it is stock no player can ever buy, and it fails silently -- the row draws, greyed,
         -- forever. What keeps moving is the ladder. It was a house's ten authored quests, then its six
-        -- errands, and it is a CLASS LEVEL now (Discipline.classLevel): nobody runs a house's line
+        -- errands, and it is a CLASS LEVEL now (Class.classLevel): nobody runs a house's line
         -- because there are no houses, so the top rung is the top of the class ladder.
         --
-        -- Read off Discipline rather than typed, so re-cutting the ladder moves this with it instead of
+        -- Read off Class rather than typed, so re-cutting the ladder moves this with it instead of
         -- leaving a spec asserting a height the shelf no longer has.
         name = "no item is gated past the top of the ladder that opens it",
         fn = function()
-            local Discipline = require("models.discipline")
-            local top = Discipline.CLASS_LEVEL_CAP
+            local Class = require("models.class")
+            local top = Class.CLASS_LEVEL_CAP
             for id, def in pairs(Item.defs) do
                 local gate = def.unlockQuests or 0
                 assert(gate <= top,

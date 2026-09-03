@@ -11,8 +11,7 @@ return {
     sprite = "assets/items/ability_shieldbreak.png",
     type = "ability",
     tags = { "impact", "physical" },
-    class = "knight",
-    discipline = "vanguard", -- knight x rogue; the Breach mechanic's first stock
+    class = "vanguard", -- knight x rogue; the Breach mechanic's first stock
     price = 575,
     unlockQuests = 6,
     activeAbility = {

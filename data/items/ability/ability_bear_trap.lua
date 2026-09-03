@@ -18,8 +18,7 @@ return {
     sprite = "assets/items/ability_bear_trap.png",
     type = "ability",
     tags = { "trap", "utility" },
-    class = "hunter",
-    discipline = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
+    class = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
     price = 165,
     unlockQuests = 1,
     activeAbility = {

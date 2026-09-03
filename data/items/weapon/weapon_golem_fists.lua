@@ -20,6 +20,7 @@ return {
     flavor = "The Crucible spent its care on the shoulders. The hands were what was left over.",
     sprite = "assets/items/golem_fists.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "impact", "physical", "melee" },
     noSteal = true,
     traits = { "trait_oathward" }, -- the wall's guard rides on the body, since blueprint traits do not attach

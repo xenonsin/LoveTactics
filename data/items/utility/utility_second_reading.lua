@@ -17,8 +17,7 @@ return {
     sprite = "assets/items/sig_second_reading.png",
     type = "utility",
     tags = { "signature", "dark" },
-    class = "mage",
-    discipline = "necromancer",
+    class = "necromancer",
     activeAbility = {
         target = "self",
         range = 0,

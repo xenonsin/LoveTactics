@@ -23,8 +23,7 @@ return {
     sprite = "assets/items/ability_ley_line.png",
     type = "ability",
     tags = { "holy" },
-    class = "priest",
-    discipline = "totemist",
+    class = "totemist",
     price = 495,
     unlockQuests = 5,
     activeAbility = {

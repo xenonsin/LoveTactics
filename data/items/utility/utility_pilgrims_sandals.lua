@@ -31,8 +31,7 @@ return {
     sprite = "assets/items/pilgrims_sandals.png",
     type = "utility",
     tags = { "boots", "holy" },
-    class = "priest",
-    discipline = "theurge", -- mage x priest; a divine hazard laid by walking rather than by casting
+    class = "theurge", -- mage x priest; a divine hazard laid by walking rather than by casting
     price = 410,
     unlockQuests = 4,
     -- Far shorter-lived than a priest's cast Sanctuary (15): a footprint is a moment of hallowed

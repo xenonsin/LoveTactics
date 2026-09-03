@@ -19,7 +19,7 @@
 local Registry = require("models.registry")
 local Player = require("models.player")
 local Vendor = require("models.vendor")
-local Discipline = require("models.discipline") -- unlockedSet/levelSet: the shelf's other two gates
+local Class = require("models.class") -- unlockedSet/levelSet: the shelf's other two gates
 local Building = require("models.building")
 local Debug = require("models.debug")
 
@@ -162,7 +162,7 @@ end
 -- ...AND IT IS A CLASS LEVEL NOW, not a count of finished work.
 --
 -- A house's shelf used to climb on the errands that house had been run for, and there are none: the
--- houses are classes, and a class is something a BODY climbs (Discipline.classLevel). So the rung is
+-- houses are classes, and a class is something a BODY climbs (Class.classLevel). So the rung is
 -- how far the company has got in the class this shelf sells, read as the roster's best holder -- the
 -- same reading the forge ceiling takes, and for the same reason.
 --
@@ -173,8 +173,8 @@ end
 function Quest.shelfRung(player, vendorId)
     local def = Vendor.defs[vendorId]
     local class = def and def.class
-    if not class then return require("models.discipline").CLASS_LEVEL_CAP end
-    return require("models.discipline").rosterLevel(player, class)
+    if not class then return require("models.class").CLASS_LEVEL_CAP end
+    return require("models.class").rosterLevel(player, class)
 end
 
 -- The sponsor's shelf as it stands right now, for the before/after diff below. Asks Vendor.stock the
@@ -187,7 +187,7 @@ end
 function Quest.shelf(player, vendorId)
     if not vendorId then return nil end
     return Vendor.stock(vendorId, Quest.shelfRung(player, vendorId), player.recipes,
-        Discipline.unlockedSet(player), Discipline.levelSet(player))
+        Class.unlockedSet(player), Class.levelSet(player))
 end
 local shelfOf = Quest.shelf
 

@@ -12,6 +12,7 @@ return {
     flavor = "The Crucible poured a hundred of these and kept none. They kept themselves.",
     sprite = "assets/items/envys_pane.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_lesser_reflection" },

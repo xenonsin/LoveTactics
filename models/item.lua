@@ -28,55 +28,50 @@ Item.defs, Item.paths = Registry.load("data/items", "data.items")
 -- states the contract in -- not a `true`. Every reader of this table wants either its keys (the seven
 -- classes) or a truthiness check, so carrying the sentence here costs nothing and means the set of
 -- classes and the sentences describing them can never drift apart the way two parallel tables would.
--- Read it through Item.classDescription; `tests/class_spec.lua` pins that every class has one.
-Item.CLASSES = {
-    -- wrath
-    fighter = "Wrath is what happens directly in front of you. Trades its own health and tempo for "
-        .. "damage: front-arc sweeps, stuns, and strikes that cost you something to land.",
-    -- lust
-    priest = "Zones and wards. Holds ground open and closes it to others -- holy damage, negates and "
-        .. "reflects, cleansing, friendly hazards, revival, and the bare fist.",
-    -- gluttony
-    hunter = "Setup, then payoff, most of it gated on a bow beside it in the grid. Marks, traps, "
-        .. "animal companions and shapeshifting, cripples and roots.",
-    -- sloth
-    knight = "The wall. It does not kill you, it decides where you stand -- taunts, Halts, knockback, "
-        .. "and guard redirects that take an ally's hit onto your own plate.",
-    -- pride
-    mage = "Elements, wind-ups, and remaking the ground itself. Channelled spells, hazards laid on "
-        .. "tiles, sigils that reshape whatever is cast beside them, and reserve summons.",
-    -- greed
-    rogue = "Guile, and taking what is not yours. Conditional multipliers, blinks that return you to "
-        .. "where you stood, executes, bleed, and theft.",
-    -- envy
-    alchemist = "Covets others' power rather than casting its own. Consumables, poison and acid, "
-        .. "coatings and elixirs, and grid auras that lend what you are not.",
-}
+-- (`Item.CLASSES` STOOD HERE -- the seven ids mapped to their blurbs -- AND IS GONE WITH THE FOLD.
+-- A class is one kind of thing with one blueprint now (data/classes/, docs/class-fold.md): the
+-- seven roots sit in the same folder as the thirty-eight earned ones, carry their own `description`,
+-- and are asked for through Class.roots(). Keeping a second table here would have been the
+-- literal shape of the drift the fold exists to end -- a list of the seven that could disagree with
+-- the seven files.
+--
+-- What this note is FOR: the argument it recorded is still live and is not written down anywhere else.
+-- The taxonomy is deliberately its own field rather than an entry in `tags`, because `tags` drives
+-- damage scaling and armor `resist` lookups -- so a shop taxonomy living there would be one typo away
+-- from armor mitigating "rogue" damage.)
 
 -- nil for a universal item that no class vendor stocks.
 function Item.classOf(item)
     return item and item.class
 end
 
--- The player-facing name of a shelf `class` ("fighter" -> "Fighter"), or nil for a class-less item.
--- The single owner of the wording, so every surface that names an item's base shelf -- the tooltip's
--- Class row, the shop and forge detail columns -- capitalizes it the same way. Sits beside
--- Discipline.displayName: a discipline is the locked deeper cut of a shelf, the class is the shelf.
+-- The player-facing name of `class` ("fighter" -> "Fighter", "plague_knight" -> "Plague Knight"), or
+-- nil for a class-less item. The single owner of the wording, so every surface that names an item's
+-- class -- the tooltip's Class row, the shop and forge detail columns -- says it the same way.
+--
+-- ASKS THE BLUEPRINT FIRST, and that is what the fold bought: a class carries its own authored `name`,
+-- so a two-word one reads as two words rather than as a slug with a capital on the front. The
+-- capitalize falls back for an id with no blueprint, which is a stale tag rather than a class and is
+-- better shown wrong than shown as nothing.
+--
+-- Required inside the function rather than at the top of the file: models/class.lua reaches
+-- models/character.lua, which reaches this module, and a top-level require would close that ring.
 function Item.classDisplayName(class)
     if not class then return nil end
+    local named = require("models.class").displayName(class)
+    if named then return named end
     return (tostring(class):gsub("^%l", string.upper))
 end
 
--- What the shelf `class` IS, in a sentence or two: its identity and the mechanics it owns (the value
--- side of Item.CLASSES above). Nil for a class-less item or an unknown class.
+-- What `class` IS, in a sentence or two: its identity and the mechanics it owns. Nil for a class-less
+-- item or an unknown class.
 --
--- The shop's own answer to "what am I looking at" -- a vendor's base rack is a class, and until now the
--- only thing a player could read about one was the house's flavor line. Peer of
--- Discipline.description, which answers the same question for the locked cuts under it.
+-- The shop's own answer to "what am I looking at". This used to read the value side of Item.CLASSES,
+-- which held the seven roots' blurbs and nothing else, so the same question asked of an earned class
+-- answered nil and the panel fell through to Class.description. One folder, one field, one asker.
 function Item.classDescription(class)
     if not class then return nil end
-    local blurb = Item.CLASSES[class]
-    return type(blurb) == "string" and blurb or nil
+    return require("models.class").description(class)
 end
 
 -- The fifteen weapon families. A weapon carries exactly one of these among its `tags`, and that tag

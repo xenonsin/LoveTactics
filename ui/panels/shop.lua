@@ -34,7 +34,7 @@ local Vendor = require("models.vendor")
 local Player = require("models.player")
 local Quest = require("models.quest") -- sponsorProgress: how many of this vendor's quests are done (its standing)
 local Item = require("models.item")
-local Discipline = require("models.discipline") -- unlockedSet: gates a shelf's locked discipline cut
+local Class = require("models.class") -- unlockedSet: gates a shelf's locked discipline cut
 local Market = require("models.market") -- the one counter: what it has out today, and off which rack
 local Calendar = require("models.calendar") -- the day today's rotation is dealt against
 local Combat = require("models.combat")
@@ -166,14 +166,14 @@ end
 -- starts open; either can be worked the other way and stays that way for as long as the shop is open.
 local BASE_KEY = "__base" -- the vendor's own shelf, which is not a discipline
 
-local function sectionKey(disciplineId) return disciplineId or BASE_KEY end
+local function sectionKey(classId) return classId or BASE_KEY end
 
 -- Is this section shut right now? The player's own toggle wins; absent one, a locked path is shut and
 -- everything else is open.
-function Shop:isFolded(disciplineId)
-    local explicit = self.folded[sectionKey(disciplineId)]
+function Shop:isFolded(classId)
+    local explicit = self.folded[sectionKey(classId)]
     if explicit ~= nil then return explicit end
-    return disciplineId ~= nil and not Discipline.isUnlocked(self.player, disciplineId)
+    return classId ~= nil and not Class.isUnlocked(self.player, classId)
 end
 
 -- Open a shut section or shut an open one, then rebuild. `selectKey` asks refresh to put the cursor
@@ -181,9 +181,9 @@ end
 -- restore-by-index would leave the selection somewhere else entirely. `selectReveal` asks it to pull
 -- the header to the top of the window as well, which only an OPENING needs -- a section opened on the
 -- last visible line would otherwise unfold entirely below the fold and read as having done nothing.
-function Shop:toggleSection(disciplineId)
-    local key = sectionKey(disciplineId)
-    self.folded[key] = not self:isFolded(disciplineId)
+function Shop:toggleSection(classId)
+    local key = sectionKey(classId)
+    self.folded[key] = not self:isFolded(classId)
     self.selectKey, self.selectReveal = key, not self.folded[key]
     self:refresh()
 end
@@ -204,7 +204,7 @@ function Shop:buildBuyRows()
 
     local groups, order = {}, {}
     local stock = Vendor.stock(self.vendorId, self.shelfRung, self.player.recipes,
-        Discipline.unlockedSet(self.player), Discipline.levelSet(self.player))
+        Class.unlockedSet(self.player), Class.levelSet(self.player))
     for _, entry in ipairs(stock) do
         -- Instantiate at the item's recipe tier, so its name (+n) and stats reflect what's bought.
         local item = Item.instantiate(entry.id, nil, entry.level)
@@ -212,13 +212,13 @@ function Shop:buildBuyRows()
         local g = groups[key]
         if not g then
             g = { rows = {}, minUnlock = entry.unlockQuests,
-                name = entry.discipline and (Discipline.displayName(entry.discipline) or entry.discipline)
+                name = entry.discipline and (Class.displayName(entry.discipline) or entry.discipline)
                     or (Item.classDisplayName(self.def.class) or "General") }
             groups[key], order[#order + 1] = g, key
         end
         g.minUnlock = math.min(g.minUnlock, entry.unlockQuests)
         g.discipline = entry.discipline
-        g.arity = entry.discipline and Discipline.arity(entry.discipline) or 0
+        g.arity = entry.discipline and Class.arity(entry.discipline) or 0
         g.open = (g.open or 0) + (entry.locked and 0 or 1)
         -- Stock a quest opened and the player has not looked at yet wears the red dot (Player.markNew).
         -- A shelf runs dozens of rows deep and the reward panel names at most four of them, so without
@@ -236,7 +236,7 @@ function Shop:buildBuyRows()
     table.sort(order, function(a, b)
         if (a == false) ~= (b == false) then return a == false end -- base shelf always leads
         local ga, gb = groups[a], groups[b]
-        -- This house's own subclasses before any crossing. Arity IS the distinction (models/discipline.lua):
+        -- This house's own subclasses before any crossing. Arity IS the distinction (models/class.lua):
         -- one parent is a path OUT OF this class, two is a path shared with another house. The single-parent
         -- cuts are what a player standing in this shop can earn from here, so they read as one block under
         -- the base shelf instead of being scattered through the crossings by gate depth.
@@ -326,29 +326,29 @@ end
 -- showing exactly what earning it buys. A tree screen names the node; this names the node and shows
 -- the payload, which is the thing the player actually wants.
 -- What the section IS, under the shape line: the class's or the discipline's own blurb -- its identity
--- and the mechanic it is built on (Item.classDescription / Discipline.description).
+-- and the mechanic it is built on (Item.classDescription / Class.description).
 --
 -- The shelf was banded and gated and counted and could still not answer the first question a player
 -- asks of a heading they have never seen: what is a Warden, and what would having one do for me? A
 -- LOCKED path collapses to its header, so this pane is the only room that question has -- "Knight x
 -- Hunter, locked, 5 pieces of stock" names the price of a thing it never describes. The blurb is what
 -- makes the ladder worth climbing rather than merely legible.
-function Shop:sectionBlurb(disciplineId)
-    if disciplineId then return Discipline.description(disciplineId) end
+function Shop:sectionBlurb(classId)
+    if classId then return Class.description(classId) end
     return Item.classDescription(self.def.class)
 end
 
-function Shop:pathMeta(disciplineId)
-    if not (disciplineId and Discipline.defs[disciplineId]) then return nil end
+function Shop:pathMeta(classId)
+    if not (classId and Class.defs[classId]) then return nil end
 
-    local parents = Discipline.parents(disciplineId)
+    local parents = Class.parents(classId)
     local names = {}
     for _, c in ipairs(parents) do names[#names + 1] = Item.classDisplayName(c) or c end
-    -- Arity IS the distinction (models/discipline.lua): one parent is a subclass, two is a crossing.
+    -- Arity IS the distinction (models/class.lua): one parent is a subclass, two is a crossing.
     local shape = (#names >= 2) and (names[1] .. " x " .. names[2]) or ((names[1] or "?") .. " path")
 
-    if Discipline.isUnlocked(self.player, disciplineId) then
-        return shape .. "  -  technique " .. Discipline.technique(self.player, disciplineId)
+    if Class.isUnlocked(self.player, classId) then
+        return shape .. "  -  technique " .. Class.technique(self.player, classId)
     end
 
     -- A locked path collapses to this header, so the header is the ONLY place its requirement can be
@@ -356,7 +356,7 @@ function Shop:pathMeta(disciplineId)
     -- Name the house when the player is ONE path away, because that is the case they can act on today.
     -- Two away, `shape` has already named both halves and a second clause would only make the line
     -- long enough to collide with the count.
-    local missing = Discipline.missingParents(self.player, disciplineId)
+    local missing = Class.missingParents(self.player, classId)
     if #missing == 1 then
         local house = Vendor.get(Vendor.forClass(missing[1]))
         if house and house.name then return shape .. "  -  needs " .. house.name end
@@ -470,7 +470,7 @@ end
 -- and both are ordinary item rows with ordinary tooltips when they live in the same list.
 function Shop:buildFenceRows()
     local recipes = self.player.recipes
-    local unlocked, levels = Discipline.unlockedSet(self.player), Discipline.levelSet(self.player)
+    local unlocked, levels = Class.unlockedSet(self.player), Class.levelSet(self.player)
 
     if not self.swapFrom then
         for i, item in ipairs(self.player.stash or {}) do
@@ -594,11 +594,11 @@ end
 -- is not the only thing that decides which rows exist: Vendor.stock still returns that stock, and a
 -- future caller (or a change to the collapse rule) must not silently fall through to "Locked."
 function Shop:lockReason(entry)
-    if entry.discipline and not Discipline.isUnlocked(self.player, entry.discipline) then
+    if entry.discipline and not Class.isUnlocked(self.player, entry.discipline) then
         -- A CROSSING names the parent path still missing, and the house that teaches it. "Unlock the
         -- Ninja path first" is true and useless -- it restates the lock. Naming the Arcanum turns it
         -- into somewhere to go, which is the only reason a locked row is worth showing at all.
-        local missing = Discipline.missingParents(self.player, entry.discipline)
+        local missing = Class.missingParents(self.player, entry.discipline)
         local parts = {}
         for _, class in ipairs(missing) do
             local house = Vendor.get(Vendor.forClass(class))
@@ -609,18 +609,18 @@ function Shop:lockReason(entry)
             return "Locked: needs a " .. table.concat(parts, " and a ") .. "."
         end
         -- Parents held (or a subclass, which has none): what stands in the way is its own gate quest.
-        local def = Discipline.defs[entry.discipline]
+        local def = Class.defs[entry.discipline]
         local gate = def and (def.requiredQuests or {})[1]
         local quest = gate and Quest.defs[gate]
-        local name = Discipline.displayName(entry.discipline) or entry.discipline
+        local name = Class.displayName(entry.discipline) or entry.discipline
         if quest and quest.name then
             return "Locked: complete \"" .. quest.name .. "\" to open the " .. name .. " path."
         end
         return "Locked: the " .. name .. " path is not open yet."
     end
     -- The deepest cut: the path is open, but this piece asks that you have actually GROWN into it.
-    if entry.unlockLevel and Discipline.level(self.player, entry.discipline) < entry.unlockLevel then
-        local name = Discipline.displayName(entry.discipline) or entry.discipline
+    if entry.unlockLevel and Class.level(self.player, entry.discipline) < entry.unlockLevel then
+        local name = Class.displayName(entry.discipline) or entry.discipline
         return "Locked: grow " .. name .. " to level " .. entry.unlockLevel .. "."
     end
     local remaining = (entry.unlockQuests or 0) - (self.shelfRung or 0)
@@ -918,7 +918,7 @@ function Shop:drawSectionDetail(row)
     love.graphics.printf(stock .. " of stock, " .. row.open .. " of it open to you.", x, sy, w, "left")
 
     local ty = self.boxY + BOX_H - 96
-    if row.discipline and not Discipline.isUnlocked(self.player, row.discipline) then
+    if row.discipline and not Class.isUnlocked(self.player, row.discipline) then
         love.graphics.setFont(self.bodyFont)
         love.graphics.setColor(0.9, 0.6, 0.55)
         love.graphics.printf(self:lockReason({ discipline = row.discipline }), x, ty - 44, w, "left")

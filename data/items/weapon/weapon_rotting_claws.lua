@@ -8,6 +8,7 @@ return {
     flavor = "Slow, clumsy, strong. Whatever it was before, it has stopped asking questions.",
     sprite = "assets/items/rotting_claws.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "physical", "melee" },
     noSteal = true,
     activeAbility = {

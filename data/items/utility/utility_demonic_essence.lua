@@ -9,6 +9,7 @@ return {
     flavor = "Not gear at all. The stuff a demon is made of, and it comes off nothing living.",
     sprite = "assets/items/demonic_essence.png",
     type = "utility",
+    class = "creature",
     tags = { "demon" },
     noSteal = true,
     noCopy = true,

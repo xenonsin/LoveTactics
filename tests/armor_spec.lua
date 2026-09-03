@@ -17,6 +17,7 @@
 -- Pure logic, headless. Sweep style mirrors tests/class_spec.lua's weaponsOf().
 
 local Item = require("models.item")
+local Class = require("models.class") -- roots(): the seven shelves, since the fold (docs/class-fold.md)
 local Character = require("models.character")
 local Combat = require("models.combat")
 
@@ -40,7 +41,11 @@ end
 local function armorsOf(class)
     local out = {}
     for id, def in pairs(Item.defs) do
-        if def.type == "armor" and def.class == class
+        -- EVERYTHING UNDER THE HOUSE, not only what names it exactly. An earned class's armour is
+        -- still that house's rack -- a Mammonite coat is rogue armour -- and before the fold it
+        -- literally said `class = "rogue"` with the mammonite in a second field. One field now
+        -- (docs/class-fold.md), so the descent is asked of the class rather than read off the item.
+        if def.type == "armor" and Class.descendsFrom(def.class, class)
             and not (hasTag(def, "signature") or hasTag(def, "relic")) then
             out[#out + 1] = { id = id, def = def }
         end
@@ -64,7 +69,7 @@ return {
     {
         name = "every class shelf carries armor, and five pieces of it are quest-only",
         fn = function()
-            for class in pairs(Item.CLASSES) do
+            for class in pairs(Class.roots()) do
                 local armors = armorsOf(class)
                 assert(#armors > 0, class .. " has no armor at all -- see docs/classes.md")
                 local questOnly, buyable = {}, {}
@@ -81,7 +86,7 @@ return {
     {
         name = "a quest-only armor names a class and no price; a buyable one names both and a quest gate",
         fn = function()
-            for class in pairs(Item.CLASSES) do
+            for class in pairs(Class.roots()) do
                 for _, a in ipairs(armorsOf(class)) do
                     if a.def.price then
                         assert(a.def.unlockQuests ~= nil,

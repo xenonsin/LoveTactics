@@ -22,6 +22,7 @@ return {
     flavor = "Somebody argued with the Codex in its own margins, at length, and was eventually answered.",
     sprite = "assets/items/marginal_note.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_answered_once", "trait_close_ranks", "trait_boss_phases" },

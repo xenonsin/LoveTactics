@@ -28,8 +28,7 @@ return {
     sprite = "assets/items/ability_straw_sentry.png",
     type = "ability",
     tags = { "decoy", "taunt" },
-    class = "knight",
-    discipline = "sentinel", -- deeper cut of the shelf: buyable only once the sentinel gate is cleared
+    class = "sentinel", -- deeper cut of the shelf: buyable only once the sentinel gate is cleared
     price = 740,
     unlockQuests = 8,
     activeAbility = {

@@ -25,6 +25,7 @@ return {
     flavor = "The Colosseum threw it out for being too slow to kill anyone. It has had a long time to think.",
     sprite = "assets/items/cold_forge.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_kindling", "trait_boss_phases" },

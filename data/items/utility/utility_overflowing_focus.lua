@@ -16,6 +16,7 @@ return {
     flavor = "An arcanist who refuses to stop casting. It never leaves your hand, and it was never going to.",
     sprite = "assets/items/sig_overflowing_focus.png",
     type = "utility", -- an arcane focus: `bound` (not the type) is what locks it in place
+    class = "creature",
     tags = { "signature" },
     bound = true,
     traits = { "trait_overchannel" },

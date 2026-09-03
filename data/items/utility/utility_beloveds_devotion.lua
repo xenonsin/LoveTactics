@@ -11,6 +11,7 @@ return {
     flavor = "Whatever it was loved for, it has forgotten. It has not forgotten being loved.",
     sprite = "assets/items/beloveds_devotion.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_boss_phases" },

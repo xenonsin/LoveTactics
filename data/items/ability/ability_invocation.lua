@@ -11,8 +11,7 @@ return {
     sprite = "assets/items/ability_invocation.png",
     type = "ability",
     tags = { "holy", "magical" },
-    class = "mage",
-    discipline = "theurge", -- mage x priest; the Channelled-miracle mechanic's first stock
+    class = "theurge", -- mage x priest; the Channelled-miracle mechanic's first stock
     price = 575,
     unlockQuests = 6,
     activeAbility = {

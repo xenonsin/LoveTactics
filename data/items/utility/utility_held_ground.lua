@@ -45,8 +45,7 @@ return {
     sprite = "assets/items/held_ground.png",
     type = "utility",
     tags = { "charm" },
-    class = "knight",
-    discipline = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
+    class = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
     price = 410,
     unlockQuests = 4,
     -- `zone` is the tax; `stamina` the price of each answering shot; `speed` the turn it costs to set.

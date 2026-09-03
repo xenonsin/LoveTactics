@@ -22,8 +22,7 @@ return {
     sprite = "assets/items/sig_unheld_hand.png",
     type = "utility",
     tags = { "signature", "physical" },
-    class = "priest",
-    discipline = "monk",
+    class = "monk",
     activeAbility = {
         target = "self",
         range = 0,

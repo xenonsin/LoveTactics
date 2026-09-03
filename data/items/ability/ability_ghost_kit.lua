@@ -11,8 +11,7 @@ return {
     sprite = "assets/items/ability_ghost_kit.png",
     type = "ability",
     tags = { "fire", "utility" },
-    class = "rogue",
-    discipline = "saboteur", -- rogue x alchemist; the Planted-charges mechanic's first stock
+    class = "saboteur", -- rogue x alchemist; the Planted-charges mechanic's first stock
     price = 740,
     unlockQuests = 8,
     activeAbility = {

@@ -22,8 +22,7 @@ return {
     sprite = "assets/items/sig_long_bout.png",
     type = "weapon",
     tags = { "signature", "sword", "slash", "physical" },
-    class = "fighter",
-    discipline = "duelist",
+    class = "duelist",
     -- Swords parry (docs/weapons.md), and a duellist's above all: the family contract is that a blade
     -- answers a melee blow, and Main-Gauche on the same shelf banks Tempo off exactly those parries.
     -- A duelling sword that could not answer would be the one sword in the game that does not duel.

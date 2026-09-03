@@ -24,6 +24,7 @@ return {
         "spine: \"where the shelves answer only themselves, and the readers were spent\".",
     sprite = "assets/items/codex_unanswered.png",
     type = "utility",
+    class = "creature",
     tags = { "relic" },
     noSteal = true, -- nothing takes this off you; you took it off her
     traits = { "trait_counter_magic" },

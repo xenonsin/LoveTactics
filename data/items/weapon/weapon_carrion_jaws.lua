@@ -20,6 +20,7 @@ return {
     flavor = "It has no opinion about which of you is still moving. It simply prefers the ones that are not.",
     sprite = "assets/items/carrion_jaws.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "bite", "physical", "melee" },
     noSteal = true,
     activeAbility = {

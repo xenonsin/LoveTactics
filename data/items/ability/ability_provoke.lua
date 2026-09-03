@@ -10,8 +10,7 @@ return {
     sprite = "assets/items/ability_provoke.png",
     type = "ability",
     tags = { "impact" },
-    class = "knight",
-    discipline = "champion", -- fighter x knight; the Riposte-wall mechanic's first stock
+    class = "champion", -- fighter x knight; the Riposte-wall mechanic's first stock
     price = 165,
     unlockQuests = 1,
     activeAbility = {

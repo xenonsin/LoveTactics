@@ -1,5 +1,5 @@
 -- The Undercroft's ELITE rung (docs/bestiary.md): the body a bandit pack is shaped around, and a
--- THIEF made flesh (data/disciplines/thief.lua). He used to carry one iron sword and 105 health, which
+-- THIEF made flesh (data/classes/thief.lua). He used to carry one iron sword and 105 health, which
 -- is a stat block rather than a discipline -- you fought him and learned nothing about what the rogue
 -- shelf becomes when it is earned.
 --

@@ -20,7 +20,7 @@
 -- hands control back through `onDone`, which is where the caller opens its own panel.
 
 local Conversation = require("models.conversation")
-local Discipline = require("models.discipline")
+local Class = require("models.class")
 local Player = require("models.player")
 local Quest = require("models.quest")     -- an errand IS a quest def; its intro is the house asking
 local Vendor = require("models.vendor")
@@ -72,10 +72,10 @@ function VendorVisit.steps(player, vendorId, deepest)
     local class = vdef and vdef.class
     local announceId = "conversation_" .. vendorId .. "_discipline_unlocked"
     if class and Conversation.defs[announceId] then
-        for _, disciplineId in ipairs(Discipline.pendingAnnouncements(player, class)) do
-            local name = Discipline.defs[disciplineId] and Discipline.defs[disciplineId].name
+        for _, classId in ipairs(Class.pendingAnnouncements(player, class)) do
+            local name = Class.defs[classId] and Class.defs[classId].name
             steps[#steps + 1] = { id = announceId, before = function()
-                Player.markDisciplineAnnounced(player, disciplineId)
+                Player.markDisciplineAnnounced(player, classId)
                 player.announcingDiscipline = name
             end }
         end

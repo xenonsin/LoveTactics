@@ -24,8 +24,7 @@ return {
     sprite = "assets/items/ability_throatcut.png",
     type = "ability",
     tags = { "pierce", "physical", "guile" },
-    class = "rogue",
-    discipline = "poacher",
+    class = "poacher",
     price = 330,
     unlockQuests = 3,
     activeAbility = {

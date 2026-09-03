@@ -27,8 +27,7 @@ return {
     sprite = "assets/items/ability_thicketing.png",
     type = "ability",
     tags = { "earth" },
-    class = "hunter",
-    discipline = "druid", -- deeper cut of the shelf: buyable only once the druid gate is cleared
+    class = "druid", -- deeper cut of the shelf: buyable only once the druid gate is cleared
     price = 575,
     unlockQuests = 6,
     activeAbility = {

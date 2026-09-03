@@ -11,8 +11,7 @@ return {
     sprite = "assets/items/ability_transfusion.png",
     type = "ability",
     tags = { "restorative" },
-    class = "priest",
-    discipline = "apothecary", -- priest x alchemist; the Lent-vitality mechanic's first stock
+    class = "apothecary", -- priest x alchemist; the Lent-vitality mechanic's first stock
     price = 575,
     unlockQuests = 6,
     activeAbility = {

@@ -12,7 +12,7 @@
 --
 -- `bound`, no `price`: no vendor stocks it and the Blacksmith is the only thing that touches it. It
 -- still carries `class`/`discipline`, for growth and identity rather than for the rack -- the shape
--- armor_rally_coat already wears, and what satisfies the tagging invariant in tests/discipline_spec.lua.
+-- armor_rally_coat already wears, and what satisfies the tagging invariant in tests/class_ladder_spec.lua.
 return {
     name = "The Red Account",
     description = "Casts Fury, and stores a blow worth one attack for every 1% of your health already spent.",
@@ -20,8 +20,7 @@ return {
     sprite = "assets/items/sig_red_account.png",
     type = "utility",
     tags = { "signature", "physical" },
-    class = "fighter",
-    discipline = "barbarian",
+    class = "barbarian",
     activeAbility = {
         target = "self",
         range = 0,

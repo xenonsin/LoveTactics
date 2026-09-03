@@ -3,7 +3,7 @@
 -- The city used to hold a house per class -- the Bastion, the Arcanum, the Cathedral, the Colosseum,
 -- the Crucible, the Hunter's Lodge, the Undercroft -- each with its own shelf, its own ladder of
 -- finished work, and its own door that had to be opened underground before any of it could be reached.
--- The houses are classes now (models/discipline.lua, docs/classes.md); what a class is is something a
+-- The houses are classes now (models/class.lua, docs/classes.md); what a class is is something a
 -- BODY climbs, not a room you unlock. So the rooms came out and the counter stayed.
 --
 -- `sellsAll` is the whole of its shelf contract, and it is the mirror of the Cafe's `sells = false`:

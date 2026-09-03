@@ -30,8 +30,7 @@ return {
     sprite = "assets/items/cinderstride_boots.png",
     type = "utility",
     tags = { "boots", "fire" },
-    class = "mage",
-    discipline = "elementalist", -- element as terrain: the mage's own blaze laid behind every step
+    class = "elementalist", -- element as terrain: the mage's own blaze laid behind every step
     price = 330,
     unlockQuests = 3,
     trail = { hazard = "hazard_fire", duration = 8 },

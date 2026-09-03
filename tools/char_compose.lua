@@ -32,7 +32,7 @@
 -- the explicit `assets` arg writes assets/chars/.
 
 local Registry = require("models.registry")
-local Discipline = require("models.discipline")
+local Class = require("models.class")
 local Source = require("tools.icon_source")
 
 local M = {}
@@ -130,7 +130,7 @@ local DISCIPLINE_SILHOUETTE = {
     -- knight subclasses
     sentinel = "lorc/shield-echoes",      bulwark = "delapouite/vibrating-shield",
     -- rogue subclasses. The Thief wears the purse it takes; the Mammonite wears the hand PAYING one,
-    -- which is the whole difference between them (data/disciplines/mammonite.lua) -- and neither is
+    -- which is the whole difference between them (data/classes/mammonite.lua) -- and neither is
     -- Aurea's coins-pile below, a hoard rather than a transaction.
     assassin = "lorc/backstab",           thief = "lorc/shiny-purse",
     -- The contract, not the coin. The thief already owns the purse and Aurea the coins-pile, and the
@@ -372,11 +372,11 @@ local CHARACTER_SILHOUETTE = {
 }
 
 -- Reverse index: the character key a discipline names as its `exemplar` -> the discipline id. Built from
--- the discipline blueprints so the mapping lives in one place (data/disciplines/*.lua) and a repointed
+-- the discipline blueprints so the mapping lives in one place (data/classes/*.lua) and a repointed
 -- exemplar follows automatically. A character that is no discipline's exemplar is simply absent here, and
 -- reads by creature/class/kind as before.
 local EXEMPLAR_DISCIPLINE = {}
-for did, ddef in pairs(Discipline.defs) do
+for did, ddef in pairs(Class.defs) do
     if ddef.exemplar then EXEMPLAR_DISCIPLINE[ddef.exemplar] = did end
 end
 

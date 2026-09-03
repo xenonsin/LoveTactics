@@ -24,8 +24,7 @@ return {
     sprite = "assets/items/ability_summon_wolf.png",
     type = "ability",
     tags = { "summon", "beast" },
-    class = "hunter",
-    discipline = "beastmaster", -- deeper cut of the shelf: buyable only once the beastmaster gate is cleared
+    class = "beastmaster", -- deeper cut of the shelf: buyable only once the beastmaster gate is cleared
     price = 740,
     unlockQuests = 8,
     activeAbility = {

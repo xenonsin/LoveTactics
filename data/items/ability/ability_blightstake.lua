@@ -30,8 +30,7 @@ return {
     sprite = "assets/items/ability_blightstake.png",
     type = "ability",
     tags = { "poison" },
-    class = "hunter",
-    discipline = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
+    class = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
     price = 740,
     unlockQuests = 8,
     activeAbility = {

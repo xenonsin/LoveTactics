@@ -17,6 +17,10 @@
 -- Pure logic, headless.
 
 local Item = require("models.item")
+-- The seven roots are read off the blueprints now, not off a table in models/item.lua: `class` and
+-- `discipline` were folded onto one taxonomy of 46 (docs/class-fold.md), and everything this file
+-- asserts is about the seven a house sells -- so every loop below asks Class.roots().
+local Class = require("models.class")
 local Vendor = require("models.vendor")
 
 -- The shelf each class carries, as declared by docs/classes.md.
@@ -62,11 +66,12 @@ return {
     {
         name = "every class has a declared shelf, and every declared shelf is a real class",
         fn = function()
-            for class in pairs(Item.CLASSES) do
+            for class in pairs(Class.roots()) do
                 assert(CONTRACT[class], "class '" .. class .. "' has no shelf in docs/classes.md")
             end
             for class in pairs(CONTRACT) do
-                assert(Item.CLASSES[class], "docs/classes.md describes unknown class '" .. class .. "'")
+                assert(Class.roots()[class],
+                    "docs/classes.md describes unknown class '" .. class .. "'")
             end
         end,
     },
@@ -77,10 +82,10 @@ return {
         -- and anything past ~two sentences overruns the detail column it is drawn in.
         name = "every class shelf says what it is, in a blurb the shop can print",
         fn = function()
-            for class in pairs(Item.CLASSES) do
+            for class in pairs(Class.roots()) do
                 local blurb = Item.classDescription(class)
                 assert(type(blurb) == "string" and #blurb >= 40,
-                    class .. " has no shelf blurb -- see Item.CLASSES and docs/classes.md")
+                    class .. " has no shelf blurb -- see its data/classes file and docs/classes.md")
                 assert(#blurb <= 260, class .. "'s blurb is " .. #blurb
                     .. " chars; the shop's detail column fits about 260")
             end
@@ -101,7 +106,7 @@ return {
     {
         name = "every class stocks at least three weapons -- no shelf is an empty rack",
         fn = function()
-            for class in pairs(Item.CLASSES) do
+            for class in pairs(Class.roots()) do
                 local weapons = weaponsOf(class)
                 assert(#weapons >= WEAPON_FLOOR,
                     class .. " sells only " .. #weapons .. " weapon(s); the floor is " .. WEAPON_FLOOR
@@ -112,7 +117,7 @@ return {
     {
         name = "a class's weapons come from its own family cluster, and nowhere else",
         fn = function()
-            for class in pairs(Item.CLASSES) do
+            for class in pairs(Class.roots()) do
                 local allowed = {}
                 for _, family in ipairs(CONTRACT[class].families) do allowed[family] = true end
                 for _, w in ipairs(weaponsOf(class)) do
@@ -132,7 +137,7 @@ return {
             -- The shelf-side reading of the ladder: progression_spec asserts each vendor has SOMETHING
             -- on its opening shelf, which a torch would satisfy. This asks for a weapon -- a class you
             -- cannot buy a weapon from before running a single quest is a class you cannot start playing.
-            for class in pairs(Item.CLASSES) do
+            for class in pairs(Class.roots()) do
                 local entry = false
                 for _, w in ipairs(weaponsOf(class)) do
                     if (w.def.unlockQuests or 0) <= 0 then entry = true end

@@ -23,8 +23,7 @@ return {
     sprite = "assets/items/ability_beat_the_bounds.png",
     type = "ability",
     tags = { "control", "physical" },
-    class = "hunter",
-    discipline = "warden",
+    class = "warden",
     price = 245,
     unlockQuests = 2,
     activeAbility = {

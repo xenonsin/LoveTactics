@@ -11,8 +11,7 @@ return {
     sprite = "assets/items/ability_harrying_strike.png",
     type = "ability",
     tags = { "slash", "physical" },
-    class = "fighter",
-    discipline = "skirmisher", -- fighter x hunter; the Hit-and-run mechanic's first stock
+    class = "skirmisher", -- fighter x hunter; the Hit-and-run mechanic's first stock
     price = 245,
     unlockQuests = 2,
     activeAbility = {

@@ -12,8 +12,7 @@ return {
     sprite = "assets/items/utility_miasmal_plate.png",
     type = "utility", -- a charm, not armour: the walking cloud IS the item (cf. utility_coveted_blood)
     tags = { "charm", "poison" },
-    class = "knight",
-    discipline = "plague_knight", -- knight x alchemist; the Contagion mechanic's first stock
+    class = "plague_knight", -- knight x alchemist; the Contagion mechanic's first stock
     price = 330,
     unlockQuests = 3,
     incense = { hazard = "hazard_choking", radius = 1, amount = Curve.ramp(3, 13) },

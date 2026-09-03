@@ -13,8 +13,7 @@ return {
     sprite = "assets/items/utility_duelists_poise.png",
     type = "utility",
     tags = { "charm" },
-    class = "rogue",
-    discipline = "duelist", -- fighter x rogue; the Duel-stance mechanic's first stock
+    class = "duelist", -- fighter x rogue; the Duel-stance mechanic's first stock
     price = 575,
     unlockQuests = 6,
     traits = { "trait_duelists_poise" },

@@ -10,7 +10,7 @@ local Forge = require("models.forge")
 local Item = require("models.item")
 local Character = require("models.character")
 local Save = require("models.save")
-local Discipline = require("models.discipline")
+local Class = require("models.class")
 local Party = require("ui.panels.party")
 
 -- A priced, non-stackable item id (so buying/selling doesn't merge into a consumable stack), and an
@@ -255,7 +255,7 @@ return {
     {
         name = "classRows report what a body has got good at, deepest level first",
         fn = function()
-            local Disc = require("models.discipline")
+            local Disc = require("models.class")
             local char = Character.instantiate("character_knight")
             -- A class key alongside two disciplines: one ledger holds all three, which is the whole
             -- reason this list replaced the two that used to be stacked here.
@@ -275,7 +275,7 @@ return {
                 "rows carry the class levels, descending")
 
             -- Display names for a discipline, title-case for a class -- never the raw id.
-            assert(rows[1].name == Discipline.displayName("assassin"),
+            assert(rows[1].name == Class.displayName("assassin"),
                 "a discipline row carries its display name")
             assert(rows[2].name == "Knight", "and a class row is title-cased")
 
@@ -286,14 +286,14 @@ return {
 
             -- The printed form, which is what the sheet's forecast column is built from.
             local parts = Party.growthParts(char)
-            assert(parts[1] == Discipline.displayName("assassin") .. " 4"
+            assert(parts[1] == Class.displayName("assassin") .. " 4"
                 and parts[2] == "Knight 2", "the parts read as house-then-level")
         end,
     },
     {
         name = "a class touched but not yet levelled still shows, and an untouched one does not",
         fn = function()
-            local Disc = require("models.discipline")
+            local Disc = require("models.class")
             local char = Character.instantiate("character_knight")
             assert(#Party.classRows(char) == 0, "a fresh member has swung nothing")
             assert(#Party.growthParts(char) == 0, "and so prints nothing")
@@ -323,9 +323,9 @@ return {
             -- Ranked by what is LEFT, not by what was earned: assassin earned the most by a mile and
             -- sits last, because the Forge has already billed all but 5 of it.
             assert(rows[1].name == "Knight" and rows[1].available == 30, "the fattest bank leads")
-            assert(rows[2].name == Discipline.displayName("bulwark") and rows[2].available == 10,
+            assert(rows[2].name == Class.displayName("bulwark") and rows[2].available == 10,
                 "then the next -- and a discipline row carries its display name")
-            assert(rows[3].name == Discipline.displayName("assassin") and rows[3].available == 5,
+            assert(rows[3].name == Class.displayName("assassin") and rows[3].available == 5,
                 "and a forged-down house falls to the bottom on 5")
             assert(rows[1].share == nil, "the claim column is gone, not merely unread")
 

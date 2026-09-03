@@ -33,8 +33,7 @@ return {
     sprite = "assets/items/armor_halting_rank.png",
     type = "armor",
     tags = { "heavy", "plate" },
-    class = "knight",
-    discipline = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
+    class = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
     price = 165,
     unlockQuests = 1,
     bonus = { defense = Curve.ramp(3, 13), movement = -2 },

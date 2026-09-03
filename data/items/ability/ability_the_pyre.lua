@@ -22,8 +22,7 @@ return {
     sprite = "assets/items/ability_the_pyre.png",
     type = "ability",
     tags = { "holy", "fire" },
-    class = "priest",
-    discipline = "inquisitor",
+    class = "inquisitor",
     price = 330,
     unlockQuests = 3,
     activeAbility = {

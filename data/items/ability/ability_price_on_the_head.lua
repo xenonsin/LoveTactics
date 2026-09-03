@@ -27,8 +27,7 @@ return {
     sprite = "assets/items/ability_price_on_the_head.png",
     type = "ability",
     tags = { "dark" },
-    class = "rogue",
-    discipline = "mammonite", -- an earner: the half of the shelf that opens with the gate itself
+    class = "mammonite", -- an earner: the half of the shelf that opens with the gate itself
     price = 245,
     unlockQuests = 2,
     activeAbility = {

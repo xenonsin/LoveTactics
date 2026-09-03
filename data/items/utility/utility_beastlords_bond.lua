@@ -25,8 +25,7 @@ return {
     sprite = "assets/items/beastlords_bond.png",
     type = "utility",
     tags = { "charm", "beast" },
-    class = "hunter",
-    discipline = "beastmaster", -- deeper cut of the shelf: buyable only once the beastmaster gate is cleared
+    class = "beastmaster", -- deeper cut of the shelf: buyable only once the beastmaster gate is cleared
     price = 410,
     unlockQuests = 4,
     traits = { "trait_beastlords_bond" },

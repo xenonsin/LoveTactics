@@ -27,8 +27,7 @@ return {
     sprite = "assets/items/ability_gagging_storm.png",
     type = "ability",
     tags = { "lightning", "magical" },
-    class = "mage",
-    discipline = "spellbreaker", -- knight x mage; Counterspell laid as GROUND -- it shatters the channels standing in it
+    class = "spellbreaker", -- knight x mage; Counterspell laid as GROUND -- it shatters the channels standing in it
     price = 165,
     unlockQuests = 1,
     activeAbility = {

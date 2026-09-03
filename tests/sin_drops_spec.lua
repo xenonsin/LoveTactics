@@ -62,7 +62,11 @@ return {
                     local def = Item.defs[id]
                     assert(def, id .. " does not exist")
                     assert(def.price == nil, id .. " is priced, so a shelf could sell it")
-                    assert(def.class == nil, id .. " has a class, so a house's shelf would claim it")
+                    -- "No house would claim it" is said by naming the creature bucket now rather than
+                    -- by naming nothing (docs/class-fold.md): every item carries a class, and that one
+                    -- is on no shelf and is nobody's career.
+                    assert(def.class == "creature",
+                        id .. " is on a house's class, so a shelf would claim it")
                     assert(def.noSteal, id .. " can be stolen off the body that took it")
                     local relic = false
                     for _, tag in ipairs(def.tags or {}) do if tag == "relic" then relic = true end end

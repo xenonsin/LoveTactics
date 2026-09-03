@@ -1,6 +1,6 @@
 -- Poacher exemplar (rogue x hunter multiclass). Snare-execute: traps set up the blink-kill, with a
 -- bonus against the Rooted. Met as a bounty-jumping trapper, a recruit. Home shelf is rogue
--- (Poacher's Kris). Kit from data/disciplines/poacher.lua.
+-- (Poacher's Kris). Kit from data/classes/poacher.lua.
 return {
     name = "Poacher",
     kind = "humanoid",

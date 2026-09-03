@@ -11,8 +11,7 @@ return {
     sprite = "assets/items/ability_arcane_cleave.png",
     type = "ability",
     tags = { "magical", "fire" }, -- magical: routes through magicDefense; fire: the element it carries
-    class = "fighter",
-    discipline = "battlemage", -- fighter x mage; the Spellstrike mechanic's first stock
+    class = "battlemage", -- fighter x mage; the Spellstrike mechanic's first stock
     price = 660,
     unlockQuests = 7,
     activeAbility = {

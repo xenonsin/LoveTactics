@@ -15,6 +15,7 @@ return {
     flavor = "It is not guarding anything. It simply is the pile, and the pile has learned to object.",
     sprite = "assets/items/the_hoard.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_boss_phases" },

@@ -28,8 +28,7 @@ return {
     sprite = "assets/items/armor_unspent_heart.png",
     type = "armor",
     tags = { "heavy" },
-    class = "fighter",
-    discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
+    class = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
     price = 495,
     unlockQuests = 5,
     traits = { "trait_unspent_heart" },

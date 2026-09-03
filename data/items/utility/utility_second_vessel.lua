@@ -23,6 +23,7 @@ return {
         "it as the first.",
     sprite = "assets/items/second_vessel.png",
     type = "utility",
+    class = "creature",
     tags = { "relic" },
     noSteal = true,
     traits = { "trait_covetous_eye" },

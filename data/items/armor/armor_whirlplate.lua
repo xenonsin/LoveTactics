@@ -29,8 +29,7 @@ return {
     sprite = "assets/items/armor_whirlplate.png",
     type = "armor",
     tags = { "heavy" },
-    class = "fighter",
-    discipline = "champion", -- fighter x knight; the Riposte-wall's plate -- answer every striker at once
+    class = "champion", -- fighter x knight; the Riposte-wall's plate -- answer every striker at once
     price = 575,
     unlockQuests = 6,
     traits = { "trait_whirl_answer" },

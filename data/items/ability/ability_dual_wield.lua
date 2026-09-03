@@ -59,8 +59,7 @@ return {
     sprite = "assets/items/ability_dual_wield.png",
     type = "ability",
     tags = { "guile", "physical" },
-    class = "rogue",
-    discipline = "assassin", -- deeper cut of the shelf: buyable only once the assassin gate is cleared
+    class = "assassin", -- deeper cut of the shelf: buyable only once the assassin gate is cleared
     price = 330,
     unlockQuests = 3,
     activeAbility = {

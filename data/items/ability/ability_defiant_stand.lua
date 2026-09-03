@@ -18,8 +18,7 @@ return {
     sprite = "assets/items/ability_defiant_stand.png",
     type = "ability",
     tags = { "impact" },
-    class = "knight",
-    discipline = "champion",
+    class = "champion",
     price = 165,
     unlockQuests = 1,
     -- Declaring the pool here rather than on a charm is the discipline contract working as intended:

@@ -27,7 +27,7 @@ local TileTooltip = require("ui.tile_tooltip")
 local InventoryPeek = require("ui.inventory_peek")
 local ActionPreview = require("ui.action_preview")
 local Character = require("models.character")
-local Discipline = require("models.discipline")
+local Class = require("models.class")
 local Growth = require("models.growth")
 local Item = require("models.item")
 local Combat = require("models.combat")
@@ -605,7 +605,7 @@ local function finishBattle(result)
     battle.summary = BattleSummary.new({
         result = result,
         spoils = spoils,
-        -- What the fight banked toward forging discipline gear (models/discipline.lua), grouped by the
+        -- What the fight banked toward forging discipline gear (models/class.lua), grouped by the
         -- body that earned it. Wins only: a defeat panel is deliberately reward-free, and "Try Again"
         -- rolls the party back to its pre-fight snapshot anyway, so naming a number there would be
         -- naming one about to be undone.
@@ -5062,7 +5062,7 @@ local function bankGrowthAward()
     -- The key is a class id OR a discipline id, so resolve it the way every other surface does:
     -- "plague_knight" is "Plague Knight", which title-casing alone would render "Plague_knight".
     local key = award.discipline
-    local name = Discipline.displayName(key) or (key:gsub("^%l", string.upper))
+    local name = Class.displayName(key) or (key:gsub("^%l", string.upper))
     battle.pendingAward = { unit = award.unit, text = "+" .. award.amount .. " " .. name }
 end
 

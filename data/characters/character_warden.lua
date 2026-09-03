@@ -1,5 +1,5 @@
 -- Warden exemplar (knight x hunter multiclass). Lockdown zone: mark an area; entrants are Rooted /
--- Halted. Met as a march-warden, a mentor. Home shelf is knight. Kit from data/disciplines/warden.lua.
+-- Halted. Met as a march-warden, a mentor. Home shelf is knight. Kit from data/classes/warden.lua.
 return {
     name = "Warden",
     kind = "humanoid",

@@ -10,6 +10,7 @@ return {
     flavor = "A demon bred hollow and filled with fire. It was never meant to come home.",
     sprite = "assets/items/sig_unappeased_heart.png", -- placeholder until its own art exists
     type = "utility",
+    class = "creature",
     tags = { "relic" },
     bound = true,
     traits = { "trait_volatile" },

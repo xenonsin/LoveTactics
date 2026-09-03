@@ -47,8 +47,7 @@ return {
     sprite = "assets/items/ability_safeguard.png",
     type = "ability",
     tags = { "impact" },
-    class = "knight",
-    discipline = "sentinel", -- deeper cut of the shelf: buyable only once the sentinel gate is cleared
+    class = "sentinel", -- deeper cut of the shelf: buyable only once the sentinel gate is cleared
     price = 410,
     unlockQuests = 4,
     activeAbility = {

@@ -10,8 +10,7 @@ return {
     sprite = "assets/items/ability_call_spirit.png",
     type = "ability",
     tags = { "summon" },
-    class = "mage",
-    discipline = "shaman", -- hunter x mage; the Spirit-totems mechanic's first stock
+    class = "shaman", -- hunter x mage; the Spirit-totems mechanic's first stock
     price = 660,
     unlockQuests = 7,
     activeAbility = {

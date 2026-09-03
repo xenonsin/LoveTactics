@@ -20,8 +20,7 @@ return {
     sprite = "assets/items/armor_stalkers_pelt.png",
     type = "armor",
     tags = { "hide" },
-    class = "hunter",
-    discipline = "druid", -- deeper cut of the shelf: buyable only once the druid gate is cleared
+    class = "druid", -- deeper cut of the shelf: buyable only once the druid gate is cleared
     price = 660,
     unlockQuests = 7,
     traits = { "trait_keen_senses" },

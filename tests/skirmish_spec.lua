@@ -169,16 +169,16 @@ return {
     end },
 
     { name = "the anti-grind cap is sized against the fight it is capping", fn = function()
-        -- Discipline.TECHNIQUE_PER_BATTLE exists to stop a player milking one encounter with `free`
+        -- Class.TECHNIQUE_PER_BATTLE exists to stop a player milking one encounter with `free`
         -- abilities that never end the turn. A cap only does that job while it sits close to what the
         -- fight can honestly produce; far above, it bounds nothing and the milking is simply allowed.
         --
         -- The fight's honest production is bounded by its LENGTH, which the case below pins by
         -- measurement. Both edges are asserted, because the failure is two-sided: too low clips a
         -- committed player mid-fight, too high reopens the door.
-        local Discipline = require("models.discipline")
-        local cap = Discipline.TECHNIQUE_PER_BATTLE
-        local perAction = Discipline.TECHNIQUE_PER_ACTION
+        local Class = require("models.class")
+        local cap = Class.TECHNIQUE_PER_BATTLE
+        local perAction = Class.TECHNIQUE_PER_ACTION
         -- The player's side takes roughly half a fight's unit-turns (four fielded against a skirmish
         -- cap of four), so this is what committing every one of them to a single house would bank.
         local honest = (SKIRMISH_TURN_BUDGET / 2) * perAction

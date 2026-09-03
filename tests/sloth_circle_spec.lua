@@ -190,7 +190,7 @@ return {
                                   "utility_long_dark", "utility_unkept_watch" }) do
                 local def = Item.defs[id]
                 assert(def, id .. " does not exist")
-                assert(def.noSteal and not def.price and not def.class and not def.discipline,
+                assert(def.noSteal and not def.price and def.class == "creature",
                     id .. ": creature kit is unpriced, unshelved and unstealable")
             end
         end,

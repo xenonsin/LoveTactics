@@ -12,12 +12,12 @@
 local Combat = require("models.combat")
 local Status = require("models.status")
 local Item = require("models.item")
-local Discipline = require("models.discipline")
+local Class = require("models.class")
 local Player = require("models.player")
 local Fixture = require("tests.support.fixture")
 
 -- THE MONEY KIT, named. Every ware that spends or banks campaign gold as a combat resource, and the one
--- shelf they all belong to (data/disciplines/mammonite.lua). Held as an explicit roster rather than
+-- shelf they all belong to (data/classes/mammonite.lua). Held as an explicit roster rather than
 -- derived, because there is nothing in an item's DATA that says "this one touches the purse" -- the tell
 -- is inside its effect body, which no sweep can read. So a new money item that forgets its tag cannot be
 -- caught automatically; what this list catches is the other half of the same mistake, an existing one
@@ -457,16 +457,17 @@ return {
             for _, id in ipairs(MONEY_KIT) do
                 local def = Item.defs[id]
                 assert(def, id .. " is named in the money kit but does not exist")
-                assert(def.class == "rogue", id .. " left the rogue shelf")
-                assert(def.discipline == "mammonite",
-                    id .. " spends or banks the purse but is not tagged mammonite -- the money kit is one"
-                        .. " shelf (data/disciplines/mammonite.lua), not eight loose wares")
+                -- One field since the fold (docs/class-fold.md): the class IS the mammonite, and the
+                -- rogue half of the old pair is now read off the mammonite's own parents below.
+                assert(def.class == "mammonite",
+                    id .. " spends or banks the purse but is not on the mammonite shelf -- the money kit"
+                        .. " is one shelf (data/classes/mammonite.lua), not eight loose wares")
             end
 
             -- One parent, so a subclass rather than a multiclass -- which is what makes its gate a single
             -- quest in its own line rather than earned advancement across two.
-            assert(Discipline.arity("mammonite") == 1, "the Mammonite is a subclass (one parent)")
-            assert(Discipline.parents("mammonite")[1] == "rogue", "and its parent is the rogue")
+            assert(Class.arity("mammonite") == 1, "the Mammonite is a subclass (one parent)")
+            assert(Class.parents("mammonite")[1] == "rogue", "and its parent is the rogue")
         end,
     },
     {
@@ -481,15 +482,15 @@ return {
         fn = function()
             local p = Player.new()
             for _, c in ipairs(p.roster) do c.technique = {} end
-            assert(not Discipline.isUnlocked(p, "mammonite"), "a fresh company has not earned it")
+            assert(not Class.isUnlocked(p, "mammonite"), "a fresh company has not earned it")
 
-            local rung = Discipline.defs.mammonite.requiredLevel.rogue
+            local rung = Class.defs.mammonite.requires.rogue
             assert(rung, "the Mammonite gates on a rogue level")
 
             -- One body standing at that rung opens it, which is the per-body rule: a crossing is
             -- somebody who went that way, not a company that between them did.
-            p.roster[1].technique = { rogue = Discipline.classLevelCost(rung) }
-            assert(Discipline.isUnlocked(p, "mammonite"), "rogue " .. rung .. " is the gate")
+            p.roster[1].technique = { rogue = Class.classLevelCost(rung) }
+            assert(Class.isUnlocked(p, "mammonite"), "rogue " .. rung .. " is the gate")
 
             local function gate(id) return Item.defs[id].unlockQuests or 0 end
             for _, id in ipairs({ "ability_ledgers_due", "ability_price_on_the_head" }) do

@@ -8,6 +8,7 @@ return {
     flavor = "It stopped keeping watch a long time ago. It never stopped being on it.",
     sprite = "assets/items/sleepers_weight.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_torpor" },

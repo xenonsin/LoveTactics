@@ -20,8 +20,7 @@ return {
     sprite = "assets/items/sig_ground_given.png",
     type = "utility",
     tags = { "signature", "physical" },
-    class = "hunter",
-    discipline = "skirmisher",
+    class = "skirmisher",
     activeAbility = {
         target = "enemy",
         range = 1,

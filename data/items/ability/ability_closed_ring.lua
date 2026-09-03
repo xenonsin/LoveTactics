@@ -31,8 +31,7 @@ return {
     sprite = "assets/items/ability_closed_ring.png",
     type = "ability",
     tags = { "earth" },
-    class = "knight",
-    discipline = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
+    class = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
     price = 330,
     unlockQuests = 3,
     activeAbility = {

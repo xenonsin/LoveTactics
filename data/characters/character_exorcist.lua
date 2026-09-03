@@ -2,7 +2,7 @@
 -- rather than borrowing Amana's -- companions stay roots-only (docs/disciplines-plan.md, "starred reuse"
 -- open call, resolved toward a fresh NPC). Met as a MENTOR/ally: a rite-worker who unmakes what the enemy
 -- summons. Home shelf is priest, and she bears no edge (the cleric taboo, docs/classes.md) -- a censer,
--- not a blade. Kit from data/disciplines/exorcist.lua. Signature mechanic: Banish -- remove summons from
+-- not a blade. Kit from data/classes/exorcist.lua. Signature mechanic: Banish -- remove summons from
 -- the field entirely; dispel enemy buffs and hazards. No VN portrait (a template, not a companion) -- it
 -- falls back to its composed token.
 return {

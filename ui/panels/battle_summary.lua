@@ -49,7 +49,7 @@ local ItemTooltip = require("ui.item_tooltip")
 local MaterialTooltip = require("ui.material_tooltip")
 local ProgressBar = require("ui.progress_bar")
 local InputMode = require("input_mode")
-local Discipline = require("models.discipline")
+local Class = require("models.class")
 local Experience = require("models.experience")
 local Identify = require("models.identify")
 local Item = require("models.item")
@@ -274,7 +274,7 @@ function BattleSummary.new(opts)
     -- choosing to fight a particular way rather than by winning at all.
     --
     -- GROUPED BY WHO EARNED IT, because that is the ledger technique actually lives on: it accrues per
-    -- character and the Forge bills one body for it (models/discipline.lua), so a flat "+6 Rogue" named
+    -- character and the Forge bills one body for it (models/class.lua), so a flat "+6 Rogue" named
     -- a number the player could not act on without guessing whose it was. Bodies sorted by their total
     -- and houses by theirs, so the body that carried the fight and the house it carried it in both head
     -- their lists.
@@ -305,7 +305,7 @@ function BattleSummary.new(opts)
         for _, house in ipairs(actor.houses or {}) do
             local amount = house.amount or 0
             if amount > 0 then
-                local name = Discipline.displayName(house.key) or (house.key:gsub("^%l", string.upper))
+                local name = Class.displayName(house.key) or (house.key:gsub("^%l", string.upper))
                 rows[#rows + 1] = { name = name, amount = amount }
                 total = total + amount
             end
@@ -729,7 +729,7 @@ function BattleSummary:draw()
         love.graphics.print(label, startX + coinR * 2 + 10, gy)
     end
 
-    -- Discipline technique, a block per body: the fighter's name centred, then their "Ninja  +14" rows
+    -- Class technique, a block per body: the fighter's name centred, then their "Ninja  +14" rows
     -- under it -- the house name right-aligned into the panel's midline and the amount left-aligned out
     -- of it, so a stack of rows reads as one column pair however long the names are. Amber, matching
     -- the floater that showed each of these landing during the fight. The name is the brighter ink and

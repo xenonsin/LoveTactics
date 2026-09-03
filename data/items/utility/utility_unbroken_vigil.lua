@@ -22,8 +22,7 @@ return {
     sprite = "assets/items/sig_unbroken_vigil.png",
     type = "utility",
     tags = { "signature", "holy" },
-    class = "priest",
-    discipline = "theurge",
+    class = "theurge",
     activeAbility = {
         target = "self",
         range = 0,

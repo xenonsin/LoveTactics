@@ -12,6 +12,7 @@ return {
     flavor = "Not crafted and not sold. Only born with, and only in things that were cornered young.",
     sprite = "assets/items/feral_instinct.png",
     type = "utility",
+    class = "creature",
     tags = { "beast" },
     noSteal = true, -- an innate instinct, not a trinket: a pickpocket cannot lift it (like a beast's Fangs)
     traits = { "trait_melee_counter" },

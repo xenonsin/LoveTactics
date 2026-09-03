@@ -1,6 +1,6 @@
 -- THE ROLL, as a column of the Armory: what this body IS, and every job it could become.
 --
--- The class ledger was written every fight (Growth.jobOf, Discipline.classLevel), persisted through
+-- The class ledger was written every fight (Growth.jobOf, Class.classLevel), persisted through
 -- every save, and shown to nobody until this existed. It had its own door on the plaza for a while --
 -- The Roll, the card under the Gate -- and that was one card too many for one question about a body:
 -- the Armory is already the screen you open to ask what a member of the company is carrying, and what
@@ -37,7 +37,7 @@
 
 local Theme = require("ui.theme")
 local ProgressBar = require("ui.progress_bar")
-local Discipline = require("models.discipline")
+local Class = require("models.class")
 local Growth = require("models.growth")
 local Item = require("models.item")
 local InputMode = require("input_mode")
@@ -52,12 +52,12 @@ local function hit(r, x, y)
     return r and x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
 end
 
--- The seven base classes, in a fixed order. `Item.CLASSES` is keyed by id and `pairs` over it is
+-- The seven root classes, in a fixed order. Class.roots() is keyed by id and `pairs` over it is
 -- unspecified, so a list that reordered itself between two openings of the same panel would read as a
 -- bug -- and this is a screen the player learns the shape of.
 local function classOrder()
     local out = {}
-    for id in pairs(Item.CLASSES) do out[#out + 1] = id end
+    for id in pairs(Class.roots()) do out[#out + 1] = id end
     table.sort(out)
     return out
 end
@@ -65,9 +65,9 @@ end
 -- Every crossing that names `class` as one of its two parents.
 local function crossingsOf(class)
     local out = {}
-    for id, def in pairs(Discipline.defs) do
-        if #(def.classes or {}) == 2 then
-            for _, p in ipairs(def.classes) do
+    for id, def in pairs(Class.defs) do
+        if Class.arity(id) == 2 then
+            for _, p in ipairs(Class.parents(id)) do
                 if p == class then out[#out + 1] = id end
             end
         end
@@ -92,10 +92,10 @@ function JobsEditor:buildRows()
 
     local function job(id, kind, parent)
         local held, needed, level = 0, 0, 0
-        if char then held, needed, level = Discipline.classProgress(char, id) end
+        if char then held, needed, level = Class.classProgress(char, id) end
         self.rows[#self.rows + 1] = {
             id = id, kind = kind, parent = parent,
-            name = kind == "class" and Item.classDisplayName(id) or Discipline.displayName(id),
+            name = kind == "class" and Item.classDisplayName(id) or Class.displayName(id),
             level = level, held = held, needed = needed,
         }
     end
@@ -106,17 +106,17 @@ function JobsEditor:buildRows()
         job(class, "class")
 
         local hidden = 0
-        local subs = Discipline.subclassesOf(class)
+        local subs = Class.subclassesOf(class)
         table.sort(subs)
         for _, id in ipairs(subs) do
-            if char and Discipline.isUnlocked(char, id) then
+            if char and Class.isUnlocked(char, id) then
                 job(id, "subclass", class)
             else
                 hidden = hidden + 1
             end
         end
         for _, id in ipairs(crossingsOf(class)) do
-            if char and Discipline.isUnlocked(char, id) then
+            if char and Class.isUnlocked(char, id) then
                 job(id, "multiclass", class)
             else
                 hidden = hidden + 1
@@ -320,7 +320,7 @@ end
 -- ---------------------------------------------------------------------------
 
 local function levelColor(level)
-    if level >= Discipline.CLASS_LEVEL_CAP then return Theme.accentAmber end
+    if level >= Class.CLASS_LEVEL_CAP then return Theme.accentAmber end
     if level > 0 then return Theme.ink end
     return Theme.muted
 end
@@ -382,7 +382,7 @@ function JobsEditor:drawList(focused)
             -- there is no span left, so it draws full rather than empty.
             local frac = row.needed > 0 and (row.held / row.needed) or 1
             ProgressBar.draw(x + w - 74, ry + 11, 44, 5, frac, 1,
-                { color = row.level >= Discipline.CLASS_LEVEL_CAP and Theme.accentAmber or Theme.cursor })
+                { color = row.level >= Class.CLASS_LEVEL_CAP and Theme.accentAmber or Theme.cursor })
         end
     end
 
@@ -417,7 +417,7 @@ function JobsEditor:drawDetail()
 
     -- What the path IS. A job collapses to a name and a number everywhere else in the game; this is the
     -- one screen with room to say why anyone would want it.
-    local blurb = row.kind ~= "class" and Discipline.description(row.id) or Item.classDescription(row.id)
+    local blurb = row.kind ~= "class" and Class.description(row.id) or Item.classDescription(row.id)
     if type(blurb) == "string" then
         love.graphics.setFont(small)
         Theme.set(Theme.muted)
@@ -440,7 +440,7 @@ function JobsEditor:drawDetail()
 
         love.graphics.setFont(small)
         Theme.set(Theme.muted)
-        if row.level >= Discipline.CLASS_LEVEL_CAP then
+        if row.level >= Class.CLASS_LEVEL_CAP then
             love.graphics.print("Mastered.", x, ty)
         else
             love.graphics.print(string.format("%d / %d to %d", row.held, row.needed, row.level + 1), x, ty)

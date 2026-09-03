@@ -27,8 +27,7 @@ return {
     sprite = "assets/items/ability_binding_grace.png",
     type = "ability",
     tags = { "holy", "magical" },
-    class = "priest",
-    discipline = "monk", -- the Cathedral's own subclass is the one body that pays nothing for the second clause
+    class = "monk", -- the Cathedral's own subclass is the one body that pays nothing for the second clause
     price = 660,
     unlockQuests = 7,
     activeAbility = {

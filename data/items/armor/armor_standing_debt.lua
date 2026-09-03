@@ -22,8 +22,7 @@ return {
     sprite = "assets/items/sig_standing_debt.png",
     type = "armor",
     tags = { "signature", "shield" },
-    class = "knight",
-    discipline = "sentinel",
+    class = "sentinel",
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     -- The wall's stance, like every shield on this shelf: its brace climbs with the forge.
     waitBehavior = { kind = "defend", speed = 3, defense = Curve.ramp(5, 15) },

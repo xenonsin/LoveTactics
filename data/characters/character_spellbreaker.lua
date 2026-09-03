@@ -1,6 +1,6 @@
 -- Spellbreaker exemplar (knight x mage multiclass). Counterspell: interrupt channels, negate the next
 -- nearby cast, burn mana. Met as an anti-mage sword-oath, a boss. Home shelf is knight (Silencing
--- Blade). Kit from data/disciplines/spellbreaker.lua.
+-- Blade). Kit from data/classes/spellbreaker.lua.
 return {
     name = "Spellbreaker",
     kind = "humanoid",

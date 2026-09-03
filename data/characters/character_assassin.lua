@@ -1,5 +1,5 @@
 -- Assassin exemplar (rogue subclass). Blink-execute: teleport to a wounded target, guarantee the
--- finish, return. Met as a killer sent for the player, a boss. Kit from data/disciplines/assassin.lua.
+-- finish, return. Met as a killer sent for the player, a boss. Kit from data/classes/assassin.lua.
 return {
     name = "Assassin",
     kind = "humanoid",

@@ -19,8 +19,7 @@ return {
     sprite = "assets/items/sig_standing_order.png",
     type = "utility",
     tags = { "signature", "artifice" },
-    class = "mage",
-    discipline = "artificer",
+    class = "artificer",
     activeAbility = {
         target = "self",
         range = 0,

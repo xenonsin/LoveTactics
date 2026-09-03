@@ -15,6 +15,7 @@ return {
     flavor = "The grove has been here a long time and has learned not to be where you swing.",
     sprite = "assets/items/bloom_reach.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "slash", "physical", "melee" },
     noSteal = true,
     hitAndRun = GIVE_GROUND,

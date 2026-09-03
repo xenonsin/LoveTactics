@@ -74,7 +74,19 @@ end
 local function questOnly()
     local out = {}
     for id, def in pairs(Item.defs) do
-        if def.class and not def.price and not def.bound then out[#out + 1] = id end
+        -- CREATURE KIT IS OUT, and it is the same set that was out before. This asks "gear a player is
+        -- meant to be handed and can never actually get", and a wolf's teeth are not on that list --
+        -- they were excluded by having no `class` at all, which is a state the fold ended
+        -- (docs/class-fold.md). Naming the bucket is what that exclusion looks like written down.
+        --
+        -- Six items sit in the bucket and should not: ability_haste, ability_omnislash, ability_pull,
+        -- armor_padded_vest, consumable_wildcraft_reagent and utility_decoy are ordinary player gear
+        -- that happened to carry no class, so the creature pass swept them up. They are ALSO genuinely
+        -- unreachable -- no price, no grant, no drop tier -- and that was true before this file could
+        -- see them. Re-home them and this case will say so.
+        if def.class and def.class ~= "creature" and not def.price and not def.bound then
+            out[#out + 1] = id
+        end
     end
     table.sort(out)
     return out

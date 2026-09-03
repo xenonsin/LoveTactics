@@ -14,6 +14,7 @@ return {
     flavor = "It does not aim so much as wait for the aim to become correct.",
     sprite = "assets/items/sentry_bolt.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "pierce", "physical", "ranged" },
     noSteal = true, -- a construct's body is not loot
     activeAbility = {

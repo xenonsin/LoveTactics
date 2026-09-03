@@ -9,8 +9,7 @@ return {
     sprite = "assets/items/ability_set_charge.png",
     type = "ability",
     tags = { "utility" },
-    class = "alchemist",
-    discipline = "saboteur", -- rogue x alchemist; the Planted-charges mechanic's first stock
+    class = "saboteur", -- rogue x alchemist; the Planted-charges mechanic's first stock
     price = 245,
     unlockQuests = 2,
     activeAbility = {

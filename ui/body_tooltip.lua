@@ -28,8 +28,7 @@
 local Character = require("models.character")
 local Combat = require("models.combat")     -- for the wounded ceiling, the way every other pool reads it
 local Colors = require("ui.colors")
-local Discipline = require("models.discipline")
-local Gate = require("models.gate")         -- a body in a bed is not a body you can send
+local Class = require("models.class")
 local Theme = require("ui.theme")
 local TileTooltip = require("ui.tile_tooltip")
 local Wound = require("models.wound")
@@ -71,7 +70,7 @@ end
 local function classLabel(char)
     local key = char.discipline or char.class
     if not key then return nil end
-    return Discipline.displayName(key) or titleCase(key)
+    return Class.displayName(key) or titleCase(key)
 end
 
 -- The card's contents, as tile_tooltip blocks. Split out from the draw so a spec can read what the
@@ -85,8 +84,8 @@ function BodyTooltip.blocks(player, char)
     if class then blocks[#blocks + 1] = { kind = "stat", label = "Class", value = class } end
 
     -- WHAT IS WRONG WITH THEM, ahead of everything they can do -- it is the one fact on this card that
-    -- changes who you send, and the two rows are different questions: how broken, and whether they are
-    -- even available to pick.
+    -- changes who you send, and it is only ever read underground: a body standing in a town has had
+    -- every bone set already (models/wound.lua).
     local wounds = Wound.count(player, char.id)
     if wounds > 0 then
         blocks[#blocks + 1] = { kind = "stat", label = "Wounds", value = tostring(wounds),
@@ -103,10 +102,11 @@ function BodyTooltip.blocks(player, char)
                 color = def.color or Theme.accentWeapon }
         end
     end
-    if Gate.isLodged(player, char.id) then
-        blocks[#blocks + 1] = { kind = "stat", label = "At the Inn", value = "mending",
-            valueColor = Theme.accentWeapon }
-    end
+    -- THERE IS NO "AT THE INN" ROW any more, and nothing replaces it. It answered the second of the two
+    -- questions above -- whether this body was available to be picked at all -- which was real while a
+    -- bed took somebody out of the company for a day a wound. Nobody is ever unavailable now
+    -- (models/wound.lua): the surface sets every bone the moment the company reaches it, so the only
+    -- question left is how broken they are underground and the rows above are the whole of it.
 
     for _, r in ipairs(RESOURCES) do
         local res = char.stats and char.stats[r.key]

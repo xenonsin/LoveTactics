@@ -20,8 +20,7 @@ return {
     sprite = "assets/items/ability_recall_construct.png",
     type = "ability",
     tags = { "utility" },
-    class = "mage",
-    discipline = "artificer",
+    class = "artificer",
     price = 165,
     unlockQuests = 1,
     activeAbility = {

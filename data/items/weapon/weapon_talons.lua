@@ -19,6 +19,7 @@ return {
     flavor = "Enough to draw blood and break a line of sight. It is gone before the blood is.",
     sprite = "assets/chars/hawk.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "slash", "physical", "melee" },
     noSteal = true, -- a hawk's talons cannot be lifted off it
     activeAbility = {

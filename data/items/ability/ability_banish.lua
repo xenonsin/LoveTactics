@@ -13,8 +13,7 @@ return {
     sprite = "assets/items/ability_banish.png",
     type = "ability",
     tags = { "holy" },
-    class = "priest",
-    discipline = "exorcist", -- deeper cut of the shelf: buyable only once the exorcist gate is cleared
+    class = "exorcist", -- deeper cut of the shelf: buyable only once the exorcist gate is cleared
     price = 245,
     unlockQuests = 2,
     activeAbility = {

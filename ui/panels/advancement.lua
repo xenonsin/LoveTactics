@@ -27,7 +27,7 @@ local Scale = require("scale")
 local InputMode = require("input_mode")
 local Theme = require("ui.theme")
 local Growth = require("models.growth")
-local Discipline = require("models.discipline")
+local Class = require("models.class")
 local Material = require("models.material")
 
 local Advancement = {}
@@ -95,7 +95,7 @@ local STAT_ORDER = { "health", "mana", "stamina", "damage", "magicDamage", "defe
 
 local function classLabel(class)
     if not class then return "" end
-    return Discipline.displayName(class) or (class:gsub("^%l", string.upper))
+    return Class.displayName(class) or (class:gsub("^%l", string.upper))
 end
 
 -- How a level-up's gains were apportioned, in words: "as Knight 52% · Mage 48%", or plainly "as Knight"

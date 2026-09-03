@@ -20,8 +20,7 @@ return {
     sprite = "assets/items/ability_blast_charge.png",
     type = "ability",
     tags = { "trap", "fire" },
-    class = "alchemist",
-    discipline = "bombardier", -- deeper cut of the shelf: buyable only once the bombardier gate is cleared
+    class = "bombardier", -- deeper cut of the shelf: buyable only once the bombardier gate is cleared
     price = 245,
     unlockQuests = 2,
     activeAbility = {

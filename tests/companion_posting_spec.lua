@@ -3,7 +3,7 @@
 -- THIS FILE REPLACED tests/errand_spec.lua, which pinned a ladder that no longer exists: every house
 -- posted a line of errands and running them climbed that house's shelf, rung by rung. The houses are
 -- classes now (docs/classes.md) and a class is climbed by a BODY playing its gear
--- (Discipline.classLevel), so there are no lines, no rungs bought with work, and no doors.
+-- (Class.classLevel), so there are no lines, no rungs bought with work, and no doors.
 --
 -- What survived the cut is the one thing the ladder carried that had nowhere else to go: a reason to go
 -- back down, said out loud, with a name attached. Seven companions stand on the first floors, each asks

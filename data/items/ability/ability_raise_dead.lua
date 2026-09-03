@@ -13,8 +13,7 @@ return {
     sprite = "assets/items/ability_raise_dead.png",
     type = "ability",
     tags = { "dark", "magical" },
-    class = "mage",
-    discipline = "necromancer", -- deeper cut of the shelf: buyable only once the necromancer gate is cleared
+    class = "necromancer", -- deeper cut of the shelf: buyable only once the necromancer gate is cleared
     price = 495,
     unlockQuests = 5,
     activeAbility = {

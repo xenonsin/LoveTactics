@@ -22,8 +22,7 @@ return {
     sprite = "assets/items/adrenal_surge.png",
     type = "utility",
     tags = { "belt" },
-    class = "fighter",
-    discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
+    class = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
     price = 495,
     unlockQuests = 5,
     traits = { "trait_adrenal_surge" },

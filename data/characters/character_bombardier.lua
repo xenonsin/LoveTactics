@@ -1,5 +1,5 @@
 -- Bombardier exemplar (alchemist subclass). Scatter bombs: thrown consumables that seed hazards and
--- chain-detonate. Met as a counterfeit-bomb runner, a boss. Kit from data/disciplines/bombardier.lua.
+-- chain-detonate. Met as a counterfeit-bomb runner, a boss. Kit from data/classes/bombardier.lua.
 return {
     name = "Bombardier",
     kind = "humanoid",

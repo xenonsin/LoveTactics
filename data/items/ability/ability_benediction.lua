@@ -22,8 +22,7 @@ return {
     sprite = "assets/items/ability_benediction.png",
     type = "ability",
     tags = { "holy" },
-    class = "priest",
-    discipline = "theurge",
+    class = "theurge",
     price = 410,
     unlockQuests = 4,
     activeAbility = {

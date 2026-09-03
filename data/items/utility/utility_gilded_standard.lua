@@ -16,6 +16,7 @@ return {
     flavor = "The house it belonged to is four hundred years gone. The colours were never told.",
     sprite = "assets/items/gilded_standard.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_formation_fighter", "trait_close_ranks" },

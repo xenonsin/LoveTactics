@@ -2,7 +2,7 @@
 -- standing beside it sickens. Met as a boss -- the Forsworn Knight shows it in its unlock quest, but
 -- that body (character_forsworn_knight) is a story-critical Bastion-line enemy, so the discipline
 -- exemplar is authored here with the full Plague Knight kit. Home shelf is knight (Pestilent Flail).
--- Kit from data/disciplines/plague_knight.lua.
+-- Kit from data/classes/plague_knight.lua.
 return {
     name = "Plague Knight",
     kind = "humanoid",

@@ -24,8 +24,7 @@ return {
     sprite = "assets/items/utility_lent_aegis.png",
     type = "utility",
     tags = { "structure" },
-    class = "knight",
-    discipline = "sentinel", -- deeper cut of the shelf: buyable only once the sentinel gate is cleared
+    class = "sentinel", -- deeper cut of the shelf: buyable only once the sentinel gate is cleared
     price = 165,
     unlockQuests = 1,
     activeAbility = {

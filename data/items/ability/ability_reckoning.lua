@@ -30,8 +30,7 @@ return {
     sprite = "assets/items/ability_reckoning.png",
     type = "ability",
     tags = { "holy", "impact" },
-    class = "fighter",
-    discipline = "crusader",
+    class = "crusader",
     price = 410,
     unlockQuests = 4,
     -- Shallower than either crusader charm on purpose: the spender opens the pool, the charms deepen it

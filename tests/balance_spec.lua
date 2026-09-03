@@ -21,7 +21,7 @@ local Character = require("models.character")
 local Quest = require("models.quest")
 local Item = require("models.item")
 local Vendor = require("models.vendor")
-local Discipline = require("models.discipline")
+local Class = require("models.class")
 local Forge = require("models.forge")
 local Errand = require("models.errand") -- the rungs a house really asks for; see the forge-ceiling case
 
@@ -427,7 +427,7 @@ return {
                 -- so a quest nobody is sent to is a quest nobody can finish. Walking a standing no
                 -- player can reach is how this stayed green while every bench in the game stopped a
                 -- rung short of the ladder.
-                local lineLength = Discipline.CLASS_LEVEL_CAP
+                local lineLength = Class.CLASS_LEVEL_CAP
                 -- A class item of this house, to ask the ceiling about something real.
                 local sample
                 for id, def in pairs(Item.defs) do
@@ -475,14 +475,14 @@ return {
                 -- that opens a rung (models/errand.lua), and the plain numbered fights it also sponsors
                 -- are not gates at all. Walking those read every one of them as a quest that opened
                 -- nothing -- which is true and meaningless, since nobody is ever asked to run them.
-                local lineLength = Discipline.CLASS_LEVEL_CAP
+                local lineLength = Class.CLASS_LEVEL_CAP
 
                 -- The whole curve first, so "is there more to come" is answerable at each gate.
                 local counts = {}
                 for done = 0, lineLength do
                     local player = Balance.playerAt(math.max(1, done), vendorId, done)
-                    local unlocked = Discipline.unlockedSet(player)
-                    local levels = Discipline.levelSet(player)
+                    local unlocked = Class.unlockedSet(player)
+                    local levels = Class.levelSet(player)
                     local plain = 0
                     for _, entry in ipairs(Vendor.stock(vendorId, done, nil, unlocked, levels)) do
                         if not entry.locked then

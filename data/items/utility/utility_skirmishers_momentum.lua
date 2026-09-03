@@ -10,8 +10,7 @@ return {
     sprite = "assets/items/utility_skirmishers_momentum.png",
     type = "utility",
     tags = { "charm" },
-    class = "hunter",
-    discipline = "skirmisher", -- fighter x hunter; the Hit-and-run mechanic's first stock
+    class = "skirmisher", -- fighter x hunter; the Hit-and-run mechanic's first stock
     price = 495,
     unlockQuests = 5,
     traits = { "trait_skirmishers_momentum" },

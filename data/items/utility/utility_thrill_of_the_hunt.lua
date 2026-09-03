@@ -27,8 +27,7 @@ return {
     sprite = "assets/items/thrill_of_the_hunt.png",
     type = "utility",
     tags = { "charm" },
-    class = "hunter",
-    discipline = "poacher", -- multiclass: stocked on the rogue's shelf too once the gate is cleared
+    class = "poacher", -- multiclass: stocked on the rogue's shelf too once the gate is cleared
     price = 330,
     unlockQuests = 3,
     traits = { "trait_thrill_of_the_hunt" },

@@ -15,6 +15,7 @@ return {
     flavor = "A binding lapses. The Arcanum finds that reassuring; the elemental does not.",
     sprite = "assets/items/ability_summon_fire_elemental.png",
     type = "ability",
+    class = "creature",
     tags = { "summon", "fire" },
     activeAbility = {
         target = "tile",

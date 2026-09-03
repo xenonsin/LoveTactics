@@ -23,6 +23,7 @@ return {
     flavor = "A wolf is born holding it. It does not trade blows; it takes one and is gone.",
     sprite = "assets/items/fangs.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "bite", "physical", "melee" },
     noSteal = true, -- a pickpocket cannot lift the teeth out of a wolf's head
     hitAndRun = GIVE_GROUND, -- gives ground when it ANSWERS a blow too (Combat.answerStrike)

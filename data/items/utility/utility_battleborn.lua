@@ -26,8 +26,7 @@ return {
     sprite = "assets/items/battleborn.png",
     type = "utility",
     tags = { "charm" },
-    class = "fighter",
-    discipline = "warlord", -- deeper cut of the shelf: buyable only once the warlord gate is cleared
+    class = "warlord", -- deeper cut of the shelf: buyable only once the warlord gate is cleared
     price = 575,
     unlockQuests = 6,
     traits = { "trait_battleborn" },

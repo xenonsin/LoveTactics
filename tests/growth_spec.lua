@@ -5,6 +5,7 @@
 local Growth = require("models.growth")
 local Character = require("models.character")
 local Item = require("models.item")
+local Class = require("models.class") -- roots(): the seven, since the fold (docs/class-fold.md)
 local Combat = require("models.combat")
 
 local function arena(cols, rows)
@@ -37,7 +38,7 @@ return {
                 damage = true, magicDamage = true, defense = true, magicDefense = true,
                 movement = true, speed = true, skill = true, luck = true,
             }
-            for class in pairs(Item.CLASSES) do
+            for class in pairs(Class.roots()) do
                 local def = Growth.defs[class]
                 assert(def, "class '" .. class .. "' has no data/growth file")
                 assert(next(def), class .. " growth table is empty")
@@ -165,7 +166,7 @@ return {
             -- Declared a mage and swinging knight gear the whole way. The climb is a mage's, and the
             -- ledger is deliberately loaded the other way to prove it: growth reads the badge, and the
             -- hands are a different question entirely (they set the class LEVEL -- see
-            -- Discipline.classLevel -- which scales what the gear does rather than how the body grows).
+            -- Class.classLevel -- which scales what the gear does rather than how the body grows).
             knight.job = "mage"
             knight.technique = { knight = 400 }
             local mage = Growth.defs.mage
@@ -275,34 +276,34 @@ return {
         end,
     },
     {
-        -- The ladder the class level is read off (Discipline.classLevel), asserted from the growth
+        -- The ladder the class level is read off (Class.classLevel), asserted from the growth
         -- side because this is where the two systems meet: the badge decides how a body GROWS, the
         -- ladder decides what its gear DOES, and they are read off different fields on purpose.
         name = "the class level climbs the technique ladder and never runs backward",
         fn = function()
-            local Discipline = require("models.discipline")
+            local Class = require("models.class")
             local char = Character.instantiate("character_rowan")
 
-            assert(Discipline.classLevel(char, "knight") == 0, "a body with no technique holds no level")
+            assert(Class.classLevel(char, "knight") == 0, "a body with no technique holds no level")
 
             -- One short of the first rung is still nought: the rungs are the whole of the ladder, and a
             -- level that arrived early would make the anchor below meaningless.
-            char.technique = { knight = Discipline.classLevelCost(1) - 1 }
-            assert(Discipline.classLevel(char, "knight") == 0, "one short of a rung has not reached it")
-            char.technique.knight = Discipline.classLevelCost(1)
-            assert(Discipline.classLevel(char, "knight") == 1, "the rung is reached exactly at its cost")
+            char.technique = { knight = Class.classLevelCost(1) - 1 }
+            assert(Class.classLevel(char, "knight") == 0, "one short of a rung has not reached it")
+            char.technique.knight = Class.classLevelCost(1)
+            assert(Class.classLevel(char, "knight") == 1, "the rung is reached exactly at its cost")
 
             -- The cap holds against any amount, so a body that kept swinging past mastery does not
             -- climb off the end of a ladder Combat.classScaled multiplies against.
             char.technique.knight = 10 ^ 6
-            assert(Discipline.classLevel(char, "knight") == Discipline.CLASS_LEVEL_CAP,
+            assert(Class.classLevel(char, "knight") == Class.CLASS_LEVEL_CAP,
                 "the ladder stops at its cap")
 
             -- Forging must never cost progression. The Forge bills `techniqueSpent`, which is a
             -- separate table for exactly this reason -- billing the career figure would make paying for
             -- gear un-grow the body that paid.
             char.techniqueSpent = { knight = 10 ^ 6 }
-            assert(Discipline.classLevel(char, "knight") == Discipline.CLASS_LEVEL_CAP,
+            assert(Class.classLevel(char, "knight") == Class.CLASS_LEVEL_CAP,
                 "spending the whole bank leaves the class level where it was")
         end,
     },
@@ -315,10 +316,10 @@ return {
         -- anything.
         name = "mastering one class costs about one committed descent",
         fn = function()
-            local Discipline = require("models.discipline")
+            local Class = require("models.class")
             local FIGHTS = 70
-            local banked = Discipline.TECHNIQUE_PER_BATTLE * FIGHTS
-            local mastery = Discipline.classLevelCost(Discipline.CLASS_LEVEL_CAP)
+            local banked = Class.TECHNIQUE_PER_BATTLE * FIGHTS
+            local mastery = Class.classLevelCost(Class.CLASS_LEVEL_CAP)
 
             assert(mastery <= banked,
                 "a committed run must be able to reach mastery: " .. mastery .. " > " .. banked)
@@ -327,8 +328,8 @@ return {
 
             -- Triangular, not flat: the eighth rung must cost more than the first, or committing stops
             -- being a decision after the second one.
-            local first = Discipline.classLevelCost(1)
-            local last = mastery - Discipline.classLevelCost(Discipline.CLASS_LEVEL_CAP - 1)
+            local first = Class.classLevelCost(1)
+            local last = mastery - Class.classLevelCost(Class.CLASS_LEVEL_CAP - 1)
             assert(last > first * 2, "the top rung must cost meaningfully more than the bottom one")
         end,
     },
@@ -406,42 +407,43 @@ return {
     {
         name = "every house banks technique, capped per battle, and one action arms one floater",
         fn = function()
-            local Discipline = require("models.discipline")
+            local Class = require("models.class")
             local c = Combat.new(arena(6, 6), { unit("character_rowan", 2, 2) }, { unit("character_bandit", 3, 2) })
             local knight, bandit = c.units[1], c.units[2]
 
-            -- A hand-rolled discipline probe rather than a shelf item: this test is about the BANKING
-            -- rule, and picking a real ninja blade would couple it to whatever the shelf happens to
-            -- stock. Any real discipline id will do.
-            local disciplineId = next(Discipline.defs)
-            assert(disciplineId, "there is at least one discipline")
-            local probe = { discipline = disciplineId }
+            -- A hand-rolled probe rather than a shelf item: this test is about the BANKING rule, and
+            -- picking a real ninja blade would couple it to whatever the shelf happens to stock. Any
+            -- real class id will do -- the probe carries it in `class`, which is the only taxonomy
+            -- field an item has since the fold (docs/class-fold.md).
+            local classId = next(Class.defs)
+            assert(classId, "there is at least one class")
+            local probe = { class = classId }
 
             local first = Combat.awardTechnique(c, knight, probe)
-            assert(first == Discipline.TECHNIQUE_PER_ACTION, "one action banks one action's worth")
-            assert(knight.char.technique[disciplineId] == first, "onto the caster's own ledger")
-            assert(c.techniqueEarned[disciplineId] == first, "and onto the fight's ledger")
+            assert(first == Class.TECHNIQUE_PER_ACTION, "one action banks one action's worth")
+            assert(knight.char.technique[classId] == first, "onto the caster's own ledger")
+            assert(c.techniqueEarned[classId] == first, "and onto the fight's ledger")
             assert(c.techniqueAward and c.techniqueAward.unit == knight, "the floater one-shot is armed")
 
             -- PLAIN CLASS STOCK banks too -- the opening-campaign case that used to bank and float
             -- nothing at all, since only 233 of 638 item files declare a discipline and disciplines are
             -- locked content. A discipline item still banks its discipline rather than its class.
             assert(Combat.awardTechnique(c, knight, { class = "fighter" })
-                == Discipline.TECHNIQUE_PER_ACTION, "a plain class cast banks its class")
-            assert(knight.char.technique.fighter == Discipline.TECHNIQUE_PER_ACTION, "onto the same ledger")
+                == Class.TECHNIQUE_PER_ACTION, "a plain class cast banks its class")
+            assert(knight.char.technique.fighter == Class.TECHNIQUE_PER_ACTION, "onto the same ledger")
             assert(c.techniqueAward.discipline == "fighter", "and arms the same one floater")
 
             -- Run one key's battle ledger to the cap: banking stops while play carries on. The cap now
             -- bounds the level-up reading too, since they are one number.
             local guard = 0
-            while (c.techniqueEarned[disciplineId] or 0) < Discipline.TECHNIQUE_PER_BATTLE and guard < 1000 do
+            while (c.techniqueEarned[classId] or 0) < Class.TECHNIQUE_PER_BATTLE and guard < 1000 do
                 Combat.awardTechnique(c, knight, probe)
                 guard = guard + 1
             end
-            assert(c.techniqueEarned[disciplineId] == Discipline.TECHNIQUE_PER_BATTLE, "the ledger stops at the cap")
+            assert(c.techniqueEarned[classId] == Class.TECHNIQUE_PER_BATTLE, "the ledger stops at the cap")
             assert(Combat.awardTechnique(c, knight, probe) == 0, "and further casts bank nothing")
             assert(c.techniqueAward == nil, "a capped-out cast floats nothing rather than a zero")
-            assert(knight.char.technique[disciplineId] == Discipline.TECHNIQUE_PER_BATTLE,
+            assert(knight.char.technique[classId] == Class.TECHNIQUE_PER_BATTLE,
                 "the ledger never exceeds what the fight was allowed to pay")
 
             -- The cap is PER KEY, so a capped discipline does not stop a different house banking.
@@ -500,23 +502,23 @@ return {
         -- move the career title or what the next level-up will apply.
         name = "forging spends the wallet without touching the job or the class level",
         fn = function()
-            local Discipline = require("models.discipline")
+            local Class = require("models.class")
             local char = Character.instantiate("character_rowan")
             char.job = "mage"
-            Character.recordTechnique(char, "mage", Discipline.classLevelCost(3))
+            Character.recordTechnique(char, "mage", Class.classLevelCost(3))
             Character.recordTechnique(char, "knight", 20)
             local player = { roster = { char } }
 
-            local beforeLevel = Discipline.classLevel(char, "mage")
+            local beforeLevel = Class.classLevel(char, "mage")
             assert(beforeLevel == 3, "the ladder put this body at mage 3")
 
-            local billed = Discipline.spendTechnique(player, "mage", Discipline.classLevelCost(3))
+            local billed = Class.spendTechnique(player, "mage", Class.classLevelCost(3))
             assert(billed == char, "the bill came off the only holder")
-            assert(Discipline.technique(player, "mage") == 0, "the wallet fell by what was billed")
+            assert(Class.technique(player, "mage") == 0, "the wallet fell by what was billed")
 
             -- The two things a forge must never charge: what a body IS, and how far it has got.
             assert(Growth.jobOf(char) == "mage", "the declared job did not move")
-            assert(Discipline.classLevel(char, "mage") == beforeLevel,
+            assert(Class.classLevel(char, "mage") == beforeLevel,
                 "spending the whole bank left the class level exactly where it was")
         end,
     },

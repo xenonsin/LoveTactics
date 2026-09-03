@@ -12,6 +12,7 @@ return {
     flavor = "Something rendered it down and it did not finish the job. What is left has opinions about food.",
     sprite = "assets/items/rendered_hide.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_engorge" },

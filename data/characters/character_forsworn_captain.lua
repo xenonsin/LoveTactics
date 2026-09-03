@@ -6,7 +6,7 @@
 -- They are better at holding a line than anyone the player can buy it from -- which is the argument
 -- the whole line has been making, standing on the board in armor.
 --
--- A SENTINEL (data/disciplines/sentinel.lua), and the Forsworn's Elite rung (docs/bestiary.md). She
+-- A SENTINEL (data/classes/sentinel.lua), and the Forsworn's Elite rung (docs/bestiary.md). She
 -- already had the claim in her header -- "covers every adjacent ally" is Intercept stated word for
 -- word -- and carried two items, which is a Line kit. The Warden's Oath is that sentence made
 -- mechanical: the first hit each turn on anyone beside her lands on her instead, with no turn spent

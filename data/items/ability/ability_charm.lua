@@ -15,8 +15,7 @@ return {
     sprite = "assets/items/ability_charm.png",
     type = "ability",
     tags = { "guile", "utility" },
-    class = "rogue",
-    discipline = "thief", -- deeper cut of the shelf: buyable only once the thief gate is cleared
+    class = "thief", -- deeper cut of the shelf: buyable only once the thief gate is cleared
     price = 660,
     unlockQuests = 7,
     activeAbility = {

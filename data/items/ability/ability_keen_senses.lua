@@ -21,8 +21,7 @@ return {
     sprite = "assets/items/ability_keen_senses.png",
     type = "ability",
     tags = { "holy", "reaction" },
-    class = "priest",
-    discipline = "monk", -- the answer that lands before the blow: a martial reflex, not a liturgical one
+    class = "monk", -- the answer that lands before the blow: a martial reflex, not a liturgical one
     price = 410,
     unlockQuests = 4,
     traits = { "trait_keen_senses" },

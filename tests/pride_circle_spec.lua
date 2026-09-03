@@ -185,7 +185,7 @@ return {
                                   "utility_the_gallery", "utility_marginal_note", "utility_first_blade" }) do
                 local def = Item.defs[id]
                 assert(def, id .. " does not exist")
-                assert(def.noSteal and not def.price and not def.class and not def.discipline,
+                assert(def.noSteal and not def.price and def.class == "creature",
                     id .. ": nothing here is for sale -- the house has been dead four hundred years")
             end
         end,

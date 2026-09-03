@@ -1,6 +1,6 @@
 -- Vanguard exemplar (knight x rogue multiclass). Breach: knockback that strips guard / armor, opening
 -- the line. Met as a shieldbreaker turncoat, a boss. Home shelf is knight. Kit from
--- data/disciplines/vanguard.lua.
+-- data/classes/vanguard.lua.
 return {
     name = "Vanguard",
     kind = "humanoid",

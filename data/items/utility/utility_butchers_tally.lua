@@ -23,8 +23,7 @@ return {
     sprite = "assets/items/butchers_tally.png",
     type = "utility",
     tags = { "charm" },
-    class = "fighter",
-    discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
+    class = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
     price = 330,
     unlockQuests = 3,
     traits = { "trait_blood_fever" },

@@ -25,8 +25,7 @@ return {
     sprite = "assets/items/ability_bring_it_down.png",
     type = "ability",
     tags = { "impact" },
-    class = "alchemist",
-    discipline = "saboteur",
+    class = "saboteur",
     price = 410,
     unlockQuests = 4,
     activeAbility = {

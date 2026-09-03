@@ -10,8 +10,7 @@ return {
     sprite = "assets/items/swift_fist.png",
     type = "utility",
     tags = { "fist" },
-    class = "priest",
-    discipline = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
+    class = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
     price = 245,
     unlockQuests = 2,
     unarmedBonus = { hits = { 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2 } },

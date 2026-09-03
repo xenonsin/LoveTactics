@@ -26,8 +26,7 @@ return {
     sprite = "assets/items/odds_against.png",
     type = "utility",
     tags = { "charm" },
-    class = "fighter",
-    discipline = "champion", -- deeper cut of the shelf: buyable only once the champion gate is cleared
+    class = "champion", -- deeper cut of the shelf: buyable only once the champion gate is cleared
     price = 245,
     unlockQuests = 2,
     traits = { "trait_against_the_odds" },

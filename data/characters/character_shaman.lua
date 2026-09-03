@@ -1,5 +1,5 @@
 -- Shaman exemplar (hunter x mage multiclass). Spirit totems: summoned spirits bound to hazards. Met as
--- a spirit-caller, a mentor. Home shelf is hunter. Kit from data/disciplines/shaman.lua.
+-- a spirit-caller, a mentor. Home shelf is hunter. Kit from data/classes/shaman.lua.
 return {
     name = "Shaman",
     kind = "humanoid",

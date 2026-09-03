@@ -14,6 +14,7 @@ return {
     flavor = "Whatever is inside the iron was told to watch. Nobody remembers telling it what for.",
     sprite = "assets/items/utility_vigil_ward.png",
     type = "utility",
+    class = "creature",
     tags = { "dark" },
     noSteal = true, -- it is part of the vigil, not equipment
     traits = { "trait_gaunt_vigil" },

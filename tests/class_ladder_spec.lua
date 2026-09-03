@@ -4,7 +4,7 @@
 -- gate quest, or a mistagged item fails the build rather than vanishing silently.
 --
 -- Deliberately NOT asserted yet: that every `exemplar` character exists. ~27 of them are pending
--- content (see the "pending" markers in data/disciplines/*.lua) and asserting them now would fail the
+-- content (see the "pending" markers in data/classes/*.lua) and asserting them now would fail the
 -- build on work that is scheduled, not wrong -- a missing exemplar costs a quest its intended body,
 -- which is a stand-in, not a dead gate.
 --
@@ -15,7 +15,7 @@
 --
 -- Pure logic, headless.
 
-local Discipline = require("models.discipline")
+local Class = require("models.class")
 local Item = require("models.item")
 local Vendor = require("models.vendor")
 local Quest = require("models.quest")
@@ -30,17 +30,64 @@ local function questClass(questId)
     return v and v.class
 end
 
-tests[#tests + 1] = { name = "every discipline is well-formed (name, 1-2 real parents, exemplar, gate)", fn = function()
-    for id, def in pairs(Discipline.defs) do
+-- A ROOT is held from the first morning and has nothing above it, so the three things this asks of an
+-- earned class -- parents, a gate, a body who demonstrates it -- are each the wrong question to put to
+-- one. It still owes a name and a blurb, which is what the shared half below checks.
+--
+-- Split rather than skipped: a root that quietly acquired a parent, or an earned class that quietly
+-- lost one, would both read as "not the case being tested" if this simply stepped over anything with no
+-- parents. Asking each kind its own question is what keeps the fold from being a hole.
+tests[#tests + 1] = { name = "every class is well-formed: a root stands alone, an earned one has parents and a gate", fn = function()
+    for id, def in pairs(Class.defs) do
         assert(type(def.name) == "string" and def.name ~= "", id .. ": missing name")
-        local n = #(def.classes or {})
-        assert(n == 1 or n == 2, id .. ": must have 1 or 2 parent classes, has " .. n)
-        for _, c in ipairs(def.classes) do
-            assert(Item.CLASSES[c], id .. ": unknown parent class " .. tostring(c))
+
+        assert(def.classes == nil, id .. ": still carries a `classes` list -- `requires` is the one field")
+        assert(def.requiredLevel == nil, id .. ": still carries `requiredLevel` -- it is `requires` now")
+
+        if Class.isRoot(id) then
+            assert(not next(def.requires or {}),
+                id .. " is a root and must be held from the first morning, with no gate")
+            -- The creature bucket is not a career and demonstrates nothing (data/classes/creature.lua).
+            if Class.isPlayable(id) then
+                assert(type(def.exemplar) == "string" and def.exemplar ~= "", id .. ": missing exemplar")
+            end
+        else
+            local n = Class.arity(id)
+            assert(n == 1 or n == 2, id .. ": must be earned from 1 or 2 classes, requires " .. n)
+            for _, c in ipairs(Class.parents(id)) do
+                assert(Class.isRoot(c), id .. ": parent " .. tostring(c) .. " is not a root class")
+            end
+            assert(type(def.exemplar) == "string" and def.exemplar ~= "", id .. ": missing exemplar")
+            -- PARENTS AND GATE ARE ONE FIELD, so this cannot pass while the other is empty -- which is
+            -- the state thirty-two of these were in before the collapse, every one of them marked
+            -- `-- pending` (docs/class-fold.md). A crossing that named two parents and gated on one had
+            -- half a gate and no way to say so.
+            for _, level in pairs(def.requires) do
+                assert(type(level) == "number" and level > 0,
+                    id .. ": a requirement must name a level to be held at")
+            end
         end
-        assert(type(def.exemplar) == "string" and def.exemplar ~= "", id .. ": missing exemplar")
-        assert(type(def.requiredLevel) == "table" and next(def.requiredLevel), id .. ": needs requiredLevel")
     end
+end }
+
+-- THE ONE THAT KEEPS THE MARKET STOCKED. Every root is unlocked for a company that has done nothing,
+-- and if that ever stops being true the counter's rotation pool empties in silence -- Vendor.stock
+-- greys a row whose class is locked, Market.stock refuses to deal a greyed row, and nothing else in the
+-- tree would notice that the shop had gone quiet.
+--
+-- Asserted against a bare Player.new rather than a fixture, because "has done nothing" is the whole
+-- condition being pinned.
+tests[#tests + 1] = { name = "every root class is unlocked for a company that has done nothing", fn = function()
+    local Player = require("models.player")
+    local fresh = Player.new()
+    local roots = 0
+    for id in pairs(Class.defs) do
+        if Class.isRoot(id) then
+            roots = roots + 1
+            assert(Class.isUnlocked(fresh, id), id .. " is a root and is locked on a fresh save")
+        end
+    end
+    assert(roots == 8, "expected 8 roots -- the seven houses plus creature -- found " .. roots)
 end }
 
 -- A locked path COLLAPSES to its header on the shelf (ui/panels/shop.lua), so the section detail is the
@@ -49,12 +96,12 @@ end }
 -- reason the class blurbs are (tests/class_spec.lua): a stub answers nothing, and a paragraph overruns
 -- the detail column.
 tests[#tests + 1] = { name = "every discipline says what it is, in a blurb the shop can print", fn = function()
-    for id, def in pairs(Discipline.defs) do
-        local blurb = Discipline.description(id)
+    for id, def in pairs(Class.defs) do
+        local blurb = Class.description(id)
         assert(type(blurb) == "string" and #blurb >= 40, id .. ": missing description")
         assert(#blurb <= 260, id .. ": description is " .. #blurb
             .. " chars; the shop's detail column fits about 260")
-        assert(blurb == def.description, id .. ": Discipline.description must read the blueprint field")
+        assert(blurb == def.description, id .. ": Class.description must read the blueprint field")
     end
 end }
 
@@ -73,54 +120,48 @@ end }
 local SUBCLASS_GATE_FLOOR = 3
 
 tests[#tests + 1] = { name = "a subclass gates on its own parent class, at level 3 or later", fn = function()
-    for id, def in pairs(Discipline.defs) do
-        if #def.classes == 1 then
-            local parent = def.classes[1]
-            local named = 0
-            for class, level in pairs(def.requiredLevel or {}) do
+    for id, def in pairs(Class.defs) do
+        if Class.arity(id) == 1 then
+            -- The parent IS the gate's key now; there is no second field for it to disagree with, so
+            -- what is left to check is the depth (docs/class-fold.md).
+            local parent = Class.parents(id)[1]
+            for class, level in pairs(def.requires) do
                 assert(class == parent, id .. ": gates on '" .. class .. "', which is not its parent "
                     .. parent)
                 assert(level >= SUBCLASS_GATE_FLOOR, id .. ": gates at " .. parent .. " " .. level
                     .. " -- a subclass opens no earlier than level " .. SUBCLASS_GATE_FLOOR)
-                named = named + 1
             end
-            assert(named == 1, id .. ": a subclass names exactly one parent gate, found " .. named)
         end
     end
 end }
 
--- A capstone must be GATED ON ITS PARENTS. `Discipline.isUnlocked` walks them itself -- a multiclass
+-- A capstone must be GATED ON ITS PARENTS. `Class.isUnlocked` walks them itself -- a multiclass
 -- needs a subclass held in EACH parent, which is the rule that makes a crossing a crossing -- and the
 -- level gate on top of it is what makes reaching one a commitment rather than a checklist.
 --
--- The gate is asserted to name a real class rather than to name both parents: a capstone stages a
--- fusion, and either parent is a legitimate host for the level requirement (the Ninja's is the rogue
--- side, the Battlemage's the mage side). What is NOT optional is the subclass-in-each-parent rule, and
--- that lives in the model where it cannot be authored away.
-tests[#tests + 1] = { name = "a multiclass gates on a real class, and on a subclass of each parent", fn = function()
-    for id, def in pairs(Discipline.defs) do
-        if #def.classes == 2 then
+-- THE GATE NAMES BOTH ROOTS, and that is the pin the collapse was worth having. It used to name ONE --
+-- "either parent is a legitimate host for the level requirement" -- because parents and gate were
+-- separate fields and the second half of the requirement lived as an implicit rule. One field now, so
+-- a crossing that named one root would be a crossing with one parent, and every one of the twenty-one
+-- would have quietly got easier the day it was collapsed (docs/class-fold.md).
+--
+-- What is still NOT optional is the subclass-in-each-parent rule, and it still lives in the model where
+-- it cannot be authored away: two class levels is a thing a body drifts into, a subclass twice over is
+-- a thing it chose.
+tests[#tests + 1] = { name = "a crossing gates on BOTH its roots, and on a subclass of each", fn = function()
+    for id, def in pairs(Class.defs) do
+        if Class.arity(id) == 2 then
             local named = 0
-            for class, level in pairs(def.requiredLevel or {}) do
-                assert(Item.CLASSES[class], id .. ": gates on unknown class '" .. class .. "'")
+            for class, level in pairs(def.requires) do
+                assert(Class.roots()[class], id .. ": gates on unknown class '" .. class .. "'")
                 assert(level >= SUBCLASS_GATE_FLOOR, id .. ": gates at " .. class .. " " .. level)
                 named = named + 1
             end
-            assert(named >= 1, id .. ": a capstone with no level gate opens on its parents alone")
+            assert(named == 2, id .. ": a crossing must name a requirement drawn from EACH root, found "
+                .. named)
 
-            for _, parent in ipairs(def.classes) do
-                assert(#Discipline.subclassesOf(parent) >= 1,
-                    id .. ": parent '" .. parent .. "' has no subclass, so its gate can never be met")
-            end
-        end
-    end
-end }
-
-tests[#tests + 1] = { name = "a multiclass gate is satisfiable: each parent has at least one subclass", fn = function()
-    for id, def in pairs(Discipline.defs) do
-        if #def.classes == 2 then
-            for _, parent in ipairs(def.classes) do
-                assert(#Discipline.subclassesOf(parent) >= 1,
+            for _, parent in ipairs(Class.parents(id)) do
+                assert(#Class.subclassesOf(parent) >= 1,
                     id .. ": parent '" .. parent .. "' has no subclass, so its gate can never be met")
             end
         end
@@ -142,61 +183,51 @@ end }
 --
 -- Five, matching the subclasses, which have run 5-8 since their own retag pass. Two shelves stand at six
 -- (Ninja and Spellbreaker) and that is inside the range on purpose -- see docs/disciplines-plan.md.
-tests[#tests + 1] = { name = "every discipline stocks at least five buyable items", fn = function()
+--
+-- ROOTS ARE OUT, and not as an exemption. The floor is an argument about UNLOCKING: what a player is
+-- handed at the moment a gate opens, and whether it is enough to be worth having earned. A root opens
+-- nothing -- it is held from the first morning -- so there is no moment for this to measure. What a
+-- root's stock owes is a different promise, that a newcomer can be armed at all, and tests/class_spec
+-- has always been where that is kept.
+tests[#tests + 1] = { name = "every earned class stocks at least five buyable items", fn = function()
     local FLOOR = 5
     local count = {}
     for _, def in pairs(Item.defs) do
-        if def.discipline and def.price then
-            count[def.discipline] = (count[def.discipline] or 0) + 1
+        if Class.isEarned(def.class) and def.price then
+            count[def.class] = (count[def.class] or 0) + 1
         end
     end
 
     local short = {}
-    for did in pairs(Discipline.defs) do
-        local n = count[did] or 0
-        if n < FLOOR then short[#short + 1] = string.format("%s (%d)", did, n) end
+    for did in pairs(Class.defs) do
+        if not Class.isRoot(did) then
+            local n = count[did] or 0
+            if n < FLOOR then short[#short + 1] = string.format("%s (%d)", did, n) end
+        end
     end
     table.sort(short)
     assert(#short == 0, "discipline(s) below the five-item floor -- a shelf that unlocks and hands you "
         .. "one cast and two charms is not a build: " .. table.concat(short, ", "))
 end }
 
--- ...and the floor nobody was looking for. A multiclass item is stocked on BOTH parents' shelves
--- (Vendor.carries routes it by the discipline's `classes`), so a discipline whose every item sits on one
--- parent still "has stock" by the count above -- while the OTHER vendor announces the unlock and then
--- sells nothing for it. Six multiclasses were in that state; Artificer and Plague Knight each had a
--- completely empty parent.
+-- (A CASE STOOD HERE -- "a multiclass stocks at least one item on EACH parent's shelf" -- and the fold
+-- made the thing it guarded impossible rather than merely untested.
 --
--- Checked on `class`, which is where an item's home shelf is declared -- the growth tally and the
--- vendor's own rack are the same field (docs/classes.md).
-tests[#tests + 1] = { name = "a multiclass stocks at least one item on EACH parent's shelf", fn = function()
-    local byParent = {}
-    for _, def in pairs(Item.defs) do
-        if def.discipline and def.price and def.class then
-            byParent[def.discipline] = byParent[def.discipline] or {}
-            byParent[def.discipline][def.class] = true
-        end
-    end
-
-    local bare = {}
-    for did, def in pairs(Discipline.defs) do
-        if #def.classes == 2 then
-            local homes = byParent[did] or {}
-            for _, parent in ipairs(def.classes) do
-                if not homes[parent] then
-                    bare[#bare + 1] = did .. " sells nothing at " .. parent
-                end
-            end
-        end
-    end
-    table.sort(bare)
-    assert(#bare == 0, "multiclass shelf/shelves with an empty parent -- that vendor announces the "
-        .. "discipline and then stocks nothing for it: " .. table.concat(bare, ", "))
-end }
+-- What it caught: a crossing's items each declared ONE parent as `class`, their home shelf and growth
+-- tally, and were routed to the other parent's rack by the discipline's `classes`. So a crossing whose
+-- every item happened to name the same home still counted as stocked, while the other vendor announced
+-- the unlock and then sold nothing for it. Six were in that state; Artificer and Plague Knight each had
+-- a completely empty parent.
+--
+-- Why it cannot recur: there is no home parent to get wrong. An item's class IS the crossing
+-- (docs/class-fold.md), and Vendor.sells routes it to every parent of that class -- so a crossing's
+-- stock lands on both racks by construction, all of it, and the lopsided state the case named has no
+-- way to be authored. A case whose failure mode is unreachable does not fail; it passes forever and
+-- reads as coverage.)
 
 tests[#tests + 1] = { name = "no rung of a class ladder opens more than three disciplines", fn = function()
     -- IT USED TO BE ONE PER QUEST, and that was right while a house had twelve rungs to hang seven
-    -- subclasses from. The ladder is a class level now (Discipline.classLevel) and it has
+    -- subclasses from. The ladder is a class level now (Class.classLevel) and it has
     -- CLASS_LEVEL_CAP rungs for every class, with 38 disciplines spread over seven of them -- so some
     -- crowding is arithmetic rather than sloppiness.
     --
@@ -204,8 +235,8 @@ tests[#tests + 1] = { name = "no rung of a class ladder opens more than three di
     -- reward the player cannot read as one thing. Three is the ceiling, and a rung that reaches it
     -- should be a SUBJECT rather than a leftover pile.
     local counts, who = {}, {}
-    for id, def in pairs(Discipline.defs) do
-        for class, level in pairs(def.requiredLevel or {}) do
+    for id, def in pairs(Class.defs) do
+        for class, level in pairs(def.requires or {}) do
             local key = class .. " " .. level
             counts[key] = (counts[key] or 0) + 1
             who[key] = who[key] and (who[key] .. ", " .. id) or id
@@ -214,51 +245,50 @@ tests[#tests + 1] = { name = "no rung of a class ladder opens more than three di
     end
 end }
 
-tests[#tests + 1] = { name = "every discipline-tagged item's class is one of its discipline's parents", fn = function()
-    for id, item in pairs(Item.defs) do
-        if item.discipline then
-            local def = Discipline.defs[item.discipline]
-            assert(def, id .. ": unknown discipline '" .. tostring(item.discipline) .. "'")
-            local ok = false
-            for _, parent in ipairs(def.classes) do
-                if item.class == parent then ok = true; break end
-            end
-            assert(ok, id .. ": class '" .. tostring(item.class) .. "' is not a parent of discipline '"
-                .. item.discipline .. "'")
-        end
-    end
-end }
+-- (AND A SECOND CASE STOOD HERE -- "every discipline-tagged item's class is one of its discipline's
+-- parents" -- which was the tagging invariant of the two-field world: two taxonomy fields on one item
+-- could disagree, and this is what stopped them. One field cannot contradict itself. The case below
+-- is what survives of it: the field has to name something real.)
 
-tests[#tests + 1] = { name = "every discipline-tagged item resolves to a display name", fn = function()
-    -- The panels that name an item's discipline (the tooltip row, the shop shelf, the forge) all go
-    -- through Discipline.displayName, so a tagged item that fails to resolve would print nothing at
-    -- all rather than a wrong word -- silent, and exactly the kind of hole a sweep would miss.
+tests[#tests + 1] = { name = "every item's class resolves to a real class with a display name", fn = function()
+    -- The panels that name an item's class (the tooltip row, the shop shelf, the forge) all go through
+    -- the display name, so an item naming a class that does not resolve would print nothing at all
+    -- rather than a wrong word -- silent, and exactly the kind of hole a sweep would miss.
+    --
+    -- ASKED OF EVERY ITEM, not just the earned ones. Before the fold this could only check the sparse
+    -- second field, so a typo in the `class` of the six hundred items that carried only that one was
+    -- caught by nobody here.
     for id, item in pairs(Item.defs) do
-        if item.discipline then
-            local name = Discipline.displayName(item.discipline)
+        if item.class then
+            assert(Class.defs[item.class],
+                id .. ": unknown class '" .. tostring(item.class) .. "'")
+            local name = Class.displayName(item.class)
             assert(type(name) == "string" and name ~= "",
-                id .. ": discipline '" .. tostring(item.discipline) .. "' has no display name")
+                id .. ": class '" .. tostring(item.class) .. "' has no display name")
         end
     end
     -- An absent or stale id names nothing, so the label is simply skipped instead of leaking a slug.
-    assert(Discipline.displayName(nil) == nil, "no discipline names nothing")
-    assert(Discipline.displayName("not_a_discipline") == nil, "an unknown discipline names nothing")
+    assert(Class.displayName(nil) == nil, "no discipline names nothing")
+    assert(Class.displayName("not_a_discipline") == nil, "an unknown discipline names nothing")
 end }
 
-tests[#tests + 1] = { name = "growthClasses tallies the discipline itself, else the bare class", fn = function()
-    -- A discipline item grows ITS OWN path (ninja), not its parents -- each discipline has a growth
-    -- table of its own now (data/growth/ninja.lua), so a ninja build grows into a ninja.
-    local g = Discipline.growthClasses({ class = "rogue", discipline = "ninja" })
+tests[#tests + 1] = { name = "growthClasses tallies the item's one class, whatever kind of class it is", fn = function()
+    -- An earned class grows ITS OWN path (ninja), not its parents -- every class has a growth table of
+    -- its own (data/growth/ninja.lua), so a ninja build grows into a ninja.
+    local g = Class.growthClasses({ class = "ninja" })
     assert(#g == 1 and g[1] == "ninja", "a ninja item tallies the ninja growth path")
-    -- A plain classed item grows its one class.
-    local gp = Discipline.growthClasses({ class = "fighter" })
-    assert(#gp == 1 and gp[1] == "fighter", "a plain item tallies its single class")
-    -- A class-less, discipline-less item (a natural weapon, a torch) tallies nothing.
-    assert(#Discipline.growthClasses({}) == 0, "a class-less item tallies nothing")
-    -- An item whose discipline id is unknown falls through to its class rather than tallying a
-    -- growth path that has no table.
-    local gu = Discipline.growthClasses({ class = "mage", discipline = "not_a_discipline" })
-    assert(#gu == 1 and gu[1] == "mage", "an unknown discipline falls back to the class")
+    -- A root grows its one class, by the same rule rather than by a second one.
+    local gp = Class.growthClasses({ class = "fighter" })
+    assert(#gp == 1 and gp[1] == "fighter", "a root item tallies its single class")
+    -- An item with no class at all tallies nothing.
+    assert(#Class.growthClasses({}) == 0, "a class-less item tallies nothing")
+    assert(#Class.growthClasses(nil) == 0, "and nil is not a class either")
+
+    -- THE OLD CASE ALSO PINNED A FALLBACK -- `{ class = "rogue", discipline = "ninja" }` answering
+    -- ninja, and an unknown discipline id falling back to the class. Both were rules about CHOOSING
+    -- between two fields, and there is one (docs/class-fold.md). What replaces the second of them is
+    -- the case above this one: an item's class must name a real class, checked over the whole catalog
+    -- rather than papered over at the tally with a silent fallback.
 end }
 
 tests[#tests + 1] = { name = "every discipline has a growth table of its own, naming only real stats", fn = function()
@@ -273,7 +303,7 @@ tests[#tests + 1] = { name = "every discipline has a growth table of its own, na
         known[s] = true
     end
 
-    for id in pairs(Discipline.defs) do
+    for id in pairs(Class.defs) do
         local def = Growth.defs[id]
         assert(def, id .. ": no data/growth/" .. id .. ".lua -- its items would grow nothing")
         assert(next(def), id .. " growth table is empty")
@@ -290,28 +320,28 @@ tests[#tests + 1] = { name = "a newly unlocked discipline is pending at its pare
     local p = Player.new()
 
     -- Nothing done: nothing to announce anywhere.
-    assert(#Discipline.pendingAnnouncements(p, "fighter") == 0, "a fresh player has no unlocks")
+    assert(#Class.pendingAnnouncements(p, "fighter") == 0, "a fresh player has no unlocks")
 
     -- Warlord (a fighter subclass) gates on warlord_keep. Clear it, and the discipline is pending at
     -- the fighter shelf.
     -- Warlord gates on a FIGHTER class level now, not on a quest. One body standing at that rung
-    -- is what the shelf reads (Discipline.rosterLevel), so the fixture banks the career technique
+    -- is what the shelf reads (Class.rosterLevel), so the fixture banks the career technique
     -- the ladder is measured off rather than ticking a quest ledger nothing consults.
-    local warlordGate = Discipline.defs.warlord.requiredLevel.fighter
-    p.roster[1].technique = { fighter = Discipline.classLevelCost(warlordGate) }
-    local pend = Discipline.pendingAnnouncements(p, "fighter")
+    local warlordGate = Class.defs.warlord.requires.fighter
+    p.roster[1].technique = { fighter = Class.classLevelCost(warlordGate) }
+    local pend = Class.pendingAnnouncements(p, "fighter")
     local found = false
     for _, id in ipairs(pend) do if id == "warlord" then found = true end end
     assert(found, "warlord should be pending at the fighter vendor once its gate is done")
 
     -- It is not pending on an unrelated shelf.
-    for _, id in ipairs(Discipline.pendingAnnouncements(p, "priest")) do
+    for _, id in ipairs(Class.pendingAnnouncements(p, "priest")) do
         assert(id ~= "warlord", "warlord is not a priest discipline")
     end
 
     -- Announced once, it drops off -- the scene never repeats.
     Player.markDisciplineAnnounced(p, "warlord")
-    for _, id in ipairs(Discipline.pendingAnnouncements(p, "fighter")) do
+    for _, id in ipairs(Class.pendingAnnouncements(p, "fighter")) do
         assert(id ~= "warlord", "an announced discipline is no longer pending")
     end
     assert(Player.hasAnnouncedDiscipline(p, "warlord"), "the flag records the announcement")
@@ -330,22 +360,22 @@ tests[#tests + 1] = { name = "a multiclass announces at exactly one of its two p
     local body = p.roster[1]
     body.technique = {}
     for _, d in ipairs({ "warlord", "champion" }) do
-        for class, level in pairs(Discipline.defs[d].requiredLevel or {}) do
-            body.technique[class] = math.max(body.technique[class] or 0, Discipline.classLevelCost(level))
+        for class, level in pairs(Class.defs[d].requires or {}) do
+            body.technique[class] = math.max(body.technique[class] or 0, Class.classLevelCost(level))
         end
     end
     for _, parent in ipairs({ "fighter", "knight" }) do
-        for _, sub in ipairs(Discipline.subclassesOf(parent)) do
-            for class, level in pairs(Discipline.defs[sub].requiredLevel or {}) do
-                body.technique[class] = math.max(body.technique[class] or 0, Discipline.classLevelCost(level))
+        for _, sub in ipairs(Class.subclassesOf(parent)) do
+            for class, level in pairs(Class.defs[sub].requires or {}) do
+                body.technique[class] = math.max(body.technique[class] or 0, Class.classLevelCost(level))
             end
         end
     end
-    assert(Discipline.isUnlocked(p, "champion"), "champion should be unlocked by the three quests")
+    assert(Class.isUnlocked(p, "champion"), "champion should be unlocked by the three quests")
 
     -- Pending at BOTH parent shelves before it is announced.
     local function pends(class, id)
-        for _, d in ipairs(Discipline.pendingAnnouncements(p, class)) do
+        for _, d in ipairs(Class.pendingAnnouncements(p, class)) do
             if d == id then return true end
         end
         return false
@@ -369,8 +399,8 @@ tests[#tests + 1] = { name = "every vendor class has an announcement scene to pl
         if def.class then classToVendor[def.class] = id end
     end
     local parents = {}
-    for _, ddef in pairs(Discipline.defs) do
-        for _, c in ipairs(ddef.classes or {}) do parents[c] = true end
+    for did in pairs(Class.defs) do
+        for _, c in ipairs(Class.parents(did)) do parents[c] = true end
     end
     for class in pairs(parents) do
         local vendorId = classToVendor[class]
@@ -395,7 +425,7 @@ tests[#tests + 1] = { name = "a discipline-heavy build grows along the disciplin
     -- was declared as.
     local c = Character.instantiate("character_clem") -- innate rogue
     c.job = "ninja"
-    Character.recordTechnique(c, "rogue", Discipline.TECHNIQUE_PER_BATTLE)
+    Character.recordTechnique(c, "rogue", Class.TECHNIQUE_PER_BATTLE)
 
     assert(Growth.jobOf(c) == "ninja", "the declaration decides the table")
 
@@ -412,28 +442,28 @@ tests[#tests + 1] = { name = "missingParents names the crossing's unmet half, an
     p.completedQuests = {}
 
     -- Ninja is rogue x mage. With nothing done, BOTH halves are missing.
-    local missing = Discipline.missingParents(p, "ninja")
+    local missing = Class.missingParents(p, "ninja")
     assert(#missing == 2, "a fresh player is short both of Ninja's parents, got " .. #missing)
 
     -- Open every ROGUE subclass and only the rogue half is satisfied. This is the case the shop's
     -- lockReason renders as "needs a mage path (The Arcanum)" -- if this ever returned the wrong
     -- class, the shelf would point the player at the wrong building.
-    for _, def in pairs(Discipline.defs) do
-        if #(def.classes or {}) == 1 and def.classes[1] == "rogue" then
-            for class, level in pairs(def.requiredLevel or {}) do
-                for _, c in ipairs(p.roster) do c.technique = c.technique or {}; c.technique[class] = Discipline.classLevelCost(level) end
+    for id, def in pairs(Class.defs) do
+        if Class.arity(id) == 1 and Class.parents(id)[1] == "rogue" then
+            for class, level in pairs(def.requires or {}) do
+                for _, c in ipairs(p.roster) do c.technique = c.technique or {}; c.technique[class] = Class.classLevelCost(level) end
             end
         end
     end
-    missing = Discipline.missingParents(p, "ninja")
+    missing = Class.missingParents(p, "ninja")
     assert(#missing == 1 and missing[1] == "mage",
         "only the mage half should remain, got " .. table.concat(missing, ","))
 
     -- A SUBCLASS has no parent requirement of its own, so it never reports one -- its gate is its
     -- own quest, which is a different sentence in the panel.
-    assert(#Discipline.missingParents(p, "assassin") == 0, "a subclass has no parents to be short of")
-    assert(#Discipline.missingParents(p, nil) == 0, "an absent id is not an error")
-    assert(#Discipline.missingParents(p, "not_a_discipline") == 0, "nor is an unknown one")
+    assert(#Class.missingParents(p, "assassin") == 0, "a subclass has no parents to be short of")
+    assert(#Class.missingParents(p, nil) == 0, "an absent id is not an error")
+    assert(#Class.missingParents(p, "not_a_discipline") == 0, "nor is an unknown one")
 end }
 
 tests[#tests + 1] = { name = "every class maps to the house that sells it, and the Forge agrees", fn = function()
@@ -441,7 +471,7 @@ tests[#tests + 1] = { name = "every class maps to the house that sells it, and t
     local Forge = require("models.forge")
     local Item = require("models.item")
 
-    for class in pairs(Item.CLASSES) do
+    for class in pairs(Class.roots()) do
         local id = Vendor.forClass(class)
         assert(id, class .. " has no house")
         assert((Vendor.get(id) or {}).class == class, "the house " .. tostring(id) .. " sells " .. class)

@@ -28,15 +28,15 @@
 
 local Item = require("models.item")
 local Grade = require("models.grade")
-local Discipline = require("models.discipline")
+local Class = require("models.class")
 
 local M = {}
 
 -- The deepest tier a find can carry, which is the class ladder's own height so that "how deep am I" and
--- "how far into a class am I" are quoted in one unit. Read off Discipline rather than typed, so
+-- "how far into a class am I" are quoted in one unit. Read off Class rather than typed, so
 -- re-cutting the ladder moves this with it.
 local function tiers()
-    return Discipline.CLASS_LEVEL_CAP
+    return Class.CLASS_LEVEL_CAP
 end
 
 local function hasTag(def, tag)

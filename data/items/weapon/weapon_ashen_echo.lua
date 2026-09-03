@@ -23,6 +23,7 @@ return {
     flavor = "It has no opinions of its own. It has an excellent memory for other people's.",
     sprite = "assets/items/ashen_echo.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "impact", "physical", "melee" },
     noSteal = true,
     activeAbility = {

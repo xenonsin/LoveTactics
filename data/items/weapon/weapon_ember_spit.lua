@@ -13,6 +13,7 @@ return {
     flavor = "It has one idea, it is not a good one, and it will have it right up until the end.",
     sprite = "assets/items/ember_spit.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "fire", "magical", "ranged" },
     noSteal = true,
     activeAbility = {

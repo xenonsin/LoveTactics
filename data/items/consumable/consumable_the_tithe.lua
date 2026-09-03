@@ -21,8 +21,7 @@ return {
     type = "consumable",
     -- No `potion` tag -- see Borrowed Hands: the Cafe resells that tag and ignores standing.
     tags = { "elixir" },
-    class = "alchemist",
-    discipline = "apothecary",
+    class = "apothecary",
     price = 65,
     unlockQuests = 1,
     maxStack = 3,

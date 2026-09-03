@@ -99,6 +99,25 @@ function love.load(args)
         return
     end
 
+    -- The class fold: `& "E:\LOVE\lovec.exe" . class-fold [creature] [apply]`
+    -- Collapses `class` and `discipline` onto one taxonomy of 46 classes -- the default pass moves an
+    -- item's discipline into its class, `creature` buckets the kit that belongs to no job. Dry run by
+    -- default. See docs/class-fold.md and tools/class_fold.
+    if args and args[1] == "class-fold" then
+        require("tools.class_fold").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
+    -- ...and its last step: `& "E:\LOVE\lovec.exe" . class-rename [apply]`
+    -- The module and folder that own the 46 classes stop being called disciplines. No behaviour.
+    -- Dry run by default. See tools/class_rename.
+    if args and args[1] == "class-rename" then
+        require("tools.class_rename").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
     -- Balance rescale: `& "E:\LOVE\lovec.exe" . balance-rescale [N] [apply]`
     -- Brings blueprint magnitudes into the band tests/balance_spec.lua enforces, in four passes
     -- (armour, defense, attack, mirror). Dry run by default. See tools/balance_rescale.

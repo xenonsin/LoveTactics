@@ -7,8 +7,7 @@ return {
     sprite = "assets/items/cleansing_ward.png",
     type = "utility",
     tags = { "ward" },
-    class = "priest",
-    discipline = "exorcist", -- deeper cut of the shelf: buyable only once the exorcist gate is cleared
+    class = "exorcist", -- deeper cut of the shelf: buyable only once the exorcist gate is cleared
     price = 330,
     unlockQuests = 3,
     traits = { "trait_cleansing_ward" },

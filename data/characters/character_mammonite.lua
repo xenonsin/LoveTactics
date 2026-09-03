@@ -1,7 +1,7 @@
 -- Mammonite exemplar (rogue subclass). The purse: gold is a combat resource in both directions -- coin
 -- buys damage, tempo and your own skin, and every blow banks more of it. Met at Quarter-End
 -- (data/quests/undercroft/quest_undercroft_slot_06.lua) as a rival contractor working the same list, a
--- recruit. Kit from data/disciplines/mammonite.lua.
+-- recruit. Kit from data/classes/mammonite.lua.
 --
 -- WHO IT IS. Not a robber and not a killer -- a contractor. The Bank closes its books on quarter-end
 -- night, hires out the overflow at a posted rate, and this is the professional who has been doing that

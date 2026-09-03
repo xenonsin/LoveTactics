@@ -22,8 +22,7 @@ return {
     sprite = "assets/items/sig_patient_line.png",
     type = "utility",
     tags = { "signature", "primal" },
-    class = "hunter",
-    discipline = "trapper",
+    class = "trapper",
     activeAbility = {
         target = "self",
         range = 0,

@@ -9,6 +9,7 @@ return {
     flavor = "The mountain stays where it is. So, mostly, does the thing that is made of it.",
     sprite = "assets/items/stone_fists.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "impact", "physical", "melee" },
     noSteal = true,
     activeAbility = {

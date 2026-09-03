@@ -10,6 +10,7 @@ return {
     flavor = "The construct is frail and hits softly. The toxin does the work, and it has nothing but time.",
     sprite = "assets/items/homunculus_fists.png",
     type = "weapon",
+    class = "creature",
     tags = { "natural", "poison", "physical", "melee" },
     noSteal = true,
     activeAbility = {

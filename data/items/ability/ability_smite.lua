@@ -11,8 +11,7 @@ return {
     sprite = "assets/items/ability_smite.png",
     type = "ability",
     tags = { "holy", "impact" },
-    class = "priest",
-    discipline = "crusader", -- fighter x priest; the Smite mechanic's first stock
+    class = "crusader", -- fighter x priest; the Smite mechanic's first stock
     price = 660,
     unlockQuests = 7,
     activeAbility = {

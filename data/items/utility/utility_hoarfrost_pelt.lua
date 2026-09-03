@@ -7,6 +7,7 @@ return {
     flavor = "Whatever the cold wanted from it, it got, and then it kept the animal as well.",
     sprite = "assets/items/hoarfrost_pelt.png",
     type = "utility",
+    class = "creature",
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_conduction" },

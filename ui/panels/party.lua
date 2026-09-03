@@ -40,7 +40,7 @@ local Identify = require("models.identify")
 local Item = require("models.item")
 local Combat = require("models.combat") -- for Combat.unpayableCosts: the equip-time affordability warning
 local Growth = require("models.growth")
-local Discipline = require("models.discipline")
+local Class = require("models.class")
 local Debug = require("models.debug")
 local Scale = require("scale")
 local Theme = require("ui.theme")
@@ -168,13 +168,13 @@ local function pointIn(r, x, y)
     return x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
 end
 
--- A ledger key in words. The key is a class id OR a discipline id (Discipline.growthClasses banks a
+-- A ledger key in words. The key is a class id OR a discipline id (Class.growthClasses banks a
 -- discipline item under the discipline), so the discipline name is tried first and title-casing is only
 -- the fallback -- "plague_knight" is "Plague Knight", which title-casing alone would render
 -- "Plague_knight". The same rule states/battle.lua applies to the technique floater.
 local function classLabel(class)
     if not class then return "?" end
-    return Discipline.displayName(class) or (class:gsub("^%l", string.upper))
+    return Class.displayName(class) or (class:gsub("^%l", string.upper))
 end
 
 -- The job this member is DECLARED in, as the words the sheet prints. Never empty: an undeclared body
@@ -195,7 +195,7 @@ end
 --
 -- The other half of the pair, and deliberately a different question from the job above. The job is what
 -- the player declared and is what stat growth is taken from; this is what the body has actually been
--- swinging, read off cumulative technique (Discipline.classLevel). A body declared knight while casting
+-- swinging, read off cumulative technique (Class.classLevel). A body declared knight while casting
 -- mage gear shows "Knight" on its title line and a Mage level in this list, and both are true.
 --
 -- `held`/`needed` are the position within the CURRENT rung, so a bar can be drawn without the caller
@@ -209,7 +209,7 @@ function Party.classRows(char)
 
     local rows = {}
     for key in pairs(char.technique or {}) do
-        local held, needed, level = Discipline.classProgress(char, key)
+        local held, needed, level = Class.classProgress(char, key)
         rows[#rows + 1] = { key = key, name = classLabel(key), level = level,
                             held = held, needed = needed }
     end
@@ -254,7 +254,7 @@ end
 -- needs none of that.
 --
 -- NOT THE CAREER TOTAL. `char.technique` is cumulative and no decision reads it; this is the figure the
--- Forge actually bills. Per-body on purpose even though Discipline.techniqueHolder bills the roster's
+-- Forge actually bills. Per-body on purpose even though Class.techniqueHolder bills the roster's
 -- STRONGEST holder rather than any particular character: this sheet is where you find out who that is.
 --
 -- A CLASS key has no discipline blueprint and is title-cased; a discipline uses its display name, so a
@@ -649,7 +649,7 @@ end
 -- Does `item` survive the active filter strip? An item passes a group when that group either isn't a
 -- view filter (no `valueOf` -- the debug editor's groups filter by rebuilding the catalog instead) or
 -- has nothing picked, OR the item's value for the group is one of the picked options. It must pass
--- EVERY group, so "Weapon: sword" + "Discipline: duelist" narrows to swords that are also duelist gear.
+-- EVERY group, so "Weapon: sword" + "Class: duelist" narrows to swords that are also duelist gear.
 function Party:passesFilters(item)
     if not self.filters then return true end
     for _, f in ipairs(self.filters) do

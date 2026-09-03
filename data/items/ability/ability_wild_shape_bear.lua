@@ -23,8 +23,7 @@ return {
     sprite = "assets/items/ability_wild_shape_bear.png",
     type = "ability",
     tags = { "primal", "illusion", "utility" },
-    class = "hunter",
-    discipline = "druid", -- deeper cut of the shelf: buyable only once the druid gate is cleared
+    class = "druid", -- deeper cut of the shelf: buyable only once the druid gate is cleared
     price = 660,
     unlockQuests = 7,
     activeAbility = {
