@@ -556,6 +556,14 @@ local function markerColor(kind, enc)
         if r then return r, g, b end
         return 0.95, 0.75, 0.20
     end
+    -- THE WARD wears COLD IRON, and it is the one plate on this board picked by elimination rather than
+    -- by meaning. Gold is spent and may not be lent even to the body standing in front of the gold; the
+    -- stair's violet belongs to the DOOR and a body is not a door; every warm hue out here already means
+    -- either a fight or a gift. What is left is armour, which is at least what a lieutenant holding a
+    -- stair is wearing. Banked dark and properly saturated so it is never read as one of the ways out --
+    -- the ascent and the crossroads are both pale grey-blues up near white -- and it carries the combat
+    -- border neither of those ever does, so steel inside a red ring is only ever this.
+    if kind == "ward" then return 0.42, 0.60, 0.82 end
     if kind == "elite" then return 0.95, 0.55, 0.15 end
     if kind == "town" then return 0.85, 0.85, 0.90 end
     if kind == "treasure" then return 0.35, 0.80, 0.55 end
@@ -619,6 +627,27 @@ function MarkerIcon.objective(x, y, w, h, r, g, b, a)
     love.graphics.line(x + w * 0.22, y, x + w * 0.22, y + h)
     love.graphics.setLineWidth(1)
     love.graphics.polygon("fill", x + w * 0.22, y, x + w, y + h * 0.22, x + w * 0.22, y + h * 0.44)
+end
+
+-- A BARRED SHIELD: the body holding the stair shut. Deliberately NOT the pennant with something added
+-- to it -- the pennant says "the end of the floor is here" and this says "and here is what is in the
+-- way of it", which is a different sentence and gets a different silhouette. A shield reads as a body
+-- under arms at sixteen pixels where a helm or a weapon does not, and the bar across it is the rest of
+-- the sentence: nothing goes down until this goes down (states/game.lua reads `wardFor` for the gate).
+--
+-- The bar is the plate's own colour DARKENED rather than cut out of the shield, so it survives a cleared
+-- marker's 0.3 alpha -- a hole would fill with whatever the tile underneath happens to be.
+function MarkerIcon.ward(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    -- A heater shield: square across the shoulders, tapering to a point.
+    love.graphics.polygon("fill",
+        x + w * 0.10, y + h * 0.06,
+        x + w * 0.90, y + h * 0.06,
+        x + w * 0.90, y + h * 0.52,
+        x + w * 0.50, y + h,
+        x + w * 0.10, y + h * 0.52)
+    love.graphics.setColor(r * 0.30, g * 0.30, b * 0.30, a)
+    love.graphics.rectangle("fill", x, y + h * 0.40, w, h * 0.17, 1, 1)
 end
 
 -- A POSTED WRIT: the piece of work somebody asked for. A campaign ground's quest, a house's errand, the
@@ -865,7 +894,19 @@ end
 -- The discriminator was already on the cell: a spec that belongs to a piece of work carries the id of
 -- that work (`questId`), and the board's own end carries nothing. A campaign ground, where every end IS
 -- a quest, therefore draws writs across the board and no pennant at all -- which is the truth about it.
+--
+-- AND THE SECOND SPLIT IS THE WARD, made here for the same reason and off the same sort of mark. A
+-- circle that bars its stair with a body (Descent.GATES' `ward`) seats TWO ends carrying no questId --
+-- the guard on the way down and the lieutenant standing in front of her -- and until this test existed
+-- they drew the same gold pennant on the same floor with nothing anywhere saying which was which. The
+-- ward is not on the checklist either (game:worklist is quests only) and names nothing on hover
+-- (hoveredWork wants a questId), so the map was the only surface that could have told them apart and it
+-- was drawing them identical. The player found out by walking into one and being told the gate held.
+--
+-- `wardFor` is the discriminator the model already carries (models/descent.lua), and it is asked FIRST:
+-- a ward is stamped `objective` like every other end, so the pennant below would swallow it.
 local function markerKind(enc)
+    if enc and enc.wardFor then return "ward" end
     if enc and enc.kind == "objective" and enc.questId then return "quest" end
     return enc and enc.kind
 end
