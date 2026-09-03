@@ -1,7 +1,8 @@
 -- Loadout pop-up panel: arrange each roster member's 3x3 item grid, where item POSITIONING drives
 -- adjacency auras/boosts/requirements (ui/adjacency_links.lua) -- that's the point of this screen, so
--- the grid gets a legend. A scrollable portrait rail runs down the LEFT, then the focused member's
--- portrait + stats, then that member's grid, then the shared stash (ui/pool_grid.lua).
+-- the grid gets a legend. A scrollable portrait rail runs down the LEFT -- the only place a member's
+-- face is drawn -- then the focused member's name + stats, then that member's grid, then the shared
+-- stash (ui/pool_grid.lua).
 -- Buying and selling live on the separate shop screen (ui/panels/shop.lua); this screen never touches
 -- gold.
 --
@@ -1808,33 +1809,20 @@ function Party:drawRailPortrait(char, i, rx, ry, rw, rh)
     end
 end
 
--- Focus sheet: the selected member's big portrait, name, and stats (two per row).
+-- Focus sheet: the selected member's name and stats (two per row).
+--
+-- NO PORTRAIT. The sheet used to open with a 168px picture of the member, sitting a column away from
+-- that same member's portrait on the rail, already ringed in amber to say it is the one being edited.
+-- One face, said twice, for a third of the column's height -- the stats and the technique ledger get
+-- that room instead.
 function Party:drawFocus()
     local char = self:currentChar()
     if not char then return end
     local x, y = self.focusX, self.boxY + 96
 
-    local ps = 168
-    local px = x + (self.focusW - ps) / 2
-    Theme.set(Theme.slot)
-    love.graphics.rectangle("fill", px, y, ps, ps, 8, 8)
-    local sprite = char.sprite
-    if type(sprite) == "userdata" then
-        love.graphics.setColor(1, 1, 1)
-        local sw, sh = sprite:getDimensions()
-        local scale = math.min((ps - 12) / sw, (ps - 12) / sh)
-        love.graphics.draw(sprite, px + ps / 2, y + ps / 2, 0, scale, scale, sw / 2, sh / 2)
-    else
-        love.graphics.setFont(self.titleFont)
-        Theme.set(Theme.ink)
-        love.graphics.printf((char.name or "?"):sub(1, 1), px, y + ps / 2 - 18, ps, "center")
-    end
-    Theme.set(Theme.frame)
-    love.graphics.rectangle("line", px, y, ps, ps, 8, 8)
-
     love.graphics.setFont(self.headFont)
     Theme.set(Theme.ink)
-    love.graphics.printf(char.name or "?", x, y + ps + 6, self.focusW, "center")
+    love.graphics.printf(char.name or "?", x, y, self.focusW, "center")
 
     -- Level + the class this body stands in, which is the one thing its stat growth is taken from
     -- (Growth.classOf). The clause used to name whichever house led a ranking of what the member had
@@ -1846,7 +1834,7 @@ function Party:drawFocus()
     love.graphics.setFont(self.smallFont)
     local heading = "Lv " .. tostring(char.level or 1)
     local clause = "  -  " .. Party.declaredClassLabel(char)
-    local hy = y + ps + 30
+    local hy = y + 24
     self.growthRect = nil
     if clause then
         -- Only the clause is the handle, not the "Lv 4" beside it, so the rect is measured off the
@@ -1880,7 +1868,7 @@ function Party:drawFocus()
 
     -- Stats, two per row. Each row's rect is stashed for the source tooltip (Party:statAt).
     love.graphics.setFont(self.bodyFont)
-    local sy = y + ps + 56
+    local sy = y + 50
     local colW = self.focusW / 2
     local rowH = self.bodyFont:getHeight()
     local n = 0
