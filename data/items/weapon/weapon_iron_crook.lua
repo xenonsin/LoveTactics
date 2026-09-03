@@ -30,6 +30,7 @@ return {
     -- (data/status/status_freeze.lua) -- so a mage's own Ice Bolt sets up its own staff.
     tags = { "staff", "impact", "physical", "melee" },
     class = "mage",
+    dropTier = 4,
     waitBehavior = {
         kind = "focus",
         mana = Curve.ramp(8, 18), -- a plain staff's: nothing traded here

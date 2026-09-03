@@ -212,7 +212,7 @@ function Shop:buildErrandRows()
     local open = Errand.open(self.player)
 
     for _, e in ipairs(open) do
-        if e.def and e.def.sponsor == self.vendorId then
+        if e.def then
             self.rows[#self.rows + 1] = {
                 errand = e,
                 label = "Floor " .. e.floor .. "  -  " .. (e.def.name or e.id),
@@ -222,26 +222,19 @@ function Shop:buildErrandRows()
     end
 
     if #self.rows == 0 then
-        -- WHY there is nothing here, which is three different situations and only one of them is "done".
-        -- A house with nothing to ask reads identically to one you have not been deep enough for, and
-        -- the player can do something about exactly one of those.
-        local done = Errand.done(self.player, self.vendorId)
-        local nextId = Errand.next(self.player, self.vendorId)
-        local text
-        if not nextId then
-            text = "You have run everything this house has to ask for."
-        else
-            text = "Nothing outstanding. They will ask again once you have been as deep as floor "
-                .. Errand.floorFor(self.player, self.vendorId) .. "."
-        end
-        -- Not rows. A Menu row is one line of a fixed height (ui/menu.lua) and this is a sentence --
-        -- put through the list it wrapped inside its own plate and printed straight over the tally
+        -- WHY there is nothing here, and there is only one answer now rather than three. Shops used to
+        -- ask for work themselves -- a house had a line, and this tab had to distinguish "you have run
+        -- it all" from "they will ask again once you have been deeper", because the player could act on
+        -- exactly one of those. Nobody behind a counter asks for anything any more; the only asks in the
+        -- game are the seven a companion makes on a floor (models/errand.lua), and this tab is the list
+        -- of the ones you are carrying.
+        --
+        -- Not rows. A Menu row is one line of a fixed height (ui/menu.lua) and this is a sentence -- put
+        -- through the list it wrapped inside its own plate and printed straight over the tally
         -- underneath it. The panel already has a place for prose with nothing behind it: the empty
         -- state, which wraps and stacks (Shop:draw).
-        self.errandNote = text
-        self.errandTally = done > 0
-            and (done .. (done == 1 and " errand run for them." or " errands run for them."))
-            or nil
+        self.errandNote = "Nobody is waiting on you. What there is to do is down the stair."
+        self.errandTally = nil
     end
 end
 

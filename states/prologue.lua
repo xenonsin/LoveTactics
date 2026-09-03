@@ -309,6 +309,158 @@ function prologue.enter()
 end
 
 -- ---------------------------------------------------------------------------
+-- Skipping Act 0 (debug)
+-- ---------------------------------------------------------------------------
+
+-- WHAT THE PROLOGUE IS WORTH, HANDED OVER WITHOUT PLAYING IT. The debug column's "Skip Prologue"
+-- (states/menu.lua) starts a New Game and opens the city directly, which means every beat above still
+-- has to pay: the hub is met by a company that has been through Act 0 -- two bodies at level 4 carrying
+-- a road's worth of kit -- and a level-1 pair with an empty stash reads as a broken city rather than a
+-- skipped prologue.
+--
+-- DERIVED WHERE IT CAN BE. The two abilities Rowan hands over mid-fight, the chests, the loot the two
+-- objective lessons carry and the rescue purse are all read off their own sources -- the village
+-- lesson's steps, FLIGHT_QUEST, the encounter blueprints -- so a beat that gives one more thing gives
+-- it here without this function being touched. Two things are authored, because the data cannot say
+-- them: the gifts the "Choose..." stops hand over (each is a branch), and the experience (a figure
+-- models/experience.lua states in prose). tests/prologue_skip_spec.lua pins both against their sources.
+--
+-- WHAT IT DOES NOT HAND OVER is the rolled half of a fight's spoils -- band loot and salvage. Those are
+-- a roll rather than something the player was ever "supposed to receive", and the authored lists are
+-- what the road was written to give. The GOLD is paid, through Spoils' own arithmetic: a hub is a row
+-- of shops, and arriving at them on the starting purse is the one difference that would make the
+-- skipped city play differently from the walked-into one.
+
+-- The two gifts the flight's "Choose..." stops hand over, as { item, from }. Authored rather than read
+-- out of the scenes because each of those options is a TRADE -- the shrine's rite against a heal, the
+-- survivor's lens against a mark -- so nothing in the data says which branch the stop exists to teach.
+-- These are the two the route's own comments name: priest at stop 2, alchemist at stop 4.
+prologue.SCENE_GIFTS = {
+    { item = "ability_renewal",      from = "conversation_flight_event_shrine" },
+    { item = "ability_assayers_eye", from = "conversation_flight_event_survivor" },
+}
+
+-- ...and the flags those same choices set. Both of the survivor's branches set this one, so taking it
+-- says nothing about which was chosen.
+prologue.SCENE_FLAGS = { "met_the_survivor" }
+
+-- What Act 0's four fights pay a body. models/experience.lua states the figure from the other end --
+-- "the prologue's four fights pay a two-body company around eighty a head, which is level 4 here" --
+-- and this is that sentence as a number, so a skipped company stands at the Gate on the level a played
+-- one does rather than three below the danger the first floor fights at.
+prologue.SKIP_XP = 80
+
+-- Apply everything Act 0 grants to `player`, in the order the beats grant it, and leave the city in
+-- free play. Called INSTEAD of prologue.begin -- this state never runs.
+function prologue.skip(player)
+    local Experience = require("models.experience")
+    local Encounter = require("models.encounter")
+    local Spoils = require("models.spoils")
+    local Conversation = require("models.conversation")
+    local Tutorial = require("models.tutorial")
+    local Item = require("models.item")
+
+    -- The avatar, built exactly as begin() builds it: the typed name and chosen body when character
+    -- creation ran, the blueprint's own "Stranger" and body 1 when it did not -- the skip does not stop
+    -- to ask, which is the whole point of it.
+    local avatar = Character.instantiate("character_avatar")
+    if player.name then avatar.name = player.name end
+    prologue.avatar = avatar
+    player.roster = { avatar }
+    Player.applyAvatarBody(player)
+
+    -- Rowan, sworn in the ash of Bellmere.
+    Player.recruit(player, "character_rowan")
+    -- ...and her join banner dropped on the floor. Player.recruit queues "[Rowan has joined your Party]"
+    -- for the next scene to play (models/conversation.lua), and the scene it belongs to -- "Ashes" -- is
+    -- one of the ones being skipped. Left queued it would fold onto whatever the city opens first, which
+    -- is a vendor's greeting three buildings later.
+    local joins = Conversation.pendingJoins
+    for i = #joins, 1, -1 do joins[i] = nil end
+
+    -- WHAT ROWAN HANDS OVER IN THE VILLAGE LANE, which is the one part of Act 0 that does not land in the
+    -- stash. The village lesson gives the avatar Clear Out and then Jolt mid-fight (`grant` on a step,
+    -- data/tutorials/village.lua), straight into the grid -- "it stays there after the battle, the art
+    -- is the avatar's now, not a prop" -- and states/battle.lua puts them there with Character.addItem
+    -- rather than Player.grantItem. So they go on the BODY here too: a skip that filed them in the
+    -- stash would open the city with an avatar whose grid is the two blueprint items and nothing the
+    -- prologue taught.
+    --
+    -- Read off the lesson itself, step by step, so a lesson that hands over a third thing hands it over
+    -- here as well. `actor` names who receives it -- both of the village's are the avatar's, but the
+    -- field is what the battle reads and this has no business assuming.
+    local lesson = Tutorial.defs[VILLAGE_MAP.tutorial]
+    for _, step in ipairs((lesson and lesson.steps) or {}) do
+        if step.grant then
+            for _, char in ipairs(player.roster) do
+                if char.id == step.actor then
+                    local held = false
+                    for _, item in ipairs(Character.eachItem(char)) do
+                        if item.id == step.grant then held = true end
+                    end
+                    -- A full grid refuses, exactly as the lesson's own grant does; nothing in Act 0
+                    -- fills one, so this is a guard rather than a case.
+                    if not held then Character.addItem(char, Item.instantiate(step.grant)) end
+                end
+            end
+        end
+    end
+
+    -- Every stop's authored loot: the two teaching chests, and the class abilities the two objective
+    -- lessons are won with. Read off the route rather than re-listed here.
+    local stops = FLIGHT_QUEST.map.encounters.always
+    for _, stop in ipairs(stops) do
+        for _, id in ipairs(stop.loot or {}) do Player.grantItem(player, id) end
+    end
+
+    -- The gifts the two scenes press on you, and the flag they set.
+    for _, gift in ipairs(prologue.SCENE_GIFTS) do Player.grantItem(player, gift.item) end
+    player.flags = player.flags or {}
+    for _, flag in ipairs(prologue.SCENE_FLAGS) do player.flags[flag] = true end
+
+    -- What the road pays for the fighting. Each combat stop rolls its gold through the same arithmetic
+    -- the fight would have (Spoils.roll at day 1 -- Act 0 is played before the calendar starts), and a
+    -- stop that prices its charges PER HEAD pays for all of them: models/encounter_battle.lua counts the
+    -- ones still standing, and a skip hands over the run where everybody walked out.
+    local function payFight(count)
+        Player.addGold(player, Spoils.roll({ count = count, day = 1 }).gold)
+    end
+    for _, stop in ipairs(stops) do
+        local def = Encounter.defs[stop.id]
+        if def and def.composition then
+            payFight(#def.composition({ day = 1 }))
+            local rescue = def.rescue
+            if rescue then
+                local heads = #(def.allies or {})
+                Player.addGold(player, (rescue.gold or 0) * heads)
+                for _ = 1, heads do
+                    for _, id in ipairs(rescue.loot or {}) do Player.grantItem(player, id) end
+                end
+            end
+        end
+    end
+    -- ...and the champion at the end of the trail, whose fight is the map's objective rather than a stop.
+    payFight(#FLIGHT_QUEST.map.objective.composition({ day = 1 }))
+
+    -- The experience those fights pay, resolved into levels through Growth exactly as a won fight
+    -- resolves it (states/game.lua's post-fight seam). Awarded after the recruit, so Rowan is not handed
+    -- the median of a company that has not earned anything yet.
+    for _, char in ipairs(player.roster) do
+        Experience.award(char, prologue.SKIP_XP)
+        Experience.resolve(char)
+    end
+
+    -- Stop 7 is a plain rest, so the company reaches the gate whole.
+    Player.restore(player)
+
+    -- ...and the city opens in FREE PLAY. begin() sets `hubIntro = "arrival"`, which plays the guard and
+    -- the sponsor over the plaza and then shuts every door but the Gate until they have been read
+    -- (states/hub.lua). That staging is the tail of the first-time experience this button exists to get
+    -- past, so it is not set: the skip lands in the city a played prologue leaves behind.
+    player.hubIntro = nil
+end
+
+-- ---------------------------------------------------------------------------
 -- Callbacks
 -- ---------------------------------------------------------------------------
 

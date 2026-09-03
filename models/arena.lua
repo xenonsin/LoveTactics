@@ -34,10 +34,12 @@ Arena.ROWS = 8
 Arena.TILE_SIZE = 64 -- logical pixels per cell (8*64 = 512, centered in 1280x720)
 
 -- Arena tile palette. NO LONGER DISTINCT from the overworld's types -- both are views onto
--- models/terrain.lua, because a fight is taken on an 8x8 window of the map's own tiles and the two
--- layers cannot hold different opinions about the same ground (docs/overworld.md, one map). Kept under
--- this name because a dozen callers, four curated arenas and three specs read `Arena.TILE_PROPS`, and
--- the merge should not also be a rename of everything that consumed the merged thing.
+-- models/terrain.lua. The merge was made when a fight was cut straight out of the map and the two
+-- layers could not be allowed to hold different opinions about the same tile; the board is built for
+-- the fight again, and the merge is kept anyway, because "river" meaning one thing everywhere is worth
+-- having on its own and two tables drifting apart was never the good version. Kept under this name
+-- because a dozen callers, four curated arenas and three specs read `Arena.TILE_PROPS`, and the merge
+-- should not also be a rename of everything that consumed the merged thing.
 --
 -- The property documentation now lives with the table, in models/terrain.lua. In summary:
 --   * moveCost  -- terrain-weighted enter cost (Dijkstra reach + timeline; see models/combat.lua)
@@ -77,26 +79,26 @@ function Arena.terrainFor(biome)
     return Arena.BIOME_TERRAIN[biome or "default"] or Arena.BIOME_TERRAIN.default
 end
 
--- HOW THE GROUND A FIGHT IS TAKEN ON ARRANGES WHAT THE BIOME IS MADE OF -- deleted, because the
--- question stopped being asked.
+-- WHAT THE GROUND OUTSIDE DOES TO THE BOARD: nothing but name the biome, and that is the whole of it.
 --
--- There was a careful mechanism here for GUESSING what the ground was: Overworld:groundAt voted over a
--- 5x5 neighbourhood to name a tile a crossing or a rock field or open grass, and GROUND_PROFILES picked
--- scatter ranges so a rolled board would resemble it. A fight beside water got a channel down one flank;
--- a crossing got a channel across the middle with a single free ford.
+-- Two mechanisms have stood here and both are gone. The first GUESSED at the ground: Overworld:groundAt
+-- voted over a 5x5 neighbourhood to name a tile a crossing or a rock field or open grass, and
+-- GROUND_PROFILES picked scatter ranges so a rolled board would resemble it. The second stopped guessing
+-- and cut the fight straight out of the map (Arena.fromGrid) -- the thicket that walled the trail was the
+-- thicket you fought around, the river was the river.
 --
--- A campaign fight is taken on the map's own tiles now (Arena.fromGrid), so the resemblance became the
--- thing: the channel down the flank IS the river, in the place it runs. What the profiles were for is
--- done by the terrain being where it is.
+-- THE BOARD IS BUILT FOR THE FIGHT, not inherited from the country around it. What the map window bought
+-- in continuity it paid for in shape: the ground you happen to be standing on when something finds you is
+-- not an arena, and a board cut from it is a defile as often as a hall. So a campaign fight rolls or
+-- picks a board like every other fight does (Arena.pickLayout), and the only thing the overworld still
+-- says about it is the BIOME -- which tile the fill, the rise and the blocker are made of
+-- (Arena.BIOME_TERRAIN). Tundra fights on ice, volcanic fights around lava, and both of them fight on
+-- ground that was shaped to be fought on.
 --
--- One guarantee genuinely died with them and was rehomed rather than lost: `band = "cross"` promised a
+-- One guarantee died with the profiles and was rehomed rather than lost: `band = "cross"` promised a
 -- crossing exactly one free ford, tuned so the board could never be cut in half. That promise now
 -- belongs to whichever layout lays the water -- models/layouts/floes.lua guarantees the fords when it
 -- cuts the tundra's leads, which is the same rule made of real water.
---
--- The boardless callers -- a draft match, a duel, the menu's mock, the debug harness -- never passed a
--- ground at all, so they always drew the `path` ranges. Those ranges are inlined into generateLayout
--- below, and their boards are unchanged.
 
 -- Default objective when an encounter/quest doesn't specify one.
 local DEFAULT_OBJECTIVE = { type = "killAll" }
@@ -180,18 +182,16 @@ Arena.CAP_BY_KIND = { combat = Arena.SKIRMISH_CAP, elite = Arena.ELITE_CAP, pack
 -- guard the circle gave it (models/descent.lua's floorObjectives).
 Arena.UNCAPPED_KINDS = { elite = true }
 
--- How many tiles of standing room one enemy is worth. The board a fight is now taken on is a window of
--- the map rather than a fixed rectangle, so a defile and a hall no longer field the same number: this
--- converts the walkable ground the box actually holds into a ceiling. Floored at 2, because an encounter
--- that resolves to a single body is not a fight the player can lose, and a board too thin to hold two is
--- a board the generator was told not to seat a fight on anyway (Overworld.BOX_OK).
-local TILES_PER_ENEMY = 6
-local MIN_CAP_ON_THIN_GROUND = 2
+-- A PER-BOARD CEILING, RETIRED WITH THE BOARD THAT NEEDED ONE. While a fight was taken on a window of
+-- the map, a defile and a hall were the same encounter on wildly different amounts of floor, so the cap
+-- had to be converted out of whatever walkable ground the box happened to hold (6 tiles an enemy, never
+-- below 2). Every board is a purpose-built 8x8 again, so the tier alone describes it and the tiles have
+-- nothing left to say.
 
 -- `override` is the fight's OWN ceiling, off its spec, and it beats the quest's: `false` opts a single
 -- fight out of a floor-wide cut, a number replaces it. Nil (every caller that does not pass one) reads
 -- the quest.
-function Arena.enemyCap(ctx, usable, override)
+function Arena.enemyCap(ctx, override)
     -- The kind wins where it has an opinion. Read off ctx rather than off a blueprint so the two
     -- callers that must agree -- the real fight (Arena.build) and the rating the overworld marker is
     -- drawn from (Muster.encounter) -- cannot drift: a marker that priced a nine-body fight the player
@@ -219,10 +219,6 @@ function Arena.enemyCap(ctx, usable, override)
         cap = math.min(cap, floorCap)
     end
 
-    -- `usable` is nil for every caller with no map under it, which keeps their cap exactly what it was.
-    if usable then
-        cap = math.min(cap, math.max(MIN_CAP_ON_THIN_GROUND, math.floor(usable / TILES_PER_ENEMY)))
-    end
     return cap
 end
 
@@ -401,19 +397,205 @@ local function key(x, y) return x .. "," .. y end
 
 -- Place `count` units spread evenly across the given rows (near rows for party, far
 -- rows for enemies). Deterministic; fills row by row, nudging around collisions.
-local function placeUnits(rowList, count, cols, occupied)
+-- `lines` are ROWS by default and COLUMNS when `sideways` is set, with the muster spread along the other
+-- axis. The second form exists because the party no longer always comes in from the south: on a floor of
+-- chambers they enter by whichever door they walked to (Overworld:entryEdge), and a defence that formed
+-- up on the north wall whichever wall you came through was the enemy ignoring the fight it was in.
+local function placeUnits(lines, count, across, occupied, sideways)
     local spawns = {}
     local placed = 0
-    for _, ry in ipairs(rowList) do
+    for _, ln in ipairs(lines) do
         if placed >= count then break end
-        local n = math.min(count - placed, cols)
+        local n = math.min(count - placed, across)
         for i = 1, n do
-            local x = math.floor(i * (cols + 1) / (n + 1) + 0.5)
-            x = math.max(1, math.min(cols, x))
-            while occupied[key(x, ry)] do x = (x % cols) + 1 end
-            occupied[key(x, ry)] = true
+            local a = math.floor(i * (across + 1) / (n + 1) + 0.5)
+            a = math.max(1, math.min(across, a))
+            local x, y
+            if sideways then x, y = ln, a else x, y = a, ln end
+            -- Walk along the line for the first free tile, and give up after one full lap rather than
+            -- spinning. A line with nothing free is a caller error (two musters sent to the same wall),
+            -- and this loop has always been able to hang on one -- it just took an entry-aware muster
+            -- to send anything here that could. A body that finds no seat is simply not placed, which
+            -- every caller already tolerates: `spawns` is bound by what it holds, not by `count`.
+            local tries = 0
+            while occupied[key(x, y)] and tries < across do
+                a = (a % across) + 1
+                if sideways then y = a else x = a end
+                tries = tries + 1
+            end
+            if occupied[key(x, y)] then break end
+            occupied[key(x, y)] = true
             placed = placed + 1
-            spawns[placed] = { x = x, y = ry }
+            spawns[placed] = { x = x, y = y }
+        end
+    end
+    return spawns
+end
+
+-- WHICH WALL THE DEFENCE FORMS ON: the one opposite the door the company came through, so the two lines
+-- face each other across the chamber however it was entered. Falls back to the board's far (low-y) edge
+-- when nothing said where the party came in, which is every fight outside the descent and the behaviour
+-- this file has always had.
+-- The far side of a chamber from the door you came in by. Nil in, nil out -- which lands both sides on
+-- the edges this file has always used.
+local function oppositeEdge(entry)
+    if entry == "north" then return "south" end
+    if entry == "south" then return "north" end
+    if entry == "east"  then return "west" end
+    if entry == "west"  then return "east" end
+    return nil
+end
+
+local function enemyLines(entry, cols, rows)
+    if entry == "north" then return { rows, rows - 1 }, cols, false end
+    if entry == "west"  then return { cols, cols - 1 }, rows, true end
+    if entry == "east"  then return { 1, 2 }, rows, true end
+    return { 1, 2 }, cols, false -- "south", and every board that names no entry
+end
+
+-- WHERE THE ENEMY IS FOUND. A rolled fight used to muster its whole line on the two rows farthest from
+-- the party -- two even ranks on the far wall, facing two even ranks on the near one, with six empty
+-- rows between them. Every board opened the same way (walk forward three turns, meet in the middle) and
+-- nothing on the ground between the lines mattered, because both sides crossed all of it together.
+--
+-- The company still lands on its own edge -- that is the door it came through, and the deployment phase
+-- is a choice made on those tiles -- but the enemy is scattered over the rest of the board instead:
+-- knots of one to three bodies at different depths and different columns, so a fight opens with a
+-- picket already close and a second group deep on a flank. The three rules that make the scatter a
+-- fight rather than a sprinkling:
+--
+--   * DEPTH. Nothing seats within ENEMY_MIN_DEPTH of the party's edge, which leaves a clear row in
+--     front of the deploy zone (DEPLOY_DEPTH is 2) so the opening bell is never already contact.
+--   * KNOTS. Bodies come in groups of up to ENEMY_GROUP_MAX seated adjacent to an anchor, not as
+--     loners -- a board of single enemies spread evenly is four separate 4-on-1s, which is not a
+--     tactics problem. The anchors themselves are spread by best-candidate sampling (draw a handful of
+--     free tiles, keep the one farthest from the anchors already placed), so the groups land apart
+--     without being laid out on a grid.
+--   * REACH. Only tiles the party can actually walk to are offered, so a scatter can never post a
+--     body behind the mountain ridge the terrain pass happened to draw.
+Arena.ENEMY_MIN_DEPTH = 3
+Arena.ENEMY_GROUP_MAX = 3
+-- HOW MUCH ROOM A PROTECTED BODY GETS. A `protect` objective stands somebody the party has to screen out
+-- in front of the company (the `rally` anchor, two rows ahead of them), and the scatter is free to seat a
+-- body anywhere past ENEMY_MIN_DEPTH -- which is one row further on. Left alone that opens an escort
+-- fight with a demon already touching the survivor, decided before the party has moved: the ground the
+-- objective is pointed at is cleared to this radius, and the scatter forms up beyond it.
+Arena.ENEMY_PROTECT_CLEARANCE = 2
+-- How many free tiles an anchor is chosen from. Higher spreads the knots harder and makes the board
+-- more samey; this is enough to keep two groups off each other's toes.
+local ENEMY_ANCHOR_SAMPLES = 6
+
+-- How far (in tiles) into the board a cell sits, measured from the edge the party came in on. The
+-- party's own line stands at depth 0..1 whichever wall it formed on, so one function answers "how far
+-- from them is this" for all four entries.
+local function depthFrom(entry, cols, rows, x, y)
+    if entry == "north" then return y - 1 end
+    if entry == "west"  then return x - 1 end
+    if entry == "east"  then return cols - x end
+    return rows - y -- "south", and every board that names no entry
+end
+
+-- Every tile walkable from `from`, as a key set. Flooded over tile types only -- the same walk
+-- tests/arena_spec.lua makes when it asserts no spawn is walled off from the party.
+local function reachableTiles(probe, from)
+    local seen = { [key(from.x, from.y)] = true }
+    local q, qi = { from }, 1
+    while qi <= #q do
+        local c = q[qi]; qi = qi + 1
+        for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+            local nx, ny = c.x + d[1], c.y + d[2]
+            local k = key(nx, ny)
+            if not seen[k] and walkableAt(probe, nx, ny) then
+                seen[k] = true
+                q[#q + 1] = { x = nx, y = ny }
+            end
+        end
+    end
+    return seen
+end
+
+-- Scatter `count` enemies over the board in knots (see the note above). Runs AFTER the terrain, props
+-- and hazards are down, so it seats only on plain ground that nothing else claimed -- which is also why
+-- it draws from `rng` last and leaves every earlier draw in the order it has always been made.
+-- Returns nil when the board offers no ground to scatter on, and the caller falls back to the old
+-- far-wall muster rather than fielding nobody.
+local function placeEnemyScatter(count, entry, layout, occupied, partySpawns, keepClear, rng)
+    if count <= 0 then return {} end
+    keepClear = keepClear or {}
+    local cols, rows = layout.cols, layout.rows
+    -- Reachability is measured from where the party actually stands; a board that seats no party at all
+    -- (a preview, a gallery) has nothing to measure from and takes the whole floor.
+    local reach = partySpawns and partySpawns[1] and reachableTiles(layout, partySpawns[1])
+
+    local region = {}
+    for y = 1, rows do
+        for x = 1, cols do
+            local k = key(x, y)
+            if layout.tiles[y][x] == "ground" and not occupied[k] and not keepClear[k]
+                and depthFrom(entry, cols, rows, x, y) >= Arena.ENEMY_MIN_DEPTH
+                and (not reach or reach[k]) then
+                region[#region + 1] = { x = x, y = y }
+            end
+        end
+    end
+    if #region == 0 then return nil end
+
+    local function free(t) return not occupied[key(t.x, t.y)] end
+
+    local groups = math.max(1, math.min(Arena.ENEMY_GROUP_MAX, math.ceil(count / 2)))
+    local anchors = {}
+    local spawns = {}
+
+    -- One knot at a time: pick its anchor away from the knots already placed, then fill outward from it.
+    for _ = 1, groups do
+        if #spawns >= count then break end
+        local share = math.max(1, math.ceil((count - #spawns) / math.max(1, groups - #anchors)))
+
+        local best, bestScore
+        for _ = 1, ENEMY_ANCHOR_SAMPLES do
+            local cand = region[rng:random(1, #region)]
+            if free(cand) then
+                local score = math.huge
+                for _, a in ipairs(anchors) do
+                    score = math.min(score, math.abs(a.x - cand.x) + math.abs(a.y - cand.y))
+                end
+                if not bestScore or score > bestScore then best, bestScore = cand, score end
+            end
+        end
+        if not best then break end -- the region filled up under us; the top-up below finishes the job
+        anchors[#anchors + 1] = best
+
+        -- Fill the knot by walking outward from its anchor, so a group is a body of men standing
+        -- together rather than a name on three tiles that happen to be near each other.
+        local placedHere = 0
+        local seen, q, qi = { [key(best.x, best.y)] = true }, { best }, 1
+        while qi <= #q and placedHere < share and #spawns < count do
+            local c = q[qi]; qi = qi + 1
+            if free(c) and layout.tiles[c.y][c.x] == "ground" and not keepClear[key(c.x, c.y)]
+                and depthFrom(entry, cols, rows, c.x, c.y) >= Arena.ENEMY_MIN_DEPTH
+                and (not reach or reach[key(c.x, c.y)]) then
+                occupied[key(c.x, c.y)] = true
+                spawns[#spawns + 1] = { x = c.x, y = c.y }
+                placedHere = placedHere + 1
+            end
+            for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+                local nx, ny = c.x + d[1], c.y + d[2]
+                local k = key(nx, ny)
+                if nx >= 1 and ny >= 1 and nx <= cols and ny <= rows and not seen[k] then
+                    seen[k] = true
+                    q[#q + 1] = { x = nx, y = ny }
+                end
+            end
+        end
+    end
+
+    -- Anyone the knots could not seat (a cramped board, a region eaten by terrain) takes whatever of the
+    -- region is left. A body that finds no tile is simply not placed, which is what placeUnits does too.
+    for _, t in ipairs(region) do
+        if #spawns >= count then break end
+        if free(t) then
+            occupied[key(t.x, t.y)] = true
+            spawns[#spawns + 1] = { x = t.x, y = t.y }
         end
     end
     return spawns
@@ -532,9 +714,37 @@ Arena.DEPLOY_MIN = 4
 local function defaultZoneBlock(layout)
     local w = math.min(Arena.DEPLOY_COLS, layout.cols)
     local d = math.min(Arena.DEPLOY_DEPTH, layout.rows)
+
+    -- YOU COME IN THROUGH THE DOOR YOU CAME IN THROUGH. On a floor of chambers the fight is the room,
+    -- and the company walked into it from a side -- so that side is where they start. `layout.entry` is
+    -- the compass edge the doorway was on (models/encounter_battle.lua threads it off the map); nil
+    -- everywhere else, and then the block sits on the bottom edge exactly as it always has.
+    --
+    -- The comment above still holds for every board that names no entry: BOTTOM is the party's edge
+    -- everywhere in this file -- enemies muster on the low rows, the marching grid's front rank faces
+    -- them -- and a board that wants the party somewhere else has to SAY so. This is a board saying so.
+    local entry = layout.entry
+    local block = {}
+    if entry == "north" or entry == "south" then
+        local x0 = math.floor((layout.cols - w) / 2) + 1
+        local y0 = (entry == "north") and 1 or (layout.rows - d + 1)
+        for y = y0, y0 + d - 1 do
+            for x = x0, x0 + w - 1 do block[#block + 1] = { x = x, y = y } end
+        end
+        return block
+    elseif entry == "east" or entry == "west" then
+        -- Turned on its side: the depth becomes columns and the width becomes rows, so a company coming
+        -- through a side door still forms two ranks facing into the room rather than along its wall.
+        local y0 = math.floor((layout.rows - w) / 2) + 1
+        local x0 = (entry == "west") and 1 or (layout.cols - d + 1)
+        for y = y0, y0 + w - 1 do
+            for x = x0, x0 + d - 1 do block[#block + 1] = { x = x, y = y } end
+        end
+        return block
+    end
+
     -- Left-biased on an odd remainder (cols 3..6 of eight), matching how placeUnits centres a line.
     local x0 = math.floor((layout.cols - w) / 2) + 1
-    local block = {}
     for y = layout.rows - d + 1, layout.rows do
         for x = x0, x0 + w - 1 do block[#block + 1] = { x = x, y = y } end
     end
@@ -557,243 +767,6 @@ local function deployZoneFor(layout, taken, minTiles)
         if not taken[key(sp.x, sp.y)] then fallback[#fallback + 1] = { x = sp.x, y = sp.y } end
     end
     return #fallback > 0 and fallback or zone
-end
-
--- ---------------------------------------------------------------------------
--- The board carved out of the map
--- ---------------------------------------------------------------------------
-
--- WHICH SIDE OF THE BOARD IS YOURS. The party deploys on the edge it arrived from, which a rolled board
--- could never say because a rolled board has no outside.
---
--- Read as a DIRECTION -- where the company came FROM, relative to where it met the fight -- and not as a
--- distance to the box's edges. The distance version was written first and it is subtly wrong: the window
--- is chosen for the ground it holds, not centred on the contact tile, so it can sit hard against the
--- approach and leave "the edge you came in by" measuring nearer to some other side. The direction is
--- unambiguous and is what the player experienced.
---
--- The dominant axis wins, so a diagonal approach (which the 4-neighbour grid never actually produces,
--- but a scripted fight might hand over) still resolves to one side. Ties go to the vertical, which is
--- the home edge a board has always used.
-local function entryEdge(at, from)
-    if not from then return "bottom" end -- nothing recorded: the board's old home edge
-    local dx, dy = at.x - from.x, at.y - from.y
-    if math.abs(dx) > math.abs(dy) then
-        return dx > 0 and "left" or "right"
-    end
-    if dy ~= 0 then return dy > 0 and "top" or "bottom" end
-    return "bottom"
-end
-
-local function oppositeEdge(e)
-    if e == "top" then return "bottom" end
-    if e == "bottom" then return "top" end
-    if e == "left" then return "right" end
-    return "left"
-end
-
--- The tiles of a band `depth` deep along one edge, walkable only, ordered from the middle of the band
--- outwards -- so a short line seats centred, exactly as placeUnits does on a rolled board.
-local function bandTiles(tiles, cols, rows, edge, depth, occupied)
-    local out = {}
-    local function add(x, y)
-        if x < 1 or y < 1 or x > cols or y > rows then return end
-        local p = Arena.TILE_PROPS[tiles[y][x]]
-        if not (p and p.walkable) then return end
-        if occupied and occupied[key(x, y)] then return end
-        out[#out + 1] = { x = x, y = y }
-    end
-    for d = 0, depth - 1 do
-        if edge == "bottom" then
-            for x = 1, cols do add(x, rows - d) end
-        elseif edge == "top" then
-            for x = 1, cols do add(x, 1 + d) end
-        elseif edge == "left" then
-            for y = 1, rows do add(1 + d, y) end
-        else
-            for y = 1, rows do add(cols - d, y) end
-        end
-    end
-    -- Middle-out, so four bodies on a wide band stand together rather than at the corners.
-    local mid = (edge == "left" or edge == "right") and (rows + 1) / 2 or (cols + 1) / 2
-    table.sort(out, function(a, b)
-        local ka = (edge == "left" or edge == "right") and a.y or a.x
-        local kb = (edge == "left" or edge == "right") and b.y or b.x
-        local da, db = math.abs(ka - mid), math.abs(kb - mid)
-        if da ~= db then return da < db end
-        return ka < kb
-    end)
-    return out
-end
-
--- How much ground the board a fight at (x, y) would lock actually holds, of COLS*ROWS. Read before the
--- opposition is resolved, because the cap on how many bodies a fight fields has to know how much floor
--- there is to field them on (Arena.enemyCap).
---
--- CROSSABLE floor, not walkable floor: the ring the lock draws can cut a window in two, and the far
--- pocket is walled by Arena.fromGrid rather than fought over. Pricing a fight off tiles that are about to
--- become wall is how a defile ends up fielding a hall's worth of bodies.
-function Arena.boxUsable(grid, x, y)
-    if not (grid and grid.bestBox) then return nil end
-    return select(3, grid:bestBox(x, y))
-end
-
--- THE BOARD IS A WINDOW ON THE MAP. Given the overworld grid and the tile a fight began on, cut the
--- COLS x ROWS window the lock would close around and hand it back as an ordinary layout -- same shape
--- Arena.generateLayout returns, so nothing downstream of here learns anything new.
---
--- The window is CHOSEN, not centred: of every window containing the contact tile, the one holding the
--- most ground you can cross from it (Overworld:bestBox). Meet something at the mouth of a clearing and
--- the board pulls into the clearing; get cornered in a corridor and it stays a corridor, because there
--- was nothing better within reach.
---
--- Tiles carry over VERBATIM. That is the whole point of merging the two terrain tables
--- (models/terrain.lua): the thicket that walled the trail is the thicket you fight around, the river is
--- the river, and the biome floor the layout scattered is the floor underfoot. No profile, no scatter,
--- no resemblance -- the ground you chose to walk onto is the ground you fight on.
---
--- The box's edge is the wall, so nothing has to be drawn to make one: outside the window there is no
--- board. What the ring looks like is the renderer's business.
---
--- ...and because that ring is a wall, the window is CLOSED over ground that was open. A box laid across a
--- ridge, a river bend or the outside of a switchback holds two pockets that on the map are joined by a
--- path running round the outside -- and inside the lock that path does not exist. The board would open
--- with a boar on one side of a wall and the company on the other, neither able to reach the other for the
--- whole fight, and a killAll it cannot finish. So the tiles the fight cannot get to are WALLED: see
--- sealUnreachable. Overworld:bestBox chooses the window by the same measure, so the board is the biggest
--- crossable piece of ground within reach and not the biggest pile of tiles.
-function Arena.fromGrid(grid, opts)
-    opts = opts or {}
-    local cols, rows = Arena.COLS, Arena.ROWS
-    local ox, oy = grid:bestBox(opts.x, opts.y)
-    -- The ground reachable from the tile the fight began on, in MAP keys. Read off the grid rather than
-    -- recomputed over the cut tiles so the seal and the score a fight was priced from (Arena.boxUsable,
-    -- which is the same call) can never be two different opinions about the same window.
-    local reachable = {}
-    local reach = grid:boxReach(ox, oy, opts.x, opts.y, reachable)
-
-    local tiles = {}
-    -- What is already burning (or blessed, or falling) on this ground when the lock closes. A map cell
-    -- may carry an authored `hazard` (models/overworld.lua's fromLayout), and the ones inside the window
-    -- are the ones this fight opens with -- rebased to board coordinates, since nothing past here knows
-    -- where on the map it is standing. The same list an authored arena hands over, on the side a
-    -- campaign fight is actually cut from now.
-    local hazards = {}
-    for j = 1, rows do
-        tiles[j] = {}
-        for i = 1, cols do
-            local c = grid:get(ox + i - 1, oy + j - 1)
-            -- Off the map reads as solid rather than as open field: a board that runs off the edge of
-            -- the world should be walled by it, not floored by it.
-            tiles[j][i] = (c and c.tile) or "obstacle"
-            -- ...and so does open ground the lock cut off from the rest of the board. A tile behind the
-            -- ring is not somewhere the fight can go, and drawing it as floor is the worse of the two
-            -- lies: the player reads a board twice the size it is, walks a unit at a pocket it can never
-            -- enter, and watches an enemy stand in one it will never leave. Walled with the plain
-            -- `obstacle` -- the board's own word for "not through here", and what the ring outside the
-            -- window already is -- rather than with the biome's scatter blocker, because this is the edge
-            -- of the board arriving early, not a landform.
-            --
-            -- `reach == 0` means the fight began somewhere nothing can stand (a fixture, never a real
-            -- contact tile); seal nothing rather than wall the whole board.
-            if reach > 0 and c and grid:typeWalkable(c.tile)
-                and not reachable[(oy + j - 1) * 100000 + (ox + i - 1)] then
-                tiles[j][i] = "obstacle"
-            elseif c and c.hazard then
-                hazards[#hazards + 1] = { id = c.hazard.id, x = i, y = j, duration = c.hazard.duration }
-            end
-        end
-    end
-
-    local occupied = {}
-    local entry = entryEdge({ x = opts.x, y = opts.y }, opts.from)
-
-    -- WHICH SIDE THE ENEMY COMES IN ON. Opposite the company by default, which is what a fight the
-    -- player walked into looks like: two lines facing each other.
-    --
-    -- `foeFrom` overrides it with the tile the enemy actually arrived from, and that is the whole payoff
-    -- of the patrol layer (P10). Let something catch you while you are deep in a spur and it comes in on
-    -- the side you were walking back toward -- between the company and the way out. Same composition, at
-    -- the same tier, as a completely different problem, decided by how the approach was handled rather
-    -- than by a roll.
-    --
-    -- Falls back to opposite when the two resolve to the same edge, or the two lines would open the
-    -- fight standing on each other.
-    local far = oppositeEdge(entry)
-    if opts.foeFrom then
-        local side = entryEdge({ x = opts.x, y = opts.y }, opts.foeFrom)
-        if side ~= entry then far = side end
-    end
-
-    -- The party takes the edge it walked in from; whatever it met takes the far side. When patrols land,
-    -- the far side becomes the side the patrol touched from -- walk into something head-on and you meet
-    -- it head-on, let it catch you in a spur and it is between you and the way out.
-    local partyBand = bandTiles(tiles, cols, rows, entry, Arena.DEPLOY_DEPTH, occupied)
-    local partySpawns = {}
-    for i = 1, math.min(opts.party or 0, #partyBand) do
-        partySpawns[#partySpawns + 1] = partyBand[i]
-        occupied[key(partyBand[i].x, partyBand[i].y)] = true
-    end
-
-    local enemyBand = bandTiles(tiles, cols, rows, far, Arena.DEPLOY_DEPTH, occupied)
-    local enemySpawns = {}
-    for i = 1, math.min(opts.enemies or 0, #enemyBand) do
-        enemySpawns[#enemySpawns + 1] = enemyBand[i]
-        occupied[key(enemyBand[i].x, enemyBand[i].y)] = true
-    end
-
-    -- A cramped board may not have offered enough standing room on either band. Spill onto any walkable
-    -- tile rather than fielding fewer bodies than the fight was priced for -- the same graceful partial
-    -- every placement pass on the map takes.
-    local function spill(list, want)
-        if #list >= want then return end
-        for y = 1, rows do
-            for x = 1, cols do
-                if #list >= want then return end
-                local p = Arena.TILE_PROPS[tiles[y][x]]
-                if p and p.walkable and not occupied[key(x, y)] then
-                    list[#list + 1] = { x = x, y = y }
-                    occupied[key(x, y)] = true
-                end
-            end
-        end
-    end
-    spill(partySpawns, opts.party or 0)
-    spill(enemySpawns, opts.enemies or 0)
-
-    -- YOUR SIDE OF THE BOARD, AND IT HAS TO BE BIG ENOUGH TO BE A SIDE. Two rows of the arrival edge is
-    -- the shape (Arena.DEPLOY_DEPTH), and on a cut board those two rows are whatever the map put there:
-    -- a window can clear both fightability floors and still be walled along the one edge the company
-    -- happens to come in by. Measured across 180 seated fights, a quarter of them offered fewer than
-    -- eight of the sixteen band tiles and four offered NONE, at which point deployZoneFor falls all the
-    -- way back to the spawn spill -- which is the scattered smear of lit tiles down a wall that this
-    -- reads as in the game.
-    --
-    -- So the band DEEPENS rather than the zone giving up: it takes another row of your own side until it
-    -- holds a company, which keeps every claim the zone makes ("the edge you arrived from", contiguous
-    -- with where you walked in) and gives up only the fixed depth, which was never a promise to anybody.
-    -- Half the board is the cap, past which "your side" has stopped meaning anything and the fallback is
-    -- the honest answer.
-    local deployZone = bandTiles(tiles, cols, rows, entry, Arena.DEPLOY_DEPTH, nil)
-    local depth = Arena.DEPLOY_DEPTH
-    local maxDepth = math.floor(((entry == "left" or entry == "right") and cols or rows) / 2)
-    while #deployZone < Arena.DEPLOY_MIN and depth < maxDepth do
-        depth = depth + 1
-        deployZone = bandTiles(tiles, cols, rows, entry, depth, nil)
-    end
-
-    return {
-        cols = cols, rows = rows, tiles = tiles,
-        partySpawns = partySpawns, enemySpawns = enemySpawns,
-        props = {}, hazards = hazards, traps = {},
-        biome = opts.biome,
-        -- Authored, so deployZoneFor uses it outright: the eight tiles of the edge you arrived on,
-        -- which is what docs/deployment.md's fixed block becomes once the board has an outside.
-        deployZone = deployZone,
-        -- Where on the map this board was cut from, so the renderer can put the camera over it and the
-        -- run's save can restore the same eight tiles (docs/overworld.md, C5).
-        box = { x = ox, y = oy, w = cols, h = rows, entry = entry },
-    }
 end
 
 -- A deliberately fresh seed, for a caller that wants a board it has never seen. The one place the
@@ -820,6 +793,13 @@ end
 -- `params.seed` (required -- see requireSeed). `params.party` / `params.enemies` are unit *counts*.
 function Arena.generateLayout(params)
     params = params or {}
+    -- THE BOARD IS ALWAYS 8x8, and a room does not get to change that. It was briefly cut to the chamber
+    -- a fight was found in, on the reasoning that the map had already drawn those walls -- and the board
+    -- is not the only thing sized against Arena.COLS/ROWS. ui/battle_map.lua lays its origin, its margins
+    -- and its panels out around eight, so a nine- or twelve-wide board put the party's spawn rows off the
+    -- side of the screen. The fight being fought IN the room is a fiction the camera and the tileset
+    -- carry (ui/overworld_map.lua draws a floor at the board's own 64 pixels a tile); the board's
+    -- dimensions are a contract with the battle UI, and they stay put.
     local cols, rows = Arena.COLS, Arena.ROWS
     local rng = love.math.newRandomGenerator(requireSeed(params.seed, "Arena.generateLayout"))
 
@@ -839,16 +819,20 @@ function Arena.generateLayout(params)
         partySpawns = placePartyFormation(params.formation, params.formationCols or 4,
             params.formationRows or 2, params.party or 0, cols, rows, occupied)
     else
-        partySpawns = placeUnits({ rows, rows - 1 }, params.party or 0, cols, occupied)
+        -- The company forms on the wall it came in through, which is the mirror of the defence below --
+        -- entry "north" means they entered from the north, so they stand on rows 1..2 and the enemy
+        -- holds the south. Both read the same edge so the two lines can never end up on the same wall.
+        -- `entry or "south"` matters: a board that names no entry has to keep the edges this file has
+        -- always used, and the party's default is the SOUTH wall. Passing a bare nil through
+        -- oppositeEdge landed the company on rows 1..2 -- the enemy's own wall -- which put both lines
+        -- on the same two rows, filled them, and hung placeUnits' collision walk.
+        local pLines, pAcross, pSideways = enemyLines(oppositeEdge(params.entry or "south"), cols, rows)
+        partySpawns = placeUnits(pLines, params.party or 0, pAcross, occupied, pSideways)
     end
-    local enemySpawns = placeUnits({ 1, 2 }, params.enemies or 0, cols, occupied)
-
-    -- Which occupied tiles are SPAWNS, captured before any terrain is laid (at this point `occupied` holds
-    -- nothing else). The channel below cuts through whatever the scatters put down -- a river runs over a
-    -- boulder rather than politely around it, and flowing around them leaves a dotted line instead of a
-    -- channel -- but it must never open the fight with somebody already standing in the water.
-    local spawnKeys = {}
-    for k in pairs(occupied) do spawnKeys[k] = true end
+    -- (The enemy is NOT seated here. It used to be -- two ranks on the far wall, placed before a single
+    -- tile of terrain was laid -- and it now scatters over the whole board once the ground is finished;
+    -- see placeEnemyScatter, called below. Placing it last is also what keeps every seed's terrain: each
+    -- rng draw between here and there is made in the order it always was.)
 
     -- Scatter terrain only on the neutral middle band so it never walls off a side.
     local function scatter(kind, n)
@@ -923,11 +907,39 @@ function Arena.generateLayout(params)
         end
     end
 
+    -- THE ENEMY, over the finished ground: knots scattered across the board rather than a line on the
+    -- far wall (placeEnemyScatter). The old muster is still the fallback for a board with no ground left
+    -- to scatter on -- a fight has to field its enemies somewhere.
+    local probe = { cols = cols, rows = rows, tiles = tiles, partySpawns = partySpawns }
+    -- The ground a `protect` objective is pointed at, plus a clearance ring, is off limits: the escorted
+    -- body seats there later (bindAllies resolves the SAME region off the SAME party spawns), and the
+    -- fight has to open with room to get in front of it. `params.protectAnchor` is nil for every fight
+    -- that protects nobody, which is nearly all of them.
+    local keepClear = {}
+    if params.protectAnchor then
+        local c = Arena.ENEMY_PROTECT_CLEARANCE
+        for _, t in ipairs(Arena.resolveRegion(params.protectAnchor, probe)) do
+            for dy = -c, c do
+                for dx = -c, c do keepClear[key(t.x + dx, t.y + dy)] = true end
+            end
+        end
+    end
+    local entry = params.entry or "south"
+    local enemySpawns = placeEnemyScatter(params.enemies or 0, entry,
+        probe, occupied, partySpawns, keepClear, rng)
+    if not enemySpawns then
+        local eLines, eAcross, eSideways = enemyLines(params.entry, cols, rows)
+        enemySpawns = placeUnits(eLines, params.enemies or 0, eAcross, occupied, eSideways)
+    end
+
     return {
         cols = cols, rows = rows, tiles = tiles,
         partySpawns = partySpawns, enemySpawns = enemySpawns,
         props = props,
         hazards = hazards,
+        -- The edge the company walked in on, so the deployment phase offers the doorway they came
+        -- through rather than the board's default south edge. See defaultZoneBlock.
+        entry = params.entry,
         biome = params.biome, seed = params.seed,
     }
 end
@@ -983,6 +995,9 @@ function Arena.pickLayout(spec, partyCount, enemyCount)
         return Arena.generateLayout({
             biome = spec.biome, seed = spec.seed,
             party = partyCount, enemies = enemyCount,
+            entry = spec.entry, -- the door the company came through, where there was one
+            -- The ground an escorted body will stand on, so the enemy scatter leaves it room.
+            protectAnchor = spec.objective and spec.objective.protect and spec.objective.anchor,
             formation = spec.formation, formationCols = spec.formationCols,
             formationRows = spec.formationRows,
         })
@@ -1174,28 +1189,15 @@ function Arena.build(ctx, spec)
     -- The ceiling is applied HERE rather than inside resolveComposition, because that resolver also
     -- serves `allies` one line up -- and an escort is a hand-authored cast (usually one body a
     -- `protect` objective is pointed at), never a prestige formula, so it has nothing to be saved from.
-    -- HOW MUCH FLOOR THERE IS TO FIELD THEM ON, read before the opposition is resolved. A rolled board
-    -- was always the same 64 tiles of mostly-open ground, so a fixed cap was a fair description of it. A
-    -- board carved out of the map might be 55 tiles in a hall or 24 in a defile, and eight bodies in a
-    -- defile is not a hard fight, it is a queue. Nil for every caller without a map (draft, duel, the
-    -- menu's mock), which keeps their cap exactly what it has always been.
-    local usable = spec.grid and spec.at and Arena.boxUsable(spec.grid, spec.at.x, spec.at.y) or nil
     local enemyIds = Arena.clampComposition(
-        Arena.resolveComposition(spec.composition, ctx), Arena.enemyCap(ctx, usable, spec.enemyCap))
+        Arena.resolveComposition(spec.composition, ctx), Arena.enemyCap(ctx, spec.enemyCap))
 
-    -- THE BOARD IS THE MAP, where there is a map. A campaign fight and a descent floor carve their 8x8
-    -- out of the tiles the company walked over; a draft match, a duel, the menu's mock and the debug
-    -- harness have no overworld under them and still roll one (Arena.pickLayout).
-    local layout
-    if spec.grid and spec.at then
-        layout = Arena.fromGrid(spec.grid, {
-            x = spec.at.x, y = spec.at.y, from = spec.from, foeFrom = spec.foeFrom,
-            party = #partyIds + #allyIds, enemies = #enemyIds,
-            biome = spec.biome,
-        })
-    else
-        layout = Arena.pickLayout(spec, #partyIds + #allyIds, #enemyIds)
-    end
+    -- EVERY FIGHT ROLLS ITS OWN BOARD. A campaign stop, a descent floor, a draft match, a duel, the
+    -- menu's mock and the debug harness all arrive here the same way: the biome names what the ground is
+    -- made of and Arena.pickLayout hands back a board shaped to be fought on -- a curated one where the
+    -- pool has an entry for this ground, a rolled one otherwise. The overworld under a campaign fight
+    -- contributes the biome and nothing else; it no longer donates its tiles.
+    local layout = Arena.pickLayout(spec, #partyIds + #allyIds, #enemyIds)
 
     -- A curated layout may not have authored enough party spawns for the party *and* its
     -- escort. Dropping the escortee would instantly fail a `protect` objective, so fall
@@ -1204,6 +1206,7 @@ function Arena.build(ctx, spec)
         layout = Arena.generateLayout({
             biome = spec.biome, seed = spec.seed,
             party = #partyIds + #allyIds, enemies = #enemyIds,
+            protectAnchor = spec.objective and spec.objective.protect and spec.objective.anchor,
             formation = spec.formation, formationCols = spec.formationCols,
             formationRows = spec.formationRows,
         })

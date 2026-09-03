@@ -31,8 +31,8 @@ return {
     tags = { "primal", "illusion", "utility" },
     class = "hunter",
     discipline = "druid", -- deeper cut of the shelf: buyable only once the druid gate is cleared
-    price = 610,
-    unlockQuests = 4,
+    price = 660,
+    unlockQuests = 7,
     activeAbility = {
         target = "self",
         range = 0,

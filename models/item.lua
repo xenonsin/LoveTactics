@@ -120,6 +120,59 @@ function Item.archetype(item)
     return nil
 end
 
+-- ---------------------------------------------------------------------------
+-- Accuracy: what a weapon contributes to Hit and Crit
+--
+-- Two numbers per family, and the family is the right grain because it is already the grain every
+-- other weapon promise is made at (docs/weapons.md: axes cleave, daggers bleed). A dagger is quick to
+-- land and finds a gap; a hammer is a commitment. These are the FAMILY's numbers -- an individual
+-- weapon overrides either by declaring its own `hit` / `crit`, which is how a killer edge is built.
+--
+-- The spread is Fire Emblem's, at Fire Emblem's scale: weapon Hit there runs 65 (a heavy axe) to 95
+-- (a light blade), and weapon Crit is 0 for nearly everything, reserved so that the few weapons which
+-- carry it are recognizable as what they are. Both are absolute here rather than scaled down like
+-- skill/luck, because they are compared against a hit% that is itself out of 100.
+--
+-- `shield` and `censer` are in the table for completeness -- neither is normally the thing swung, but
+-- every family answers the question, and an unanswered family is an authoring slip rather than a
+-- natural gap (the same argument Item.ARCHETYPES makes for `natural`).
+Item.FAMILY_HIT = {
+    dagger = 95, sword = 90, wand = 90, staff = 90, unarmed = 90,
+    bow = 85, censer = 85, natural = 85,
+    mace = 80, spear = 80,
+    greatsword = 75, longbow = 75,
+    axe = 70, hammer = 65,
+    shield = 90,
+}
+
+Item.FAMILY_CRIT = {
+    dagger = 10,
+    sword = 5, greatsword = 5, axe = 5, bow = 5,
+    wand = 0, staff = 0, unarmed = 0, censer = 0, natural = 0,
+    mace = 0, spear = 0, longbow = 0, hammer = 0, shield = 0,
+}
+
+-- What a body swinging `item` adds to its Hit. An authored `hit` on the item wins; otherwise the
+-- family's. A thing with no family at all -- an ability cast from a grid slot, a thrown flask -- is
+-- not a weapon and answers Item.DEFAULT_HIT, so a spell is reliable without every ability file
+-- having to say so.
+Item.DEFAULT_HIT = 90
+Item.DEFAULT_CRIT = 0
+
+function Item.hit(item)
+    if not item then return Item.DEFAULT_HIT end
+    if item.hit ~= nil then return item.hit end
+    local family = Item.archetype(item)
+    return (family and Item.FAMILY_HIT[family]) or Item.DEFAULT_HIT
+end
+
+function Item.crit(item)
+    if not item then return Item.DEFAULT_CRIT end
+    if item.crit ~= nil then return item.crit end
+    local family = Item.archetype(item)
+    return (family and Item.FAMILY_CRIT[family]) or Item.DEFAULT_CRIT
+end
+
 -- An ability's declared resource costs, ALWAYS as a list of `{ stat, amount }` -- empty for a free
 -- ability. `activeAbility.cost` may be authored either way:
 --

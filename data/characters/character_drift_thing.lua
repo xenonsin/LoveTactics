@@ -17,6 +17,9 @@ return {
         defense = 7, magicDefense = 9,
         movement = 3,
         speed = 2, -- it comes around the wheel slowly, which is thematically the entire point
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 3, luck = 6,
     },
     startingItems = { "weapon_drift_touch" },
     defaultAction = "weapon_drift_touch",

@@ -42,4 +42,6 @@ return {
             fx.applyStatus(fx.user, "status_empowered", { magnitude = math.floor(spent * 100) })
         end,
     },
+    -- Fury banked against your own health: the account is the bargain
+    bonus = { damage = 3, defense = -1 },
 }

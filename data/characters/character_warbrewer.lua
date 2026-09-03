@@ -18,11 +18,14 @@ return {
         defense = 11, magicDefense = 7,
         movement = 4,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 6, luck = 3,
     },
     startingItems = {
         "weapon_iron_axe",       "consumable_berserkers_brew", "consumable_battle_tonic",
         "utility_brawlers_bandolier", "utility_field_still",   "utility_round_for_the_house",
-        "consumable_healing_potion", false,                  false,
+        "consumable_healing_potion", "utility_last_call",                  false,
     },
     defaultAction = "weapon_iron_axe",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

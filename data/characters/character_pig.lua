@@ -30,6 +30,9 @@ return {
         defense = 1, magicDefense = 1,
         movement = 4, -- it can run, and that is all it can do
         speed = 2,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 3, luck = 5,
     },
     startingItems = {},
     unarmed = false, -- no fists, no fangs, no actions: the point of the spell

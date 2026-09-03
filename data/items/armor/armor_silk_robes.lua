@@ -11,7 +11,7 @@ return {
     type = "armor",
     tags = { "cloth" },
     class = "mage",
-    price = 475,
+    price = 330,
     unlockQuests = 3,
     -- Light tier for casters: little against steel, strong against spells -- and a square of pace,
     -- because cloth costs one (see armor_padded_vest's header for why the light tier stopped being

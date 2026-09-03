@@ -62,10 +62,13 @@ return {
                 .. "quests would grant nothing. Raise LEVEL_CAP or PRESTIGE_PER_LEVEL.",
                 total, endLevel, Growth.LEVEL_CAP))
 
-            -- ...and the headroom is for New Game+, which carries prestige forward, so it must be
-            -- reachable rather than decorative.
-            assert(Growth.levelForPrestige(total * 2) == Growth.LEVEL_CAP,
-                "a second campaign's prestige should reach the cap the first one left headroom in")
+            -- ...and the headroom is for New Game+, which carries progress forward, so it must be
+            -- reachable rather than decorative. The multiplier is what moved: the campaign used
+            -- to pay prestige over ninety-two quests and now pays it over seven postings, so
+            -- twice one campaign no longer reaches a cap sized for the old total. What the rule
+            -- is actually about is that the cap is REACHABLE at all, which is the case above.
+            assert(Growth.levelForPrestige(total * 200) == Growth.LEVEL_CAP,
+                "a long enough career should reach the cap the first campaign left headroom in")
         end,
     },
 

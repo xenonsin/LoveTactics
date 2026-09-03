@@ -52,4 +52,6 @@ return {
             end
         end,
     },
+    -- an order given is a blow thrown by somebody else
+    bonus = { damage = 1 },
 }

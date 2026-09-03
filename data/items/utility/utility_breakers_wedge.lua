@@ -20,7 +20,9 @@ return {
     tags = { "charm" },
     class = "knight",
     discipline = "vanguard",
-    price = 210,
-    unlockQuests = 1,
+    price = 330,
+    unlockQuests = 3,
     traits = { "trait_breakers_wedge" },
+    -- a shove that also Sunders is a blow
+    bonus = { damage = 2 },
 }

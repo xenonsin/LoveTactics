@@ -20,5 +20,6 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "knight",
+    dropTier = 1,
     bonus = { damage = Curve.ramp(2, 12) },
 }

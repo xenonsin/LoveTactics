@@ -18,11 +18,14 @@ return {
         defense = 15, magicDefense = 9,
         movement = 4,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 4, luck = 2,
     },
     startingItems = {
         "weapon_iron_sword",   "ability_shared_burden", "ability_single_combat",
         "ability_straw_sentry", "utility_lent_aegis",   "utility_unyielding_seal",
-        "armor_bulwark_shield", "consumable_healing_potion", false,
+        "armor_bulwark_shield", "consumable_healing_potion", "armor_standing_debt",
     },
     defaultAction = "weapon_iron_sword",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

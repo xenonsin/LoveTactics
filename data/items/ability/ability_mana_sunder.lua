@@ -13,8 +13,8 @@ return {
     tags = { "impact", "physical" },
     class = "knight",
     discipline = "spellbreaker", -- knight x mage; the Counterspell mechanic's first stock
-    price = 610,
-    unlockQuests = 4,
+    price = 660,
+    unlockQuests = 7,
     activeAbility = {
         target = "enemy",
         range = 1,

@@ -26,8 +26,8 @@ return {
     tags = { "fist", "physical" },
     class = "priest",
     discipline = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
-    price = 345,
-    unlockQuests = 2,
+    price = 330,
+    unlockQuests = 3,
     activeAbility = {
         target = "enemy",
         range = 1,

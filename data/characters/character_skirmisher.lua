@@ -18,11 +18,14 @@ return {
         defense = 9, magicDefense = 6,
         movement = 4,
         speed = 5,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 8, luck = 4,
     },
     startingItems = {
         "weapon_harriers_bow", "ability_harrying_strike",   "ability_running_shot",
         "utility_skirmishers_momentum", "armor_outriders_harness", "consumable_healing_potion",
-        false,                 false,                        false,
+        "utility_ground_given",                 false,                        false,
     },
     defaultAction = "weapon_harriers_bow",
     -- Strike whatever is in reach, then let the free move carry it clear.

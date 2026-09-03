@@ -44,4 +44,6 @@ return {
             end
         end,
     },
+    -- an order that arms everything you built
+    bonus = { magicDamage = 1 },
 }

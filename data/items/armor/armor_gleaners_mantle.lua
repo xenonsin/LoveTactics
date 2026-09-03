@@ -46,6 +46,7 @@ return {
     type = "armor",
     tags = { "cloth", "arcane" },
     class = "mage",
+    dropTier = 1,
     traits = { "trait_gleaning" },
     bonus = { magicDefense = Curve.ramp(4, 14), movement = -1 },
     resist = { magical = 2 },

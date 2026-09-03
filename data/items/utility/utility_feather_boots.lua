@@ -12,4 +12,6 @@ return {
     class = "rogue",
     price = 80,
     unlockQuests = 0,
+    -- footwear; the traps that do not spring are the wake
+    bonus = { movement = 1 },
 }

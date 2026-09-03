@@ -75,11 +75,37 @@ return {
         -- same three castings at every level of the game. Three is deliberate: enough that closing a
         -- lane is a thing grunts do, few enough that a party can wait one out -- and few enough that
         -- one Drain Mana (data/items/ability/ability_drain_mana.lua) is worth a whole casting.
-        health = 74, mana = 24, stamina = 15, staminaRegen = 2,
+        -- HEALTH IS THE PROLOGUE'S CHOREOGRAPHY, not a durability knob. The lesson's closing column is
+        -- parry, Rowan's mace, the Jolt, Rowan's shove into the top edge, and then the player's last
+        -- stroke -- and that ending only reads if the grunt is still standing when the player swings and
+        -- falls when they do. tests/tutorial_spec.lua pins the whole window: what is left after the Jolt
+        -- must exceed Rowan's follow-up (or she steals the kill) and must not exceed the player's own
+        -- swing (or the lesson trails off).
+        --
+        -- It was 74 against an avatar whose Damage was 12, which left 26 in that window. The avatar's
+        -- Damage came up to 16 (character_avatar.lua: it is Balance.REFERENCE, and at 12 it was ranking
+        -- thirty-second on its own rung and capping the whole bestiary underneath it), and the same
+        -- column then left 18 -- under Rowan's 22 follow-up, so she took the kill and the beat the
+        -- prologue is built to end on stopped happening. 80 restores it, at 24 against her 22.
+        --
+        -- 80 IS THE CEILING, not a chosen number: tests/bestiary_spec.lua holds a tier-2 body to 31-80
+        -- health, and the first repair here tried 90 and was caught by it. So the grunt's health and the
+        -- avatar's Damage had to be solved together rather than one after the other, and 16/80 is the
+        -- strongest avatar this beat has room for -- measured across the whole grid, not reasoned out.
+        --
+        -- THE WINDOW IS TWO POINTS WIDE and that is the cost of taking the strongest legal avatar. If a
+        -- later edit to the sword, the mace, Minor Shock or this line breaks tutorial_spec, do not
+        -- nudge blindly: re-measure the grid. Every point of avatar Damage costs two points of window,
+        -- so 15 buys four and 14 buys six, and the grunt cannot pay for any of it -- it is already at
+        -- its rung's ceiling.
+        health = 80, mana = 24, stamina = 15, staminaRegen = 2,
         damage = 8, magicDamage = 6,
         defense = 4, magicDefense = 2,
         movement = 4,
         speed = 2,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 6, luck = 5,
     },
     -- Its body IS its weapon, and that weapon is the point of the thing (see the file). It used to
     -- carry a borrowed iron sword, which cost the prologue twice over: a 6-damage swing at a 62-health

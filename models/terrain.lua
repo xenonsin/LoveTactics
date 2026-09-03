@@ -1,7 +1,8 @@
--- THE ONE TERRAIN TABLE. What ground is, for the map and for the board, because they are the same
--- ground: a fight is taken on an 8x8 window of the very tiles the company walked over (see
--- models/overworld.lua's Overworld.BOX and docs/overworld.md). A tile therefore has to answer both
--- layers' questions at once, and there can only be one answer.
+-- THE ONE TERRAIN TABLE. What ground is, for the map and for the board alike. It was written when a
+-- fight was taken on an 8x8 window of the very tiles the company walked over, which made one answer
+-- mandatory; the board is built for the fight again (models/arena.lua) and the single table stays,
+-- because a river meaning one thing on both surfaces is worth having on its own and two tables drifting
+-- apart was never the good version.
 --
 -- Before this there were two tables and they disagreed. models/tileset.lua knew six overworld types and
 -- one fact about each -- walkable or not. models/arena.lua's TILE_PROPS knew ten battle types and four
@@ -50,14 +51,20 @@ Terrain.TYPES = {
     bridge  = { moveCost = 1, walkable = true, sightCost = 0, index = 5, color = { 0.55, 0.40, 0.22 } },
 
     -- ---- cover and rises ---------------------------------------------------
-    -- Trees you walk through: slow, soft cover, and they catch.
+    -- Trees you walk through: slow, soft cover, and they catch. The `avoid` makes the cover mean the
+    -- same thing to a swing that it already meant to a sightline -- until accuracy existed, "soft
+    -- cover" was a claim this tile only half kept.
     forest  = { moveCost = 2, walkable = true, sightCost = 1, tags = { "burnable" },
+                bonus = { avoid = 20 },
                 index = 1, color = { 0.10, 0.24, 0.12 } },
     -- Steep high ground: blocks the view behind it, but whoever holds it sees and strikes one further.
-    mountain = { moveCost = 3, walkable = true, sightCost = 2, bonus = { range = 1 },
+    -- The best tile on the board and priced like it: three move to enter, and it now pays twice.
+    mountain = { moveCost = 3, walkable = true, sightCost = 2, bonus = { range = 1, avoid = 30 },
                 index = 3, color = { 0.40, 0.38, 0.36 } },
-    -- Legacy penalty floor, still named by curated arenas.
-    rough   = { moveCost = 2, walkable = true, sightCost = 0, index = 3, color = { 0.34, 0.32, 0.30 } },
+    -- Legacy penalty floor, still named by curated arenas. Broken ground: a modest edge to whoever is
+    -- willing to pick their way across it.
+    rough   = { moveCost = 2, walkable = true, sightCost = 0, bonus = { avoid = 10 },
+                index = 3, color = { 0.34, 0.32, 0.30 } },
 
     -- ---- solid -------------------------------------------------------------
     -- Dense wood: the map's fill, the thing a trail is cut THROUGH. Blocks the tile and the view.
@@ -94,9 +101,13 @@ Terrain.TYPES = {
     -- a lightning line that would clip one body on grass sweeps a whole frozen front.
     ice     = { moveCost = 1, walkable = true, sightCost = 0, tags = { "conductable" },
                 index = 2, color = { 0.80, 0.86, 0.90 } },
-    -- Sucking bog: ties the mountain for the heaviest walkable floor and gives back nothing -- no reach,
-    -- no cover, no sight. Expensive to cross and never worth holding. Wet through, so it conducts.
+    -- Sucking bog: ties the mountain for the heaviest walkable floor and gives back LESS than nothing --
+    -- no reach, no sight, and a body floundering in it is easier to hit than one on open ground. The
+    -- only negative `avoid` in the table, and the tile's whole character: expensive to cross, worse
+    -- than worthless to hold, the exact inverse of the mountain it costs the same to enter.
+    -- Wet through, so it conducts.
     mire    = { moveCost = 3, walkable = true, sightCost = 0, tags = { "conductable" },
+                bonus = { avoid = -10 },
                 index = 1, color = { 0.28, 0.34, 0.22 } },
 }
 

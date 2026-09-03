@@ -12,8 +12,8 @@ return {
     tags = { "plate" },
     class = "knight",
     discipline = "sentinel", -- the Intercept mechanic itself -- soak the blow aimed at the ally beside you
-    price = 475,
-    unlockQuests = 3,
+    price = 495,
+    unlockQuests = 5,
     traits = { "trait_oathward" },
     bonus = { defense = Curve.ramp(6, 16), movement = -1 },
     resist = { physical = 2 },

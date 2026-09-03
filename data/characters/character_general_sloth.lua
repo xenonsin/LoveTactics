@@ -43,6 +43,9 @@ return {
         defense = 22, magicDefense = 16, -- no soft answer the way Ira is soft to magic
         movement = 2, -- she does not chase. She has never once had to
         speed = 2,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 3, luck = 3,
     },
     traits = { "trait_unrelieved" },
     -- Her loadout as the 3x3 grid (row-major); false = an empty cell. The pike is the relic that comes

@@ -38,8 +38,8 @@ return {
     hands = 1, -- one-handed, like every sword: the free hand is half of what the family is
     traits = { "trait_parry" }, -- swords answer a melee blow (docs/weapons.md)
     class = "knight", -- a sword, so the Bastion's shelf -- the same rule that puts weapon_demon_bane there
-    price = 740,
-    unlockQuests = 5, -- above Demon Bane's 3; rank 4 is the vendor ceiling (data/vendors/)
+    price = 660,
+    unlockQuests = 7, -- above Demon Bane's 3; rank 4 is the vendor ceiling (data/vendors/)
     activeAbility = {
         target = "tile",      -- a direction, not a victim: the aimed tile sets the line the arc runs
         allowOccupied = true, -- the first tile may hold a foe; the crescent starts there and carries on

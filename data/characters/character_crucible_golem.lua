@@ -29,6 +29,9 @@ return {
         defense = 9, magicDefense = 8,
         movement = 2, -- it arrives where you put it and does not meaningfully relocate
         speed = 1,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 6, luck = 0,
     },
     -- Its hands carry its guard (data/items/weapon/weapon_golem_fists.lua). A trait CANNOT be declared
     -- on a character blueprint: Trait.attach reads `unit.char.traits`, but Character.instantiate builds

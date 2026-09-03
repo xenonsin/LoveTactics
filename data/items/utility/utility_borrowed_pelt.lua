@@ -38,4 +38,6 @@ return {
             end
         end,
     },
+    -- wearing a wyrm is not a subtle item
+    bonus = { damage = 2 },
 }

@@ -45,4 +45,6 @@ return {
             end
         end,
     },
+    -- judging every Marked foe at once is the payoff the Lodge sets up
+    bonus = { skill = 2 },
 }

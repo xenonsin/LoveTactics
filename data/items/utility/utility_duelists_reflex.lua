@@ -6,7 +6,7 @@
 -- Colosseum.
 return {
     name = "Duelist's Reflex",
-    description = "Deflects the next physical attack, then goes on cooldown. Magic still lands.",
+    description = "On a physical attack: deflect it, then go on cooldown.",
     flavor = "Trained instinct, sold by the yard. The Colosseum has never been short of duelists to copy.",
     sprite = "assets/items/duelists_reflex.png",
     type = "utility",
@@ -15,4 +15,6 @@ return {
     price = 80,
     unlockQuests = 0,
     traits = { "trait_dodge" },
+    -- a deflection is guard, arriving late
+    bonus = { defense = 2 },
 }

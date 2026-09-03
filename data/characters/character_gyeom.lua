@@ -47,6 +47,9 @@ return {
         defense = 7, magicDefense = 11, -- warded against the magic her line traffics in
         movement = 4,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 6, luck = 4,
     },
     -- The 3x3 loadout grid (row-major); false = an empty cell. The Ledger is the build-around in the
     -- center; a plain wand and a single bolt are all she shows, and the mana potion is what keeps the

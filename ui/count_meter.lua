@@ -35,7 +35,11 @@
 --
 --   local meter = CountMeter.new()
 --   ... meter:update(dt)
---   ... meter:draw(x, y, w, run)   -- centred in the given width; CountMeter.HEIGHT tall
+--   ... meter:draw(x, y, w, player)   -- centred in the given width; CountMeter.HEIGHT tall
+--
+-- IT TAKES THE PLAYER, NOT THE RUN. It used to take the run, which was the same reading while a descent
+-- outlived every climb-out; the tally is the company's now (models/descent.lua's Descent.count), and the
+-- plaza has to be able to draw it standing in a city with no expedition open.
 
 local Colors = require("ui.colors")
 local Descent = require("models.descent")
@@ -94,10 +98,10 @@ CountMeter.BAND_COLOR = {
     up       = Colors.ENEMY,        -- ember
 }
 
--- The darkening `run` has earned, or nil when there is nothing to draw.
-function CountMeter.cityDim(run)
-    if not run then return nil end
-    local a = CountMeter.CITY_DIM[Descent.countBand(run).id] or 0
+-- The darkening this company has earned, or nil when there is nothing to draw.
+function CountMeter.cityDim(player)
+    if not player then return nil end
+    local a = CountMeter.CITY_DIM[Descent.countBand(player).id] or 0
     return a > 0 and a or nil
 end
 
@@ -134,8 +138,8 @@ end
 
 -- Take the count now, starting a beat if it moved since the last draw. Split out from `draw` so a
 -- caller that wants the beat to begin on entry rather than on the first frame drawn can say so.
-function CountMeter:sync(run)
-    local n = Descent.count(run)
+function CountMeter:sync(player)
+    local n = Descent.count(player)
     if self.shown and n ~= self.shown then
         self.anim = { from = self.shown, to = n, t = 0 }
     end
@@ -143,12 +147,14 @@ function CountMeter:sync(run)
     return n
 end
 
--- Draw centred in `w` at `x`, phrase first. `run` is the descent run; nothing is drawn without one.
-function CountMeter:draw(x, y, w, run)
-    if not run then return end
-    local n = self:sync(run)
+-- Draw centred in `w` at `x`, phrase first. `player` is the company whose tally this is; nothing is
+-- drawn without one. The CALLER decides whether the meter belongs on screen at all
+-- (Descent.everClimbedOut gates it), which is unchanged -- this only stops it drawing with no company.
+function CountMeter:draw(x, y, w, player)
+    if not player then return end
+    local n = self:sync(player)
     local max = Descent.COUNT_MAX
-    local band = Descent.countBand(run)
+    local band = Descent.countBand(player)
 
     -- MOST BANDS CARRY NO WORDS AT ALL (models/descent.lua's COUNT_BANDS). The marks are the readout;
     -- the warning is the only text this ever draws, and it appears near the top, where its ARRIVAL is

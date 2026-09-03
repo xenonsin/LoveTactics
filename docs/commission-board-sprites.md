@@ -9,7 +9,7 @@ is here. Deeper character context — personalities, story roles, faction looks 
 ## The project
 
 **LoveTactics** — a 2D tactics RPG. Tone: **bright heroic fantasy**, not grim-dark. Battles play out
-on a grid of ~60px tiles, where each combatant is a small sprite that idles, moves, attacks, takes
+on a grid of 64px tiles, where each combatant is a small sprite that idles, moves, attacks, takes
 hits and falls — the readable, lively unit art of a game like *Fire Emblem Heroes*.
 
 ## What we're commissioning
@@ -23,7 +23,7 @@ from you is the body, in one pose, painted well.
 
 > **This brief used to ask for Spine rigs** — ~10 skeletons with 191 skins over them, mesh
 > deformation, Spine Professional, and a per-artist editor licence. That is withdrawn. The deciding
-> fact is the display size below: **~52px on a 60px tile**, where mesh deformation is sub-pixel. The
+> fact is the display size below: **~56px on a 64px tile**, where mesh deformation is sub-pixel. The
 > *Fire Emblem Heroes* reference misleads — those sprites are displayed huge on a phone, which is what
 > pays for the rigging. **Painting labour is identical either way**, so the rig was pure surcharge.
 
@@ -40,25 +40,25 @@ painted character art the game will have, and every place a person appears is on
 - **One consistent cast.** Shared rendering style, line weight and proportion across all 153, and
   matched to the dialogue portraits of the named characters. Units are compared side by side on the
   board, so a mismatch reads immediately.
-- **Readable small, and readable darkened.** The sprite is displayed around 52px tall. Silhouette and
+- **Readable small, and readable darkened.** The sprite is displayed around 56px tall. Silhouette and
   key colours must carry at that size, and must still read when the sprite is **greyed / desaturated**
   (fallen and inactive states tint it down). Avoid identity resting on fine low-contrast detail.
 - **Human-made only:** **no AI-generated content.** A contractual requirement, not a preference.
 
 ## The board still is also the portrait
 
-The game tells its story visual-novel style, with a standing figure over a dialogue box at **470px
+The game tells its story visual-novel style, with a standing figure over a dialogue box at **480px
 tall**. There is no separate portrait commission: **that figure is the board still**, posed.
 
 This has one hard consequence for authoring, and it cannot be retrofitted:
 
-- **Author at portrait scale, not board scale.** The board draws a unit at ~52px.
-  A picture authored for 52px and scaled up 9x to fill a dialogue box is a blurred mess. Author the source
-  art large and deliver a file that stays crisp at **470px tall**, then let the engine downscale for
+- **Author at portrait scale, not board scale.** The board draws a unit at ~56px.
+  A picture authored for 56px and scaled up 8x to fill a dialogue box is a blurred mess. Author the source
+  art large and deliver a file that stays crisp at **480px tall**, then let the engine downscale for
   the board — the same "never author small" rule as below, taken seriously enough to survive the larger
   of the two sizes.
-- **Compose so the figure reads at both sizes.** Silhouette and key colours carry the 52px board read;
-  face and costume detail carry the 470px one. Detail that only exists at portrait scale is fine — detail
+- **Compose so the figure reads at both sizes.** Silhouette and key colours carry the 56px board read;
+  face and costume detail carry the 480px one. Detail that only exists at portrait scale is fine — detail
   the silhouette *depends* on is not.
 - **A neutral standing pose is the portrait pose.** No separate portrait artwork is delivered; the
   dialogue box shows the same picture, at rest.
@@ -72,8 +72,9 @@ fidelity as a requirement for **Phase 1** and board-scale as sufficient for Phas
   atlas, no export step.
 - **Name each file to match the unit id** in the roster below (e.g. `general_wrath.png`,
   `dire_bear.png`). It drops into `assets/chars/` and the game picks it up with no wiring.
-- **Author at portrait scale** (see above) — deliver **≥1400px tall** so the same picture stays crisp
-  in the 470px dialogue box, and let the engine downscale to the board's ~52px.
+- **Author at portrait scale** (see above) — deliver **≥1536px tall** so the same picture stays crisp
+  in the 480px dialogue box, and let the engine downscale to the board's ~56px. 1536 is 24 board tiles
+  and comfortably over 3× the dialogue height; more is welcome, less is not.
 - **Compose the figure standing on its feet, centred.** The game pivots every animation at the
   **feet** — a body that topples or squashes around its middle reads as a spinning coin — so the
   footprint must sit at the bottom edge of the canvas with no padding under it.
@@ -84,10 +85,16 @@ fidelity as a requirement for **Phase 1** and board-scale as sufficient for Phas
 
 ## Technical spec
 
-- **Display size:** ~52px tall on a 60px tile (the game runs in a fixed 1280×720 logical space). Author
-  well above that and let the engine downscale; never author small.
-- **Large units:** a few enemies occupy a **2×2 footprint** (e.g. the ogre) and are drawn at roughly
-  twice the size — we'll mark which in the roster. Compose those to read as genuinely larger bodies.
+- **Display size:** ~56px tall on a **64px tile** (the game runs in a fixed 1280×720 logical space).
+  Author well above that and let the engine downscale; never author small.
+- **Large units:** a few enemies occupy a **2×2 footprint** (e.g. the ogre) and are drawn at **exactly
+  twice** the size, 112px on a 128px box — we'll mark which in the roster. Compose those to read as
+  genuinely larger bodies.
+- **The tile is 64 on purpose.** Anything authored *at* display size — a bought sprite pack rather than
+  a commission — is drawn at a **whole multiple** of its own cell and fills the tile edge to edge, so
+  cells of **16, 32 and 64** land at 4×, 2× and 1× with no resampling. Only the downscaled-from-large
+  path takes a fractional scale, and only because a painting can afford one. See `bodyScale` in
+  `ui/battle_map.lua`.
 - **Transparent** throughout; no baked background, ground shadow, or tile.
 - No baked team colour or selection frame — the game draws allegiance rings and highlights itself.
 

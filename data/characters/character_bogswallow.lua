@@ -23,6 +23,9 @@ return {
         defense = 8, magicDefense = 3, -- hide and mud; nothing at all against magic
         movement = 3, -- ponderous: it arrives, and then you have a problem
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 3, luck = 5,
     },
     startingItems = { "weapon_swallowing_grip" },
     defaultAction = "weapon_swallowing_grip",

@@ -12,8 +12,8 @@ return {
     tags = { "restorative" },
     class = "alchemist",
     discipline = "herbalist", -- hunter x alchemist; the Field-brewing mechanic's first stock
-    price = 210,
-    unlockQuests = 1,
+    price = 245,
+    unlockQuests = 2,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

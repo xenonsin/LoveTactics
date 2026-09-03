@@ -515,7 +515,7 @@ return {
             local c = Combat.new(arena(10, 10),
                 { unit(fighter, 1, 1), unit(plainChar("character_rowan"), 2, 1) },
                 { unit(plainChar("character_bandit"), 8, 8), unit(plainChar("character_bandit"), 8, 7) })
-            local bearer, comrade, foe = c.units[1], c.units[2], c.units[3]
+            local bearer, ally, foe = c.units[1], c.units[2], c.units[3]
             assert(Trait.has(bearer, "trait_blood_fever"), "the charm carries its rule to whoever holds it")
             assert((bearer.bonus and bearer.bonus.damage or 0) == 0, "and grants nothing until someone dies")
 
@@ -529,8 +529,8 @@ return {
 
             -- ...and its own side falling feeds it exactly as well, which is the sin stated as
             -- arithmetic: what it wants is for the fight to be going badly for somebody.
-            Combat.dealFlatDamage(c, comrade, 9999, nil, "test")
-            assert(not comrade.alive, "a comrade drops")
+            Combat.dealFlatDamage(c, ally, 9999, nil, "test")
+            assert(not ally.alive, "an ally drops")
             assert(bearer.bonus.damage == perBody * 2, "and it is just as pleased")
         end,
     },

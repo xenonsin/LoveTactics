@@ -11,6 +11,9 @@ return {
         defense = 6, magicDefense = 3,
         movement = 5,
         speed = 6, -- fastest in the pack
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 3, luck = 5,
     },
     startingItems = { "weapon_wolf_fangs", "utility_feral_instinct" },
     -- Basic tactics (models/ai.lua): the alpha calls the pack onto the wounded -- press the foe closest

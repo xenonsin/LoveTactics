@@ -24,7 +24,9 @@ return {
     tags = { "belt" },
     class = "fighter",
     discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
-    price = 345,
-    unlockQuests = 2,
+    price = 495,
+    unlockQuests = 5,
     traits = { "trait_adrenal_surge" },
+    -- the item is tempo, bought with being hit
+    bonus = { speed = 2 },
 }

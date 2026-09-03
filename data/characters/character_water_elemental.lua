@@ -14,6 +14,9 @@ return {
         defense = 4, magicDefense = 9,
         movement = 4,
         speed = 4,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 2, luck = 6,
     },
     startingItems = { "weapon_tide_fists" },
     -- Basic tactics (models/ai.lua): press the wounded -- finish the foe already closest to falling.

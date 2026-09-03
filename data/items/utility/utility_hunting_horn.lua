@@ -30,8 +30,8 @@ return {
     tags = { "horn" },
     class = "hunter",
     discipline = "beastmaster", -- deeper cut of the shelf: buyable only once the beastmaster gate is cleared
-    price = 475,
-    unlockQuests = 3,
+    price = 575,
+    unlockQuests = 6,
     waitBehavior = {
         kind = "perform",
         -- Steeper than a Focus and matching the Overwatch Scope's: a whole turn spent playing, never a
@@ -54,4 +54,6 @@ return {
             { name = "The Feast", status = "status_regen", scales = true },
         },
     },
+    -- an air sounded over the line
+    bonus = { magicDefense = 1 },
 }

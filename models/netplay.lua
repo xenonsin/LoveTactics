@@ -38,7 +38,14 @@ Netplay.__index = Netplay
 --    16807 is 7^5). Two peers agree on the wire and then diverge on the first roll, which is a desync
 --    with no message attached to it. Refusing the handshake is the honest failure, and it is what this
 --    number is for even though nothing about the packets moved.
-Netplay.VERSION = 2
+--
+-- 3: accuracy. Combat is no longer deterministic (models/combat.lua's ACCURACY section): every aimed
+--    blow spends two draws deciding whether it lands, and a third if it did. The stream itself is
+--    untouched, but how much of it a fight CONSUMES changed completely, so a peer on 2 and a peer on 3
+--    walk out of step on the first swing of the first turn. The state fingerprint gained a `draws`
+--    field in the same change, which is what makes such a divergence loud instead of silent -- but a
+--    version that can be refused at the handshake is better than a desync detected on turn one.
+Netplay.VERSION = 3
 
 Netplay.STATE = { handshake = "handshake", playing = "playing", over = "over", desynced = "desynced" }
 

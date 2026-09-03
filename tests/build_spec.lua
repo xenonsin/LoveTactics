@@ -224,14 +224,18 @@ return {
         -- playstyle starts to show, by exactly this mechanism.
         name = "the class tally decides the rebuild's growth, wherever the duelling level is set",
         fn = function()
-            local function played(tally, level)
+            local function played(tally, level, job)
                 local c = Character.instantiate("character_rowan")
                 c.level, c.technique = 30, tally
+                -- The JOB is what growth reads now (Growth.jobOf), and it is what a build has to
+                -- carry across normalization: the ledger below sets the class LEVEL, which scales
+                -- what gear does rather than how the body grows.
+                c.job = job
                 return assert(Build.restore(roundTrip({ c }), { level = level }))[1]
             end
 
-            local brawler = played({ fighter = 25 }, 12)
-            local scholar = played({ mage = 25 }, 12)
+            local brawler = played({ fighter = 25 }, 12, "fighter")
+            local scholar = played({ mage = 25 }, 12, "mage")
             assert(brawler.level == scholar.level, "both arrive at the level asked for")
             local a, b = brawler.stats, scholar.stats
             local differs = a.damage ~= b.damage or a.magicDamage ~= b.magicDamage
@@ -258,6 +262,10 @@ return {
             local function played(tally)
                 local c = Character.instantiate("character_rowan")
                 c.level, c.technique = 30, tally
+                -- The JOB is what growth reads now (Growth.jobOf), and it is what a build has to
+                -- carry across normalization: the ledger below sets the class LEVEL, which scales
+                -- what gear does rather than how the body grows.
+                c.job = job
                 return assert(Build.restore(roundTrip({ c })))[1]
             end
             local a, b = played({ fighter = 25 }).stats, played({ mage = 25 }).stats

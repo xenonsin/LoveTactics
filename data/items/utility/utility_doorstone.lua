@@ -52,4 +52,6 @@ return {
             end
         end,
     },
+    -- it raises a wall; the wall is the item
+    bonus = { defense = 3 },
 }

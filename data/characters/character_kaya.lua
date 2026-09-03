@@ -38,6 +38,9 @@ return {
         defense = 8, magicDefense = 8,
         movement = 4, -- she covers ground; the wild is hers
         speed = 5,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 9, luck = 5,
     },
     -- The 3x3 loadout grid (row-major); false = an empty cell. The Wolfsong Horn is the build-around in
     -- the center; a longbow to keep the distance a kiter needs, and a potion for the long night in the wood.

@@ -32,7 +32,7 @@ return {
     class = "knight",
     discipline = "spellbreaker", -- knight x mage; a standing tax on casting, the anti-mage answer that spends no turn
     price = 740,
-    unlockQuests = 5,
+    unlockQuests = 8,
     activeAbility = {
         target = "tile",
         range = 3,

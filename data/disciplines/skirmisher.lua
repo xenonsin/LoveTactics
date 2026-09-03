@@ -8,5 +8,5 @@ return {
     description = "Hit and run. A free move once you have swung, so a strike never leaves you standing where it landed.",
     classes = { "fighter", "hunter" },
     exemplar = "character_skirmisher", -- NEW, pending
-    requiredQuests = { "quest_hunters_lodge_the_running_fight" }, -- pending
+    requiredLevel = { hunter = 7 }, -- pending
 }

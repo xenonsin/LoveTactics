@@ -1,75 +1,87 @@
 # The Overworld
 
-The board a **day** is run on: ground carved to suit its biome, one objective at the far end of a spur
-for every piece of work posted there, stops scattered through it, and one rule about how you get home.
-[docs/progression.md](progression.md) owns the campaign's economy — what a run pays and what a level
-buys. This owns the run itself.
+The floor a **descent** is walked on: a small grid of places, an end for every piece of work standing
+down here, and one rule about how you get home. [docs/progression.md](progression.md) owns the
+campaign's economy — what a run pays and what a level buys. This owns the floor itself.
 
-**A run is a ground, not a quest.** The player chooses *where* to spend the day; every quest the houses
-have posted on that ground is standing on the board when the company arrives, each on its own dead end,
-ticked off a checklist as they are taken. `Quest.trip` (`models/quest.lua`) is what builds that
-descriptor, and the only thing it changes down here is that `map.objective` became `map.objectives`, a
-list. A single-quest leg — the prologue's flight, the debut's walk, every descent floor — passes one and
-comes through the generator as a list of one, so nothing about those boards moved.
+**One cell is one place, and it holds at most one thing** — a fight, a find, a camp, a gate, a piece of
+posted work, or the stair. Stepping onto it *is* arriving. A blocked cell is not a wall you walk around;
+it is somewhere that is not there, and what it buys is the floor's silhouette and its chokepoints.
 
-Every number below is reproducible with `& "E:\LOVE\lovec.exe" . board-report [n] [all | biome=ID]`,
-which rolls `n` boards with the campaign's default map params and reports what the generator actually
-laid down. `& "E:\LOVE\lovec.exe" . board-render <biome> [seed]` draws a single board twice — as ground,
-and as fightability — because a mean cannot show you a shape. The rule from [docs/roadmap.md](roadmap.md)
-applies with force here: **do not hand-derive a count from the constants, roll the boards and read what
-they say.** This document exists partly because that was not done once, and the wrong number was carried
-for a whole pass.
+Every number below is reproducible with `& "E:\LOVE\lovec.exe" . board-report [n] [descent [floor=N]]`,
+which rolls `n` floors with the mode's own params and reports what the generator actually laid down.
+`& "E:\LOVE\lovec.exe" . board-render <biome> [seed] [size=N]` draws a single floor twice — as ground,
+and as step-distance from the way in — because a mean cannot show you a shape. The rule from
+[docs/roadmap.md](roadmap.md) applies with force here: **do not hand-derive a count, roll the floors and
+read what they say.** This document exists partly because that was not done once, and the wrong number
+was carried for a whole pass.
 
-## One map
+## What this replaced, and why it had already lost its argument
 
-**A fight is taken on the tiles the company walked over.** There is no separate arena. When one begins
-the board locks an 8×8 window of the map, walls close on the ring around it, and the company unfurls
-onto ground that was already there.
+For a long run of passes a board was a **rectangle with corridors carved through it**: eight per-biome
+carves (`models/layouts/`), a coastline eaten out of the frame, rivers laid over it with bridges thinned
+to one tile, barren spurs pruned, and a share of the fights lifted onto patrol beats. It was carefully
+built and every invariant held. A descent floor came out **40×40 — 931 walkable tiles carrying thirteen
+stops, one every thirty tiles, with the stair a forty-step walk from the door.** What it produced was
+transit.
 
-That is possible because the two grids were already the same grid: 32 logical pixels a cell on the map,
-64 in the arena, and eight tiles at double scale is the 512-pixel board battles have always occupied. So
-the lock is a camera transform rather than a second board, and no ability range, TTK or AI weight had to
-be re-tuned to allow it.
+Two things had already knocked the props out from under it.
 
-| Piece | Where | What it does |
-|---|---|---|
-| `models/terrain.lua` | one table | The ground, for both layers. Neither may hold a second opinion. |
-| `Overworld:bestBox` | `models/overworld.lua` | Of every window containing the tile, the one with the most ground you can *cross* from it. |
-| `Overworld:boxReach` | `models/overworld.lua` | How much of a window is reachable without leaving it — the measure above, and the one below. |
-| `Arena.fromGrid` | `models/arena.lua` | Cuts that window, walls what it cannot reach, and hands it back as an ordinary layout. |
-| `BattleMap:drawSurround` | `ui/battle_map.lua` | The rest of the map, dark and stopped, and the walls. |
+**The fight stopped reading the map.** For a stretch a battle was fought on an 8×8 *window of the map
+itself*: the lock closed around the tile the fight began on, walls fell on the ring, and the company
+unfurled onto ground that was already there. It bought real continuity and it cost shape — the ground
+you happen to be standing on when something finds you is not an arena, and the one fight nobody may
+decline sits on a strict dead end by rule, which is the least arena-shaped tile a board has. So a fight
+builds its own board now (`models/arena.lua`), and the overworld under it contributes the biome and
+nothing else. Which means the tile-level terrain the carve existed to produce **feeds nothing
+mechanical.**
 
-Three consequences worth stating on their own:
+**The room had already become the unit.** The lattice carve that came last put one encounter in each
+chamber, lit a chamber whole on entry, drew the floor as a plan of its chambers, and — explicitly —
+gated on the room:
 
-- **The window is chosen, not centred.** Meet something at the mouth of a clearing and the board pulls
-  into the clearing; get cornered in a corridor and it stays a corridor, because there was nothing
-  better within reach.
-- **The board is one piece of ground.** The ring is a wall, so a window laid across a ridge or the
-  outside of a switchback holds two pockets that the map joins by a path running *round the outside* —
-  and inside the lock that path is gone. Boards opened with a boar on one side of it and the company on
-  the other, neither able to reach the other, and a `killAll` that could not be finished. So a window is
-  now measured by what you can cross **from the tile the fight began on**, and whatever the cut leaves
-  stranded, `Arena.fromGrid` walls. A board in pieces has to read as the small board it is.
-- **Your side is the side you arrived from.** A rolled board had no outside and so no "your side";
-  `deployZoneFor`'s fixed block at the bottom centre existed because there was no better answer.
-- **Two words became two tiles.** The map's `forest` was impassable wood and the board's was a tree you
-  walk through for cover, so `thicket` is the wall and `forest` is the cover — and a glade wants both at
-  once. The map's `water` was a barrier and the board's a wadeable ford, so `river` is the barrier and
-  `water` stays the ford. Merge either pair the other way and something good dies: every river becomes
-  crossable and bridges stop being doors, or the shallows become walls and take conduction with them.
+> `guardBoons` wants a tile whose removal cuts a boon off… A board of rooms has none — every interior
+> tile has four walkable neighbours… **The gate was never going to be a tile on a board like this. It is
+> the room.**
 
-### What that deleted
+A 40×40 floor of ten-tile sectors is a 4×4 grid of places wearing 1,600 cells. The grid is that
+admission, finished.
 
-`Overworld:groundAt` voted over a 5×5 neighbourhood to *guess* what the ground was, and
-`Arena.GROUND_PROFILES` picked scatter ranges so a rolled board would resemble it. The resemblance is
-the thing now — the channel down the flank **is** the river, in the place it runs — so both are gone.
+### What survived, and why
 
-One guarantee went with them and was rehomed rather than lost: `band = "cross"` promised a crossing
-exactly one free ford, tuned so water could never cut a board in half. That promise belongs to whichever
-layout lays the water, and moving it immediately found a bug the old spec could not see, because it was
-testing a board that no longer gets built — the tundra's leads sealed lobes off, 454 of 752 walkable
-tiles unreachable on a board that passed every other check. `Floes.ford` repairs the crossings after all
-the water is down.
+- **One terrain table** (`models/terrain.lua`). `river` means one thing on both surfaces, and the arenas
+  still use every type in it. The map now uses exactly two: `path` is a place, `thicket` is a cell that
+  is not there. Both are the tileset's own names, which is why walkability, the renderer and the save
+  needed no edit.
+- **Every placement pass**, because they were always graph-generic: the caches, the stops, the
+  guarantees, the combat budget, the tier arc. They ran on BFS over `pathNeighbors` then and they run on
+  it now. **Swap the shape, keep the pipeline** was the old rule for adding a ground; it turned out to be
+  the rule for deleting all eight.
+- **One connected region, owned by the pass that shapes the floor.** Nothing downstream repairs it:
+  `computeStart` takes a place without asking which piece it is in, so a floor in two pieces is silently
+  a floor half the size and reads as a small floor rather than as a bug.
+- **The fog**, adjacency-wide — see below.
+- **Gates and keys**, which are no longer hoped for. See The gate is built, not found.
+
+### What went with it
+
+The eight layouts and the layout contract, the coastline (`weatherEdges`), the rivers and bridges, the
+corridor carvers, `decorate`, `pruneDeadStubs`, `guardBoons`, the patrols (`models/patrol.lua`), the
+room layer, and line-of-sight (`models/vision.lua`) — shadowcasting needs walls to cast against and
+there are none. Roughly **5,900 lines** left the map layer.
+
+Two of those are worth naming as losses rather than removals:
+
+- **A fight guarded nothing for a while, and that was wrong.** `guardBoons` stood a fight in front of
+  most rewards; at the cut it was putting 38% of a floor's boons behind one, and it went with the
+  geometry it read. The replacement argument was that a fight pays for itself in spoils and levels —
+  Dream Quest's own model. That turned out to be true and not enough: *a fight that pays for itself is a
+  fight you take when you feel like it*, so a floor read as a shopping list. See **The fights that block
+  the way**.
+- **The ambush is gone with the patrols.** "Where it touched you is where it deploys" needed a fight
+  that could walk up behind you, and being caught deep in a spur is not a thing a grid of places can do
+  to you. What survives is the half that did not need a beat: the company deploys on the side they
+  walked in from, read off the step that brought them (`ui/overworld_map.lua`'s `entryEdge`).
 
 ## The generation pipeline
 
@@ -77,301 +89,367 @@ the water is down.
 
 | Pass | What it does |
 |---|---|
-| `layout.carve` | **per biome** — see The seven grounds below |
-| `weatherEdges` | eats a wandering coastline out of the rectangle the carve stopped against. Skipped for a layout that means its outline square (`ownsEdge`) |
-| `placeRivers` → `thinBridges` | wandering water; a river over a path becomes a one-tile bridge. Skipped for a layout that lays its own (`ownsWater`) |
-| `placeObjectiveAndGates` | one objective per piece of work: the deepest on a far dead end (~80% of max distance) with the gates + keys before it, the rest on the farthest remaining dead ends, held apart |
-| `placeCaches` | material caches take the spur ends **first**, then the deepest ground off the road |
-| `placeEncounters` | fights and texture fill the ground between them |
-| `guardBoons` | re-seats fights so most rewards stand behind one |
-| `pruneDeadStubs` | trims spurs that ended in nothing (no RNG) |
+| `hollow` | blocks about a quarter of the cells, refusing any block that would strand a place |
+| `longestWalk` | the way in and the guardian are the two ends of the floor's longest walk |
+| `placeObjectiveAndGates` | the stair on the farthest place, the rest of the day's work on the farthest remaining, held apart |
+| `chokeAndGate` | blocks the deepest end's other approaches until one remains — that cell is the gate |
+| `placeKeys` | keys strictly nearer the way in than the gate |
+| `markSpine` | every end's walk back to the start, unioned — the road combat is kept off |
+| `placeCaches` | the finds take the dead ends **first**, then the deepest ground off the road |
+| `placeEncounters` | the stops fill the places between them, no two sharing a side |
+| `blockRoutes` | most of the fights move onto the one way through something |
+| `freeTheDoor` | ...and come back off it until the way in has somewhere to go that is not a fight |
 | `assignEncounterTiers` | the pips the fog shows, drawn last so geometry never shifts |
-| `placePatrols` | lifts a share of the fights off their cells onto beats (opt-in) |
+| `placeSecrets` | ...and the places that read as absent until somebody looks |
+| `placeExit` | the way back up, on the place the company walked in on |
 
-**Swap the carve, keep the pipeline.** Everything below the carve works on an arbitrary walkable graph
-— it is all BFS over `pathNeighbors` — which is why seven grounds is a tractable amount of work rather
-than seven generators. `deriveDims` sizes the grid to the content and to the layout's own `density`. An
-authored board (`Overworld.fromLayout`, `data/overworld/*.lua`) skips the lot.
+`deriveDims` sizes the grid when a caller does not pin one; a descent floor always pins
+(`Descent.floorDims`). An authored floor (`Overworld.fromLayout`, `data/overworld/*.lua`) skips the lot.
 
-### The coastline
+### The silhouette
 
-A carve fills the rectangle it is handed and stops at the margin, so every board used to come out framed
-by a wall of exactly even thickness with four right angles in it — which on the open grounds is the most
-prominent thing on the screen, and what it says is *architecture*. Six of the seven mean the opposite.
+`Overworld.BLOCK_SHARE = 0.25`. Both halves of that matter. Blocked cells are what give a floor a shape
+instead of a rectangle, and — far more load-bearing — they are the only source of a **chokepoint**: on a
+full grid every interior cell has four neighbours, nothing is an articulation point, and a gate could be
+walked around. That is the same failure the room carve hit from the other direction.
 
-`weatherEdges` gives that frame a **coastline**: the wall's inner face wanders in and out along its whole
-length, one to four tiles deep, in headlands and bays. The tiles stay square; the line they make does not.
+**The guarantee is affordable outright rather than argued.** A floor is a hundred and forty-four cells
+at the very deepest, so every candidate block is tested by re-flooding the whole floor and counting.
+A hundred-odd floods of a hundred-odd cells is nothing, and it means the invariant holds by construction
+on every seed rather than on the seeds a spec happened to roll. A quarter rather than a third because the pass *refuses* a block that
+strands anything, so a share pitched too high does not make a more interesting floor — it makes a pass
+that spends its candidates being refused and stops wherever it happens to.
 
-- **A walk, not noise.** The first version was the cavern carve's own rule — fill the band with noise,
-  smooth it with the 5-neighbour test — and on a plain it ate the entire band and handed back a smaller
-  rectangle. Noise smoothed against a straight wall does not make a coast, it makes the wall thicker,
-  because every tile against the frame already has three solid neighbours before the noise says anything.
-  A depth that *walks* carries its own history: two thick here, five there, and neither where the last was.
-- **It never sits at 0.** A stretch at depth 0 is a stretch of the original frame, straight and square
-  and as long as the walk happened to hold there.
-- **Nothing is ever cut off.** A bite is taken only where the trail can still get around it
-  (`biteSafe`), and a dead end is spared outright — so the same rule reads as a deep bay on a plain and
-  as barely a nibble in a maze, where a 1-wide corridor is all cut vertices. That is what lets one pass
-  run over every layout instead of seven.
-- **The coast is padding, like the margin.** `generate` adds `EDGE_SURPLUS` tiles to every side before
-  handing the rectangle to the carve, so the pass eats surplus rather than play area. Without it
-  `. board-report` put the desert's walkable share at 40% against the 55% it was sized to hold, and the
-  places a fight can actually go dropped from 4.7 a board to 2.8.
-- **The castle keeps its corners** (`Rooms.ownsEdge`). A curtain wall was built square, and a stronghold
-  with a coastline for a perimeter is not a stronghold.
+### The door and the guardian are the two ends of the longest walk
 
-## The board's contract
+`Overworld:longestWalk` picks the rim place with the deepest floor behind it; the guardian then takes the
+far end of that same walk. **The floor asks for its whole depth, rather than for whatever depth an
+arbitrary door happened to open onto.**
 
-- **The objectives are the only fights you must take, and you need not take any of them.**
-  `placeEncounters` keeps combat off the spine, and a loose patrol's beat never touches it either, so a
-  wounded company can always route to a boss — or past one, to another. The spine is the **union** of
-  the paths back from every end, so the road home is a road *network* and the rule reads the same across
-  all of it.
-- **Two kinds of end, two marks.** Everything downstream of the generator calls an end an `objective` —
-  the arena's cap, the salvage, the payout, all of which want one answer — but a board can carry an end
-  that belongs to the *map* and an end that belongs to a *name*, and on a descent floor it usually
-  carries both: the guard standing on the stair down, and the errand a house asked for. `ui/overworld_map.lua`
-  splits them at the draw, off the `questId` an end stamped with a piece of work already carries: a
-  **pennant** for the board's own end, a **writ** for posted work, both in the same gold because both
-  are things the day ends at. A campaign ground, where every end is a quest, is all writs.
-- **A writ says whose it is before it is fought, and asks.** Stepping onto posted work opens a scene
-  naming the house and reading its own description out (`models/errand.lua`'s `Errand.posting`,
-  `states/game.lua`'s `askErrand`), and it ends on a question: take it on, or leave it standing. Yes
-  goes into the fight; no steps the token back one tile and leaves the end exactly where it was, to be
-  walked back onto whenever. The scene matters most for a house the company has never met — its first
-  job is *found*, not asked for, and without this the player fought a stranger's siege and learned what
-  it had been for from a shelf that had moved by the time they were next in town.
-- **Every other fight is optional, and an optional fight should be attached to something worth
-  having.** That is `guardBoons`: the boon behind, the fight in the way.
-- **Only the deepest approach is gated.** `keyCount` is authored per quest, so summing them across a
-  ground would have a player hunting six keys to spend one day. The deepest end keeps its lock and the
-  rest stand open — a door that cannot be opened is the one failure a day's ground must not produce.
-- **An end that cannot get a spur still gets a tile, and says so.** When the board runs out of dead
-  ends, the extra objective takes the farthest unclaimed walkable tile rather than being dropped: work
-  the player travelled for must never be silently absent. `. board-report` counts these, because a
-  board that keeps doing it is a sizing rule falling behind what a ground can hold. It sits around 8%
-  today, concentrated in the room-carve grounds that have almost no degree-1 tiles at all.
-- **A fight is never seated where a fight cannot happen.** See the fightability floor below.
-- **The stops are spread at the gap the board can hold, and the gap is derived.** `Overworld:markGap`
-  answers "how much ground does each mark get to itself" — the square root of walkable tiles over the
-  stop count, i.e. the Poisson-disc radius for this board's own density — and every pass that puts a mark
-  down or moves one spaces by that number: the seating loop walks the whole candidate list at the widest
-  gap first and relaxes a tile at a time when a board cannot meet it, a guard may not be lifted onto a
-  tile that touches another fight, and no two patrol beats share a tile. It has to be derived because a
-  descent floor and a roadside differ by a factor of three in both terms — 18 stops on 380 walkable tiles
-  against 10 on 620 — so any fixed gap is nominal on one and unmeetable on the other.
+It was a coin flip — the way in was a *random* rim place and the guardian was the farthest place from
+*that* — so the crossing was the eccentricity of an arbitrary cell rather than the floor's own diameter.
+`. board-report` reports both, and the gap was real:
 
-  The rule it replaced was `< 2`, which reads like spacing and is only a rule against *stacking*: below
-  it the order the shuffle dealt in decided everything, and darts clump. Measured on a dense 26×26 board,
-  30 seeds: mean nearest-neighbour **5.01 → 5.87** tiles, stops within two tiles of another **19% → 7%**
-  (worst board: half of them → a quarter), and the most stops inside one radius-2 disc — about what a lit
-  disc shows — **5 → 3**. Five fights in one disc with an empty map behind them was the complaint that
-  started this; it is the same finding the layouts' own content pass made one layer down, where a count
-  was never the problem and the clumping was. Composition is unmoved: a floor still holds 17.9 stops and
-  11.4 fights, guarded boons 44.4% → 41.8%, the tier arc unchanged. Pinned in `tests/overworld_spec.lua`,
-  not in `. board-report`, because a report column no pass reads is silently false.
-- **The fog lifts off what the party can see, not off what is near it.** Vision is cast, not measured:
-  `Overworld:inVision` asks the radius (`inRange`, the soft Euclidean disc) *and* line of sight
-  (`models/vision.lua`, recursive shadowcasting from the party's tile), so a wall stops the light and
-  everything behind it stays dark however close the party walks. The wall itself lights — a wall you
-  cannot see is a hole in the map — and only the ground behind it goes out. Solid is solid by tile
-  walkability, asked of the biome's own tileset, which is the same test a patrol's eye uses
-  (`Patrol.sees`): if you can trace a clear line to it, it can trace one to you. The grounds are
-  corridors cut through fill, so this is most of what makes walking one an act of looking: a junction
-  opens as you reach it instead of being reported through the trees.
-- **The map remembers a place; it never remembers a body.** A landmark — a cache, a key, a gate, the
-  objective pennant, a camp, a shop, a shrine, a scene — is a fact about the country, so once it has
-  been found it stays on the map (`OverworldMap:mapped`, i.e. `seen`) and a detour can be planned from
-  across the board. A live fight — combat or elite, un-cleared — draws only while its tile is lit *right
-  now* (`OverworldMap:lit`, the same `inVision` test reveal lit it with), and so do patrols, their
-  circuits and the hovered-fight readout: where a fight is standing is the question the fog is asked
-  for, and a board that listed every one of them ahead would answer it. Put a fight down and its marker
-  joins the remembered ground — it is no longer a body, it is a thing that happened here. Routing is
-  gated by neither: `pathTo` crosses any `seen` tile, so you can walk home through the dark.
+| | crossing | longest the floor has | |
+|---|---|---|---|
+| random rim start | 17.85 | 20.10 | **89%** |
+| longest walk | 20.10 | 20.10 | **100%** |
+
+Floor 15 the same: 24.45 of 24.50. About a ninth of every floor's depth was going unused, and more than
+that on a roll that put the door mid-edge.
+
+**The rim constraint stays and is not free** — the true diameter may run corner to corner through the
+middle. A floor is a place you walk *into*: entering at the middle would put the stair three steps away
+in every direction and leave no depth to spend. On these silhouettes it costs nothing anyway, because the
+diameter's endpoints are on the rim.
+
+**The tie is broken by the seed, not by the scan**, and that is the half that took a second pass to get
+right. Several rim places usually reach the same maximum, so taking the first one found resolved every
+tie the same way — and the scan runs outward from `y = 1`. Measured: **four starts in five landed on the
+top row**, and every floor became a walk downward. A positional tie-break is not neutral, it is a bias
+with no author. Choosing among the tied places with the floor's own rng restores the variety the random
+start had — which is the only part of it worth keeping — while the depth stays maximal.
+
+### The gate is built, not found
+
+A gate on open ground is not a gate: lock a cell with two ways round it and the player has spent a key
+hunt on a door they can walk past. The old board asked a maze for an articulation point and took what it
+got — and where it got nothing, the chain was skipped and the key bought nothing.
+
+`chokeAndGate` blocks the deepest end's other neighbours one at a time, keeping only blocks that leave
+the floor in one piece and never blocking the last one. What is left is a cell whose removal genuinely
+cuts the end off, and that cell is the gate. A chain of K gates walks back from it, and **each link has
+to earn the same guarantee** — `Overworld:cuts` asks the question directly, with the cell blocked, rather
+than inferring it from a degree count. `tests/floor_grid_spec.lua` holds it to all of that on thirty
+seeds: one approach, the approach is the gate, blocking it cuts the end off, and the key is on the near
+side.
+
+**A descent floor sets `keyCount = 0` and takes none of it** (`Descent.floorQuest`: *a floor is not a
+lock puzzle: the stair is always reachable*). That is an authored call about the descent, not a limit of
+the shape — the machinery is there and pinned the moment a floor asks for it.
+
+## The floor's contract
+
+- **On a campaign ground, the objectives are the only fights you must take, and you need not take any of
+  them.** `placeEncounters` keeps combat off the spine — the union of the walks back from every end — so
+  a wounded company can always route to an end, or past one, to another.
+
+  **A descent floor opts out, and always did.** It sets `ascent`, where *combat is the route*: fights may
+  stand on the spine, and `blockRoutes` puts most of them across the one way through something. That is
+  the whole difference between a day out and a descent — down here the floor is what you have to get
+  through, not a set of offers you pick from. What survives for both is the half that matters after a bad
+  fight: **a fight you have cleared is a place you can walk through**, so the road back to the way up can
+  never be shut behind you.
+- **Two kinds of end, two marks.** Everything downstream calls an end an `objective`, but a floor can
+  carry an end that belongs to the *place* and an end that belongs to a *name*, and usually carries
+  both: the guard standing on the stair down, and the errand a house asked for. `ui/overworld_map.lua`
+  splits them at the draw, off the `questId` posted work already carries: a **pennant** for the floor's
+  own end, a **writ** for posted work, both in the same gold because both are things the descent ends
+  at.
+- **A writ says whose it is before it is fought, and asks.** Stepping toward posted work opens a scene
+  naming the house and reading its own description out (`models/errand.lua`, `states/game.lua`'s
+  `askErrand`), and it ends on a question: take it on, or leave it standing. It asks **before** the step
+  commits, so refusing costs nothing at all — which is what makes it a refusal rather than a toll.
+- **An end that cannot get a place still gets counted.** When the floor runs out, `crowdedEnds` says so;
+  work the player travelled for must never be silently absent, and a floor that keeps doing it is a
+  sizing rule falling behind.
+- **The stops do not share a side.** The spacing rule used to be a derived Poisson radius, because a
+  floor's stops were darts thrown at nine hundred tiles and darts clump. A place is a stop's own unit
+  now, so the only question left is whether two stops are adjacent — and nothing can stack, because a
+  place holds one thing by construction. It relaxes to "adjacent allowed" on a floor too crowded to meet
+  it, the same graceful partial every pass takes.
 - **The finds are guarded, never the services.** A shop behind a fight is friction; a rest behind one
-  compounds exactly the wrong way.
-- **Ascent maps opt out.** There combat *is* the route.
+  compounds exactly the wrong way. With `guardBoons` gone this survives as a placement rule rather than
+  a pass: nothing ever stands in front of a camp.
 
-## Can a battle happen here
+### The fog
 
-The floor nothing used to check, because nothing used to need it. A locked board is 64 tiles of the map,
-and what matters is how much of that is standing room.
+**The floor plan is not a secret; what is standing in it is.**
 
-| Term | Constant | What it means |
+The fog was opaque over unwalked ground for as long as a board was a country you crossed — the shape of
+the country *was* the discovery, a junction opened as you reached it, and shadowcasting meant a wall
+could hide what was behind it. A grid of places has no walls to cast against and nothing to hide behind.
+Black it out and there is no route to choose, which is the whole of what you do with the floor.
+
+So an unread place is **veiled**, not covered — three tiers, all of them see-through:
+
+| Tier | Alpha | What it means |
 |---|---|---|
-| **space** | `Overworld.BOX_OK = 32` | tiles you can *cross to* in the best window containing this one |
-| **shape** | `Overworld.BOX_OPEN = 16` | how many of them are *open* — `Overworld:isOpen`, a full 3×3 of walkable around the tile. A corridor scores zero however long it runs |
-| **floor** | `Overworld.BOX_MIN = 20` | below this there is nowhere to stand at all |
+| unread | 0.66 | a place you know is there and have never stood beside |
+| read | 0.42 | read once and remembered; its marker draws, the ground is dim |
+| lit | — | adjacent right now |
 
-**Space is not shape, and the second number is the one that matters.** Before the layout pass, *open
-ground read 0.0 on every ground in the game* — not one tile on any board had a full 3×3 around it,
-because every layout was 1-wide corridors. And the failure had two faces: the loose grounds seated their
-fights at ~20 of 64, at or below the bare minimum, while the tight ones scored 34 and were unfightable
-anyway. Room for four bodies; no room for a decision.
+**Everything found is remembered, fights included.** Once a place has been read, what is standing in it
+stays on the map — a fight marker on dark ground is drawn, and the hovered readout names it. Discovery
+is the cost; memory is the reward for having paid it.
 
-**Both are floors. For a long time only the first one was.** The layouts were carving clearings
-specifically so fights could happen in them — `glades` says so in its own header — and the seating rule
-was scoring windows by walkable count, on which a lattice of 1-wide corridors ties a clearing. It could
-not tell the two apart, so it seated fights in the corridors at the same rate as in the rooms it had
-been given. The measured result: forest seated its fights on **8.4** open tiles of 64, swamp on 7.6, the
-colosseum — an oval of bare sand — on 14.8. `Overworld:seatsFight` is now the single seam every pass
-that *chooses* a seat asks, and it asks both questions at once, because the bug this exists to prevent
-is a caller reading one number and believing it read the other.
+That was two rules once, and the split died with the patrols. A landmark was a fact about the country
+and was kept; a **live fight** was a *body*, drew only while its tile was lit, and went out with the
+light — because a share of every board's combat lifted onto a beat and moved a tile for every step the
+company took, so a remembered fight marker really would have been a lie about a body that had gone
+somewhere else. Nothing on a floor moves any more. Holding fights to the old rule did not preserve a
+mystery; it made the one mark the player most needs for routing the one mark that would not stay put,
+on a floor a fifth full read one step at a time. `ui/overworld_map.lua`'s `markedStop` is the whole of
+the rule, and `hoveredFight` asks the same question — a readout that answered where no marker is drawn
+would turn the pointer into a probe you sweep across the dark.
 
-Three places choose a seat, and all three had to learn it separately:
+`Overworld:reveal` marks a place read at **one step** — Dream Quest's adjacency reveal — and
+**nothing widens it.** `Player.VISION = 1`, flat, on a rolled floor and an authored one alike.
 
-- **`placeObjectiveAndGates`** — the fight nobody may skip, and the one that was worst. Every rule about
-  an objective is about gateability, a strict dead end is what makes an end lockable, and gateability
-  was allowed to be the *only* question: a spur tip is the least arena-shaped tile a board has. Forest
-  objectives stood on **3.3** open tiles of 64. Room is a filter over the candidate ends, graded —
-  arenas first, merely-standable second, and on a board with neither, the roomiest spur outright, with
-  distance no longer deciding because there is nothing left to prefer it over.
-- **`placeEncounters`** — a fight dealt onto a corridor looks ahead for a clearing among the candidates
-  still free, and demotes to a non-combat stop only if the board has none.
-- **`guardBoons`** — where nearly all of the corridor fights actually came from. A spur mouth is the
-  likeliest tile on the map to be a hallway, and this pass was lifting fights *out* of the clearings
-  `placeEncounters` had chosen and standing them in doorways: a one-end forest board put 92% of its
-  fights on guard and 3.9 of 4.5 of them under the shape floor. See the guarded-boon section below for
-  what refusing cost.
+That is a rule with a history and two casualties, both worth naming. Sight was a base of 2, raised by
+the best `visionRadius` in the company's packs (a torch read 3) and by Gyeom's Ledger on top, so a
+kitted party saw four. Every part of that was right for a **tile** board, where three tiles of trail was
+a neighbourhood and the thing being hidden was the shape of the country. A cell is a place: one step is
+four places, two is a dozen, four is a whole floor from the doorway — and since the silhouette is given
+at arrival, the only thing left to discover is what is *standing* in each place, which is exactly what
+must be found by going. **A radius that reaches past your own neighbours answers the floor's only
+question for free.**
 
-Three rules that had to be learned by breaking them:
+It is flat rather than a base under a cap, because a cap invites a bonus that silently does nothing. Two
+things consequently give nothing on this axis any more: `utility_torch` (its only effect) and the vision
+half of Gyeom's Ledger. If sight is ever to be bought again it has to buy something other than distance
+— the obvious candidate is the dark, below.
 
-- **A demotion that empties the board is worse than a thin fight.** Refusing every seat on a ground that
-  clears nothing does not produce careful placement, it produces a board with no fights on it — which is
-  what the desert and the tundra did the first time the rule ran.
-- **Refusing to *move* a fight costs nothing.** Which is why `guardBoons` has no such escape hatch: the
-  fight is not created by that pass, and declining to move it leaves it in the clearing it was already
-  standing in. An unguarded cache is a free pickup; a guarded one fought for in a hallway is the failure.
-- **Corridor contact stays legal.** The floor governs what the *generator* chooses, which is a different
-  question from what the player walks into. Being caught mid-hall is the price of a mistake.
+**The dark takes it to nothing.** `game.darkFor` used to cut a radius of two-to-four down to one; against
+a flat one it would take nothing at all, and a hazard that costs the player nothing has been silently
+deleted. At **0** the company reads only the place it stands in and steps into whatever is beside it
+blind — the same bite, expressed in the new number.
 
-## The eight grounds
+**A cell that is not there takes no fog at all**, and it is drawn in the biome's own material — the
+forest's canopy, the underworld's basalt, the tundra's drift. The floor was cut out of that material,
+and a dungeon whose walls do not say where you are is a dungeon anywhere. The same stone tiles past the
+edge of the play area to the edges of the screen, so the floor sits *in* a country rather than on a black
+page; the play area is framed by a seam rather than by a change of material. That surround is a **draw,
+not cells** — nothing out there is walkable, routable or saved, because a picture frame made of real
+cells is a rectangle of nothing that every placement pass, every BFS and every save has to be taught to
+ignore.
 
-Each biome names a `layout` (`data/biomes/<id>.lua` → `models/layouts/<id>.lua`).
+The mass is **dimmed**, and the dim is *derived per biome* rather than set:
 
-| Ground | Layout | What it is |
-|---|---|---|
-| forest | `glades` | the maze, opened into clearings where trails meet |
-| swamp | `drowned` | the forest's carve, a third of the trail under shallows |
-| castle | `rooms` | chambers and halls, cut by recursive splits, joined as a tree |
-| underworld | `caverns` | cellular automata: wide bellies, pinched necks |
-| volcanic | `rifts` | wide fractures meeting at fallen-in chambers |
-| desert | `open` | a plain with ridges, and one walled ruin |
-| tundra | `floes` | open flats quartered by meltwater, fords for doors |
-| colosseum | `sands` | one oval of floor, the house's furniture on it, the pens beneath |
+    darkest place = lum(floor colour) × (1 − FOG_UNREAD)
+    mass          = MASS_BELOW × that
+    dim           = mass ÷ lum(fill colour)
 
-**Seven of them are countries and one is a building.** The colosseum is the Colosseum's own bowl — the
-ground eight of that house's ten slots are fought on — and it is the only board with no route on it at
-all: no corridor, no branch, no long way round. What a bout costs is decided by what is standing on the
-sand with you and where you were when it started. It needs the same thing `open` needed and gets it
-from the fiction rather than from a patch: `placeObjectiveAndGates` insists on a strict dead end, an
-oval has no cut vertex anywhere, and the cells under the stands are dead ends that mean something.
+**One constant cannot do this job**, and the way it fails is worth keeping. A biome authors its fill
+against its floor the way a *country* reads: the forest's canopy is darker than its trail, and the
+tundra's snow drift (0.86, 0.89, 0.93) is far brighter than its trodden snow — correct on a map you
+cross. Dim every biome by the same 0.45 and that relationship survives, so the forest reads right while
+the tundra and the desert come out with the mass brighter than the floor: the board inverts and reads as
+bright fields with dark paths between them. Solving for the relationship instead lets every biome keep
+its hue and lets none of them out-brighten the floor. The solved dims run from **0.19** (tundra, a drift
+that had a long way to come down) to **0.65** (underworld, basalt that was already nearly there).
+`tests/floor_mass_spec.lua` asserts both halves over all eight grounds — the mass reads darker than the
+darkest a place gets, and no ground's mass is flattened to the same shade of black as another's.
 
-It is also the one ground that names its own two ends, through the layout hook `anchors` — the start,
-and the *deepest* objective. Anything else the day has posted here takes a cell under the stands, which
-is what those dead ends were always for. Found by
-shape, the start is the walkable tile nearest the middle and the objective is a far dead end — which
-here means beginning in the centre of the sand and holding the bout in a cage underneath, the arena
-exactly inside out. So **the card is fought in the middle and the company walks in from the bottom**,
-through the gate at the near edge, which is the longest approach the oval has. The gate chain goes with
-it: a lock on the road to an objective standing in the open is walked around, so a board whose objective
-is not a strict dead end places no keys at all. There are no locked doors in an arena.
+The mass is also **tiled**, seams and all, rather than filled. A flat field of a dark colour reads as
+black however carefully the hue was chosen, because the eye has nothing in it to measure against; the
+seam is what makes it courses of stone. This is the one thing on the floor whose look never changes —
+what is not there cannot become better known.
 
-Measured across 50 boards a ground, `. board-report 50 all`, **before → after the shape floor reached
-the three seating passes**. `ends` is the same open figure for the objectives alone; `under` is fights a
-board seated below either floor, and it must reach 0.
+**The unread tier was set by looking, and was wrong first.** It was 0.78, tuned by eye on a 6×6 floor
+where one step lights a good share of the board. On a 10×10 about **ninety-five per cent of the floor is
+unread when the company walks in**, so that tier *is* the picture — and at 0.78 a place kept so little of
+its own colour that the mass beside it was barely a different black. The worst case for a fog tier is
+arrival, and arrival is the frame to tune it on.
 
-| ground | fightable | seat | open | ends | under | guarded |
+That number is now load-bearing twice over: the mass is solved *against* it, so deepening the veil
+without moving the mass would quietly give away the guarantee above. Both live as named constants in
+`ui/overworld_map.lua` for exactly that reason.
+
+### The whole floor is on the screen
+
+There is no camera. It scrolled while a board was a country; then it *held*, one chamber at a time,
+cutting at every doorway — which was the room layer admitting that a floor is a set of discrete places
+rather than a surface. `Overworld.BOARD_EXTENT = 608` sizes the cells so that every floor, 10×10 or
+12×12, fills the same frame: 61 logical pixels a cell at the top of the descent, 50 at the bottom.
+
+**It is the height that binds** — the title sits above the board and the control hint below it — so
+growing a floor past about a dozen a side costs cell size rather than screen. That is the real ceiling on
+how big a floor can get: not the frame, but the point at which a marker plate and its tier pips stop
+being readable. `tests/floor_grid_spec.lua` holds the floor at 44 pixels a cell.
+
+What that buys is the thing the minimap was drawn to fake. Which places you have seen and which routes
+reach them was a 150-pixel diagram in the corner because the real board could not answer it. The board
+**is** the plan, and the diagram is gone with the scroll.
+
+A fight is no longer **pinned** to where it was found, either, and that is worth recording because it
+looked like a principle and was a coincidence: a vaults chamber and a battle board were both eight tiles
+at 64 logical pixels, so handing over the room's top-left made them one rectangle. Pinning an 8×8 arena
+to a 61-pixel cell hangs most of it off the side of the screen. The continuity is bought elsewhere
+now — the fight opens over the floor it was found on, scrimmed rather than covered, with the company
+deploying on the side they walked in from.
+
+## How big a floor is
+
+Rolled, `. board-report 20 descent [floor=N]`:
+
+| | grid | places | full | stops | fights in all | steps to the stair |
 |---|---|---|---|---|---|---|
-| castle | 99.8 → 99.8% | 57.6 → 57.6 | 39.7 → 39.7 | 38.1 → 38.1 | 0.1 → 0.1 | 38.4 → 38.4% |
-| colosseum | 63.1 → 63.1% | 51.6 → **54.4** | 14.8 → **19.7** | 16.0 → **17.3** | 4.3 → **1.1** | 56.8 → *17.3%* |
-| desert | 80.8 → **82.4%** | 41.0 → **53.9** | 19.2 → **30.4** | 12.1 → **27.4** | 3.6 → **0.0** | 68.5 → *61.6%* |
-| forest | 39.0 → **55.4%** | 32.1 → **49.6** | 8.4 → **23.9** | 3.3 → **19.5** | 6.4 → **0.8** | 67.4 → *32.7%* |
-| swamp | 37.4 → **53.1%** | 31.9 → **50.1** | 7.6 → **24.0** | 4.0 → **20.3** | 6.8 → **0.7** | 71.5 → *35.9%* |
-| tundra | 80.2 → **83.0%** | 39.0 → **53.4** | 14.9 → **27.3** | 7.8 → **24.1** | 4.5 → **0.0** | 68.0 → *61.9%* |
-| underworld | 98.5 → **99.2%** | 48.3 → **54.3** | 34.0 → **37.5** | 23.1 → **28.4** | 1.3 → **0.0** | 68.2 → 67.7% |
-| volcanic | 93.1 → **93.2%** | 49.7 → **53.0** | 28.2 → **32.5** | 22.5 → **27.7** | 1.7 → **0.0** | 53.9 → *45.3%* |
+| floor 1 | 10×10 | 75 of 100 | 20.5% | 13.0 | 6 | **20.1** |
+| floor 15 | 12×12 | 108 of 144 | 17.0% | 16.0 | 9 | **24.5** |
 
-**The castle does not move, on any column, to the digit.** `rooms` carves no dead ends at all, so
-neither the objective filter nor the cache preference has anything to choose between, and every door it
-offers was already a room. It is the control in this experiment and it behaves like one.
+Against the lattice it replaced: floor 1 was 26×26 with 385 walkable tiles and its deepest point 32
+tiles out; floor 15 was 33×33 with 589 and 40. The stop budget did not move — `Descent.FLOOR_FIGHTS` is
+still six climbing to nine, argued from Dream Quest and Darkest Dungeon. **Forty tiles of corridor became
+twenty steps of decision**, which is not a shorter crossing so much as a crossing made of choices
+rather than of ground.
 
-**The underworld barely moves either, and that is the proof the geometry can give both.** `caverns` is
-bellies and necks: its doors are wide, so demanding that a guard be able to fight where it stands costs
-it half a point of guarded share. Every ground that lost a lot of guarded share lost it to the same
-fact — a gate is a narrow place and an arena is a wide one, and on a maze they are rarely the same tile.
+**Sight is what sets ten.** It was six, and six was defensible on its own terms: twenty-seven places,
+nine steps corner to corner, about half of them holding something. What broke it was the fog. One step
+of sight (`Player.VISION`) reads a six-a-side floor out almost completely on the way to the stair — the
+floor was *known* by the time it was crossed, so there was never anything left to have explored, and the
+one decision the fog exists to create never arose. Seventy-five places and a twenty-step crossing is a
+floor you have to **choose how much of to see.** The two numbers are one decision.
 
-The colosseum is the outlier and worth reading rather than tuning away: its fights are *good* now
-(a rendered board seats its thinnest at 20 open and its end at 30), but its boons live in the cells
-under the stands and the mouths of those cells are the one narrow thing on the whole ground. It buys
-better fights with fewer guarded rewards, on the one board where the fight is the entire point.
+`Descent.floorDims` grows the floor **four cells of span across the whole run**, on alternating axes:
+10×10 ×3 / 11×10 ×3 / 11×11 ×3 / 12×11 ×3 / 12×12 ×3. Four cells and not a *share*, deliberately: a
+proportional rate would have grown when the first floor went from six a side to ten, re-pricing the
+bottom as a side effect of a decision about the top. The endpoint holds its own meaning.
 
-The coastline is what moved these off their pre-weathering numbers: a wandering wall touches more of the
-ground beside it, so **open** is a few points down on the wide grounds while **sites** — how many
-distinct places a fight can actually go — is where it was, which is the one that decides whether a board
-is playable.
+**A bigger floor is a thinner one, not a longer sitting**, and the `full` column above is where that is
+read — 20.5% at the top, 17.0% at the bottom, against 57% when the floor was six a side. The fights are the
+length of the sitting and the places are how much floor there is to spend them across; those are separate
+numbers on purpose, and this is the one to read if the floor ever feels empty rather than unexplored. The
+knobs, in the order to reach for them: the stop budget (`Descent.FLOOR_FIGHTS`, `FLOOR_TEXTURE`), then
+`Overworld.BLOCK_SHARE`, then the grid.
 
-Three things a layout keeps being taught, each learned by getting it wrong first:
+## The fights that block the way
 
-1. **A room over a dead end deletes the dead end.** Carving clearings at any lattice node took the
-   forest's guarded share from 60% to 27%, which is the braid rate's failure reached from another
-   direction. A glade opens a *through*-node and shrinks its radius to spare any spur end — **by one
-   tile, not two.** It reserved two for a while, one for the spur end and one for the cut vertex beside
-   it "that a guard has to be able to stand on", and that was right about which tile the guard takes and
-   wrong about what standing there means: it reserved that tile as *corridor*, so the layout was
-   deliberately putting every door it offered outside the room. At one, the clearing's rim is the cut
-   vertex, the spur end keeps its single neighbour, and the fight in the doorway is fought in the glade
-   behind it — forest fightability 39.8% → 56.5%, sites 4.6 → 6.5.
-2. **A chain makes every room spine.** The castle's halls were a chain first, and guarded 1.6% of its
-   boons — one route through every chamber means every doorway is on the objective road, and combat is
-   kept off it. A tree branches, and the leaves are dead ends.
-3. **A carve that has to be repaired afterwards is usually carved wrong.** The volcanic fractures each
-   started at a random point and were stitched together after; the stitching corridors were then peeled
-   back one tile per pass by `pruneDeadStubs`, which read as a hang. Each fracture starts on an existing
-   one now, so the network is connected by construction.
+**Most of a floor's fights stand in the only way to something.** `Overworld:blockRoutes`, run after the
+stops are seated and before the tiers are stamped.
 
-**The size cap grew, 27×19 → 37×25 of play area.** The old reasoning was right for the board it was
-written for — *every tile a choice, not a marathon warren* — but a stop was a marker then. A board
-seating four or five fights has to contain four or five rooms with trail between them, and at the old
-cap the compactness rule and the fightability floor were in direct conflict. Most of the added area is
-room, which is crossed in three steps, rather than corridor, which was the marathon the cap guarded
-against.
+The complaint that produced it, in the player's words: *"I can reveal the entire map then selectively
+choose what to encounter."* Every stop on a grid of places is optional by construction — a cell holds one
+thing and you step onto it or you do not — so a floor whose fights are scattered on open ground is a
+shopping list, and reading the map is the only skill it asks for. Losing `guardBoons` with the carve made
+that total.
 
-## The fights that walk
+**It was never a supply problem**, and that is the part worth keeping. `. board-report` counts the two
+things separately — `cuts`, how many places are the only way to something, and `blocked by a fight`, how
+many of them a fight is standing on:
 
-`models/patrol.lua`. A share of the board's combat lifts off its cell onto a beat.
+| | cuts a floor offers | with a fight on one |
+|---|---|---|
+| before | 13.95 | 0.85 — **6%** |
+| after | 13.95 | 3.00 — **22%** (and 60% of the floor's fights, which is the target) |
 
-**One player step is one patrol step.** Not `dt`. It keeps the board a thing you can stand still and
-read, it keeps a run reproducible enough to spec and to resume, and it prices the walk in the board's own
-currency — sweeping a spur costs six steps, and six steps is six patrol moves somewhere else. It also
-means "the map locks during combat" needed no code: nothing ticks except on your step, and during a fight
-you are not stepping.
+The chokepoints were always there. Nothing was being seated on them. That is the same question the
+guarded-boon knob got wrong for a whole pass in the other direction, and the only reason it was cheap to
+get right this time is that the instrument reports supply and take apart.
 
-- **Beat → Alert → Return.** Alert fires on line of sight down a corridor; the leash runs out and it
-  walks home.
-- **Never faster than the party.** Pace is a divisor on the tick, so rank buys *reach* rather than speed.
-  That single cap is what keeps the contract: a company that keeps walking away cannot be caught in open
-  corridor, so the only place a patrol can corner you is a dead end you chose to enter.
-- **A guard's beat is its cut set** — exactly the tiles whose removal puts its boon out of reach. A long
-  corridor gives it a real beat; a single-tile cut set gives a sentry that stands still. The guarantee
-  survives by construction, and `tests/patrol_spec.lua` walks the board to prove it.
-- **A loose beat never touches the spine.** Alert may cross it, because you can outwalk a patrol and a
-  chase that stops at an invisible line is worse than no chase.
-- **The circuit is drawn**, with the tile it occupies next. A moving fight you cannot predict is a
-  punishment; one whose circuit you can read is a puzzle. Both are drawn **in sight only**, like every
-  other mark: a body that walks is the last thing a map could honestly remember, so the read is a thing
-  you take while you can see it rather than a tracker you keep across the board.
+**A cut, not a neighbour.** `guardBoons` stood a fight *beside* a reward and hoped the geometry made it a
+gate. This asks directly — take this place away, and is anything now out of reach? — so a blocking fight
+blocks by proof. The candidates are then sorted by **how much they strand**: a cut holding back half the
+floor is a route decision, one holding back a single dead end is a fight in front of a cupboard.
 
-**Where it touched you is where it deploys.** A fight the company walks into opens as two lines facing
-each other; one that caught them opens with the enemy on the side it arrived from — so being caught deep
-in a spur puts it between the company and the way out. Same composition, at the same tier, as a
-completely different problem, decided by how the approach was handled rather than by a roll. That is what
-makes a moving fight worth having at all.
+Four rules it may not break, each of which it broke first:
 
-Patrols are **opt-in at the generator** (`params.patrols`). Lifting a fight off its cell changes what
-`cell.encounter` means, and many specs read exactly that to assert what *placement* did; switching it on
-underneath them would have every one read low, which is a change in the instrument rather than in the
-board.
+- **It moves fights, it never adds them.** The floor's budget is authored (`Descent.FLOOR_FIGHTS`) and a
+  pass that seated extra fights to make a point would quietly re-price the sitting. Stop count, fight
+  count, boons and services are all unmoved across the change.
+- **It never moves an authored stop.** A quest names those, and on an ascent the placement *is* the
+  content — the outer ring first, the thing leaning on the gate last. Moving one is not a re-seating, it
+  is a rewrite. `placeEncounters` records which cells it authored (`authoredCells`, generation-only
+  scaffolding like `spineKeys`) and this reads it.
+- **It never moves an elite shallow.** The floor's difficulty arc is carried by placement
+  (`ELITE_MIN_DEPTH`), so picking an elite up and putting it down on a doorstep chokepoint would undo the
+  arc it was just given. A shallow cut takes an ordinary fight instead. The old guarded-boon pass had to
+  learn this too.
+- **A campaign ground keeps its open road.** There the objectives are the only fights you must take, so
+  combat stays off the spine and a cut on it is not a candidate. **A descent floor sets `ascent`, where
+  combat *is* the route** — and that is the only place a fight may stand across the way down. This is the
+  contract above being *scoped* rather than dropped: you can still always retreat to the way up, because
+  a fight you have cleared is a place you can walk through.
+
+`BLOCKING_SHARE = 0.6` — most, not all. An unbroken rule turns the floor into a checklist and teaches the
+player to read markers instead of the ground; the loose remainder is what keeps a find on the road
+feeling like a find, and what makes a blocked one read as a decision rather than a toll booth.
+
+### A fight may not pen the company in at the door
+
+**The pass turned on the player, and the instrument is the only reason it was caught.** `stranded`
+measures the side *away* from the company, so a cut that holds back sixty of seventy-five places is not a
+fight guarding a wing — it is a fight standing between the company and the whole rest of the floor, with
+the company in the pocket. Sorting candidates by "most stranded first" therefore reached for the mouth of
+the entrance every time:
+
+| | places reachable from the door without fighting | floors that pen you in |
+|---|---|---|
+| before `blockRoutes` | 44.45 | 13% |
+| with it, unguarded | **11.00** | **75%** |
+| with both rules | **54.90** | **0%** |
+
+Three floors in four opened with the company's only move being a battle it had not chosen. Nothing in
+the code reads wrong; one report line said it outright.
+
+Two rules answer it, at two scales:
+
+- **`MAX_GATED = 0.5`** — no single fight may hold back more than half the floor. A fight gates a wing, a
+  spur, a pocket; it does not gate the floor.
+- **`Overworld:freeTheDoor`** — the per-cut cap cannot see two fights boxing the entrance *between* them,
+  so the floor is asked as a floor, once, at the end: walking from the door and refusing every battle,
+  how much can be reached? Short of **`MIN_FREE_AT_DOOR = 0.25`**, fights come back off their chokepoints
+  until it is enough. It is a retreat rather than a repair — the pass gives back what it should not have
+  taken, most recent choice first.
+
+  It also relocates a fight **it never moved**, and that is deliberate: giving back only its own choices
+  left the 13% the ordinary seating penned on its own. The rule is about the door, not about which pass
+  put the fight there. A relocated fight goes to the deepest free place on the floor — far from the door,
+  and the likeliest to be worth walking to.
+
+The guarantee costs almost nothing: blocking fights fall from 2.92 to 2.75 a floor.
+`tests/blocking_spec.lua` holds all five rules.
+
+## The grounds are a look, not a shape
+
+Eight biomes remain and each still names a tileset and the arenas a fight on it rolls. **None of them
+names a shape any more.** The forest was a maze opened into glades, the castle was chambers cut by
+recursive splits, the tundra was flats quartered by meltwater — eight carves, and they were the argument
+for eight grounds. There is one shape now, and `tests/biome_spec.lua` asserts the *inverse* of what it
+used to: same seed, same silhouette, different art. Asserting distinct geometry would be asserting the
+layouts back.
+
+Only the descent rolls floors, and it rolls `underworld`. The other seven are what a fight is fought on.
 
 ## What a run costs
 
@@ -436,9 +514,11 @@ claimed it "lands six or seven fights" — derived by multiplying two constants,
 out by nearly double, because the guarantee pass seats far fewer texture stops than the arithmetic
 assumed and a cap does not bind when the pool is fight-heavy underneath it.
 
-The density was also buying nothing. At 11.3 fights only **20.9%** stood in front of a reward; at 5 the
-same pass puts **45%** on a guard, because `guardBoons` is supply-limited by the boons rather than by the
-fights. A thinner board makes each fight *more* likely to mean something.
+The density was also buying nothing, measured while `guardBoons` still existed: at 11.3 fights only
+**20.9%** of them stood in front of a reward, against **45%** at 5, because that pass was supply-limited
+by the boons rather than by the fights. The pass is gone and the finding is not — **a thinner floor
+makes each fight more likely to mean something**, which is the reasoning the budget below still rests
+on.
 
 So a floor names an **absolute** budget and the generator takes it as `params.combatBudget`, which wins
 over the share where both are given:
@@ -466,6 +546,50 @@ over the share where both are given:
 
 `. board-report N descent` counts the ends now (`ends`, `FIGHTS IN ALL`) and takes `ends=N` to stand in
 for the errands a nil player cannot have asked for. It had never once seen one before.
+
+## The stairs, both ways
+
+**The stair is found under the guardian.** A floor's own end is a body standing at the far end of the
+road; beating it is what turns that place into the way down (`Descent.openStair`, which renames the cell
+at that moment and only then).
+
+It did not read that way, and the leak was the **name**. The end was called `"The Stair Down — <Sin>"`,
+and a board names its end on the marker and in the hovered readout — so the moment the fog lifted off
+that place the player had been told where the exit was and what it was for, before ever meeting the thing
+holding it. The end is named for **who stands on it** now: the circle's general on her own floor, her
+lieutenant on the floors above, read off the character blueprint by `Descent.guardianName` — which is the
+landing card's own function, so the name on the marker and the name the landing reports are one string
+and cannot drift.
+
+| | before | after |
+|---|---|---|
+| floor 1's end | "The Stair Down — Lust" | **"The Suppliant"** |
+| floor 2's end | "The Stair Down — Lust" | **"Luxuria, the Unbidden"** |
+| once the guard falls | — | "The Stair Down" |
+
+**And the stairs run both ways.** `Descent.retreat` takes the company up one floor, to the floor above
+and the stair they came down by. The way up used to offer exactly one thing — end the expedition — so a
+company that wanted to walk back to a pack it dropped two floors above had to climb out of the rift and
+re-descend from the top. The floors are kept precisely so they can be walked again (`Descent.keepFloor`);
+the only thing missing was the door back to them.
+
+Three rules it needs to be honest:
+
+- **It costs one on the tally**, symmetrically with `Descent.advance` taking one off. Going down prunes
+  the rift by one; if coming back up were free, a company could walk a stair up and down between two
+  floors and drive the count to zero for the price of the walking. That would make the tally a purse
+  rather than a statement about the state of the rift — the exact thing `Descent.countBy`'s own header
+  refuses. **A round trip is now worth exactly nothing.**
+- **You come out on the stair you came down by**, not at the floor's entrance. Arriving at the far end of
+  ground the company already crossed would be a teleport wearing a staircase, and it would hand back for
+  free the walk that going up is supposed to cost. `run.arriveAt` carries the cell — read off the kept
+  board's own `objective`, which is what `openStair` converted — and `states/game.lua` consumes it once,
+  at the door.
+- **Floor one's way up is the way OUT**, and offers no retreat: there is no floor zero, and the card that
+  ends the expedition is a different card.
+
+`tests/stair_spec.lua` holds all of it, including the one that would be easiest to lose in a retune: no
+floor may name its end with the word *Stair* before the fight.
 
 ## Getting out
 
@@ -526,7 +650,7 @@ own reason.
 
 ## The arc
 
-A board should get harder as it runs. It did not, and the reason is worth keeping because it is easy to
+A floor should get harder as it runs. It did not, and the reason is worth keeping because it is easy to
 re-commit: **`assignEncounterTiers` runs after every placement pass and only stamps a number on what is
 already there.** An elite was as likely on the doorstep as at the gate; the "difficulty ramp" was a
 label on a flat board. Measured mean tier by fifth ran `2.66 / 2.62 / 2.50 / 2.70 / 2.85` — noise.
@@ -543,21 +667,25 @@ Three changes, at three levels:
    re-seated as an ordinary fight. `ELITE_SHARE = 0.25` caps the rank as a fraction of stops, so no
    pool weight can make elites the ordinary case however a blueprint is authored. Both are expressed
    as *demotions*, so the encounter count and the quest's authored pool are untouched — the same move
-   the spine and combat-share rules already make. `guardBoons` respects the depth rule when it moves a
-   fight, or it would quietly undo the arc it was just given.
+   the spine and combat-share rules already make.
 3. **The tier ramp is a gradient.** Depth in thirds gives all three pips to position, and rank is +1 on
    top. The random spike dropped 0.25 → 0.12, because at a quarter it was as strong as the depth term
    it was decorating.
 
-Measured after: `1.17 / 1.55 / 2.19 / 2.69 / 3.00`.
+Measured on the grid, floor 1, thirty rolls: `1.13 / 1.73 / 2.10 / 2.85 / 3.00`. It **rose** across the
+change — the tile board's `1.17 / 1.55 / 2.19 / 2.69 / 3.00` was measured over nine hundred tiles, where
+a fifth of the board by distance is a wide band and the depth term is diluted across it. Nine steps of
+places is a short, legible ladder, and the arc reads as one.
 
 ## The braid rate, and how the guarded-boon knob was misdiagnosed
 
-`Overworld.BRAID = 0.20`. This is the most load-bearing constant on the board and the least obvious.
+**Both the knob and the pass it tuned are gone.** This section is kept because the *method* is the point
+and it is the one this document exists to teach.
 
-`guardBoons` targets `GUARDED_BOON_SHARE = 0.8`. It was achieving **30%**, and the shortfall was
-recorded for a whole pass as a shortage of *fights* — "what limits guarding is the SUPPLY OF FIGHTS".
-That was wrong, and only measuring caught it. At the old braid rate of 0.55:
+`Overworld.BRAID` set how many of a maze's dead ends were knocked through into loops, and `guardBoons`
+targeted `GUARDED_BOON_SHARE = 0.8` — a fight standing in front of most rewards. It was achieving
+**30%**, and the shortfall was recorded for a whole pass as a shortage of *fights*: "what limits
+guarding is the SUPPLY OF FIGHTS". That was wrong, and only measuring caught it. At the old braid rate:
 
 | | |
 |---|---|
@@ -566,47 +694,25 @@ That was wrong, and only measuring caught it. At the old braid rate of 0.55:
 | boons actually guarded | 29.7% — i.e. **92% of what the geometry permitted** |
 | loose fights standing around unused | **3.1 per board** |
 
-The pairing pass was working almost perfectly. The board had nowhere to put a guard. **Braiding
-destroys exactly the geometry the offer rule needs**: a dead end is what a boon sits on and a cut vertex
-is what a guard stands on, and every braid removes one.
+The pairing pass was working almost perfectly. The board had nowhere to put a guard. Braiding destroys
+exactly the geometry the offer rule needs, and dropping the rate to 0.20 took gateable boons from 32.7%
+to 72.6% and guarded from 29.7% to 56.8% — while material income went **up**, because a guarded cache
+paid a bonus and far more of them were now guarded.
 
-The slog that braiding exists to prevent is handled better by `pruneDeadStubs`, which removes only the
-spurs with *nothing at the end* — the actual complaint. Lowering the rate also makes the board slightly
-*tighter*, since a braid carves wall into path and `deriveDims` fixes the footprint either way.
+Three lessons outlived the code:
 
-| At `. board-report 300` | braid 0.55 | braid 0.20 |
-|---|---|---|
-| dead ends | 2.0 | **3.9** |
-| boons gateable | 32.7% | **72.6%** |
-| boons guarded | 29.7% | **56.8%** |
-| cache craft stock | 12.5 | **13.9** |
-
-Material income goes **up**, because a guarded cache pays a bonus and far more of them are now guarded.
-
-**And then the ceiling moved again, downward, on purpose.** `boons gateable` is the ceiling on how many
-boons *can* be guarded; it is not the ceiling on how many *should* be, because a guard is a fight and a
-fight has to happen somewhere. Once `guardBoons` had to seat on ground that clears the shape floor, the
-achieved share fell on every maze-like ground — forest 67.4% → 32.7%, swamp 71.5% → 35.9%, the colosseum
-56.8% → 17.3% — while the wide grounds barely noticed (underworld 68.2% → 67.7%). The trade is stated
-plainly because it is a trade: **a gate is a narrow place and an arena is a wide one**, and where a board
-cannot offer a tile that is both, it now keeps the fight in the clearing and lets the cache sit loose.
-
-Two things soften it, both of them pairings made *earlier* rather than rules relaxed later:
-
-- `placeCaches` prefers dead ends whose one neighbour can hold a fight, so the boons land where a
-  pairing is possible instead of being sorted out afterwards (desert +10 points, tundra +15).
-- `glades` shrinks a clearing by one tile rather than two (above), so a maze's doors are rims of rooms.
-
-Do not "fix" the remaining gap by relaxing the seat floor. The share is a structural nicety; the fight
-being playable is the contract.
-
-**The ratio was the wrong lever.** Cutting `cacheTarget` to force boons-per-fight toward 1.0 was tried
-and rejected by measurement: it dropped material income by a third *and* lowered the absolute number of
-guarded boons, because it removed boons rather than adding pairings. `boons per fight` is reported as
-context only. `boons gateable` is the real ceiling.
-
-Do not raise the braid rate without re-running the report.
-
+- **A knob that is not achieving its target may not be the knob.** The number that diagnosed this was
+  `boons gateable` — the geometric ceiling — and nobody would have thought to report it while the
+  diagnosis was "not enough fights".
+- **The obvious lever was the wrong one, and measurement said so.** Cutting `cacheTarget` to force
+  boons-per-fight toward 1.0 dropped material income by a third *and* lowered the absolute number of
+  guarded boons, because it removed boons rather than adding pairings.
+- **Then the ceiling moved again, downward, on purpose** — once a guard had to be able to fight where it
+  stood, the achieved share fell on every maze-like ground (forest 67.4% → 32.7%) while the wide grounds
+  barely noticed. **A gate is a narrow place and an arena is a wide one.** That tension is what the room
+  layer was reaching for when it moved the gate off the tile and onto the chamber, and it is what the
+  grid resolved by taking the gate off geometry the generator hoped for and building it on purpose
+  (see The gate is built, not found).
 ## The city as the board's other half
 
 Two things landed here that are about the run without being on the board.
@@ -643,31 +749,48 @@ the Arcanum reading an unknown discipline off a piece, the Cafe standing a round
 
 ## Known debt
 
-- **Boons still outnumber fights ~1.4:1**, so even at 73% gateable the guard pass tops out around 57%.
-  Closing the rest means more fights per board, which is a difficulty decision rather than a
-  generation one.
-- **No adjacency rule between stops of the same kind.** The only spacing is Manhattan ≥ 2 between any
-  two encounters, so two crossroads in a row or a merchant beside a rest are both legal.
-- ~~**Nothing prices time on the board.**~~ **Closed by the step clock.** Every step the company takes
-  is a step something else takes, so sweeping every spur costs patrol moves. The hunger clock this entry
-  used to reach for was the wrong shape; the board's own currency turned out to be the right one.
-- **The castle and the volcanic guard ~38-45% of their boons** against 62-68% on the wide grounds. Both
-  carve wide connected ground, so the spine runs through most of it and combat is kept off the spine.
-  Preferring deeper ground for caches took the castle from 18% to 38%; the rest is layout tuning
-  (branchier halls, more leaf chambers), not a rule change. **Raising the guard's reach does not help** —
-  measured flat at 28 tiles, so the limit is that no *off-spine* gating tile exists, and the beat-guard
-  idea would have to seat a guard on the spine, which breaks the one contract the board cannot lose.
-- **The maze grounds now guard only ~33-36% of their boons**, and the colosseum 17%, because a guard has
-  to be able to fight where it stands. That is the trade recorded above and it is deliberate; what is
-  still open is whether `glades` and `sands` can be carved so that more of their doors are rooms, which
-  is layout work rather than a rule change.
-- **The forest and the swamp still seat ~0.8 fights a board under the shape floor**, the worst two of
-  the eight, and it is the same fact as their fightability sitting near 55% while every other ground is
-  past 80%: half their trail is warren. The escape hatch is doing its job (a board that clears nothing
-  still gets fights) — the layouts have not caught up.
-- **Every offer on the board pays the same currency.** Materials from a cache, materials and gold from
-  a fight — so the board is N copies of one offer at different prices, and route *choice* cannot really
-  exist until two boons can differ in kind. The largest open item here, and it is a content question
-  rather than a generator one.
-- **No biome has a tileset drawn yet** — all seven fall back to coloured rects. See
-  [docs/art-assets.md](art-assets.md).
+- **A fight is not attached to anything any more.** `guardBoons` was the pass that made an optional
+  fight worth taking — the boon behind, the fight in the way — and it went with the geometry it read.
+  The replacement is Dream Quest's: a fight pays for itself in spoils and levels. Whether that is enough
+  to make a fight on a floor a *decision* rather than a tax is the largest open question the change
+  leaves, and it is a content question (what a fight pays) rather than a generator one.
+- **Two and a half spurs a floor end in nothing** — 59% of dead ends pay for the walk, against 63%
+  before `blockRoutes` (so the pass costs four points of it, and the other thirty-seven were always
+  there). The old board had a whole pass for this, `pruneDeadStubs`, which trimmed any spur that
+  terminated in nothing; a grid has none, because its dead ends are *places* rather than corridor and
+  cutting one changes the silhouette. The two candidate fixes are `hollow` refusing a block that would
+  make a barren leaf, or placement guaranteeing every leaf pays. `. board-report`'s `...ending in
+  nothing` row is the instrument; it is measured now and not yet fixed.
+- **The Translation can drop you behind a fight you have not cleared.** Blocking fights are safe to walk
+  *past* by construction — you cannot reach ground beyond one without clearing it, so the road home is
+  always cleared ground. The one route that skips that reasoning is the hazard that moves you: it lands
+  on a `seen`, empty place, which may sit in a region whose only mouth still holds an uncleared fight.
+  Not a soft-lock — the fight is winnable and the party chose to be down here — but it is the one way the
+  mode can *force* a fight on a company that was walking away from one. Cheap fix if it bites: prefer a
+  destination in the same region as the way up.
+- **A floor is a fifth full** — 20.5% at the top of the descent, 17.0% at the bottom — because the grid
+  is sized by what one step of sight can be asked to explore and the stop budget is authored from what a
+  sitting should cost. Those are the right two questions asked separately, but nothing has yet asked
+  whether sixty empty places on a first floor read as *unexplored* or as *empty*. It needs playing, not
+  measuring; the `full` column is where the answer gets written down.
+- **No adjacency rule between stops of the same kind.** Two stops may not share a side, but nothing
+  stops two merchants two steps apart.
+- **Every offer on the floor pays the same currency.** Materials from a cache, materials and gold from a
+  fight — so the floor is N copies of one offer at different prices, and route *choice* cannot really
+  exist until two boons can differ in kind. The largest open item here, unchanged by the shape, and a
+  content question rather than a generator one.
+- **The eight biomes no longer differ in anything but art**, which makes the seven the descent does not
+  roll dead weight on the map side. They still name the arenas a fight is fought on, so they are not
+  unused — but "a ground" is now a much thinner idea than the word suggests.
+- **No biome has a tileset drawn yet** — all eight fall back to coloured rects, which on a grid of
+  places is more visible than it was on a warren: a place is sixty pixels square and mostly flat colour.
+  See [docs/art-assets.md](art-assets.md).
+- **A torch buys nothing, and neither does half of Gyeom's Ledger.** Sight is flat at one step and
+  nothing widens it, so `utility_torch`'s only effect is gone while the item is still on the Lodge's
+  shelf at 80 gold describing itself as *"Extends the party's vision on the overworld"*. The obvious
+  repair is the one its own flavour text already names — the dark now takes sight to **zero**, and a
+  torch is "the oldest answer to the dark" — but that is a content call, not a consequence of this
+  change, so it is written down rather than made.
+- **The prologue's flight is four cells by three.** It re-authored cleanly and every beat survived, but
+  a tutorial that teaches the walk on nine places is teaching it at the smallest scale the game has. Play
+  it before assuming it still teaches what it used to.

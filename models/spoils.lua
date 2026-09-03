@@ -120,11 +120,36 @@ end
 -- marker -- natural weapons, bound relics and quest items have none, so they can never drop. Cheaper
 -- items (and consumables) weight heavier, so the common reward is a potion, not the best sword you
 -- could theoretically afford.
-local function lootCandidates(maxPrice)
+-- ...AND EVERY UNPRICED ONE THE RIFT IS DEEP ENOUGH TO GIVE UP.
+--
+-- The second half of the pool, and it is what the shelf's own retirement made necessary. An item with a
+-- class and no price used to be quest-only by construction -- the shops read price, this pool read
+-- price, so the only way one ever reached a player was a quest's `rewardItems`. The houses stopped
+-- posting quests and thirty-five of them were deleted, and every unpriced item in the game lost its
+-- single source at once.
+--
+-- What decides whether one falls out here is its `dropTier` (tools/drop_tier.lua): the same grade that
+-- would have set a priced item's shelf slot, spread along DEPTH instead, because an item with no shelf
+-- to sit on still has a place it belongs. So the strong half of the equipment in this game is found
+-- rather than bought, which is the whole of what the one market left room for.
+--
+-- WEIGHTED LIKE THE BAND ABOVE, on tier rather than on price -- a find well inside the company's depth
+-- is common, one at the edge of it is rare -- so the two halves of the pool behave the same way and a
+-- floor does not suddenly start raining its deepest finds the moment it can reach them.
+--
+-- `bound` is still refused outright, and so is a signature: those ride one body's grid and are nobody's
+-- to find (tools/drop_tier.lua assigns neither).
+local function lootCandidates(maxPrice, tier)
     local pool = {}
+    tier = tier or 0
     for id, def in pairs(Item.defs) do
-        if def.price and def.price > 0 and def.price <= maxPrice and not def.bound then
+        if def.bound then -- nailed to one grid; never earned, bought, stolen or found
+        elseif def.price and def.price > 0 and def.price <= maxPrice then
             local weight = 1 + math.max(0, maxPrice - def.price) / maxPrice -- ~1 (dear) .. ~2 (cheap)
+            if def.type == "consumable" then weight = weight * 2 end
+            pool[#pool + 1] = { id = id, weight = weight }
+        elseif def.dropTier and def.dropTier <= tier then
+            local weight = 1 + math.max(0, tier - def.dropTier) / math.max(1, tier)
             if def.type == "consumable" then weight = weight * 2 end
             pool[#pool + 1] = { id = id, weight = weight }
         end
@@ -175,7 +200,7 @@ end
 -- `scale` (default 1) is the difficulty-tier bump. A gentler curve than gold uses -- sqrt(scale) --
 -- widens the price band and lifts both drop chances, so a tier-3 fight tends to pay a richer, likelier
 -- drop without a low-prestige map suddenly raining top-shelf gear.
-local function rollLoot(day, kind, override, enemyUnits, scale)
+local function rollLoot(day, kind, override, enemyUnits, scale, floorLevel)
     if override then
         local out = {}
         for _, id in ipairs(override) do
@@ -188,7 +213,15 @@ local function rollLoot(day, kind, override, enemyUnits, scale)
     local maxPrice = bandPrice(day)
     if elite then maxPrice = maxPrice * 1.5 end
     maxPrice = maxPrice * bump
-    local band = lootCandidates(maxPrice)
+    -- HOW DEEP THE COMPANY IS, on the same 1..CLASS_LEVEL_CAP ladder tools/drop_tier.lua banded
+    -- the finds along. Read off the fight's own floor rather than off the party, for the reason
+    -- the gold multiplier above is: floor one pays what floor one is worth however decorated the
+    -- company that walks it. An elite reaches one tier deeper, exactly as it reaches a richer
+    -- price band.
+    local Discipline = require("models.discipline")
+    local depth = math.max(1, math.floor((floorLevel or day or 1) * bump + (elite and 1 or 0)))
+    local tier = math.min(Discipline.CLASS_LEVEL_CAP, depth)
+    local band = lootCandidates(maxPrice, tier)
     local carried = carriedCandidates(enemyUnits)
 
     -- One drop: off a body when there is one to loot and the bias says so, else out of the band.
@@ -222,10 +255,36 @@ end
 -- THE STAIR GUARDIAN IS ABSENT and that is a decision, not an omission. A general already pays an
 -- authored piece off Descent.DROPS -- the thing her fight was built to hand over. Rolling a husk on top
 -- would put two rewards on one body and quietly make the authored one the consolation prize.
-Spoils.SEALED_CHANCE = { combat = 0.15, elite = 0.35, treasure = 0.35 }
+-- `secret` IS ONE, AND IT IS THE ONLY KIND THAT IS. Everything else here is a roll, because everything
+-- else is a stop the board dealt you. A sealed room is not dealt: it is behind a door that reads as wall
+-- until somebody stands beside it and looks, and a player who does that and finds a fatter pile of the
+-- same ore has been taught that looking is pointless. So the one stop on a floor that costs a verb pays
+-- every time. See Spoils.SECRET_ABOVE for what it pays out of.
+-- `offer` is the other certainty, and it is certain for the opposite reason to `secret`. A crossroads
+-- option that says "take the box" has already told the player what it is paying; rolling a 35% behind
+-- that sentence would make the option a lie about a third of the time. It draws from a chest's ordinary
+-- pool, not a vault's slice -- what a dilemma hands over is a find, not a reward for searching.
+Spoils.SEALED_CHANCE = { combat = 0.15, elite = 0.35, treasure = 0.35, secret = 1.0, offer = 1.0 }
 
 -- How far above the road's own band a CHEST may reach, as a multiple of it. See sealedCandidates.
 Spoils.SEALED_ABOVE = 2.5
+
+-- WHAT A SEALED ROOM DRAWS FROM, and it is a SLICE rather than a taller ceiling.
+--
+-- Raising the reach was the obvious answer and it is inert, which a spec caught on its first run: a
+-- vault at 4x the band and a chest at 2.5x both topped out at exactly 740 on floor six, because the
+-- CATALOGUE runs out long before the band does. There is no sealable item dear enough for the extra
+-- headroom to contain, so the constant was doing nothing while its comment claimed otherwise.
+--
+-- The lever that works is which part of the same band a vault is allowed to draw from. A chest rolls
+-- anywhere above the road's price; a vault rolls only in the dearer half of what a chest could have had.
+-- That is never empty while the chest pool is not, it scales with depth for free because the band does,
+-- and it says the true thing: what is behind the door is better than what is in the open, rather than
+-- reaching for a tier the game has not authored yet.
+--
+-- Half, and not a tenth. The point is that a vault pays WELL, not that it pays one specific object --
+-- a slice thin enough to be predictable would make the search a vending machine.
+Spoils.SECRET_SLICE = 0.5
 
 -- The pool a sealed drop is drawn from, and it is TWO POOLS depending on where the piece came from.
 -- The split is the honest reading of this file's own doctrine rather than an exception to it:
@@ -247,14 +306,26 @@ Spoils.SEALED_ABOVE = 2.5
 local function sealedCandidates(floor, kind, enemyUnits)
     local Identify = require("models.identify") -- lazy: identify -> player -> save -> descent -> here
     local pool = {}
-    if kind == "treasure" then
+    if kind == "treasure" or kind == "secret" or kind == "offer" then
         local band = bandPrice(floor)
         local top = band * Spoils.SEALED_ABOVE
+        local priced = {}
         for id, def in pairs(Item.defs) do
             if def.price and def.price > band and def.price <= top and Identify.canSeal(def) then
-                pool[#pool + 1] = { id = id, weight = 1 }
+                priced[#priced + 1] = { id = id, weight = 1, price = def.price }
             end
         end
+        -- Sorted by price and then by id, so the cut is reproducible: `pairs` above is unordered, and a
+        -- slice taken off an unordered list would hand two machines different vaults from one seed.
+        table.sort(priced, function(a, b)
+            if a.price ~= b.price then return a.price < b.price end
+            return a.id < b.id
+        end)
+        local from = 1
+        if kind == "secret" and #priced > 1 then
+            from = math.max(1, math.floor(#priced * (1 - Spoils.SECRET_SLICE)) + 1)
+        end
+        for i = from, #priced do pool[#pool + 1] = priced[i] end
     else
         for _, entry in ipairs(carriedCandidates(enemyUnits)) do
             if Identify.canSeal(entry.id) then pool[#pool + 1] = entry end
@@ -431,7 +502,7 @@ function Spoils.roll(opts)
         or math.max(1, day)
     return {
         gold = rollGold(count, mult, kind, opts.rewardGold, scale),
-        loot = rollLoot(day, kind, opts.loot, opts.enemyUnits, scale),
+        loot = rollLoot(day, kind, opts.loot, opts.enemyUnits, scale, opts.floorLevel),
         -- The unread piece, on the rare stop that pays one. A SEPARATE field from `loot` rather than an
         -- entry in it, because the two are granted differently and by different code: loot is a list of
         -- ids that Player.grantItem instantiates in the clear, and this is a list of finds that

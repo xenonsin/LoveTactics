@@ -14,7 +14,7 @@ return {
     tags = { "slash", "physical" },
     class = "fighter",
     discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
-    price = 210,
+    price = 165,
     unlockQuests = 1,
     activeAbility = {
         target = "enemy",

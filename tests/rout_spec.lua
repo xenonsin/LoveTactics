@@ -51,9 +51,8 @@ end
 -- still pays instead of failing on a number nobody changed on purpose.
 local function paidErrand()
     for _, vendorId in ipairs({ "bastion", "cathedral", "arcanum", "colosseum" }) do
-        for _, id in ipairs(Errand.forVendor(vendorId)) do
-            if (Quest.defs[id].rewardGold or 0) > 0 then return id, Quest.defs[id] end
-        end
+        local id = Errand.opener(vendorId)
+        if id and (Quest.defs[id].rewardGold or 0) > 0 then return id, Quest.defs[id] end
     end
     return nil
 end
@@ -201,8 +200,14 @@ return {
         assert(fork, "the rout fork is gone from onLoss, no longer opens on `battle.routed`, "
             .. "or no longer sits above the wipe branch")
 
+        -- `game.battle = nil` is how this exit hands the floor back, and it used to read
+        -- `State.current = game`. The act is the same one -- the map takes the screen again -- and only
+        -- the mechanism moved: a fight is now a SUB-STATE of the overworld rather than a state of its
+        -- own (states/game.lua's openEncounter), so the map never stopped being current and there is
+        -- nothing to restore, only a battle to clear. The assertion has to move with it or it is
+        -- checking for a line whose job has been done by another.
         for _, call in ipairs({ "Errand%.fail", "game:inflictWounds", "saveRun", "Player%.save",
-                               "retreatFromEncounter", "State%.current = game" }) do
+                               "retreatFromEncounter", "game%.battle = nil" }) do
             assert(fork:find(call), "the rout exit no longer calls " .. call:gsub("%%", ""))
         end
         -- ...and it must NOT do the wipe's work. A rout that dropped the pack or cut the haul would be

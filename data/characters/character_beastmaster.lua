@@ -21,6 +21,9 @@ return {
         defense = 8, magicDefense = 8,
         movement = 4,
         speed = 5,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 8, luck = 4,
     },
     -- The 3x3 loadout grid (row-major); false = an empty cell. Summon Wolf fields the Bond and the
     -- Beastlord's Bond keeps it standing; the horn and whistle carry the pack-command, a longbow keeps
@@ -28,7 +31,7 @@ return {
     startingItems = {
         "weapon_iron_longbow", "ability_summon_wolf",     "consumable_healing_potion",
         "utility_beastlords_bond", "utility_companion_whistle", "utility_hunting_horn",
-        "armor_stalkers_pelt", false,                     false,
+        "armor_stalkers_pelt", "utility_second_leash",                     false,
     },
     defaultAction = "weapon_iron_longbow",
     -- Basic tactics: loose the bow at whatever is in reach; the Bond beast and the horns carry the rest.

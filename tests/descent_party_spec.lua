@@ -144,6 +144,12 @@ return {
             -- ASSERTED AS A BOUND RATHER THAN AS EQUAL TO MAX_FIELD, because both numbers are four and
             -- an equality could not say which fact it was pinning. What must hold is that an expedition
             -- is no larger than the board it fights on -- that a reserve is possible.
+            --
+            -- THE DEPLOYMENT PHASE NOW LEANS ON THIS BOUND. Its company strip is deleted: every body
+            -- the phase is handed is standing before it draws a frame, and there is no card to drag a
+            -- fifth one on from (ui/deploy_phase.lua, docs/deployment.md). Raise PARTY_MAX past
+            -- MAX_FIELD and this assertion fires -- which is the point. The surplus would otherwise be
+            -- benched by the commit with nothing on screen having offered the choice.
             assert(Descent.PARTY_MAX >= 1, "an expedition of nobody is not an expedition")
             assert(Descent.PARTY_MAX <= Player.MAX_FIELD,
                 "an expedition may not be larger than the board it fights on: "

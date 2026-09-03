@@ -26,10 +26,13 @@ return {
     sprite = "assets/chars/bandit.png",
     stats = {
         health = 42, mana = 0, stamina = 13, -- resource stats
-        damage = 12, magicDamage = 0,         -- flat stats
+        damage = 17, magicDamage = 0,         -- flat stats
         defense = 6, magicDefense = 3,
         movement = 4, -- number of spaces this character can move
         speed = 4,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 4, luck = 4,
     },
     startingItems = { "weapon_iron_sword" },
     -- Basic tactics (models/ai.lua): press the wounded -- finish the foe already closest to falling.

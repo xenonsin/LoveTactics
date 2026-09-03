@@ -37,6 +37,9 @@ return {
         defense = 0, magicDefense = 10,
         movement = 4, -- two tiles once the shield and the Oath have each taken their -1
         speed = 2,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 5, luck = 2,
     },
     -- The 3x3 loadout grid (row-major); false = an empty cell. Mace and shield are the doctrine she
     -- deserted with; the Oath and the Aegis are what she does with it that the Bastion no longer can.

@@ -924,7 +924,12 @@ return {
             -- the FIST is that its power is low, it is free, and it is slow. Each of those is read
             -- off the unarmed ability rather than typed in.
             local fistAb = fist.activeAbility
-            local expected = Combat.abilityMagnitude(fistAb) + warlord.char.stats.damage
+            -- The EFFECTIVE attack stat, not the base one. The Warlord exemplar carries its own
+            -- signature in its grid now (utility_last_order, +1 damage), the way every discipline
+            -- exemplar carries the relic it is the exemplar OF -- so a fixture reading the raw
+            -- blueprint stat was quietly asserting a body with an empty grid.
+            local atk = warlord.char.stats.damage + ((warlord.bonus and warlord.bonus.damage) or 0)
+            local expected = Combat.abilityMagnitude(fistAb) + atk
                 - bandit.char.stats.defense
             local sword = Item.instantiate("weapon_iron_sword")
             assert(Combat.abilityMagnitude(fistAb) < Combat.abilityMagnitude(sword.activeAbility),

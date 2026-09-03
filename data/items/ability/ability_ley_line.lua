@@ -25,7 +25,7 @@ return {
     tags = { "holy" },
     class = "priest",
     discipline = "totemist",
-    price = 740,
+    price = 495,
     unlockQuests = 5,
     activeAbility = {
         target = "self",

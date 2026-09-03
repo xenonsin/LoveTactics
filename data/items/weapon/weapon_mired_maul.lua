@@ -26,6 +26,7 @@ return {
     tags = { "hammer", "impact", "physical", "earth", "melee" },
     hands = 2,
     class = "fighter",
+    dropTier = 7,
     activeAbility = {
         target = "enemy",
         range = 1,

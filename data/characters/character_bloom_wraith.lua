@@ -17,6 +17,9 @@ return {
         defense = 5, magicDefense = 8,
         movement = 5,
         speed = 5,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 3, luck = 0,
     },
     startingItems = { "weapon_bloom_reach" },
     defaultAction = "weapon_bloom_reach",

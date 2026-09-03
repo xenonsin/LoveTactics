@@ -56,6 +56,9 @@ return {
         defense = 3, magicDefense = 6,
         movement = 4, -- number of spaces this character can move
         speed = 3,    -- initiative tie-break; folded into starting initiative
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 6, luck = 2,
     },
     -- Starting loadout as the 3x3 grid the player sees (row-major); false = an empty cell. The
     -- build-around is the Sworn Aegis relic in the center (data/items/armor/armor_sworn_aegis.lua):

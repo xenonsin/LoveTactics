@@ -46,6 +46,9 @@ return {
         defense = 14, magicDefense = 14,
         movement = 4,
         speed = 4,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 7, luck = 7,
     },
     -- Her loadout as the 3x3 grid (row-major); false = an empty cell. Her rule rides on the Reliquary of
     -- the Unbidden in the center (bound, unstealable), the censer of ashes -- the lust family read from the

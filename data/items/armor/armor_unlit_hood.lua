@@ -22,6 +22,7 @@ return {
     type = "armor",
     tags = { "cloth" },
     class = "rogue",
+    dropTier = 4,
     traits = { "trait_vanishing_act" },
     bonus = { defense = Curve.ramp(2, 12), movement = -1 },
 }

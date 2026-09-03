@@ -52,6 +52,16 @@ local function obtainableIds()
     -- for the wrong reason, off a grid nobody can loot, rather than off the drop table that actually
     -- hands them over. It went red the moment the retired board's quest-only stock moved onto these
     -- lists and had no second home to be found in.
+    -- AND WHAT THE RIFT GIVES UP ON ITS OWN. An unpriced item carries a `dropTier` now
+    -- (tools/drop_tier.lua): the grade that would have set a priced item's shelf slot, spread
+    -- along DEPTH instead, because an item with no shelf to sit on still has a place it belongs.
+    -- Spoils.lootCandidates admits it once the company is that deep, so "quest-only" is no
+    -- longer a synonym for unreachable -- which it became the moment the houses stopped posting
+    -- quests and thirty-five of them were deleted.
+    for id, def in pairs(Item.defs) do
+        if def.dropTier then got[id] = true end
+    end
+
     for _, drop in pairs(require("models.descent").DROPS or {}) do
         add(drop.general)
         add(drop.minor)

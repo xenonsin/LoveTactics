@@ -29,7 +29,7 @@ return {
     tags = { "charm" },
     class = "knight",
     discipline = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
-    price = 345,
+    price = 245,
     unlockQuests = 2,
     statusImmunity = { "status_stun" },
     -- A token of the drill itself, so the slot is not literally empty in a fight with no stuns in it.

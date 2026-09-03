@@ -17,11 +17,14 @@ return {
         defense = 8, magicDefense = 11,
         movement = 4,
         speed = 4,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 8, luck = 4,
     },
     startingItems = {
         "weapon_iron_bow",      "ability_raise_totem", "ability_totem_of_renewal",
         "ability_ley_line",     "ability_carved_stake", "utility_totem_carvers_kit",
-        "consumable_healing_potion", false,           false,
+        "consumable_healing_potion", "utility_standing_stone",           false,
     },
     defaultAction = "ability_totem_of_renewal",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

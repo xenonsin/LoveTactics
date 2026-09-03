@@ -221,35 +221,24 @@ return {
         end,
     },
     {
-        -- Gates are per-QUEST now (tools/unlock_rescale), so the ceiling is per-HOUSE: an item may not
-        -- ask for more quests than its own sponsor actually runs. Anything past that is stock nobody
-        -- can ever reach.
+        -- WHAT A GATE IS MEASURED AGAINST, and it has been re-anchored twice now.
         --
-        -- THE CEILING WAS Q-2 and is Q-1 now, and the change is the ten-slot line ending rather than a
-        -- margin being given up. Q-2 encoded "the last two quests of a line are the payoff rather than
-        -- a gate", which was a true statement about a house that ran ten. A house runs SIX -- its opener
-        -- plus its discipline gates -- and the shelf was re-cut to six rungs, one per quest, gated 0..5.
-        -- Under Q-2 the top rung of every house in the game is unreachable stock, which is the opposite
-        -- of what this case exists to catch.
-        name = "no item is gated past the quests its house actually sponsors",
+        -- The rule is unchanged and worth restating: an item whose gate sits above the top of the ladder
+        -- that opens it is stock no player can ever buy, and it fails silently -- the row draws, greyed,
+        -- forever. What keeps moving is the ladder. It was a house's ten authored quests, then its six
+        -- errands, and it is a CLASS LEVEL now (Discipline.classLevel): nobody runs a house's line
+        -- because there are no houses, so the top rung is the top of the class ladder.
+        --
+        -- Read off Discipline rather than typed, so re-cutting the ladder moves this with it instead of
+        -- leaving a spec asserting a height the shelf no longer has.
+        name = "no item is gated past the top of the ladder that opens it",
         fn = function()
-            local Vendor = require("models.vendor")
-            local Quest = require("models.quest")
-            local vendorOf, counts = {}, {}
-            for vid, vdef in pairs(Vendor.defs) do
-                if vdef.class then vendorOf[vdef.class] = vid end
-            end
-            for _, qdef in pairs(Quest.defs) do
-                if qdef.sponsor then counts[qdef.sponsor] = (counts[qdef.sponsor] or 0) + 1 end
-            end
+            local Discipline = require("models.discipline")
+            local top = Discipline.CLASS_LEVEL_CAP
             for id, def in pairs(Item.defs) do
                 local gate = def.unlockQuests or 0
-                if gate > 0 then
-                    local vendorId = def.class and vendorOf[def.class]
-                    local sponsored = vendorId and counts[vendorId] or 0
-                    assert(gate <= sponsored - 1,
-                        id .. " needs " .. gate .. " quests of a house that runs " .. sponsored)
-                end
+                assert(gate <= top,
+                    id .. " is gated at rung " .. gate .. ", above the ladder's top of " .. top)
             end
         end,
     },

@@ -15,7 +15,11 @@ return {
     tags = { "charm" },
     class = "rogue",
     discipline = "duelist", -- fighter x rogue; the Duel-stance mechanic's first stock
-    price = 475,
-    unlockQuests = 3,
+    price = 575,
+    unlockQuests = 6,
     traits = { "trait_duelists_poise" },
+    -- "Two of them is a brawl. One of them is a lesson." Poise is composure, and composure is Skill.
+    -- Unconditional, where the trait's damage is gated on standing in a real duel: the bearer carries
+    -- themselves the same way whether or not the board has arranged itself politely.
+    bonus = { skill = 2 },
 }

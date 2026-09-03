@@ -11,8 +11,8 @@ return {
     tags = { "utility", "holy" },
     class = "priest",
     discipline = "inquisitor", -- rogue x priest; the Judgment mechanic's first stock
-    price = 475,
-    unlockQuests = 3,
+    price = 575,
+    unlockQuests = 6,
     activeAbility = {
         target = "enemy",
         range = 5,

@@ -18,12 +18,23 @@ local Errand = require("models.errand") -- the rungs a house asks for, which are
 -- A player with unlimited stock, so a test about the BILL is never really a test about the purse. The
 -- technique holder is a real roster member with a bottomless ledger: the bill reads earned minus spent
 -- off one body (Discipline.techniqueHolder), so a bare number on the player would not be seen at all.
-local function richPlayer()
+-- A company that can pay for anything, at a stated place on every class ladder.
+--
+-- THE WALLET AND THE LADDER ARE ONE NUMBER NOW, which is why this takes an argument. Career technique
+-- is what the Forge bills (less what it has already billed) AND what a class level is read off
+-- (Discipline.classLevel) -- so "rich" and "unlevelled" is not a state a body can be in, and a fixture
+-- that handed out infinite technique was quietly asserting a mastered company. `level` says where on
+-- the ladder this company stands; the gold and materials stay bottomless because those are not what
+-- any of these cases are about.
+local function richPlayer(level)
+    local Discipline = require("models.discipline")
+    level = level or Discipline.CLASS_LEVEL_CAP
+    local bank = Discipline.classLevelCost(level)
     local p = Player.new()
     p.gold = 100000
     p.materials = setmetatable({}, { __index = function() return 9999 end })
     local deep = Character.instantiate("character_knight")
-    deep.technique = setmetatable({}, { __index = function() return 999999 end })
+    deep.technique = setmetatable({}, { __index = function() return bank end })
     deep.techniqueSpent = {}
     p.roster = { deep }
     return p
@@ -171,35 +182,26 @@ return {
     -- The ceiling
     -- -----------------------------------------------------------------------
     {
-        name = "a class item's ceiling is the standing of the house that sells it",
+        name = "a class item's ceiling is the company's level in the class that made it",
         fn = function()
-            local p = richPlayer()
-            local sword = Item.instantiate("weapon_iron_sword") -- knight -> the Bastion
+            local Disc = require("models.discipline")
+            local sword = Item.instantiate("weapon_iron_sword") -- knight gear
             assert(Forge.houseVendorFor("knight") == "bastion", "the knight's house is the Bastion")
-            assert(Forge.ceilingFor(p, sword) == Forge.CEILING_BASE, "no quests done -> the opening ceiling")
 
-            -- The ladder above the base, laid across the errands this house asks for -- the same rungs
-            -- its SHELF opens on. Only the sponsoring house counts.
-            local line = Errand.forVendor("bastion")
-            local rungs = #line
-            local done = 0
-            for _, questId in ipairs(line) do
-                p.completedQuests[questId] = true
-                done = done + 1
-            end
-            assert(Quest.sponsorProgress(p, "bastion") == done, "the standing counts this house's quests")
-            assert(done == rungs, "and a finished line is every rung the house asked for")
-            assert(Forge.ceilingFor(p, sword) == Item.MAX_LEVEL,
-                "a house whose work is all done forges to the top of the curve")
+            -- A company with nothing banked in any class opens where every bench opens.
+            local cold = richPlayer(0)
+            assert(Forge.ceilingFor(cold, sword) == Forge.CEILING_BASE,
+                "no class level -> the opening ceiling")
 
-            -- Another house's work moves nothing here: the ceiling is the standing of the house that
-            -- SELLS the item, not of whoever the player happened to be working for.
-            local other = richPlayer()
-            for _, questId in ipairs(Errand.forVendor("arcanum")) do
-                other.completedQuests[questId] = true
+            -- ...and it climbs with the ladder, reaching the top of the curve at mastery.
+            local prev = Forge.CEILING_BASE
+            for level = 1, Disc.CLASS_LEVEL_CAP do
+                local p = richPlayer(level)
+                local ceiling = Forge.ceilingFor(p, sword)
+                assert(ceiling >= prev, "knight " .. level .. " must never lower the ceiling")
+                prev = ceiling
             end
-            assert(Forge.ceilingFor(other, sword) == Forge.CEILING_BASE,
-                "a finished Arcanum line buys no rungs on a knight's blade")
+            assert(prev == Item.MAX_LEVEL, "a mastered class reaches the top of the curve")
         end,
     },
     {
@@ -290,8 +292,15 @@ return {
             local p = richPlayer()
             for questId in pairs(Quest.defs) do p.completedQuests[questId] = true end
             for _, char in ipairs(p.roster) do
-                char.growthBy = {}
-                for disciplineId in pairs(Discipline.defs) do char.growthBy[disciplineId] = 99 end
+                -- Mastered in every class, which is what the ceiling actually reads
+                -- (Discipline.classLevel, off career technique). It set `growthBy` until that
+                -- ledger was retired with the play-share blend, at which point this fixture was
+                -- setting a field nothing consults -- so the case passed while asserting nothing
+                -- about a decorated company at all.
+                char.technique = {}
+                for class in pairs(Item.CLASSES) do
+                    char.technique[class] = Discipline.classLevelCost(Discipline.CLASS_LEVEL_CAP)
+                end
             end
             for id, d in pairs(Item.defs) do
                 if Item.isUpgradable(Item.instantiate(id)) then
@@ -410,7 +419,9 @@ return {
     {
         name = "a batch reaching past the standing ceiling is locked, and names where the wall is",
         fn = function()
-            local p = richPlayer()
+            -- Short of mastery on purpose: the ceiling has to be a real wall for this case to have
+            -- anything to run into, and the wallet and the ladder are one number now (richPlayer).
+            local p = richPlayer(require("models.discipline").CLASS_LEVEL_CAP - 2)
             local item = Item.instantiate("weapon_iron_greatsword", 1, 0)
             local ceiling = Forge.ceilingFor(p, item)
             assert(ceiling < Item.MAX_LEVEL, "a fresh player has not earned the whole ladder")
@@ -431,7 +442,9 @@ return {
             -- The one failure mode a multi-rung commit introduces that a single rung cannot have:
             -- looping upgrade() and letting it refuse partway leaves gold and materials gone on a
             -- climb the player never got.
-            local p = richPlayer()
+            -- Short of mastery on purpose: the ceiling has to be a real wall for this case to have
+            -- anything to run into, and the wallet and the ladder are one number now (richPlayer).
+            local p = richPlayer(require("models.discipline").CLASS_LEVEL_CAP - 2)
             local item = Item.instantiate("weapon_iron_greatsword", 1, 0)
             local target = Forge.ceilingFor(p, item)
             assert(target >= 2, "need at least a two-rung climb to test a partial spend")
@@ -439,8 +452,13 @@ return {
             local full = Forge.costTo(p, item, target)
             -- Afford every rung but the last. A real ledger rather than the bottomless probe, since
             -- what is under test is the refusal.
-            p.roster[1].technique = { [full.techniqueId] = full.technique - 1 }
-            p.roster[1].techniqueSpent = {}
+            -- The BANK is short by one, not the ladder. Career technique is both the wallet and
+            -- the class level now (Discipline.classLevel), so cutting the earned figure would
+            -- lower the forge ceiling too and the refusal would come back "locked" rather than
+            -- "technique" -- a different rule, passing for this one.
+            local bank = p.roster[1].technique[full.techniqueId]
+            p.roster[1].technique = { [full.techniqueId] = bank }
+            p.roster[1].techniqueSpent = { [full.techniqueId] = bank - (full.technique - 1) }
 
             local out, reason = Forge.upgradeTo(p, item, target)
             assert(out == nil, "an unaffordable batch forges nothing")

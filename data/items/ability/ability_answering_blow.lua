@@ -25,8 +25,8 @@ return {
     tags = { "impact", "physical" },
     class = "fighter",
     discipline = "champion",
-    price = 740,
-    unlockQuests = 5,
+    price = 660,
+    unlockQuests = 7,
     -- Shallower than Defiant Stand's 6 and Crowd's Favour's 8: the spender opens the pool, the rest of
     -- the Champion shelf deepens and widens it (Combat.chargeDef merges).
     charge = { key = "defiance", from = { "hitTaken" }, max = 4 },

@@ -26,6 +26,9 @@ return {
         defense = 9, magicDefense = 11, -- glass: it wards magic far better than it takes a hammer
         movement = 3,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 7, luck = 0,
     },
     startingItems = { "weapon_vitreous_bite", "utility_fracture_line" },
     defaultAction = "weapon_vitreous_bite",

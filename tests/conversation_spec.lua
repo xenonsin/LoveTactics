@@ -315,12 +315,15 @@ return {
                 roster = { { id = "character_rowan" }, { id = "character_priest" } },
                 -- Standing is derived from this ledger now (Player.standing), so the fixture states
                 -- what was finished and lets the count fall out of it: four quests is standing 5.
-                completedQuests = { quest_undercroft_slot_01 = true, _filler_1 = true,
-                    _filler_2 = true, _filler_3 = true },
+                completedQuests = { quest_undercroft_slot_01 = true },
             })
             assert(ctx.roster.character_rowan and ctx.roster.character_priest, "roster ids are flattened to a set")
             assert(ctx.roster.character_mage == nil, "an absent character is absent")
-            assert(ctx.quests.quest_undercroft_slot_01 == true and ctx.standing == 5,
+            -- Standing is total class levels across the roster now (Player.standing), and this
+            -- fixture's bodies have banked nothing -- so it reads its floor of 1 while the quest
+            -- ledger still carries over intact. The two were the same number until the houses
+            -- stopped posting work.
+            assert(ctx.quests.quest_undercroft_slot_01 == true and ctx.standing == 1,
                 "quests carry over, and standing is counted off them")
             local empty = Conversation.context(nil)
             assert(next(empty.roster) == nil and empty.standing == 1, "no player is an empty context")

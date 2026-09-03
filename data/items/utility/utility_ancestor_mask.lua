@@ -23,7 +23,9 @@ return {
     tags = { "charm", "spirit" },
     class = "hunter",
     discipline = "shaman",
-    price = 345,
-    unlockQuests = 2,
+    price = 495,
+    unlockQuests = 5,
     traits = { "trait_ancestor_mask" },
+    -- a mask that keeps the field's own workings off what you field
+    bonus = { magicDefense = 2 },
 }

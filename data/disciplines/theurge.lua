@@ -9,5 +9,5 @@ return {
     description = "The channeller. Wind-up holy spells that grow with every turn held, and divine ground laid where they land.",
     classes = { "mage", "priest" },
     exemplar = "character_theurge", -- NEW, pending
-    requiredQuests = { "quest_cathedral_the_confession" },
+    requiredLevel = { priest = 8 },
 }

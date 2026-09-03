@@ -171,58 +171,60 @@ local function classLabel(class)
     return Discipline.displayName(class) or (class:gsub("^%l", string.upper))
 end
 
--- What this member is growing as RIGHT NOW, ranked biggest claim first: { key, name, share }.
+-- The job this member is DECLARED in, as the words the sheet prints. Never empty: an undeclared body
+-- falls back to its blueprint's innate class (Growth.jobOf), which is what it has been growing as all
+-- along.
 --
--- ONE READING, TWO PLACES ON THE SHEET, and they can no longer disagree -- which is exactly how the old
--- sheet confused people. The title line named `Growth.dominantClass`, the leader of the CAREER ledger,
--- directly above a column showing the delta since the last level-up: "Growing as Hunter" over
--- "Alchemist 33% · Hunter 25%" is two true statements about two different windows of time, and nothing
--- on the sheet said which was which. "Growing" is present-progressive, so it means the present now --
--- the title takes its name from row 1 here and the forecast beneath it prints the rest.
+-- IT USED TO BE A RANKING, and the ranking is what made the old sheet confusing. Growth was apportioned
+-- across everything cast since the last level-up, so the title line named the leader of one reading
+-- while the column under it printed the split of another -- "Growing as Hunter" over
+-- "Alchemist 33% - Hunter 25%" is two true statements about two different windows of time, with nothing
+-- on the sheet to say which was which. One declared job answers the question once.
+function Party.jobLabel(char)
+    return classLabel(Growth.jobOf(char))
+end
+
+-- What the member has GOT GOOD AT, ranked: { key, name, level, held, needed }, highest class level
+-- first and then by name.
 --
--- `share` is the delta AS A FRACTION, because the fraction is the whole of what the model reads. A
--- level arrives on prestige, not on casts, so twenty casts and two hundred casts in the same
--- proportions grow the identical character -- the magnitude buys nothing and printing it would imply a
--- rate that does not exist.
+-- The other half of the pair, and deliberately a different question from the job above. The job is what
+-- the player declared and is what stat growth is taken from; this is what the body has actually been
+-- swinging, read off cumulative technique (Discipline.classLevel). A body declared knight while casting
+-- mage gear shows "Knight" on its title line and a Mage level in this list, and both are true.
 --
--- EMPTY when nothing has been cast since the last level-up. Growth.shares answers the innate class at
--- 1.0 there, which is a true statement about a hypothetical level but reads on a sheet as a claim the
--- player earned; right after a level-up the honest answer is nothing, and the title drops the clause
--- rather than inventing one.
---
--- Ranked share-desc then key-asc, the SAME order ui/panels/advancement.lua ranks the summary it prints
--- when the level actually lands, so this forecast and that screen name the same houses in the same
--- order and the sheet predicts that screen exactly.
+-- `held`/`needed` are the position within the CURRENT rung, so a bar can be drawn without the caller
+-- redoing the ladder's arithmetic. At the cap `needed` is zero, which is a bar that is full rather than
+-- one that can never fill.
 --
 -- A CLASS key has no discipline blueprint and is title-cased; a discipline uses its display name, so a
 -- renamed-away id reads as a slug rather than vanishing silently from a list about growth.
-function Party.growthShares(char)
+function Party.classRows(char)
     if not char then return {} end
-    local since = Growth.sinceLevel(char)
-    if not next(since) then return {} end
 
-    local ranked = {}
-    for key, share in pairs(Growth.shares(char)) do
-        if share > 0 then
-            ranked[#ranked + 1] = { key = key, name = classLabel(key), share = share }
-        end
+    local rows = {}
+    for key in pairs(char.technique or {}) do
+        local held, needed, level = Discipline.classProgress(char, key)
+        rows[#rows + 1] = { key = key, name = classLabel(key), level = level,
+                            held = held, needed = needed }
     end
-    table.sort(ranked, function(a, b)
-        if a.share ~= b.share then return a.share > b.share end
+    table.sort(rows, function(a, b)
+        if a.level ~= b.level then return a.level > b.level end
         return a.key < b.key
     end)
-    return ranked
+    return rows
 end
 
--- Those claims as the text the sheet prints, biggest first: { "33% Alchemist", "25% Hunter", ... }.
--- Rounded for reading, so the printed percentages can sum to 99 or 101 -- naming the split is the job
--- here, and the arithmetic that matters already happened in Growth.applyLevelBlend. Split out of the
--- draw so the rounding is testable and the caller is left with only the question it needs a font to
--- answer: how many of these terms the 300px column actually fits.
+-- Those levels as the text the sheet prints, biggest first: { "Knight 3", "Mage 1", ... }. Split out of
+-- the draw so it is testable and the caller is left with only the question it needs a font to answer:
+-- how many of these terms the 300px column actually fits.
+--
+-- A class the body has touched but not yet levelled prints as level 0 rather than being dropped: the
+-- ladder's first rung is 23 career technique, and a body eight short of it has something to show for
+-- the fights it spent.
 function Party.growthParts(char)
     local parts = {}
-    for _, row in ipairs(Party.growthShares(char)) do
-        parts[#parts + 1] = math.floor(row.share * 100 + 0.5) .. "% " .. row.name
+    for _, row in ipairs(Party.classRows(char)) do
+        parts[#parts + 1] = row.name .. " " .. tostring(row.level)
     end
     return parts
 end
@@ -1815,18 +1817,16 @@ function Party:drawFocus()
     Theme.set(Theme.ink)
     love.graphics.printf(char.name or "?", x, y + ps + 6, self.focusW, "center")
 
-    -- Level + what this body is becoming. The level tracks the player's prestige, and each level-up
-    -- apportions its stat gains across everything the member has been casting since the last one
-    -- (models/growth.lua). The clause names the house leading THAT reading, not the career leader --
-    -- see Party.growthShares for why the career title came off this line.
+    -- Level + the job this body is declared in, which is the one thing its stat growth is taken from
+    -- (Growth.jobOf). The clause used to name whichever house led a ranking of what the member had been
+    -- casting; growth is a declaration now, so the line states it rather than inferring it.
     --
     -- The clause is also a HANDLE. Point at it and the stats below show where that level is taking them
     -- (Party:growthPeeking); its own hit rect is stashed for the hover test and for the click that pins
     -- the peek open. Lit to full ink while it is engaged, so the handle says it is one.
-    local growth = Party.growthShares(char)
     love.graphics.setFont(self.smallFont)
     local heading = "Lv " .. tostring(char.level or 1)
-    local clause = growth[1] and ("  -  Growing as " .. growth[1].name) or nil
+    local clause = "  -  " .. Party.jobLabel(char)
     local hy = y + ps + 30
     self.growthRect = nil
     if clause then

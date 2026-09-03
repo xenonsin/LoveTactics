@@ -10,7 +10,9 @@ return {
     tags = { "beast" },
     class = "hunter",
     discipline = "beastmaster", -- deeper cut of the shelf: buyable only once the beastmaster gate is cleared
-    price = 475,
-    unlockQuests = 3,
+    price = 575,
+    unlockQuests = 6,
     traits = { "trait_wolf_companion" },
+    -- a wolf from the first turn
+    bonus = { damage = 1 },
 }

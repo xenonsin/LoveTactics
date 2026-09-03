@@ -19,6 +19,9 @@ return {
         defense = 9, magicDefense = 14,
         movement = 2,
         speed = 2,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 4, luck = 6,
     },
     startingItems = { "weapon_hoarfrost_antlers", "utility_long_dark" },
     defaultAction = "weapon_hoarfrost_antlers",

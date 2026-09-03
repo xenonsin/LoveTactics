@@ -19,6 +19,12 @@ local Character = require("models.character")
 
 local function run(count) return { floor = 3, seed = 99, count = count, standing = {} } end
 
+-- THE TALLY IS THE COMPANY'S, so the thing isBreached asks is a player rather than a run
+-- (models/descent.lua's Descent.count). `run` above is still a run -- breachComposition reads the
+-- circles it sealed off `player.descentRun` -- and the two are deliberately separate here so a case
+-- cannot quietly hand one where the other is meant.
+local function company(count) return { count = count } end
+
 -- The cast, as a set, so a case can ask whether a body is in the fight without caring where.
 local function idSet(list)
     local set = {}
@@ -37,17 +43,17 @@ return {
     {
         name = "the stair is an exit until the tally is full, and then it is not",
         fn = function()
-            assert(not Descent.isBreached(run(0)), "an empty tally breaches nothing")
-            assert(not Descent.isBreached(run(Descent.COUNT_MAX - 1)),
+            assert(not Descent.isBreached(company(0)), "an empty tally breaches nothing")
+            assert(not Descent.isBreached(company(Descent.COUNT_MAX - 1)),
                 "one short of the ceiling the way up is still a way up")
-            assert(Descent.isBreached(run(Descent.COUNT_MAX)), "at the ceiling it is not")
-            assert(not Descent.isBreached(nil), "and a company with no run is not in a rift at all")
+            assert(Descent.isBreached(company(Descent.COUNT_MAX)), "at the ceiling it is not")
+            assert(not Descent.isBreached(nil), "and nil reads as a company that owes nothing")
 
             -- THE ONE THING THAT MAKES THIS A STATE AND NOT A GAME OVER: descending pays it down, so a
             -- company that meets the breach and loses can always fight its way back under the ceiling.
-            local r = run(Descent.COUNT_MAX)
-            Descent.advance(r)
-            assert(not Descent.isBreached(r), "reaching a floor prunes, and the stair opens again")
+            local p, r = company(Descent.COUNT_MAX), run(Descent.COUNT_MAX)
+            Descent.advance(r, p)
+            assert(not Descent.isBreached(p), "reaching a floor prunes, and the stair opens again")
         end,
     },
     {

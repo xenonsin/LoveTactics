@@ -23,7 +23,9 @@ return {
     tags = { "charm", "holy" },
     class = "mage",
     discipline = "theurge",
-    price = 345,
-    unlockQuests = 2,
+    price = 330,
+    unlockQuests = 3,
     traits = { "trait_vigil_beads" },
+    -- a channel nothing can break into
+    bonus = { magicDefense = 2 },
 }

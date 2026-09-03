@@ -13,7 +13,7 @@ return {
     class = "priest",
     discipline = "paladin", -- knight x priest; a banner is a Paladin or Warlord object (docs/classes.md)
     price = 740,
-    unlockQuests = 5,
+    unlockQuests = 8,
     activeAbility = {
         target = "tile",
         range = 3,

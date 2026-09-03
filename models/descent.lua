@@ -103,14 +103,25 @@ Descent.SINS = {
         -- the body that barred the stair two floors ago is at her shoulder when you reach her, so the
         -- rule it taught you the slow way is standing next to the thing that has it in full.
         guardian = { lead = "character_general_gluttony", filler = "character_the_gralloch" },
+        -- SHE WILL NOT RISE WHILE THERE IS ANYTHING LEFT TO EAT: the floor must be picked clean.
+        gate = { kind = "clear" },
         minor = { lead = "character_the_gralloch", filler = "character_gorge_fly" } },
     { id = "lust", name = "Lust", vendor = "cathedral", biome = "forest",
         scene = "conversation_descent_lust",
         guardian = { lead = "character_general_lust", filler = "character_the_suppliant" },
+        -- THE UNBIDDEN COMES WHEN SHE IS CALLED, and the Suppliant is who calls her -- so the ward is
+        -- a body, standing at its own end of the floor. This is the TEACHING GATE: Lust is first in
+        -- Dante's order, so it is the one a new company meets, and every other circle's is read
+        -- against it. Beat her, the ward breaks, the stair opens.
+        gate = { kind = "ward" },
         minor = { lead = "character_the_suppliant", filler = "character_petal_drift" } },
     { id = "greed", name = "Greed", vendor = "undercroft", biome = "underworld",
         scene = "conversation_descent_greed",
         guardian = { lead = "character_general_greed", filler = "character_the_tally" },
+        -- PAY AT THE STAIR. Priced as a SHARE of what is on the mule rather than as a flat purse, so
+        -- greed taxes exactly what the company came down for and a fat bag costs more to walk past --
+        -- which couples the two systems this mode is built on instead of standing beside them.
+        gate = { kind = "toll", share = 0.25 },
         minor = { lead = "character_the_tally", filler = "character_coin_chitter" } },
     { id = "envy", name = "Envy", vendor = "alchemist", biome = "desert",
         scene = "conversation_descent_envy",
@@ -121,6 +132,10 @@ Descent.SINS = {
         -- `protect` objective with a holdGround posture, whose own header spends a paragraph on why it
         -- must never be fielded as a combatant. Both replaced by the circle's own stock.
         guardian = { lead = "character_general_envy", filler = "character_second_water" },
+        -- SHE DOES NOT COME OUT FOR A COMPANY WITH NOTHING. Envy wants what you have, so the gate is
+        -- carrying something worth wanting -- which makes it the one gate a player can fail by having
+        -- been sensible, and the one that rewards walking onto her floor rich.
+        gate = { kind = "carry", n = 3 },
         minor = { lead = "character_second_water", filler = "character_glass_mote" } },
     { id = "wrath", name = "Wrath", vendor = "colosseum", biome = "volcanic",
         scene = "conversation_descent_wrath",
@@ -129,14 +144,31 @@ Descent.SINS = {
         -- occupant: a stratum's centrepiece should BE the sin one rank down, not an arena fighter who
         -- happens to be nearby. It stays the authoring pattern; it stops standing in for Ira.
         guardian = { lead = "character_general_wrath", filler = "character_the_anvil" },
+        -- UNAPPEASED UNTIL ENOUGH HAS BEEN SPILLED. A count of fights won on her floor, which is the
+        -- gate a company clears by doing the thing it came to do -- so Wrath is the circle that asks
+        -- for no detour, only for commitment.
+        gate = { kind = "kills", n = 3 },
         minor = { lead = "character_the_anvil", filler = "character_cinder_kin" } },
     { id = "sloth", name = "Sloth", vendor = "bastion", biome = "tundra",
         scene = "conversation_descent_sloth",
         guardian = { lead = "character_general_sloth", filler = "character_the_late_watch" },
+        -- NOTHING. SHE IS ASLEEP AND THE STAIR STANDS OPEN.
+        --
+        -- The only gate that is a pure reading of its own sin, and the one to protect in review: the
+        -- post nobody came back to is guarded by nobody, so a company may simply walk past Acedia and
+        -- go down. Fighting her is opt-in, and sealing her circle costs health and mule slots the run
+        -- could have spent elsewhere -- which under an extraction descent is a real decision rather
+        -- than a formality. Every other circle asks something; this one asks whether you want to.
+        gate = { kind = "none" },
         minor = { lead = "character_the_late_watch", filler = "character_drift_thing" } },
     { id = "pride", name = "Pride", vendor = "arcanum", biome = "castle",
         scene = "conversation_descent_pride",
         guardian = { lead = "character_general_pride", filler = "character_marginalia" },
+        -- SHE WILL NOT FIGHT BENEATH HERSELF. A count of circles already sealed, so Pride refuses a
+        -- company that came straight down without proving anything -- the one gate satisfied by the RUN
+        -- rather than by the floor, and the reason her circle reads as the end of a road even when the
+        -- shuffle deals it early.
+        gate = { kind = "worth", n = 3 },
         minor = { lead = "character_marginalia", filler = "character_gilded_sworn" } },
 }
 
@@ -366,7 +398,25 @@ end
 --
 -- Two rather than three on purpose: a floor is a real sitting, and twenty-two of them is a mode nobody
 -- finishes. Fifteen is long enough that the way up is a decision and short enough to be walked.
-Descent.FLOORS_PER_CIRCLE = 2
+-- ONE, AND THE STACK IS EIGHT FLOORS: seven circles and the Crown.
+--
+-- IT WAS TWO, AND THE ARGUMENT FOR TWO IS THE ONE THIS REVERSES. Fifteen floors was written for a
+-- descent you could BANK PROGRESS IN -- the run outlived every climb-out, the map book kept what you
+-- had walked, and the bottom was somewhere you got to eventually across many sittings. A descent that
+-- RESETS when you walk out of it cannot ask that: the run is the roguelike now, the whole stack has to
+-- be walkable in one, and a hundred and thirteen fights is not a run, it is a campaign.
+--
+-- WHAT IT COSTS, stated rather than smoothed over: the lieutenant loses her stratum. `minor.lead` was
+-- the body holding the stairs above a general, so that the thing which barred your way two floors ago
+-- was standing at her shoulder when you reached her -- and a player read their own progress off it
+-- without being told. She is a GATE on the general's own floor now (Descent.SINS' `gate`), which keeps
+-- the payoff and compresses the distance: you beat her, the ward breaks, and she is in the honour guard
+-- behind her mistress ten minutes later instead of two floors later.
+--
+-- AND THE FIGHT COUNT MOVED WITH IT (FLOOR_FIGHTS below). Eight floors at the old six-to-nine is sixty
+-- fights, which undershoots as badly as fifteen floors overshot; the floors got bigger instead, which
+-- is what keeps a run that ends on floor two from feeling like a run that ended before it started.
+Descent.FLOORS_PER_CIRCLE = 1
 
 -- HOW MANY FIGHTS A FLOOR HOLDS, and it counts EVERY fight -- the stair, the errands, the openers and
 -- the rolled stops between them. That is the whole of what changed here, and it is worth saying why the
@@ -404,7 +454,17 @@ Descent.FLOORS_PER_CIRCLE = 2
 -- fifteen of them is ninety fights -- a long run. Eleven was a Long dungeon fifteen times.
 --
 -- THE FIRST FLOOR'S, and the bottom's is below. See Descent.floorFights for the climb between them.
-Descent.FLOOR_FIGHTS = 6
+-- EIGHT AT THE TOP, ELEVEN AT THE BOTTOM, and the pair lays out 8/8/9/9/10/10/11/11 -- seventy-six
+-- fights for a complete descent. That number is the whole re-cut: a hundred and thirteen (fifteen
+-- floors at six-to-nine) is a campaign rather than a run, and sixty (eight floors at the old numbers)
+-- is a stack you walk through before the mule has asked you anything.
+--
+-- THE SPAN IS STILL THREE, deliberately. Twelve at the bottom was tried and it widens the ramp to four,
+-- which the case above refuses in as many words -- and it refuses it for a reason that did not change
+-- when the stack did: difficulty already climbs on every other axis down here, so a fight count that
+-- climbed harder would be charging twice for the same descent. Raising both ends by two keeps the
+-- proportion identical and leaves the pin honest.
+Descent.FLOOR_FIGHTS = 8
 
 -- WHAT THE BOTTOM HOLDS, and the whole argument is in how little it is above the top.
 --
@@ -428,7 +488,7 @@ Descent.FLOOR_FIGHTS = 6
 -- likely to move (Descent.FLOORS_PER_CIRCLE is one constant away from twenty-two floors) and a step
 -- would silently re-price the bottom every time it did. An endpoint holds its meaning: whatever the
 -- stack turns out to be, the last floor of it asks for nine.
-Descent.FLOOR_FIGHTS_DEEP = 9
+Descent.FLOOR_FIGHTS_DEEP = 11
 
 -- How many fights floor `f` may hold in all -- its ends included. Linear between the two constants
 -- above and rounded, so the climb is the same shape whatever the run's length turns out to be.
@@ -463,7 +523,8 @@ Descent.FLOOR_ROLLED_MIN = 2
 -- makes the budget mean what it says: a stop count with a share over it lets a fight and a cache compete
 -- for the same tile, so capping the fights hard would have re-seated all of them as merchants and left a
 -- floor with ten shops on it. Two separate numbers cannot do that to each other.
-Descent.FLOOR_TEXTURE = 6
+-- NINE, raised with the frame (FLOOR_COLS). See that constant for why the two move together.
+Descent.FLOOR_TEXTURE = 9
 
 -- The board's stop count and its absolute fight cap, for a floor carrying `ends` objectives -- the stair
 -- plus whatever Descent.floorObjectives seated beside it. Returns both because they are one decision:
@@ -491,7 +552,12 @@ end
 -- forging material on a board, well above what the fights leave. Measured, a derived twelve-stop floor
 -- pays around three Forge rungs of craft and house stock against the one the stage-2 payout rebase was
 -- calibrated to (models/spoils.lua). Two or three holds that line at the new density.
-Descent.FLOOR_CACHES = { min = 2, max = 3 }
+-- THREE TO FOUR, RAISED DELIBERATELY, which is not the thing the note above forbids. What it refuses
+-- is a DERIVED `per` that multiplies silently with the stop count; this is a considered absolute. The
+-- reason it moved is the stack: eight floors instead of fifteen nearly halves the forging material a
+-- complete run pays, and the bench was calibrated against the old total. Re-measure with
+-- `. board-report N descent` before moving it again.
+Descent.FLOOR_CACHES = { min = 3, max = 4 }
 
 -- WHAT A FLOOR IS MADE OF, which is not what a quest board's leg is made of.
 --
@@ -566,6 +632,59 @@ Descent.HAZARDS = {
     { id = "encounter_translation", weight = 0.7 },
     { id = "encounter_sink", weight = 0.4 },
 }
+
+-- ---------------------------------------------------------------------------
+-- What each hazard costs, in the floor's own units
+-- ---------------------------------------------------------------------------
+--
+-- THESE WERE LITERALS IN states/game.lua AND EVERY ONE OF THEM WAS SIZED FOR A BOARD THAT NO LONGER
+-- EXISTS. A floor used to be 40x40 tiles -- 931 walkable, a forty-step crossing -- and the three numbers
+-- were picked against it: the Turning Floor unlearned a 13x13 block, the Translation wanted somewhere
+-- eight steps off, the Dark ran thirty steps. All three read as "a neighbourhood", "a long way" and "a
+-- stretch of walking" on that board.
+--
+-- A floor is a 10x10 grid of PLACES now, crossed in about eighteen steps. The same three numbers mean:
+-- unlearn the entire floor, find somewhere further away than the floor is wide, and walk blind for
+-- nearly two crossings. Measured on a fully-walked floor, the Turning Floor took the known cells from
+-- 97 to 44 and took the WAY UP off the map with them -- which in a mode whose only bank is the stair you
+-- came down by is not a hazard, it is a lost run with no fight in it.
+--
+-- So they live here, next to the table that deals them, and they are stated in the units their meaning
+-- is actually in. Two are LOCAL and one is a DURATION, and that difference is the whole lesson: a number
+-- that means "around you" must not be a fraction of the floor (which is how 6 got written), and a number
+-- that means "for a while" must be, or it stops meaning anything when the floor changes size.
+
+-- THE TURNING FLOOR takes your bearings, not your map. Two places, flat, on any floor: "the ground
+-- around the company" is not a share of anything -- it is the neighbourhood you orient by, and it is the
+-- same size whether the floor is ten a side or twelve. Thirteen cells of a seventy-five-place floor,
+-- which is about what the old radius took of the old board before the board shrank under it.
+Descent.SPINNER_RADIUS = 2
+
+-- ...AND IT NEVER TAKES THE WAY UP. The exit is not bearings, it is the run's whole bank
+-- (docs/overworld.md, Getting out): walking out is free and the risk is meant to be losing a FIGHT. A
+-- hazard that can strand a full haul without one is off-contract, and the handler's own note already
+-- says the spinner costs bearings rather than the map. Asserted, not just intended -- see
+-- tests/hazard_scale_spec.lua.
+Descent.SPINNER_SPARES_EXIT = true
+
+-- THE DARK runs half a crossing. It is a DURATION and so it does scale: a stretch of walking means a
+-- stretch of THIS floor. It also bites harder than it used to for a reason that is not about size --
+-- sight is flat at one step now (models/player.lua's Player.VISION), so the dark takes it to nothing
+-- rather than merely narrowing it, and thirty steps of that on an eighteen-step floor is most of a
+-- sitting spent unable to read the place you are about to walk into.
+function Descent.darkSteps(grid)
+    local span = ((grid and grid.cols) or 10) + ((grid and grid.rows) or 10)
+    return math.max(4, math.floor(span / 2))
+end
+
+-- THE TRANSLATION drops you a third of a crossing away, onto ground already walked. A third rather than
+-- the old fixed eight, which on this floor is further than most of the floor is from most of the floor:
+-- the pass found nothing to qualify and the hazard silently became a toast saying nothing happened,
+-- which is the worst version of a hazard -- one the player learns to ignore.
+function Descent.translationMin(grid)
+    local span = ((grid and grid.cols) or 10) + ((grid and grid.rows) or 10)
+    return math.max(2, math.floor(span / 3))
+end
 
 -- A FLOOR SEATS NO FIGHT THAT IS NOT A FIGHT, and this is the whole of what that means.
 --
@@ -744,7 +863,57 @@ end
 -- what one-way ground would have broken. See the note on the descent's shape at the top of this file.
 --
 -- THIS IS THE FIRST FLOOR'S BOARD, and every floor under it is wider. See Descent.floorDims.
-Descent.FLOOR_COLS, Descent.FLOOR_ROWS = 26, 26
+-- FORTY, which is sixteen sectors of ten (models/layouts/vaults.lua). A sector spends one column and one
+-- row on the wall it shares, so a chamber is nine a side -- which at the board's own 64 pixels a tile is
+-- about 576, an arena's worth of frame.
+--
+-- The lattice is what sets this, and the lattice is set by a content rule: one encounter to a chamber
+-- and no chamber without one, so the floor needs about as many chambers as it has stops. Thirty gave
+-- nine sectors against thirteen stops.
+--
+-- SIX, AND IT IS A GRID OF PLACES RATHER THAN A RECTANGLE OF TILES. Everything above this line is the
+-- record of the board this replaced and is kept because the argument it lost is the useful part: a
+-- Wizardry floor is mostly GROUND, distance is what makes mapping worth doing, and 20x20 grew to 40x40
+-- chasing it. What that produced was 931 walkable tiles carrying thirteen stops -- one every thirty
+-- tiles, with the stair forty steps from the door -- and the walking was the content.
+--
+-- The floor is a grid of places now (models/overworld.lua): one cell is one place, it holds one thing,
+-- and stepping onto it is arriving.
+--
+-- TEN A SIDE, AND IT IS SIGHT THAT SETS IT rather than any argument about how much ground a floor
+-- should hold. The fog lifts ONE STEP (models/player.lua's Player.VISION) -- the place you stand in and
+-- the four beside it -- so what a floor costs to learn is a function of how many places there are to
+-- stand in. Six a side was twenty-seven places and about nine steps corner to corner, which one step of
+-- sight reads out almost completely on the way to the stair: the floor was known by the time it was
+-- crossed, and there was nothing left to have explored.
+--
+-- A hundred cells, a quarter of them blocked, is about seventy-five places and a crossing near twenty
+-- steps. That is a floor you have to CHOOSE how much of to see -- which is the decision one-step sight
+-- exists to create, and the decision a floor small enough to sweep cannot offer.
+--
+-- The stop budget does NOT move with it. Descent.FLOOR_FIGHTS is still six climbing to nine, argued
+-- from Dream Quest and Darkest Dungeon, so a bigger floor is a THINNER one rather than a longer sitting
+-- -- about a fifth of the places holding something against half at six a side. That is the row to read
+-- if this ever wants revisiting (`. board-report N descent`, the `full` column): the fights are the
+-- length of the sitting and the places are how much floor there is to spend them across.
+-- ELEVEN, NOT TEN, AND THE FILL MOVED WITH IT. The stack went from fifteen floors to eight
+-- (FLOORS_PER_CIRCLE), so a floor has to be a bigger place or a run that ends on floor two is a run
+-- that ended before it started.
+--
+-- ELEVEN AND NOT MORE, AND THE CEILING IS THE SCREEN. The whole floor is drawn in one frame with no
+-- camera -- that is what the sector grid was adopted for -- so the place size is
+-- Overworld.BOARD_EXTENT (608) divided by the longer side, and a marker with its tier pips under it
+-- stops being legible below about 44 pixels (tests/floor_grid_spec.lua pins both ends). That puts a
+-- hard cap of 13 on the DEEPEST floor, and FLOOR_SPAN adds two to each side on the way down, so the
+-- top is eleven. Twelve was tried and the bottom drew at 43.
+--
+-- BOTH HALVES OR NEITHER. The frame and the fill are one decision: widening this without raising
+-- FLOOR_TEXTURE and FLOOR_FIGHTS lays the same content across more ground and produces a sparse floor,
+-- and raising those without this crowds a board that has nowhere to put them.
+--
+-- (The note above still describes floor one as 26x26 and the bottom as 33x33. That is prose left over
+-- from the retired warren carve -- there is no carve, and these are the sector grid.)
+Descent.FLOOR_COLS, Descent.FLOOR_ROWS = 11, 11
 
 -- HOW MUCH WIDER EACH FLOOR IS THAN THE ONE ABOVE IT: one tile of span per floor, laid on alternating
 -- axes, so floor 1's 26x26 becomes 27x26, then 27x27, and the bottom is fought on 33x33.
@@ -796,12 +965,50 @@ Descent.FLOOR_COLS, Descent.FLOOR_ROWS = 26, 26
 -- 10.1 -- more spurs for the offer rule and for a door to hide behind -- and the arena sites a fight can
 -- be seated in rise faster than anything else, which drops the fights seated on sub-standard ground
 -- from 0.60 a board to 0.38. The extra ground is the good kind: room, not corridor.
-Descent.FLOOR_GROWTH = 1
+-- TWO A FLOOR NOW, AND WHAT IT BUYS IS CHAMBERS RATHER THAN ROOM. Under the warren the extra span was
+-- more ground to lay corridor and clearings on, and one a floor was enough. A vaults floor is a lattice
+-- of fixed-size chambers -- a chamber is sized to fill the frame and has nowhere to grow to -- so span
+-- buys the SECTOR COUNT: forty across is four sectors of ten, and it takes fifty to reach five.
+--
+-- At one a floor the bottom board only reached 47 from 40, which is a fifth more ground over fifteen
+-- floors and reads as no change at all; two reaches 54, and picks up the fifth sector on the way. The
+-- room count still follows the stop budget rather than the lattice (models/layouts/vaults.lua), so the
+-- extra sectors are headroom and never empty chambers.
+-- FOUR CELLS OF SPAN ACROSS THE WHOLE RUN, which is 10x10 at the top and 12x12 at the bottom.
+--
+-- The rate above was a tile a floor and the reasoning behind it still holds -- depth is the one axis
+-- this mode has, so the place has to widen along it, and the way up you left at the entrance has to get
+-- further back the further down you are. What changed is what a cell is worth. A tile was half a percent
+-- of the board; a cell is a whole PLACE, and a place is somewhere the company has to walk to, stand in
+-- and read. One a floor would take the bottom to 24x24 -- four hundred places -- and turn a sitting into
+-- an afternoon.
+--
+-- Four rungs over fifteen floors, laid on alternating axes so no floor is ever smaller than the one
+-- above it and consecutive floors are differently SHAPED (11x10 is not 10x11 to walk). It lands as
+-- 10x10 x3 / 11x10 x3 / 11x11 x3 / 12x11 x3 / 12x12 x3 -- long enough on each rung that arriving on a
+-- new one registers as the descent asking for more rather than as noise.
+--
+-- IT IS FOUR CELLS AND NOT A SHARE, deliberately. A proportional rate would have grown with the floor
+-- when the floor grew from six a side to ten, which would have re-priced the bottom as a side effect of
+-- a decision about the TOP. The endpoint holds its own meaning: whatever the first floor turns out to
+-- be, the last one is four cells of span wider.
+-- HOW MUCH WIDER THE BOTTOM IS THAN THE TOP, in total span rather than per floor.
+--
+-- IT WAS `4 / 14` AND THE 14 WAS A MAGIC LITERAL -- Descent.CIRCLE_FLOORS spelled out, which meant
+-- re-cutting the stack silently re-priced the growth: at eight floors the same fraction would have
+-- widened the bottom by two cells instead of four, and nothing would have said so. Stated as the
+-- ENDPOINT and divided by the stack at the point of use, so whatever the run's length turns out to be,
+-- the last floor of it is four cells of span wider than the first.
+Descent.FLOOR_SPAN = 4
 
--- The board a given floor is fought on. Pure arithmetic on the depth -- no run state, no rng -- because
--- a floor's board has to reproduce from (seed, floor) alone like everything else down here.
+-- The floor a given depth is walked on. Pure arithmetic on the depth -- no run state, no rng -- because
+-- a floor has to reproduce from (seed, floor) alone like everything else down here.
+--
+-- CIRCLE_FLOORS is read inside the body rather than closed over: it is derived further down this file
+-- and would be nil at the moment this function is defined.
 function Descent.floorDims(floor)
-    local span = math.max(0, (floor or 1) - 1) * Descent.FLOOR_GROWTH
+    local per = Descent.FLOOR_SPAN / math.max(1, Descent.CIRCLE_FLOORS)
+    local span = math.floor(math.max(0, (floor or 1) - 1) * per + 0.5)
     return Descent.FLOOR_COLS + math.ceil(span / 2), Descent.FLOOR_ROWS + math.floor(span / 2)
 end
 
@@ -839,8 +1046,31 @@ end
 -- same 26x26 board, with the walkable ground within a few tiles of identical. Fifty-two is still five
 -- seconds of round trip against the nineteen tiles the biome layouts were giving, so the trade is most
 -- of the distance kept and hidden ground bought with the rest.
-Descent.FLOOR_CARVE = "dungeon"
-Descent.FLOOR_SPACING = 3
+-- ...AND ALL OF THAT IS NOW HISTORY, kept because the reasoning above is still true of the carve it
+-- describes and is the reason this one exists.
+--
+-- A floor is carved as ROOMS JOINED BY DOORS (models/layouts/vaults.lua). The argument for the warren
+-- was walking distance and it was correct on its own terms; what it could not answer is that two thirds
+-- of a floor's walkable tiles were one-tile corridor asking the player nothing. That was defensible
+-- while a fight was an 8x8 window cut out of the map -- the ground you stood on WAS the arena, so a
+-- defile and a hall were different fights -- and it stopped being defensible when models/arena.lua began
+-- building its own board.
+--
+-- Measured, 30 rolled floors of each at floor one:
+--
+--                     dungeon        vaults
+--   open ground       35.8%          62.4%
+--   dead traversal    ~245 tiles     the door tiles, and nothing else
+--   boons guarded     49.7%          55.8%
+--   boons gateable    73.9%          100%
+--
+-- THE ROOM WAS THREE THINGS AT ONCE -- the unit of content, of the fight, and of the view -- and that
+-- is exactly the admission the grid was built on. A floor of ten-tile sectors whose rooms hold one stop
+-- each, light whole on entry, and gate on the doorway rather than on any tile IS a grid of places; it
+-- was paying sixteen hundred cells to express sixteen of them.
+--
+-- SO THERE IS NO CARVE. A floor is a grid and the only shaping it takes is which cells are not there
+-- (models/overworld.lua's Overworld:hollow). `carve` and `spacing` are gone with the layouts they named.
 
 -- The enemy-level floor for a given depth: "a fight on this floor is never easier than this". Same
 -- meaning the authored `floorLevel` has everywhere else (models/growth.lua's combatantLevel), which is
@@ -853,7 +1083,12 @@ Descent.FLOOR_SPACING = 3
 -- point of the 13 that Quest.SLOT_FLOOR used to hand the deepest quest of a line. More floors, the same
 -- difficulty envelope, a gentler climb through it -- which is also the right shape for a mode whose
 -- company now persists between expeditions rather than being minted at level 1 each time.
-Descent.LEVEL_PER_FLOOR = 1
+-- TWO, WHICH IS A REVERT RATHER THAN A NEW FIGURE. The note above is the whole derivation and it was
+-- written the other way round: at two per floor an EIGHT-floor descent topped out at level 15, which is
+-- what the growth tables and the shelf were balanced against, and it went to one only because the stack
+-- grew to fifteen and the same slope would have reached 29. The stack is eight again
+-- (FLOORS_PER_CIRCLE), so the ceiling lands back where every curve in the game expects it.
+Descent.LEVEL_PER_FLOOR = 2
 
 -- WHAT THE WORLD FIGHTS AT ON THE FIRST STAIR, and the number that fixes a floor nobody had to play.
 --
@@ -971,6 +1206,35 @@ end
 -- `floorLevel` of its own tracks it exactly, so the trash thins out and the guardian does not.
 function Descent.dangerLevel(run)
     return Descent.OPENING_DANGER + (Descent.depth(run) - 1) * Descent.LEVEL_PER_FLOOR
+end
+
+-- WHICH DAY A FLOOR BORROWS, purely to decide which encounter blueprints may appear on it (`minDay`).
+-- The enemy LEVEL is Descent.dangerLevel's and this must never become a second answer to it.
+--
+-- WHICH IS EXACTLY WHAT IT HAD BECOME, TWICE, AND THE SECOND TIME IS WHY THIS FUNCTION EXISTS. The
+-- mapping was `depth / FLOORS * SPAN` -- depth spread evenly across the campaign's forty days -- and
+-- states/battle.lua reads its level off Calendar.dangerLevel(day) while Growth.combatantLevel takes the
+-- HIGHER of that and the floor's own. So whenever the borrowed day out-ranks the floor, the day silently
+-- becomes the ladder and OPENING_DANGER stops meaning anything. At fifteen floors it did that from floor
+-- three down. Re-cutting the stack to eight made it worse rather than better: five days a floor instead
+-- of under three, so the day overtook the ladder on floor ONE.
+--
+-- SO THE DAY IS DERIVED FROM THE LADDER RATHER THAN FROM THE DEPTH. Read Calendar.dangerLevel backwards
+-- -- find the day whose danger matches this floor's -- and floor it, so the borrowed day always rates a
+-- shade BELOW the floor it is standing on and the descent's dial wins every comparison by construction.
+-- Re-cutting the stack, the ladder or the calendar cannot re-break this, because it no longer contains
+-- an opinion about any of their lengths.
+function Descent.poolDay(run)
+    local Calendar = require("models.calendar")
+    local span, final = Calendar.SPAN or 1, Calendar.FINAL_DANGER or 1
+    if span <= 1 or final <= 1 then return 1 end
+    -- ONE RUNG BELOW THE FLOOR'S OWN DANGER, not level with it. Aiming at parity lands the borrowed day
+    -- on exactly the floor's level once the calendar's rounding is applied, and a day that TIES with the
+    -- ladder is a day that has quietly become the ladder again -- Growth.combatantLevel takes the higher
+    -- of the two and cannot tell which one it took. A rung of margin costs a sliver of pool breadth and
+    -- makes the ownership unambiguous at every depth.
+    local t = (Descent.dangerLevel(run) - 2) / (final - 1)
+    return math.max(1, math.min(span, math.floor(1 + t * (span - 1))))
 end
 
 -- Ids are `descent_f<N>`. Nothing in the engine ever looks a floor up in Quest.defs -- models/save.lua
@@ -1395,7 +1659,11 @@ end
 -- slide again on the next visit, a second wipe on the same fight leaves a second pile rather than
 -- merging into one the player can no longer find, and the tile the run names is the tile the marker is
 -- on. What is given up is the exact square the bodies fell on, which nothing reads and nobody is shown.
-function Descent.markPacks(run, grid, floor)
+-- `player` is optional and is what carries STRANDED piles onto the board -- the ones a closed rift left
+-- behind (Descent.strandPacks). They are seated exactly as this run's own are and are indistinguishable
+-- once down: the same marker, the same guard, the same walk back. What differs is only where the ledger
+-- lives, and a pile the company lost two rifts ago has to be as recoverable as one it lost this hour.
+function Descent.markPacks(run, grid, floor, player)
     if not (run and grid) then return 0 end
     -- Clear first, so a pack picked up leaves no marker behind and a re-entry does not double them.
     for y = 1, grid.rows do
@@ -1404,11 +1672,26 @@ function Descent.markPacks(run, grid, floor)
             if c.encounter and c.encounter.kind == "pack" then c.encounter = nil end
         end
     end
+    -- This run's piles, then the ones carried over from rifts that closed on them. Concatenated rather
+    -- than merged into either ledger: the two are written and cleared by different owners, and a pile
+    -- that lived in both would be picked up twice.
+    local piles = {}
+    for _, d in ipairs(Descent.dropsOn(run, floor)) do piles[#piles + 1] = d end
+    for _, d in ipairs(Descent.lostAt(player, floor)) do piles[#piles + 1] = d end
+
     local n = 0
-    for _, drop in ipairs(Descent.dropsOn(run, floor)) do
+    for _, drop in ipairs(piles) do
         -- Seated in list order, and each seat is taken as it is filled: two piles that would land on one
         -- tile get one tile each, because the second one's search sees the first one's marker.
-        local c = Descent.packSeat(grid, drop.x, drop.y)
+        --
+        -- A STRANDED PILE HAS NO SEAT TO ASK FOR. Its coordinates named a tile on a board that no longer
+        -- exists (Descent.strandPacks drops them deliberately rather than carrying a lie), so the search
+        -- starts from the middle of this floor and slides outward to the first free ground -- which is
+        -- what packSeat does for every pile anyway. Without this the pile would ask for tile nil and
+        -- quietly fail to appear, and the company would dive for something that was never seeded.
+        local sx = drop.x or math.max(1, math.floor(grid.cols / 2))
+        local sy = drop.y or math.max(1, math.floor(grid.rows / 2))
+        local c = Descent.packSeat(grid, sx, sy)
         if c then
             drop.x, drop.y = c.x, c.y
             c.encounter = {
@@ -1515,9 +1798,6 @@ function Descent.rearmFloor(grid)
             end
         end
     end
-    for _, p in ipairs(grid.patrols or {}) do
-        if p.cleared then p.cleared = nil; n = n + 1 end
-    end
     return n
 end
 
@@ -1532,6 +1812,63 @@ function Descent.floorBoard(run, floor)
     return (run and run.floors or {})[tostring(floor or 1)]
 end
 
+-- ---------------------------------------------------------------------------
+-- What a closed rift leaves behind
+-- ---------------------------------------------------------------------------
+
+-- CARRY THIS RUN'S PILES OUT OF IT AND ONTO THE COMPANY, tagged with the depth they were lost at.
+--
+-- THE PILE IS THE PROBLEM A RESET CREATES. `run.drops` was the right home while a descent outlived
+-- every climb-out -- the pile lay on floor nine and you walked back down to floor nine for it. A
+-- descent that is thrown away when you leave has no floor nine to walk back to, so the pile would die
+-- with the run: an expensive mistake made permanent, which is precisely what Descent.dropPack's own
+-- header says the design refuses ("the pile is not income, it is the entire economy").
+--
+-- SO IT MOVES TO THE PLAYER AND WAITS FOR A DEPTH. `Descent.markPacks` seats a stranded pile on the
+-- next run that reaches the floor it was lost on, guard and all -- which makes the walk back a DIVE
+-- back, and that is better than it was: you have to earn your way down to your own corpse rather than
+-- stroll across ground you had already cleared.
+--
+-- Called on both exits, because both throw the run away. Idempotent: it empties `run.drops` as it goes,
+-- so a second call carries nothing twice.
+function Descent.strandPacks(player, run)
+    if not (player and run) then return 0 end
+    local moved = 0
+    player.lostPacks = player.lostPacks or {}
+    for _, d in ipairs(run.drops or {}) do
+        -- The seat (x, y) is deliberately dropped. It named a tile on a board that no longer exists,
+        -- and carrying it would seat a pile at a coordinate the next floor may not even have --
+        -- Descent.markPacks finds it a seat on whatever ground it lands on.
+        player.lostPacks[#player.lostPacks + 1] = {
+            id = d.id, floor = d.floor, count = d.count, items = d.items,
+            guard = d.guard, guardIds = d.guardIds,
+        }
+        moved = moved + 1
+    end
+    run.drops = {}
+    return moved
+end
+
+-- The piles this company has left down there, at `floor`. Empty for a depth it has never lost anything
+-- on, which is every depth for a company that has never wiped.
+function Descent.lostAt(player, floor)
+    local out = {}
+    for _, d in ipairs((player and player.lostPacks) or {}) do
+        if (d.floor or 1) == (floor or 1) then out[#out + 1] = d end
+    end
+    return out
+end
+
+-- Take a stranded pile back off the company's ledger, by id. Called when the pile is picked up, so a
+-- recovered pack cannot be seeded again on a later run.
+function Descent.claimLost(player, id)
+    local list = (player and player.lostPacks) or {}
+    for i, d in ipairs(list) do
+        if d.id == id then table.remove(list, i) return d end
+    end
+    return nil
+end
+
 -- Pick a dropped pack up off the floor. Returns the LIVE items, rebuilt from their snapshots, and drops
 -- the entry -- so a pack is recoverable exactly once and cannot be walked over twice for two copies of
 -- everything the company owned.
@@ -1541,12 +1878,25 @@ end
 -- COPY of it -- the grid snapshot stores the encounter whole, drop and all -- so `d == entry` was true
 -- exactly until somebody reloaded. It survived the one-pile rule because there was never a second entry
 -- for the copy to be confused with; there is now.
-function Descent.takePack(run, entry)
+-- `player` is optional and is what lets a STRANDED pile be picked up -- one carried over from a rift
+-- that closed on it (Descent.strandPacks). Both ledgers are searched, and whichever holds it is the one
+-- it comes off, so a recovered pack can never be seeded again.
+function Descent.takePack(run, entry, player)
     if not (run and entry) then return nil end
-    for i, d in ipairs(run.drops or {}) do
+    local pool = {}
+    for _, d in ipairs(run.drops or {}) do pool[#pool + 1] = { d = d, run = true } end
+    for _, d in ipairs((player and player.lostPacks) or {}) do pool[#pool + 1] = { d = d } end
+    for _, slot in ipairs(pool) do
+        local d = slot.d
         if d == entry or (entry.id and d.id == entry.id) then
             entry = d -- the live entry, never the marker's copy: it is the one holding the real items
-            table.remove(run.drops, i)
+            if slot.run then
+                for i, x in ipairs(run.drops) do
+                    if x == d then table.remove(run.drops, i) break end
+                end
+            else
+                Descent.claimLost(player, d.id)
+            end
             local Item = require("models.item")
             local out = {}
             for _, snap in ipairs(entry.items or {}) do
@@ -1724,6 +2074,97 @@ function Descent.isBottom(floor)
     return (floor or 1) > Descent.CIRCLE_FLOORS
 end
 
+-- ---------------------------------------------------------------------------
+-- The gates: how each circle decides you may fight its general
+-- ---------------------------------------------------------------------------
+
+-- A CIRCLE IS ONE FLOOR, SO ITS FLOOR NEEDS A SPINE. With a stratum, the shape of a circle was a
+-- lieutenant's stair and then hers; compressed to one board that becomes "walk to the end and fight the
+-- boss", which is a corridor. So the general's stair is BARRED, and each circle bars it its own way --
+-- a condition read straight off the sin rather than a difficulty knob wearing a fiction.
+--
+-- SEVEN DIFFERENT KINDS OF CONDITION, which is the point of authoring them one at a time: clear
+-- everything, beat a body, pay, carry, kill enough, do nothing, be worth her time. No two circles play
+-- the same before their casts are even dealt.
+--
+-- THE GATE IS ALWAYS LEGIBLE. Its condition is stated from the moment the company lands and carries its
+-- own progress where it has any -- a gate the player has to deduce is a puzzle, and this is not a
+-- puzzle game. Descent.gateState is the one reading, so the plate, the refusal and any later readout
+-- cannot drift apart.
+--
+-- PURE. It is handed a table of facts about the floor and the company rather than reaching for a grid,
+-- a player or a run, so a spec can drive every branch without a board and states/game.lua stays the
+-- only thing that knows how to count a cleared cell.
+Descent.GATES = {
+    clear = { label = "Nothing may be left alive on this floor" },
+    ward  = { label = "The ward holds" },
+    toll  = { label = "The stair takes its share" },
+    carry = { label = "She wants what you are carrying" },
+    kills = { label = "Unappeased" },
+    none  = { label = nil },
+    worth = { label = "She will not fight beneath herself" },
+}
+
+-- The gate a circle bars its stair with, or nil for a circle that does not (and for the bottom, which
+-- is not a circle). A missing gate reads as none, which is fail-open on purpose: an unauthored gate must
+-- leave the game finishable rather than seal a general behind a condition nobody wrote.
+function Descent.gateFor(sin)
+    local g = sin and sin.gate
+    if not g or not g.kind then return nil end
+    return g
+end
+
+-- IS THE WAY PAST HER OPEN? `facts` is what the caller measured on the board and the company:
+--
+--   fightsCleared / fightsTotal   won and seated fights on THIS floor
+--   wardDown                      the circle's lieutenant end has been beaten
+--   carrying                      how many finds are on the mule (models/mule.lua)
+--   sealed                        circles this company has already sealed, ever
+--   paid                          the toll has been handed over
+--
+-- Returns `met`, a short `label` naming the condition, and `have`/`need` where the condition counts --
+-- so a surface can draw "4 of 7" without knowing which gate it is looking at.
+function Descent.gateState(sin, facts)
+    facts = facts or {}
+    local gate = Descent.gateFor(sin)
+    if not gate then return { met = true } end
+    local def = Descent.GATES[gate.kind] or {}
+    local out = { kind = gate.kind, label = def.label, met = true }
+
+    if gate.kind == "none" then
+        return out
+    elseif gate.kind == "clear" then
+        out.have, out.need = facts.fightsCleared or 0, facts.fightsTotal or 0
+        out.met = out.have >= out.need
+    elseif gate.kind == "ward" then
+        out.met = facts.wardDown == true
+    elseif gate.kind == "kills" then
+        out.have, out.need = facts.fightsCleared or 0, gate.n or 1
+        out.met = out.have >= out.need
+    elseif gate.kind == "carry" then
+        out.have, out.need = facts.carrying or 0, gate.n or 1
+        out.met = out.have >= out.need
+    elseif gate.kind == "worth" then
+        out.have, out.need = facts.sealed or 0, gate.n or 1
+        out.met = out.have >= out.need
+    elseif gate.kind == "toll" then
+        out.have, out.need = facts.paid and 1 or 0, 1
+        out.met = facts.paid == true
+    end
+    return out
+end
+
+-- What the toll costs, in items off the mule. A SHARE of what is being carried, rounded up -- so a
+-- company carrying nothing is charged nothing, a full bag pays properly, and the bill can never exceed
+-- what is in hand, because a price nobody can pay is a wall rather than a toll.
+function Descent.tollFor(sin, carrying)
+    local gate = Descent.gateFor(sin)
+    if not gate or gate.kind ~= "toll" then return 0 end
+    carrying = math.max(0, carrying or 0)
+    if carrying <= 0 then return 0 end
+    return math.max(1, math.min(carrying, math.ceil(carrying * (gate.share or 0.25))))
+end
+
 -- WHICH FLOOR OF ITS CIRCLE THIS IS, 1..FLOORS_PER_CIRCLE. A circle owns a stratum, and the difference
 -- between its floors is only ever this number: the biome, the house and the material tagging are the
 -- sin's and therefore identical across all of them.
@@ -1792,7 +2233,7 @@ end
 -- balanced for, and this is the one whose rung cannot move -- so the posting is what moves.
 --
 -- SPLIT ACROSS THE CIRCLE'S TWO FLOORS rather than piled on floor one, and that is capacity, not taste:
--- a shallow floor carves about seven and a half dead ends (see FLOOR_GROWTH) and the stair takes one of
+-- a shallow floor carves about seven and a half dead ends (see FLOOR_SPAN) and the stair takes one of
 -- them, so seven doors on floor one would be seating eight ends in seven spurs and the generator would
 -- start degrading them onto shared ground. Three and four fit with room to spare.
 --
@@ -1818,15 +2259,26 @@ local function shuffledHouses(seed)
     return deck
 end
 
+-- HOW MANY FLOORS THE SEVEN DOORS ARE DEALT ACROSS, and it is its own constant rather than
+-- FLOORS_PER_CIRCLE spelled out -- which is what it used to read, and what broke the moment a circle
+-- became one floor. The note above states the requirement in its own terms: a floor carries the stair
+-- plus its openers on separate spurs, "seven doors on floor one would be seating eight ends in seven
+-- spurs and the generator would start degrading them onto shared ground. Three and four fit with room
+-- to spare." That is a fact about how many ENDS a board can seat, and it has nothing to do with how
+-- many floors a sin owns. Tying it to the circle meant re-cutting the stack silently piled every door
+-- in the game onto the opening floor.
+Descent.OPENER_FLOORS = 2
+
 function Descent.openersAt(run, floor)
     floor = math.max(1, floor or 1)
-    if floor > Descent.FLOORS_PER_CIRCLE then return {} end
+    local across = math.max(1, math.min(Descent.OPENER_FLOORS, Descent.CIRCLE_FLOORS))
+    if floor > across then return {} end
     local deck = shuffledHouses(run and run.seed)
     local out = {}
     for i, vendorId in ipairs(deck) do
-        -- The deal's order decides WHICH floor of the circle, so the split moves with the seed like
+        -- The deal's order decides WHICH of those floors, so the split moves with the seed like
         -- everything else here rather than always cutting the same three houses onto floor one.
-        if math.ceil(i * Descent.FLOORS_PER_CIRCLE / #deck) == floor then out[#out + 1] = vendorId end
+        if math.ceil(i * across / #deck) == floor then out[#out + 1] = vendorId end
     end
     return out
 end
@@ -1992,14 +2444,8 @@ function Descent.floorQuest(run, player)
                 keyCount = 0,
                 -- The way back up, standing on the tile the party walks in on. See EXIT below.
                 exitAtStart = true,
-                -- A floor is not a climb: its fights are optional stops around a stair, so its rewards get guards
-                -- even though `ascent` is set (models/overworld.lua's guardBoons).
-                guardBoons = true,
-                -- ...and doors that read as wall until somebody looks (Overworld:placeSecrets).
+                -- Places that read as absent until somebody looks (Overworld:placeSecrets).
                 secrets = true,
-                -- A warren cut into the rock, not the sin's own country. See Descent.FLOOR_CARVE.
-                carve = Descent.FLOOR_CARVE,
-                spacing = Descent.FLOOR_SPACING,
                 -- An absolute cap, not a share -- and the Crown's own end is already subtracted from it
                 -- above. See Descent.FLOOR_FIGHTS.
                 combatBudget = rolled,
@@ -2061,14 +2507,8 @@ function Descent.floorQuest(run, player)
             keyCount = 0,
             -- The way back up, standing on the tile the party walks in on. See EXIT below.
             exitAtStart = true,
-            -- A floor is not a climb: its fights are optional stops around a stair, so its rewards get guards
-            -- even though `ascent` is set (models/overworld.lua's guardBoons).
-            guardBoons = true,
-            -- ...and two or three doors that read as wall until somebody looks (Overworld:placeSecrets).
+            -- Two or three places that read as absent until somebody looks (Overworld:placeSecrets).
             secrets = true,
-            -- A warren cut into the rock, not the sin's own country. See Descent.FLOOR_CARVE.
-            carve = Descent.FLOOR_CARVE,
-            spacing = Descent.FLOOR_SPACING,
             -- HOW MANY FIGHTS THE POOL MAY DEAL, absolute, and the stair and every errand and opener on
             -- this floor have already been taken off it (Descent.floorBudget). A share could not do this
             -- job: the ends are seated by a different pass and were never inside the fraction.
@@ -2078,7 +2518,18 @@ function Descent.floorQuest(run, player)
             -- ...and how many of each, where a floor differs from a ground. See Descent.FLOOR_RESTS.
             guarantee = { rest = { count = Descent.FLOOR_RESTS } },
             objective = {
-                name = general and ("The Stair Down — " .. sin.name) or "The Stair Down",
+                -- THE END IS NAMED FOR WHO IS STANDING ON IT, not for what is under them.
+                --
+                -- It read "The Stair Down — <Sin>", and that gave the floor away. A board's own end is
+                -- named on its marker and in the hovered readout, so the moment the fog lifted off that
+                -- place the player had been told where the exit was -- before meeting the thing holding
+                -- it. The stair is meant to be found UNDER the guardian: you meet a body at the end of
+                -- the road, you put it down, and the way down is what it was standing on
+                -- (Descent.openStair renames the cell at that moment, and only then).
+                --
+                -- `guardianName` is the landing card's own function, so the name on the marker and the
+                -- name the landing reports are one string and cannot drift.
+                name = Descent.guardianName(sin, general) or "The Guard",
                 -- SHE SPEAKS ONLY ON HER OWN STAIR. The scene is hers, and a lieutenant playing it
                 -- would have the general talking through a body she is standing two floors below. A
                 -- minor floor opens in silence, which is also what makes hers land.
@@ -2110,7 +2561,9 @@ end
 -- stair is simply one of two things worth walking to.
 function Descent.floorObjectives(player, floor, sin, floorLevel, general, run)
     local stair = {
-        name = general and sin and ("The Stair Down — " .. sin.name) or "The Stair Down",
+        -- Named for the body on it rather than for the stair beneath it -- see the descriptor's own
+        -- `objective` above for why, and Descent.openStair for when the name changes.
+        name = Descent.guardianName(sin, general) or "The Guard",
         opening = general and sin and sin.scene or nil,
         composition = guardianComposition(sin, floorLevel, general, floor),
         -- Exempt from the opening floor's ceiling, exactly as the descriptor's own `objective` is: a
@@ -2120,7 +2573,33 @@ function Descent.floorObjectives(player, floor, sin, floorLevel, general, run)
         win = { type = "killAll" },
         floorLevel = floorLevel,
     }
-    if not player then return { stair } end
+    -- THE WARD, for a circle that bars its stair with a body (Descent.GATES' `ward`). One more end on
+    -- the floor, at its own dead end like every other -- the lieutenant who used to hold a stair two
+    -- floors up, standing on this one because her circle no longer has two floors.
+    --
+    -- Marked `wardFor` rather than given a questId: it settles nothing on a shelf and pays no purse, so
+    -- the errand payout must not see it. What beating it does is open the stair, which states/game.lua
+    -- reads off this mark.
+    local ward
+    if general and sin then
+        local gate = Descent.gateFor(sin)
+        if gate and gate.kind == "ward" then
+            ward = {
+                name = Descent.guardianName(sin, false) or "The Ward",
+                composition = guardianComposition(sin, floorLevel, false, floor),
+                enemyCap = false,
+                win = { type = "killAll" },
+                floorLevel = floorLevel,
+                wardFor = sin.id,
+            }
+        end
+    end
+
+    if not player then
+        local out = { stair }
+        if ward then out[#out + 1] = ward end
+        return out
+    end
 
     -- One errand-shaped entry becomes one end on the board. Shared by the two kinds this floor can carry
     -- -- the jobs a house ASKED for and the one it cannot ask for -- because they are the same object: a
@@ -2142,6 +2621,7 @@ function Descent.floorObjectives(player, floor, sin, floorLevel, general, run)
 
     local Errand = require("models.errand")
     local out = { stair }
+    if ward then out[#out + 1] = ward end
     for _, entry in ipairs(Errand.onFloor(player, floor)) do
         out[#out + 1] = specFor(entry)
     end
@@ -2159,17 +2639,34 @@ function Descent.floorObjectives(player, floor, sin, floorLevel, general, run)
     -- its posting on the floor that carried it, and the only way back is up (Descent.openersAt: every
     -- door is dealt into the first circle, because an opener hands over slot 0 and slot 0 is balanced
     -- for exactly those floors).
+    -- THE COMPANIONS, AND A RECRUIT IS TWO BEATS.
+    --
+    --   1. YOU MEET THEM    at the doorway of the chamber their work is standing in. The scene
+    --                       plays, they ask, and accepting costs nothing but the walk in.
+    --   2. YOU DO THE THING they asked for, which is the fight inside. Clearing it is what brings
+    --                       them into the company (the quest's own `rewardCharacter`).
+    -- BOTH BEATS HAPPEN AT ONE END, and that is capacity rather than taste. A shallow floor carves
+    -- about seven and a half dead ends and the stair takes one, so seating the meeting as an end of
+    -- its own would have put two spurs per companion on a floor that already deals three or four
+    -- of them -- and the generator would start degrading them onto shared ground.
+    --
+    -- So the meeting is the DOORWAY and the ask is the room behind it (game:askErrandAtDoor). The
+    -- company steps up to the chamber, the body standing there asks, and accepting only opens the
+    -- way -- they still have to walk in and win it. Refusing costs nothing at all, because the
+    -- company never stepped through; the job stays where it is, to be walked back to whenever.
     for _, house in ipairs(Descent.openersAt(run, floor)) do
         local openerId = not Errand.doorOpen(player, house) and Errand.opener(house)
         local openerDef = openerId and require("models.quest").defs[openerId]
         if openerDef and openerDef.map and openerDef.map.objective then
-            out[#out + 1] = specFor({
+            local spec = specFor({
                 id = openerId,
                 name = openerDef.name,
                 sponsor = openerDef.sponsor,
                 map = openerDef.map,
             })
+            out[#out + 1] = spec
         end
+
     end
 
     return out
@@ -2311,9 +2808,25 @@ Descent.COUNT_BANDS = {
     { at = 0,  id = "low" },
 }
 
--- What the tally reads. Zero for a run that has never come back up early.
-function Descent.count(run)
-    return (run and run.count) or 0
+-- What the tally reads. Zero for a company that has never come back up early.
+--
+-- IT LIVES ON THE PLAYER, NOT ON THE RUN, and that move is what makes the tally mean anything at all
+-- once an expedition stops being the whole story. It was `run.count`, which was correct while a run
+-- outlived every climb-out: the company went up, the run stayed open, and the number was still there
+-- when they walked back down. Under a descent that RESETS on extraction there is no run in the city to
+-- read, so a tally on the run would fall to nought the moment it mattered most -- and the breach it is
+-- counting toward could never fire, because nothing would ever reach the ceiling.
+--
+-- models/save.lua said this out loud before it was true: `climbedOut` is persisted on the player as a
+-- one-way mark precisely because "Iselle's tally falls back to nought the moment they descend again and
+-- the readout it gates must not come off the plaza the morning after it was earned". The mark no longer
+-- has to cover for the number. They are both the company's now.
+--
+-- THE STATE OF THE RIFT IS NOT A PROPERTY OF ONE EXPEDITION. That is the design reading and it is the
+-- reason this is not merely a save-location change: the deep floors go unpruned whoever left them that
+-- way, and the count is what the country is carrying, not what a trip did.
+function Descent.count(player)
+    return (player and player.count) or 0
 end
 
 -- Which band a raw tally of `n` stands in. Returns the band table (id, phrase), never nil.
@@ -2329,9 +2842,9 @@ function Descent.bandAt(n)
     return Descent.COUNT_BANDS[#Descent.COUNT_BANDS]
 end
 
--- Which band `run` stands in.
-function Descent.countBand(run)
-    return Descent.bandAt(Descent.count(run))
+-- Which band this company stands in.
+function Descent.countBand(player)
+    return Descent.bandAt(Descent.count(player))
 end
 
 -- Move the tally by `delta`, floored at zero and capped at the maximum. Returns the new count.
@@ -2340,18 +2853,53 @@ end
 -- otherwise bank a large credit against withdrawals it has not made yet, and "I may now come up eleven
 -- times for free" is a resource, not a pacing rule. The tally is a statement about the state of the
 -- rift right now, not a purse.
-function Descent.countBy(run, delta)
-    if not run then return 0 end
-    run.count = math.max(0, math.min(Descent.COUNT_MAX, (run.count or 0) + (delta or 0)))
-    return run.count
+function Descent.countBy(player, delta)
+    if not player then return 0 end
+    player.count = math.max(0, math.min(Descent.COUNT_MAX, (player.count or 0) + (delta or 0)))
+    return player.count
+end
+
+-- UP ONE FLOOR, to the floor above and the stair they came down by.
+--
+-- A DESCENT HAD ONE DIRECTION, and that was the gap this fills. The way up on a floor offered exactly
+-- one thing -- climb out of the rift entirely -- so a company that wanted to walk back to a pack it
+-- dropped on floor four, or to a shop it passed on floor two, had to end the expedition to do it and
+-- then re-descend from the top. Wizardry's stairs run both ways and the floors are kept precisely so
+-- they can (Descent.keepFloor): the map you made is still there, so the only thing missing was a door
+-- back to it.
+--
+-- IT COSTS ONE ON THE TALLY, and it has to, symmetrically with Descent.advance taking one off. Going
+-- down prunes the rift by one; if coming back up were free, a company could walk a stair up and down
+-- between two floors and drive the count to zero for the price of the walking. That would make the
+-- tally a purse rather than a statement about the state of the rift, which is the exact thing
+-- Descent.countBy's own header refuses. Up and down is now net zero, which is what "no progress" should
+-- cost.
+--
+-- WHERE YOU COME OUT is the floor above's own stair down -- the place you left it by -- rather than its
+-- entrance. Arriving at the far end of a floor you already crossed would be a teleport wearing a
+-- staircase, and it would hand back for free the walk that going up is supposed to cost. Read off the
+-- kept board's own `objective`, which is the cell Descent.openStair converted when that floor's guard
+-- fell; a floor with no kept board (which should not happen -- you descended through it) falls back to
+-- its entrance rather than refusing the move.
+function Descent.retreat(run, player)
+    if not run then return nil end
+    local from = Descent.depth(run)
+    if from <= 1 then return nil end -- floor one's way up is the way OUT, and that is a different card
+    run.floor = from - 1
+    -- `player` because the tally is the company's rather than the run's (Descent.count). Optional, so a
+    -- spec driving a bare run still walks the floors; what it loses is only the number moving.
+    Descent.countBy(player, 1)
+    local board = Descent.floorBoard(run, run.floor)
+    run.arriveAt = board and board.objective and { x = board.objective.x, y = board.objective.y } or nil
+    return run.floor
 end
 
 -- The company took the ascent stair. THE ONE CALLER IS states/game.lua's ascent branch and it must stay
 -- that way: a wipe also ends an expedition and also wakes the company at the Rift, and it is exempt --
 -- it already costs the haul, the purse and a wound on every head, and charging the failure twice is the
 -- exact thing this design is built not to do.
-function Descent.climbOut(run)
-    return Descent.countBy(run, 1)
+function Descent.climbOut(player)
+    return Descent.countBy(player, 1)
 end
 
 -- ---------------------------------------------------------------------------
@@ -2375,8 +2923,8 @@ end
 -- only by shuttling (docs/the-count.md measures all four play styles). Which also means this is never a
 -- softlock -- the way back down is always open, every new floor pays a mark off, and every circle sealed
 -- pays two. The company that meets the breach walked itself into it and can walk itself out.
-function Descent.isBreached(run)
-    return Descent.count(run) >= Descent.COUNT_MAX
+function Descent.isBreached(player)
+    return Descent.count(player) >= Descent.COUNT_MAX
 end
 
 -- WHO COMES UP THE STAIR. The Hollow Crown, and every general whose circle is still unsealed.
@@ -2457,17 +3005,20 @@ end
 -- and only once: the landing's stair, and a floor that gives way under the company. Re-entering a floor
 -- the party climbed out of does not come through here -- the floor number does not move -- so the walk
 -- back to where they were is correctly worth nothing.
-function Descent.advance(run)
+function Descent.advance(run, player)
     if not run then return end
     run.cleared = math.max(run.cleared or 0, run.floor or 1)
     run.floor = (run.floor or 1) + 1
-    Descent.countBy(run, -1)
+    -- The pruning, paid to the COMPANY's tally rather than the run's (Descent.count). `player` is
+    -- optional for the same reason it is on Descent.retreat: a spec that only cares where the party is
+    -- standing passes a bare run and walks the stack unchanged.
+    Descent.countBy(player, -1)
     return run
 end
 
 -- The party has cleared a floor and is standing on its landing. Called before the extract-or-descend
 -- prompt so both branches agree on what has been beaten.
-function Descent.clearFloor(run)
+function Descent.clearFloor(run, player)
     if not run then return end
     local floor = run.floor or 1
     -- Credit the circle, once. Re-entering a floor cannot happen today (the stair is one-way) but the
@@ -2482,8 +3033,9 @@ function Descent.clearFloor(run)
         run.standing = run.standing or {}
         run.standing[vendor] = (run.standing[vendor] or 0) + 1
         -- ...and the tally comes down with her. Inside the once-only guard deliberately: the payback is
-        -- for felling the general, and a floor credited twice would pay twice.
-        Descent.countBy(run, -Descent.COUNT_SEAL)
+        -- for felling the general, and a floor credited twice would pay twice. Paid to the COMPANY's
+        -- tally (Descent.count), and `player` is optional exactly as it is on advance and retreat.
+        Descent.countBy(player, -Descent.COUNT_SEAL)
     end
     run.cleared = math.max(run.cleared or 0, floor)
     return run.cleared
@@ -2593,10 +3145,22 @@ function Descent.snapshot(run)
         shuffled = run.shuffled or nil,
         cleared = run.cleared or 0,
         pending = pending,
-        -- Iselle's tally (Descent.count). Absent on a save written before it existed, which reads as
-        -- nought -- the same thing a run that has never come back up early reads as -- so this is purely
-        -- additive and Save.VERSION does not move.
-        count = run.count or nil,
+        -- (Iselle's tally STOOD HERE and has moved to the player -- see Descent.count for why. A run
+        -- that resets on extraction cannot carry a number the city has to keep reading. models/save.lua
+        -- writes it beside `climbedOut` now, and reads an old save's `descentRun.count` forward off the
+        -- raw snapshot so nobody's tally is dropped on the way in.)
+        --
+        -- HOW LONG THE MULE IS STILL AWAY (models/mule.lua), in fights. On the RUN rather than on the
+        -- player, which is the opposite call to the tally above and for the opposite reason: a trip is
+        -- something happening inside one expedition, and a company must never walk into a fresh rift
+        -- with a mule notionally still halfway home. Nil while it is standing right there, which is
+        -- what an older save reads as too.
+        muleAway = (run.muleAway or 0) > 0 and run.muleAway or nil,
+        -- WHICH STAIRS HAVE BEEN PAID FOR, keyed by floor as a string (the same reason `floors` is:
+        -- Save.encode round-trips a numeric key inconsistently). Greed's gate is the only thing that
+        -- writes it, and it has to ride: a company that paid, climbed out and came back down must not
+        -- be billed twice for the stair it already bought.
+        tollPaid = next(run.tollPaid or {}) and run.tollPaid or nil,
         -- Unbanked standing rides in the save, or quitting on floor four and resuming would hand the
         -- three circles below back at zero -- a resume is not an extraction and must lose nothing.
         standing = standing,
@@ -2643,7 +3207,14 @@ function Descent.restore(snap)
         shuffled = snap.shuffled or nil,
         cleared = snap.cleared or 0,
         pending = pending,
-        count = snap.count or 0, -- absent before the tally existed, and nought is what that means
+        -- (No `count` -- the tally is the player's. models/save.lua carries an old save's forward.)
+        muleAway = type(snap.muleAway) == "number" and snap.muleAway or nil, -- see snapshot
+        tollPaid = (function()                                              -- ...and see snapshot
+            if type(snap.tollPaid) ~= "table" then return nil end
+            local out = {}
+            for k, v in pairs(snap.tollPaid) do if v == true then out[tostring(k)] = true end end
+            return next(out) and out or nil
+        end)(),
         standing = standing, -- absent in a save written before circles had houses; an empty table reads the same
         landing = landing,   -- nil unless the run was saved standing on a landing; see snapshot
         drops = drops,       -- ...and the packs, still lying where the company dropped them

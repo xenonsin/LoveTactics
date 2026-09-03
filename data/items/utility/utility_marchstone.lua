@@ -26,7 +26,9 @@ return {
     tags = { "charm", "control" },
     class = "hunter",
     discipline = "warden",
-    price = 345,
-    unlockQuests = 2,
+    price = 495,
+    unlockQuests = 5,
     incense = { hazard = "hazard_halting_ground", radius = 1 },
+    -- it stops bodies moving, which is a wall's job
+    bonus = { defense = 2 },
 }

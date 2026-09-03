@@ -44,4 +44,6 @@ return {
             fx.damage(fx.target, { amount = math.floor(outlay / 8) })
         end,
     },
+    -- one blow per coin, and the coins were spent on blows
+    bonus = { damage = 2 },
 }

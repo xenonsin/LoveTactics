@@ -48,6 +48,9 @@ return {
         -- reason.
         movement = 2,
         speed = 2,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 0, luck = 0,
     },
 
     -- Hold while the enemy is near, advance only when the coast is clear. `within` matches when ANY

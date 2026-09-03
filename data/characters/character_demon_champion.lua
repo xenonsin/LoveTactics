@@ -51,6 +51,9 @@ return {
         defense = 8, magicDefense = 4,
         movement = 4,
         speed = 3, -- deliberately slow: the stage-1 kite / brace lesson leans on it
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 7, luck = 5,
     },
     -- Its loadout as the 3x3 grid (row-major; false = empty). The Sigil is the build-around in the
     -- center (bound, unstealable); the claws and its two abilities sit around it.

@@ -109,8 +109,23 @@ function Combat.newRandom(seed)
 end
 
 -- One draw in 1..n for this battle. See the comment above for which of the two sources answers.
+--
+-- IT ALSO COUNTS, and the count is hashed state (models/state_hash.lua). The reason is accuracy: every
+-- aimed blow now spends two draws to decide whether it lands and a third if it landed, so the
+-- generator's POSITION is a fact two peers must agree about, and they can disagree about it without
+-- disagreeing about anything visible yet. A peer that took one extra draw has the same board, the same
+-- health, the same timeline -- and every roll from that moment on is a different number. The damage
+-- would diverge several turns later, at which point the log says a swordsman rolled badly rather than
+-- that the two machines stopped playing the same game.
+--
+-- A COUNT rather than the generator's internal state, and that is sufficient rather than approximate:
+-- the stream is a pure function of the seed (Combat.newRandom), both peers seed off the same arena,
+-- and so the same count means the same position. It is also all that CAN be read -- the state is a
+-- local closed over by the returned closure -- and reaching in to expose it would buy nothing this
+-- does not already give.
 function Combat.roll(combat, n)
     n = n or 1
+    if combat then combat.draws = (combat.draws or 0) + 1 end
     if Combat.random ~= DEFAULT_RANDOM then return Combat.random(n) end
     if combat and combat.rng then return combat.rng(n) end
     return Combat.random(n)
@@ -2317,14 +2332,26 @@ function Combat.freeEdgeTile(combat, edge, w, h)
     return nil
 end
 
--- The edge the enemy formation opened against, read off the arena's AUTHORED enemy spawns rather
--- than the live units (a defend fight may already have cleared them) so a default wave still arrives
--- from behind where the enemy line stood. Top vs bottom only: that is the axis openings are seated on.
+-- The far side of the board from the company: where a default wave walks on from. Read off the arena's
+-- AUTHORED seating rather than the live units (a defend fight may already have cleared the openers), so
+-- a wave still arrives from behind the fight. Top vs bottom only: that is the axis openings are seated
+-- on.
 function Combat.enemyHomeEdge(combat)
+    local rows = (combat.arena and combat.arena.rows) or 8
+    -- READ THE PARTY FIRST, and take the side away from it. The enemy's own spawns used to answer this
+    -- on their own, which was exact while they mustered in two ranks on one wall -- and stopped being so
+    -- when the board started SCATTERING them across it (models/arena.lua's placeEnemyScatter): a fight
+    -- whose knots all happened to land mid-board averaged past the halfway line and sent its
+    -- reinforcements in behind the company. Where the party stands does not wobble like that.
+    local party = (combat.arena and combat.arena.party) or {}
+    if #party > 0 then
+        local psum = 0
+        for _, p in ipairs(party) do psum = psum + p.y end
+        return ((psum / #party) > rows / 2) and "top" or "bottom"
+    end
     local spawns = (combat.arena and combat.arena.enemies) or {}
     local sum, n = 0, 0
     for _, e in ipairs(spawns) do sum, n = sum + e.y, n + 1 end
-    local rows = (combat.arena and combat.arena.rows) or 8
     local fromTop = (n == 0) or (sum / n) <= rows / 2
     return fromTop and "top" or "bottom"
 end
@@ -5184,10 +5211,68 @@ end
 -- One funnel for all three cast paths (the preview, Combat.strikeWith, and resolveCast), so the number
 -- the tooltip promises is the number the swing delivers. `combat` may be absent in a board-less
 -- preview, where there is nothing to count and frenzy folds to nothing.
-local function castAmount(combat, unit, ab, tx, ty, auraMods)
+-- HOW MUCH ONE CLASS LEVEL ADDS to what an item of that class does, as a fraction of its authored
+-- magnitude. At CLASS_LEVEL_CAP = 8 the step below is a touch under a quarter more than the number on
+-- the tin.
+--
+-- THE FLOOR IS THE AUTHORED MAGNITUDE AND THERE IS NOTHING BELOW IT. A body with no levels in an item's
+-- class gets exactly what the blueprint says, which is what keeps models/balance.lua's whole 485-item
+-- magnitude ladder meaning what it already means -- mastery is a bonus on top rather than a penalty
+-- lifted. Had untrained sat below the authored number, every figure in docs/balance.md would have
+-- become a claim about a body nobody plays.
+--
+-- NO GATE, EVER. Any body may slot any item; the only thing a class level changes is how much it gets
+-- out of it. Mixing seven houses on one body stays legal and simply pays less than committing, which is
+-- a cost rather than a hard stop.
+--
+-- MEASURED, and the reading is pinned in tests/mastery_span_spec.lua rather than stated here.
+--
+-- Mitigation is SUBTRACTIVE with a floor of 1 (Combat.mitigatedDamage), so a fraction added to raw
+-- output is NOT that fraction added to damage dealt: the coat is subtracted once whatever the swing was,
+-- so every point the swing gains arrives whole on the other side of it. At 0.03 a mastered body delivers
+-- about 1.4x through armour a weapon is actually swung against, and mastery adds roughly a quarter to a
+-- magnitude -- which is a fifth to a half of what climbing that family's ENTIRE shelf buys
+-- (Balance.slotAnchors: a sword runs 6 to 16). A real second axis, and not a rival to gear, which is the
+-- axis this game deliberately grows on (models/growth.lua).
+--
+-- TWO THINGS THE MEASUREMENT CORRECTED, both worth keeping:
+--
+--   * Read across ALL armour the ratio hits 2.5x, and that is the mitigation FLOOR being measured, not
+--     this constant. At defense 12 a raw-14 blow lands 2, so any point added to it is half again as
+--     much; that degenerate band is Growth.LETHALITY_FLOOR's to police and not this one's.
+--   * Five of the eight rungs do not move an integer of ordinary size, and no step fixes that -- moving
+--     all eight needs a step near 1/14, which is +60% at the cap. The resolution is that the scalar is
+--     not what a class level pays out. A level opens a rung of that class's shelf and, at the authored
+--     gates, a discipline; those land on every level. This is the smooth background under them, and all
+--     it owes the player is never running backwards.
+Combat.CLASS_MASTERY_STEP = 0.03
+
+-- `value` as the body actually delivers it: the item's authored magnitude raised by the wielder's level
+-- in that item's own class or discipline (Discipline.classLevel).
+--
+-- Keyed on the ITEM's class, not the wielder's declared job, and the two are deliberately different
+-- questions -- a knight-declared body casting a mage spell gets its MAGE level out of that spell. The
+-- badge says how a body grows; the hands say what it has got good at (models/growth.lua's Growth.jobOf).
+--
+-- A classless item -- creature kit, an unarmed strike, a trap -- has no ladder to read and is returned
+-- untouched rather than being credited to the wielder's job, which would let a body's commitment leak
+-- into things that belong to nobody.
+function Combat.classScaled(unit, item, value)
+    if not value or value == 0 then return value end
+    local key = item and (item.discipline or item.class)
+    if not key then return value end
+    local level = Discipline.classLevel(unit and unit.char, key)
+    if level <= 0 then return value end
+    return math.floor(value * (1 + level * Combat.CLASS_MASTERY_STEP) + 0.5)
+end
+
+local function castAmount(combat, unit, ab, tx, ty, auraMods, item)
     local declared = Combat.abilityMagnitude(ab)
     if not declared then return nil end
-    local amount = declared + auraMods.amount
+    -- Mastery scales the item's OWN magnitude and not the charm aura added after it: a neighbouring
+    -- charm is a different item, on a different class's ladder, and folding it in here would pay the
+    -- wielder's commitment to one house for a bonus another house granted.
+    local amount = Combat.classScaled(unit, item, declared) + auraMods.amount
     if ab.frenzy and combat then
         local caught = #Combat.aoeUnits(combat, ab, tx, ty, unit)
         if caught > 1 then
@@ -5418,6 +5503,161 @@ end
 -- magicDamage/magicDefense (else damage/defense); armor `resist` for each matching tag is
 -- subtracted. Damage floors at 1. Drops the target to `alive = false` at 0 HP. Returns
 -- the amount dealt. Reached through `fx.damage` inside an ability effect.
+-- ---------------------------------------------------------------------------
+-- ACCURACY: whether the blow lands at all
+--
+-- This game was deterministic on purpose for a long time, and this section is the reversal. What is
+-- being bought is a reason to care where a body stands that survives contact with a solved board: a
+-- fight whose every number is knowable is a fight with one right answer, and the player who finds it
+-- is no longer making decisions. See docs/accuracy.md.
+--
+-- FIRE EMBLEM'S FOUR NUMBERS, at this game's scale:
+--
+--   Hit   = weapon hit + skill*2 + luck/2      what a swing is worth
+--   Avoid = speed*2 + luck + terrain           what a body is worth to hit
+--   Crit  = weapon crit + skill/2              how often a landed blow is a bad one
+--   Dodge = luck                               and how often it isn't yours
+--
+-- hit% and crit% are the two DIFFERENCES, clamped to 0..100.
+--
+-- WHY THE TERRAIN TERM IS THE INTERESTING ONE. Fire Emblem has no facing -- a body cannot be caught
+-- looking the wrong way -- so the positional decision it offers instead is WHERE YOU STAND. A forest
+-- tile is worth about as much as the gap between a good weapon and a bad one (see Terrain.TYPES), and
+-- that is deliberate: it makes the ground a thing you spend a turn to reach. It arrives here through
+-- Combat.fieldBonus, which already summed tile bonuses and field objects into one bag for the
+-- mountain's `range`, so a smoke cloud or a placed field can grant cover later with no new code.
+--
+-- NOTHING WITHOUT AN ATTACKER ROLLS. A trap, a Burn tick, a hazard and a collision all reach the
+-- damage path through Combat.dealFlatDamage with no `attacker`, and none of them asks the dice --
+-- the environment stays deterministic, which is what lets the route preview keep promising exactly
+-- what it draws when it walks a party into quicksand.
+
+-- Two draws averaged, rather than one -- Fire Emblem's "true hit", and the one place this file
+-- deliberately lies to the player.
+--
+-- A single draw makes the displayed number honest and the game feel like it cheats: at a shown 75%,
+-- one swing in four misses, and a player who watches two 75%s miss in a row concludes the number is
+-- decoration. Averaging two draws bends the real odds toward the extremes of what the number CLAIMS
+-- -- a shown 75% lands about 87% of the time, a shown 30% about 18% -- so plans that look good are
+-- reliable and plans that look desperate feel desperate. The number on screen stays the raw
+-- difference; what moves is the die behind it.
+--
+-- The cost is two draws per attack instead of one, which is why the draw CURSOR is now hashed state
+-- (models/state_hash.lua): two peers that disagree about how many rolls an attack consumed have
+-- already desynced, they just do not know it yet.
+function Combat.trueHit(combat, chance)
+    if chance >= 100 then return true end
+    if chance <= 0 then return false end
+    return (Combat.roll(combat, 100) + Combat.roll(combat, 100)) / 2 <= chance
+end
+
+-- How much the GROUND under (x, y) is worth to whoever stands on it. Reads the same aggregated bag
+-- the range bonus does, so a tile and a field object are one question.
+function Combat.terrainAvoid(combat, x, y)
+    return Combat.fieldBonus(combat, x, y).avoid or 0
+end
+
+-- What `unit` is worth to hit, before the attacker's side of the exchange. Gear and statuses reach
+-- `speed` and `luck` through flatStat exactly as they reach `defense`, so a charm that grants +luck
+-- and a status that drains it both work with no plumbing of their own.
+function Combat.avoid(combat, unit)
+    if not unit then return 0 end
+    return flatStat(unit, "speed") * 2
+        + flatStat(unit, "luck")
+        + Combat.terrainAvoid(combat, unit.x, unit.y)
+end
+
+-- THE DETERMINISTIC MODE, KEPT AS A SWITCH. With this set, nothing rolls: every aimed blow connects
+-- and nothing crits, which is exactly how this game behaved before accuracy existed.
+--
+-- It exists for the test suite, and the argument for it is that most specs in tests/ are about what an
+-- ability DOES -- Cleave carves a 3x1 arc, Shadow Strike blinks the caster home, a hammer's stun rides
+-- the blow -- and none of them is about whether the swing connected. Left to the dice those specs do
+-- not test accuracy, they merely FLAKE: the same assertion passes and fails on different days for a
+-- reason none of them mentions. Pinning the connection restores the thing each one was written to
+-- measure. tests/accuracy_spec.lua turns it off, because that one IS about the dice.
+--
+-- It is deliberately not a difficulty option. A player-facing "never miss" would make every number on
+-- the character sheet mean something different, and this file would then owe two balance passes.
+Combat.FORCE_HIT = false
+
+-- Does this blow ask the dice at all? Five ways out, and each is a promise made somewhere else:
+--   * the deterministic switch above
+--   * no attacker            -- a trap, a tick, a hazard (see the section header)
+--   * striking yourself      -- a bomb under your own feet does not miss
+--   * the ability opts out   -- `alwaysHits`, the escape hatch for a signature that must land
+--   * the target cannot dodge -- an object, a cargo crate, anything with no body to move
+function Combat.rollsToHit(combat, user, target, item)
+    if Combat.FORCE_HIT then return false end
+    if not (user and target) then return false end
+    if user == target then return false end
+    -- YOU DO NOT MISS YOUR OWN SIDE. Fire Emblem's staves never miss the ally they mend, and the
+    -- reason generalizes: a hit roll models a body REFUSING the thing being done to it, and an ally
+    -- is not refusing. Without this, a heal or a buff aimed at a fast, lucky companion would roll
+    -- against the avoid that companion built to survive the enemy -- the better the body, the worse
+    -- your medic. It also makes friendly fire harsher rather than softer, which is right: a fireball
+    -- that catches your own man always catches him, and you cannot be lucky about it.
+    if user.side and target.side and user.side == target.side then return false end
+    local ab = item and item.activeAbility
+    if ab and ab.alwaysHits then return false end
+    if item and item.alwaysHits then return false end
+    if target.char and target.char.kind == "object" then return false end
+    return true
+end
+
+-- The chance in 0..100 that `user` striking `target` with `item` connects. PURE -- no draw, no
+-- mutation -- because the tooltip, the AI and the real swing all have to read the same number, and a
+-- version the preview could not ask without advancing the battle's generator would desync a duel on
+-- a hover. This is the number shown on screen; Combat.trueHit is the die it is handed to.
+function Combat.hitChance(combat, user, target, item)
+    if not Combat.rollsToHit(combat, user, target, item) then return 100 end
+    local hit = Item.hit(item) + flatStat(user, "skill") * 2 + flatStat(user, "luck") / 2
+    local avoid = Combat.avoid(combat, target)
+    return math.max(0, math.min(100, math.floor(hit - avoid + 0.5)))
+end
+
+-- The chance in 0..100 that a LANDED blow is a critical one. Pure, for the same reasons as above.
+--
+-- Luck subtracts here as well as in Avoid, and that double duty is the stat's whole character: a
+-- lucky body is not especially hard to hit, it is hard to hit BADLY. A body with luck 8 has taken
+-- roughly a weapon's worth of crit off every attacker in the game.
+function Combat.critChance(combat, user, target, item)
+    if not Combat.rollsToHit(combat, user, target, item) then return 0 end
+    local crit = Item.crit(item) + flatStat(user, "skill") / 2
+    return math.max(0, math.min(100, math.floor(crit - flatStat(target, "luck") + 0.5)))
+end
+
+-- THE REAL ODDS behind a shown hit chance, as a fraction in 0..1 -- what Combat.trueHit will actually
+-- do with the number Combat.hitChance displays.
+--
+-- The two are different on purpose (see Combat.trueHit): the screen shows the raw difference and the
+-- die averages two draws, so a shown 75 lands 87.25% of the time and a shown 30 lands 17.7%. Anything
+-- that needs to WEIGH an outcome rather than report it wants this one -- the enemy planner above all,
+-- which would otherwise systematically over-value long shots and under-value near-certain ones, and
+-- would do it in exactly the range where the player can see it making bad choices.
+--
+-- Closed form rather than sampled, because the planner asks it for every candidate action of every
+-- unit and a Monte Carlo estimate would be both slow and non-deterministic -- and a planner that
+-- consumed draws to make up its mind would desync a duel (see tests/determinism_spec.lua).
+--
+-- The counting: two independent draws in 1..100 land the blow when their sum is at most 2*chance.
+-- Below the diagonal that is the triangular number; above it, the complement of the opposite corner.
+function Combat.landChance(combat, user, target, item)
+    local s = 2 * Combat.hitChance(combat, user, target, item)
+    if s < 2 then return 0 end
+    if s <= 101 then return (s - 1) * s / 2 / 10000 end
+    return 1 - (200 - s) * (201 - s) / 2 / 10000
+end
+
+-- What a critical hit multiplies the POST-MITIGATION wound by. Fire Emblem's own number.
+--
+-- It transfers without adjustment because Fire Emblem's damage is subtractive too -- `Atk - Def`,
+-- the same shape as Combat.mitigatedDamage -- so tripling what armour left is the identical
+-- operation in both games rather than a borrowed number landing in a different system. What makes
+-- x3 safe there and here is that crit RATES stay low: Item.FAMILY_CRIT is 0 for ten of the fifteen
+-- families, so a weapon that crits is a recognizable thing rather than ambient noise.
+Combat.CRIT_MULTIPLIER = 3
+
 -- The share of a blow that gets through however heavy the armour -- the floor under every hit.
 --
 -- A hit has always floored above zero, and the reason is unchanged (docs/vulnerability.md): a scratch
@@ -5837,7 +6077,7 @@ local function killUnit(combat, target)
     releaseCharmedBy(combat, target)
 
     -- Every surviving ally of the fallen banks an `allyDown` -- what a signature that answers a
-    -- comrade's death gates on (Combat.tally). A summon/decoy leaving the field is not a comrade lost,
+    -- ally's death gates on (Combat.tally). A summon/decoy leaving the field is not an ally lost,
     -- so only a real fallen combatant (one that leaves a corpse) sends the news.
     if not target.summoned and not target.decoyOf then
         for _, u in ipairs(combat.units) do
@@ -6265,6 +6505,17 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         return 0
     end
     local dmg = Combat.mitigatedDamage(target, base, tags, opts)
+    -- A CRITICAL multiplies what armour left, not what the arm swung (Combat.CRIT_MULTIPLIER). This is
+    -- Fire Emblem's order of operations and it matters: tripling the pre-mitigation power would let a
+    -- crit blow through heavy plate as if it were not there, where tripling the remainder makes a crit
+    -- worth most against the bodies you were already hurting. Armour keeps meaning what it means.
+    --
+    -- Set upstream in Combat.dealDamage, so only a real aimed blow can carry it -- a trap or a Burn
+    -- tick reaches this function with no `critical` and cannot roll one.
+    --
+    -- Above the Mana Shield and the account below, so what those are asked to cover is the real wound.
+    local crit = opts and opts.critical and dmg > 0
+    if crit then dmg = dmg * Combat.CRIT_MULTIPLIER end
     -- A Mana Shield (data/items/utility/utility_mana_shield.lua) pays the wound out of the wrong pool.
     -- It runs AFTER mitigation and not before, unlike the barrier above: armor still gets its full say,
     -- and what the shield is asked to cover is the number that would actually have reached the body.
@@ -6318,8 +6569,14 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- already IN `dmg`; this is only the cue for it, so ui/burst_fx.lua can flare a "weak point struck"
     -- over the impact and the player can read at a glance that the tag they chose is the one that bites.
     local vulnerable = Status.vulnerability(target, tags) > 0
+    -- `critical` rides the damage cue rather than travelling as a beat of its own, for the same reason
+    -- `vulnerable` and `lethal` do: what the view needs is not "a crit happened somewhere" but "THIS
+    -- number is a crit", so it can float it bigger, in its own colour, with its own sound. A separate
+    -- event would arrive beside the number it describes and the two would have to be matched up by
+    -- guessing.
     Combat.pushFx(combat, { type = "damage", unit = target, amount = dmg,
-        lethal = hp.current <= 0, attacker = attacker, tags = tags, vulnerable = vulnerable })
+        lethal = hp.current <= 0, attacker = attacker, tags = tags, vulnerable = vulnerable,
+        critical = crit or nil })
     local entry
     if source then
         entry = Combat.logEvent(combat, "damage",
@@ -6616,6 +6873,36 @@ function Combat.dealDamage(combat, user, target, item, opts)
     if ab and not Combat.isSingleTarget(ab) then opts.area = true end
     -- A counter or a mirror may unmake the cast entirely before it reaches the target's armor.
     if tryWardSpell(combat, user, target, item, tags, base, opts) then return 0 end
+    -- DOES IT LAND? The one place a real, aimed blow asks the dice (see the ACCURACY section above).
+    --
+    -- Placed HERE, above dealFlatDamage, because a miss has to be a miss all the way down and this is
+    -- the last point where nothing has happened yet. Returning 0 from here is not merely "no damage":
+    -- dealFlatDamage is never entered, so the blow provokes no counter and survives no wound; the
+    -- `dealt > 0` gate below withholds every tally; and the same gate in resolveCast and
+    -- Combat.strikeWith withholds the on-hit statuses and the lifesteal. A whiffed swing costs its
+    -- resources and its place in the timeline and buys nothing at all, which is the contract.
+    --
+    -- It rides the existing voided-hit path rather than a new one: a barrier, a per-type immunity and
+    -- the Dodge reflex have all returned 0 from around here since long before the dice existed, so
+    -- everything downstream already handles a blow that drew no blood.
+    if Combat.rollsToHit(combat, user, target, item) then
+        if not Combat.trueHit(combat, Combat.hitChance(combat, user, target, item)) then
+            Combat.pushFx(combat, { type = "miss", unit = target })
+            Combat.logEvent(combat, "damage",
+                string.format("%s misses %s.", unitName(user), unitName(target)), { user, target })
+            -- Nothing is banked. A signature gated on `hitDealt` is now, correctly, gated on landing
+            -- the blow: the tally reads "hits dealt" and a miss is not one. The alternative -- a
+            -- separate "swings" counter so charges fill on whiffs too -- would be a number no charge
+            -- pool reads, and every charge that wanted it would rather have had the honest one.
+            return 0
+        end
+        -- Landed. Roll the second die: a critical multiplies the wound AFTER armour (see
+        -- Combat.CRIT_MULTIPLIER). Rolled only on a hit, so a miss costs one draw fewer than a hit and
+        -- a crit costs one more -- an asymmetry the state hash has to be able to see.
+        if Combat.trueHit(combat, Combat.critChance(combat, user, target, item)) then
+            opts.critical = true
+        end
+    end
     -- `user` rides along as the attacker so a reaction trait (a counter) knows who struck, and how
     -- far away they stood. A flat source (a trap, a burn) passes no attacker and provokes no counter.
     local dealt = Combat.dealFlatDamage(combat, target, base, tags, nil, user, opts)
@@ -7119,7 +7406,7 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
     withStatusLifesteal(unit, auraMods) -- a status-granted thirst adds to the grid's, in the preview too
     -- Fold in a neighboring Alchemic Mastery charm's magnitude bonus (and any frenzy) exactly as
     -- Combat.useItem does, so the previewed number matches the hit the player is about to land.
-    local effectiveAmount = castAmount(combat, unit, ab, tx, ty, auraMods)
+    local effectiveAmount = castAmount(combat, unit, ab, tx, ty, auraMods, item)
     local fx = {
         user = unit, target = target, item = item, combat = combat, tx = tx, ty = ty,
         dest = dest, -- a two-stage throw's chosen landing (Heave); nil for every single-aim ability
@@ -9085,7 +9372,7 @@ function Combat.strikeWith(combat, user, weapon, tx, ty)
     local target = Combat.unitAt(combat, tx, ty)
     local auraTags, auraStatuses, auraMods = adjacencyAura(user.char, weapon)
     withStatusLifesteal(user, auraMods) -- a sub-strike drinks under the Red Thirst exactly as the main swing does
-    local effectiveAmount = castAmount(combat, user, ab, tx, ty, auraMods)
+    local effectiveAmount = castAmount(combat, user, ab, tx, ty, auraMods, item)
     local result = { damageDealt = 0, healed = 0 }
     local fx = {
         user = user, target = target, item = weapon, combat = combat,
@@ -9595,7 +9882,7 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
     -- Threaded into fx.amount (for effects that read it directly, e.g. a heal) AND into fx.damage's
     -- default opts.amount below -- Combat.dealDamage bases its hit on opts.amount/ab.damage, not on
     -- fx.amount, so a damage bomb needs it fed in there too.
-    local effectiveAmount = castAmount(combat, unit, ab, tx, ty, auraMods)
+    local effectiveAmount = castAmount(combat, unit, ab, tx, ty, auraMods, item)
     -- THE ARCANE CONDUIT (the Battlemage's): a charm that sharpens the items sitting NEXT TO IT in the
     -- grid, funded by the caster's banked Arcane rather than free. Read here, in resolveCast, which is
     -- the REAL cast path -- the damage preview goes through Combat.computeDamage and never reaches this,

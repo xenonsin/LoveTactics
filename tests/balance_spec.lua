@@ -57,12 +57,9 @@ local TTK_WAIVED = {
     character_forsworn_captain = "over-armoured by design: two signature coats, one hit over, on a cross-line capstone",
 }
 
-local HARMLESS_BY_DESIGN = {
-    character_crucible_golem = "a wall, not a fist -- 'not meant to win an exchange, meant to be in the way of one'",
-    character_homunculus = "'worth is not the hit but the Poison its fists leave behind'",
-    character_ordnance_sentry = "a conjured emplacement; its item is its immobility, not its damage",
-    character_blightstake = "area denial -- 'I want that corridor to cost something to walk down'",
-}
+-- Moved to models/balance.lua so tools/balance_rescale.lua reads the same list: while it lived here,
+-- the rescale's mirror pass could not see it and proposed arming every body on it.
+local HARMLESS_BY_DESIGN = Balance.HARMLESS_BY_DESIGN
 
 -- Vendors whose shelf cadence is checked. Derived, so a new house is covered the day it lands.
 local function houses()
@@ -162,22 +159,31 @@ return {
         end,
     },
     {
-        name = "every body can hurt the player back",
+        name = "every body fells the player inside the band for its rank",
         fn = function()
             -- Objects, walls and support units are exempt: Balance.isNonCombatant reads the two ways a
             -- blueprint declares "this does not attack", and HARMLESS_BY_DESIGN names the constructs
             -- whose prose says the same thing in a way no rule can see.
+            --
+            -- THIS USED TO ASK ONLY `back.floored` -- a boolean, "did it land exactly on the damage
+            -- floor" -- while the outgoing direction next door was held to a hits-to-kill band. A wolf
+            -- getting through for three points and needing twenty-one bites answered "no, not floored"
+            -- and passed, so the suite was green over a bestiary half of which could not kill anybody.
+            -- A band on one side and a yes/no on the other is one rule and one blind spot.
             local bad = {}
             for _, row in ipairs(sweep()) do
-                if row.ex.back.floored
+                local band = Balance.TTK_BACK[row.role or "line"] or Balance.TTK_BACK.line
+                if (row.ex.back.floored or row.ex.back.hits > band.max)
                     and not Balance.isNonCombatant(row.id)
                     and not HARMLESS_BY_DESIGN[row.id] then
-                    bad[#bad + 1] = string.format("%s -- swings %d, deals %d/hit, %s hits to fell the avatar",
-                        where(row), row.ex.back.budget, row.ex.back.perHit, tostring(row.ex.back.hits))
+                    bad[#bad + 1] = string.format("%s -- swings %d, deals %d/hit, %s hits to fell the avatar (band is %d-%d)",
+                        where(row), row.ex.back.budget, row.ex.back.perHit, tostring(row.ex.back.hits),
+                        band.min, band.max)
                 end
             end
-            assert(#bad == 0, "these bodies floor against the reference loadout and are no threat at all -- the\n"
-                .. "mirror of the rule above, and the failure a one-sided rescale creates:\n  "
+            assert(#bad == 0, "these bodies cannot fell the reference loadout inside the band their rank is held\n"
+                .. "to (Balance.TTK_BACK) -- the mirror of the rule above, and the failure a one-sided\n"
+                .. "rescale creates:\n  "
                 .. table.concat(bad, "\n  "))
         end,
     },
@@ -421,7 +427,7 @@ return {
                 -- so a quest nobody is sent to is a quest nobody can finish. Walking a standing no
                 -- player can reach is how this stayed green while every bench in the game stopped a
                 -- rung short of the ladder.
-                local lineLength = Errand.tiers(vendorId)
+                local lineLength = Discipline.CLASS_LEVEL_CAP
                 -- A class item of this house, to ask the ceiling about something real.
                 local sample
                 for id, def in pairs(Item.defs) do
@@ -469,7 +475,7 @@ return {
                 -- that opens a rung (models/errand.lua), and the plain numbered fights it also sponsors
                 -- are not gates at all. Walking those read every one of them as a quest that opened
                 -- nothing -- which is true and meaningless, since nobody is ever asked to run them.
-                local lineLength = Errand.tiers(vendorId)
+                local lineLength = Discipline.CLASS_LEVEL_CAP
 
                 -- The whole curve first, so "is there more to come" is answerable at each gate.
                 local counts = {}

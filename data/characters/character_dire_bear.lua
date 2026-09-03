@@ -24,6 +24,9 @@ return {
         defense = 14, magicDefense = 4, -- a hide like plate, and a head full of nothing about magic
         movement = 2, -- ponderous: the bear does not chase, it arrives and stays
         speed = 2,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 3, luck = 5,
     },
     startingItems = { "weapon_great_claws", "utility_feral_instinct" },
     -- Basic tactics (models/ai.lua): under auto-battle the anchor shape still knows a kill -- press the

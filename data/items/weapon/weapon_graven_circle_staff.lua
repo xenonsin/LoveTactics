@@ -27,6 +27,7 @@ return {
     type = "weapon",
     tags = { "staff", "magical", "arcane", "melee" },
     class = "mage",
+    dropTier = 3,
     waitBehavior = {
         kind = "focus",
         mana = Curve.ramp(7, 17),

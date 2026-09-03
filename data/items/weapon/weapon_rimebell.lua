@@ -25,6 +25,7 @@ return {
     type = "weapon",
     tags = { "mace", "impact", "physical", "ice", "melee" },
     class = "knight",
+    dropTier = 7,
     activeAbility = {
         target = "enemy",
         range = 1,

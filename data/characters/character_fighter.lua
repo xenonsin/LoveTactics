@@ -20,6 +20,9 @@ return {
         defense = 9, magicDefense = 5,
         movement = 4, -- number of spaces this character can move
         speed = 3,    -- initiative tie-break; folded into starting initiative
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 5, luck = 3,
     },
     -- Starting loadout (row-major; false = empty). The axe cleaves the rank in front (the fighter's
     -- own `front` aoe), Clear Out gives up the facing and takes the whole ring instead, Rend opens a

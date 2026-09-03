@@ -32,7 +32,7 @@ return {
     class = "hunter",
     discipline = "skirmisher",
     price = 740,
-    unlockQuests = 5,
+    unlockQuests = 8,
     hands = 2, -- the family contract: every bow is two-handed (docs/weapons.md)
     activeAbility = {
         target = "enemy",

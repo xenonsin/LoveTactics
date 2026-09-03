@@ -23,6 +23,9 @@ return {
         defense = 14, magicDefense = 7, -- scaled in coin
         movement = 2, -- it does not leave the pile. It is most of the pile
         speed = 2,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 4, luck = 5,
     },
     startingItems = { "weapon_gilt_maw" },
     defaultAction = "weapon_gilt_maw",

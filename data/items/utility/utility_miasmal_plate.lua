@@ -14,7 +14,9 @@ return {
     tags = { "charm", "poison" },
     class = "knight",
     discipline = "plague_knight", -- knight x alchemist; the Contagion mechanic's first stock
-    price = 345,
-    unlockQuests = 2,
+    price = 330,
+    unlockQuests = 3,
     incense = { hazard = "hazard_choking", radius = 1, amount = Curve.ramp(3, 13) },
+    -- plate first, poison second
+    bonus = { defense = 2 },
 }

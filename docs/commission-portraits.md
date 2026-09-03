@@ -8,7 +8,7 @@
 >    at rest rather than a separate painting — see
 >    [commission-board-sprites.md](commission-board-sprites.md#the-board-still-is-also-the-portrait) and
 >    [art-assets.md](art-assets.md#the-named-cast--the-board-still-is-the-portrait). The only thing this brief's
->    technical spec still governs is the **470px** figure height, which now lands on the rig brief as an
+>    technical spec still governs is the **480px** figure height, which now lands on the rig brief as an
 >    authoring requirement.
 > 2. **There is no cast to paint yet.** The dialogue prose these portraits would have illustrated is
 >    being rewritten, so commissioning paintings of this cast would be buying art for a script that is
@@ -47,10 +47,10 @@ a dialogue box and lean in over it as the speaker (à la Fire Emblem support sce
 
 ## Technical spec
 
-- **Deliver ≥ 1400 px tall** per portrait — displayed at 470px, but authored large so it stays sharp
+- **Deliver ≥ 1536 px tall** per portrait — displayed at 480px, but authored large so it stays sharp
   at any future card or panel size.
-- **Displayed at 470px tall**, anchored **bottom-centre** — the figure's feet rest just inside the
-  top edge of the text box (`ui/dialogue.lua`, `PORTRAIT_H = 470`). It is also drawn as a **side
+- **Displayed at 480px tall**, anchored **bottom-centre** — the figure's feet rest just inside the
+  top edge of the text box (`ui/dialogue.lua`, `PORTRAIT_H = 480`). It is also drawn as a **side
   bust** rising over the box's right end, VN-speaker style. Compose so the figure reads both full
   and cropped to the upper body.
 - **Active vs inactive tint:** the speaking portrait is full colour; others are **greyed (a dark

@@ -18,9 +18,13 @@
 --               the coats have settled.
 --   2 defense   a body's TOTAL mitigation leaves enough damage to fell it inside its role's TTK band.
 --   3 attack    a body may not out-hit the reference loadout it is fielded against.
---   4 mirror    a body that now floors AGAINST the reference gets its attack raised back into band.
---               Runs last because it is the correction to pass 3 overshooting, and it needs the
---               armour and defense numbers final to know what it is shooting at.
+--   4 mirror    a body that cannot fell the reference inside Balance.TTK_BACK gets its attack raised
+--               until it can. Runs last because it is the correction to pass 3 overshooting, and it
+--               needs the armour and defense numbers final to know what it is shooting at.
+--               This is the ONLY pass that raises a number -- 0-3 all cut -- which is why a weak
+--               Balance.REFERENCE is not a measurement error that stays put but a ceiling that gets
+--               stamped into the blueprints, and why it cannot be undone by fixing the reference
+--               alone. Nothing walks a cut back except this pass.
 --
 -- WHAT IT DELIBERATELY DOES NOT TOUCH. Growth.ENEMY_DAMAGE_GROWTH, Growth.ENEMY_LEVEL_LAG and
 -- Growth.meetsSurvivabilityFloor are per-LEVEL rates and are settled design (models/growth.lua:29-60
@@ -540,7 +544,9 @@ function M.walkMirror()
         -- blueprint headers ("feeble on purpose: she does not kill"). The first run of this pass
         -- proposed arming a scarecrow. Balance.isNonCombatant filters the bodies that declare
         -- themselves; the rest need a human to agree.
-        if ex.back.floored and not Balance.isNonCombatant(site.id) then
+        local backBand = Balance.TTK_BACK[site.role or "line"] or Balance.TTK_BACK.line
+        local short = ex.back.floored or ex.back.hits > backBand.max
+        if short and not Balance.isHarmlessByDesign(site.id) then
             local def = Character.defs[site.id]
             local magical = false
             for _, t in ipairs(ex.backTags or {}) do
@@ -549,13 +555,31 @@ function M.walkMirror()
             local statName = magical and "magicDamage" or "damage"
             local stat = (def.stats and def.stats[statName]) or 0
 
-            -- Enough to land a real blow on the reference: its mitigation plus a couple of points, so
-            -- the body is a threat rather than a formality. Never raised past the reference's own
-            -- swing, which is pass 3's ceiling -- the two passes must not fight each other.
-            local want = ex.reference.mitigation + 2
+            -- Enough to fell the reference inside the band this body's rank is held to
+            -- (Balance.TTK_BACK) -- not, as this pass used to aim, its mitigation plus two. Two points
+            -- against a sixty-two health bar is thirty-one hits, so the old target WAS the symptom:
+            -- every body this pass ever "fixed" was aimed at a formality by definition.
+            --
+            -- Read off `back` throughout rather than `reference`, because the two measure different
+            -- blows. `ex.reference.mitigation` is the reference's armour against the outgoing PROBE's
+            -- tags; what this pass needs is its armour against the tags THIS body actually swings, and
+            -- that is what Balance.ttk already folded into `back`. Same body, same blow, one arithmetic.
+            --
+            -- Aimed at the slow end of the band plus a point: the smallest correction that lands inside
+            -- it, sitting just off the boundary so a point of armour drift elsewhere does not put the
+            -- body straight back out.
+            local want = ex.back.mitigation + math.ceil(ex.back.hp / backBand.max) + 1
             local newStat = stat + math.max(0, want - ex.back.budget)
-            local ceiling = stat + math.max(0, ex.reference.budget - ex.back.budget)
-            newStat = math.min(newStat, ceiling)
+
+            -- Pass 3's ceiling, and ONLY where pass 3 would actually have applied it. That cap fires
+            -- through Balance.dominates, which is limited to the protagonist's own rank and below, so
+            -- imposing it here on an elite or a boss would have this pass enforcing a rule pass 3 does
+            -- not have -- and the deeper bands need a swing above the reference's by construction. An
+            -- elite that cannot out-hit one avatar is not an elite.
+            if site.role == "line" or site.role == "chaff" then
+                local ceiling = stat + math.max(0, ex.reference.budget - ex.back.budget)
+                newStat = math.min(newStat, ceiling)
+            end
 
             if newStat > stat then
                 edits[#edits + 1] = {

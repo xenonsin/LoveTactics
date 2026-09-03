@@ -49,4 +49,6 @@ return {
             end
         end,
     },
+    -- every working you laid, under every foe at once
+    bonus = { magicDamage = 3 },
 }

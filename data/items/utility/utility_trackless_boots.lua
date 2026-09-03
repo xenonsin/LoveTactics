@@ -37,9 +37,11 @@ return {
     tags = { "boots" },
     class = "hunter",
     discipline = "druid", -- deeper cut of the shelf: buyable only once the druid gate is cleared
-    price = 210,
-    unlockQuests = 1,
+    price = 245,
+    unlockQuests = 2,
     -- The cap, flat rather than a Curve: 1 is open field and there is nowhere below it to climb to.
     -- A magnitude that cannot move is authored as a plain number (docs/classes.md on the forge span).
     terrainEase = 1,
+    -- footwear, and the one that most plainly is
+    bonus = { movement = 1 },
 }

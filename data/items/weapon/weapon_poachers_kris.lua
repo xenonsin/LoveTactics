@@ -16,8 +16,8 @@ return {
     tags = { "dagger", "pierce", "physical", "melee" },
     class = "rogue",
     discipline = "poacher", -- rogue x hunter; the Snare-execute mechanic's first stock
-    price = 740,
-    unlockQuests = 5,
+    price = 660,
+    unlockQuests = 7,
     activeAbility = {
         target = "enemy",
         range = 1,

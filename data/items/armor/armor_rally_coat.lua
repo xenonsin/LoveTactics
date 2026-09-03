@@ -30,6 +30,7 @@ return {
     type = "armor",
     tags = { "cloth", "banner" },
     class = "fighter",
+    dropTier = 4,
     -- Tagged for identity and growth, never for the rack: quest-only gear carries the discipline but
     -- has no price, so it is not part of what the shelf unlock delivers (tests/discipline_spec.lua).
     discipline = "warlord",

@@ -41,4 +41,6 @@ return {
             end
         end,
     },
+    -- taking a caster's mana and keeping it
+    bonus = { magicDefense = 2 },
 }

@@ -23,7 +23,9 @@ return {
     tags = { "charm", "control" },
     class = "knight",
     discipline = "warden",
-    price = 345,
-    unlockQuests = 2,
+    price = 330,
+    unlockQuests = 3,
     traits = { "trait_wardens_writ" },
+    -- hazards that Halt are ground held
+    bonus = { defense = 2 },
 }

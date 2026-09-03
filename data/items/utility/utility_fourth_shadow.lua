@@ -49,4 +49,6 @@ return {
             end
         end,
     },
+    -- more of you than there are blows to spend
+    bonus = { luck = 2 },
 }

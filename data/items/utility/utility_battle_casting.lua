@@ -39,8 +39,8 @@ return {
     tags = { "charm", "magical" },
     class = "mage",
     discipline = "battlemage",
-    price = 345,
-    unlockQuests = 2,
+    price = 330,
+    unlockQuests = 3,
     traits = { "trait_battle_casting" },
     traitParams = {
         meleeDiscount = Curve.ramp(30, 40), -- percent off a working thrown in somebody's face
@@ -48,4 +48,6 @@ return {
         -- steps: see the note up top, and tests/curve_spec.lua's STEP_CURVES, which names it.
         strikeRefund = { 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8 },
     },
+    -- a mage that means to be stood next to
+    bonus = { defense = 1 },
 }

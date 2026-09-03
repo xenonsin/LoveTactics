@@ -19,6 +19,9 @@ return {
         defense = 8, magicDefense = 9,
         movement = 4,
         speed = 6,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 9, luck = 7,
     },
     startingItems = {
         "weapon_iron_dagger",  "ability_vanishing_strike", "ability_mirror_image",

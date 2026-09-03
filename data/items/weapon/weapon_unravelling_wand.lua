@@ -29,6 +29,7 @@ return {
     -- `physical` in place of the family's usual magical: the deviation, and the whole item.
     tags = { "wand", "physical", "ranged" },
     class = "mage",
+    dropTier = 5,
     activeAbility = {
         target = "enemy",
         range = 3,

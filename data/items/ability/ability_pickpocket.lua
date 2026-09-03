@@ -13,8 +13,8 @@ return {
     tags = { "thievery", "utility" },
     class = "rogue",
     discipline = "thief", -- deeper cut of the shelf: buyable only once the thief gate is cleared
-    price = 210,
-    unlockQuests = 1,
+    price = 245,
+    unlockQuests = 2,
     activeAbility = {
         target = "enemy",
         range = 1,

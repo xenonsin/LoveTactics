@@ -20,7 +20,7 @@ return {
     tags = { "impact" },
     class = "knight",
     discipline = "champion",
-    price = 210,
+    price = 165,
     unlockQuests = 1,
     -- Declaring the pool here rather than on a charm is the discipline contract working as intended:
     -- unlock the discipline, buy the item, equip it, and the mechanic is yours (docs/classes.md).

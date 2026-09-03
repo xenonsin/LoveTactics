@@ -20,7 +20,9 @@ return {
     tags = { "charm" },
     class = "alchemist",
     discipline = "artificer",
-    price = 345,
-    unlockQuests = 2,
+    price = 410,
+    unlockQuests = 4,
     traits = { "trait_salvage_rig" },
+    -- a construct's death, harvested
+    bonus = { magicDamage = 1 },
 }

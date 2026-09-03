@@ -52,4 +52,6 @@ return {
     -- dried inside half a turn would be gone before the company behind could reach it, and the company
     -- reaching it is the entire item. No `selfStatus` -- see the header.
     trail = { hazard = "hazard_wellspring", duration = 10 },
+    -- footwear moves you; the mana behind you is the flourish
+    bonus = { movement = 1 },
 }

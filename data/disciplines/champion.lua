@@ -8,5 +8,5 @@ return {
     description = "The arena's answer to a crowd. Taunt the field, then counter every striker who takes the bait.",
     classes = { "fighter", "knight" },
     exemplar = "character_champion",
-    requiredQuests = { "quest_colosseum_champions_challenge" }, -- pending
+    requiredLevel = { fighter = 6 }, -- pending
 }

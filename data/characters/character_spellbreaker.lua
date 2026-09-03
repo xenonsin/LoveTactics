@@ -18,11 +18,14 @@ return {
         defense = 14, magicDefense = 12,
         movement = 4,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 4, luck = 2,
     },
     startingItems = {
         "weapon_silencing_blade", "ability_mana_sunder", "ability_null_field",
         "utility_dampening_oath", "utility_spell_eater", "utility_empty_vessel",
-        "armor_chainmail",       "consumable_healing_potion", false,
+        "armor_chainmail",       "consumable_healing_potion", "utility_dry_word",
     },
     defaultAction = "weapon_silencing_blade",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

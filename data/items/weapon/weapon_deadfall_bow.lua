@@ -47,6 +47,7 @@ return {
     tags = { "longbow", "pierce", "physical", "ranged" },
     hands = 2,
     class = "hunter",
+    dropTier = 5,
     activeAbility = {
         target = "tile",       -- the path, not the animal: the aim is a square the foe has not reached
         allowOccupied = true,  -- and a square they may already have reached (see the note above)

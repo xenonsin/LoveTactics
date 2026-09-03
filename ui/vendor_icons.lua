@@ -162,6 +162,21 @@ function Marks.cafe(x, y, w, h, r, g, b, a)
     love.graphics.setLineWidth(1)
 end
 
+-- THE MARKET -- a stall: an awning over a counter with the goods stacked on it. The one shop that
+-- replaced seven, so its mark is deliberately the most ordinary thing on this sheet -- a market is not a
+-- house with a creed, it is a place where things are for sale.
+function Marks.market(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    -- The awning: a shallow pitched roof, its scalloped edge implied by the two posts under it.
+    love.graphics.polygon("fill", x, y + h * 0.34, x + w / 2, y + h * 0.08, x + w, y + h * 0.34)
+    love.graphics.rectangle("fill", x, y + h * 0.34, w, h * 0.09, 2, 2)
+    -- The counter, and the two crates standing on it.
+    love.graphics.rectangle("fill", x, y + h * 0.74, w, h * 0.10, 2, 2)
+    love.graphics.setColor(r * 0.55, g * 0.55, b * 0.55, a)
+    love.graphics.rectangle("fill", x + w * 0.10, y + h * 0.52, w * 0.30, h * 0.22, 2, 2)
+    love.graphics.rectangle("fill", x + w * 0.52, y + h * 0.58, w * 0.34, h * 0.16, 2, 2)
+end
+
 -- THE INN -- a bed, seen from the side. A bed, a fire and a surgeon; the bed is the part you buy.
 function Marks.inn(x, y, w, h, r, g, b, a)
     love.graphics.setColor(r, g, b, a)
@@ -241,6 +256,14 @@ local Colors = {
     colosseum     = { 0.94, 0.86, 0.68 }, -- the sand itself: what wrath cannot have the red for
     -- The four houses that post no work keep colours too, so nothing has to special-case them, and so
     -- the spacing rule below is one rule over eleven rather than a rule with four exemptions.
+    -- The one shop, and its colour is the awning over it: leather and canvas, the most ordinary warm
+    -- there is. It sits nearest the Cafe (0.48 apart) because both are the city's plain daily business
+    -- rather than a house with a creed, and they are never drawn beside each other.
+    --
+    -- Pulled DOWN off ochre deliberately. The obvious market colour is a bright gold-orange, and that
+    -- is 0.30 from the boss marker's gold -- inside the half-unit the board reserves for "this is the
+    -- thing I came for". A stall is not a prize.
+    market        = { 0.68, 0.54, 0.34 }, -- leather and canvas: a stall, not a house
     cafe          = { 0.96, 0.56, 0.52 }, -- a hot plate
     inn           = { 0.72, 0.78, 0.94 }, -- a cold room and a warm bed
     crossing      = { 0.30, 0.30, 0.88 }, -- the deep indigo of what comes through the tear

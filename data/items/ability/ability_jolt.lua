@@ -10,8 +10,8 @@ return {
     type = "ability",
     tags = { "lightning", "magical" },
     class = "mage",
-    price = 610,
-    unlockQuests = 4,
+    price = 660,
+    unlockQuests = 7,
     activeAbility = {
         target = "enemy",
         range = 3,
@@ -27,7 +27,7 @@ return {
         -- prologue was written around them, and Jolt is graded for what it does.
         speed = 4,
         cost = { stat = "mana", amount = 5 },
-        damage = Curve.ramp(12, 22),
+        damage = Curve.ramp(15, 25),
         -- The delay, tuned on its own axis and upgraded on its own curve. It used to be read off the
         -- damage roll, which welded the spell's two halves together: pinning the tempo it sells to how
         -- hard it hits capped the one thing it is really for.

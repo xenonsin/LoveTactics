@@ -17,7 +17,9 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "rogue",
-    price = 80,
-    unlockQuests = 0,
+    price = 165,
+    unlockQuests = 1,
     statusImmunity = { "status_root", "status_mired" },
+    -- nothing holds you, which is half movement and half fortune
+    bonus = { movement = 1, luck = 1 },
 }

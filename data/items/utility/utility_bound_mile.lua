@@ -49,4 +49,6 @@ return {
             end
         end,
     },
+    -- everything held stays held, the bearer included
+    bonus = { defense = 2 },
 }

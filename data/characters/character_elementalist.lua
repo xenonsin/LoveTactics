@@ -21,6 +21,9 @@ return {
         defense = 4, magicDefense = 13,
         movement = 4,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 6, luck = 4,
     },
     -- The 3x3 loadout grid (row-major); false = an empty cell. The sigils are the build-around -- a spell
     -- cast beside one is reshaped (twinned / quickened / thrown further) -- and the Blizzard is the payload
@@ -28,7 +31,7 @@ return {
     startingItems = {
         "weapon_graven_circle_staff", "ability_blizzard",       "armor_silk_robes",
         "utility_twinned_sigil",      "utility_quickened_sigil", "utility_distant_sigil",
-        "consumable_healing_potion",  false,                    false,
+        "consumable_healing_potion",  "utility_ninth_sigil",                    false,
     },
     defaultAction = "ability_blizzard",
     -- Basic tactics: a glass body breaks off when bloodied rather than standing to trade; the Blizzard

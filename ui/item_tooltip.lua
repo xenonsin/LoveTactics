@@ -148,12 +148,20 @@ end
 -- measured box height silently stops matching the text inside it.
 local FLAVOR_GUARD = 3
 
+-- Flavor prose is HIDDEN everywhere while the drafted story lines are being rewritten. The lines still
+-- ship on the blueprints -- docs/item-text.md and tests/item_schema_spec.lua still require one per item
+-- -- nothing reads them out to the player. One switch, read by every surface that shows a story line:
+-- the tooltip's own block builder below, and the shop card and the Cafe platter through printFlavor. So
+-- the prose comes back in all three places by flipping this back to true.
+ItemTooltip.SHOW_FLAVOR = false
+
 -- Draw `text` as a sheared italic aside, wrapped into a `w`-wide column at (x, y). Returns the
 -- height consumed, so callers laying out their own column can advance past it -- the shop and
 -- forge panels print flavor under an item's description without the block system. `font`
 -- defaults to the tooltip's own body font; a caller with its own type scale passes that instead, so
 -- the flavor matches the column it sits in.
 function ItemTooltip.printFlavor(text, x, y, w, font)
+    if not ItemTooltip.SHOW_FLAVOR then return 0 end
     font = font or flavorFont()
     local textW = w - FLAVOR_GUARD
     local _, wrapped = font:getWrap(text, textW)
@@ -705,7 +713,7 @@ local function buildBlocks(item, actor, innerW, out, owner)
     end
 
     -- The story line has the tooltip's last word, below everything mechanical (docs/item-text.md).
-    if item.flavor and item.flavor ~= "" then
+    if ItemTooltip.SHOW_FLAVOR and item.flavor and item.flavor ~= "" then
         blocks[#blocks + 1] = { kind = "sep" }
         blocks[#blocks + 1] = { kind = "flavor", text = item.flavor }
     end

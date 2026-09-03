@@ -30,8 +30,8 @@ return {
     tags = { "heavy" },
     class = "fighter",
     discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
-    price = 475,
-    unlockQuests = 3,
+    price = 495,
+    unlockQuests = 5,
     traits = { "trait_unspent_heart" },
     bonus = {
         health = Curve.ramp(10, 30),

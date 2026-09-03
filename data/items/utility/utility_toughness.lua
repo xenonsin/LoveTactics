@@ -20,4 +20,6 @@ return {
     price = 80,
     unlockQuests = 0,
     maxBonus = { health = Curve.ramp(20) },
+    -- the pool is its point; the plate is the sentiment
+    bonus = { defense = 1 },
 }

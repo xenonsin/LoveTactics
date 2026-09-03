@@ -22,8 +22,8 @@ return {
     tags = { "hide" },
     class = "hunter",
     discipline = "druid", -- deeper cut of the shelf: buyable only once the druid gate is cleared
-    price = 610,
-    unlockQuests = 4,
+    price = 660,
+    unlockQuests = 7,
     traits = { "trait_keen_senses" },
     bonus = { defense = Curve.ramp(4, 14), movement = -1 },
     resist = { physical = 1 },

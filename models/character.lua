@@ -59,6 +59,29 @@ local function isResourceStat(key)
     return false
 end
 
+-- THE TWO ACCURACY STATS, and why they are a fallback rather than a formula.
+--
+-- `skill` is how well a body swings: it raises Hit and, halved, Crit. `luck` is how well the world
+-- treats it: it raises Avoid, and subtracts from an attacker's crit chance outright, so a lucky body
+-- is not harder to hit so much as harder to hit BADLY. See docs/accuracy.md for the arithmetic.
+--
+-- Both are authored per blueprint, on a 0-10 band chosen to sit beside `defense` (3-6) and `speed`
+-- (0-9) rather than tower over them -- Fire Emblem's own stats run 0-20, against a Speed that also
+-- runs 0-20, and importing the numbers without the scale would have made these the only stats in the
+-- game with a different order of magnitude than the ones they are subtracted from.
+--
+-- The values below are NOT the design. They exist so that a blueprint which forgets the fields loads
+-- and fights instead of erroring in the middle of a battle, and so that a new character file is never
+-- blocked on an accuracy decision. What makes the authoring real is that tests/data_spec.lua fails the
+-- build over any combatant blueprint still sitting on them: a default nobody is allowed to keep is a
+-- safety net rather than a shortcut. (A non-combatant -- a prop, an escortee, a Pig -- is exempt, and
+-- keeps them.)
+Character.DEFAULT_SKILL = 4
+Character.DEFAULT_LUCK = 4
+
+-- Stats that get the fallback above when a blueprint declares none.
+Character.ACCURACY_STATS = { skill = Character.DEFAULT_SKILL, luck = Character.DEFAULT_LUCK }
+
 -- A blueprint's `footprint` into a normalized { w, h }. Accepts { w = 2, h = 2 } (the authored form),
 -- a bare integer N (shorthand for an N×N square), or nil/absent -> 1×1. Dimensions are floored to at
 -- least 1, so a malformed blueprint degrades to a single tile rather than a zero-size body.
@@ -352,6 +375,14 @@ function Character.instantiate(id, progress)
         end
     end
 
+    -- Fill in skill/luck for a blueprint that declares neither (see Character.ACCURACY_STATS). Done
+    -- HERE rather than at the point of use so that every reader -- the combat formulas, the character
+    -- sheet, muster's rating of a body, the debug editor writing a blueprint back out -- sees one
+    -- number, and none of them has to know the default exists.
+    for key, fallback in pairs(Character.ACCURACY_STATS) do
+        if stats[key] == nil then stats[key] = fallback end
+    end
+
     -- Re-bake accumulated level-up growth onto the base stats (resource growth raises the pool's max).
     local growth = (progress and progress.growth) or {}
     for stat, amount in pairs(growth) do
@@ -454,9 +485,16 @@ function Character.instantiate(id, progress)
         technique = (progress and progress.technique) or {},
         techniqueSpent = (progress and progress.techniqueSpent) or {},
         techniqueAtLevel = (progress and progress.techniqueAtLevel) or {},
-        -- The per-key ledger of levels credited, in shares. Only ever grows, and is what gates the deep
-        -- cut of a vendor's shelf (Discipline.level).
-        growthBy = (progress and progress.growthBy) or {},
+        -- THE DECLARED JOB: the one thing that decides how this body grows on a level-up
+        -- (Growth.jobOf). Nil until the player declares one, and the blueprint's innate `class` is the
+        -- fallback until they do -- so a fresh recruit grows as what it was minted as rather than
+        -- standing still waiting to be told.
+        --
+        -- This replaced `growthBy`, a per-key ledger of levels credited in shares, back when growth was
+        -- apportioned across everything a body had swung. The class level that ledger fed is read off
+        -- cumulative technique now (Discipline.classLevel), so the two questions -- how does this body
+        -- grow, what has it got good at -- are answered by two fields that cannot drift apart.
+        job = (progress and progress.job) or nil,
         inventory = {},
         -- Hidden fallback weapon (never in inventory, never shown in the item grid). Sourced
         -- from the blueprint's `unarmed` id or the generic default; explicitly `false` for a body

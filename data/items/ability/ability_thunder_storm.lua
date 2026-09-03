@@ -13,8 +13,8 @@ return {
     tags = { "lightning", "magical" },
     class = "mage",
     discipline = "elementalist", -- deeper cut of the shelf: buyable only once the elementalist gate is cleared
-    price = 740,
-    unlockQuests = 5,
+    price = 660,
+    unlockQuests = 7,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

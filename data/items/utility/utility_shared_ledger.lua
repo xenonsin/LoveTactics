@@ -23,7 +23,9 @@ return {
     tags = { "charm" },
     class = "priest",
     discipline = "apothecary",
-    price = 345,
-    unlockQuests = 2,
+    price = 410,
+    unlockQuests = 4,
     traits = { "trait_shared_ledger" },
+    -- your guard, lent to whoever you mend
+    bonus = { magicDefense = 2 },
 }

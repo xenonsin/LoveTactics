@@ -27,6 +27,7 @@ return {
     tags = { "bow", "pierce", "physical", "ranged" },
     hands = 2,
     class = "hunter",
+    dropTier = 2,
     activeAbility = {
         target = "enemy",
         range = 3,

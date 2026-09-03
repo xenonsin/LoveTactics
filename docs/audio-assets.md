@@ -52,7 +52,9 @@ lightning, holy, dark, poison, water, acid. [ui/combat_fx.lua](combat_fx.lua) `p
 `Motif.of(tags)` — the *same* element reading the impact burst uses ([ui/motif.lua](motif.lua)) — so a
 blow's sound and its burst always name one element; a blow whose type has no cue falls back to the
 generic `battle.hit`/`battle.crit`. A heavy typed blow rings its own cue pitched down, so it still
-reads as "more" without a separate crit sound.
+reads as "more". A **critical** outranks the element and rings `battle.crit` outright — the dice are
+the more urgent fact, and a fire crit that sounded exactly like a fire hit would only be legible from
+the number.
 
 The whole system (roadmap items 4–7) is built: `models/sound.lua`, `data/sounds.lua`,
 `. audio-report`, and persisted master/music/effects volumes in the settings screen. **A first-pass
@@ -111,13 +113,20 @@ signals the cues ride on, so a cue cannot go silent at its source without a test
 | `ui.cancel` | `states/hub.lua` on closing a building panel or the system menu |
 | `ui.denied` | `states/battle.lua` `notify` — a refused action (the wind-up readout passes `quiet`) |
 
-Two cues are wired to the nearest real signal rather than the mechanic their name suggests, because
-that mechanic does not exist in this engine:
+Both of these cues used to be wired to the nearest real signal rather than the mechanic their name
+suggests, because that mechanic did not exist in this engine. **It does now** — see
+[accuracy.md](accuracy.md) — and each cue fires for the thing it is named after:
 
-- **`battle.crit`** — there is no critical-hit roll; the cue fires on a **heavy blow** (≥12 damage, the
-  same threshold that already earns an extra screen shake). A punchier hit, not a separate RNG event.
-- **`battle.miss`** — there is no accuracy roll; a blow only ever lands nothing when it is **voided**
-  outright by a dodge, a smoke charge, or a substitution clone. That is what the cue marks.
+- **`battle.crit`** — a real critical hit (`Combat.critChance`, a weapon's crit plus half the
+  swinger's skill, less the target's luck). A crit takes this cue even when the blow carries an
+  element, because "that was a critical" is the thing the player most needs to hear. The old
+  heavy-blow rule survives underneath it: an ordinary untyped blow of ≥12 still rings this as the
+  punchier `battle.hit`, which is what the cue was doing on its own before.
+- **`battle.miss`** — a failed hit roll, which is now the most common thing that happens to an
+  attack. It still also marks a blow **voided** outright by a dodge, a smoke charge or a substitution
+  clone; those were the only ways to reach it before. Because a miss went from rare to routine, the
+  view no longer leaves it to the speakers — it floats a readable **MISS** on the struck tile and
+  holds the turn hand-off while it climbs, exactly as a damage number does.
 
 ## Direction
 

@@ -13,8 +13,8 @@ return {
     tags = { "impact", "physical" },
     class = "knight",
     discipline = "vanguard", -- knight x rogue; the Breach mechanic's first stock
-    price = 475,
-    unlockQuests = 3,
+    price = 575,
+    unlockQuests = 6,
     activeAbility = {
         target = "enemy",
         range = 1,

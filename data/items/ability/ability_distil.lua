@@ -23,7 +23,7 @@ return {
     tags = { "utility" },
     class = "alchemist",
     discipline = "herbalist",
-    price = 610,
+    price = 410,
     unlockQuests = 4,
     activeAbility = {
         target = "tile",

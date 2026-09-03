@@ -15,8 +15,16 @@ return {
     type = "utility",
     tags = { "arcane" },
     class = "alchemist",
-    price = 345,
-    unlockQuests = 2,
+    price = 330,
+    unlockQuests = 3,
+    -- MASTERY, and the stat of the same name. The aura lends the neighbour a bigger number; the Skill is
+    -- the hand that throws it -- and a thrown flask rolls to hit like anything else aimed at an
+    -- unwilling body. "Dead weight on its own" stays true: this is still an item whose whole point is
+    -- what it sits beside.
+    --
+    -- The Crucible now sells both ends of accuracy, which is the shelf arguing with itself as an envy
+    -- shelf should: the Wine it stocks costs the drinker three points of Skill (data/status/drunk).
+    bonus = { skill = 2 },
     aura = {
         appliesTo = { "consumable" }, -- only the throwables and potions it sits beside
         amountBonus = Curve.ramp(5, 15),              -- added to the neighbor consumable's ability magnitude

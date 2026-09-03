@@ -28,8 +28,10 @@ return {
     tags = { "charm", "holy" },
     class = "priest",
     discipline = "crusader",
-    price = 345,
-    unlockQuests = 2,
+    price = 330,
+    unlockQuests = 3,
     traits = { "trait_kept_faith" },
     charge = { key = "zeal", from = { "foeDown", "allyHealed" }, max = 10 },
+    -- the vow banks magic defense per Zeal, so the floor is the plainer guard
+    bonus = { defense = 2 },
 }

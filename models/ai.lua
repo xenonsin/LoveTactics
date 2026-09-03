@@ -1015,11 +1015,25 @@ local function outcomeScore(combat, unit, cand, w, previews)
         -- Everything below flips on one question -- is this body on my side? -- so it is asked once
         -- and each term reads as the pair of exchange rates it actually is.
         local friendly = e.unit.side == unit.side
-        score = score + (e.damage or 0) * (friendly and -w.FRIENDLY_FIRE or w.DAMAGE)
+        -- HOW LIKELY THIS IS TO HAPPEN AT ALL. The preview reports the wound a landed blow deals;
+        -- since accuracy, that is a conditional. Weighting by the real odds (Combat.landChance, which
+        -- is the 2RN-adjusted figure rather than the one on screen) is what stops a planner from
+        -- throwing 40% haymakers at a body in a forest while a 90% swing stands unused beside it --
+        -- the single most visible way an unweighted AI would read as broken.
+        --
+        -- It multiplies the OUTCOME terms only: damage, statuses and the kill. A heal is not weighed
+        -- by it because a heal never rolls, and neither does anything aimed at a body on your own side
+        -- (Combat.rollsToHit), so friendly fire keeps its full weight -- correctly, since a blast that
+        -- catches your own man catches him for certain.
+        local odds = Combat.landChance(combat, unit, e.unit, cand.item)
+        score = score + (e.damage or 0) * odds * (friendly and -w.FRIENDLY_FIRE or w.DAMAGE)
         score = score + (e.heal or 0) * (friendly and w.HEAL or -w.HEAL)
-        score = score + #(e.statuses or {}) * (friendly and 0 or w.STATUS)
+        score = score + #(e.statuses or {}) * odds * (friendly and 0 or w.STATUS)
         if e.lethal then
-            score = score + (friendly and -w.KILL or w.KILL)
+            score = score + (friendly and -w.KILL or w.KILL) * odds
+            -- `lethal` stays a claim about what the blow WOULD do, not how likely it is to. It gates
+            -- whether a finisher is considered at all, and a planner that stopped recognising a
+            -- killing blow because it might miss would decline to swing at a body on one health.
             lethal = lethal or not friendly
         end
     end

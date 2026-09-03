@@ -12,7 +12,7 @@
 local BattleMap = require("ui.battle_map")
 local Scale = require("scale")
 
-local TILE = 60 -- states/battle.lua BOARD_TILE
+local TILE = 64 -- states/battle.lua BOARD_TILE
 
 -- A board `cols` x `rows`, facing `rotation`, laid out in the same column margins the fight uses.
 local function board(cols, rows, rotation)
@@ -21,7 +21,7 @@ local function board(cols, rows, rotation)
         size = TILE,
         leftMargin = 264,  -- LEFT_W
         rightMargin = 320, -- PANEL_W
-        topMargin = 104,   -- BOARD_TOP
+        topMargin = 88,    -- BOARD_TOP
         rotation = (rotation or 0) % 4,
     }, BattleMap)
     map:layout()

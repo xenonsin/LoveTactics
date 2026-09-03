@@ -39,4 +39,6 @@ return {
             end
         end,
     },
+    -- every charge you buried, at once
+    bonus = { damage = 2 },
 }

@@ -2,26 +2,34 @@
 
 Where an item sits, what it costs, and why neither is authored by hand any more.
 
-Every priced item in the game names a **slot** (`unlockQuests`, the rung of its house's shelf it sits
+Every priced item in the game names a **slot** (`unlockQuests`, the rung of its class's ladder it sits
 on) and a **price**. Both used to be typed into the blueprint. Both are now derived, in one direction:
 
 ```
 grade  ->  slot  ->  price
 ```
 
-An item's **grade** is what it is worth. Its rank within its house sets its **slot**. Its slot sets
+An item's **grade** is what it is worth. Its rank within its class sets its **slot**. Its slot sets
 its **price**. Nothing flows the other way, and two specs enforce that.
 
 - The grader: `models/grade.lua`
 - The instrument: `& "E:\LOVE\lovec.exe" . grade-report [full | diff | explain ID | traits | apply]`
 - The guard: `tests/grade_spec.lua`
 
+> **The field is still called `unlockQuests` and no quest has opened a shelf for some time.** The name
+> survived two re-cuts because renaming it means touching every priced blueprint in the game to change
+> nothing, and a 485-file rename that subtracts nothing is 485 chances to be off by one. It means *the
+> rung*, and the rung is a class level (**The slot**, below).
+>
+> On an item with no price it means nothing at all: an unpriced ware carries a `dropTier` instead —
+> the same grade, spread along DEPTH rather than along a shelf, because a thing with no shelf to sit on
+> still has a place it belongs (`tools/drop_tier.lua`, and `Spoils.lootCandidates` is what admits it).
+
 Related: [balance.md](balance.md) is about bodies against weapons — how hard a thing hits and how
 much a body takes. This is about where a thing *belongs*. The two meet at one place: the slot a grade
 assigns is the slot `Balance.slotTarget` then reads to grant the item its magnitude.
 
 ---
-
 ## Why this exists
 
 Every shelf gate in the game was written by one pass, `tools/unlock_rescale.lua`, which ranked each
@@ -45,6 +53,42 @@ It stopped being cosmetic when the slot became the grade (see [balance.md](balan
 `Balance.slotTarget` reads `unlockQuests` and *grants* the item its magnitude. So the power ladder
 was anchored on a field assigned by price — and `Balance.itemMagnitude` could not notice, because it
 derives the target it checks from the same field it is checking.
+
+## The utility stat pass, and the re-tier it caused
+
+186 of 221 utilities now carry a `bonus`; 46 did before. The 140 added by
+`tools/utility_stats.lua` are small flat modifiers chosen to reinforce what each item already does —
+`movement` on every piece of footwear, `magicDamage` across the Arcanum's workings, `skill` on the
+Lodge's aiming kit, `luck` on the Undercroft's guile — with a handful carrying a deliberate malus
+where the item already describes a bargain.
+
+**Why it matters here:** a utility with no stat at all was hard to weigh against one with a stat,
+because the player had no common unit to compare them in. On a 3×3 grid where every cell is a
+decision, that made the type read as two different kinds of item wearing one name.
+
+**And it moved the shelf.** Adding graded value to 140 blueprints pushed **99 items out of the slot
+their grade put them in** — 38 of which were pre-existing drift, and 61 caused by the pass. That was
+settled the way the doc prescribes and in this order:
+
+```
+. grade-report apply        # 99 blueprints rewritten: unlockQuests + price
+. balance-rescale 0 apply   # 29 magnitudes refitted to the slots that moved
+```
+
+Never stop after the first of those. A slot move *is* a magnitude change — `Balance.slotTarget` reads
+the field `grade-report` just rewrote — so applying the grade alone leaves every moved item out of
+band by construction, which is what the tool says on its way out.
+
+It settles at **4 of 485** still wanting to move. Those are ±1 residue from the rescale feeding back
+into the grades it was computed from, and chasing them oscillates: grade → slot → magnitude → grade.
+Four is the resting state, not an unfinished job.
+
+Two things the pass deliberately left alone: the 46 utilities that already carried a bonus (skipped
+by inspection, so hand tuning survives a re-run), and the **35 classless ones**, which are creature
+kit rather than shelf stock — "sheds a pair of petal-drifts as it is wounded", "on death: bursts". A
+stat bonus on those is an enemy power buff and belongs to a bestiary pass. Worth knowing that 61 of
+the 140 that *were* changed are carried by characters, so this already buffs some enemies as a side
+effect.
 
 ---
 
@@ -114,65 +158,48 @@ and it is preview-safe by construction.
 
 ## The slot
 
-Each house's stock is ranked weakest-first and spread across `0 .. rungs - 1`, where **a rung is a job
-the house asks for**: its opener, plus every quest a discipline hangs off. That is **six rungs at every
-house** — one opener and five gates apiece, 35 gate quests carrying the 38 disciplines, since two may
-share a rung (`models/errand.lua`, and `tools/grade_report.lua` reads the count from there so the shelf
-cannot disagree with the work that opens it).
+Each class's stock is ranked weakest-first and spread across `0 .. rungs - 1`, where **a rung is a level
+of the class ladder** — `Discipline.CLASS_LEVEL_CAP`, nine rungs at every class. `tools/grade_report.lua`
+reads the count off `models/discipline.lua`, so the shelf cannot disagree with the thing that opens it.
 
-> An earlier draft of this section read "six at five houses, seven at the Cathedral, eight at the
-> Hunter's Lodge", and `models/errand.lua` still says so in prose. The gates were evened out and the
-> sentences were not; `Errand.tiers` returns 6 for all seven houses today, which is what `grade-report`
-> prints and what every rung count below is measured against. Nothing is keyed to the uniformity —
-> `Errand.floorFor` staggers on it and `Forge.ceilingFor` divides by it — so a house may grow a
-> seventh rung without an edit anywhere but the data.
+> **This is the second re-cut, and the first one is worth keeping in view.** A rung used to be *a job the
+> house asked for* — its opener plus every quest a discipline hung off, six per house — and before that
+> one rung per authored quest, twelve of them. Twelve meant two or three wares an errand at the bottom of
+> a shelf, a job run for a tooltip. Six meant 10–15, an unlock you feel arriving. Nine means a little
+> under ten, and the difference now is that the thing being counted is not work at all.
 
-It used to be `0 .. quests - 2`, one rung per authored quest. A house's stock is a fixed 78–109 wares
-however many rungs it is cut into, so twelve rungs meant **two or three wares an errand** at the bottom
-of a shelf — a job run for a tooltip. Six means 10–15, an unlock you feel arriving.
+**A class is climbed by a BODY, not bought by a company.** `Discipline.classLevel` reads cumulative
+technique — two a swing, banked by whoever is holding that class's gear — so what opens a rung is having
+played the class, and the shelf reads the roster's best holder (`Quest.shelfRung`). Specializing one
+character opens the deep end; spreading the same tally over four does not, which is the same reading the
+forge ceiling and every other company-facing question about the ladder take.
 
-Everything else a house sponsors is *unasked* — the blueprints stay, nobody is sent to them. Never trim
-a line by sort order: 19 of the 38 discipline gates are `the_*` side quests, and the descent is the only
-mode there is, so a quest nobody is asked for is a quest nobody can finish and a discipline behind one
-is out of the game.
+**Level 0 IS rung 0**, with no offset. The old gate read the house's standing *less one*, because a
+house's first errand was its opener and slot 0 was what the opener handed over — without the offset a
+freshly opened door showed its bottom band *and* the band the opener had just earned. Nothing opens a
+door any more, so a body with no commitment to a class sees that class's bottom band and nothing above
+it, which is what a bottom band is for.
 
-**Slot N is reached by the (N+1)th errand**, not the Nth. A house's first errand is its *opener* — the
-piece of work, found on a descent floor, that opens the door at all (`models/errand.lua`) — and what
-it hands over is slot 0. Slot 1 waits for the errand after it.
+**The shelf and the descent are still one ladder read from two ends**, and the mechanism changed rather
+than the claim. It used to be seating: an errand was found on the floor its own slot belonged to. It is
+now the other direction — you climb a class by fighting with it, and you fight with it deeper as you go,
+so the gear a floor buys is the gear that floor was fought at without anything having to place it.
 
-So the gate reads `Quest.shelfRung`, the house's standing less one, rather than the standing itself.
-Without that offset the opener paid twice: slot 0 is unlocked at a standing of nought, so a freshly
-opened door showed its bottom band *and* the band the opener had just earned — eleven of the Arcanum's
-wares in one visit, eight of them free and indistinguishable from the three that were earned.
-
-**The descent seats the work at the rung's own depth.** An errand is found on the floor its slot
-belongs to — slot 0 in the descent's first seven floors, a house's deepest slot on floor 14, the last
-floor a run can seat work on (`models/errand.lua`'s `Errand.floorFor`, off the house's own top slot).
-The shelf and the descent are one ladder read from two ends, so the gear a floor buys is the gear that
-floor is fought at.
-
-Three consequences fall out of that, all enforced by `tests/errand_spec.lua`:
-
-- **A line is exactly as long as the shelf has rungs**, because they are the same list counted twice.
-- **The ladder stops short of the bottom.** The first rung is asked on floor 3, the last on floor 11
-  or 12 — never deeper. A company should not buy the best gear the game sells and immediately fight
-  the last thing in the game with it; three floors is the room to find out what it does.
-- **The openers are all dealt into the first circle.** Slot 0 is a band balanced for the shallowest
-  floors, so a door first met on floor thirteen would have paid out opening-rack gear at the bottom of
-  a run (`Descent.openersAt`, three on floor 1 and four on floor 2 — seven doors do not fit on one
-  floor's dead ends).
-
-Half the houses ask a floor later than the other half (`Errand.floorFor`'s stagger), because five of
-the seven carry six rungs and an even spread alone lands all five on the same five floors.
-
-**Two bands, spread separately.** The base shelf runs the whole line; the discipline cut starts at
+**Two bands, spread separately.** The base shelf runs the whole ladder; the discipline cut starts at
 slot 3. Spreading them together and clamping afterwards piles every low-grading discipline item onto
 that one slot and starves the rungs beneath it — which
-[balance.md](balance.md)'s rule 10 reads as a quest that opened nothing.
+[balance.md](balance.md)'s rule 10 reads as a gate that opened nothing.
 
-> No subclass unlocks before its line's third quest, so a discipline row at slot 0 is a *locked* row
-> sitting in front of the stock a newcomer can actually buy. `Vendor.stock` sorts by slot then price,
-> so a cheap one there becomes the first thing the shop shows and the first thing they cannot have.
+> No subclass unlocks before its parent class's third level (`requiredLevel`, `data/disciplines/*.lua`),
+> so a discipline row at slot 0 is a *locked* row sitting in front of the stock a newcomer can actually
+> buy. `Vendor.stock` sorts by slot then price, so a cheap one there becomes the first thing the shop
+> shows and the first thing they cannot have.
+
+**One counter, seven ladders.** The seven house shelves are gone with the houses; there is one market
+(`models/market.lua`), and it gates each ware on the level of ITS OWN class — `Vendor.stock` takes a
+per-item rung function for exactly that. What the market puts out on a given morning is a fixed core
+plus a roll deterministic from the day, and the tier it rolls against is the highest band that depth
+reached, top class level, or total class levels implies.
 
 ### Fitness: does it answer what comes next?
 

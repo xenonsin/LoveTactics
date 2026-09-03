@@ -14,6 +14,11 @@ return {
     outro = "conversation_hunters_lodge_slot_01_outro",
     rewardItems = { "weapon_deadfall_bow", "armor_quarryhide" },
     rewardGold = 130,
+    -- THE COMPANION JOINS HERE. This is the ask they make when you meet them on a floor
+    -- (models/errand.lua), and clearing it is what brings them into the company -- the same
+    -- route Saber has always arrived by. Quest.complete calls Player.recruit before the outro
+    -- fires, so the "[X has joined your Party]" banner and their first words land in one beat.
+    rewardCharacter = "character_kaya",
     requiredPrestige = 2,
     -- The head of the line waits on the padded card, the same quest that puts the Lodge's door in the
     -- hub (data/buildings/hunters_lodge.lua). Both gates are needed: a building's `unlockQuest` closes

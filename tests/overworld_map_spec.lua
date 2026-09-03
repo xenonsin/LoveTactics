@@ -253,44 +253,40 @@ return {
         end,
     },
     {
-        name = "a landmark is remembered on dark ground; a live fight is not",
+        name = "everything found is remembered, fights included",
         fn = function()
             local grid = genOpen(3)
             revealAll(grid)
             local w = walker(grid)
             w.visionRadius = 2
             local far = farCell(grid, w)
-            assert(w:lit(far.x, far.y) == nil, "the fixture tile must be mapped but dark")
+            assert(w:lit(far.x, far.y) == nil, "the fixture place must be mapped but dark")
 
-            -- A place stays put and stays known: found once, it is on the map from then on. This is the
-            -- half that makes a detour plannable from across the board.
+            -- THIS CASE ASSERTED A SPLIT, and the split died with the patrols. It read "a landmark is
+            -- remembered on dark ground; a live fight is not": a combat or elite marker drew only while
+            -- its tile was lit RIGHT NOW, because a share of every board's fights walked a beat and a
+            -- remembered marker would have been a lie about a body that had moved. Nothing on a floor
+            -- moves any more, so a fight is a fact about a place like any other -- and a floor a fifth
+            -- full, read one step at a time, is mostly routing around exactly those marks.
             for _, kind in ipairs({ "treasure", "rest", "merchant", "shrine", "relic_cache",
-                "crossroads", "event", "town", "objective" }) do
+                "crossroads", "event", "town", "objective", "combat", "elite" }) do
                 far.encounter, far.cleared = { kind = kind }, nil
-                assert(w:markedStop(far.x, far.y) == far, kind .. " is a place, and a place is remembered")
-            end
-
-            -- A body is not. Combat and elite go out with the light.
-            for _, kind in ipairs({ "combat", "elite" }) do
-                far.encounter, far.cleared = { kind = kind }, nil
-                assert(w:markedStop(far.x, far.y) == nil,
-                    kind .. " on dark ground would hand over the very thing the fog is keeping")
-
-                -- Until it is put down: then it is no longer a body, it is a thing that happened here.
+                assert(w:markedStop(far.x, far.y) == far,
+                    kind .. " was found, so it is on the map from then on")
                 far.cleared = true
-                assert(w:markedStop(far.x, far.y) == far, "a cleared " .. kind .. " is remembered ground")
+                assert(w:markedStop(far.x, far.y) == far, "a cleared " .. kind .. " is remembered too")
             end
 
-            -- Undiscovered ground remembers nothing at all -- the landmark rule reaches back to `seen`,
-            -- never past it, so nothing can surface under mist that is hiding its tile.
+            -- What still hides a stop is the fog itself, and the memory rule reaches back to `seen` and
+            -- never past it: nothing can surface under mist that is hiding its own place.
             far.encounter, far.cleared, far.seen = { kind = "treasure" }, nil, false
-            assert(w:markedStop(far.x, far.y) == nil, "a stop on unmapped ground has not been found yet")
-            assert(w:mapped(far.x, far.y) == nil, "unmapped ground is not remembered")
+            assert(w:markedStop(far.x, far.y) == nil, "a stop on unread ground has not been found yet")
+            assert(w:mapped(far.x, far.y) == nil, "unread ground is remembered by nothing")
             far.seen = true
         end,
     },
     {
-        name = "the hovered-fight readout goes dark with the marker it names",
+        name = "the hovered-fight readout answers wherever a marker is drawn",
         fn = function()
             local grid = genOpen(3)
             revealAll(grid)
@@ -302,13 +298,20 @@ return {
             local restore = InputMode.current
             InputMode.set("mouse")
             w.hoverX, w.hoverY = far.x, far.y
-            assert(w:hoveredFight() == nil,
-                "naming a fight the fog is holding back turns the pointer into a probe")
+            -- THE READOUT FOLLOWS THE MARKER, and it has to be the same test or the pointer names a
+            -- thing on one place and goes silent on the identical thing one step further out. It used
+            -- to follow the LIGHT, which was right while a fight marker went out with the light too.
+            assert(w:hoveredFight() == far, "a remembered fight reads under the pointer")
 
-            -- Stand on it and the same pointer names it again -- the readout follows the light, not the
-            -- mouse, which is why the hover is stored as a TILE rather than as the cell it resolved to.
-            w.px, w.py = far.x, far.y
-            assert(w:hoveredFight() == far, "a lit fight still reads under the pointer")
+            -- ...and never where nothing is drawn: on unread ground the pointer stays a pointer rather
+            -- than becoming a probe you sweep across the dark.
+            far.seen = false
+            assert(w:hoveredFight() == nil, "unread ground names nothing")
+            far.seen = true
+
+            -- A cleared fight answers nothing either: there is no fight left on it to weigh.
+            far.cleared = true
+            assert(w:hoveredFight() == nil, "a cleared fight is not something to weigh up")
             InputMode.set(restore)
         end,
     },

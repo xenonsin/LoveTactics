@@ -25,6 +25,7 @@ return {
     tags = { "greatsword", "slash", "physical", "melee" },
     hands = 2,
     class = "fighter",
+    dropTier = 7,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

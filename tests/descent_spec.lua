@@ -495,10 +495,12 @@ return {
             "the circles cover a stratum each")
         assert(Descent.FLOORS == Descent.CIRCLE_FLOORS + 1,
             "a descent is the seven circles' floors and the bottom under them")
-        -- Fifteen at two floors per circle, which is Wizardry's band. Asserted as a range rather than a
-        -- number so retuning FLOORS_PER_CIRCLE does not have to come and edit this line, but a change
-        -- that took the mode back to a tour of eight -- or out to a twenty-two-floor slog -- still trips.
-        assert(Descent.FLOORS >= 10 and Descent.FLOORS <= 17,
+        -- EIGHT AT ONE FLOOR PER CIRCLE. The band was 10-17, which was Wizardry's, and it was the right
+        -- band for a descent you could bank progress in and walk across many sittings. A run that resets
+        -- when you leave it has to be walkable whole, so the stack is one circle per floor plus the
+        -- Crown; what the range guards now is a later retune quietly restoring the marathon at one end
+        -- or hollowing the mode into a boss rush at the other.
+        assert(Descent.FLOORS >= 6 and Descent.FLOORS <= 12,
             "a descent is " .. Descent.FLOORS .. " floors, outside the depth this mode is built for")
         for floor = 1, Descent.CIRCLE_FLOORS do
             assert(not Descent.isBottom(floor), "floor " .. floor .. " is a circle, not the bottom")
@@ -781,9 +783,11 @@ return {
         assert(not obj.meet, "the stair is fought now, not walked onto")
         assert(obj.win and obj.win.type == "killAll", "and it is won by clearing it")
         local bodies = obj.composition({})
-        -- Floor 1 is the FIRST floor of the first circle, so it is held by her honour guard rather than
-        -- by her. Both are the circle's own house either way, which is what this case is about.
-        assert(bodies[1] == sin.minor.lead, "the stair is held by this house's own body")
+        -- A CIRCLE IS ONE FLOOR NOW, so floor 1's stair is the general's own -- it was her lieutenant's
+        -- while a circle owned a stratum. Written off isGeneralFloor rather than pinned to either, so
+        -- the case survives the stack being re-cut again in the other direction.
+        local expected = Descent.isGeneralFloor(1) and sin.guardian.lead or sin.minor.lead
+        assert(bodies[1] == expected, "the stair is held by this house's own body")
         assert(#bodies >= 2, "even a lieutenant's stair is a set-piece, not a skirmish")
 
         -- Deeper stairs are held harder. Read off the floor rather than off prestige, so this is a
@@ -913,49 +917,61 @@ return {
             "a campaign ground grows no exit tile: leaving one is already free")
     end },
 
-    { name = "a floor is a dungeon, and it is deep enough to be one", fn = function()
-        -- THE CARVE (models/layouts/dungeon.lua). A descent floor used to inherit its biome's layout,
-        -- which meant it inherited a campaign GROUND -- open country with a road through it -- and its
-        -- deepest point sat NINETEEN tiles from the entrance. Two seconds of walking, out and back. A
-        -- way up worth returning to, ground worth mapping and anywhere for a chute to drop you all need
-        -- distance, and there was none.
+    { name = "a floor is one connected region, and a crossing worth walking", fn = function()
+        -- THIS CASE HAS NOW BEEN WRITTEN THREE TIMES, and the shape of the rewrite is the point each
+        -- time: the claim moves, so the assertion moves with it rather than the number being nudged.
         --
-        -- Asserted on DEPTH rather than on the layout id, because naming the layout proves only that a
-        -- string was passed. What has to hold is the thing the string was for.
+        -- Against the WARREN it was DEPTH: a descent floor used to inherit a campaign ground whose
+        -- deepest point sat nineteen tiles out, two seconds of walking, and a way up worth returning to
+        -- needs further than that. Correct -- at the price of two thirds of the floor being one-tile
+        -- corridor that asked the player nothing.
+        --
+        -- Against the ROOMS it was GROUND: a floor of chambers walks shorter on purpose, a few room-hops
+        -- instead of a corridor crawl, and buys its size in width. Also correct -- and it was measuring
+        -- 708 walkable tiles carrying thirteen stops.
+        --
+        -- Against the GRID it is neither, because both were tile counts and there are no tiles. A floor
+        -- is a set of PLACES: what matters is that you can reach all of them, and that getting to the
+        -- far one is a walk rather than a formality. Nine steps on a first floor against forty on the
+        -- lattice -- and every one of the nine is a choice about which place to enter.
+        --
+        -- What survives all three rewrites untouched is the one that was never about the carve: the
+        -- pass that shapes the floor owns connectivity, and a floor in pieces reads as a small floor
+        -- rather than as a bug ([[carve-owns-connectivity]]).
         local run = Descent.new(Player.new(), 909)
         local mp = Descent.floorQuest(run).map
-        assert(mp.carve == "dungeon" and mp.spacing, "a floor names its own carve and its own spacing")
+        assert(mp.cols and mp.rows, "a floor names its own grid")
 
         for seed = 1, 4 do
             local grid = Overworld.generate({
                 biome = mp.biome, cols = mp.cols, rows = mp.rows,
-                layout = mp.carve, spacing = mp.spacing,
                 seed = seed, ascent = true, keyCount = 0,
                 encounterCount = mp.encounters, cacheCount = mp.cacheCount,
                 encounters = { { kind = "combat", weight = 3 }, { kind = "treasure", weight = 1 } },
             })
 
-            local walk = 0
+            local places = 0
             for y = 1, grid.rows do
                 for x = 1, grid.cols do
-                    if grid:typeWalkable(grid.cells[y][x].tile) then walk = walk + 1 end
+                    if grid:typeWalkable(grid.cells[y][x].tile) then places = places + 1 end
                 end
             end
             local reach = 0
             for _ in pairs(grid:reachable()) do reach = reach + 1 end
-            -- The carve owns connectivity and nothing downstream repairs it: a board in pieces reads as
-            -- a small board rather than as a bug, which is exactly why this is asserted rather than
-            -- assumed.
-            assert(reach == walk, "seed " .. seed .. ": " .. (walk - reach) .. " tiles stranded")
+            assert(reach == places, "seed " .. seed .. ": " .. (places - reach) .. " places stranded")
 
             local far = 0
             for _, d in pairs(grid:bfsDistances(grid:startCell())) do if d > far then far = d end end
-            -- Bounds, not a target. The floor is around 42 tiles deep as tuned; 30 is well clear of the
-            -- 19 the biome layouts gave and is the line below which the walk back stops being a walk.
-            assert(far >= 30, "seed " .. seed .. ": deepest point is " .. far ..
-                " tiles -- a floor you can cross this fast is a courtyard, not a dungeon")
-            assert(walk >= 280, "seed " .. seed .. ": only " .. walk ..
-                " walkable tiles -- there is not enough floor to get lost on")
+            -- SEVEN, and it is a floor rather than a target. A 6x6 grid a quarter blocked crosses in
+            -- about nine steps; the failure this guards is a hollow pass whose blocked cells happened
+            -- to fall in a line, leaving a floor you cross in three. A high bound here would be
+            -- asserting the warren back.
+            assert(far >= 7, "seed " .. seed .. ": the deepest place is " .. far ..
+                " steps in -- a floor you cross this fast is a courtyard")
+            -- ...and there are enough places to put the floor's own content in. Roughly half of them
+            -- hold something by design, so a floor with fewer places than stops is a sizing failure.
+            assert(places >= mp.encounters.max, "seed " .. seed .. ": only " .. places ..
+                " places for " .. mp.encounters.max .. " stops")
         end
     end },
 
@@ -976,14 +992,12 @@ return {
             assert(vendor.sin == sin.id,
                 sin.vendor .. " claims sin '" .. tostring(vendor.sin) .. "' while " .. sin.id ..
                 " claims it -- the join disagrees with itself")
-            local building = Building.defs[sin.vendor]
-            assert(building, sin.id .. "'s house has no card")
-            assert(building.unlockErrand,
-                sin.vendor .. " is not gated on its opener, so nothing the player does opens it")
+            -- (The house CARD is gone. Each sin used to name a shop in the city, gated on its own
+            -- opener; the houses are classes now and the city keeps one market, so what a sin
+            -- still has to name is a real vendor blueprint -- which is the class -- and the
+            -- posting where its companion is met.)
             assert(Errand.opener(sin.vendor),
-                sin.vendor .. " is gated on an opener it does not have -- a door that can never open")
-            assert(building.vendor == sin.vendor,
-                "the card and the shelf must be the same house")
+                sin.vendor .. " has no posting, so its companion can never be met")
         end
     end },
 
@@ -1146,7 +1160,7 @@ return {
         for i, spec in ipairs(quest.map.objectives or {}) do
             local ids = Arena.clampComposition(
                 Arena.resolveComposition(spec.composition, { day = day, prestige = p.prestige }),
-                Arena.enemyCap({ quest = quest }, nil, spec.enemyCap))
+                Arena.enemyCap({ quest = quest }, spec.enemyCap))
             local theirs = 0
             for _, id in ipairs(ids) do
                 local ok, ch = pcall(Growth.spawn, id, quest.dangerLevel, spec.floorLevel or quest.floorLevel)
@@ -1186,7 +1200,7 @@ return {
         -- short-handed company walks around and comes back for once an opener has paid out.
         assert(Arena.enemyCap({ quest = { enemyCap = 2 }, encounterKind = "elite" }) == Arena.ELITE_CAP,
             "an elite is a tier of its own and the floor's ceiling does not trim it")
-        assert(Arena.enemyCap({ quest = { enemyCap = 2 } }, nil, false) == Arena.DEFAULT_ENEMY_CAP,
+        assert(Arena.enemyCap({ quest = { enemyCap = 2 } }, false) == Arena.DEFAULT_ENEMY_CAP,
             "a fight naming `enemyCap = false` on its spec keeps what the circle gave it")
 
         -- ...and the stair is the fight that names it, on both seams the descriptor carries it on.

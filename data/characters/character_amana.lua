@@ -45,6 +45,9 @@ return {
         defense = 8, magicDefense = 13, -- warded against the magic her line traffics in
         movement = 4,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 3, luck = 9,
     },
     -- The 3x3 loadout grid (row-major); false = an empty cell. The Reliquary is the build-around in the
     -- center; Heal beside it is what opens it, and the Martyr's Icon is the giving she can make with her

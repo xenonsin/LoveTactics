@@ -22,7 +22,9 @@ return {
     tags = { "charm" },
     class = "mage",
     discipline = "theurge", -- mage x priest; the Channelled miracle's other half, beside Vigil Beads
-    price = 345,
+    price = 245,
     unlockQuests = 2,
     traits = { "trait_second_utterance" },
+    -- the next channel comes faster and lands the same
+    bonus = { speed = 1, magicDamage = 1 },
 }

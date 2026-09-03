@@ -20,6 +20,9 @@ return {
         defense = 1, magicDefense = 4,
         movement = 5,
         speed = 6,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 2, luck = 5,
     },
     startingItems = { "weapon_petal_touch" },
     defaultAction = "weapon_petal_touch",

@@ -41,4 +41,6 @@ return {
             end
         end,
     },
+    -- bracing the pack braces the handler
+    bonus = { defense = 2 },
 }

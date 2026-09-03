@@ -26,7 +26,7 @@ return {
     tags = { "structure" },
     class = "knight",
     discipline = "sentinel", -- deeper cut of the shelf: buyable only once the sentinel gate is cleared
-    price = 210,
+    price = 165,
     unlockQuests = 1,
     activeAbility = {
         target = "ally",
@@ -51,4 +51,6 @@ return {
             end
         end,
     },
+    -- the guard is lent away -- the malus is the whole mechanic
+    bonus = { magicDefense = 2, defense = -1 },
 }

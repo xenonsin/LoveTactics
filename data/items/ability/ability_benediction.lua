@@ -24,7 +24,7 @@ return {
     tags = { "holy" },
     class = "priest",
     discipline = "theurge",
-    price = 610,
+    price = 410,
     unlockQuests = 4,
     activeAbility = {
         target = "self",

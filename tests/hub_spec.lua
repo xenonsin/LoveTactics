@@ -33,7 +33,7 @@ return {
         fn = function()
             assert(Building.defs.the_gate, "the_gate missing")
             assert(Building.defs.armory, "armory missing")
-            assert(Building.defs.alchemist, "alchemist missing")
+            assert(Building.defs.market, "market missing")
             assert(Building.defs.cafe, "cafe missing")
         end,
     },
@@ -56,7 +56,7 @@ return {
             -- door on one is locked here whatever its threshold and this case has nothing to say about
             -- it. Listed rather than spelled out one by one, so a sixth kind of deed added to the model
             -- and forgotten here fails loudly instead of quietly widening what this case claims.
-            local deeds = { "unlockQuest", "unlockErrand", "unlockAnyErrand", "unlockDepth", "unlockWound",
+            local deeds = { "unlockQuest", "unlockDepth", "unlockWound",
                             "unlockUnidentified" }
             for _, b in ipairs(Building.list(1)) do
                 local def = Building.defs[b.id]
@@ -161,109 +161,6 @@ return {
         end,
     },
     {
-        -- THE SHOPS LEFT THE CITY. Fifteen cards on one board, seven of them the same kind of thing and
-        -- eleven of the fifteen shut on a fresh save, read as a wall of locked plates rather than a
-        -- town. They are behind one Markets card now, on a board of their own.
-        name = "every shelf is in the market and every market card is a shelf",
-        fn = function()
-            local Vendor = require("models.vendor")
-            local p = Player.new()
-
-            local market = Building.list(p, { district = "market" })
-            assert(#market == 7, "the market holds the seven houses")
-            for _, b in ipairs(market) do
-                assert(b.vendor, b.id .. " is on the market board but sells nothing")
-                assert(Vendor.get(b.vendor), b.id .. " names a vendor that does not exist")
-            end
-
-            -- ...and the city keeps none of them. A shelf left behind would be a second door onto the
-            -- same shop, with its own unlock rule to drift.
-            local city = Building.list(p, { district = "city" })
-            for _, b in ipairs(city) do
-                assert(not (b.vendor and Vendor.get(b.vendor) and Vendor.get(b.vendor).class),
-                    b.id .. " is a class shelf still standing in the city")
-            end
-
-            -- THE MARKETS CARD WAITS FOR ITS FIRST TENANT, and this case has been reversed. It used to
-            -- assert the door was never shut, which was right while a General Store stood in there on
-            -- day one; the store was cut -- the road is the shop -- so pressing this card on a fresh
-            -- save opened a square of seven locked plates, which is a door onto a corridor of doors.
-            local function marketCard(who)
-                for _, b in ipairs(Building.list(who, { district = "city" })) do
-                    if b.id == "markets" then return b end
-                end
-            end
-
-            local markets = marketCard(p)
-            assert(markets, "the city has no door onto the market")
-            assert(markets.state == "markets", "and it opens the market screen")
-            assert(markets.locked, "the Markets card is shut while every house behind it is")
-
-            -- ...and it arrives with whichever house opens first, whichever one that turns out to be.
-            -- The six still shut behind it then read as what is LEFT rather than as the whole market.
-            local Errand = require("models.errand")
-            for _, sin in ipairs(require("models.descent").SINS) do
-                local opened = Player.new()
-                opened.completedQuests = { [Errand.opener(sin.vendor)] = true }
-                assert(not marketCard(opened).locked,
-                    "opening " .. sin.vendor .. " left the Markets card shut")
-            end
-        end,
-    },
-    {
-        -- A HOUSE OPENS ON ITS OWN FIRST ERRAND, and this is the third gate these seven doors have had.
-        --
-        -- They started on `unlockPrestige` + `unlockQuest`, both reading the completed-quest count, which
-        -- is parked at zero forever now the board is retired -- seven cards that could never open. They
-        -- were then moved onto their CIRCLE, which could at least be beaten, and that was wrong in a
-        -- subtler way: a circle sits at floor 2, 4, ... 14 in a different order every run, so six of the
-        -- seven shelves were unreachable in any given descent and the only route to a class's gear was to
-        -- go deeper than that gear would have carried you.
-        --
-        -- What opens one now is `slot_01` of its own line -- the first thing the house ever asks for,
-        -- authored years ago, seated on a floor unasked because a shut house has nowhere to ask from
-        -- (models/errand.lua). One ladder per house, all of it in `completedQuests`.
-        --
-        -- The QUEST GATE IS IGNORED for these rather than satisfied, which is the half worth pinning:
-        -- honouring an `unlockQuest` naming a quest nobody can finish would keep the door shut whatever
-        -- the player did underground.
-        name = "each of the seven houses opens on its own first errand, and on nothing else",
-        fn = function()
-            local Descent = require("models.descent")
-            local Errand = require("models.errand")
-
-            local function findIn(list, id)
-                for _, b in ipairs(list) do if b.id == id then return b end end
-            end
-            local function market(p) return Building.list(p, { district = "market" }) end
-
-            for _, sin in ipairs(Descent.SINS) do
-                local def = Building.defs[sin.vendor]
-                assert(def, sin.id .. "'s house has no building: " .. tostring(sin.vendor))
-                assert(def.unlockErrand, sin.vendor .. " is not gated on its opener")
-
-                -- Shut with the opener unrun, however decorated the company is otherwise. Standing 20
-                -- would have opened every prestige gate there ever was.
-                local cold = { completedQuests = standingOf(20) }
-                assert(findIn(market(cold), sin.vendor).locked,
-                    sin.vendor .. " opened without its first errand being run")
-
-                -- ...and open the moment that errand is finished, and only that house.
-                local opener = Errand.opener(sin.vendor)
-                assert(opener, sin.vendor .. " has no opener to be gated on")
-                local warm = { completedQuests = { [opener] = true } }
-                assert(not findIn(market(warm), sin.vendor).locked,
-                    sin.vendor .. " stayed shut with its opener run")
-                for _, other in ipairs(Descent.SINS) do
-                    if other.vendor ~= sin.vendor then
-                        assert(findIn(market(warm), other.vendor).locked,
-                            "running " .. sin.id .. "'s opener opened " .. other.vendor .. " as well")
-                    end
-                end
-            end
-        end,
-    },
-    {
         -- THE OPENER IS SEATED WHERE IT CAN BE FOUND, which is the half of the door model that lives in
         -- the descent. A gate on work nobody is ever shown is the same dead card as a gate on prestige.
         name = "a shut house posts its opener on a floor, and an open one posts nothing",
@@ -275,13 +172,13 @@ return {
             local p = Player.new()
             p.completedQuests = {}
 
-            -- EVERY HOUSE IS OFFERED IN THE FIRST CIRCLE, and exactly once. An opener hands over slot 0,
+            -- EVERY HOUSE IS OFFERED IN THE FIRST FEW FLOORS, and exactly once. An opener hands over slot 0,
             -- which is gear balanced for these floors -- so a door posted deeper would be paying out kit
             -- for ground the company had already walked past (models/descent.lua's Descent.openersAt).
             -- The deal is a permutation rather than a roll: one that dealt Wrath three times would leave
             -- four shelves unreachable.
             local seen = {}
-            for floor = 1, Descent.FLOORS_PER_CIRCLE do
+            for floor = 1, Descent.OPENER_FLOORS do
                 for _, house in ipairs(Descent.openersAt(run, floor)) do
                     assert(not seen[house], house .. " is posted twice")
                     seen[house] = true
@@ -290,14 +187,14 @@ return {
             for _, sin in ipairs(Descent.SINS) do
                 assert(seen[sin.vendor], sin.vendor .. " is never offered in the first circle")
             end
-            for floor = Descent.FLOORS_PER_CIRCLE + 1, Descent.FLOORS do
+            for floor = Descent.OPENER_FLOORS + 1, Descent.FLOORS do
                 assert(#Descent.openersAt(run, floor) == 0, "floor " .. floor .. " posts a door")
             end
 
             -- ...and no floor of the circle carries the whole city. A shallow floor carves about seven
             -- and a half dead ends and the stair takes one, so seven doors on one board would be seating
             -- ends the generator has to degrade onto shared ground.
-            for floor = 1, Descent.FLOORS_PER_CIRCLE do
+            for floor = 1, Descent.OPENER_FLOORS do
                 assert(#Descent.openersAt(run, floor) < #Descent.SINS,
                     "floor " .. floor .. " carries every door in the game")
             end
@@ -352,8 +249,8 @@ return {
                 if not b.locked then open[#open + 1] = b.id end
             end
             table.sort(open)
-            assert(table.concat(open, ",") == "armory,the_gate",
-                "a fresh city should open on the armory and the stair; got " ..
+            assert(table.concat(open, ",") == "armory,market,the_gate,the_roll",
+                "a fresh city opens on the armory, the market, the stair and the roll; got " ..
                 table.concat(open, ", "))
 
             -- THE INN, on the first wound. Setting a bone is the only thing it does, so a company that
@@ -390,18 +287,16 @@ return {
             -- standing 20 is past every threshold this city has ever had.
             local decorated = Player.new()
             decorated.completedQuests = standingOf(20)
-            for _, id in ipairs({ "the_inn", "cafe", "forge", "markets" }) do
+            for _, id in ipairs({ "the_inn", "cafe", "forge" }) do
                 assert(shut(decorated, id), id .. " opened on standing rather than on its deed")
             end
-            assert(Errand.anyDoorOpen(decorated) == nil,
-                "a filler quest id must never read as a house's opener")
         end,
     },
     {
         name = "quest registry discovers def files by filename",
         fn = function()
             assert(Quest.defs.quest_bastion_slot_01, "quest_bastion_slot_01 missing")
-            assert(Quest.defs.quest_colosseum_slot_03, "warlord_keep missing")
+            assert(Quest.defs.quest_colosseum_slot_01, "quest_colosseum_slot_01 missing")
         end,
     },
     -- (Four cases stood here, all about what the BOARD would show: that Quest.available gated on

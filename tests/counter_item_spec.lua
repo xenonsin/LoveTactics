@@ -1,7 +1,7 @@
 -- Counter/charge items (S: the `counter` contract). Three items on the shelf hold a purse they fill
 -- over a fight and spend whole: the Gleaning Rod banks a charge per nearby spell, the Gleaner's Mantle
 -- banks off the same broadcast and spends it as a ward, and the Reliquary of Tallies banks one per
--- comrade lost. All three declare `activeAbility.counter`, which reports what the purse currently
+-- ally lost. All three declare `activeAbility.counter`, which reports what the purse currently
 -- holds -- the one number the grid badge draws AND the block gate reads, so the two can never disagree.
 --
 -- The rule this pins: an empty purse is a refused cast, not a wasted turn. Combat.itemBlockReason
@@ -19,7 +19,7 @@ local Fixture = require("tests.support.fixture")
 
 return {
     {
-        name = "an empty Reliquary of Tallies is refused, and fills as comrades fall",
+        name = "an empty Reliquary of Tallies is refused, and fills as allies fall",
         fn = function()
             local map = Fixture.new(8, 8)
             local hero = Fixture.unit("character_amana", 2, 2,
@@ -34,7 +34,7 @@ return {
             local blocked = Combat.itemBlockReason(h, reliquary)
             assert(blocked and blocked.kind == "empty", "an empty reliquary is refused, kind 'empty'")
 
-            Combat.tally(h, "allyDown", 2) -- two comrades lost
+            Combat.tally(h, "allyDown", 2) -- two allies lost
             assert(ab.counter(h, reliquary) == 2, "the purse now reads the two it is owed")
             assert(Combat.itemBlockReason(h, reliquary) == nil,
                 "and with the mana to pay it, the cast is no longer refused")

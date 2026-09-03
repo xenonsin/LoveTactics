@@ -17,11 +17,14 @@ return {
         defense = 5, magicDefense = 12,
         movement = 4,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 7, luck = 4,
     },
     startingItems = {
         "weapon_the_unreturning", "ability_raise_dead",    "ability_corpse_burst",
         "ability_knell",          "ability_sever_the_thread", "ability_veil_of_night",
-        "utility_charnel_reliquary", "armor_silk_robes",   "consumable_healing_potion",
+        "utility_charnel_reliquary", "armor_silk_robes",   "utility_second_reading",
     },
     defaultAction = "weapon_the_unreturning",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

@@ -499,16 +499,28 @@ return {
         assert(switch, "nothing sends a wiped company to the Gate any more -- retarget this case")
         local branch = src:sub(lastBefore("onLoss = ", switch) or 1, switch)
 
-        local keep = branch:find("Descent.keepFloor(", 1, true)
-        assert(keep, "a wipe leaves a floor without keeping its board: the recovery dive would open on " ..
-            "ground the company has never walked")
+        -- THE RIFT CLOSES ON A WIPE, so there is no board to keep and this looked for `keepFloor`
+        -- until it did. Both exits reset now, and the symmetry is the load-bearing half: if dying kept
+        -- the floor stack and leaving did not, a company standing deep with a thin haul would be
+        -- better off letting itself be killed.
+        --
+        -- WHAT MUST SURVIVE INSTEAD is the pile, and that is what this case guards now. The Gate still
+        -- promises a wiped company that everything they were carrying is down there; a wipe that
+        -- dropped a pack into a run it then threw away would break that promise silently, and the
+        -- player would find out by diving for something that was never seeded.
+        local strand = branch:find("Descent.strandPacks(", 1, true)
+        assert(strand, "a wipe closes the rift without carrying its piles out: everything the company " ..
+            "was holding would be deleted with the run it was holding it in")
 
-        -- AFTER THE DROP, and the ordering is load-bearing rather than tidy. Every pile on the run is
-        -- re-seated onto the board when a floor is entered (markBodies), so a pile marker baked into
-        -- this snapshot would be a second copy of a pack that Descent.takePack can only empty once.
+        -- AFTER THE DROP, and the ordering is load-bearing rather than tidy: strandPacks moves what is
+        -- on the run, so a pile dropped after it would be left behind in the run being discarded.
         local drop = branch:find("Descent.dropPack(", 1, true)
         assert(drop, "a wipe no longer drops a pack -- retarget this case")
-        assert(drop < keep, "the floor is kept before the pile is dropped, so the pile's own marker " ..
-            "rides out in the snapshot and comes back twice")
+        assert(drop < strand, "the piles are carried out before the wipe has dropped its own, so the " ..
+            "pack the company just lost is the one that never arrives")
+
+        -- ...and the run itself is let go, or the next descent would resume the one that just ended.
+        assert(branch:find("descentRun = nil", 1, true),
+            "a wipe leaves the closed rift on the player, so the next dive resumes a dead expedition")
     end },
 }

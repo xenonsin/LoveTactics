@@ -44,6 +44,28 @@ local MATERIALIZE_TIME = 0.45 -- seconds a newly-arrived unit spends knitting in
 local TURN_FLARE_TIME = 0.7           -- seconds the turn-start ring burst plays out
 local TURN_CUE = { 0.99, 0.86, 0.42 } -- warm gold, keyed to the acting-unit ring in drawHighlights
 
+-- How much of its footprint box a PAINTED body fills. A ratio, not the flat 8px inset it replaces:
+-- subtracting a constant made a 2x2 ogre 2.15x a man on a 60px tile, while the commission brief
+-- promises exactly twice. 0.875 of 64 is 56 -- the same share of the tile the old 52-on-60 gave, so
+-- nothing changes size relative to the ground it stands on.
+local BODY_FIT = 0.875
+
+-- The scale a body draws at, and the one place the two kinds of source art are told apart.
+--
+--   * Authored ABOVE display size (the composed tokens are 256px, the commissioned stills 1536px):
+--     downscale by whatever float lands it in the inset box. Any ratio looks right.
+--   * Authored AT display size (a bought sprite pack, cells of 16/32/48/64): snap to a WHOLE multiple
+--     and fill the cell edge to edge. 32px art fitted to a 52px box is 1.625x, which doubles pixel rows
+--     unevenly and makes an outline crawl as the unit slides; at 64 the same art is exactly 2x.
+--
+-- The integer branch takes the full box, not the inset one, because pack art is drawn to fill its cell
+-- already -- the inset is a composition allowance for a painting, not a margin the tile needs.
+local function bodyScale(sw, sh, bw, bh)
+    local n = math.floor(math.min(bw / sw, bh / sh))
+    if n >= 1 then return n end
+    return math.min(bw * BODY_FIT / sw, bh * BODY_FIT / sh)
+end
+
 local BattleMap = {}
 BattleMap.__index = BattleMap
 
@@ -107,6 +129,10 @@ function BattleMap.new(arena, opts)
     -- scale together.
     self.size = opts.tileSize or arena.tileSize
     self.topMargin = opts.topMargin
+    -- Where this board belongs on screen, when the caller knows: the top-left pixel of the chamber the
+    -- fight is being fought in (states/game.lua hands it over for a descent floor). Nil everywhere else
+    -- and the board centres itself as it always has. See :layout.
+    self.pinX, self.pinY = opts.pinX, opts.pinY
     -- Which way the board is FACING, in quarter turns clockwise (0..3). See the rotation section
     -- below; layout() places the board for whichever facing it is on.
     self.rotation = (opts.rotation or 0) % 4
@@ -118,11 +144,6 @@ function BattleMap.new(arena, opts)
         x = (first and first.x) or math.floor(arena.cols / 2),
         y = (first and first.y) or math.floor(arena.rows / 2),
     }
-
-    -- The map this board was cut out of, and where in it (see Arena.fromGrid). Both nil for a rolled
-    -- board, which was cut from nowhere and draws alone.
-    self.grid = opts.grid
-    self.box = opts.box
 
     self.tilesetDef = Tileset.get(Biome.get(arena.biome).tileset)
     self:buildTiles()
@@ -214,8 +235,7 @@ end
 -- cellToPixel / pixelToCell, which every overlay, unit, badge, tooltip and hit-test already goes
 -- through -- plus the handful of things that are about DIRECTION rather than position, and so have to
 -- be turned by hand: which way a cursor key steps (moveCursor), which side a muster arrow points in
--- from (screenEdge), the pixel offsets an in-flight walk or lunge rides (syncFx), and the locked
--- overworld drawn around the board (drawSurround).
+-- from (screenEdge), and the pixel offsets an in-flight walk or lunge rides (syncFx).
 --
 -- `rotation` is quarter turns CLOCKWISE, 0..3: at 1 the top of the grid is against the right of the
 -- screen, at 2 the board is upside down.
@@ -276,6 +296,18 @@ end
 -- BELOW it for the combat-log strip), otherwise centred vertically.
 function BattleMap:layout()
     local sc, sr = self:span()
+    -- PINNED, when the caller knows where this board belongs. A fight taken on a descent floor is fought
+    -- in the chamber it was found in, and that chamber is already on screen behind it -- same eight tiles
+    -- a side, same 64 logical pixels each (models/layouts/vaults.lua's tileSize). So the board is laid
+    -- ON the room rather than centred in the window, and the two are one rectangle instead of two that
+    -- happen to be the same size.
+    --
+    -- Only honoured while the board faces its default: a rotated board swaps its span, and a pin is a
+    -- statement about where a specific 8x8 sits on the floor.
+    if self.pinX and self.pinY and (self.rotation or 0) % 4 == 0 then
+        self.originX, self.originY = self.pinX, self.pinY
+        return
+    end
     self.originX = self.leftMargin +
         math.floor((Scale.WIDTH - self.leftMargin - self.rightMargin - sc * self.size) / 2)
     self.originY = self.topMargin or math.floor((Scale.HEIGHT - sr * self.size) / 2)
@@ -452,84 +484,8 @@ end
 -- Draw
 -- ---------------------------------------------------------------------------
 
--- How dark the rest of the world goes while a fight is on. Heavy on purpose: the map has to read as
--- STOPPED and out of reach, not as more board. What it buys is that the eight tiles you are fighting on
--- are visibly a place -- the corridor you came down is still there behind you, the spur you were headed
--- for is still there ahead -- which is the whole of what "one map" is worth at the moment it matters.
-local LOCKED_DIM = 0.80
-
--- The ring. Drawn one tile thick just outside the board, in the ground's own fill colour lifted clear of
--- the darkness behind it, so it reads as something that CLOSED rather than as more scenery. This is the
--- board's edge made visible: outside it there is no arena, and the wall says so.
-local WALL_LIFT = 0.30
-
-function BattleMap:drawSurround()
-    local grid, box = self.grid, self.box
-    if not (grid and box) then return end
-    local s = self.size
-
-    -- Only what the screen can show. The map is bigger than the window at this scale and every tile
-    -- outside it is a wasted draw.
-    --
-    -- Walked in SCREEN cells rather than grid ones, so the sweep covers the window whichever way the
-    -- board is facing; each is turned back to find the map cell that lands there. The board's own tile
-    -- (1, 1) is the map's (box.x, box.y), so an arena-space cell `a` is the map cell box + a - 1 --
-    -- and unrotateCell is happy off the board, which is the whole reason it is arithmetic.
-    local u0 = 1 - math.ceil(self.originX / s) - 1
-    local v0 = 1 - math.ceil(self.originY / s) - 1
-    local u1 = 1 + math.ceil((Scale.WIDTH - self.originX) / s) + 1
-    local v1 = 1 + math.ceil((Scale.HEIGHT - self.originY) / s) + 1
-
-    for v = v0, v1 do
-        for u = u0, u1 do
-            local ax, ay = self:unrotateCell(u, v)
-            local inBox = ax >= 1 and ay >= 1 and ax <= box.w and ay <= box.h
-            if not inBox then
-                local gx, gy = box.x + ax - 1, box.y + ay - 1
-                local wx = self.originX + (u - 1) * s
-                local wy = self.originY + (v - 1) * s
-                local cell = grid:get(gx, gy)
-                local artType = cell and (BattleMap.ART[cell.tile] or "path") or "thicket"
-                local col = self.tilesetDef.tiles[artType]
-                col = col and col.color or { 0.1, 0.1, 0.1 }
-                love.graphics.setColor(col[1], col[2], col[3])
-                love.graphics.rectangle("fill", wx, wy, s, s)
-                love.graphics.setColor(0, 0, 0, LOCKED_DIM)
-                love.graphics.rectangle("fill", wx, wy, s, s)
-            end
-        end
-    end
-
-    -- ...and the walls, on the ring immediately outside the board. Measured in the board's SCREEN
-    -- extent, not box.w/box.h, so the ring still closes on a board that is lying on its side.
-    local bw, bh = self:span()
-    local fill = self.tilesetDef.tiles.thicket
-    fill = fill and fill.color or { 0.2, 0.2, 0.2 }
-    love.graphics.setColor(fill[1] * WALL_LIFT + 0.06, fill[2] * WALL_LIFT + 0.06, fill[3] * WALL_LIFT + 0.06)
-    local rx, ry = self.originX - s, self.originY - s
-    for i = 0, bw + 1 do
-        love.graphics.rectangle("fill", rx + i * s, ry, s, s)
-        love.graphics.rectangle("fill", rx + i * s, ry + (bh + 1) * s, s, s)
-    end
-    for j = 0, bh + 1 do
-        love.graphics.rectangle("fill", rx, ry + j * s, s, s)
-        love.graphics.rectangle("fill", rx + (bw + 1) * s, ry + j * s, s, s)
-    end
-    -- The seam where the wall meets the board: a bright inner edge over a dark backing, so the boundary
-    -- reads as something that CLOSED and not as the edge of a picture. Warm, because it is the one thing
-    -- on screen that is about the fight being inescapable rather than about the ground.
-    love.graphics.setColor(0, 0, 0, 0.6)
-    love.graphics.setLineWidth(4)
-    love.graphics.rectangle("line", self.originX, self.originY, bw * s, bh * s)
-    love.graphics.setColor(0.82, 0.66, 0.34, 0.55)
-    love.graphics.setLineWidth(2)
-    love.graphics.rectangle("line", self.originX, self.originY, bw * s, bh * s)
-    love.graphics.setLineWidth(1)
-    love.graphics.setColor(1, 1, 1)
-end
 
 function BattleMap:draw()
-    self:drawSurround() -- the locked map and the walls that closed on it, under everything
     self:drawTiles()
     self:drawObjective() -- the ground a reach/hold objective is won on, under everything else
     self:drawFields() -- hazards, auras and carried statuses wash the ground under the highlights
@@ -1255,7 +1211,7 @@ function BattleMap:drawFallenSprite(u, cx, cy, bw, bh)
     local shader = self:spriteFx()
     if not shader then return false end
     local sw, sh = sprite:getDimensions()
-    local scale = math.min((bw - 8) / sw, (bh - 8) / sh)
+    local scale = bodyScale(sw, sh, bw, bh)
     love.graphics.setShader(shader)
     shader:send("uMode", SpriteShader.MODES.grayscale)
     shader:send("uAmount", 1.0)
@@ -1343,7 +1299,7 @@ function BattleMap:drawUnits()
             local sprite = u.char.sprite
             if type(sprite) == "userdata" then
                 local sw, sh = sprite:getDimensions()
-                local scale = math.min((bw - 8) / sw, (bh - 8) / sh)
+                local scale = bodyScale(sw, sh, bw, bh)
                 -- The animation transform (ui/combat_fx.lua spriteState) pivots at the sprite's FEET,
                 -- never its centre: leaning, squashing and toppling are all things a body does while
                 -- standing on the ground, and rotating a token about its middle reads as a spinning

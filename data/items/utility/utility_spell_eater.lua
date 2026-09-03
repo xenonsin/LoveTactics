@@ -20,7 +20,9 @@ return {
     tags = { "charm", "magical" },
     class = "mage",
     discipline = "spellbreaker",
-    price = 475,
-    unlockQuests = 3,
+    price = 495,
+    unlockQuests = 5,
     traits = { "trait_spell_eater" },
+    -- anti-magic as absorption -- the item is the resistance
+    bonus = { magicDefense = 3 },
 }

@@ -23,6 +23,9 @@ return {
         defense = 10, magicDefense = 12,
         movement = 4, -- it walks, and walking is half of what it does
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 4, luck = 5,
     },
     startingItems = { "weapon_hoarfrost_antlers", "utility_hoarfrost_pelt" },
     defaultAction = "weapon_hoarfrost_antlers",

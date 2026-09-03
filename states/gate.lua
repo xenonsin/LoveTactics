@@ -21,6 +21,7 @@ local State = require("states")
 local Choice = require("ui.panels.choice")
 local Descent = require("models.descent")
 local Gate = require("models.gate")
+local Mule = require("models.mule")            -- what comes back up the stair, and how wide it is
 local Player = require("models.player")
 local Scale = require("scale")
 local Menu = require("ui.menu")
@@ -134,6 +135,28 @@ function gate:build()
             end,
         }
     end
+    -- WIDEN THE MULE (models/mule.lua). Drawn only where the move is legal -- there is a rung above the
+    -- one this company stands on, and the gold is in hand -- rather than as a greyed plate quoting a
+    -- price nobody can pay. A company that cannot afford it is told by the row not being there, which is
+    -- the same rule "Wait a day" above is drawn under.
+    --
+    -- HERE RATHER THAN IN THE CITY because this is the counter the mule is standing at: it is the thing
+    -- that carries what comes back up this stair, and the decision to widen it is made looking at the
+    -- hole. The Forge bills in technique and the shops in standing; this is gold, plainly, for a bigger
+    -- bag.
+    local nextRung = Mule.nextRung(gate.player)
+    if nextRung and (gate.player.gold or 0) >= nextRung.price then
+        items[#items + 1] = {
+            label = "Widen the mule  " .. Mule.capacity(gate.player) .. " \226\134\146 " ..
+                nextRung.capacity .. "   (" .. nextRung.price .. "g)",
+            action = function()
+                if Mule.upgrade(gate.player) then
+                    Player.save()
+                    gate:build()
+                end
+            end,
+        }
+    end
     items[#items + 1] = { label = "Back to the City", action = function()
         State.switch(require("states.hub"))
     end }
@@ -232,7 +255,7 @@ function gate.draw()
 
     -- ...and the other half of the ledger, once she has explained what it is (Descent.everClimbedOut).
     if Descent.everClimbedOut(p) and gate.run then
-        countMeter:draw(Scale.WIDTH / 2 + 40, 250, 300, gate.run)
+        countMeter:draw(Scale.WIDTH / 2 + 40, 250, 300, gate.player)
     end
 
     if gate.menu then gate.menu:draw() end

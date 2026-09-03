@@ -15,4 +15,6 @@ return {
     price = 80,
     unlockQuests = 0,
     maxBonus = { stamina = Curve.ramp(15) },
+    -- a deeper pool is a body that lasts
+    bonus = { defense = 1 },
 }

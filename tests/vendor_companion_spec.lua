@@ -60,27 +60,24 @@ return {
         end,
     },
     {
-        -- THE DOOR IS THE GATE, not the visit.
+        -- THE DOOR GATE IS GONE, and this case is what is left of it.
         --
-        -- NOT EVERY HOUSE'S BODY ARRIVES THIS WAY, and the Bastion is the case that proves it: Rowan is
-        -- `startingRoster` (data/player.lua), sworn in the prologue, so he is in the company before the
-        -- player has seen a floor -- and the Bastion's door is still shut until its opener is run. That
-        -- is the intended shape rather than an exception to work around: knowing somebody is not the
-        -- same as being welcome in their hall. Saber reaches her counter the same way, off her quest's
-        -- `rewardCharacter`.
+        -- It used to assert that a house whose opener was unrun handed over nobody however often you
+        -- walked in -- knowing somebody is not the same as being welcome in their hall. There are no
+        -- house doors any more: the seven companions are met and recruited on a floor
+        -- (models/errand.lua), and the city keeps one counter that names no companion at all.
         --
-        -- So what is asserted is the CALL's answer, which is the same for every house, and the roster is
-        -- only checked for a body no other route has already handed over.
-        name = "a shut house hands over nobody, however often it is walked into",
+        -- What still has to hold is that this route cannot conjure a body out of a shop that has none,
+        -- because it is still called on every first visit to every vendor.
+        name = "a shop with no companion hands over nobody, however often it is walked into",
         fn = function()
-            local fresh = Player.new()
-            for _, vendorId in ipairs(houses()) do
-                local p = company(vendorId, false)
-                local who = Vendor.get(vendorId).companion
-                assert(VendorVisit.joinCompanion(p, vendorId) == nil,
-                    vendorId .. " gave up " .. who .. " with its door still shut")
-                if not holds(fresh, who) then
-                    assert(not holds(p, who), who .. " must not be in the company")
+            for vendorId, def in pairs(Vendor.defs) do
+                if not def.companion then
+                    local p = Player.new()
+                    local before = #p.roster
+                    assert(VendorVisit.joinCompanion(p, vendorId) == nil,
+                        vendorId .. " named nobody but handed somebody over")
+                    assert(#p.roster == before, vendorId .. " grew the roster anyway")
                 end
             end
         end,

@@ -104,8 +104,16 @@ return {
         -- which it acts about seven times and takes a little over one kill. Deliberately spelled out in
         -- those units rather than as a total, so the assumption is arguable rather than a magic number --
         -- and driven off the real floor count, so a deeper descent re-derives instead of going stale.
-        local floors, fightsPerFloor, actionsPerFight, killsPerFight = Descent.FLOORS, 6, 7, 1.25
-        local earned = floors * fightsPerFloor *
+        --
+        -- THE FIGHT COUNT IS SUMMED OFF THE REAL BUDGET, not assumed. This read `fightsPerFloor = 6`,
+        -- which was Descent.FLOOR_FIGHTS spelled out at the time -- so the case re-derived the floor
+        -- COUNT and then went stale on the floors themselves the moment the budget was re-cut. A floor
+        -- asks for eight at the top and eleven at the bottom now, and Descent.floorFights is the only
+        -- thing that knows it.
+        local actionsPerFight, killsPerFight = 7, 1.25
+        local fights = 0
+        for f = 1, Descent.FLOORS do fights = fights + Descent.floorFights(f) end
+        local earned = fights *
             (actionsPerFight * Experience.PER_ACTION + killsPerFight * Experience.PER_FELLING)
 
         -- ON THE ONE STEP THERE IS. This case used to name a descent-only constant, because the mode

@@ -19,7 +19,9 @@ return {
     tags = { "fist" },
     class = "priest",
     discipline = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
-    price = 475,
-    unlockQuests = 3,
+    price = 575,
+    unlockQuests = 6,
     waitBehavior = { kind = "gather", speed = 3, power = Curve.ramp(4, 14) },
+    -- centering is composure, and composure is aim
+    bonus = { skill = 2 },
 }

@@ -24,7 +24,7 @@ return {
     tags = { "summon" },
     class = "mage",
     discipline = "artificer",
-    price = 475,
+    price = 330,
     unlockQuests = 3,
     activeAbility = {
         target = "tile",

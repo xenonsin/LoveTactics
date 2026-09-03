@@ -10,7 +10,9 @@ return {
     tags = { "banner" },
     class = "knight",
     discipline = "paladin", -- knight x priest; a banner is a Paladin or Warlord object (docs/classes.md)
-    price = 345,
+    price = 245,
     unlockQuests = 2,
     traits = { "trait_formation_fighter" },
+    -- formation banks defense live; drill steadies the other school
+    bonus = { magicDefense = 2 },
 }

@@ -22,8 +22,8 @@ return {
     type = "weapon",
     tags = { "wand", "magical", "fire", "ranged" },
     class = "mage",
-    price = 475,
-    unlockQuests = 3,
+    price = 495,
+    unlockQuests = 5,
     activeAbility = {
         target = "enemy",
         range = 3,

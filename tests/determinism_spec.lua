@@ -336,4 +336,56 @@ return {
                 "runMove should leave nothing behind in the cue queue")
         end,
     },
+    {
+        -- THE TRIPWIRE THAT PROTECTS LOCKSTEP FROM THE MOUSE.
+        --
+        -- Accuracy made this file's subject matter dangerous in a way it was not before. A hovered
+        -- target now has a hit chance and a crit chance beside its damage, and those numbers are
+        -- computed by replaying the ability against a dry-run effect context. If any part of that
+        -- replay reached the battle's generator, the fight's random position would depend on WHERE THE
+        -- CURSOR HAD BEEN -- and two peers watching one duel do not share a mouse. One player idly
+        -- hovering an enemy would silently reroll the other player's next swing.
+        --
+        -- The protection already exists: the dry-run context hands abilities `random = function()
+        -- return 1 end`, and Combat.hitChance / Combat.critChance are pure reads. This asserts it,
+        -- because it is the kind of property that is true until someone reasonably adds a roll to a
+        -- preview and no other spec in the suite would notice.
+        name = "a preview consumes no draws, however many times the cursor asks",
+        fn = function()
+            local c = Combat.new(arena(8, 8, 8080),
+                { unit("character_rowan", 2, 2) }, { unit("character_bandit", 2, 3) })
+            local a, d = c.units[1], c.units[2]
+            local weapon = a.char.unarmed
+            for i = 1, Character.MAX_INVENTORY do
+                local item = a.char.inventory[i]
+                if item and item.activeAbility and item.activeAbility.damage then weapon = item end
+            end
+
+            local before = c.draws or 0
+            for _ = 1, 25 do
+                Combat.hitChance(c, a, d, weapon)
+                Combat.critChance(c, a, d, weapon)
+                Combat.computeDamage(c, a, d, weapon, {})
+                Combat.previewAbility(c, a, weapon, d.x, d.y)
+                Combat.abilityOutput(a, weapon)
+            end
+            assert((c.draws or 0) == before,
+                "a hover must not advance the battle's generator -- it moved from "
+                    .. before .. " to " .. tostring(c.draws))
+        end,
+    },
+    {
+        -- The other half of the same contract: a REAL swing must advance it, or the field above is
+        -- hashing a number that never moves and the desync tripwire is decoration.
+        name = "a real swing advances the draw count the state hash watches",
+        fn = function()
+            Combat.FORCE_HIT = false
+            local c = Combat.new(arena(8, 8, 9090),
+                { unit("character_rowan", 2, 2) }, { unit("character_bandit", 2, 3) })
+            local a, d = c.units[1], c.units[2]
+            local before = c.draws or 0
+            Combat.dealDamage(c, a, d, a.char.unarmed, {})
+            assert((c.draws or 0) > before, "an aimed blow spends draws deciding whether it landed")
+        end,
+    },
 }

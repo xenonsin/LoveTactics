@@ -4,7 +4,7 @@
 -- the field, on either side, up to five of them.
 --
 -- What makes it a wrath item rather than a generic snowball is the indifference. It does not reward
--- killing (data/items/utility/utility_executioners_eye.lua does that) and it does not answer a comrade
+-- killing (data/items/utility/utility_executioners_eye.lua does that) and it does not answer an ally
 -- falling. It rewards the fight going badly for SOMEBODY -- so the bearer's own line breaking is good
 -- news to it, which is the sin stated as arithmetic and is exactly what the Colosseum's crowd is for.
 --
@@ -25,7 +25,9 @@ return {
     tags = { "charm" },
     class = "fighter",
     discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
-    price = 345,
-    unlockQuests = 2,
+    price = 330,
+    unlockQuests = 3,
     traits = { "trait_blood_fever" },
+    -- the tally banks its own Power per corpse; this is only the apron
+    bonus = { defense = 1 },
 }

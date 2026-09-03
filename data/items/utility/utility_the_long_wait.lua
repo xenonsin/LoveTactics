@@ -23,7 +23,9 @@ return {
     tags = { "charm", "guile" },
     class = "rogue",
     discipline = "poacher",
-    price = 475,
-    unlockQuests = 3,
+    price = 495,
+    unlockQuests = 5,
     traits = { "trait_the_long_wait" },
+    -- a blow that cannot be answered is a blow taken carefully
+    bonus = { skill = 2 },
 }

@@ -29,6 +29,9 @@ return {
         defense = 6, magicDefense = 5,
         movement = 4, -- on the surface. Tunnel is how it actually crosses ground
         speed = 4,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 4, luck = 5,
     },
     startingItems = { "weapon_underbite", "ability_tunnel", "ability_old_breath" },
     defaultAction = "weapon_underbite",

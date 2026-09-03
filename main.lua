@@ -84,6 +84,15 @@ function love.load(args)
     -- Ranks every item by what it is actually worth (models/grade.lua) -- read without looking at its
     -- slot or its price, both of which are downstream of the grade -- and says where the shelf
     -- disagrees. Reports only; the rewrite is a separate pass. See tools/grade_report.
+    -- Drop tiers: & "E:/LOVE/lovec.exe" . drop-tier [apply]
+    -- An unpriced item has no shelf to sit on, so its grade sets the DEPTH the rift gives it up
+    -- at instead (models/spoils.lua). Reports only unless told to apply. See tools/drop_tier.
+    if args and args[1] == "drop-tier" then
+        require("tools.drop_tier").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
     if args and args[1] == "grade-report" then
         require("tools.grade_report").run({ select(2, unpack(args)) })
         love.event.quit(0)

@@ -19,6 +19,9 @@ return {
         defense = 6, magicDefense = 5,
         movement = 4, -- number of spaces this character can move
         speed = 5,    -- nimble
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 8, luck = 7,
     },
     -- Starting loadout (row-major; false = empty). The dagger opens a wound (Bleed), Shadow Step is the
     -- rogue's return-to-origin blink, Exploit is the conditional multiplier the shelf is built on,

@@ -24,14 +24,14 @@ return {
     tags = { "holy", "fire" },
     class = "priest",
     discipline = "inquisitor",
-    price = 475,
+    price = 330,
     unlockQuests = 3,
     activeAbility = {
         target = "self",
         range = 0,
         speed = 6,
         cost = { stat = "mana", amount = 18 },
-        damage = Curve.ramp(12, 22),
+        damage = Curve.ramp(10, 20),
         description = "Burns every Marked enemy, wherever it stands.",
         effect = function(fx)
             local burned = 0

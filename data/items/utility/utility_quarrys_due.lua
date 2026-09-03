@@ -21,7 +21,9 @@ return {
     tags = { "charm" },
     class = "hunter",
     discipline = "poacher",
-    price = 475,
-    unlockQuests = 3,
+    price = 495,
+    unlockQuests = 5,
     traits = { "trait_quarrys_due" },
+    -- a trap that also paints what it caught
+    bonus = { skill = 2 },
 }

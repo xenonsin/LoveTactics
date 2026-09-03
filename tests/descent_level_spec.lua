@@ -50,7 +50,10 @@ local function floorCtx(floor)
     local run = { floor = floor, seed = 4242 }
     local quest = Descent.floorQuest(run, Player.new())
     return {
-        day = math.max(1, math.floor(floor / Descent.FLOORS * Calendar.SPAN)),
+        -- The day this floor borrows for encounter eligibility, read off the same function the state
+        -- uses (Descent.poolDay). It was `floor / FLOORS * SPAN` spelled out here, which is how this
+        -- file went on measuring a mapping the game had stopped using.
+        day = Descent.poolDay(run),
         enemyLevel = quest.dangerLevel,
         quest = quest,
         floorLevel = quest.floorLevel,
@@ -150,6 +153,21 @@ return {
             -- Which floors those are is DERIVED rather than listed, so retuning OPENING_DANGER moves
             -- this instead of breaking it -- wherever depth outranks the borrowed day, the fight has to
             -- rate harder than the day would have made it.
+            --
+            -- COUNTED ACROSS THE SWEEP RATHER THAN ASSERTED PER BLUEPRINT. It used to demand that EVERY
+            -- combat def on a lifted floor rate strictly higher, which reads as the same claim and is
+            -- not. FOUR THINGS DECIDE A SPAWN LEVEL -- the borrowed day, the floor's own dial, the
+            -- authored `floorLevel`, and Growth.ENEMY_LEVEL_LAG pulling the tracked level back by a
+            -- tenth -- and once a floor is deep enough that its own floorLevel outranks both ladders
+            -- after the lag, every blueprint on it rates identically under either, CORRECTLY. Measured:
+            -- floor 6 carries floorLevel 11 against a dial of 13, and 13 x 0.9 floors back to 11.
+            --
+            -- So a deep tie says nothing about which ladder is in charge, and demanding otherwise is
+            -- asserting the lag away. The claim this case is actually about -- that the dial reaches the
+            -- SHALLOW floors the day would have left at blueprint level 1 -- is carried by the total
+            -- below and by the floor-1 check under it, which is where the defect was reported from. The
+            -- strict per-def reading of "which ladder wins" is the ctx == pinned assertion above, asked
+            -- of every def on every floor, and unchanged.
             local lifted = 0
             for floor = 1, Descent.FLOORS do
                 local ctx = floorCtx(floor)
@@ -157,11 +175,8 @@ return {
                     local byDay = { day = ctx.day, quest = ctx.quest, floorLevel = ctx.floorLevel }
                     for _, entry in ipairs(Encounter.pool(ctx)) do
                         local def = Encounter.get(entry.id)
-                        if def and def.kind == "combat" then
-                            assert(Muster.encounter(def, ctx) > Muster.encounter(def, byDay),
-                                string.format("floor %d still rates %s at the day's level -- the shallow "
-                                    .. "floors are back to spawning stock the company walked past",
-                                    floor, entry.id))
+                        if def and def.kind == "combat"
+                            and Muster.encounter(def, ctx) > Muster.encounter(def, byDay) then
                             lifted = lifted + 1
                         end
                     end
@@ -174,7 +189,7 @@ return {
             -- The first stair by name, because that is the floor the whole change was reported from and
             -- a derived sweep could drift off it without anyone noticing.
             assert(Descent.dangerLevel({ floor = 1 })
-                > Calendar.dangerLevel(math.max(1, math.floor(Calendar.SPAN / Descent.FLOORS))),
+                > Calendar.dangerLevel(Descent.poolDay({ floor = 1 })),
                 "floor 1 is back on the day's level, which is where stock spawned blueprint-exact")
         end,
     },

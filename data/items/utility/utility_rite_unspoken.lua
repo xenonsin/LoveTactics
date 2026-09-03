@@ -38,4 +38,6 @@ return {
             fx.dispel()
         end,
     },
+    -- everything invited is sent home
+    bonus = { magicDefense = 2 },
 }

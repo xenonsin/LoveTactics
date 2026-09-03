@@ -2,7 +2,7 @@
 -- It is the only reflex in the game keyed to the field rather than to its own bearer (the `onAnyDeath`
 -- broadcast, see models/trait.lua), and that indifference is the whole character of it.
 --
--- Every other death-adjacent rule in this codebase picks a side. A vengeance trait answers a comrade
+-- Every other death-adjacent rule in this codebase picks a side. A vengeance trait answers an ally
 -- falling; an executioner's charm answers a kill of its own. This one does not ask whose body it was,
 -- which is what separates wrath from grief and from ambition both: what feeds it is that the fight is
 -- going badly for someone. Lose your own front rank and the bearer is delighted.

@@ -17,11 +17,14 @@ return {
         defense = 7, magicDefense = 9,
         movement = 4,
         speed = 4,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 8, luck = 3,
     },
     startingItems = {
         "weapon_envenomed_kris", "consumable_envenom",  "consumable_crawler_mucus",
         "consumable_thinblood_rime", "utility_miasma_flask", "utility_spiteful_ichor",
-        "armor_leather_armor",   "consumable_healing_potion", false,
+        "armor_leather_armor",   "consumable_healing_potion", "utility_mother_vat",
     },
     defaultAction = "weapon_envenomed_kris",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

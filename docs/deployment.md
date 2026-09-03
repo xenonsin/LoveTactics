@@ -6,7 +6,7 @@ enemy already on it. Once the bell rings nothing changes hands: there is no way 
 mid-fight.
 
 This replaced a persistent *marching grid* arranged once in the hub. Placement is a decision about
-**ground** — where the cover is, which flank is open, how far the enemy line is — and none of that
+**ground** — where the cover is, which flank is open, which knot of enemies is nearest — and none of that
 exists until the board does. So it is made where the ground is.
 
 ## The two numbers
@@ -23,9 +23,15 @@ decision too many — you were choosing eight of nine without the board in front
 choosing four of the eight ten seconds later with it. The second choice is the real one, so it is now
 the only one.
 
-Everyone not standing is the **bench** (`combat.bench`), which is the whole point — a reserve you can
-spend. It grows with the roster: a late-campaign company benches more than it fields by a wide margin,
-and the deployment strip pages sideways rather than shrinking its cards past legibility.
+**Underground, nobody is not standing.** The expedition cap (`Descent.PARTY_MAX = 4`) and the field cap
+are the same number, so every body that walks down the stair stands on the board, and the bench
+(`combat.bench`) is empty in every campaign fight. It is still a real thing in the model — an arena
+parks anybody it had no room to seat there, and `Combat.benchCount` still reports it — but nothing the
+player does fills it. See [The bench](#the-bench).
+
+That is what deleted the **company strip**: a row of portrait cards in the gutter, one per member,
+dragged onto the board to field four of eight. It was answering *which four*, and the Gate answers that
+now.
 
 ## The deploy zone
 
@@ -50,28 +56,27 @@ unwalkable, or somebody else's — judged over the footprint of the body being s
 already reads that `nil` as *there is no room there*, so the rule holds for the phase, for its
 auto-fill, and for the walk-off path that skips the phase entirely.
 
-Bottom is the party's edge everywhere in `models/arena.lua` — enemies muster on the low rows, the
-draft's marching grid faces them — so a board that wants the party entering from elsewhere authors its
-own zone rather than being guessed at.
+Bottom is the party's edge everywhere in `models/arena.lua` — the draft's marching grid faces away from
+it — so a board that wants the party entering from elsewhere authors its own zone rather than being
+guessed at.
 
-**A board cut out of the map authors its own, and it is a band rather than a block.** `Arena.fromGrid`
-hands over the whole width of the edge the company arrived from, two rows deep, because that is what the
-fixed block becomes once the board has an outside: you came in *there*, so *there* is where you line up.
+**The enemy does not form up on the opposite wall.** A rolled board scatters them instead
+(`Arena.ENEMY_MIN_DEPTH`, `Arena.ENEMY_GROUP_MAX`): knots of one to three bodies at different depths
+and different columns, over the whole board bar the three rows nearest your edge. That gap is what the
+zone is measured against — a picket may stand one row past it, and a second knot may be four rows
+deeper on a flank, so *which way you face* is a real question at the phase rather than a formality
+answered by the far wall. A curated board keeps its authored `enemySpawns` untouched.
 
-**And on a cut board those two rows are whatever the map put there**, which is the one thing a rolled
-board never had to worry about. A window can clear both fightability floors and still be walled along
-the single edge the company happened to approach by. Measured across 180 seated fights: **a quarter
-offered fewer than eight of the sixteen band tiles, and four offered none at all** — at which point the
-zone falls back to the spawn spill, and what the player sees is five lit tiles scattered down a wall
-with the company smeared over them. That is what the phase looks like when the seating rule has failed,
-and it is the only place in the game where that failure is visible at all.
+**The zone was once a band along the edge you walked in from, and is not any more.** While a fight was
+taken on an 8×8 window of the map's own tiles, the board had an *outside* — you came in *there*, so
+*there* was where you lined up — and `Arena.fromGrid` authored a two-row band along that edge in place
+of the fixed block. It carried real problems with it: those two rows were whatever the map happened to
+have put there, so a quarter of seated fights offered fewer than half a band and a few offered none,
+falling back to a smear of lit tiles down a wall.
 
-So the band **deepens** rather than the zone giving up: it takes another row of your own side until it
-holds `DEPLOY_MIN`, capped at half the board, past which "your side" has stopped meaning anything and
-the fallback is the honest answer. Every claim the zone makes survives — the edge you arrived from,
-continuous with where you walked in — and the only thing given up is the fixed depth, which was a shape
-and never a promise. With the shape floor on the seating passes ahead of it
-([docs/overworld.md](overworld.md)), the share offering under half a band is now 3%, and none are empty.
+A fight builds its own board now ([docs/overworld.md](overworld.md)), so a campaign board has no outside
+and no arrival edge, and the fixed bottom-centre block above is the whole rule again — the same shape of
+choice on every board, which is what it was written to be.
 
 If that yields fewer than `Arena.DEPLOY_MIN = 4` tiles (the field cap, mirrored the way
 `Combat.MAX_FIELD` mirrors `Player.MAX_FIELD`), it falls back to the authored spawns: a cramped board
@@ -92,28 +97,42 @@ because nothing can happen there.
 
 ## The phase
 
-`ui/deploy_phase.lua`, hosted by `states/battle.lua`. The board is built and the enemy is standing on
-it; the zone is lit; the **company strip** sits in the combat log's rect — the board-width gutter
-directly under the tiles, so each portrait is under the ground it is about to be dragged onto. The log
-takes its rect back the moment the fight starts.
+`ui/deploy_phase.lua`, hosted by `states/battle.lua`. The board is built, the enemy is standing on it,
+the zone is lit — **and so is your line**: everyone the expedition brought is placed before the phase
+draws a frame (`autoFill`, on the arena's own bound spawns, last battle's four first). There is one
+surface and it is the board. The gutter under it holds a single hint line; the combat log takes that
+rect back the moment the fight starts.
 
-- **Drag** a card onto a lit tile to deploy. Tile to tile repositions; dropping on an occupied tile
-  **swaps** the two; dragging a body back off the board withdraws it to the bench. A drop on illegal
-  ground returns the portrait — nothing is lost by a bad drag.
-- The strip fits the whole company where it can. Past that, cards stop shrinking (`MIN_CARD_W`) and it
-  **pages**: the wheel scrolls it, keyboard/pad navigation drags it along, and a small `<n` / `n>` tab
-  at each end counts who is off-screen.
+**The board shows everything standing on it.** Not only the enemy and the lit zone: the props, the
+hazards, the walls, the traps the party can see, and the ground a `reach`/`hold` objective is fought
+over, all through the same overlay keys the fight fills once it is running (`deployOverlays` in
+`states/battle.lua`) — so a keg looks like a keg on both sides of the bell. It shipped lighting the zone
+alone, which made the barrel beside the chokepoint invisible for the one decision it exists to inform,
+while the phase's own hover box described it perfectly well to anyone who thought to hover a tile they
+had no way to know was there. What is deliberately absent is anything the *fight* is doing — reach,
+threat, intent, a route — because nothing is acting yet.
+
+The HUD's three rows read **Deployment Phase** / the objective / *Set your line* while the phase is up.
+The banner names the **beat** rather than the fight, because the phase is a thing you are doing and it
+ends; the encounter's own name comes back the instant the bell rings.
+
+- **Drag** a body from its tile to another lit one to move it. Dropping it on an ally **swaps** the
+  two. A drop on illegal ground refuses and says why — nothing is lost by a bad drag.
+- **There is nowhere to drag a body off to.** A drop outside the board is a refusal, not a withdrawal:
+  everyone who came down takes the field.
 - The phase's controls stack down the **left column**, in the band the fight's own drawer entries
-  occupy (`battle.deployControlRect`) — the screen's furniture goes where the screen already keeps it,
-  and the strip's foot is left to the hint line alone. Above them stand the only two pieces of the
+  occupy (`battle.deployControlRect`) — the screen's furniture goes where the screen already keeps it.
+  Above them stand the only two pieces of the
   fight's drawer that mean anything before the bell — **Settings** and the **board-turn pair** — and
   they stand *open*: there is no hamburger on this screen, because a fold over two always-legal
   controls hides nothing and costs a click on the beat where turning the board is the first thing a
   player wants to do. The drawer returns with the fight. The controls read top to bottom in the
-  order the decisions are made in: **Loadout**, **Auto-Fill**, **Clear**, **Auto**, and the bell last.
-- **Auto-Fill** places the four who fought last battle (`Player.lastDeployed`, ids only — no tiles are
-  ever persisted) on the board's own bound spawns: exactly where they would have stood before there was
-  a phase to choose in. **Clear** empties the board. **Begin Battle** commits.
+  order the decisions are made in: **Loadout**, **Reset Line**, **Auto**, and the bell last.
+- **Reset Line** re-runs the opening arrangement — the four who fought last battle
+  (`Player.lastDeployed`, ids only; no tiles are ever persisted) on the board's own bound spawns. It is
+  the only way back to that arrangement once the player has shuffled, which is why it survives with
+  nothing left to fill from. **Clear** went with the strip: a board you can empty with no card to
+  refill it from is a phase you can lock yourself out of. **Begin Battle** commits.
 - **Loadout** (`I`, pad `X`) opens the Armory's own screen (`ui/panels/party.lua`) over the phase, on
   the same roster and stash the hub and the overworld edit. Gear is the other half of the question this
   phase asks: where a body should stand is answered against what it is carrying, and until this button
@@ -130,8 +149,24 @@ takes its rect back the moment the fight starts.
   bell reads **Begin (Auto)** — a fight that plays itself is not a thing to discover after turn one.
   Any input still takes the current turn straight back (`reclaimAutoTurn`). A tutorial forbids
   auto-battle outright (`autoAllowed`), and there the switch does not draw at all.
-- Keyboard and pad reach all of it: the cursor crosses between the strip and the board, confirm picks
-  a member up, confirm on a zone tile places them.
+- **Keyboard and pad reach all of it.** The selection starts on the board — seated on a body rather
+  than on the grid centre the map would otherwise open at, so the first thing it is pointing at is
+  something you can pick up. Confirm on a standing body picks it up, confirm on a tile sets it down,
+  swapping if somebody is already there; back (`Esc`, pad `B`) sets them down where they stood. A body
+  in hand is **drawn**: their own tile ringed, their portrait riding the selection, and the ally under
+  it ringed too, because a swap that lit only one of its two tiles would read as an overwrite.
+- A step **left off the board's own edge** crosses into the control stack, where up/down walks the
+  plates, left/right walks a shared row (the auto switch and the speed cycler paired to it), and a step
+  right comes back to the board. The focused plate wears the cool steel the rest of the UI spends on a
+  moving selection, clear of the gold a thrown switch wears. This is the one crossing on the screen —
+  the strip's second region went with the strip — and it is read off the board cursor *refusing to
+  move*, so a board the player has turned still crosses on the key pointing at the column.
+- That ring is why **Reset Line** needs no pad button of its own, and why a fourth plate added to the
+  stack will not have to go hunting for a spare face button. Direct keys stand beside it for the hands
+  already there: `R` resets the line, `I` / pad `X` the Loadout, `V` / pad `Y` the auto switch, `F` /
+  pad right-stick the speed, `Enter` / pad `Start` the bell. `tests/deploy_input_spec.lua` walks the
+  ring and fails if any control in the stack has fallen off it. The wheel is unbound (the host swallows
+  it).
 
 Committing is the one path into "the fight is now running" (`commitDeploy`): it resolves the opening
 (below), benches whoever was not placed, and calls `Combat.openBattle`.
@@ -229,9 +264,10 @@ everyone who marched, and a benched member has to arrive already wearing it.
 | --- | --- |
 | `models/arena.lua` | `arena.deployZone`, `Arena.DEPLOY_COLS`/`DEPLOY_DEPTH`/`DEPLOY_MIN`, the authored `deployZone` field |
 | `models/combat.lua` | `deferOpen` / `Combat.openBattle`, `deployUnit`, `undeployUnit`, `restampDeployed`, and what is left of the bench section (`benchUnit`, `reinforceTiles`, `fieldCount`, `benchCount`, `eliminated`) |
-| `ui/deploy_phase.lua` | the phase: the strip, the drag, the placement, the column's control stack |
+| `ui/deploy_phase.lua` | the phase: the drag, the placement, the column's control stack, the keyboard/pad selection ring |
 | `ui/panels/party.lua` | the Loadout screen the phase opens (`fielded` badges the standing line) |
 | `ui/battle_map.lua` | `drawDeployZone` (the phase) |
 | `ui/combat_panel.lua` | the panel's layout, built and checked by `tests/combat_panel_spec.lua` |
 | `states/battle.lua` | `gutterRect`, `deployControlRect`, `commitDeploy`, `openDeployPhase`, `openDeployLoadout` |
 | `tests/deploy_spec.lua`, `tests/bench_spec.lua` | the rules above, headless |
+| `tests/deploy_input_spec.lua` | the selection ring: every control in the stack is reachable without a mouse |

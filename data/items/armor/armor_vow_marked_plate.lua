@@ -1,5 +1,5 @@
 -- Vow-Marked Plate: the knight half of the Paladin (knight x priest). Every affliction the wearer bears
--- hardens them, and every comrade who falls closes a ward over the gap.
+-- hardens them, and every ally who falls closes a ward over the gap.
 --
 -- The item that makes Lay On Hands a decision instead of a charity. Taking an ally's poison onto
 -- yourself moves a problem and pays for the privilege -- unless the body doing the taking is built to
@@ -23,8 +23,8 @@ return {
     tags = { "heavy", "holy" },
     class = "knight",
     discipline = "paladin",
-    price = 475,
-    unlockQuests = 3,
+    price = 495,
+    unlockQuests = 5,
     bonus = { defense = Curve.ramp(6, 16), movement = -2 },
     traits = { "trait_vow_marked" },
 }

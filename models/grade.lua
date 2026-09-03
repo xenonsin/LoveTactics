@@ -226,6 +226,28 @@ Grade.STAT_VALUE = {
     range = 0.15,
     stamina = 0.05,
     mana = 0.05,
+    -- THE TWO ACCURACY STATS (docs/accuracy.md), and the only two entries here that were derived
+    -- rather than judged -- because unlike the rest they resolve to arithmetic this file already
+    -- knows. Both are read at the reference band, where a shown hit chance sits near 85.
+    --
+    --   skill  +2 Hit, which 2RN turns into +1.14% of a landed turn ...... 1.14%
+    --          +0.5 crit point, and a crit adds 2 extra multiples (x3) ... 1.00%
+    --                                                              total   2.14%  ->  0.19
+    --
+    --   luck   -1 Hit against you, ie -0.57% of what lands ............... 0.57%
+    --          -1 crit point off every attacker, x2 multiples ........... 2.00%
+    --                                                              total   2.57%  ->  0.23
+    --
+    -- LUCK IS WORTH MORE THAN SKILL, and that is structural rather than a thumb on the scale: skill
+    -- adds HALF a crit point per point where luck denies a WHOLE one. It is also why luck reads as a
+    -- defensive stat that quietly does something offensive-feeling -- most of its value is in the crits
+    -- that never happen to you, not in the blows that miss.
+    --
+    -- Rounded up a hair from the derivation on both, because the arithmetic above prices only what the
+    -- stats do to DAMAGE, and both also decide whether an on-hit status lands at all -- which this file
+    -- has no way to fold in (see "What it cannot see" in docs/shelf.md).
+    skill = 0.2,
+    luck = 0.25,
 }
 
 -- Trait value when the blueprint has not authored one, in turns per fight, by the hook it hangs on.
@@ -1330,6 +1352,25 @@ Grade.SLOT_PINS = {
     -- grade. Its authored slot is where its bag is legal.
     armor_iron_plate = { min = 3, why = "its resist bag is only legal at the cap from this rung up" },
 
+    -- CADENCE: the Colosseum's rung 2, which the re-cut left opening a single plain row.
+    --
+    -- The shelf was cut into six rungs and is cut into nine now -- one per rung of the class ladder that
+    -- opens it (Discipline.CLASS_LEVEL_CAP) -- and spreading the same stock over three more bands left
+    -- exactly one house with a gate that barely moves: a player climbs a whole rogue... fighter level and
+    -- the arena's shop shows them one new row. `tests/balance_spec.lua`'s fair-share case is what caught
+    -- it, and this is the fix that file's own note prescribes.
+    --
+    -- Taken from rung 3, which still opens two plain rows without it, and taken deliberately rather than
+    -- handed back to the ranking: every candidate the grade offers drags its own magnitude rescale along
+    -- and vacates the rung it came from, so the hole simply walks a gate down per round. Which stock
+    -- rises is an authoring decision, so it is authored.
+    --
+    -- Heave is the right one to move. It is pure displacement -- what it does on open ground is shove a
+    -- body, and the damage only lands on a blocked throw -- so it is a verb a newcomer to the sand can
+    -- use before they own anything to follow it up with, and the arena is the house whose whole argument
+    -- is where the other man is standing.
+    ability_heave = { at = 2, why = "cadence: the Colosseum's rung 2 opened one plain row without it" },
+
     -- The Mammonite gate sits at slot 6 BETWEEN the halves of its kit: the earners are already on sale
     -- when the discipline unlocks, and the spenders are Aurea's own art, still two tiers off. Pinned as
     -- an ordering rather than as literal numbers, exactly as tests/purse_spec.lua asserts it.
@@ -1338,10 +1379,15 @@ Grade.SLOT_PINS = {
     -- act on and it sat above its own gate. The other earner is graded and a ceiling holds it fine.
     ability_ledgers_due = { at = 2, why = "a Mammonite earner: buyable by the time the gate clears" },
     ability_price_on_the_head = { max = 2, why = "a Mammonite earner" },
-    ability_blood_money = { min = 4, why = "spends the purse: Aurea's art, and it waits for her" },
-    ability_gilded_wound = { min = 4, why = "spends the purse" },
-    ability_grease_palms = { min = 4, why = "spends the purse" },
-    ability_open_account = { min = 4, why = "spends the purse" },
+    -- THE GATE MOVED, SO THE HALVES MOVED WITH IT. These four wait past the Mammonite's own gate
+    -- and the gate is a rogue level now (data/disciplines/mammonite.lua), not the Undercroft's
+    -- sixth job -- so a `min` of 4 that used to sit two tiers ahead of it now sits two behind.
+    -- The claim is unchanged and is an ORDERING: the earners are on sale by the time you can
+    -- walk in, and the spenders are Aurea's own art, still ahead of you when you do.
+    ability_blood_money = { min = 7, why = "spends the purse: Aurea's art, and it waits past her gate" },
+    ability_gilded_wound = { min = 7, why = "spends the purse" },
+    ability_grease_palms = { min = 7, why = "spends the purse" },
+    ability_open_account = { min = 7, why = "spends the purse" },
 
     -- THE WARD LINE IS PLACED, NOT RANKED -- both halves, at 3 and at 9, across all seven houses.
     --

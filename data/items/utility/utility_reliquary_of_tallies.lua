@@ -19,7 +19,7 @@
 -- see killUnit). No new bookkeeping: the box is reading a number the battle was already keeping.
 return {
     name = "The Reliquary of Tallies",
-    description = "Fills with every comrade lost; spend it to heal an ally or wound a foe.",
+    description = "Fills with every ally lost; spend it to heal an ally or wound a foe.",
     flavor = "The Cathedral keeps one in every chapter house. They are always, always full.",
     sprite = "assets/items/utility_reliquary_of_tallies.png",
     type = "utility",
@@ -37,7 +37,7 @@ return {
         requiresSight = true,
         speed = 3,
         cost = { stat = "mana", amount = 8 },
-        -- The purse this box holds: one charge per comrade lost, the same tally the effect spends.
+        -- The purse this box holds: one charge per ally lost, the same tally the effect spends.
         -- Surfacing it lets the grid draw the count (0 when empty) and refuse the cast while it's empty
         -- (Combat.itemBlockReason), so an empty reliquary greys out rather than wasting a turn on nothing.
         counter = function(unit)
@@ -47,7 +47,7 @@ return {
         effect = function(fx)
             local body = fx.unitAt(fx.tx, fx.ty)
             if not body then return end
-            -- Every comrade this unit has lost, which is the number the model was already keeping.
+            -- Every ally this unit has lost, which is the number the model was already keeping.
             -- Floored at nothing: an empty reliquary is an empty reliquary, and the log says so rather
             -- than quietly doing a small thing.
             local tallies = fx.user.char and require("models.combat").tallyCount(fx.user, "allyDown") or 0
@@ -63,4 +63,6 @@ return {
             end
         end,
     },
+    -- it fills with the ones you lost, which is the wrong kind of luck
+    bonus = { magicDefense = 1, luck = 1 },
 }

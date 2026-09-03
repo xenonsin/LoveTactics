@@ -20,6 +20,7 @@ return {
     type = "armor",
     tags = { "cloth" },
     class = "rogue",
+    dropTier = 1,
     traits = { "trait_smoke_screen" },
     bonus = { defense = Curve.ramp(2, 12), movement = -1 },
 }

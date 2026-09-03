@@ -12,15 +12,15 @@ return {
     type = "ability",
     tags = { "ice", "magical" },
     class = "mage",
-    price = 610,
-    unlockQuests = 4,
+    price = 660,
+    unlockQuests = 7,
     activeAbility = {
         target = "enemy",
         range = 3,
         requiresSight = true,
         speed = 3,
         cost = { stat = "mana", amount = 10 },
-        damage = Curve.ramp(12, 22), -- balances both the hit AND the freeze delay below
+        damage = Curve.ramp(15, 25), -- balances both the hit AND the freeze delay below
         effect = function(fx)
             -- The freeze rides the blow so it lands before the target can react to it. It is applied
             -- after mitigation is settled, so Frozen's own crush/fire `vulnerable` never feeds this

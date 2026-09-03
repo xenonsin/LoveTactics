@@ -14,8 +14,8 @@ return {
     tags = { "staff", "magical", "holy", "melee" },
     class = "priest",
     discipline = "theurge", -- mage x priest; the Channelled-miracle mechanic's first stock
-    price = 475,
-    unlockQuests = 3,
+    price = 495,
+    unlockQuests = 5,
     waitBehavior = { kind = "focus", mana = Curve.ramp(9, 19), speed = 10 },
     activeAbility = {
         target = "enemy",

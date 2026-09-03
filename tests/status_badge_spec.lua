@@ -1,11 +1,11 @@
 -- Tests for the board's status badge row (ui/battle_map.lua statusBadgeRects). The row is pure
 -- geometry, so it runs headless; the badges' drawing is covered by the in-game verification pass.
--- What matters here is containment: the row is right-justified inside a 60px tile, and a unit
+-- What matters here is containment: the row is right-justified inside a 64px tile, and a unit
 -- carrying more statuses than fit must NOT push badges out past the tile's left edge.
 
 local BattleMap = require("ui.battle_map")
 
-local TILE = 60 -- states/battle.lua BOARD_TILE
+local TILE = 64 -- states/battle.lua BOARD_TILE
 
 -- A stand-in for a real map: statusBadgeRects reads self.size and the board's facing (spanPixels), and
 -- nothing else. Given the BattleMap metatable so those come off the real module rather than being

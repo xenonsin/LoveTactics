@@ -17,11 +17,14 @@ return {
         defense = 12, magicDefense = 9,
         movement = 4,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 6, luck = 3,
     },
     startingItems = {
         "weapon_demon_bane",    "ability_smite",          "ability_zealous_charge",
         "ability_reckoning",    "utility_vow_of_the_march", "armor_crusaders_tabard",
-        "consumable_healing_potion", false,               false,
+        "consumable_healing_potion", "armor_marching_vow",               false,
     },
     defaultAction = "ability_smite",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

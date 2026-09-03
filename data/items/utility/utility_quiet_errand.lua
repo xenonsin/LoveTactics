@@ -43,4 +43,6 @@ return {
             fx.damage(fx.target, { amount = banked })
         end,
     },
+    -- striking anywhere in sight, for the ground you gave up
+    bonus = { skill = 2 },
 }

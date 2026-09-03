@@ -53,4 +53,6 @@ return {
             end
         end,
     },
+    -- the line was the ground she had already decided about
+    bonus = { skill = 2 },
 }

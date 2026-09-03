@@ -45,4 +45,6 @@ return {
             fx.applyStatus(lifted, "status_suspended", { duration = 10 + fx.level })
         end,
     },
+    -- lifting a body out of a fight entirely
+    bonus = { magicDamage = 2 },
 }

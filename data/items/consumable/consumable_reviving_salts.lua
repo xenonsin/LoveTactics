@@ -24,8 +24,8 @@ return {
     type = "consumable",
     tags = { "salts", "restorative" },
     class = "alchemist",
-    price = 245,
-    unlockQuests = 4,
+    price = 265,
+    unlockQuests = 7,
     activeAbility = {
         target = "tile",
         support = true, -- friendly cast: preview green

@@ -17,11 +17,14 @@ return {
         defense = 5, magicDefense = 12,
         movement = 4,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 7, luck = 4,
     },
     startingItems = {
         "weapon_staff",                  "ability_summon_earth_elemental", "ability_summon_ice_elemental",
         "ability_summon_lightning_elemental", "ability_summon_water_elemental", "ability_summon_wind_elemental",
-        "ability_doppelganger",          "utility_mana_wellspring",        "consumable_healing_potion",
+        "ability_doppelganger",          "utility_mana_wellspring",        "utility_court_kept_waiting",
     },
     defaultAction = "weapon_staff",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

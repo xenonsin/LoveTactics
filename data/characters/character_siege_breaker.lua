@@ -23,6 +23,9 @@ return {
         defense = 9, magicDefense = 6,
         movement = 0,
         speed = 2,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 6, luck = 0,
     },
     -- Its hands, and the only thing it carries. It had NOTHING before this line, which meant an 84-health
     -- assassinate mark was swinging weapon_unarmed -- the generic bare fist whose own flavour reads "it

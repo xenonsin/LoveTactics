@@ -33,6 +33,9 @@ return {
         defense = 13, magicDefense = 8,
         movement = 3,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 8, luck = 6,
     },
     startingItems = { "weapon_cinder_brand", "utility_cold_forge" },
     defaultAction = "weapon_cinder_brand",

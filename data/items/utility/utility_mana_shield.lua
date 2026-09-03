@@ -47,4 +47,6 @@ return {
     -- Forging deepens the pool the ward drains, so an upgrade buys a longer shield rather than a
     -- cheaper one. Folded into Combat.unreservedMax exactly as Attunement's is.
     maxBonus = { mana = Curve.ramp(6, 18) },
+    -- wounds paid out of the wrong pool
+    bonus = { magicDefense = 2 },
 }

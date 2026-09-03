@@ -4,11 +4,18 @@
 --
 -- Every number here is tuned against the avatar's opening kit, and they are tuned TIGHT:
 --
---   * health 14 dies to exactly one strike of the starting iron sword (power 6 + Damage 12 - the
---     2 defense below = 16), which is what lets the very first step of the lesson be "swing, and
---     watch it fall" instead of "swing three times".
---   * ...and to exactly one Clear Out (data/items/ability/ability_clear_out.lua), which is the last step:
---     the same 16 to everything standing next to you.
+--   * health 14 dies to one strike of the starting iron sword (power 6 + Damage 16 - the 2 defense
+--     below = 20), which is what lets the very first step of the lesson be "swing, and watch it
+--     fall" instead of "swing three times".
+--   * ...and to one Clear Out (data/items/ability/ability_clear_out.lua), which is the last step:
+--     the same 20 to everything standing next to you.
+--
+-- IT USED TO BE EXACT, at 16 against 14, and the margin is now six rather than two because the
+-- avatar's Damage came up from 12 to 16 (see character_avatar.lua for why -- it is the yardstick the
+-- whole bestiary is capped against, and it was ranking thirty-second on its own rung). The lesson is
+-- "one stroke", and one stroke is what it still is. What that widened margin costs is the ability to
+-- read this health as a tuned number: at 14 against 20 the imp would survive nothing it survives
+-- today, so nothing downstream notices, but a future edit to the sword no longer trips over it.
 --
 -- So a change to the sword, to Clear Out, or to these two lines breaks the prologue's whole shape. The
 -- heavier Demon Grunt (data/characters/character_demon_grunt.lua) is what the horde fields once the
@@ -42,6 +49,9 @@ return {
         defense = 2, magicDefense = 2,
         movement = 4,
         speed = 2, -- slower than the avatar and Rowan both: the party always opens
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 5, luck = 5,
     },
     -- Its body IS its weapon, and that weapon deliberately keeps its distance (see the file).
     startingItems = { "weapon_cinder_spit" },

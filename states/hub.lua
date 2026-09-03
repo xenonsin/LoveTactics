@@ -29,7 +29,7 @@ local BurgerButton = require("ui.burger_button")
 local CoachBubble = require("ui.coach_bubble")
 local Conversation = require("models.conversation")
 local Discipline = require("models.discipline")
-local Errand = require("models.errand")   -- the small work a house asks for before it opens a rung
+local Vendor = require("models.vendor")  -- hasMarkedStock: the unread half of a shop's dot
 local Item = require("models.item")
 local Identify = require("models.identify")
 local Wound = require("models.wound")     -- what a body carries up; the Inn's dot and the Inn's whole offer
@@ -447,13 +447,7 @@ function hub.enter()
         --
         -- THE THIRD ONE IS THE ONE THE CITY MOST NEEDS. A shelf climbs a rung at a time and each rung is
         -- bought by running an errand, but the house only ASKS when you open its door -- so a company
-        -- that came up from floor eight and did not think to call on the Bastion would never learn it
-        -- had work. The dot is what makes "somebody wants something" visible from the street, which is
-        -- the one thing a city of seven counters cannot say any other way.
         --
-        -- Cleared by being ASKED rather than by a flag of its own: `Errand.offered` stops answering the
-        -- moment the errand is taken on (vendorScenes accepts it on the way to the shelf), so the dot
-        -- goes out for the same reason the others do -- the thing it was pointing at has been seen.
         badge = function(b)
             -- SOMETHING IN THE SATCHEL NOBODY HAS READ (models/identify.lua). Asked BEFORE the vendor
             -- branch, and that order is the whole of this entry: the Touchstone declares a vendor id
@@ -488,26 +482,12 @@ function hub.enter()
             -- is still a wound, and a dot that cleared on the first glance would stop reminding the
             -- player at the exact moment they decided they could not afford it yet.
             if b.panel == "inn" then return #Wound.wounded(hub.player) > 0 end
+            -- A SHELF WITH SOMETHING ON IT NOBODY HAS READ. The dot used to carry two halves -- this
+            -- house is asking for work, or it is holding wares you have not seen -- and the asking half
+            -- is gone with the errands. What is left is the shelf, which clears on being read
+            -- (Player.seeNew) rather than on being acted on.
             if b.vendor then
-                local deepest = hub.player.descentRun and hub.player.descentRun.cleared or 0
-                return Errand.doorBadge(hub.player, b.vendor, deepest)
-            end
-            -- A DOT BEHIND A DOOR BEHIND A DOOR. The seven shelves moved off this board onto the market
-            -- square (data/buildings/markets.lua), and their dots went with them -- so a house asking
-            -- for work, or holding a rung an errand had just opened, said so on a screen the player has
-            -- no reason to open unless they already know. The card wears the OR of the seven: it points
-            -- INTO the square, where the same dot then names which counter.
-            --
-            -- Not the count, and not which house. A city plate says there is something in there; the
-            -- board behind it is one press away and answers both.
-            if b.state == "markets" then
-                local deepest = hub.player.descentRun and hub.player.descentRun.cleared or 0
-                for _, shop in ipairs(Building.list(hub.player, { district = "market" })) do
-                    if not shop.locked and Errand.doorBadge(hub.player, shop.vendor, deepest) then
-                        return true
-                    end
-                end
-                return false
+                return Vendor.hasMarkedStock(b.vendor, hub.player.newStock)
             end
             if b.panel == "party" then return Player.hasNewStash(hub.player) end
             return false
@@ -621,8 +601,12 @@ function hub.draw()
     -- the place dims while the cards, the title and the tally itself stay legible on top of it. Three of
     -- the four bands do nothing mechanical (models/descent.lua's COUNT_BANDS); this is what they are
     -- for -- a player noticing the city is worse than it was without being told so.
-    local dim = Descent.everClimbedOut(hub.player) and hub.player and hub.player.descentRun
-        and CountMeter.cityDim(hub.player.descentRun)
+    -- NO LONGER GATED ON A RUN BEING OPEN. It asked for `hub.player.descentRun` because the tally used
+    -- to live on the run, so there was nothing to read without one -- which meant the city stopped
+    -- dimming the moment an expedition ended, on exactly the morning the player is standing in it
+    -- looking at what they left behind. The tally is the company's now (models/descent.lua's
+    -- Descent.count) and the mark that gates it already answers the only question worth asking here.
+    local dim = Descent.everClimbedOut(hub.player) and CountMeter.cityDim(hub.player)
     if dim then
         Theme.set(Theme.mount, dim)
         love.graphics.rectangle("fill", 0, 0, screenW, screenH)
@@ -656,9 +640,9 @@ function hub.draw()
     -- is the moment it becomes about something they did. Until then this card is exactly what it has
     -- always been (models/descent.lua's Descent.everClimbedOut, and the mark is one-way for the same
     -- reason the Inn's door is).
-    if Descent.everClimbedOut(hub.player) and hub.player and hub.player.descentRun then
+    if Descent.everClimbedOut(hub.player) then
         local gate = Building.GRID.city.gate
-        countMeter:draw(gate.x, 384, gate.w, hub.player.descentRun)
+        countMeter:draw(gate.x, 384, gate.w, hub.player)
     end
 
     -- Drawn under any open panel (which dims the city), so the burger does not float over its own menu.

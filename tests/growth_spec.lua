@@ -35,7 +35,7 @@ return {
             local knownStat = {
                 health = true, mana = true, stamina = true, staminaRegen = true,
                 damage = true, magicDamage = true, defense = true, magicDefense = true,
-                movement = true, speed = true,
+                movement = true, speed = true, skill = true, luck = true,
             }
             for class in pairs(Item.CLASSES) do
                 local def = Growth.defs[class]
@@ -48,6 +48,22 @@ return {
             -- movement is deliberately never grown (grid balance).
             for class, def in pairs(Growth.defs) do
                 assert(def.movement == nil, class .. " must not grow movement")
+            end
+            -- Nor are skill and luck, for the same KIND of reason movement isn't, though the mechanism
+            -- differs. Movement is held still because the grid is a fixed size. Accuracy is held still
+            -- because it is read as a DIFFERENCE: hit% is Hit minus Avoid, and enemies scale with the
+            -- player (Growth.ENEMY_DAMAGE_GROWTH). A skill table and a luck table climbing on both
+            -- sides of that subtraction cancel exactly -- the numbers would move every level and the
+            -- hit chance would not, which is a stat that costs a save field and buys no decision.
+            -- Worse, they would not cancel forever: on a 0-10 band, even a tenth of a point per level
+            -- leaves the band inside one career, and the clamp would quietly eat the overflow.
+            --
+            -- So skill and luck are what a body IS, not what it becomes -- authored per blueprint and
+            -- moved only by gear and statuses, which is where an accuracy DECISION belongs. See
+            -- docs/accuracy.md and Character.ACCURACY_STATS.
+            for class, def in pairs(Growth.defs) do
+                assert(def.skill == nil, class .. " must not grow skill")
+                assert(def.luck == nil, class .. " must not grow luck")
             end
         end,
     },
@@ -103,71 +119,63 @@ return {
         end,
     },
 
-    -- ------------------------------------------------------------ dominant class
+    -- ------------------------------------------------------------ the declared job
     {
-        name = "dominantClass takes the most-cast class, breaks ties with the innate class",
+        name = "jobOf takes the declaration, then the innate class, then the neutral default",
         fn = function()
             local knight = Character.instantiate("character_rowan") -- innate class = knight
 
-            -- No casts yet: fall back to the innate class.
-            assert(Growth.dominantClass(knight) == "knight", "empty tally uses the innate class")
+            -- Undeclared: the blueprint's own class, which is what this body has been growing as all
+            -- along. A fresh recruit is never left standing still waiting to be told what it is.
+            assert(Growth.jobOf(knight) == "knight", "an undeclared body grows as its innate class")
 
-            -- A clear leader wins outright, even over the innate class.
-            knight.technique = { mage = 5, fighter = 2 }
-            assert(Growth.dominantClass(knight) == "mage", "argmax should win")
+            -- A declaration wins outright, and nothing else is consulted. This is the whole of the
+            -- change: growth used to be a reading of what the body had swung, so the ledger below could
+            -- move it. It cannot now, and that is the point -- a body's growth is a decision.
+            knight.job = "mage"
+            knight.technique = { fighter = 400 }
+            assert(Growth.jobOf(knight) == "mage", "the declaration beats both the ledger and the innate class")
 
-            -- A tie that includes the innate class resolves to it.
-            knight.technique = { mage = 3, knight = 3 }
-            assert(Growth.dominantClass(knight) == "knight", "the innate class breaks a tie it is in")
-
-            -- A tie between two classes the character was NOT born into leaves that rule unfired,
-            -- and the ledger is a keyed table -- so without a stated tie-break the winner is whichever
-            -- key the hash happened to yield. The title is what a player reads off the sheet, so the
-            -- same character could be described differently on two machines. Settled by name: not
-            -- because alphabetical order means anything, but because it is an answer.
-            knight.technique = { mage = 4, fighter = 4 }
-            assert(Growth.dominantClass(knight) == "fighter",
-                "a tie outside the innate class settles by name")
-
-            -- Stated the other way round, so the assertion cannot pass by luck of insertion order.
-            local other = Character.instantiate("character_rowan")
-            other.technique = { fighter = 4, mage = 4 }
-            assert(Growth.dominantClass(other) == "fighter",
-                "the same tie settles the same way whichever was banked first")
+            -- A declaration naming no real growth table falls through rather than crashing a level-up:
+            -- an id can go stale under a rename, and a body that cannot level is worse than one that
+            -- levels as the default.
+            knight.job = "no_such_job"
+            assert(Growth.jobOf(knight) == "knight", "an unknown job falls back to the innate class")
         end,
     },
     {
-        name = "a class-less character falls back to the neutral default when it has no casts",
+        name = "a class-less character falls back to the neutral default",
         fn = function()
             local zombie = Character.instantiate("character_zombie") -- no innate class
             assert(zombie.class == nil, "the zombie declares no class")
-            assert(Growth.dominantClass(zombie) == Growth.NEUTRAL_CLASS,
-                "no innate + no casts falls back to the neutral default")
+            assert(Growth.jobOf(zombie) == Growth.NEUTRAL_CLASS,
+                "no declaration and no innate class falls back to the neutral default")
         end,
     },
 
     -- --------------------------------------------------------------- resolve
     {
-        name = "resolve grows a character deterministically along its most-used class",
+        name = "resolve grows a character along the job it is declared in, whatever it has been swinging",
         fn = function()
             local knight = Character.instantiate("character_rowan")
             local baseMagic = knight.stats.magicDamage
             local baseManaMax = knight.stats.mana.max
             local baseHealthMax = knight.stats.health.max
 
-            -- Cast nothing but mage spells: the whole 1->5 climb grows as a mage. What a level-up
-            -- apportions is the ledger's delta SINCE THE LAST LEVEL, not the career total the title
-            -- reads -- and with a single key the blend is that key at 100%, which is the old behaviour
-            -- exactly.
-            knight.technique = { mage = 20 }
+            -- Declared a mage and swinging knight gear the whole way. The climb is a mage's, and the
+            -- ledger is deliberately loaded the other way to prove it: growth reads the badge, and the
+            -- hands are a different question entirely (they set the class LEVEL -- see
+            -- Discipline.classLevel -- which scales what the gear does rather than how the body grows).
+            knight.job = "mage"
+            knight.technique = { knight = 400 }
             local mage = Growth.defs.mage
 
             local summary = Growth.resolve(knight, 5)
             assert(summary, "leveling up should return a summary")
             assert(knight.level == 5, "level should track the target")
             assert(summary.fromLevel == 1 and summary.toLevel == 5, "summary spans the climb")
-            assert(summary.class == "mage", "it grew as a mage")
-            assert(summary.shares.mage == 1, "one house cast means one house credited, whole")
+            assert(summary.class == "mage", "it grew as a mage, because that is what it was declared as")
+            assert(summary.levels == 4, "the summary counts the levels it credited")
 
             -- 4 level-ups (1->5) of mage growth, baked onto the base stats.
             assert(knight.stats.magicDamage == baseMagic + 4 * mage.magicDamage, "magic grew 4x")
@@ -192,29 +200,28 @@ return {
         end,
     },
     {
-        name = "a multi-level jump apportions every level by the same shares, and checkpoints once",
+        name = "a multi-level jump applies the job's table once per level, and checkpoints once",
         fn = function()
             local knight = Character.instantiate("character_rowan")
+            knight.job = "fighter"
             knight.technique = { fighter = 3, mage = 1 }
+            local fighter = Growth.defs.fighter
+            local baseHealth = knight.stats.health.max
+
             local summary = Growth.resolve(knight, 3)
-            assert(summary.class == "fighter", "fighter led the stretch, so it heads the summary")
+            assert(summary.class == "fighter", "the declared job heads the summary")
             assert(summary.levels == 2, "the summary counts the levels it credited")
-            assert(math.abs(summary.shares.fighter - 0.75) < 1e-9
-                and math.abs(summary.shares.mage - 0.25) < 1e-9,
-                "three fighter casts to one mage is a 75/25 split, not a clean sweep")
+            assert(knight.stats.health.max == baseHealth + 2 * fighter.health,
+                "two levels are two whole applications of one table, not one batched application")
 
-            -- The ledger books SHARES, so two levels at 75/25 are 1.5 and 0.5 -- not two whole levels
-            -- to the winner. The mage casts are credited rather than discarded, which is the point.
-            assert(math.abs(knight.growthBy.fighter - 1.5) < 1e-9
-                and math.abs(knight.growthBy.mage - 0.5) < 1e-9,
-                "the ledger splits the jump the way the stats were split")
-
-            -- Consumed once, not per level -- and expressed as a checkpoint, because the ledger is also
-            -- the wallet and the career title and must not be wiped to pay for a level.
+            -- The checkpoint is caught up ONCE rather than per level, and it is expressed as a snapshot
+            -- rather than a wipe: the ledger is also the wallet and the class level, so clearing it
+            -- would pay for a level by deleting money and progression.
             assert(knight.technique.fighter == 3, "the ledger itself is untouched")
             assert(knight.techniqueAtLevel.fighter == 3 and knight.techniqueAtLevel.mage == 1,
                 "the checkpoint caught up to it, so the next level reads from zero again")
-            assert(next(Growth.sinceLevel(knight)) == nil, "nothing is outstanding right after a level")
+            assert(Character.techniqueSinceLevel(knight, "fighter") == 0,
+                "nothing is outstanding right after a level")
         end,
     },
     {
@@ -268,128 +275,61 @@ return {
         end,
     },
     {
-        -- The headline property of proportional crediting: a level split between two houses is
-        -- genuinely half of each, and the halves that do not divide evenly are CARRIED rather than
-        -- rounded away. Two levels at 50/50 must land exactly where one level of each would.
-        name = "a blended level credits both houses, and the carry pays out in full",
+        -- The ladder the class level is read off (Discipline.classLevel), asserted from the growth
+        -- side because this is where the two systems meet: the badge decides how a body GROWS, the
+        -- ladder decides what its gear DOES, and they are read off different fields on purpose.
+        name = "the class level climbs the technique ladder and never runs backward",
         fn = function()
-            local blended = Character.instantiate("character_rowan")
-            blended.technique = { knight = 10, mage = 10 }
-            Growth.resolve(blended, 3) -- two levels, each split 50/50
-
-            local split = Character.instantiate("character_rowan")
-            split.technique = { knight = 10 }
-            Growth.resolve(split, 2)                -- one whole knight level
-            split.technique.mage = 10
-            Growth.resolve(split, 3)                -- one whole mage level
-
-            for _, stat in ipairs({ "damage", "magicDamage", "defense", "magicDefense" }) do
-                assert(blended.stats[stat] == split.stats[stat],
-                    "two 50/50 levels must equal one of each for " .. stat
-                        .. " (" .. tostring(blended.stats[stat]) .. " vs " .. tostring(split.stats[stat]) .. ")")
-            end
-            for _, stat in ipairs({ "health", "mana", "stamina" }) do
-                assert(blended.stats[stat].max == split.stats[stat].max,
-                    "and for the " .. stat .. " pool")
-            end
-        end,
-    },
-    {
-        -- Float addition is not associative, so summing shares over `pairs()` would make the same
-        -- history grow differently depending on hash order. models/build.lua promises (id, ledger,
-        -- level) rebuilds the identical character anywhere and state_hash compares peers mid-duel, so
-        -- this is the property both of those rest on.
-        name = "the same ledger grows the same stats however its keys were inserted",
-        fn = function()
-            local function grownFrom(pairsInOrder)
-                local char = Character.instantiate("character_rowan")
-                char.technique = {}
-                for _, entry in ipairs(pairsInOrder) do char.technique[entry[1]] = entry[2] end
-                Growth.resolve(char, 9)
-                return char
-            end
-
-            local forward = grownFrom({ { "knight", 7 }, { "mage", 5 }, { "rogue", 3 }, { "priest", 2 } })
-            local backward = grownFrom({ { "priest", 2 }, { "rogue", 3 }, { "mage", 5 }, { "knight", 7 } })
-
-            for stat, amount in pairs(forward.growth) do
-                assert(backward.growth[stat] == amount,
-                    "insertion order changed " .. stat .. ": "
-                        .. tostring(amount) .. " vs " .. tostring(backward.growth[stat]))
-            end
-            assert(forward.stats.health.max == backward.stats.health.max, "and the health pool")
-        end,
-    },
-    {
-        -- Survivability is linear in a growth table, so a convex combination of tables that each clear
-        -- the floor clears it too. That is why blending cannot reopen the hole the floor exists to
-        -- close -- asserted here over the real tables rather than argued only in a comment.
-        name = "a blend of floor-clearing tables clears the floor itself",
-        fn = function()
-            local ids = {}
-            for id in pairs(Growth.defs) do ids[#ids + 1] = id end
-            table.sort(ids)
-
-            for _, magical in ipairs({ false, true }) do
-                for i = 1, #ids do
-                    local a, b = Growth.defs[ids[i]], Growth.defs[ids[(i % #ids) + 1]]
-                    -- The worst case for a blend is the lower of the two tables, so an even split can
-                    -- never fall under it -- and neither table is under the floor to begin with.
-                    local blended = 0.5 * Growth.survivability(a, magical)
-                        + 0.5 * Growth.survivability(b, magical)
-                    assert(blended >= Growth.ENEMY_DAMAGE_GROWTH,
-                        "a 50/50 blend of " .. ids[i] .. " and " .. ids[(i % #ids) + 1]
-                            .. " falls under the survivability floor")
-                end
-            end
-        end,
-    },
-    {
-        -- The property the checkpoint exists for: the price of changing direction is one level's worth
-        -- of casting, and it does NOT rise with the character's history. Apportioning against the
-        -- career total instead would make a veteran pay for its whole past before a new house took a
-        -- level.
-        name = "turning to a new class costs the same at level 40 as at level 3",
-        fn = function()
-            local function turnsAt(level)
-                local char = Character.instantiate("character_rowan")
-                -- A long career spent as something else entirely -- and already accounted for, which
-                -- is what the checkpoint records.
-                char.technique = { knight = 200, mage = 200 }
-                char.techniqueAtLevel = { knight = 200, mage = 200 }
-                char.growthBy = { knight = level - 1 }
-                char.level = level
-                -- One level's worth of rogue casting, and nothing more.
-                char.technique.rogue = 4
-                return Growth.resolve(char, level + 1)
-            end
-
-            assert(turnsAt(3).shares.rogue == 1, "a young character turns on one level's casting")
-            assert(turnsAt(40).shares.rogue == 1,
-                "and so does a veteran -- history must not price the turn")
-        end,
-    },
-    {
-        name = "the per-class ledger accumulates across a mixed career and never runs backward",
-        fn = function()
+            local Discipline = require("models.discipline")
             local char = Character.instantiate("character_rowan")
 
-            char.technique = { knight = 5 }
-            Growth.resolve(char, 2)
-            char.technique.knight = 10
-            Growth.resolve(char, 3)
-            char.technique.mage = 5
-            local health = char.stats.health.max
-            Growth.resolve(char, 4)
+            assert(Discipline.classLevel(char, "knight") == 0, "a body with no technique holds no level")
 
-            assert(char.growthBy.knight == 2 and char.growthBy.mage == 1,
-                "the ledger splits the career by what was actually cast")
-            assert(char.stats.health.max >= health,
-                "a level-up may never cost a character health it had already earned")
+            -- One short of the first rung is still nought: the rungs are the whole of the ladder, and a
+            -- level that arrived early would make the anchor below meaningless.
+            char.technique = { knight = Discipline.classLevelCost(1) - 1 }
+            assert(Discipline.classLevel(char, "knight") == 0, "one short of a rung has not reached it")
+            char.technique.knight = Discipline.classLevelCost(1)
+            assert(Discipline.classLevel(char, "knight") == 1, "the rung is reached exactly at its cost")
 
-            -- Idempotent: re-resolving at the same level credits nothing.
-            assert(Growth.resolve(char, 4) == nil, "no advance, no summary")
-            assert(char.growthBy.mage == 1, "and no second credit")
+            -- The cap holds against any amount, so a body that kept swinging past mastery does not
+            -- climb off the end of a ladder Combat.classScaled multiplies against.
+            char.technique.knight = 10 ^ 6
+            assert(Discipline.classLevel(char, "knight") == Discipline.CLASS_LEVEL_CAP,
+                "the ladder stops at its cap")
+
+            -- Forging must never cost progression. The Forge bills `techniqueSpent`, which is a
+            -- separate table for exactly this reason -- billing the career figure would make paying for
+            -- gear un-grow the body that paid.
+            char.techniqueSpent = { knight = 10 ^ 6 }
+            assert(Discipline.classLevel(char, "knight") == Discipline.CLASS_LEVEL_CAP,
+                "spending the whole bank leaves the class level where it was")
+        end,
+    },
+    {
+        -- THE ANCHOR, and the one number in the ladder that is not arbitrary: mastering one class is
+        -- one committed descent. Technique is TECHNIQUE_PER_ACTION an action capped at
+        -- TECHNIQUE_PER_BATTLE a fight, and a full descent is about seventy fights -- so a body that
+        -- commits to one house for a whole run banks in the neighbourhood of what the top rung costs.
+        -- Re-tune either constant without re-reading this and the ladder silently stops meaning
+        -- anything.
+        name = "mastering one class costs about one committed descent",
+        fn = function()
+            local Discipline = require("models.discipline")
+            local FIGHTS = 70
+            local banked = Discipline.TECHNIQUE_PER_BATTLE * FIGHTS
+            local mastery = Discipline.classLevelCost(Discipline.CLASS_LEVEL_CAP)
+
+            assert(mastery <= banked,
+                "a committed run must be able to reach mastery: " .. mastery .. " > " .. banked)
+            assert(mastery >= banked * 0.35,
+                "and must not be reachable in a third of one: " .. mastery .. " vs " .. banked)
+
+            -- Triangular, not flat: the eighth rung must cost more than the first, or committing stops
+            -- being a decision after the second one.
+            local first = Discipline.classLevelCost(1)
+            local last = mastery - Discipline.classLevelCost(Discipline.CLASS_LEVEL_CAP - 1)
+            assert(last > first * 2, "the top rung must cost meaningfully more than the bottom one")
         end,
     },
 
@@ -558,26 +498,26 @@ return {
     {
         -- The property the earned/spent split exists for, end to end: paying a real Forge bill must not
         -- move the career title or what the next level-up will apply.
-        name = "forging spends the wallet without touching the title or the pending growth",
+        name = "forging spends the wallet without touching the job or the class level",
         fn = function()
             local Discipline = require("models.discipline")
             local char = Character.instantiate("character_rowan")
-            Character.recordTechnique(char, "mage", 60)
+            char.job = "mage"
+            Character.recordTechnique(char, "mage", Discipline.classLevelCost(3))
             Character.recordTechnique(char, "knight", 20)
             local player = { roster = { char } }
 
-            assert(Growth.dominantClass(char) == "mage", "mage leads the career")
-            local beforeShares = Growth.shares(char)
+            local beforeLevel = Discipline.classLevel(char, "mage")
+            assert(beforeLevel == 3, "the ladder put this body at mage 3")
 
-            local billed = Discipline.spendTechnique(player, "mage", 50)
+            local billed = Discipline.spendTechnique(player, "mage", Discipline.classLevelCost(3))
             assert(billed == char, "the bill came off the only holder")
-            assert(Discipline.technique(player, "mage") == 10, "the wallet fell by what was billed")
-            assert(Growth.dominantClass(char) == "mage", "the title did not move")
+            assert(Discipline.technique(player, "mage") == 0, "the wallet fell by what was billed")
 
-            local afterShares = Growth.shares(char)
-            for key, share in pairs(beforeShares) do
-                assert(afterShares[key] == share, "the level-up reading did not move for " .. key)
-            end
+            -- The two things a forge must never charge: what a body IS, and how far it has got.
+            assert(Growth.jobOf(char) == "mage", "the declared job did not move")
+            assert(Discipline.classLevel(char, "mage") == beforeLevel,
+                "spending the whole bank left the class level exactly where it was")
         end,
     },
     {

@@ -45,4 +45,6 @@ return {
             end
         end,
     },
+    -- the item is time given back
+    bonus = { speed = 2 },
 }

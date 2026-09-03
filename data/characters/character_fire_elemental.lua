@@ -15,6 +15,9 @@ return {
         defense = 2, magicDefense = 10,
         movement = 4,
         speed = 4,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 2, luck = 6,
     },
     startingItems = { "weapon_flame_fists" },
     -- Basic tactics (models/ai.lua): a summoned brawler earns its keep -- press the foe closest to falling.

@@ -299,7 +299,12 @@ return {
                     local def = Item.defs[id]
                     assert(def, "rolled loot id must exist: " .. tostring(id))
                     assert(not def.bound, "a bound item must never drop: " .. tostring(id))
-                    assert(def.price and def.price > 0, "an unpriced item must never drop: " .. tostring(id))
+                    -- An unpriced item may drop NOW, but only on its own ladder: it has to carry a
+                    -- `dropTier` (tools/drop_tier.lua), which is what a shelf slot is for an item
+                    -- with no shelf. What must still never fall out is something with neither --
+                    -- a natural weapon, a signature, a body's phase machinery.
+                    assert((def.price and def.price > 0) or def.dropTier,
+                        "an item with neither a price nor a drop tier must never drop: " .. tostring(id))
                 end
             end
         end,

@@ -22,7 +22,9 @@ return {
     tags = { "charm", "poison" },
     class = "knight",
     discipline = "plague_knight",
-    price = 345,
-    unlockQuests = 2,
+    price = 495,
+    unlockQuests = 5,
     traits = { "trait_rot_fume" },
+    -- it banks Power per poisoned body; the gauntlet is still plate
+    bonus = { defense = 2 },
 }

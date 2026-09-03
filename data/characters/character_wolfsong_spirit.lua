@@ -22,6 +22,9 @@ return {
         defense = 7, magicDefense = 6,
         movement = 6, -- fastest thing on four legs
         speed = 6,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 2, luck = 0,
     },
     startingItems = { "weapon_wolf_fangs", "utility_feral_instinct" },
     -- Basic tactics (models/ai.lua): the great wolf runs down the wounded -- press the foe closest to falling.

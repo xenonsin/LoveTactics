@@ -69,4 +69,80 @@ return {
             assert(not has(castle, "encounter_stag"), "stag should not appear in the castle")
         end,
     },
+
+    {
+        name = "opensBattle answers for the ends and the errands, not only the rolled fights",
+        fn = function()
+            -- THE MARKER'S PROMISE, in table form. ui/overworld_map.lua draws one shared combat border
+            -- on everything this says yes to, so a kind that drifts out of it stops looking like a fight
+            -- while still being one -- which is precisely the state the errands were in.
+            for _, enc in ipairs({
+                { kind = "combat" },
+                { kind = "elite" },
+                { kind = "objective" },                                 -- the floor's own end
+                { kind = "objective", questId = "quest_bastion_slot_01" }, -- an errand: an end that is a job
+                { kind = "pack", composition = { "character_wolf" } },  -- the pile with something on it
+            }) do
+                assert(Encounter.opensBattle(enc),
+                    (enc.kind or "?") .. " opens the arena and must wear the combat border")
+            end
+
+            -- ...and the two exceptions kind alone cannot see. A `meet` end is walked onto, not fought
+            -- (the arena debut), and a pack dropped before the guard rule existed is a pickup.
+            assert(not Encounter.opensBattle({ kind = "objective", meet = true }),
+                "a meet end is a walk-out; promising a fight there is a lie the player walks into")
+            assert(not Encounter.opensBattle({ kind = "pack" }),
+                "an unguarded pack is a pickup")
+
+            -- Nothing else on the board, and this list is the whole of the rest of markerColor's kinds.
+            -- Asserted as a set rather than a sample, because the failure being guarded is a kind
+            -- quietly joining the fights, and a sample cannot see one it does not name.
+            for _, kind in ipairs({ "town", "treasure", "event", "rest", "relic_cache", "shrine",
+                                    "merchant", "crossroads", "ascent", "stair",
+                                    "dark", "spinner", "translation", "sink" }) do
+                assert(not Encounter.opensBattle({ kind = kind }),
+                    kind .. " is not a fight and must not wear the combat border")
+            end
+
+            assert(not Encounter.opensBattle(nil), "an empty tile is not a fight")
+        end,
+    },
+
+    {
+        name = "nobody restates the fight test beside the one that draws the border",
+        fn = function()
+            -- A SOURCE SCAN, because the defect this guards is a SECOND COPY rather than a wrong answer.
+            -- The border and the battle branch were one question asked in two places, and the way that
+            -- goes wrong is not that either is mistaken today -- it is that a kind is added to one of
+            -- them a year from now. states/game.lua held `kind == "combat" or kind == "elite" or kind ==
+            -- "objective"` twice; both read through Encounter.opensBattle now, and this fails if a third
+            -- copy is written.
+            --
+            -- Scoped to the two files that own the question. models/overworld.lua tests the same kinds
+            -- all over the generator and is right to: seating, guarding and tiering a fight are
+            -- placement questions, asked before an encounter is a stop the player can walk onto.
+            --
+            -- `objective` IS THE TERM SCANNED FOR, and that is what makes the scan mean something rather
+            -- than merely fire. Testing combat-and-elite together is common and usually correct --
+            -- ui/overworld_map.lua's pipSteps does it and deliberately leaves the ends out, because a
+            -- muster cannot price an escort. What says "this line is asking whether the arena opens" is
+            -- the ends being IN, which is the exact clause the errands were missing from the border.
+            for _, path in ipairs({ "states/game.lua", "ui/overworld_map.lua" }) do
+                local f = assert(io.open(path, "r"), "cannot read " .. path)
+                local src = f:read("*a"); f:close()
+                local n = 0
+                for line in src:gmatch("[^\n]+") do
+                    n = n + 1
+                    -- The notes quote the old test on purpose -- that is how they explain themselves --
+                    -- so a line that is entirely a comment is not code and does not count.
+                    if not line:match("^%s*%-%-") then
+                        assert(not (line:match('"combat"') and line:match('"elite"')
+                            and line:match('"objective"')), string.format(
+                            "%s:%d restates the fight test; ask Encounter.opensBattle so the border "
+                            .. "cannot drift from the branch that runs the battle", path, n))
+                    end
+                end
+            end
+        end,
+    },
 }

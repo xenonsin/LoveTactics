@@ -7,10 +7,13 @@ return {
     sprite = "assets/chars/stag.png",
     stats = {
         health = 62, mana = 30, stamina = 15,
-        damage = 10, magicDamage = 12,
+        damage = 15, magicDamage = 12,
         defense = 4, magicDefense = 9,
         movement = 4,
         speed = 5,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 3, luck = 5,
     },
     startingItems = { "weapon_fangs", "utility_feral_instinct" },
     -- Basic tactics (models/ai.lua): quick and fey, it darts to the kill -- press the foe closest to falling.

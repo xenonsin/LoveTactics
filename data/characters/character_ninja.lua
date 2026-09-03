@@ -22,6 +22,9 @@ return {
         defense = 8, magicDefense = 9,
         movement = 4,
         speed = 6,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 8, luck = 7,
     },
     -- The 3x3 loadout grid (row-major); false = an empty cell. Vanishing Strike is the build-around --
     -- strike, blink away, vanish -- with Mirror Image and Scatterlight seeding the decoys, Shadow Trade and
@@ -29,7 +32,7 @@ return {
     startingItems = {
         "weapon_iron_dagger",   "ability_vanishing_strike", "ability_mirror_image",
         "ability_scatterlight", "ability_shadow_trade",     "utility_substitution",
-        "armor_smoke_mantle",   "consumable_healing_potion", false,
+        "armor_smoke_mantle",   "consumable_healing_potion", "utility_fourth_shadow",
     },
     defaultAction = "weapon_iron_dagger",
     -- Strike the wounded from stealth, then vanish on the same blow.

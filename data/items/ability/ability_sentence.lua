@@ -23,14 +23,14 @@ return {
     tags = { "holy" },
     class = "priest",
     discipline = "inquisitor",
-    price = 475,
-    unlockQuests = 3,
+    price = 410,
+    unlockQuests = 4,
     activeAbility = {
         target = "enemy",
         range = 2,
         speed = 5,
         cost = { stat = "mana", amount = 14 },
-        damage = Curve.ramp(12, 24),
+        damage = Curve.ramp(10, 22),
         description = "Dispels a Marked foe's blessings, then burns it; executes it under a third.",
         effect = function(fx)
             local t = fx.target

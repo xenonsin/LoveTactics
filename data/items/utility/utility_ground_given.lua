@@ -41,4 +41,6 @@ return {
             fx.grantExtraAction(1)
         end,
     },
+    -- strike, cross the board, strike again -- both halves
+    bonus = { movement = 1, damage = 1 },
 }

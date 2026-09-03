@@ -22,7 +22,9 @@ return {
     tags = { "charm" },
     class = "knight",
     discipline = "spellbreaker",
-    price = 345,
-    unlockQuests = 2,
+    price = 410,
+    unlockQuests = 4,
     traits = { "trait_dampening_oath" },
+    -- an oath that makes magic cost double is anti-magic entire
+    bonus = { magicDefense = 3 },
 }

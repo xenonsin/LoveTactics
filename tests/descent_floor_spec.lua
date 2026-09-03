@@ -17,15 +17,14 @@ local function floorGrid(seed, opts)
     run.floor = (opts and opts.floor) or 1
     local mp = Descent.floorQuest(run, Player.new()).map
     return Overworld.generate({
-        biome = mp.biome, cols = mp.cols, rows = mp.rows, layout = mp.carve, spacing = mp.spacing,
+        biome = mp.biome, cols = mp.cols, rows = mp.rows,
         seed = seed, ascent = true, keyCount = 0,
         encounterCount = mp.encounters, cacheCount = mp.cacheCount,
         encounters = { { kind = "combat", weight = 3 }, { kind = "treasure", weight = 1 } },
         secrets = mp.secrets, exitAtStart = mp.exitAtStart,
-        -- Passed because the FLOOR asks for it. Leaving it off here would build a board the descent
-        -- never rolls, and every case below would be measuring a fiction. Same for the guarantee pair:
-        -- the kinds a floor pins, and how many of each.
-        guardBoons = mp.guardBoons,
+        -- Passed because the FLOOR asks for it. Leaving it off here would build a floor the descent
+        -- never rolls, and every case below would be measuring a fiction: the kinds a floor pins, and
+        -- how many of each.
         guaranteeKinds = mp.guaranteeKinds,
         guarantee = mp.guarantee,
     }), mp
@@ -111,9 +110,13 @@ return {
                 grid:reveal(door.x, door.y, 3)
                 assert(not door.seen, "seed " .. seed .. ": a hidden door lit through the fog")
 
-                -- ...and it is walkable ground the whole time, which is what makes it a DOOR rather
-                -- than a wall that turns into one: the corridor behind it already exists.
-                assert(grid:typeWalkable(door.tile), "seed " .. seed .. ": the door is not walkable")
+                -- ...and while it is hidden it is NOT a place, which is the whole of what makes it
+                -- read as absent. On a board of tiles a secret was walkable ground behind a wall and
+                -- only the fog hid it; on a grid there is no wall to hide behind, so the cell itself is
+                -- the disguise -- finding it ADDS a place to the floor rather than opening a way into
+                -- one that was already drawn (models/overworld.lua's placeSecrets).
+                assert(not grid:typeWalkable(door.tile),
+                    "seed " .. seed .. ": a hidden place is standing open")
 
                 assert(grid:findSecrets(door.x, door.y, 1), "seed " .. seed .. ": the door is not findable")
                 assert(not door.secret, "and finding it clears the mark")
@@ -133,8 +136,13 @@ return {
             for y = 1, grid.rows do
                 for x = 1, grid.cols do
                     if grid.cells[y][x].secret then
-                        assert(not grid:findSecrets(x + 4, y + 4, 1),
-                            "seed " .. seed .. ": a door was found from four tiles away")
+                        -- ASKED OF THIS DOOR, not of the sweep's return value. `findSecrets` answers
+                        -- whether it found ANY door, and on a denser board (Descent.FLOOR_COLS) the tile
+                        -- four away is often beside a different one -- so the old reading failed on a
+                        -- search that had correctly found somebody else's secret and left this one shut.
+                        grid:findSecrets(x + 4, y + 4, 1)
+                        assert(grid.cells[y][x].secret,
+                            "seed " .. seed .. ": this door was found from four tiles away")
                         assert(grid:findSecrets(x + 1, y, 1) or grid:findSecrets(x, y, 1),
                             "seed " .. seed .. ": a door beside the party was not found")
                         return
@@ -173,56 +181,6 @@ return {
         end
     end },
 
-    { name = "a floor's rewards get guards, even though it is an ascent", fn = function()
-        -- THE BUG THIS EXISTS TO STOP COMING BACK. `ascent` turned out to be two claims wearing one
-        -- name: "the objective goes on the farthest dead end" (which a floor wants, so the stair is the
-        -- end of the road) and "combat IS the route, so nothing gets guarded" (which it does not).
-        -- Overworld:guardBoons opened with an early return on ascent, so for a whole stretch of work not
-        -- one reward on any descent floor stood behind a fight -- against 69% on a campaign ground --
-        -- while `. board-report descent` showed nine loose fights and three quarters of the boons
-        -- sitting on a gateable tile. The supply and the geometry were both there and the flag was
-        -- throwing them away.
-        --
-        -- Asserted as a SHARE over several seeds rather than "at least one", because one guarded boon on
-        -- one lucky board is exactly what the broken version could also have produced by accident of
-        -- placement (guardBoons counts a fight that happened to already be standing there).
-        local run = Descent.new(Player.new(), 909)
-        assert(Descent.floorQuest(run, Player.new()).map.guardBoons,
-            "a floor asks for its rewards to be guarded")
-
-        local boons, guarded = 0, 0
-        -- THIRTY SEEDS, not ten. Ten was enough while the share sat near half and the failure being
-        -- guarded against was zero; it is not enough now that a guard also has to be able to FIGHT where
-        -- it stands (Overworld.BOX_OPEN), which took the measured share to ~42% and widened its spread.
-        -- A ten-seed sample of a 42% mean reads anywhere from 28% to 55%, so the spec was failing on the
-        -- sample rather than on the board.
-        for seed = 1, 30 do
-            local grid = floorGrid(seed)
-            for y = 1, grid.rows do
-                for x = 1, grid.cols do
-                    local c = grid.cells[y][x]
-                    if c.cache or (c.encounter and
-                        (c.encounter.kind == "treasure" or c.encounter.kind == "relic_cache")) then
-                        boons = boons + 1
-                    end
-                    if c.guards then guarded = guarded + 1 end
-                end
-            end
-            for _, p in ipairs(grid.patrols or {}) do
-                if p.guards then guarded = guarded + 1 end
-            end
-        end
-        assert(boons > 0, "the floors hold rewards at all")
-        -- Measured at ~42%, down from ~48% and for a reason worth writing down rather than tuning past:
-        -- a guard used to need only to be a cut vertex, and now needs to be a cut vertex a battle can
-        -- happen on. Those two wants pull opposite ways -- a gate is a narrow place and an arena is a
-        -- wide one -- and the fights this rule declines to seat are not lost, they stay in the clearings
-        -- placeEncounters put them in. A third is still well clear of the zero the bug produced and
-        -- under the share the geometry allows, so a retune of the carve does not have to come edit this.
-        assert(guarded / boons > 0.30,
-            string.format("only %.0f%% of a floor's rewards stand behind a fight (%d of %d) -- the " ..
-                "guarded-boon pass is being skipped again", guarded / boons * 100, guarded, boons))
-    end },
 
     { name = "a campaign ground grows no hazards and no secrets", fn = function()
         -- The inverse, and the one that actually catches a regression: a hole that dropped a quest party
@@ -373,26 +331,37 @@ return {
         assert(seen, "no campaign ground reached two rests -- the density knob has gone flat")
     end },
 
-    { name = "every floor is wider than the one above it", fn = function()
-        -- STRICTLY bigger, floor by floor, which is what the alternating axes buy: growing both together
-        -- would hold a size for two floors at a time, and a mode that counts down a floor at a time
-        -- should widen at the same rate. Asserted as area AND per axis, because an axis that shrank
-        -- while the other grew would still pass an area test and would read as the floor turning rather
-        -- than opening out. See Descent.floorDims.
+    { name = "every floor is at least as wide as the one above it, and the bottom is wider", fn = function()
+        -- FOUR CELLS OF SPAN ACROSS FIFTEEN FLOORS, laid on alternating axes: 6x6 at the top and 8x8 at
+        -- the bottom (Descent.floorDims).
+        --
+        -- The old claim here was STRICTLY bigger, floor by floor, and it was right for the board it was
+        -- written against -- a tile a floor over a 40x40 rectangle is half a percent of the area, small
+        -- enough to spend fifteen times. A cell on a 6x6 grid is nearly three percent of the floor AND a
+        -- whole place besides, so a rung a floor would take the bottom to 20x20 and turn a sitting into
+        -- an afternoon. The rate is four rungs held three or four floors each; what is asserted is that
+        -- it never goes backwards, that it steps on an axis at a time, and that the bottom is a floor you
+        -- can feel you walked down to.
         local cols, rows = Descent.floorDims(1)
         assert(cols == Descent.FLOOR_COLS and rows == Descent.FLOOR_ROWS,
-            "floor 1 is not the board the constants author -- the growth starts one floor too early")
+            "floor 1 is not the grid the constants author -- the growth starts one floor too early")
 
-        local pc, pr = cols, rows
+        local pc, pr, rungs = cols, rows, 0
         for f = 2, Descent.FLOORS do
             local c, r = Descent.floorDims(f)
             assert(c >= pc and r >= pr,
                 "floor " .. f .. " is narrower than floor " .. (f - 1) .. " on an axis")
-            assert(c * r > pc * pr, "floor " .. f .. " is no bigger than the floor above it")
+            -- ONE AXIS AT A TIME, which is what keeps consecutive floors differently SHAPED (7x6 is not
+            -- 6x7 to walk) and stops a rung landing as a jump.
+            assert((c - pc) + (r - pr) <= 1,
+                "floor " .. f .. " grew on both axes at once")
+            if c * r > pc * pr then rungs = rungs + 1 end
             pc, pr = c, r
         end
-        -- ...and the bottom is the widest ground in the game, by a margin worth having walked to.
-        assert(pc * pr > cols * rows * 1.5,
+        assert(rungs == 4, "the run should step four rungs, not " .. rungs)
+        -- ...and the bottom is the widest ground in the game, by a margin worth having walked to. A
+        -- third more places than the top, which on a grid is a dozen more somewheres.
+        assert(pc * pr > cols * rows * 1.3,
             string.format("fifteen floors of growth only reached %dx%d from %dx%d -- the slope is too "
                 .. "shallow to read over a run", pc, pr, cols, rows))
     end },
@@ -473,10 +442,17 @@ return {
         -- The ceiling is what the shape this replaced was measured at (~200 fights a run, `. board-report
         -- 60 descent`) with a wide margin under it. It is not a target -- it is the wall that says a
         -- later retune of either endpoint has quietly rebuilt the thing the budget was cut to fix.
+        --
+        -- THE BAND MOVED WITH THE STACK, and the old one is worth recording because it was measuring a
+        -- different game: 90-140 was cut for a FIFTEEN-floor descent you could bank progress in and walk
+        -- across many sittings. The descent resets when you leave it now, so the whole stack has to be
+        -- walkable in one run -- eight floors, and about seventy-six fights. The ceiling is what stops a
+        -- later retune quietly rebuilding the marathon; the floor is what stops one hollowing the run
+        -- out into a corridor.
         local total = 0
         for f = 1, Descent.FLOORS do total = total + Descent.floorFights(f) end
-        assert(total >= 90 and total <= 140, string.format(
-            "a descent bills %d fights end to end, outside the 90-140 the budget was cut to", total))
+        assert(total >= 60 and total <= 110, string.format(
+            "a descent bills %d fights end to end, outside the 60-110 a resettable run is cut to", total))
     end },
 
     { name = "the deepest floor is still one connected place", fn = function()

@@ -52,6 +52,9 @@ return {
         defense = 14, magicDefense = 6, -- soft to magic on purpose: the burst answer stays real
         movement = 5,
         speed = 6,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 8, luck = 1,
     },
     -- Her phase-two kit: the lifesteal greataxe she always carried (an innate 3-wide cleave that heals
     -- her a third of what it opens -- her sustain), beside the Unbound Heart (utility_unbound_heart, the

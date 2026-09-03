@@ -83,23 +83,113 @@ function Discipline.subclassesOf(class)
     return out
 end
 
--- Is discipline `id` unlocked for `player`? All its requiredQuests are completed, AND -- if it is a
--- multiclass -- the player already holds at least one unlocked subclass of EACH parent (earned
--- advancement). Recursion is shallow and terminating: a subclass has no discipline prerequisites.
-function Discipline.isUnlocked(player, id)
+-- ---------------------------------------------------------------------------
+-- The class level: how far one BODY has got in one job
+-- ---------------------------------------------------------------------------
+--
+-- FFT's job level, and it is read off cumulative technique EARNED -- `char.technique[key]`, banked two
+-- an action by Combat.awardTechnique against the class of the thing in the hand.
+--
+-- EARNED, NEVER AVAILABLE, and that is the whole reason the ledger is kept in two tables. The Forge
+-- bills `technique - techniqueSpent` (Character.techniqueAvailable); this reads the career figure,
+-- which only ever rises. A class level that fell when you forged something would make paying for gear
+-- cost progression, which is the same mistake Character.recordTechnique already refuses to make.
+--
+-- IT USED TO BE char.growthBy -- fractional levels apportioned by share of play, written by
+-- Growth.resolve. That ledger is gone with the blend that wrote it (models/growth.lua). Two ledgers
+-- measuring "how committed is this body to this house" could disagree, and one of them was already
+-- being collapsed to a max across the roster by its only reader.
+Discipline.CLASS_LEVEL_CAP = 8
+
+-- THE STEP OF THE LADDER, which is triangular: reaching level N costs STEP * N * (N+1) / 2 in career
+-- technique, so the rungs are 23, 69, 138, 230, 345, 483, 644, 828.
+--
+-- ANCHORED ON A COMMITTED DESCENT rather than picked. Technique is TECHNIQUE_PER_ACTION = 2 an action,
+-- capped at TECHNIQUE_PER_BATTLE = 30 a fight, and a full descent is around seventy fights -- so a body
+-- that commits to one house for a whole run banks in the neighbourhood of 840. 23 puts the top rung at
+-- 828, one short of overshooting it: MASTERING ONE CLASS IS ONE COMMITTED DESCENT.
+--
+-- Triangular rather than flat for the reason a number spent many times always is: a flat ladder makes
+-- the eighth rung cost exactly what the first did, so the decision to keep committing stops being a
+-- decision after the second one.
+Discipline.CLASS_LEVEL_STEP = 23
+
+-- The career technique needed to reach class level `n`. Zero at nought, which is the floor every body
+-- starts on and the one Balance reads as the item's authored magnitude.
+function Discipline.classLevelCost(n)
+    n = math.max(0, math.min(Discipline.CLASS_LEVEL_CAP, n or 0))
+    return Discipline.CLASS_LEVEL_STEP * n * (n + 1) / 2
+end
+
+-- What level `char` holds in class or discipline `key`, 0..CLASS_LEVEL_CAP.
+function Discipline.classLevel(char, key)
+    if not (char and key) then return 0 end
+    local earned = (char.technique or {})[key] or 0
+    local level = 0
+    for n = 1, Discipline.CLASS_LEVEL_CAP do
+        if earned >= Discipline.classLevelCost(n) then level = n else break end
+    end
+    return level
+end
+
+-- How far into the CURRENT rung `char` is, as career technique and the rung's own span --
+-- `held, needed, level`. What a progress bar on the character sheet draws, and it reports zero span at
+-- the cap rather than a bar that can never fill.
+function Discipline.classProgress(char, key)
+    local level = Discipline.classLevel(char, key)
+    if level >= Discipline.CLASS_LEVEL_CAP then return 0, 0, level end
+    local base = Discipline.classLevelCost(level)
+    local earned = (char and char.technique or {})[key] or 0
+    return earned - base, Discipline.classLevelCost(level + 1) - base, level
+end
+
+-- The highest level any body in the roster holds in `key`. The COMPANY-facing reading, for the handful
+-- of questions that are genuinely about the company rather than about a body -- a shop's shelf, the
+-- forge's ceiling. Max rather than sum, for the reason it always was: specializing one character is
+-- what opens the deep end, and spreading the same tally over four bodies does not.
+function Discipline.rosterLevel(player, key)
+    local best = 0
+    for _, char in ipairs((player and player.roster) or {}) do
+        local n = Discipline.classLevel(char, key)
+        if n > best then best = n end
+    end
+    return best
+end
+
+-- Is discipline `id` unlocked for `char`? Every class named in `requiredLevel` is held at that level or
+-- above BY THIS BODY, AND -- if it is a multiclass -- this body already holds a subclass of EACH parent.
+--
+-- PER BODY, WHICH IS THE WHOLE OF THE CHANGE. This used to read `player.completedQuests` against a
+-- discipline's `requiredQuests`, so a discipline unlocked for the company the moment anyone anywhere
+-- had run the quest behind it, and every body in the roster was interchangeable at a given moment. The
+-- FFT rule is per unit -- Knight 3 and Monk 3 open Ninja for THAT unit -- and it is what makes the
+-- roster diverge instead of levelling in lockstep.
+--
+-- Recursion is shallow and terminating: a subclass has no discipline prerequisites of its own.
+--
+-- Tolerates being handed a PLAYER for the transition, since several company-facing callers still ask
+-- this question of the whole roster (Discipline.unlockedSet). A player answers yes when any one of its
+-- bodies does, which is the same reading those callers had before.
+function Discipline.isUnlocked(who, id)
     local def = id and Discipline.defs[id]
     if not def then return false end
 
-    local completed = (player and player.completedQuests) or {}
-    for _, q in ipairs(def.requiredQuests or {}) do
-        if not completed[q] then return false end
+    if who and who.roster then
+        for _, char in ipairs(who.roster) do
+            if Discipline.isUnlocked(char, id) then return true end
+        end
+        return false
+    end
+
+    for key, need in pairs(def.requiredLevel or {}) do
+        if Discipline.classLevel(who, key) < need then return false end
     end
 
     if #(def.classes or {}) >= 2 then
         for _, parent in ipairs(def.classes) do
             local held = false
             for _, subId in ipairs(Discipline.subclassesOf(parent)) do
-                if Discipline.isUnlocked(player, subId) then held = true; break end
+                if Discipline.isUnlocked(who, subId) then held = true; break end
             end
             if not held then return false end
         end
@@ -155,12 +245,7 @@ end
 -- winner-take-all booking, and the honest reading of it.
 function Discipline.level(player, id)
     if not id or not Discipline.defs[id] then return 0 end
-    local best = 0
-    for _, char in ipairs((player and player.roster) or {}) do
-        local n = (char.growthBy or {})[id] or 0
-        if n > best then best = n end
-    end
-    return math.floor(best)
+    return Discipline.rosterLevel(player, id)
 end
 
 -- ---------------------------------------------------------------------------

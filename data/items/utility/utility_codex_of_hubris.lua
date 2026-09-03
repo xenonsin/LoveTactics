@@ -13,8 +13,8 @@ return {
     type = "utility",
     tags = { "arcane" },
     class = "mage",
-    price = 610,
-    unlockQuests = 4,
+    price = 575,
+    unlockQuests = 6,
     bonus = { magicDamage = Curve.ramp(10), magicDefense = Curve.ramp(5, 15) },
     resist = { magical = 4 },
 }

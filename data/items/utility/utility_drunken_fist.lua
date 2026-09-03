@@ -13,7 +13,9 @@ return {
     tags = { "fist" },
     class = "priest",
     discipline = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
-    price = 210,
-    unlockQuests = 1,
+    price = 245,
+    unlockQuests = 2,
     unarmedBonus = { drunkDamage = Curve.ramp(6, 16) },
+    -- the drunk's own luck; the Power belongs to the fist, not the wielder
+    bonus = { luck = 2 },
 }

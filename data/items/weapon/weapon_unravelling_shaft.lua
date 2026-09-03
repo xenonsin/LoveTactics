@@ -35,6 +35,7 @@ return {
     tags = { "bow", "pierce", "physical", "ranged" },
     hands = 2,
     class = "hunter",
+    dropTier = 5,
     activeAbility = {
         target = "tile",       -- the square, not the body: the ground is what is being bought
         allowOccupied = true,  -- and a square somebody is standing on is still a square (see above)

@@ -24,8 +24,8 @@ return {
     tags = { "axe", "slash", "physical", "melee" },
     hands = 2, -- a maul takes both hands: the binding is worth the free slot
     class = "fighter",
-    price = 210,
-    unlockQuests = 1,
+    price = 330,
+    unlockQuests = 3,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -34,7 +34,7 @@ return {
         speed = 5,
         cost = { stat = "stamina", amount = 13 },
         -- Under the iron axe's per target: what this swing is for happens on everybody else's turn.
-        damage = Curve.ramp(6, 16),
+        damage = Curve.ramp(9, 19),
         aoe = { shape = "front", width = 3 },
         effect = function(fx)
             local caught = fx.aoeUnits()

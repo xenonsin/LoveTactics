@@ -23,8 +23,8 @@ return {
     tags = { "bow", "pierce", "physical", "ranged" },
     hands = 2, -- every bow is two-handed
     class = "hunter",
-    price = 475,
-    unlockQuests = 3,
+    price = 410,
+    unlockQuests = 4,
     activeAbility = {
         target = "enemy",
         range = 3,
@@ -32,7 +32,7 @@ return {
         requiresSight = true,
         speed = 2,
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.ramp(12, 22), -- a shade under an iron bow's: the light is the rest
+        damage = Curve.ramp(10, 20), -- a shade under an iron bow's: the light is the rest
         effect = function(fx)
             -- The light rides the shaft: it marks whoever the arrow hits, and only a survivor -- the
             -- .alive guard the carried path enforces for free.

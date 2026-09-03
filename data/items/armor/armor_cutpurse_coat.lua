@@ -18,6 +18,7 @@ return {
     type = "armor",
     tags = { "leather" },
     class = "rogue",
+    dropTier = 2,
     -- Tagged for identity and growth, never for the rack: quest-only gear carries the discipline but
     -- has no price, so it is not part of what the shelf unlock delivers (tests/discipline_spec.lua).
     discipline = "mammonite",

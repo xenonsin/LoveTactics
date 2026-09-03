@@ -17,6 +17,9 @@ return {
         defense = 11, magicDefense = 4, -- coin is excellent armour and no help at all against a spell
         movement = 2,
         speed = 2,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 6, luck = 0,
     },
     startingItems = { "weapon_coffer_shell" },
     defaultAction = "weapon_coffer_shell",

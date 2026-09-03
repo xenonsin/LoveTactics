@@ -25,6 +25,9 @@ return {
         defense = 10, magicDefense = 4,
         movement = 3,
         speed = 2, -- it comes around slowly, which is the whole telegraph
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 4, luck = 5,
     },
     startingItems = { "weapon_grendlemaw_gullet" },
     defaultAction = "weapon_grendlemaw_gullet",

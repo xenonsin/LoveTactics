@@ -28,12 +28,14 @@ return {
     tags = { "arcane", "sigil" },
     class = "mage",
     discipline = "elementalist", -- deeper cut of the shelf: buyable only once the elementalist gate is cleared
-    price = 345,
-    unlockQuests = 2,
+    price = 330,
+    unlockQuests = 3,
     aura = {
         appliesTo = { "ability", "weapon" },
         requiresTags = { "magical" },
         -- NEGATIVE is faster. Folded into Combat.actionSpeed and floored there at 1.
         speedBonus = { -1, -1, -2, -2, -2, -3, -3, -3, -4, -4, -4 },
     },
+    -- the neighbour comes back around sooner; so does the bearer
+    bonus = { speed = 2 },
 }

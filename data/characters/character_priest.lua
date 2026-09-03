@@ -18,6 +18,9 @@ return {
         defense = 6, magicDefense = 11,
         movement = 4, -- number of spaces this character can move
         speed = 3,    -- initiative tie-break; folded into starting initiative
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 3, luck = 6,
     },
     -- Starting loadout as the 3x3 grid the player sees (row-major); false = an empty cell. This is the
     -- RELIC-FREE generic priest: NO Hallowed Censer in the center (that bound Sanctified-Presence relic is

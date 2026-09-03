@@ -29,11 +29,13 @@ return {
     type = "utility",
     tags = { "arcane" },
     class = "mage",
-    price = 345,
-    unlockQuests = 2,
+    price = 410,
+    unlockQuests = 4,
     aura = {
         appliesTo = { "ability", "weapon" }, -- a spell and an enchanted blade are the same school
         requiresTags = { "magical" },        -- ...and only the ones that actually ARE magic
         amountBonus = Curve.ramp(4, 14), -- added to the neighbor's ability magnitude
     },
+    -- it raises the magnitude of everything beside it
+    bonus = { magicDamage = 2 },
 }

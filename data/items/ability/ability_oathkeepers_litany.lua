@@ -23,7 +23,7 @@ return {
     tags = { "holy" },
     class = "priest",
     discipline = "paladin",
-    price = 210,
+    price = 165,
     unlockQuests = 1,
     activeAbility = {
         target = "self",

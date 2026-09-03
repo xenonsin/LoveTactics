@@ -42,6 +42,9 @@ return {
         defense = 12, magicDefense = 14,
         movement = 4,
         speed = 4,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 6, luck = 8,
     },
     -- Her loadout as the 3x3 grid (row-major); false = an empty cell. Her rule rides on the Envious Glass
     -- in the center (unstealable). Around it: the blank homunculi she fills the board with.

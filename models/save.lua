@@ -172,13 +172,14 @@ local function snapshotCharacter(char)
     end
     if next(carry) then snap.growthCarry = carry end
 
-    -- The per-key ledger of levels credited. Fractional now (Growth.resolve books shares), so this is
-    -- stored as written rather than rounded -- Discipline.level does the flooring when it gates a shelf.
-    local growthBy = {}
-    for class, count in pairs(char.growthBy or {}) do
-        if count and count > 0 then growthBy[class] = count end
-    end
-    if next(growthBy) then snap.growthBy = growthBy end
+    -- The declared job (Growth.jobOf). One string, omitted while the body has never been declared into
+    -- one, which is how a fresh recruit keeps growing as its blueprint's innate class.
+    --
+    -- It replaced `growthBy`, the per-key ledger of levels credited in shares. Nothing migrates: the
+    -- class level that ledger gated is read off `technique` now (Discipline.classLevel), which is
+    -- persisted just below and has always been, so an old save comes back with its class levels intact
+    -- and simply undeclared.
+    if char.job then snap.job = char.job end
 
     -- THE LEDGER and its two companions (Character.recordTechnique). Earned is monotonic; spent and the
     -- level checkpoint both only ever rise toward it. Each omitted while empty, like their neighbours
@@ -633,6 +634,31 @@ function Save.snapshot(player)
         -- must not come off the plaza the morning after it was earned (models/descent.lua).
         climbedOut = player.climbedOut or nil,
         tallyTaught = player.tallyTaught or nil, -- ...and whether she has explained it. See Descent.tallyTaught.
+        -- ...AND THE TALLY ITSELF, which used to ride on the run (models/descent.lua's snapshot) and now
+        -- rides here beside the mark that gates its readout. The note above is the reason it had to move:
+        -- it said the tally "falls back to nought the moment they descend again", which was survivable
+        -- while a run outlived every climb-out and is not survivable at all once a descent resets. The
+        -- state of the rift is the company's, not one expedition's -- see Descent.count.
+        --
+        -- Purely additive, so Save.VERSION does not move: an older save has no `count` here and its
+        -- reader carries the run's forward instead (Save.restore).
+        count = (player.count or 0) > 0 and player.count or nil,
+        -- ...and how wide the pack mule has been bought (models/mule.lua). Nil until somebody pays,
+        -- which reads back as the base capacity -- so this is purely additive too.
+        muleCapacity = player.muleCapacity,
+        -- WHAT THE COMPANY LEFT DOWN THERE, in rifts that have since closed (Descent.strandPacks).
+        -- Already plain data -- Descent.dropPack snapshots on the way in -- so this is a copy rather
+        -- than a conversion, and it has to be a copy or the saved table would be the one being mutated.
+        -- `guardIds` is a flat list of id strings, which is the only reason it can ride at all: a
+        -- composition function here would take the whole save write down.
+        lostPacks = (function()
+            local out = {}
+            for i, d in ipairs(player.lostPacks or {}) do
+                out[i] = { id = d.id, floor = d.floor, count = d.count, items = d.items,
+                           guard = d.guard, guardIds = d.guardIds }
+            end
+            return #out > 0 and out or nil
+        end)(),
         -- The supper bought at the Cafe and not yet eaten through (models/meal.lua) -- a bare meal id,
         -- nil when nobody has ordered. Purely additive, so Save.VERSION deliberately does NOT move: an
         -- older save loads with no meal held, which reads as a company that has not been to the counter
@@ -645,6 +671,12 @@ function Save.snapshot(player)
         seenDoors = seenDoors,
         flags = flags,
         newItems = newItems,
+        -- THE SHELF WATERMARK: the rung each class had reached the last time the counter was
+        -- asked what had opened (Market.markOpened). Without it a load re-announces every ware
+        -- the company has ever unlocked, which is a dot that means nothing on the morning it
+        -- matters most. Purely additive -- absent on an older save, which reads as nought and
+        -- lets the first call absorb the opening band silently.
+        shelfRung = player.shelfRung and next(player.shelfRung) and player.shelfRung or nil,
         newStock = newStock,
         lastDeployed = lastDeployed,
         roster = roster,
@@ -702,7 +734,7 @@ local function restoreCharacter(snap)
         level = snap.level,
         growth = snap.growth,
         growthCarry = snap.growthCarry,
-        growthBy = snap.growthBy,
+        job = snap.job,
         technique = snap.technique,
         techniqueSpent = snap.techniqueSpent,
         techniqueAtLevel = snap.techniqueAtLevel,
@@ -718,15 +750,6 @@ local function restoreCharacter(snap)
     -- dealt this way, which reads as a body carrying no bond growth -- exactly right for one that has
     -- never been pulled twice.
     if snap.bonded and snap.bonded > 0 then char.bonded = snap.bonded end
-
-    -- A save written before per-class level crediting existed carries no `growthBy`, so the ledger
-    -- would read as a character that had never levelled at all. Seed it the way that save's stats were
-    -- actually earned: under the old rule every level went to the single dominant class, so crediting
-    -- the whole climb there reproduces exactly the history those baked stats came from. Guarded on the
-    -- field being absent, so a current save is never rewritten.
-    if snap.growthBy == nil and (char.level or 1) > 1 then
-        char.growthBy = { [Growth.dominantClass(char)] = char.level - 1 }
-    end
 
     -- instantiate() seeds the grid from the blueprint's startingItems; the save owns the
     -- grid, so clear it and lay the saved items back into their exact cells.
@@ -960,6 +983,28 @@ function Save.restore(snap)
         wounded = snap.wounded == true, -- ...and no history of any, which is what an older save reads as
         climbedOut = snap.climbedOut == true, -- ...and has never turned back, which is what one reads as too
         tallyTaught = snap.tallyTaught == true, -- ...so nobody has had to explain the tally to them yet
+        -- The tally (Descent.count). READ OFF THE RUN AS A FALLBACK, because that is where every save
+        -- written before the move put it -- and it is read from the RAW snapshot rather than from the
+        -- restored run, which no longer carries the field at all. A company mid-descent when this landed
+        -- keeps the number it earned instead of walking into the city at nought.
+        count = snap.count or (type(snap.descentRun) == "table" and snap.descentRun.count) or 0,
+        -- The mule's width. Nil on a save from before it existed, which Mule.capacity reads as the base
+        -- rung -- the same thing a company that has never upgraded reads as.
+        muleCapacity = type(snap.muleCapacity) == "number" and snap.muleCapacity or nil,
+        -- The piles waiting at depth. Absent on a save from before the rift started closing behind the
+        -- company, which reads as one that has never lost anything -- the same thing a lucky company
+        -- reads as. See Save.snapshot.
+        lostPacks = (function()
+            local out = {}
+            for i, d in ipairs(type(snap.lostPacks) == "table" and snap.lostPacks or {}) do
+                if type(d) == "table" and d.id then
+                    out[#out + 1] = { id = d.id, floor = d.floor, count = d.count, items = d.items,
+                                      guard = d.guard, guardIds = d.guardIds }
+                end
+                _ = i
+            end
+            return out
+        end)(),
         -- A meal id that vanished from data/ is dropped rather than crashing the load, exactly like a
         -- removed item or character -- and reads as a company that has not eaten.
         meal = known(require("models.meal").defs, snap.meal) and snap.meal or nil,
@@ -970,6 +1015,10 @@ function Save.restore(snap)
         seenDoors = seenDoors,     -- nil on an older save, which is what the hub seeds off (see above)
         flags = flags,             -- absent on a save from before this existed; empty reads as unanswered
         newItems = newItems,
+        -- The shelf watermark, restored as written. A class that has since been renamed away
+        -- simply never matches a live one and is inert, which is the same forgiving default the
+        -- dots above take.
+        shelfRung = snap.shelfRung or {},
         newStock = newStock,
         lastDeployed = lastDeployed,
         roster = roster,

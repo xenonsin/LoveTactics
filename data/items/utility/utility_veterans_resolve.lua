@@ -10,7 +10,9 @@ return {
     tags = { "charm" },
     class = "fighter",
     discipline = "warlord", -- deeper cut of the shelf: buyable only once the warlord gate is cleared
-    price = 475,
-    unlockQuests = 3,
+    price = 495,
+    unlockQuests = 5,
     traits = { "trait_last_stand" },
+    -- a barrier that arrives when the fight has already gone badly
+    bonus = { defense = 2 },
 }

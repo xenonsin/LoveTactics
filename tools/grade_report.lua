@@ -21,12 +21,24 @@ local Item = require("models.item")
 local Vendor = require("models.vendor")
 local Quest = require("models.quest")
 local Trait = require("models.trait")
-local Errand = require("models.errand") -- TIERS: the rung count the shelf and the errand ladder share
+local Discipline = require("models.discipline") -- CLASS_LEVEL_CAP: the rung count the shelf is cut into
 
 local M = {}
 
-local function maxGateFor(vendorId)
-    return math.max(0, Errand.tiers(vendorId) - 1)
+-- THE TOP RUNG OF A SHELF, which is the top of the class ladder that opens it.
+--
+-- It used to be `Errand.tiers(vendorId) - 1` -- the count of jobs the house asked for, less its opener.
+-- Houses do not ask for work any more; a class is something a BODY climbs
+-- (Discipline.classLevel), so the shelf is cut into as many bands as that ladder has rungs and the two
+-- are the same list counted from two ends exactly as they were before.
+--
+-- IT IS THE SAME NUMBER FOR EVERY SHELF NOW, where it used to be per-house, and nothing here objects:
+-- the count was already uniform at six in practice, and this function existed so it would not have to
+-- be. Re-cutting from six rungs to nine widens every band, so a re-grade and a magnitude rescale are
+-- owed after this lands -- `. grade-report apply` then `. balance-rescale apply 0`, finishing on the
+-- rescale and never on the grade.
+local function maxGateFor()
+    return math.max(0, Discipline.CLASS_LEVEL_CAP)
 end
 
 -- The earliest slot a DISCIPLINE item may name. No subclass opens on a house's opener -- that job is the

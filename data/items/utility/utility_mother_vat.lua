@@ -39,4 +39,6 @@ return {
             end
         end,
     },
+    -- calling in every poison debt on the field at once
+    bonus = { magicDamage = 2 },
 }

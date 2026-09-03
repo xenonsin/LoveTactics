@@ -26,6 +26,7 @@ return {
     type = "armor",
     tags = { "heavy", "arcane" },
     class = "mage",
+    dropTier = 6,
     traits = { "trait_gaunt_vigil" },
     bonus = { defense = Curve.ramp(4, 14), magicDefense = Curve.ramp(2, 12), movement = -2 },
     resist = { physical = 3 },

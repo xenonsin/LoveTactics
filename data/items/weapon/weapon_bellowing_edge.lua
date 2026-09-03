@@ -21,7 +21,7 @@ return {
     hands = 2,
     class = "fighter",
     price = 740,
-    unlockQuests = 5,
+    unlockQuests = 8,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

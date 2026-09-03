@@ -41,6 +41,7 @@ return {
     type = "weapon",
     tags = { "wand", "magical", "arcane", "ranged" },
     class = "mage",
+    dropTier = 7,
     activeAbility = {
         target = "enemy",
         range = 3,

@@ -60,7 +60,7 @@ local SHOVE_HOLD  = 0.22     -- a shove (knockback) stands its ground this long 
 -- The board's end-state art was once specced as a Spine rig per combatant, whose commission brief
 -- names six clips: idle, move, attack, hit, cast, death (docs/commission-board-sprites.md). All six
 -- are authored HERE instead, as transform curves over a flat token -- which is what a unit displayed
--- at ~52px on a 60px tile can actually show. Skeletal deformation at that size is sub-pixel; what
+-- at ~56px on a 64px tile can actually show. Skeletal deformation at that size is sub-pixel; what
 -- reads is where the body is, how far it is leaning, and whether it is squashed or stretched.
 --
 -- So spriteState carries a full 2D transform -- offset, ROTATION and NON-UNIFORM SCALE -- and every
@@ -79,7 +79,7 @@ local SHOVE_HOLD  = 0.22     -- a shove (knockback) stands its ground this long 
 local IDLE_PERIOD = 1.9     -- seconds per breath
 local IDLE_RATE   = 2 * math.pi / IDLE_PERIOD
 -- These three were first authored at roughly half these values and were invisible on the board: at a
--- 60px tile, 0.016 of a tile is one pixel, and a one-pixel breath is not a breath. Anything meant to
+-- 64px tile, 0.016 of a tile is one pixel, and a one-pixel breath is not a breath. Anything meant to
 -- read at this size has to be measured against the tile, then looked at.
 local IDLE_RISE   = 0.030   -- fraction of a tile the body floats at the top of the breath
 local IDLE_SWELL  = 0.030   -- how far it swells with it
@@ -446,11 +446,20 @@ end
 -- heavier `battle.crit` for a big untyped blow. Motif.of reads the same tag order the burst does, so the
 -- sound a blow makes and the burst it throws always name the same element. A heavy TYPED hit rings its
 -- own cue pitched down a touch, so the element still reads as "more" without a separate crit sound.
-local function playHit(amount, tags)
+-- `critical` now means what the cue's name always claimed. `battle.crit` shipped long before the dice
+-- did, and fired on any blow of 12 or more -- a stand-in for "that was a big one" while there was no
+-- such thing as a critical hit to ring for. There is now, so a real crit takes the cue outright, and
+-- the heavy-blow rule stays underneath it for an ordinary blow that simply hit hard.
+local function playHit(amount, tags, critical)
     local heavy = (amount or 0) >= HEAVY_HIT
     local motif = Motif.of(tags)
     local id = motif and ("battle.hit_" .. motif)
-    if id and Sound.cues[id] then
+    -- A crit rings the crit cue even when the blow carries an element: the dice outrank the damage
+    -- type here, because "that was a critical" is the thing the player most needs to hear, and a fire
+    -- crit that sounded exactly like a fire hit would only be legible from the number.
+    if critical then
+        Sound.play("battle.crit")
+    elseif id and Sound.cues[id] then
         Sound.play(id, heavy and { pitch = 0.9 } or nil)
     else
         Sound.play(heavy and "battle.crit" or "battle.hit")
@@ -492,11 +501,11 @@ function CombatFx:playBeat(events, actor)
             -- `cell`, not e.unit, for the same reason the burst below marks it: a blow that also
             -- shoves has already moved the model, and the recoil has to be measured from the tile the
             -- body is still being DRAWN on.
-            self:hit(e.unit, e.amount, e.lethal, e.attacker, cell)
+            self:hit(e.unit, e.amount, e.lethal, e.attacker, cell, e.critical)
             -- A killing blow's audio is the "death" cue below, not a hit on top of it; a surviving blow
             -- rings its damage-type impact (see playHit).
             if not e.lethal then
-                playHit(e.amount, e.tags)
+                playHit(e.amount, e.tags, e.critical)
             end
             -- Only a blow the ACTOR itself struck feeds the actor-fallback lean below. Incidental
             -- damage sharing this beat -- a Burn/Poison tick, a trap, a hazard, all of which carry no
@@ -548,8 +557,18 @@ function CombatFx:playBeat(events, actor)
             -- own telegraph draws the footprint, so this just voices the charge.
             Sound.play("battle.channel")
         elseif e.type == "miss" then
-            -- A blow that was voided outright -- dodged, smoked, substituted (models/combat.lua). No
-            -- damage number floats, so the sound is the only tell that the attack landed nothing.
+            -- A blow that landed nothing -- the hit roll failed, or it was dodged, smoked or
+            -- substituted (models/combat.lua).
+            --
+            -- IT FLOATS A WORD NOW, and that is not decoration. The sound used to be the only tell,
+            -- which was tolerable while a miss meant one of three rare reflexes had fired; since
+            -- accuracy it is the single most common thing that happens to an attack, and a turn whose
+            -- only feedback is a noise reads as the game having ignored the click. The float lands
+            -- where the damage number would have, so the eye is already looking at it.
+            --
+            -- Cool steel rather than a damage colour: nothing happened to this body, and the reds are
+            -- reserved for things that did.
+            self:floatText(e.unit, "MISS", { 0.62, 0.70, 0.78 })
             Sound.play("battle.miss")
         elseif e.type == "slide" then
             -- If this cue was pinned while it waited (see :pinSlides) the sprite is already sitting on
@@ -604,12 +623,23 @@ end
 -- tile it has already been moved to would recoil it the wrong way. Both are optional: damage with no
 -- attacker at all (a Burn tick, a hazard, a trap) has no line to recoil along and keeps the
 -- direction-blind shake instead.
-function CombatFx:hit(unit, amount, lethal, attacker, cell)
+function CombatFx:hit(unit, amount, lethal, attacker, cell, critical)
     local r = self:reaction(unit)
     r.shakeT = SHAKE_TIME
     r.flashT = FLASH_TIME
     if attacker then self:knock(unit, attacker, amount, cell) end
-    self:floatText(unit, tostring(amount), lethal and { 1.0, 0.42, 0.38 } or { 0.95, 0.28, 0.26 }, lethal)
+    -- A CRITICAL reads as one before the player has finished counting the number. It floats in the
+    -- warm gold this UI reserves for "live" (Theme's accentAmber family) rather than the damage reds,
+    -- and at the big size a killing blow uses -- the two things a crit has in common with a kill are
+    -- that it is rare and that it decides something, so they are allowed to share an emphasis. The
+    -- colour is what keeps them apart: red is what happened to the body, gold is what the dice did.
+    local color = { 0.95, 0.28, 0.26 }
+    if critical then
+        color = { 1.0, 0.78, 0.30 }
+    elseif lethal then
+        color = { 1.0, 0.42, 0.38 }
+    end
+    self:floatText(unit, tostring(amount), color, lethal or critical)
     -- The card's rumble + flash read the same shakeT/flashT below, so they land in sync with the sprite.
     -- A killing blow reaches past the struck body to the whole frame: a brief hit-stop, a punch and a
     -- shake, so a death lands with weight. These no-op under the reduced-effects setting (ui/screen_fx).

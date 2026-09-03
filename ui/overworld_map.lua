@@ -16,12 +16,13 @@
 --   map:keypressed(key); map:gamepadpressed(joystick, button)
 
 local Scale = require("scale")
+local Overworld = require("models.overworld") -- for the tile name the mass is drawn in (Overworld.BLOCKED)
 local InputMode = require("input_mode") -- which device is live, for the hovered-fight readout
 local Sprite = require("models.sprite")
 local Tileset = require("models.tileset")
 local Muster = require("models.muster") -- for BAND -> pip count; the comparison itself is the caller's
-local Patrol = require("models.patrol") -- the fights that walk their beat (models/patrol.lua)
-local Quest = require("models.quest") -- sponsorOf: which house posted the work standing on a tile
+local Quest = require("models.quest") -- sponsorOf: which house posted the work standing on a cell
+local Encounter = require("models.encounter") -- opensBattle: the one question the combat border asks
 local VendorIcons = require("ui.vendor_icons") -- ...and that house's own mark, which is what draws
 local Theme = require("ui.theme")
 
@@ -36,6 +37,58 @@ local DEFAULTS = { axisThreshold = 0.5 }
 local MOVE_INITIAL = 0.18
 local MOVE_REPEAT = 0.05
 
+-- HOW DARK THE MASS IS, and how dark the country beyond the floor is.
+--
+-- A cell that is not there is drawn in the BIOME'S OWN MATERIAL -- the forest's canopy, the underworld's
+-- basalt, the desert's rock -- because that is what the floor was cut out of, and a dungeon whose walls
+-- do not say where you are is a dungeon anywhere. That is Dream Quest's board: the same stone all the
+-- way to the edge of the screen, with the floor opened out of it.
+--
+-- It is DIMMED rather than drawn at full, and the reason is the failure this replaced. The first version
+-- painted every solid cell one flat near-black, because at full strength the forest's canopy came out
+-- BRIGHTER than the ground beside it and the floor read as green fields with brown paths between them --
+-- the exact inverse of the truth. Flat black fixed the reading and threw the biome away with it. A dim
+-- keeps both: the hue still says forest or basalt or sand, and the value stays under the darkest thing a
+-- place can be, so the outline of the floor is never in question.
+--
+-- HOW DARK, DERIVED PER BIOME RATHER THAN SET. This started as one constant and one constant cannot do
+-- it, which is worth writing down because the failure it produces looks like an art problem.
+--
+-- A biome authors its fill against its floor as a COUNTRY reads: the forest's canopy is darker than its
+-- trail, and the tundra's snow drift (0.86, 0.89, 0.93) is far BRIGHTER than its trodden snow, because a
+-- bright drift beside a shadowed route is exactly right on a map you cross. Dim every biome by the same
+-- 0.45 and the relationship survives -- so the forest reads correctly and the tundra and the desert come
+-- out with the mass brighter than the floor, which is the same inversion that made a forest floor look
+-- like green fields with brown paths between them.
+--
+-- So the dim solves for a RELATIONSHIP the biome cannot author its way out of: the mass sits at
+-- MASS_BELOW of the darkest a place ever gets, which is a place under unread fog. Every biome keeps its
+-- hue -- canopy, basalt, sand, drift -- and none of them can out-brighten the floor. Measured across the
+-- eight, the solved dim runs from 0.19 (tundra, a drift that had to come a long way down) to 0.65
+-- (underworld, basalt that was already nearly there).
+--
+-- SURROUND_SCALE is the country past the play area: the same stone a little further off. Close to the
+-- mass on purpose -- one continuous material with the floor opened out of it is the reference's whole
+-- picture, and what frames the play area is the seam around it rather than a step in value. It was 0.5
+-- once and the surround came out darker than the screen's own background, so the floor floated on a
+-- black page with no country around it at all, which is the thing this pass exists to fix.
+local MASS_BELOW = 0.75
+local SURROUND_SCALE = 0.85
+
+-- The two fog tiers, named because the mass is solved against the first of them. They were literals in
+-- :drawFog, which was fine while nothing else read them and is not now: the whole point of the
+-- derivation below is that the mass sits under the darkest a place can be, so if the veil is deepened
+-- here and the mass does not follow, the guarantee is quietly gone. See :drawFog for what each means.
+local FOG_UNREAD = 0.66
+local FOG_READ = 0.42
+
+-- Perceived brightness. The coefficients are the standard luma weights; what matters here is only that
+-- green counts for most of it, which is what a flat average gets wrong on exactly the two biomes that
+-- broke the constant.
+local function lum(c)
+    return 0.2126 * (c[1] or 0) + 0.7152 * (c[2] or 0) + 0.0722 * (c[3] or 0)
+end
+
 -- Camera easing rate: the camera target snaps to the player each step, but the
 -- drawn camera eases toward it (`cam += (target-cam) * min(1, dt*CAM_LERP)`) so
 -- the view glides instead of jumping a tile at a time. The player token slides
@@ -47,6 +100,7 @@ function OverworldMap.new(grid, opts)
     local self = setmetatable({}, OverworldMap)
     self.grid = grid
     self.onEncounter = opts.onEncounter
+    self.onDoorPosting = opts.onDoorPosting -- a house asks at the door of the room its work stands in
     self.onArrive = opts.onArrive -- fired on EVERY landed tile (per-step abilities: forage, scouting)
     -- Fired the instant BEFORE the token steps onto an un-engaged encounter, while it still stands on
     -- the tile it is leaving and nothing about the step has happened yet. The autosave seam: see :step.
@@ -73,9 +127,10 @@ function OverworldMap.new(grid, opts)
     self.slidePrevX, self.slidePrevY = nil, nil
     self.slideT, self.slideDur = 0, MOVE_REPEAT
 
-    -- Fog-of-war vision radius (tiles seen around the player). Defaults to 2; the
-    -- game state passes the party's effective radius (raised by a torch, etc.).
-    self.visionRadius = opts.visionRadius or 2
+    -- How far the fog lifts, in STEPS: the place the company stands in and the places beside it. One,
+    -- flat, and nothing widens it (models/player.lua's Player.VISION). The game state passes it in and
+    -- moves it only for the dark, which takes it to zero.
+    self.visionRadius = opts.visionRadius or 1
 
     local start = grid:startCell()
     self.px, self.py = start.x, start.y
@@ -91,14 +146,57 @@ function OverworldMap.new(grid, opts)
     self.tilesetDef = Tileset.get(grid.tilesetId)
 
     self:buildTiles()
-    self.grid:reveal(self.px, self.py, self.visionRadius) -- discover the spawn area
+    self.grid:reveal(self.px, self.py, self.visionRadius) -- read the places around the way in
     self:updateCamera()
     self:snapCamera()
     return self
 end
 
 -- Build the tileset quads + SpriteBatch, or record that we must fall back to rects.
+-- Solve this biome's mass dim: the factor that puts its fill under the darkest a place on it ever gets.
+-- Resolved once per floor, in buildTiles, because it depends only on the tileset.
+--
+--   darkest place = the floor colour seen through unread fog = lum(path) * (1 - FOG_UNREAD)
+--   target        = MASS_BELOW of that
+--   dim           = target / lum(fill)
+--
+-- Capped at 1: a biome whose fill is already darker than the target keeps its own colour rather than
+-- being brightened up to meet a ceiling it is comfortably under.
+-- A plain function on the module rather than a method, so a spec can ask it of every tileset in the
+-- game without standing up a widget and a floor to ask through. That matters here: what this returns is
+-- a GUARANTEE across eight biomes, and the two that broke the constant it replaced would each have
+-- needed a screenshot to catch.
+function OverworldMap.massDimFor(tilesetDef)
+    local tiles = (tilesetDef and tilesetDef.tiles) or {}
+    local fill = tiles[Overworld.BLOCKED] and tiles[Overworld.BLOCKED].color
+    local floor = tiles[Overworld.PLACE] and tiles[Overworld.PLACE].color
+    if not (fill and floor) then return 0.45 end
+    local fillLum = lum(fill)
+    if fillLum <= 0.001 then return 1 end
+    local target = MASS_BELOW * lum(floor) * (1 - FOG_UNREAD)
+    return math.max(0.05, math.min(1, target / fillLum))
+end
+
+-- What a place is worth once the fog has had it: the darkest the floor ever reads. Exposed for the same
+-- reason -- it is the other half of the comparison the guarantee is about.
+function OverworldMap.darkestPlaceLum(tilesetDef)
+    local tiles = (tilesetDef and tilesetDef.tiles) or {}
+    local floor = tiles[Overworld.PLACE] and tiles[Overworld.PLACE].color
+    return floor and lum(floor) * (1 - FOG_UNREAD) or 0
+end
+
+function OverworldMap.massLum(tilesetDef)
+    local tiles = (tilesetDef and tilesetDef.tiles) or {}
+    local fill = tiles[Overworld.BLOCKED] and tiles[Overworld.BLOCKED].color
+    return fill and lum(fill) * OverworldMap.massDimFor(tilesetDef) or 0
+end
+
+function OverworldMap:solveMassDim()
+    return OverworldMap.massDimFor(self.tilesetDef)
+end
+
 function OverworldMap:buildTiles()
+    self.massDim = self:solveMassDim()
     local tsDef = self.tilesetDef
     local img = Sprite.load(tsDef.image)
     if type(img) ~= "userdata" then
@@ -124,31 +222,43 @@ function OverworldMap:buildTiles()
             local q = quads[c.tile]
             if q then
                 local wx, wy = self.grid:cellToPixel(x, y)
+                -- The mass the floor is cut out of is dimmed as it is laid, so the art still says which
+                -- country this is and the silhouette still reads. See :solveMassDim.
+                if self.grid:typeWalkable(c.tile) then
+                    self.batch:setColor(1, 1, 1)
+                else
+                    self.batch:setColor(self.massDim, self.massDim, self.massDim)
+                end
                 self.batch:add(q, wx, wy, 0, self.tileScale, self.tileScale)
             end
         end
     end
+    self.batch:setColor(1, 1, 1)
 end
 
--- Aim the camera at the player, clamped to the map bounds. This only sets the
--- *target*; :update eases the drawn camX/camY toward it so the view glides. Call
--- :snapCamera to jump the drawn camera to the target (e.g. on spawn).
+-- THE WHOLE FLOOR IS ON THE SCREEN, so there is no camera left to aim.
+--
+-- It scrolled for as long as a board was a country -- a 40x40 warren cannot be shown at once and the
+-- view had to follow the company across it -- and then it HELD, one chamber at a time, cutting at every
+-- doorway, which was the room layer admitting that a floor is a set of discrete places rather than a
+-- surface. A grid of places is small enough to draw whole: models/overworld.lua sizes its cells so that
+-- every floor, 6x6 or 8x8, fills the same 608-pixel frame.
+--
+-- What that buys is the thing the minimap was drawn to fake. The plan of the floor, which rooms you
+-- have seen and which doors reach them, was a 150-pixel diagram in the corner because the real board
+-- could not answer it; now the board IS the plan, and the diagram is gone with the scroll.
+--
+-- The two names stay because half the widget and both callers in states/game.lua speak them, and what
+-- they mean is still true: this sets where the board sits, and :update eases toward it. It simply never
+-- changes after the first call.
 function OverworldMap:updateCamera()
     local mapW = self.grid.cols * self.grid.size
     local mapH = self.grid.rows * self.grid.size
-    local halfW, halfH = Scale.WIDTH / 2, Scale.HEIGHT / 2
-    local px, py = self.grid:cellToPixel(self.px, self.py)
-    px, py = px + self.grid.size / 2, py + self.grid.size / 2
-
-    local function clamp(v, mapSize, half)
-        if mapSize <= half * 2 then return (mapSize - half * 2) / 2 end -- centre small maps
-        return math.max(0, math.min(v - half, mapSize - half * 2))
-    end
-    self.camTargetX = clamp(px, mapW, halfW)
-    self.camTargetY = clamp(py, mapH, halfH)
-    self.camX = self.camX or self.camTargetX
-    self.camY = self.camY or self.camTargetY
+    self.camTargetX = (mapW - Scale.WIDTH) / 2
+    self.camTargetY = (mapH - Scale.HEIGHT) / 2
+    self.camX, self.camY = self.camTargetX, self.camTargetY
 end
+
 
 -- Jump the drawn camera straight to its target (no easing) -- used on spawn so the
 -- map doesn't pan in from a corner on the first frame.
@@ -160,54 +270,33 @@ end
 -- Movement
 -- ---------------------------------------------------------------------------
 
--- Move one tile if the target is walkable. Returns true when the step landed and
--- movement may continue, false when blocked (wall/gate) or when arriving opened an
--- encounter panel -- so a held direction stops instead of walking through it.
--- A patrol dressed as the cell its fight is on, so states/game.lua's encounter plumbing -- which has
--- always been handed a cell -- needs no fork. The proxy exists for one field: marking the stop cleared
--- has to clear the PATROL, because the patrol is what carries the fight now and the tile it happens to
--- be standing on carries nothing. Without that a beaten patrol would come back the moment it moved.
-local function patrolCell(p, from, foeFrom)
-    return setmetatable({ x = p.x, y = p.y, encounter = p.encounter, patrol = p,
-                          from = from, foeFrom = foeFrom }, {
-        __newindex = function(t, k, v)
-            if k == "cleared" and v then p.cleared = true end
-            rawset(t, k, v)
-        end,
-    })
-end
-
--- CONTACT, from either side.
---
--- `from` is the tile the COMPANY was standing on when it happened, which decides which edge of the
--- locked board is theirs (Arena.fromGrid). Walk into something head-on and you meet it head-on; let it
--- catch you while you are deep in a spur and it is between you and the way out. Same composition, same
--- tier, completely different problem -- and decided by how you handled the approach rather than by a
--- roll. That is what makes a moving fight worth having at all.
-function OverworldMap:engage(p, from, foeFrom)
-    self.heldDir = nil
-    self.autoPath = nil
-    local cell = patrolCell(p, from or { x = self.px, y = self.py }, foeFrom)
-    if self.onApproach then self.onApproach(cell) end
-    if self.onEncounter then self.onEncounter(cell) end
-    return true
-end
-
 function OverworldMap:step(dx, dy)
     local nx, ny = self.px + dx, self.py + dy
     if not self.grid:isWalkable(nx, ny, self.keysHeld) then return false end
 
-    -- Walking INTO something. A swap is caught here too: the tile it stands on is the tile it is about
-    -- to leave, and stepping onto it is contact either way (P4).
-    local blocking = Patrol.at(self.grid, nx, ny)
-    -- Walking into it: the company is still on the tile it is stepping FROM, which is its side.
-    if blocking then return not self:engage(blocking, { x = self.px, y = self.py }) end
+    -- A HOUSE ASKS BEFORE YOU WALK IN, and it asks from the place next door.
+    --
+    -- The threshold was a doorway for as long as the floor had walls in it; it is the step itself now.
+    -- Accepting marks the work answered and this same step carries the company in; refusing costs
+    -- nothing at all, because nothing has moved -- which is what makes it a refusal rather than a toll.
+    -- (The version before the rooms stepped ONTO the work and then stepped back off, which read as being
+    -- charged for asking.)
+    local dest = self.grid:get(nx, ny)
+    if dest and dest.encounter and dest.encounter.kind == "objective"
+        and dest.encounter.questId and not dest.errandAnswered and self.onDoorPosting then
+        if self.onDoorPosting(dest) then return false end
+    end
+
+    -- WHICH WAY THE COMPANY CAME IN, kept so a fight opened here knows which side to deploy them on
+    -- (Arena's defaultZoneBlock). It was read off the geometry while a place had a doorway; a place has
+    -- no doorway, so the step that brought them is the only thing that can answer it.
+    self.lastStep = { dx = dx, dy = dy }
+
     -- About to walk into an un-engaged stop: hand the caller this moment FIRST, before the token moves,
     -- the fog lifts, or :arrive fires anything. states/game.lua autosaves here, so a run saved on the
     -- brink of a fight resumes standing one tile shy of it -- in the overworld, free to open the Loadout
     -- -- rather than being dropped straight back into the battle. Everything the step then grants (a
     -- step ability's forage, the revealed fog) is outside the snapshot, so re-walking it grants it once.
-    local dest = self.grid:get(nx, ny)
     if self.onApproach and dest and dest.encounter and not dest.cleared then self.onApproach(dest) end
     self.slidePrevX, self.slidePrevY = self.px, self.py -- slide the token from here
     self.slideT = self.slideDur
@@ -216,33 +305,39 @@ function OverworldMap:step(dx, dy)
     -- discovers cells, a step back across known ground discovers none, and the per-step hooks are told
     -- which this was (see onArrive) so an explore-for-coin reward can't be farmed by pacing a cleared map.
     local revealed = self.grid:reveal(self.px, self.py, self.visionRadius)
-    self:updateCamera()
     if self:arrive(revealed) then return false end
-
-    -- THE STEP CLOCK. The party moved, so everything else on the board moves once -- which is the whole
-    -- of P1, and also the whole of "the map locks during combat": nothing here ticks except on your
-    -- step, and during a fight you are not stepping.
-    --
-    -- Ticked AFTER arriving, so a stop you walked onto opens before anything walks into you: meeting two
-    -- fights on one step is a state the encounter panel has no way to show.
-    local caught = Patrol.tick(self.grid, { x = self.px, y = self.py })
-    -- It walked into US. The company stands where it stands, and the patrol is arriving from its own
-    -- tile -- so the side it touched from is the side it deploys on.
-    if caught then
-        return not self:engage(caught,
-            (self.slidePrevX and { x = self.slidePrevX, y = self.slidePrevY }) or { x = self.px, y = self.py },
-            { x = caught.prevX or caught.x, y = caught.prevY or caught.y })
-    end
     return true
 end
 
--- React to landing on a tile: pick up keys, trigger encounters. Returns true when
--- it opened an encounter panel, so the caller can halt any in-progress hold-to-move.
+-- WHICH SIDE THE COMPANY ARRIVED ON: "north" | "south" | "east" | "west", or nil before the first step.
+--
+-- Read off the step that brought them, because a place has no doorway to read it off. Stepping east
+-- means arriving from the west side of the place you land in, which is where they should be standing
+-- when the fight opens (Arena's defaultZoneBlock).
+function OverworldMap:entryEdge()
+    local s = self.lastStep
+    if not s then return nil end
+    if s.dx > 0 then return "west" end
+    if s.dx < 0 then return "east" end
+    if s.dy > 0 then return "north" end
+    if s.dy < 0 then return "south" end
+    return nil
+end
+
+-- React to landing on a place: pick up keys, trigger encounters. Returns true when it opened an
+-- encounter panel, so the caller can halt any in-progress hold-to-move.
+--
+-- THE PLACE IS THE UNIT AGAIN, and it is the same rule the room layer reached for from the other end. A
+-- chamber holding a fight fired it the moment you set foot anywhere in it, because the tile you happened
+-- to occupy was not the thing you had chosen -- you had chosen the door. On a grid the cell IS the
+-- choice, so walking onto it is the commitment, and a cache standing in the same place cannot be walked
+-- over on the way past because there is no way past: it is one cell, and it holds one thing.
 function OverworldMap:arrive(revealed)
     local c = self.grid:get(self.px, self.py)
-    -- Every landed tile: the per-step abilities hook (Kaya's forage, Saber's steps, Gyeom's scouting).
-    -- Fired before keys/encounters so a step's reward is banked even on a tile that also opens a fight.
+    -- Every landed place: the per-step abilities hook (Kaya's forage, Saber's steps, Gyeom's scouting).
+    -- Fired before keys/encounters so a step's reward is banked even where a fight also opens.
     if self.onArrive then self.onArrive(c, revealed or 0) end
+
     if c.key and not self.keysHeld[c.key.keyId] then
         self.keysHeld[c.key.keyId] = true
         c.picked = true
@@ -385,6 +480,15 @@ end
 -- map draws under a camera translate of -floor(camX), -floor(camY) (see :draw), so a cell's screen
 -- position is its world pixel minus that same floored offset. Uses the eased visual cell so the ring
 -- rides with the token as it slides.
+-- Where cell (cx, cy) is on SCREEN right now, as { x, y, w, h }. The map draws under a camera translate,
+-- so a caller that wants to put something of its own on a tile -- a battle board laid on the chamber it
+-- is fought in (states/game.lua) -- has to be told where the camera currently has it.
+function OverworldMap:cellRect(cx, cy)
+    local wx, wy = self.grid:cellToPixel(cx, cy)
+    local s = self.grid.size
+    return { x = wx - math.floor(self.camX or 0), y = wy - math.floor(self.camY or 0), w = s, h = s }
+end
+
 function OverworldMap:tokenRect()
     local wx, wy = self.grid:cellToPixel(self:visualCell())
     local s = self.grid.size
@@ -413,6 +517,26 @@ end
 -- cannot be mistaken for a CLEARED marker, which is the ordinary hostile colour at 0.3 alpha.
 local CALM_MARKER = { 0.46, 0.56, 0.55 }
 local PIP_COLOR = { 1.0, 0.86, 0.55 }    -- warning bone-gold, legible on the hostile box beneath it
+
+-- THE BORDER EVERY FIGHT WEARS, whatever its fill is saying.
+--
+-- The fill answers "what is this and whose is it", and it has to: an errand wears the house that posted
+-- it, the floor's own end wears the boss's gold, an elite wears orange, an outgrown fight goes calm
+-- slate. Those are five different colours across five markers that are all the same thing to a player
+-- deciding where to walk -- a battle. Nothing on the plate said so, and the one channel that reads at a
+-- glance was spent five ways.
+--
+-- So the BORDER is taken back off the fill and given to the single fact the board is most often asked
+-- for. Every stop that opens the arena draws this edge (Encounter.opensBattle), errands and ends
+-- included; nothing that does not, draws it. The hostile red is not a new colour -- it is the one every
+-- ordinary combat plate has always worn and the one a patrol on its beat already rings, so what changed
+-- is that the rest of the fights joined it rather than that anything was invented.
+--
+-- The fill keeps everything it was saying. A gold plate inside a red edge is still the boss and now also
+-- reads as a fight; a calm slate inside a red edge is the outgrown fight, which is the pairing patrols
+-- have drawn all along ("beneath your notice" and "still a fight" are not in conflict, and the marker
+-- was already asked to say both).
+local COMBAT_BORDER = { 0.86, 0.28, 0.22 }
 
 local function markerColor(kind, enc)
     -- THE GOLD IS THE BOSS'S, and nothing else on the board may wear it. The board's own end -- the
@@ -698,20 +822,29 @@ local MARKER_RADIUS = 4
 local MARKER_WASH = 0.35     -- alpha of the plate's fill, under a full-strength border of the same
 local MARKER_ICON_PAD = 0.28 -- share of the tile the mark is inset by, per side
 
--- The plate: a wash of the stop's own colour under a border of it. `ring` (a patrol's state colour)
--- replaces that border and gets a dark backing pass beneath it, the same way the battle board seats
--- its overlay boundaries -- a ring that has to carry over ground it shares a hue with cannot be left
--- to luck.
-local function drawMarkerPlate(wx, wy, s, r, g, b, a, ring)
+-- The plate: a wash of the stop's own colour under a border. `border` -- the combat red every fight
+-- wears, or a patrol's state colour over it -- replaces the fill's own hue and gets a dark backing pass
+-- beneath it, the same way the battle board seats its overlay boundaries: an edge that has to carry over
+-- ground it shares a hue with cannot be left to luck.
+--
+-- THE BACKING AND THE WIDTH ARE PART OF THE PROMISE, not decoration on it. "The same border" has to mean
+-- the same border -- an ordinary combat plate whose edge was one hairline pixel of its own red while an
+-- errand's was two pixels seated on black would be two different marks that happen to share a hue, and
+-- the shared thing has to survive being seen at a glance from across the board. So a fight goes through
+-- this branch whatever its fill, including the commonest case where the border and the wash are the same
+-- colour anyway: that marker got heavier here, and it is the reference the others are matching.
+--
+-- A stop that is not a fight keeps the old hairline of its own colour, which is now what says so.
+local function drawMarkerPlate(wx, wy, s, r, g, b, a, border)
     local px, py = wx + MARKER_INSET, wy + MARKER_INSET
     local pw = s - MARKER_INSET * 2
     love.graphics.setColor(r, g, b, a * MARKER_WASH)
     love.graphics.rectangle("fill", px, py, pw, pw, MARKER_RADIUS, MARKER_RADIUS)
-    if ring then
+    if border then
         love.graphics.setColor(0, 0, 0, a * 0.55)
         love.graphics.setLineWidth(3)
         love.graphics.rectangle("line", px, py, pw, pw, MARKER_RADIUS, MARKER_RADIUS)
-        love.graphics.setColor(ring[1], ring[2], ring[3], a)
+        love.graphics.setColor(border[1], border[2], border[3], a)
         love.graphics.setLineWidth(2)
     else
         love.graphics.setColor(r, g, b, a)
@@ -807,6 +940,9 @@ function OverworldMap:draw()
     love.graphics.push()
     love.graphics.translate(-math.floor(self.camX), -math.floor(self.camY))
 
+    -- The country the floor was cut out of, tiled to the edges of the screen, BEFORE the floor itself.
+    self:drawSurround()
+
     -- Tiles.
     if self.tileset then
         love.graphics.setColor(1, 1, 1)
@@ -815,21 +951,112 @@ function OverworldMap:draw()
         for y = 1, self.grid.rows do
             for x = 1, self.grid.cols do
                 local c = self.grid:get(x, y)
+                local solid = not self.grid:typeWalkable(c.tile)
                 local def = self.tilesetDef.tiles[c.tile]
                 local col = def and def.color or { 0.05, 0.05, 0.06 }
+                local d = solid and self.massDim or 1
                 local wx, wy = self.grid:cellToPixel(x, y)
-                love.graphics.setColor(col[1], col[2], col[3])
+                love.graphics.setColor(col[1] * d, col[2] * d, col[3] * d)
                 love.graphics.rectangle("fill", wx, wy, self.grid.size, self.grid.size)
             end
         end
     end
 
+    self:drawSeams() -- the hairline between the mass and the floor, which is the silhouette
     self:drawMarkers()
-    self:drawPatrols() -- the fights that walk: their circuit, their next tile, and what they are doing
-    self:drawFog() -- covers undiscovered tiles + their markers; player stays on top
+    self:drawFog() -- veils the places whose contents are unread; the silhouette stays legible through it
     self:drawPlayer()
 
     love.graphics.pop()
+end
+
+-- THE COUNTRY BEYOND THE FLOOR, tiled to the edges of the screen in the biome's own material.
+--
+-- Dream Quest's board is stone all the way out, with the level opened out of it. This is that: the same
+-- solid the floor's blocked cells are drawn in, laid on the SAME grid so it reads as one continuous
+-- mass, and a little further off (SURROUND_SCALE) so the play area sits in a frame, not on one.
+--
+-- It is a DRAW, not cells. The grid is the grid; nothing out here is walkable, routable, or reachable by
+-- anything that reads `cells`. Making the border real cells would have meant a rectangle of nothing that
+-- every placement pass, every BFS and every save had to be taught to ignore -- which is a lot of machine
+-- for a picture frame, and the exact kind of thing the old board's margin ring turned out to be.
+--
+-- Drawn under the camera transform and covering whatever the screen can see, so it stays aligned to the
+-- board's own cells at any board size.
+function OverworldMap:drawSurround()
+    local s = self.grid.size
+    local tsDef = self.tilesetDef
+    local def = tsDef.tiles[Overworld.BLOCKED]
+    local col = (def and def.color) or { 0.05, 0.05, 0.06 }
+    local d = self.massDim * SURROUND_SCALE
+
+    -- The visible rectangle, in cell coordinates, rounded outward to whole cells.
+    local x0 = math.floor(self.camX / s)
+    local y0 = math.floor(self.camY / s)
+    local x1 = math.ceil((self.camX + Scale.WIDTH) / s)
+    local y1 = math.ceil((self.camY + Scale.HEIGHT) / s)
+
+    local q = self.quads and self.quads[Overworld.BLOCKED]
+    love.graphics.setColor(col[1] * d, col[2] * d, col[3] * d)
+    for y = y0, y1 do
+        for x = x0, x1 do
+            -- Inside the board is the board's business; only what is beyond it is drawn here.
+            if x < 1 or y < 1 or x > self.grid.cols or y > self.grid.rows then
+                -- The board's own mapping, so the mass lines up with the floor's cells instead of
+                -- sitting a cell off it: cell 1 starts at the origin, not one cell past it.
+                local wx, wy = self.grid:cellToPixel(x, y)
+                if q then
+                    love.graphics.setColor(d, d, d)
+                    love.graphics.draw(self.tileset, q, wx, wy, 0, self.tileScale, self.tileScale)
+                    love.graphics.setColor(col[1] * d, col[2] * d, col[3] * d)
+                else
+                    love.graphics.rectangle("fill", wx, wy, s, s)
+                end
+                -- ...AND IT IS TILED, not a field. A flat fill of a dark colour reads as black however
+                -- carefully the hue was chosen -- the eye has nothing in it to measure. The same seam
+                -- the floor's own mass wears (:drawSeams) is what makes this read as courses of stone
+                -- rather than as the space the board is floating in, and it does it at a value low
+                -- enough to leave the HUD alone.
+                love.graphics.setColor(1, 1, 1, 0.05)
+                love.graphics.rectangle("line", wx + 0.5, wy + 0.5, s - 1, s - 1)
+                love.graphics.setColor(col[1] * d, col[2] * d, col[3] * d)
+            end
+        end
+    end
+    love.graphics.setColor(1, 1, 1)
+end
+
+-- THE SEAM BETWEEN THE MASS AND THE FLOOR, which is the whole silhouette.
+--
+-- A hairline on the solid's side of every edge it shares with a place. It is what makes the floor an
+-- outline you can read a route across rather than a field of squares -- and it matters most on the frame
+-- the company arrives at, where nearly everything is unread and the only thing distinguishing a dim
+-- place from the mass beside it is value and hue.
+--
+-- Over the tiles and UNDER the fog, deliberately: the fog skips solid cells (:drawFog), so the mass is
+-- the one thing on the floor whose look never changes. What is not there cannot become better known.
+function OverworldMap:drawSeams()
+    local s = self.grid.size
+    love.graphics.setColor(0.184, 0.196, 0.220, 0.75)
+    for y = 1, self.grid.rows do
+        for x = 1, self.grid.cols do
+            if not self.grid:typeWalkable(self.grid:get(x, y).tile) then
+                local wx, wy = self.grid:cellToPixel(x, y)
+                love.graphics.rectangle("line", wx + 0.5, wy + 0.5, s - 1, s - 1)
+            end
+        end
+    end
+
+    -- ...AND THE EDGE OF THE FLOOR ITSELF, which is the seam the loop above cannot draw: the mass beyond
+    -- the play area is a draw rather than cells, so there is no solid cell out there to hang a line on.
+    -- Without it the floor bleeds into the country around it at exactly the places a route runs closest
+    -- to the edge. Warmer and stronger than the interior seams, because this one is a FRAME -- it says
+    -- how far the floor goes, which is a fact the player needs before the first step.
+    local ox, oy = self.grid:cellToPixel(1, 1)
+    love.graphics.setColor(0.420, 0.376, 0.278, 0.85)
+    love.graphics.rectangle("line", ox - 0.5, oy - 0.5,
+        self.grid.cols * s + 1, self.grid.rows * s + 1)
+    love.graphics.setColor(1, 1, 1)
 end
 
 -- The fog shader (shaders/fog.lua), compiled once on first draw and latched on failure so a driver
@@ -863,16 +1090,53 @@ function OverworldMap:drawFog()
     local r = self.visionRadius
     local sh = self:fogFx()
 
+    -- THE FLOOR PLAN IS NOT A SECRET; WHAT IS STANDING IN IT IS.
+    --
+    -- The fog used to be opaque over unwalked ground, because on a board you crossed the shape of the
+    -- country WAS the discovery -- a junction opened as you reached it, and models/vision.lua cast
+    -- shadows so a wall could hide what was behind it. A grid of places has no walls to cast against and
+    -- nothing to hide behind: the silhouette is on the map from arrival, and choosing a route is the
+    -- whole of what you do with it. Black it out and there is no route to choose.
+    --
+    -- So an unread place is VEILED rather than covered: you can see the place is there, you cannot see
+    -- what is in it (drawMarkers gates on `seen`). Three tiers, all of them see-through:
+    --
+    --   unread   0.66 -- a place you know is there and have never stood beside
+    --   read     0.42 -- read once and remembered; its marker draws, the ground is dim
+    --   lit        -- adjacent right now
+    --
+    -- THE UNREAD TIER IS SET BY THE WORST CASE, WHICH IS ARRIVAL. It was 0.78, tuned by eye on a 6x6
+    -- floor where a step of sight lights a good share of the board. On a 10x10 with one-step sight
+    -- (Player.VISION) about ninety-five per cent of the floor is unread when the company walks in, so
+    -- that tier IS the picture -- and at 0.78 a place kept so little of its own colour that the void
+    -- beside it was barely a different black. Reading a route across the plan is the whole of what the
+    -- fog leaves the player to do; if the plan is not crisp on the frame they arrive at, it does not
+    -- work at all.
+    --
+    -- A cell that is NOT THERE takes no fog at all. It is already the dark tile, and veiling it would
+    -- make the floor's outline the one thing on the board the player has to squint at.
+    -- :lit is the method, not a copy of it. It read `inVision` directly here for as long as the marker
+    -- pass had its own reason to ask the same question; the marker pass stopped asking when fights
+    -- became remembered, which would have left the method with no caller and this closure as a second
+    -- definition of the same idea. One of them had to go, and the one with a spec on it stays.
+    local function lit(_, x, y)
+        return self:lit(x, y) ~= nil
+    end
+    local function solid(c)
+        return not self.grid:typeWalkable(c.tile)
+    end
+
     if not sh then
         for y = 1, self.grid.rows do
             for x = 1, self.grid.cols do
                 local c = self.grid:get(x, y)
                 local wx, wy = self.grid:cellToPixel(x, y)
-                if not c.seen then
-                    love.graphics.setColor(0.02, 0.02, 0.03, 1)
+                if solid(c) then -- not a place: it is already dark, and its outline is the floor plan
+                elseif not c.seen then
+                    love.graphics.setColor(0.02, 0.02, 0.03, FOG_UNREAD)
                     love.graphics.rectangle("fill", wx, wy, s, s)
-                elseif not self.grid:inVision(self.px, self.py, x, y, r) then
-                    love.graphics.setColor(0.02, 0.02, 0.03, 0.5)
+                elseif not lit(c, x, y) then
+                    love.graphics.setColor(0.02, 0.02, 0.03, FOG_READ)
                     love.graphics.rectangle("fill", wx, wy, s, s)
                 end
             end
@@ -888,10 +1152,11 @@ function OverworldMap:drawFog()
         for x = 1, self.grid.cols do
             local c = self.grid:get(x, y)
             local alpha, breathe
-            if not c.seen then
-                alpha, breathe = 1, 0 -- unwalked ground is OPAQUE: the board under it never shows through
-            elseif not self.grid:inVision(self.px, self.py, x, y, r) then
-                alpha, breathe = 0.5, 0.06
+            if solid(c) then -- not a place: no fog, so the floor's outline reads at a glance
+            elseif not c.seen then
+                alpha, breathe = FOG_UNREAD, 0.03 -- a place you know is there and have not stood beside
+            elseif not lit(c, x, y) then
+                alpha, breathe = FOG_READ, 0.06
             end
             if alpha then
                 local wx, wy = self.grid:cellToPixel(x, y)
@@ -906,20 +1171,29 @@ function OverworldMap:drawFog()
     love.graphics.setColor(1, 1, 1)
 end
 
--- A PLACE IS REMEMBERED; A BODY IS ONLY EVER SEEN. Two rules, split by what the mark is a fact about:
+-- EVERYTHING FOUND IS REMEMBERED, FIGHTS INCLUDED. Once a place has been read, what is standing in it
+-- stays on the map: mapped-but-dark ground shows the mark you found there. That is what makes a map
+-- worth having, and it is what lets a detour be planned from across the floor instead of stumbled into
+-- twice.
 --
---   * a LANDMARK -- a gate, a key, a cache, the objective's pennant, a camp, a shop, a shrine, a scene
---     to talk through -- is a feature of the country. It does not walk off and it does not turn into
---     something else, so once you have found it the map keeps it: mapped-but-dark ground still shows
---     what you found standing in it. That is what makes a map worth having, and it is what lets a
---     detour be planned from across the board instead of stumbled into twice.
---   * a LIVE FIGHT -- combat or elite, un-cleared -- draws only on a tile that is lit RIGHT NOW (see
---     :lit) and goes out with the light. Where it is now is not something you can know from a map, and
---     a board that listed every fight ahead would answer the question the fog is asked for. Patrols,
---     which actually walk, are held to the same rule in :drawPatrols.
+-- THIS WAS TWO RULES, AND THE SPLIT DIED WITH THE PATROLS. A landmark -- a gate, a key, a cache, the
+-- objective's pennant, a camp, a shop -- was a fact about the country and was kept; a LIVE FIGHT was a
+-- BODY, drew only on a tile lit right now, and went out with the light. The argument was that where a
+-- fight is standing is not something a map can honestly know, and a board that listed every one of them
+-- ahead would answer the question the fog was asked for.
 --
--- A fight you have already put down stops being a body and becomes a thing that happened here, so a
--- cleared marker is remembered with the rest of the ground.
+-- That was true of a board where fights WALKED. A share of every board's combat lifted off its cell onto
+-- a beat and moved a tile for every step the company took, so a remembered fight marker really would
+-- have been a lie about a body that had since gone somewhere else -- and the rule had to cover the
+-- seated fights too, or the drawn ones would have told you which was which.
+--
+-- Nothing on a floor moves any more. A fight stands in a place, and a place is exactly the kind of thing
+-- a map remembers. Holding fights to the old rule with the beats gone did not preserve a mystery, it
+-- just made the one mark the player most needs for routing the one mark that would not stay put --
+-- which on a floor a fifth full, read one step at a time, is most of what there is to route around.
+--
+-- What still hides a fight is the fog itself: an unread place shows nothing, and there are a great many
+-- of them. Discovery is the cost; memory is the reward for having paid it.
 --
 -- `pathTo`, which routes across mapped ground, is gated by neither -- you can walk home through the
 -- dark, past what you remember and past what you cannot see.
@@ -953,13 +1227,15 @@ function OverworldMap:lit(x, y)
     return c
 end
 
--- The cell at (x, y) whose encounter marker should draw, or nil: a live fight needs the tile lit, and
--- every other stop needs only to have been found. One function rather than a condition spelled out in
--- the draw loop, because it is the rule above and a spec has to be able to ask it.
+-- The cell at (x, y) whose encounter marker should draw, or nil: any stop that has been found. One
+-- function rather than a condition spelled out in the draw loop, because it is the rule above and a
+-- spec has to be able to ask it.
+--
+-- It carried a second clause -- `if isFight(c) and not self:lit(x, y) then return nil end` -- and the
+-- note above says why it is gone.
 function OverworldMap:markedStop(x, y)
     local c = self:mapped(x, y)
     if not (c and c.encounter) then return nil end
-    if isFight(c) and not self:lit(x, y) then return nil end
     return c
 end
 
@@ -1019,9 +1295,13 @@ function OverworldMap:drawMarkers()
                     local band = self.musterBand and self.musterBand(c) or nil
                     if band == "beneath" then r, g, b = CALM_MARKER[1], CALM_MARKER[2], CALM_MARKER[3] end
                     local a = c.cleared and 0.3 or 1
-                    -- A seated stop has nothing to say beyond what it is, so it wears no state ring: the
-                    -- plate, the mark and the pips, the same three the patrols wear.
-                    drawMarkerPlate(wx, wy, s, r, g, b, a)
+                    -- A seated stop has no STATE to report -- that is the patrols' business -- but it
+                    -- answers the same first question they do, and answers it on the same channel: if
+                    -- walking here opens the arena, the plate wears the combat edge. Asked through
+                    -- Encounter.opensBattle rather than by listing kinds, so the border cannot promise a
+                    -- fight states/game.lua would decline to run. See COMBAT_BORDER.
+                    drawMarkerPlate(wx, wy, s, r, g, b, a,
+                        Encounter.opensBattle(c.encounter) and COMBAT_BORDER or nil)
                     drawMarkerIcon(kind, wx, wy, s, a, c.encounter)
                     drawMarkerPips(wx, wy, s, pipSteps(kind, band), a)
                     love.graphics.setColor(1, 1, 1)
@@ -1042,82 +1322,16 @@ end
 -- confused, because one means "beneath your notice" and the other means "has just lost you and is
 -- walking home", which are opposite invitations. Now that a patrol can wear both at once -- a calm
 -- wash under a returning ring -- the separation matters more, not less.
+--
+-- `beat` IS the combat border (COMBAT_BORDER, not a second copy of the same three numbers): a patrol
+-- doing nothing about you is a fight wearing exactly the edge every other fight wears, and the two
+-- states that differ are the two that have something extra to say. That is also why a patrol needs no
+-- special case in the border rule below -- its ring already resolves to the right colour by default.
 local PATROL_STATE = {
-    beat = { 0.86, 0.28, 0.22 },
+    beat = COMBAT_BORDER,
     alert = { 0.95, 0.72, 0.24 },
     return_ = { 0.42, 0.48, 0.55 },
 }
-
--- WHERE IT WILL BE, drawn before you commit your own step. A moving fight you cannot predict is a
--- punishment; one whose circuit you can read is a puzzle. Three marks, on revealed ground only:
---
---   the beat    a faint dotted circuit -- the schedule, on the ground you can currently see
---   the pip     the tile it occupies NEXT, so the exchange is legible before you move
---   the ring    what it is doing (see PATROL_STATE), around the same plate a seated fight stands on
---
--- All three are gated on :lit rather than on `seen`, and so is the patrol itself: a body that walks is
--- the last thing a map should be able to remember. It is in sight or it is gone, and where it went is
--- the question the fog is for. Within the lit disc nothing about the telegraph changes -- the step you
--- are about to take is still one you can read before you take it.
---
--- The preview is side-effect free: Patrol.preview walks a copy, because a telegraph that advanced the
--- thing it was describing would be a bug the player could farm -- the same rule the battle's enemy
--- intent telegraph already follows.
-function OverworldMap:drawPatrols()
-    local grid = self.grid
-    if not grid.patrols then return end
-    local s = grid.size
-    for _, p in ipairs(grid.patrols) do
-        if not p.cleared and self:lit(p.x, p.y) then
-            -- The circuit, on lit ground only.
-            love.graphics.setColor(0.86, 0.28, 0.22, 0.16)
-            for _, b in ipairs(p.beat or {}) do
-                if self:lit(b.x, b.y) then
-                    local wx, wy = grid:cellToPixel(b.x, b.y)
-                    love.graphics.rectangle("fill", wx + 4, wy + 4, s - 8, s - 8, 2)
-                end
-            end
-
-            local nx, ny = Patrol.preview(grid, p, { x = self.px, y = self.py })
-            if nx and (nx ~= p.x or ny ~= p.y) then
-                if self:lit(nx, ny) then
-                    local wx, wy = grid:cellToPixel(nx, ny)
-                    love.graphics.setColor(0.95, 0.72, 0.24, 0.55)
-                    love.graphics.circle("fill", wx + s / 2, wy + s / 2, 3)
-                end
-            end
-
-            local wx, wy = grid:cellToPixel(p.x, p.y)
-            local kind = markerKind(p.encounter)
-
-            -- HOW FAR ABOVE THE COMPANY THIS ONE STANDS, read exactly as a seated fight's is: it sets
-            -- the wash and it sets the pips. The readout is keyed by cell everywhere else and a patrol
-            -- is not on a cell, so without asking here the fights that MOVE -- the ones you most need to
-            -- decide about -- would be the only fights on the board you could not price.
-            local band = self.musterBand and self.musterBand({ x = p.x, y = p.y, encounter = p.encounter })
-            local r, g, b = markerColor(kind, p.encounter)
-            if band == "beneath" then r, g, b = CALM_MARKER[1], CALM_MARKER[2], CALM_MARKER[3] end
-
-            drawMarkerPlate(wx, wy, s, r, g, b, 1, PATROL_STATE[p.state] or PATROL_STATE.beat)
-            drawMarkerIcon(kind, wx, wy, s, 1, p.encounter)
-            drawMarkerPips(wx, wy, s, pipSteps(kind, band), 1)
-
-            -- A slow patrol wears its pace, so "I can get past this one" is readable rather than
-            -- learned by being caught. Drawn in the state colour on a dark seat, like everything else
-            -- that answers what the patrol is DOING: the two ticks used to be plain black over an opaque
-            -- plate, and over a wash that is a mark nobody can see.
-            if (p.pace or 1) > 1 then
-                local ring = PATROL_STATE[p.state] or PATROL_STATE.beat
-                love.graphics.setColor(0.05, 0.05, 0.07, 0.85)
-                love.graphics.rectangle("fill", wx + 4, wy + s - 10, 11, 5, 2, 2)
-                love.graphics.setColor(ring[1], ring[2], ring[3], 1)
-                love.graphics.rectangle("fill", wx + 5, wy + s - 9, 3, 3)
-                love.graphics.rectangle("fill", wx + 10, wy + s - 9, 3, 3)
-            end
-        end
-    end
-    love.graphics.setColor(1, 1, 1)
-end
 
 function OverworldMap:drawPlayer()
     local wx, wy = self.grid:cellToPixel(self:visualCell())
@@ -1194,13 +1408,15 @@ function OverworldMap:pathTo(tx, ty)
     return steps[1] and steps or nil
 end
 
--- Track the tile under the pointer, so the HUD can name the fight the player is weighing up
--- (states/game.lua's drawHud). Only a LIT tile counts -- naming a marker the fog is holding back would
--- hand over the very thing it is keeping, and a readout that answers where nothing is drawn is worse
--- than the marker: it turns the pointer into a probe you sweep across the dark.
--- The pointer's TILE is stored rather than the cell it resolved to, because the lit disc now moves
--- under a stationary mouse: walk away from a marker the pointer is still sitting on and the readout has
--- to go out with the marker, which a cell captured at hover time could not do.
+-- Track the place under the pointer, so the HUD can name the fight the player is weighing up
+-- (states/game.lua's drawHud). A FOUND place counts, lit or not -- the readout has to answer wherever a
+-- marker is drawn, or the pointer names a thing on one cell and goes silent on the identical thing one
+-- step further out. What it must never do is answer where nothing is drawn, which would turn the
+-- pointer into a probe you sweep across the dark; `mapped` is exactly the test the marker pass uses, so
+-- the two cannot drift.
+--
+-- The pointer's CELL COORDINATES are stored rather than the cell it resolved to, which mattered while a
+-- marker could go out from under a stationary mouse and costs nothing now.
 function OverworldMap:mousemoved(x, y)
     self.hoverX, self.hoverY = self.grid:pixelToCell(x + self.camX, y + self.camY)
 end
@@ -1216,9 +1432,9 @@ function OverworldMap:hoveredFight()
         return isFight(c) and c or nil
     end
 
-    if InputMode.isMouse() then return fightAt(self:lit(self.hoverX, self.hoverY)) end
+    if InputMode.isMouse() then return fightAt(self:mapped(self.hoverX, self.hoverY)) end
     for _, d in ipairs({ { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } }) do
-        local c = fightAt(self:lit(self.px + d[1], self.py + d[2]))
+        local c = fightAt(self:mapped(self.px + d[1], self.py + d[2]))
         if c then return c end
     end
     return nil
@@ -1243,9 +1459,9 @@ function OverworldMap:hoveredWork()
         return c
     end
 
-    if InputMode.isMouse() then return workAt(self:lit(self.hoverX, self.hoverY)) end
+    if InputMode.isMouse() then return workAt(self:mapped(self.hoverX, self.hoverY)) end
     for _, d in ipairs({ { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } }) do
-        local c = workAt(self:lit(self.px + d[1], self.py + d[2]))
+        local c = workAt(self:mapped(self.px + d[1], self.py + d[2]))
         if c then return c end
     end
     return nil

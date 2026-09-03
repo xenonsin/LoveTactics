@@ -21,7 +21,7 @@ return {
     type = "armor",
     tags = { "cloth", "lightning" },
     class = "alchemist",
-    price = 210,
+    price = 165,
     unlockQuests = 1,
     bonus = { magicDefense = Curve.ramp(3, 13), movement = -1 },
     resist = { lightning = 6 },

@@ -17,11 +17,14 @@ return {
         defense = 7, magicDefense = 5,
         movement = 4,
         speed = 5,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 7, luck = 7,
     },
     startingItems = {
         "weapon_main_gauche", "ability_en_garde",       "ability_coup_droit",
         "utility_reading_the_blade", "utility_duelists_poise", "armor_leather_armor",
-        "consumable_healing_potion", false,             false,
+        "consumable_healing_potion", "weapon_long_bout",             false,
     },
     defaultAction = "weapon_main_gauche",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

@@ -47,4 +47,6 @@ return {
             fx.applyStatus(fx.user, "status_empowered", { magnitude = 4 + flasks * 2 })
         end,
     },
+    -- drinking everything at once and coming out of it upright
+    bonus = { magicDefense = 1, luck = 1 },
 }

@@ -8,8 +8,8 @@ return {
     type = "ability",
     tags = { "fire", "magical" }, -- the "magical" tag routes damage to magicDamage/magicDefense
     class = "mage",
-    price = 610,
-    unlockQuests = 4,
+    price = 660,
+    unlockQuests = 7,
     activeAbility = {
         -- Hurled at a CELL, not a single foe: aim it at any walkable tile in range -- empty ground,
         -- an enemy, or one of your own (allowOccupied) -- and it bursts there, sweeping everyone in

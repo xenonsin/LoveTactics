@@ -21,7 +21,9 @@ return {
     tags = { "charm" },
     class = "fighter",
     discipline = "warbrewer",
-    price = 345,
-    unlockQuests = 2,
+    price = 330,
+    unlockQuests = 3,
     traits = { "trait_field_still" },
+    -- something brewing in the grid every turn
+    bonus = { magicDefense = 1 },
 }

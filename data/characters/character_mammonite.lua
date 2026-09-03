@@ -51,6 +51,9 @@ return {
         defense = 10, magicDefense = 8,
         movement = 4,
         speed = 4,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 7, luck = 7,
     },
     -- The firm's float, spent by everything in the middle column (Combat.spendPurse reads an enemy's
     -- coffer). Ignored entirely once this body is on the party's side -- see the header.
@@ -60,7 +63,7 @@ return {
     startingItems = {
         "ability_gilded_wound", "ability_open_account",      "ability_blood_money",
         "ability_grease_palms", "armor_cutpurse_coat",       "ability_price_on_the_head",
-        "weapon_iron_dagger",   "consumable_healing_potion", false,
+        "weapon_iron_dagger",   "consumable_healing_potion", "utility_with_interest",
     },
     defaultAction = "weapon_iron_dagger",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

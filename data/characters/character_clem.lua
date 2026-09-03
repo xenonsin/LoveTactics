@@ -48,6 +48,9 @@ return {
         defense = 8, magicDefense = 8,
         movement = 4,
         speed = 6, -- the fastest hand on the floor
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 6, luck = 8,
     },
     -- The 3x3 loadout grid (row-major); false = an empty cell. Borrowed Time is the build-around in the
     -- center; the envenomed kris softens a foe into the band the mercy-stroke lands in, and the shadow kit

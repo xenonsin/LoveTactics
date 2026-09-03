@@ -36,11 +36,13 @@ return {
     tags = { "arcane", "sigil" },
     class = "mage",
     discipline = "elementalist", -- deeper cut of the shelf: buyable only once the elementalist gate is cleared
-    price = 345,
-    unlockQuests = 2,
+    price = 410,
+    unlockQuests = 4,
     aura = {
         appliesTo = { "ability", "weapon" }, -- a spell and an enchanted wand are the same school
         requiresTags = { "magical" },        -- ...and only the ones that actually ARE magic
         rangeBonus = { 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3 }, -- added to the neighbour's reach
     },
+    -- reach is a share of a spell's worth
+    bonus = { magicDamage = 1 },
 }

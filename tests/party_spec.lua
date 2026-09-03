@@ -253,58 +253,58 @@ return {
         end,
     },
     {
-        name = "growthShares reports each house's claim on the coming level, biggest first",
+        name = "classRows report what a body has got good at, deepest level first",
         fn = function()
+            local Disc = require("models.discipline")
             local char = Character.instantiate("character_knight")
-            -- A class key alongside two disciplines: one ledger holds both, which is the whole reason
-            -- this list replaced the two that used to be stacked here.
-            char.technique = { bulwark = 10, assassin = 60, knight = 30 }
-            local rows = Party.growthShares(char)
-            assert(#rows == 3, "one row per house claiming the level, got " .. #rows)
+            -- A class key alongside two disciplines: one ledger holds all three, which is the whole
+            -- reason this list replaced the two that used to be stacked here.
+            char.technique = {
+                bulwark = Disc.classLevelCost(1),
+                assassin = Disc.classLevelCost(4),
+                knight = Disc.classLevelCost(2),
+            }
+            local rows = Party.classRows(char)
+            assert(#rows == 3, "one row per class this body has touched, got " .. #rows)
 
-            -- The SHARE, not the raw amount: a level arrives on prestige, so only the proportions are
-            -- read and the magnitude buys nothing. 60/30/10 of 100 is 60% / 30% / 10%.
-            assert(math.abs(rows[1].share - 0.6) < 1e-9
-                and math.abs(rows[2].share - 0.3) < 1e-9
-                and math.abs(rows[3].share - 0.1) < 1e-9, "rows carry the shares, descending")
+            -- THE LEVEL, not a share of the coming level-up. Growth is a declaration now
+            -- (Growth.jobOf), so the proportions this list used to print answered a question nothing
+            -- asks any more; what the ladder decides is how much a body gets out of that class's gear
+            -- (Combat.classScaled), and that is a level.
+            assert(rows[1].level == 4 and rows[2].level == 2 and rows[3].level == 1,
+                "rows carry the class levels, descending")
 
             -- Display names for a discipline, title-case for a class -- never the raw id.
             assert(rows[1].name == Discipline.displayName("assassin"),
                 "a discipline row carries its display name")
             assert(rows[2].name == "Knight", "and a class row is title-cased")
 
-            -- The printed form, which is what the title line and the forecast under it are built from.
-            local parts = Party.growthParts(char)
-            assert(parts[1] == "60% " .. Discipline.displayName("assassin")
-                and parts[2] == "30% Knight", "the parts read as percent-then-house")
+            -- Position within the current rung, so a bar can be drawn without redoing the ladder.
+            assert(rows[1].held == 0, "sitting exactly on a rung is nothing into the next one")
+            assert(rows[1].needed == Disc.classLevelCost(5) - Disc.classLevelCost(4),
+                "and the span is that rung's own")
 
-            -- Doubling everything is the same character, so it must read identically.
-            local twice = Character.instantiate("character_knight")
-            twice.technique = { bulwark = 20, assassin = 120, knight = 60 }
-            assert(math.abs(Party.growthShares(twice)[1].share - rows[1].share) < 1e-9,
-                "twice the casting in the same proportions is the same level, and reads the same")
+            -- The printed form, which is what the sheet's forecast column is built from.
+            local parts = Party.growthParts(char)
+            assert(parts[1] == Discipline.displayName("assassin") .. " 4"
+                and parts[2] == "Knight 2", "the parts read as house-then-level")
         end,
     },
     {
-        name = "growthShares is empty when nothing is outstanding, rather than claiming the innate class",
+        name = "a class touched but not yet levelled still shows, and an untouched one does not",
         fn = function()
+            local Disc = require("models.discipline")
             local char = Character.instantiate("character_knight")
-            assert(#Party.growthShares(char) == 0, "a fresh member has played nothing")
+            assert(#Party.classRows(char) == 0, "a fresh member has swung nothing")
             assert(#Party.growthParts(char) == 0, "and so prints nothing")
 
-            -- Everything earned is already checkpointed into past levels. Growth.shares would answer
-            -- the innate class at 1.0 here -- true of a hypothetical level, but on a sheet it reads as
-            -- a claim the player earned, and the title drops the clause instead.
-            char.technique = { knight = 50 }
-            char.techniqueAtLevel = { knight = 50 }
-            assert(#Party.growthShares(char) == 0, "a fully checkpointed ledger claims nothing")
-
-            -- Spending must never move the growth reading. That is the property the earned/spent split
-            -- exists for, asserted at the surface the player reads it on.
-            char.techniqueAtLevel = {}
-            local before = Party.growthShares(char)[1].share
-            char.techniqueSpent = { knight = 50 }
-            assert(Party.growthShares(char)[1].share == before, "forging does not move the claim")
+            -- One short of the first rung is a real row at level 0. Dropping it would hide the fights
+            -- the player has already spent, and the ladder's first rung is far enough away that they
+            -- would look like they had bought nothing.
+            char.technique = { knight = Disc.classLevelCost(1) - 1 }
+            local rows = Party.classRows(char)
+            assert(#rows == 1 and rows[1].level == 0, "a touched class shows even at nought")
+            assert(rows[1].held == Disc.classLevelCost(1) - 1, "with its progress toward the first rung")
         end,
     },
     {

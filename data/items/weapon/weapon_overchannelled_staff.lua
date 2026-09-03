@@ -27,6 +27,7 @@ return {
     type = "weapon",
     tags = { "staff", "magical", "arcane", "melee" },
     class = "mage",
+    dropTier = 3,
     waitBehavior = {
         kind = "focus",
         -- Roughly double a plain staff's 8-18, which is the sale.

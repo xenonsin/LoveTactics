@@ -18,11 +18,14 @@ return {
         defense = 13, magicDefense = 7,
         movement = 4,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 5, luck = 2,
     },
     startingItems = {
         "weapon_mailpiercer",  "ability_shieldbreak", "ability_pry_open",
         "utility_breakers_wedge", "utility_stripped_plate", "armor_breakers_harness",
-        "consumable_healing_potion", false,          false,
+        "consumable_healing_potion", "utility_the_wedge",          false,
     },
     defaultAction = "weapon_mailpiercer",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

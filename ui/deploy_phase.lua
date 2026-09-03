@@ -1,40 +1,49 @@
 -- The DEPLOYMENT PHASE: the beat between the board being built and the first turn, where the player
--- stands up to Combat.MAX_FIELD of their marching company on the lit deploy zone and leaves the rest on
--- the bench. Every ordinary battle opens here; a scripted fight, a duel and a draft skip it and keep the
--- placement whoever set them up decided (states/battle.lua's `deploy = false`). See docs/deployment.md.
+-- arranges the bodies they brought on the lit deploy zone. Every ordinary battle opens here; a scripted
+-- fight, a duel and a draft skip it and keep the placement whoever set them up decided
+-- (states/battle.lua's `deploy = false`). See docs/deployment.md.
 --
 -- This replaced a persistent marching grid arranged in the hub. Placement is a decision about GROUND --
 -- where the cover is, which flank is open, how far the enemy line is -- and none of that exists until
 -- the board does, so it is made here, over the real board, with the enemy already standing on it.
 --
--- Two surfaces, and the split is the whole design:
+-- THERE IS NO COMPANY STRIP, AND NO BENCH. It had both: a row of portrait cards in the gutter, one per
+-- company member, dragged onto the board to field up to Combat.MAX_FIELD of eight. Both are gone,
+-- because the pair of numbers that made them a decision stopped being two numbers. The expedition is
+-- picked at the Gate and capped at Descent.PARTY_MAX; the field is capped at Combat.MAX_FIELD; both are
+-- four. A strip whose every card must end up on the board is not a choice of WHO, it is a list of who
+-- you already brought -- and it was charging a third of the screen for the telling. The choice of who
+-- goes down is made at the Gate now, and this phase makes the only one left: WHERE each of them stands.
 --
---   THE BOARD is the widget. Legal ground is lit with the same overlay a reinforcement uses later in
---     the fight (ui/battle_map.lua's drawDeployZone), so "you may come in here" is said once, in one
---     visual language, at minute zero and at minute ten alike.
---   THE COMPANY STRIP takes the COMBAT LOG's rect -- the board-width gutter directly under the tiles.
---     It is the one piece of screen that is about the fight without being on the board, the strip and
---     the log are never both wanted, and sitting there puts each portrait directly under the ground it
---     is about to be dragged onto. The host passes that rect in (battle's gutterRect) so the two can
---     never drift apart.
---   THE CONTROLS -- Loadout, Auto-Fill, Clear, Auto (with the playback-speed cycler paired to its
---     right while it is on) and the bell -- stack down the LEFT COLUMN, under the two standing plates
---     the host keeps there before the bell (Settings and the board-turn pair -- there is no hamburger
---     on this screen), in the band the fight's own entries occupy. They were once a row along the
---     foot of the strip, split either side of the hint; a company strip is 480px on the standard eight
---     column board, and five buttons plus a sentence do not fit across it. The column is where this
---     screen already keeps its furniture, so the controls read as the screen's rather than the strip's,
---     and the strip's bottom band is left to the hint alone -- which is why it can now say the long
---     form instead of an abbreviation. The host passes the band in (battle's deployControlRect).
+-- So there is one surface, and it is THE BOARD. Everyone is standing on it the moment the phase opens
+-- (autoFill), and the whole interaction is moving them: drag a body to another lit tile, drop it on a
+-- ally to swap the two. Legal ground is lit with the same overlay a reinforcement uses later in the
+-- fight (ui/battle_map.lua's drawDeployZone), so "you may stand here" is said once, in one visual
+-- language, at minute zero and at minute ten alike.
 --
--- Drag-and-drop is the primary interaction -- card to tile deploys, tile to tile repositions, a drop on
--- an occupied tile swaps, and a drag back off the board withdraws -- with the whole of it also reachable
--- by keyboard and pad, per the project's three-input standard.
+-- THE CONTROLS -- Loadout, Reset Line, Auto (with the playback-speed cycler paired to its right while
+--   it is on) and the bell -- stack down the LEFT COLUMN, under the two standing plates the host keeps
+--   there before the bell (Settings and the board-turn pair -- there is no hamburger on this screen),
+--   in the band the fight's own entries occupy. The column is where this screen already keeps its
+--   furniture, so the controls read as the screen's rather than the board's. The host passes the band
+--   in (battle's deployControlRect).
+-- THE HINT LINE is all that is left in the gutter, drawn along its top edge, directly under the board:
+--   the last refusal, or how to work the phase. The host still passes the rect (battle's gutterRect)
+--   because it is the combat log's and the two must not drift apart.
+--
+-- Drag-and-drop is the primary interaction -- tile to tile repositions and a drop on an occupied tile
+-- swaps -- with the whole of it also reachable by keyboard and pad, per the project's three-input
+-- standard. THE BOARD IS ONE CURSOR AND THE COLUMN IS THE OTHER REGION: confirm on a standing body
+-- lifts it, confirm on a tile sets it down (swapping with whoever is there), and a step LEFT off the
+-- board's own edge crosses into the control stack, where up/down walks the plates and a step right
+-- comes back. The crossing is read off the board cursor REFUSING to move rather than off the grid
+-- coordinate, so a board the player has turned still crosses on the key that points at the column.
+-- Every control is on that ring, which is what makes Reset Line reachable without a pad button of its
+-- own -- the stack can grow a fourth plate without going hunting for a spare face button.
 
 local Scale = require("scale")
 local Theme = require("ui.theme")
 local InputMode = require("input_mode")
-local Colors = require("ui.colors")
 local TileTooltip = require("ui.tile_tooltip")
 local Combat = require("models.combat")
 local Hazard = require("models.hazard")
@@ -47,10 +56,10 @@ DeployPhase.__index = DeployPhase
 -- grid and the old formation grid both used it), so a twitchy click means the same thing everywhere.
 local DRAG_THRESHOLD = 5
 
--- The strip's bottom band: the hint / refusal line, and nothing else since the controls moved to the
--- column. Still reserved out of the cards' height, so the portraits sit where they always did.
-local HINT_H = 22
-local CARD_GAP = 6
+-- The hint / refusal line is drawn along the TOP of the gutter -- directly under the board, which is
+-- where the eye already is. It used to sit at the foot of the strip, in a band reserved out of the
+-- cards' height (HINT_H, gone with them); with the strip gone, the foot of an empty rect is the far
+-- side of a gap from everything the line is about.
 -- One control in the left column, sized to the plates above it (battle's deploySettingsButton)
 -- so the column reads as one stack of plates rather than two kinds of button.
 local CTRL_H = 36
@@ -64,14 +73,13 @@ local PAIR_W = 56
 -- hands its own list in (states/battle.lua's SPEED_STEPS), so the two can never offer different gears.
 local SPEED_STEPS = { 1, 2, 3 }
 -- The phase's headline takes the THIRD of the fight's three HUD lines -- the row the control hint
--- occupies once the bell rings. The two above it are the host's and say the same thing before the
--- fight as during it: the encounter's name (y 20) and its objective (y 52). This line is the one that
--- is about the phase, so it goes last, directly above the board (states/battle.lua's BOARD_TOP).
-local TITLE_Y = 82
--- The whole company, and the number the strip is sized to: the avatar and seven companions. Eight is
--- what the campaign can ever muster, so eight is what the gutter has to hold at once -- an eighth card
--- tabbed off the end is the one member you cannot see while deciding who stands.
-local COMPANY_MAX = 8
+-- occupies once the bell rings. The two above it are the host's: the banner, which reads "Deployment
+-- Phase" while this is up, and the objective under it, which says the same thing before the fight as
+-- during it. This line is the one about how to WORK the phase, so it goes last, directly above the
+-- board. The host passes the row down (`bounds.titleY`, states/battle.lua's HUD_HINT_Y), because the
+-- three rows are one column of text and a widget guessing at the third would drift off the first two.
+-- The fallback is only for a probe that hands no bounds at all.
+local TITLE_Y = 68
 
 -- opts:
 --   combat, map, arena  the live (unopened) battle and its board widget
@@ -116,12 +124,14 @@ function DeployPhase.new(opts)
     self.speedSteps = opts.speedSteps or SPEED_STEPS
     self.autoSpeed = opts.autoSpeed or self.speedSteps[1]
 
-    self.placed = {}        -- { { char, unit, x, y }, ... } in placement order
-    self.held = nil         -- the member the keyboard/pad picked up
-    self.drag = nil         -- the member the mouse is carrying
-    self.cursor = 1         -- index into the strip while the strip has focus
-    self.scroll = 0         -- first roster index shown in the strip (see cardRect)
-    self.boardFocus = false -- keyboard/pad focus is on the board rather than the strip
+    self.placed = {}  -- { { char, unit, x, y }, ... } in placement order
+    self.held = nil   -- the member the keyboard/pad picked up
+    self.drag = nil   -- the member the mouse is carrying
+    -- Which CONTROL the keyboard/pad selection is sitting on, by key, or nil while the selection is the
+    -- board's cursor. Stored as the key rather than an index because the stack changes shape under it:
+    -- the speed cycler appears and vanishes with the auto switch, and an index would quietly slide onto
+    -- a different plate the frame that happened.
+    self.focus = nil
     self.message = nil
     self.mx, self.my = 0, 0
 
@@ -133,10 +143,24 @@ function DeployPhase.new(opts)
     -- words are not the one thing that overflows its plate.
     self.buttonFont = Theme.fitText(Theme.display, "Begin Battle", self.column.w - 12, 16, 11)
 
-    -- Open on last battle's four, already placed. A player happy with them presses Begin; anyone else
-    -- drags. Nobody is made to re-solve a decision they already made.
+    -- Everyone the player brought, standing, before the phase has drawn a frame. This is not a
+    -- convenience any more, it is the phase's premise: there is no strip to drag from, so a body that
+    -- opened un-placed could never be placed at all. A player happy with the arrangement presses
+    -- Begin; anyone else drags. Nobody is made to re-solve a decision they already made.
+    --
+    -- Runs with no player behind it too (a probe, a test harness). It used to open EMPTY in that case
+    -- rather than guess at who fought last -- which was the right call while a strip could correct the
+    -- guess, and is a board nobody can put a body on now that one cannot.
     self:autoFill()
-    if not self.player then self:reset() end -- no player (a probe): open empty rather than guess
+    -- Open the board cursor ON somebody. The map seats its own cursor at construction, on the first
+    -- living party unit or the grid centre -- and before this phase nobody is standing, so it is always
+    -- the centre, which on an ordinary board is a bare tile in no-man's-land. A pad or keyboard player
+    -- would open the phase with the selection parked on nothing and a walk ahead of them before the
+    -- first thing they can touch. The mouse never noticed because its cursor is wherever the pointer is.
+    local first = self.placed[1]
+    if first and self.map and self.map.cursor then
+        self.map.cursor.x, self.map.cursor.y = first.x, first.y
+    end
 
     return self
 end
@@ -189,8 +213,16 @@ function DeployPhase:deployAt(char, x, y)
     local occupant = self:deployedAt(x, y)
     if occupant and occupant.char == char then return true end
     local mine = self:deployedOf(char)
-    if not mine and not occupant and #self.placed >= Combat.MAX_FIELD then
-        self.message = "Only " .. Combat.MAX_FIELD .. " take the field. The rest wait on the bench."
+    if not mine and #self.placed >= Combat.MAX_FIELD then
+        self.message = "Only " .. Combat.MAX_FIELD .. " take the field."
+        return false
+    end
+    -- A SWAP NEEDS TWO TILES. The occupant is about to be lifted, and the only seat they can be given
+    -- is the mover's own -- so a mover who is not standing anywhere would leave them holding nothing.
+    -- Unreachable in a fight (everyone is placed at open) and reachable from a probe that placed
+    -- nobody, which is exactly the kind of caller that used to get a body quietly deleted.
+    if occupant and not mine then
+        self.message = "There is nowhere to put " .. (occupant.char.name or "them") .. "."
         return false
     end
 
@@ -221,8 +253,8 @@ function DeployPhase:deployAt(char, x, y)
     end
     self.placed[#self.placed + 1] = { char = char, unit = unit, x = x, y = y }
 
-    -- The displaced member takes the mover's old tile when there was one (a true swap); otherwise they
-    -- go back to the strip, which is the honest reading of "you put someone else there".
+    -- The displaced member takes the mover's old tile. Always a true swap now: the guard above refuses
+    -- the drop outright rather than lifting somebody with nowhere to set them down.
     if occupant and mx then
         local swapped = Combat.deployUnit(self.combat, occupant.char, mx, my)
         if swapped then
@@ -233,9 +265,14 @@ function DeployPhase:deployAt(char, x, y)
     return true
 end
 
--- Auto-fill: put the first MAX_FIELD company members on the arena's own bound spawns -- exactly where
--- they would have stood before there was a phase to choose in. Members who fought last battle come
--- first, so a player who fields the same four is one button from ready.
+-- Stand the line: put the company on the arena's own bound spawns -- exactly where they would have
+-- stood before there was a phase to arrange in. Members who fought last battle come first, so the
+-- opening arrangement echoes the last one rather than the roster's order.
+--
+-- Runs at open, and again behind the Reset Line control -- which is the only way back to this
+-- arrangement once the player has shuffled, and the reason that control still exists with nothing left
+-- to fill from. The MAX_FIELD break is a ceiling nothing underground reaches (the expedition is capped
+-- at four before it ever gets here) and is kept because it is this file's own promise, not the Gate's.
 function DeployPhase:autoFill()
     self:reset()
     local order = {}
@@ -336,59 +373,18 @@ end
 -- Layout
 -- ---------------------------------------------------------------------------
 
--- How many cards the strip shows at once: the whole company, because the company has a ceiling and the
--- gutter is wide enough for it. "Who is left on the bench" is then a glance rather than a count, and
--- nobody is decided about from behind a page tab. A roster longer than a company can only come from a
--- probe or a debug hand, and that one pages -- which is what `scroll` below is still for.
-function DeployPhase:cardsVisible()
-    return math.max(1, math.min(#self.roster, COMPANY_MAX))
-end
-
--- One card per company member, laid across the strip. Solved for exactly the number visible rather than
--- floored at some minimum: the gutter is the board's width (8 tiles) and a full company divides into it
--- at a little over fifty pixels a card, which still carries a portrait, a name and a health pip. A floor
--- the company cannot fit under does not protect legibility -- it just hides the eighth member.
-function DeployPhase:cardWidth()
-    local n = self:cardsVisible()
-    return math.max(1, (self.gutter.w - CARD_GAP * (n - 1)) / n)
-end
-
-function DeployPhase:maxScroll()
-    return math.max(0, #self.roster - self:cardsVisible())
-end
-
--- Keep the strip cursor on screen. Called after any move of `self.cursor`.
-function DeployPhase:scrollToCursor()
-    local visible = self:cardsVisible()
-    if self.scroll > self.cursor - 1 then self.scroll = self.cursor - 1
-    elseif self.cursor > self.scroll + visible then self.scroll = self.cursor - visible end
-    self.scroll = math.max(0, math.min(self:maxScroll(), self.scroll))
-end
-
--- The rect of roster index `i`, or nil when it is scrolled out of the strip.
-function DeployPhase:cardRect(i)
-    local r = self.gutter
-    local slot = i - self.scroll
-    if slot < 1 or slot > self:cardsVisible() then return nil end
-    local w = self:cardWidth()
-    return r.x + (slot - 1) * (w + CARD_GAP), r.y + 4, w, r.h - HINT_H - 8
-end
-
-function DeployPhase:cardAt(px, py)
-    for i = 1, #self.roster do
-        local x, y, w, h = self:cardRect(i)
-        if x and px >= x and px <= x + w and py >= y and py <= y + h then return i end
-    end
-    return nil
-end
+-- THE CARD LAYOUT STOOD HERE -- cardsVisible, cardWidth, maxScroll, scrollToCursor, cardRect, cardAt.
+-- Six functions and two pieces of state (`scroll`, `cursor`) whose whole job was to divide the gutter
+-- into a row of portraits and page it when the company overflowed. Nothing pages now, because nothing
+-- is listed: the company IS the four on the board. See the header.
 
 -- The control stack, top to bottom, as { key, rect, label, enabled, on }. Built from ONE list so the
 -- draw, the hit-test and the hand cursor can never disagree about what is showing or where -- a button
 -- that is hidden here is hidden everywhere, which is what keeps a fight with no stash behind it from
 -- having an invisible Loadout you can still click.
 --
--- The order is the order the decisions are made in: kit the company, stand them up, take it back, say
--- who plays -- and the bell last, because it is the one that ends the phase.
+-- The order is the order the decisions are made in: kit the company, put the line back, say who plays
+-- -- and the bell last, because it is the one that ends the phase.
 function DeployPhase:controls()
     local out, row = {}, 0
     local function add(key, label, enabled, on)
@@ -405,8 +401,12 @@ function DeployPhase:controls()
                           rect = { x = prev.x + prev.w + PAIR_GAP, y = prev.y, w = PAIR_W, h = CTRL_H } }
     end
     if self.onLoadout then add("loadout", "Loadout") end
-    add("autofill", "Auto-Fill")
-    add("clear", "Clear", #self.placed > 0)
+    -- "Reset Line", not the "Auto-Fill" it was: there is nothing left to fill FROM, and what the button
+    -- now does is put a shuffled line back the way the phase opened it. Its neighbour "Clear" went with
+    -- the strip -- a board the player could empty with no card to refill it from is a phase you can
+    -- lock yourself out of, and an empty field is not an arrangement anybody wants to reach in one
+    -- press. The way out of a bad line is Reset, not a blank board.
+    add("autofill", "Reset Line")
     -- The auto-battle switch sits directly above the bell: it is a modifier on the button below it
     -- ("begin -- like this"), not a third placement tool. Spelt out rather than ticked -- it has to
     -- answer "played or watched?" on its own, from a glance, with no second control to compare against.
@@ -441,10 +441,84 @@ end
 function DeployPhase:press(key)
     if key == "loadout" then if self.onLoadout then self.onLoadout() end
     elseif key == "autofill" then self:autoFill()
-    elseif key == "clear" then self:reset()
     elseif key == "auto" then self:toggleAuto()
     elseif key == "speed" then self:cycleSpeed()
     elseif key == "begin" then self:begin() end
+end
+
+-- The stack as ROWS, top to bottom, each row left to right: the plates that share a y (the auto switch
+-- and the speed cycler paired to its right) are one row. The keyboard/pad selection walks rows with
+-- up/down and a row's own plates with left/right, so the arrow the player presses points at the plate
+-- they get -- which a flat list could not do, since the speed cycler comes after Auto in the list and
+-- sits beside it on the screen.
+function DeployPhase:controlRows()
+    local rows = {}
+    for _, c in ipairs(self:controls()) do
+        local row = rows[#rows]
+        if row and row[1].rect.y == c.rect.y then row[#row + 1] = c else rows[#rows + 1] = { c } end
+    end
+    return rows
+end
+
+-- The focused control, and where it sits, as (control, rowIndex, colIndex). Self-healing: a focus key
+-- whose plate has gone (the speed cycler, when V throws the auto switch off while the selection is on
+-- it) falls back to the first plate of the row it shared rather than dumping the player back onto the
+-- board -- the selection should never vanish because a control did.
+function DeployPhase:focused()
+    if not self.focus then return nil end
+    local rows = self:controlRows()
+    for ri, row in ipairs(rows) do
+        for ci, c in ipairs(row) do
+            if c.key == self.focus then return c, ri, ci end
+        end
+    end
+    local fallback = rows[#rows] and rows[#rows][1]
+    -- The cycler's row is Auto's; anything else that disappears falls to the foot of the stack, which
+    -- is the bell -- the one plate that is always there.
+    for _, row in ipairs(rows) do
+        if row[1].key == "auto" then fallback = row[1] break end
+    end
+    self.focus = fallback and fallback.key or nil
+    return self:focused()
+end
+
+-- Cross from the board into the stack, landing on the plate the cursor was already looking across at:
+-- the row whose middle is nearest the cursor's own height on screen. A crossing that always landed on
+-- the top plate would make the column feel like a menu the board throws you into rather than the thing
+-- standing beside the tile you were on.
+function DeployPhase:enterColumn()
+    local rows = self:controlRows()
+    if #rows == 0 then return end
+    local cy = self.column.y
+    if self.map and self.map.cursor and self.map.cellToPixel then
+        local _, py = self.map:cellToPixel(self.map.cursor.x, self.map.cursor.y)
+        cy = py + (self.map.size or 0) / 2
+    end
+    local best, bestD = rows[1][1], math.huge
+    for _, row in ipairs(rows) do
+        local r = row[1].rect
+        local d = math.abs(r.y + r.h / 2 - cy)
+        if d < bestD then best, bestD = row[1], d end
+    end
+    self.focus = best.key
+end
+
+-- One navigation step INSIDE the stack. A step right off the last plate of a row leaves the column and
+-- gives the board its cursor back -- the same edge, crossed the other way.
+function DeployPhase:navigateColumn(dx, dy)
+    local _, ri, ci = self:focused()
+    if not ri then return end
+    local rows = self:controlRows()
+    if dy ~= 0 then
+        ri = math.max(1, math.min(#rows, ri + dy))
+        ci = math.min(ci, #rows[ri])
+    elseif dx > 0 then
+        if ci >= #rows[ri] then self.focus = nil return end
+        ci = ci + 1
+    elseif dx < 0 then
+        ci = math.max(1, ci - 1)
+    end
+    self.focus = rows[ri][ci].key
 end
 
 -- The foot of the control stack: what the docked hover boxes below may rise to. The column is shared,
@@ -479,65 +553,26 @@ local function drawPortrait(char, x, y, size, font)
     end
 end
 
-function DeployPhase:drawCard(i, char)
-    local x, y, w, h = self:cardRect(i)
-    if not x then return end -- scrolled out of the strip
-    local placed = self:deployedOf(char)
-    local held = self.held == char or (self.drag and self.drag.active and self.drag.char == char)
-
-    love.graphics.setColor(0.11, 0.12, 0.16, 0.95)
-    love.graphics.rectangle("fill", x, y, w, h, 6, 6)
-    love.graphics.setColor(placed and 0.72 or 0.34, placed and 0.60 or 0.38, placed and 0.40 or 0.48)
-    love.graphics.rectangle("line", x, y, w, h, 6, 6)
-
-    -- "This one is standing" is an amber bar across the card's top rather than a word over the
-    -- portrait: at a company's worth of cards to a board's width there is no room for a caption, and
-    -- the bar reads from further away than the text ever did.
-    if placed then
-        Theme.set(Theme.accentAmber)
-        love.graphics.rectangle("fill", x + 3, y + 3, w - 6, 3, 2, 2)
-    end
-
-    if not held then
-        local size = math.min(w - 10, h - 32)
-        drawPortrait(char, x + (w - size) / 2, y + 10, size, self.font)
-    end
-
-    -- The ones standing read BRIGHT; the reserve reads quieter. The bar above already says which is
-    -- which -- this just keeps the two groups from looking like one row of identical cards.
-    love.graphics.setFont(self.font)
-    love.graphics.setColor(placed and 0.95 or 0.70, placed and 0.93 or 0.72, placed and 0.98 or 0.80)
-    love.graphics.printf(Theme.ellipsize(char.name or "?", self.font, w - 4), x + 2, y + h - 15, w - 4, "center")
-
-    -- A health pip, so a wounded member is never deployed by accident.
-    local hp = char.stats and char.stats.health
-    if type(hp) == "table" and (hp.max or 0) > 0 then
-        local frac = math.max(0, math.min(1, (hp.current or 0) / hp.max))
-        love.graphics.setColor(0.10, 0.11, 0.15)
-        love.graphics.rectangle("fill", x + 4, y + h - 22, w - 8, 4, 2, 2)
-        love.graphics.setColor(Colors.PARTY[1], Colors.PARTY[2], Colors.PARTY[3])
-        love.graphics.rectangle("fill", x + 4, y + h - 22, (w - 8) * frac, 4, 2, 2)
-    end
-
-    if not self.boardFocus and self.cursor == i then
-        Theme.set(Theme.cursor)
-        love.graphics.setLineWidth(2)
-        love.graphics.rectangle("line", x - 2, y - 2, w + 4, h + 4, 7, 7)
-        love.graphics.setLineWidth(1)
-    end
-end
 
 -- One control plate, in the left column's own look (states/battle.lua's drawMenuEntry): a slate face
 -- with a quiet bronze frame and bone label, greyed when the control cannot be pressed. `on` marks a
 -- SWITCH that is currently thrown (the auto-battle toggle); it wears the spotlight gold the rest of the
 -- UI spends on what is live, so an armed auto-battle is legible from the far side of the screen -- a
 -- fight that plays itself is not a thing to discover after the bell.
-function DeployPhase:drawButton(r, label, enabled, on)
+-- `focus` marks the plate the keyboard/pad selection is SITTING on -- the cool steel the rest of the UI
+-- spends on a selection that moves, kept clear of the gold a thrown switch wears, so a focused Auto
+-- reads as both at once (a steel ring around a gold plate) rather than one shouting over the other.
+function DeployPhase:drawButton(r, label, enabled, on, focus)
     Theme.set(on and Theme.panel or Theme.panel2, enabled and 1 or 0.7)
     love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, Theme.R, Theme.R)
     love.graphics.setLineWidth(on and 1.5 or 1)
     if on then Theme.set(Theme.accentAmber) else Theme.set(Theme.frame, enabled and 1 or 0.5) end
     love.graphics.rectangle("line", r.x, r.y, r.w, r.h, Theme.R, Theme.R)
+    if focus then
+        Theme.set(Theme.cursor)
+        love.graphics.setLineWidth(2)
+        love.graphics.rectangle("line", r.x - 2.5, r.y - 2.5, r.w + 5, r.h + 5, Theme.R + 2, Theme.R + 2)
+    end
     love.graphics.setLineWidth(1)
     love.graphics.setFont(self.buttonFont)
     if on then Theme.set(Theme.accentAmber)
@@ -551,41 +586,25 @@ end
 function DeployPhase:draw(bounds)
     bounds = bounds or { x = 0, w = Scale.WIDTH }
 
+    -- No "N / 4 on the field" any more. That count was the strip's readout -- it moved while cards came
+    -- on and off, and it was the only place the bench was legible. Everyone stands from the first frame
+    -- now, so it could only ever read "4 / 4", and a figure no decision turns on is a figure to cut.
     love.graphics.setFont(self.titleFont)
     Theme.set(Theme.accentAmber)
-    love.graphics.printf("Deploy your company  --  " .. #self.placed .. " / " .. Combat.MAX_FIELD
-        .. " on the field", bounds.x, TITLE_Y, bounds.w, "center")
+    love.graphics.printf("Set your line", bounds.x, bounds.titleY or TITLE_Y, bounds.w, "center")
 
-    for i, char in ipairs(self.roster) do self:drawCard(i, char) end
-    -- Only when the company overflows the strip: how many are off each end, tabbed over the card at
-    -- that end. A count rather than an arrow, because "3 more" answers the question an arrow raises.
-    -- Inside the gutter, never beside it -- the gutter is exactly the board's width and there is no
-    -- promise of margin on either side of it.
-    if self:maxScroll() > 0 then
-        local r = self.gutter
-        local after = #self.roster - self.scroll - self:cardsVisible()
-        local function tab(label, x)
-            local w = self.font:getWidth(label) + 8
-            love.graphics.setColor(0.08, 0.09, 0.12, 0.9)
-            love.graphics.rectangle("fill", x, r.y + 4, w, 16, 3, 3)
-            love.graphics.setColor(0.60, 0.64, 0.75)
-            love.graphics.print(label, x + 4, r.y + 5)
-        end
-        love.graphics.setFont(self.font)
-        if self.scroll > 0 then tab("<" .. self.scroll, r.x + 2) end
-        if after > 0 then
-            local label = after .. ">"
-            tab(label, r.x + r.w - self.font:getWidth(label) - 10)
-        end
-    end
-
+    -- The selection ring is drawn only while the player is actually steering with it. On the mouse the
+    -- pointer says where the press will land, and a second, stale marker parked on a plate nobody is
+    -- looking at would be a lie about what Space does next.
+    local focusKey = (not InputMode.isMouse()) and self.focus or nil
     for _, c in ipairs(self:controls()) do
-        self:drawButton(c.rect, c.label, c.enabled, c.on)
+        self:drawButton(c.rect, c.label, c.enabled, c.on, c.key == focusKey)
     end
 
-    -- One line along the foot of the strip: either the last refusal, or how to work the phase. It has
-    -- the strip's whole width now that the controls have left it, which is why it can say the long form.
-    -- Ellipsized rather than wrapped -- a second line has nowhere to go in a strip this tall.
+    -- One line along the TOP of the gutter, board-width: either the last refusal, or how to work the
+    -- phase. It sat at the foot of the strip while there was a strip under it to belong to; now the
+    -- gutter is empty and the line goes where it is read -- against the board, under the tiles the
+    -- refusal is about. Ellipsized rather than wrapped -- a second line teaches nothing a first cannot.
     local r = self.gutter
     love.graphics.setFont(self.font)
     local hintX = r.x + 2
@@ -593,27 +612,107 @@ function DeployPhase:draw(bounds)
     local line, color = self.message, { 0.92, 0.62, 0.55 }
     if not line then
         color = { 0.55, 0.58, 0.68 }
-        -- The long form on a wide board, a short one on a narrow gutter. A hint the strip cuts in half
+        -- The long form on a wide board, a short one on a narrow gutter. A hint the board cuts in half
         -- teaches nothing, so it says less rather than saying it truncated.
         local roomy = hintW >= 240
-        if InputMode.isGamepad() then
-            line = roomy and ("D-pad: choose   A: pick up / place   "
+        local pad = InputMode.isGamepad()
+        if self.focus and not InputMode.isMouse() then
+            -- The selection has left the board for the column. What the confirm key does changed with
+            -- it, and so does the way back -- neither of which the board's own line says.
+            line = pad and "A: press   Right: back to the board   B: cancel"
+                or "Space: press   Right: back to the board"
+        elseif self.held then
+            -- A body is IN HAND. The line stops teaching the phase and answers the only question the
+            -- player has while carrying one: where can I put them down, and what happens if somebody
+            -- is already there.
+            if pad then
+                line = roomy and "D-pad: choose a lit tile   A: set down (on an ally to trade places)   B: cancel"
+                    or "A: set down   B: cancel"
+            elseif InputMode.isMouse() then
+                line = roomy and "Click a lit tile to set them down; on an ally to trade places"
+                    or "Click a lit tile"
+            else
+                line = roomy and "Arrows: choose a lit tile   Space: set down (on an ally to trade places)   Esc: cancel"
+                    or "Space: set down   Esc: cancel"
+            end
+        elseif pad then
+            line = roomy and ("D-pad: move cursor   A: pick up / drop   "
                     .. (self.onLoadout and "X: loadout   " or "") .. "Y: auto   Start: begin")
-                or "A: place   Y: auto   Start: begin"
+                or "A: pick up / drop   Y: auto   Start: begin"
+        elseif InputMode.isMouse() then
+            -- Says the swap outright. It is the whole of the phase on a board where everyone is already
+            -- standing -- a player who does not know a drop on an ally trades their places has no
+            -- move but shuffling into the gaps.
+            line = roomy and "Drag a body to another lit tile; drop on an ally to trade places"
+                or "Drag between lit tiles"
         else
-            line = roomy and "Drag onto the lit ground; drag back here to withdraw"
-                or "Drag onto lit tiles"
+            -- THE KEYBOARD USED TO BE TOLD TO DRAG. It fell through to the mouse's line -- and it is the
+            -- mode the game BOOTS in (input_mode.lua's default), so a player who had not yet touched
+            -- anything was taught the one verb they did not have. It gets its own keys, and the step
+            -- into the column, which is the only thing on this screen a key alone would not find.
+            line = roomy and "Arrows: move cursor   Space: pick up / drop   Left: controls   Enter: begin"
+                or "Space: pick up / drop   Enter: begin"
         end
     end
     love.graphics.setColor(color[1], color[2], color[3])
-    love.graphics.print(Theme.ellipsize(line, self.font, hintW), hintX, r.y + r.h - HINT_H + 3)
+    love.graphics.print(Theme.ellipsize(line, self.font, hintW), hintX, r.y + 3)
 
     self:drawHover(bounds)
+    self:drawHeld()
 
     -- The carried portrait rides the cursor above everything else.
     if self.drag and self.drag.active and self.drag.char then
         drawPortrait(self.drag.char, self.mx - 22, self.my - 22, 44, self.font)
     end
+    love.graphics.setColor(1, 1, 1)
+end
+
+-- One tile of the board, ringed. Drawn per CELL rather than as one rect over a body's footprint,
+-- because a turned board puts a wide body's anchor somewhere other than the top-left of its own block.
+local function ringCell(map, x, y, color, alpha)
+    local px, py = map:cellToPixel(x, y)
+    local s = map.size
+    Theme.set(color, alpha or 1)
+    love.graphics.setLineWidth(2)
+    love.graphics.rectangle("line", px + 2, py + 2, s - 4, s - 4, 4, 4)
+    love.graphics.setLineWidth(1)
+end
+
+-- THE BODY IN HAND. `held` is the pick-up-then-put-down half of the placement -- the whole of it on a
+-- keyboard or a pad, and what a plain click (a press that never became a drag) leaves behind on the
+-- mouse -- and it drew NOTHING. A player pressed A on their knight, the screen did not move, and the
+-- next press dropped them somewhere: the phase's primary verb was invisible on two of its three inputs.
+--
+-- So it says three things, in the order they are asked: WHO is lifted (their own tile ringed, which
+-- survives the cursor walking away from it), WHERE they would land (their portrait riding the board
+-- cursor, exactly as the drag's rides the pointer), and WHO ELSE it would move -- an ally under the
+-- cursor is ringed in the same gold, because the two are about to trade and a swap that only lit one
+-- of its two tiles would read as an overwrite.
+function DeployPhase:drawHeld()
+    local p = self.held and self:deployedOf(self.held)
+    if not p or not self.map then return end
+
+    local w, h = (p.unit and p.unit.w) or 1, (p.unit and p.unit.h) or 1
+    for dy = 0, h - 1 do
+        for dx = 0, w - 1 do ringCell(self.map, p.x + dx, p.y + dy, Theme.accentAmber, 0.9) end
+    end
+
+    local mouse = InputMode.isMouse()
+    local px, py = self.mx, self.my
+    if not mouse then
+        local c = self.map.cursor
+        -- The occupant of the tile the selection is over: the other half of the trade, lit as such.
+        local under = self:deployedAt(c.x, c.y)
+        if under and under.char ~= self.held then
+            local uw, uh = (under.unit and under.unit.w) or 1, (under.unit and under.unit.h) or 1
+            for dy = 0, uh - 1 do
+                for dx = 0, uw - 1 do ringCell(self.map, under.x + dx, under.y + dy, Theme.accentAmber, 0.55) end
+            end
+        end
+        local cx, cy = self.map:cellToPixel(c.x, c.y)
+        px, py = cx + self.map.size / 2, cy + self.map.size / 2
+    end
+    drawPortrait(self.held, px - 22, py - 22, 44, self.font)
     love.graphics.setColor(1, 1, 1)
 end
 
@@ -630,7 +729,6 @@ function DeployPhase:hoverCell()
         if not cx then return nil end
         return cx, cy, self.mx, self.my
     end
-    if not self.boardFocus then return nil end
     local c = self.map.cursor
     local px, py = self.map:cellToPixel(c.x, c.y)
     return c.x, c.y, px + self.map.size, py + self.map.size / 2
@@ -706,6 +804,10 @@ end
 function DeployPhase:mousepressed(x, y, button)
     if button ~= 1 then return end
     self.mx, self.my = x, y
+    -- The pointer has taken over the selection. Dropping the column focus means the next key press
+    -- picks up from the tile the mouse is on rather than from a plate the player stopped steering
+    -- several clicks ago -- the two devices hand the selection over instead of each keeping their own.
+    self.focus = nil
 
     local control = self:controlAt(x, y)
     if control then self:press(control) return end
@@ -718,15 +820,10 @@ function DeployPhase:mousepressed(x, y, button)
         return
     end
 
+    -- The board is the only thing that can start a drag now: there is no card to pick a body off.
     if cx then
         local p = self:deployedAt(cx, cy)
-        if p then self.drag = { char = p.char, from = "board", startX = x, startY = y, active = false } end
-        return
-    end
-    local i = self:cardAt(x, y)
-    if i then
-        self.cursor, self.boardFocus = i, false
-        self.drag = { char = self.roster[i], from = "strip", startX = x, startY = y, active = false }
+        if p then self.drag = { char = p.char, startX = x, startY = y, active = false } end
     end
 end
 
@@ -740,83 +837,78 @@ function DeployPhase:mousereleased(x, y, button)
     if drag.active then
         if cx then
             self:deployAt(drag.char, cx, cy)
-        elseif drag.from == "board" then
-            -- Dragged off the board (onto the strip, or anywhere else): withdrawn back to the bench.
-            self:undeploy(drag.char)
-            self.message = nil
+        else
+            -- Dropped off the board. This used to WITHDRAW the body to the bench; there is no bench, so
+            -- it is a refusal -- and a spoken one, because a drag that puts a body back where it started
+            -- and says nothing reads as a drag the game failed to notice.
+            self.message = "Everyone you brought down takes the field."
         end
         return
     end
 
-    -- A click, not a drag. On the board it picks the standing member up; on a card it toggles: an
-    -- unplaced member goes to the first free tile, a placed one comes back off.
-    if drag.from == "board" then
-        self.held = drag.char
-    elseif self:deployedOf(drag.char) then
-        self:undeploy(drag.char)
-    else
-        for _, t in ipairs(Combat.reinforceTiles(self.combat)) do
-            if self:deployAt(drag.char, t.x, t.y) then break end
-        end
-    end
+    -- A click, not a drag: it picks the standing member up, and the next click drops them.
+    self.held = drag.char
 end
 
--- One navigation step across the two regions: the strip and the board. Pushing UP off the strip crosses
--- onto the board's cursor; pushing DOWN off the board's bottom row crosses back. The same one-cursor,
--- two-regions idiom the Loadout panel uses.
+-- One navigation step. It crossed between two regions -- the strip and the board -- pushing up off the
+-- cards onto the tiles and down off the bottom row back; with the strip gone there is one region and no
+-- edge to cross at, so the whole of it is the board cursor. Which also retires the awkward part: the
+-- crossing had to ask the MAP where the cursor sat on screen, because a board turned to put the party
+-- at the bottom has some other grid row against the strip.
+-- ...which leaves ONE edge to cross, and it is the board's own left side, into the control stack
+-- standing beside it. Read off the cursor REFUSING to move: moveCursor clamps silently at the board's
+-- edge, so a step left that changed nothing is a step off the left of the board, whichever way the
+-- board is facing -- no caller has to ask the map where the cursor sits on screen, which is the part
+-- the old strip crossing got wrong.
 function DeployPhase:navigate(dx, dy)
-    if self.boardFocus then
-        -- "The board's bottom row" is a fact about the PICTURE, not the grid: a board turned to put the
-        -- party at the bottom has some other grid row against the strip. Ask the map where the cursor
-        -- is on screen, and cross when it is on the last screen row.
-        local _, cv = self.map:rotateCell(self.map.cursor.x, self.map.cursor.y)
-        local _, screenRows = self.map:span()
-        if dy > 0 and cv >= screenRows then
-            self.boardFocus = false
-            return
-        end
-        self.map:moveCursor(dx, dy)
-        return
-    end
-    if dy < 0 then self.boardFocus = true return end
-    self.cursor = math.max(1, math.min(#self.roster, self.cursor + dx))
-    self:scrollToCursor()
+    if self.focus then self:navigateColumn(dx, dy) return end
+    local c = self.map.cursor
+    local bx, by = c.x, c.y
+    self.map:moveCursor(dx, dy)
+    if dx < 0 and c.x == bx and c.y == by then self:enterColumn() end
 end
 
--- Wheel over the strip pages the company sideways. Only bound when there is something off-screen, so
--- on an ordinary company the wheel does nothing rather than jittering a strip that already fits.
-function DeployPhase:wheelmoved(_, dy)
-    if dy == 0 or self:maxScroll() == 0 then return end
-    self.scroll = math.max(0, math.min(self:maxScroll(), self.scroll - dy))
-end
+-- THE WHEEL IS NOT BOUND ANY MORE. It paged the strip sideways when the company overflowed it; nothing
+-- overflows and nothing pages. The host swallows the wheel while the phase is up rather than routing it
+-- here (states/battle.lua's wheelmoved), so it cannot fall through to the fight underneath.
 
 function DeployPhase:confirm()
-    if self.boardFocus then
-        local c = self.map.cursor
-        if self.held then
-            self:deployAt(self.held, c.x, c.y)
-            self.held = nil
-        else
-            local p = self:deployedAt(c.x, c.y)
-            if p then self.held = p.char end
-        end
+    -- On a plate, confirm PRESSES it -- and only an enabled one answers, exactly as a click does
+    -- (controlAt). A bell with nobody on the field is not a button that does nothing, it is not a button.
+    if self.focus then
+        local ctrl = self:focused()
+        if ctrl and ctrl.enabled then self:press(ctrl.key) end
         return
     end
-    local char = self.roster[self.cursor]
-    if not char then return end
-    if self:deployedOf(char) then
-        self:undeploy(char)
+    local c = self.map.cursor
+    if self.held then
+        self:deployAt(self.held, c.x, c.y)
+        self.held = nil
     else
-        self.held = char
-        self.boardFocus = true
+        local p = self:deployedAt(c.x, c.y)
+        if p then self.held = p.char end
     end
+end
+
+-- Backing out, in the order the player got into it: the plate first (the selection comes back to the
+-- board), then the body in hand (they stay where they were standing), and with neither, the phase says
+-- what it is waiting for. One ladder, shared by Esc and the pad's B, so the two never disagree about
+-- what "back" means with a body in hand and a plate lit.
+function DeployPhase:cancel()
+    if self.focus then self.focus = nil
+    elseif self.held then self.held = nil
+    else self.message = "Set your line, then Begin Battle." end
 end
 
 function DeployPhase:keypressed(key)
     if key == "return" or key == "kpenter" then self:begin()
-    elseif key == "escape" then
-        if self.held then self.held = nil else self.message = "Deploy your company, then Begin Battle." end
+    elseif key == "escape" then self:cancel()
     elseif key == "space" then self:confirm()
+    -- R for Reset Line, the one plate in the stack that had no key of its own -- the doc has claimed
+    -- keyboard and pad reach all of it since the strip went, and this was the control making that a lie.
+    -- It is on the selection ring now like every other plate; the letter is for the hand already on the
+    -- arrows, which is where this phase's hands are.
+    elseif key == "r" then self:press("autofill")
     -- V, the same key that flips whole-side auto inside the fight (states/battle.lua): one binding for
     -- one idea, before the bell and after it.
     elseif key == "v" then self:toggleAuto()
@@ -835,7 +927,7 @@ end
 
 function DeployPhase:gamepadpressed(_, button)
     if button == "start" then self:begin()
-    elseif button == "b" then self.held = nil
+    elseif button == "b" then self:cancel()
     elseif button == "a" then self:confirm()
     -- Y, not the fight's A: here A is already "pick up / place", and placement outranks a switch.
     elseif button == "y" then self:toggleAuto()
@@ -852,10 +944,9 @@ function DeployPhase:gamepadpressed(_, button)
     end
 end
 
--- A hand over anything that can be picked up or pressed: a company card, a member already standing on
--- the board, and the column's controls.
+-- A hand over anything that can be picked up or pressed: a member standing on the board, and the
+-- column's controls.
 function DeployPhase:cursorKind(x, y)
-    if self:cardAt(x, y) then return "hand" end
     if self:controlAt(x, y) then return "hand" end
     local cx, cy = self.map:cellAt(x, y)
     if cx and (self.held or self:deployedAt(cx, cy)) then return "hand" end

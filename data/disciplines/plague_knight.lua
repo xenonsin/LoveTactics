@@ -10,5 +10,5 @@ return {
     description = "A walking miasma. Melee spreads poison, and standing next to you sickens whoever is standing there.",
     classes = { "knight", "alchemist" },
     exemplar = "character_plague_knight", -- was character_forsworn_knight (a story-critical Bastion enemy); dedicated exemplar authored
-    requiredQuests = { "quest_bastion_the_rot_beneath_the_plate" }, -- pending
+    requiredLevel = { knight = 6 }, -- pending
 }

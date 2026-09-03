@@ -14,10 +14,13 @@ return {
     stats = {
         health = 24, mana = 0, stamina = 13,
         staminaRegen = 1,
-        damage = 9, magicDamage = 0,
+        damage = 11, magicDamage = 0,
         defense = 4, magicDefense = 2,
         movement = 4, -- shambling
         speed = 2,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 1, luck = 0,
     },
     startingItems = { "weapon_rotting_claws", "utility_grave_cold" },
     -- Basic tactics (models/ai.lua): witless but not aimless -- the raised corpse shambles onto the foe

@@ -146,13 +146,25 @@ function Forge.ceilingFor(player, item)
     end
     local class = Item.classOf(item)
     if class then
-        local vendorId = Forge.houseVendorFor(class)
-        local done = vendorId and Quest.sponsorProgress(player, vendorId) or 0
-        local rungs = vendorId and Errand.tiers(vendorId) or 0
-        if rungs <= 0 then return Item.MAX_LEVEL end
+        -- HOW FAR THE COMPANY HAS GOT IN THIS ITEM'S OWN CLASS, on the 0..CLASS_LEVEL_CAP ladder
+        -- (Discipline.classLevel), read as the roster's best holder for the same reason every other
+        -- company-facing reading of it is: specializing one body opens the deep end, and spreading the
+        -- same tally over four does not.
+        --
+        -- IT USED TO COUNT THAT HOUSE'S FINISHED QUESTS against the rung count of its errand line, and
+        -- both of those are gone -- the houses do not post work any more and there is no line to run.
+        -- What the ceiling was asking has not changed at all, which is why this is a re-point rather
+        -- than a new rule: how deep into this house are you, and may you forge its gear that far.
+        --
+        -- Worth knowing that this function has already shipped one silent failure of exactly this kind:
+        -- it divided by a rung count measured off a line nobody could run, and stopped every bench in
+        -- the game at +9 without saying so. Reading a ladder that is always populated -- every body has
+        -- a class level in everything it has ever swung, even if it is nought -- is what closes that
+        -- whole family of bug.
+        local rungs = Discipline.CLASS_LEVEL_CAP
+        local held = math.min(Discipline.rosterLevel(player, class), rungs)
         local climb = Item.MAX_LEVEL - Forge.CEILING_BASE
-        local earned = math.floor(math.min(done, rungs) * climb / rungs + 0.5)
-        return math.min(Item.MAX_LEVEL, Forge.CEILING_BASE + earned)
+        return math.min(Item.MAX_LEVEL, Forge.CEILING_BASE + math.floor(held * climb / rungs + 0.5))
     end
     return Item.MAX_LEVEL
 end

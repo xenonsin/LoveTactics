@@ -9,8 +9,8 @@
 -- THE WALKABLE HALF HAS TO READ APART FROM THE SOLID HALF, which is a biome's job and not the terrain
 -- table's. models/terrain.lua gives `forest` and `thicket` the same green, and that was harmless while
 -- one of them only ever appeared on a battle board and the other only on the map. They now stand side
--- by side on both surfaces -- the map is the board (models/arena.lua's Arena.fromGrid), and an authored
--- layout can lay walkable cover into a clearing (data/overworld/tutorial_flight.lua) -- so a player
+-- by side on the map, because an authored layout can lay walkable cover into a clearing
+-- (data/overworld/tutorial_flight.lua) -- so a player
 -- looking at a clump of trees has no way to know whether it is something to hide behind or the wall,
 -- and a whole tactical layer goes invisible. The three overrides below are that answer: cover is
 -- lighter and scrubbier than the canopy, the high ground is paler than the boulders at its foot, and a

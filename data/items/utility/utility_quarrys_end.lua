@@ -37,4 +37,6 @@ return {
             end
         end,
     },
+    -- the whole field Rooted and painted at once
+    bonus = { skill = 2 },
 }

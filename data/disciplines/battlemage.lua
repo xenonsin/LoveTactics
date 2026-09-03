@@ -9,5 +9,5 @@ return {
     description = "Spell and steel in one motion. Folds a cantrip into a melee swing, so the blade casts as it lands.",
     classes = { "fighter", "mage" },
     exemplar = "character_battlemage", -- NEW, pending
-    requiredQuests = { "quest_arcanum_the_broken_siege" }, -- pending
+    requiredLevel = { mage = 7 }, -- pending
 }

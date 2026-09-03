@@ -22,6 +22,9 @@ return {
         defense = 11, magicDefense = 6,
         movement = 4, -- number of spaces this character can move
         speed = 3,    -- initiative tie-break; folded into starting initiative
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 3, luck = 2,
     },
     -- Starting loadout as the 3x3 grid the player sees (row-major); false = an empty cell. A plain
     -- frontline kit with NO bound relic -- that is exactly what separates a generic template from a

@@ -24,11 +24,40 @@
 -- points behind, so the first Fireball they ever threw was worse than the sword they were told to
 -- put down. A blank slate has to be blank on both sides, or the choice it offers is rhetorical.
 --
--- The physical half is unchanged from that old block and cannot move: 12 is what makes the starting
--- sword (power 6) fell an imp in exactly one stroke, which is the prologue's opening lesson, and 8
--- defense is what prices the Demon Grunt's claw at the 20 the mana lesson is argued from (see
--- data/characters/character_demon_imp.lua and data/tutorials/village.lua). The magic half came UP to
--- meet it rather than the physical half coming down, for that reason alone.
+-- DEFENSE CANNOT MOVE: 8 is what prices the Demon Grunt's claw at the 20 the mana lesson is argued
+-- from (data/tutorials/village.lua). The damage halves DID move, from 12 to 16, and the reason is
+-- that this body is not only a body -- it is Balance.REFERENCE, the yardstick every enemy blueprint
+-- in the game is measured against (models/balance.lua).
+--
+-- At 12 the swing was 18 (Damage plus the starting sword's power 6), which ranked the protagonist
+-- THIRTY-SECOND of the forty-six bodies on their own tier-2 rung -- below Rowan at 24, who walks in
+-- beside them, and below every companion they will ever recruit. Measured outward it was worse than
+-- unflattering: 36 hits to fell a fighter, 34 to fell a knight, against a Balance.TTK band that asks
+-- for 2-4. Subtractive mitigation is unforgiving of a small number, and 18 into 13 armour is small.
+--
+-- What made that everyone's problem rather than the protagonist's is tools/balance_rescale.lua's
+-- third pass, which caps any ordinary body that out-hits the reference at one under the reference's
+-- swing. A weak yardstick is therefore not a measurement error that stays put; it is a ceiling, and
+-- it got stamped across the early bestiary -- twelve blueprints piled up in the 15-18 band directly
+-- underneath this number, which is a cap's fingerprint and not twelve authors agreeing.
+--
+-- 16 puts the swing at 22, within a couple of points of the knight who starts beside it: the
+-- protagonist is no longer the weakest thing in their own party. It does not on its own reach the TTK
+-- band against an armoured body -- the armour side of the same subtraction has to come down for that,
+-- which is what the rescale's first two passes are for -- and it is deliberately not aimed there alone.
+--
+-- 16 RATHER THAN THE 18 THIS FIRST LANDED ON, and the ceiling is the prologue, not the ledger. The
+-- lesson's closing column is scripted to the point (tests/tutorial_spec.lua): the grunt must survive
+-- Rowan's follow-up and fall to the player's stroke. Every point of Damage here costs two points of
+-- that window, and the grunt cannot pay for any of it -- it is already at the top of its rung's health
+-- band. 16/80 is the strongest pairing the beat has room for, measured across the whole grid rather
+-- than reasoned out. See character_demon_grunt.lua.
+--
+-- The prologue's opening lesson survives intact, which is the constraint 12 was originally held by:
+-- 16 + 6 - the imp's 2 defense is 20 against 14 health, so the imp still falls to exactly one stroke
+-- (data/characters/character_demon_imp.lua). It falls harder, and that is all.
+--
+-- The magic half moves with it, because the symmetry above is a promise and not a coincidence.
 --
 -- The blueprint name is "Stranger": the avatar is nameless until the Colosseum announcer asks, and
 -- the typed name is written onto the instance (char.name) then -- see states/prologue.lua and the
@@ -44,10 +73,13 @@ return {
     stats = {
         health = 62, mana = 20, stamina = 15,
         staminaRegen = 2,
-        damage = 12, magicDamage = 12,
+        damage = 16, magicDamage = 16,
         defense = 8, magicDefense = 8,
         movement = 4,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 4, luck = 8,
     },
     startingItems = { "weapon_iron_sword", "armor_leather_armor" },
     defaultAction = "weapon_iron_sword",

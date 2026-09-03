@@ -46,4 +46,6 @@ return {
             end
         end,
     },
+    -- consecrated ground that stays after the totems fall
+    bonus = { magicDefense = 2 },
 }

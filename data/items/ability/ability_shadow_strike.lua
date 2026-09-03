@@ -14,7 +14,7 @@ return {
     tags = { "guile", "physical" },
     class = "rogue",
     discipline = "assassin", -- deeper cut of the shelf: buyable only once the assassin gate is cleared
-    price = 610,
+    price = 410,
     unlockQuests = 4,
     activeAbility = {
         target = "enemy",

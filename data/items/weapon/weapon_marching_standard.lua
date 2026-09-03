@@ -47,7 +47,7 @@ return {
     -- Rank 4 is the ceiling: every vendor's `ranks` table is four rungs long (data/vendors/), and the
     -- general quests gate on rank 4 as "the highest standing". A shelf therefore climbs 1..4 with its two
     -- capstones sharing the top rung -- here this and the Mailpiercer.
-    unlockQuests = 5,
+    unlockQuests = 8,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

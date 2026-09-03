@@ -22,6 +22,9 @@ return {
         defense = 8, magicDefense = 14, -- warded against the magic she is sent to unmake
         movement = 4,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 3, luck = 6,
     },
     -- The 3x3 loadout grid (row-major); false = an empty cell. Banish is the build-around -- it removes a
     -- summon outright -- with Dispel to strip a buff or hazard and Silence to shut a caster's mouth; Heal
@@ -29,7 +32,7 @@ return {
     startingItems = {
         "weapon_censer",             "ability_banish",           "consumable_healing_potion",
         "ability_dispel_illusions",  "ability_silence",          "utility_cleansing_ward",
-        "ability_heal",              false,                     false,
+        "ability_heal",              "utility_rite_unspoken",                     false,
     },
     defaultAction = "ability_banish",
     -- Basic tactics: heal the moment healing matters; Banish and the dispels carry their own reads about

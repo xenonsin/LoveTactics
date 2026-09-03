@@ -24,8 +24,8 @@ return {
     tags = { "holy" },
     class = "priest",
     discipline = "paladin",
-    price = 740,
-    unlockQuests = 5,
+    price = 660,
+    unlockQuests = 7,
     activeAbility = {
         target = "ally",
         range = 1,

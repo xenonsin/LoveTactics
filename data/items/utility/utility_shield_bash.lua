@@ -11,7 +11,9 @@ return {
     type = "utility",
     tags = { "technique" },
     class = "knight",
-    price = 80,
-    unlockQuests = 0,
+    price = 330,
+    unlockQuests = 3,
     traits = { "trait_shield_bash" },
+    -- it needs a shield in the grid; it may as well be one
+    bonus = { defense = 2 },
 }

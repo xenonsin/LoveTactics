@@ -25,7 +25,7 @@ return {
     tags = { "bow", "pierce", "physical", "ranged" },
     hands = 2, -- two-handed, like every bow
     class = "hunter",
-    price = 210,
+    price = 165,
     unlockQuests = 1, -- the reach bow, early: the deep bows are the Limning and the Hailfall
     activeAbility = {
         target = "enemy",

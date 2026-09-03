@@ -16,11 +16,14 @@ return {
         defense = 14, magicDefense = 9,
         movement = 4,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 4, luck = 2,
     },
     startingItems = {
         "weapon_iron_spear",   "ability_march_wardens_standard", "ability_warding_line",
         "ability_beat_the_bounds", "utility_wardens_writ", "utility_marchstone",
-        "armor_chainmail",     "consumable_healing_potion", false,
+        "armor_chainmail",     "consumable_healing_potion", "utility_bound_mile",
     },
     defaultAction = "weapon_iron_spear",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

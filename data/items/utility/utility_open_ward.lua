@@ -43,4 +43,6 @@ return {
             end
         end,
     },
+    -- every heal also lends guard, for the rest of the fight
+    bonus = { magicDefense = 2 },
 }

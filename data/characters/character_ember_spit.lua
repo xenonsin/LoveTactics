@@ -21,6 +21,9 @@ return {
         defense = 1, magicDefense = 3,
         movement = 4,
         speed = 5,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 3, luck = 6,
     },
     startingItems = { "weapon_ember_spit", "utility_ember_husk" },
     defaultAction = "weapon_ember_spit",

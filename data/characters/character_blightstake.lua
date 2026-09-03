@@ -31,6 +31,9 @@ return {
         defense = 2, magicDefense = 2,
         movement = 0, -- hammered in: it holds exactly the tile it was set on
         speed = 9,    -- slow: roughly one spit for every two shots a real archer takes
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 0, luck = 0,
     },
     startingItems = { "weapon_blight_spitter" },
     ai = {

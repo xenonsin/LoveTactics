@@ -20,7 +20,9 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "alchemist",
-    price = 80,
-    unlockQuests = 0,
+    price = 410,
+    unlockQuests = 4,
     statusImmunity = { "status_poison", "status_acid" },
+    -- immunity taken in doses -- the whole item is resistance
+    bonus = { magicDefense = 3 },
 }

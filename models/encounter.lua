@@ -14,6 +14,34 @@ Encounter.defs = Registry.load("data/encounters", "data.encounters")
 
 function Encounter.get(id) return Encounter.defs[id] end
 
+-- DOES WALKING ONTO THIS STOP START A FIGHT? One question, asked from two places that must never
+-- disagree: states/game.lua opens the arena on it, and ui/overworld_map.lua draws the combat border on
+-- it. A marker that promises a fight the state then does not run is a lie the player only finds out by
+-- walking there, and two copies of a four-clause test is exactly how that lie gets authored.
+--
+-- Takes the CELL'S encounter -- the plain table the board serializes -- rather than a blueprint, because
+-- that is what both callers hold. Kind alone does not answer it, and the two exceptions are the reason
+-- this is a function:
+--
+--   a PACK is a fight only when something is standing on it. A pile dropped before the guard rule
+--   existed is a pickup, and it falls through to the unconditional collect at the bottom of
+--   game:openEncounter.
+--
+--   an OBJECTIVE is a fight unless it is a `meet` -- a walk-out rather than a battle (the arena debut,
+--   data/quests/colosseum/quest_colosseum_slot_01.lua). The flag rides the cell because the draw layer
+--   has no objective spec to consult; models/overworld.lua copies it across at placement.
+--
+-- Deliberately NOT keyed on the marker kind the map derives (`quest`, for an errand): that split is a
+-- question about which glyph to draw, and an errand is an `objective` to everything else in the stack.
+-- The state's battle branch matches it here for free, which is the whole point.
+function Encounter.opensBattle(enc)
+    if not enc then return false end
+    if enc.kind == "combat" or enc.kind == "elite" then return true end
+    if enc.kind == "objective" then return not enc.meet end
+    if enc.kind == "pack" then return enc.composition ~= nil end
+    return false
+end
+
 -- Is `def` eligible in this context? Gated by minPrestige and an optional
 -- condition(ctx) predicate on the blueprint.
 local function eligible(def, ctx)

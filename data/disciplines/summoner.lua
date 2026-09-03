@@ -8,5 +8,5 @@ return {
     description = "The conjurer's court. Banks mana to field independent elementals that take turns of their own.",
     classes = { "mage" },
     exemplar = "character_summoner", -- NEW, pending
-    requiredQuests = { "quest_arcanum_slot_05" },
+    requiredLevel = { mage = 6 },
 }

@@ -49,4 +49,6 @@ return {
             end
         end,
     },
+    -- a bag that keeps what you took
+    bonus = { luck = 2 },
 }

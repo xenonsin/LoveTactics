@@ -19,6 +19,9 @@ return {
         defense = 6, magicDefense = 9,
         movement = 4, -- number of spaces this character can move
         speed = 4,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 7, luck = 3,
     },
     -- Starting loadout (row-major; false = empty). The lancet is the envenomed blade for when a body
     -- closes; the Fire Bomb is the thrown consumable the shelf is built on; the Fire Stone is a coating

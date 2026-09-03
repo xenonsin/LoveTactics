@@ -24,6 +24,7 @@ return {
     type = "armor",
     tags = { "cloth", "holy" },
     class = "priest",
+    dropTier = 6,
     traits = { "trait_stayed_hand" },
     bonus = { magicDefense = Curve.ramp(4, 14), defense = Curve.ramp(2, 12), movement = -1 },
     resist = { magical = 2 },

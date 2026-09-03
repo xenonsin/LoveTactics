@@ -16,7 +16,7 @@ return {
     class = "alchemist",
     discipline = "warbrewer", -- fighter x alchemist; the Combat-draught mechanic's first stock
     price = 295,
-    unlockQuests = 5,
+    unlockQuests = 8,
     activeAbility = {
         target = "self",
         range = 0,

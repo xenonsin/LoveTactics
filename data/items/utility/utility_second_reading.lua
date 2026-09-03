@@ -7,7 +7,7 @@
 -- BUILT: Raise Dead and Early Rites go from competitors for the same bodies to required purchases,
 -- because nothing else mints what this spends.
 --
--- AND IT IS UTILITY RATHER THAN A BIGGER ARMY. The relic gives a fallen comrade back. That is the one
+-- AND IT IS UTILITY RATHER THAN A BIGGER ARMY. The relic gives a fallen ally back. That is the one
 -- thing a necromancer reaches for while LOSING, which is the moment a signature should exist for --
 -- the whole court he has been assembling goes back down so that one of the living stands up.
 return {
@@ -48,4 +48,6 @@ return {
             end
         end,
     },
+    -- a reading that undoes what the first one raised
+    bonus = { magicDefense = 1 },
 }

@@ -27,8 +27,16 @@ return {
     tags = { "arcane", "sigil" },
     class = "mage",
     discipline = "elementalist", -- deeper cut of the shelf: buyable only once the elementalist gate is cleared
-    price = 345,
-    unlockQuests = 2,
+    price = 330,
+    unlockQuests = 3,
+    -- "The Arcanum grades third-years on it." The aura is care aimed at your own side; the Skill is the
+    -- same care aimed at the target. Worth knowing that this reaches spells at all: a family-less
+    -- ability answers Item.DEFAULT_HIT of 90, so magic rolls to hit like everything else and a mage's
+    -- Skill moves it (docs/accuracy.md).
+    --
+    -- Pride is the house whose general carries the only Skill 10 on the roster, so precision-as-
+    -- superiority is the Arcanum's argument to sell rather than a borrowed one.
+    bonus = { skill = 2 },
     aura = {
         appliesTo = { "ability", "weapon" },
         requiresTags = { "magical" },

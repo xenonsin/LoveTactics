@@ -29,7 +29,7 @@ return {
     tags = { "dark" },
     class = "fighter",
     discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
-    price = 210,
+    price = 165,
     unlockQuests = 1,
     activeAbility = {
         target = "self",
@@ -41,4 +41,6 @@ return {
             fx.applyStatus(fx.user, "status_red_thirst", { duration = 12 + fx.level })
         end,
     },
+    -- the thirst is for blows landed
+    bonus = { damage = 2 },
 }

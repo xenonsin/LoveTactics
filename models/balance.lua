@@ -80,6 +80,38 @@ Balance.TTK = {
     boss = { min = 6, max = 14 },  -- tier 4: a general, a Lord
 }
 
+-- THE SAME STATEMENT, COMING THE OTHER WAY: hits from ONE body of this rank to fell the reference.
+--
+-- It exists because for a long time this direction was guarded by a boolean. Balance.verdict asked
+-- only `ex.back.floored` -- "did this body land exactly on the damage floor" -- and a body that got
+-- through for three points against a sixty-two health bar answered no and passed. Measured, that let
+-- an ordinary wolf need twenty-one bites to fell the avatar with the suite green, because nothing
+-- anywhere asked how many. A band on one side and a yes/no on the other is not two rules of differing
+-- strictness; it is one rule and one blind spot.
+--
+-- THE NUMBERS INVERT, which is why this cannot simply reuse the table above. Up there a chaff body
+-- is the one that dies FASTEST, in a blow or two. Down here chaff is the one that must take the
+-- LONGEST to kill you -- a gnat that fells the protagonist in two hits is not chaff, it is a boss
+-- with a small sprite. So the ordering of the four rungs is reversed, and the bands are read as "how
+-- many of this body's blows the reference can stand".
+--
+-- Roughly ten to twenty percent of the health bar per ordinary blow, which is where a hit starts
+-- reading AS a hit. Below that the number on the screen is noise and the fight feels like it is not
+-- happening, which is the complaint this table was written to answer.
+--
+-- MEASURED AGAINST THE AVATAR ALONE, deliberately, and not against the party's toughest body. A
+-- companion tuned to be tanky can only BE tanky if the damage was set from something weaker than
+-- they are: price the blow so it fells the wall in four, and the wall is merely the new standard
+-- while everyone standing behind it dies in one. Rowan's surplus over this line is her identity, and
+-- the way to keep an identity is to measure the thing it is a surplus over. (Author call, and the
+-- reason Balance.REFERENCE stays the avatar even though its armour is the one that never grows.)
+Balance.TTK_BACK = {
+    chaff = { min = 8, max = 16 },  -- tier 0-1: a gnat, but a gnat you can see landing
+    line  = { min = 5, max = 10 },  -- tier 2: an ordinary body of the protagonist's own rank
+    elite = { min = 3, max = 6 },   -- tier 3: a fight's centrepiece hits like one
+    boss  = { min = 2, max = 4 },   -- tier 4: stand in front of a general and you are gone
+}
+
 -- tier -> role. Anything above the table is a boss; a body with no tier at all is line, the
 -- commonest grade, so a new blueprint is held to an ordinary bar rather than silently exempted.
 --
@@ -317,21 +349,23 @@ Balance.FAMILY_BASE = {
 -- Forge.ceilingFor and Vendor.stock actually read, and a fuller fake would imply the rest was
 -- meaningful. `completedQuests` is filled with synthetic ids because Quest.sponsorProgress counts
 -- entries whose blueprint names the sponsor -- so real quest ids of that house are what it needs.
+-- `sponsorDone` is a RUNG of that house's shelf now, not a count of its finished quests.
+--
+-- It used to seed `completedQuests` with the first N quests a vendor sponsored, because a shelf climbed
+-- on finished work. A shelf climbs on the class level of the body holding the gear
+-- (Discipline.classLevel), so the reference company is given one body standing at that rung -- and the
+-- ledger it is given is career technique, which is the one field the level is read off, so nothing here
+-- can drift from what the shop will actually do.
 function Balance.playerAt(prestige, vendorId, sponsorDone)
     local player = { prestige = prestige or 1, completedQuests = {}, roster = {} }
-    if vendorId and (sponsorDone or 0) > 0 then
-        local n = 0
-        -- Sorted, so the same (vendor, count) always names the same quests and two runs agree.
-        local ids = {}
-        for id, def in pairs(Quest.defs) do
-            if def.sponsor == vendorId then ids[#ids + 1] = id end
-        end
-        table.sort(ids)
-        for _, id in ipairs(ids) do
-            if n >= sponsorDone then break end
-            player.completedQuests[id] = true
-            n = n + 1
-        end
+    local class = vendorId and (require("models.vendor").defs[vendorId] or {}).class
+    if class and (sponsorDone or 0) > 0 then
+        local Discipline = require("models.discipline")
+        local level = math.max(0, math.min(Discipline.CLASS_LEVEL_CAP, sponsorDone))
+        player.roster[1] = {
+            level = 1,
+            technique = { [class] = Discipline.classLevelCost(level) },
+        }
     end
     return player
 end
@@ -561,9 +595,9 @@ end
 -- authored intent stated in prose. Holding those to a damage floor would arm a scarecrow.
 --
 -- It does NOT cover the summoned constructs (the Golem, the Homunculus, the sentries), which carry
--- real weapons and a real posture and are simply tuned low on purpose. Those are named waivers in
--- tests/balance_spec.lua, because "this one is deliberately feeble" is a claim that deserves a
--- sentence rather than a rule.
+-- real weapons and a real posture and are simply tuned low on purpose. Those are the named waivers in
+-- Balance.HARMLESS_BY_DESIGN below, because "this one is deliberately feeble" is a claim that deserves
+-- a sentence rather than a rule.
 function Balance.isNonCombatant(charOrId)
     local def = charOrId
     if type(charOrId) == "string" then def = Character.defs[charOrId] end
@@ -571,6 +605,28 @@ function Balance.isNonCombatant(charOrId)
     if def.archetype == "support" then return true end
     local s = def.stats or {}
     return (s.damage or 0) <= 0 and (s.magicDamage or 0) <= 0
+end
+
+-- The bodies whose feebleness is authored intent that no rule can read off the blueprint -- each with
+-- the sentence from its own header that says so. The companion to Balance.isNonCombatant above: that
+-- one reads a declaration ("this does not attack"), and these carry real weapons and a real posture
+-- and are simply tuned low because of what they are FOR.
+--
+-- IT LIVES HERE RATHER THAN IN THE SPEC because it was in the spec and the rescale tool could not see
+-- it, so tools/balance_rescale.lua's mirror pass cheerfully proposed arming all four -- raising the
+-- Blightstake's damage from 4 to 12 and putting a fist on a body whose whole design is that it has
+-- none. Two owners of one judgement, disagreeing exactly as this module's header says they always
+-- will. One owner, and the guard and the pass that repairs its failures now read the same list.
+Balance.HARMLESS_BY_DESIGN = {
+    character_crucible_golem = "a wall, not a fist -- 'not meant to win an exchange, meant to be in the way of one'",
+    character_homunculus = "'worth is not the hit but the Poison its fists leave behind'",
+    character_ordnance_sentry = "a conjured emplacement; its item is its immobility, not its damage",
+    character_blightstake = "area denial -- 'I want that corridor to cost something to walk down'",
+}
+
+-- Either way a body is exempt from the mirror rule: it declares itself, or it is a named waiver.
+function Balance.isHarmlessByDesign(id)
+    return Balance.HARMLESS_BY_DESIGN[id] ~= nil or Balance.isNonCombatant(id)
 end
 
 -- The maximum health of a body, resource stats being stored as { max, current } after instantiation.
@@ -843,11 +899,18 @@ end
 --
 -- Order matters: dominance outranks everything, because a dominating body is not a TTK problem and
 -- reporting it as "too slow" would send an author to tune the wrong number.
+-- `harmless` and `lethal` are the INBOUND pair and read against Balance.TTK_BACK, not Balance.TTK.
+-- `harmless` used to mean only "landed exactly on the damage floor"; it now means "cannot fell the
+-- reference inside the band its rank is held to", which subsumes the old sense -- a floored blow is
+-- an enormous hit count by construction -- and catches the far commoner failure the boolean could
+-- not see, a body getting through for three points and needing twenty-one swings.
 function Balance.verdict(ex, role)
     local band = Balance.TTK[role or "line"] or Balance.TTK.line
+    local backBand = Balance.TTK_BACK[role or "line"] or Balance.TTK_BACK.line
     if Balance.dominates(ex, role) then return "dominates" end
     if ex.out.floored then return "floors" end
-    if ex.back.floored then return "harmless" end
+    if ex.back.floored or ex.back.hits > backBand.max then return "harmless" end
+    if ex.back.hits < backBand.min then return "lethal" end
     if ex.out.hits > band.max then return "too slow" end
     if ex.out.hits < band.min then return "too fast" end
     return "ok"

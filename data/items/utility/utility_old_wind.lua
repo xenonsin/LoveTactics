@@ -38,4 +38,6 @@ return {
             end
         end,
     },
+    -- the field's hazards stand up and take your side
+    bonus = { magicDamage = 2 },
 }

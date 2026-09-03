@@ -85,10 +85,10 @@ return {
             assert(Quest.sponsorProgress(p, "colosseum") == 0, "unseen vendor should read 0")
             p.completedQuests = {
                 quest_colosseum_slot_01 = true,
-                quest_colosseum_slot_03 = true,
+                quest_cathedral_slot_01 = true, -- a different sponsor
                 quest_bastion_slot_01 = true, -- a different sponsor must not count toward the colosseum
             }
-            assert(Quest.sponsorProgress(p, "colosseum") == 2, "only the colosseum's own quests count")
+            assert(Quest.sponsorProgress(p, "colosseum") == 1, "only the colosseum's own quests count")
             assert(Quest.sponsorProgress(p, "bastion") == 1, "each sponsor counts independently")
         end,
     },
@@ -102,36 +102,43 @@ return {
         -- assumption that broke when the shelves were re-cut: a house asks for six errands and sponsors
         -- thirteen, so the old claim was measured on a line no player can run and the step is no longer
         -- a constant. The two ENDS are the contract now -- an unworked house opens CEILING_BASE, a
-        -- finished line opens the whole ladder -- and in between it may only climb.
-        name = "a house's forge ceiling climbs as its line is run and tops out at the ladder's end",
+        -- finished ladder opens the whole bench -- and in between it may only climb.
+        name = "a house's forge ceiling climbs with its class level and tops out at the ladder's end",
         fn = function()
+            local Disc = require("models.discipline")
             local p = Player.new()
-            p.completedQuests = {}
-            local sword = Item.instantiate("weapon_iron_sword") -- knight -> the Bastion
+            local sword = Item.instantiate("weapon_iron_sword") -- knight gear -> the knight ladder
 
+            -- A fresh company holds no class levels at all, whatever its bodies have been doing, so the
+            -- bench opens where every bench opens.
+            for _, c in ipairs(p.roster) do c.technique = {} end
             assert(Forge.ceilingFor(p, sword) == Forge.CEILING_BASE,
                 "a fresh save opens at the base ceiling")
 
-            local line = Errand.forVendor("bastion")
-            assert(#line > 0, "the Bastion asks for work")
+            local body = p.roster[1]
             local prev = Forge.ceilingFor(p, sword)
-            for i, questId in ipairs(line) do
-                p.completedQuests[questId] = true
+            for level = 1, Disc.CLASS_LEVEL_CAP do
+                body.technique.knight = Disc.classLevelCost(level)
                 local ceiling = Forge.ceilingFor(p, sword)
-                assert(ceiling >= prev, "errand " .. i .. " at the Bastion must never lower the ceiling")
+                assert(ceiling >= prev, "knight " .. level .. " must never lower the ceiling")
                 assert(ceiling <= Item.MAX_LEVEL, "and must never pass the top of the curve")
                 prev = ceiling
             end
-            assert(prev == Item.MAX_LEVEL, "a finished line reaches the top of the curve")
+            assert(prev == Item.MAX_LEVEL, "a mastered class reaches the top of the curve")
 
-            -- The ladder is laid over the rungs the house has, so a shelf re-cut moves the size of a
-            -- step and never where it stops. Halfway down the line is halfway up the bench.
-            local half = Player.new()
-            half.completedQuests = {}
-            for i = 1, math.floor(#line / 2) do half.completedQuests[line[i]] = true end
-            local mid = Forge.ceilingFor(half, sword)
+            -- The ladder is laid over the rungs the class has, so re-cutting it moves the size of a step
+            -- and never where it stops. Halfway up the class is halfway up the bench.
+            body.technique.knight = Disc.classLevelCost(math.floor(Disc.CLASS_LEVEL_CAP / 2))
+            local mid = Forge.ceilingFor(p, sword)
             assert(mid > Forge.CEILING_BASE and mid < Item.MAX_LEVEL,
-                "half a line buys real rungs and stops short of the top, got +" .. mid)
+                "half a ladder buys real rungs and stops short of the top, got +" .. mid)
+
+            -- READ AS THE ROSTER'S BEST HOLDER, which is the same reading every company-facing question
+            -- about the ladder takes: specializing one body opens the deep end, and spreading the same
+            -- tally over four does not. A second body who has never touched knight gear cannot pull the
+            -- bench back down.
+            p.roster[#p.roster + 1] = { level = 1, technique = {} }
+            assert(Forge.ceilingFor(p, sword) == mid, "a body with no knight play does not lower the bench")
         end,
     },
     {
@@ -236,13 +243,13 @@ return {
         fn = function()
             local Errand = require("models.errand")
             for vendorId, vdef in pairs(Vendor.defs) do
-                if vdef.sells ~= false and Errand.tiers(vendorId) > 0 then
+                if vdef.sells ~= false and Discipline.CLASS_LEVEL_CAP > 0 then
                     -- THE LINE IS THE LADDER, not the count of quests a house sponsors. A house asks for
                     -- the work that OPENS something -- its opener and the jobs its disciplines hang off
                     -- (models/errand.lua) -- and the rest of what it sponsors is not on any shelf's
                     -- ladder at all, so walking every sponsored quest here reads the plain numbered
                     -- fights as gates that opened nothing.
-                    local rungs = Errand.tiers(vendorId)
+                    local rungs = Discipline.CLASS_LEVEL_CAP
                     -- How many rows each rung newly unlocks, walked up the ladder.
                     local seen, silent = 0, {}
                     for done = 0, rungs - 1 do
@@ -648,22 +655,38 @@ return {
         end,
     },
     {
-        name = "a shelf mark dots its own house's door in the hub, and nobody else's",
+        -- THE DOT IS THE MARKET'S NOW, and there is only one door to wear it.
+        --
+        -- This case used to complete a quest and assert the dot landed on that house's counter and no
+        -- other. Both halves are gone: there is one counter (data/buildings/market.lua), and finishing
+        -- a quest no longer opens stock at all -- a shelf rung is a class level now
+        -- (Quest.shelfRung), so what opens a band is a body levelling, not a job being run.
+        --
+        -- KNOWN GAP, recorded here because this is where it would have been caught: nothing yet DIFFS
+        -- the shelf when a class level rises, so a rung can open with no dot on the door. Quest.complete
+        -- still carries the diff machinery (Quest.openedStock) and now has nothing to diff. What is
+        -- pinned below is the half that still holds -- unread stock dots the door, reading it puts the
+        -- dot out -- so the marking contract cannot rot while the trigger is re-hung.
+        name = "unread stock dots the market's door, and reading it clears the dot",
         fn = function()
             local p = playerAt(1)
             p.newStock = {}
-            assert(not Vendor.hasMarkedStock("colosseum", p.newStock),
+            assert(not Vendor.hasMarkedStock("market", p.newStock),
                 "an unread shelf is the only thing that dots a door")
 
-            Quest.complete(p, { id = "quest_colosseum_slot_01", sponsor = "colosseum", rewardGold = 0 })
-            assert(Vendor.hasMarkedStock("colosseum", p.newStock),
-                "the house whose quest opened the stock wears the dot")
-            assert(not Vendor.hasMarkedStock("undercroft", p.newStock),
-                "a house that sells none of those wares does not")
+            local sample
+            for _, row in ipairs(Vendor.stock("market", 0)) do
+                if not row.locked then sample = row.id; break end
+            end
+            assert(sample, "the market stocks something at the opening rung")
 
-            for id in pairs(p.newStock) do Player.seeNew(p, Player.NEW_STOCK, id) end
-            assert(not Vendor.hasMarkedStock("colosseum", p.newStock),
-                "and reading the shelf takes the dot off the door")
+            Player.markNew(p, Player.NEW_STOCK, sample)
+            assert(Vendor.hasMarkedStock("market", p.newStock),
+                "stock the player has not seen wears the dot")
+
+            Player.seeNew(p, Player.NEW_STOCK, sample)
+            assert(not Vendor.hasMarkedStock("market", p.newStock),
+                "and reading the shelf puts it out")
         end,
     },
     {
@@ -911,6 +934,9 @@ return {
                 -- One ledger, read as the career title AND as what the next level-up apportions
                 -- (models/growth.lua). Nothing is checkpointed yet, so all of it is outstanding.
                 knight.technique = { mage = 12 }
+                -- DECLARED a mage, which is what growth reads now (Growth.jobOf). The ledger
+                -- above is what the class LEVEL is read off and no longer steers the table.
+                knight.job = "mage"
                 -- Banked experience rather than prestige: a body earns its own level now
                 -- (models/experience.lua), so the fixture buys the level it wants outright.
                 local Experience = require("models.experience")
@@ -933,7 +959,7 @@ return {
                 assert(loadedKnight.technique.mage == 12, "the ledger should survive")
                 assert(loadedKnight.stats.magicDamage == grownMagic, "growth should re-bake onto magic")
                 assert(loadedKnight.stats.health.max == grownHealthMax, "growth should re-bake onto the HP pool")
-                assert(Growth.dominantClass(loadedKnight) == "mage", "the loaded knight still grows as a mage")
+                assert(Growth.jobOf(loadedKnight) == "mage", "the loaded knight still grows as a mage")
             end)
         end,
     },
@@ -1021,18 +1047,14 @@ return {
                 "and the stats are the ones that save had, re-baked rather than recomputed")
             assert(loaded.stats.health.max == live.stats.health.max, "pools too")
 
-            -- The ledger is seeded the way those stats were actually earned: under the old rule the
-            -- whole climb went to the one dominant class.
-            assert(loaded.growthBy and loaded.growthBy.mage == live.level - 1, string.format(
-                "expected the climb credited to mage, got %s",
-                loaded.growthBy and loaded.growthBy.mage or "nothing"))
+            -- NOTHING IS SEEDED ANY MORE, and that is the point of the change rather than a loss. This
+            -- used to reconstruct a `growthBy` ledger from the save's dominant class, because the class
+            -- level was read off that ledger and an old save would otherwise have looked like a body
+            -- that had never levelled. The class level is read off `technique` now
+            -- (Discipline.classLevel), which these saves already carried, so there is nothing to invent.
+            assert(loaded.growthBy == nil, "the retired ledger is not rebuilt")
+            assert(loaded.job == nil, "an old save arrives undeclared, and grows as its innate class")
 
-            -- A current save is never rewritten by that seed.
-            local current = Save.restoreCharacter({
-                id = live.id, level = 4, technique = { mage = 60 }, growthBy = { knight = 3 },
-            })
-            assert(current.growthBy.knight == 3 and current.growthBy.mage == nil,
-                "a save that carries a ledger keeps exactly the one it carries")
         end,
     },
     {
@@ -1070,7 +1092,9 @@ return {
             assert(Character.techniqueSinceLevel(loaded, "knight") == 0,
                 "and a house with nothing outstanding has nothing outstanding")
 
-            assert(Growth.dominantClass(loaded) == "mage", "the title reads the same as it did")
+            -- A pre-merge save carries no declaration, so it arrives growing as its innate class.
+            -- The ledger it DID carry is what the class level is read off, and that survived above.
+            assert(loaded.job == nil, "an old save arrives undeclared")
         end,
     },
 

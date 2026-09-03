@@ -21,14 +21,14 @@ return {
     type = "weapon",
     tags = { "dagger", "pierce", "physical", "poison", "melee" },
     class = "alchemist",
-    price = 740,
-    unlockQuests = 5,
+    price = 660,
+    unlockQuests = 7,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 2, -- quick, as every dagger is
         cost = { stat = "stamina", amount = 5 },
-        damage = Curve.ramp(15, 25), -- under an iron dagger's: two afflictions is the trade
+        damage = Curve.ramp(13, 23), -- under an iron dagger's: two afflictions is the trade
         effect = function(fx)
             -- Both afflictions ride the blow, so a guardian who takes the hit takes the wound and the venom.
             fx.damage(fx.target, { inflicts = { "status_bleed", "status_poison" } })

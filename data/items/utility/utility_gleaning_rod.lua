@@ -62,4 +62,6 @@ return {
             end
         end,
     },
+    -- a charge off every spell nearby
+    bonus = { magicDamage = 1 },
 }

@@ -27,10 +27,13 @@ return {
     stats = {
         health = 34, mana = 0, stamina = 16, -- softer than a bandit: it is support, and meant to fall first
         staminaRegen = 2,                     -- enough to keep the net coming; see ability_bolas' cost
-        damage = 10, magicDamage = 0,
+        damage = 14, magicDamage = 0,
         defense = 6, magicDefense = 3,
         movement = 4,
         speed = 3, -- a shade quicker than a bandit in the order: it wants to net BEFORE Saber commits
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 5, luck = 4,
     },
     -- The net is the tool; the bow is the fallback. Bolas in a free cell (it needs no weapon beside it
     -- -- the snare IS the tool), an iron bow for shooting a pinned foe, nothing bound.

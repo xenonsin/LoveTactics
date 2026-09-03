@@ -22,8 +22,10 @@ return {
     tags = { "charm", "magical" },
     class = "mage",
     discipline = "battlemage",
-    price = 210,
-    unlockQuests = 1,
+    price = 330,
+    unlockQuests = 3,
     charge = { key = "arcane", from = { "cast" }, max = 5 },
     traits = { "trait_arcane_conduit" },
+    -- the grid casts harder around it
+    bonus = { magicDamage = 2 },
 }

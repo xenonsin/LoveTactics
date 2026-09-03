@@ -23,6 +23,9 @@ return {
         defense = 13, magicDefense = 6,
         movement = 1, -- it is a pile. Piles do not commute
         speed = 2,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 0, luck = 0,
     },
     startingItems = { "weapon_gilt_maw", "utility_the_hoard" },
     defaultAction = "weapon_gilt_maw",

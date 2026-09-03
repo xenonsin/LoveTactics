@@ -16,11 +16,14 @@ return {
         defense = 6, magicDefense = 5,
         movement = 4,
         speed = 5,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 8, luck = 7,
     },
     startingItems = {
         "weapon_cutpurse_knife", "ability_pickpocket", "ability_sap",
         "ability_shakedown",     "ability_charm",      "utility_cutpurse_tally",
-        "armor_leather_armor",   "consumable_healing_potion", false,
+        "armor_leather_armor",   "consumable_healing_potion", "utility_bag_of_holding",
     },
     defaultAction = "weapon_cutpurse_knife",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

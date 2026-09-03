@@ -20,11 +20,14 @@ return {
         defense = 14, magicDefense = 9,
         movement = 4,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 5, luck = 2,
     },
     startingItems = {
         "weapon_pestilent_flail", "utility_contagion",   "utility_miasmal_plate",
         "utility_rot_fume_gauntlet", "consumable_plaguebearers_draught", "armor_chainmail",
-        "consumable_healing_potion", false,             false,
+        "consumable_healing_potion", "utility_sealed_bell",             false,
     },
     defaultAction = "weapon_pestilent_flail",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

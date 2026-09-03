@@ -98,6 +98,12 @@ function Vendor.sells(def, item)
     if not def or not item then return false end
     if def.sells == false then return false end
 
+    -- THE MARKET SELLS EVERYTHING. One shop replaced the seven houses, so the thing that used to be a
+    -- taxonomy question -- is this ware on my shelf -- is answered for it by a flag rather than by a
+    -- class it does not have. What gates a ware there is its rung and its price, not its house
+    -- (models/market.lua).
+    if def.sellsAll then return true end
+
     if Item.classOf(item) == def.class then return true end
     -- A discipline item also lands on each of its discipline's parent shelves. That is how a multiclass
     -- item (whose `class` is one parent, its home tally) appears on the OTHER parent's shelf too --
@@ -136,10 +142,18 @@ end
 -- GROWN, via an optional `unlockLevel` on the item (default 0, so nothing gates on it until authored).
 -- Two different questions -- "have you worked with this house" and "have you specialized" -- and the
 -- shelf should not answer both with the same number.
+-- `questsDone` may also be a FUNCTION of the item, returning the rung that item's own ladder has
+-- reached. One shelf per house could take a single number because a house sold one class; the market
+-- sells all seven (models/market.lua), and there each ware is gated on the level of ITS OWN class. A
+-- bare number still works and means what it always meant, so every existing caller is untouched.
 function Vendor.stock(vendorId, questsDone, recipes, unlocked, levels)
     local def = Vendor.defs[vendorId]
     if not def then return {} end
-    questsDone = questsDone or 0
+    local rungOf = questsDone
+    if type(rungOf) ~= "function" then
+        local fixed = questsDone or 0
+        rungOf = function() return fixed end
+    end
 
     local stock = {}
     for id, item in pairs(Item.defs) do
@@ -164,7 +178,7 @@ function Vendor.stock(vendorId, questsDone, recipes, unlocked, levels)
                 unlockQuests = unlockQuests,
                 discipline = item.discipline,
                 unlockLevel = unlockLevel,
-                locked = (questsDone < unlockQuests) or disciplineLocked,
+                locked = (rungOf(item) < unlockQuests) or disciplineLocked,
             }
         end
     end

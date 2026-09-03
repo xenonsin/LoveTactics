@@ -38,6 +38,9 @@ return {
         defense = 11, magicDefense = 6, -- hide and fat; it never learned anything about magic either
         movement = 4,
         speed = 4,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 5, luck = 6,
     },
     startingItems = { "weapon_tallow_maw", "utility_gralloch_hook" },
     defaultAction = "weapon_tallow_maw",

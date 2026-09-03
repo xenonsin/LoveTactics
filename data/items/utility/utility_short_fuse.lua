@@ -34,4 +34,6 @@ return {
             fx.detonate()
         end,
     },
+    -- every charge at once is a damage item however it is dressed
+    bonus = { damage = 2 },
 }

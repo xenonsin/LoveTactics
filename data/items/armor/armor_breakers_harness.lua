@@ -20,8 +20,8 @@ return {
     tags = { "heavy" },
     class = "knight",
     discipline = "vanguard",
-    price = 475,
-    unlockQuests = 3,
+    price = 495,
+    unlockQuests = 5,
     bonus = { defense = Curve.ramp(6, 16), movement = -2 },
     traits = { "trait_breakers_harness" },
 }

@@ -55,4 +55,6 @@ return {
             end
         end,
     },
+    -- a prayer nothing can break is a body nothing catches badly
+    bonus = { luck = 2 },
 }

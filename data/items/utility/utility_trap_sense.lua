@@ -10,7 +10,9 @@ return {
     tags = { "detect traps" },
     class = "hunter",
     discipline = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
-    price = 210,
-    unlockQuests = 1,
+    price = 245,
+    unlockQuests = 2,
     detectRadius = 2,
+    -- knowing where the ground is bad is what luck looks like from outside
+    bonus = { luck = 2 },
 }

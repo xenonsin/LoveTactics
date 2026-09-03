@@ -97,6 +97,12 @@ local STAT_ROWS = {
     { stat = "magicDefense", label = "Magic Def" },
     { stat = "movement",     label = "Movement" },
     { stat = "speed",        label = "Speed" },
+    -- The two accuracy stats (docs/accuracy.md). They belong on this readout for the same reason
+    -- Defense does: the player is about to be told a hit chance by the action preview, and these are
+    -- what that number is made of. Without them a 79% is a fact with no explanation attached, and no
+    -- way to tell a body that is hard to hit from one that is merely lucky about crits.
+    { stat = "skill",        label = "Skill" },
+    { stat = "luck",         label = "Luck" },
 }
 
 local function titleCase(s)
@@ -178,15 +184,24 @@ local function appendTerrain(blocks, info, asHead)
 
     -- Positional bonuses granted for standing here (terrain + any field object), aggregated by
     -- combat into a flat bag, e.g. { range = 1 }.
-    for _, stat in ipairs({ "range", "damage", "magicDamage", "defense", "magicDefense", "movement" }) do
+    for _, stat in ipairs({ "avoid", "range", "damage", "magicDamage", "defense", "magicDefense", "movement" }) do
         local amount = info.bonus and info.bonus[stat]
         if amount and amount ~= 0 then
             -- Reach from a vantage is a SIGHTLINE, so it lengthens shots and nothing else (see
             -- Combat.fieldRangeBonus). Say so on the tile, or a melee player reads "+1 Range" as a
             -- promise the swing won't keep.
-            local label = stat == "range" and "Range bonus (ranged)" or (titleCase(stat) .. " bonus")
+            --
+            -- Avoid leads the list, and is the one bonus written as a percentage because that is the
+            -- unit it is spent in -- it comes straight off an attacker's hit chance (docs/accuracy.md).
+            -- It is also the most important thing a tile can say since accuracy landed: cover is the
+            -- positional decision this game has instead of facing, and a forest that did not mention
+            -- being worth 20 points of somebody's aim would be asking the player to know that already.
+            local label = stat == "range" and "Range bonus (ranged)"
+                or stat == "avoid" and "Cover (harder to hit)"
+                or (titleCase(stat) .. " bonus")
+            local shown = (amount > 0 and "+" or "") .. tostring(amount) .. (stat == "avoid" and "%" or "")
             blocks[#blocks + 1] = { kind = "stat", label = label,
-                value = (amount > 0 and "+" or "") .. tostring(amount),
+                value = shown,
                 valueColor = amount > 0 and { 0.55, 0.85, 0.55 } or ENEMY_COLOR }
         end
     end

@@ -8,5 +8,5 @@ return {
     description = "Traps that set up a kill. The snare holds the quarry; your blink-strike hits a Rooted target far harder.",
     classes = { "rogue", "hunter" },
     exemplar = "character_poacher", -- NEW, pending
-    requiredQuests = { "quest_hunters_lodge_the_running_fight" },
+    requiredLevel = { hunter = 6 },
 }

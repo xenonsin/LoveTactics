@@ -22,6 +22,9 @@ return {
         defense = 0, magicDefense = 8,
         movement = 4,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 4, luck = 2,
     },
     startingItems = {
         "weapon_iron_sword", "armor_buckler", false,

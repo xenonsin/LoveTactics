@@ -17,11 +17,14 @@ return {
         defense = 6, magicDefense = 9,
         movement = 4,
         speed = 4,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 8, luck = 3,
     },
     startingItems = {
         "weapon_vitriol_wand", "ability_powder_keg",  "ability_blast_charge",
         "ability_held_reaction", "consumable_acid_bomb", "consumable_ice_bomb",
-        "consumable_lightning_bomb", "consumable_healing_potion", false,
+        "consumable_lightning_bomb", "consumable_healing_potion", "utility_short_fuse",
     },
     defaultAction = "ability_blast_charge",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

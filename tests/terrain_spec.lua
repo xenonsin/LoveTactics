@@ -118,49 +118,31 @@ return {
         end,
     },
     {
-        name = "terrain: the carved geometry is fixed, and a refactor may not move it",
+        name = "terrain: the floor's silhouette is fixed, and a refactor may not move it",
         fn = function()
-            -- THE FINGERPRINT. Six new carve algorithms are coming and each will be extracted from this
-            -- one; this is what says an extraction changed nothing. It pins WALKABILITY rather than tile
-            -- names, so a rename is free and a hole in a wall is not.
+            -- THE FINGERPRINT. It pins WALKABILITY rather than tile names, so a rename is free and a
+            -- hole in a wall is not.
             --
-            -- These numbers were read off the boards, not derived. If one moves, the question is not
-            -- "what should it be" -- it is "which pass started laying different ground, and was that
-            -- meant". Content is switched off (no encounters, caches or keys) so nothing here depends on
-            -- the encounter pool's unspecified order.
+            -- This number was read off the boards, not derived. If it moves, the question is not "what
+            -- should it be" -- it is "which pass started laying different ground, and was that meant".
+            -- Content is switched off (no encounters, caches or keys) so nothing here depends on the
+            -- encounter pool's unspecified order.
             --
-            -- MOVED ONCE, DELIBERATELY: Overworld:weatherEdges now eats a wandering coastline out of the
-            -- rectangle each carve stops against, and generate() hands the carve a rectangle two tiles
-            -- larger on every side to pay for it -- so these boards are both bigger and more chewed than
-            -- they were, by different amounts on each ground. The castle is untouched to the digit
-            -- (Rooms.ownsEdge), which is the check that the pass really is scoped to the edge.
-            -- MOVED AGAIN, AND ON THREE GROUNDS AT ONCE, by the seat floor reaching the objective
-            -- (Overworld.BOX_OPEN). "Content is switched off" above means the ENCOUNTER passes; the
-            -- objective is placed regardless, because a board without an end is not a board -- and it now
-            -- takes a dead end that can hold the fight rather than the deepest one there is. A different
-            -- end means pruneDeadStubs keeps a different set of corridors alive, which is a change to the
-            -- carved ground and belongs here.
-            --
-            -- Forest moved twice over: models/layouts/glades.lua lets a clearing come one tile nearer a
-            -- spur than it used to, so the tile that gates a boon is the room's rim instead of a hallway
-            -- outside it. Castle is untouched to the digit again, and for the same reason it was last
-            -- time -- rooms carves no dead ends at all, so neither rule has anything to choose between.
-            local EXPECTED = {
-                forest = { 238718, 386 }, -- glades: the maze, opened (models/layouts/glades.lua)
-                castle = { 212536, 401 }, -- rooms: chambers and halls (models/layouts/rooms.lua)
-                tundra = { 349950, 568 }, -- floes: open flats quartered by meltwater, every lobe forded
-                desert = { 414235, 626 }, -- open: a plain with ridges and one ruin
-            }
+            -- IT USED TO BE FOUR NUMBERS, one per ground, because a biome named a carve and each carve
+            -- laid its own geometry. There is one shape now (models/overworld.lua's Overworld:hollow),
+            -- so every ground on a given seed prints the same fingerprint -- and asserting that they
+            -- MATCH is the stronger version of the old case, since a biome that started laying its own
+            -- ground again would fail here rather than quietly passing.
+            local EXPECTED = { 258528, 535 }
             local bad = {}
-            for biome, want in pairs(EXPECTED) do
+            for _, biome in ipairs({ "forest", "castle", "tundra", "desert" }) do
                 local sum, n = walkPrint(bareBoard(biome, 20260812))
-                if n ~= want[2] or sum ~= want[1] then
+                if n ~= EXPECTED[2] or sum ~= EXPECTED[1] then
                     bad[#bad + 1] = string.format("%s = { %d, %d }", biome, sum, n)
                 end
             end
-            -- Report EVERY ground that moved, not just the first: a carve change usually touches
-            -- several, and one-at-a-time is four runs to learn what one run could have said.
-            assert(#bad == 0, "carved geometry moved -- actual: " .. table.concat(bad, ", "))
+            -- Report EVERY ground that moved, not just the first.
+            assert(#bad == 0, "the silhouette moved -- actual: " .. table.concat(bad, ", "))
         end,
     },
     {

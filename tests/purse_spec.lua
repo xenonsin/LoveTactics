@@ -470,28 +470,28 @@ return {
         end,
     },
     {
-        name = "the Mammonite shelf opens on Quarter-End, and its two tiers straddle that gate",
+        -- THE GATE IS A ROGUE LEVEL NOW, and the shape of the claim is unchanged.
+        --
+        -- It used to be Quarter-End, the Undercroft's sixth job, chosen because it sat BETWEEN the two
+        -- halves of the Mammonite's kit: the earners already on sale by then, the spenders still two
+        -- rungs off. Nobody runs a house's line any more (models/errand.lua), so the gate is the rogue
+        -- level the discipline is authored against -- and what is pinned is still the ORDERING, read off
+        -- the blueprint rather than typed, so retuning either half stays free.
+        name = "the Mammonite's earners are on sale at its gate, and its spenders wait past it",
         fn = function()
             local p = Player.new()
-            assert(not Discipline.isUnlocked(p, "mammonite"), "a fresh player has not earned it")
-            p.completedQuests.quest_undercroft_slot_06 = true
-            assert(Discipline.isUnlocked(p, "mammonite"), "Quarter-End (slot 6) is the gate")
+            for _, c in ipairs(p.roster) do c.technique = {} end
+            assert(not Discipline.isUnlocked(p, "mammonite"), "a fresh company has not earned it")
 
-            -- The gate sits BETWEEN the halves, which is the whole reason slot 6 was chosen: the earners
-            -- are already on sale by then, and the spenders are Aurea's own art, still two tiers off.
-            -- Pinned as an ordering rather than as literal numbers, so retuning either tier stays free.
+            local rung = Discipline.defs.mammonite.requiredLevel.rogue
+            assert(rung, "the Mammonite gates on a rogue level")
+
+            -- One body standing at that rung opens it, which is the per-body rule: a crossing is
+            -- somebody who went that way, not a company that between them did.
+            p.roster[1].technique = { rogue = Discipline.classLevelCost(rung) }
+            assert(Discipline.isUnlocked(p, "mammonite"), "rogue " .. rung .. " is the gate")
+
             local function gate(id) return Item.defs[id].unlockQuests or 0 end
-            -- WHICH RUNG QUARTER-END IS, derived rather than typed. It used to be the sixth job of a
-            -- twelve-job line and so cleared a gate of five; the Undercroft asks for six jobs now
-            -- (models/errand.lua -- the opener and the five its disciplines hang off), and Quarter-End is
-            -- the fourth of them. The ORDERING is the contract here, not the number, so the number is
-            -- read off the ladder and the assertion below survives the next re-cut.
-            local Errand = require("models.errand")
-            local rung
-            for i, id in ipairs(Errand.forVendor("undercroft")) do
-                if id == "quest_undercroft_slot_06" then rung = i - 1 end
-            end
-            assert(rung, "Quarter-End is not on the Undercroft's ladder at all")
             for _, id in ipairs({ "ability_ledgers_due", "ability_price_on_the_head" }) do
                 assert(gate(id) <= rung, id .. " is an earner: it must already be buyable at the gate")
             end

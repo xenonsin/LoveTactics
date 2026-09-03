@@ -28,6 +28,7 @@ return {
     -- `magical` in place of the family's usual physical: routes through Magic Damage / Magic Defense.
     tags = { "axe", "slash", "magical", "melee" },
     class = "fighter",
+    dropTier = 8,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

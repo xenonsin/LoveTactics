@@ -43,6 +43,33 @@ which vendor stocks the item and never gates who may carry it. A hunter may abso
 | `censer` | **Emits `incense`**: a square of ground around the bearer, lifted and laid again wherever they go. The smoke is the weapon and the strike an afterthought, as a staff's is — but where a staff's swap pays the bearer, a censer's ground pays whoever stands in it. | `weapon_censer` |
 | `shield` | Swaps **Wait → Defend** (`waitBehavior`): brace for a burst of physical defense. Lives in `data/items/armor/`, not `weapon/`. | `armor_buckler` |
 | `unarmed` | The player's bare fist. Reads `unarmedBonus` from "fist" charms in the grid. | `weapon_unarmed` |
+
+### Hit and crit are part of the contract
+
+Every family also declares what a swing of it is worth to land and how often it finds a gap —
+`Item.FAMILY_HIT` and `Item.FAMILY_CRIT` in [models/item.lua](../models/item.lua). This is the same
+kind of promise as the mechanics above, made at the same grain: a dagger is quick to land *and*
+bleeds, a hammer is ponderous *and* misses.
+
+| | Hit | Crit | | Hit | Crit |
+|---|---:|---:|---|---:|---:|
+| `dagger` | 95 | 10 | `mace` | 80 | 0 |
+| `sword` | 90 | 5 | `greatsword` | 75 | 5 |
+| `wand` | 90 | 0 | `longbow` | 75 | 0 |
+| `staff` | 90 | 0 | `axe` | 70 | 5 |
+| `unarmed` | 90 | 0 | `hammer` | 65 | 0 |
+| `bow` | 85 | 5 | `spear` | 80 | 0 |
+| `censer` | 85 | 0 | `natural` | 85 | 0 |
+| `shield` | 90 | 0 | | | |
+
+**An individual weapon overrides either** by declaring its own `hit` or `crit` — that is how a killer
+edge is built, and it is the only way a named weapon gets accuracy that its family does not have. The
+family value is the default, not a ceiling.
+
+Crit is 0 for ten of the fifteen families on purpose. A critical multiplies the post-mitigation wound
+by three, and that is only safe while crit rates stay low: a weapon that crits should be a
+recognizable thing rather than ambient noise. Adding crit to a family is a much bigger change than
+adding five points of hit. See [accuracy.md](accuracy.md).
 | `natural` | A creature's own body — fangs, claws, an elemental's burning hands. Granted by a blueprint's `startingItems`, never sold or stolen (`noSteal`), and owes no shared mechanic beyond that. | `weapon_fangs`, `weapon_flame_fists` |
 
 ### Aiming a tile is aiming a *direction*

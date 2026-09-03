@@ -23,6 +23,9 @@ return {
         defense = 2, magicDefense = 3,
         movement = 6, -- wings: it goes where the shot needs to be taken from
         speed = 6,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 2, luck = 5,
     },
     startingItems = { "weapon_flung_quills", "ability_fan_of_feathers" },
     -- Basic tactics (models/ai.lua), for the cases where something else is driving this body (a charmed

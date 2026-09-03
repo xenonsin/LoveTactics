@@ -24,7 +24,9 @@ return {
     tags = { "charm" },
     class = "hunter",
     discipline = "totemist",
-    price = 345,
-    unlockQuests = 2,
+    price = 410,
+    unlockQuests = 4,
     traits = { "trait_totem_carvers_kit" },
+    -- everything you raise stands up sturdier
+    bonus = { magicDefense = 1 },
 }

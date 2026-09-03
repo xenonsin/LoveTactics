@@ -12,7 +12,9 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "mage",
-    price = 210,
-    unlockQuests = 1,
+    price = 245,
+    unlockQuests = 2,
     maxBonus = { mana = Curve.ramp(12) },
+    -- a deeper pool is more castings
+    bonus = { magicDamage = 1 },
 }

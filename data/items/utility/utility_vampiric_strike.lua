@@ -12,10 +12,12 @@ return {
     tags = { "charm" },
     class = "fighter",
     discipline = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
-    price = 345,
-    unlockQuests = 2,
+    price = 410,
+    unlockQuests = 4,
     aura = {
         appliesTo = { "weapon" }, -- only the blades it sits beside gain the thirst
         lifesteal = 0.5,          -- the wielder heals 50% of each infused hit's damage
     },
+    -- what it drinks keeps it standing -- the damage is the neighbour's
+    bonus = { defense = 1 },
 }

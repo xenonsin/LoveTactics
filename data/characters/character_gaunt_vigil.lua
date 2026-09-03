@@ -28,6 +28,9 @@ return {
         defense = 6, magicDefense = 10, -- warded against exactly what it is standing there to punish
         movement = 0, -- driven into the floor
         speed = 0,    -- takes no turns; its answer rides on somebody else's cast
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 0, luck = 0,
     },
     startingItems = { "utility_vigil_ward" },
 }

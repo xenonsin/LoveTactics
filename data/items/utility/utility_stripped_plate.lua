@@ -21,7 +21,9 @@ return {
     tags = { "charm" },
     class = "rogue",
     discipline = "vanguard",
-    price = 345,
-    unlockQuests = 2,
+    price = 495,
+    unlockQuests = 5,
     traits = { "trait_stripped_plate" },
+    -- you wear what you Sundered off somebody else
+    bonus = { defense = 2 },
 }

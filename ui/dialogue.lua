@@ -45,7 +45,10 @@ end
 local BOX_MARGIN = 60
 local BOX_H = 150
 local BOX_BOTTOM_GAP = 24
-local PORTRAIT_H = 470 -- target portrait height; scaled down to fit its slot width if needed
+-- Target portrait height; scaled down to fit its slot width if needed. A round 480 rather than the old
+-- 470 so the one delivered picture divides cleanly at both of the sizes it is drawn at -- 480 here,
+-- 7.5 board tiles, off a 1536px source (docs/commission-board-sprites.md).
+local PORTRAIT_H = 480
 
 -- How a cast entrance moves (see Dialogue:relayout / :updateStage). STAGE_EASE is an exponential
 -- approach rate, so the slide is quick at the start and settles rather than stopping dead; the fade

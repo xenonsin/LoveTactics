@@ -113,6 +113,18 @@ function StateHash.of(combat)
     local projection = {
         clock = combat.clock,
         turnCount = combat.turnCount,
+        -- HOW FAR INTO ITS OWN DICE THIS BATTLE HAS GOT (Combat.roll). Both peers seed off the same
+        -- arena and the stream is a pure function of that seed, so an equal count means an equal
+        -- position -- and an unequal one means the next roll of the fight will differ on the two
+        -- machines even though nothing on the board disagrees yet.
+        --
+        -- This is the field accuracy made necessary. Before hit rolls, draws were rare and incidental
+        -- (a scattershot picking tiles), and a divergence in the COUNT alone was nearly unreachable.
+        -- Now every aimed blow spends two, plus a third if it landed, so the count moves several times
+        -- a turn and is the most sensitive tripwire in this projection: it catches a disagreement at
+        -- the moment it happens rather than several turns later, when it finally surfaces as a
+        -- different damage number and reads like bad luck instead of a desync.
+        draws = combat.draws or 0,
         units = unitsOf(combat),
         traps = traps,
         hazards = hazards,

@@ -50,4 +50,6 @@ return {
             end
         end,
     },
+    -- eating the field's hazards is a ward by another route
+    bonus = { magicDefense = 2 },
 }

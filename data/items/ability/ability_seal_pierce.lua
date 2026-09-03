@@ -14,7 +14,7 @@ return {
     type = "ability",
     tags = { "protective" },
     class = "hunter",
-    price = 610,
+    price = 410,
     unlockQuests = 4,
     activeAbility = {
         target = "ally", -- includes the caster

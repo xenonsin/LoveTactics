@@ -30,7 +30,7 @@ return {
     tags = { "charm", "holy" },
     class = "fighter",
     discipline = "crusader", -- deeper cut of the shelf: buyable only once the crusader gate is cleared
-    price = 345,
+    price = 245,
     unlockQuests = 2,
     traits = { "trait_saviors_watch" },
     -- A floor for the fights nobody gets hurt in. Magic defense rather than defense: the Crusader is

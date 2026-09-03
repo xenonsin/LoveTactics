@@ -23,7 +23,7 @@ return {
     tags = { "ranged", "physical", "pierce" },
     class = "hunter",
     discipline = "skirmisher",
-    price = 475,
+    price = 330,
     unlockQuests = 3,
     activeAbility = {
         target = "enemy",
@@ -31,7 +31,7 @@ return {
         requiresSight = true,
         speed = 4,
         cost = { stat = "stamina", amount = 7 },
-        damage = Curve.ramp(12, 22),
+        damage = Curve.ramp(10, 20),
         description = "Increase damage by 3 per tile covered before the shot.",
         effect = function(fx)
             local moved = require("models.combat").tilesMovedThisTurn(fx.user)

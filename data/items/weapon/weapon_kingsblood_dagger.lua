@@ -34,15 +34,15 @@ return {
     -- Being sold is also the more Greedish arrangement, whatever an earlier note here claimed: the guild
     -- sells it, buys it back, and takes a cut each time. You pay the Undercroft for the knife it named
     -- after somebody's blood, which is the joke.
-    price = 740,
-    unlockQuests = 5,
+    price = 575,
+    unlockQuests = 6,
     stealPriority = 2, -- a thief covets it above ordinary kit (below a Decoy's bait)
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 1, -- the fastest strike in the game: you act again almost at once
         cost = { stat = "stamina", amount = 4 },
-        damage = Curve.ramp(15, 25),
+        damage = Curve.ramp(13, 23),
         effect = function(fx)
             -- A wound already open is a door: half the swing's power again goes straight through it.
             -- Read BEFORE the strike, so it answers "was this foe already bleeding when I found it?"

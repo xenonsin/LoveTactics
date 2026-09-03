@@ -64,6 +64,59 @@ return {
         end,
     },
     {
+        -- THE GATE THAT MAKES THE ACCURACY DEFAULT A SAFETY NET RATHER THAN A SHORTCUT.
+        --
+        -- Character.ACCURACY_STATS fills in skill/luck for a blueprint that declares neither, so a new
+        -- character file loads and fights instead of erroring mid-battle. That convenience is also the
+        -- failure mode: left unchecked, a body added next month quietly ships at 4/4 and reads as
+        -- "average at everything" rather than as anything. Since hit chance is derived from these two,
+        -- an unauthored body is not merely undescribed -- it is mechanically interchangeable with every
+        -- other unauthored body.
+        --
+        -- So the default exists and nobody is allowed to keep it. Asked of the BLUEPRINT rather than an
+        -- instance, because Character.instantiate is what applies the fallback and would answer 4 for
+        -- everything either way.
+        --
+        -- Exempt: a body that never fights. `tier = 0` is the declared "not on the ladder" label
+        -- (docs/bestiary.md) -- a prop, an escortee, a Wild Shape form -- and a blueprint with no stats
+        -- of its own is a derived one (character_saber_bout shallow-copies its base and inherits both).
+        name = "every combatant blueprint authors its own skill and luck",
+        fn = function()
+            local missing = {}
+            for id, def in pairs(Character.defs) do
+                local stats = def.stats
+                if stats and (def.tier or 0) > 0 then
+                    if stats.skill == nil or stats.luck == nil then
+                        missing[#missing + 1] = id
+                    end
+                end
+            end
+            table.sort(missing)
+            assert(#missing == 0,
+                #missing .. " blueprint(s) still sit on the accuracy default and need real numbers "
+                    .. "(run `. accuracy-author`): " .. table.concat(missing, ", "))
+        end,
+    },
+    {
+        -- The band the two stats are authored on, and the reason it is 0-10 rather than Fire Emblem's
+        -- 0-20: they are added to and subtracted from `speed` (0-9) and sit beside `defense` (3-6), so
+        -- a stat an order of magnitude larger than its neighbours would dominate every exchange it
+        -- appeared in. A value outside the band is an authoring slip rather than a design choice -- and
+        -- it would be invisible, because hit% clamps to 0..100 and simply swallows the overflow.
+        name = "skill and luck stay inside the 0-10 band",
+        fn = function()
+            for id, def in pairs(Character.defs) do
+                for _, key in ipairs({ "skill", "luck" }) do
+                    local v = def.stats and def.stats[key]
+                    if v ~= nil then
+                        assert(type(v) == "number" and v >= 0 and v <= 10,
+                            id .. " has " .. key .. " = " .. tostring(v) .. ", outside the 0-10 band")
+                    end
+                end
+            end
+        end,
+    },
+    {
         -- Likewise: a flat stat stays the plain number the blueprint wrote, whatever that number is.
         name = "flat stats stay plain numbers",
         fn = function()
@@ -140,20 +193,35 @@ return {
         end,
     },
     {
-        name = "company vision radius is driven by a torch-carrying member",
+        name = "company vision is one step, and nothing widens it",
         fn = function()
+            -- THIS CASE ASSERTED THE OPPOSITE, and the inversion is the change rather than a slip. It
+            -- read "company vision radius is driven by a torch-carrying member": the base was 2, the
+            -- best `visionRadius` in the company's packs was taken over it, and Gyeom's Ledger added
+            -- one on top, so a kitted party saw four.
+            --
+            -- That was a radius over a TILE board, where the fog hid the shape of the country and three
+            -- tiles of trail was a neighbourhood. A cell is a PLACE now (models/overworld.lua): one step
+            -- is four places, four steps is most of a floor, and what the fog hides is no longer where
+            -- the places are but what is standing in them -- which is the one thing that has to be found
+            -- by going. So sight is flat at one and nothing raises it (models/player.lua's
+            -- Player.VISION).
             local p = Player.new()
-            -- The knight starts with a torch, so the company sees at the torch's radius.
-            assert(Player.visionRadius(p) == Item.defs.utility_torch.visionRadius,
-                "a company with a torch should see at the torch's radius")
+            assert(Player.visionRadius(p) == 1, "a company sees one step")
 
-            -- With no torch anywhere, it falls back to the base radius.
+            -- The knight still starts with a torch, and it changes nothing.
+            local hasTorch = false
+            for _, char in ipairs(p.roster) do
+                for _, item in ipairs(char.inventory or {}) do
+                    if item.visionRadius then hasTorch = true end
+                end
+            end
+            assert(hasTorch, "the opening company still carries the item this rule used to read")
+            assert(Player.visionRadius(p) == 1, "a torch does not widen sight any more")
+
             for _, char in ipairs(p.roster) do char.inventory = {} end
-            assert(Player.visionRadius(p) == Player.BASE_VISION,
-                "torchless party should see at BASE_VISION")
-
-            -- A nil player (dev/test launch) also yields the base radius.
-            assert(Player.visionRadius(nil) == Player.BASE_VISION, "nil player -> base vision")
+            assert(Player.visionRadius(p) == 1, "and neither does carrying nothing")
+            assert(Player.visionRadius(nil) == 1, "nil player (dev/test launch) sees the same")
         end,
     },
     {

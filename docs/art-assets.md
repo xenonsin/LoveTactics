@@ -48,7 +48,7 @@ characters share a token** (the sin generals were one picture between the seven 
 | Bucket | Have | Needed | Rendered at | Source |
 |---|---|---|---|---|
 | `items/` | 729 | 733 | 64px cell | **composed from tags** — [icon system](#the-permanent-icon-system--compose-dont-commission); bases still vendored ⚠️ — [brief](commission-item-icons.md) |
-| `chars/` | 153 | 153 | ~52px board, **470px dialogue** | **painted stills (commission)**, animated in code — composed tokens stand in and animate identically; see [Characters](#characters) |
+| `chars/` | 153 | 153 | ~56px board, **480px dialogue** | **painted stills (commission)**, animated in code — composed tokens stand in and animate identically; see [Characters](#characters) |
 | ~~`hazards/`~~ | — | — | 64px tile, under units | **no art, ever** — [drawn by a shader](#hazards-are-not-icons) ✅ |
 | `portraits/` | 0 | 17 | — | **commission CANCELLED** — the board still is the portrait; see [Characters](#the-named-cast--the-board-still-is-the-portrait) |
 | ~~`vendors/`~~ | — | — | shop panel | **no art, ever** — [the mark is the keeper](#vendors-wear-a-mark-not-a-face) ✅ |
@@ -106,7 +106,7 @@ through `spriteState`, which carries rotation and non-uniform scale as well as a
 
 > **This reverses a Spine commission.** Board sprites were to be hand-rigged skeletal meshes, ~10
 > skeletons and 191 skins, with a Spine Editor licence per rigging artist and a `spine-love` runtime
-> licence obligation on top. The deciding fact is the size this brief itself quotes — **~52px on a 60px
+> licence obligation on top. The deciding fact is the size this brief itself quotes — **~56px on a 64px
 > tile**, where mesh deformation is sub-pixel. The Fire Emblem Heroes reference misleads: those sprites
 > are displayed huge on a phone, which is what pays for the rigging. Painting labour is identical either
 > way, so the rig was pure surcharge — and the two-register rule below made 191 rigs an all-or-nothing
@@ -161,8 +161,8 @@ This has now gone round twice, so here is the whole history in one place:
    shows **the board still**, posed at rest.
 
 So one painting owns the board *and* the dialogue box, and the one thing that buys is a hard authoring
-requirement: it must stay crisp at **470px** (`ui/dialogue.lua`'s `PORTRAIT_H`), not merely at the
-~52px the board draws it at. That cannot be retrofitted, which is why it is in the brief now rather
+requirement: it must stay crisp at **480px** (`ui/dialogue.lua`'s `PORTRAIT_H`), not merely at the
+~56px the board draws it at. That cannot be retrofitted, which is why it is in the brief now rather
 than when the first one lands. See
 [The board still is also the portrait](commission-board-sprites.md#the-board-still-is-also-the-portrait).
 
@@ -500,14 +500,16 @@ drawn by the composer, so what is bought is the *shape* — and one glyph re-ski
 it. Full spec, phase order and the tail decision in
 [commission-item-icons.md](commission-item-icons.md).
 
-**Board sprites (153)** — **painted stills**, one per combatant, displayed at ~52px on a 60px
+**Board sprites (153)** — **painted stills**, one per combatant, displayed at ~56px on a 64px
 tile (`ui/battle_map.lua`). Full spec in [commission-board-sprites.md](commission-board-sprites.md):
 one PNG per body, the pose it is painted in, and
-multi-cell scaling. The six clips (idle/move/attack/hit/cast/death) are code and need nothing from the artist.
+multi-cell scaling. The tile matches `Arena.TILE_SIZE` and is a power of two so that art authored
+**at** display size — a bought pack, cells of 16/32/64 — draws at a whole multiple with no resampling
+(`bodyScale`), while painted stills take the fractional downscale a painting can afford. The six clips (idle/move/attack/hit/cast/death) are code and need nothing from the artist.
 
 **Portraits (17)** — static standing figures for the dialogue box, anchored bottom-centre, displayed
-at 470px tall (`ui/dialogue.lua`). Full spec in
-[commission-portraits.md](commission-portraits.md). Deliver **≥1400px tall** and keep the cast
+at 480px tall (`ui/dialogue.lua`). Full spec in
+[commission-portraits.md](commission-portraits.md). Deliver **≥1536px tall** and keep the cast
 consistent in style and proportion. (The old head-crop constraints — headroom, weapons clear of the
 face, uniform head height, a layered crop guide — are **retired**: the portrait no longer feeds the
 board token, so it only has to serve the dialogue box.)

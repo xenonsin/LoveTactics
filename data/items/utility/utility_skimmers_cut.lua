@@ -29,7 +29,11 @@ return {
     tags = { "charm" },
     class = "rogue",
     discipline = "mammonite", -- an earner: the half of the shelf that opens with the gate itself
-    price = 345,
-    unlockQuests = 2,
+    price = 330,
+    unlockQuests = 3,
     traits = { "trait_skimmers_cut" },
+    -- "The share the man who thins the coins keeps." A skim is a margin taken off the top of something
+    -- that was going to happen anyway, which is exactly the shape of Luck: it is not power, it is the
+    -- small percentage that quietly falls your way every exchange.
+    bonus = { luck = 2 },
 }

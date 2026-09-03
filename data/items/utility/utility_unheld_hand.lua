@@ -41,4 +41,6 @@ return {
             fx.bank("chargeSpent", cleared)
         end,
     },
+    -- chi back for everything the fists earned
+    bonus = { magicDamage = 1 },
 }

@@ -146,20 +146,22 @@ local function normalized(charSnap, level, itemLevel)
     local snap = {}
     for k, v in pairs(charSnap) do snap[k] = v end
 
-    -- Drop the author's level, their accumulated stat deltas, the fraction of a point their last
-    -- level-up carried, and the per-key ledger of levels they had been credited: all four are
-    -- re-derived below from the ledger. Keeping any would bake in the climb this is meant to erase.
-    snap.level, snap.growth, snap.growthCarry, snap.growthBy = nil, nil, nil, nil
-
-    -- The whole rebuilt climb is spent as the career ledger says it was spent. Growth.resolve measures
-    -- from the level checkpoint, so clearing the checkpoint makes the ENTIRE career the reading -- which
-    -- is what makes `(id, ledger, level)` reproduce the same character everywhere. A partial mid-climb
-    -- reading would not, and it is why this is not simply left as the author saved it.
+    -- Drop the author's level, their accumulated stat deltas and the fraction of a point their last
+    -- level-up carried: all three are re-derived below. Keeping any would bake in the climb this is
+    -- meant to erase.
     --
-    -- Under proportional crediting the rebuild now applies the career BLEND to every level, where it
-    -- used to hand the whole climb to whichever key led. That is strictly more faithful to how the
-    -- author actually played, and it is the same determinism argument either way: shares are computed
-    -- over sorted keys, so two machines agree exactly.
+    -- `snap.job` is deliberately NOT dropped. The declared job is what growth is now taken from
+    -- (Growth.jobOf), so it is not part of the climb being erased -- it is the build's own statement of
+    -- what this body is, and a rebuild that discarded it would hand every normalized body the same
+    -- innate-class growth and quietly delete the author's decision.
+    snap.level, snap.growth, snap.growthCarry = nil, nil, nil
+
+    -- The level checkpoint goes for tidiness rather than for correctness now. Growth used to be
+    -- apportioned across the stretch of the ledger since the last level-up, so a snapshot taken
+    -- mid-climb held a partial reading and a rebuild that read it grew the character on whatever its
+    -- author happened to be doing that evening. Growth reads one declared job today, so the rebuild is
+    -- deterministic whatever the checkpoint says -- and clearing it keeps the level-up summary of a
+    -- rebuilt body measuring from its own start.
     snap.techniqueAtLevel = nil
 
     local inventory = {}

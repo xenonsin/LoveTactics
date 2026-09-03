@@ -28,6 +28,9 @@ return {
         defense = 14, magicDefense = 11, -- it is mostly armour and disinclination
         movement = 3,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 5, luck = 5,
     },
     startingItems = { "weapon_drift_touch", "utility_unkept_watch" },
     defaultAction = "weapon_drift_touch",

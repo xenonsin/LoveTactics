@@ -43,4 +43,6 @@ return {
             end
         end,
     },
+    -- driving down a lane through bodies
+    bonus = { damage = 2 },
 }

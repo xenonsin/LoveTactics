@@ -24,7 +24,9 @@ return {
     tags = { "charm" },
     class = "fighter",
     discipline = "warbrewer",
-    price = 345,
-    unlockQuests = 2,
+    price = 330,
+    unlockQuests = 3,
     traits = { "trait_round_for_the_house" },
+    -- what you drink, the line beside you drinks
+    bonus = { magicDefense = 1 },
 }

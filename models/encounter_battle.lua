@@ -35,17 +35,11 @@ local EncounterBattle = {}
 -- encounter blueprint. Lifted verbatim from states/battle.lua's specFor.
 function EncounterBattle.spec(opts, partyIds, seed)
     local spec = { biome = opts.biome, party = partyIds, seed = seed }
-    -- THE BOARD IS THE MAP. `grid` plus the tile the fight began on is all Arena.build needs to cut the
-    -- 8x8 window the lock closes around, and `from` is the tile the company stepped off, which decides
-    -- which edge of that window is theirs (docs/overworld.md, U5). Threaded through the SPEC rather than
-    -- read at either call site, for the same reason `ground` was: the walk-off (models/autobattle.lua)
-    -- has to resolve the fight the battle state would have shown, on the same tiles, or the two paths
-    -- are two economies. Absent for every caller with no overworld -- draft, duel, the menu's mock --
-    -- and those keep rolling a board.
-    spec.grid = opts.grid
-    spec.at = opts.at
-    spec.from = opts.from
-    spec.foeFrom = opts.foeFrom -- the tile a patrol arrived from, when one caught the company (P10)
+    -- WHAT THE MAP HANDS THE BOARD: the biome, above, and nothing else. `grid`, `at`, `from` and
+    -- `foeFrom` used to ride here too -- the grid and the contact tile were what Arena.build cut its 8x8
+    -- window out of, and the other two decided which edge of that window was yours. The board is built
+    -- for the fight again rather than inherited from the country (models/arena.lua's header), so all
+    -- four have nothing left to answer and every caller passes the same shape of spec, board or no.
     -- A marching formation, as a list of {col,row} slots parallel to partyIds, so Arena.build's bindUnits
     -- seats each member on their chosen tile. DRAFT MODE only: it keeps a 4x2 grid in its shop UI
     -- (models/draft_run.lua) and hands it over pre-resolved, because its un-merged duplicate ids would
@@ -61,6 +55,17 @@ function EncounterBattle.spec(opts, partyIds, seed)
     -- whose lesson is authored against specific tiles). Nil everywhere else, so ordinary fights keep
     -- their random pick. See Arena.pickLayout.
     spec.layout = opts.quest and opts.quest.map and opts.quest.map.layout
+    -- WHICH DOOR THE COMPANY CAME IN THROUGH, so the deployment phase offers that side of the room
+    -- rather than the board's default south edge (models/arena.lua's defaultZoneBlock). A fight in a
+    -- chamber is entered from a doorway, and where you came in is where you are standing.
+    spec.entry = opts.entry
+
+    -- (`spec.room` stood here and is gone. A fight found in a chamber was briefly fought on a board cut
+    -- to that chamber -- nine or twelve tiles a side instead of eight -- and ui/battle_map.lua is laid
+    -- out around Arena.COLS/ROWS, so the party's spawn rows went off the side of the screen. The board
+    -- stays 8x8. The fight still READS as happening in the room, because the map draws a floor at the
+    -- board's own tile size and the camera holds the chamber; what it does not do is change the board's
+    -- contract with the battle UI.)
     local enc = opts.encounter or {}
     if enc.kind == "objective" then
         -- `opts.objective` is the spec the LAUNCHER resolved, and it wins outright. A day's ground can

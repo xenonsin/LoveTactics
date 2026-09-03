@@ -15,7 +15,7 @@ return {
     type = "ability",
     tags = { "arcane" },
     class = "mage",
-    price = 345,
+    price = 245,
     unlockQuests = 2,
     moveBehavior = {
         mode = "teleport",

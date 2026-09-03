@@ -16,6 +16,9 @@ return {
         defense = 2, magicDefense = 3,
         movement = 4,
         speed = 5,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 5, luck = 0,
     },
     startingItems = { "weapon_homunculus_fists" },
     -- Basic tactics (models/ai.lua): a body to rot a foe -- press the one closest to falling so the

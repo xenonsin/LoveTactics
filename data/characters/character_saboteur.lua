@@ -17,11 +17,14 @@ return {
         defense = 6, magicDefense = 7,
         movement = 4,
         speed = 5,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 8, luck = 7,
     },
     startingItems = {
         "weapon_iron_dagger",  "ability_set_charge", "ability_detonator",
         "ability_ghost_kit",   "ability_bring_it_down", "consumable_sappers_line",
-        "consumable_healing_potion", false,          false,
+        "consumable_healing_potion", "utility_the_signal",          false,
     },
     defaultAction = "ability_set_charge",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

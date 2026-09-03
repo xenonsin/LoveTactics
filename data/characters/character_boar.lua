@@ -10,6 +10,9 @@ return {
         defense = 7, magicDefense = 1,
         movement = 4,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 3, luck = 5,
     },
     startingItems = { "weapon_fangs", "utility_feral_instinct" },
     -- Basic tactics (models/ai.lua): a beast goes for the throat that is already open -- press the foe

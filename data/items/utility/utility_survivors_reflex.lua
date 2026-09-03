@@ -13,7 +13,9 @@ return {
     tags = { "satchel" },
     class = "alchemist",
     discipline = "warbrewer", -- fighter x alchemist; the Combat draught -- a quaff that costs no turn
-    price = 475,
-    unlockQuests = 3,
+    price = 495,
+    unlockQuests = 5,
     traits = { "trait_survivors_reflex" },
+    -- a bandolier that drinks for you is a body that keeps getting away with it
+    bonus = { defense = 1, luck = 1 },
 }

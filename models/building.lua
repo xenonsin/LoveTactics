@@ -28,7 +28,8 @@ Building.defs = Registry.load("data/buildings", "data.buildings")
 -- The slot under the Gate is deliberately EMPTY. It is the approach -- the avenue the plaza opens onto
 -- -- and it is also the next card's home, so the city can grow once more without the layout moving.
 --
--- THE MARKET IS A LATTICE, because it is a row of shopfronts and nothing on it outranks anything else.
+-- (THE MARKET WAS A LATTICE of seven shopfronts on a board of its own. The houses are classes now and
+-- there is one counter, so it sits on the plaza like any other card and the district is unused.)
 -- Seven counters, four over a centred three. Different question from the plaza, different shape.
 --
 --     The Colosseum  The Bastion  The Cathedral  Hunter's Lodge
@@ -74,23 +75,6 @@ Building.DISTRICTS = { city = true, market = true }
 -- deleting a line. It is cut now, blueprint and panel and Quest.available with it, so there is nothing
 -- left to park and no door to hide. A building the city does not have is a file that is not there.)
 
--- WHOSE OPENING ERRAND OPENS A DOOR, or nil if none does.
---
--- `unlockErrand = true` means "my own", which is what the seven shops want: a house's first errand is
--- its own line's `slot_01`, and the building id and the vendor id are the same word. A STRING names
--- somebody else's, and exists for the one door that keeps no shelf and no line of its own -- the
--- Dueling Grounds open on the sand (data/buildings/dueling_grounds.lua).
---
--- IT WAS `unlockCircle` AND IT READ DEPTH. A house opened when its sin fell -- floors 2, 4, ... 14, in a
--- different order every run -- which meant six of the seven shelves were unreachable in any given run,
--- the disciplines behind them with them, and the only way to equip a class was to go deeper than the
--- class's gear would have got you. The errand's own header carries the rest of that argument.
-local function errandVendor(id, def)
-    local gate = def.unlockErrand
-    if gate == true then return id end
-    return gate or nil
-end
-
 -- Ordered list of buildings for a player. Each entry is a fresh copy of the def (blueprints stay
 -- untouched) plus `id` and `locked`.
 --
@@ -104,9 +88,6 @@ end
 --
 --   unlockPrestige   the campaign's ladder. Parked at 1 everywhere -- see Building.RETIRED.
 --   unlockQuest      a door a particular story opens. No shipped card uses it; see tests/hub_spec.lua.
---   unlockErrand     the first piece of work a house posts on a floor (models/errand.lua).
---   unlockAnyErrand  ...or ANY house's, which is the Markets: a square of seven shut shopfronts is a
---                    door onto a corridor of doors, so it arrives with its first tenant.
 --   unlockDepth      how far down this company has ever been (models/descent.lua's Descent.deepest).
 --                    The Cafe at floor two, the Forge at floor four.
 --   unlockWound      somebody has been carried up broken (models/wound.lua's Wound.everWounded). The
@@ -141,33 +122,24 @@ function Building.list(playerOrPrestige, opts)
         -- RETIRED table for a while and is deleted outright now, so this filter is districts alone.
         local district = def.district or "city"
         if district == ((opts and opts.district) or "city") then
-            -- A HOUSE OPENS ON ITS OWN FIRST ERRAND, found on a floor. The seven shops were gated on the
-            -- campaign's completed-quest count, which is parked at zero forever -- so as written they
-            -- were seven cards reading "? (prestige 2)" that could never open. They were then moved onto
-            -- their CIRCLE, which could at least be beaten, and that was wrong in a subtler way: it put
-            -- a class's whole shelf behind fourteen floors of descent, in a different order every run,
-            -- so the only way to equip a class was to go deeper than its gear would have carried you.
+            -- NO DOOR IS GATED ON A HOUSE ANY MORE, and the whole of that machinery is gone with the
+            -- houses. It is worth recording what it was, because the shape of the mistake recurs: seven
+            -- shops were gated on the campaign's completed-quest count, which sat at zero forever, so
+            -- they were seven cards reading "? (prestige 2)" that could never open. Moving them onto
+            -- their CIRCLE made them beatable and was wrong in a subtler way -- it put a class's whole
+            -- shelf behind fourteen floors of descent, in a different order every run, so the only way
+            -- to equip a class was to go deeper than its gear would have carried you. Seating an opener
+            -- on a floor fixed that and lasted until the stack was re-cut to eight floors, at which
+            -- point the first circle was nothing but door-openers.
             --
-            -- What opens a door now is the first piece of work the house ever asks for -- `slot_01`,
-            -- authored years ago, seated on a floor unasked because a shut house has nowhere to ask
-            -- from (models/errand.lua). One ladder per house: the opener is the door and errands two and
-            -- up are the shelf, all counted in the same `completedQuests` ledger.
-            --
-            -- The quest gate is IGNORED for these, not satisfied: it names a campaign quest that cannot
-            -- be completed, so honouring it would keep the door shut whatever the player did underground.
-            local Errand = require("models.errand")
-            local byErrand = errandVendor(id, def)
-            if byErrand then
-                locked = not Errand.doorOpen(player, byErrand)
-            elseif def.unlockQuest then
+            -- The answer in the end was that a class is not a room. It is something a BODY climbs
+            -- (Discipline.classLevel), so there is nothing for a door to gate: one market, always open,
+            -- and what it will sell you is bounded by how far you have got rather than by whether you
+            -- may come in (models/market.lua).
+            if def.unlockQuest then
                 locked = locked or not (player and Player.hasCompleted(player, def.unlockQuest))
             end
-            -- ...and the three gates the city itself grew on (see the header). ANDed onto whatever the
-            -- gates above decided rather than replacing it, because they ask different questions: none
-            -- of these three cards is a shop, so none of them is on an errand gate to be overruled.
-            if def.unlockAnyErrand then
-                locked = locked or not Errand.anyDoorOpen(player)
-            end
+            -- ...and the two gates the city itself grew on (see the header).
             if def.unlockDepth then
                 locked = locked or require("models.descent").deepest(player) < def.unlockDepth
             end

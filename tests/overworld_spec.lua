@@ -54,16 +54,6 @@ end
 
 return {
     {
-        name = "biome sets maze spacing (castle is tighter than forest)",
-        fn = function()
-            local forest = Overworld.generate({ cols = 41, rows = 29, seed = 5, biome = "forest" })
-            local castle = Overworld.generate({ cols = 41, rows = 29, seed = 5, biome = "castle" })
-            assert(forest.spacing == 4, "forest spacing should be 4, got " .. forest.spacing)
-            assert(castle.spacing == 2, "castle spacing should be 2, got " .. castle.spacing)
-            assert(castle.spacing < forest.spacing, "castle should be tighter than forest")
-        end,
-    },
-    {
         name = "density & mix: a rolled board guarantees texture and caps the combat share",
         fn = function()
             -- A fight-heavy pool (as the real registry is) plus the texture kinds. Without the guarantee
@@ -132,9 +122,9 @@ return {
     {
         name = "unknown/missing biome falls back without error, and is still solvable",
         fn = function()
-            local grid = Overworld.generate({ cols = 41, rows = 29, seed = 9, keyCount = 1 })
-            assert(grid.spacing == 4, "default spacing should be forest's 4")
-            assert((grid:solve()), "default-biome map unsolvable")
+            local grid = Overworld.generate({ cols = 9, rows = 9, seed = 9, keyCount = 1 })
+            assert(grid.tilesetDef, "an unnamed biome still resolves a tileset to draw with")
+            assert((grid:solve()), "default-biome floor unsolvable")
         end,
     },
     {
@@ -148,24 +138,6 @@ return {
                 })
                 assert((grid:solve()), "castle seed " .. seed .. " unsolvable")
             end
-        end,
-    },
-    {
-        name = "biome dictates river count (castle has none, forest has some)",
-        fn = function()
-            local function riverTiles(grid)
-                local n = 0
-                for y = 1, grid.rows do
-                    for x = 1, grid.cols do
-                        if grid:get(x, y).river then n = n + 1 end
-                    end
-                end
-                return n
-            end
-            local castle = Overworld.generate({ cols = 41, rows = 29, seed = 3, biome = "castle" })
-            assert(riverTiles(castle) == 0, "castle should have no rivers")
-            local forest = Overworld.generate({ cols = 41, rows = 29, seed = 3, biome = "forest" })
-            assert(riverTiles(forest) > 0, "forest should have at least one river")
         end,
     },
     {
@@ -208,28 +180,22 @@ return {
         end,
     },
     {
-        name = "auto-sized maps are capped so heavy quests can't sprawl",
+        name = "an auto-sized floor is capped, so no roll produces a floor you get lost in",
         fn = function()
-            -- Growth is sub-linear and hard-capped: even an absurd encounter/key
-            -- count must not produce a marathon maze. Play area (grid minus the
-            -- margin ring) stays within the deriveDims ceiling.
-            --
-            -- The ceiling rose from 27x19 when a stop became a BATTLEFIELD rather than a marker: a
-            -- board seating four or five fights has to contain four or five rooms big enough to fight
-            -- in. What this spec protects is unchanged -- that the cap binds at all, so no roll can
-            -- sprawl -- and most of the added area is room rather than corridor. See deriveDims.
+            -- Growth is sub-linear and hard-capped. The ceiling was 37x25 of TILES with a margin ring
+            -- and a coastline surplus padded around it; a grid has neither -- every cell is play area --
+            -- and the cap is TWELVE a side, which is the deepest floor the descent itself asks for
+            -- (Descent.floorDims) -- so a caller that does not pin can never be handed a grid the mode
+            -- would not draw. See deriveDims.
             for seed = 1, 15 do
                 local grid = Overworld.generate({
                     seed = seed, biome = "forest", encounterCount = 40, keyCount = 4,
                     encounters = { { kind = "combat", weight = 1 } },
                     objective = { name = "Boss" },
                 })
-                -- Padding is the margin ring PLUS the surplus the coastline eats (grid.coast), both of
-                -- which are added around the play area rather than taken out of it.
-                local playCols = grid.cols - 2 * (grid.margin + grid.coast)
-                local playRows = grid.rows - 2 * (grid.margin + grid.coast)
-                assert(playCols <= 37, "play cols exceeded cap: " .. playCols)
-                assert(playRows <= 25, "play rows exceeded cap: " .. playRows)
+                assert(grid.cols <= 12, "cols exceeded the cap: " .. grid.cols)
+                assert(grid.rows <= 12, "rows exceeded the cap: " .. grid.rows)
+                assert(grid.margin == 0, "a grid of places has no frame to pad")
             end
         end,
     },
@@ -252,12 +218,14 @@ return {
         name = "explicit cols/rows override the encounter-count sizing",
         fn = function()
             local grid = Overworld.generate({
-                cols = 41, rows = 29, seed = 7, biome = "forest", encounterCount = 3,
+                cols = 8, rows = 7, seed = 7, biome = "forest", encounterCount = 3,
                 encounters = { { kind = "combat", weight = 1 } },
             })
-            local pad = grid.margin + grid.coast
-            assert(grid.cols == 41 + 2 * pad, "explicit cols should win over auto-size")
-            assert(grid.rows == 29 + 2 * pad, "explicit rows should win over auto-size")
+            -- EXACTLY, with nothing added. The old grid inflated a requested play area by a margin ring
+            -- and a coastline surplus, so a caller asking for 41x29 got 49x37 of cells with the extra
+            -- eaten back by the weathering. A floor is what it says it is.
+            assert(grid.cols == 8, "explicit cols should win over auto-size")
+            assert(grid.rows == 7, "explicit rows should win over auto-size")
         end,
     },
     {
@@ -345,72 +313,6 @@ return {
         end,
     },
     {
-        name = "a fill buffer frames the map without shrinking the play area",
-        fn = function()
-            -- The grid is inflated by 2*margin so the trail region keeps the requested cols/rows; the
-            -- margin is pure padding around it. The coastline weatherEdges eats is padding by the same
-            -- argument and is added on top of it, so the play area survives being weathered.
-            local C, R = 31, 21
-            local grid = Overworld.generate({
-                cols = C, rows = R, seed = 42, biome = "forest", keyCount = 1,
-            })
-            local m = grid.margin + grid.coast
-            assert(grid.margin and grid.margin > 0, "expected a positive margin")
-            assert(grid.cols == C + 2 * m, "grid width should be play cols + 2*(margin + coast)")
-            assert(grid.rows == R + 2 * m, "grid height should be play rows + 2*(margin + coast)")
-            m = grid.margin
-
-            -- No walkable tile (path/bridge) may land in the buffer ring.
-            for y = 1, grid.rows do
-                for x = 1, grid.cols do
-                    if x <= m or x > grid.cols - m or y <= m or y > grid.rows - m then
-                        assert(not typeWalkable(grid:get(x, y).tile),
-                            "walkable tile in buffer ring at " .. x .. "," .. y)
-                    end
-                end
-            end
-        end,
-    },
-    {
-        name = "the frame is weathered into a coastline, and a stronghold's is not",
-        fn = function()
-            -- The desert's carve fills its whole rectangle, so before weatherEdges the first walkable
-            -- row was the same row in every column -- a wall of even thickness with four right angles in
-            -- it, which is the thing that looked built rather than found. What is asserted is only that
-            -- the line WANDERS; how far is the walk's business (Overworld:coastDepths).
-            local grid = Overworld.generate({
-                cols = 31, rows = 21, seed = 8, biome = "desert",
-                encounterCount = 4, keyCount = 0, objective = { name = "Boss" },
-            })
-            local depths, span = {}, { min = math.huge, max = 0 }
-            for x = 1, grid.cols do
-                for y = 1, grid.rows do
-                    if typeWalkable(grid:get(x, y).tile) then
-                        depths[#depths + 1] = y
-                        span.min = math.min(span.min, y)
-                        span.max = math.max(span.max, y)
-                        break
-                    end
-                end
-            end
-            local distinct = {}
-            for _, d in ipairs(depths) do distinct[d] = true end
-            local kinds = 0
-            for _ in pairs(distinct) do kinds = kinds + 1 end
-            assert(kinds >= 3, "the top of the plain still arrives as one straight line")
-            assert(span.max - span.min >= 2, "the coast wanders by less than two tiles: still a frame")
-
-            -- ...and the one ground that means its outline keeps it, which is also the check that the
-            -- pass is scoped to the edge rather than loose on the board: a stronghold is not padded for a
-            -- coast it will never be given.
-            local keep = Overworld.generate({
-                cols = 31, rows = 21, seed = 8, biome = "castle",
-                encounterCount = 4, keyCount = 0, objective = { name = "Warlord" },
-            })
-            assert(keep.cols == 31 + 2 * keep.margin, "the castle was padded for a coastline it never gets")
-        end,
-    },
-    {
         name = "same seed reproduces an identical map",
         fn = function()
             local a = gen({ seed = 777 })
@@ -481,52 +383,6 @@ return {
         end,
     },
     {
-        name = "no river tile is left as a plain path (crossings become bridges)",
-        fn = function()
-            local grid = gen()
-            local bridges = 0
-            for y = 1, grid.rows do
-                for x = 1, grid.cols do
-                    local c = grid:get(x, y)
-                    assert(not (c.river and c.tile == "path"),
-                        "river over path was not converted to a bridge")
-                    if c.tile == "bridge" then
-                        bridges = bridges + 1
-                        assert(typeWalkable("bridge"), "bridge should be walkable")
-                    end
-                end
-            end
-        end,
-    },
-    {
-        name = "every bridge is exactly one tile (no two bridges are adjacent)",
-        fn = function()
-            local anyBridge = false
-            for seed = 1, 30 do
-                local grid = Overworld.generate({
-                    cols = 41, rows = 29, seed = seed, biome = "forest",
-                    riverCount = 3, keyCount = 1, objective = { name = "Boss" },
-                })
-                for y = 1, grid.rows do
-                    for x = 1, grid.cols do
-                        if grid:get(x, y).tile == "bridge" then
-                            anyBridge = true
-                            -- No orthogonal neighbour may also be a bridge, or the
-                            -- bridge would span more than a single tile.
-                            for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
-                                local n = grid:get(x + d[1], y + d[2])
-                                assert(not (n and n.tile == "bridge"),
-                                    "seed " .. seed .. ": bridge run >1 tile at "
-                                    .. x .. "," .. y)
-                            end
-                        end
-                    end
-                end
-            end
-            assert(anyBridge, "expected rivers to still cross roads (some bridges)")
-        end,
-    },
-    {
         name = "encounter count respects the cap and skips the start tile",
         fn = function()
             local grid = gen({ encounterCount = 5 })
@@ -545,20 +401,41 @@ return {
         end,
     },
     {
-        name = "encounters keep a partial dead-end bias (some on through-tiles)",
+        name = "the spur ends in the reward and the fight is in the way of it",
         fn = function()
-            -- A degree-1 walkable tile (excluding the objective) is a dead-end.
-            -- Dead-ends should stay over-represented vs a uniform sprinkle, but the
-            -- bias is only partial now: a healthy share of encounters land on
-            -- through-tiles the player passes en route (less spur-and-return walking).
-            local encOnDead, encTotal, deadCands, allCands = 0, 0, 0, 0
+            -- THIS CASE ASSERTED A WEAKER CLAIM, and the rewrite is the composition getting sharper
+            -- rather than the test being bent to pass.
+            --
+            -- It read "encounters keep a partial dead-end bias": encounters of ANY kind had to be
+            -- over-represented on degree-1 tiles, because on the old board a spur ending in nothing was
+            -- a walk you were charged for and not paid, and scattering some stops down them was the
+            -- answer. Two passes have since taken that job over and split it in half:
+            --
+            --   placeCaches   takes the dead ends FIRST -- the find is at the end of the spur;
+            --   blockRoutes   moves most fights onto CUTS -- and a leaf is never a cut, since removing
+            --                 it strands nothing.
+            --
+            -- So fights leave the dead ends by construction and boons arrive there by construction,
+            -- which is the pairing the old guarded-boon pass was reaching for and could not reliably
+            -- get. Asserting the undifferentiated version now would be asserting the weaker shape back:
+            -- it passes just as well when a fight sits on a leaf gating nothing.
+            local boonOnDead, boonTotal = 0, 0
+            local fightOnCut, fightTotal = 0, 0
+            local deadCands, allCands = 0, 0
             for seed = 1, 25 do
                 local grid = Overworld.generate({
-                    cols = 41, rows = 29, seed = seed, biome = "forest",
-                    encounterCount = { min = 6, max = 9 }, keyCount = 1,
-                    encounters = { { kind = "combat", weight = 1 } },
-                    objective = { name = "Boss" },
+                    cols = 10, rows = 10, seed = seed, biome = "forest",
+                    encounterCount = { min = 6, max = 9 }, keyCount = 0,
+                    encounters = { { kind = "combat", weight = 3 }, { kind = "treasure", weight = 1 } },
+                    objective = { name = "Boss" }, houseMaterial = "material_iron",
+                    ascent = true, -- a descent floor: combat is the route, so every cut is fair
                 })
+                local total = 0
+                for y = 1, grid.rows do
+                    for x = 1, grid.cols do
+                        if grid:typeWalkable(grid.cells[y][x].tile) then total = total + 1 end
+                    end
+                end
                 for y = 1, grid.rows do
                     for x = 1, grid.cols do
                         local c = grid:get(x, y)
@@ -567,45 +444,64 @@ return {
                             local isDead = #grid:pathNeighbors(x, y) == 1
                             allCands = allCands + 1
                             if isDead then deadCands = deadCands + 1 end
-                            if c.encounter then
-                                encTotal = encTotal + 1
-                                if isDead then encOnDead = encOnDead + 1 end
+
+                            local e = c.encounter
+                            if c.cache or (e and (e.kind == "treasure" or e.kind == "relic_cache")) then
+                                boonTotal = boonTotal + 1
+                                if isDead then boonOnDead = boonOnDead + 1 end
+                            end
+                            if e and (e.kind == "combat" or e.kind == "elite") then
+                                fightTotal = fightTotal + 1
+                                -- Is this place the only way to something?
+                                local was = c.tile
+                                c.tile = "thicket"
+                                local reach = grid:reachable(grid:startCell())
+                                c.tile = was
+                                local n = 0
+                                for _ in pairs(reach) do n = n + 1 end
+                                if total - 1 - n > 0 then fightOnCut = fightOnCut + 1 end
                             end
                         end
                     end
                 end
             end
-            local baseline = deadCands / allCands       -- uniform dead-end share
-            local hitRate = encOnDead / encTotal        -- of encounters, share on dead-ends
-            local throughShare = (encTotal - encOnDead) / encTotal
-            assert(hitRate > baseline,
-                "dead-ends should still be over-represented: hitRate=" .. hitRate
-                .. " baseline=" .. baseline)
-            assert(throughShare >= 0.25,
-                "at least a quarter of encounters should sit on through-tiles, got "
-                .. throughShare)
+            assert(boonTotal > 0 and fightTotal > 0, "the fixture floors hold neither boons nor fights")
+
+            -- THE FIND IS AT THE END OF THE SPUR: boons over-represented on dead ends against a uniform
+            -- sprinkle, which is what placeCaches taking them first is for.
+            local baseline = deadCands / allCands
+            local boonRate = boonOnDead / boonTotal
+            assert(boonRate > baseline, string.format(
+                "boons should still favour the spur ends: %.3f against a uniform %.3f",
+                boonRate, baseline))
+
+            -- ...AND THE FIGHT IS IN THE WAY. Measured at 60%, which is Overworld.BLOCKING_SHARE; the
+            -- floor is well under it so a retune of the share does not have to come and edit this.
+            local cutRate = fightOnCut / fightTotal
+            assert(cutRate >= 0.4, string.format(
+                "only %.0f%% of fights are the only way to something -- the floor is a shopping list",
+                cutRate * 100))
         end,
     },
     {
-        -- THE STOPS ARE SPREAD OVER THE BOARD, and the unit is the board's own gap, not a constant.
-        --
-        -- Pinned because the old rule -- "no stop within two tiles of another" -- reads like a spacing
-        -- rule and is only a rule against stacking: on a dense board it left the seating loop free to
-        -- deal its stops in whatever order the shuffle handed over, and darts clump. Measured on this
-        -- exact config before the fix: mean nearest-neighbour 5.01 tiles, up to HALF of a board's stops
-        -- within two tiles of another one, and five stops inside a single radius-2 disc -- which is what
-        -- the player sees, because a lit disc is about that size. After: 5.87, a quarter, and three.
-        --
-        -- Held here rather than in `. board-report` because a report column no pass reads is silently
-        -- false. Thresholds sit between the two measurements, so this fails if the spread is lost and
-        -- does not fail on a seed's ordinary wobble.
-        name = "stops spread over the board rather than clumping (dense board)",
+        name = "no two stops share a side",
         fn = function()
-            local nnSum, nnN, close, worstDisc = 0, 0, 0, 0
+            -- THE SPACING RULE, AND WHAT IT USED TO HAVE TO BE. On a tile board this case measured a
+            -- Poisson disc: mean nearest-neighbour distance, the share of stops within two tiles of
+            -- another, and the worst pile one lit disc could show. It had to, because a floor's stops
+            -- were darts thrown at nine hundred tiles and darts clump -- five fights inside one lit disc
+            -- with an empty map behind them was the complaint that produced the rule.
+            --
+            -- A place is a stop's own unit now, so the whole question collapses to one: do two stops
+            -- share a side. Nothing can stack (a place holds one thing by construction) and nothing can
+            -- be "nearly" adjacent. Asserted as a SHARE rather than never, because the gap relaxes on a
+            -- floor too crowded to meet it -- which is the graceful partial every pass in the generator
+            -- takes, and is honest about a floor asked to hold more than it has room for.
+            local pairsAdjacent, stopsTotal = 0, 0
             for seed = 1, 30 do
                 local grid = Overworld.generate({
-                    cols = 26, rows = 26, seed = seed, biome = "forest",
-                    encounterCount = { min = 14, max = 18 }, keyCount = 0,
+                    cols = 9, rows = 9, seed = seed, biome = "forest",
+                    encounterCount = { min = 10, max = 12 }, keyCount = 0,
                     encounters = { { kind = "combat", weight = 3 }, { kind = "treasure", weight = 1 } },
                     objective = { name = "Boss" }, houseMaterial = "material_iron",
                 })
@@ -616,39 +512,21 @@ return {
                         if c.encounter and c.encounter.kind ~= "objective" then stops[#stops + 1] = c end
                     end
                 end
-                assert(#stops >= 10, "expected a dense board to hold its stops, got " .. #stops)
+                assert(#stops >= 8, "expected a dense floor to hold its stops, got " .. #stops)
                 for _, a in ipairs(stops) do
-                    local best = math.huge
+                    stopsTotal = stopsTotal + 1
                     for _, b in ipairs(stops) do
-                        if a ~= b then
-                            local d = math.abs(a.x - b.x) + math.abs(a.y - b.y)
-                            if d < best then best = d end
+                        if a ~= b and math.abs(a.x - b.x) + math.abs(a.y - b.y) == 1 then
+                            pairsAdjacent = pairsAdjacent + 1
+                            break
                         end
-                    end
-                    if best < math.huge then
-                        nnSum, nnN = nnSum + best, nnN + 1
-                        if best <= 2 then close = close + 1 end
-                    end
-                end
-                -- The worst thing one lit disc can show. Walked over every tile, so this is the board's
-                -- worst case and not the mean it hides behind.
-                for y = 1, grid.rows do
-                    for x = 1, grid.cols do
-                        local n = 0
-                        for _, s in ipairs(stops) do
-                            if math.abs(s.x - x) + math.abs(s.y - y) <= 2 then n = n + 1 end
-                        end
-                        if n > worstDisc then worstDisc = n end
                     end
                 end
             end
-            local meanNN = nnSum / nnN
-            local closeShare = close / nnN
-            assert(meanNN >= 5.4, "stops are packed closer than the board can hold: mean NN " .. meanNN)
-            assert(closeShare <= 0.12,
-                "too many stops within two tiles of another: " .. closeShare)
-            assert(worstDisc <= 4,
-                "one disc holds a pile of stops: " .. worstDisc)
+            local share = pairsAdjacent / stopsTotal
+            assert(share <= 0.45, string.format(
+                "%.0f%% of stops sit next to another -- the gap is not being walked widest-first",
+                share * 100))
         end,
     },
     {
@@ -681,61 +559,21 @@ return {
         end,
     },
     {
-        -- pruneDeadStubs trims barren spur-and-return corridors. It must never strip a tile that
-        -- carries content or breaks connectivity: after it runs, every trail tile is still reachable
-        -- and no plain "path" leaf is left empty.
-        name = "pruneDeadStubs leaves no barren path leaf and keeps the trail connected",
-        fn = function()
-            for seed = 1, 25 do
-                local grid = Overworld.generate({
-                    seed = seed, biome = "forest", encounterCount = { min = 5, max = 8 },
-                    keyCount = 1, objective = { name = "Boss" },
-                    encounters = { { kind = "combat", weight = 1 } },
-                })
-                -- still fully connected (pruning removed only leaves)
-                local reached = 0
-                for _ in pairs(grid:reachable(grid:startCell())) do reached = reached + 1 end
-                local walkable = 0
-                for y = 1, grid.rows do
-                    for x = 1, grid.cols do
-                        if typeWalkable(grid:get(x, y).tile) then walkable = walkable + 1 end
-                    end
-                end
-                assert(reached == walkable, "seed " .. seed .. ": prune disconnected the trail")
-                -- still solvable (content never stripped)
-                assert((grid:solve()), "seed " .. seed .. ": prune broke solvability")
-                -- no barren plain-path leaf remains
-                for y = 1, grid.rows do
-                    for x = 1, grid.cols do
-                        local c = grid:get(x, y)
-                        local isLeaf = #grid:pathNeighbors(x, y) <= 1
-                        -- A cache counts as content: a spur ending in forging stock is a paid detour,
-                        -- which is exactly what this pass exists to leave standing.
-                        local barren = c.tile == "path" and not c.encounter and not c.gate and not c.key
-                            and not c.cache
-                            and not (grid.start.x == x and grid.start.y == y)
-                            and not (grid.objective.x == x and grid.objective.y == y)
-                        assert(not (isLeaf and barren),
-                            "seed " .. seed .. ": barren path leaf left at " .. x .. "," .. y)
-                    end
-                end
-            end
-        end,
-    },
-    {
-        -- Reveal-then-choose: a rolled map lights a neighbourhood (radius 3) so encounters can be read
-        -- ahead and routed around; an authored leg keeps the tighter radius 2 that its choreography
-        -- spaces the stops for. Vision is per-map, not a global constant.
-        name = "vision radius is 3 for a rolled map and 2 for an authored layout",
+        -- ONE STEP, on a rolled floor and an authored one alike. It was three on a rolled board and two
+        -- on an authored leg, because a tile board's radius was a NEIGHBOURHOOD -- three tiles of trail
+        -- you could read ahead and route around. A cell is a place now: one step is four places, and a
+        -- radius of two would hand over most of a small floor at a stroke. What the fog hides is not
+        -- where the places are (the silhouette is drawn from arrival) but what is standing in them.
+        name = "the fog lifts one step, on a rolled floor and an authored one alike",
         fn = function()
             local rolled = Overworld.generate({ seed = 5, biome = "forest", encounterCount = 4,
                 encounters = { { kind = "combat", weight = 1 } } })
-            assert(rolled.visionRadius == 3, "rolled map should reveal a neighbourhood (radius 3)")
+            assert(rolled.visionRadius == 1, "a rolled floor reads the places beside it, and no further")
             local authored = Overworld.fromLayout({
                 biome = "forest", objective = { name = "X" },
                 layoutDef = { biome = "forest", map = { "S.X" } },
             })
-            assert(authored.visionRadius == 2, "authored layout should keep the tight radius 2")
+            assert(authored.visionRadius == 1, "an authored floor reads exactly as far")
         end,
     },
     {
@@ -791,16 +629,14 @@ return {
         fn = function()
             local player = Player.new()
             player.prestige = 3
-            -- The Colosseum's line runs in order, so slot 3 needs slots 1-2 behind it.
             player.completedQuests.quest_colosseum_slot_01 = true
-            player.completedQuests.quest_colosseum_slot_02 = true
 
-            local found = Quest.get("quest_colosseum_slot_03")
-            assert(found, "warlord_keep not available once slots 1-2 are done")
-            assert(found.map and found.map.keyCount == 2, "warlord_keep map params not carried")
+            local found = Quest.get("quest_colosseum_slot_01")
+            assert(found, "the Colosseum's posting resolves")
+            assert(found.map, "map params not carried")
             -- blueprint still intact
-            assert(Quest.defs.quest_colosseum_slot_03.id == nil, "quest blueprint mutated")
-            assert(Quest.defs.quest_colosseum_slot_03.map.keyCount == 2, "quest map blueprint mutated")
+            assert(Quest.defs.quest_colosseum_slot_01.id == nil, "quest blueprint mutated")
+            assert(Quest.defs.quest_colosseum_slot_01.map.objective, "quest map blueprint mutated")
         end,
     },
     {

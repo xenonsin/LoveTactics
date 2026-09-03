@@ -13,6 +13,9 @@ return {
         defense = 11, magicDefense = 10,
         movement = 4,
         speed = 2, -- heavy
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 7, luck = 4,
     },
     -- The Warlord subclass (fighter): banner zones -- planted banners project stacking aura fields.
     -- Enriched with the banner ACTIVES (Muster/Rally banner, War Drums) so it demonstrates the
@@ -21,7 +24,7 @@ return {
     -- combat_spec / breakdown_spec, which spar against this body). Kit tag: data/disciplines/warlord.lua.
     startingItems = {
         "weapon_iron_sword",  "ability_muster_banner", "ability_rally_banner",
-        "consumable_war_drums", false,                 false,
+        "consumable_war_drums", "utility_last_order",                 false,
         false,                false,                   false,
     },
     defaultAction = "weapon_iron_sword",

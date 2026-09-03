@@ -29,8 +29,10 @@ return {
     tags = { "charm" },
     class = "fighter",
     discipline = "duelist",
-    price = 475,
-    unlockQuests = 3,
+    price = 575,
+    unlockQuests = 6,
     traits = { "trait_watching_the_shoulder" },
     charge = { key = "tempo", from = { "repeatStrike" }, max = 5, resetOn = "targetSwitch" },
+    -- it converts tempo into Power, so the floor is the tempo itself
+    bonus = { speed = 1 },
 }

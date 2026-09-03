@@ -159,8 +159,22 @@ end
 -- slot 0 unlocked at a standing of nought -- true only because the door in front of it is shut, which is
 -- a second gate doing this one's job, and it would cost the reward diff (openedStock, below) the one
 -- moment where the base rack can be announced as newly on sale.
+-- ...AND IT IS A CLASS LEVEL NOW, not a count of finished work.
+--
+-- A house's shelf used to climb on the errands that house had been run for, and there are none: the
+-- houses are classes, and a class is something a BODY climbs (Discipline.classLevel). So the rung is
+-- how far the company has got in the class this shelf sells, read as the roster's best holder -- the
+-- same reading the forge ceiling takes, and for the same reason.
+--
+-- The offset is gone with the opener it accounted for. Under the errand line, rung 0 was bought by a
+-- house's opener and standing had to be read one short so a freshly opened door did not pay twice.
+-- Nothing opens a door any more, so level 0 IS rung 0: a body with no commitment to a class sees that
+-- class's bottom band and nothing above it, which is what the bottom band is for.
 function Quest.shelfRung(player, vendorId)
-    return Quest.sponsorProgress(player, vendorId) - 1
+    local def = Vendor.defs[vendorId]
+    local class = def and def.class
+    if not class then return require("models.discipline").CLASS_LEVEL_CAP end
+    return require("models.discipline").rosterLevel(player, class)
 end
 
 -- The sponsor's shelf as it stands right now, for the before/after diff below. Asks Vendor.stock the

@@ -24,7 +24,9 @@ return {
     tags = { "charm", "poison" },
     class = "alchemist",
     discipline = "plague_knight",
-    price = 210,
-    unlockQuests = 1,
+    price = 245,
+    unlockQuests = 2,
     traits = { "trait_contagion" },
+    -- the spread is the weapon
+    bonus = { magicDamage = 2 },
 }

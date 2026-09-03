@@ -22,11 +22,14 @@ return {
         defense = 9, magicDefense = 6,
         movement = 4,
         speed = 4,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 8, luck = 4,
     },
     startingItems = {
         "weapon_iron_longbow", "ability_bear_trap",   "ability_snare_stake",
         "ability_blightstake", "consumable_snare_stake", "utility_caltrop_greaves",
-        "utility_trap_sense",  "consumable_healing_potion", false,
+        "utility_trap_sense",  "consumable_healing_potion", "utility_patient_line",
     },
     defaultAction = "weapon_iron_longbow",
     -- Stake the ground when a foe approaches; otherwise plink from range.

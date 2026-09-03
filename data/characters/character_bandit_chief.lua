@@ -31,6 +31,9 @@ return {
         defense = 2, magicDefense = 6,
         movement = 4,
         speed = 4,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 8, luck = 7,
     },
     -- The 3x3 loadout grid (row-major); false = an empty cell. The Tally sits in the centre with the
     -- two lifts around it -- it is the item the other two feed, so it reads as the middle of his kit

@@ -41,6 +41,9 @@ return {
         defense = 1, magicDefense = 1,
         movement = 4, -- it RUSHES: faster on the ground than the party, so it closes the gap
         speed = 2,    -- but slower in the turn order, so the party always gets to answer it first
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 5, luck = 5,
     },
     -- Two items and one idea. The Volatile Core (bound, center) is not a weapon it swings -- it is the
     -- self-destruct rule (trait_volatile) it goes off with -- and Self-Destruct sits on top of it, the

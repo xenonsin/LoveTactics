@@ -27,8 +27,8 @@ return {
     tags = { "draught", "restorative" },
     class = "alchemist",
     discipline = "warbrewer",
-    price = 245,
-    unlockQuests = 4,
+    price = 265,
+    unlockQuests = 7,
     maxStack = 3,
     activeAbility = {
         target = "self",

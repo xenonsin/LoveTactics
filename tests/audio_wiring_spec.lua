@@ -126,13 +126,29 @@ return {
         end,
     },
     {
-        name = "the view turns a `miss` cue into battle.miss and nothing visible",
+        -- REVERSED BY ACCURACY, and the reversal is the point rather than a relaxation.
+        --
+        -- This case used to assert a miss was sound-only and never held the turn hand-off. That was
+        -- right while a miss meant one of three rare reflexes had fired (a Dodge, a Smoke Bomb, a
+        -- Substitution) -- a noise was proportionate to how often the player heard it. Since the hit
+        -- roll, a miss is the most common thing that happens to an attack, and an outcome whose only
+        -- feedback is a sound reads as the game having ignored the click. So it floats a word now, and
+        -- because it floats, it holds the hand-off exactly as a damage number does -- which is the
+        -- behaviour that makes the word readable rather than a flicker under the next unit's turn.
+        name = "the view turns a `miss` cue into battle.miss and a MISS the player can read",
         fn = function()
             local u = { x = 1, y = 1, alive = true, char = { name = "mark" } }
             local sounds, fx = soundsFor({ { type = "miss", unit = u, beat = 0 } })
             assert(fired(sounds, "battle.miss"), "a miss cue did not play battle.miss")
-            assert(#fx.floaters == 0, "a miss cue floated a number it should not have")
-            assert(not fx:busy(), "a miss cue held the turn hand-off -- it must be sound-only")
+            assert(#fx.floaters == 1, "a miss must say so on the board, not only in the speakers")
+            assert(fx.floaters[1].text == "MISS",
+                "expected a MISS floater, got " .. tostring(fx.floaters[1].text))
+            assert(not fx.floaters[1].big, "a miss is not an emphasis -- nothing happened")
+            -- floatersDone, not busy: `busy` covers the sprite animations and deliberately excludes
+            -- floaters, and it is floatersDone that the turn hand-off waits on so a number is never
+            -- still climbing when the next unit takes over. A MISS is now subject to that same wait,
+            -- which is what keeps it on screen long enough to be read.
+            assert(not fx:floatersDone(), "the float has to hold the hand-off or nobody reads it")
         end,
     },
     {

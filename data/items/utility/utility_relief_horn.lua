@@ -18,6 +18,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "knight",
+    dropTier = 2,
     activeAbility = {
         target = "ally",
         range = 1,
@@ -31,4 +32,6 @@ return {
             fx.applyStatus(target, "status_defending")
         end,
     },
+    -- swapping in for somebody is a wall's move
+    bonus = { defense = 2 },
 }

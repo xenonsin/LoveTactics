@@ -8,5 +8,5 @@ return {
     description = "The demolitions ghost. Place delayed charges unseen, then detonate them on your own signal.",
     classes = { "rogue", "alchemist" },
     exemplar = "character_saboteur", -- NEW, pending
-    requiredQuests = { "quest_undercroft_the_collapsed_vault" }, -- pending
+    requiredLevel = { rogue = 8 }, -- pending
 }

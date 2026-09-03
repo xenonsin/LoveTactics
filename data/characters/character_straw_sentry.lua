@@ -24,6 +24,9 @@ return {
         defense = 2, magicDefense = 2,
         movement = 0, -- planted: it never moves
         speed = 0,    -- it takes no turns
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 0, luck = 0,
     },
     startingItems = {},
 }

@@ -22,6 +22,9 @@ return {
         defense = 1, magicDefense = 4, -- it is glass: nothing stops a blow, a good deal stops a spell
         movement = 5,
         speed = 5,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 2, luck = 6,
     },
     startingItems = { "weapon_glass_shard" },
     defaultAction = "weapon_glass_shard",

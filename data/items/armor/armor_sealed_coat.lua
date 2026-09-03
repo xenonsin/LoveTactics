@@ -25,6 +25,7 @@ return {
     type = "armor",
     tags = { "cloth", "arcane" },
     class = "mage",
+    dropTier = 6,
     traits = { "trait_sealed_reliquary" },
     bonus = { magicDefense = Curve.ramp(4, 14), movement = -1 },
     resist = { magical = 2 },

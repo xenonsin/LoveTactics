@@ -14,11 +14,13 @@ return {
     tags = { "holy" },
     class = "priest",
     discipline = "crusader", -- fighter x priest; Smite as an aura -- the Cathedral consecrating somebody else's steel
-    price = 345,
-    unlockQuests = 2,
+    price = 495,
+    unlockQuests = 5,
     aura = {
         appliesTo = { "weapon", "ability" },
         exceptTags = { "shadow" },
         grantTags = { "holy" },
     },
+    -- it makes the grid beside it holy
+    bonus = { magicDamage = 2 },
 }

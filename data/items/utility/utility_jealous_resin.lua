@@ -26,7 +26,9 @@ return {
     type = "utility",
     tags = { "charm", "ward" },
     class = "alchemist",
-    price = 80,
-    unlockQuests = 0,
+    price = 245,
+    unlockQuests = 2,
     traits = { "trait_jealous_resin" },
+    -- a coating that refuses to let go of anything
+    bonus = { defense = 2 },
 }

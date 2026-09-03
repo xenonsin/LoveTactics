@@ -23,6 +23,9 @@ return {
         defense = 5, magicDefense = 3,
         movement = 5, -- it has to reach the dying, which is where its rule pays
         speed = 5,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 3, luck = 5,
     },
     startingItems = { "weapon_tallow_maw", "utility_rendered_hide" },
     defaultAction = "weapon_tallow_maw",

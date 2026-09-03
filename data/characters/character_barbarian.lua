@@ -18,11 +18,14 @@ return {
         defense = 10, magicDefense = 6,
         movement = 4,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 6, luck = 3,
     },
     startingItems = {
         "weapon_crimson_greataxe", "ability_fury",           "ability_desperate_strike",
         "ability_reckless_stance", "ability_culling_stroke", "utility_red_thirst",
-        "utility_vampiric_strike", "armor_unspent_heart",    "consumable_healing_potion",
+        "utility_vampiric_strike", "armor_unspent_heart",    "utility_red_account",
     },
     defaultAction = "weapon_crimson_greataxe",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

@@ -17,11 +17,14 @@ return {
         defense = 10, magicDefense = 10,
         movement = 4,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 6, luck = 4,
     },
     startingItems = {
         "weapon_emberwand",     "ability_arcane_cleave", "utility_spellstrike",
         "utility_resonant_grip", "utility_arcane_conduit", "utility_battle_casting",
-        "armor_silk_robes",     "consumable_healing_potion", false,
+        "armor_silk_robes",     "consumable_healing_potion", "utility_folded_word",
     },
     defaultAction = "ability_arcane_cleave",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

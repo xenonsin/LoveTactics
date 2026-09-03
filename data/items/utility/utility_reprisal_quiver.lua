@@ -11,7 +11,9 @@ return {
     type = "utility",
     tags = { "quiver" },
     class = "hunter",
-    price = 80,
-    unlockQuests = 0,
+    price = 165,
+    unlockQuests = 1,
     traits = { "trait_ranged_counter" },
+    -- an arrow back is an arrow
+    bonus = { damage = 2 },
 }

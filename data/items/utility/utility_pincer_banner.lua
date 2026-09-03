@@ -19,7 +19,9 @@ return {
     tags = { "banner" },
     class = "fighter",
     discipline = "warlord", -- a banner is a Paladin or Warlord object (docs/classes.md), whatever it delivers
-    price = 345,
-    unlockQuests = 2,
+    price = 495,
+    unlockQuests = 5,
     traits = { "trait_follow_up" },
+    -- a second swing off an ally's, and swings are its unit
+    bonus = { damage = 2 },
 }

@@ -24,7 +24,7 @@ return {
     type = "weapon",
     tags = { "censer", "impact", "physical", "melee" },
     class = "priest",
-    price = 345,
+    price = 245,
     unlockQuests = 2,
     incense = {
         hazard = "hazard_bloodsong",

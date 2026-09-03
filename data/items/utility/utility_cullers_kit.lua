@@ -24,7 +24,9 @@ return {
     tags = { "charm" },
     class = "hunter",
     discipline = "herbalist",
-    price = 345,
-    unlockQuests = 2,
+    price = 330,
+    unlockQuests = 3,
     traits = { "trait_cullers_kit" },
+    -- culling is precise work, and the Lodge is the aiming house
+    bonus = { skill = 2 },
 }

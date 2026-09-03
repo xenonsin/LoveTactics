@@ -6,7 +6,7 @@
 --
 -- The board's characters are not rigged. There is no skeleton and no authored art -- the six clips the
 -- commission brief names (idle, move, attack, hit, cast, death) are transform curves over a flat token,
--- because a unit drawn at ~52px on a 60px tile cannot show skeletal deformation anyway. Which means the
+-- because a unit drawn at ~56px on a 64px tile cannot show skeletal deformation anyway. Which means the
 -- clips are CODE, and the only way to judge code that is only ever seen for a fifth of a second in the
 -- middle of a fight is to stand it still and put it in a row.
 --
@@ -29,7 +29,7 @@
 --   y6  IDLE, four bodies, doing nothing else. The clip that answers to no cue and that every other
 --       one is layered over. Two things to look for, and neither of them is "does it move":
 --         * the breath has to be VISIBLE at this size. It was first authored at half its current
---           amplitude, which at a 60px tile is one pixel, and one pixel is not a breath.
+--           amplitude, which at a 64px tile is one pixel, and one pixel is not a breath.
 --         * the four must be OUT OF PHASE with each other. Sharing a phase is the single tell that
 --           gives a procedural idle away -- a rank of guards breathing in unison reads as one
 --           animation played four times, which is exactly what it is and exactly what must not show.

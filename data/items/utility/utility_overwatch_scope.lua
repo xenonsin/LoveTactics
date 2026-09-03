@@ -21,7 +21,12 @@ return {
     type = "utility",
     tags = { "scope" },
     class = "hunter",
-    price = 80,
-    unlockQuests = 0,
+    price = 245,
+    unlockQuests = 2,
     waitBehavior = { kind = "overwatch", speed = 12, stamina = 6, zone = 1 },
+    -- A SCOPE, and the thing a scope is for. Overwatch spends a whole turn buying shots the bearer does
+    -- not choose the moment of -- a reaction fired at whatever walks into the zone -- so it is the one
+    -- stance in the game where a miss costs the most: the turn is already paid and the trigger will not
+    -- come again. Skill is what makes that bargain worth taking.
+    bonus = { skill = 3 },
 }

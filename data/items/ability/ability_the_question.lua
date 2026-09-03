@@ -20,7 +20,7 @@ return {
     tags = { "guile" },
     class = "rogue",
     discipline = "inquisitor",
-    price = 210,
+    price = 165,
     unlockQuests = 1,
     activeAbility = {
         target = "enemy",

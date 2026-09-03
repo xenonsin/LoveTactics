@@ -248,6 +248,29 @@ local function buildBlocks(action)
     if entry and (entry.damage or 0) > 0 then
         blocks[#blocks + 1] = { kind = "stat", label = "Damage",
             value = "-" .. tostring(entry.damage), valueColor = DAMAGE }
+        -- WHETHER IT LANDS, directly under what it would do -- because since accuracy the damage row
+        -- is a conditional, and the two numbers are one sentence. Stamped on the action by
+        -- states/battle.lua, which is the only side of this that can reach the combat.
+        --
+        -- Only drawn on a blow that can actually miss: `action.hit` is 100 for a heal, a self-cast, a
+        -- trap, an ally and anything declaring alwaysHits, and a row reading "Hit: 100%" on every one
+        -- of those is a number no decision reads. Its absence is the statement that this one is sure.
+        if action.hit and action.hit < 100 then
+            -- Tinted by how bad the gamble is, so the panel answers "is this a good idea" before the
+            -- number is read: comfortable at 80+, amber where it starts to be a real risk, red where
+            -- the swing is likelier to whiff than not.
+            local tint = VALUE
+            if action.hit < 50 then tint = LETHAL
+            elseif action.hit < 80 then tint = WARN end
+            blocks[#blocks + 1] = { kind = "stat", label = "Hit",
+                value = tostring(action.hit) .. "%", valueColor = tint }
+        end
+        -- Crit is the upside and reads as one, so it only appears when there is something to say. At
+        -- 0 it would be a row on every panel in the game carrying no information at all.
+        if action.crit and action.crit > 0 then
+            blocks[#blocks + 1] = { kind = "stat", label = "Crit",
+                value = tostring(action.crit) .. "%", valueColor = TIME }
+        end
         if entry.lethal then
             blocks[#blocks + 1] = { kind = "note", text = "Defeats target!", color = LETHAL }
         end

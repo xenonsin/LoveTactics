@@ -29,7 +29,7 @@ return {
     class = "mage",
     discipline = "shaman",
     price = 740,
-    unlockQuests = 5,
+    unlockQuests = 8,
     activeAbility = {
         target = "tile",
         range = 2,

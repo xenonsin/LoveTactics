@@ -45,4 +45,6 @@ return {
             end
         end,
     },
+    -- everything you hold is braced while it waits
+    bonus = { magicDefense = 2 },
 }

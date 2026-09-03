@@ -14,5 +14,5 @@ return {
     description = "Fights by not being where you strike. Blink away, leave a clone to take the blow, and stay unseen until the killing one.",
     classes = { "rogue", "mage" },
     exemplar = "character_ninja", -- was character_kaen (kept as the marquee named boss); dedicated body authored
-    requiredQuests = { "quest_undercroft_the_shadowless" }, -- pending
+    requiredLevel = { rogue = 7 }, -- pending
 }

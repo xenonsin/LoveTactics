@@ -16,6 +16,9 @@ return {
         defense = 9, magicDefense = 3,
         movement = 4,
         speed = 1, -- ponderous: a big body comes around the initiative wheel slowly
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 4, luck = 5,
     },
     startingItems = { "weapon_stone_fists" },
     -- Basic tactics (models/ai.lua): the brute wades in and presses whoever is closest to falling.

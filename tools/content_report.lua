@@ -115,12 +115,11 @@ local function reachable()
             mark("conversation_" .. vendorId .. "_errand_" .. kind, "errand posting (house)")
         end
 
-        -- THE LIVE HOUSE QUESTS. Errand.forVendor is the descent's own pool, and a finished errand
-        -- plays its quest's `outro`. This is the seam the 2026-08-24 deletion missed.
-        -- THE LIVE HOUSE QUESTS. Errand.forVendor is the descent's own pool -- every `_slot_01` plus
-        -- every quest that gates a discipline, NOT the whole line -- and a finished errand plays its
-        -- quest's outro. This is the seam the 2026-08-24 deletion missed.
-        for _, questId in ipairs(Errand.forVendor(vendorId) or {}) do
+        -- THE LIVE POSTING. Each class posts exactly one piece of work now -- the ask its companion
+        -- makes when you meet them on a floor (models/errand.lua) -- and finishing it plays that
+        -- quest's outro and hands the companion over. This is the seam the 2026-08-24 deletion
+        -- missed, and it read `Errand.forVendor` until the ladder that function walked was cut.
+        for _, questId in ipairs({ Errand.opener(vendorId) }) do
             for id in pairs(walkIds(Quest.defs[questId])) do
                 mark(id, "errand pool (" .. questId .. ")")
             end
@@ -169,7 +168,8 @@ end
 function M.questPool()
     local pool, all = {}, {}
     for vendorId in pairs(Vendor.defs) do
-        for _, questId in ipairs(Errand.forVendor(vendorId) or {}) do pool[questId] = vendorId end
+        local ask = Errand.opener(vendorId)
+        if ask then pool[ask] = vendorId end
     end
     for id, def in pairs(Quest.defs) do
         if def.sponsor then all[id] = def.sponsor end

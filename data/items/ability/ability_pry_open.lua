@@ -12,14 +12,14 @@ return {
     tags = { "pierce", "physical", "guile" },
     class = "rogue",
     discipline = "vanguard", -- knight x rogue; the Breach mechanic's first stock
-    price = 610,
-    unlockQuests = 4,
+    price = 660,
+    unlockQuests = 7,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.ramp(12, 22),
+        damage = Curve.ramp(15, 25),
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_sundered" })
         end,

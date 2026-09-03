@@ -12,6 +12,11 @@ return {
     outro = "conversation_cathedral_slot_01_outro",
     rewardItems = { "weapon_drowned_censer", "armor_censer_cloth_habit" },
     rewardGold = 120,
+    -- THE COMPANION JOINS HERE. This is the ask they make when you meet them on a floor
+    -- (models/errand.lua), and clearing it is what brings them into the company -- the same
+    -- route Saber has always arrived by. Quest.complete calls Player.recruit before the outro
+    -- fires, so the "[X has joined your Party]" banner and their first words land in one beat.
+    rewardCharacter = "character_amana",
     -- Gated on the PADDED CARD, not the debut. Two reasons and they are the same reason: the
     -- first-visit board must show only the Colosseum debut (the quest the arrival coaching points at),
     -- and this house is not open to the player until they have been carried into it dead

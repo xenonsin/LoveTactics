@@ -1566,31 +1566,31 @@ Naming an id is a low bar on purpose (it can't tell a real case from an id in a 
 exists to put you in the spec file, where writing the real assertion is the obvious next move. The
 sweep proves your item doesn't crash; only a case of its own proves it does what it's *for*.
 
-## Adding a ground (a map layout)
+## Adding a ground (a biome)
 
-A biome names how its board is carved. Everything after the carve is shared, so a new ground is one
-file plus one line.
+**A ground is a look, not a shape.** There was a `models/layouts/` folder here — eight carve algorithms,
+one per biome, each turning a rectangle into that ground's own country — and adding a ground meant
+writing a ninth. It is gone: a floor is a grid of places with one shape
+(see [docs/overworld.md](overworld.md)). What a biome names now is the tileset the floor is painted in
+and the arenas a fight on it rolls.
 
-1. `models/layouts/<id>.lua` returning `{ name, carve(grid), density(grid), ownsWater? }`.
-   `carve` writes walkable tiles through the grid's small API — `carveCorridor`, `carveElbow`,
-   `carveBlob`, `isNode`, `cellKey`, and `grid.rng` for anything random, so a seed still reproduces the
-   board. `density` is the walkable share of the rectangle and is used for sizing only; a lattice layout
-   answers `1 / spacing`. Declare `ownsWater` if the carve lays its own channels, which scopes the
-   shared river pass off it.
-2. `layout = "<id>"` in `data/biomes/<biome>.lua`.
-3. Measure, do not eyeball: `& "E:\LOVE\lovec.exe" . board-report 20 biome=<biome>` for the numbers and
-   `. board-render <biome> [seed]` for the shape.
+1. `data/biomes/<id>.lua` — a `tileset` and whatever the arena pool reads.
+2. `data/tilesets/<id>.lua` for the art.
+3. Measure, do not eyeball: `& "E:\LOVE\lovec.exe" . board-report 20 biome=<id>` for the numbers and
+   `. board-render <id> [seed]` for the shape.
 
-The board it produces has to clear the fightability floor, because a fight is taken on these very tiles
-(see [docs/overworld.md](overworld.md)): **fights seated under the floor must read 0**, and the board
-must offer at least as many arena sites as it seats fights. A layout can be connected, well-braided,
-correctly gated and completely unable to host a battle — nothing but that figure will say so.
+`tests/biome_spec.lua` asserts that a new biome draws the **same** silhouette as every other on a given
+seed and different art. A biome that laid its own geometry would fail there, which is deliberate: that is
+the layouts trying to come back.
 
-Two failures every layout so far has had to be taught out of:
+**If a floor ever needs a shape of its own again**, the lever is `Overworld.BLOCK_SHARE` and the pass
+that reads it (`Overworld:hollow`), not a per-biome carve. Two rules that outlived the layouts and would
+apply to any successor:
 
 - a room carved over a dead end **deletes** the dead end, and a dead end is what a boon sits on;
-- a carve that has to be repaired for connectivity afterwards is usually carved wrong — connect it by
-  construction instead.
+- a shape that has to be repaired for connectivity afterwards is usually made wrong — connect it by
+  construction instead. `hollow` refuses a block that strands a place, which is that rule paid for
+  outright rather than argued.
 
 Add the ground's walkability fingerprint to `tests/terrain_spec.lua` so a later refactor is provably a
 no-op.

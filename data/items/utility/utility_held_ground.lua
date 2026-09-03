@@ -47,8 +47,8 @@ return {
     tags = { "charm" },
     class = "knight",
     discipline = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
-    price = 475,
-    unlockQuests = 3,
+    price = 410,
+    unlockQuests = 4,
     -- `zone` is the tax; `stamina` the price of each answering shot; `speed` the turn it costs to set.
     -- Cheaper per shot than the Scope's 6 because a knight's reach is one tile and it will rarely get
     -- to fire more than once -- what this bearer is being paid for is the ground, not the volley.

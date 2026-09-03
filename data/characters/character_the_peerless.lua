@@ -23,6 +23,9 @@ return {
         defense = 13, magicDefense = 10,
         movement = 4,
         speed = 5, -- it acts often, which is most of what makes a duellist a duellist
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 9, luck = 2,
     },
     -- THREE ITEMS, because an Elite humanoid is a signature relic and a rule list that reads rather than
     -- a health pool with a sword (tests/bestiary_spec.lua). The First Blade is the signature -- the duel

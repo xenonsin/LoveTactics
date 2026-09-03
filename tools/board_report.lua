@@ -1,35 +1,49 @@
--- Board ledger: run with
+-- Floor ledger: run with
 --
---     & "E:\LOVE\lovec.exe" . board-report [n] [tiers]
+--     & "E:\LOVE\lovec.exe" . board-report [n] [descent [floor=N]] [all | biome=ID] [tiers]
 --
--- Rolls `n` overworld boards (default 200) with the campaign's own default map params and reports
--- WHAT THE GENERATOR ACTUALLY LAID DOWN. It exists because every knob that shapes a run's offer --
--- `cacheTarget`, `combatShare`, `GUARDED_BOON_SHARE`, `GUARANTEE.rest` -- is a fraction of a fraction,
--- and the composition they produce together is not readable from any one of them.
+-- Rolls `n` floors with the mode's own map params and reports WHAT THE GENERATOR ACTUALLY LAID DOWN. It
+-- exists because every knob that shapes a run's offer -- `cacheTarget`, `combatBudget`, `BLOCKING_SHARE`,
+-- `GUARANTEE.rest` -- is a fraction of a fraction, and the composition they produce together is not
+-- readable from any one of them.
 --
--- That is not a hypothetical failure. docs/overworld.md's guarded-boon knob was carried for a whole
--- pass as "roughly two and a half boons per fight", a figure derived by multiplying the constants; the
--- boards say something else, because a boon is only guardable when a fight can actually be seated on a
--- cut vertex beside it, and no constant knows how many of those a braided maze has. THE RULE IS THE
--- SAME ONE docs/roadmap.md STATES: do not hand-derive a count, roll the boards and read what they say.
+-- That is not a hypothetical failure, and this tool has now caught the same class of error twice in
+-- opposite directions:
+--
+--   * The guarded-boon knob was carried for a whole pass as "roughly two and a half boons per fight", a
+--     figure derived by multiplying the constants. The boards said otherwise, because a boon is only
+--     guardable when a fight can actually be seated on a cut beside it, and no constant knows how many
+--     of those a floor has.
+--   * The reverse, later: a floor of optional stops read as a shopping list, and the obvious diagnosis
+--     was "not enough fights". The boards said the opposite -- fourteen places on a floor are the only
+--     way to something and fights stood on 6% of them. It was never a supply problem, and a count would
+--     have been the wrong fix.
+--
+-- Both were found by reporting the SUPPLY and the TAKE as separate columns. A share that will not move
+-- is either a geometry problem or a seating problem, the two want opposite fixes, and one number cannot
+-- tell them apart. THE RULE IS docs/roadmap.md's: do not hand-derive a count, roll the floors and read
+-- what they say.
 --
 -- WHAT IS COUNTED, and why these:
 --
---     fights      combat + elite. The cost side of every offer on the board.
---     boons       cache tiles + treasure/relic_cache stops -- exactly Overworld's GUARDABLE_KINDS plus
---                 the cache tile property. The payout side. A shrine is NOT a boon (it sells, it does
---                 not give) and neither is a rest or a merchant: those are services, and the guard rule
---                 deliberately never stands a fight in front of one.
---     guarded     boons that ended up behind a fight. The ratio of this to `boons` is the only honest
---                 read on whether the pairing pass can do its job.
---     rest        the run's one refund. Reported per board AND per fight, because what matters is how
+--     fights      combat + elite. The cost side of every offer on the floor. Reported beside `ends`,
+--                 because a floor's ends are fights the pool never dealt and a budget that cannot see
+--                 them is a budget that is wrong by several.
+--     boons       cache places + treasure/relic_cache stops. The payout side. A shrine is NOT a boon
+--                 (it sells, it does not give) and neither is a rest or a merchant: those are services,
+--                 and nothing ever stands a fight in front of one.
+--     places      walkable cells, against the cells the grid holds. `full` is what share of them hold
+--                 something -- the number the whole shape is pitched at.
+--     cuts        places that are the ONLY way to something, and how many of them a fight is standing
+--                 on. The supply and the take, kept apart for the reason above.
+--     rest        the run's one refund. Reported per floor AND per fight, because what matters is how
 --                 much attrition a camp is being asked to hand back, not how many camps there are.
---     tier arc    mean encounter tier by fifth of the board, walked by BFS distance from the start.
---                 A generator that means to escalate should show a rising column here; a flat column
---                 means the ramp is being swamped by its own noise term.
+--     tier arc    mean encounter tier by fifth of the floor, walked by BFS distance from the way in. A
+--                 generator that means to escalate should show a rising column here; a flat column means
+--                 the ramp is being swamped by its own noise term.
 --
--- Read-only, and it drives Overworld directly rather than a game state, so no save is touched. Seeds
--- are sequential from a fixed base, so two runs of this tool agree exactly.
+-- Read-only, and it drives Overworld directly rather than a game state, so no save is touched. Seeds are
+-- sequential from a fixed base, so two runs of this tool agree exactly.
 
 local Overworld = require("models.overworld")
 local Encounter = require("models.encounter")
@@ -45,42 +59,23 @@ local SEED_BASE = 20260811
 local FIGHT = { combat = true, elite = true }
 local BOON_KINDS = { treasure = true, relic_cache = true }
 
--- WHAT THE FIGHTABILITY LEDGER COUNTS, which is deliberately NOT the same set as `FIGHT`. An objective
--- is not a fight for the COMPOSITION census -- it is the day's work, not a stop the pool dealt -- but it
--- is absolutely a fight for the question "is there room to have it", and it is the one fight on the
--- board the player cannot decline.
+
+-- One floor's worth of counts. Walks every cell once; the tier arc needs a BFS, which Overworld already
+-- exposes for its own placement passes.
 --
--- It was outside this set for as long as the set existed, and that is how a floor's guardian came to be
--- fought in a dead-end corridor with nobody noticing: placeObjectiveAndGates picks the deepest STRICT
--- dead end (a spur is what makes an end gateable), the seat floor was never asked about it, and the
--- ledger that would have said so was reading combat and elite only. Every figure in this block moved
--- when `objective` was added to it, which is the report agreeing that it had been measuring the easy
--- half of the board.
-local SEATED = { combat = true, elite = true, objective = true }
-
--- WHAT COUNTS AS A PLACE A FIGHT COULD BE SEATED, for the `sites` count only. Deliberately above
--- Overworld.BOX_OK: BOX_OK is the floor a seat must CLEAR, while a *site* is somewhere a fight would be
--- good rather than merely legal, and the gap between the two is what tells a cramped board from a
--- comfortable one. Report-only, so it lives here rather than on the model. Declared with the other
--- constants and not beside the pass that reads it: a local declared further down would be invisible to
--- `measure` and resolve to a nil global instead, which compiles and loads and only fails on the board
--- where the branch is finally taken.
-local SITE_SCORE = 44
-
--- Is a patrol standing here? Walked rather than indexed: a board holds a handful of them, and a lookup
--- table would have to be rebuilt every time one moves.
-local function patrolAt(grid, x, y)
-    for _, p in ipairs(grid.patrols or {}) do
-        if not p.cleared and p.x == x and p.y == y then return p end
-    end
-    return nil
-end
-
--- One board's worth of counts. Walks every cell once; the tier arc needs a BFS, which Overworld
--- already exposes for its own placement passes.
+-- WHAT MOVED WHEN THE BOARD BECAME A GRID. Most of this file's old columns measured the carve: the
+-- share of trail that was open rather than corridor, how many dead ends a braid left, whether a boon
+-- had a neighbour that was a real cut vertex, how many fights had lifted onto a beat. None of those
+-- questions exist on a grid of places -- there is no corridor, no braid, no patrol -- and a column no
+-- pass reads is silently false, so they are gone rather than kept reading zero.
+--
+-- What replaces them is the one question this shape asks: HOW FULL IS THE FLOOR, and how far across it
+-- is the thing at the end. Occupancy is the number the whole design is pitched at (about half the places
+-- holding something, the rest what you route through) and `steps to the stair` is what replaced forty
+-- tiles of corridor.
 local function measure(grid)
     local r = {
-        fights = 0, boons = 0, guarded = 0, rest = 0, stops = 0,
+        fights = 0, boons = 0, rest = 0, stops = 0,
         caches = 0, services = 0, tierSum = 0, tierN = 0,
         craftStock = 0, houseStock = 0,
         byKind = {},
@@ -91,58 +86,128 @@ local function measure(grid)
     local dist = grid:bfsDistances(grid:startCell())
     local maxD = 1
     for _, d in pairs(dist) do if d > maxD then maxD = d end end
+    r.deepest = maxD
 
-    -- WHY a boon went unguarded. `guardBoons` gives up on a boon for one of two entirely different
-    -- reasons and reports neither, which is what let the knob be mis-diagnosed as a supply problem:
-    --   no approach  -- no neighbour of the boon is a cut vertex, so nothing CAN gate it. Geometry.
-    --   no fight     -- there was an approach but no loose fight left to move onto it. Supply.
-    -- Recomputed here rather than exported from the generator: this is a diagnostic, and threading a
-    -- reason code through a placement pass to serve a report would be the report leaking into the model.
-    r.deadEnds, r.cacheOnDeadEnd, r.boonsWithApproach = 0, 0, 0
-    -- ENDS THE BOARD COULD NOT SEAT ON A SPUR. A day buys a whole ground now and every piece of work
-    -- posted there wants its own dead end (models/overworld.lua). When the board runs out, the extra
-    -- end takes the farthest open tile instead -- which still WORKS, and still reads as one place with
-    -- two doors rather than two places. Counted rather than left silent because a board that keeps
-    -- doing it is a board whose sizing rule has stopped keeping up with what a ground can hold.
+    -- THE LONGEST WALK THE FLOOR ACTUALLY OFFERS -- its diameter, over every pair of places.
+    -- Reported beside `steps to the end` so the gap between what the floor could have asked for
+    -- and what it did ask for is a number rather than an impression.
+    r.diameter = 0
+    for yy = 1, grid.rows do
+        for xx = 1, grid.cols do
+            if grid:typeWalkable(grid.cells[yy][xx].tile) then
+                local d2 = grid:bfsDistances(grid.cells[yy][xx])
+                for _, d in pairs(d2) do if d > r.diameter then r.diameter = d end end
+            end
+        end
+    end
+
+    -- ENDS THE FLOOR COULD NOT SEAT. Every piece of work posted here wants its own place, held apart
+    -- from the others; when the floor runs out the extra end is counted rather than left silent,
+    -- because a floor that keeps doing it is a floor whose sizing has stopped keeping up.
     r.crowdedEnds = grid.crowdedEnds or 0
     r.ends = grid.objectives and #grid.objectives or (grid.objective and 1 or 0)
-    local function reachableWithout(goal, blocked)
-        local start = grid:startCell()
-        if not start or start == goal then return true end
-        local seen, q, qi = { [start.y * 100000 + start.x] = true }, { start }, 1
+
+    -- HOW FAR IN THE STAIR IS, in steps, which is the figure the whole shape was changed for: a 40x40
+    -- lattice floor put it forty steps from the door with about thirty-eight of them empty corridor.
+    r.toEnd = 0
+    if grid.objective then
+        r.toEnd = dist[grid.objective.y * 100000 + grid.objective.x] or 0
+    end
+
+    r.places, r.blocked, r.deadEnds, r.marks, r.endN = 0, 0, 0, 0, 0
+    r.gates, r.keys, r.secrets = 0, 0, 0
+
+    -- HOW MUCH OF THIS FLOOR IS BEHIND SOMETHING, which is the question a floor of optional stops has to
+    -- be able to answer about itself. A CUT is a place whose removal puts some of the floor out of
+    -- reach; a fight standing on one is a fight you cannot walk around to get at what is past it.
+    --
+    -- `cuts` is the supply -- how many such places the silhouette happens to offer -- and `blocking` is
+    -- how many of them a fight is actually standing on. The gap between them is what a seating pass has
+    -- left to work with, and reading them apart is the whole lesson of the guarded-boon misdiagnosis:
+    -- a share that will not rise is either a geometry problem or a supply problem and the two want
+    -- opposite fixes.
+    r.cuts, r.blocking, r.behind = 0, 0, 0
+    -- HOW MUCH OF THE FLOOR THE COMPANY CAN REACH WITHOUT FIGHTING, from the place it walks in on.
+    -- A floor whose entrance opens onto nothing but fights is a floor that takes the first
+    -- decision away: the only move is a battle nobody chose and may not be ready for.
+    r.freeFromDoor, r.pennedIn, r.deadEndsFull = 0, 0, 0
+    do
+        local s = grid:startCell()
+        local function fight(c)
+            local e = c and c.encounter
+            return e and not c.cleared and (e.kind == "combat" or e.kind == "elite"
+                or e.kind == "objective") or false
+        end
+        local seen, q, qi = { [s.y * 100000 + s.x] = true }, { s }, 1
+        local n = 1
         while qi <= #q do
             local c = q[qi]; qi = qi + 1
             for _, nb in ipairs(grid:pathNeighbors(c.x, c.y)) do
-                if nb == goal then return true end
                 local k = nb.y * 100000 + nb.x
-                if not seen[k] and nb ~= blocked then seen[k] = true; q[#q + 1] = nb end
+                if not seen[k] and not fight(nb) then
+                    seen[k] = true; n = n + 1; q[#q + 1] = nb
+                end
             end
         end
-        return false
+        r.freeFromDoor = n
+        r.pennedIn = (n <= 3) and 1 or 0
+    end
+    for y = 1, grid.rows do
+        for x = 1, grid.cols do
+            local c = grid.cells[y][x]
+            if grid:typeWalkable(c.tile) and not (grid.start.x == x and grid.start.y == y) then
+                local was = c.tile
+                c.tile = "thicket"
+                local start = grid:startCell()
+                local reach = (start and grid:typeWalkable(start.tile)) and grid:reachable(start) or {}
+                c.tile = was
+                local n = 0
+                for _ in pairs(reach) do n = n + 1 end
+                -- Everything walkable except this cell should still be reachable; short of that, this
+                -- place is the only way to whatever is missing.
+                local walkable = 0
+                for yy = 1, grid.rows do
+                    for xx = 1, grid.cols do
+                        if grid:typeWalkable(grid.cells[yy][xx].tile) then walkable = walkable + 1 end
+                    end
+                end
+                local stranded = walkable - 1 - n
+                if stranded > 0 then
+                    r.cuts = r.cuts + 1
+                    r.behind = r.behind + stranded
+                    if c.encounter and FIGHT[c.encounter.kind] then r.blocking = r.blocking + 1 end
+                end
+            end
+        end
     end
 
     for y = 1, grid.rows do
         for x = 1, grid.cols do
             local c = grid.cells[y][x]
-            local leaf = grid:typeWalkable(c.tile) and #grid:pathNeighbors(x, y) == 1
-            if leaf then r.deadEnds = r.deadEnds + 1 end
-            local isBoon = c.cache or (c.encounter and BOON_KINDS[c.encounter.kind])
-            if isBoon then
-                for _, nb in ipairs(grid:pathNeighbors(x, y)) do
-                    if not grid.spineKeys[nb.y * 100000 + nb.x] and not nb.cache
-                        and not reachableWithout(c, nb) then
-                        r.boonsWithApproach = r.boonsWithApproach + 1
-                        break
-                    end
+            if not grid:typeWalkable(c.tile) then
+                r.blocked = r.blocked + 1
+                if c.secret then r.secrets = r.secrets + 1 end
+            else
+                r.places = r.places + 1
+                if #grid:pathNeighbors(x, y) == 1 then r.deadEnds = r.deadEnds + 1 end
+                -- ...AND WHETHER IT ENDS IN ANYTHING. A spur that ends in nothing is a walk the
+                -- floor charged for and did not pay: the old board had a whole pass (pruneDeadStubs)
+                -- to cut them, and a grid has none -- so this is the column that says whether it
+                -- needs one.
+                if #grid:pathNeighbors(x, y) == 1 and (c.encounter or c.cache) then
+                    r.deadEndsFull = (r.deadEndsFull or 0) + 1
                 end
+                if c.gate then r.gates = r.gates + 1 end
+                if c.key then r.keys = r.keys + 1 end
+                if c.encounter or c.cache or c.gate or c.key then r.marks = r.marks + 1 end
             end
+
             if c.cache then
                 r.caches = r.caches + 1; r.boons = r.boons + 1
-                if leaf then r.cacheOnDeadEnd = r.cacheOnDeadEnd + 1 end
-                -- What the board actually pays in forging stock. Counted by walking the placed caches
-                -- rather than derived from cacheTarget, because the payload is scaled per tile by the
-                -- detour it cost AND bumped again if the tile ended up guarded -- so the constant that
-                -- looks responsible for material income is never the one that sets it.
+                -- What the floor actually pays in forging stock. Counted by walking the placed caches
+                -- rather than derived from cacheTarget, because the payload is scaled per place by the
+                -- detour it cost -- so the constant that looks responsible for material income is never
+                -- the one that sets it.
                 for mat, qty in pairs(c.cache.materials or {}) do
                     if mat == "material_salt_iron" then
                         r.houseStock = (r.houseStock or 0) + qty
@@ -151,6 +216,7 @@ local function measure(grid)
                     end
                 end
             end
+
             local e = c.encounter
             if e then
                 r.stops = r.stops + 1
@@ -160,9 +226,7 @@ local function measure(grid)
                     if e.tier then
                         r.tierSum = r.tierSum + e.tier
                         r.tierN = r.tierN + 1
-                        -- Fifth of the board by distance from the start. maxD is the far corner rather
-                        -- than the objective (which sits at ~80% of it by design), so the last fifth is
-                        -- genuinely the deep end and not merely "past the boss".
+                        -- Fifth of the floor by distance from the way in.
                         local d = dist[y * 100000 + x] or 0
                         local b = math.max(1, math.min(5, math.floor(d / maxD * 5) + 1))
                         r.depthTierSum[b] = r.depthTierSum[b] + e.tier
@@ -173,132 +237,22 @@ local function measure(grid)
                 elseif e.kind == "rest" then
                     r.rest = r.rest + 1
                     r.services = r.services + 1
-                elseif e.kind ~= "objective" then
+                elseif e.kind == "objective" then
+                    r.endN = r.endN + 1
+                else
                     r.services = r.services + 1
                 end
-                if c.guards then r.guarded = r.guarded + 1 end
             end
         end
     end
 
-    -- THE FIGHTS THAT WALK. A patrol carries its encounter off the cell (Overworld:placePatrols), so a
-    -- census that only reads `cell.encounter` stops seeing most of the board's combat -- measured at 1.85
-    -- fights a board against 4.25, which is not a change in the board, it is a change in the instrument.
-    -- Counted here at wherever the patrol currently stands, which is where a report on a freshly rolled
-    -- board means: its beat has not run yet.
-    r.patrols, r.beatSum = 0, 0
-    for _, p in ipairs(grid.patrols or {}) do
-        if not p.cleared then
-            local e = p.encounter or {}
-            r.stops = r.stops + 1
-            r.fights = r.fights + 1
-            r.patrols = r.patrols + 1
-            r.beatSum = r.beatSum + #(p.beat or {})
-            r.byKind[e.kind] = (r.byKind[e.kind] or 0) + 1
-            if p.guards then r.guarded = r.guarded + 1 end
-            if e.tier then
-                r.tierSum = r.tierSum + e.tier
-                r.tierN = r.tierN + 1
-                local d = dist[p.y * 100000 + p.x] or 0
-                local b = math.max(1, math.min(5, math.floor(d / maxD * 5) + 1))
-                r.depthTierSum[b] = r.depthTierSum[b] + e.tier
-                r.depthTierN[b] = r.depthTierN[b] + 1
-            end
-        end
-    end
-
-    -- ---------------------------------------------------------------------
-    -- FIGHTABILITY: can a battle actually happen here?
-    -- ---------------------------------------------------------------------
-    --
-    -- A fight is taken on THIS MAP -- the board locks an 8x8 window of these tiles and walls its ring
-    -- (Overworld.BOX) -- so "is there room to fight" becomes a property of the generator, and a silent
-    -- one. A layout can be connected, well-braided, correctly gated and completely unable to host a
-    -- battle, and nothing but this figure will say so. It is measured here first precisely because it
-    -- is the number most likely to be assumed rather than read.
-    --
-    --   fightable  share of trail standing in a window with at least BOX_OK tiles it can cross to
-    --   seat score what the fights ACTUALLY got: mean, worst, and how many were seated under the floor
-    --   open       ...and the same seats measured for SHAPE, against BOX_OPEN
-    --   sites      distinct non-overlapping windows good enough to be a board, which is the number the
-    --              board's fight count has to fit inside
-    local sums = grid:walkableSums()
-    -- ...and the same window measured for SHAPE rather than for space (Overworld.isOpen). A warren and a
-    -- chamber score alike on the first and nothing alike on the second.
-    local openSums = grid:openSums()
-    r.walkTiles, r.fightTiles = 0, 0
-    r.seatSum, r.seatN, r.seatMin, r.seatBelow = 0, 0, math.huge, 0
-    r.openSum, r.openMin, r.openBelow = 0, math.huge, 0
-    -- THE END, MEASURED ON ITS OWN. The mean over every seat hides the one seat that is not optional:
-    -- a board can seat its five loose fights in clearings and still put the objective in a defile, and
-    -- the average will read fine. So the mandatory fight is counted twice -- once in the ledger with
-    -- everything else, once here by itself.
-    r.endSeatSum, r.endOpenSum, r.endN, r.endBelow = 0, 0, 0, 0
-    for y = 1, grid.rows do
-        for x = 1, grid.cols do
-            local c = grid.cells[y][x]
-            if grid:typeWalkable(c.tile) then
-                r.walkTiles = r.walkTiles + 1
-                local ox, oy, score = grid:bestBox(x, y, sums)
-                local open = openSums(ox, oy)
-                if score >= Overworld.BOX_OK and open >= Overworld.BOX_OPEN then
-                    r.fightTiles = r.fightTiles + 1
-                end
-                -- A tile holds a fight if a stop was seated on it OR a patrol is standing on it: the
-                -- fightability floor governs both, and a beat that walks its fight onto ground too thin
-                -- to fight on is the same failure as seating one there.
-                local fightHere = (c.encounter and SEATED[c.encounter.kind]) or patrolAt(grid, x, y)
-                if fightHere then
-                    r.seatSum, r.seatN = r.seatSum + score, r.seatN + 1
-                    r.openSum = r.openSum + open
-                    if score < r.seatMin then r.seatMin = score end
-                    if open < r.openMin then r.openMin = open end
-                    if score < Overworld.BOX_OK then r.seatBelow = r.seatBelow + 1 end
-                    if open < Overworld.BOX_OPEN then r.openBelow = r.openBelow + 1 end
-                end
-                if c.encounter and c.encounter.kind == "objective" then
-                    r.endSeatSum, r.endOpenSum = r.endSeatSum + score, r.endOpenSum + open
-                    r.endN = r.endN + 1
-                    if score < Overworld.BOX_OK or open < Overworld.BOX_OPEN then
-                        r.endBelow = r.endBelow + 1
-                    end
-                end
-            end
-        end
-    end
-    if r.seatMin == math.huge then r.seatMin = 0 end
-    if r.openMin == math.huge then r.openMin = 0 end
-
-    -- Greedy, highest-scoring first, suppressing anything that overlaps one already taken. Walked in a
-    -- fixed order with ties broken by position so the count reproduces from the seed like everything
-    -- else here.
-    local cands = {}
-    for y = 1, grid.rows - Overworld.BOX + 1 do
-        for x = 1, grid.cols - Overworld.BOX + 1 do
-            local s = sums(x, y)
-            if s >= SITE_SCORE then cands[#cands + 1] = { s, x, y } end
-        end
-    end
-    table.sort(cands, function(a, b)
-        if a[1] ~= b[1] then return a[1] > b[1] end
-        if a[3] ~= b[3] then return a[3] < b[3] end
-        return a[2] < b[2]
-    end)
-    local taken = {}
-    r.sites = 0
-    for _, c in ipairs(cands) do
-        local clear = true
-        for _, t in ipairs(taken) do
-            if math.abs(t[1] - c[2]) < Overworld.BOX and math.abs(t[2] - c[3]) < Overworld.BOX then
-                clear = false
-                break
-            end
-        end
-        if clear then
-            taken[#taken + 1] = { c[2], c[3] }
-            r.sites = r.sites + 1
-        end
-    end
+    -- ONE CONNECTED REGION, asked of the floor the player is actually handed. The hollow pass
+    -- guarantees it by construction and the choke pass runs after it, so this is the standing check
+    -- that the second did not undo the first.
+    local reach = grid:reachable(grid:startCell())
+    local n = 0
+    for _ in pairs(reach) do n = n + 1 end
+    r.stranded = r.places - n
 
     return r
 end
@@ -339,23 +293,19 @@ end
 -- would make each harder to read than it is apart. The seeds are the same sequence, so a biome's row
 -- here and its ledger below describe the same boards.
 function M.compare(biomes, n, pool)
-    print(string.format("BOARD REPORT -- %d boards per ground, %d-%d stops, day %d",
+    print(string.format("BOARD REPORT -- %d floors per ground, %d-%d stops, day %d",
         n, DEFAULT_ENCOUNTERS.min, DEFAULT_ENCOUNTERS.max, DEFAULT_DAY))
     print("")
-    print(string.format("  %-11s %9s %7s %6s %6s %6s %7s %7s %7s %8s",
-        "ground", "fightable", "sites", "seat", "open", "ends", "worst", "under", "walk", "guarded"))
-    print("  " .. string.rep("-", 86))
-    -- A DAY'S GROUND, AS THE CAMPAIGN ACTUALLY ROLLS IT. Three pieces of work is the middle of the
-    -- range a ground carries (models/quest.lua's Quest.trip), and it is what this has to measure --
-    -- with one end the board is smaller and every fight has more room than it will really get. The
-    -- specs are bare: nothing here fights them, they exist so three dead ends are asked for.
+    print(string.format("  %-11s %7s %7s %8s %8s", "ground", "places", "full", "steps", "ends"))
+    print("  " .. string.rep("-", 48))
+    -- A DAY'S WORK, AS THE CAMPAIGN ACTUALLY ROLLS IT. Three pieces of work is the middle of the range a
+    -- ground carries (models/quest.lua's Quest.trip), and it is what this has to measure -- with one end
+    -- the floor is smaller and every stop has more room than it will really get. The specs are bare:
+    -- nothing here fights them, they exist so three ends are asked for.
     local trip = { { name = "end 1" }, { name = "end 2" }, { name = "end 3" } }
     local crowded = 0
     for _, biome in ipairs(biomes) do
-        local t = { walk = 0, fight = 0, sites = 0, seatSum = 0, seatN = 0, below = 0,
-                    dead = 0, guarded = 0, boons = 0, cells = 0, openSum = 0,
-                    endOpen = 0, endN = 0 }
-        local worst = math.huge
+        local t = { places = 0, marks = 0, cells = 0, steps = 0, ends = 0, n = 0 }
         for i = 1, n do
             local grid = Overworld.generate({
                 biome = biome,
@@ -363,62 +313,39 @@ function M.compare(biomes, n, pool)
                 encounters = pool,
                 objectives = trip,
                 houseMaterial = "material_salt_iron",
-                patrols = true, -- the board as the campaign actually rolls it
-            seed = SEED_BASE + i,
+                seed = SEED_BASE + i,
             })
             crowded = crowded + (grid.crowdedEnds or 0)
             local r = measure(grid)
-            t.walk = t.walk + r.walkTiles
+            t.places = t.places + r.places
+            t.marks = t.marks + r.marks
             t.cells = t.cells + grid.cols * grid.rows
-            t.fight = t.fight + r.fightTiles
-            t.sites = t.sites + r.sites
-            t.seatSum, t.seatN = t.seatSum + r.seatSum, t.seatN + r.seatN
-            -- Either floor missed is a seat under the floor. Space and shape are both requirements, so
-            -- reporting only the first would keep hiding exactly what it hid before.
-            t.below = t.below + math.max(r.seatBelow, r.openBelow)
-            t.openSum = t.openSum + r.openSum
-            t.endOpen, t.endN = t.endOpen + r.endOpenSum, t.endN + r.endN
-            t.dead = t.dead + r.deadEnds
-            t.guarded, t.boons = t.guarded + r.guarded, t.boons + r.boons
-            if r.seatN > 0 and r.openMin < worst then worst = r.openMin end
+            t.steps = t.steps + r.toEnd
+            t.ends = t.ends + r.endN
+            t.n = t.n + 1
         end
-        if worst == math.huge then worst = 0 end
         local function ratio(a, b) return b > 0 and (a / b) or 0 end
-        print(string.format("  %-11s %8.1f%% %7.1f %6.1f %6.1f %6.1f %7d %7.1f %6.1f%% %7.1f%%",
+        print(string.format("  %-11s %7.1f %6.1f%% %8.1f %8.2f",
             biome,
-            100 * ratio(t.fight, t.walk),
-            t.sites / n,
-            ratio(t.seatSum, t.seatN),
-            ratio(t.openSum, t.seatN),
-            ratio(t.endOpen, t.endN),
-            worst,
-            t.below / n,
-            100 * ratio(t.walk, t.cells),
-            100 * ratio(t.guarded, t.boons)))
+            ratio(t.places, t.n),
+            100 * ratio(t.marks, t.places),
+            ratio(t.steps, t.n),
+            ratio(t.ends, t.n)))
     end
     print("")
-    -- SAID OUT LOUD RATHER THAN LEFT IN THE ARITHMETIC. Every board above was asked for three ends;
-    -- this is how often one of them could not be given a spur of its own and took open trail instead.
-    -- A rising number here is the sizing rule falling behind what a ground can hold.
+    -- SAID OUT LOUD RATHER THAN LEFT IN THE ARITHMETIC. Every floor above was asked for three ends; this
+    -- is how often one of them could not be given a place of its own at all.
     if crowded > 0 then
-        print(string.format("  NOTE  %d of %d ends had no dead end left and took open trail (%.1f%%)",
+        print(string.format("  NOTE  %d of %d ends had no place left to take (%.1f%%)",
             crowded, #biomes * n * #trip, 100 * crowded / (#biomes * n * #trip)))
         print("")
     end
-    print(string.format("  fightable  share of trail in an %dx%d window holding >= %d crossable and >= %d open",
-        Overworld.BOX, Overworld.BOX, Overworld.BOX_OK, Overworld.BOX_OPEN))
-    print(string.format("  sites      distinct non-overlapping windows scoring >= %d -- places a fight could go",
-        SITE_SCORE))
-    print(string.format("  seat       mean box score the fights were ACTUALLY seated on, of %d",
-        Overworld.BOX * Overworld.BOX))
-    print("  open       ...and how much of that was OPEN ground (a full 3x3 of trail around it).")
-    print("             This is the column that matters: space is not shape. A warren scores well on")
-    print("             `seat` and zero on `open` -- room for four bodies, no room for a decision.")
-    print("  ends       the same open figure for the OBJECTIVES alone -- the one fight nobody may skip,")
-    print("             seated on a strict dead end by rule, and therefore the seat most likely to be a")
-    print("             defile. A board can seat its loose fights well and still fail here.")
-    print(string.format("  under      fights a board seated below either floor (%d crossable, %d open)"
-        .. " -- these must reach 0", Overworld.BOX_OK, Overworld.BOX_OPEN))
+    print("  places     walkable cells a floor holds -- the rest of the grid is not there")
+    print("  full       share of those places holding SOMETHING: a stop, a find, a gate, a key.")
+    print("             The number the whole shape is pitched at -- about half, so the rest is")
+    print("             what you route through.")
+    print("  steps      how far the deepest end is from the way in, in steps")
+    print("  ends       pieces of work seated, of the three asked for")
 end
 
 function M.run(args)
@@ -428,6 +355,8 @@ function M.run(args)
     local stopsOverride, fightsOverride, endsOverride = nil, nil, nil
     local wantContracts, wantXp, wantDescent = false, false, false
     local descentFloor = 1
+    local carveOverride, sizeOverride = nil, nil
+    local wantCost, partySize = false, 4
     -- Which ground(s). `all` walks every blueprint in data/biomes; `biome=x` reports one; the bare
     -- default stays forest, so every figure recorded in docs/overworld.md still reproduces exactly.
     local biome, wantAll = "forest", false
@@ -436,6 +365,19 @@ function M.run(args)
         if a == "tiers" then wantTiers = true end
         if a == "contracts" then wantContracts = true end
         if a == "xp" then wantXp = true end
+        -- DOES A FIGHT COST HEALTH. The descent's whole economy is a life budget -- nothing refills
+        -- between fights on a floor -- and a budget only binds if spending it is compulsory. This
+        -- resolves every fight on a sample of floors and reads what came off the company, which is the
+        -- question asked directly rather than through Muster's rating of it:
+        --
+        --     . board-report 12 descent floor=1 cost party=4
+        --
+        -- `party` is the lever the measurement exists to pull. models/descent.lua's OPENING_CAP is sized
+        -- for the TWO bodies the campaign hands over on floor one, and Descent.PARTY_MAX is four -- so a
+        -- returning company walks that floor against fights cut to fit a pair, and 2 against 4 is the
+        -- comparison that says whether that gap is real.
+        if a == "cost" then wantCost = true end
+        local pc = tostring(a):match("^party=(%d+)$"); if pc then partySize = tonumber(pc) end
         if a == "all" then wantAll = true end
         local bi = tostring(a):match("^biome=(%w+)$"); if bi then biome = bi end
         -- Override knobs for a tuning sweep, so a candidate value is measured before it is committed to
@@ -467,6 +409,8 @@ function M.run(args)
         -- (Descent.floorDims), so "a descent floor" is a question that needs a depth to answer. Defaults
         -- to the first, so every figure recorded against the bare `descent` still reproduces.
         local f = tostring(a):match("^floor=(%d+)$"); if f then descentFloor = tonumber(f) end
+        local cv = tostring(a):match("^carve=(%w+)$"); if cv then carveOverride = cv end
+        local sz = tostring(a):match("^size=(%d+)$"); if sz then sizeOverride = tonumber(sz) end
     end
 
     local pool = M.stablePool(DEFAULT_DAY)
@@ -489,11 +433,15 @@ function M.run(args)
     end
 
     local tot = {
-        fights = 0, boons = 0, guarded = 0, rest = 0, stops = 0, caches = 0, services = 0,
-        tierSum = 0, tierN = 0, walkTiles = 0, fightTiles = 0, sites = 0,
-        seatSum = 0, seatN = 0, seatBelow = 0, seatMin = math.huge,
-        openSum = 0, openBelow = 0, openMin = math.huge,
-        endSeatSum = 0, endOpenSum = 0, endN = 0, endBelow = 0,
+        fights = 0, boons = 0, rest = 0, stops = 0, caches = 0, services = 0,
+        tierSum = 0, tierN = 0, endN = 0,
+        places = 0, blocked = 0, marks = 0, toEnd = 0, deepest = 0, deadEnds = 0,
+        cuts = 0, blocking = 0, behind = 0,
+        freeFromDoor = 0, pennedIn = 0,
+        deadEndsFull = 0,
+        diameter = 0,
+        gates = 0, keys = 0, secrets = 0, stranded = 0, crowdedEnds = 0,
+        craftStock = 0, houseStock = 0,
         depthTierSum = { 0, 0, 0, 0, 0 }, depthTierN = { 0, 0, 0, 0, 0 },
         byKind = {},
     }
@@ -521,14 +469,22 @@ function M.run(args)
             -- Mirrors Overworld.generate's own derivation so a sweep can try a different divisor
             -- without editing the model. nil leaves the model's own rule in charge.
             cacheCount = cacheDiv and math.max(1, math.floor(((encN.min + encN.max) / 2) / cacheDiv)) or nil,
-            patrols = true, -- the board as the campaign actually rolls it
             seed = SEED_BASE + i,
         }
         if wantDescent then
             local mp = dq.map
             encN = stopsOverride and { min = stopsOverride, max = stopsOverride } or mp.encounters
             params.cols, params.rows = mp.cols, mp.rows
-            params.layout, params.spacing = mp.carve, mp.spacing
+            -- A SIZE OVERRIDE, so a candidate grid is measured before it is committed to
+            -- models/descent.lua rather than after:
+            --
+            --     . board-report 30 descent floor=1 size=7
+            --
+            -- Nothing else about the floor moves -- the stop budget, the pins, the reweighted pool and
+            -- the guarantees are all still the model's, which is what makes the two rows comparable.
+            -- (`carve=` went with the layouts: a floor has one shape now, and how much of it is not
+            -- there is Overworld.BLOCK_SHARE.)
+            if sizeOverride then params.cols, params.rows = sizeOverride, sizeOverride end
             params.encounterCount = encN
             params.cacheCount = cacheDiv
                 and math.max(1, math.floor(((encN.min + encN.max) / 2) / cacheDiv)) or mp.cacheCount
@@ -538,7 +494,6 @@ function M.run(args)
             params.guarantee = mp.guarantee
             params.ascent, params.keyCount = true, 0
             params.secrets, params.exitAtStart = mp.secrets, mp.exitAtStart
-            params.guardBoons = mp.guardBoons
             params.objective = mp.objective
             -- EVERY END THE FLOOR CARRIES, which is the half of the board this tool used to leave on the
             -- floor. `mp.objectives` was never passed at all, so the generator laid one end where a real
@@ -561,24 +516,23 @@ function M.run(args)
         end
         local grid = Overworld.generate(params)
         local r = measure(grid)
-        for _, k in ipairs({ "fights", "boons", "guarded", "rest", "stops", "caches", "services",
-                             "tierSum", "tierN", "deadEnds", "cacheOnDeadEnd", "boonsWithApproach",
-                             "craftStock", "houseStock",
-                             "walkTiles", "fightTiles", "sites", "seatSum", "seatN", "seatBelow",
-                             "openSum", "openBelow",
-                             "endSeatSum", "endOpenSum", "endN", "endBelow",
-                             "patrols", "beatSum" }) do
-            tot[k] = (tot[k] or 0) + r[k]
+        for _, k in ipairs({ "fights", "boons", "rest", "stops", "caches", "services",
+                             "tierSum", "tierN", "deadEnds", "craftStock", "houseStock",
+                             "places", "blocked", "marks", "endN", "toEnd", "deepest",
+                             "cuts", "blocking", "behind",
+                             "freeFromDoor", "pennedIn",
+                             "deadEndsFull",
+                             "diameter",
+                             "gates", "keys", "secrets", "stranded", "crowdedEnds" }) do
+            tot[k] = (tot[k] or 0) + (r[k] or 0)
         end
-        if r.seatN > 0 and r.seatMin < tot.seatMin then tot.seatMin = r.seatMin end
-        if r.seatN > 0 and r.openMin < tot.openMin then tot.openMin = r.openMin end
         for b = 1, 5 do
             tot.depthTierSum[b] = tot.depthTierSum[b] + r.depthTierSum[b]
             tot.depthTierN[b] = tot.depthTierN[b] + r.depthTierN[b]
         end
         for k, v in pairs(r.byKind) do tot.byKind[k] = (tot.byKind[k] or 0) + v end
         perBoard[#perBoard + 1] = {
-            guarded = r.guarded, caches = r.caches, fights = r.fights,
+            caches = r.caches, fights = r.fights,
             relicCache = r.byKind.relic_cache or 0,
             treasure = r.byKind.treasure or 0,
             crossroads = r.byKind.crossroads or 0,
@@ -615,52 +569,49 @@ function M.run(args)
     print(string.format("  %-22s %8.2f  %s", "rest", per(tot.rest),
         string.format("one per %.1f fights", ratio(tot.fights, tot.rest))))
     print("")
-    -- NOT a target. The ratio was the first suspect for the guarded-boon shortfall and it was the wrong
-    -- one: forcing it to 1.0 by cutting caches lowered material income by a third AND lowered the
-    -- absolute number of guarded boons, because it removed boons rather than adding pairings. Kept as
-    -- context for the two rows under it, which are the ones that mean something.
-    print(string.format("  %-22s %8.2f  %s", "boons per fight", ratio(tot.boons, tot.fights),
-        "context only -- see `boons gateable` for the real ceiling"))
-    print(string.format("  %-22s %8.1f%%  %s", "boons guarded", 100 * ratio(tot.guarded, tot.boons),
-        string.format("%.2f of %.2f per board", per(tot.guarded), per(tot.boons))))
-    print(string.format("  %-22s %8.1f%%  %s", "fights on guard", 100 * ratio(tot.guarded, tot.fights),
-        "the rest stand in the open"))
     print("")
-    print("  why a boon goes unguarded -- geometry or supply:")
+    -- WHAT THE FLOOR IS SHAPED LIKE, which on a grid is three numbers and not a page of them.
+    print("  what this floor is shaped like:")
+    print(string.format("    %-20s %8.2f  %s", "places", per(tot.places),
+        string.format("of %.0f cells -- %.0f are not there", per(tot.places + tot.blocked),
+            per(tot.blocked))))
+    print(string.format("    %-20s %8.1f%%  %s", "full", 100 * ratio(tot.marks, tot.places),
+        string.format("%.2f of them hold something", per(tot.marks))))
+    print(string.format("    %-20s %8.2f  %s", "steps to the end", per(tot.toEnd),
+        string.format("deepest place is %.1f", per(tot.deepest))))
+    print(string.format("    %-20s %8.2f  %s", "longest the floor has", per(tot.diameter),
+        string.format("the crossing takes %.0f%% of it",
+            100 * ratio(tot.toEnd, tot.diameter))))
     print(string.format("    %-20s %8.2f  %s", "dead ends", per(tot.deadEnds),
-        string.format("%.2f of %.2f caches sit on one", per(tot.cacheOnDeadEnd), per(tot.caches))))
-    print(string.format("    %-20s %8.1f%%  %s", "boons gateable", 100 * ratio(tot.boonsWithApproach, tot.boons),
-        "have a neighbour that is a real cut vertex"))
-    print(string.format("    %-20s %8.2f  %s", "loose fights", per(tot.fights - tot.guarded),
-        "available to move onto an approach"))
-    print("")
-    -- CAN A BATTLE HAPPEN HERE. Printed above the economy rows because it now gates them: a board whose
-    -- fights are seated on ground too thin to fight on pays nothing, whatever the cache maths says.
-    print("")
-    print(string.format("  can a fight happen here -- an %dx%d window of these tiles:",
-        Overworld.BOX, Overworld.BOX))
-    print(string.format("    %-20s %8.1f%%  %s", "fightable trail",
-        100 * ratio(tot.fightTiles, tot.walkTiles),
-        string.format("of %.0f walkable tiles a board", per(tot.walkTiles))))
-    print(string.format("    %-20s %8.2f  %s", "arena sites", per(tot.sites),
-        string.format("against %.2f fights to seat", per(tot.fights))))
-    print(string.format("    %-20s %8.1f  %s", "mean seat score", ratio(tot.seatSum, tot.seatN),
-        string.format("of %d; worst seen %d", Overworld.BOX * Overworld.BOX,
-            tot.seatMin == math.huge and 0 or tot.seatMin)))
-    print(string.format("    %-20s %8.1f  %s", "mean open ground", ratio(tot.openSum, tot.seatN),
-        string.format("of %d; worst seen %d -- space is not shape",
-            Overworld.BOX * Overworld.BOX, tot.openMin == math.huge and 0 or tot.openMin)))
-    print(string.format("    %-20s %8.1f  %s", "the end's own seat", ratio(tot.endOpenSum, tot.endN),
-        string.format("open ground at the %.2f objectives a board -- the fight nobody may skip",
-            per(tot.endN))))
-    print(string.format("    %-20s %8.2f  %s", "seated under floor", per(tot.seatBelow),
-        string.format("fights a board below %d crossable -- must reach 0", Overworld.BOX_OK)))
-    print(string.format("    %-20s %8.2f  %s", "seated under shape", per(tot.openBelow),
-        string.format("...and below %d open -- must reach 0 (%.2f of them are ends)",
-            Overworld.BOX_OPEN, per(tot.endBelow))))
-    print(string.format("    %-20s %8.2f  %s", "patrols", per(tot.patrols),
-        string.format("of %.2f fights, mean beat %.1f tiles", per(tot.fights),
-            tot.patrols > 0 and (tot.beatSum / tot.patrols) or 0)))
+        "places with one way in"))
+    print(string.format("    %-20s %8.2f  %s", "...ending in nothing",
+        per(tot.deadEnds - tot.deadEndsFull),
+        string.format("%.0f%% of them pay for the walk",
+            100 * ratio(tot.deadEndsFull, tot.deadEnds))))
+    print(string.format("    %-20s %8.2f  %s", "cuts", per(tot.cuts),
+        string.format("places that are the ONLY way to something -- %.1f places behind them",
+            per(tot.behind))))
+    print(string.format("    %-20s %8.2f  %s", "blocked by a fight", per(tot.blocking),
+        string.format("%.0f%% of the cuts; the rest can be walked past",
+            100 * ratio(tot.blocking, tot.cuts))))
+    print(string.format("    %-20s %8.2f  %s", "free from the door", per(tot.freeFromDoor),
+        string.format("places reachable without a fight; %.0f%% of floors pen you in",
+            100 * per(tot.pennedIn))))
+    if tot.gates > 0 or tot.secrets > 0 then
+        print(string.format("    %-20s %8.2f  %s", "gates", per(tot.gates),
+            string.format("%.2f keys before them", per(tot.keys))))
+        print(string.format("    %-20s %8.2f  %s", "secrets", per(tot.secrets),
+            "places that read as absent until somebody looks"))
+    end
+    -- MUST READ 0. The hollow pass owns connectivity and the choke pass runs after it; this is the
+    -- standing check that the second never undid the first. A floor in two pieces is silently a floor
+    -- half the size ([[carve-owns-connectivity]]).
+    print(string.format("    %-20s %8.2f  %s", "stranded", per(tot.stranded),
+        "places unreachable from the way in -- must be 0"))
+    if tot.crowdedEnds > 0 then
+        print(string.format("    %-20s %8.2f  %s", "ends with no place", per(tot.crowdedEnds),
+            "work the floor could not seat -- a sizing failure"))
+    end
     print("")
     print(string.format("  %-22s %8.2f  %s", "cache craft stock", per(tot.craftStock),
         "material income -- the thing a ratio change must not quietly gut"))
@@ -684,7 +635,6 @@ function M.run(args)
         print("  contract satisfiability -- share of boards carrying at least N:")
         print(string.format("    %-16s %7s %7s %7s %7s", "", "N=1", "N=2", "N=3", "N=4"))
         local axes = {
-            { "guarded fights", "guarded" },
             { "caches", "caches" },
             { "fights", "fights" },
             { "relic caches", "relicCache" },
@@ -713,7 +663,7 @@ function M.run(args)
     -- loop the walk-off path uses, so the plan, the ordering and the free-action handling are the real
     -- ones -- and reads what combat actually banked (`combat.xpByChar`). A fresh company is minted per
     -- board so attrition does not compound across boards the player would have camped between.
-    if wantXp then
+    if wantXp or wantCost then
         local Autobattle = require("models.autobattle")
         local Combat = require("models.combat")
         local EncounterBattle = require("models.encounter_battle")
@@ -752,8 +702,88 @@ function M.run(args)
         end
 
         local BOARDS = math.min(n, 12) -- fighting is dear; a dozen boards is plenty for a mean
+
+        -- WHAT A FIGHT TAKES OFF THE COMPANY, resolved fight by fight from FULL.
+        --
+        -- Deliberately reset between fights rather than compounded, and the distinction is the whole
+        -- measurement: the question is not "how worn is a company by the stair" (which confounds a floor
+        -- that is too hard with one that is too long) but "is this fight, on its own, something the
+        -- player pays for". A fight that costs nothing from full costs nothing at any health.
+        --
+        -- Read off the roster rather than off the combat, because the combat's units are views onto
+        -- these instances and Player.restore is the same call the hub makes -- so what is measured is
+        -- exactly what the player would see on the party panel afterwards.
+        if wantCost then
+            local mp = dq and dq.map
+            local pool = M.stablePool(DEFAULT_DAY)
+            local spent, zero, cheap, fights = 0, 0, 0, 0
+            local poolMax = 0
+            for i = 1, BOARDS do
+                local player = parityCompany(DEFAULT_DAY)
+                while #player.roster > partySize do table.remove(player.roster) end
+                local params = {
+                    biome = (mp and mp.biome) or "forest",
+                    encounterCount = (mp and mp.encounters) or DEFAULT_ENCOUNTERS,
+                    encounters = pool, houseMaterial = "material_salt_iron",
+                    seed = SEED_BASE + i,
+                }
+                if mp then
+                    params.cols, params.rows = sizeOverride or mp.cols, sizeOverride or mp.rows
+                    params.spacing = mp.spacing
+                    params.combatBudget = mp.combatBudget
+                    params.combatShare, params.guarantee = mp.combatShare, mp.guarantee
+                    params.objective, params.objectives = mp.objective, mp.objectives
+                    params.ascent, params.keyCount = true, 0
+                end
+                local grid = Overworld.generate(params)
+                for y = 1, grid.rows do
+                    for x = 1, grid.cols do
+                        local e = grid.cells[y][x].encounter
+                        if e and FIGHT[e.kind] then
+                            Player.restore(player)
+                            local before = 0
+                            for _, c in ipairs(player.roster) do
+                                local h = c.stats and c.stats.health
+                                if type(h) == "table" then before = before + (h.current or 0) end
+                            end
+                            local ok, built = pcall(EncounterBattle.build, {
+                                encounter = e, day = DEFAULT_DAY, party = player.roster,
+                                biome = params.biome, quest = dq,
+                            })
+                            if ok and built and built.combat then
+                                EncounterBattle.autoDeploy(built.combat, built.arena, Muster.fielded(player))
+                                Combat.openBattle(built.combat)
+                                Autobattle.run(built.combat, { maxTurns = 400 })
+                                local after = 0
+                                for _, c in ipairs(player.roster) do
+                                    local h = c.stats and c.stats.health
+                                    if type(h) == "table" then after = after + (h.current or 0) end
+                                end
+                                local lost = math.max(0, before - after)
+                                fights = fights + 1
+                                spent = spent + lost
+                                poolMax = poolMax + before
+                                if lost <= 0 then zero = zero + 1 end
+                                if before > 0 and (lost / before) < 0.05 then cheap = cheap + 1 end
+                            end
+                        end
+                    end
+                end
+            end
+            local n1 = math.max(1, fights)
+            print("")
+            print(string.format("  WHAT A FIGHT COSTS -- %d boards, %d fights, a company of %d",
+                BOARDS, fights, partySize))
+            print(string.format("    %-26s %7.1f%%  %s", "health spent a fight",
+                100 * spent / math.max(1, poolMax), "of the company's pool, from full"))
+            print(string.format("    %-26s %7.1f%%  %s", "fights that cost NOTHING",
+                100 * zero / n1, "the number the life budget lives or dies on"))
+            print(string.format("    %-26s %7.1f%%  %s", "fights under 5%",
+                100 * cheap / n1, "near enough to free"))
+        end
+
         local totalXp, bodies, fought, refused = 0, 0, 0, 0
-        for i = 1, BOARDS do
+        for i = 1, (wantXp and BOARDS or 0) do
             local player = parityCompany(DEFAULT_DAY)
             local grid = Overworld.generate({
                 biome = "forest", encounterCount = DEFAULT_ENCOUNTERS, encounters = pool,
@@ -786,6 +816,7 @@ function M.run(args)
         -- Per BODY per BOARD. `bodies` accumulated the company size once per board, so dividing the
         -- whole haul by it gives what one member banked on one board -- which is one day.
         local perDay = totalXp / math.max(1, bodies)
+        if wantXp then
         print("")
         print(string.format("  EXPERIENCE A DAY -- %d boards fought, %d fights resolved, %d refused",
             BOARDS, fought, refused))
@@ -795,6 +826,7 @@ function M.run(args)
             Experience.levelFor(perDay * Calendar.SPAN),
             "against a world ending at " .. Calendar.FINAL_DANGER))
         print(string.format("    %-24s %8d", "at Experience.STEP", Experience.STEP))
+        end
     end
 
     if wantTiers then

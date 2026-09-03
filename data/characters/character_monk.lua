@@ -18,11 +18,14 @@ return {
         defense = 9, magicDefense = 10,
         movement = 4,
         speed = 5,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 5, luck = 6,
     },
     startingItems = {
         "utility_iron_fist",   "ability_flurry",     "utility_swift_fist",
         "utility_drunken_fist", "ability_asura_strike", "utility_shadow_fist",
-        "armor_leather_armor", "consumable_healing_potion", false,
+        "armor_leather_armor", "consumable_healing_potion", "utility_unheld_hand",
     },
     defaultAction = "ability_flurry",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

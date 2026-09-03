@@ -29,8 +29,8 @@ return {
     type = "ability",
     tags = { "fire", "magical" },
     class = "mage",
-    price = 80,
-    unlockQuests = 0,
+    price = 165,
+    unlockQuests = 1,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

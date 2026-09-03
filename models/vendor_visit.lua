@@ -19,7 +19,6 @@
 
 local Conversation = require("models.conversation")
 local Discipline = require("models.discipline")
-local Errand = require("models.errand")
 local Player = require("models.player")
 local Quest = require("models.quest")     -- an errand IS a quest def; its intro is the house asking
 local Vendor = require("models.vendor")
@@ -44,20 +43,27 @@ local VendorVisit = {}
 -- "[X has joined your Party]" banner onto the next scene to run (models/conversation.lua's noteJoin),
 -- which is this one. Join, banner and first words all land in the same beat.
 --
--- GATED ON THE DOOR, NOT ON THE VISIT. `Errand.doorOpen` is the same test that put the shop on the
--- board at all, so this can only fire for a house whose opener has been run. Two companions arrive by
--- other routes and reach their counter with the door still shut -- Rowan in the prologue and Saber off
--- her quest's `rewardCharacter` -- and their houses stay shut until their work is done. Knowing
--- somebody is not the same as being welcome in their hall.
+-- IT NO LONGER FIRES FOR ANYBODY, and the function is kept rather than deleted because the sequencing
+-- it demonstrates is the contract the underground recruit has to honour.
 --
--- Returns the joined character, or nil when there is nobody to join, the door is shut, or they are
--- already held (Player.recruit refuses a duplicate outright).
+-- Companions are met and recruited on a floor now (models/errand.lua's companion postings): you find
+-- them at a dead end, they ask for one piece of work, and clearing it is what brings them into the
+-- company. That is a beat the city cannot host -- the shop that used to host it was that house's own,
+-- and the houses are classes now, so there is no counter to be standing behind.
+--
+-- What survives unchanged is the ORDER, which every recruit route must keep: Player.recruit queues the
+-- "[X has joined your Party]" banner onto the next scene to run (models/conversation.lua's noteJoin),
+-- and the scene is authored for the full roster through `when = { has = ... }` blocks -- so a companion
+-- has to BE in the company before their own lines can play. Join, banner and first words land in one
+-- beat, or they land wrong.
+--
+-- The one shop the city keeps declares no companion (data/vendors/market.lua), so this returns nil for
+-- it by the check above rather than by a special case.
 function VendorVisit.joinCompanion(player, vendorId)
     if not (player and vendorId) then return nil end
     local def = Vendor.get(vendorId)
     local companion = def and def.companion
     if not companion then return nil end
-    if not Errand.doorOpen(player, vendorId) then return nil end
     return Player.recruit(player, companion)
 end
 
@@ -97,30 +103,17 @@ function VendorVisit.steps(player, vendorId, deepest)
         end
     end
 
-    -- 3. THE HOUSE ASKS FOR SOMETHING. A shelf climbs a rung at a time and each rung is bought by doing
-    -- a small piece of work for the house (models/errand.lua) -- so when the company has been deep
-    -- enough for the next one, the vendor asks for it before the shelf opens, and the errand is taken on
-    -- there and then.
+    -- (3. THE HOUSE ASKED FOR SOMETHING, and no house asks any more.)
     --
-    -- ACCEPTED BY BEING ASKED, with no yes-or-no. A refusal would be a door onto the same conversation
-    -- tomorrow and a shelf that stays shut for no reason the player chose -- and there is nothing to
-    -- weigh, because an errand costs nothing to hold. Where it is, and whether to go, is the decision;
-    -- it is on the floor and in the shop's Errands tab either way.
+    -- A shelf used to climb a rung at a time, each rung bought by running a small piece of work the
+    -- house posted -- so when the company had been deep enough for the next one, the vendor asked for it
+    -- on the way in and the errand was taken on there and then. The houses are classes now
+    -- (docs/classes.md), and a class is climbed by a BODY playing its gear rather than by anybody
+    -- running its errands, so there is nothing left for a shopkeeper to ask.
     --
-    -- The FIRST errand of a line is never reached here, and that is the door model rather than an
-    -- exception: it is the opener, it is found on a floor, and running it is what put this shop on the
-    -- board at all. By the time anybody stands in this doorway `Errand.next` is already past it.
-    local offered = Errand.offered(player, vendorId, deepest)
-    if offered then
-        local def = Quest.defs[offered]
-        local floor = Errand.floorFor(player, vendorId)
-        local function take() Errand.accept(player, offered, floor) end
-        if def and def.intro and Conversation.defs[def.intro] then
-            steps[#steps + 1] = { id = def.intro, before = take }
-        else
-            take()
-        end
-    end
+    -- What the asking bought is worth keeping in view, because it has to be bought some other way: it
+    -- was the one place the game said "there is a reason to go back down, and here is what it is". The
+    -- companion recruits carry that now, and they say it underground where the work is.
 
     return steps
 end

@@ -25,7 +25,7 @@ return {
         if not ctx.unit.alive then return end
         ctx.addBonus("defense", ctx.def.magnitude or 2)
     end,
-    -- ...and when a comrade goes down, the vow answers with a ward rather than a stat.
+    -- ...and when an ally goes down, the vow answers with a ward rather than a stat.
     onAnyDeath = function(ctx)
         local fallen = ctx.fallen
         if not (fallen and ctx.unit.alive) then return end

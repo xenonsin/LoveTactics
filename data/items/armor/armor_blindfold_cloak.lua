@@ -25,6 +25,7 @@ return {
     type = "armor",
     tags = { "cloth", "dark" },
     class = "hunter",
+    dropTier = 2,
     incense = { hazard = "hazard_darkness", radius = 1 },
     bonus = { defense = Curve.ramp(2, 12), movement = -1 },
 }

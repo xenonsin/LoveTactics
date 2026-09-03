@@ -19,6 +19,9 @@ return {
         defense = 9, magicDefense = 6,
         movement = 3,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 5, luck = 0,
     },
     startingItems = { "weapon_gilded_pike", "utility_gilded_standard" },
     defaultAction = "weapon_gilded_pike",

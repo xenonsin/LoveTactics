@@ -17,11 +17,14 @@ return {
         defense = 7, magicDefense = 5,
         movement = 4,
         speed = 5,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 6, luck = 7,
     },
     startingItems = {
         "weapon_poachers_kris", "ability_bolas",         "ability_throatcut",
         "utility_quarrys_due",  "utility_the_long_wait", "armor_leather_armor",
-        "consumable_healing_potion", false,             false,
+        "consumable_healing_potion", "utility_quarrys_end",             false,
     },
     defaultAction = "weapon_poachers_kris",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

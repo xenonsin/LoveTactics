@@ -9,5 +9,5 @@ return {
     description = "The engine-builder. Deploys autonomous sentries and turrets that take a turn of their own each round and fight without orders.",
     classes = { "mage", "alchemist" },
     exemplar = "character_artificer", -- NEW, pending
-    requiredQuests = { "quest_alchemist_the_automaton_foundry" }, -- pending
+    requiredLevel = { alchemist = 7 }, -- pending
 }

@@ -14,6 +14,9 @@ return {
         defense = 10, magicDefense = 6,
         movement = 4,
         speed = 2,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 3, luck = 6,
     },
     startingItems = { "weapon_stone_fists" },
     -- Basic tactics (models/ai.lua): the wall still finishes what it can reach -- press the foe closest

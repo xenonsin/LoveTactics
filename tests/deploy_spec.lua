@@ -311,4 +311,27 @@ return {
             end
         end,
     },
+    {
+        name = "the phase shows the board it is deploying onto, not just the lit zone",
+        fn = function()
+            -- The interactive half is love.graphics-bound (see this file's header), so the wiring is
+            -- read off the source rather than driven. What it pins: the phase hands the board EVERY
+            -- static object standing on it. It shipped lighting the deploy zone and nothing else, which
+            -- left the barrel beside the chokepoint, the biome's fire and an authored trap invisible for
+            -- the one decision they exist to inform -- while the phase's own hover box described them
+            -- perfectly well to anyone who thought to hover a tile they could not see.
+            -- Line endings normalised first: the tree is CRLF on Windows, and a pattern anchored on "\n"
+            -- matches nothing there -- a source scan that cannot fail is not a test.
+            local src = assert(love.filesystem.read("states/battle.lua"), "cannot read states/battle.lua")
+            src = src:gsub("\r", "")
+            local body = src:match("local function deployOverlays%(%)(.-)\nend\n")
+            assert(body, "deployOverlays is gone from states/battle.lua")
+            for _, want in ipairs({ "deployZone", "overlays%.hazards", "overlays%.props",
+                                    "overlays%.walls", "overlays%.traps", "overlays%.objective" }) do
+                assert(body:find(want), "the phase no longer shows " .. want:gsub("%%", ""))
+            end
+            assert(src:find("setOverlays%(deployOverlays%(%)%)"),
+                "openDeployPhase no longer hands the phase the board's own objects")
+        end,
+    },
 }

@@ -18,6 +18,9 @@ return {
         defense = 2, magicDefense = 2,
         movement = 6, -- it gets away, which is most of the problem
         speed = 6,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 3, luck = 5,
     },
     startingItems = { "weapon_cutpurse_nip" },
     defaultAction = "weapon_cutpurse_nip",

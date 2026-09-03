@@ -14,10 +14,12 @@ return {
     type = "utility",
     tags = { "arcane" },
     class = "alchemist",
-    price = 345,
-    unlockQuests = 2,
+    price = 330,
+    unlockQuests = 3,
     aura = {
         appliesTo = { "consumable" }, -- only the throwables and potions it sits beside
         preserve = true,              -- the neighbor consumable's stack is not decremented on use
     },
+    -- more castings out of the same satchel
+    bonus = { magicDamage = 1 },
 }

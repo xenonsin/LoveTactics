@@ -202,7 +202,17 @@ return {
             assert(Arena.TILE_PROPS.mire.moveCost == Arena.TILE_PROPS.mountain.moveCost,
                 "mire should tie the mountain for the heaviest walkable floor")
             assert(Arena.TILE_PROPS.mountain.bonus, "the mountain is supposed to pay for its cost")
-            assert(Arena.TILE_PROPS.mire.bonus == nil, "mire charges a mountain's price and grants nothing")
+            -- Mire used to assert `bonus == nil` -- "charges a mountain's price and grants nothing".
+            -- Accuracy gave it a bonus table, so the letter of that is gone, but the CLAIM it was
+            -- making is not, and it is now sharper: mire does not merely fail to pay for its cost, it
+            -- charges twice. Assert the thing actually worth defending -- that nothing in the bag is
+            -- ever an incentive to stand there -- rather than the absence of the bag, which was only
+            -- ever how that was spelled while the bag happened to be empty.
+            local mire = Arena.TILE_PROPS.mire.bonus or {}
+            for key, value in pairs(mire) do
+                assert(value < 0, "mire must never reward standing in it, but grants " .. key .. " " .. tostring(value))
+            end
+            assert((mire.avoid or 0) < 0, "mire is the one floor that makes a body EASIER to hit")
         end,
     },
     {
@@ -220,11 +230,21 @@ return {
         end,
     },
     {
-        name = "each new biome draws a distinct overworld map",
+        name = "a biome is a look, not a shape",
         fn = function()
-            -- Same seed across biomes: spacing, rivers and the decorate thresholds must actually differ,
-            -- or the biomes are a reskin rather than a place.
-            local seen = {}
+            -- THIS CASE ASSERTED THE OPPOSITE, and the inversion is the change rather than a slip.
+            --
+            -- It read "each new biome draws a distinct overworld map": same seed across biomes, and the
+            -- tile signature had to differ, or the biomes were "a reskin rather than a place". That was
+            -- true and load-bearing while a biome named a CARVE -- the forest was a maze opened into
+            -- glades, the castle was chambers cut by recursive splits, the tundra was flats quartered by
+            -- meltwater -- and eight of those carves were the argument for eight grounds.
+            --
+            -- A floor is a grid of places now (models/overworld.lua). There is one shape, and what a
+            -- biome decides is what the floor is PAINTED in and which arena a fight on it rolls. So the
+            -- claim flips: same seed, same silhouette, different art. Asserting distinct geometry now
+            -- would be asserting the layouts back.
+            local shape, first
             for _, id in ipairs(NEW_BIOMES) do
                 local grid = Overworld.generate({
                     seed = 31337, encounterCount = 4, keyCount = 1,
@@ -232,13 +252,19 @@ return {
                 })
                 local parts = {}
                 for y = 1, grid.rows do
-                    for x = 1, grid.cols do parts[#parts + 1] = grid:get(x, y).tile end
+                    for x = 1, grid.cols do
+                        parts[#parts + 1] = grid:typeWalkable(grid:get(x, y).tile) and "1" or "0"
+                    end
                 end
-                local sig = table.concat(parts, ",")
-                for other, otherSig in pairs(seen) do
-                    assert(sig ~= otherSig, id .. " draws the same map as " .. other)
+                local sig = table.concat(parts)
+                if shape then
+                    assert(sig == shape, id .. " draws a different silhouette from " .. first
+                        .. " on the same seed -- a biome is not a carve any more")
+                else
+                    shape, first = sig, id
                 end
-                seen[id] = sig
+                assert(grid.tilesetId == id or Tileset.get(grid.tilesetId),
+                    id .. " resolves no tileset to draw with")
             end
         end,
     },

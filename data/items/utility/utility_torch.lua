@@ -13,4 +13,6 @@ return {
     class = "hunter",
     unlockQuests = 0, -- opening shelf: a party should be able to see on its first night out
     price = 80, -- no magnitude to scale, so it never forges past the plain thing it is
+    -- seeing further is aiming better, even on a torch
+    bonus = { skill = 1 },
 }

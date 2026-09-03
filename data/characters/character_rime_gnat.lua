@@ -16,6 +16,9 @@ return {
         defense = 1, magicDefense = 3,
         movement = 6,
         speed = 6,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 2, luck = 6,
     },
     startingItems = { "weapon_rime_nip" },
     defaultAction = "weapon_rime_nip",

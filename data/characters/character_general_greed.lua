@@ -47,6 +47,9 @@ return {
         defense = 13, magicDefense = 11,
         movement = 4,
         speed = 3, -- slow: a hoard does not chase
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 5, luck = 10,
     },
     -- Her interim war-chest, spent by The Gilded Wound (Combat.spendPurse reads an enemy's coffer). Sized
     -- for a couple of maximum-price blows (25 dmg = 250g each) and then some dagger work -- a hoard that

@@ -20,7 +20,16 @@ because they answer different questions and were rewritten at different times.
 > argument. The sections marked below are corrected; the rest of this document still describes the
 > board and is being rewritten against the descent.
 
-## The three numbers
+> **And the houses that posted the work are classes now.** The seven vendors — the Bastion, the Arcanum,
+> the Cathedral, the Colosseum, the Crucible, the Hunter's Lodge, the Undercroft — are the seven base
+> classes of a forty-five job ladder, and a class is something a BODY climbs by playing its gear rather
+> than a room a company unlocks. Nobody posts errands; nobody runs a line. **Anything below that reads
+> *a house's line*, *an errand*, *the shelf climbs a quest at a time* or *standing is a quest count* is
+> describing a system that no longer ships.** [docs/shelf.md](shelf.md) is rewritten against what does;
+> `models/discipline.lua` and `models/errand.lua` carry the arguments. The sections marked below are
+> corrected.
+
+## The four numbers
 
 Prestige was one number doing three jobs badly. It is gone. Each job has its own now, and they cannot
 be confused because they are not even the same kind of thing:
@@ -29,12 +38,23 @@ be confused because they are not even the same kind of thing:
 |---|---|---|
 | **The day** | ~~How long there is~~ — how many nights have passed. Spent at the stair and over the Inn's counter, and it is what mends a wound. Uncapped | `models/calendar.lua` |
 | **Experience** | How strong a body is. Earned by acting and by felling, per character | `models/experience.lua` |
-| **Standing** | How far into the story you are. A count of finished quests | `Player.standing` |
+| **A class level** | What a body has got GOOD at, per class. Cumulative technique, banked by swinging that class's gear. Opens the shelf, the disciplines and the forge, and scales what the gear does | `Discipline.classLevel` |
+| **Standing** | How far into the campaign you are. ~~A count of finished quests~~ — total class levels across the roster | `Player.standing` |
 
 The split is the whole re-premise. Under prestige, *how far in* and *how strong* were the same number,
 so every roster member was interchangeable at a given moment and a day spent anywhere but on a quest
-grew nobody. Under a deadline the second half is fatal: a day that clears no objective — one spent
-walking a ground for its caches and turning back — has to still be worth taking.
+grew nobody.
+
+**The fourth arrived when the houses became classes**, and it is the one that makes a roster stop being
+interchangeable for good: two level-10 bodies who have swung different gear are now different bodies,
+and which of them you field is a decision the sheet can state. Standing moved onto it for the plain
+reason that its old source stopped climbing — seven postings is all the quests there are — and total
+class levels is the same KIND of number: monotone, starting at one, rising as the campaign is played,
+so not one of the sixty authored `requiredPrestige` / `unlockPrestige` gates had to move.
+
+> **It climbs on committing where it used to climb on finishing**, which is a real change rather than a
+> translation. A broad company reads as further along than a deep one. That is arguably right — it is
+> certainly different, and it is the sort of thing that goes unnoticed until a door opens early.
 
 ## The clock — **superseded**
 
@@ -224,16 +244,28 @@ Extending this to the remaining four houses is the staggering idea that was cut,
 > gate's work. For a door to bite in both directions again it needs a threshold *above* the quest count
 > its own `unlockQuest` implies.
 
-### The shelf still moves every quest
+### The shelf moves every class level — **rewritten**
 
-Unchanged and still right. Stock keys on that vendor's own finished-quest count at per-quest
-granularity — 474 priced items over 13 gates rather than clumps of 33/123/208/105 — so every quest
-hands its house something new. A house's own base rack still opens to its last gate (the Arcanum is 56
-rows deep at a fresh save even with locked paths folded shut); capping how far ahead it reads is still
-an open call.
+> **It used to move every quest**, and the sentence that stood here was *"stock keys on that vendor's
+> own finished-quest count at per-quest granularity — 474 priced items over 13 gates rather than clumps
+> of 33/123/208/105 — so every quest hands its house something new."* The granularity argument is the
+> half that survived; what it is granular in changed twice.
 
-**Under the clock, shelves are shallower per run**, because fewer quests are finished. That is the same
-bargain the disciplines make: committing buys depth, and the rest is what a second run is for.
+Stock keys on the roster's best **class level** in that item's own class (`Quest.shelfRung`,
+`Discipline.rosterLevel`), spread across nine rungs — so climbing a class hands you something new
+roughly every rung, and the shop visibly moves for having played the class rather than for having
+finished somebody's errand.
+
+**A rung opening dots the door.** There is no event to wrap — a class level rises mid-fight, off two
+technique a swing — so it is a watermark rather than a before/after diff: `Market.markOpened` records
+the rung each class had reached the last time it was asked, and anything sitting between that and where
+the class stands now is stock the player has not been told about. A company that goes down at knight 2
+and comes up at knight 5 is told about all three.
+
+**Committing still buys depth and spreading still buys the lattice**, which is the one thing about this
+section that has never changed. A body that swings one class's gear all run opens that shelf to its top
+and reaches the disciplines behind it; four bodies dabbling open four bottom bands. The bargain is the
+same one the disciplines make — it is now priced in the same unit they are.
 
 ## How it ends
 
@@ -372,6 +404,15 @@ is in the code.
   most of *The clock* were written for a campaign bought off a Quest Board that no longer exists; the
   descent is the campaign. The sections that assert something now false are banner-marked, but a real
   rewrite against [docs/the-count.md](the-count.md) is owed and is the largest open item here.
+- **...and the sections about the seven HOUSES are the second layer of that.** The houses are classes
+  (`models/discipline.lua`), so every mention below of a house's *line*, its *errands*, or a shelf that
+  climbs a quest at a time is describing a system that no longer ships. *The three numbers* and *The
+  shelf* are corrected; *Where you can go this morning*, *Foraging* and the opening-funnel paragraphs
+  are not, and they still name doors and grounds the city does not have.
+- **Standing now climbs on committing rather than on finishing.** Sixty authored gates read it and none
+  of them moved, which is what made the swap cheap — and is also what makes it worth re-reading: a broad
+  company reads as further along than a deep one, so a door tuned against the old curve opens earlier
+  than it was written to.
 - **`docs/story.md` has not been re-read against either ending.** There are two roads to the last fight
   now — the bottom of the rift and the breach — and both hand the player a variable final cast. Whether
   the story as written survives that framing is an authoring question nobody has asked yet.

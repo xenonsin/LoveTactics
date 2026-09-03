@@ -26,8 +26,10 @@ return {
     tags = { "charm" },
     class = "fighter",
     discipline = "champion",
-    price = 210,
-    unlockQuests = 1,
+    price = 330,
+    unlockQuests = 3,
     traits = { "trait_still_standing" },
     charge = { key = "defiance", from = { "hitTaken", "allyStruck" }, max = 8 },
+    -- it banks guard from the crowd already, so this is the other school
+    bonus = { magicDefense = 2 },
 }

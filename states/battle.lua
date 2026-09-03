@@ -98,8 +98,33 @@ local LEFT_W = 264
 local GUTTER_PAD = 16    -- inset from the columns on either side
 local GUTTER_GAP = 8     -- between the board's bottom edge and the box
 local GUTTER_BOTTOM = 12 -- between the box and the bottom of the screen
-local BOARD_TILE = 60 -- on-screen tile size (< the arena's logical 64), for breathing room
-local BOARD_TOP = 104 -- fixed board top (below the 3-line HUD); the freed bottom holds the log
+-- On-screen tile size, and deliberately the SAME number as the arena's logical Arena.TILE_SIZE: the
+-- board used to draw at 60 for breathing room, which made every sprite land on a fractional multiple of
+-- its source cell. Bought art is authored AT its display size (cells cluster at 16/32/48/64), so 64 is
+-- the only tile that takes 16, 32 and 64 at whole multiples -- see BattleMap's bodyScale. The 8x8 board
+-- is 512px, and the gutter under it (gutterRect) pays the 32px.
+local BOARD_TILE = 64
+-- Fixed board top, below the 3-line HUD; everything under the board is the gutter, and the gutter is
+-- the combat log. THE NUMBER IS SOLVED FOR THE LOG, not for the header's comfort:
+--
+--   the log fits floor((h - VPAD*2) / lineH) lines (ui/combat_log.lua), VPAD 8 and lineH 19
+--   its rect is h = 720 - BOARD_TOP - 512 - 8   (gutterRect's two 4px paddings)
+--   five lines therefore wants h >= 111, so BOARD_TOP <= 89.
+--
+-- At the old 104 the log drew FOUR, which is not enough to see a blow and its aftermath in one glance:
+-- an attack that lands, the shield that eats it, the damage, and the status it left behind is already
+-- four lines, so the line naming the attacker had always scrolled off by the time you read the result.
+--
+-- The 16 the header gives up is the top margin (20 -> 8) and the gap over the hint (8 -> 4), not the
+-- lines themselves; the measured faces are 30 / 22 / 16 tall (display 22, display 16, body 13), which
+-- with HUD_TITLE_Y / HUD_OBJECTIVE_Y / HUD_HINT_Y below sums to exactly 84 and leaves 4 clear.
+local BOARD_TOP = 88
+-- The three HUD rows above the board. Named rather than typed at their four draw sites, because they
+-- are one column of text whose spacing only reads if it is decided in one place -- and because the sum
+-- of them IS BOARD_TOP above.
+local HUD_TITLE_Y = 8      -- the encounter name (or the phase's, before the bell) -- display 22, h 30
+local HUD_OBJECTIVE_Y = 42 -- what wins the fight -- display 16, h 22
+local HUD_HINT_Y = 68      -- the contextual control hint -- body 13, h 16
 local AI_DELAY = 0.35 -- seconds between enemy actions, so each move is watchable
 -- Seconds a walking unit rests on every tile it steps onto, the destination included. A move is
 -- played out one tile at a time (see startWalk) rather than teleporting, so the route a unit takes
@@ -173,8 +198,8 @@ local SPEED_STEPS = { 1, 2, 3 }
 local winButton = { x = 16, y = 368, w = 130, h = 36 }
 -- The left column BEFORE the bell (the deployment phase): Settings, and the board-turn pair. Every
 -- other entry describes a fight that is not running yet -- there is nothing to forfeit, the log has no
--- lines and its rect is the deployment strip's, and Threats / Auto / Reinforce all read a turn order
--- that has not started.
+-- lines and the deployment phase is writing its hint line across the top of its rect, and Threats /
+-- Auto / Reinforce all read a turn order that has not started.
 --
 -- Which is why there is no HAMBURGER here. A toggle whose whole contents are two controls that are
 -- always legal is chrome hiding chrome: the fold saved nothing (the column below is the phase's own
@@ -424,18 +449,18 @@ function battle.drawControlHud(boardX, boardW)
     love.graphics.setFont(hudFont)
     -- Your score + clock at the near (left) corner; the foe's score at the far (right) corner.
     Theme.set(Theme.accentAmber)
-    love.graphics.print("YOU  " .. Combat.scoreFor(combat, mySide), boardX + 4, 20)
+    love.graphics.print("YOU  " .. Combat.scoreFor(combat, mySide), boardX + 4, HUD_TITLE_Y)
     if battle.chessClock then
         Theme.set(battle.chessClock[mySide] <= 10 and { 0.9, 0.45, 0.4 } or Theme.muted)
-        Glyphs.hourglass(boardX + 4, 44, 11, hudFont:getHeight() - 4,
+        Glyphs.hourglass(boardX + 4, HUD_TITLE_Y + 24, 11, hudFont:getHeight() - 4,
             (battle.chessClock[mySide] <= 10) and 0.9 or 0.6,
             (battle.chessClock[mySide] <= 10) and 0.45 or 0.6,
             (battle.chessClock[mySide] <= 10) and 0.4 or 0.6, 1)
-        love.graphics.print(clockText(battle.chessClock[mySide]), boardX + 20, 42)
+        love.graphics.print(clockText(battle.chessClock[mySide]), boardX + 20, HUD_TITLE_Y + 22)
     end
     Theme.set(Theme.ink)
     local foe = "FOE  " .. Combat.scoreFor(combat, foeSide)
-    love.graphics.print(foe, boardX + boardW - 4 - hudFont:getWidth(foe), 20)
+    love.graphics.print(foe, boardX + boardW - 4 - hudFont:getWidth(foe), HUD_TITLE_Y)
     love.graphics.setColor(1, 1, 1)
 end
 
@@ -4286,22 +4311,30 @@ end
 -- ---------------------------------------------------------------------------
 --
 -- Every ordinary battle opens on it: the board is built and the enemy is standing on it, the deploy zone
--- is lit, and the player drags up to Combat.MAX_FIELD of their marching company onto it. Whoever is left
--- on the strip is the bench, and can be rotated in later (models/combat.lua). See docs/deployment.md.
+-- is lit, and the expedition is already standing in it. The player arranges them -- drag between lit
+-- tiles, drop on an ally to trade places -- and rings the bell. There is no company strip and no
+-- bench: the expedition is four (Descent.PARTY_MAX) and the field is four (Combat.MAX_FIELD), so who
+-- goes is settled at the Gate and only WHERE is left. See docs/deployment.md.
 --
--- The phase itself is a widget (ui/deploy_phase.lua) -- it owns the strip, the drag and the placement --
--- and this file owns the two things only the battle can: the RECT the strip lives in (the combat log's,
--- so the two can never drift apart), and what committing MEANS.
+-- The phase itself is a widget (ui/deploy_phase.lua) -- it owns the drag and the placement -- and this
+-- file owns the two things only the battle can: the RECT under the board (the combat log's, which the
+-- phase borrows for its hint line, so the two can never drift apart), and what committing MEANS.
 
--- The gutter under the board, board-width: the combat log's rect, and the deployment strip's.
+-- The gutter under the board, board-width: the combat log's rect, and the deployment phase's hint line.
 local function gutterRect()
     local m = battle.map
     if not m then return { x = 0, y = 0, w = 0, h = 0 } end
     -- Off the board's SCREEN rect, not off arena.rows/cols: a turned board that is not square lies a
     -- different way round, and the gutter has to stay under the picture rather than under the grid.
     local bx, by, bw, bh = m:boardRect()
-    local y = by + bh + 8
-    return { x = bx, y = y, w = bw, h = Scale.HEIGHT - y - 8 }
+    -- 4px of separation, not 8. The board went from 480px to 512 (BOARD_TILE) and every pixel of that
+    -- came out of this rect. It was the deployment strip's too when the trim was made, and that is no
+    -- longer the reason -- the strip is gone and the phase writes one line across the top of this rect.
+    -- The reason now is the COMBAT LOG, which is what is left in it: 8px of padding costs a line of the
+    -- fight's own record, and nothing above can give the height back (the third HUD line ends at 98,
+    -- six clear of BOARD_TOP).
+    local y = by + bh + 4
+    return { x = bx, y = y, w = bw, h = Scale.HEIGHT - y - 4 }
 end
 
 -- Turn the board a quarter turn -- `dir` is -1 counter-clockwise, 1 clockwise. Purely a view control:
@@ -4523,16 +4556,44 @@ function battle.openDeployLoadout(player)
     end
 end
 
+-- WHAT THE BOARD SHOWS BEFORE THE BELL. The phase used to light the deploy zone and nothing else, which
+-- left every OBJECT on the board invisible for the one decision they exist to inform: the barrel beside
+-- the chokepoint, the fire the biome laid across the middle band, an authored trap, the ground a `reach`
+-- objective is fought over. All of it was already standing -- Combat.new builds the whole board before
+-- the phase opens -- and the phase's own hover box has always described it (ui/deploy_phase.lua reads
+-- Hazard.allAt and Combat.objectAt), so a player could read a tile they had no way to know to look at.
+--
+-- The same overlay keys refreshView fills once the fight is running, so a keg looks like a keg on both
+-- sides of the bell. What is deliberately NOT here is anything the fight is doing -- reach, threat,
+-- intent, the turn's route -- because nothing is acting yet. Built once: no clock is running, so none of
+-- these can change while the phase is open.
+local function deployOverlays()
+    local overlays = { deployZone = battle.combat.deployZone or {} }
+    -- Hazards, props and walls are sideless and always visible to both sides, exactly as in the fight.
+    overlays.hazards = battle.combat.hazards
+    overlays.props = battle.combat.props
+    overlays.walls = battle.combat.walls
+    -- Traps stay the party's to see: an authored enemy trap is hidden until it is detected, which is a
+    -- rule about the fight and not about the phase.
+    overlays.traps = Trap.revealedTo(battle.combat, "party")
+    -- The marked ground, so "where the win is" is on screen while the line is being set rather than one
+    -- turn after it. No held/contested state: no count is running yet.
+    local ground = Combat.objectiveGround(battle.combat)
+    if #ground > 0 then overlays.objective = ground end
+    return overlays
+end
+
 -- Open the phase, or commit straight through for a caller that already decided placement.
 local function openDeployPhase(opts)
     if opts.deploy == false then
         commitDeploy(opts)
         return
     end
-    -- Light the ground. The phase's whole board-side statement, and the same overlay a reinforcement
-    -- uses later in the fight, so "you may come in here" looks the same at minute zero and at minute
-    -- ten (ui/battle_map.lua's drawDeployZone).
-    battle.map:setOverlays({ deployZone = battle.combat.deployZone or {} })
+    -- Light the ground, and show what is standing on it. The zone is the phase's own statement -- the
+    -- same overlay a reinforcement uses later in the fight, so "you may come in here" looks the same at
+    -- minute zero and at minute ten (ui/battle_map.lua's drawDeployZone) -- and the rest is the board
+    -- itself (see deployOverlays).
+    battle.map:setOverlays(deployOverlays())
     battle.deploy = DeployPhase.new({
         combat = battle.combat, map = battle.map, arena = battle.arena,
         roster = opts.party or {}, player = opts.player, gutter = gutterRect(),
@@ -4560,6 +4621,14 @@ end
 
 function battle.enter(self, opts)
     opts = opts or {}
+    -- Is this fight running inside another state's screen? An overworld fight is: it is fought on the
+    -- floor it was found on and the map is still drawn behind it (states/game.lua). The draft, the duel
+    -- and the prologue's scripted legs are not -- they switch here and this IS the screen. Read by
+    -- battle.draw, which turns its own background into a scrim when the answer is yes.
+    battle.hosted = opts.hosted or false
+    -- Where the board goes, when the host knows: the chamber's top-left pixel on the screen it is
+    -- already drawn on. See the BattleMap.new call below.
+    battle.pinX, battle.pinY = opts.pinX, opts.pinY
     battle.onWin = opts.onWin
     -- The defeat panel's two exits (either may be nil). onLoss is "Return to Hub" -- give the fight up
     -- and end the quest; onRetry is "Try Again" -- restart this same fight. The launcher decides which
@@ -4855,11 +4924,10 @@ function battle.enter(self, opts)
     battle.map = BattleMap.new(battle.arena,
         { combat = battle.combat, leftMargin = LEFT_W, rightMargin = PANEL_W,
           tileSize = BOARD_TILE, topMargin = BOARD_TOP,
-          -- THE MAP, LOCKED. A campaign fight is taken on eight tiles of the overworld, so the rest of
-          -- the overworld is still out there -- drawn around the board, dark and stopped, with the
-          -- walls closed on the ring between. Absent for every fight with no map under it (draft,
-          -- duel, the menu's mock), which simply draws the board on its own as it always has.
-          grid = opts.grid, box = battle.arena.box })
+          -- Laid ON the chamber, where the caller knows which one: an overworld fight is fought in the
+          -- room it was found in and that room is already drawn behind this board (states/game.lua's
+          -- `pin`). Nil for the draft, the duel and every scripted leg, which centre as before.
+          pinX = battle.pinX, pinY = battle.pinY })
     battle.map.fx = battle.fx
     -- ...and the board's facing is pushed into it, so a walk slide and an attack lunge travel the way
     -- the picture is pointed rather than the way the grid is (see BattleMap:syncFx).
@@ -4876,8 +4944,8 @@ function battle.enter(self, opts)
     battle.peek = InventoryPeek.new()
     battle.peekUnit = nil
     -- The log toggles into a thin, board-width strip in the bottom gutter, directly under the board.
-    -- The deployment phase borrows exactly this rect for the company strip (gutterRect), which is why
-    -- the geometry lives in one function rather than being written out twice.
+    -- The deployment phase borrows exactly this rect for its hint line (gutterRect), which is why the
+    -- geometry lives in one function rather than being written out twice.
     local g = gutterRect()
     battle.log = CombatLog.new(battle.combat, { x = g.x, y = g.y, w = g.w, h = g.h })
 
@@ -5325,7 +5393,23 @@ function battle.drawPeek()
 end
 
 function battle.draw()
-    Theme.drawMount(Scale.WIDTH, Scale.HEIGHT)
+    -- HOSTED: the fight is running inside the overworld state, on the floor it was found on
+    -- (states/game.lua's openEncounter), and that floor has already drawn itself under us. So the mount
+    -- becomes a SCRIM rather than a wall -- the chamber, its doors and the plan of the level stay
+    -- visible behind the board, which is the whole point of not leaving the map.
+    --
+    -- A wash and not nothing: this screen carries a left column, a combat panel and three rows of HUD
+    -- text, and every one of them is typeset against a dark ground. Reading them over a lit floor is
+    -- what the mount was for. Set by the caller (`opts.hosted`); nil for the draft, the duel and every
+    -- other entry that really is its own screen.
+    if battle.hosted then
+        local m = Theme.mount
+        love.graphics.setColor(m[1], m[2], m[3], 0.82)
+        love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
+        love.graphics.setColor(1, 1, 1)
+    else
+        Theme.drawMount(Scale.WIDTH, Scale.HEIGHT)
+    end
 
     -- Before the bell: the board with the deploy zone lit and the company in the gutter. The SCREEN is
     -- the same screen -- left column, hamburger, the encounter's name and objective over the board --
@@ -5339,7 +5423,11 @@ function battle.draw()
         battle.drawLeftColumn()
         battle.drawEncounterLines(LEFT_W, Scale.WIDTH - LEFT_W - PANEL_W)
         battle.drawDeployMenu()
-        battle.deploy:draw({ x = LEFT_W, w = Scale.WIDTH - LEFT_W - PANEL_W, dockTop = menuBottom() })
+        -- `titleY` is the HUD's third row, which the phase's own headline takes (the row the control
+        -- hint occupies once the bell rings). Handed over rather than repeated in the widget, so the
+        -- three rows stay one column of text decided in one file -- see HUD_HINT_Y.
+        battle.deploy:draw({ x = LEFT_W, w = Scale.WIDTH - LEFT_W - PANEL_W,
+                             dockTop = menuBottom(), titleY = HUD_HINT_Y })
         -- The Loadout screen, over the phase and under the settings overlay: gear is a decision about
         -- this fight, so it is taken on this screen rather than a leg of overworld ago.
         if battle.deployLoadout then battle.deployLoadout:draw() end
@@ -5644,6 +5732,23 @@ function battle.drawTileTooltip(mx, my)
     -- its own box: an answer is a second action in the trade, not a footnote on yours.
     local exchange = {}
     if action then
+        -- THE ODDS, stamped here rather than at each of the eight places an action table is built.
+        -- Every one of them would otherwise need the same three lines, and a branch that forgot them
+        -- would show a confident damage number for a blow that is mostly going to miss -- which is
+        -- worse than showing nothing, because the number would be right and the impression wrong.
+        --
+        -- Both are pure reads (Combat.hitChance / Combat.critChance draw nothing), which is what makes
+        -- it safe to do this every frame the cursor rests on a target. See tests/determinism_spec.lua:
+        -- a hover that advanced the battle's generator would reroll a duel from the other player's
+        -- mouse.
+        --
+        -- The RAW chance, deliberately -- the difference the formula produced, not the 2RN-adjusted
+        -- figure the dice really use (Combat.landChance). Fire Emblem shows the raw number and bends
+        -- the die behind it; the flattery only works while the number on screen is the plain one.
+        if action.actor and action.target and action.item then
+            action.hit = Combat.hitChance(battle.combat, action.actor, action.target, action.item)
+            action.crit = Combat.critChance(battle.combat, action.actor, action.target, action.item)
+        end
         local before, after = {}, {}
         for _, c in ipairs(action.counters or {}) do
             if c.first then before[#before + 1] = c else after[#after + 1] = c end
@@ -5700,9 +5805,8 @@ end
 -- Backdrop for the left column (mirrors the right combat panel). The buttons and the docked
 -- tile/action tooltips render on top of it; the board is centred in the gap to its right.
 --
--- Drawn AFTER the map, like the right panel is. The locked overworld around the board runs the full
--- width of the screen (BattleMap:drawSurround), so a column laid down first is simply painted over --
--- the two columns are the walls of the window the fight is seen through, and sit on top of it.
+-- Drawn AFTER the map, like the right panel is: the two columns are the frame the fight is seen
+-- through, so they sit on top of whatever the board layer put down rather than under it.
 function battle.drawLeftColumn()
     Theme.set(Theme.panel)
     love.graphics.rectangle("fill", 0, 0, LEFT_W, Scale.HEIGHT)
@@ -5835,15 +5939,19 @@ end
 -- that decision is being made, at the same two y's it keeps once the bell rings.
 function battle.drawEncounterLines(boardX, boardW)
     love.graphics.setFont(titleFont)
-    local name = battle.encounter.name or "Battle"
-    local cx, cyTitle = boardX + boardW / 2, 20 + titleFont:getHeight() / 2
+    -- BEFORE THE BELL THE BANNER NAMES THE BEAT, not the fight. The deployment phase is a thing the
+    -- player is doing and it ends; the encounter's name is a thing that is true either way, and the
+    -- objective line under it is already saying what this fight is. The name comes back the instant the
+    -- phase commits, which is also the moment it starts mattering.
+    local name = battle.deploy and "Deployment Phase" or (battle.encounter.name or "Battle")
+    local cx, cyTitle = boardX + boardW / 2, HUD_TITLE_Y + titleFont:getHeight() / 2
     local halfTitle = titleFont:getWidth(name) / 2
     Theme.crest(cx - halfTitle - 20, cyTitle, 9)
     Theme.crest(cx + halfTitle + 20, cyTitle, 9)
     Theme.set(Theme.accentAmber)
-    love.graphics.printf(name, boardX, 20, boardW, "center")
+    love.graphics.printf(name, boardX, HUD_TITLE_Y, boardW, "center")
 
-    battle.drawObjective(boardX, 52, boardW)
+    battle.drawObjective(boardX, HUD_OBJECTIVE_Y, boardW)
     if battle.isDraft then battle.drawControlHud(boardX, boardW) end
 end
 
@@ -5917,7 +6025,7 @@ function battle.drawHudText(boardX, boardW)
     -- board top.
     love.graphics.setFont(hintFont)
     Theme.set(Theme.muted)
-    love.graphics.printf(hint, boardX, 82, boardW, "center")
+    love.graphics.printf(hint, boardX, HUD_HINT_Y, boardW, "center")
     love.graphics.setColor(1, 1, 1)
 end
 
@@ -6196,10 +6304,12 @@ end
 -- the log is closed, so a wheel over the board falls through to the strip.
 function battle.wheelmoved(dx, dy)
     if battle.settingsMenu then return end -- the short list needs no scroll; swallow it
-    -- The deployment strip owns the wheel while the phase is up: the company is the whole roster and
-    -- an unbounded one overflows the strip, which then pages sideways (ui/deploy_phase.lua).
     if battle.deployLoadout then battle.deployLoadout:wheelmoved(dx, dy); return end
-    if battle.deploy then battle.deploy:wheelmoved(dx, dy); return end
+    -- SWALLOWED, not routed. The deployment strip used to own the wheel and page the company sideways
+    -- through it; there is no strip and nothing to page (ui/deploy_phase.lua), and the phase has no
+    -- wheelmoved to call. Still a `return`, so a wheel over the board cannot fall through to the fight
+    -- underneath, which has not begun.
+    if battle.deploy then return end
     -- The wind-up chooser owns the wheel while it is up: scrolling tunes the depth on the rung ladder.
     if battle.spendChooser then battle.spendChooser:wheelmoved(dx, dy); return end
     if battle.windupChooser then battle.windupChooser:wheelmoved(dx, dy); return end

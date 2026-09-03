@@ -33,4 +33,6 @@ return {
             fx.applyStatus(fx.user, "status_arcane_cultivation")
         end,
     },
+    -- three blows carrying a working
+    bonus = { magicDamage = 2 },
 }

@@ -26,6 +26,9 @@ return {
         defense = 3, magicDefense = 1,
         movement = 5, -- it has to get to the body before you do
         speed = 5,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 2, luck = 5,
     },
     startingItems = { "weapon_carrion_jaws" },
     defaultAction = "weapon_carrion_jaws",

@@ -24,6 +24,9 @@ return {
         defense = 7, magicDefense = 7,
         movement = 4,
         speed = 4,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 6, luck = 0,
     },
     startingItems = { "weapon_ashen_echo" },
     defaultAction = "weapon_ashen_echo",

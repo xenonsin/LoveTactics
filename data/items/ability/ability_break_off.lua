@@ -31,7 +31,7 @@ return {
     tags = { "pierce", "physical" },
     class = "hunter",
     discipline = "skirmisher", -- fighter x hunter; Hit-and-run -- the strike that buys the band back
-    price = 475,
+    price = 330,
     unlockQuests = 3,
     activeAbility = {
         target = "enemy",
@@ -45,7 +45,7 @@ return {
         cost = { stat = "stamina", amount = 6 },
         -- Under Hobbling Shot's curve: this one already pays out in position, and a step back out of
         -- reach is worth more than the two damage it gives up.
-        damage = Curve.ramp(13, 23),
+        damage = Curve.ramp(10, 20),
         requiresAdjacent = { type = "weapon", tag = "bow" },
         effect = function(fx)
             fx.damage(fx.target)

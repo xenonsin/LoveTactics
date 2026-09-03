@@ -28,6 +28,6 @@ return {
     h = 130,
     panel = "pvp",
     description = "Your company against somebody else's, both sides normalized.",
-    unlockErrand = "colosseum", -- see models/building.lua
+    unlockQuest = "quest_colosseum_slot_01", -- Saber's posting: the sand is where the duel comes from
     unlockPrestige = 1,
 }

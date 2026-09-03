@@ -21,6 +21,7 @@ return {
     type = "weapon",
     tags = { "axe", "slash", "physical", "melee" },
     class = "fighter",
+    dropTier = 6,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

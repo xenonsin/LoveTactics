@@ -1,6 +1,6 @@
 -- Tests for the PROGRAMMATIC ANIMATION SET (ui/combat_fx.lua) -- the six clips a Spine rig would have
 -- carried (idle, move, attack, hit, cast, death), authored instead as transform curves over a flat
--- token because a unit drawn at ~52px cannot show skeletal deformation anyway.
+-- token because a unit drawn at ~56px cannot show skeletal deformation anyway.
 --
 -- Almost all of the set is a matter of taste and belongs in front of eyes, not an assertion. What is
 -- NOT a matter of taste, and is what every case below guards, is the handful of claims the curves are

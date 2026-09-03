@@ -25,6 +25,7 @@ return {
     type = "weapon",
     tags = { "dagger", "pierce", "physical", "melee" },
     class = "rogue",
+    dropTier = 8,
     activeAbility = {
         target = "enemy",
         range = 1,

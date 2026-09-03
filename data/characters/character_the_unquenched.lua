@@ -26,6 +26,9 @@ return {
         defense = 10, magicDefense = 12, -- it has been on fire for a very long time
         movement = 3,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 4, luck = 5,
     },
     startingItems = { "weapon_rift_jaws", "utility_quenchless_gut" },
     defaultAction = "weapon_rift_jaws",

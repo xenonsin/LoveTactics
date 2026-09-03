@@ -8,5 +8,5 @@ return {
     description = "The commander. Planted banners project stacking aura fields the party fights inside of.",
     classes = { "fighter" },
     exemplar = "character_warlord",
-    requiredQuests = { "quest_colosseum_slot_03" },
+    requiredLevel = { fighter = 3 },
 }

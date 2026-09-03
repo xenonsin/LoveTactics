@@ -4,6 +4,8 @@
 --
 -- See main.lua / conf.lua for how the `test` argument is wired up.
 
+local Combat = require("models.combat")
+
 local Runner = {}
 
 -- Discover every spec module in tests/ (files ending in _spec.lua), sorted for
@@ -37,6 +39,15 @@ function Runner.run(pattern)
         if not pattern or specName:find(pattern, 1, true) then
             ran = ran + 1
             for _, case in ipairs(require(specName)) do
+                -- EVERY CASE STARTS WITH THE DICE PINNED (see Combat.FORCE_HIT). The great majority of
+                -- specs here are about what an ability does, not about whether it connected, and left
+                -- to a live hit roll they would pass and fail on different days for a reason none of
+                -- them names. tests/accuracy_spec.lua is the one that turns this off.
+                --
+                -- Reset per case rather than once per run, so a spec that flips it cannot leak into
+                -- the next one -- including a spec that flips it and then RAISES, which a single
+                -- setup at the top of the run would leave broken for everything after it.
+                Combat.FORCE_HIT = true
                 local ok, err = pcall(case.fn)
                 if ok then
                     passed = passed + 1

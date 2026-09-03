@@ -22,6 +22,9 @@ return {
         defense = 8, magicDefense = 12,
         movement = 4,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 5, luck = 3,
     },
     -- The 3x3 loadout grid (row-major); false = an empty cell. Transfusion and the lending line are the
     -- build-around; Heal beside them is the unconditional one, and the potions are two more doses to
@@ -29,7 +32,7 @@ return {
     startingItems = {
         "weapon_apothecarys_lancet", "ability_transfusion",    "consumable_healing_potion",
         "ability_heal",              "utility_coveted_blood",   "consumable_borrowed_hands",
-        "utility_shared_ledger",     "consumable_the_tithe",    false,
+        "utility_shared_ledger",     "consumable_the_tithe",    "utility_open_ward",
     },
     defaultAction = "ability_heal",
     -- Basic tactics: reach for Heal the instant an ally slips below two-thirds; the lent-vitality line

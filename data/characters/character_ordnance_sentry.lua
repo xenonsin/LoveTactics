@@ -28,6 +28,9 @@ return {
         defense = 4, magicDefense = 4, -- it is a frame and a spring; nothing about it turns a blade
         movement = 0, -- bolted down. The decision is where you set it, and you make it once.
         speed = 6,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 5, luck = 0,
     },
     startingItems = { "weapon_sentry_bolt" },
     -- Basic tactics (models/ai.lua). A thing that cannot move has no approach to plan, so its whole rule

@@ -18,11 +18,14 @@ return {
         defense = 9, magicDefense = 10,
         movement = 4,
         speed = 4,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 8, luck = 7,
     },
     startingItems = {
         "weapon_confessors_needle", "ability_mark_of_heresy", "ability_sentence",
         "ability_the_question",     "ability_the_pyre",       "armor_leather_armor",
-        "consumable_healing_potion", false,                  false,
+        "consumable_healing_potion", "utility_written_charge",                  false,
     },
     defaultAction = "weapon_confessors_needle",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

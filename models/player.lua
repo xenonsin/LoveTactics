@@ -30,22 +30,28 @@ Player.active = nil
 -- models/combat.lua declares its own mirror of this (Combat.MAX_FIELD) to stay player-free.
 Player.MAX_FIELD = 4
 
--- Base overworld fog-of-war vision radius (tiles seen around the player). A company
--- member carrying an item with a larger visionRadius (e.g. a torch) raises it.
-Player.BASE_VISION = 2
+-- WHAT THE COMPANY CAN SEE ON THE FLOOR: the place they are standing in, and the places beside it.
+-- ONE STEP, FLAT, and nothing raises it.
+--
+-- It was 2, with the largest `visionRadius` in the company's packs raised over it (a torch read 3) and
+-- Gyeom's Ledger adding one on top -- so a well-kitted party saw four. That was a radius over a TILE
+-- board, where three tiles of trail was a neighbourhood you could read ahead and route around, and the
+-- thing the fog was hiding was mostly the shape of the country.
+--
+-- A cell is a PLACE now (models/overworld.lua). One step is four places; two is a dozen; four would hand
+-- over a whole floor from the doorway. And what the fog hides has changed with it -- the silhouette is
+-- on the map from arrival, so the only thing left to discover is WHAT IS STANDING IN each place, which
+-- is precisely the thing that must be found by going. A radius that reaches past your own neighbours is
+-- a radius that answers the floor's only question for free.
+--
+-- FLAT RATHER THAN A BASE WITH A CAP OVER IT, because a cap invites a bonus that silently does nothing.
+-- If sight is ever to be bought again it has to buy something other than distance.
+Player.VISION = 1
 
--- Effective overworld vision radius for a player's company: BASE_VISION raised
--- by the largest visionRadius of any item any member is carrying. Kept here so
--- the "does the company have a torch" logic lives in one place; the item's field is the
--- single source of truth. A nil player (dev/test) returns the base.
-function Player.visionRadius(player)
-    local r = Player.BASE_VISION
-    for _, char in ipairs((player and player.roster) or {}) do
-        for _, item in ipairs(char.inventory or {}) do
-            if item.visionRadius and item.visionRadius > r then r = item.visionRadius end
-        end
-    end
-    return r
+-- Kept as a function because every caller speaks it, and because the rule wants exactly one home. The
+-- inventory scan that stood here is gone with the number it was raising; see the note above.
+function Player.visionRadius()
+    return Player.VISION
 end
 
 -- ---------------------------------------------------------------------------
@@ -389,6 +395,26 @@ function Player.new()
         -- prologue's avatar and her sworn knight walk into the city and down the stair, so the run is
         -- something this player owns like its gold and its roster.
         descentRun = nil,
+        -- ISELLE'S TALLY: how far the rift has gone unpruned (models/descent.lua's Descent.count). It
+        -- climbs when the company comes back up early and falls when it goes deeper or seals a circle,
+        -- and at Descent.COUNT_MAX the stair stops being an exit.
+        --
+        -- On the PLAYER rather than on the run above it, and the reason is the same one that put the run
+        -- here: there is one company and one save. A run ends -- and under an extraction descent it ends
+        -- every time anybody walks out -- while the state of the rift does not. A tally that reset with
+        -- the expedition would be a number the city could never finish reading.
+        count = 0,
+        -- HOW MUCH THE PACK MULE HOLDS (models/mule.lua). Permanent and bought up at the Gate, so it
+        -- lives here rather than on the run: the mule is a thing the company owns, and the widening a
+        -- good expedition paid for is most of what that expedition was FOR. The trip it is away on is
+        -- the run's (`run.muleAway`), because an absence belongs to the descent it happened in.
+        muleCapacity = nil, -- nil reads as Mule.CAPACITY; written only once somebody has upgraded
+        -- WHAT THIS COMPANY LEFT ON A FLOOR IT CANNOT WALK BACK TO. A rift closes when the company
+        -- leaves it -- by the stair or by dying -- so a pile dropped on floor nine has no floor nine to
+        -- wait on; it waits HERE instead, tagged with the depth, and is re-seated on the next run that
+        -- gets that deep (models/descent.lua's Descent.strandPacks). Empty for a company that has never
+        -- lost anything, which is what a lucky one reads as too.
+        lostPacks = {},
         -- What each body is still carrying from a fight it went down in, as { [charId] = count }
         -- (models/wound.lua). Caps the hub's free heal until somebody pays to set it, and is the one
         -- thing a wipe does not roll back.
@@ -404,6 +430,10 @@ function Player.new()
         recipes = {},         -- item id -> tier level; a consumable bought at its vendor comes at this level
         newItems = {},        -- item id -> true; arrived in the stash and not yet looked at (Player.markNew)
         newStock = {},        -- item id -> true; put on a vendor's shelf by a quest and not yet looked at
+        -- The rung each class had reached the last time the counter was asked what that opened
+        -- (Market.markOpened). A watermark rather than a diff: a shelf rung is a class level now,
+        -- and a class level rises mid-fight, so there is no event to wrap.
+        shelfRung = {},
         visitedVendors = {},  -- vendor id -> true; a shop plays its intro scene the first time only (states/hub.lua)
         -- WHICH CITY DOORS THE PLAYER HAS BEEN SHOWN (models/building.lua's seenDoors block) is
         -- deliberately ABSENT here rather than an empty table. Nil means "has not looked at the city
@@ -513,8 +543,32 @@ end
 --
 -- The field's NAME is now the only thing left of prestige in the data, and renaming it is a cosmetic
 -- pass for later, not part of this change.
+-- ...AND THE COUNT IT READS IS TOTAL CLASS LEVELS NOW, not finished quests.
+--
+-- The houses stopped posting work, so `questsCompleted` climbs only on the seven companion recruits and
+-- would freeze the whole city at standing 8 forever. What replaced it has to be the same KIND of
+-- number -- monotone, starting at one, rising as the campaign is played -- because 80 call sites and 60
+-- data files read this through `requiredPrestige` / `unlockPrestige`, and the point of not renaming
+-- them is that not one authored figure has to move.
+--
+-- Total class levels across the roster, summed rather than maxed, and the difference from every other
+-- reading of the ladder in this codebase is deliberate. A shelf or a forge ceiling asks "how deep is
+-- this company in ONE house", which is a question about a specialist, so those take the best holder.
+-- Standing asks "how far along is this campaign", which is a question about the whole company -- and a
+-- player who spread across four houses has come exactly as far as one who drove a single body deep.
+--
+-- The consequence, recorded because it is a real change rather than a translation: standing now climbs
+-- on COMMITTING where it used to climb on FINISHING. A broad company reads as further along than a deep
+-- one, which is arguably right and is certainly different.
 function Player.standing(player)
-    return Player.questsCompleted(player) + 1
+    local Discipline = require("models.discipline")
+    local total = 0
+    for _, char in ipairs((player and player.roster) or {}) do
+        for key in pairs(char.technique or {}) do
+            total = total + Discipline.classLevel(char, key)
+        end
+    end
+    return total + 1
 end
 
 -- ---------------------------------------------------------------------------
@@ -1124,6 +1178,15 @@ function Player.newGamePlus(player)
     -- `campaignsFinished` is deliberately NOT reset (see Player.finishCampaign): the post-game door it
     -- opens is a thing the player did, and doing it again cannot un-do it.
     player.day = 1
+    -- ...AND SO DOES THE TALLY, for the reason the line above resets the day: a lap begins on a rift
+    -- nobody has left unpruned yet. The Crown was just broken, which is the one event in the game that
+    -- could honestly put the count back to nought -- and carrying the last campaign's shuttling into a
+    -- fresh one would open it on a breach warning earned by a company that has since won.
+    --
+    -- `climbedOut` and `tallyTaught` are deliberately NOT reset: both are one-way marks about things
+    -- this player has done and been told, and re-teaching the tally is not a reward (the same argument
+    -- Save.snapshot makes for the visited-vendor flags).
+    player.count = 0
     -- A supper is bought for one expedition. The last run's is not owed to the first day of the next.
     require("models.meal").clear(player)
 

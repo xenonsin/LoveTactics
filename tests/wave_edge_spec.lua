@@ -19,7 +19,8 @@ local function arena(cols, rows, opts)
     for _, o in ipairs(opts.obstacles or {}) do
         tiles[o.y][o.x] = { type = "obstacle", walkable = false }
     end
-    return { cols = cols, rows = rows, tiles = tiles, enemies = opts.enemies or {} }
+    return { cols = cols, rows = rows, tiles = tiles, enemies = opts.enemies or {},
+             party = opts.party }
 end
 
 local function combatWith(a, units)
@@ -80,6 +81,27 @@ return {
             assert(Combat.enemyHomeEdge(topSpawn) == "top", "enemies seated at row 1 come from the top")
             local botSpawn = combatWith(arena(8, 8, { enemies = { { x = 4, y = 8 } } }))
             assert(Combat.enemyHomeEdge(botSpawn) == "bottom", "enemies seated at row 8 come from the bottom")
+        end,
+    },
+    {
+        name = "the home edge is the side away from the company, however the enemy is scattered",
+        fn = function()
+            -- The enemy no longer musters in two ranks on one wall: models/arena.lua scatters knots
+            -- across the board, so their own average row can sit anywhere -- including past the halfway
+            -- line, which used to hand a default wave the edge the COMPANY is standing on. The party's
+            -- seating is what the far side is measured from.
+            local scattered = combatWith(arena(8, 8, {
+                party = { { x = 3, y = 8 }, { x = 4, y = 8 }, { x = 4, y = 7 } },
+                enemies = { { x = 2, y = 5 }, { x = 3, y = 5 }, { x = 7, y = 4 } },
+            }))
+            assert(Combat.enemyHomeEdge(scattered) == "top",
+                "a wave walked on from behind the company that is standing at the bottom")
+            local entered = combatWith(arena(8, 8, {
+                party = { { x = 3, y = 1 }, { x = 4, y = 1 } }, -- came in by the north door
+                enemies = { { x = 2, y = 4 }, { x = 6, y = 5 } },
+            }))
+            assert(Combat.enemyHomeEdge(entered) == "bottom",
+                "a company entering from the north is reinforced against from the south")
         end,
     },
     {

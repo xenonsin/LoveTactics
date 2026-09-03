@@ -12,7 +12,9 @@ return {
     tags = { "fist" },
     class = "priest",
     discipline = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
-    price = 345,
+    price = 245,
     unlockQuests = 2,
     unarmedBonus = { hits = { 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2 } },
+    -- two punches in the time of one, and no Power a weapon could borrow
+    bonus = { speed = 2 },
 }

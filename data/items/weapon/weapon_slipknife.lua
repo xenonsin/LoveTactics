@@ -31,6 +31,7 @@ return {
     -- -- the one counter in the game that distance does not gate -- and a thing that answers a bowshot by
     -- appearing beside the archer should be earned rather than bought.
     class = "rogue",
+    dropTier = 7,
     traits = { "trait_slipstep" }, -- the whole of the extra; see the file for why it costs what it costs
     activeAbility = {
         target = "enemy",

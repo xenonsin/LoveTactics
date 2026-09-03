@@ -39,7 +39,7 @@ tests[#tests + 1] = { name = "every discipline is well-formed (name, 1-2 real pa
             assert(Item.CLASSES[c], id .. ": unknown parent class " .. tostring(c))
         end
         assert(type(def.exemplar) == "string" and def.exemplar ~= "", id .. ": missing exemplar")
-        assert(type(def.requiredQuests) == "table" and #def.requiredQuests >= 1, id .. ": needs requiredQuests")
+        assert(type(def.requiredLevel) == "table" and next(def.requiredLevel), id .. ": needs requiredLevel")
     end
 end }
 
@@ -58,103 +58,59 @@ tests[#tests + 1] = { name = "every discipline says what it is, in a blurb the s
     end
 end }
 
-tests[#tests + 1] = { name = "a subclass gate is one existing quest in its parent vendor's line", fn = function()
-    for id, def in pairs(Discipline.defs) do
-        if #def.classes == 1 then
-            local parent = def.classes[1]
-            for _, q in ipairs(def.requiredQuests) do
-                assert(Quest.defs[q], id .. ": subclass gate quest '" .. q .. "' does not exist")
-                assert(questClass(q) == parent,
-                    id .. ": gate quest '" .. q .. "' is sponsored by a " .. tostring(questClass(q))
-                    .. " vendor, not " .. parent)
-            end
-        end
-    end
-end }
-
--- The capstones. A gate quest that does not exist is not a soft "pending" state -- `Player.hasCompleted`
--- returns false for an id nothing defines, forever, so `Discipline.isUnlocked` can never return true and
--- the discipline's whole shelf is dead stock. All 21 multiclass capstones are on disk now; this is what
--- keeps them there.
---
--- Sponsor is deliberately NOT asserted to match a parent the way the subclass rule above does: a
--- capstone stages a fusion, and either parent's vendor is a legitimate host for it (the Ninja's is the
--- Undercroft, the Battlemage's the Arcanum). Existence is the contract; whose board it sits on is a
--- staging call.
-tests[#tests + 1] = { name = "a multiclass capstone gate names a quest that exists", fn = function()
-    for id, def in pairs(Discipline.defs) do
-        if #def.classes == 2 then
-            for _, q in ipairs(def.requiredQuests) do
-                assert(Quest.defs[q], id .. ": capstone gate quest '" .. q .. "' does not exist -- the "
-                    .. "discipline can never unlock and its shelf is unreachable")
-            end
-        end
-    end
-end }
 
 -- WHERE a subclass gate sits, not just which line it sits in. A discipline handed over on a line's
 -- first or second quest is not earned advancement -- it is a welcome gift, collected before the player
 -- has done anything with the base shelf, and it makes the whole lattice in docs/disciplines-plan.md
 -- decorative. Slot 3 is the floor: by then the line has introduced itself, handed over its companion,
--- and asked for something.
+-- WHERE a subclass gate sits, not just which class it sits in. A discipline handed over at class level 1
+-- or 2 is not earned advancement -- it is a welcome gift, collected before the player has done anything
+-- with the base shelf, and it makes the whole lattice in docs/disciplines-plan.md decorative.
 --
--- SLOT IS READ OFF THE ID. It used to be derived by walking the line's chain backwards from its
--- general, which was exact while a house ran ten quests linked by requiredQuests. The retired board took
--- both ends of that walk -- the generals are met on their circles now, and models/errand.lua drops the
--- chain field at the door -- so the position is parsed from the id, which is what the chain spelled out.
+-- IT USED TO BE A SLOT NUMBER PARSED OFF A QUEST ID, because a gate was a quest on a house's line. The
+-- houses are classes now (docs/classes.md) and a gate is a level a BODY has reached in a parent class,
+-- so the floor is stated in the unit the gate is actually written in.
 local SUBCLASS_GATE_FLOOR = 3
 
-local function slotOf(questId)
-    return tonumber(tostring(questId or ""):match("_slot_(%d+)$") or "")
-end
-
-tests[#tests + 1] = { name = "a subclass gate sits at slot 3 or later in its line", fn = function()
+tests[#tests + 1] = { name = "a subclass gates on its own parent class, at level 3 or later", fn = function()
     for id, def in pairs(Discipline.defs) do
         if #def.classes == 1 then
-            for _, q in ipairs(def.requiredQuests) do
-                local slot = slotOf(q)
-                assert(slot, id .. ": gate quest '" .. q .. "' is not on its line's chain")
-                assert(slot >= SUBCLASS_GATE_FLOOR, id .. ": gates on '" .. q .. "', slot " .. slot
-                    .. " -- a subclass opens no earlier than slot " .. SUBCLASS_GATE_FLOOR)
+            local parent = def.classes[1]
+            local named = 0
+            for class, level in pairs(def.requiredLevel or {}) do
+                assert(class == parent, id .. ": gates on '" .. class .. "', which is not its parent "
+                    .. parent)
+                assert(level >= SUBCLASS_GATE_FLOOR, id .. ": gates at " .. parent .. " " .. level
+                    .. " -- a subclass opens no earlier than level " .. SUBCLASS_GATE_FLOOR)
+                named = named + 1
             end
+            assert(named == 1, id .. ": a subclass names exactly one parent gate, found " .. named)
         end
     end
 end }
 
--- A capstone must be GATED ON ITS PARENTS, not on a prestige number. `Discipline.isUnlocked` has
--- always walked the parents itself, but that only decides whether the shelf opens -- it does not stop
--- the quest appearing on the board, being cleared, and sitting completed while the discipline stays
--- shut for reasons the player was never shown. The quest has to carry the same rule.
+-- A capstone must be GATED ON ITS PARENTS. `Discipline.isUnlocked` walks them itself -- a multiclass
+-- needs a subclass held in EACH parent, which is the rule that makes a crossing a crossing -- and the
+-- level gate on top of it is what makes reaching one a commitment rather than a checklist.
 --
--- Naming one specific quest per parent is exact rather than over-strict BECAUSE the lines are chains:
--- a later subclass gate cannot be reached without clearing the earlier one, so "any subclass of X"
--- and "X's first subclass gate" are the same set. See data/quests/colosseum/quest_colosseum_champions_challenge.lua.
-tests[#tests + 1] = { name = "a multiclass capstone gates on a subclass quest of each parent", fn = function()
-    -- Which quests gate a subclass, by parent class.
-    local subclassGates = {}
-    for id, def in pairs(Discipline.defs) do
-        if #def.classes == 1 then
-            for _, q in ipairs(def.requiredQuests) do
-                subclassGates[def.classes[1]] = subclassGates[def.classes[1]] or {}
-                subclassGates[def.classes[1]][q] = true
-            end
-        end
-    end
-
+-- The gate is asserted to name a real class rather than to name both parents: a capstone stages a
+-- fusion, and either parent is a legitimate host for the level requirement (the Ninja's is the rogue
+-- side, the Battlemage's the mage side). What is NOT optional is the subclass-in-each-parent rule, and
+-- that lives in the model where it cannot be authored away.
+tests[#tests + 1] = { name = "a multiclass gates on a real class, and on a subclass of each parent", fn = function()
     for id, def in pairs(Discipline.defs) do
         if #def.classes == 2 then
-            local capstoneId = def.requiredQuests[1]
-            local capstone = Quest.defs[capstoneId]
-            assert(capstone, id .. ": capstone '" .. tostring(capstoneId) .. "' does not exist")
+            local named = 0
+            for class, level in pairs(def.requiredLevel or {}) do
+                assert(Item.CLASSES[class], id .. ": gates on unknown class '" .. class .. "'")
+                assert(level >= SUBCLASS_GATE_FLOOR, id .. ": gates at " .. class .. " " .. level)
+                named = named + 1
+            end
+            assert(named >= 1, id .. ": a capstone with no level gate opens on its parents alone")
 
-            local req = capstone.requiredQuests or {}
             for _, parent in ipairs(def.classes) do
-                local covered = false
-                for _, q in ipairs(req) do
-                    if (subclassGates[parent] or {})[q] then covered = true end
-                end
-                assert(covered, id .. ": capstone '" .. capstoneId .. "' names no " .. parent
-                    .. " subclass quest in requiredQuests -- it would open on prestige alone")
+                assert(#Discipline.subclassesOf(parent) >= 1,
+                    id .. ": parent '" .. parent .. "' has no subclass, so its gate can never be met")
             end
         end
     end
@@ -238,21 +194,22 @@ tests[#tests + 1] = { name = "a multiclass stocks at least one item on EACH pare
         .. "discipline and then stocks nothing for it: " .. table.concat(bare, ", "))
 end }
 
-tests[#tests + 1] = { name = "no rung opens more than two disciplines", fn = function()
-    -- IT USED TO BE ONE, and that was right while a house had twelve rungs to hang seven subclasses
-    -- from. A house asks for six jobs now (models/errand.lua) and the Cathedral has six subclasses, the
-    -- Lodge seven -- so a rung apiece is arithmetic the ladder cannot do, and the choice is between two
-    -- on a rung or a subclass nobody can reach. Two is the cap: a rung that opened three would be a job
-    -- carrying more than the player can read as one reward.
+tests[#tests + 1] = { name = "no rung of a class ladder opens more than three disciplines", fn = function()
+    -- IT USED TO BE ONE PER QUEST, and that was right while a house had twelve rungs to hang seven
+    -- subclasses from. The ladder is a class level now (Discipline.classLevel) and it has
+    -- CLASS_LEVEL_CAP rungs for every class, with 38 disciplines spread over seven of them -- so some
+    -- crowding is arithmetic rather than sloppiness.
     --
-    -- What a shared rung must still be is a SUBJECT rather than a leftover pile -- the Lodge's spirit
-    -- wood opens the shaman and the totemist, which are the two spirit paths.
+    -- What the cap is protecting is the moment of arrival: a level that opened four paths at once is a
+    -- reward the player cannot read as one thing. Three is the ceiling, and a rung that reaches it
+    -- should be a SUBJECT rather than a leftover pile.
     local counts, who = {}, {}
     for id, def in pairs(Discipline.defs) do
-        for _, q in ipairs(def.requiredQuests) do
-            counts[q] = (counts[q] or 0) + 1
-            who[q] = who[q] and (who[q] .. ", " .. id) or id
-            assert(counts[q] <= 2, "quest '" .. q .. "' gates " .. counts[q] .. ": " .. who[q])
+        for class, level in pairs(def.requiredLevel or {}) do
+            local key = class .. " " .. level
+            counts[key] = (counts[key] or 0) + 1
+            who[key] = who[key] and (who[key] .. ", " .. id) or id
+            assert(counts[key] <= 3, "rung '" .. key .. "' opens " .. counts[key] .. ": " .. who[key])
         end
     end
 end }
@@ -337,7 +294,11 @@ tests[#tests + 1] = { name = "a newly unlocked discipline is pending at its pare
 
     -- Warlord (a fighter subclass) gates on warlord_keep. Clear it, and the discipline is pending at
     -- the fighter shelf.
-    p.completedQuests.quest_colosseum_slot_03 = true
+    -- Warlord gates on a FIGHTER class level now, not on a quest. One body standing at that rung
+    -- is what the shelf reads (Discipline.rosterLevel), so the fixture banks the career technique
+    -- the ladder is measured off rather than ticking a quest ledger nothing consults.
+    local warlordGate = Discipline.defs.warlord.requiredLevel.fighter
+    p.roster[1].technique = { fighter = Discipline.classLevelCost(warlordGate) }
     local pend = Discipline.pendingAnnouncements(p, "fighter")
     local found = false
     for _, id in ipairs(pend) do if id == "warlord" then found = true end end
@@ -363,8 +324,22 @@ tests[#tests + 1] = { name = "a multiclass announces at exactly one of its two p
 
     -- Champion (fighter x knight) needs a subclass of each parent, then its capstone. Clear the
     -- shortest path: warlord_keep (fighter), held_position (knight), quest_colosseum_champions_challenge (capstone).
-    for _, q in ipairs({ "quest_colosseum_slot_03", "quest_bastion_slot_03", "quest_colosseum_champions_challenge" }) do
-        p.completedQuests[q] = true
+    -- Champion (fighter x knight) needs a subclass of each parent held BY THIS BODY, then its own
+    -- level gate. One body carries all three, which is the point of the per-body rule: a crossing
+    -- is somebody who went both ways, not a company that between them did.
+    local body = p.roster[1]
+    body.technique = {}
+    for _, d in ipairs({ "warlord", "champion" }) do
+        for class, level in pairs(Discipline.defs[d].requiredLevel or {}) do
+            body.technique[class] = math.max(body.technique[class] or 0, Discipline.classLevelCost(level))
+        end
+    end
+    for _, parent in ipairs({ "fighter", "knight" }) do
+        for _, sub in ipairs(Discipline.subclassesOf(parent)) do
+            for class, level in pairs(Discipline.defs[sub].requiredLevel or {}) do
+                body.technique[class] = math.max(body.technique[class] or 0, Discipline.classLevelCost(level))
+            end
+        end
     end
     assert(Discipline.isUnlocked(p, "champion"), "champion should be unlocked by the three quests")
 
@@ -410,21 +385,20 @@ tests[#tests + 1] = { name = "a discipline-heavy build grows along the disciplin
     local Growth = require("models.growth")
     local Character = require("models.character")
 
-    -- A character who casts mostly Ninja stock should grow as a ninja, not as rogue or mage.
+    -- A character DECLARED a ninja grows on the ninja table, which is neither parent's.
+    --
+    -- IT USED TO BE A READING OF WHAT THEY CAST. This case asserted that casting mostly ninja stock made
+    -- a body grow as a ninja, and that the ninja share was the larger half of the next level. Growth is
+    -- a declaration now (Growth.jobOf) -- what a body swings sets its class LEVEL and how much it gets
+    -- out of that gear (Combat.classScaled), not how it grows. So the ledger is loaded the other way
+    -- here deliberately: the body has swung rogue gear and grows as a ninja, because that is what it
+    -- was declared as.
     local c = Character.instantiate("character_clem") -- innate rogue
-    for _ = 1, 5 do
-        for _, cls in ipairs(Discipline.growthClasses({ class = "rogue", discipline = "ninja" })) do
-            Character.recordTechnique(c, cls, Discipline.TECHNIQUE_PER_ACTION)
-        end
-    end
-    Character.recordTechnique(c, "rogue", Discipline.TECHNIQUE_PER_ACTION) -- some base-class use, but ninja leads
-    assert(Growth.dominantClass(c) == "ninja", "the ninja ledger should lead the build")
+    c.job = "ninja"
+    Character.recordTechnique(c, "rogue", Discipline.TECHNIQUE_PER_BATTLE)
 
-    -- And it leads the level-up's apportionment too, rather than merely the title.
-    local shares = Growth.shares(c)
-    assert(shares.ninja > shares.rogue, "the ninja share is the larger half of the next level")
+    assert(Growth.jobOf(c) == "ninja", "the declaration decides the table")
 
-    -- And applying that level uses the ninja table, which is neither parent's.
     local before = c.growth and c.growth.magicDamage or 0
     Growth.applyLevel(c, "ninja")
     local after = c.growth.magicDamage or 0
@@ -446,7 +420,9 @@ tests[#tests + 1] = { name = "missingParents names the crossing's unmet half, an
     -- class, the shelf would point the player at the wrong building.
     for _, def in pairs(Discipline.defs) do
         if #(def.classes or {}) == 1 and def.classes[1] == "rogue" then
-            for _, q in ipairs(def.requiredQuests or {}) do p.completedQuests[q] = true end
+            for class, level in pairs(def.requiredLevel or {}) do
+                for _, c in ipairs(p.roster) do c.technique = c.technique or {}; c.technique[class] = Discipline.classLevelCost(level) end
+            end
         end
     end
     missing = Discipline.missingParents(p, "ninja")

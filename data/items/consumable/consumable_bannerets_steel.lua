@@ -18,6 +18,7 @@ return {
     type = "consumable",
     tags = { "charm" },
     class = "knight",
+    dropTier = 1,
     activeAbility = {
         target = "ally", -- includes the user (a unit is its own ally)
         support = true,

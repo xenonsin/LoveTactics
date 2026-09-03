@@ -22,6 +22,7 @@ return {
     type = "armor",
     tags = { "hide" },
     class = "hunter",
+    dropTier = 4,
     traits = { "trait_wolf_companion" },
     bonus = { defense = Curve.ramp(2, 12), movement = -1 },
 }

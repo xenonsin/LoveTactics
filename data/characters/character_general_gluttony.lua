@@ -45,6 +45,9 @@ return {
         defense = 15, magicDefense = 8, -- warded in hide, thin against the magic she never learned
         movement = 4,
         speed = 4,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 5, luck = 4,
     },
     -- Her loadout as the 3x3 grid (row-major); false = an empty cell. Her rule rides on the Maw of the
     -- Unfed in the center (unstealable). Around it: the gralloch knife she eats with, and the pack she

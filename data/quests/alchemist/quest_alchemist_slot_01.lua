@@ -44,6 +44,11 @@ return {
     outro = "conversation_alchemist_slot_01_outro",
     rewardItems = { "armor_reagent_vest" },
     rewardGold = 80,
+    -- THE COMPANION JOINS HERE. This is the ask they make when you meet them on a floor
+    -- (models/errand.lua), and clearing it is what brings them into the company -- the same
+    -- route Saber has always arrived by. Quest.complete calls Player.recruit before the outro
+    -- fires, so the "[X has joined your Party]" banner and their first words land in one beat.
+    rewardCharacter = "character_ren",
     requiredPrestige = 4,
     map = {
         biomes = { "forest", "swamp" },

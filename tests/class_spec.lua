@@ -150,7 +150,13 @@ return {
             for id, def in pairs(Vendor.defs) do
                 -- The Cafe is not a class shelf and stocks no items at all (it sells meals -- see
                 -- models/meal.lua), so the family-cluster contract has nothing to say about it.
-                if def.sells ~= false then
+                --
+                -- Neither is the Market, for the opposite reason: it sells EVERY class's wares on one
+                -- counter (`sellsAll`, models/market.lua), so "does this shelf's class claim that
+                -- family" has no shelf-class to ask about. The contract is still enforced over all
+                -- seven -- it is enforced on the blueprints directly, in the case above this one, and
+                -- on each class's own shelf here.
+                if def.sells ~= false and not def.sellsAll then
                     local families = CONTRACT[def.class] and CONTRACT[def.class].families
                     assert(families, id .. " sells for unknown class '" .. tostring(def.class) .. "'")
                     local allowed = {}

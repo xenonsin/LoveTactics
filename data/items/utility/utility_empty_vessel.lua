@@ -21,7 +21,9 @@ return {
     tags = { "charm" },
     class = "mage",
     discipline = "spellbreaker",
-    price = 475,
-    unlockQuests = 3,
+    price = 495,
+    unlockQuests = 5,
     traits = { "trait_empty_vessel" },
+    -- it banks its Power against the spent; empty is also hard to drain
+    bonus = { magicDefense = 1 },
 }

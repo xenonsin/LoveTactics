@@ -75,14 +75,19 @@ return {
         end,
     },
     {
-        name = "party spawns near, enemies spawn far",
+        name = "party spawns near, the enemy stands clear of them",
         fn = function()
+            -- This case used to read `u.y <= 2` -- the enemy mustered on the two rows farthest from the
+            -- party, and nowhere else. It scatters over the board now (see the two cases at the end of
+            -- this file); what survives of the old claim is the half of it that was ever a rule: the
+            -- party lands on its own edge, and nothing opens the fight on its doorstep.
             local a = Arena.build({ prestige = 1 }, proceduralSpec())
             for _, u in ipairs(a.party) do
                 assert(u.y >= a.rows - 1, "party should spawn on the near rows")
             end
             for _, u in ipairs(a.enemies) do
-                assert(u.y <= 2, "enemies should spawn on the far rows")
+                assert(a.rows - u.y >= Arena.ENEMY_MIN_DEPTH,
+                    "an enemy opened the fight inside the company's own ground")
             end
         end,
     },
@@ -305,10 +310,11 @@ return {
                     checked = checked + 1
                 end
             end
-            -- 42 quests, five prestige bands. It read `> 50` against a 92-quest board; the retired board took
-            -- 49 of those with it, so the floor moves with the campaign rather than the sweep silently
-            -- passing on a fraction of it.
-            assert(checked > 30, "the sweep should cover every quest at every band, saw " .. checked)
+            -- SEVEN postings, five prestige bands. It read `> 30` against the 42-quest ladder, and
+            -- `> 50` against the 92-quest board before that; the ladder went with the houses
+            -- (models/errand.lua) and what is left is one posting per class, so the floor moves
+            -- with the campaign rather than the sweep silently passing on a fraction of it.
+            assert(checked >= 7, "the sweep should cover every posting, saw " .. checked)
         end,
     },
 
@@ -393,10 +399,9 @@ return {
     {
         name = "...and neither does a hand-drawn one",
         fn = function()
-            -- A hand-authored board runs NONE of the guards the rolled and the cut ones do: the block
-            -- scatter's ceiling does not apply to it, and Arena.fromGrid's seal never sees it. Its floor
-            -- has to be one piece because somebody drew it that way, and the only thing that will ever say
-            -- otherwise is this.
+            -- A hand-authored board runs NONE of the guards a rolled one does -- the block scatter's
+            -- ceiling does not apply to it. Its floor has to be one piece because somebody drew it that
+            -- way, and the only thing that will ever say otherwise is this.
             local function walkable(t)
                 local p = Arena.TILE_PROPS[t]
                 return p ~= nil and p.walkable == true
@@ -464,6 +469,107 @@ return {
                                     "%s/%s: a spawn opened the fight standing on %s", biome, ground, t))
                             end
                         end
+                    end
+                end
+            end
+        end,
+    },
+    {
+        name = "a rolled board never musters the enemy on the party's doorstep",
+        fn = function()
+            -- The board is entered by a door (models/arena.lua's `entry`) and the party's own two lines
+            -- stand at depth 0..1 off that edge whichever wall it turns out to be. Nothing may seat
+            -- inside ENEMY_MIN_DEPTH of it: the deployment zone is DEPLOY_DEPTH deep, so a body any
+            -- closer opens the fight already in contact with a company that has not moved yet.
+            local function depth(entry, cols, rows, s)
+                if entry == "north" then return s.y - 1 end
+                if entry == "west" then return s.x - 1 end
+                if entry == "east" then return cols - s.x end
+                return rows - s.y
+            end
+            for _, entry in ipairs({ "south", "north", "east", "west" }) do
+                for seed = 1, 30 do
+                    local L = Arena.generateLayout({ biome = "forest", seed = seed * 71, party = 4,
+                        enemies = 5, entry = entry })
+                    assert(#L.enemySpawns == 5, string.format(
+                        "entry %s seed %d: seated %d of 5 enemies", entry, seed * 71, #L.enemySpawns))
+                    for _, s in ipairs(L.enemySpawns) do
+                        assert(depth(entry, L.cols, L.rows, s) >= Arena.ENEMY_MIN_DEPTH, string.format(
+                            "entry %s seed %d: an enemy stands %d tiles off the company's edge",
+                            entry, seed * 71, depth(entry, L.cols, L.rows, s)))
+                    end
+                end
+            end
+        end,
+    },
+    {
+        name = "a rolled board scatters the enemy over the map rather than along the far wall",
+        fn = function()
+            -- WHAT THIS IS FOR: the enemy used to be seated by the same even line-fill the party gets, on
+            -- the two rows farthest from it -- so every rolled fight opened identically, two ranks
+            -- staring across six empty rows, and none of the ground between them mattered because both
+            -- sides crossed all of it together. What replaced it is knots at varying depth, and this says
+            -- so in the three ways that shape is visible from outside: the far wall is no longer where
+            -- the fight is, the board is used across both axes, and bodies stand together.
+            local depths, cols, wallOnly, withNeighbour, boards = {}, {}, 0, 0, 0
+            for seed = 1, 40 do
+                local L = Arena.generateLayout({ biome = "forest", seed = seed * 97, party = 4,
+                    enemies = 5 })
+                boards = boards + 1
+                local deep, seen = true, {}
+                for _, s in ipairs(L.enemySpawns) do
+                    depths[L.rows - s.y] = true
+                    cols[s.x] = true
+                    if s.y > 2 then deep = false end
+                    seen[s.x .. "," .. s.y] = true
+                end
+                if deep then wallOnly = wallOnly + 1 end
+                for _, s in ipairs(L.enemySpawns) do
+                    if seen[(s.x + 1) .. "," .. s.y] or seen[(s.x - 1) .. "," .. s.y]
+                        or seen[s.x .. "," .. (s.y + 1)] or seen[s.x .. "," .. (s.y - 1)] then
+                        withNeighbour = withNeighbour + 1
+                        break
+                    end
+                end
+            end
+            local function count(t)
+                local n = 0
+                for _ in pairs(t) do n = n + 1 end
+                return n
+            end
+            assert(count(depths) >= 4, "the enemy only ever appears at " .. count(depths) .. " depths")
+            assert(count(cols) >= 6, "the enemy only ever appears in " .. count(cols) .. " columns")
+            assert(wallOnly <= boards / 10, string.format(
+                "%d of %d boards put the whole line on the far two rows", wallOnly, boards))
+            -- Knots, not loners: a board of single enemies spread evenly is four separate 4-on-1s.
+            assert(withNeighbour >= boards * 2 / 3, string.format(
+                "only %d of %d boards stood any two enemies together", withNeighbour, boards))
+        end,
+    },
+    {
+        name = "the scatter leaves an escorted body room to be screened",
+        fn = function()
+            -- The one fight the scatter can decide before it starts: a `protect` objective anchors the
+            -- body being escorted AHEAD of the party (`rally`), one row short of the ground the scatter
+            -- is otherwise free to use -- so without ENEMY_PROTECT_CLEARANCE an escort fight opens with
+            -- a body already touching the survivor. Walked over seeds, on the same shape
+            -- encounter_survivors_defend brings.
+            for seed = 1, 40 do
+                local a = Arena.build({ prestige = 1 }, {
+                    biome = "__test_void", seed = seed * 29,
+                    party = { "character_avatar", "character_rowan" },
+                    allies = { "character_survivor" },
+                    composition = function() return { "character_demon_imp", "character_demon_imp",
+                        "character_demon_imp" } end,
+                    objective = { type = "defend", anchor = "rally", turns = 5,
+                        protect = "character_survivor" },
+                })
+                for _, u in ipairs(a.allies or {}) do
+                    for _, e in ipairs(a.enemies) do
+                        local d = math.max(math.abs(u.x - e.x), math.abs(u.y - e.y))
+                        assert(d > Arena.ENEMY_PROTECT_CLEARANCE, string.format(
+                            "seed %d: an enemy opened the fight %d tiles from the escorted body",
+                            seed * 29, d))
                     end
                 end
             end

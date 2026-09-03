@@ -11,4 +11,6 @@ return {
     price = 80,
     unlockQuests = 0,
     traits = { "trait_executioners_eye" },
+    -- an eye that decides the kill before the shot
+    bonus = { skill = 2 },
 }

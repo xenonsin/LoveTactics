@@ -34,9 +34,11 @@ return {
     tags = { "charm", "poison" },
     class = "alchemist",
     discipline = "apothecary", -- priest + alchemist; the Lent-vitality mechanic's first stock
-    price = 345,
-    unlockQuests = 2,
+    price = 410,
+    unlockQuests = 4,
     -- The cloud: laid around the bearer on every move and re-laid from Combat.rebase for one that
     -- never moves, lifted by owner+id before each re-lay so it walks rather than piling into a wake.
     incense = { hazard = "hazard_exposure", radius = 1, amount = Curve.ramp(8, 18) },
+    -- it opens bodies up; it may as well hit them
+    bonus = { damage = 2 },
 }

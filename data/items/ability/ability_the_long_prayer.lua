@@ -19,7 +19,7 @@ return {
     tags = { "holy" },
     class = "priest",
     discipline = "theurge",
-    price = 210,
+    price = 165,
     unlockQuests = 1,
     activeAbility = {
         target = "tile",

@@ -23,7 +23,7 @@ return {
     tags = { "elixir" },
     class = "alchemist",
     discipline = "apothecary",
-    price = 85,
+    price = 65,
     unlockQuests = 1,
     maxStack = 3,
     activeAbility = {

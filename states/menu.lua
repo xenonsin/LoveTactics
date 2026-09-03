@@ -277,6 +277,17 @@ local function runExtractStrings()
     menu.statusTimer = 5
 end
 
+-- Debug: start a New Game and open the hub city with Act 0 already paid out -- the prologue's grants
+-- applied (states/prologue.lua's `skip`) but none of its scenes, fights or overworld leg played. The
+-- two character-creation steps go with it, so the avatar wears body 1 and the blueprint's own name:
+-- what this button is for is reaching the city, not being somebody in particular.
+local function skipPrologue()
+    Player.start(true) -- discards any save, exactly as New Game does
+    require("states.prologue").skip(Player.active)
+    Player.save()
+    State.switch(require("states.hub"))
+end
+
 -- Built on entry, not at require time: whether "Continue" belongs on the menu depends on
 -- whether a save exists, and that can change while the game is running (starting a new
 -- game writes one; there is no save until the first quest is completed or purchase made).
@@ -356,6 +367,11 @@ local DEBUG_MARGIN = 16
 local function buildDebugMenu()
     if not DEBUG then return nil end
     return Menu.new({
+        -- Straight into the city with Act 0 already paid for: the avatar and Rowan at the level the
+        -- prologue's four fights pay, the road's kit in the stash, and the hub open in free play. The
+        -- grants are the prologue's own (states/prologue.lua's `skip`), so what this hands over cannot
+        -- drift from what playing it hands over.
+        { label = "Skip Prologue", action = skipPrologue },
         -- DRAFT, alone now. It shares none of the campaign's progression and is still being built, which
         -- is what this column is for: a mode lives here until it is worth putting in front of a player.
         --

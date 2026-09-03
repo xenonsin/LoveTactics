@@ -18,7 +18,7 @@ return {
     tags = { "arcane", "illusion" },
     class = "alchemist",
     price = 740,
-    unlockQuests = 5,
+    unlockQuests = 8,
     noCopy = true,
     activeAbility = {
         target = "enemy",
@@ -38,4 +38,6 @@ return {
             fx.copyOf(fx.target, x, y, { fragile = true })
         end,
     },
+    -- copying a body is the deepest working on the shelf
+    bonus = { magicDamage = 2 },
 }

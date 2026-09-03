@@ -63,4 +63,6 @@ return {
             end
         end,
     },
+    -- one affliction spread across a field
+    bonus = { magicDamage = 2 },
 }

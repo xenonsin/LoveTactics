@@ -18,6 +18,9 @@ return {
         defense = 16, magicDefense = 8,
         movement = 4,
         speed = 3,
+        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
+        -- attacker's crit. Authored, and never grown -- these are what this body IS.
+        skill = 4, luck = 2,
     },
     -- ONE plate, not two. The Halting Rank and the Unyielding Harness are each `movement = -2`, and
     -- worn together on a base of 4 they left the exemplar with none at all -- a wall that moves
@@ -28,7 +31,7 @@ return {
     startingItems = {
         "weapon_iron_mace",   "ability_push",   "ability_shout",
         "ability_closed_ring", "ability_stand_down", "utility_rooted_stance",
-        "armor_halting_rank", false, "consumable_healing_potion",
+        "armor_halting_rank", "utility_doorstone", "consumable_healing_potion",
     },
     defaultAction = "weapon_iron_mace",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

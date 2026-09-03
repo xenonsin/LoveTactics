@@ -21,6 +21,7 @@ return {
     hands = 1,
     traits = { "trait_sundering_parry" },
     class = "knight",
+    dropTier = 3,
     activeAbility = {
         target = "enemy",
         range = 1,

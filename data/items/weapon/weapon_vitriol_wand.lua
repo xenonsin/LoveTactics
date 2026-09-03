@@ -20,8 +20,8 @@ return {
     type = "weapon",
     tags = { "wand", "magical", "acid", "ranged" },
     class = "alchemist",
-    price = 610,
-    unlockQuests = 4,
+    price = 575,
+    unlockQuests = 6,
     activeAbility = {
         target = "enemy",
         range = 3,

@@ -161,7 +161,6 @@ return {
     "utility_hour_returned",
     "utility_lent_aegis",
     "utility_mana_wellspring",
-    "utility_marksmans_lens",
     "utility_miasma_flask",
     "utility_miasmal_plate",
     "utility_names_he_kept",

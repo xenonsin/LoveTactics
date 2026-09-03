@@ -28,8 +28,8 @@ return {
     type = "utility",
     tags = { "arcane" },
     class = "mage",
-    price = 475,
-    unlockQuests = 3,
+    price = 575,
+    unlockQuests = 6,
     activeAbility = {
         target = "self",
         range = 0,
@@ -40,4 +40,6 @@ return {
             fx.applyStatus(fx.user, "status_hollowed", { duration = 10 + fx.level })
         end,
     },
+    -- almost nothing physical lands, and the trade is in the other school
+    bonus = { defense = 3, magicDefense = -1 },
 }
