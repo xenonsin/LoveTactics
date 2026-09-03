@@ -15,9 +15,19 @@ local Party = require("ui.panels.party")
 
 -- A priced, non-stackable item id (so buying/selling doesn't merge into a consumable stack), and an
 -- item id with no price (never for sale). Found from data so the test survives content edits.
+-- A representative priced item, and one that was never for sale. Picked by walking Item.defs, so the
+-- filters below decide what this file is actually about rather than `pairs` order does -- a new item
+-- type can change which id comes out first, and this pick has already been moved once by exactly that.
+--
+-- VALUABLES ARE EXCLUDED, and it is not a convenience: a valuable's `price` is what a counter PAYS for
+-- it rather than what one charges, so it sells at par and is the one priced thing in the game that this
+-- case's rule does not describe (models/valuable.lua). Its own rule is pinned in tests/economy_spec.lua.
+-- Without the filter this spec passes or fails on hash order.
 local pricedId, noPriceId
 for id, def in pairs(Item.defs) do
-    if def.price and def.type ~= "consumable" and not pricedId then pricedId = id end
+    if def.price and def.type ~= "consumable" and not def.valuable and not pricedId then
+        pricedId = id
+    end
     if not def.price and not noPriceId then noPriceId = id end
 end
 

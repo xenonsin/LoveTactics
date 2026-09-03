@@ -823,6 +823,13 @@ function Item.instantiate(id, quantity, level)
         class = def.class,                     -- which class vendor sells it; nil = sold by none
         discipline = def.discipline,           -- shop taxonomy: the locked discipline this item belongs to (docs/classes.md)
         price = def.price,                     -- vendor gold cost; nil means it is never sold
+        -- LOOT WITH NO USE BUT TO BE SOLD (models/valuable.lua). Both fields have to ride the instance
+        -- rather than be looked up off the blueprint, because the two things that read them are handed
+        -- live items and nothing else: the mule weighs what is in the stash (Mule.load), and the counter
+        -- prices what is on it (Vendor.sellValue). `price` above is its WORTH here, not a shelf cost --
+        -- nobody stocks one (Vendor.sells refuses them).
+        valuable = def.valuable,
+        bulk = def.bulk,                       -- how many mule slots it takes on the way out (default 1)
         unlockQuests = def.unlockQuests,       -- how many of the vendor's quests must be done before it is on sale (default 0)
         level = math.max(0, level or 0),       -- upgrade level; 0 = a base, un-forged item
     }

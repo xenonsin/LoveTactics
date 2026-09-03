@@ -298,6 +298,15 @@ return {
                 if def.class then
                     assert(Class.defs[def.class],
                         id .. " has unknown class '" .. def.class .. "'")
+                elseif def.valuable then
+                    -- THE ONE PRICED THING WITH NO SHELF, and it is priced for the opposite reason
+                    -- everything else is: a valuable's `price` is what a counter PAYS for it, not what
+                    -- one charges (models/valuable.lua). No vendor can stock it and none is meant to --
+                    -- Vendor.sells refuses them outright, which tests/economy_spec.lua pins. Excluded
+                    -- here rather than given a class, because giving it one would put the campaign's
+                    -- own income on a shelf for sale.
+                    assert(def.price and def.price > 0,
+                        id .. " is a valuable with no price, so it is worth nothing to carry out")
                 else
                     assert(not def.price,
                         id .. " has a price but no class -- no vendor can stock it (docs/classes.md)")

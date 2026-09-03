@@ -31,9 +31,27 @@
 -- what it carried. One operation, two names, and the reason they are the same operation is that they
 -- are the same promise.
 --
--- GOLD AND ORE DO NOT RIDE IT. Both already have their own rule -- a wipe takes three quarters of what
--- the run gained (Player.loseHaul) -- and folding them in would make one dispatch decide everything at
--- once, which is the way to make a decision mushy rather than to make it big.
+-- ORE DOES NOT RIDE IT. It has its own rule -- a wipe takes three quarters of what the run gained
+-- (Player.loseHaul) -- and folding it in would make one dispatch decide everything at once, which is
+-- the way to make a decision mushy rather than to make it big.
+--
+-- GOLD USED TO BE ON THAT LINE BESIDE IT AND CAME OFF, which is the largest thing that has happened to
+-- this object. The economy split (models/scrip.lua): the run spends scrip, which is weightless and
+-- never comes home, and the CAMPAIGN's coin arrives as valuables -- objects with a price and a weight
+-- that have to be carried out and sold (models/valuable.lua). So gold rides the mule now, in the only
+-- form it exists in.
+--
+-- The old note's argument does not survive the change, and it is worth saying why rather than just
+-- deleting it. It was written about a NUMBER riding along invisibly: fold coin into the dispatch and
+-- one button decides your purse as a side effect of deciding your pack. An object that occupies a slot
+-- does not do that. It does not make the dispatch decide more things -- it makes the one thing it
+-- already decides legible, because every slot now has a quoted number on it. That is what this cap was
+-- built to create and had nothing to fill it with: gear's worth is diffuse ("might I use this?"), and
+-- "the idol is 900 and three slots, the censer is 110 and one" is arithmetic a player can actually do.
+--
+-- SO BULK IS REAL WEIGHT HERE. A valuable declares how many slots it takes (Valuable.bulk) and the load
+-- is measured in slots rather than in items -- see Mule.load. Everything that is not a valuable weighs
+-- one, exactly as it always did, so no other grant seam in the game changed.
 --
 -- Pure model: no love.graphics, no state switching, so it loads under the headless runner. The screens
 -- over the top are states/game.lua (the map control and the readout) and states/gate.lua (the upgrade).
@@ -142,16 +160,39 @@ end
 -- The load
 -- ---------------------------------------------------------------------------
 
--- WHAT THE MULE IS CARRYING, as a plain count of items. Zero outside a descent and zero for a run whose
--- entry snapshot is missing, which is the same answer for the same reason: with nothing to diff against
--- there is no such thing as "what this run found".
+-- WHAT THE MULE IS CARRYING, in SLOTS. Zero outside a descent and zero for a run whose entry snapshot
+-- is missing, which is the same answer for the same reason: with nothing to diff against there is no
+-- such thing as "what this run found".
+--
+-- SLOTS, NOT ITEMS, since valuables landed. Player.atRisk keys its counts by the live ITEM TABLE, which
+-- is what makes the weighing free: the instance is right there to be asked, no id lookup and no second
+-- shape for atRisk to return. Valuable.bulk answers one for everything that is not a valuable, which is
+-- every item this function has ever counted, so the arithmetic is unchanged for a company carrying gear.
+--
+-- The count still matters beside the bulk: a partial stack of three one-slot pieces at risk weighs three
+-- even though it is one table.
 function Mule.load(player, run)
     run = run or (player and player.activeRun)
     local entry = run and run.entry
     if not (player and entry) then return 0 end
+    local Valuable = require("models.valuable")
     local n = 0
-    for _, count in pairs(Player.atRisk(player, entry)) do n = n + count end
+    for item, count in pairs(Player.atRisk(player, entry)) do
+        n = n + count * Valuable.bulk(item)
+    end
     return n
+end
+
+-- How many slots `what` (an id, a blueprint or an instance) needs. The question every grant seam asks
+-- before it takes a find, and the one place that knows the answer is not always one.
+function Mule.bulkOf(what)
+    return require("models.valuable").bulk(what)
+end
+
+-- Will `what` fit? The id-shaped twin of Mule.canTake, so a grant seam does not have to know that
+-- weight exists -- it asks about the thing it is holding rather than about a number.
+function Mule.canTakeItem(player, what, run)
+    return Mule.canTake(player, Mule.bulkOf(what), run)
 end
 
 -- How many more items will fit. Zero while the mule is away -- an absent mule is not a full one, but it

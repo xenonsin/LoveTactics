@@ -252,14 +252,21 @@ A.ledger = {
 -- CLEM -- Jubilee (clemency). The Bank's finest blade turned the craft around: she mints value and gives
 -- it away. Her cut is added on top of every side-fight win -- the collector become the jubilee. Leans
 -- into the redesign's greater side-fight rewards.
+--
+-- PAID IN SCRIP, on the fight's own coin (models/scrip.lua). A cut of a side-fight is a cut of what
+-- that fight paid, and a rolled fight pays the run's purse -- taking a quarter of a fight's scrip and
+-- handing back campaign gold would make this the one seam in the game that converts one into the other,
+-- which is the exact thing the split exists to prevent. It reads the same number it always did; only
+-- the purse it lands in moved.
 A.jubilee = {
     encounterCleared = function(_, _, ctx)
         if not isCombat(ctx.cell) then return end
-        local base = ctx.spoils and ctx.spoils.gold or 0
+        local Scrip = require("models.scrip")
+        local base = ctx.spoils and ctx.spoils.scrip or 0
         local bonus = math.max(3, math.floor(base * 0.25))
         if ctx.player then
-            Player.addGold(ctx.player, bonus)
-            say(ctx, "Clem's cut  +" .. bonus .. "g")
+            Scrip.add(ctx.player, bonus)
+            say(ctx, "Clem's cut  +" .. bonus .. Scrip.SUFFIX)
         end
     end,
 }

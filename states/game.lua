@@ -29,7 +29,9 @@ local EncounterPanel = require("ui.panels.encounter")
 local LootReveal = require("ui.panels.loot_reveal")
 local RelicOffer = require("ui.panels.relic_offer")   -- the Reliquary's pick-one-of-three
 local RelicReveal = require("ui.panels.relic_reveal") -- the Sin's Altar's single relic + toll
-local Merchant = require("ui.panels.merchant") -- the road's shop: ordinary goods for gold
+local Merchant = require("ui.panels.merchant") -- the road's shop: ordinary goods for scrip
+local Scrip = require("models.scrip")       -- the run's own coin: weightless, and gone at the surface
+local Valuable = require("models.valuable") -- ...and the campaign's, which is objects and has weight
 local Choice = require("ui.panels.choice")
 local Crossroads = require("models.crossroads")
 local RestChoice = require("ui.panels.rest_choice")
@@ -402,6 +404,10 @@ local function endDescent(outcome, result, keep)
         -- The run is over. The company is not -- it walks back into the city with everything it kept,
         -- and the next descent starts a fresh stack of floors.
         game.player.descentRun = nil
+        -- ...WITHOUT THE SCRIP, which is the third and last exit a descent has (models/scrip.lua). The
+        -- other two are the stair up and a wipe; all three burn it, which is what lets the rule be one
+        -- sentence -- "it dies at the surface" -- instead of a table of exceptions.
+        Scrip.clear(game.player)
     end
     Player.save()
     State.switch(require("states.hub"))
@@ -426,8 +432,16 @@ function game:refreshHaul()
     -- in the Loadout and the pile a wipe actually drops are one answer asked three times. They used to
     -- be two counts computed the same way in two files, which is exactly how a readout goes quietly
     -- false (the badge would have been the third).
-    local items = 0
-    for _, n in pairs(Player.atRisk(game.player, entry)) do items = items + n end
+    -- ITEMS, AND WHAT THE VALUABLES AMONG THEM ARE WORTH. The second figure is the whole reason the
+    -- greed decision has teeth now (models/valuable.lua): the campaign's income IS these objects, so
+    -- "carried this run" without a gold number beside it would be reporting a pile of gear and quietly
+    -- omitting the takings. Read off the same atRisk keys rather than tallied at the grant, for the
+    -- reason this whole function is a diff.
+    local items, worth = 0, 0
+    for item, n in pairs(Player.atRisk(game.player, entry)) do
+        items = items + n
+        worth = worth + n * Valuable.value(item)
+    end
 
     local materials = 0
     for id, n in pairs(game.player.materials or {}) do
@@ -439,10 +453,13 @@ function game:refreshHaul()
     -- for (models/spoils.lua, states/game.lua's objective branch).
     for _, n in pairs(game.map and game.map.cacheHaul or {}) do materials = materials + (n or 0) end
 
+    -- Gold gained as a NUMBER, which since the economy split is only ever an authored objective purse
+    -- (models/scrip.lua) -- a rolled fight pays scrip and the campaign's real income arrives as the
+    -- valuables counted above. Kept because an errand still pays one, and because zero is a reading.
     local gold = math.max(0, (game.player.gold or 0) - (entry.gold or 0))
 
-    game.haul = (items > 0 or gold > 0 or materials > 0)
-        and { items = items, gold = gold, materials = materials } or nil
+    game.haul = (items > 0 or gold > 0 or worth > 0 or materials > 0)
+        and { items = items, gold = gold, worth = worth, materials = materials } or nil
 end
 
 -- WHAT THE CIRCLE'S GATE READS RIGHT NOW (models/descent.lua's Descent.gateState). This is the only
@@ -1835,6 +1852,11 @@ function game:openEncounter(cell, opts)
             Mule.noteFight(game.descent)
             if spoils then
                 if (spoils.gold or 0) > 0 then Player.addGold(game.player, spoils.gold) end
+                -- THE RUN'S OWN COIN (models/scrip.lua). What a rolled fight pays, weightless, spendable
+                -- at the Merchant and the Crossroads and by the money kit, and gone the moment the
+                -- company reaches the surface. It does not ride the mule and cannot: there is nothing
+                -- to carry.
+                if (spoils.scrip or 0) > 0 then Scrip.add(game.player, spoils.scrip) end
                 -- WHAT FITS ON THE MULE, and the rest is left where it fell (models/mule.lua).
                 --
                 -- SPLIT RATHER THAN REFUSED, which is the opposite call to the treasure chest above and
@@ -1843,11 +1865,24 @@ function game:openEncounter(cell, opts)
                 -- one slot short walked away from a won fight with nothing, which reads as the game
                 -- eating a reward rather than as a bag being full.
                 --
-                -- Gold and the salvage below are untouched: neither rides the mule (see Mule's header),
-                -- so a full bag never costs the player coin or forging stock.
+                -- Scrip and the salvage below are untouched: neither rides the mule (see Mule's header),
+                -- so a full bag never costs the player run coin or forging stock.
                 local left = 0
                 for _, id in ipairs(spoils.loot or {}) do
                     if Mule.canTake(game.player, 1) then Player.grantItem(game.player, id)
+                    else left = left + 1 end
+                end
+                -- THE VALUABLES AN END LEFT, which DO ride the mule and are the reason it has a cap
+                -- worth caring about (models/valuable.lua). Weighed by bulk rather than counted: an idol
+                -- is three slots, so a mule with two free refuses it and says so, and the choice of
+                -- whether to go home and come back for it is the whole object.
+                --
+                -- Taken in the order rolled, and a piece that does not fit does not stop the ones behind
+                -- it -- a two-slot lamp still goes on after a three-slot idol was refused. Greedy is the
+                -- right rule here because the alternative is a packing solver deciding for the player
+                -- what their eight slots are worth, which is the decision.
+                for _, id in ipairs(spoils.valuables or {}) do
+                    if Mule.canTakeItem(game.player, id) then Player.grantItem(game.player, id)
                     else left = left + 1 end
                 end
                 -- ...and the unread find, on the rare stop that paid one (models/identify.lua). Granted
@@ -2268,6 +2303,33 @@ function game:openEncounter(cell, opts)
                     if game.player and spoils and (spoils.gold or 0) > 0 then
                         Player.addGold(game.player, spoils.gold)
                     end
+                    -- The skim and the bounty an objective fight earned, which are scrip like every
+                    -- other coin taken off a body mid-fight (models/encounter_battle.lua). Paid here
+                    -- rather than through Quest.complete for the reason the salvage is not: they belong
+                    -- to the FIGHT, not to the piece of work, and a run that ends on this stair is about
+                    -- to burn them anyway (Scrip.clear) -- which is the honest outcome for coin earned
+                    -- on the last swing of an expedition and never spent.
+                    if game.player and spoils and (spoils.scrip or 0) > 0 then
+                        Scrip.add(game.player, spoils.scrip)
+                    end
+                    -- ...AND WHAT THE GENERAL WAS STANDING ON. The valuables an end leaves are the
+                    -- campaign's actual income (models/valuable.lua), so the richest stop in a run pays
+                    -- into the purse that matters -- and it pays in objects, which means the mule has to
+                    -- have room for them. A company that walks into the last fight with a full bag is
+                    -- making that choice with the same information as everywhere else.
+                    if game.player and spoils then
+                        local dropped = 0
+                        for _, id in ipairs(spoils.valuables or {}) do
+                            if Mule.canTakeItem(game.player, id) then
+                                Player.grantItem(game.player, id)
+                            else dropped = dropped + 1 end
+                        end
+                        if dropped > 0 then
+                            game:pushToast(dropped ..
+                                (dropped == 1 and " valuable left behind" or " valuables left behind") ..
+                                "  --  the mule cannot carry it")
+                        end
+                    end
                     -- The objective fight's OWN salvage (models/spoils.lua) is paid through the quest
                     -- rather than granted here, so it inherits Quest.complete's double-payout guard and
                     -- is named in the reward table with the rest of the materials instead of arriving
@@ -2635,6 +2697,11 @@ function game:openEncounter(cell, opts)
                     -- ground they had already cleared.
                     Descent.strandPacks(game.player, game.descent)
                     game.player.descentRun = nil
+                    -- AND THE PURSE BURNS, exactly as it does on the stair up (models/scrip.lua). Not a
+                    -- second punishment on top of the dropped pack and the lost ore: scrip goes because
+                    -- the EXPEDITION ended, and there is no exit that keeps it. A wipe that let a
+                    -- company hold its scrip would be the one way to carry run coin between runs.
+                    Scrip.clear(game.player)
 
                     -- The fight is over -- lost, but over. Every other way out of a battle says this
                     -- (there are six) and this one did not, which put a wiped company back into the
@@ -3190,9 +3257,15 @@ function game:openEncounter(cell, opts)
         game.activePanel = Merchant.new({
             title = enc.name or "Merchant",
             stock = stock,
-            gold = function() return (game.player and game.player.gold) or 0 end,
+            -- PAID IN SCRIP (models/scrip.lua). The prices did not move: what used to be this shelf's
+            -- gold price is its scrip price at the same number, and the fights that fund it were
+            -- renamed on the same day at the same numbers -- so floor three is exactly as affordable as
+            -- it was. What changed is that a relic bought here no longer costs a forge rung.
+            gold = function() return Scrip.get(game.player) end,
+            unit = Scrip.UNIT,
+            suffix = Scrip.SUFFIX,
             onBuy = function(entry)
-                if not (game.player and Player.spendGold(game.player, entry.price)) then return false end
+                if not (game.player and Scrip.spend(game.player, entry.price)) then return false end
                 if entry.relic then
                     -- Straight onto the run, not into the stash: a relic is carried for this descent and
                     -- is not a thing the hub ever holds.
@@ -3222,8 +3295,22 @@ function game:openEncounter(cell, opts)
         local ctx = {
             rnd = rnd,
             notify = function(m) game:pushToast(m) end,
-            gold = function() return (game.player and game.player.gold) or 0 end,
-            addGold = function(n) if game.player then Player.addGold(game.player, n) end end,
+            -- THE WAGERS ARE IN SCRIP, and the two helpers keep their names. A dilemma is authored
+            -- against "the purse" -- `ctx.gold()` and `ctx.addGold(30)` -- and which purse that is has
+            -- never been the data's business (see models/crossroads.lua's header: it never reaches a
+            -- model directly). Renaming them would have edited fourteen authored dilemmas to record a
+            -- fact not one of them acts on. A crossroads is a stop on a floor, so it plays for the coin
+            -- a floor pays (models/scrip.lua).
+            --
+            -- addGold is handed NEGATIVE amounts by the dilemmas that charge a toll, which Scrip.add
+            -- refuses outright -- so the sign is settled here, at the seam that knows both shapes,
+            -- rather than by loosening the model's contract for one caller.
+            gold = function() return Scrip.get(game.player) end,
+            addGold = function(n)
+                if not game.player then return end
+                n = math.floor(tonumber(n) or 0)
+                if n >= 0 then Scrip.add(game.player, n) else Scrip.take(game.player, -n) end
+            end,
             reveal = function() game:restStudy() end,
             drainParty = function(n)
                 for _, c in ipairs((game.player and game.player.roster) or {}) do
@@ -3486,6 +3573,12 @@ function game:openEncounter(cell, opts)
                 -- un-teach the readout the player has already been shown.
                 Descent.markClimbedOut(game.player)
                 Descent.climbOut(game.player)
+                -- THE SURFACE BURNS THE SCRIP (models/scrip.lua), and this is the line that makes the
+                -- two-currency economy mean anything. Unspent run coin is a LOSS, which is what turns
+                -- the Merchant from a stop priced against a forge rung into a stop you had better use.
+                -- Forecast on the prompt below, BEFORE the choice is made, rather than reported as a
+                -- toast after it: a cost said afterwards is news, and this one is a decision.
+                Scrip.clear(game.player)
                 -- BANKING IS RE-BASELINING, not dropping the run. Everything found has been live
                 -- on the company since it was picked up; what made it provisional is the entry
                 -- snapshot a wipe rolls back to (wipeRun). Re-taking that snapshot here is the
@@ -3551,6 +3644,18 @@ function game:openEncounter(cell, opts)
                 and ("The company is on floor " .. depth .. " carrying " .. carried ..
                      ". Climb out and all of it comes with them.")
                 or ("The company is on floor " .. depth .. " and has found nothing yet.")) ..
+                -- ...AND WHAT DOES NOT COME UP WITH THEM (models/scrip.lua). Said here, at the decision,
+                -- because an unspent purse is the one cost of leaving that the player can still do
+                -- something about -- there is a Merchant back there. A number that only appears after
+                -- the choice is made would be a receipt for a decision they were never offered.
+                --
+                -- Silent at zero, which is not the same rule as the count's silence below: an empty
+                -- purse has nothing to warn about, and printing "0 scrip will not come up" on every
+                -- exit would teach the player to stop reading the line that matters.
+                ((Scrip.get(game.player) > 0)
+                    and ("\n" .. Scrip.get(game.player) .. " " .. Scrip.UNIT ..
+                         " will not come up with them.")
+                    or "") ..
                 (Descent.everClimbedOut(game.player)
                     and ("\nThe count goes " .. Descent.count(game.player) .. " \226\134\146 " ..
                          math.min(Descent.COUNT_MAX, Descent.count(game.player) + 1) ..
@@ -4235,10 +4340,37 @@ function game.drawHud()
             if game.haul.items > 0 then
                 parts[#parts + 1] = game.haul.items .. (game.haul.items == 1 and " item" or " items")
             end
-            if game.haul.gold > 0 then parts[#parts + 1] = game.haul.gold .. "g" end
+            -- WHAT THE VALUABLES IN THAT COUNT ARE WORTH, folded in with the coin rather than given a
+            -- figure of its own: to the player they are the same number -- gold that reaches the city --
+            -- and splitting "12g earned" from "900g carried" into two rows would be reporting the
+            -- plumbing. Summed, because the decision it feeds is one decision.
+            local coin = (game.haul.gold or 0) + (game.haul.worth or 0)
+            if coin > 0 then parts[#parts + 1] = coin .. "g" end
             if game.haul.materials > 0 then parts[#parts + 1] = game.haul.materials .. " stock" end
             love.graphics.setColor(Theme.accentAmber)
             love.graphics.printf(table.concat(parts, "   "), x - 240, y + 18, 240, "right")
+            love.graphics.setColor(1, 1, 1)
+            y = y + 44
+        end
+
+        -- THE RUN'S PURSE (models/scrip.lua), between the haul and the mule -- which is where it belongs
+        -- in the reading as well as on the screen: the haul is what goes home, the mule is what will
+        -- carry it, and this is the one number that does neither.
+        --
+        -- IT DRAWS ON AN EMPTY PURSE, on the mule's rule rather than the haul's. Scrip is a spending
+        -- limit, and a limit is most worth stating at the moment it is binding -- a player standing in
+        -- front of a Merchant with nothing needs to be told that before they open it, not after.
+        --
+        -- A BANKED RESOURCE SHOWS ITS COUNT: this is the only place the purse is legible outside the two
+        -- panels that spend it, and a currency the player cannot see between stops is a currency they
+        -- cannot plan around.
+        if game.descent then
+            love.graphics.setColor(Theme.muted)
+            love.graphics.printf("Scrip", x - 240, y, 240, "right")
+            -- Amber when there is something to spend, muted at nothing -- a purse at zero is not a
+            -- warning (the mule's full IS one), it is simply the state the run opens in.
+            love.graphics.setColor(Scrip.get(game.player) > 0 and Theme.accentAmber or Theme.muted)
+            love.graphics.printf(Scrip.get(game.player) .. "", x - 240, y + 18, 240, "right")
             love.graphics.setColor(1, 1, 1)
             y = y + 44
         end

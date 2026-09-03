@@ -4870,13 +4870,26 @@ function battle.enter(self, opts)
         battle.combat.purse = opts.purse
     elseif not opts.draft and not battle.session and Player.active then
         local player = Player.active
+        local Scrip = require("models.scrip")
+        -- THE MONEY KIT SPENDS SCRIP, NOT THE CAMPAIGN'S GOLD (models/scrip.lua), and this is the seam
+        -- where that is decided -- combat.lua never learns which purse it was handed.
+        --
+        -- It is the change that made the kit worth having. A money ability used to bill a forge rung to
+        -- size a blow, which is a cost paid three menus and one expedition away from the swing that
+        -- incurred it -- so the honest play was never to cast it. It now bills the Merchant two rooms
+        -- down. Local, legible, and settled inside the run that spent it.
+        --
+        -- `spend` takes what is on hand rather than refusing, because Combat.spendPurse is specified to
+        -- clamp: a broke party spends its last coppers and the blow lands soft. That is Scrip.take,
+        -- deliberately, and not Scrip.spend -- which is all-or-nothing and belongs to counters.
         battle.combat.purse = {
-            get = function() return player.gold or 0 end,
-            spend = function(n) Player.spendGold(player, n) end,
-            -- Credit the campaign bank. Only the debug "Add gold" tool reaches this (a fight never gives
-            -- the party gold mid-battle); it lets that tool fund a party caster's real pot rather than a
+            get = function() return Scrip.get(player) end,
+            spend = function(n) Scrip.take(player, n) end,
+            -- Credit the run's pot. Only the debug "Add gold" tool reaches this (a fight never gives the
+            -- party coin mid-battle); it lets that tool fund a party caster's real pot rather than a
             -- coffer the party never reads. See ui/panels/debug_menu.lua goldPage.
-            add = function(n) Player.addGold(player, n) end,
+            add = function(n) Scrip.add(player, n) end,
+            unit = Scrip.SUFFIX,
         }
     else
         local bank = opts.startingGold or 0

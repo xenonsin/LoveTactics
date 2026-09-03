@@ -8,7 +8,10 @@
 -- ctx = {
 --   grantRelic(tier?) -> names the relic granted (or nil if the shelf was bare),
 --   grantSealed()     -> true if an unread piece was handed up (models/identify.lua),
---   addGold(n), gold() -> the purse, drainParty(n) (blood, floored so it never fells),
+--   addGold(n), gold() -> the purse -- which is the RUN's purse, scrip, since the economy split
+--     (models/scrip.lua). The two helpers keep their old names because a dilemma has never known or
+--     needed to know which coin it was playing for; states/game.lua decides that at the seam.
+--   drainParty(n) (blood, floored so it never fells),
 --   mendWound(n) -> how many bodies it set a bone on (models/wound.lua; 0 for a whole company),
 --   reveal() (study the ground), rnd() -> [0,1), notify(msg),
 --

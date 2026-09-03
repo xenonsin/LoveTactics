@@ -57,6 +57,12 @@ local TYPE_COLOR = {
     consumable = { 0.361, 0.671, 0.480 },
     ability = { 0.568, 0.414, 0.786 },
     utility = { 0.865, 0.707, 0.341 },
+    -- LOOT WITH NO USE BUT TO BE SOLD (models/valuable.lua), and it earns a colour rather than falling
+    -- through to the default for one reason: the decision it exists to create is taken by SCANNING a
+    -- full stash for what to jettison, and a kind that reads as "unrecognised" is a kind the player has
+    -- to open every tile to find. Pale gold -- brighter and whiter than the utility amber above it, so
+    -- the two are told apart at tile size rather than only side by side.
+    valuable = { 0.925, 0.851, 0.573 },
 }
 local DEFAULT_COLOR = { 0.80, 0.80, 0.86 }
 

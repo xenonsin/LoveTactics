@@ -1355,10 +1355,15 @@ end
 -- what persists here is one unfinished run and never a trace of a finished one.
 Descent.FILE = "descent_run.lua"
 
--- The gold a company walks in with. Small on purpose: the descent's economy is what its floors pay out
+-- The coin a company walks in with. Small on purpose: the descent's economy is what its floors pay out
 -- -- spoils, caches and the overworld's own merchant stops -- and an opening purse that could buy its
 -- way past floor one would settle the run before a tile of it was walked.
-Descent.OPENING_GOLD = 50
+--
+-- IT IS SCRIP NOW, and this constant is an alias rather than a second number. The economy split
+-- (models/scrip.lua): a run spends its own weightless coin, so what a company "walks in with" is the
+-- thing Scrip.OPENING names. Kept under its old name because the argument above is the argument that
+-- chose the number and belongs beside it, and because a spec pins it.
+Descent.OPENING_GOLD = require("models.scrip").OPENING
 
 -- WHO WALKS IN. Four of the roster, chosen at the Gate before the stair (Descent.party).
 --
@@ -1949,7 +1954,11 @@ function Descent.newProfile(chars)
     profile.materials = {}
     profile.recipes = {}
     profile.newItems = {}
-    profile.gold = Descent.OPENING_GOLD
+    -- NO CAMPAIGN GOLD AND AN OPENING SCRIP PURSE (models/scrip.lua). A run's company has earned the
+    -- campaign nothing yet -- gold only exists here as valuables in the pack, and the pack is empty --
+    -- and what it walks in with is the coin the floors themselves deal in.
+    profile.gold = 0
+    require("models.scrip").open(profile)
 
     -- The campaign's meters, left at their zero. Nothing in a descent moves them any more -- levels come
     -- from what each body does in the fighting now (models/experience.lua) rather than from prestige --

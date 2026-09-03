@@ -1,11 +1,17 @@
--- Battle spoils: the gold, loot and salvage a won fight hands over. Gold is still COMPUTED from
+-- Battle spoils: the coin, loot and salvage a won fight hands over. The payout is still COMPUTED from
 -- the size of the roster that was beaten and the company's prestige -- richer fights the deeper the
 -- run. An encounter may override either half (rewardGold / loot on its blueprint), mirroring how a
 -- treasure cache authors its own `loot` list (data/encounters/encounter_treasure.lua).
 --
 --   local s = Spoils.roll({ enemyUnits = battle.enemyUnits, prestige = 3, kind = "combat" })
---   -- s = { gold = 71, loot = { "consumable_healing_potion" },
---   --       materials = { material_iron_scrap = 1 } }
+--   -- s = { scrip = 71, gold = 0, loot = { "consumable_healing_potion" },
+--   --       valuables = {}, materials = { material_iron_scrap = 1 } }
+--
+-- TWO PURSES AND A PILE, since the economy split (models/scrip.lua). `scrip` is what a rolled fight
+-- pays -- the run's own weightless coin, which dies at the surface; `gold` is the campaign's and only an
+-- AUTHORED payout leaves any; `valuables` is the campaign's real income, objects with weight that only
+-- an end drops and that have to be carried out and sold (models/valuable.lua). See Spoils.roll, where
+-- the branch and its reasoning live.
 --
 -- The third field is the FLOOR, and unlike the other two it is not a roll -- see "Salvage" below.
 --
@@ -38,6 +44,7 @@
 local Item = require("models.item")
 local Character = require("models.character")
 local Material = require("models.material")
+local Valuable = require("models.valuable") -- the campaign's coin, which arrives as objects with weight
 
 local Spoils = {}
 
@@ -144,6 +151,12 @@ local function lootCandidates(maxPrice, tier)
     tier = tier or 0
     for id, def in pairs(Item.defs) do
         if def.bound then -- nailed to one grid; never earned, bought, stolen or found
+        elseif def.valuable then
+            -- A VALUABLE IS PRICED AND IS NOT STOCK. It carries a `price` because that is its worth at a
+            -- city counter (models/valuable.lua), and this pool reads `price` as the "shoppable" marker
+            -- -- so without this line every idol in the data would turn up as ordinary loot AND on the
+            -- road Merchant's shelf, which would be the road selling you the thing you are down here to
+            -- carry back. Valuables reach a player one way, off an end (Valuable.roll).
         elseif def.price and def.price > 0 and def.price <= maxPrice then
             local weight = 1 + math.max(0, maxPrice - def.price) / maxPrice -- ~1 (dear) .. ~2 (cheap)
             if def.type == "consumable" then weight = weight * 2 end
@@ -500,9 +513,33 @@ function Spoils.roll(opts)
     local mult = opts.floorLevel
         and (1 + GOLD_DEPTH_SLOPE * (math.max(1, opts.floorLevel) - 1))
         or math.max(1, day)
+    -- WHICH PURSE THIS FIGHT PAYS INTO, and it is the split the two-currency economy rests on
+    -- (models/scrip.lua). A ROLLED payout is ambient income -- what standing on a stop and winning is
+    -- worth -- and ambient income is scrip: weightless, spendable below, gone at the surface. An
+    -- AUTHORED one (`rewardGold`) is an end somebody wrote down, and an end pays the campaign's coin.
+    --
+    -- The arithmetic did not move. What used to be this fight's gold is this fight's scrip, at the same
+    -- number, so every measurement taken against the old payout still reads -- the merchant's shelf is
+    -- as affordable on floor three as it was, because both sides of that comparison were renamed
+    -- together. What changed is that it can no longer be carried home and spent on a forge rung.
+    --
+    -- ...AND ONLY UNDERGROUND. A fight pays the purse of the PLACE it was fought in, and `floorLevel` is
+    -- already the tell for that -- its presence is what marks a roll as a descent's (see the branch
+    -- above). Above ground there is no Merchant, no Crossroads and no exit to burn a purse at, so scrip
+    -- there would be a payout the player can neither spend nor keep: the prologue's three fights would
+    -- hand over a number that quietly vanishes at the first Gate (Scrip.open re-opens the purse at its
+    -- constant). The campaign road pays gold exactly as it always did.
+    local authored = opts.rewardGold and math.max(0, math.floor(opts.rewardGold)) or nil
+    local rolled = authored and 0 or rollGold(count, mult, kind, nil, scale)
+    local underground = opts.floorLevel ~= nil
     return {
-        gold = rollGold(count, mult, kind, opts.rewardGold, scale),
+        gold = authored or (underground and 0 or rolled),
+        scrip = underground and rolled or 0,
         loot = rollLoot(day, kind, opts.loot, opts.enemyUnits, scale, opts.floorLevel),
+        -- WHAT THE CAMPAIGN ACTUALLY EARNS, and only an end leaves any (models/valuable.lua). An
+        -- ordinary fight rolls an empty list, which is the point rather than an omission: the grind pays
+        -- scrip and the work you chose to walk to pays gold.
+        valuables = Valuable.roll({ kind = kind, depth = opts.floorLevel or day }),
         -- The unread piece, on the rare stop that pays one. A SEPARATE field from `loot` rather than an
         -- entry in it, because the two are granted differently and by different code: loot is a list of
         -- ids that Player.grantItem instantiates in the clear, and this is a list of finds that

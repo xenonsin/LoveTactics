@@ -44,6 +44,12 @@ local function carriedIds(units)
 end
 
 return {
+    -- EVERY CASE IN THIS BLOCK IS A CAMPAIGN ROLL -- no `floorLevel` -- so it still pays gold, and the
+    -- economy split left it untouched (models/scrip.lua). That is deliberate rather than incidental:
+    -- these guard the CURVE (a bigger fight pays more, an elite pays richer, a tier pays materially
+    -- more), the curve is one function serving both purses, and pinning it on the simpler side keeps
+    -- these cases about the arithmetic. WHICH purse a fight pays into is a separate claim and lives in
+    -- tests/economy_spec.lua.
     {
         name = "a won combat fight pays out gold",
         fn = function()
@@ -108,15 +114,28 @@ return {
             seed(42)
             local b = Spoils.roll({ count = 3, day = 3, kind = "combat", loot = {},
                 rewardScale = 1 }).gold
+            -- Guarded against passing on two zeroes, which is what this case would do if the campaign
+            -- branch ever stopped paying gold (models/scrip.lua) -- a comparison whose inputs left the
+            -- reachable domain never goes red on its own.
+            assert(a > 0, "the fixture rolled nothing, so this compares two zeroes")
             assert(a == b, "rewardScale=1 must equal the absent case, got " .. a .. " vs " .. b)
         end,
     },
     {
-        name = "rewardGold overrides the computation exactly",
+        -- ...AND IT PAYS THE CAMPAIGN'S PURSE, which is the other half of the claim now. An authored
+        -- payout is an end somebody wrote down, and an end pays gold (models/scrip.lua) -- so the
+        -- override does not merely replace the number, it replaces which purse the fight pays into.
+        name = "rewardGold overrides the computation exactly, and pays gold rather than scrip",
         fn = function()
             local s = Spoils.roll({ enemyUnits = roster(4), day = 4, kind = "elite",
                 rewardGold = 77, loot = {} })
             assert(s.gold == 77, "an explicit rewardGold should be used verbatim")
+            assert((s.scrip or 0) == 0, "an authored payout also rolled scrip -- it pays one purse")
+            -- ...including underground, where a rolled fight would have paid scrip.
+            local deep = Spoils.roll({ enemyUnits = roster(4), day = 4, kind = "elite",
+                floorLevel = 7, rewardGold = 77, loot = {} })
+            assert(deep.gold == 77 and (deep.scrip or 0) == 0,
+                "an authored purse on a descent floor must still pay gold -- it is an end, not a body")
         end,
     },
     {

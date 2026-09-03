@@ -198,17 +198,26 @@ return {
         assert(entry, "the entry snapshot restores")
         local taken = Player.loseHaul(player, entry)
 
-        -- THREE QUARTERS OF THE GAIN, and the quarter that survives is the point: a wipe deep in a good
+        -- THREE QUARTERS OF THE ORE, and the quarter that survives is the point: a wipe deep in a good
         -- run is a bad day rather than a wasted one.
-        assert(taken.gold == 187, "expected 187 of the 250 found, got " .. taken.gold)
-        assert((player.gold or 0) == goldBefore + 63, "and the rest comes home")
         assert(Player.materialCount(player, "material_iron_scrap") == stockBefore + 1,
             "one of the four scrap survives the rout")
 
-        -- THE ITEMS STAY. A sword out of a chest is carried by a body, and the bodies came home. It is
-        -- also what keeps a wipe from undoing the one reward a player can see and name.
+        -- GOLD IS NOT TOUCHED, and this assertion is the reversal rather than a relaxation of the old
+        -- one. It used to take 187 of the 250. The economy split (models/scrip.lua): a run's coin is
+        -- scrip and burns at every exit, and the campaign's coin is no longer a number a run can gain --
+        -- it arrives as valuables in the pack, and the pack hits the floor where the company fell
+        -- (Descent.dropPack). The cut is levied by the pile now, which is recoverable where a percentage
+        -- never was. Billing both would charge one loss twice.
+        assert(taken.gold == 0, "loseHaul reported taking gold, which the pack takes now")
+        assert((player.gold or 0) == goldBefore + 250,
+            "a wipe took gold -- the pile is the penalty (models/player.lua's loseHaul)")
+
+        -- THE ITEMS STAY, HERE. A sword out of a chest is carried by a body, and the bodies came home;
+        -- what puts the run's finds on the floor is Descent.dropPack, which is a different seam with a
+        -- spec of its own. This one is only about what the CUT takes.
         assert(stashCount(player, id) == before + 2,
-            "a wipe drops coin and ore, never the gear")
+            "a wipe's cut drops ore, never the gear")
     end },
 
     { name = "a run that spent more than it found is not billed the difference", fn = function()
@@ -304,9 +313,11 @@ return {
         Wound.inflict(player, { { id = "character_rowan" } })
         local entry = reserialize(Save.snapshot(player))
 
-        -- ...and the run went badly: coin found, and two more bodies down.
-        local goldBefore = player.gold or 0
-        Player.addGold(player, 200)
+        -- ...and the run went badly: ore found, and two more bodies down. Ore rather than coin, because
+        -- ore is what the cut still takes (models/scrip.lua) -- pinning the wounds against a resource
+        -- loseHaul no longer touches would be pinning them against nothing.
+        local stockBefore = Player.materialCount(player, "material_iron_scrap")
+        Player.addMaterial(player, "material_iron_scrap", 4)
         Wound.inflict(player, { { id = "character_rowan" }, { id = "character_knight" } })
         assert(Wound.count(player, "character_rowan") == 2, "two bad fights, two wounds")
 
@@ -315,7 +326,8 @@ return {
         assert(Wound.count(player, "character_rowan") == 2,
             "a wipe must not un-wound the company -- an injury outliving its run is the whole mechanic")
         assert(Wound.count(player, "character_knight") == 1, "including one taken for the first time")
-        assert((player.gold or 0) == goldBefore + 50, "while most of the coin it found is gone")
+        assert(Player.materialCount(player, "material_iron_scrap") == stockBefore + 1,
+            "while most of the ore it found is gone")
     end },
 
     { name = "a wound caps the hub's free heal, and mending gives it back", fn = function()

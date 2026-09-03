@@ -208,13 +208,21 @@ return {
         end,
     },
     {
+        -- A CUT OF THE FIGHT'S OWN COIN, which is scrip since the economy split (models/scrip.lua).
+        -- Taking a quarter of a fight's scrip and handing back campaign gold would make this the one
+        -- seam in the game that converts one purse into the other, which is the thing the split exists
+        -- to prevent -- so the assertion is on the purse as much as on the arithmetic.
         name = "Clem's Jubilee takes a cut of the winnings on top of the spoils",
         fn = function()
+            local Scrip = require("models.scrip")
             local clem = char("character_clem", "jubilee", { 54, 54 })
-            local ctx = ctxFor({ clem }, { cell = combatCell(), spoils = { gold = 40 } })
-            local before = ctx.player.gold
+            local ctx = ctxFor({ clem }, { cell = combatCell(), spoils = { scrip = 40 } })
+            local before, goldBefore = Scrip.get(ctx.player), ctx.player.gold
             OverworldAbility.dispatch("encounterCleared", ctx)
-            assert(ctx.player.gold == before + 10, "Clem should add 25% of the 40g spoils (10)")
+            assert(Scrip.get(ctx.player) == before + 10,
+                "Clem should add 25% of the 40 scrip the fight paid (10)")
+            assert(ctx.player.gold == goldBefore,
+                "Clem's cut reached the campaign purse -- it is a share of the run's coin, not a mint")
         end,
     },
 }

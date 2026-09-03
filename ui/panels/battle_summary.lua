@@ -164,6 +164,12 @@ function BattleSummary.new(opts)
     -- previewObjectiveReward for why this arrives beside the spoils instead of inside them.
     local awarded = spoils.awarded or {}
     self.gold = math.max(0, (spoils.gold or 0) + (awarded.gold or 0))
+    -- ...AND THE RUN'S OWN COIN, on a line of its own rather than added into that total (models/scrip.lua).
+    -- The note above is right that an errand's fee is not a different KIND of coin from a road stop's --
+    -- and scrip is exactly that, a different kind. One goes home and buys forge rungs; the other is
+    -- spent before the company reaches the stair or it is burned. Summing them would report a number
+    -- the player cannot spend anywhere.
+    self.scrip = math.max(0, spoils.scrip or 0)
     -- One line under the encounter's name saying what this win was paid FOR, when the payout was not
     -- simply the rate for clearing the board -- "1 of 2 survivors walked out"
     -- (models/encounter_battle.lua's rescue pay). It is the reason the gold below it is the number it
@@ -219,6 +225,23 @@ function BattleSummary.new(opts)
         self.cards[#self.cards + 1] = {
             name = "Crossing Token", count = awarded.vouchers,
             sprite = Sprite.load("assets/ui/crossing_token.png"),
+        }
+    end
+
+    -- THE VALUABLES, ABOVE THE LOOT (models/valuable.lua). Ranked by the same rule that puts the
+    -- objective's payout at the top of this list -- worth -- and by a second one that only applies here:
+    -- these ARE the campaign's income. A run of cards that opened with the potion and buried the idol
+    -- would bury the only thing on the panel that pays for a forge rung.
+    --
+    -- Collapsed by id like the loot below, because two censers really are two of one thing.
+    local vOrder, vTally = {}, {}
+    for _, id in ipairs(spoils.valuables or {}) do
+        if vTally[id] then vTally[id] = vTally[id] + 1 else vTally[id] = 1; vOrder[#vOrder + 1] = id end
+    end
+    for _, id in ipairs(vOrder) do
+        local item = Item.instantiate(id, vTally[id])
+        self.cards[#self.cards + 1] = {
+            name = item.name, sprite = item.sprite, count = vTally[id], item = item,
         }
     end
 
@@ -386,6 +409,10 @@ function BattleSummary.new(opts)
     -- line does, on a panel that has no gold line to collide with).
     if self.note then self.noteRelY = y - 6; y = y + 20 end
     if hasGold then self.goldRelY = y; y = y + 46 end
+    -- The scrip line sits under the coin and is shorter, because it is a smaller claim: this is what the
+    -- run may spend before it leaves, not what the company earned. It reserves its own space rather than
+    -- sharing the gold line's, so a fight that pays both (an objective that also skimmed) says both.
+    if self.scrip > 0 then self.scripRelY = y - (hasGold and 8 or 0); y = y + (hasGold and 20 or 34) end
     -- Between the takings and the loot: what the fight was worth, then what it built, then what it
     -- dropped. Reads top-down as the three different things a won fight hands over.
     if techH > 0 then
@@ -727,6 +754,18 @@ function BattleSummary:draw()
         love.graphics.ellipse("line", startX + coinR, gy + self.goldFont:getHeight() / 2, coinR, coinR)
         love.graphics.setColor(0.97, 0.90, 0.62)
         love.graphics.print(label, startX + coinR * 2 + 10, gy)
+    end
+
+    -- The run's coin, under the campaign's. No coin glyph: the mark belongs to gold, and giving scrip a
+    -- second disc would say the two are the same thing in different denominations, which is the one
+    -- reading this economy cannot afford (models/scrip.lua). It counts up on the same clock as the gold
+    -- above so the two land together rather than as two separate beats.
+    if self.scrip > 0 and self.scripRelY then
+        local t = clamp01((self.elapsed - GOLD_START) / GOLD_COUNT)
+        local shown = math.floor(self.scrip * easeOut(t) + 0.5)
+        love.graphics.setFont(self.subFont)
+        love.graphics.setColor(0.72, 0.68, 0.52)
+        love.graphics.printf("+" .. shown .. " scrip", bx, by + self.scripRelY, self.boxW, "center")
     end
 
     -- Class technique, a block per body: the fighter's name centred, then their "Ninja  +14" rows

@@ -69,6 +69,7 @@ local TYPE_COLOR = {
     consumable = { 0.361, 0.671, 0.480 },
     ability = { 0.568, 0.414, 0.786 },
     utility = { 0.865, 0.707, 0.341 },
+    valuable = { 0.925, 0.851, 0.573 }, -- pale gold; matches the stash tile (ui/pool_grid.lua)
 }
 local DEFAULT_COLOR = Theme.ink
 

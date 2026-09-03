@@ -151,8 +151,18 @@ function gate.enter(self, opts)
     -- separate game mode that banked nothing. It is the game now: the prologue's avatar and the Rowan
     -- sworn beside her walk into this city and down this stair, so there is ONE company, ONE save, and
     -- the floor stack rides on the player like everything else it owns.
+    local fresh = not (opts.run or gate.player.descentRun)
     gate.run = opts.run or gate.player.descentRun or Descent.new(gate.player)
     gate.player.descentRun = gate.run
+    -- A FRESH EXPEDITION OPENS A FRESH PURSE (models/scrip.lua). Scrip is the run's own coin: it is
+    -- handed out by the floors, spent at their stops, and burned at whatever exit the company takes, so
+    -- the number a run starts on is a constant rather than something carried in from town.
+    --
+    -- ON THE FRESH BRANCH ONLY. A company standing at this screen mid-expedition -- resumed from a save,
+    -- or woken here after a wipe with the run intact -- keeps what it has not spent; topping them back
+    -- up to the opening would pay a company for having been beaten, and would make the Gate a place to
+    -- refill by climbing the stair and turning round.
+    if fresh then require("models.scrip").open(gate.player) end
     gate.panel = nil
     gate.wiped = opts.wiped
     gate.notice = opts.wiped

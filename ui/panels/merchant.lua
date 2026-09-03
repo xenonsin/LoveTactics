@@ -1,11 +1,18 @@
 -- The Merchant: a wandering market on the trail (states/game.lua's openEncounter routes a `merchant`
 -- cell here). It offers a small, fixed shelf of ordinary GOODS -- the priced gear and supplies the road
--- deals in (models/spoils.lua's Spoils.shelf) -- for gold, so the coin a run forages or skims finally
--- has somewhere to go ON the map instead of three menus later at the hub. Buy what you can afford;
--- leave the rest. Modeled on ui/panels/rest_choice.lua: a state owns it as game.activePanel and
--- forwards input; three-input + mouse-only.
+-- deals in (models/spoils.lua's Spoils.shelf) -- for SCRIP, the run's own coin, so what a company
+-- forages or skims finally has somewhere to go ON the map instead of three menus later at the hub. Buy
+-- what you can afford; leave the rest. Modeled on ui/panels/rest_choice.lua: a state owns it as
+-- game.activePanel and forwards input; three-input + mouse-only.
 --
---   Merchant.new({ title=, stock={ {id, price}, ... }, gold=fn, onBuy=fn(entry)->bool, onClose= })
+--   Merchant.new({ title=, stock={ {id, price}, ... }, gold=fn, unit=, suffix=,
+--                  onBuy=fn(entry)->bool, onClose= })
+--
+-- IT TOOK GOLD UNTIL THE ECONOMY SPLIT, and that is why the purse accessor is still called `gold`: the
+-- panel does not know or care which purse is behind the function, and renaming the field would have
+-- been a change to four call sites to record a fact none of them act on. What it does know is what to
+-- CALL the coin, which is `unit` and `suffix` -- because the player has two of them now and a counter
+-- that does not say which one it takes is a counter that will be paid in the wrong one.
 --
 -- The caller passes ids and prices; the panel instantiates a DISPLAY copy of each (Item.instantiate)
 -- for its icon, its type line and its tooltip, exactly as ui/panels/loot_reveal.lua does. It never
@@ -72,6 +79,12 @@ function Merchant.new(opts)
     self.title = opts.title or "Merchant"
     self.stock = opts.stock or {}
     self.gold = opts.gold or function() return 0 end
+    -- WHICH COIN THIS COUNTER TAKES, as a word and as the mark a price wears. The road's Merchant is
+    -- paid in scrip now (models/scrip.lua) and the panel is not -- it is a shelf with a purse behind it,
+    -- and which purse is the caller's business. Defaults to gold so any other counter built on this
+    -- widget keeps the wording it had.
+    self.unit = opts.unit or "gold"
+    self.suffix = opts.suffix or "g"
     self.onBuy = opts.onBuy
     self.onClose = opts.onClose
     self.finished = false
@@ -160,7 +173,8 @@ function Merchant:draw()
 
     love.graphics.setFont(self.goldFont)
     love.graphics.setColor(GOLD[1], GOLD[2], GOLD[3], 1)
-    love.graphics.printf("Your gold: " .. self.gold(), bx, by + 54, self.boxW - PAD, "right")
+    love.graphics.printf("Your " .. self.unit .. ": " .. self.gold(),
+        bx, by + 54, self.boxW - PAD, "right")
 
     local myGold = self.gold()
     for i, entry in ipairs(self.stock) do
@@ -212,8 +226,8 @@ function Merchant:draw()
         love.graphics.setFont(self.priceFont)
         local label, col
         if entry.bought then label, col = "Bought", { 0.55, 0.58, 0.62 }
-        elseif not afford then label, col = (entry.price or 0) .. "g", { 0.7, 0.45, 0.42 }
-        else label, col = (entry.price or 0) .. "g", GOLD end
+        elseif not afford then label, col = (entry.price or 0) .. self.suffix, { 0.7, 0.45, 0.42 }
+        else label, col = (entry.price or 0) .. self.suffix, GOLD end
         love.graphics.setColor(col[1], col[2], col[3], 1)
         love.graphics.printf(label, r.x, r.y + r.h / 2 - self.priceFont:getHeight() / 2, r.w - 16, "right")
     end

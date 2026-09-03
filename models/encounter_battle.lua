@@ -286,8 +286,15 @@ function EncounterBattle.spoils(opts)
         -- owed by every won fight, and the last fight of a run is not the one to make an exception
         -- of. Materials only: no gold and no loot roll here, so the quest stays the single payout
         -- seam for both (states/game.lua's objective branch).
-        spoils = { gold = 0, loot = {}, materials = Spoils.materials({
+        spoils = { gold = 0, scrip = 0, loot = {}, materials = Spoils.materials({
             kind = kind, tier = encounter.tier, houseMaterial = opts.houseMaterial,
+        }),
+        -- ...AND THE VALUABLES, for the same reason the salvage is here rather than in Quest.complete:
+        -- they are what the fight LEFT, not what the job paid. The general is the archetypal end, so
+        -- refusing him a valuable would exempt the richest stop in the run from the only seam the
+        -- campaign's coin comes through (models/valuable.lua).
+        valuables = require("models.valuable").roll({
+            kind = "general", depth = opts.floorLevel or opts.day,
         }) }
     end
 
@@ -331,10 +338,15 @@ function EncounterBattle.spoils(opts)
     -- the spoils rather than through a purse-path of its own. Folded in after the roll so it is
     -- added to the takings rather than replacing them, and a table is minted when the fight rolled
     -- no spoils of its own -- a skim earned in a quest battle is still earned.
+    --
+    -- PAID IN SCRIP, because a skim is coin taken off a body in the middle of a fight and that is the
+    -- definition of ambient income (models/scrip.lua). It also keeps the Skimmer's Cut honest with the
+    -- kit it belongs to: the money abilities SPEND scrip (Combat.spendPurse), so a rogue who steals it
+    -- back is refilling the pool she draws on rather than converting a fight into a forge rung.
     local skimmed = combat and combat.skimmed or 0
     if skimmed > 0 then
-        spoils = spoils or { gold = 0, loot = {} }
-        spoils.gold = (spoils.gold or 0) + skimmed
+        spoils = spoils or { gold = 0, scrip = 0, loot = {} }
+        spoils.scrip = (spoils.scrip or 0) + skimmed
     end
     -- Bounties settled during the fight (Combat.bounty -- a Struck Ledger paid out when its mark
     -- fell, a body spent to the Ledger's Due) ride out on exactly the same path. Every caller of
@@ -342,8 +354,8 @@ function EncounterBattle.spoils(opts)
     -- on the combat, and a battle that is lost pays nothing, however many marks were collected.
     local bounty = combat and combat.bounty or 0
     if bounty > 0 then
-        spoils = spoils or { gold = 0, loot = {} }
-        spoils.gold = (spoils.gold or 0) + bounty
+        spoils = spoils or { gold = 0, scrip = 0, loot = {} }
+        spoils.scrip = (spoils.scrip or 0) + bounty
     end
 
     return spoils

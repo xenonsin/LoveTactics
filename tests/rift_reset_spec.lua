@@ -105,7 +105,12 @@ return {
 
         local up = src:find("Descent.markClimbedOut(", 1, true)
         assert(up, "nothing takes the ascent stair any more -- retarget this case")
-        local upTail = src:sub(up, up + 3000)
+        -- The window is a heuristic and it has to be sized against the BLOCK rather than against a
+        -- round number: the climb-out branch is mostly commentary (the whole extraction argument lives
+        -- in it), so a window tight enough to feel precise goes red the next time somebody writes a
+        -- paragraph there rather than the next time somebody deletes a line. Widened from 3000 when the
+        -- economy split added the scrip burn to this branch (models/scrip.lua).
+        local upTail = src:sub(up, up + 5000)
         assert(upTail:find("Descent.strandPacks(", 1, true),
             "climbing out closes the rift without carrying its piles out")
         assert(upTail:find("descentRun = nil", 1, true),

@@ -146,15 +146,22 @@ return {
         -- Up: the landing's extract-or-descend question needs a number behind it, not only nerve.
         -- Down: a floor level CLIMBS inside a single run where prestige is fixed for the whole of one,
         -- so lending prestige's straight multiple to the floor compounds eight times over a long
-        -- descent. Measured that way, floor 7 handed over eleven thousand gold against a shelf whose
-        -- dearest row is a few hundred. The band below is what keeps one cleared floor worth roughly
-        -- one thing off a shelf at every depth rather than only at the top of the run.
+        -- descent. Measured that way, floor 7 handed over eleven thousand against a shelf whose dearest
+        -- row is a few hundred. The band below is what keeps one cleared floor worth roughly one thing
+        -- off a shelf at every depth rather than only at the top of the run.
+        --
+        -- READ OFF `scrip` SINCE THE ECONOMY SPLIT (models/scrip.lua). The curve is the same curve and
+        -- these are still its guards; what a rolled fight pays into is the run's purse now, so the
+        -- shelf this band is measured against is the Merchant's rather than the city's.
         local Spoils = require("models.spoils")
         local shallow, deep, campaign = 0, 0, 0
         local N = 40
         for _ = 1, N do
-            shallow = shallow + Spoils.roll({ count = 4, day = 1, kind = "combat", floorLevel = 1 }).gold
-            deep = deep + Spoils.roll({ count = 4, day = 1, kind = "combat", floorLevel = 13 }).gold
+            shallow = shallow + Spoils.roll({ count = 4, day = 1, kind = "combat", floorLevel = 1 }).scrip
+            deep = deep + Spoils.roll({ count = 4, day = 1, kind = "combat", floorLevel = 13 }).scrip
+            -- The campaign leg reads `gold` and the two descent legs read `scrip`, which is not a
+            -- mismatch: a fight pays the purse of the place it was fought in (models/spoils.lua), and
+            -- both come off the same rollGold. The magnitudes are what this compares.
             campaign = campaign + Spoils.roll({ count = 4, day = 13, kind = "combat" }).gold
         end
         assert(deep > shallow * 2.5, "floor 13 pays " .. math.floor(deep / shallow * 10) / 10 ..
@@ -198,8 +205,8 @@ return {
         local fresh, veteran = 0, 0
         local N = 40
         for _ = 1, N do
-            fresh = fresh + Spoils.roll({ count = 4, day = 1, kind = "combat", floorLevel = 1 }).gold
-            veteran = veteran + Spoils.roll({ count = 4, day = 20, kind = "combat", floorLevel = 1 }).gold
+            fresh = fresh + Spoils.roll({ count = 4, day = 1, kind = "combat", floorLevel = 1 }).scrip
+            veteran = veteran + Spoils.roll({ count = 4, day = 20, kind = "combat", floorLevel = 1 }).scrip
         end
         assert(math.abs(fresh - veteran) / fresh < 0.15,
             "floor 1 paid a prestige-20 company " .. math.floor(veteran / fresh * 100) ..

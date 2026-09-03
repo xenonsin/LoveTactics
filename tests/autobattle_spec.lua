@@ -177,6 +177,9 @@ return {
                 combat = built.combat,
             })
             assert(spoils, "a won side-fight pays something")
+            -- A won fight pays coin. WHICH coin depends on where it was fought (models/scrip.lua) and
+            -- this fixture passes no floorLevel, so it is a campaign road stop and pays gold -- the
+            -- claim, and the fixture, are both unchanged by the economy split.
             assert((spoils.gold or 0) > 0, "gold")
             assert(next(spoils.materials or {}) ~= nil, "and the salvage floor every won fight owes")
         end,

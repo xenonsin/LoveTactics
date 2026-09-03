@@ -1915,8 +1915,15 @@ function Combat.spendPurse(combat, unit, n)
         else
             combat.purse.spend(take)
         end
+        -- The mark the injected purse wears ("sc" for a campaign fight's scrip, models/scrip.lua),
+        -- falling back to gold's for a duel or a draft pot that never declared one. Read off the purse
+        -- rather than decided here, because which coin this is has never been combat.lua's business --
+        -- an enemy spending its own coffer is the one case that has no purse to ask, and a body like
+        -- Aurea is a walking treasury of real coin.
+        local mark = (combat and combat.purse and combat.purse.unit) or "g"
+        if unit and unit.side ~= "party" then mark = "g" end
         Combat.logEvent(combat, "system",
-            string.format("%s spends %dg.", unitName(unit), take), unit)
+            string.format("%s spends %d%s.", unitName(unit), take, mark), unit)
         -- Bank the OUTLAY toward any signature gated on spending (Combat.tally). The Mammonite's is
         -- the one that reads it, and it reads what actually left the purse rather than what was
         -- asked for: a broke party's last coppers buy a smaller blow, which is the honest amount.

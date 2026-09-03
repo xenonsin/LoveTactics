@@ -128,7 +128,12 @@ return {
             -- The flag the survivor's scene sets on either branch.
             assert(player.flags.met_the_survivor, "the survivor was met")
 
-            -- The road's purse: the rescue's 40 a head on top of what three fights rolled.
+            -- The road's purse: the rescue's 40 a head on top of what three fights rolled. Still gold,
+            -- and this is the case that says so -- the prologue is campaign ground, not a descent floor,
+            -- and a fight pays the purse of the place it was fought in (models/spoils.lua). If the
+            -- rolled half ever moved to scrip here, the prologue's three fights would hand over a number
+            -- with nothing to spend it on and no exit to burn it at, and this assertion is what would
+            -- catch it: the total would land on exactly the rescue's 80 and go no further.
             assert(player.gold > Player.defaults.gold + 80,
                 "the road pays more than the rescue alone, got " .. player.gold)
 

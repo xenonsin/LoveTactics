@@ -370,6 +370,11 @@ function Player.new()
 
     local player = {
         gold = Player.defaults.gold,
+        -- The run's coin (models/scrip.lua), zero in town. Declared here rather than left nil so the
+        -- field exists on every player the moment one is made -- Save.snapshot writes the whole shape,
+        -- and a purse that springs into existence on the first descent is a purse that reads as absent
+        -- to anything asking before then.
+        scrip = 0,
         prestige = Player.defaults.prestige,
         -- The created avatar's body (1 or 2 -- which sprite set, not a gender) and typed name, both
         -- chosen at character creation (states/character_creation.lua); nil until then. The name is
@@ -1083,22 +1088,34 @@ end
 -- had to learn a new rule: whatever is held now, minus whatever was held then, is what this run found.
 --
 -- THREE THINGS IT DELIBERATELY DOES NOT TOUCH:
---   items    A sword out of a chest is a thing a body is carrying, and the bodies came home. Coin and
---            ore are what get dropped in a rout. (It is also what keeps a wipe from undoing the one
---            reward a player can see and name.)
+--   items    A sword out of a chest is a thing a body is carrying, and the bodies came home. Ore is
+--            what gets dropped in a rout. (It is also what keeps a wipe from undoing the one reward a
+--            player can see and name.)
 --   wounds   The whole point of an injury is that it outlives the run that caused it.
 --   what was brought   Only GAINS are at risk. A company that spent more on the road than it found
 --            walks home with its purse untouched rather than being billed the difference.
 --
--- Returns what was actually taken, as { gold = n, materials = { id = n } }, so a caller can name it.
+-- GOLD USED TO BE THE FIRST THING IT TOOK, and the line is gone rather than moved. The economy split
+-- (models/scrip.lua): a run's coin is scrip, which evaporates at every exit including this one
+-- (Scrip.clear), and the campaign's coin is no longer a number a run can gain -- it arrives as
+-- VALUABLES, objects in the pack (models/valuable.lua). So the wipe's cut on the campaign's income is
+-- already levied, by the mechanism that was always the right one to levy it: the pack hits the floor
+-- where the company fell (Descent.dropPack) and lies there until somebody walks back down for it.
+--
+-- Which is strictly better than the percentage was, and it is worth saying which way. A haircut is
+-- unrecoverable by construction -- there is nowhere for the taken quarter to BE. A pile is a place. The
+-- sting is the same size and the player can answer it, and answering it is another descent.
+--
+-- Keeping both would have billed one loss twice, which is the failure this note exists to stop somebody
+-- re-introducing when they notice that a wipe no longer costs coin. It costs the coin's whole source.
+--
+-- Returns what was actually taken, as { gold = n, materials = { id = n } }. `gold` is retained in the
+-- shape, always zero, because two callers and a spec read the field and a table that changes shape on a
+-- resume is worse than a field that honestly reports nothing.
 function Player.loseHaul(player, before, share)
     share = share or Player.WIPE_LOSS
     local taken = { gold = 0, materials = {} }
     if not (player and before) then return taken end
-
-    local goldGained = math.max(0, (player.gold or 0) - (before.gold or 0))
-    taken.gold = math.floor(goldGained * share)
-    player.gold = (player.gold or 0) - taken.gold
 
     player.materials = player.materials or {}
     for id, count in pairs(player.materials) do

@@ -98,6 +98,14 @@ function Vendor.sells(def, item)
     if not def or not item then return false end
     if def.sells == false then return false end
 
+    -- NOBODY STOCKS A VALUABLE. It carries a price, so every "does this shelf hold it" rule downstream
+    -- would say yes -- and the Market says yes to everything priced by construction (sellsAll, below),
+    -- which would put the idol the player is descending to fetch on a counter in town for gold they
+    -- would then be spending to buy back their own income. A valuable moves one direction across a
+    -- counter (models/valuable.lua): out of the pack. Vendor.sellValue is what prices that direction,
+    -- and it does not consult this.
+    if item.valuable then return false end
+
     -- THE MARKET SELLS EVERYTHING. One shop replaced the seven houses, so the thing that used to be a
     -- taxonomy question -- is this ware on my shelf -- is answered for it by a flag rather than by a
     -- class it does not have. What gates a ware there is its rung and its price, not its house
@@ -294,6 +302,14 @@ end
 function Vendor.sellValue(item)
     if not (item and item.price) then return 0 end
     if Item.isBound(item) then return 0 end -- a bound relic is never for sale, whatever price it carries
+    -- A VALUABLE PAYS ITS FULL PRICE, and the exception is not generosity -- the two numbers mean
+    -- different things. Gear's `price` is what a shop CHARGES, so half of it back is the shop's margin
+    -- on a thing you already bought from them. Nobody ever sold you a valuable; its price IS its worth
+    -- (models/valuable.lua). Halving it here would mean every valuable in the data authored at double
+    -- what it is worth, which is a lie stored in ten files instead of a rule stored in one.
+    if require("models.valuable").is(item) then
+        return require("models.valuable").value(item)
+    end
     return math.floor(Vendor.priceFor(item.price, item.level or 0) * 0.5)
 end
 

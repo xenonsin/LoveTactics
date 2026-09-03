@@ -541,6 +541,12 @@ function Save.snapshot(player)
     return {
         version = Save.VERSION,
         gold = player.gold,
+        -- THE RUN'S OWN COIN (models/scrip.lua). Persisted for one reason: a descent is resumable, and a
+        -- company that quit on floor six and came back would otherwise find its purse emptied by the
+        -- load rather than by an exit. Nil on a save written before the split and on any player standing
+        -- in town, both of which Scrip.get reads as zero -- which is the honest answer for a company
+        -- with no expedition open.
+        scrip = (player.scrip or 0) > 0 and player.scrip or nil,
         prestige = player.prestige,
         run = run,
         seed = seed,
@@ -936,6 +942,9 @@ function Save.restore(snap)
 
     return {
         gold = snap.gold or 0,
+        -- Zero for a save from before the split and for anybody standing in town (models/scrip.lua), and
+        -- the two are the same state as far as this is concerned: no expedition open, no run coin.
+        scrip = snap.scrip or 0,
         prestige = snap.prestige or 1,
         resumeRun = resumeRun,
         -- THE SEED (models/seed.lua). Nil on a save written before seeds existed, which is the one case
