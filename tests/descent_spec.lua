@@ -581,8 +581,8 @@ return {
         -- harden the shallow floors against nobody.
         --
         -- WHAT CAN BE STANDING THERE is a schedule rather than a guess, and it is read off the one route
-        -- a company grows by: a house's posting is met on a floor, and its companion joins at that
-        -- house's counter in the city (models/vendor_visit.lua's joinCompanion).
+        -- a company grows by: one companion stands per floor, and joins when the fight she asks for is
+        -- cleared (models/errand.lua).
         --
         -- So THE OPENING FLOOR IS WALKED BY TWO. The avatar and Rowan, and nobody else -- every other
         -- body in the game is on the far side of a door that has to be opened underground and walked
@@ -1094,8 +1094,8 @@ return {
         -- anything on a floor is too LIGHT to be worth playing, and nothing asked whether anything was
         -- too heavy to be played at all. Floor one is where that gap cost something, because it is the
         -- one board whose company is known before it is rolled -- the avatar and Rowan, and nobody else,
-        -- since every other body is behind a door that has to be opened underground and walked through
-        -- up top (models/vendor_visit.lua's joinCompanion).
+        -- since every other body is behind a fight that has to be found and won underground
+        -- (models/errand.lua).
         --
         -- Measured before Descent.OPENING_CAP existed: A Rival Company stood at 40% of that pair, and the
         -- two openers that HAND OVER the third body at 65% and 67% -- so the fight gating the company's

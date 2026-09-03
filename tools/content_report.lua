@@ -110,9 +110,11 @@ local function reachable()
     for vendorId in pairs(Vendor.defs) do
         mark("conversation_" .. vendorId .. "_vendor_intro", "vendor first visit")
         mark("conversation_" .. vendorId .. "_discipline_unlocked", "discipline announcement")
-        for _, kind in pairs(Errand.SCENES or {}) do mark(kind, "errand posting (generic)") end
+        -- Both meetings, per companion. There is no generic pair behind these any more
+        -- (Errand.postingScene returns nil rather than falling back), so a house that authored neither
+        -- reports as a companion nobody can be asked by -- which is the report doing its job.
         for _, kind in ipairs({ "asked", "found" }) do
-            mark("conversation_" .. vendorId .. "_errand_" .. kind, "errand posting (house)")
+            mark("conversation_" .. vendorId .. "_errand_" .. kind, "companion posting (" .. kind .. ")")
         end
 
         -- THE LIVE POSTING. Each class posts exactly one piece of work now -- the ask its companion

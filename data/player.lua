@@ -7,10 +7,10 @@ return {
     -- the quest, and which of them take the field is chosen per battle in the deployment phase (see
     -- docs/deployment.md). Unlimited size. The company is earned through play, not handed over up
     -- front: a New Game resets this to just the avatar (states/prologue.lua's begin), then Rowan
-    -- (character_rowan) is sworn in the prologue and the rest join at their own house's counter, the
-    -- first time it is walked into after its opener has been run (models/vendor_visit.lua's
-    -- joinCompanion). Rowan is the Bastion's companion and reaches his shop long before its door opens,
-    -- which is why that counter has nothing to hand over -- the two facts are independent on purpose.
+    -- (character_rowan) is sworn in the prologue and the rest join underground, one per floor: you meet
+    -- a companion at the doorway of the chamber her work stands in, and clearing that fight is what
+    -- recruits her (models/errand.lua). Rowan is the Bastion's companion and is already here, which is
+    -- why the Bastion posts nothing at all -- Errand.houses reads the grant, not the name.
     -- This default is only the non-prologue baseline (Player.reset), kept lean to match. The old
     -- generic Mage/Archer/Priest are retired from the roster -- they live on only as enemy/ally/test
     -- stand-ins (data/quests, tests) with no portrait of their own.

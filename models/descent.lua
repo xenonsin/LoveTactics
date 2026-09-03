@@ -1117,10 +1117,10 @@ Descent.OPENING_DANGER = 3
 --
 -- Floor one is walked by TWO: the avatar and Rowan (data/player.lua's startingRoster), at the level Act
 -- 0 leaves them -- within one of OPENING_DANGER, which tests/experience_spec.lua pins. Every other body
--- in the game is met at a house's posting down here and joins at that house's counter in the city
--- (models/vendor_visit.lua's joinCompanion), so the company cannot be three until the first floor has
--- been cleared AND climbed out of -- which makes the opening floor the one board in the mode whose
--- headcount is known before it is rolled.
+-- in the game is met at a companion's posting down here and joins by clearing the fight she asks for
+-- (models/errand.lua), and one companion is dealt per floor -- so the company cannot be three until the
+-- first floor's posting has been found AND run, which makes the opening floor the one board in the mode
+-- whose headcount is known before it is rolled.
 --
 -- The tuning it met assumed four. Measured through Muster against that pair: the floor's heaviest stops
 -- were A Rival Company at 40%, the Broken Column at 53% and the Press-Gang at 54% -- and the two openers
@@ -1369,9 +1369,9 @@ Descent.OPENING_GOLD = 50
 -- run after the first was that same screen again. What belongs at the mouth of a descent is a stair.
 --
 -- So the company is not bought at all: it is the roster you already have, and FOUR of it go down the
--- stair (Descent.party). It grows through the houses -- a companion is met at their own posting on a
--- floor, and joins at that house's counter in the city (models/vendor_visit.lua's joinCompanion) --
--- rather than at a stop that deals bodies.
+-- stair (Descent.party). It grows a floor at a time -- one companion stands per floor, asks for one
+-- piece of work, and joins when it is cleared (models/errand.lua) -- rather than at a stop that deals
+-- bodies.
 --
 -- A FLOOR SLATE DID EXIST, one body offered per floor off an authored pool (models/descent_recruit.lua,
 -- deleted with its panel). It went with the pull it was built beside: two ways to gain a companion is
@@ -2214,42 +2214,47 @@ function Descent.sinAt(run, floor)
     return Descent.sinOrder(run and run.seed, run and run.shuffled)[circle]
 end
 
--- WHICH HOUSES HAVE WORK POSTED ON THIS FLOOR, as vendor ids -- the door-opening job a shut house cannot
--- ask for, because a house asks inside its own shop (models/errand.lua's Errand.opener).
+-- WHICH COMPANION IS STANDING ON THIS FLOOR, as a vendor id -- the one body waiting at a dead end with
+-- one piece of work to ask for (models/errand.lua).
 --
 -- A SECOND PERMUTATION, DELIBERATELY UNCORRELATED WITH THE SINS. Both are dealt off the run's seed, but
--- with different salts, so the house whose opener is lying on floor three has nothing to do with the sin
--- who holds it. That is the entire point of the change: which shop you meet stops tracking how deep you
--- have gone. Correlating them -- seating a house's opener on its own circle's floors -- would rebuild the
--- thing this replaced with one fewer boss in front of it.
+-- with different salts, so the companion standing on floor three has nothing to do with the sin who
+-- holds it. Correlating them -- seating each body on its own house's circle -- would make the recruit
+-- order and the biome order the same list, and the run would have one permutation where it has two.
 --
--- ALL SEVEN IN THE FIRST CIRCLE, because tier 0 is fought at the top of the descent.
+-- ONE PER FLOOR, WHICH IS THE WHOLE OF THE PACING. It dealt all of them across the first two floors
+-- before this, and the compression was defended as a price: every door offered early, climb back for the
+-- one you walked past. What it actually did was hand the entire roster over inside two boards. A company
+-- that swept floors one and two walked onto floor three complete, and every floor under it was fought by
+-- a party that had stopped growing -- so the one reward the descent has that is not gear arrived all at
+-- once, at the shallowest point, and never again.
 --
--- An opener hands over slot 0, and slot 0 is not "the first thing this house sells" in the abstract --
--- it is a band of gear balanced against the shallowest floors in the game (docs/balance.md, and
--- models/errand.lua's Errand.floorFor, which seats every other errand on the floor its own rung is
--- fought at). A door first met on floor seven paid out floor-one kit seven floors past where it was
--- worth carrying; on floor thirteen it was a joke. Every other posting sits at the depth its rung is
--- balanced for, and this is the one whose rung cannot move -- so the posting is what moves.
+-- Spread out, a recruit is what a floor is FOR. Each of the six is met at a different depth, the party
+-- is a different shape on every floor, and going one deeper is a body rather than a number.
 --
--- SPLIT ACROSS THE CIRCLE'S TWO FLOORS rather than piled on floor one, and that is capacity, not taste:
--- a shallow floor carves about seven and a half dead ends (see FLOOR_SPAN) and the stair takes one of
--- them, so seven doors on floor one would be seating eight ends in seven spurs and the generator would
--- start degrading them onto shared ground. Three and four fit with room to spare.
+-- THE COST, STATED PLAINLY: an opener hands over slot 0, a band of gear balanced against the shallowest
+-- floors (docs/balance.md), so the sixth companion's kit lands well under the depth it is met at. The
+-- FIGHT does not have that problem -- Descent.floorObjectives overrides the errand's authored
+-- `floorLevel` with the floor's own -- and the payout that matters here is the body, which does not go
+-- stale. Rebalancing the openers' `rewardItems` against depth is the follow-up, not a reason to pile six
+-- introductions into two boards.
 --
--- It dealt one house per floor across floors 1..7 before this, and a second lap over 8..14 before that.
--- The cost of the compression is real and is the point: every door in the game is offered in the first
--- two floors, and a company that walks past one has to climb back for it. Climbing back is a thing the
--- mode already does (Descent.enterFloor puts a cleared board back exactly as it stood, dead end and
--- all), which is what keeps this a price rather than a locked-out house.
+-- SIX, NOT SEVEN. The Bastion's companion is Rowan, who is sworn in the prologue, so its opener grants
+-- nobody and Errand.houses leaves it out -- the deck is what actually recruits, not what names a body.
+-- One sin's floor therefore carries no companion, and which one moves with the seed.
 --
 -- Derived from the seed, never stored, for the same reason the sins are: a resume re-derives the floor
 -- from a seed and a depth, and a stored order is a second copy that can disagree with it. Whether the
--- opener is actually SEATED is a separate question and belongs to the player, not the run -- see
+-- companion is actually SEATED is a separate question and belongs to the player, not the run -- see
 -- Descent.floorObjectives.
 local function shuffledHouses(seed)
+    -- Off Errand.houses rather than the sins' own vendors: a house whose posting recruits nobody must
+    -- not take a floor's slot, and this is the one place that could seat it. Sorted before the shuffle
+    -- because `pairs` order is not stable across processes and this deck must be a function of the seed
+    -- alone -- an unsorted deck is a resumed run that meets a different body on floor four.
     local deck = {}
-    for i, sin in ipairs(Descent.SINS) do deck[i] = sin.vendor end
+    for vendorId in pairs(require("models.errand").houses()) do deck[#deck + 1] = vendorId end
+    table.sort(deck)
     for i = #deck, 2, -1 do
         -- Salted off the sins' own shuffle (which passes floor = 0) so the two permutations cannot come
         -- out in step. 991 is arbitrary and only has to be a number the sins never pass.
@@ -2259,28 +2264,15 @@ local function shuffledHouses(seed)
     return deck
 end
 
--- HOW MANY FLOORS THE SEVEN DOORS ARE DEALT ACROSS, and it is its own constant rather than
--- FLOORS_PER_CIRCLE spelled out -- which is what it used to read, and what broke the moment a circle
--- became one floor. The note above states the requirement in its own terms: a floor carries the stair
--- plus its openers on separate spurs, "seven doors on floor one would be seating eight ends in seven
--- spurs and the generator would start degrading them onto shared ground. Three and four fit with room
--- to spare." That is a fact about how many ENDS a board can seat, and it has nothing to do with how
--- many floors a sin owns. Tying it to the circle meant re-cutting the stack silently piled every door
--- in the game onto the opening floor.
-Descent.OPENER_FLOORS = 2
-
+-- Still a LIST rather than one id, and the callers are why: Descent.floorObjectives loops it and the
+-- spec counts it. A floor carries at most one today, and the shape says "however many this floor has"
+-- so that a later decision to double up on a deep floor is a change here and nowhere else.
 function Descent.openersAt(run, floor)
     floor = math.max(1, floor or 1)
-    local across = math.max(1, math.min(Descent.OPENER_FLOORS, Descent.CIRCLE_FLOORS))
-    if floor > across then return {} end
+    if floor > Descent.CIRCLE_FLOORS then return {} end
     local deck = shuffledHouses(run and run.seed)
-    local out = {}
-    for i, vendorId in ipairs(deck) do
-        -- The deal's order decides WHICH of those floors, so the split moves with the seed like
-        -- everything else here rather than always cutting the same three houses onto floor one.
-        if math.ceil(i * across / #deck) == floor then out[#out + 1] = vendorId end
-    end
-    return out
+    local vendorId = deck[floor]
+    return vendorId and { vendorId } or {}
 end
 
 -- Which biome this floor wears: its sin's, and the underworld at the bottom -- where the campaign's own

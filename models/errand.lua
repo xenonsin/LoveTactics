@@ -1,5 +1,5 @@
--- COMPANION POSTINGS: the seven bodies standing on the first floors of the rift, and the one piece of
--- work each of them asks for before they will walk out with you.
+-- COMPANION POSTINGS: the six bodies standing one to a floor of the rift, and the one piece of work
+-- each of them asks for before they will walk out with you.
 --
 -- THIS FILE USED TO BE A LADDER, and most of it is gone. Every house posted a line of errands -- its
 -- opener plus one job per discipline gate -- and running them was what climbed that house's shelf. The
@@ -9,7 +9,7 @@
 --
 -- WHY THE FILE SURVIVES AT ALL. One thing the ladder carried was worth keeping and had nowhere else to
 -- go: it was the only place the game said "there is a reason to go back down, and here is exactly what
--- it is". The seven companions carry that now, and they say it underground where the work is.
+-- it is". The companions carry that now, and they say it underground where the work is.
 --
 -- A RECRUIT IS TWO BEATS, and the second is the point:
 --
@@ -51,12 +51,26 @@ function Errand.opener(vendorId)
     return nil
 end
 
--- Every class that posts a companion, as a set. Derived from the vendor blueprints that name one rather
--- than from a list of its own, so a companion cannot exist in one and not the other.
+-- WHO A HOUSE'S POSTING ACTUALLY HANDS OVER, read off the opener's own `rewardCharacter` -- the field
+-- that IS the recruit -- rather than off the vendor's `companion`, which only says whose house it is.
+--
+-- The two disagree for exactly one house and the disagreement was live. The Bastion names Rowan, and
+-- Rowan is sworn in the prologue (data/player.lua's startingRoster), so her opener pays no character:
+-- there is nobody to hand over. Gating on `companion` seated a recruitment posting for a body already
+-- standing in the party, at a dead end the company had to walk to, ending in a fight that recruited
+-- nobody. Gating on the grant means that house simply posts nothing, with no special case anywhere.
+function Errand.companionOf(vendorId)
+    local opener = Errand.opener(vendorId)
+    local def = opener and Quest.defs[opener]
+    return def and def.rewardCharacter or nil
+end
+
+-- Every class that posts a companion, as a set. Data-derived and player-independent, so the run's deal
+-- (Descent.openersAt) and the seating (Descent.floorObjectives) cannot disagree about who is out there.
 function Errand.houses()
     local out = {}
-    for vendorId, def in pairs(require("models.vendor").defs) do
-        if def.companion and Errand.opener(vendorId) then out[vendorId] = true end
+    for vendorId in pairs(require("models.vendor").defs) do
+        if Errand.companionOf(vendorId) then out[vendorId] = true end
     end
     return out
 end
@@ -74,8 +88,8 @@ end
 -- The floor a companion's ask is found on: the one they were met on, which is where it was marked.
 --
 -- Falls back to the first floor for an ask that somehow has no record, so a posting can never point at
--- a floor that does not exist. There is no ladder to spread these across any more -- all seven stand in
--- the first circle, because that is where the bodies are dealt (Descent.openersAt).
+-- a floor that does not exist. One companion is dealt per floor (Descent.openersAt), so a run meets
+-- them a floor at a time rather than all at once in the shallows.
 function Errand.floorFor(player, vendorId)
     local opener = Errand.opener(vendorId)
     return (opener and ((player and player.errands) or {})[opener]) or 1
@@ -183,22 +197,29 @@ function Errand.posting(player, questId)
     return { id = questId, def = def, vendorId = def.sponsor, kind = kind }
 end
 
--- The scene that asks. A house may answer in its own voice by authoring
--- `conversation_<vendor>_errand_<kind>`; none does today, and the two generic scenes carry all seven --
--- they name the house and read its posting out through `{house}` and `{posting}` (models/locale.lua),
--- which is the same way one "the shelf just grew" scene per shop speaks any discipline.
+-- The scene that asks, and it is the COMPANION'S -- `conversation_<vendor>_errand_<kind>`, one pair per
+-- body, no generic behind them.
 --
--- Generic ON PURPOSE rather than for want of authoring. The words are the same words every time because
--- the SITUATION is: a seal on a stone, a job nobody took, and a company deciding whether to spend the
--- next fight on it. What differs between two of these is the house and the work, and both of those are
--- read off the posting rather than written seven times.
-Errand.SCENES = { asked = "conversation_errand_asked", found = "conversation_errand_found" }
-
+-- THERE USED TO BE TWO SCENES FOR ALL SEVEN, and they were generic on purpose: the situation was the
+-- same every time -- a seal on a stone, a job nobody took -- so the house and the work were read off the
+-- posting through `{house}` and `{posting}` rather than written seven times. That reasoning belonged to
+-- a posting, and this is not a posting any more. What is standing at the dead end is a PERSON, asking
+-- for one thing, in the only scene the game has to establish who they are before you fight beside them
+-- for the rest of the run. A shared script makes six women say the same three sentences in six
+-- portraits, and the one beat that introduces the roster introduces nobody.
+--
+-- TWO KINDS BECAUSE THE SECOND MEETING IS NOT THE FIRST. `found` is the introduction; `asked` is walking
+-- back up to somebody who has already asked -- reachable whenever an agreed posting is seated again on a
+-- later run (Errand.onFloor), and having them introduce themselves twice is the failure this splits.
+--
+-- Nil when a house has authored neither, which is a house whose companion cannot be met at all; the
+-- pair is required rather than optional, and tests/companion_posting_spec.lua is what says so -- a
+-- silent fall-through to shared prose is exactly what this replaced.
 function Errand.postingScene(posting)
     if not (posting and posting.kind) then return nil end
     local own = "conversation_" .. tostring(posting.vendorId) .. "_errand_" .. posting.kind
     if require("models.conversation").defs[own] then return own end
-    return Errand.SCENES[posting.kind]
+    return nil
 end
 
 -- ---------------------------------------------------------------------------

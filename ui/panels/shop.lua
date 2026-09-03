@@ -35,6 +35,8 @@ local Player = require("models.player")
 local Quest = require("models.quest") -- sponsorProgress: how many of this vendor's quests are done (its standing)
 local Item = require("models.item")
 local Discipline = require("models.discipline") -- unlockedSet: gates a shelf's locked discipline cut
+local Market = require("models.market") -- the one counter: what it has out today, and off which rack
+local Calendar = require("models.calendar") -- the day today's rotation is dealt against
 local Combat = require("models.combat")
 local Sprite = require("models.sprite")
 local Scale = require("scale")
@@ -61,13 +63,14 @@ local HEADER_PAD = 18
 -- by the service itself -- see models/vendor.lua's Services block for why a city of identical shelves
 -- is the thing that needed fixing. Per instance rather than a file constant, because which tabs exist
 -- is now a property of the vendor rather than of the panel.
--- ERRANDS IS A LIST LIKE THE OTHER TWO, and that is why it is a mode rather than a corner of the Buy
--- pane. A shelf climbs a rung at a time and each rung is bought by doing a small piece of work for the
--- house (models/errand.lua) -- so "what does this house want" is exactly as much a thing you come here
--- to read as "what does it sell", and it belongs in the same segmented control with the same
--- shoulder-button cycle rather than tucked under the stock as a footnote.
-local BASE_MODES = { "buy", "sell", "errands" }
-local MODE_LABEL = { buy = "Buy", sell = "Sell", errands = "Errands" }
+-- (AN ERRANDS TAB STOOD BESIDE THEM AND IS GONE.) It was a third mode because a shelf used to climb a
+-- rung at a time and each rung was bought by running a piece of work the house posted -- so "what does
+-- this house want" was as much a thing you came here to read as "what does it sell". No house wants
+-- anything now: the only asks in the game are the ones a companion makes on a descent floor, face to
+-- face (models/errand.lua), and a tab that could never say more than "you agreed to this on floor
+-- three" is a tab that reprints the checklist inside a shop.
+local BASE_MODES = { "buy", "sell" }
+local MODE_LABEL = { buy = "Buy", sell = "Sell" }
 
 -- Detail accent per item type (matches ui/item_tooltip.lua).
 local TYPE_COLOR = {
@@ -126,8 +129,8 @@ function Shop.new(opts)
     self.detailY = self.boxY + 112
     self.detailW = self.boxX + BOX_W - 24 - self.detailX
 
-    -- This house's tabs: Buy, Sell, Errands, and its service if it has one.
-    self.modes = { BASE_MODES[1], BASE_MODES[2], BASE_MODES[3] }
+    -- This house's tabs: Buy, Sell, and its service if it has one.
+    self.modes = { BASE_MODES[1], BASE_MODES[2] }
     self.service = self.def.service
     if self.service then
         self.modes[#self.modes + 1] = self.service.id
@@ -195,50 +198,10 @@ end
 -- same index so the two stay aligned for the detail pane and the locked overlay. A vendor with no unlocked discipline
 -- stock shows no headers at all -- a single base section needs no banner -- so the plain shelf looks
 -- exactly as it did.
--- THE ERRANDS TAB: what this house has asked for, and WHERE IT IS.
---
--- The floor number is the whole reason this list exists. An errand is seated on one particular floor of
--- the descent (models/errand.lua), and a player who has to remember which one is doing bookkeeping the
--- game could have done for them -- so every row leads with it.
---
--- THIS HOUSE'S ONLY, because this is its shop and its shelf they open. Another house's work is legible
--- at that house's counter, which is also where the stock it buys is.
---
--- Rows are not selectable: there is nothing to press. An errand is taken on when the house asks for it
--- (states/hub.lua's vendorScenes) rather than accepted off a list, so this is a readout, and `locked`
--- is what stops the list widget offering a Take button over a row that has none.
-function Shop:buildErrandRows()
-    local Errand = require("models.errand")
-    local open = Errand.open(self.player)
-
-    for _, e in ipairs(open) do
-        if e.def then
-            self.rows[#self.rows + 1] = {
-                errand = e,
-                label = "Floor " .. e.floor .. "  -  " .. (e.def.name or e.id),
-                locked = true,
-            }
-        end
-    end
-
-    if #self.rows == 0 then
-        -- WHY there is nothing here, and there is only one answer now rather than three. Shops used to
-        -- ask for work themselves -- a house had a line, and this tab had to distinguish "you have run
-        -- it all" from "they will ask again once you have been deeper", because the player could act on
-        -- exactly one of those. Nobody behind a counter asks for anything any more; the only asks in the
-        -- game are the seven a companion makes on a floor (models/errand.lua), and this tab is the list
-        -- of the ones you are carrying.
-        --
-        -- Not rows. A Menu row is one line of a fixed height (ui/menu.lua) and this is a sentence -- put
-        -- through the list it wrapped inside its own plate and printed straight over the tally
-        -- underneath it. The panel already has a place for prose with nothing behind it: the empty
-        -- state, which wraps and stacks (Shop:draw).
-        self.errandNote = "Nobody is waiting on you. What there is to do is down the stair."
-        self.errandTally = nil
-    end
-end
-
 function Shop:buildBuyRows()
+    -- THE MARKET IS NOT A SHELF and does not band like one -- see Shop:buildMarketRows.
+    if self.def.sellsAll then return self:buildMarketRows() end
+
     local groups, order = {}, {}
     local stock = Vendor.stock(self.vendorId, self.shelfRung, self.player.recipes,
         Discipline.unlockedSet(self.player), Discipline.levelSet(self.player))
@@ -301,6 +264,7 @@ function Shop:buildBuyRows()
         if banded then
             self.rows[#self.rows + 1] = {
                 header = true, label = g.name, key = sectionKey(g.discipline), discipline = g.discipline,
+                foldable = true, -- a shelf's bands fold; a rack's do not (buildMarketRows)
                 meta = self:pathMeta(g.discipline), blurb = self:sectionBlurb(g.discipline),
                 count = (g.open or 0) .. " / " .. #g.rows,
                 open = g.open or 0, total = #g.rows, collapsed = folded,
@@ -312,6 +276,40 @@ function Shop:buildBuyRows()
         if not folded then
             for _, r in ipairs(g.rows) do self.rows[#self.rows + 1] = r end
         end
+    end
+end
+
+-- THE MARKET'S BUY LIST, which is two racks and not a ladder (models/market.lua).
+--
+-- A house's shelf bands by DISCIPLINE and is mostly locked, because the point of it was to show what
+-- the rest of a class buys you. The market bands by RACK and nothing on it is locked, because there is
+-- no ladder here to show: what is standing is the plain kit, what is under Today Only is three rolled
+-- rows, and the deep end of the catalogue is reached by descending rather than by browsing. So this is
+-- its own builder rather than a flag through the other one -- every line of that function is about a
+-- gate this list does not have.
+--
+-- THE RACK LABELS DO NOT FOLD. A shelf folds because it runs hundreds of rows deep; twenty-five rows
+-- fold into nothing worth pressing, and a header that swallows the cursor to collapse eight lines is a
+-- control that costs more than it saves.
+function Shop:buildMarketRows()
+    local stock = Market.stock(self.player, Calendar.day(self.player))
+
+    -- Kept in the order Market.stock returned them -- the racks are already in their own order and the
+    -- rows already sorted within each -- so this only has to notice where one ends and the next begins.
+    local RACK_LABEL = { [Market.COUNTER] = "Always in Stock", [Market.TODAY] = "Today Only" }
+    local rack = nil
+    for _, entry in ipairs(stock) do
+        if entry.rack ~= rack then
+            rack = entry.rack
+            self.rows[#self.rows + 1] = { header = true, label = RACK_LABEL[rack] or "Stock", key = rack }
+        end
+        -- Instantiate at the item's recipe tier, so its name (+n) and stats reflect what's bought.
+        local item = Item.instantiate(entry.id, nil, entry.level)
+        self.rows[#self.rows + 1] = {
+            item = item, entry = entry,
+            label = item.name .. "  -  " .. entry.price .. "g",
+            isNew = Player.isNew(self.player, Player.NEW_STOCK, entry.id),
+        }
     end
 end
 
@@ -380,17 +378,14 @@ function Shop:refresh()
     self.questsDone = Quest.sponsorProgress(self.player, self.vendorId)
     -- What the SHELF reads, one below the standing above it: the opener bought the door this panel is
     -- being drawn inside, not a band of stock (Quest.shelfRung). The two are kept apart here rather than
-    -- collapsed because the header still reports errands run, and that is the honest count.
+    -- collapsed because the header still reports standing, and that is a different count.
     self.shelfRung = Quest.shelfRung(self.player, self.vendorId)
     self.rows = {}
-    self.errandNote, self.errandTally = nil, nil
 
     if self.mode == "buy" then
         self:buildBuyRows()
     elseif self.mode == "fence" then
         self:buildFenceRows()
-    elseif self.mode == "errands" then
-        self:buildErrandRows()
     else -- sell
         for i, item in ipairs(self.player.stash or {}) do
             local value = Vendor.sellValue(item)
@@ -406,9 +401,12 @@ function Shop:refresh()
     local items = {}
     for i, row in ipairs(self.rows) do
         if row.header then
-            -- A header with an `action` is a fold Menu will let the cursor land on (ui/menu.lua).
+            -- A header with an `action` is a fold Menu will let the cursor land on (ui/menu.lua) --
+            -- so a rack label, which folds nothing, is a line the cursor steps over rather than a
+            -- control that does nothing when pressed.
             items[#items + 1] = { label = row.label, header = true, collapsed = row.collapsed,
-                isNew = row.isNew, action = function() self:toggleSection(row.discipline) end }
+                isNew = row.isNew,
+                action = row.foldable and function() self:toggleSection(row.discipline) end or nil }
         else
             items[#items + 1] = { label = row.label, isNew = row.isNew,
                 action = function() self:activateRow(self.rows[i]) end }
@@ -560,15 +558,6 @@ function Shop:activateRow(row)
     if not row then return end
     if self.mode == "buy" then
         self:buy(row)
-    elseif self.mode == "errands" then
-        -- A READOUT, NOT A SHELF. An errand is taken on when the house asks for it in person
-        -- (states/hub.lua's vendorScenes), so there is nothing on these rows to press -- and the
-        -- `locked` they carry is the panel's own flag, which the list widget never sees (ui/menu.lua
-        -- only steps over a bare header), so the cursor does land here and the press must be answered.
-        -- Falling through to the sell branch is what it used to do, and it sold a row with no item.
-        if row.errand then
-            self:setMsg("They ask for this in person. There is nothing to take on here.", false)
-        end
     elseif self.mode == "fence" then
         if row.back then
             self.swapFrom = nil; self.menu = nil; self:refresh()
@@ -785,18 +774,8 @@ function Shop:draw()
             -- Two different emptinesses, and saying "your stash is empty" for the second would be a
             -- lie: a company can be carrying plenty and simply have nothing this shelf can match.
             empty = self.swapFrom and "Nothing of its worth on this shelf." or "Nothing here to trade."
-        elseif self.mode == "errands" then
-            empty = self.errandNote or empty
         end
-        local y = self.boxY + 200
-        love.graphics.printf(empty, self.listLeft, y, self.listW, "center")
-        -- The tally sits under the sentence, so it has to start below however many lines that sentence
-        -- actually took -- the floor number can push it to two.
-        if self.errandTally then
-            local _, wrapped = self.bodyFont:getWrap(empty, self.listW)
-            y = y + #wrapped * self.bodyFont:getHeight() + 10
-            love.graphics.printf(self.errandTally, self.listLeft, y, self.listW, "center")
-        end
+        love.graphics.printf(empty, self.listLeft, self.boxY + 200, self.listW, "center")
     end
 
     self:drawFooter()
@@ -837,8 +816,13 @@ function Shop:drawVendor()
     -- detail lives on each locked row instead, so this line stays short and never wraps into the
     -- description below. A vendor with no shelf of its own (the Cafe) runs no quest line and shows
     -- nothing -- though it does not open this panel at all any more (ui/panels/cafe.lua).
+    --
+    -- IT READ "Errands run" and it was the last place in the city using the word. Nobody behind a
+    -- counter posts an errand any more, so the label named a thing that does not exist for a number that
+    -- does: this house's standing, which is what the Forge ceiling and a Request both read
+    -- (models/request.lua). Same count, its own name.
     if self.def.sells ~= false then
-        love.graphics.printf("Errands run: " .. (self.questsDone or 0), x + 12, ty + 22, w - 24, "left")
+        love.graphics.printf("Standing: " .. (self.questsDone or 0), x + 12, ty + 22, w - 24, "left")
     end
     love.graphics.setFont(self.smallFont)
     Theme.set(Theme.muted)
@@ -1107,8 +1091,9 @@ function Shop:drawFooter()
     -- The tab-cycle key is named after what it actually cycles: at a house with a service the strip has
     -- three tabs, and a hint reading "Buy/Sell" tells the player the third one is unreachable from the
     -- keyboard, which it is not.
-    -- Three base tabs now (Buy, Sell, Errands), so the shoulder cycle is never a two-way toggle and the
-    -- hint never names a pair.
+    -- Named generically rather than as a pair: with the Errands tab gone a plain house is back to Buy
+    -- and Sell, but a house with a service has three, and "Buy/Sell" would tell that player the third
+    -- one is unreachable from the keyboard.
     local cycle = "switch list"
     local hint = InputMode.isGamepad()
         and ("A: confirm    LB/RB: " .. cycle .. "    D-pad: scroll    B: close")

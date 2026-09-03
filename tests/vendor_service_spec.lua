@@ -126,21 +126,24 @@ return {
     -- The panel's two-step trade
     -- -----------------------------------------------------------------------
     {
-        -- EVERY HOUSE HAS THREE TABS NOW: Buy, Sell and Errands. The third joined the base set when a
-        -- shelf stopped opening on the campaign's quest count and started opening on the small work the
-        -- house asks for (models/errand.lua) -- "what does this house want" became as much a thing you
-        -- come to a counter to read as "what does it sell". A SERVICE is still the exception it always
-        -- was, and still sits last.
-        name = "every house has Buy, Sell and Errands; only a service house grows a fourth tab",
+        -- EVERY HOUSE HAS TWO TABS: Buy and Sell. An Errands tab stood third for as long as a shelf
+        -- opened on the small work a house asked for; no house asks for anything now -- the only asks in
+        -- the game are the ones a companion makes face to face on a descent floor (models/errand.lua) --
+        -- so the tab could never say more than "you agreed to this on floor three", which is the
+        -- checklist reprinted inside a shop. A SERVICE is still the exception it always was, and still
+        -- sits last.
+        name = "every house has Buy and Sell; only a service house grows a third tab",
         fn = function()
             stubFonts(function()
                 local base = { completedQuests = doorsOpen(), recipes = {}, gold = 0, stash = {} }
                 local plain = Shop.new({ vendor = "bastion", player = base })
-                assert(#plain.modes == 3, "Buy, Sell and Errands, and nothing else")
-                assert(plain.modes[3] == "errands", "Errands is the third of the three every house has")
+                assert(#plain.modes == 2, "Buy and Sell, and nothing else")
+                for _, mode in ipairs(plain.modes) do
+                    assert(mode ~= "errands", "the Errands tab is back in a shop that asks for nothing")
+                end
                 local fenced = Shop.new({ vendor = fenceVendorId(), player = base })
-                assert(#fenced.modes == 4 and fenced.modes[4] == "fence",
-                    "the service tab sits after the three every house has")
+                assert(#fenced.modes == 3 and fenced.modes[3] == "fence",
+                    "the service tab sits after the two every house has")
             end)
         end,
     },

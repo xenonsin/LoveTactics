@@ -5,7 +5,9 @@
 --
 --   1. the greeting     a one-time first-visit scene, the shopkeeper meeting you (Player.hasVisitedVendor)
 --   2. an announcement  one per newly unlocked discipline whose stock lands on this shelf
---   3. the ask          the next errand this house wants run, taken on there and then (models/errand.lua)
+--
+-- (3. was "the ask" -- the next errand this house wanted run, taken on over the counter. No house asks
+-- for anything any more; the only asks in the game are the ones a companion makes on a floor.)
 --
 -- IT LIVED IN states/hub.lua UNTIL THE SHOPS MOVED. Every shelf was a pop-up over the city, so the city
 -- was the only screen that had to know any of this. The seven houses and the General Store are on a
@@ -25,47 +27,23 @@ local Vendor = require("models.vendor")
 
 local VendorVisit = {}
 
--- THE HOUSE'S COMPANION JOINS AT ITS COUNTER, and this is the whole of how a company grows.
+-- (NO COMPANION JOINS AT A COUNTER, AND THE FUNCTION THAT DID ONE IS GONE.)
 --
--- Each house names one body on its blueprint (`companion`, data/vendors/*.lua). You do not hire them
--- and nobody deals them: you meet them underground at that house's OPENER -- the errand lying unasked
--- on a floor, which is also the thing that opens the shop -- and then they are standing in the shop
--- when you first walk into it.
+-- VendorVisit.joinCompanion stood here and it recruited the house's `companion` in the first-visit
+-- greeting's `before`. Its own header said it no longer fired for anybody. It fired for everybody: the
+-- call was live in the greeting step below, so walking into six shops handed over six companions for
+-- the price of opening a door -- and the underground recruit it was supposedly deferring to had already
+-- become the only route the design wanted (models/errand.lua). Two routes to the same body, one of them
+-- free, is one route.
 --
--- IT REPLACED A PULL. The Crossing dealt 1-of-45 for a token off the floors; what that produced was a
--- body with no reason to be yours, and a bond ladder nobody could climb (see the commit that removed
--- it). A companion earned by doing that house's work arrives already meaning something, and the seven
--- of them are the whole roster.
+-- A companion is met on a floor, asks for one piece of work, and joins when it is cleared -- through the
+-- posting's own `rewardCharacter`, which Quest.complete grants before the outro plays.
 --
--- RECRUITED IN THE GREETING'S `before`, WHICH IS THE POINT rather than an implementation detail. The
--- scene is authored for the full roster through `when = { has = ... }` blocks, so the companion has to
--- BE in the company before their own lines can play -- and Player.recruit queues the
--- "[X has joined your Party]" banner onto the next scene to run (models/conversation.lua's noteJoin),
--- which is this one. Join, banner and first words all land in the same beat.
---
--- IT NO LONGER FIRES FOR ANYBODY, and the function is kept rather than deleted because the sequencing
--- it demonstrates is the contract the underground recruit has to honour.
---
--- Companions are met and recruited on a floor now (models/errand.lua's companion postings): you find
--- them at a dead end, they ask for one piece of work, and clearing it is what brings them into the
--- company. That is a beat the city cannot host -- the shop that used to host it was that house's own,
--- and the houses are classes now, so there is no counter to be standing behind.
---
--- What survives unchanged is the ORDER, which every recruit route must keep: Player.recruit queues the
--- "[X has joined your Party]" banner onto the next scene to run (models/conversation.lua's noteJoin),
--- and the scene is authored for the full roster through `when = { has = ... }` blocks -- so a companion
--- has to BE in the company before their own lines can play. Join, banner and first words land in one
--- beat, or they land wrong.
---
--- The one shop the city keeps declares no companion (data/vendors/market.lua), so this returns nil for
--- it by the check above rather than by a special case.
-function VendorVisit.joinCompanion(player, vendorId)
-    if not (player and vendorId) then return nil end
-    local def = Vendor.get(vendorId)
-    local companion = def and def.companion
-    if not companion then return nil end
-    return Player.recruit(player, companion)
-end
+-- What that route inherits from this one is the ORDER, and it is a contract rather than a detail:
+-- Player.recruit queues the "[X has joined your Party]" banner onto the next scene to run
+-- (models/conversation.lua's noteJoin), and every scene is authored for the full roster through
+-- `when = { has = ... }` blocks -- so a companion has to BE in the company before their own lines can
+-- play. Join, banner and first words land in one beat, or they land wrong.
 
 -- The scenes this shop owes the player right now, as a flat list of { id, before } steps. `before` runs
 -- just ahead of its scene -- it is what records the flag, accepts the errand, or sets the token a line
@@ -78,13 +56,13 @@ function VendorVisit.steps(player, vendorId, deepest)
     if not (player and vendorId) then return steps end
     deepest = deepest or (player.descentRun and player.descentRun.cleared) or 0
 
-    -- 1. First-visit greeting (data/conversations/<id>/conversation_<id>_vendor_intro.lua), and it is
-    --    also where this house's companion joins -- see VendorVisit.joinCompanion.
+    -- 1. First-visit greeting (data/conversations/<id>/conversation_<id>_vendor_intro.lua). It hands
+    --    over nobody: a shopkeeper meeting you is a greeting, and the body this house is tied to is met
+    --    underground and recruited by the work she asks for (see the note above).
     local introId = "conversation_" .. vendorId .. "_vendor_intro"
     if not Player.hasVisitedVendor(player, vendorId) and Conversation.defs[introId] then
         steps[#steps + 1] = { id = introId, before = function()
             Player.markVendorVisited(player, vendorId)
-            VendorVisit.joinCompanion(player, vendorId)
         end }
     end
 

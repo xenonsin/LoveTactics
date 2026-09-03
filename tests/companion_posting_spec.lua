@@ -47,7 +47,29 @@ return {
                     seen = seen + 1
                 end
             end
-            assert(seen == 7, "seven companions, seven postings -- found " .. seen)
+            assert(seen == 7, "seven houses, seven postings -- found " .. seen)
+        end,
+    },
+    {
+        -- WHAT THE DESCENT ACTUALLY DEALS is the set of postings that hand a body over, and it is a
+        -- narrower thing than the set of houses that name one. The Bastion names Rowan and grants
+        -- nobody, and gating on the NAME seated a recruitment posting at a dead end for a companion
+        -- already standing in the party -- a walk, a fight, and no recruit at the end of it.
+        name = "the deck is the postings that recruit, not the houses that name a body",
+        fn = function()
+            local houses = Errand.houses()
+            assert(not houses.bastion, "the Bastion posts a recruit for a body sworn in the prologue")
+
+            local n = 0
+            for vendorId in pairs(houses) do
+                n = n + 1
+                local who = Errand.companionOf(vendorId)
+                assert(who and Quest.defs[Errand.opener(vendorId)].rewardCharacter == who,
+                    vendorId .. " is dealt but pays no character")
+                assert(who == Vendor.defs[vendorId].companion,
+                    vendorId .. " pays " .. who .. ", who is not the body it names")
+            end
+            assert(n == 6, "six of the seven houses recruit underground, got " .. n)
         end,
     },
     {
@@ -56,22 +78,59 @@ return {
         -- the join banner and their first words land in one beat.
         --
         -- Rowan is the one exemption and it is authored rather than incidental: she is the player's
-        -- bodyguard from the prologue, so she is already in the company before the Bastion's posting is
-        -- ever met, and granting her again would be a reward nobody can receive.
+        -- bodyguard from the prologue, so granting her again would be a reward nobody can receive --
+        -- which is why her house is not dealt at all (see the case above).
         name = "a posting hands over the companion it was met with",
         fn = function()
+            assert(#houses() > 0, "nobody is dealt, so nothing below is being tested")
             for _, vendorId in ipairs(houses()) do
                 local def = Quest.defs[Errand.opener(vendorId)]
                 local companion = Vendor.defs[vendorId].companion
-                if companion == "character_rowan" then
-                    assert(def.rewardCharacter == nil,
-                        "Rowan joins in the prologue; her posting must not re-grant her")
-                else
-                    assert(def.rewardCharacter == companion,
-                        vendorId .. " posts for " .. tostring(companion)
-                            .. " but pays " .. tostring(def.rewardCharacter))
+                assert(def.rewardCharacter == companion,
+                    vendorId .. " posts for " .. tostring(companion)
+                        .. " but pays " .. tostring(def.rewardCharacter))
+            end
+            assert(Quest.defs[Errand.opener("bastion")].rewardCharacter == nil,
+                "Rowan joins in the prologue; the Bastion's posting must not re-grant her")
+        end,
+    },
+    {
+        -- EACH BODY SPEAKS FOR HERSELF, and the pair is required rather than preferred.
+        --
+        -- Two generic scenes carried all seven before this: the same three sentences under six different
+        -- portraits, in the one beat that has to establish who a companion IS before the player fights
+        -- beside her for the rest of the run. They are per-companion now and there is no fallback behind
+        -- them (Errand.postingScene returns nil), so a missing scene is a body who cannot ask -- which
+        -- is silent on the board and loud here.
+        --
+        -- BOTH KINDS, because the second meeting is not the first: `found` is the introduction, `asked`
+        -- is walking back up to somebody who has already asked, and playing the introduction twice is
+        -- the failure the split exists to stop.
+        name = "every companion has her own scene, for both meetings",
+        fn = function()
+            local Conversation = require("models.conversation")
+            for _, vendorId in ipairs(houses()) do
+                local who = Errand.companionOf(vendorId)
+                for _, kind in ipairs({ "found", "asked" }) do
+                    local id = Errand.postingScene({ vendorId = vendorId, kind = kind })
+                    assert(id == "conversation_" .. vendorId .. "_errand_" .. kind,
+                        vendorId .. " has no " .. kind .. " scene of its own, got " .. tostring(id))
+
+                    -- ...and the companion is in it. A scene that names the house but casts nobody is
+                    -- the generic prose again under a per-house filename.
+                    local def = Conversation.defs[id]
+                    local cast = false
+                    for _, entry in ipairs(def.cast or {}) do
+                        if entry == who or (type(entry) == "table" and entry.id == who) then cast = true end
+                    end
+                    assert(cast, id .. " does not cast " .. tostring(who) .. ", who is the one asking")
                 end
             end
+
+            -- The generic pair is gone rather than kept as a safety net. A fallback that exists is a
+            -- fallback something silently lands on.
+            assert(not Conversation.defs.conversation_errand_found, "the generic posting scene is back")
+            assert(not Conversation.defs.conversation_errand_asked, "the generic asked scene is back")
         end,
     },
     {
@@ -130,17 +189,17 @@ return {
         end,
     },
     {
-        -- All seven are dealt into the first circle, and this is a fact about CAPACITY as much as about
-        -- pacing: a shallow floor carves a handful of dead ends and the stair takes one, so seven
-        -- postings on floor one would be seating eight ends in seven spurs and the generator would start
-        -- degrading them onto shared ground.
-        name = "every companion is met in the first circle, and no floor carries all of them",
+        -- ONE PER FLOOR IS THE PACING, and it is the thing this file exists to hold. Dealt into the
+        -- first two floors, the whole roster arrived inside two boards and every floor under them was
+        -- fought by a party that had stopped growing. Spread out, going one deeper is a body.
+        name = "one companion stands per floor, each of them exactly once",
         fn = function()
             local run = { seed = 12345 }
-            local seen, byFloor = {}, {}
-            for floor = 1, Descent.CIRCLE_FLOORS do
+            local seen = {}
+            for floor = 1, Descent.FLOORS do
                 local here = Descent.openersAt(run, floor)
-                byFloor[floor] = #here
+                assert(#here <= 1,
+                    "floor " .. floor .. " carries " .. #here .. " companions -- that is a queue, not a meeting")
                 for _, vendorId in ipairs(here) do
                     assert(not seen[vendorId], vendorId .. " is posted on two floors")
                     seen[vendorId] = floor
@@ -148,16 +207,17 @@ return {
             end
 
             local n = 0
-            for _ in pairs(seen) do n = n + 1 end
-            assert(n == 7, "all seven doors are dealt, got " .. n)
-
-            for floor, count in pairs(byFloor) do
-                assert(count <= 4, "floor " .. floor .. " carries " .. count .. " postings, which is a queue")
-                if count > 0 then
-                    assert(floor <= Descent.OPENER_FLOORS,
-                        "a posting outside the first circle pays opening-rack gear at depth")
-                end
+            for vendorId in pairs(Errand.houses()) do
+                n = n + 1
+                assert(seen[vendorId], vendorId .. "'s companion stands on no floor at all")
             end
+            assert(n == 6, "six companions are recruited underground, got " .. n)
+
+            -- And they are spread rather than clustered: the deepest meeting is as far down as there are
+            -- bodies to meet, which is what "one per floor" means when it is working.
+            local deepest = 0
+            for _, floor in pairs(seen) do deepest = math.max(deepest, floor) end
+            assert(deepest == n, "the last companion is met on floor " .. deepest .. ", not " .. n)
         end,
     },
     {

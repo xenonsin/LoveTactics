@@ -1,43 +1,31 @@
--- THE COMPANION JOINS AT THE COUNTER (models/vendor_visit.lua's joinCompanion).
+-- THE COMPANION DOES NOT JOIN AT A COUNTER, AND THIS FILE IS WHAT KEEPS IT THAT WAY.
 --
--- Seven houses, seven bodies, and this is the only way six of them reach a company. You meet the
--- companion underground at that house's OPENER -- the errand lying unasked on a floor, which is also
--- what puts the shop on the board -- and they are standing in the shop the first time you walk in.
+-- It used to pin the opposite. models/vendor_visit.lua carried a joinCompanion that recruited a house's
+-- `companion` in its first-visit greeting's `before`, and this spec asserted the recruit landed there --
+-- so walking into six shops handed over six companions for the price of opening six doors, while the
+-- underground meeting those bodies were authored for sat on a floor recruiting nobody who had been to
+-- town first. Two routes to the same body, one of them free, is one route.
 --
--- The Crossing's pull dealt 1-of-45 for a token and is gone. What this file pins is the replacement,
--- and the three ways it can be wrong: joining a body whose house is still shut, joining twice across a
--- save, and joining somebody nobody authored.
+-- The route is the floor now (models/errand.lua): you meet a companion at the doorway of the chamber her
+-- work is standing in, she asks, and clearing the fight is what brings her in -- through the posting's
+-- own `rewardCharacter`, granted by Quest.complete.
+--
+-- WHAT THIS FILE PINS is the seam between the two halves: the city hands over nobody, the floor hands
+-- over exactly one body per posting, and the order the join has to keep to make the banner land.
 
 local Errand = require("models.errand")
 local Player = require("models.player")
+local Quest = require("models.quest")
 local Vendor = require("models.vendor")
 local VendorVisit = require("models.vendor_visit")
 local Character = require("models.character")
-local Save = require("models.save")
-
--- Every house that names a companion, which should be all seven with a `class`.
-local function houses()
-    local out = {}
-    for id, def in pairs(Vendor.defs or {}) do
-        if def.companion then out[#out + 1] = id end
-    end
-    table.sort(out)
-    return out
-end
+local Conversation = require("models.conversation")
 
 local function holds(player, charId)
     for _, c in ipairs(player.roster or {}) do
         if c.id == charId then return true end
     end
     return false
-end
-
--- A company whose door at `vendorId` is open (or not). The door IS the opener having been run.
-local function company(vendorId, doorOpen)
-    local p = Player.new()
-    p.completedQuests = {}
-    if doorOpen then p.completedQuests[Errand.opener(vendorId)] = true end
-    return p
 end
 
 return {
@@ -47,113 +35,102 @@ return {
         -- nobody, and nothing else in the game would say so.
         name = "every trading house names a companion that exists",
         fn = function()
-            local ids = houses()
-            assert(#ids == 7, "seven houses should each name a companion, got " .. #ids)
-            local seen = {}
-            for _, vendorId in ipairs(ids) do
-                local who = Vendor.get(vendorId).companion
-                assert(Character.defs[who],
-                    vendorId .. " names " .. tostring(who) .. ", which is not a blueprint")
-                assert(not seen[who], who .. " is the companion of two houses")
-                seen[who] = true
-            end
-        end,
-    },
-    {
-        -- THE DOOR GATE IS GONE, and this case is what is left of it.
-        --
-        -- It used to assert that a house whose opener was unrun handed over nobody however often you
-        -- walked in -- knowing somebody is not the same as being welcome in their hall. There are no
-        -- house doors any more: the seven companions are met and recruited on a floor
-        -- (models/errand.lua), and the city keeps one counter that names no companion at all.
-        --
-        -- What still has to hold is that this route cannot conjure a body out of a shop that has none,
-        -- because it is still called on every first visit to every vendor.
-        name = "a shop with no companion hands over nobody, however often it is walked into",
-        fn = function()
-            for vendorId, def in pairs(Vendor.defs) do
-                if not def.companion then
-                    local p = Player.new()
-                    local before = #p.roster
-                    assert(VendorVisit.joinCompanion(p, vendorId) == nil,
-                        vendorId .. " named nobody but handed somebody over")
-                    assert(#p.roster == before, vendorId .. " grew the roster anyway")
+            local seen, n = {}, 0
+            for vendorId, def in pairs(Vendor.defs or {}) do
+                if def.companion then
+                    n = n + 1
+                    assert(Character.defs[def.companion],
+                        vendorId .. " names " .. tostring(def.companion) .. ", which is not a blueprint")
+                    assert(not seen[def.companion], def.companion .. " is the companion of two houses")
+                    seen[def.companion] = true
                 end
             end
+            assert(n == 7, "seven houses should each name a companion, got " .. n)
         end,
     },
     {
-        name = "running the opener puts the companion in the shop, once",
+        -- NO SHOP HANDS ANYBODY OVER, and this is the case the whole rewrite exists for. A greeting is a
+        -- shopkeeper meeting you; it must not be a recruit, however many times it is walked into and
+        -- whichever house it belongs to.
+        name = "walking into a shop recruits nobody, at any house",
         fn = function()
-            local fresh = Player.new()
-            local joinedAny = false
-            for _, vendorId in ipairs(houses()) do
-                local p = company(vendorId, true)
-                local who = Vendor.get(vendorId).companion
-                local joined = VendorVisit.joinCompanion(p, vendorId)
-
-                if holds(fresh, who) then
-                    -- Already sworn by another route (Rowan). The counter has nothing to hand over, and
-                    -- must not hand over a second one.
-                    assert(joined == nil,
-                        vendorId .. " handed over " .. who .. ", who was already in the company")
-                else
-                    joinedAny = true
-                    assert(joined and joined.id == who,
-                        vendorId .. " should hand over " .. who .. " once its door is open")
+            for vendorId in pairs(Vendor.defs) do
+                local p = Player.new()
+                local before = #p.roster
+                for _ = 1, 3 do
+                    for _, step in ipairs(VendorVisit.steps(p, vendorId, 0)) do
+                        if step.before then step.before() end
+                    end
                 end
-                assert(holds(p, who), who .. " is in the company")
-
-                -- ...and a second walk through the same door is not a second body. Player.recruit
-                -- refuses a duplicate outright, so this is belt and braces on a path the greeting can
-                -- only take once anyway (Player.hasVisitedVendor).
-                assert(VendorVisit.joinCompanion(p, vendorId) == nil,
-                    vendorId .. " handed over a second " .. who)
-                local n = 0
-                for _, c in ipairs(p.roster) do if c.id == who then n = n + 1 end end
-                assert(n == 1, who .. " is in the company " .. n .. " times")
+                assert(#p.roster == before,
+                    vendorId .. " grew the roster by walking in: " .. before .. " -> " .. #p.roster)
             end
-            assert(joinedAny, "no house recruits at all -- the counter has stopped being a door in")
+
+            assert(VendorVisit.joinCompanion == nil,
+                "the counter-join is back; it was the second, free route to every companion")
         end,
     },
     {
-        -- THE GREETING IS THE JOIN. The step list is what states/markets.lua plays, so the wiring that
-        -- matters is that the first-visit scene carries the recruit in its `before` -- the companion has
-        -- to be in the company before their own lines can play (the scenes are authored for the full
-        -- roster through `when = { has = ... }`).
-        name = "the first-visit greeting is the beat the body arrives on",
+        -- ...and the greeting still happens. Deleting the recruit out of the `before` must not have taken
+        -- the step with it -- a first visit that says nothing is a house with no shopkeeper in it.
+        name = "the first-visit greeting still plays, exactly once",
         fn = function()
             local vendorId = "alchemist"
-            local who = Vendor.get(vendorId).companion
-            local p = company(vendorId, true)
+            local p = Player.new()
 
             local steps = VendorVisit.steps(p, vendorId, 0)
             assert(#steps > 0, "an unvisited house owes a greeting")
             assert(steps[1].id == "conversation_" .. vendorId .. "_vendor_intro",
                 "the greeting is the first thing said, got " .. tostring(steps[1].id))
-            assert(not holds(p, who), "and nobody has joined merely by asking what the shop owes")
 
             steps[1].before()
-            assert(holds(p, who), who .. " joins as the greeting opens, not after it closes")
+            assert(Player.hasVisitedVendor(p, vendorId), "and the house remembers having been walked into")
+            assert(#VendorVisit.steps(p, vendorId, 0) == 0, "so it owes no second greeting")
         end,
     },
     {
-        -- ACROSS A SAVE. The visit flag is what stops the greeting replaying, and the roster is what
-        -- stops the body arriving twice; both have to survive, or a reload is a second companion.
-        name = "the join survives a save, and does not happen again on the other side",
+        -- THE ROUTE THAT DOES RECRUIT. The posting's `rewardCharacter` is granted by Quest.complete, and
+        -- the ORDER is a contract rather than a detail: Player.recruit queues the join banner onto the
+        -- next scene to run (Conversation.noteJoin), and every scene is authored for the full roster
+        -- through `when = { has = ... }` -- so the body has to be in the company before the outro plays,
+        -- or their own lines are filtered out of the scene that welcomes them.
+        name = "clearing a companion's posting is what recruits her",
         fn = function()
-            local vendorId = "undercroft"
-            local who = Vendor.get(vendorId).companion
-            local p = company(vendorId, true)
-            local steps = VendorVisit.steps(p, vendorId, 0)
-            steps[1].before()
+            local n = 0
+            for vendorId in pairs(Errand.houses()) do
+                n = n + 1
+                -- Quest.get rather than the raw blueprint: `id` is stamped onto the instance, and
+                -- Quest.complete writes the completed-quest ledger by it.
+                local ask = Quest.get(Errand.opener(vendorId))
+                local who = Errand.companionOf(vendorId)
+                local p = Player.new()
 
-            local restored = Save.restore(Save.snapshot(p))
-            assert(holds(restored, who), who .. " comes back in the company")
-            assert(Player.hasVisitedVendor(restored, vendorId),
-                "and the house remembers having been walked into")
-            assert(#VendorVisit.steps(restored, vendorId, 0) == 0,
-                "so it owes no second greeting")
+                assert(not holds(p, who), who .. " is in the company before anyone met her")
+                Quest.complete(p, ask)
+                assert(holds(p, who), vendorId .. "'s posting was cleared and " .. who .. " did not join")
+
+                -- Once. A second clear of settled work cannot mint a second body.
+                Quest.complete(p, ask)
+                local count = 0
+                for _, c in ipairs(p.roster) do if c.id == who then count = count + 1 end end
+                assert(count == 1, who .. " is in the company " .. count .. " times")
+            end
+            assert(n == 6, "six companions are recruited underground, got " .. n)
+        end,
+    },
+    {
+        -- AND THE SCENE THAT WELCOMES HER CAN SEE HER. The outro is the beat the join banner folds onto,
+        -- so it is authored for a roster that already holds her -- pinned here because the failure is
+        -- invisible: a `when = { has }` block that is false simply does not play, and the recruit's own
+        -- first words are silently dropped.
+        name = "the posting's outro exists and is spoken after the recruit, not before",
+        fn = function()
+            for vendorId in pairs(Errand.houses()) do
+                local def = Quest.defs[Errand.opener(vendorId)]
+                assert(def.outro, vendorId .. "'s posting hands over a body and says nothing about it")
+                assert(Conversation.defs[def.outro],
+                    def.outro .. " is named by " .. vendorId .. "'s posting and does not exist")
+            end
         end,
     },
 }

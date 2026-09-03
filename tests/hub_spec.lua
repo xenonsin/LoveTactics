@@ -161,9 +161,9 @@ return {
         end,
     },
     {
-        -- THE OPENER IS SEATED WHERE IT CAN BE FOUND, which is the half of the door model that lives in
-        -- the descent. A gate on work nobody is ever shown is the same dead card as a gate on prestige.
-        name = "a shut house posts its opener on a floor, and an open one posts nothing",
+        -- THE POSTING IS SEATED WHERE IT CAN BE FOUND, which is the half of the recruit that lives in
+        -- the descent. A companion nobody is ever shown is a body that can never join.
+        name = "a house whose companion is unrecruited posts on a floor, and a done one posts nothing",
         fn = function()
             local Descent = require("models.descent")
             local Errand = require("models.errand")
@@ -172,32 +172,25 @@ return {
             local p = Player.new()
             p.completedQuests = {}
 
-            -- EVERY HOUSE IS OFFERED IN THE FIRST FEW FLOORS, and exactly once. An opener hands over slot 0,
-            -- which is gear balanced for these floors -- so a door posted deeper would be paying out kit
-            -- for ground the company had already walked past (models/descent.lua's Descent.openersAt).
-            -- The deal is a permutation rather than a roll: one that dealt Wrath three times would leave
-            -- four shelves unreachable.
+            -- ONE COMPANION PER FLOOR, EACH EXACTLY ONCE. The deal is a permutation rather than a roll:
+            -- one that dealt Wrath three times would leave three bodies unrecruitable for the whole run.
+            -- Spread rather than piled into the shallows so the party is a different shape on every
+            -- floor -- see models/descent.lua's Descent.openersAt.
             local seen = {}
-            for floor = 1, Descent.OPENER_FLOORS do
-                for _, house in ipairs(Descent.openersAt(run, floor)) do
+            for floor = 1, Descent.FLOORS do
+                local here = Descent.openersAt(run, floor)
+                assert(#here <= 1, "floor " .. floor .. " carries " .. #here .. " companions, not one")
+                for _, house in ipairs(here) do
                     assert(not seen[house], house .. " is posted twice")
                     seen[house] = true
                 end
             end
-            for _, sin in ipairs(Descent.SINS) do
-                assert(seen[sin.vendor], sin.vendor .. " is never offered in the first circle")
+            for house in pairs(Errand.houses()) do
+                assert(seen[house], house .. "'s companion is never offered anywhere in the stack")
             end
-            for floor = Descent.OPENER_FLOORS + 1, Descent.FLOORS do
-                assert(#Descent.openersAt(run, floor) == 0, "floor " .. floor .. " posts a door")
-            end
-
-            -- ...and no floor of the circle carries the whole city. A shallow floor carves about seven
-            -- and a half dead ends and the stair takes one, so seven doors on one board would be seating
-            -- ends the generator has to degrade onto shared ground.
-            for floor = 1, Descent.OPENER_FLOORS do
-                assert(#Descent.openersAt(run, floor) < #Descent.SINS,
-                    "floor " .. floor .. " carries every door in the game")
-            end
+            -- The Bastion is what the gate is for: it names Rowan, who is sworn in the prologue, so its
+            -- posting recruits nobody and must never take a floor's slot.
+            assert(not seen.bastion, "the Bastion posts a recruit for a body already in the company")
 
             -- The seating itself: a shut house's opener is one more end on the board, and it stops being
             -- one the moment that door is open.

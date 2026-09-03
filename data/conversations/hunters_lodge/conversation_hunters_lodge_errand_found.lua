@@ -1,25 +1,33 @@
 -- Conversation authored inline (English); localization ids (`tag`) are stamped by
 -- tools/extract_strings.lua and must not be hand-edited. See models/conversation.lua.
 --
--- TEMP PROSE. Placeholder, written to make the beat fire and to be replaced wholesale by the story
--- pass -- short on purpose. What it has to establish is only the shape: Kaya is standing at hunters_lodge's
--- posting, Kaya asks the company to run it, and finishing it opens that house's door. The join
--- itself happens later, at the counter (models/vendor_visit.lua's joinCompanion).
+-- KAYA, MET AT THE LODGE'S POSTING. The first beat of a recruit (models/errand.lua): she asks at the
+-- doorway, the stag is the ask, and clearing it recruits her.
 --
--- Found by models/errand.lua's Errand.postingScene, which prefers a house's own
--- `conversation_<vendor>_errand_found` over the generic one. `{house}` and `{posting}` are set for
--- the scene's duration (states/game.lua's askErrand).
+-- WHAT THIS SCENE HAS TO ESTABLISH: her name is "it is enough" and she has never taken past need
+-- (data/characters/character_kaya.lua). The Lodge's posting wants antlers on a wall, which is a trophy,
+-- which is the exact thing she is the answer to -- so she does not read the posting back, she RESTATES
+-- it on her own terms and the terms are the character. Once, and nothing else. A companion whose first
+-- scene agreed with the trophy would be temperance in name only.
+--
+-- The wolf is hers and is on the board from the first bell (trait_wolf_companion), so it is named here
+-- rather than arriving unannounced in the fight.
 return {
-    title = "A Posting Nobody Took",
-    cast  = { "character_avatar", "character_kaya" },
+    title = "The White Stag",
+    cast  = { "character_avatar", "character_kaya", { id = "character_rowan", when = { has = "character_rowan" } } },
 
     script = {
-        { "character_kaya", "You are the first down here in a long while. This is {house}'s work, and it has been lying here.", tag = 1 },
+        { "character_kaya", "Down. Lower than that. The boars have your scent already and they will reach you a long time before the stag does.", tag = 1 },
         { "character_avatar", "{posting}", tag = 2 },
-        { "character_kaya", "I cannot finish it alone. Do it, and they will open their door to you. Ask for me there.", tag = 3 },
-        { "character_avatar", "We take the work, or we leave it lying where it is. Choose...", tag = 4, choices = {
-            { "Take the work.", tag = 5, answer = "accept" },
-            { "Leave it lying.", tag = 6, answer = "decline" },
+        { "character_kaya", "Antlers on a wall. That is what the Lodge wants and it is not why I have been sitting in this wood for nine days.", tag = 3 },
+        { when = { has = "character_rowan" }, script = {
+            { "character_rowan", "Nine days, and a wolf that has not left her side. She is not the one being hunted here, {name}.", tag = 4 },
+        } },
+        { "character_kaya", "It stopped being a stag two winters ago. It takes and it takes and the wood has gone quiet behind it -- so it comes down once, and nothing else in here does. Those are my terms and I do not move off them.", tag = 5 },
+        { "character_kaya", "Agree to that and my wolf goes in first and I go after her. Agree to it and I will walk you out of this wood, and further than that if you are going.", tag = 6 },
+        { "character_avatar", "We take it on her terms, or we leave the wood alone. Choose...", tag = 7, choices = {
+            { "Take her terms.", tag = 8, answer = "accept" },
+            { "Leave the wood.", tag = 9, answer = "decline" },
         } },
     },
 }
