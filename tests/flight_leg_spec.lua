@@ -402,6 +402,26 @@ return {
                     end
                 end
             end
+
+            -- ...AND IT IS ONE CHAIN, which is the claim the ordering above actually rests on. Every
+            -- place has exactly two walkable neighbours bar the two ends, so BFS distance rises by one a
+            -- step and no two stops can tie. The layout's header has always said so and nothing but the
+            -- header did: a junction opened anywhere on that road passes every assertion above this one
+            -- -- the stops stay reachable and stay sorted -- while quietly ending the walking order as a
+            -- fact about data/overworld/tutorial_flight.lua. It matters more now that the road is twenty
+            -- steps of a 9x7 board rather than eight of a 4x3 one, since there is room to open one.
+            local ends = 0
+            for y = 1, grid.rows do
+                for x = 1, grid.cols do
+                    local c = grid:get(x, y)
+                    if grid:typeWalkable(c.tile) then
+                        local ways = #grid:pathNeighbors(x, y)
+                        assert(ways <= 2, "place " .. x .. "," .. y .. " is a junction (" .. ways .. " ways out)")
+                        if ways == 1 then ends = ends + 1 end
+                    end
+                end
+            end
+            assert(ends == 2, "the road has exactly two ends (the start and the champion), got " .. ends)
         end,
     },
 }
