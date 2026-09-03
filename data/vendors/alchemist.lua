@@ -5,8 +5,10 @@
 -- the whole difference between this shelf and the Undercroft's, and the two are balanced against it:
 -- a rogue takes your dagger, an alchemist takes what made it sharp.
 --
--- The last vendor to open (prestige 4, see data/buildings/alchemist.lua). You do not envy until you
--- have seen what the other six own.
+-- It used to be the last vendor to open, on a prestige threshold, on the argument that you do not envy
+-- until you have seen what the other six own. All seven wait on the same thing now -- level 1 of their
+-- own class (data/buildings/alchemist.lua) -- so the order is whatever this company chose to play, and
+-- a house that opens late does so because nobody climbed it.
 return {
     name = "The Crucible",
     class = "alchemist",

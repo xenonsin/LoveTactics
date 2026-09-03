@@ -11,7 +11,7 @@
 --
 -- IT LIVED IN states/hub.lua UNTIL THE SHOPS MOVED. Every shelf was a pop-up over the city, so the city
 -- was the only screen that had to know any of this. The seven houses and the General Store are on a
--- board of their own now (states/markets.lua, `district = "market"`), and a second copy of ninety lines
+-- board of their own now (states/houses.lua, `district = "houses"`), and a second copy of ninety lines
 -- of conversation sequencing is the kind of duplicate that stays right for about a week -- an errand
 -- accepted on one screen and not the other is a shelf that disagrees with itself about what it asked
 -- for. One copy, two callers.

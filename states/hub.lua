@@ -1,14 +1,14 @@
 -- Hub city state: the town screen reached from the main menu. Buildings are clickable hotspots over a
 -- background image; clicking one opens a modal pop-up panel, or switches to a whole screen for the two
--- doors that are places rather than counters (the Gate, the Markets).
+-- doors that are places rather than counters (the Gate, the Houses).
 --
 -- A PLAZA WITH THE GATE IN THE MIDDLE (models/building.lua's GRID). The stair is the reason the city
 -- exists and everything else here is something you do before going down or because you came back up, so
 -- it is drawn larger and the other seven cards ring it.
 --
--- THE CITY GROWS AS THE COMPANY WORKS, and that is no longer prestige. The shelves moved onto the market
--- board and each opens on the first errand its house posts on a descent floor (models/errand.lua); this
--- board's own cards open on the deeds that give them something to do -- the Markets on the first house,
+-- THE CITY GROWS AS THE COMPANY WORKS, and that is no longer prestige. The seven class shelves stand on
+-- a board of their own and each opens at level 1 of its own class (models/building.lua); this board's
+-- own cards open on the deeds that give them something to do -- the Houses on the first shelf to open,
 -- the Cafe on the second floor, the Forge on the fourth, the Touchstone on the first thing nobody can
 -- read. See the gate table in models/building.lua for the whole list and why there is one.
 --
@@ -333,7 +333,7 @@ end
 
 -- Play a shop's pre-shelf scenes -- the greeting, any discipline announcement, the house's next ask --
 -- and then open its panel. All of it lives in models/vendor_visit.lua now: the shelves moved onto their
--- own board (states/markets.lua) and two screens open shop doors, so the sequencing is one copy with two
+-- own board (states/houses.lua) and two screens open shop doors, so the sequencing is one copy with two
 -- callers rather than ninety duplicated lines that can disagree about what a house asked for.
 --
 -- A building with no vendor has nothing to say and opens straight away.
@@ -495,6 +495,15 @@ function hub.enter()
             -- (Player.seeNew) rather than on being acted on.
             if b.vendor then
                 return Vendor.hasMarkedStock(b.vendor, hub.player.newStock)
+            end
+            -- The Houses card carries the OR of the seven behind it (states/houses.lua draws the same
+            -- dot per shelf in there): a mark behind a door behind a door is a mark nobody sees.
+            if b.state == "houses" then
+                for _, house in ipairs(Building.list(hub.player, { district = "houses" })) do
+                    if not house.locked
+                        and Vendor.hasMarkedStock(house.vendor, hub.player.newStock) then return true end
+                end
+                return false
             end
             if b.panel == "party" then return Player.hasNewStash(hub.player) end
             return false

@@ -44,7 +44,7 @@ local GlossaryPanel = require("ui.glossary_panel")
 local Glossary = require("models.glossary")
 local Vendor = require("models.vendor")
 local Player = require("models.player")
-local Quest = require("models.quest") -- sponsorProgress: how many of this vendor's quests are done (its standing)
+local Quest = require("models.quest") -- shelfRung: how far up this house's class the company has climbed
 local Item = require("models.item")
 local Class = require("models.class") -- unlockedSet: gates a shelf's locked discipline cut
 local Market = require("models.market") -- the one counter: what it has out today, and off which rack
@@ -592,10 +592,10 @@ function Shop:refresh()
     -- starts at the top.
     local scroll = self.menu and self.menu.scroll or 0
     self:rememberGrid() -- the grid shelf's equivalent of the two lines above
-    self.questsDone = Quest.sponsorProgress(self.player, self.vendorId)
-    -- What the SHELF reads, one below the standing above it: the opener bought the door this panel is
-    -- being drawn inside, not a band of stock (Quest.shelfRung). The two are kept apart here rather than
-    -- collapsed because the header still reports standing, and that is a different count.
+    -- WHAT THE SHELF READS, and now the only count on this panel: the rung of this house's class the
+    -- company has reached (Quest.shelfRung -> Class.rosterLevel). A second figure stood beside it for a
+    -- while -- the sponsor's finished-quest standing -- and it is gone with the line that printed it:
+    -- one shelf, one gate, one number.
     self.shelfRung = Quest.shelfRung(self.player, self.vendorId)
     self.rows = {}
 
@@ -1070,17 +1070,18 @@ function Shop:drawVendor()
     Theme.set(Theme.accentAmber)
     love.graphics.print(self.player.gold .. " gold", x + 12, ty)
     Theme.set(Theme.ink)
-    -- Standing here is purely a count of this house's quests you have finished; the "N more to unlock"
-    -- detail lives on each locked row instead, so this line stays short and never wraps into the
-    -- description below. A vendor with no shelf of its own (the Cafe) runs no quest line and shows
-    -- nothing -- though it does not open this panel at all any more (ui/panels/cafe.lua).
+    -- THE RUNG THIS COUNTER IS OPEN TO, which is the one number that decides what is on it: a house
+    -- sells its class's ladder and stops at the level the company has reached in that class
+    -- (Quest.shelfRung -> Class.rosterLevel). The "N more to unlock" detail lives on each locked row
+    -- instead, so this line stays short and never wraps into the description below.
     --
-    -- IT READ "Errands run" and it was the last place in the city using the word. Nobody behind a
-    -- counter posts an errand any more, so the label named a thing that does not exist for a number that
-    -- does: this house's standing, which is what the Forge ceiling and a Request both read
-    -- (models/request.lua). Same count, its own name.
-    if self.def.sells ~= false then
-        love.graphics.printf("Standing: " .. (self.questsDone or 0), x + 12, ty + 22, w - 24, "left")
+    -- IT READ "Standing: N" -- a count of this house's finished quests -- and before that "Errands run".
+    -- Both named a deed nobody can do any more, for a number that sat at zero forever while the shelf
+    -- around it grew. The class level is what actually opened these rows, and what opened the door
+    -- (data/buildings/bastion.lua). A vendor with no shelf of its own shows nothing.
+    if self.def.sells ~= false and self.def.class then
+        love.graphics.printf(Item.classDisplayName(self.def.class) .. " " .. (self.shelfRung or 0),
+            x + 12, ty + 22, w - 24, "left")
     end
     love.graphics.setFont(self.smallFont)
     Theme.set(Theme.muted)

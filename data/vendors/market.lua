@@ -1,10 +1,16 @@
--- THE MARKET: the one shop, and the shop that replaced seven.
+-- THE MARKET: the town's own counter, and the shop that is open on the first morning.
 --
--- The city used to hold a house per class -- the Bastion, the Arcanum, the Cathedral, the Colosseum,
--- the Crucible, the Hunter's Lodge, the Undercroft -- each with its own shelf, its own ladder of
--- finished work, and its own door that had to be opened underground before any of it could be reached.
--- The houses are classes now (models/class.lua, docs/classes.md); what a class is is something a
--- BODY climbs, not a room you unlock. So the rooms came out and the counter stayed.
+-- IT REPLACED THE SEVEN HOUSES AND NOW STANDS BESIDE THEM. The city used to hold a house per class --
+-- the Bastion, the Arcanum, the Cathedral, the Colosseum, the Crucible, the Hunter's Lodge, the
+-- Undercroft -- each behind a door that had to be opened underground before any of it could be reached,
+-- which is a gate nobody could satisfy. They came out, this counter took their place, and they are back
+-- on a board of their own with the gate they were always missing: level 1 of the house's own class
+-- (data/buildings/houses.lua).
+--
+-- SO WHAT IS THIS ONE FOR, with the seven ladders open again. It is the shop for a company that has
+-- climbed nothing yet, and the shop nobody has to walk past a ladder to use: plain kit and three rolled
+-- rows a day, any class, never gated. A house sells one class's whole ladder, deepening as that class
+-- does. Day-one shopping and earned shopping.
 --
 -- `sellsAll` is the whole of its shelf contract, and it is the mirror of the Cafe's `sells = false`:
 -- Vendor.sells accepts everything here, and what a ware costs the player is decided by its rung and its

@@ -285,6 +285,71 @@ return {
         end,
     },
     {
+        -- THE SEVEN SHELVES, and the gate that brought them back: level 1 of the house's own class, in
+        -- any body on the roster (models/building.lua). Pinned in both directions, because the failure
+        -- this replaces was silent -- three gates in a row that nobody could ever satisfy, so seven
+        -- doors sat shut for good and the only tell was a shop nobody could name.
+        name = "a house opens at level 1 of its class, and the square opens with the first of them",
+        fn = function()
+            local Character = require("models.character")
+            local Class = require("models.class")
+
+            local function shut(who, id, district)
+                for _, b in ipairs(Building.list(who, { district = district })) do
+                    if b.id == id then return b.locked end
+                end
+                error(id .. " is not a card on the " .. district .. " board")
+            end
+
+            -- Every house names a vendor, and every one of those vendors names a class. Without both
+            -- the gate has nothing to read and the door is shut for good -- which is the exact shape of
+            -- the three failures before it, so it is asserted rather than assumed.
+            local Vendor = require("models.vendor")
+            local houses = 0
+            for id, def in pairs(Building.defs) do
+                if (def.district or "city") == "houses" then
+                    houses = houses + 1
+                    local vdef = def.vendor and Vendor.defs[def.vendor]
+                    assert(vdef, id .. " is a house with no vendor blueprint")
+                    assert(vdef.class, id .. "'s vendor names no class, so its door can never open")
+                    assert(def.unlockClassLevel, id .. " is a house with no class gate")
+                end
+            end
+            assert(houses == 7, "the square is supposed to hold seven houses; it holds " .. houses)
+
+            -- SHUT ON A FRESH SAVE, all seven, and the card in the city with them.
+            local fresh = Player.new()
+            for _, b in ipairs(Building.list(fresh, { district = "houses" })) do
+                assert(b.locked, b.id .. " is open on a fresh save")
+            end
+            assert(shut(fresh, "houses", "city"),
+                "the Houses card opens onto a square of seven locked plates")
+
+            -- One body, one class, one level: the Bastion opens and nothing else does.
+            local knight = Player.new()
+            knight.roster = { Character.instantiate("character_rowan") }
+            Character.recordTechnique(knight.roster[1], "knight", Class.classLevelCost(1))
+            assert(not shut(knight, "bastion", "houses"), "knight 1 did not open the Bastion")
+            assert(shut(knight, "arcanum", "houses"), "knight 1 opened the mages' shelf as well")
+            assert(not shut(knight, "houses", "city"), "the first house did not put the square in the city")
+
+            -- ANY body on the roster, not the one standing in front of you: a shelf is bought from with
+            -- one purse into one stash, so the company's deepest holder is what the door asks about.
+            local pair = Player.new()
+            pair.roster = { Character.instantiate("character_kaya"), Character.instantiate("character_rowan") }
+            Character.recordTechnique(pair.roster[2], "priest", Class.classLevelCost(1))
+            assert(not shut(pair, "cathedral", "houses"),
+                "a second body's class level did not open its house")
+
+            -- A hair under the rung is still shut: the gate is the LEVEL, not the technique banked
+            -- toward it.
+            local nearly = Player.new()
+            nearly.roster = { Character.instantiate("character_rowan") }
+            Character.recordTechnique(nearly.roster[1], "rogue", Class.classLevelCost(1) - 1)
+            assert(shut(nearly, "undercroft", "houses"), "a rung short of knight 1 opened the door anyway")
+        end,
+    },
+    {
         name = "quest registry discovers def files by filename",
         fn = function()
             assert(Quest.defs.quest_bastion_slot_01, "quest_bastion_slot_01 missing")

@@ -24,9 +24,11 @@
 --
 -- WHAT A COUNTER IS FOR, now that the catalogue is not on it. The deep end of the ladder is reached by
 -- descending -- taken off the bodies that carried it (models/spoils.lua), bought off the cart on the
--- road, bled for at a stone. The town shop is where you replace what you spent and arm a body you just
--- recruited, and the three rolled rows are the reason to come back tomorrow. Nothing is greyed here:
--- a rotation is not a ladder, and a locked row on a counter this small is the shop advertising at you.
+-- road, bled for at a stone -- and, since the seven houses came back on a class gate, by climbing the
+-- class whose shelf sells it (data/buildings/houses.lua). The town shop is where you replace what you
+-- spent and arm a body you just recruited, and the three rolled rows are the reason to come back
+-- tomorrow. Nothing is greyed here: a rotation is not a ladder, and a locked row on a counter this
+-- small is the shop advertising at you. The ladders are next door, and they do their own banding.
 --
 -- DETERMINISTIC FROM THE DAY, never re-rolled on opening. This is the rule models/request.lua
 -- established for the board it used to draw and it is the same rule for the same reason: "I will come

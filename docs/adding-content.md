@@ -387,10 +387,10 @@ return {
     panel = nil,           -- module name under ui/panels/, or nil for the placeholder
     state = nil,           -- module name under states/, for a door that opens a whole screen
     vendor = nil,          -- vendor id, for shop buildings (panel = "party", store mode)
-    unlockErrand = true,   -- opens on this house's own first errand; a vendor id names somebody else's
-    unlockAnyErrand = nil, -- ...or on ANY house's first errand (the Markets)
+    district = nil,        -- "houses" puts the card on the shelves' board instead of the city plaza
+    unlockClassLevel = nil,-- opens at level N of the vendor's own class, in any body on the roster
+    unlockAnyHouse = nil,  -- ...or with whichever of the seven houses opens first (the Houses card)
     unlockDepth = nil,     -- ...or once the company has stood on floor N
-    unlockWound = nil,     -- ...or once anybody has been carried up broken (the Inn)
     unlockPrestige = 1,    -- the campaign's own ladder, parked at 1 -- see below
 }
 ```
@@ -407,18 +407,24 @@ building gated above that is a card that never opens. It is also a number the pl
 anywhere in the city, which is why a locked card that quoted it (`? (prestige 3)`) told them nothing
 they could act on. The field stays for the campaign's sake and is honoured if the board comes back.
 
-The gates the descent actually feeds are the other four, ANDed, and each names a different deed
+The gates the play actually feeds are the other four, ANDed, and each names a different deed
 (`models/building.lua` holds the authoritative list):
 
 | field | opens when | who uses it |
 | --- | --- | --- |
-| `unlockErrand` | this house's first errand is run — `true` means its own line, a vendor id somebody else's | the seven shops; the Dueling Grounds waits on the Colosseum's |
-| `unlockAnyErrand` | *any* house's first errand is run | the Markets |
+| `unlockClassLevel = N` | any body on the roster reaches level N of the vendor's class (`Class.rosterLevel`) | the seven houses, all at 1 |
+| `unlockAnyHouse` | whichever of those seven opens first | the Houses card in the city |
 | `unlockDepth = N` | the company has stood on floor N (`Descent.deepest`) | the Cafe at 2, the Forge at 4 |
-| `unlockWound` | anybody has been carried up broken (`Wound.everWounded`) | the Inn |
+| `unlockUnidentified` | the company is carrying something it cannot read | the Touchstone |
 
-Pick the one that names the deed the door is *for*. A building whose only job is setting a bone opens
-on a bone being broken; a bench that spends salvaged materials opens once there is salvage to spend.
+> **`unlockWound` is gone**, and it is worth knowing why before you reach for a gate of that shape. It
+> opened the Inn on the first body carried up broken, and the Inn's only job was setting a bone for
+> coin. A wound is a condition of the expedition now and reaching the surface ends it for free
+> (`models/wound.lua`), so the building had nothing to sell and went with the toll it charged.
+
+Pick the one that names the deed the door is *for*. A bench that spends salvaged materials opens once
+there is salvage to spend; a counter that reads what you cannot opens once you are carrying something
+unreadable.
 The point of staging them is that the plaza opens on three cards rather than eight, and the player
 learns each building at the moment it becomes useful — so a gate that is merely *a* deed, rather than
 *this door's* deed, is a card arriving for no reason the player can feel.
