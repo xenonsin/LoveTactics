@@ -17,10 +17,10 @@
 -- ui/pool_grid.lua keeps against the stash.
 --
 -- A TILE IS A FACE AND NOTHING ELSE, so hovering one opens the body's card (ui/body_tooltip.lua) --
--- pools, what a wound has taken off the top, the stats with the gear folded in, and the kit by name.
+-- pools, what a wound has taken off the top, and the stats with the gear folded in.
 -- Drawn by :drawHover, which the host calls after everything else on the screen.
 
-local BodyTooltip = require("ui.body_tooltip") -- the hovered body's pools, stats and kit
+local BodyTooltip = require("ui.body_tooltip") -- the hovered body's pools, wounds and stats
 local Descent = require("models.descent")
 local InputMode = require("input_mode")
 local Scale = require("scale")
@@ -430,12 +430,12 @@ function Picker:draw()
 end
 
 -- WHAT THIS BODY IS WORTH, under the cursor (ui/body_tooltip.lua). The tiles say who; a company picked
--- four at a time is a decision about pools, wounds and kit, and without this the player answers it from
--- memory or from a trip to the Armory and back.
+-- four at a time is a decision about pools, wounds and what the gear is worth, and without this the
+-- player answers it from memory or from a trip to the Armory and back.
 --
--- A SEPARATE CALL rather than the tail of :draw, because a full card -- three pools, six stats and nine
--- items -- is most of the screen tall, and everything the host draws after the company would be drawn
--- over the top of it. The host calls this last (states/gate.lua), under its own modals.
+-- A SEPARATE CALL rather than the tail of :draw, because a full card -- three pools, six stats and a
+-- wound's statuses -- runs tall, and everything the host draws after the company would be drawn over
+-- the top of it. The host calls this last (states/gate.lua), under its own modals.
 --
 -- NOT WHILE SOMETHING IS IN HAND: a card that followed a dragged body would ride over the plates being
 -- aimed at, and the question during a drag is where they land, not what they carry.

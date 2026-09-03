@@ -1,6 +1,11 @@
 -- THE BODY CARD: what a roster member IS, on hover, wherever the campaign asks you to choose between
--- them -- their pools, what a wound has taken off the top, their flat stats with the gear folded in,
--- and the kit they are carrying.
+-- them -- their pools, what a wound has taken off the top, and their flat stats with the gear folded
+-- in.
+--
+-- IT DOES NOT LIST THE KIT. It used to, by name, and the list was the longest half of the card and the
+-- half nobody read: the stat rows above it already carry what the gear is WORTH, in the figure the
+-- decision is made on, and a body's blade is chosen in the Armory rather than at the Gate. Naming the
+-- items again only asked the player to do the arithmetic the card had already done.
 --
 -- WRITTEN FOR THE GATE, where the question is "who goes down" and the answer is four bodies out of a
 -- company (ui/expedition_picker.lua). That screen drew each member as a tile with a sprite on it, which
@@ -25,15 +30,15 @@ local Combat = require("models.combat")     -- for the wounded ceiling, the way 
 local Colors = require("ui.colors")
 local Discipline = require("models.discipline")
 local Gate = require("models.gate")         -- a body in a bed is not a body you can send
-local Item = require("models.item")
 local Theme = require("ui.theme")
 local TileTooltip = require("ui.tile_tooltip")
 local Wound = require("models.wound")
 
 local BodyTooltip = {}
 
--- The card's width. Wider than a tile's box (210), because these rows carry item NAMES against a value
--- column -- "Rain of Arrows" and "Ability" in the same line -- where a tile's rows carry a word.
+-- The card's width. Wider than a tile's box (210), because the widest rows here are a stat label
+-- against a figure that carries its gear bonus with it -- "10 (+2)" -- and the wound statuses, which
+-- are named in full rather than abbreviated.
 BodyTooltip.WIDTH = 250
 
 -- Pools, in the order the party sheet stacks them. Health takes the party blue it wears on every board
@@ -67,15 +72,6 @@ local function classLabel(char)
     local key = char.discipline or char.class
     if not key then return nil end
     return Discipline.displayName(key) or titleCase(key)
-end
-
--- What KIND of thing an item is, for the value column. A weapon answers with its FAMILY -- an axe
--- cleaves and a dagger bleeds (docs/weapons.md), so "Axe" is the useful word and "Weapon" is not --
--- and everything else answers with its type.
-local function itemKind(item)
-    local family = Item.archetype(item)
-    if family then return titleCase(family) end
-    return titleCase(item.type or "item")
 end
 
 -- The card's contents, as tile_tooltip blocks. Split out from the draw so a spec can read what the
@@ -146,21 +142,6 @@ function BodyTooltip.blocks(player, char)
             if bonus ~= 0 then value = value .. " (" .. (bonus > 0 and "+" or "") .. bonus .. ")" end
             blocks[#blocks + 1] = { kind = "stat", label = row.label, value = value }
         end
-    end
-
-    -- THE KIT, by name. Not the 3x3 grid: adjacency is what the grid is for and the Armory is where it
-    -- is arranged -- what this card owes the question at the Gate is which blade and which spells walk
-    -- down the stair, which is a list.
-    blocks[#blocks + 1] = { kind = "sep" }
-    blocks[#blocks + 1] = { kind = "head", text = "Carrying", color = Theme.accentAmber }
-    local items = Character.eachItem(char)
-    if #items == 0 then
-        blocks[#blocks + 1] = { kind = "desc", text = "Nothing at all." }
-    end
-    for _, item in ipairs(items) do
-        local name = item.name or item.id or "?"
-        if (item.quantity or 1) > 1 then name = name .. "  x" .. item.quantity end
-        blocks[#blocks + 1] = { kind = "stat", label = name, value = itemKind(item) }
     end
 
     return blocks

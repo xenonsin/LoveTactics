@@ -8,7 +8,8 @@
 --   * who they are -- the name, and what they are growing as
 --   * what is wrong with them -- the wound count, the pool a wound has locked away, and the status the
 --     battle will stamp on them for carrying it
---   * what they bring -- every item in the grid, by name
+--   * what they bring -- the flat stats with the gear folded in, and NOT the kit by name: the item
+--     list is deliberately gone from this box
 --
 -- The wound half is the part worth pinning: the reserved slice is computed from the player's ledger
 -- through Combat.unreservedMax, so a card drawn before Wound.stamp has run would quietly show a whole
@@ -42,7 +43,7 @@ end
 
 return {
     {
-        name = "the card names the body, its class, its pools and every item it carries",
+        name = "the card names the body, its class and its pools -- and never lists the kit",
         fn = function()
             local p, char = company(0)
             Character.addItem(char, Item.instantiate("weapon_iron_sword"))
@@ -57,14 +58,22 @@ return {
             assert(hp and hp.max == char.stats.health.max, "an unwounded body's pool is not whole")
             assert(not hp.reserved, "an unwounded body has a slice of her health locked away")
 
-            -- Every item in the grid, by name -- the Armory is where they are arranged, this is where
-            -- they are counted.
+            local attack = find(blocks, "stat", "Attack")
+            assert(attack, "the card does not carry what the body hits for")
+
+            -- THE KIT IS NOT ON THE CARD. What the gear is worth is already in the stat rows; naming
+            -- the items again was the longest half of the box and read by nobody, and the blade is
+            -- chosen in the Armory rather than at the Gate.
             local carried = 0
             for _, item in ipairs(Character.eachItem(char)) do
-                assert(find(blocks, "stat", item.name), "the card leaves " .. item.name .. " off the kit")
+                assert(not find(blocks, "stat", item.name),
+                    "the card lists " .. item.name .. " -- the kit is gone from this box")
                 carried = carried + 1
             end
-            assert(carried > 0, "the fixture carries nothing, so the kit half proves nothing")
+            assert(carried > 0, "the fixture carries nothing, so the absent kit proves nothing")
+            for _, b in ipairs(blocks) do
+                assert(not (b.kind == "head" and b.text == "Carrying"), "the Carrying heading is back")
+            end
         end,
     },
     {
