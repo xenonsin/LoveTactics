@@ -13,10 +13,15 @@
 -- cool jade and warm crimson. That axis is deleted: there is one shelf, the slate is a plain rarity roll,
 -- and the colour is the rung.)
 --
--- Taking is IRREVERSIBLE, so a mouse click on a card only FOCUSES it; the Take button below commits. A
--- keyboard/pad focus already lives on a card, so Enter/A takes the focused one outright. Same panel
+-- Taking is IRREVERSIBLE, so a mouse click on a card only SELECTS it; the Take button below commits. A
+-- keyboard/pad selection already lives on a card, so Enter/A takes the selected one outright. Same panel
 -- contract as ui/panels/relic_reveal.lua: a state owns it as game.activePanel and forwards input while it
 -- is open; three-input + mouse-only.
+--
+-- THE CURSOR IS NOT THE CHOICE. The pick is a standing thing -- it is what Take grants -- so merely
+-- reading the other two cards must not quietly move it. Hovering a card lights it with the steel cursor
+-- ring (Theme.cursor) and nothing else; the relic's own colour, the thick ring and the panel's top rule
+-- stay on the card that is actually selected until a click or an arrow moves the pick.
 --
 --   local panel = RelicOffer.new({
 --       title   = "Reliquary",                                  -- optional; titles the panel
@@ -66,7 +71,8 @@ function RelicOffer.new(opts)
     self.onTake = opts.onTake
     self.onLeave = opts.onLeave
     self.finished = false
-    self.focus = 1
+    self.selected = 1 -- what Take grants. Moved only by a click or an arrow, never by the mouse passing over.
+    self.hover = nil -- the card under the mouse, drawn in steel and nothing more
 
     self.titleFont = Theme.display(28)
     self.promptFont = Theme.body(15)
@@ -139,7 +145,7 @@ end
 
 function RelicOffer:take(i)
     if self.finished then return end
-    local entry = self.offer[i or self.focus]
+    local entry = self.offer[i or self.selected]
     if not entry then return end
     self.finished = true
     if self.onTake then self.onTake(entry) end
@@ -153,17 +159,27 @@ end
 
 -- ---- drawing ----------------------------------------------------------------
 
-function RelicOffer:drawCard(entry, focused)
+function RelicOffer:drawCard(entry, selected, hovered)
     local r = entry.rect
     local info = entry.info or {}
     local accent = RelicCard.accentOf(info)
     local cx = r.x + r.w / 2
     local textW = r.w - CARD_PAD * 2
 
-    love.graphics.setColor(0.12, 0.13, 0.16, focused and 0.95 or 0.55)
+    love.graphics.setColor(0.12, 0.13, 0.16, selected and 0.95 or (hovered and 0.78 or 0.55))
     love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 7, 7)
-    love.graphics.setColor(accent[1], accent[2], accent[3], focused and 1 or 0.4)
-    love.graphics.setLineWidth(focused and 2 or 1)
+    -- Two different rings for two different things: the PICK wears the relic's own colour, the card
+    -- merely under the mouse wears the steel cursor. A hovered card is being read, not chosen.
+    if selected then
+        love.graphics.setColor(accent[1], accent[2], accent[3], 1)
+        love.graphics.setLineWidth(2)
+    elseif hovered then
+        love.graphics.setColor(Theme.cursor[1], Theme.cursor[2], Theme.cursor[3], 0.9)
+        love.graphics.setLineWidth(2)
+    else
+        love.graphics.setColor(accent[1], accent[2], accent[3], 0.4)
+        love.graphics.setLineWidth(1)
+    end
     love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 7, 7)
     love.graphics.setLineWidth(1)
 
@@ -199,7 +215,7 @@ function RelicOffer:drawCard(entry, focused)
 end
 
 function RelicOffer:drawButton(b, label, primary, focused)
-    local accent = primary and RelicCard.accentOf(self.offer[self.focus] and self.offer[self.focus].info)
+    local accent = primary and RelicCard.accentOf(self.offer[self.selected] and self.offer[self.selected].info)
         or { 0.6, 0.63, 0.7 }
     local lit = b.hovered or focused
     love.graphics.setColor(accent[1], accent[2], accent[3], lit and 0.30 or 0.14)
@@ -222,9 +238,9 @@ function RelicOffer:draw()
     love.graphics.rectangle("fill", bx, by, self.boxW, self.boxH, Theme.R, Theme.R)
     Theme.set(Theme.frame)
     love.graphics.rectangle("line", bx, by, self.boxW, self.boxH, Theme.R, Theme.R)
-    -- The top rule takes the FOCUSED relic's colour, so moving the ring re-tints the whole panel and the
-    -- moral weight of the card under the cursor is legible from the frame in.
-    local accent = RelicCard.accentOf(self.offer[self.focus] and self.offer[self.focus].info)
+    -- The top rule takes the SELECTED relic's colour, so re-picking re-tints the whole panel -- and a
+    -- mouse wandering the shelf leaves it alone, because nothing about the pick has changed.
+    local accent = RelicCard.accentOf(self.offer[self.selected] and self.offer[self.selected].info)
     love.graphics.setColor(accent[1], accent[2], accent[3], 0.85)
     love.graphics.rectangle("fill", bx + Theme.R, by, self.boxW - Theme.R * 2, 3)
 
@@ -236,7 +252,7 @@ function RelicOffer:draw()
     love.graphics.setColor(0.66, 0.69, 0.76)
     love.graphics.printf(self.prompt, bx + PAD, by + self.oPrompt, self.boxW - PAD * 2, "center")
 
-    for i, entry in ipairs(self.offer) do self:drawCard(entry, i == self.focus) end
+    for i, entry in ipairs(self.offer) do self:drawCard(entry, i == self.selected, i == self.hover) end
 
     self:drawButton(self.leaveBtn, self.leaveLabel, false, false)
     self:drawButton(self.takeBtn, "Take", true, true)
@@ -258,8 +274,9 @@ function RelicOffer:mousemoved(x, y)
     if self.closeButton then self.closeButton:mousemoved(x, y) end
     self.leaveBtn.hovered = inRect(self.leaveBtn, x, y)
     self.takeBtn.hovered = inRect(self.takeBtn, x, y)
+    self.hover = nil
     for i, entry in ipairs(self.offer) do
-        if inRect(entry.rect, x, y) then self.focus = i; break end
+        if inRect(entry.rect, x, y) then self.hover = i; break end
     end
 end
 
@@ -271,20 +288,23 @@ function RelicOffer:cursorKind(x, y)
 end
 
 -- A click on a card only SELECTS it -- the choice is irreversible, so committing is always the deliberate
--- second click on Take.
+-- second click on Take. Hovering the other two does nothing to the pick; only this click moves it.
 function RelicOffer:mousepressed(x, y, button)
     if button ~= 1 then return end
     if self.closeButton and self.closeButton:mousepressed(x, y, button) then self:leave(); return end
     if inRect(self.takeBtn, x, y) then self:take(); return end
     if inRect(self.leaveBtn, x, y) then self:leave(); return end
     for i, entry in ipairs(self.offer) do
-        if inRect(entry.rect, x, y) then self.focus = i; return end
+        if inRect(entry.rect, x, y) then self.selected = i; return end
     end
 end
 
+-- Arrows/d-pad move the PICK: they are the keyboard's only way to choose, so there is no second cursor
+-- to move first. The mouse's hover mark is dropped as the pick moves off under it.
 function RelicOffer:moveFocus(d)
     if #self.offer == 0 then return end
-    self.focus = ((self.focus - 1 + d) % #self.offer) + 1
+    self.selected = ((self.selected - 1 + d) % #self.offer) + 1
+    self.hover = nil
 end
 
 function RelicOffer:keypressed(key)
