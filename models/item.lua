@@ -550,7 +550,9 @@ function Item.primaryStat(item)
         if v and v ~= 0 and (not best or math.abs(v) > math.abs(best)) then best, bestLabel, bestKey = v, label, key end
     end
     if item.bonus then for k, v in pairs(item.bonus) do consider(v, titleCase(k), k) end end
-    if item.maxBonus then for k, v in pairs(item.maxBonus) do consider(v, "Max " .. titleCase(k)) end end
+    -- Keyed `max:<stat>`, the same form statBreakdown uses, so a caller that draws maxBonus rows can tell
+    -- which one already led as the headline and skip it. It went unkeyed while nothing drew those rows.
+    if item.maxBonus then for k, v in pairs(item.maxBonus) do consider(v, "Max " .. titleCase(k), "max:" .. k) end end
     if item.unarmedBonus then for k, v in pairs(item.unarmedBonus) do consider(v, "Fist " .. titleCase(k)) end end
     local aura = item.aura
     if aura then

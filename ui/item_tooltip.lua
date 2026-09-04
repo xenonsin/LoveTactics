@@ -598,6 +598,24 @@ local function buildBlocks(item, actor, innerW, out, owner)
             end
         end
     end
+    -- Max-resource passives: `maxBonus` lifts a POOL'S CEILING rather than a stat, and it had no row on this
+    -- panel. statBreakdown builds "Max Health" rows for the Forge's growth sheet, not for the tooltip, and
+    -- Item.primaryStat reaches maxBonus only when nothing in `bonus` outranks it -- so a charm carrying a
+    -- kicker lost the ceiling entirely: Toughness printed Defense 1 and fell silent about its +20 Max Health,
+    -- as did Endurance and the Mana Shield. Skips the one that DID lead as the headline (Attunement, the
+    -- Overflowing Focus), exactly as the bonus block above skips its own primary, so nothing prints twice.
+    -- Quoted at this copy's level like every other row here: the bench raises it, which is also why the
+    -- description cannot carry the figure (docs/item-text.md).
+    if item.maxBonus and next(item.maxBonus) then
+        for _, stat in ipairs(sortedKeys(item.maxBonus)) do
+            local amount = item.maxBonus[stat]
+            if type(amount) == "number" and amount ~= 0 and primaryKey ~= "max:" .. stat then
+                if not bonusShown then blocks[#blocks + 1] = { kind = "sep" }; bonusShown = true end
+                blocks[#blocks + 1] = { kind = "stat", label = "Max " .. titleCase(stat),
+                    value = (amount >= 0 and "+" or "") .. tostring(amount) }
+            end
+        end
+    end
     if item.resist and next(item.resist) then
         if not bonusShown then blocks[#blocks + 1] = { kind = "sep" } end
         local parts = {}
