@@ -21,7 +21,7 @@ return {
         damage = Curve.ramp(16, 26),
         effect = function(fx)
             fx.damage(fx.target)
-            fx.retreat(fx.user, 1) -- slip back out of reach
+            fx.retreat(fx.target, 1) -- slip back out of reach
             fx.applyStatus(fx.user, "status_invisible")
         end,
     },

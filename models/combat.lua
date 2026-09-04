@@ -563,7 +563,7 @@ function Combat.answerStrike(combat, unit, target, weapon)
     -- Nothing to disengage from once the foe is down, and a bearer felled by its own exchange (a
     -- counter to the counter) stays where it fell.
     if back and back > 0 and unit.alive and target.alive then
-        Combat.knockback(combat, target, unit, back, { amount = 0 })
+        Combat.giveGround(combat, unit, target, back)
     end
     return dealt
 end
@@ -4512,6 +4512,102 @@ function Combat.knockback(combat, source, target, distance, opts)
 end
 
 -- ---------------------------------------------------------------------------
+-- GIVING GROUND: the step a hit-and-run body takes under its OWN power.
+--
+-- This used to be a knockback with the damage turned off -- the striker shoving itself straight away
+-- from what it just bit -- and a shove has exactly one lane. Put a body, a barrel or a wall one tile
+-- behind a wolf and the step was simply refused: the wolf bit, stood in reach, and ate the counter its
+-- teeth exist to dodge. Worse, a pack backed into itself, since the tile behind a wolf is very often
+-- the next wolf.
+--
+-- A retreat is not a shove, so it does not have to travel in a straight line. It is the ONE move whose
+-- whole purpose is the gap, and any step that opens the gap serves it. On a 4-directional grid a
+-- sideways step off an orthogonal neighbour opens the gap exactly as far as the straight one does (a
+-- gap of 1 becomes 2 either way), so a wolf with something at its back goes round it instead. Straight
+-- back is still tried first -- that is the read the animation and the player expect -- and a step that
+-- would CLOSE the gap is not a lane at all.
+--
+-- Two things a shove did that this deliberately does not: it never deals collision damage (a
+-- give-ground with nowhere to go is a failed disengage, not an impact), and it fires no
+-- Combat.shoveRiders. Those riders key off the SOURCE's traits, and the source here is the body being
+-- backed away FROM -- a foe with Breaker's Wedge was sundering wolves for the crime of stepping off it.
+--
+-- The lanes open to a body at (x, y) backing away from `from`, best first.
+local function giveGroundLanes(x, y, from)
+    local dx, dy = signDominant(x - from.x, y - from.y)
+    if dx == 0 and dy == 0 then return {} end
+    -- Straight back, then the two lateral steps (the away vector turned either way). A fixed order, so
+    -- two machines watching one fight step the same wolf onto the same tile (models/state_hash.lua).
+    return { { dx, dy }, { -dy, dx }, { dy, -dx } }
+end
+
+-- Min gap between `from` and a body the size of `unit` standing at anchor (x, y) -- Combat.unitGap
+-- asked about a position the unit has not moved to yet, so a lane can be judged before it is taken.
+local function gapAt(from, unit, x, y)
+    return Combat.unitGap(from, { x = x, y = y, w = unit.w or 1, h = unit.h or 1 })
+end
+
+-- The single step `unit` takes backing away from `from` while standing at (x, y): the first lane that
+-- both opens the gap and has room for the whole body. Returns nil when it is boxed in on every side
+-- that would help.
+local function giveGroundStep(combat, unit, from, x, y)
+    local here = gapAt(from, unit, x, y)
+    local w, h = unit.w or 1, unit.h or 1
+    for _, lane in ipairs(giveGroundLanes(x, y, from)) do
+        local nx, ny = x + lane[1], y + lane[2]
+        if gapAt(from, unit, nx, ny) > here
+            and Combat.footprintFree(combat, w, h, nx, ny, unit) then
+            return lane[1], lane[2]
+        end
+    end
+    return nil
+end
+
+-- Where a give-ground COMES TO REST, without moving anything: Combat.giveGround's pure twin, the way
+-- Combat.knockbackTile is Combat.knockback's. The hover preview weighs a counter from this tile -- a
+-- bite thrown from a square its striker has already left is answered by nothing
+-- (Combat.previewCounters) -- so it walks the same lanes by the same rule as the live step below.
+function Combat.giveGroundTile(combat, unit, from, distance)
+    if not (unit and from) then return unit and unit.x, unit and unit.y end
+    -- Anchored (Root): the live step never moves it, so the ghost must not either.
+    if Status.blocksForcedMove(unit) then return unit.x, unit.y end
+    local x, y = unit.x, unit.y
+    for _ = 1, distance or 1 do
+        local dx, dy = giveGroundStep(combat, unit, from, x, y)
+        if not dx then break end
+        x, y = x + dx, y + dy
+    end
+    return x, y
+end
+
+-- Step `unit` up to `distance` tiles out of `from`'s reach, harmlessly. Each step re-picks its lane, so
+-- a body that went round an obstacle keeps backing away from the far side of it. Returns tiles moved.
+function Combat.giveGround(combat, unit, from, distance)
+    if not (unit and unit.alive and from) then return 0 end
+    -- Anchored (Root): there is no shove to refuse here, just a body that cannot pick its feet up.
+    -- Said aloud for the reason Combat.knockback says it -- "the wolf bit and did not step off" needs
+    -- a reason on screen, or its counter reads as a bug.
+    if Status.blocksForcedMove(unit) then
+        Combat.logEvent(combat, "status",
+            string.format("%s is rooted and cannot give ground.", unitName(unit)), unit)
+        return 0
+    end
+    local oX, oY = unit.x, unit.y
+    local moved = 0
+    for _ = 1, distance or 1 do
+        local dx, dy = giveGroundStep(combat, unit, from, unit.x, unit.y)
+        if not dx then break end
+        if not shoveStep(combat, unit, dx, dy) then break end
+        moved = moved + 1
+        Combat.logEvent(combat, "move",
+            string.format("%s gives ground to (%d, %d).", unitName(unit), unit.x, unit.y), unit)
+        -- A trap or hazard on the tile it backed onto may have finished it; stop there.
+        if not unit.alive then break end
+    end
+    return shoveDone(combat, unit, oX, oY, moved)
+end
+
+-- ---------------------------------------------------------------------------
 -- FUSES (S3): things planted now that go off later.
 --
 -- A charge is a plain record on `combat.charges` -- x, y, side, owner index, a countdown and a
@@ -7718,14 +7814,16 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
             end
             return 0, false
         end,
-        -- The mirror of the above for a step-BACK: it records where the shove would leave the CASTER,
-        -- for the same reason and with the same consequence reversed. A hit-and-run blow is thrown, then
-        -- its striker walks out of reach -- so the panel must not promise a counter that the retreat has
-        -- already stepped clear of.
+        -- The mirror of the above for a step-BACK: it records where the give-ground would leave the
+        -- CASTER, for the same reason and with the same consequence reversed. A hit-and-run blow is
+        -- thrown, then its striker walks out of reach -- so the panel must not promise a counter that
+        -- the retreat has already stepped clear of. Combat.giveGroundTile, not knockbackTile: the live
+        -- step goes round a blocked lane, and a ghost that stops dead where the step does not would
+        -- promise exactly the counter this move exists to avoid.
         retreat = function(tgt, distance)
             if tgt then
                 local e = entryFor(unit)
-                e.restsX, e.restsY = Combat.knockbackTile(combat, tgt, unit, distance or 1)
+                e.restsX, e.restsY = Combat.giveGroundTile(combat, unit, tgt, distance or 1)
                 userRestsX, userRestsY = e.restsX, e.restsY
             end
             return 0
@@ -9478,12 +9576,14 @@ function Combat.strikeWith(combat, user, weapon, tx, ty)
             if not t then return 0 end
             return Combat.knockback(combat, user, t, distance, opts)
         end,
-        -- Give ground: shove the STRIKER away from `t`, harmlessly. The twin of resolveCast's helper of
-        -- the same name, and it has to exist on this table too -- a hit-and-run WEAPON (wolf fangs) runs
-        -- its effect through here, not through resolveCast, and this path is not pcall-guarded.
+        -- Give ground: step the STRIKER out of `t`'s reach, harmlessly (Combat.giveGround -- straight
+        -- back if the lane is open, round whatever is standing in it if not). The twin of resolveCast's
+        -- helper of the same name, and it has to exist on this table too -- a hit-and-run WEAPON (wolf
+        -- fangs) runs its effect through here, not through resolveCast, and this path is not
+        -- pcall-guarded.
         retreat = function(t, distance)
             if not t then return 0 end
-            return Combat.knockback(combat, t, user, distance or 1, { amount = 0 })
+            return Combat.giveGround(combat, user, t, distance or 1)
         end,
         -- Battle-scoped state banked on the striker (a wand's fire/frost half): a sub-struck weapon
         -- runs its effect here too (Dual Wield), and this path is not pcall-guarded, so the helper has
@@ -10414,12 +10514,13 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
             if not tgt then return 0 end
             return Combat.knockback(combat, unit, tgt, distance, opts)
         end,
-        -- Give ground: shove the CASTER `distance` tiles straight away from `tgt`, harmlessly (no
-        -- collision damage, so backing into a wall simply doesn't move it). A hit-and-run attacker's
-        -- step-back after landing a blow -- out of reach before the answer is thrown (weapon_wolf_fangs).
+        -- Give ground: step the CASTER `distance` tiles out of `tgt`'s reach, harmlessly -- a hit-and-run
+        -- attacker leaving the square it swung from, before the answer is thrown (weapon_wolf_fangs).
+        -- Straight back by preference, round an obstacle when the lane behind is taken, and nowhere at
+        -- all only when every step that would open the gap is barred (Combat.giveGround).
         retreat = function(tgt, distance)
             if not tgt then return 0 end
-            return Combat.knockback(combat, tgt, unit, distance or 1, { amount = 0 })
+            return Combat.giveGround(combat, unit, tgt, distance or 1)
         end,
         -- Drag a unit to a tile adjacent to the caster (needs line of sight).
         pull = function(tgt)
