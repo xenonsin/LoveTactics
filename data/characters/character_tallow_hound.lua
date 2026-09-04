@@ -27,6 +27,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 3, luck = 5,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Rendered fat, set hard and packed deep: a blow sinks into it and stops somewhere in the middle.
+    --   A knife is the tool for rendered fat -- that is what rendering IS -- and a wick lights.
+    resist = { impact = 3, slash = -3, fire = -6 },
     startingItems = { "weapon_tallow_maw", "utility_rendered_hide" },
     defaultAction = "weapon_tallow_maw",
     -- Basic tactics (models/ai.lua): finishes what is closest to falling. The AI wanting the kill and

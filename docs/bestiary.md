@@ -58,6 +58,57 @@ snares and bows off the Lodge shelf and drop them; the hounds and hawks with the
 drop nothing; the Trapper at the back is the Elite whose relic is the reason the fight is shaped the
 way it is. Three body kinds, one composition, and only one of them had to be authored for this fight.
 
+## What a creature wears instead of armour
+
+The rule above has a cost nobody priced for a long time. **Mitigation is subtractive** — a blow is
+`base − defense − Σ(resist per tag)` ([docs/balance.md](balance.md)) — so a humanoid carries *two*
+numbers into a fight: the `defense` stat, and the per-tag `resist` line on the coat it bought, which
+is the half that says which weapon that coat is actually for. A creature buys nothing. Every one of
+the 67 armourless bodies in the folder went into every fight with an empty resist table.
+
+Measured, that was two defects rather than one:
+
+| | armoured humanoid | creature | |
+|---|---|---|---|
+| tier 2, vs slash | 9.8 | **6.9** | it subtracts about 30% less |
+| tier 3, vs slash | 13.8 | **9.6** | |
+| slash vs pierce vs impact | differ, per coat | **identical, every body** | there is no puzzle here |
+
+The second row is the worse one. This project measures four probes because *"a body that walls slash
+and folds to impact is not unbalanced, it is a puzzle"*, and for half the bestiary there was no puzzle
+to measure — a wolf, an ogre and a golem all answered every melee weapon in the game with the same
+number. `character_fire_elemental` declared `magicDefense = 10` and no `fire` line, so a Fireball and a
+Frostbolt landed on it identically. **A `defense` stat cannot make a puzzle; only a per-tag line can.**
+
+So a blueprint may now declare its own `resist` table, in exactly the unit and the field an armour's is
+written in, folded into the same total by the same code (`models/character.lua`, `Combat`'s passive
+fold). It is seeded *before* the grid, so a brand or a swallowed coffer layers on top of the flesh
+rather than replacing it.
+
+### It is a trade, and the sum is how that is enforced
+
+**Creatures were already near the top of their time-to-kill bands** — tier 2 averaging 3.9 hits against
+a 2–4 band, tier 3 averaging 7.8 against 4–8. Closing the 30% gap outright would have pushed them out
+the top of every band and made a four-strong field an attrition sink, which is the one thing
+[docs/balance.md](balance.md) says the bands exist to prevent. So this is a **redistribution**:
+
+- The three physical lines — `slash`, `pierce`, `impact` — **must sum to zero.** Turning a blade aside
+  costs the body the mace. `physical` may never be named: it subtracts from all three melee probes at
+  once, which is what the `defense` stat already is.
+- Magnitude is capped by rung (`Balance.INNATE_BUDGET`: 2 / 3 / 4 / 5), and **a weakness may go twice
+  as deep as a resistance.** [docs/vulnerability.md](vulnerability.md) argues four is one good armour
+  tag's worth and that piling more on turns a Resistance into an Immunity; nothing symmetrical applies
+  going the other way, since a weakness has no floor to collide with and makes a fight *shorter*.
+- Elements are free of the sum, because the melee probes carry no element tag — a fire elemental's
+  `fire = 2, water = -4` is a fact about the Arcanum's shelf, not about the TTK band.
+
+The bands are judged on the **best** melee probe, which is by construction the one the innate opened.
+So every body's TTK moves *down* as this table is authored, never up, and the pass needed no rescale
+behind it.
+
+`character_demon_grunt` is the one waiver, for the same reason `Balance.FROZEN` names it: the
+prologue's parry lesson is written against its exact arithmetic.
+
 ## What each rung costs to author
 
 The factoring that keeps this from being 37 disciplines × 4 rungs = 111 blueprints.

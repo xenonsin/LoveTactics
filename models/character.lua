@@ -458,6 +458,36 @@ function Character.instantiate(id, progress)
         -- isn't named here reads back nil at runtime and fails silently (docs/adding-content.md).
         archetype = def.archetype,
         ai = def.ai,
+        -- INNATE MITIGATION: { tag -> flat damage reduction }, the body's own hide, scale, husk or
+        -- grave-cold, in exactly the unit an armour's `resist` table is written in and summed into the
+        -- same total (Combat.applyUnitPassives).
+        --
+        -- It exists because the mitigation formula is subtractive and half the bestiary has nothing to
+        -- subtract WITH. A humanoid layers a coat over its `defense` stat and so carries two numbers
+        -- into a blow: the stat, and a per-tag line that says which weapon the coat is actually for.
+        -- A beast, a demon, an elemental and a construct wear nothing, so every one of the 71 creature
+        -- bodies went into a fight with an empty resist table -- and the measurement said so twice
+        -- over. They subtracted about 30% less than an armoured humanoid of the same rung, and, worse,
+        -- their slash, pierce and impact mitigation were the SAME NUMBER, every body, every rung.
+        -- docs/balance.md measures four probes because "a body that walls slash and folds to impact is
+        -- not unbalanced, it is a puzzle"; there was no puzzle here to measure. A fire elemental had
+        -- magicDefense 10 and no `fire` line, so a Fireball and a Frostbolt landed on it identically.
+        --
+        -- NEGATIVE IS A WEAKNESS, the same sign convention a status's `vulnerable` uses
+        -- (docs/vulnerability.md) and the one data/items/utility/utility_demonic_essence.lua already
+        -- ships as `resist = { holy = -8 }`. That matters more than the positive half: this pass is a
+        -- REDISTRIBUTION, not a buff. Creatures already sat near the top of their time-to-kill bands,
+        -- so a body that turns a blade aside pays for it by opening somewhere else, and the best melee
+        -- probe's TTK stays inside Balance.TTK. What changes is which weapon gets there.
+        --
+        -- Copied field-by-field like everything else on this table, and SHALLOW-COPIED rather than
+        -- referenced: a blueprint is immutable and shared by every body minted from it, so handing the
+        -- runtime character the def's own table would let one unit's future edit reach every wolf.
+        resist = def.resist and (function()
+            local out = {}
+            for tag, amount in pairs(def.resist) do out[tag] = amount end
+            return out
+        end)() or nil,
         -- What this body stands in front of (models/ai.lua's AI.postedUnit): a character id, or
         -- "priority" for "whoever my side cannot afford to lose", ranked off the board each turn.
         -- A `defensive` unit takes a post and holds it; this decides that post instead of letting the

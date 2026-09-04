@@ -42,6 +42,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 5, luck = 6,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Fat over fat over fat. A blow sinks in and the circle absorbs it.
+    --   A gralloch is what you do to a carcass. The word is a verb, and it is done with a knife.
+    resist = { impact = 5, slash = -5 },
     startingItems = { "weapon_tallow_maw", "utility_gralloch_hook" },
     defaultAction = "weapon_tallow_maw",
     -- Basic tactics (models/ai.lua): it finishes what is closest to falling, which is the same instinct

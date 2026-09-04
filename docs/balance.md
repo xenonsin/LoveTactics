@@ -65,6 +65,17 @@ default; the magic probe grows as a mage. Growing 100% into the probe weapon's *
 and rejected: a sword is knight stock, the knight table gives `+1` damage a level, and a reference
 committed entirely to one house is a stronger claim than any real player makes.
 
+> **This paragraph was the only place that behaviour existed, for a while.** `Balance.refChar` seeded
+> the growth class by writing `char.technique`, which was the steering field back when growth was
+> apportioned across everything a body had swung. That ledger was replaced by `declaredClass`
+> (`models/character.lua`) and `refChar` was not moved with it, so `Growth.classOf` never saw the
+> mage and the branch went dead — the magic probe grew as a **fighter holding a wand**. Measured:
+> `magicDamage` pinned at its level-1 16 for the whole campaign while `damage` climbed to 25, and the
+> magic attack budget sat flat at **21 from prestige 1 to 7** while melee went 22 → 30. Every magic
+> number this module reported in that window was measured through it — the caster's whole column read
+> about a third too weak at depth, which is exactly the failure the paragraph above warns about,
+> arriving again from underneath. `refChar` sets both fields now.
+
 ## The four probes
 
 A body is measured against four real weapons, not one: `weapon_iron_sword` (slash),
@@ -232,6 +243,29 @@ physical 2` really subtracts 5 from a sword, and its author had no way to see th
 Changing the summing was considered and rejected: it would silently redefine what every existing
 resist number in the game means. Instead the rule is stated on the **total, per probe** — layering
 is still allowed, adding up to a wall is not.
+
+### And the half of the roster that buys no armour
+
+Everything above is written about a body that goes shopping. Sixty-seven do not — beasts, demons,
+elementals, undead and constructs wear what they were born in — and for most of this project's life
+that meant they carried **no resist line at all**. Two things followed, and the second is the worse:
+
+- they subtracted about **30% less** than an armoured humanoid on the same rung (tier 2: 6.9 against
+  9.8 vs slash; tier 3: 9.6 against 13.8), and
+- their slash, pierce and impact mitigation were **the same number, on every body**. This page measures
+  four probes because a body that walls one and folds to another *is a puzzle*; there was no puzzle on
+  half the roster to measure.
+
+A blueprint declares its own `resist` now, and it is a **redistribution rather than a raise** — the
+three physical lines must sum to zero, so a hide that turns a blade aside pays for it with the mace.
+That was forced by the measurement: creatures were already sitting at the *top* of their TTK bands
+(tier 2 averaging 3.9 hits of a 2–4 band), so closing the gap outright would have failed rule 4 on most
+of the bestiary. Since the bands are judged on the **best** melee probe — which is by construction the
+one the innate just opened — every body's TTK moved *down*: tier 2 to 3.6, tier 3 to 6.7. No rescale
+was needed behind it, and rules 1, 4 and 5 stayed green throughout.
+
+The full contract, the per-rung budget and the reason a weakness may go twice as deep as a resistance
+are in [docs/bestiary.md](bestiary.md), "What a creature wears instead of armour".
 
 ### When a body is judged
 

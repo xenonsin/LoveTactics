@@ -37,6 +37,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 8, luck = 6,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   It is an anvil. Nothing has ever been accomplished by drawing a blade across one.
+    --   And nothing has ever been accomplished BY an anvil except under a hammer, which it also knows.
+    resist = { slash = 5, impact = -5, fire = 5, holy = -10 },
     startingItems = { "weapon_cinder_brand", "utility_cold_forge" },
     defaultAction = "weapon_cinder_brand",
     archetype = "aggressive",

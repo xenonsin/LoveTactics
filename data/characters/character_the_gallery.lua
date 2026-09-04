@@ -24,6 +24,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 6, luck = 0,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Pride's mythic is armour, and its answer to being hurt is to stand up more armour.
+    --   Every piece is fitted, and a fitting is a hole somebody agreed to leave. A spear knows it.
+    resist = { slash = 4, impact = 2, pierce = -6 },
     startingItems = { "weapon_gilded_pike", "utility_the_gallery" },
     defaultAction = "weapon_gilded_pike",
     archetype = "defensive",

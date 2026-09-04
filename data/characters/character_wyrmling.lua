@@ -29,6 +29,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 4, luck = 5,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Scale, already overlapping the way the adult's will, already turning a blade aside.
+    --   Overlapping leaves a line between every pair, and a point is a tool for finding a line.
+    resist = { slash = 3, pierce = -3, fire = 3, ice = -3 },
     startingItems = { "weapon_wyrmling_breath" },
     defaultAction = "weapon_wyrmling_breath",
     -- Basic tactics (models/ai.lua): keeps its distance and breathes. `skirmish` is the archetype that

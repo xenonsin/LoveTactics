@@ -32,6 +32,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 6, luck = 0,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   It arrives wearing one of your company, and what it is actually made of is ash.
+    --   Cut the likeness and the likeness stops. That is the fight, and it is meant to be unpleasant.
+    resist = { pierce = 4, slash = -4 },
     startingItems = { "weapon_ashen_echo", "utility_envys_pane" },
     defaultAction = "weapon_ashen_echo",
     -- Basic tactics (models/ai.lua): it holds the middle and answers, which is what a body waiting to be

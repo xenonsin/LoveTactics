@@ -23,6 +23,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 4, luck = 0,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Only half here. A blade and a point both go through the half that is not.
+    --   A hammer carries the weight of the arm behind it, and weight is what the mill remembers.
+    resist = { slash = 4, pierce = 4, impact = -8 },
     startingItems = { "ability_fireball", "utility_grave_cold" },
     -- Basic tactics (models/ai.lua): press the wounded -- throw fire at the foe already closest to
     -- falling. (Fireball's own rule still handles aiming the blast off a cluster.)

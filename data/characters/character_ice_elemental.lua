@@ -18,6 +18,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 2, luck = 6,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   A blade skates. It has always skated, and it always will.
+    --   Ice under a hammer is the oldest answer there is, and heat is the other one.
+    resist = { ice = 2, slash = 2, impact = -2, fire = -4 },
     startingItems = { "weapon_frost_fists" },
     -- Basic tactics (models/ai.lua): press the wounded -- finish the foe already closest to falling.
     ai = {

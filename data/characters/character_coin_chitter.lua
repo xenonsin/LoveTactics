@@ -22,6 +22,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 3, luck = 5,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   A scuttler's shell spreads a blow across the whole of its back.
+    --   A point does not spread. It finds the seam between two plates and goes in.
+    resist = { impact = 2, pierce = -2 },
     startingItems = { "weapon_cutpurse_nip" },
     defaultAction = "weapon_cutpurse_nip",
     -- Basic tactics (models/ai.lua): `skirmish` keeps its distance between nips, which is what turns

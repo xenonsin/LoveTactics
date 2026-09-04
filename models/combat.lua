@@ -944,6 +944,14 @@ end
 -- (Combat.addUnit) gets the same treatment as one placed at setup.
 local function applyUnitPassives(unit)
     unit.bonus, unit.resist = {}, {}
+    -- THE BODY'S OWN HIDE, seeded before anything is layered over it (Character.instantiate's `resist`).
+    -- A creature wears no coat, so this is where its scale, husk or grave-cold subtracts from -- in the
+    -- same unit, and into the same total, as the `item.resist` fold directly below. Seeded FIRST so an
+    -- item genuinely layers on top: a demon that took a brand is its flesh plus the brand, not the brand
+    -- instead of its flesh. Nil for every humanoid, whose per-tag line comes off the shelf.
+    for tag, amount in pairs((unit.char and unit.char.resist) or {}) do
+        unit.resist[tag] = (unit.resist[tag] or 0) + amount
+    end
     -- Aggregated bare-fist buffs (Iron/Shadow/Swift/Drunken Fist) and resource-ceiling raises
     -- (Toughness/Endurance/Attunement) from the grid. `unit.unarmedBonus` is read by the unarmed
     -- damage/range/hit paths; `char.maxBonus` is folded into Combat.unreservedMax (the one cap).

@@ -29,6 +29,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 4, luck = 5,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Hide the circle has been feeding for a long time, and a blade has never got through it yet.
+    --   Nothing about it is deep. A spear goes through the hide and reaches the animal wearing it.
+    resist = { slash = 4, pierce = -4 },
     startingItems = { "weapon_grendlemaw_gullet" },
     defaultAction = "weapon_grendlemaw_gullet",
     -- Basic tactics (models/ai.lua): it eats whatever is nearest. Aiming for the weakest would make it

@@ -20,6 +20,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 4, luck = 5,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Four tiles of animal. A mace spends itself somewhere in the middle of all that.
+    --   A spear is the weapon for a large target, and this is the largest one on the floor.
+    resist = { impact = 4, pierce = -4 },
     startingItems = { "weapon_stone_fists" },
     -- Basic tactics (models/ai.lua): the brute wades in and presses whoever is closest to falling.
     ai = {

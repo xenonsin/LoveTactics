@@ -33,6 +33,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 4, luck = 5,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Wyrm scale, worn rather than grown: the shape a druid takes when a blade is the problem.
+    --   Worn scale is fitted scale, and Mira did not fit it. There are gaps a wyrm would not have.
+    resist = { slash = 4, pierce = -4 },
     startingItems = { "weapon_underbite", "ability_tunnel", "ability_old_breath" },
     defaultAction = "weapon_underbite",
     -- Basic tactics (models/ai.lua), for when something else is driving this body -- a charmed druid,

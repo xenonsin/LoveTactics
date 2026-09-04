@@ -45,6 +45,20 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 5, luck = 5,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Bred hollow. A point goes into the cavity and finds the cavity.
+    --   A blow does not need to find anything. It just has to set the thing off, which is the joke.
+    --
+    -- THE ONE DEMON ON THE ROSTER THAT DOES NOT SHRUG OFF FIRE, and the only one that must not. Every
+    -- other body in the Host reads `fire = +`; a bomblet is filled with the stuff rather than made of
+    -- it, and trait_volatile's whole design is that one going off finishes the next one along
+    -- (tests/demon_champion_spec.lua). A fire line on this body is a body that survives its own
+    -- neighbour, which is the chain not happening. Written the other way it is the same joke as the
+    -- line above: the way to set one off is to set it on fire.
+    resist = { pierce = 2, impact = -2, fire = -4, holy = -4 },
     -- Two items and one idea. The Volatile Core (bound, center) is not a weapon it swings -- it is the
     -- self-destruct rule (trait_volatile) it goes off with -- and Self-Destruct sits on top of it, the
     -- fuse over the charge. No default action: there is no strike to make one from.

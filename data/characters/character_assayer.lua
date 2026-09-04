@@ -22,6 +22,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 6, luck = 5,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   It has been paid in metal for a long time and some of it stayed on.
+    --   Metal that stayed on is not metal that was fitted, and a point goes between two coins.
+    resist = { slash = 3, pierce = -3, dark = 3, holy = -6 },
     startingItems = { "weapon_cutpurse_nip", "utility_assay_scales" },
     defaultAction = "weapon_cutpurse_nip",
     archetype = "aggressive",

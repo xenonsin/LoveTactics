@@ -53,6 +53,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 5, luck = 5,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Hide like cracked leather, and the first thing anyone in this game learns not to bother cutting.
+    --   It is also the first thing anyone learns to put a spear through.
+    resist = { slash = 2, pierce = -2, fire = 2, holy = -4 },
     -- Its body IS its weapon, and that weapon deliberately keeps its distance (see the file).
     startingItems = { "weapon_cinder_spit" },
     defaultAction = "weapon_cinder_spit",

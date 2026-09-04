@@ -30,6 +30,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 8, luck = 5,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Grown plate over the whole of it, and there is no edge in the game that opens it.
+    --   Weight opens it. Its holy line lives on the crown, not on the body (utility_demonic_essence).
+    resist = { slash = 5, impact = -5 },
     -- Its loadout as the 3x3 grid (row-major); false = an empty cell. Its rule rides on the Hollow Crown
     -- relic in the center (data/items/armor/armor_hollow_crown.lua): a bound item -- here `bound`
     -- matters because a party rogue can never pickpocket it, so the boss can't be stripped of its entire

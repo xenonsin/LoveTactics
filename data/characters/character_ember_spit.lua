@@ -25,6 +25,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 3, luck = 6,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   It is a coal with intent. A point goes into it and comes out warm.
+    --   An edge scatters it, and water ends the argument entirely.
+    resist = { pierce = 2, slash = -2, fire = 2, water = -4 },
     startingItems = { "weapon_ember_spit", "utility_ember_husk" },
     defaultAction = "weapon_ember_spit",
     -- Basic tactics (models/ai.lua): `skirmish` holds the gap, which is what puts it out where the fire

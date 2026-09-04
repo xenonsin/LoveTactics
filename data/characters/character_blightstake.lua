@@ -35,6 +35,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 0, luck = 0,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   A stake in the ground: it is already the shape a spear makes, and cutting a post is work.
+    --   Breaking a post is not work. That is the whole difference between a mace and a sword here.
+    resist = { pierce = 2, slash = 2, impact = -4, holy = -4 },
     startingItems = { "weapon_blight_spitter" },
     ai = {
         -- The stake has no legs and no judgement; it spits at whatever is closest. Stated rather than

@@ -56,6 +56,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 8, luck = 1,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   The bargain made flesh: overbuilt, and built to be hit.
+    --   Overbuilt is not sealed. Ira left seams in herself, and a spear is patient about seams.
+    resist = { impact = 5, pierce = -5, fire = 5, holy = -10 },
     -- Her phase-two kit: the lifesteal greataxe she always carried (an innate 3-wide cleave that heals
     -- her a third of what it opens -- her sustain), beside the Unbound Heart (utility_unbound_heart, the
     -- rage rule; no Unappeased Heart here, since that one carries the phase trigger and a body that has

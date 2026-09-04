@@ -26,6 +26,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 6, luck = 5,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Lust's apex sheds bodies rather than taking wounds, and the outside of it does not cut.
+    --   Underneath the shedding there is one body, and a point reaches one body.
+    resist = { slash = 4, pierce = -4, dark = 4, holy = -8 },
     startingItems = { "weapon_antler_crown", "utility_beloveds_devotion" },
     defaultAction = "weapon_antler_crown",
     archetype = "defensive",

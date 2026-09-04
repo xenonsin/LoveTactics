@@ -22,6 +22,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 5, luck = 0,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   The rank's plate, which is real plate under the gold leaf.
+    --   Plate is answered as plate always was: not with an edge, but with a point through the gap.
+    resist = { slash = 3, pierce = -3 },
     startingItems = { "weapon_gilded_pike", "utility_rank_and_file" },
     defaultAction = "weapon_gilded_pike",
     archetype = "defensive",

@@ -30,6 +30,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 7, luck = 0,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Glass, at the scale where a blade has a whole wall of it to slide down.
+    --   Glass, at any scale.
+    resist = { slash = 4, impact = -4 },
     startingItems = { "weapon_vitreous_bite", "utility_fracture_line" },
     defaultAction = "weapon_vitreous_bite",
     archetype = "aggressive",

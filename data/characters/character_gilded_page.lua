@@ -21,6 +21,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 4, luck = 0,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Gilt over tin. It is armour in the sense that a page is a soldier.
+    --   Tin does not stop a point. Very little about a page stops anything.
+    resist = { slash = 2, pierce = -2 },
     startingItems = { "weapon_gilded_pike", "utility_rank_and_file" },
     defaultAction = "weapon_gilded_pike",
     -- Basic tactics (models/ai.lua): `defensive` keeps it from breaking its own rank to chase, which is

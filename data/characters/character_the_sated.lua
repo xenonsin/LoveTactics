@@ -32,6 +32,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 4, luck = 5,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   It opens fed, and everything it ate is between your blow and anything that matters.
+    --   So open it. That is the fight -- the meal comes back out and the armour goes with it.
+    resist = { impact = 4, slash = -4 },
     startingItems = { "weapon_glutted_bulk", "utility_distended_hide" },
     defaultAction = "weapon_glutted_bulk",
     -- Basic tactics (models/ai.lua): it swings at whatever is in reach, which for a three-wide sweep off

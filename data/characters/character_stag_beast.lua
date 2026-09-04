@@ -15,6 +15,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 3, luck = 5,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Hide stretched over a frame built to take a rival's charge head-on, every autumn, for years.
+    --   Built to take it from the FRONT. A point that does not come from the front finds a lean animal.
+    resist = { impact = 3, pierce = -3 },
     startingItems = { "weapon_fangs", "utility_feral_instinct" },
     -- Basic tactics (models/ai.lua): quick and fey, it darts to the kill -- press the foe closest to falling.
     ai = {

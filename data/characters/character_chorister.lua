@@ -22,6 +22,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 7, luck = 5,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Whatever it is wearing closes over a puncture before the puncture finishes.
+    --   An edge takes more than it can close, and a censer takes the thing that is doing the closing.
+    resist = { pierce = 3, slash = -3, dark = 3, holy = -6 },
     startingItems = { "weapon_petal_touch", "utility_chorister_call" },
     defaultAction = "weapon_petal_touch",
     archetype = "skirmish",

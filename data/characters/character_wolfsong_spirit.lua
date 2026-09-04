@@ -26,6 +26,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 2, luck = 0,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   A wolf's shape held together by a note somebody sang. Blades pass through the shape.
+    --   Weight does not pass through it -- it interrupts the note, which is all that keeps it standing.
+    resist = { slash = 3, impact = -3, dark = 3, holy = -6 },
     startingItems = { "weapon_wolf_fangs", "utility_feral_instinct" },
     -- Basic tactics (models/ai.lua): the great wolf runs down the wounded -- press the foe closest to falling.
     ai = {

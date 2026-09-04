@@ -19,6 +19,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 2, luck = 6,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Cutting a flame divides it into two flames. This has been tried.
+    --   Smothering it works, and so does the whole of the Arcanum's cold shelf.
+    resist = { fire = 2, slash = 2, impact = -2, water = -4, ice = -4 },
     startingItems = { "weapon_flame_fists" },
     -- Basic tactics (models/ai.lua): a summoned brawler earns its keep -- press the foe closest to falling.
     ai = {

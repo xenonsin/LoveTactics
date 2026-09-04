@@ -35,6 +35,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 8, luck = 6,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   It offered everything it had and kept only the shell it was kneeling in.
+    --   The shell is empty. A weight lands in it and there is nothing behind it to stop.
+    resist = { slash = 5, impact = -5, dark = 5, holy = -10 },
     startingItems = { "weapon_petal_touch", "utility_offered_nothing" },
     defaultAction = "weapon_petal_touch",
     archetype = "aggressive",

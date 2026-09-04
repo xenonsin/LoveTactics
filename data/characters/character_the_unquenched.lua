@@ -30,6 +30,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 4, luck = 5,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Cooked hard on the outside by the ground it stands in and heals on.
+    --   The point is what gets past that crust, and the cold is what takes the ground away.
+    resist = { slash = 4, pierce = -4, fire = 4, ice = -8 },
     startingItems = { "weapon_rift_jaws", "utility_quenchless_gut" },
     defaultAction = "weapon_rift_jaws",
     archetype = "aggressive",

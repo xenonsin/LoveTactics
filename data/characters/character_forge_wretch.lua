@@ -23,6 +23,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 6, luck = 5,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   It sharpens on being struck, and the part of it that does the sharpening is slag.
+    --   Slag is porous. There is a way through it, and a point is the shape of that way.
+    resist = { impact = 3, pierce = -3, fire = 3, holy = -6 },
     startingItems = { "weapon_cinder_brand", "utility_forge_scar" },
     defaultAction = "weapon_cinder_brand",
     -- Basic tactics (models/ai.lua): it walks in and stays in. A body paid for taking blows should be

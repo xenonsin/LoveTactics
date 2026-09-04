@@ -33,6 +33,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 6, luck = 0,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Fired clay and crucible slag, with no skin on it for an edge to catch.
+    --   Fired clay does not dent, it punches -- which is what the alchemist who calls one is trading away.
+    resist = { slash = 3, pierce = -3, poison = 3 },
     -- Its hands carry its guard (data/items/weapon/weapon_golem_fists.lua). A trait CANNOT be declared
     -- on a character blueprint: Trait.attach reads `unit.char.traits`, but Character.instantiate builds
     -- the runtime character field by field and never copies that field, so declaring it here would be

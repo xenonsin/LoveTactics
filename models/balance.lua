@@ -202,6 +202,48 @@ end
 -- may not exceed this share. An author can still layer resists; they just cannot add up to a wall.
 Balance.ARMOR_SHARE = 0.40
 
+-- WHAT A CREATURE WEARS INSTEAD OF ARMOUR. The per-tag budget its innate `resist` spends, keyed by the
+-- rung it declares (docs/bestiary.md).
+--
+-- Half the bestiary buys no armour, and the mitigation formula is subtractive, so half the bestiary had
+-- nothing to subtract with but its bare `defense` stat. Measured: a creature took about 30% less off a
+-- blow than an armoured humanoid on the same rung -- and its slash, pierce and impact mitigation were
+-- the SAME NUMBER, on every body, at every rung. This file measures four probes because "a body that
+-- walls slash and folds to impact is not unbalanced, it is a puzzle", and for 67 bodies there was no
+-- puzzle to measure. A `defense` stat cannot make one; only a per-tag line can.
+--
+-- READ AGAINST Balance.ARMOR_SHARE, which is the same statement about a bought coat: 40% of the attack
+-- budget is the most one piece may take off one weapon, which runs 8-12 across the campaign. A creature
+-- spends less than that per tag, and it never spends it for free -- see the sum rule below.
+--
+-- A WEAKNESS MAY GO TWICE AS DEEP AS A RESISTANCE. docs/vulnerability.md argues a resistance of four is
+-- "one good armour tag's worth" and that piling more on turns a Resistance into an Immunity, which the
+-- damage floor exists to keep distinct. Nothing symmetrical applies going the other way: a weakness has
+-- no floor to collide with, it makes a fight SHORTER rather than unwinnable, and the game already ships
+-- one at -8 (data/items/utility/utility_demonic_essence.lua's holy line, on the Demon Lord's crown).
+Balance.INNATE_BUDGET = { [1] = 2, [2] = 3, [3] = 4, [4] = 5 }
+Balance.INNATE_WEAKNESS_FACTOR = 2
+
+-- The damage-type tags a creature's innate table may name, and the ONE rule that keeps this pass a
+-- redistribution rather than a buff: these three must sum to ZERO on every body.
+--
+-- Only these three, and never the blanket `physical`. A `physical` line subtracts from all three melee
+-- probes at once, which is precisely what the `defense` stat already does -- it would be a second, less
+-- legible copy of a number the blueprint carries a foot above, and it would let a body take mitigation
+-- without giving any back. Per-type lines cannot: turning a blade aside costs the body the mace.
+--
+-- WHY THE SUM AND NOT A CAP. Creatures were already sitting near the TOP of their Balance.TTK bands
+-- when this was measured -- tier 2 averaging 3.9 hits against a 2-4 band, tier 3 averaging 7.8 against
+-- 4-8. A cap would have permitted a net raise inside it and pushed them out the top, failing rule 4 and
+-- making every creature fight longer, which is the opposite of what docs/balance.md wants from a
+-- four-strong field. Summing to zero says the thing exactly: the body is not tougher, it is tougher
+-- against one weapon and softer against another, and the player's answer is which weapon they bring.
+--
+-- The bands themselves are judged on the BEST melee probe, so a body's TTK moves DOWN as this table is
+-- authored, never up -- the best probe is by construction the one the innate opened. That is deliberate
+-- and is why the pass needed no rescale behind it.
+Balance.INNATE_PHYSICAL = { "slash", "pierce", "impact" }
+
 -- THE SLOT IS THE GRADE. What a WEAPON or damaging ABILITY contributes is decided by ONE thing: the
 -- slot it unlocks from (`unlockQuests`, the count of its house's quests you have finished). Later slot,
 -- bigger number. Nothing else earns a discount.
@@ -827,8 +869,27 @@ function Balance.refChar(prestige, growthClass)
 
     local char = Character.instantiate(Balance.REFERENCE.charId)
     if growthClass and Growth.defs[growthClass] then
-        -- Any positive amount under one key is a 100% share -- Growth.shares normalizes -- so this
-        -- says "everything this body did, it did as a <class>" without inventing a rate.
+        -- THE FIELD GROWTH ACTUALLY STEERS ON. `Growth.resolve` asks `Growth.classOf`, and that reads
+        -- `declaredClass`, then the blueprint's innate `class`, then the neutral fallback. It does not
+        -- read the technique ledger.
+        --
+        -- This line used to set `technique` alone, back when growth was apportioned across everything a
+        -- body had swung and "any positive amount under one key is a 100% share" was a true sentence.
+        -- That ledger was replaced by `declaredClass` (see models/character.lua) and this was not moved
+        -- with it, so the branch went dead and the magic probe quietly grew as a FIGHTER holding a wand:
+        -- `magicDamage` pinned at its level-1 16 for the whole campaign while `damage` climbed to 25, and
+        -- the magic attack budget sat at a flat 21 from prestige 1 to 7 while melee went 22 -> 30.
+        --
+        -- The paragraph in docs/balance.md about the reference being "grown into what it swings" was
+        -- written for the fix and describes what this SHOULD do; for a while it was the only place the
+        -- behaviour existed. The measurement it warns about -- "the report claims the Arcanum's own
+        -- Fireball cannot hurt a mage" -- was live again, and every magic number this module has
+        -- reported since the ledger changed was measured through it.
+        --
+        -- Both fields are set. `declaredClass` is the one that steers the level-up; the ledger is what
+        -- `Class.classLevel` reads, so a reference that grew as a mage also reads as having cast like
+        -- one, and the two cannot disagree about who this body is.
+        char.declaredClass = growthClass
         char.technique = { [growthClass] = 1 }
     end
     Growth.resolve(char, level)

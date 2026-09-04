@@ -27,6 +27,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 4, luck = 5,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Frozen through: it takes a blow the way a frozen thing does, which is by not moving at all.
+    --   A frozen thing also splits. Cut it, or thaw it, and it stops being one piece.
+    resist = { impact = 4, slash = -4, ice = 4, fire = -8 },
     startingItems = { "weapon_hoarfrost_antlers", "utility_hoarfrost_pelt" },
     defaultAction = "weapon_hoarfrost_antlers",
     archetype = "aggressive",

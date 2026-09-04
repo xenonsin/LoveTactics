@@ -26,6 +26,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 2, luck = 6,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   A chip of glass turning in the air. Nothing catches on it.
+    --   A chip of glass.
+    resist = { slash = 2, impact = -2 },
     startingItems = { "weapon_glass_shard" },
     defaultAction = "weapon_glass_shard",
     -- Basic tactics (models/ai.lua): it goes for whatever is nearest, because what it wants is any

@@ -21,6 +21,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 3, luck = 6,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Half-there and slow about it: a puncture closes behind itself before it means anything.
+    --   An edge takes a whole length of it at once, and warmth stops it drifting.
+    resist = { pierce = 3, slash = -3, ice = 3, fire = -6 },
     startingItems = { "weapon_drift_touch" },
     defaultAction = "weapon_drift_touch",
     archetype = "aggressive",

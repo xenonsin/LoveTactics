@@ -32,6 +32,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 5, luck = 0,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   A bolted emplacement: a blade has nothing to open on it.
+    --   It is bolted, and bolts shear. What is behind the plate is a firing mechanism and a wire.
+    resist = { slash = 2, impact = -2, lightning = -4 },
     startingItems = { "weapon_sentry_bolt" },
     -- Basic tactics (models/ai.lua). A thing that cannot move has no approach to plan, so its whole rule
     -- is "shoot what is already shootable" -- and with movement 0 the AI has nothing else it could pick,

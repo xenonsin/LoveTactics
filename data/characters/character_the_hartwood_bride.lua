@@ -26,6 +26,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 7, luck = 5,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   She is wearing the wood the way somebody wears a name, and a point sticks in wood.
+    --   Wood splits, and wood burns. Both of those are things the Cathedral already knows how to do.
+    resist = { pierce = 4, impact = -4, dark = 4, fire = -8 },
     startingItems = { "weapon_antler_crown", "utility_chorister_call" },
     defaultAction = "weapon_antler_crown",
     archetype = "aggressive",

@@ -55,6 +55,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 7, luck = 5,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Plated in something grown rather than forged, and the prologue's last lesson about edges.
+    --   Grown plate is still plate. Rowan's answer to it is the answer to all plate.
+    resist = { slash = 4, impact = -4, fire = 4, holy = -8 },
     -- Its loadout as the 3x3 grid (row-major; false = empty). The Sigil is the build-around in the
     -- center (bound, unstealable); the claws and its two abilities sit around it.
     startingItems = {

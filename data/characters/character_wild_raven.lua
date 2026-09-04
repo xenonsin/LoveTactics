@@ -27,6 +27,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 2, luck = 5,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Feathers close over a cut the way water closes over a stone.
+    --   The same thing that makes it hard to cut makes it easy to skewer: there is very little in there.
+    resist = { slash = 2, pierce = -2 },
     startingItems = { "weapon_flung_quills", "ability_fan_of_feathers" },
     -- Basic tactics (models/ai.lua), for the cases where something else is driving this body (a charmed
     -- druid, a copy): a bird keeps its distance and picks at whatever is closest to falling.

@@ -27,6 +27,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 6, luck = 0,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Green timber banded in iron, built to lean on a gate for six weeks and win.
+    --   Built to push, not to be hit. A ram has no answer at all to something that hits it back harder.
+    resist = { pierce = 4, slash = 2, impact = -6 },
     -- Its hands, and the only thing it carries. It had NOTHING before this line, which meant an 84-health
     -- assassinate mark was swinging weapon_unarmed -- the generic bare fist whose own flavour reads "it
     -- has never once been enough" -- at a party that had walked a mountain road to reach it. A `natural`

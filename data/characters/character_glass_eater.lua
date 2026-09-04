@@ -24,6 +24,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 6, luck = 0,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   A blade slides off glass. Everyone who has tried already knows this.
+    --   And everyone knows the other half, which is why nobody hits glass with a hammer by accident.
+    resist = { slash = 3, impact = -3 },
     startingItems = { "weapon_vitreous_bite" },
     defaultAction = "weapon_vitreous_bite",
     -- Basic tactics (models/ai.lua): nearest, for the mote's reason -- any blessing will do, and picking

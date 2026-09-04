@@ -27,6 +27,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 4, luck = 5,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Gold-scaled to the point where the hoard and the wyrm are the same object.
+    --   Gold is soft, and gold conducts. Both of those are ways of saying the same thing about a hammer.
+    resist = { slash = 4, pierce = 2, impact = -6, lightning = -4 },
     startingItems = { "weapon_gilt_maw" },
     defaultAction = "weapon_gilt_maw",
     archetype = "aggressive",

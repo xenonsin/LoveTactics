@@ -34,6 +34,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 8, luck = 6,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Everything it is owed is stacked on it, and stacked coin does not take a puncture.
+    --   Stacked coin does come apart along the stack, which is what an edge is for.
+    resist = { pierce = 5, slash = -5, dark = 5, holy = -10 },
     startingItems = { "weapon_cutpurse_nip", "utility_the_reckoning" },
     defaultAction = "weapon_cutpurse_nip",
     archetype = "aggressive",

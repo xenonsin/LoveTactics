@@ -36,6 +36,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 7, luck = 1,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   The Crucible's first stair, and there is no edge on it that an edge can find.
+    --   It is standing in its own overflow, and it is holding a great deal of water.
+    resist = { slash = 5, impact = -5, lightning = -5 },
     startingItems = { "weapon_vitreous_bite", "utility_second_wash" },
     defaultAction = "weapon_vitreous_bite",
     -- Basic tactics (models/ai.lua): defensive, because its rule is paid for being WOUNDED. A body that

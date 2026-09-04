@@ -240,6 +240,125 @@ tests[#tests + 1] = { name = "a body that means to move can take a step", fn = f
     end
 end }
 
+-- ---------------------------------------------------------------------------
+-- What a creature wears instead of armour
+-- ---------------------------------------------------------------------------
+
+-- The bodies this contract covers: everything that is not a humanoid and not a prop. `object` is out
+-- with rung 0 -- a plank and a straw sentry are not wearing anything and are not meant to be measured.
+local function isArmourless(def)
+    return def.kind and def.kind ~= "humanoid" and def.kind ~= "object" and (def.tier or 0) > 0
+end
+
+-- WAIVED, NOT EXEMPT -- the entry is the argument, exactly as Balance.FROZEN's is.
+local NO_INNATE = {
+    -- The one body a rescale is also forbidden to touch (Balance.FROZEN). data/tutorials/village.lua
+    -- quotes its arithmetic line by line and the parry beat is built on it landing a specific blow and
+    -- surviving a specific answer; an innate resist is that arithmetic changing. It also declares
+    -- `scaling = false`, so there is nowhere for the change to hide either.
+    character_demon_grunt = "prologue: the parry lesson is written against these exact numbers",
+}
+
+tests[#tests + 1] = { name = "every armourless body declares what it has instead", fn = function()
+    local missing = {}
+    for id, def in pairs(Character.defs) do
+        if isArmourless(def) and not def.resist and not NO_INNATE[id] then
+            missing[#missing + 1] = string.format("%s (%s, tier %d)", id, def.kind, def.tier)
+        end
+    end
+    table.sort(missing)
+    -- Asserted as a SET rather than left to whoever adds the next wolf. A humanoid buys its per-tag
+    -- line off a shelf and the absence of one is a loadout; a creature buys nothing, so the absence of
+    -- one is a body that goes into every fight with an empty resist table and no way for its author to
+    -- notice. That was the state of all 67 of these before this pass.
+    assert(#missing == 0, "these wear no armour and declare no innate `resist`, so every weapon in the "
+        .. "game lands on them identically (docs/bestiary.md):\n  " .. table.concat(missing, "\n  "))
+end }
+
+tests[#tests + 1] = { name = "an innate resist is a trade, not a buff", fn = function()
+    local Balance = require("models.balance")
+
+    -- The legal vocabulary: the three physical types the melee probes carry, plus the closed element
+    -- set armour `resist` is already keyed on (Combat.ELEMENT_TAGS) and `magical`. Read from those two
+    -- rather than listed here, so widening either widens this and a typo'd tag stays a failure -- a
+    -- resist under a tag no weapon carries is silently nothing at all.
+    local legal = { magical = true }
+    for _, t in ipairs(Balance.INNATE_PHYSICAL) do legal[t] = true end
+    for t in pairs(Combat.ELEMENT_TAGS) do legal[t] = true end
+
+    local bad = {}
+    for id, def in pairs(Character.defs) do
+        if def.resist then
+            local budget = Balance.INNATE_BUDGET[def.tier or 0]
+            local function fail(fmt, ...) bad[#bad + 1] = id .. ": " .. string.format(fmt, ...) end
+
+            if not isArmourless(def) then
+                fail("a %s does not have an innate hide -- its per-tag line comes off a shelf, as a "
+                    .. "`resist` table on the armour it wears", tostring(def.kind))
+            end
+            if not budget then
+                fail("tier %s has no Balance.INNATE_BUDGET entry", tostring(def.tier))
+            end
+
+            local physical = 0
+            for tag, amount in pairs(def.resist) do
+                if tag == "physical" then
+                    fail("names `physical`, which subtracts from all three melee probes at once -- "
+                        .. "that is what the `defense` stat already is. Name the type.")
+                elseif not legal[tag] then
+                    fail("unknown resist tag %q -- nothing carries it, so the line is worth zero", tag)
+                end
+                if type(amount) ~= "number" or amount ~= math.floor(amount) then
+                    fail("%s = %s is not a whole number of damage", tag, tostring(amount))
+                elseif budget then
+                    local cap = amount >= 0 and budget or budget * Balance.INNATE_WEAKNESS_FACTOR
+                    if math.abs(amount) > cap then
+                        fail("%s = %d exceeds the tier-%d %s budget of %d", tag, amount, def.tier,
+                            amount >= 0 and "resist" or "weakness", cap)
+                    end
+                end
+                for _, t in ipairs(Balance.INNATE_PHYSICAL) do
+                    if tag == t then physical = physical + amount end
+                end
+            end
+
+            if physical ~= 0 then
+                fail("its slash/pierce/impact lines sum to %+d. A creature's hide is a REDISTRIBUTION: "
+                    .. "they must sum to zero, so turning one weapon aside costs it another. See "
+                    .. "Balance.INNATE_PHYSICAL for why a cap was not enough.", physical)
+            end
+        end
+    end
+    table.sort(bad)
+    assert(#bad == 0, "innate `resist` tables that break the contract:\n  " .. table.concat(bad, "\n  "))
+end }
+
+tests[#tests + 1] = { name = "an innate resist reaches the unit that fights", fn = function()
+    -- The failure this exists for is silent in both directions. Character.instantiate builds its table
+    -- by an explicit whitelist, so a field nobody named there reads back nil; and Combat's passive fold
+    -- rebuilds unit.resist from scratch at every setup, so a hide seeded in the wrong place would be
+    -- wiped by the first item in the grid. Walk the whole path once, on a body whose numbers say which
+    -- end broke.
+    local unit = { char = Character.instantiate("character_wolf_grunt"), alive = true, side = "enemy" }
+    Combat.refreshPassives(unit)
+    assert(unit.resist.slash == 2, "a wolf's coat did not reach the unit: slash resist is "
+        .. tostring(unit.resist.slash) .. ", expected 2")
+    assert(unit.resist.impact == -2, "a wolf's coat kept its resist and lost its price: impact is "
+        .. tostring(unit.resist.impact) .. ", expected -2")
+
+    -- And it is really in the formula, not merely on the table. Measured through the one damage
+    -- function rather than re-derived, the way models/balance.lua measures everything.
+    local slash = Combat.mitigatedDamage(unit, 100, { "sword", "slash", "physical", "melee" })
+    local impact = Combat.mitigatedDamage(unit, 100, { "mace", "impact", "physical", "melee" })
+    assert(impact - slash == 4, string.format("the trade did not reach Combat.mitigatedDamage: a mace "
+        .. "lands %d and a blade %d, a gap of %d where the coat says 4", impact, slash, impact - slash))
+
+    -- A grid item layers ON TOP of the hide rather than replacing it: the seed happens before the fold.
+    unit.char.inventory[9] = require("models.item").instantiate("armor_leather_armor")
+    Combat.refreshPassives(unit)
+    assert(unit.resist.slash == 5, "a coat over a hide should be both: got " .. tostring(unit.resist.slash))
+end }
+
 tests[#tests + 1] = { name = "the runtime character keeps kind, tier and discipline", fn = function()
     -- Character.instantiate builds its table field by field rather than cloning the blueprint, so a
     -- field nobody named there reads back nil at runtime and fails silently (its own header says so).
@@ -247,6 +366,12 @@ tests[#tests + 1] = { name = "the runtime character keeps kind, tier and discipl
     assert(c.kind == "humanoid", "kind was dropped on instantiate")
     assert(c.tier == 3, "tier was dropped on instantiate")
     assert(c.discipline == "thief", "discipline was dropped on instantiate")
+
+    -- And keeps the innate hide, which is the same failure mode with a new field in it.
+    local wolf = Character.instantiate("character_wolf_grunt")
+    assert(wolf.resist and wolf.resist.slash == 2, "resist was dropped on instantiate")
+    assert(wolf.resist ~= Character.defs.character_wolf_grunt.resist,
+        "resist is the blueprint's own table -- one wolf's edit would reach every wolf")
 end }
 
 return tests

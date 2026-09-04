@@ -23,6 +23,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 4, luck = 6,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Four tiles of standing ice, and a blade has never once got purchase on ice.
+    --   Weight does. Fire does more.
+    resist = { slash = 4, impact = -4, ice = 4, fire = -8 },
     startingItems = { "weapon_hoarfrost_antlers", "utility_long_dark" },
     defaultAction = "weapon_hoarfrost_antlers",
     archetype = "aggressive",

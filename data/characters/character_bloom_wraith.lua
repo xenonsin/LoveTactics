@@ -21,6 +21,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 3, luck = 0,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   What it is wearing is petal and rot, and an edge only ever takes the wearing.
+    --   The body inside the bloom is small, and a point reaches a small thing through a large one.
+    resist = { slash = 3, pierce = -3, dark = 3, holy = -6 },
     startingItems = { "weapon_bloom_reach" },
     defaultAction = "weapon_bloom_reach",
     -- Basic tactics (models/ai.lua): `skirmish` holds the gap, which is what the hit-and-run is for.

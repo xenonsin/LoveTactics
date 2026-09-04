@@ -18,6 +18,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 2, luck = 6,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   There is nothing in it to cut and nothing in it to skewer, which is most of a weapon rack gone.
+    --   A shockwave is the one thing that moves air, and moving air is all this is.
+    resist = { slash = 2, pierce = 2, impact = -4, lightning = -4 },
     startingItems = { "weapon_gale_fists" },
     -- Basic tactics (models/ai.lua): the scout darts in on the weakest -- press the foe closest to falling.
     ai = {

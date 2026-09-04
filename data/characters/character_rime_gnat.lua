@@ -20,6 +20,13 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 2, luck = 6,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist
+    -- table is written in and summed into the same total. This body wears nothing, so this is
+    -- what it has instead of a coat -- and the negative line is not an oversight, it is the
+    -- price. See docs/bestiary.md, "What a creature wears instead of armour".
+    --   Frozen solid at the size of a fingernail: hitting it is like hitting a nail head.
+    --   It is also the size of a fingernail, and an edge is faster than the cold is.
+    resist = { impact = 2, slash = -2, ice = 2, fire = -4 },
     startingItems = { "weapon_rime_nip" },
     defaultAction = "weapon_rime_nip",
     archetype = "aggressive",
