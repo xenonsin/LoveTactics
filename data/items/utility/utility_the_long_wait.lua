@@ -22,8 +22,8 @@ return {
     type = "utility",
     tags = { "charm", "guile" },
     class = "poacher",
-    price = 495,
     unlockQuests = 5,
+    dropTier = 4,
     traits = { "trait_the_long_wait" },
     -- a blow that cannot be answered is a blow taken carefully
     bonus = { skill = 2 },

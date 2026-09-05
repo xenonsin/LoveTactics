@@ -187,7 +187,7 @@ end
 function Quest.shelf(player, vendorId)
     if not vendorId then return nil end
     return Vendor.stock(vendorId, Quest.shelfRung(player, vendorId), player.recipes,
-        Class.unlockedSet(player), Class.levelSet(player))
+        Class.unlockedSet(player), Class.levelSet(player), player.found)
 end
 local shelfOf = Quest.shelf
 

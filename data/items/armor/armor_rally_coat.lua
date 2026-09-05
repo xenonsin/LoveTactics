@@ -29,7 +29,7 @@ return {
     sprite = "assets/items/armor_rally_coat.png",
     type = "armor",
     tags = { "cloth", "banner" },
-    dropTier = 4,
+    dropTier = 5,
     -- Tagged for identity and growth, never for the rack: quest-only gear carries the discipline but
     -- has no price, so it is not part of what the shelf unlock delivers (tests/class_ladder_spec.lua).
     class = "warlord",

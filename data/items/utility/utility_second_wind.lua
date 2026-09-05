@@ -11,8 +11,8 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "knight",
-    price = 80,
     unlockQuests = 0,
+    dropTier = 4,
     traits = { "trait_second_wind" },
     -- surviving a killing blow is guard and fortune together
     bonus = { defense = 2, luck = 1 },

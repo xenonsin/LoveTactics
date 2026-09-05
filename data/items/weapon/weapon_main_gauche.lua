@@ -27,8 +27,8 @@ return {
     type = "weapon",
     tags = { "dagger", "pierce", "physical", "melee" },
     class = "duelist",
-    price = 740,
     unlockQuests = 8,
+    dropTier = 7,
     traits = { "trait_parry" },
     charge = { key = "tempo", from = { "answered" }, max = 5 },
     activeAbility = {

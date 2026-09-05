@@ -23,6 +23,7 @@ return {
     sprite = "assets/items/mail_of_the_unappeased.png",
     type = "armor",
     class = "creature",
+    dropTier = 7,
     tags = { "relic" },
     noSteal = true, -- nothing takes this off you; you took it off her
     traits = { "trait_wrath_rising" },

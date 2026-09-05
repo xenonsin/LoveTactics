@@ -9,6 +9,7 @@ return {
     sprite = "assets/items/quenchless_gut.png",
     type = "utility",
     class = "creature",
+    dropTier = 2,
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_drinks_the_fire" },

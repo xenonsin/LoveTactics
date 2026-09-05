@@ -24,7 +24,7 @@ return {
     type = "armor",
     tags = { "hide" },
     class = "hunter",
-    dropTier = 2,
+    dropTier = 3,
     traits = { "trait_ravenous" },
     bonus = { defense = Curve.ramp(2, 12), movement = -1 },
 }

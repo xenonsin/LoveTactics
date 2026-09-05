@@ -26,7 +26,7 @@ return {
     type = "armor",
     tags = { "leather" },
     class = "fighter",
-    dropTier = 4,
+    dropTier = 6,
     traits = { "trait_adrenal_surge" },
     bonus = { defense = Curve.ramp(4, 14), movement = -1 },
     resist = { physical = 1 },

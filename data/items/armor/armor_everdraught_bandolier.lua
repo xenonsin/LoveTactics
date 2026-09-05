@@ -28,7 +28,7 @@ return {
     type = "armor",
     tags = { "leather" },
     class = "alchemist",
-    dropTier = 4,
+    dropTier = 5,
     traits = { "trait_survivors_reflex" },
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },
 }

@@ -17,7 +17,7 @@ return {
     sprite = "assets/items/armor_cutpurse_coat.png",
     type = "armor",
     tags = { "leather" },
-    dropTier = 2,
+    dropTier = 3,
     -- Tagged for identity and growth, never for the rack: quest-only gear carries the discipline but
     -- has no price, so it is not part of what the shelf unlock delivers (tests/class_ladder_spec.lua).
     class = "mammonite",

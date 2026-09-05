@@ -27,6 +27,7 @@ return {
     sprite = "assets/items/envious_glass.png",
     type = "utility",
     class = "creature",
+    dropTier = 2,
     tags = { "relic" },
     noSteal = true, -- nothing takes this off you; you took it off her
     traits = { "trait_covetous_reflection" },

@@ -16,6 +16,7 @@ return {
     sprite = "assets/items/bloom_reach.png",
     type = "weapon",
     class = "creature",
+    dropTier = 2,
     tags = { "natural", "slash", "physical", "melee" },
     noSteal = true,
     hitAndRun = GIVE_GROUND,

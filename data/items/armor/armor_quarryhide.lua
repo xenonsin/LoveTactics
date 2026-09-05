@@ -22,7 +22,7 @@ return {
     type = "armor",
     tags = { "hide" },
     class = "hunter",
-    dropTier = 4,
+    dropTier = 5,
     traits = { "trait_executioners_eye" },
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     resist = { physical = 1 },

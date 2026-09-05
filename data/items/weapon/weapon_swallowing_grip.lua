@@ -16,6 +16,7 @@ return {
     sprite = "assets/items/swallowing_grip.png",
     type = "weapon",
     class = "creature",
+    dropTier = 6,
     tags = { "natural", "impact", "physical", "melee" },
     noSteal = true,
     activeAbility = {

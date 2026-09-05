@@ -43,11 +43,11 @@ return {
     type = "utility",
     tags = { "boots", "arcane" },
     class = "alchemist",
+    unlockQuests = 0, -- opening shelf: a two-caster party should be able to buy this on day one
+    dropTier = 3,
     -- Derived, not chosen: slot 0 sets the price (docs/shelf.md, `. grade-report`). It was 30 as a
     -- consumable and is 80 as a charm for one reason -- the grader's `consumable = 0.4` multiplier is
     -- the discount a thing earns for being gone after one use, and this is not gone after one use.
-    price = 80,
-    unlockQuests = 0, -- opening shelf: a two-caster party should be able to buy this on day one
     -- Matched to Pilgrim's Sandals' print (10 ticks, ~2 turns) for the same reason it is: a puddle that
     -- dried inside half a turn would be gone before the company behind could reach it, and the company
     -- reaching it is the entire item. No `selfStatus` -- see the header.

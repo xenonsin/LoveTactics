@@ -214,15 +214,14 @@ return {
         -- to prevent -- so the assertion is on the purse as much as on the arithmetic.
         name = "Clem's Jubilee takes a cut of the winnings on top of the spoils",
         fn = function()
-            local Scrip = require("models.scrip")
             local clem = char("character_clem", "jubilee", { 54, 54 })
-            local ctx = ctxFor({ clem }, { cell = combatCell(), spoils = { scrip = 40 } })
-            local before, goldBefore = Scrip.get(ctx.player), ctx.player.gold
+            local ctx = ctxFor({ clem }, { cell = combatCell(), spoils = { gold = 40 } })
+            -- Read off `gold` rather than the retired `scrip` field: one purse (models/spoils.lua), so
+            -- what Clem takes a share of is what the fight actually paid.
+            local before = ctx.player.gold or 0
             OverworldAbility.dispatch("encounterCleared", ctx)
-            assert(Scrip.get(ctx.player) == before + 10,
-                "Clem should add 25% of the 40 scrip the fight paid (10)")
-            assert(ctx.player.gold == goldBefore,
-                "Clem's cut reached the campaign purse -- it is a share of the run's coin, not a mint")
+            assert((ctx.player.gold or 0) == before + 10,
+                "Clem should add 25% of the 40 gold the fight paid (10)")
         end,
     },
 }

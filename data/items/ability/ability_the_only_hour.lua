@@ -19,6 +19,7 @@ return {
     sprite = "assets/items/ability_desperate_strike.png", -- placeholder until its own art exists
     type = "ability",
     class = "creature",
+    dropTier = 1,
     tags = { "slash", "physical", "melee" },
     activeAbility = {
         target = "enemy",

@@ -21,8 +21,8 @@ return {
     type = "utility",
     tags = { "charm", "poison" },
     class = "plague_knight",
-    price = 495,
     unlockQuests = 5,
+    dropTier = 6,
     traits = { "trait_rot_fume" },
     -- it banks Power per poisoned body; the gauntlet is still plate
     bonus = { defense = 2 },

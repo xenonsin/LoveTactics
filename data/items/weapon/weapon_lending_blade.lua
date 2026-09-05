@@ -26,7 +26,7 @@ return {
     hands = 1,
     traits = { "trait_parry" }, -- the plain Parry: this blade's extra is the swing, not the answer
     class = "knight",
-    dropTier = 3,
+    dropTier = 4,
     activeAbility = {
         target = "enemy",
         range = 1,

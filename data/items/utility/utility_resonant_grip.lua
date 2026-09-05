@@ -22,8 +22,8 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "battlemage",
-    price = 330,
     unlockQuests = 3,
+    dropTier = 3,
     traits = { "trait_resonant_grip" },
     -- steel carrying a working is a magical weapon in the hand
     bonus = { magicDamage = 2 },

@@ -189,11 +189,17 @@ end }
 -- nothing -- it is held from the first morning -- so there is no moment for this to measure. What a
 -- root's stock owes is a different promise, that a newcomer can be armed at all, and tests/class_spec
 -- has always been where that is kept.
-tests[#tests + 1] = { name = "every earned class stocks at least five buyable items", fn = function()
+--
+-- "BUYABLE" BECAME "REACHABLE", and the argument is untouched by the change. What the floor measures is
+-- whether the moment a gate opens hands the player enough to build with. After the shelf recut a
+-- discipline's kit arrives two ways -- its casts are bought, its gear is found (tools/drop_tier.lua) --
+-- and counting only the priced half would measure how many ABILITIES a discipline has while calling it
+-- a build. Both halves are the discipline's own stock; neither is reachable without unlocking it.
+tests[#tests + 1] = { name = "every earned class stocks at least five reachable items", fn = function()
     local FLOOR = 5
     local count = {}
     for _, def in pairs(Item.defs) do
-        if Class.isEarned(def.class) and def.price then
+        if Class.isEarned(def.class) and (def.price or def.dropTier) then
             count[def.class] = (count[def.class] or 0) + 1
         end
     end

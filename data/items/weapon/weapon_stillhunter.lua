@@ -30,8 +30,8 @@ return {
     tags = { "bow", "pierce", "physical", "ranged" },
     hands = 2, -- every bow is two-handed (docs/weapons.md)
     class = "hunter",
-    price = 495,
     unlockQuests = 5,
+    dropTier = 6,
     -- The extra, whole. None of the three moves with the forge: `speed` is the steep tempo the stance
     -- costs (models/item.lua -- an upgrade never buys back the turn), `stamina` is what each held shot
     -- spends, which used to fall from 6 to 3 across the levels, and `zone` is a fact about how the

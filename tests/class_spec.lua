@@ -54,7 +54,11 @@ local WEAPON_FLOOR = 3
 local function weaponsOf(class)
     local out = {}
     for id, def in pairs(Item.defs) do
-        if def.type == "weapon" and def.price and def.class == class then
+        -- `price or dropTier`: a house's rack is what it can ever put in front of the player, and after
+        -- the shelf recut most of a class's weapons reach the counter by being FOUND rather than by
+        -- being stocked (tools/drop_tier.lua). Counting priced ones only would have measured the iron
+        -- floor and called it the rack.
+        if def.type == "weapon" and (def.price or def.dropTier) and def.class == class then
             out[#out + 1] = { id = id, def = def }
         end
     end

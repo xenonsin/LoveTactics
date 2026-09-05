@@ -1,27 +1,32 @@
--- Tests for the two-currency economy: scrip (models/scrip.lua) and valuables (models/valuable.lua).
+-- Tests for the economy: ONE purse, and valuables (models/valuable.lua).
 --
--- WHAT THIS FILE IS ACTUALLY DEFENDING is one claim, and it is a claim about what CANNOT happen rather
--- than about what does: the two purses never touch. Scrip cannot become gold, gold cannot be spent
--- underground, and no seam quietly converts one into the other. Every case below is either that
--- invariant or one of the mechanisms it rests on -- the drop pool refusing to stock valuables, the mule
--- weighing them, the counter paying them at par, the surface burning the purse.
+-- IT WAS TWO. Scrip was the run's own weightless coin -- earned below, spent at the Merchant and the
+-- Crossroads and by the money kit, and burned at every exit -- and the claim this file defended was
+-- that the two purses never touched. That split existed so nothing bought underground was priced
+-- against a forge rung, and it worked; what ended it was the shelf recut (tools/drop_tier.lua), which
+-- took the gear off the houses and so off the Merchant's cart, leaving scrip a currency with one and a
+-- half sinks. models/scrip.lua is deleted.
 --
--- The reason it needs pinning rather than reading: both halves are made of small exceptions scattered
--- across nine files, and the failure mode is silent. A valuable that slips into Spoils.shelf does not
--- crash -- it just puts the thing the player is descending to fetch on a counter for sale.
+-- WHAT THIS FILE DEFENDS NOW is the fence that replaced it, which is MAGNITUDE rather than a second
+-- currency: nothing underground may ask more than a fraction of the cheapest forge rung, so the
+-- comparison the split was built to prevent never gets close enough to bite. Plus everything that was
+-- never about scrip at all and is unchanged -- the drop pool refusing to stock valuables, the counter
+-- paying them at par, worth-per-slot being lumpy enough to make carrying one a decision.
+--
+-- The reason it needs pinning rather than reading: the failure mode is silent. A valuable that slips
+-- into Spoils.shelf does not crash -- it just puts the thing the player is descending to fetch on a
+-- counter for sale.
 
-local Scrip = require("models.scrip")
 local Valuable = require("models.valuable")
 local Item = require("models.item")
 local Vendor = require("models.vendor")
 local Spoils = require("models.spoils")
-local Mule = require("models.mule")
 local Player = require("models.player")
 
--- A player with nothing but the two purses on it. Player.new drags a starting roster and stash in,
--- which is what most of these cases would rather not have to reason about.
-local function purse(scrip)
-    return { scrip = scrip or 0, gold = 0, materials = {} }
+-- A player with nothing but a purse on it. Player.new drags a starting roster and stash in, which is
+-- what most of these cases would rather not have to reason about.
+local function purse(gold)
+    return { gold = gold or 0, materials = {} }
 end
 
 -- Every valuable in the data, which is the set most of these cases sweep.
@@ -36,67 +41,34 @@ end
 
 return {
     -- ---------------------------------------------------------------------
-    -- Scrip: the purse itself
+    -- The purse: one of it, and a ceiling on what the rift may ask
     -- ---------------------------------------------------------------------
     {
-        name = "scrip adds, spends all-or-nothing, and reads zero on a player that has none",
+        -- THE FENCE, and the whole of what replaced the second currency. A run that spends the
+        -- campaign's coin underground is only safe while nothing underground is priced anywhere near
+        -- what that coin is really for -- so the ceiling is the invariant.
+        --
+        -- Anchored to the grader rather than to a typed number, exactly as Spoils.priceCeiling is: an
+        -- underground ask may never exceed the price of a house's opening rung, which makes it the
+        -- smaller decision by construction and so never a thing to weigh a forge rung against.
+        name = "nothing the rift asks for can be weighed against a permanent upgrade",
         fn = function()
-            local p = purse()
-            assert(Scrip.get(p) == 0, "a fresh purse is not zero")
-            assert(Scrip.get(nil) == 0, "a nil player should read zero, not error")
+            local Grade = require("models.grade")
+            assert(Spoils.priceCeiling() == Grade.PRICE_BASE,
+                "the ceiling drifted off the opening rung it is defined as")
 
-            Scrip.add(p, 40)
-            assert(Scrip.get(p) == 40, "add did not credit")
-
-            assert(Scrip.spend(p, 40) == true, "spend refused an affordable price")
-            assert(Scrip.get(p) == 0, "spend did not debit")
-
-            Scrip.add(p, 10)
-            assert(Scrip.spend(p, 11) == false, "spend allowed an unaffordable price")
-            assert(Scrip.get(p) == 10,
-                "a REFUSED spend took coin anyway -- a counter that half-charges is worse than one "
-                .. "that refuses")
+            -- Every seam that quotes a price underground goes through the clamp, so the claim is about
+            -- the clamp: nothing it returns may exceed the ceiling, whatever it was handed.
+            local cap = Spoils.priceCeiling()
+            for _, ask in ipairs({ 1, 40, cap, cap + 1, 400, 4000 }) do
+                assert(Spoils.askingPrice(ask) <= cap,
+                    "an ask of " .. ask .. " came back at " .. Spoils.askingPrice(ask)
+                    .. ", over the ceiling of " .. cap)
+            end
+            assert(Spoils.askingPrice(40) == 40, "the clamp moved a price that was already under it")
+            assert(Spoils.askingPrice(0) >= 1, "the clamp handed back a free thing")
         end,
     },
-    {
-        -- The clamping half, which is the money kit's contract: a broke party spends its last coppers
-        -- and the blow lands soft, rather than the ability refusing to fire.
-        name = "scrip take clamps to what is on hand and reports what it actually took",
-        fn = function()
-            local p = purse(30)
-            assert(Scrip.take(p, 12) == 12, "take did not report the full amount it could cover")
-            assert(Scrip.get(p) == 18, "take did not debit")
-            assert(Scrip.take(p, 500) == 18, "take did not clamp to the balance")
-            assert(Scrip.get(p) == 0, "take left something behind after clamping")
-            assert(Scrip.take(p, 5) == 0, "take on an empty purse should report nothing taken")
-        end,
-    },
-    {
-        -- The rule the whole split rests on. If any exit keeps it, scrip is gold with extra steps.
-        name = "the surface burns the purse, and opening a run refills it to the constant",
-        fn = function()
-            local p = purse(0)
-            Scrip.open(p)
-            assert(Scrip.get(p) == Scrip.OPENING, "a fresh run did not open on Scrip.OPENING")
-
-            Scrip.add(p, 900)
-            local burned = Scrip.clear(p)
-            assert(Scrip.get(p) == 0, "the surface did not burn the purse")
-            assert(burned == Scrip.OPENING + 900,
-                "clear must report what it burned -- a resource that vanishes silently reads as a bug")
-        end,
-    },
-    {
-        -- Scrip.add is the payout seam and a payout that computed a negative is a bug, not a charge.
-        -- The one caller that needs to take coin away (a crossroads toll) is routed through take.
-        name = "scrip add refuses a negative rather than working as a spend",
-        fn = function()
-            local p = purse(50)
-            Scrip.add(p, -20)
-            assert(Scrip.get(p) == 50, "add applied a negative amount")
-        end,
-    },
-
     -- ---------------------------------------------------------------------
     -- Valuables: the shape of the content
     -- ---------------------------------------------------------------------
@@ -243,13 +215,14 @@ return {
         end,
     },
     {
-        -- The split that funds the two economies: the grind pays run coin, the ends pay the campaign.
-        name = "an ordinary fight pays scrip and no gold; only an end leaves valuables",
+        -- ONE PURSE, TWO KINDS OF INCOME. The grind pays coin and the ends pay OBJECTS, and that is
+        -- still the split that matters: a valuable has to be carried out and sold, so the richest
+        -- stops are the ones you have to survive the walk home from. It used to be a split of
+        -- currencies too -- the grind paid scrip, which died at the surface -- and that half is gone.
+        name = "an ordinary fight pays coin and no valuables; only an end leaves objects",
         fn = function()
             local common = Spoils.roll({ count = 4, day = 5, floorLevel = 5, kind = "combat" })
-            assert((common.scrip or 0) > 0, "an ordinary fight paid no scrip")
-            assert((common.gold or 0) == 0,
-                "an ordinary fight paid campaign gold -- the grind must not fund progression")
+            assert((common.gold or 0) > 0, "an ordinary fight paid nothing at all")
             assert(#(common.valuables or {}) == 0, "an ordinary fight left a valuable")
 
             local found = false
@@ -265,11 +238,10 @@ return {
     },
     {
         -- An AUTHORED payout is an end somebody wrote down, and an end pays the campaign's coin.
-        name = "an authored rewardGold pays gold and not scrip",
+        name = "an authored rewardGold is paid exactly, and replaces the roll",
         fn = function()
             local s = Spoils.roll({ count = 3, day = 5, kind = "combat", rewardGold = 250 })
-            assert(s.gold == 250, "an authored purse did not pay gold")
-            assert((s.scrip or 0) == 0, "an authored purse also paid scrip -- it must pay one of the two")
+            assert(s.gold == 250, "an authored purse did not pay what it was authored at")
         end,
     },
     {
@@ -301,18 +273,18 @@ return {
         end,
     },
     {
-        -- The branch that keeps the prologue honest: above ground there is no Merchant, no Crossroads
-        -- and no exit to burn a purse at, so scrip there would be a payout that can be neither spent nor
-        -- kept. `floorLevel` is the tell, and it is set on every descent fight by Descent.floorQuest.
-        name = "a fight pays the purse of the place it was fought in",
+        -- WHAT THIS CASE BECAME. It used to guard the branch that decided WHICH PURSE a fight paid --
+        -- scrip below, gold above -- because a purse the prologue could neither spend nor keep would
+        -- have been a payout that quietly vanished at the first Gate. There is one purse now, so the
+        -- branch is gone and the claim that outlives it is the simpler one underneath: a won fight pays
+        -- SOMETHING, wherever it was fought, and depth pays better than the road.
+        name = "a fight pays wherever it was fought, and pays deeper for depth",
         fn = function()
             local road = Spoils.roll({ count = 4, day = 6, kind = "combat", loot = {} })
-            assert(road.gold > 0 and (road.scrip or 0) == 0,
-                "a campaign road stop stopped paying gold -- the prologue's fights pay nothing spendable")
+            assert(road.gold > 0, "a campaign road stop pays nothing spendable")
 
             local floor = Spoils.roll({ count = 4, day = 6, floorLevel = 6, kind = "combat", loot = {} })
-            assert(floor.scrip > 0 and (floor.gold or 0) == 0,
-                "a descent floor paid campaign gold -- the grind must not fund progression")
+            assert(floor.gold > 0, "a descent floor pays nothing spendable")
         end,
     },
     {
@@ -322,89 +294,44 @@ return {
             assert(#Valuable.roll({ depth = 99 }) == 0, "a kindless roll left a valuable")
         end,
     },
+    -- ---------------------------------------------------------------------
+    -- The mule: DELETED, and what a valuable's weight was for
+    -- ---------------------------------------------------------------------
+    --
+    -- Three cases stood here: a valuable weighed by its bulk rather than counted, a cap that refused a
+    -- three-slot idol to a company with two slots free, and a campaign road where there was no mule to
+    -- fill. models/mule.lua is gone -- its cap, its send-home verb and its trip timer -- because all
+    -- three existed to bound a bet a wipe collected on, and a wipe collects nothing now.
+    --
+    -- WHAT SURVIVES IS THE BULK ITSELF (models/valuable.lua's Valuable.bulk), pinned in the
+    -- worth-per-slot cases above: an idol being three of something is still what makes carrying it a
+    -- decision at the stair, where the toll takes a share of the haul by count (states/game.lua's
+    -- game:payToll). What it no longer decides is whether the thing can be picked up at all.
 
     -- ---------------------------------------------------------------------
-    -- The mule: valuables have weight
+    -- The wipe: it costs the count, and nothing a company can carry
     -- ---------------------------------------------------------------------
     {
-        -- The load is measured in SLOTS now, off Player.atRisk's `id#level` keys. A regression here is
-        -- silent: a three-slot idol weighing one just means the cap never binds.
-        name = "the mule weighs a valuable by its bulk, and everything else by one",
+        -- WHAT WAS DELETED, held down so nobody restores it on noticing that a wipe no longer costs
+        -- anything. Two lines went, a year apart and for the same reason. The gold cut went when the
+        -- campaign's coin became objects -- the pack took it instead. Then the pack itself went, and
+        -- Player.loseHaul with it: docs/the-count.md prices a need at nothing and a decision at a mark,
+        -- and charging the FAILURE the haul plus the purse plus a wound on every head was the most
+        -- expensive line in the game landing on the company that had just lost.
+        --
+        -- A lost expedition is billed on the count now (models/descent.lua's COUNT_WIPE) -- two marks
+        -- against the stair's one, which is what keeps dying from being the cheaper way home without
+        -- reaching into anything the player is holding.
+        name = "a wipe takes neither gold nor ore -- it is billed on the count",
         fn = function()
-            local heavy, light = nil, nil
-            for _, v in ipairs(eachValuable()) do
-                if Valuable.bulk(v.id) >= 3 then heavy = v.id end
-                if Valuable.bulk(v.id) == 1 then light = v.id end
-            end
-            assert(heavy and light, "the data has no heavy and light pair to weigh against each other")
+            assert(Player.loseHaul == nil,
+                "Player.loseHaul is back: a wipe is priced in marks, never out of a purse or a pack")
+            assert(Player.WIPE_LOSS == nil, "and the share it took is gone with it")
 
-            local player = { roster = {}, stash = {}, materials = {}, gold = 0, scrip = 0 }
-            local entry = { roster = {}, stash = {}, materials = {}, gold = 0 }
-            local run = { entry = entry }
-
-            assert(Mule.load(player, run) == 0, "an untouched company is already carrying something")
-
-            table.insert(player.stash, Item.instantiate(light))
-            assert(Mule.load(player, run) == 1, "a one-slot valuable did not weigh one")
-
-            table.insert(player.stash, Item.instantiate(heavy))
-            assert(Mule.load(player, run) == 1 + Valuable.bulk(heavy),
-                "a " .. Valuable.bulk(heavy) .. "-slot valuable weighed something else -- the cap "
-                .. "will never bind")
-
-            table.insert(player.stash, Item.instantiate("weapon_iron_sword"))
-            assert(Mule.load(player, run) == 2 + Valuable.bulk(heavy),
-                "an ordinary item stopped weighing exactly one slot")
-        end,
-    },
-    {
-        name = "canTakeItem asks about the thing, not about a count",
-        fn = function()
-            local heavy
-            for _, v in ipairs(eachValuable()) do
-                if Valuable.bulk(v.id) >= 3 then heavy = v.id end
-            end
-            assert(heavy, "no three-slot valuable to test the refusal with")
-
-            local player = { roster = {}, stash = {}, materials = {}, muleCapacity = 8 }
-            local run = { entry = { roster = {}, stash = {}, materials = {} } }
-            -- Fill to two free slots.
-            for _ = 1, 6 do table.insert(player.stash, Item.instantiate("weapon_iron_sword")) end
-            assert(Mule.room(player, run) == 2, "the fixture did not leave two slots")
-            assert(Mule.canTakeItem(player, "weapon_iron_sword", run),
-                "a one-slot item was refused with two slots free")
-            assert(not Mule.canTakeItem(player, heavy, run),
-                "a three-slot valuable fit in two slots -- bulk is not reaching the check")
-        end,
-    },
-    {
-        -- Outside a descent there is no mule and never was, and every grant seam in the campaign asks.
-        name = "weight is free outside a descent",
-        fn = function()
-            local player = { roster = {}, stash = {}, materials = {} }
-            assert(Mule.canTakeItem(player, "valuable_crowned_reliquary", nil),
-                "a valuable was refused on a campaign road, where there is no mule to fill")
-        end,
-    },
-
-    -- ---------------------------------------------------------------------
-    -- The wipe: the pack is the penalty now
-    -- ---------------------------------------------------------------------
-    {
-        -- The line that was DELETED, which is the kind of change a spec has to hold down or somebody
-        -- restores it on noticing that a wipe no longer costs coin. It costs the coin's whole source:
-        -- the valuables are in the pack, and the pack hits the floor (Descent.dropPack).
-        name = "a wipe no longer takes gold, and still takes ore",
-        fn = function()
-            local before = { gold = 100, materials = { material_iron_scrap = 2 } }
-            local player = { gold = 900, materials = { material_iron_scrap = 10 } }
-
-            local taken = Player.loseHaul(player, before)
-            assert(player.gold == 900,
-                "a wipe took gold -- the pack is the penalty now, and billing both charges one loss "
-                .. "twice (models/player.lua)")
-            assert(taken.gold == 0, "loseHaul reported taking gold it did not take")
-            assert(player.materials.material_iron_scrap < 10, "a wipe stopped taking ore")
+            local Descent = require("models.descent")
+            assert(Descent.COUNT_WIPE > Descent.COUNT_STAIR,
+                "dying must cost more than walking out, or the optimal play is to die where you stand "
+                .. "rather than walk back to the stair (models/descent.lua)")
         end,
     },
 }

@@ -29,8 +29,8 @@ return {
     tags = { "bow", "pierce", "physical", "ranged" },
     hands = 2, -- every bow is two-handed (docs/weapons.md)
     class = "hunter",
-    price = 245,
     unlockQuests = 2, -- above the Stillhunter's 3; rank 4 is the vendor ceiling (data/vendors/)
+    dropTier = 5,
     -- The whole of the extra. Weapon-borne, so Trait.mayCounter binds it to this bow's band and this
     -- bow's dead zone -- a dagger sharing the grid lends it nothing, and it lends the dagger nothing.
     traits = { "trait_ranged_counter" },

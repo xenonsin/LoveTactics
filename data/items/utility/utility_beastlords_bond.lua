@@ -26,8 +26,8 @@ return {
     type = "utility",
     tags = { "charm", "beast" },
     class = "beastmaster", -- deeper cut of the shelf: buyable only once the beastmaster gate is cleared
-    price = 410,
     unlockQuests = 4,
+    dropTier = 3,
     traits = { "trait_beastlords_bond" },
     -- every act of yours is another set of teeth
     bonus = { damage = 1 },

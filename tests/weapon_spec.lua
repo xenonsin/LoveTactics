@@ -214,15 +214,28 @@ return {
             local families = 0
             for family, halves in pairs(roster) do
                 families = families + 1
-                assert(#halves.shop == 5, family .. " has " .. #halves.shop
-                    .. " shelf weapons, not 5: " .. table.concat(halves.shop, ", "))
-                assert(#halves.quest == 5, family .. " has " .. #halves.quest
-                    .. " quest-only weapons, not 5: " .. table.concat(halves.quest, ", "))
-                -- A quest weapon keeps its `class` (it is what the strike tallies toward for growth) but
-                -- must have no `unlockQuests` either -- a shelf gate with no price is dead data on no shelf.
+                -- TEN PER FAMILY, AND THE SPLIT IS NO LONGER FIVE AND FIVE. The shelf recut left a
+                -- price on one thing in this half of the catalogue -- a house's opener weapon -- so a
+                -- family now has at most a couple of shop rows and the rest are found in the rift
+                -- (tools/drop_tier.lua). The COUNT is what this case was always defending: ten weapons
+                -- in a family is what makes it a family rather than a gimmick, and the axis a
+                -- particular one is reached along is the shelf's business, not the family's.
+                local total = #halves.shop + #halves.quest
+                assert(total == 10, family .. " has " .. total .. " weapons, not 10: "
+                    .. table.concat(halves.shop, ", ") .. " / " .. table.concat(halves.quest, ", "))
+                -- A FAMILY IS NOT OWED AN OPENER, and the shield family is why the rule has to be said
+                -- that way round. Shields live in data/items/armor and armor is found, all of it -- so
+                -- that family has no priced row at all and should not. What a new company is owed is a
+                -- weapon per HOUSE, which is a different promise kept in a different place
+                -- (tests/class_spec, and the floor report in tools/drop_tier.lua).
+                -- A FOUND WEAPON KEEPS BOTH ITS `class` AND ITS `unlockQuests`. The class is what a
+                -- strike tallies toward for growth; the rung is its grade rank, which is what
+                -- models/balance.lua measures its magnitude against. This used to forbid the rung on
+                -- the reasoning that a shelf gate with no price is dead data -- true while the rung was
+                -- only a gate, and false since the recut made the gate a different question (have you
+                -- carried one out) and left the rank alone.
                 for _, id in ipairs(halves.quest) do
-                    assert(Item.defs[id].class, id .. " is quest-only with no class to tally growth against")
-                    assert(not Item.defs[id].unlockQuests, id .. " has an unlockQuests but no price: it is on no shelf")
+                    assert(Item.defs[id].class, id .. " is found with no class to tally growth against")
                 end
             end
             assert(families == 13, "expected 13 shoppable families, found " .. families)

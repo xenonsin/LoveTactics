@@ -19,8 +19,8 @@ return {
     type = "utility",
     tags = { "charm", "spirit" },
     class = "shaman",
-    price = 330,
     unlockQuests = 3,
+    dropTier = 2,
     traits = { "trait_ghost_wind" },
     -- everything you field arrives already moving
     bonus = { speed = 2 },

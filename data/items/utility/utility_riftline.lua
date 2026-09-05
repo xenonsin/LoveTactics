@@ -17,6 +17,7 @@ return {
     sprite = "assets/items/riftline.png",
     type = "utility",
     class = "creature",
+    dropTier = 2,
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_boss_phases" },

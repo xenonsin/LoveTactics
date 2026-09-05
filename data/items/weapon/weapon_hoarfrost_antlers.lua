@@ -14,6 +14,7 @@ return {
     sprite = "assets/items/hoarfrost_antlers.png",
     type = "weapon",
     class = "creature",
+    dropTier = 8,
     tags = { "natural", "ice", "physical", "melee" },
     noSteal = true,
     activeAbility = {

@@ -22,7 +22,7 @@ return {
     type = "armor",
     tags = { "leather" },
     class = "rogue",
-    dropTier = 2,
+    dropTier = 4,
     traits = { "trait_opportunist" },
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },
 }

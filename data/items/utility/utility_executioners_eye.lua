@@ -8,8 +8,8 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "hunter",
-    price = 80,
     unlockQuests = 0,
+    dropTier = 3,
     traits = { "trait_executioners_eye" },
     -- an eye that decides the kill before the shot
     bonus = { skill = 2 },

@@ -22,8 +22,8 @@ return {
     type = "utility",
     tags = { "charm", "control" },
     class = "warden",
-    price = 330,
     unlockQuests = 3,
+    dropTier = 5,
     traits = { "trait_wardens_writ" },
     -- hazards that Halt are ground held
     bonus = { defense = 2 },

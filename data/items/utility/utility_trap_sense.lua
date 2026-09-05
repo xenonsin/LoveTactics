@@ -9,8 +9,8 @@ return {
     type = "utility",
     tags = { "detect traps" },
     class = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
-    price = 245,
     unlockQuests = 2,
+    dropTier = 1,
     detectRadius = 2,
     -- knowing where the ground is bad is what luck looks like from outside
     bonus = { luck = 2 },

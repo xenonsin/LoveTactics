@@ -16,6 +16,7 @@ return {
     sprite = "assets/items/tallow_maw.png",
     type = "weapon",
     class = "creature",
+    dropTier = 6,
     tags = { "natural", "bite", "physical", "melee" },
     noSteal = true,
     activeAbility = {

@@ -28,6 +28,7 @@ return {
     sprite = "assets/items/rending_claws.png",
     type = "weapon",
     class = "creature",
+    dropTier = 6,
     tags = { "natural", "slash", "physical", "melee" },
     noSteal = true, -- a creature's body is not loot
     activeAbility = {

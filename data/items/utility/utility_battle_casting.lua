@@ -38,8 +38,8 @@ return {
     type = "utility",
     tags = { "charm", "magical" },
     class = "battlemage",
-    price = 330,
     unlockQuests = 3,
+    dropTier = 3,
     traits = { "trait_battle_casting" },
     traitParams = {
         meleeDiscount = Curve.ramp(30, 40), -- percent off a working thrown in somebody's face

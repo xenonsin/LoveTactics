@@ -17,6 +17,7 @@ return {
     sprite = "assets/items/cutpurse_nip.png",
     type = "weapon",
     class = "creature",
+    dropTier = 2,
     tags = { "natural", "pierce", "physical", "melee" },
     noSteal = true,
     activeAbility = {

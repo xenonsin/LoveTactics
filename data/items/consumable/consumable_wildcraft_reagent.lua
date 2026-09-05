@@ -20,6 +20,7 @@ return {
     sprite = "assets/items/consumable_wildcraft_reagent.png",
     type = "consumable",
     class = "creature",
+    dropTier = 7,
     tags = { "draught", "restorative" },
     ephemeral = true, -- belt and braces: the grant stamps the instance too
     maxStack = 5,

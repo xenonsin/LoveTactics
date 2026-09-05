@@ -25,7 +25,7 @@ return {
     hands = 1,
     traits = { "trait_splitglass_parry" },
     class = "knight",
-    dropTier = 3,
+    dropTier = 4,
     activeAbility = {
         target = "enemy",
         range = 1,

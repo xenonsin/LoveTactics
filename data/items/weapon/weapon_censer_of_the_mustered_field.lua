@@ -20,8 +20,8 @@ return {
     type = "weapon",
     tags = { "censer", "impact", "physical", "melee" },
     class = "priest",
-    price = 245,
     unlockQuests = 2,
+    dropTier = 4,
     incense = {
         hazard = "hazard_muster",
         radius = 1, -- the 3x3 the priest stands in the middle of; radius never scales with the forge

@@ -16,6 +16,7 @@ return {
     sprite = "assets/items/ability_pull.png",
     type = "ability",
     class = "creature",
+    dropTier = 1,
     tags = { "impact", "physical" },
     activeAbility = {
         target = "tile",       -- a tile in reach, so what is hauled in may be a body or furniture

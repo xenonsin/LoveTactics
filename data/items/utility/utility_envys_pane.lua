@@ -13,6 +13,7 @@ return {
     sprite = "assets/items/envys_pane.png",
     type = "utility",
     class = "creature",
+    dropTier = 2,
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_lesser_reflection" },

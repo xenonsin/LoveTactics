@@ -22,8 +22,8 @@ return {
     type = "utility",
     tags = { "charm", "spirit" },
     class = "shaman",
-    price = 495,
     unlockQuests = 5,
+    dropTier = 3,
     traits = { "trait_ancestor_mask" },
     -- a mask that keeps the field's own workings off what you field
     bonus = { magicDefense = 2 },

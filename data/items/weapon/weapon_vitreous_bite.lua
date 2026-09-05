@@ -16,6 +16,7 @@ return {
     sprite = "assets/items/vitreous_bite.png",
     type = "weapon",
     class = "creature",
+    dropTier = 3,
     tags = { "natural", "pierce", "physical", "melee" },
     noSteal = true,
     activeAbility = {

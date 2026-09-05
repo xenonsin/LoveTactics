@@ -30,8 +30,8 @@ return {
     type = "utility",
     tags = { "holy" },
     class = "priest",
-    price = 575,
     unlockQuests = 6,
+    dropTier = 5,
     traits = { "trait_sealed_reliquary" },
     -- "The Cathedral will confirm that it is empty. It will not explain why it is locked." The trait
     -- deflects one spell and then sleeps; the Luck is the standing half of the same idea -- a warded

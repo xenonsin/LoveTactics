@@ -162,7 +162,7 @@ function gate.enter(self, opts)
     -- or woken here after a wipe with the run intact -- keeps what it has not spent; topping them back
     -- up to the opening would pay a company for having been beaten, and would make the Gate a place to
     -- refill by climbing the stair and turning round.
-    if fresh then require("models.scrip").open(gate.player) end
+    if fresh then gate.player.gold = math.max(gate.player.gold or 0, Descent.OPENING_GOLD) end
     gate.panel = nil
     gate.wiped = opts.wiped
     gate.notice = opts.wiped

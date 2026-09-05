@@ -21,6 +21,7 @@ return {
     sprite = "assets/items/underbite.png",
     type = "weapon",
     class = "creature",
+    dropTier = 7,
     tags = { "natural", "pierce", "physical" },
     noSteal = true, -- a creature's body is not loot
     activeAbility = {

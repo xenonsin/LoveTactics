@@ -12,8 +12,8 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "hunter",
-    price = 80,
     unlockQuests = 0,
+    dropTier = 2,
     maxBonus = { stamina = Curve.ramp(15) },
     -- a deeper pool is a body that lasts
     bonus = { defense = 1 },

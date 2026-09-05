@@ -11,8 +11,8 @@ return {
     type = "utility",
     tags = { "fist" },
     class = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
-    price = 245,
     unlockQuests = 2,
+    dropTier = 1,
     unarmedBonus = { range = { 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2 } },
     bonus = { movement = 1 },
 }

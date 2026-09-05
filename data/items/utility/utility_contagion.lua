@@ -23,8 +23,8 @@ return {
     type = "utility",
     tags = { "charm", "poison" },
     class = "plague_knight",
-    price = 245,
     unlockQuests = 2,
+    dropTier = 2,
     traits = { "trait_contagion" },
     -- the spread is the weapon
     bonus = { magicDamage = 2 },

@@ -28,7 +28,7 @@ return {
     type = "weapon",
     tags = { "staff", "magical", "holy", "melee" },
     class = "priest",
-    dropTier = 2,
+    dropTier = 4,
     waitBehavior = {
         kind = "focus",
         -- Shallower than a plain staff's: the silence is paid for out of the meditation's own depth.

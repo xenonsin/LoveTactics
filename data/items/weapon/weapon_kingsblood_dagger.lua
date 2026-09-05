@@ -23,6 +23,8 @@ return {
     type = "weapon",
     tags = { "dagger", "pierce", "physical", "melee" },
     class = "rogue",
+    unlockQuests = 6,
+    dropTier = 7,
     -- The Undercroft's rank-4, and priced like the other six lines' (800 / rank 4: the Crimson Greataxe,
     -- the Oathkeeper Shield, the Censer of Dawn, the Hornbow of the Hunt, the Philosopher's Stone, the
     -- Codex of Hubris). That symmetry is load-bearing: for every vendor, the standing that finally puts
@@ -34,8 +36,6 @@ return {
     -- Being sold is also the more Greedish arrangement, whatever an earlier note here claimed: the guild
     -- sells it, buys it back, and takes a cut each time. You pay the Undercroft for the knife it named
     -- after somebody's blood, which is the joke.
-    price = 575,
-    unlockQuests = 6,
     stealPriority = 2, -- a thief covets it above ordinary kit (below a Decoy's bait)
     activeAbility = {
         target = "enemy",

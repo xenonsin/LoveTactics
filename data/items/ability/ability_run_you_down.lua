@@ -17,6 +17,7 @@ return {
     sprite = "assets/items/ability_gaff_line.png", -- placeholder until its own art exists
     type = "ability",
     class = "creature",
+    dropTier = 5,
     tags = { "physical" },
     activeAbility = {
         target = "enemy",

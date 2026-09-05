@@ -26,6 +26,7 @@ return {
     sprite = "assets/items/decoy.png",
     type = "utility",
     class = "creature",
+    dropTier = 8,
     tags = { "trick", "illusion" },
     stealPriority = 10,
     noCopy = true,

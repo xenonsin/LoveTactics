@@ -13,8 +13,8 @@ return {
     type = "utility", -- a charm, not armour: the walking ward IS the item (cf. utility_coveted_blood)
     tags = { "charm", "holy" },
     class = "paladin", -- knight x priest; the Ward-aura mechanic's first stock
-    price = 330,
     unlockQuests = 3,
+    dropTier = 4,
     incense = { hazard = "hazard_shared_bulwark", radius = 1, amount = Curve.ramp(1, 11) },
     -- a ward that walks with you
     bonus = { magicDefense = 2 },

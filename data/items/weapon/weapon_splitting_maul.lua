@@ -24,8 +24,8 @@ return {
     tags = { "axe", "slash", "physical", "melee" },
     hands = 2, -- a maul takes both hands: the binding is worth the free slot
     class = "fighter",
-    price = 330,
     unlockQuests = 3,
+    dropTier = 6,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

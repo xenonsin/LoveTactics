@@ -18,7 +18,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "knight",
-    dropTier = 2,
+    dropTier = 3,
     activeAbility = {
         target = "ally",
         range = 1,

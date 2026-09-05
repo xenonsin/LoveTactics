@@ -15,8 +15,8 @@ return {
     type = "armor",
     tags = { "shield" }, -- a Shield Bash item beside it in the grid can bash with it
     class = "knight",
-    price = 575,
     unlockQuests = 6,
+    dropTier = 7,
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     resist = { physical = 4, slash = 3, pierce = 3, impact = 3 },
     -- A tower shield braces hardest of all -- a large, forge-scaling +defense while it holds the line.

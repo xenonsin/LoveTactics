@@ -22,8 +22,8 @@ return {
     type = "armor",
     tags = { "heavy", "holy" },
     class = "paladin",
-    price = 495,
     unlockQuests = 5,
+    dropTier = 6,
     bonus = { defense = Curve.ramp(6, 16), movement = -2 },
     traits = { "trait_vow_marked" },
 }

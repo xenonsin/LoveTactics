@@ -27,7 +27,7 @@ return {
     -- `magical` in place of the family's usual physical: this is the deviation and the weapon.
     tags = { "dagger", "pierce", "magical", "melee" },
     class = "rogue",
-    dropTier = 6,
+    dropTier = 7,
     activeAbility = {
         target = "enemy",
         range = 1,

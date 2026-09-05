@@ -15,8 +15,8 @@ return {
     type = "weapon",
     tags = { "dagger", "pierce", "physical", "holy", "melee" },
     class = "inquisitor", -- rogue x priest; the Judgment mechanic's first stock
-    price = 660,
     unlockQuests = 7,
+    dropTier = 7,
     activeAbility = {
         target = "enemy",
         range = 1,

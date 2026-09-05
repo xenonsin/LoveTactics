@@ -4,14 +4,14 @@
 -- treasure cache authors its own `loot` list (data/encounters/encounter_treasure.lua).
 --
 --   local s = Spoils.roll({ enemyUnits = battle.enemyUnits, prestige = 3, kind = "combat" })
---   -- s = { scrip = 71, gold = 0, loot = { "consumable_healing_potion" },
+--   -- s = { gold = 71, loot = { "consumable_healing_potion" },
 --   --       valuables = {}, materials = { material_iron_scrap = 1 } }
 --
--- TWO PURSES AND A PILE, since the economy split (models/scrip.lua). `scrip` is what a rolled fight
--- pays -- the run's own weightless coin, which dies at the surface; `gold` is the campaign's and only an
--- AUTHORED payout leaves any; `valuables` is the campaign's real income, objects with weight that only
--- an end drops and that have to be carried out and sold (models/valuable.lua). See Spoils.roll, where
--- the branch and its reasoning live.
+-- ONE PURSE AND A PILE. `gold` is what a fight pays, rolled for an ordinary one and authored for an
+-- end; `valuables` is the campaign's other income, objects that only an end drops and that have to be
+-- carried out and sold (models/valuable.lua). There was a second purse here for a while -- scrip, the
+-- run's own weightless coin, which died at the surface -- and it is deleted; see Spoils.roll, where the
+-- reasoning lives.
 --
 -- The third field is the FLOOR, and unlike the other two it is not a roll -- see "Salvage" below.
 --
@@ -384,6 +384,42 @@ end
 -- `exclude` is an optional bare set of ids to keep off the shelf. Returns fewer than `count` (or
 -- nothing) when the band is too thin to fill it, which the caller must handle -- a market with an empty
 -- shelf is a stop with nothing on it.
+
+-- ---------------------------------------------------------------------------
+-- The ceiling: what the rift is allowed to ask for anything
+-- ---------------------------------------------------------------------------
+
+-- THE FENCE THAT REPLACED THE SECOND PURSE. There were two currencies for a while (models/scrip.lua,
+-- deleted): the run spent its own weightless coin so that nothing bought underground was ever priced
+-- against a permanent upgrade. The shelf recut took the gear off the houses and so off this cart
+-- (tools/drop_tier.lua), leaving that currency with one and a half sinks, and one purse is what is
+-- left. Which brings back the objection the split was built to answer:
+--
+--     a 200g relic on floor three is not priced against the rest of the floor -- it is priced
+--     against a forge rung, and the player either declines every shop underground on principle
+--     or bankrupts the progression they came back up to spend on.
+--
+-- A COMPARISON ONLY BITES AT COMPARABLE SIZES, which is the whole of the answer. Cap what the rift may
+-- ask at the price of a house's OPENING RUNG -- the cheapest purchase the campaign ever asks anybody to
+-- make -- and no underground buy can be weighed against a permanent upgrade, because it is always the
+-- smaller decision by construction. "Can I afford this" stops being the question and "will I need it"
+-- becomes it, which is the question the split was trying to produce in the first place.
+--
+-- ANCHORED TO Grade.PRICE_BASE RATHER THAN TYPED, so a re-cut of the shelf moves this with it. It is
+-- deliberately NOT anchored to a forge rung: the bench bills TECHNIQUE for anything with a class and
+-- only bills coin for classless stock (models/forge.lua's currencyFor), so a rung is not a gold figure
+-- to measure anything against.
+function Spoils.priceCeiling()
+    return require("models.grade").PRICE_BASE
+end
+
+-- Clamp one asking price to the ceiling. Every seam that puts a price in front of the player
+-- underground runs through this -- the Merchant's gear, its relic slate -- so there is one rule and not
+-- one per counter.
+function Spoils.askingPrice(n)
+    return math.max(1, math.min(math.floor(tonumber(n) or 0), Spoils.priceCeiling()))
+end
+
 function Spoils.shelf(opts)
     opts = opts or {}
     local count = math.max(0, opts.count or 3)
@@ -513,32 +549,28 @@ function Spoils.roll(opts)
     local mult = opts.floorLevel
         and (1 + GOLD_DEPTH_SLOPE * (math.max(1, opts.floorLevel) - 1))
         or math.max(1, day)
-    -- WHICH PURSE THIS FIGHT PAYS INTO, and it is the split the two-currency economy rests on
-    -- (models/scrip.lua). A ROLLED payout is ambient income -- what standing on a stop and winning is
-    -- worth -- and ambient income is scrip: weightless, spendable below, gone at the surface. An
-    -- AUTHORED one (`rewardGold`) is an end somebody wrote down, and an end pays the campaign's coin.
+    -- ONE PURSE. Scrip is deleted (models/scrip.lua, gone) and every payout is the campaign's coin.
     --
-    -- The arithmetic did not move. What used to be this fight's gold is this fight's scrip, at the same
-    -- number, so every measurement taken against the old payout still reads -- the merchant's shelf is
-    -- as affordable on floor three as it was, because both sides of that comparison were renamed
-    -- together. What changed is that it can no longer be carried home and spent on a forge rung.
+    -- WHY THE SPLIT WENT. It existed so that nothing bought underground was priced against a forge
+    -- rung, and it worked -- but the shelf recut took the gear off the houses (tools/drop_tier.lua), so
+    -- the road's Merchant no longer deals the thing scrip was invented to keep affordable. What was
+    -- left was a currency with one and a half sinks, which is a scoreboard rather than a money.
     --
-    -- ...AND ONLY UNDERGROUND. A fight pays the purse of the PLACE it was fought in, and `floorLevel` is
-    -- already the tell for that -- its presence is what marks a roll as a descent's (see the branch
-    -- above). Above ground there is no Merchant, no Crossroads and no exit to burn a purse at, so scrip
-    -- there would be a payout the player can neither spend nor keep: the prologue's three fights would
-    -- hand over a number that quietly vanishes at the first Gate (Scrip.open re-opens the purse at its
-    -- constant). The campaign road pays gold exactly as it always did.
+    -- WHAT REPLACES THE FENCE IS MAGNITUDE, not a second purse: nothing underground may ask more than a
+    -- fraction of the cheapest forge rung (models/merchant.lua's ceiling), so the comparison the split
+    -- was built to prevent never gets close enough to bite.
+    --
+    -- THE ARITHMETIC DID NOT MOVE. A rolled fight pays what it always paid, into the field it paid into
+    -- before the split -- `gold`, at the same number -- so every measurement taken against either
+    -- version still reads.
     local authored = opts.rewardGold and math.max(0, math.floor(opts.rewardGold)) or nil
     local rolled = authored and 0 or rollGold(count, mult, kind, nil, scale)
-    local underground = opts.floorLevel ~= nil
     return {
-        gold = authored or (underground and 0 or rolled),
-        scrip = underground and rolled or 0,
+        gold = authored or rolled,
         loot = rollLoot(day, kind, opts.loot, opts.enemyUnits, scale, opts.floorLevel),
         -- WHAT THE CAMPAIGN ACTUALLY EARNS, and only an end leaves any (models/valuable.lua). An
         -- ordinary fight rolls an empty list, which is the point rather than an omission: the grind pays
-        -- scrip and the work you chose to walk to pays gold.
+        -- coin and the work you chose to walk to pays objects.
         valuables = Valuable.roll({ kind = kind, depth = opts.floorLevel or day }),
         -- The unread piece, on the rare stop that pays one. A SEPARATE field from `loot` rather than an
         -- entry in it, because the two are granted differently and by different code: loot is a list of

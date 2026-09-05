@@ -4870,26 +4870,34 @@ function battle.enter(self, opts)
         battle.combat.purse = opts.purse
     elseif not opts.draft and not battle.session and Player.active then
         local player = Player.active
-        local Scrip = require("models.scrip")
-        -- THE MONEY KIT SPENDS SCRIP, NOT THE CAMPAIGN'S GOLD (models/scrip.lua), and this is the seam
-        -- where that is decided -- combat.lua never learns which purse it was handed.
+        -- THE MONEY KIT SPENDS THE CAMPAIGN'S GOLD, and this is the seam where that is decided --
+        -- combat.lua never learns which purse it was handed.
         --
-        -- It is the change that made the kit worth having. A money ability used to bill a forge rung to
-        -- size a blow, which is a cost paid three menus and one expedition away from the swing that
-        -- incurred it -- so the honest play was never to cast it. It now bills the Merchant two rooms
-        -- down. Local, legible, and settled inside the run that spent it.
+        -- IT SPENT SCRIP FOR A WHILE, and the reason was good: a money ability used to bill a forge rung
+        -- to size a blow, a cost paid three menus and one expedition away from the swing that incurred
+        -- it, so the honest play was never to cast it. Scrip is deleted (models/spoils.lua) and the
+        -- objection is answered the other way -- what a purse ability can reach is bounded by what the
+        -- run is carrying, and what the run can spend it on underground is bounded by a ceiling.
+        --
+        -- WHICH MAKES THE KIT SHARPER, not blunter: burning coin that evaporated at the next staircase
+        -- was close to free, and burning coin the Forge is waiting for is a real decision taken at the
+        -- moment of the swing.
         --
         -- `spend` takes what is on hand rather than refusing, because Combat.spendPurse is specified to
-        -- clamp: a broke party spends its last coppers and the blow lands soft. That is Scrip.take,
-        -- deliberately, and not Scrip.spend -- which is all-or-nothing and belongs to counters.
+        -- clamp: a broke party spends its last coppers and the blow lands soft. That is why it uses a
+        -- clamped debit and not the all-or-nothing Player.spendGold, which belongs to counters.
         battle.combat.purse = {
-            get = function() return Scrip.get(player) end,
-            spend = function(n) Scrip.take(player, n) end,
-            -- Credit the run's pot. Only the debug "Add gold" tool reaches this (a fight never gives the
-            -- party coin mid-battle); it lets that tool fund a party caster's real pot rather than a
-            -- coffer the party never reads. See ui/panels/debug_menu.lua goldPage.
-            add = function(n) Scrip.add(player, n) end,
-            unit = Scrip.SUFFIX,
+            get = function() return (player and player.gold) or 0 end,
+            spend = function(n)
+                local have = (player and player.gold) or 0
+                local take = math.max(0, math.min(math.floor(tonumber(n) or 0), have))
+                if take > 0 then Player.spendGold(player, take) end
+                return take
+            end,
+            -- Credit the purse. Only the debug "Add gold" tool reaches this (a fight never gives the
+            -- party coin mid-battle). See ui/panels/debug_menu.lua goldPage.
+            add = function(n) Player.addGold(player, n) end,
+            unit = "g",
         }
     else
         local bank = opts.startingGold or 0

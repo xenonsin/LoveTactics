@@ -19,8 +19,8 @@ return {
     type = "utility",
     tags = { "charm", "magical" },
     class = "spellbreaker",
-    price = 495,
     unlockQuests = 5,
+    dropTier = 5,
     traits = { "trait_spell_eater" },
     -- anti-magic as absorption -- the item is the resistance
     bonus = { magicDefense = 3 },

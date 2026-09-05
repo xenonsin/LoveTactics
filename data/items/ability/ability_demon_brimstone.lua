@@ -32,6 +32,7 @@ return {
     sprite = "assets/items/ability_fireball.png", -- placeholder until its own art exists
     type = "ability",
     class = "creature",
+    dropTier = 8,
     tags = { "fire", "magical" }, -- `magical` routes the damage through magicDamage/magicDefense
     activeAbility = {
         target = "tile", -- ground, not a body: what it is aimed at is the retreat, not the retreater

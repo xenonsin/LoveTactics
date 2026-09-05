@@ -11,6 +11,7 @@ return {
     sprite = "assets/items/flame_fists.png",
     type = "weapon",
     class = "creature",
+    dropTier = 2,
     tags = { "natural", "fire", "magical", "melee" },
     noSteal = true,
     activeAbility = {

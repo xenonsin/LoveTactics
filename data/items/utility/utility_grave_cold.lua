@@ -17,6 +17,7 @@ return {
     sprite = "assets/items/utility_grave_cold.png",
     type = "utility",
     class = "creature",
+    dropTier = 2,
     tags = { "dark" },
     noSteal = true, -- it is what the body IS, not equipment
     traits = { "trait_grave_cold" },

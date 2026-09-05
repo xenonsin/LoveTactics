@@ -21,8 +21,8 @@ return {
     tags = { "hammer", "impact", "physical", "melee" },
     hands = 2,
     class = "fighter",
-    price = 410,
     unlockQuests = 4,
+    dropTier = 7,
     activeAbility = {
         target = "enemy",
         range = 1,

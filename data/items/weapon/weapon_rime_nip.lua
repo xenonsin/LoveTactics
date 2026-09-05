@@ -14,6 +14,7 @@ return {
     sprite = "assets/items/rime_nip.png",
     type = "weapon",
     class = "creature",
+    dropTier = 7,
     tags = { "natural", "ice", "magical", "melee" },
     noSteal = true,
     activeAbility = {

@@ -446,6 +446,15 @@ function Save.snapshot(player)
         if seen then visitedVendors[vendorId] = true end
     end
 
+    -- THE DISCOVERY LEDGER (models/player.lua's Player.recordFound): every item this company has
+    -- carried out of the rift, which is what a shelf deals a second copy of. Additive like the two
+    -- sets above, so Save.VERSION does not move -- an older save loads having discovered nothing,
+    -- which is true of it: it was written in a world where the shelf sold these outright.
+    local found = {}
+    for itemId, seen in pairs(player.found or {}) do
+        if seen then found[itemId] = true end
+    end
+
     local announcedDisciplines = {}
     for classId, seen in pairs(player.announcedDisciplines or {}) do
         if seen then announcedDisciplines[classId] = true end
@@ -546,7 +555,6 @@ function Save.snapshot(player)
         -- load rather than by an exit. Nil on a save written before the split and on any player standing
         -- in town, both of which Scrip.get reads as zero -- which is the honest answer for a company
         -- with no expedition open.
-        scrip = (player.scrip or 0) > 0 and player.scrip or nil,
         prestige = player.prestige,
         run = run,
         seed = seed,
@@ -643,14 +651,10 @@ function Save.snapshot(player)
         -- Purely additive, so Save.VERSION does not move: an older save has no `count` here and its
         -- reader carries the run's forward instead (Save.restore).
         count = (player.count or 0) > 0 and player.count or nil,
-        -- ...and how wide the pack mule has been bought (models/mule.lua). Nil until somebody pays,
-        -- which reads back as the base capacity -- so this is purely additive too.
-        muleCapacity = player.muleCapacity,
-        -- WHAT THE COMPANY LEFT DOWN THERE, in rifts that have since closed (Descent.strandPacks).
-        -- Already plain data -- Descent.dropPack snapshots on the way in -- so this is a copy rather
-        -- than a conversion, and it has to be a copy or the saved table would be the one being mutated.
-        -- `guardIds` is a flat list of id strings, which is the only reason it can ride at all: a
-        -- composition function here would take the whole save write down.
+        -- WHAT THE COMPANY LEFT DOWN THERE, in rifts that have since closed. Nothing strands a pile any
+        -- more -- the whole pile system is deleted with the wipe penalty that made it -- but this is
+        -- still copied through so that a save written before the deletion is not quietly rewritten
+        -- without its list on the next autosave. New players simply never have one.
         lostPacks = (function()
             local out = {}
             for i, d in ipairs(player.lostPacks or {}) do
@@ -667,6 +671,7 @@ function Save.snapshot(player)
         materials = materials,
         recipes = recipes,
         visitedVendors = visitedVendors,
+        found = found,
         announcedDisciplines = announcedDisciplines,
         seenDoors = seenDoors,
         flags = flags,
@@ -887,6 +892,14 @@ function Save.restore(snap)
         if seen then visitedVendors[vendorId] = true end
     end
 
+    -- The discovery ledger. Filtered through `known` like every other id set: an item deleted from
+    -- data/ drops out of the ledger rather than leaving a shelf trying to price a blueprint that is
+    -- not there. Nil on an older save, which loads as a company that has discovered nothing.
+    local found = {}
+    for itemId, seen in pairs(snap.found or {}) do
+        if known(Item.defs, itemId) and seen then found[itemId] = true end
+    end
+
     -- Class-unlocked announcement flags (states/hub.lua). Same shape and same forgiving default:
     -- nil on an older save loads empty, so an already-unlocked discipline simply announces once more.
     local announcedDisciplines = {}
@@ -944,7 +957,6 @@ function Save.restore(snap)
         gold = snap.gold or 0,
         -- Zero for a save from before the split and for anybody standing in town (models/scrip.lua), and
         -- the two are the same state as far as this is concerned: no expedition open, no run coin.
-        scrip = snap.scrip or 0,
         prestige = snap.prestige or 1,
         resumeRun = resumeRun,
         -- THE SEED (models/seed.lua). Nil on a save written before seeds existed, which is the one case
@@ -990,9 +1002,6 @@ function Save.restore(snap)
         -- restored run, which no longer carries the field at all. A company mid-descent when this landed
         -- keeps the number it earned instead of walking into the city at nought.
         count = snap.count or (type(snap.descentRun) == "table" and snap.descentRun.count) or 0,
-        -- The mule's width. Nil on a save from before it existed, which Mule.capacity reads as the base
-        -- rung -- the same thing a company that has never upgraded reads as.
-        muleCapacity = type(snap.muleCapacity) == "number" and snap.muleCapacity or nil,
         -- The piles waiting at depth. Absent on a save from before the rift started closing behind the
         -- company, which reads as one that has never lost anything -- the same thing a lucky company
         -- reads as. See Save.snapshot.
@@ -1013,6 +1022,7 @@ function Save.restore(snap)
         materials = materials,
         recipes = recipes,
         visitedVendors = visitedVendors,
+        found = found,
         announcedDisciplines = announcedDisciplines,
         seenDoors = seenDoors,     -- nil on an older save, which is what the hub seeds off (see above)
         flags = flags,             -- absent on a save from before this existed; empty reads as unanswered

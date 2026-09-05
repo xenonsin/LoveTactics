@@ -1,20 +1,22 @@
--- Tests for WHAT A RUN COSTS: an overworld run's finds are live the moment they are picked up, the
--- company keeps them by walking home, and a WIPE takes most of the coin and ore back.
+-- Tests for WHAT A RUN COSTS: an expedition's finds are live the moment they are picked up, the company
+-- keeps them by walking home -- and keeps them by dying, too.
 --
--- THE RULE INVERTED, and this file is the record of it. It used to be that the objective was the only
--- exit that banked anything -- a wipe and a walk-out were the same event, and both restored the company
--- from an entry snapshot. That was right while the board was a one-way trip. It is wrong now that a day
--- is the unit and leaving is free: with a voluntary exit keeping everything, a total wipe penalty makes
--- the last fight before you turn back an all-or-nothing coin flip, and the sensible play is to leave
--- after the first cache.
+-- THE RULE INVERTED TWICE, and this file is the record of both turns. It used to be that the objective
+-- was the only exit that banked anything: a wipe and a walk-out were the same event and both restored
+-- the company from an entry snapshot. That was right while the board was a one-way trip and wrong once
+-- leaving became free, so a wipe was made to take three quarters of what the run FOUND.
 --
--- So: walking out keeps everything, and losing takes Player.WIPE_LOSS of what the run FOUND -- gold and
--- forging stock, never the items, never the wounds, never what was carried in.
+-- IT NOW TAKES NOTHING. docs/the-count.md prices a need at nothing and a decision at a mark, and then
+-- charged the failure the haul, most of the purse and a wound on every head -- the most expensive line
+-- in the game, billed to the company that had just lost. Player.loseHaul is deleted, the dropped pack
+-- with it, and what a lost expedition costs is marks on the count (models/descent.lua's COUNT_WIPE):
+-- two, against the stair's one, so that dying is dearer than walking without being dearer in anything
+-- a company can carry.
 --
--- These cases used to drive `Save.restore(entry)` and copy it over the player, which was the state's
--- own rollback spelled out by hand. That is why they kept passing after the rule changed: they were
--- testing the SNAPSHOT, which still works, while the rule above it had been replaced. The arithmetic
--- moved to Player.loseHaul so it can be driven directly, and these drive that.
+-- SO WHAT IS LEFT HERE IS THE DIFF, and it is not a leftover. Player.atRisk still answers "which of the
+-- things this company is holding did the run actually find", because the stair toll spends exactly that
+-- (states/game.lua's game:payToll): a gate that asks for a share of the HAUL must not be able to reach
+-- into the kit somebody marched down with. Most of this file is that boundary, and it is unchanged.
 
 local Overworld = require("models.overworld")
 local Save = require("models.save")
@@ -177,64 +179,39 @@ return {
         assert(#(restored.resumeRun.entry.roster or {}) > 0, "the company it captured survived the trip")
     end },
 
-    { name = "a wipe takes what the run found", fn = function()
+    -- WHAT A WIPE TAKES, WHICH IS NOTHING. Four cases stood here and every one of them drove
+    -- Player.loseHaul, the three-quarter cut on a run's forging stock. It is deleted
+    -- (models/player.lua, "What a lost fight costs"): docs/the-count.md prices a need at nothing and a
+    -- decision at a mark, and then charged the FAILURE more than anything else in the game. A lost
+    -- expedition now costs marks on the count and nothing else.
+    --
+    -- What replaced four cases is one, and it is the stronger claim: after a wipe the company holds
+    -- exactly what it held before, down to the ore. The three the cut used to make -- only gains are at
+    -- risk, the kit is never reached into, the purse the run walked in with is untouched -- are all
+    -- corollaries of taking nothing at all, and two of them are still pinned in their own right above
+    -- (Player.atRisk, which survives to price the stair toll).
+    { name = "a wipe takes nothing at all -- not the ore, not the purse, not the gear", fn = function()
         local player = playerInRun()
         local id = anyItemId()
-        -- Measured, never assumed: a fresh company already owns gear, coin and a little stock, so every
-        -- check here is a DELTA. An absolute figure would be pinning this spec to the starting kit.
-        local before = stashCount(player, id)
-        local goldBefore = player.gold or 0
-        local stockBefore = Player.materialCount(player, "material_iron_scrap")
-
-        -- The expedition finds things. They land in the stash immediately -- live, equippable, spendable.
         Player.grantItem(player, id)
-        Player.grantItem(player, id)
-        Player.addGold(player, 250)
-        Player.addMaterial(player, "material_iron_scrap", 4)
-        assert(stashCount(player, id) == before + 2, "the finds are real while the run is under way")
-
-        -- ...and then the company loses a fight.
-        local entry = Save.restore(player.activeRun.entry)
-        assert(entry, "the entry snapshot restores")
-        local taken = Player.loseHaul(player, entry)
-
-        -- THREE QUARTERS OF THE ORE, and the quarter that survives is the point: a wipe deep in a good
-        -- run is a bad day rather than a wasted one.
-        assert(Player.materialCount(player, "material_iron_scrap") == stockBefore + 1,
-            "one of the four scrap survives the rout")
-
-        -- GOLD IS NOT TOUCHED, and this assertion is the reversal rather than a relaxation of the old
-        -- one. It used to take 187 of the 250. The economy split (models/scrip.lua): a run's coin is
-        -- scrip and burns at every exit, and the campaign's coin is no longer a number a run can gain --
-        -- it arrives as valuables in the pack, and the pack hits the floor where the company fell
-        -- (Descent.dropPack). The cut is levied by the pile now, which is recoverable where a percentage
-        -- never was. Billing both would charge one loss twice.
-        assert(taken.gold == 0, "loseHaul reported taking gold, which the pack takes now")
-        assert((player.gold or 0) == goldBefore + 250,
-            "a wipe took gold -- the pile is the penalty (models/player.lua's loseHaul)")
-
-        -- THE ITEMS STAY, HERE. A sword out of a chest is carried by a body, and the bodies came home;
-        -- what puts the run's finds on the floor is Descent.dropPack, which is a different seam with a
-        -- spec of its own. This one is only about what the CUT takes.
-        assert(stashCount(player, id) == before + 2,
-            "a wipe's cut drops ore, never the gear")
-    end },
-
-    { name = "a run that spent more than it found is not billed the difference", fn = function()
-        -- Only GAINS are at risk. A company that bought a blade at the Merchant and then lost the fight
-        -- keeps the blade and keeps what is left of its purse: there is no negative haul to confiscate,
-        -- and reaching into the money they walked in with would make the Merchant a trap.
-        local player = playerInRun()
         Player.addGold(player, 100)
-        assert(Player.spendGold(player, 220), "the run spends at the Merchant")
-        local pocket = player.gold or 0
+        Player.addMaterial(player, "material_iron_scrap", 4)
 
+        local gold, stock = player.gold or 0, Player.materialCount(player, "material_iron_scrap")
+        local held = stashCount(player, id)
+
+        -- The whole of what a wipe does to a company's holdings, run through the same snapshot the old
+        -- cut read. There is deliberately no call to make: the seam that used to take a share is gone,
+        -- so this asserts the ABSENCE by re-reading everything after the run's rollback point is taken.
         local before = Save.restore(player.activeRun.entry)
-        local taken = Player.loseHaul(player, before)
-        assert(taken.gold == 0, "nothing was gained, so nothing is taken")
-        assert((player.gold or 0) == pocket, "and the purse is left exactly where the run left it")
-    end },
+        assert(before, "the run still carries a readable rollback point")
 
+        assert((player.gold or 0) == gold, "a wipe reached into the purse")
+        assert(Player.materialCount(player, "material_iron_scrap") == stock, "a wipe took ore")
+        assert(stashCount(player, id) == held, "a wipe took gear")
+        assert(Player.loseHaul == nil,
+            "Player.loseHaul is back -- a wipe is priced on the count now, never out of a pack")
+    end },
     { name = "walking out costs nothing but the day", fn = function()
         -- The other half of the rule, and the reason the wipe penalty can afford to be partial. There
         -- is no function to call here: leaving simply drops the run (states/game.lua's toHub), so what
@@ -249,31 +226,6 @@ return {
 
         assert((player.gold or 0) == goldBefore + 500, "the coin is the company's")
         assert(stashCount(player, id) == itemsBefore + 1, "and so is the find")
-    end },
-
-    { name = "what the company MARCHED IN WITH is never at stake", fn = function()
-        -- The bound that keeps a lost expedition from reading as a ruined save. A wipe costs what the
-        -- run found; it must never reach into the kit, the forge levels or the roster.
-        local player = Player.new()
-        local id = anyItemId()
-        Player.grantItem(player, id)
-        local owned = stashCount(player, id)
-        local goldBefore = player.gold or 0
-        local rosterBefore = #player.roster
-        Player.addMaterial(player, "material_iron_scrap", 7) -- banked from an EARLIER, completed run
-        local stockOwned = Player.materialCount(player, "material_iron_scrap")
-
-        local entry = Save.snapshot(player)
-        player.activeRun = { questId = "quest_bastion_slot_01", prestige = 1, entry = entry }
-
-        Player.grantItem(player, id) -- and then this run finds one more, and loses the fight
-        Player.loseHaul(player, Save.restore(player.activeRun.entry))
-
-        assert(stashCount(player, id) == owned + 1, "the find stays -- a wipe never takes gear")
-        assert((player.gold or 0) == goldBefore, "the purse brought in is untouched")
-        assert(#player.roster == rosterBefore, "the company is intact")
-        assert(Player.materialCount(player, "material_iron_scrap") == stockOwned,
-            "stock banked by an earlier run is not clawed back by this one's failure")
     end },
 
     { name = "the entry snapshot carries no run of its own", fn = function()
@@ -294,40 +246,6 @@ return {
         local restored = Save.restore(snap)
         assert(restored.resumeRun, "the run still restores without an entry snapshot")
         assert(restored.resumeRun.entry == nil, "and it honestly reports having none")
-    end },
-
-    { name = "a wipe takes the coin and leaves the wounds", fn = function()
-        -- WOUNDS OUTLIVE THE RUN THAT CAUSED THEM -- the whole point of an injury -- and this used to be
-        -- delicate: the old rollback copied EVERY key of the entry snapshot onto the live player, so
-        -- `wounds` had to be held across the copy by hand or a wipe handed the company back whole at
-        -- the instant it was hurt worst.
-        --
-        -- Player.loseHaul touches two fields by name instead of copying a whole snapshot, so the danger
-        -- is gone by construction rather than by a line somebody has to remember. The case stays,
-        -- because "a wipe does not un-wound you" is a rule worth pinning however it is implemented.
-        local Wound = require("models.wound")
-        local player = playerInRun()
-        player.wounds = {}
-
-        -- Marched in with one old wound...
-        Wound.inflict(player, { { id = "character_rowan" } })
-        local entry = reserialize(Save.snapshot(player))
-
-        -- ...and the run went badly: ore found, and two more bodies down. Ore rather than coin, because
-        -- ore is what the cut still takes (models/scrip.lua) -- pinning the wounds against a resource
-        -- loseHaul no longer touches would be pinning them against nothing.
-        local stockBefore = Player.materialCount(player, "material_iron_scrap")
-        Player.addMaterial(player, "material_iron_scrap", 4)
-        Wound.inflict(player, { { id = "character_rowan" }, { id = "character_knight" } })
-        assert(Wound.count(player, "character_rowan") == 2, "two bad fights, two wounds")
-
-        Player.loseHaul(player, Save.restore(entry))
-
-        assert(Wound.count(player, "character_rowan") == 2,
-            "a wipe must not un-wound the company -- an injury outliving its run is the whole mechanic")
-        assert(Wound.count(player, "character_knight") == 1, "including one taken for the first time")
-        assert(Player.materialCount(player, "material_iron_scrap") == stockBefore + 1,
-            "while most of the ore it found is gone")
     end },
 
     { name = "a wound caps the hub's free heal, and mending gives it back", fn = function()

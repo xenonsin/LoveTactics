@@ -29,8 +29,8 @@ return {
     type = "utility",
     tags = { "horn" },
     class = "beastmaster", -- deeper cut of the shelf: buyable only once the beastmaster gate is cleared
-    price = 575,
     unlockQuests = 6,
+    dropTier = 5,
     waitBehavior = {
         kind = "perform",
         -- Steeper than a Focus and matching the Overwatch Scope's: a whole turn spent playing, never a

@@ -25,8 +25,8 @@ return {
     type = "armor",
     tags = { "heavy" },
     class = "knight",
-    price = 80,
     unlockQuests = 0,
+    dropTier = 4,
     incense = { hazard = "hazard_muster", radius = 1 },
     bonus = { defense = Curve.ramp(3, 13), movement = -2 },
 }

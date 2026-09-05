@@ -30,7 +30,7 @@ return {
     type = "armor",
     tags = { "leather", "poison" },
     class = "alchemist",
-    dropTier = 2,
+    dropTier = 4,
     aura = {
         appliesTo = { "consumable" }, -- only what the wearer throws and drinks; never a weapon
         amountBonus = 3,

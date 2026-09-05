@@ -21,7 +21,7 @@ return {
     hands = 1,
     traits = { "trait_wardens_parry" },
     class = "knight",
-    dropTier = 3,
+    dropTier = 4,
     activeAbility = {
         target = "enemy",
         range = 1,

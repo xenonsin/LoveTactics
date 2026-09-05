@@ -16,6 +16,7 @@ return {
     sprite = "assets/items/glass_shard.png",
     type = "weapon",
     class = "creature",
+    dropTier = 1,
     tags = { "natural", "slash", "physical", "melee" },
     noSteal = true,
     activeAbility = {

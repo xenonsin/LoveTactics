@@ -8,6 +8,7 @@ return {
     sprite = "assets/items/assay_scales.png",
     type = "utility",
     class = "creature",
+    dropTier = 2,
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_assayed" },

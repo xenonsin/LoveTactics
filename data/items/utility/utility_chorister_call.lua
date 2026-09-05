@@ -8,6 +8,7 @@ return {
     sprite = "assets/items/chorister_call.png",
     type = "utility",
     class = "creature",
+    dropTier = 3,
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_lure" },

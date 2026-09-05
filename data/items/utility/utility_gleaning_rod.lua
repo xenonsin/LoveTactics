@@ -26,8 +26,8 @@ return {
     type = "utility",
     tags = { "arcane" },
     class = "mage",
-    price = 80,
     unlockQuests = 0,
+    dropTier = 1,
     traits = { "trait_gleaning" },
     activeAbility = {
         target = "tile",

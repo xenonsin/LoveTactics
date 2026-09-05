@@ -14,6 +14,7 @@ return {
     sprite = "assets/items/ember_spit.png",
     type = "weapon",
     class = "creature",
+    dropTier = 7,
     tags = { "natural", "fire", "magical", "ranged" },
     noSteal = true,
     activeAbility = {

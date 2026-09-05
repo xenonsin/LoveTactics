@@ -25,8 +25,8 @@ return {
     type = "utility",
     tags = { "holy" },
     class = "priest",
-    price = 80,
     unlockQuests = 0,
+    dropTier = 1,
     activeAbility = {
         -- A tile target so one item can point both ways: at an ally it heals, at a foe it wounds, and
         -- the player decides on the turn rather than at the shop. See Updraft and Seal the Hour, which

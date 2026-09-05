@@ -27,8 +27,8 @@ return {
     type = "weapon",
     tags = { "wand", "magical", "lightning", "ranged" },
     class = "mage",
-    price = 245,
     unlockQuests = 2,
+    dropTier = 2,
     activeAbility = {
         target = "enemy",
         range = 3,

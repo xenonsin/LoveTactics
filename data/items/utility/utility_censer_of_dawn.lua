@@ -13,8 +13,8 @@ return {
     type = "utility",
     tags = { "holy" },
     class = "crusader", -- fighter x priest; Smite as an aura -- the Cathedral consecrating somebody else's steel
-    price = 495,
     unlockQuests = 5,
+    dropTier = 4,
     aura = {
         appliesTo = { "weapon", "ability" },
         exceptTags = { "shadow" },

@@ -8,8 +8,8 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "rogue",
-    price = 245,
     unlockQuests = 2,
+    dropTier = 3,
     traits = { "trait_opportunist" },
     -- The game's plain fortune charm, and the right item to be it: an opportunist is somebody things
     -- keep going well for, which is what Luck models -- harder to hit, and much harder to hit BADLY,

@@ -13,8 +13,6 @@ local Save = require("models.save")
 local Class = require("models.class")
 local Party = require("ui.panels.party")
 
--- A priced, non-stackable item id (so buying/selling doesn't merge into a consumable stack), and an
--- item id with no price (never for sale). Found from data so the test survives content edits.
 -- A representative priced item, and one that was never for sale. Picked by walking Item.defs, so the
 -- filters below decide what this file is actually about rather than `pairs` order does -- a new item
 -- type can change which id comes out first, and this pick has already been moved once by exactly that.
@@ -28,7 +26,11 @@ for id, def in pairs(Item.defs) do
     if def.price and def.type ~= "consumable" and not def.valuable and not pricedId then
         pricedId = id
     end
-    if not def.price and not noPriceId then noPriceId = id end
+    -- NEITHER A PRICE NOR A DEPTH, which is what "was never for sale" means since the shelf recut. An
+    -- unpriced ware is usually FOUND gear now (docs/shelf.md) and sells perfectly well off its
+    -- dropTier; what genuinely cannot be sold is a thing with no worth authored on either axis --
+    -- creature kit, a signature relic, a bound piece.
+    if not def.price and not def.dropTier and not noPriceId then noPriceId = id end
 end
 
 return {
@@ -44,11 +46,11 @@ return {
         end,
     },
     {
-        name = "Vendor.sellValue is 0 for an item that was never for sale",
+        name = "Vendor.sellValue is 0 for a thing that has no worth on either axis",
         fn = function()
-            assert(noPriceId, "no price-less item found in data")
+            assert(noPriceId, "no item without a price OR a depth found in data")
             assert(Vendor.sellValue(Item.instantiate(noPriceId)) == 0,
-                "an item with no price must not be sellable")
+                noPriceId .. " has neither a shelf price nor a drop depth and must not be sellable")
         end,
     },
     {
@@ -168,7 +170,11 @@ return {
                 for _, e in ipairs(Vendor.stock(vid, 0)) do
                     -- A discipline item carries a SECOND lock (its discipline must be unlocked), so it
                     -- stays locked even at its unlockQuests -- not what this quest-only test measures.
-                    if e.unlockQuests > 0 and not e.discipline then vId, locked = vid, e break end
+                    -- ...AND A FOUND WARE CARRIES A THIRD, which no amount of standing lifts: it
+                    -- reports a rank drawn from its DEPTH rather than a rung (models/vendor.lua), so
+                    -- `unlockQuests > 0` now catches items that will still be shut at any quest count.
+                    -- The rung lock is the one this case measures, and lockReason names it.
+                    if e.lockReason == "rung" and not e.discipline then vId, locked = vid, e break end
                 end
                 if vId then break end
             end

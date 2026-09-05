@@ -20,8 +20,8 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "vanguard",
-    price = 495,
     unlockQuests = 5,
+    dropTier = 3,
     traits = { "trait_stripped_plate" },
     -- you wear what you Sundered off somebody else
     bonus = { defense = 2 },

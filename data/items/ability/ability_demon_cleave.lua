@@ -15,6 +15,7 @@ return {
     sprite = "assets/items/great_claws.png", -- placeholder until its own art exists
     type = "ability",
     class = "creature",
+    dropTier = 6,
     tags = { "slash", "physical", "melee" },
     activeAbility = {
         target = "tile",       -- aim an adjacent tile: it sets the facing the arc sweeps

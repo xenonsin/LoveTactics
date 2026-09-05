@@ -15,8 +15,8 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "hunter",
-    price = 330,
     unlockQuests = 3,
+    dropTier = 5,
     traits = { "trait_marksmans_lens" },
     -- IT IS A LENS, AND IT NOW HELPS YOU AIM. Its own flavour says "a mark is only a suggestion until
     -- you look through one of these", and until accuracy existed it granted no aim at all -- only

@@ -36,9 +36,9 @@ return {
             local run = runAt(player, 9)
             assert(Descent.depth(run) == 9, "the fixture stands on floor nine, got " .. Descent.depth(run))
 
-            -- Everything the wipe path does, in the order states/game.lua does it. None of it is
-            -- allowed to move where the company is standing.
-            Descent.dropPack(run, 9, 4, 6, { { id = "consumable_healing_potion", quantity = 2 } })
+            -- Everything the wipe path does to the run, in the order states/game.lua does it. None of
+            -- it is allowed to move where the company is standing. The pack drop that used to lead
+            -- this list is gone with the pile system (models/descent.lua) -- a wipe takes nothing.
             Descent.keepFloor(run, 9, { cols = 8, rows = 8, marker = "the board they died on" })
 
             assert(Descent.depth(run) == 9,
@@ -50,34 +50,26 @@ return {
     {
         -- THE GROUND IS THE ONE THEY WALKED, not a fresh roll of the same seed. A floor cannot be
         -- rebuilt from its seed (the stops are drawn in `pairs` order), so a return trip that re-rolled
-        -- would seat the pile by coordinates that no longer mean anything -- the thing they came back
-        -- for standing inside a wall.
-        name = "the board comes back with the pile still on it",
+        -- would open on ground the company had never seen -- which is the whole reason a board is kept
+        -- rather than a seed. The pile this case used to look for is deleted; the board is the promise.
+        name = "the board comes back exactly as it was walked",
         fn = function()
             local player = Player.new()
             local run = runAt(player, 5)
-            Descent.dropPack(run, 5, 3, 3, { { id = "weapon_iron_sword" } })
             Descent.keepFloor(run, 5, { cols = 8, rows = 8, marker = "walked" })
 
             local board = Descent.floorBoard(run, 5)
             assert(board and board.marker == "walked", "the floor they walked is kept")
-
-            local piles = 0
-            for _, d in ipairs(run.drops or {}) do
-                if d.floor == 5 then piles = piles + 1 end
-            end
-            assert(piles == 1, "and their pack is lying on it, got " .. piles .. " piles")
         end,
     },
     {
-        -- ...ACROSS A SAVE, because a wipe is exactly when a player quits. Board, pile and depth all
-        -- have to survive together: any one of the three coming back without the others is a return
-        -- trip to the wrong place, or to the right place with nothing on it.
-        name = "depth, board and pile survive the quit a wipe invites",
+        -- ...ACROSS A SAVE, because a wipe is exactly when a player quits. Board and depth have to
+        -- survive together: either one coming back without the other is a return trip to the wrong
+        -- place, or to the right place with the wrong ground under it.
+        name = "depth and board survive the quit a wipe invites",
         fn = function()
             local player = Player.new()
             local run = runAt(player, 7)
-            Descent.dropPack(run, 7, 2, 5, { { id = "consumable_healing_potion" } })
             Descent.keepFloor(run, 7, { cols = 8, rows = 8, marker = "seven" })
             player.descentRun = run
 
@@ -85,11 +77,6 @@ return {
             assert(back, "the run comes back at all")
             assert(Descent.depth(back) == 7, "on floor seven, got " .. Descent.depth(back))
             assert((Descent.floorBoard(back, 7) or {}).marker == "seven", "with the board they walked")
-            local piles = 0
-            for _, d in ipairs(back.drops or {}) do
-                if d.floor == 7 then piles = piles + 1 end
-            end
-            assert(piles == 1, "and the pack still lying there, got " .. piles)
         end,
     },
     {

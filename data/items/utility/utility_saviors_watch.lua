@@ -29,8 +29,8 @@ return {
     type = "utility",
     tags = { "charm", "holy" },
     class = "crusader", -- deeper cut of the shelf: buyable only once the crusader gate is cleared
-    price = 245,
     unlockQuests = 2,
+    dropTier = 2,
     traits = { "trait_saviors_watch" },
     -- A floor for the fights nobody gets hurt in. Magic defense rather than defense: the Crusader is
     -- already the heaviest body on its own shelf, and what a fighter x priest is actually short of is

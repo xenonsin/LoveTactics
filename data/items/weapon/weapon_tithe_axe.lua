@@ -18,8 +18,8 @@ return {
     type = "weapon",
     tags = { "axe", "slash", "physical", "melee" },
     class = "fighter",
-    price = 410,
     unlockQuests = 4,
+    dropTier = 7,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

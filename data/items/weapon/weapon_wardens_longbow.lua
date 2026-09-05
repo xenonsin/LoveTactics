@@ -25,8 +25,8 @@ return {
     tags = { "longbow", "pierce", "physical", "ranged" },
     hands = 2, -- two-handed, like every bow
     class = "hunter",
-    price = 165,
     unlockQuests = 1,
+    dropTier = 5,
     activeAbility = {
         description = "Increase damage by 25% per extra tick held, up to three.",
         target = "enemy",

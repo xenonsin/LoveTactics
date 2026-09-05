@@ -14,8 +14,8 @@ return {
     type = "utility",
     tags = { "charm", "poison" },
     class = "poisoner", -- deeper cut of the shelf: buyable only once the poisoner gate is cleared
-    price = 495,
     unlockQuests = 5,
+    dropTier = 5,
     traits = { "trait_spiteful_ichor" },
     -- blood that punishes the hand that draws it
     bonus = { defense = 2 },

@@ -18,7 +18,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "knight",
-    dropTier = 2,
+    dropTier = 3,
     traits = { "trait_muster_roll" },
     -- the roll counts guard at the bell; this is what it does not count
     bonus = { magicDefense = 2 },

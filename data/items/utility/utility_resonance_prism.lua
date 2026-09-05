@@ -29,8 +29,8 @@ return {
     type = "utility",
     tags = { "arcane" },
     class = "mage",
-    price = 410,
     unlockQuests = 4,
+    dropTier = 4,
     aura = {
         appliesTo = { "ability", "weapon" }, -- a spell and an enchanted blade are the same school
         requiresTags = { "magical" },        -- ...and only the ones that actually ARE magic

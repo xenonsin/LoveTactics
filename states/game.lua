@@ -30,7 +30,6 @@ local LootReveal = require("ui.panels.loot_reveal")
 local RelicOffer = require("ui.panels.relic_offer")   -- the Reliquary's pick-one-of-three
 local RelicReveal = require("ui.panels.relic_reveal") -- the Sin's Altar's single relic + toll
 local Merchant = require("ui.panels.merchant") -- the road's shop: ordinary goods for scrip
-local Scrip = require("models.scrip")       -- the run's own coin: weightless, and gone at the surface
 local Valuable = require("models.valuable") -- ...and the campaign's, which is objects and has weight
 local Choice = require("ui.panels.choice")
 local Crossroads = require("models.crossroads")
@@ -38,7 +37,6 @@ local RestChoice = require("ui.panels.rest_choice")
 local RestReveal = require("ui.panels.rest")
 local EncounterModel = require("models.encounter")
 local Muster = require("models.muster")                     -- how the company stands against a fight
-local Mule = require("models.mule")                         -- what it can carry out, and the way home
 local EncounterBattle = require("models.encounter_battle")  -- the board + the payout, shared with states/battle.lua
 local Autobattle = require("models.autobattle")             -- and the fight itself, run with nobody watching
 local Combat = require("models.combat")
@@ -184,32 +182,23 @@ local function useRect()
     return rowRect(slot)
 end
 
--- SEND THE MULE HOME (models/mule.lua). Drawn only where the move is legal -- underground, with the
--- mule standing here and something on it -- rather than as a greyed plate the player learns to ignore.
--- An empty mule has nothing to send and a mule already on the road cannot be sent twice; neither is a
--- refusal the player needs explained, because in both states the button simply is not there.
-local function muleVisible()
-    return game.descent ~= nil and not Mule.isAway(game.descent)
-        and Mule.load(game.player, game.descent) > 0
-end
-
-local function muleRect()
-    local slot = 1
-    if backVisible() then slot = slot + 1 end
-    if game.itemsVisible then slot = slot + 1 end
-    if useVisible() then slot = slot + 1 end
-    return rowRect(slot)
-end
-
--- Send it, and say what went. The bank is silent otherwise -- re-baselining leaves nothing on screen
--- that moved -- and a control that appears to do nothing is one players stop pressing.
-local function sendMule()
-    local ok, carried = Mule.dispatch(game.player, game.descent, Save.snapshot(game.player))
-    if not ok then return end
-    game:pushToast("The mule is away with " .. carried ..
-        (carried == 1 and " find" or " finds") .. "  --  back in " .. Mule.TRIP .. " fights")
-    game:refreshHaul() -- the bag is banked, so the stake on the HUD is nought again
-    Player.save()
+-- THE MULE IS DELETED (models/mule.lua, gone). Its cap, its send-home verb and its trip timer went
+-- together, and so did the button that stood here, its keybind and its HUD readout. What it existed to
+-- create was a bet with a ceiling -- "a bet with no ceiling is not a bet", in its own words -- against a
+-- wipe that took the haul. The wipe takes nothing now (see the wipe branch below), so the ceiling was
+-- guarding a stake that no longer exists, and a company carries out whatever it can pick up.
+--
+-- WHAT DID NOT GO WITH IT is the question "how much has this expedition found", because the stair's
+-- toll still takes a share of it. That was Mule.load; it is the diff against the run's entry snapshot,
+-- and always was -- the mule never kept a list of its own. Asked directly now, of the same function the
+-- toll spends (game:payToll's Player.takeAtRisk), so the number quoted in the prompt and the number
+-- actually handed over cannot drift apart.
+local function haulCount(run)
+    local entry = run and run.entry
+    if not (entry and game.player) then return 0 end
+    local n = 0
+    for _, count in pairs(Player.atRisk(game.player, entry)) do n = n + count end
+    return n
 end
 
 local function backContains(x, y)
@@ -366,16 +355,16 @@ local saveRun
 -- with a voluntary exit keeping everything (toHub), a total wipe penalty makes the last fight before
 -- you turn back an all-or-nothing coin flip, and the sensible play is to leave after the first cache.
 --
--- So a wipe takes wounds (already inflicted by the battle) plus most of the run's gold and forging
--- stock, and leaves the items. The arithmetic and the argument live in Player.loseHaul, where they can
--- be driven by a spec; this is the seam that hands it the entry snapshot and drops the run.
+-- ...AND IT NOW TAKES NOTHING AT ALL. It used to take wounds plus most of the run's gold and forging
+-- stock (Player.loseHaul, deleted). Losing is a failure and this design does not price failures --
+-- docs/the-count.md says so and then broke its own rule on this one line for a long time. What a lost
+-- expedition costs is marks on the count, charged where a count exists to charge (the descent branch's
+-- Descent.COUNT_WIPE); on this route there is no rift and no tally, so there is nothing to bill.
+--
+-- SO ALL THAT IS LEFT IS DROPPING THE RUN, and the function stays rather than folding into its callers
+-- because "the expedition is over" is still one event with one name, and a seam with nothing in it
+-- today is where the next thing that has to happen on a wipe will go.
 local function wipeRun()
-    local run = game.player and game.player.activeRun
-    local entry = run and run.entry
-    if not entry then clearRun() return false end
-    local before = Save.restore(entry)
-    if not before then clearRun() return false end -- unreadable snapshot: keep everything, drop the run
-    Player.loseHaul(game.player, before)
     clearRun()
     return true
 end
@@ -404,10 +393,6 @@ local function endDescent(outcome, result, keep)
         -- The run is over. The company is not -- it walks back into the city with everything it kept,
         -- and the next descent starts a fresh stack of floors.
         game.player.descentRun = nil
-        -- ...WITHOUT THE SCRIP, which is the third and last exit a descent has (models/scrip.lua). The
-        -- other two are the stair up and a wipe; all three burn it, which is what lets the rule be one
-        -- sentence -- "it dies at the surface" -- instead of a table of exceptions.
-        Scrip.clear(game.player)
     end
     Player.save()
     State.switch(require("states.hub"))
@@ -502,7 +487,7 @@ function game:stairGate()
         fightsCleared = cleared,
         fightsTotal = total,
         wardDown = wardDown,
-        carrying = Mule.load(game.player, run),
+        carrying = haulCount(run),
         sealed = sealed,
         paid = (run.tollPaid or {})[tostring(depth)] == true,
     })
@@ -656,16 +641,12 @@ function game:applyVision()
     game.map.visionRadius = ((game.darkFor or 0) > 0) and 0 or Player.visionRadius()
 end
 
--- Put a marker on every pile lying on THIS floor, and take away the ones that have been lifted. Run
--- whenever the list can have changed -- a floor entered, a pile taken up.
---
--- The work is Descent.markPacks, in the model, because seating a marker is a decision about the run
--- rather than about this screen -- where a pile can be seen, and what happens when the tile it fell on
--- is already a fight (which is the tile a wipe lands on nearly every time). This screen's part is
--- knowing which floor the company is standing on.
+-- Piles are gone (models/descent.lua, "What the company dropped where it fell -- DELETED"), so there is
+-- nothing to mark: a wipe drops nothing, and the company walks out of a lost fight holding everything it
+-- was holding when it walked in. Kept as a no-op seam rather than deleted at every call site, because
+-- "the things lying on this floor may have changed" is still a real event this screen owns -- a chest
+-- taken, a cache opened -- and the next thing that has to draw one goes here.
 function game:markBodies()
-    if not (game.descent and game.grid) then return end
-    Descent.markPacks(game.descent, game.grid, Descent.depth(game.descent), game.player)
 end
 
 -- THE LANDING. The circle's guard is face-down on the stair, and the stair is open.
@@ -1682,7 +1663,7 @@ function game:openEncounter(cell, opts)
             -- A TOLL IS THE ONE GATE THE PLAYER CAN ANSWER ON THE SPOT, so it is asked rather than
             -- reported: the stair takes a share of the mule, and handing it over is a decision made in
             -- front of the price. Every other gate is a fact about the floor and can only be told.
-            local carrying = Mule.load(game.player, game.descent)
+            local carrying = haulCount(game.descent)
             local due = Descent.tollFor(st.sin, carrying)
             if st.kind == "toll" and due > 0 then
                 game.activePanel = Choice.new({
@@ -1841,22 +1822,8 @@ function game:openEncounter(cell, opts)
         -- keeps them from ever being counted twice or paid differently depending on how the fight was
         -- resolved. (The objective pays through Quest.complete instead -- see onWin.)
         local function grantSideSpoils(spoils)
-            -- THE MULE'S TRIP IS COUNTED IN WON FIGHTS (models/mule.lua's Mule.TRIP), and this is one
-            -- of the two places a win is resolved -- the other is the objective branch below, which
-            -- pays through Quest.complete instead and so never reaches here. Ticked BEFORE the grant,
-            -- so the fight that brings the mule home can also load it: a trip that ended on the walk
-            -- back would strand the takings of the fight that ended it.
-            --
-            -- Outside a descent this is a no-op on a nil run, which is what keeps the campaign's
-            -- roadside fights from having an opinion about a mule they do not have.
-            Mule.noteFight(game.descent)
             if spoils then
                 if (spoils.gold or 0) > 0 then Player.addGold(game.player, spoils.gold) end
-                -- THE RUN'S OWN COIN (models/scrip.lua). What a rolled fight pays, weightless, spendable
-                -- at the Merchant and the Crossroads and by the money kit, and gone the moment the
-                -- company reaches the surface. It does not ride the mule and cannot: there is nothing
-                -- to carry.
-                if (spoils.scrip or 0) > 0 then Scrip.add(game.player, spoils.scrip) end
                 -- WHAT FITS ON THE MULE, and the rest is left where it fell (models/mule.lua).
                 --
                 -- SPLIT RATHER THAN REFUSED, which is the opposite call to the treasure chest above and
@@ -1865,32 +1832,23 @@ function game:openEncounter(cell, opts)
                 -- one slot short walked away from a won fight with nothing, which reads as the game
                 -- eating a reward rather than as a bag being full.
                 --
-                -- Scrip and the salvage below are untouched: neither rides the mule (see Mule's header),
-                -- so a full bag never costs the player run coin or forging stock.
+                -- EVERYTHING FITS. There is no carry cap any more -- the mule is deleted along with the
+                -- wipe penalty its ceiling existed to bound -- so a rolled find, a valuable and a
+                -- sealed husk all simply land. `left` is kept at nought rather than removed because the
+                -- toast below still names what arrived, and a count that can only be zero is cheaper
+                -- than three call sites learning a new shape.
                 local left = 0
                 for _, id in ipairs(spoils.loot or {}) do
-                    if Mule.canTake(game.player, 1) then Player.grantItem(game.player, id)
-                    else left = left + 1 end
+                    Player.grantItem(game.player, id)
                 end
-                -- THE VALUABLES AN END LEFT, which DO ride the mule and are the reason it has a cap
-                -- worth caring about (models/valuable.lua). Weighed by bulk rather than counted: an idol
-                -- is three slots, so a mule with two free refuses it and says so, and the choice of
-                -- whether to go home and come back for it is the whole object.
-                --
-                -- Taken in the order rolled, and a piece that does not fit does not stop the ones behind
-                -- it -- a two-slot lamp still goes on after a three-slot idol was refused. Greedy is the
-                -- right rule here because the alternative is a packing solver deciding for the player
-                -- what their eight slots are worth, which is the decision.
                 for _, id in ipairs(spoils.valuables or {}) do
-                    if Mule.canTakeItem(game.player, id) then Player.grantItem(game.player, id)
-                    else left = left + 1 end
+                    Player.grantItem(game.player, id)
                 end
                 -- ...and the unread find, on the rare stop that paid one (models/identify.lua). Granted
                 -- through Identify.grant rather than Player.grantItem: the piece goes into the stash as a
                 -- HUSK, and the id it is really built on is the one thing the player has not bought yet.
                 for _, find in ipairs(spoils.sealed or {}) do
-                    if Mule.canTake(game.player, 1) then Identify.grant(game.player, find.id, find.floor)
-                    else left = left + 1 end
+                    Identify.grant(game.player, find.id, find.floor)
                 end
                 -- SAID OUT LOUD, always. A reward that silently fails to arrive reads as a bug however
                 -- correct the bookkeeping is -- the same rule the errand's spent first-clear bonus is
@@ -1976,18 +1934,12 @@ function game:openEncounter(cell, opts)
         --
         -- The salvage, the experience and the thin chance of a crossing token are paid by grantSideSpoils
         -- like any other won fight: beating somebody for your own bag back is still beating somebody.
+        -- ...AND THERE IS NO BAG TO HAND BACK ANY MORE. Piles are deleted with the wipe penalty that
+        -- made them (models/descent.lua), so nothing seats a guarded pack and this pays nothing. It is
+        -- kept, empty, only because a run saved before the deletion can still be standing on one: the
+        -- fight resolves and the marker clears through the ordinary win path, which is the right
+        -- outcome for a stop whose reward was the company's own kit that it never actually lost.
         local function takeGuardedPack()
-            if not guardedPack then return end
-            local drop = cell.encounter and cell.encounter.drop
-            local items = drop and game.descent and Descent.takePack(game.descent, drop, game.player)
-            for _, item in ipairs(items or {}) do Player.addToStash(game.player, item) end
-            -- The entry is off the run, so this clears the marker rather than re-drawing it. Every
-            -- other pile still lying on this floor is re-marked in the same pass.
-            game:markBodies()
-            if items then
-                game:pushToast("You take back what you dropped  (" .. #items ..
-                    (#items == 1 and " item)" or " items)"))
-            end
         end
 
         -- The battle launch itself, deferred behind the walk-off offer for a fight the company has
@@ -2209,10 +2161,6 @@ function game:openEncounter(cell, opts)
                         require("models.sound").music("music.overworld")
                         game.battle = nil -- the fight is over; the map has input again (it never stopped being the state)
                         game:refreshMuster() -- the fight was paid for in health and potions; re-rate
-                        -- ...and the objective is the other won fight (see grantSideSpoils, which this
-                        -- path deliberately does not reach). A stair guardian is still a fight, and a
-                        -- mule sent out before one should come home no later for it having been hard.
-                        Mule.noteFight(game.descent)
 
                         -- AN ERRAND FINISHED. A floor carries the stair AND whatever a house asked for
                         -- down here, each on its own end (models/descent.lua's floorObjectives), so the
@@ -2303,31 +2251,13 @@ function game:openEncounter(cell, opts)
                     if game.player and spoils and (spoils.gold or 0) > 0 then
                         Player.addGold(game.player, spoils.gold)
                     end
-                    -- The skim and the bounty an objective fight earned, which are scrip like every
-                    -- other coin taken off a body mid-fight (models/encounter_battle.lua). Paid here
-                    -- rather than through Quest.complete for the reason the salvage is not: they belong
-                    -- to the FIGHT, not to the piece of work, and a run that ends on this stair is about
-                    -- to burn them anyway (Scrip.clear) -- which is the honest outcome for coin earned
-                    -- on the last swing of an expedition and never spent.
-                    if game.player and spoils and (spoils.scrip or 0) > 0 then
-                        Scrip.add(game.player, spoils.scrip)
-                    end
-                    -- ...AND WHAT THE GENERAL WAS STANDING ON. The valuables an end leaves are the
+                        -- ...AND WHAT THE GENERAL WAS STANDING ON. The valuables an end leaves are the
                     -- campaign's actual income (models/valuable.lua), so the richest stop in a run pays
-                    -- into the purse that matters -- and it pays in objects, which means the mule has to
-                    -- have room for them. A company that walks into the last fight with a full bag is
-                    -- making that choice with the same information as everywhere else.
+                    -- into the purse that matters. All of it lands: there is no carry cap to leave any
+                    -- of it on the floor now that the mule is deleted.
                     if game.player and spoils then
-                        local dropped = 0
                         for _, id in ipairs(spoils.valuables or {}) do
-                            if Mule.canTakeItem(game.player, id) then
-                                Player.grantItem(game.player, id)
-                            else dropped = dropped + 1 end
-                        end
-                        if dropped > 0 then
-                            game:pushToast(dropped ..
-                                (dropped == 1 and " valuable left behind" or " valuables left behind") ..
-                                "  --  the mule cannot carry it")
+                            Player.grantItem(game.player, id)
                         end
                     end
                     -- The objective fight's OWN salvage (models/spoils.lua) is paid through the quest
@@ -2609,99 +2539,47 @@ function game:openEncounter(cell, opts)
                 -- marched in with, and this company is not coming back for its gear -- it is lying on
                 -- floor N wearing it, which is the point.
                 if game.descent then
-                    -- A WIPE DROPS WHAT THE EXPEDITION FOUND AND SENDS THE COMPANY HOME. The bodies
-                    -- always come back -- they wake at the temple, whole and wounded -- and what stays
-                    -- on the floor is everything they had picked up since they walked down.
+                    -- A WIPE SENDS THE COMPANY HOME WITH EVERYTHING AND CHARGES THE COUNT. The bodies
+                    -- come back, the haul comes back, the grids come back exactly as they were arranged
+                    -- -- and the bill is two marks on the tally (docs/the-count.md). Nothing material
+                    -- is taken by losing, ever.
                     --
-                    -- It is the only thing standing between "climb out" and "die" being the same move.
-                    -- Levels, mapped floors and bound relics all survive a wipe; the haul does not,
-                    -- until somebody walks back down to the tile. Without it a company that died on
-                    -- floor nine would wake, walk back, and have lost nothing but the walk.
+                    -- THIS IS THE PAGE'S OWN LAW, FINALLY APPLIED. the-count.md prices a need at
+                    -- nothing and a decision at a mark, and then charged the FAILURE the haul, most of
+                    -- the purse and a wound on every head -- the most expensive line in the game, billed
+                    -- to the company that had just lost. It had already caught itself once here (the
+                    -- Inn's mending toll, deleted for the same reason). This is the same deletion one
+                    -- row up.
                     --
-                    -- IT USED TO TAKE THE KIT AS WELL -- every grid emptied, the company waking naked --
-                    -- and that was the bloodstain read literally. It cannot work here. Dark Souls drops
-                    -- a FLOW (souls come back by playing) and Wizardry lets you staff a rescue party out
-                    -- of a tavern; this mode has neither. Gear comes off the floors, the Gate store
-                    -- sells draughts and a spare blade, and a body is a gacha pull (models/voucher.lua)
-                    -- -- so stripping the grids meant the recovery dive was STRICTLY HARDER than the
-                    -- dive that had just failed: same bodies, wounded, floor rearmed, nothing to fight
-                    -- with. That is a spiral, not a stake.
-                    --
-                    -- SO THE BET IS THE HAUL, WHICH IS THE BET THE MODE IS ABOUT. Pushing one more spur
-                    -- risks what you are carrying out, never the chassis you carry it with -- and the
-                    -- grids stay exactly as the player arranged them, holes and adjacencies included.
-                    -- Measured against the entry snapshot by Player.takeAtRisk, which is also what the
-                    -- Loadout badges, so what the player was shown at stake is precisely what falls.
-                    --
-                    -- ...AND THE COIN AND ORE GO WITH IT (wipeRun, below), or a company that had tidied
-                    -- every find into a grid would pay nothing at all and "sort your bag before a risky
-                    -- fight" would be the game's best move.
-                    --
-                    -- BOUND ITEMS STAY ON THEIR HOLDER, the one exception, and the same one
-                    -- Player.release makes: a signature relic is welded to its bearer by every other
-                    -- path in the game (never moved, stowed, sold or stolen), and a wipe is not the
-                    -- place to invent a way to part them. Player.atRisk skips them on both sides.
-                    --
-                    -- IT IS NO LONGER A BLOODSTAIN in the other half either. A pile is not destroyed by
-                    -- the next one and it does not sit there waiting to be strolled onto: piles
-                    -- accumulate, and each has something standing over it, drawn to the size of what was
-                    -- spilled (models/descent.lua's Descent.dropPack and Descent.packGuard). What a wipe
-                    -- costs is a FIGHT rather than a deletion.
+                    -- TWO MARKS, NOT ONE, AND THAT IS NOT A PUNISHMENT SMUGGLED BACK IN. The stair
+                    -- costs one. If dying cost the same it would be the CHEAPER exit -- a wipe happens
+                    -- where the company stands and the stair has to be walked to -- so the optimal play
+                    -- would be to loot until threatened and then die on purpose. One extra mark is the
+                    -- whole of the fix, and it is paid on a clock rather than out of a pack.
                     local floor = Descent.depth(game.descent)
-                    local dropped = Player.takeAtRisk(game.player, game.descent.entry)
+                    Descent.countBy(game.player, Descent.COUNT_WIPE)
 
-                    Descent.dropPack(game.descent, floor,
-                        game.map and game.map.px, game.map and game.map.py, dropped)
+                    -- AND WHAT CAME OUT IS DISCOVERED, exactly as it is on the stair. Both exits
+                    -- surface with the haul now, so both open the shelf lines the haul earns
+                    -- (models/player.lua's Player.recordFound). A wipe that did not discover would make
+                    -- the stair the only way to grow a shelf, which is a haul penalty wearing a
+                    -- different hat.
+                    Player.recordFound(game.player)
 
-                    -- ...AND MOST OF THE COIN AND ORE THE EXPEDITION EARNED, which is the half that does
-                    -- not lie in a heap waiting to be fetched. A rout drops what it was carrying;
-                    -- purses come open.
+                    -- NOTHING IS DROPPED, so there is no pile, no guard standing over it and no
+                    -- recovery dive. That apparatus is gone in full (Descent.dropPack and its
+                    -- neighbours) rather than left switched off, because a pile system nothing writes
+                    -- to is a save shape and a fight blueprint waiting to be mistaken for live code.
                     --
-                    -- Player.loseHaul rather than wipeRun, and the difference is the one thing that must
-                    -- not be copied over from the campaign path: wipeRun ends by dropping the run, and a
-                    -- descent's run is what holds the floors, the piles and the stair the company is
-                    -- going to walk back down. Only the cut is wanted here.
+                    -- NO CUT EITHER: Player.loseHaul is deleted with it. It only ever took ore, its
+                    -- `gold` had been zero since the campaign's coin became objects, and the argument
+                    -- for keeping it -- that without a cost which is NOT an item the player would tidy
+                    -- every find into a spare grid cell before a risky fight -- is now answered by the
+                    -- mark instead. The mark is the cost that is not an item.
                     --
-                    -- It is also what keeps "leave the grid" honest. Only items are recoverable off the
-                    -- pile, so without a cost that is NOT an item, the optimal play before a risky fight
-                    -- would be to tidy every find into a spare grid cell and walk in owing nothing.
-                    local before = game.descent.entry and Save.restore(game.descent.entry)
-                    if before then Player.loseHaul(game.player, before) end
-
-                    -- Everybody wakes up hurt. The wound is the other half of the cost and the only one
-                    -- that follows them out (models/wound.lua) -- so a wipe is a company that is poorer
-                    -- AND worse, which is what makes the second attempt on a floor a different fight.
-                    game:inflictWounds()
-
-                    -- ...AND THE FLOOR GOES IN THE MAP BOOK, exactly as the stair down and the way up
-                    -- put it there (Descent.keepFloor). A floor cannot be rebuilt from its seed
-                    -- (Overworld:snapshot says why -- the stops are drawn in `pairs` order), so a route
-                    -- OFF a floor that does not put the board away is a route that rolls a fresh floor N
-                    -- on the way back down. This was the one such route left, and it was the worst one to
-                    -- be missing it: the Gate tells a wiped company "they are still there, and so is
-                    -- everything they were carrying", and then the recovery dive opened on ground they
-                    -- had never walked -- with the pile seated onto tiles by coordinate (markBodies)
-                    -- that no longer meant anything, so the thing they came back for could be standing
-                    -- in a wall.
-                    --
-                    -- ...EXCEPT THAT THE RIFT CLOSES ON A WIPE TOO, so there is no map book to put it
-                    -- in. Both exits reset (see the climb-out branch), and the symmetry is
-                    -- load-bearing: if dying preserved the floor stack and leaving did not, a company
-                    -- standing deep with a thin haul would be better off letting itself be killed, and
-                    -- the mode would have built an incentive to throw fights.
-                    --
-                    -- WHAT SURVIVES INSTEAD IS THE PILE, carried onto the company and re-seated on the
-                    -- next run that reaches this depth (Descent.strandPacks). So the promise the Gate
-                    -- makes a wiped company -- "everything they were carrying is still down there" --
-                    -- is kept; what changed is that fetching it is a dive rather than a stroll across
-                    -- ground they had already cleared.
-                    Descent.strandPacks(game.player, game.descent)
-                    game.player.descentRun = nil
-                    -- AND THE PURSE BURNS, exactly as it does on the stair up (models/scrip.lua). Not a
-                    -- second punishment on top of the dropped pack and the lost ore: scrip goes because
-                    -- the EXPEDITION ended, and there is no exit that keeps it. A wipe that let a
-                    -- company hold its scrip would be the one way to carry run coin between runs.
-                    Scrip.clear(game.player)
+                    -- AND NO WOUNDS. A wound lasts the expedition and the surface ends it for free
+                    -- (models/wound.lua), and a wipe IS a return to the surface -- so inflicting them
+                    -- here only ever wrote a state that was cleared in the same breath.
 
                     -- The fight is over -- lost, but over. Every other way out of a battle says this
                     -- (there are six) and this one did not, which put a wiped company back into the
@@ -2709,6 +2587,12 @@ function game:openEncounter(cell, opts)
                     -- game.enter now clears it at the door as well; both, because a route that leaves
                     -- this screen holding a dead battle is wrong even if the next entry tidies up.
                     game.battle = nil
+
+                    -- THE RIFT CLOSES ON A WIPE TOO, and the symmetry is load-bearing: if dying
+                    -- preserved the floor stack and leaving did not, a company standing deep would be
+                    -- better off letting itself be killed, and the mode would have built an incentive
+                    -- to throw fights. Both exits reset (see the climb-out branch).
+                    game.player.descentRun = nil
 
                     game.descent = nil
                     Player.save()
@@ -2718,16 +2602,12 @@ function game:openEncounter(cell, opts)
                     })
                     return
                 end
-                -- The one thing a wipe does NOT take back. Inflicted BEFORE the rollback, which is
-                -- the whole of the ordering rule: the wipe reads the entry snapshot to price what the run
-                -- snapshot, and wounds only survive it because that function holds this key across
-                -- the copy. Written here rather than after, so the two halves cannot drift into a
-                -- state where the wounds are recorded on a player about to be overwritten.
-                game:inflictWounds()
-                -- A WIPE IS THE ONLY THING THAT COSTS YOU ANYTHING. Walking out is free -- the company
-                -- goes home with everything it picked up -- so losing the fight is the whole of the
-                -- risk, and it takes most of the run's coin and ore with it (wipeRun). The items
-                -- stay: a sword out of a chest is carried by a body, and the bodies came home.
+                -- NO WOUNDS ON A WIPE. A wound lasts the expedition and the surface ends it for free
+                -- (models/wound.lua), and this route wakes the company in the city -- so inflicting
+                -- them here only ever wrote a state that the very next screen cleared.
+                --
+                -- AND THE RUN IS SIMPLY DROPPED (wipeRun). Losing costs nothing material anywhere in
+                -- the game now; where a count exists it costs marks, and this route has none.
                 wipeRun()
                 if game.player then Player.save() end
                 State.switch(require("states.hub"))
@@ -2930,23 +2810,6 @@ function game:openEncounter(cell, opts)
         local sealed = Spoils.rollSealed({ kind = "treasure", floorLevel = game.quest and game.quest.floorLevel or nil })
         -- An empty cache is one with nothing legible AND nothing unread in it.
         if #loot == 0 and #sealed == 0 then cell.cleared = true; saveRun(); return end
-        -- THE MULE HAS TO HAVE ROOM FOR THE WHOLE CHEST, and a full one leaves it shut
-        -- (models/mule.lua). The cell is deliberately NOT cleared, so the marker stays on the board and
-        -- the player can come back for it after sending the mule home -- which is the decision this cap
-        -- exists to force, and the reason a full mule is the mechanic firing rather than a failure.
-        --
-        -- ALL OR NOTHING rather than taking what fits, and only here: a chest is one object, and a lid
-        -- that opened, handed over two of its four pieces and then closed again would leave a marker
-        -- promising a cache that is no longer there. A fight's salvage splits (grantSideSpoils) because
-        -- it is a pile of separate things off separate bodies.
-        local want = #loot + #sealed
-        if not Mule.canTake(game.player, want) then
-            game:pushToast(Mule.isAway(game.descent)
-                and "The mule is away -- nothing to carry this in"
-                or ("The mule is full  (" .. Mule.load(game.player) .. " of " ..
-                    Mule.capacity(game.player) .. ")"))
-            return
-        end
         game.activePanel = LootReveal.new({
             encounter = enc,
             loot = loot,
@@ -3220,7 +3083,11 @@ function game:openEncounter(cell, opts)
         if not enc.stock then
             enc.stock = {}
             for _, id in ipairs(Spoils.shelf({ prestige = game.day, count = 3 })) do
-                enc.stock[#enc.stock + 1] = { id = id, price = Item.defs[id].price, bought = false }
+                -- CLAMPED TO WHAT THE RIFT MAY ASK (Spoils.askingPrice). One purse now, so an
+                -- unclamped shelf price down here would be weighed against a permanent upgrade --
+                -- which is the failure the retired second currency existed to prevent.
+                enc.stock[#enc.stock + 1] =
+                    { id = id, price = Spoils.askingPrice(Item.defs[id].price), bought = false }
             end
             -- ...AND A RELIC SHELF BESIDE THE GEAR. The road is the shop (see the encounter blueprint's
             -- own header), and until now the only thing a run could do with foraged gold was buy a
@@ -3231,8 +3098,8 @@ function game:openEncounter(cell, opts)
             -- from, held relics INCLUDED: buying a second copy of something you already carry is a
             -- perfectly good use of a purse, and it is how a run commits to a build.
             for _, id in ipairs(Relic.slate({ day = game.day, sin = game.quest and game.quest.sin }, 2)) do
-                enc.stock[#enc.stock + 1] =
-                    { id = id, relic = true, price = Relic.price(id, game.day), bought = false }
+                enc.stock[#enc.stock + 1] = { id = id, relic = true,
+                    price = Spoils.askingPrice(Relic.price(id, game.day)), bought = false }
             end
         end
         if #enc.stock == 0 then cell.cleared = true; saveRun(); return end
@@ -3257,15 +3124,15 @@ function game:openEncounter(cell, opts)
         game.activePanel = Merchant.new({
             title = enc.name or "Merchant",
             stock = stock,
-            -- PAID IN SCRIP (models/scrip.lua). The prices did not move: what used to be this shelf's
-            -- gold price is its scrip price at the same number, and the fights that fund it were
-            -- renamed on the same day at the same numbers -- so floor three is exactly as affordable as
-            -- it was. What changed is that a relic bought here no longer costs a forge rung.
-            gold = function() return Scrip.get(game.player) end,
-            unit = Scrip.UNIT,
-            suffix = Scrip.SUFFIX,
+            -- PAID IN THE CAMPAIGN.S OWN COIN, because there is only one purse now (models/spoils.lua).
+            -- What keeps a relic on floor three from being priced against a forge rung is no longer a
+            -- second currency but a CEILING: nothing on this cart may ask more than a fraction of the
+            -- cheapest rung (models/merchant.lua), so the comparison never gets close enough to bite.
+            gold = function() return (game.player and game.player.gold) or 0 end,
+            unit = "gold",
+            suffix = "g",
             onBuy = function(entry)
-                if not (game.player and Scrip.spend(game.player, entry.price)) then return false end
+                if not (game.player and Player.spendGold(game.player, entry.price)) then return false end
                 if entry.relic then
                     -- Straight onto the run, not into the stash: a relic is carried for this descent and
                     -- is not a thing the hub ever holds.
@@ -3302,14 +3169,14 @@ function game:openEncounter(cell, opts)
             -- fact not one of them acts on. A crossroads is a stop on a floor, so it plays for the coin
             -- a floor pays (models/scrip.lua).
             --
-            -- addGold is handed NEGATIVE amounts by the dilemmas that charge a toll, which Scrip.add
-            -- refuses outright -- so the sign is settled here, at the seam that knows both shapes,
-            -- rather than by loosening the model's contract for one caller.
-            gold = function() return Scrip.get(game.player) end,
+            -- addGold is handed NEGATIVE amounts by the dilemmas that charge a toll, so the sign is
+            -- settled here, at the seam that knows both shapes, rather than by loosening the model.
+            gold = function() return (game.player and game.player.gold) or 0 end,
             addGold = function(n)
                 if not game.player then return end
                 n = math.floor(tonumber(n) or 0)
-                if n >= 0 then Scrip.add(game.player, n) else Scrip.take(game.player, -n) end
+                if n >= 0 then Player.addGold(game.player, n)
+                else Player.spendGold(game.player, math.min(-n, game.player.gold or 0)) end
             end,
             reveal = function() game:restStudy() end,
             drainParty = function(n)
@@ -3573,12 +3440,11 @@ function game:openEncounter(cell, opts)
                 -- un-teach the readout the player has already been shown.
                 Descent.markClimbedOut(game.player)
                 Descent.climbOut(game.player)
-                -- THE SURFACE BURNS THE SCRIP (models/scrip.lua), and this is the line that makes the
-                -- two-currency economy mean anything. Unspent run coin is a LOSS, which is what turns
-                -- the Merchant from a stop priced against a forge rung into a stop you had better use.
-                -- Forecast on the prompt below, BEFORE the choice is made, rather than reported as a
-                -- toast after it: a cost said afterwards is news, and this one is a decision.
-                Scrip.clear(game.player)
+                -- WHAT CAME OUT IS NOW DISCOVERED, and a discovered thing is one a house will deal a
+                -- second copy of (models/player.lua's Player.recordFound). Stamped here rather than
+                -- where a find is picked up, because the sentence the shelf now runs on is that
+                -- carrying it OUT is what opens its line.
+                Player.recordFound(game.player)
                 -- BANKING IS RE-BASELINING, not dropping the run. Everything found has been live
                 -- on the company since it was picked up; what made it provisional is the entry
                 -- snapshot a wipe rolls back to (wipeRun). Re-taking that snapshot here is the
@@ -3604,11 +3470,9 @@ function game:openEncounter(cell, opts)
                 local entry = Save.snapshot(game.player)
                 if game.player.activeRun then game.player.activeRun.entry = entry end
                 run.entry = entry
-                -- WHAT WAS LEFT LYING ON THE FLOORS comes with them as a debt rather than dying
-                -- with the run (Descent.strandPacks): a pile is the mode's entire economy, and a
-                -- reset that quietly deleted one would turn an expensive mistake into a permanent
-                -- one -- the exact rule Descent.dropPack was rewritten to avoid.
-                Descent.strandPacks(game.player, run)
+                -- NOTHING IS LEFT LYING ON THE FLOORS to carry out. Piles are deleted along with the
+                -- wipe penalty that made them (models/descent.lua), so a closing rift has no debt to
+                -- hand the company -- what they were carrying is simply still theirs.
                 game.player.descentRun = nil
                 game.descent = nil
                 Player.save() -- the company, banked, with no expedition open
@@ -3644,21 +3508,9 @@ function game:openEncounter(cell, opts)
                 and ("The company is on floor " .. depth .. " carrying " .. carried ..
                      ". Climb out and all of it comes with them.")
                 or ("The company is on floor " .. depth .. " and has found nothing yet.")) ..
-                -- ...AND WHAT DOES NOT COME UP WITH THEM (models/scrip.lua). Said here, at the decision,
-                -- because an unspent purse is the one cost of leaving that the player can still do
-                -- something about -- there is a Merchant back there. A number that only appears after
-                -- the choice is made would be a receipt for a decision they were never offered.
-                --
-                -- Silent at zero, which is not the same rule as the count's silence below: an empty
-                -- purse has nothing to warn about, and printing "0 scrip will not come up" on every
-                -- exit would teach the player to stop reading the line that matters.
-                ((Scrip.get(game.player) > 0)
-                    and ("\n" .. Scrip.get(game.player) .. " " .. Scrip.UNIT ..
-                         " will not come up with them.")
-                    or "") ..
                 (Descent.everClimbedOut(game.player)
                     and ("\nThe count goes " .. Descent.count(game.player) .. " \226\134\146 " ..
-                         math.min(Descent.COUNT_MAX, Descent.count(game.player) + 1) ..
+                         math.min(Descent.COUNT_MAX, Descent.count(game.player) + Descent.COUNT_STAIR) ..
                          " of " .. Descent.COUNT_MAX .. ".")
                     or ""),
             options = upOptions,
@@ -3819,21 +3671,13 @@ function game:openEncounter(cell, opts)
         return
     end
 
-    -- WHAT YOU DROPPED, UNGUARDED. A pile has something standing on it now (Descent.packGuard) and is
-    -- handled far above, on the combat path -- so the only packs that reach here are the ones dropped
-    -- before that landed, which carry no cast. They are picked up by walking onto them, which is what
-    -- they were dropped under; a save mid-run must not have a fight invented over its bag.
+    -- A PACK STOP FROM AN OLDER SAVE. Nothing drops packs any more (models/descent.lua) and nothing
+    -- seats these markers, but a run saved before the deletion can still be carrying one -- so the
+    -- marker is cleared by walking onto it rather than left on the board as a stop that opens nothing.
+    -- There is no pile to hand back: the company never lost the items in the first place.
     if kind == "pack" then
-        local drop = cell.encounter.drop
-        local items = drop and game.descent and Descent.takePack(game.descent, drop, game.player)
-        if items then
-            for _, item in ipairs(items) do Player.addToStash(game.player, item) end
-            game:pushToast("You take back what you dropped  (" .. #items ..
-                (#items == 1 and " item)" or " items)"))
-        end
         cell.cleared = true
         cell.encounter = nil
-        game:markBodies()
         saveRun()
         return
     end
@@ -4281,9 +4125,6 @@ function game.drawHud()
     -- Potions button (drink a draught), beside Items. Same visibility gate save for the flight tutorial.
     if useVisible() then drawRowButton(useRect(), "Potions") end
 
-    -- Send Mule, last in the row and only where it is legal (muleVisible).
-    if muleVisible() then drawRowButton(muleRect(), "Send Mule") end
-
     -- Always-on party HP/mana strip: the run's attrition, legible while routing (models/player.lua).
     -- Pass the mouse (logical space) so the per-companion ability badge shows its tooltip on hover.
     if partyVisible() then
@@ -4337,53 +4178,26 @@ function game.drawHud()
         -- in the reading as well as on the screen: the haul is what goes home, the mule is what will
         -- carry it, and this is the one number that does neither.
         --
-        -- IT DRAWS ON AN EMPTY PURSE, on the mule's rule rather than the haul's. Scrip is a spending
-        -- limit, and a limit is most worth stating at the moment it is binding -- a player standing in
-        -- front of a Merchant with nothing needs to be told that before they open it, not after.
+        -- IT DRAWS ON AN EMPTY PURSE, which is the rule a spending LIMIT follows rather than the one a
+        -- ledger does: a limit is most worth stating at the moment it is binding, and a player standing
+        -- in front of a Merchant with nothing needs to be told that before they open it, not after.
         --
         -- A BANKED RESOURCE SHOWS ITS COUNT: this is the only place the purse is legible outside the two
-        -- panels that spend it, and a currency the player cannot see between stops is a currency they
-        -- cannot plan around.
+        -- panels that spend it, and money the player cannot see between stops is money they cannot plan
+        -- around.
+        --
+        -- IT SAYS GOLD NOW. It said Scrip while a descent had a purse of its own; there is one purse
+        -- (models/spoils.lua) and what is spent at the Merchant is the same coin the Forge bills.
         if game.descent then
+            local purse = (game.player and game.player.gold) or 0
             love.graphics.setColor(Theme.muted)
-            love.graphics.printf("Scrip", x - 240, y, 240, "right")
-            -- Amber when there is something to spend, muted at nothing -- a purse at zero is not a
-            -- warning (the mule's full IS one), it is simply the state the run opens in.
-            love.graphics.setColor(Scrip.get(game.player) > 0 and Theme.accentAmber or Theme.muted)
-            love.graphics.printf(Scrip.get(game.player) .. "", x - 240, y + 18, 240, "right")
+            love.graphics.printf("Gold", x - 240, y, 240, "right")
+            love.graphics.setColor(purse > 0 and Theme.accentAmber or Theme.muted)
+            love.graphics.printf(purse .. "", x - 240, y + 18, 240, "right")
             love.graphics.setColor(1, 1, 1)
             y = y + 44
         end
 
-        -- THE MULE, under the haul it is carrying (models/mule.lua).
-        --
-        -- IT DRAWS ON AN EMPTY BAG, unlike the haul above, and the two are different for a reason: the
-        -- haul is a ledger and an empty one is not information, while the mule is a CAPACITY and how
-        -- much of it is left is the whole decision. A player about to open a chest needs to know they
-        -- have one slot, and "nothing carried yet" is exactly the state in which that is most worth
-        -- saying quietly rather than not at all.
-        --
-        -- Only underground. There is no mule on a campaign road and never was; a readout there would be
-        -- naming an object the player does not have.
-        if game.descent then
-            local away = Mule.fightsAway(game.descent)
-            love.graphics.setColor(Theme.muted)
-            love.graphics.printf("Pack mule", x - 240, y, 240, "right")
-            if away > 0 then
-                -- The transition the player is waiting on, said as what it costs rather than as a bar:
-                -- an absence is measured in the thing that ends it, which is fights.
-                love.graphics.setColor(Theme.cursor)
-                love.graphics.printf("on the road  " .. away ..
-                    (away == 1 and " fight" or " fights"), x - 240, y + 18, 240, "right")
-            else
-                local load, cap = Mule.load(game.player), Mule.capacity(game.player)
-                -- Full wears the hostile accent, because it is the one reading that changes what the
-                -- player may do next. Everything below it is bookkeeping and stays quiet.
-                love.graphics.setColor(load >= cap and Theme.accentWeapon or Theme.accentAmber)
-                love.graphics.printf(load .. " of " .. cap, x - 240, y + 18, 240, "right")
-            end
-            love.graphics.setColor(1, 1, 1)
-        end
     end
 
     -- Companion-ability toasts, stacked just under the party strip so ability feedback groups with the
@@ -4484,16 +4298,14 @@ function game.drawHud()
     -- otherwise. The items key only appears once the Loadout button itself does.
     local items = game.itemsVisible and (InputMode.isGamepad() and "Y: items      " or "I: items      ") or ""
     local use = useVisible() and (InputMode.isGamepad() and "X: potions      " or "U: potions      ") or ""
-    -- ...and the mule, on the same rule as its button: named only where the move is legal.
-    local mule = muleVisible() and (InputMode.isGamepad() and "LB: send mule      " or "M: send mule      ") or ""
     -- The "back to hub" hint is dropped alongside the button itself -- during the flight tutorial, and
     -- on every floor of a descent, which has no Back button any more (see backVisible). It read
     -- "Esc: end run" down there, which was true and was the problem: one keystroke, on the key every
     -- other screen uses to close a panel, discarding the whole floor stack.
     local back = backVisible() and (InputMode.isGamepad() and "Back: hub" or "Esc: hub") or ""
     local hint = InputMode.isGamepad()
-        and ("Move: D-pad / Stick      " .. items .. use .. mule .. back)
-        or ("Move: WASD / Arrows / click adjacent tile      " .. items .. use .. mule .. back)
+        and ("Move: D-pad / Stick      " .. items .. use .. back)
+        or ("Move: WASD / Arrows / click adjacent tile      " .. items .. use .. back)
     love.graphics.printf(hint, 0, Scale.HEIGHT - 30, Scale.WIDTH, "center")
     love.graphics.setColor(1, 1, 1)
 
@@ -4520,8 +4332,7 @@ function game:cursorKind(x, y)
         return game.activePanel.cursorKind and game.activePanel:cursorKind(x, y) or "arrow"
     end
     if (backVisible() and backContains(x, y)) or (game.itemsVisible and rectContains(itemsRect(), x, y))
-        or (useVisible() and rectContains(useRect(), x, y))
-        or (muleVisible() and rectContains(muleRect(), x, y)) then
+        or (useVisible() and rectContains(useRect(), x, y)) then
         return "hand"
     end
     return "arrow"
@@ -4537,8 +4348,6 @@ function game.mousepressed(x, y, button)
         openLoadout()
     elseif button == 1 and useVisible() and rectContains(useRect(), x, y) then
         openConsumables()
-    elseif button == 1 and muleVisible() and rectContains(muleRect(), x, y) then
-        sendMule()
     else
         game.map:mousepressed(x, y, button)
     end
@@ -4567,8 +4376,6 @@ function game.keypressed(key)
         openLoadout()
     elseif key == "u" and useVisible() then
         openConsumables()
-    elseif key == "m" and muleVisible() then
-        sendMule()
     else
         game.map:keypressed(key)
     end
@@ -4584,8 +4391,6 @@ function game.gamepadpressed(joystick, button)
         openLoadout()
     elseif button == "x" and useVisible() then
         openConsumables()
-    elseif button == "leftshoulder" and muleVisible() then
-        sendMule()
     else
         game.map:gamepadpressed(joystick, button)
     end

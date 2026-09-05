@@ -13,6 +13,7 @@ return {
     sprite = "assets/items/ability_haste.png",
     type = "ability",
     class = "creature",
+    dropTier = 1,
     tags = { "support", "magical" },
     activeAbility = {
         target = "ally", -- includes the caster

@@ -92,9 +92,14 @@ function DraftShop.gearUnlockCap(round)
     return math.max(1, round or 1)
 end
 
--- An item's campaign quest gate; unauthored means gate 0, exactly as Vendor.stock reads it.
+-- An item's RANK on the campaign's ladder, which is what the draft's rounds are cut against.
+--
+-- Through Balance.slotOf rather than off `unlockQuests` directly, because after the shelf recut most
+-- gear has no rung at all -- it is found in the rift and carries a `dropTier` instead. Read bare, every
+-- weapon, utility and piece of armor in the game would answer 0 and the first round of a draft would
+-- deal from the whole catalogue.
 local function unlockOf(id)
-    return Item.defs[id].unlockQuests or 0
+    return require("models.balance").slotOf(Item.defs[id])
 end
 
 -- ---------------------------------------------------------------------------

@@ -20,8 +20,8 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "poacher",
-    price = 495,
     unlockQuests = 5,
+    dropTier = 4,
     traits = { "trait_quarrys_due" },
     -- a trap that also paints what it caught
     bonus = { skill = 2 },

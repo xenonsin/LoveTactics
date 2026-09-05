@@ -15,8 +15,8 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "thief", -- deeper cut of the shelf: buyable only once the thief gate is cleared
-    price = 495,
     unlockQuests = 5,
+    dropTier = 4,
     traits = { "trait_cutpurse_tally" },
     -- it banks Power per debuff; a cutpurse's floor is getting away with it
     bonus = { luck = 2 },

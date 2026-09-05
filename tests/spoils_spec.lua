@@ -130,11 +130,10 @@ return {
             local s = Spoils.roll({ enemyUnits = roster(4), day = 4, kind = "elite",
                 rewardGold = 77, loot = {} })
             assert(s.gold == 77, "an explicit rewardGold should be used verbatim")
-            assert((s.scrip or 0) == 0, "an authored payout also rolled scrip -- it pays one purse")
             -- ...including underground, where a rolled fight would have paid scrip.
             local deep = Spoils.roll({ enemyUnits = roster(4), day = 4, kind = "elite",
                 floorLevel = 7, rewardGold = 77, loot = {} })
-            assert(deep.gold == 77 and (deep.scrip or 0) == 0,
+            assert(deep.gold == 77,
                 "an authored purse on a descent floor must still pay gold -- it is an end, not a body")
         end,
     },

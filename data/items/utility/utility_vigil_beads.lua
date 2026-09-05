@@ -22,8 +22,8 @@ return {
     type = "utility",
     tags = { "charm", "holy" },
     class = "theurge",
-    price = 330,
     unlockQuests = 3,
+    dropTier = 2,
     traits = { "trait_vigil_beads" },
     -- a channel nothing can break into
     bonus = { magicDefense = 2 },

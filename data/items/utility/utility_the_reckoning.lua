@@ -25,6 +25,7 @@ return {
     sprite = "assets/items/the_reckoning.png",
     type = "utility",
     class = "creature",
+    dropTier = 3,
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_assayed", "trait_boss_phases" },

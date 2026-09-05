@@ -34,8 +34,8 @@ return {
     tags = { "sword", "slash", "physical", "melee" },
     hands = 1,
     class = "knight",
-    price = 245,
     unlockQuests = 2,
+    dropTier = 4,
     traits = { "trait_riposte" },
     activeAbility = {
         target = "enemy",

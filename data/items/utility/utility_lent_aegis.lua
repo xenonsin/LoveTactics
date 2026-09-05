@@ -25,8 +25,8 @@ return {
     type = "utility",
     tags = { "structure" },
     class = "sentinel", -- deeper cut of the shelf: buyable only once the sentinel gate is cleared
-    price = 165,
     unlockQuests = 1,
+    dropTier = 1,
     activeAbility = {
         target = "ally",
         range = 4,

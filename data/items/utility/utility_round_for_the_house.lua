@@ -23,8 +23,8 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "warbrewer",
-    price = 330,
     unlockQuests = 3,
+    dropTier = 3,
     traits = { "trait_round_for_the_house" },
     -- what you drink, the line beside you drinks
     bonus = { magicDefense = 1 },

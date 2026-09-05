@@ -12,6 +12,7 @@ return {
     sprite = "assets/items/ability_omnislash.png",
     type = "ability",
     class = "creature",
+    dropTier = 1,
     tags = { "slash", "physical" },
     activeAbility = {
         target = "enemy",

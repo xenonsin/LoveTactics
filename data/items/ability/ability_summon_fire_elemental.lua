@@ -16,6 +16,7 @@ return {
     sprite = "assets/items/ability_summon_fire_elemental.png",
     type = "ability",
     class = "creature",
+    dropTier = 8,
     tags = { "summon", "fire" },
     activeAbility = {
         target = "tile",

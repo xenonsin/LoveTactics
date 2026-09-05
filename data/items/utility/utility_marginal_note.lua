@@ -23,6 +23,7 @@ return {
     sprite = "assets/items/marginal_note.png",
     type = "utility",
     class = "creature",
+    dropTier = 3,
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_answered_once", "trait_close_ranks", "trait_boss_phases" },

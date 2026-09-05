@@ -9,8 +9,8 @@ return {
     type = "utility",
     tags = { "arcane" },
     class = "summoner", -- deeper cut of the shelf: buyable only once the summoner gate is cleared
-    price = 245,
     unlockQuests = 2,
+    dropTier = 2,
     traits = { "trait_arcane_reservoir" },
     -- the only pool that refills itself
     bonus = { magicDamage = 1 },

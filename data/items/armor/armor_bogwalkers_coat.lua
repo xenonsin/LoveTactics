@@ -24,7 +24,7 @@ return {
     type = "armor",
     tags = { "hide", "earth" },
     class = "hunter",
-    dropTier = 3,
+    dropTier = 5,
     incense = { hazard = "hazard_quicksand", radius = 1 },
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },
 }

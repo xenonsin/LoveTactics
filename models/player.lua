@@ -434,11 +434,6 @@ function Player.new()
         -- every time anybody walks out -- while the state of the rift does not. A tally that reset with
         -- the expedition would be a number the city could never finish reading.
         count = 0,
-        -- HOW MUCH THE PACK MULE HOLDS (models/mule.lua). Permanent and bought up at the Gate, so it
-        -- lives here rather than on the run: the mule is a thing the company owns, and the widening a
-        -- good expedition paid for is most of what that expedition was FOR. The trip it is away on is
-        -- the run's (`run.muleAway`), because an absence belongs to the descent it happened in.
-        muleCapacity = nil, -- nil reads as Mule.CAPACITY; written only once somebody has upgraded
         -- WHAT THIS COMPANY LEFT ON A FLOOR IT CANNOT WALK BACK TO. A rift closes when the company
         -- leaves it -- by the stair or by dying -- so a pile dropped on floor nine has no floor nine to
         -- wait on; it waits HERE instead, tagged with the depth, and is re-seated on the next run that
@@ -906,19 +901,19 @@ end
 -- What a lost fight costs
 -- ---------------------------------------------------------------------------
 
--- The share of a run's gold and forging stock that does NOT come home from a wipe.
+-- NOTHING. That is the whole of it, and it is worth a heading of its own because a share used to live
+-- here: Player.WIPE_LOSS, three quarters of a run's forging stock, plus a dropped pack and a wound on
+-- every head. All three are deleted.
 --
--- Not all of it, and the change from "all" is the whole of the current risk model. The old rule voided
--- the run outright -- a wipe restored the company from its entry snapshot, so a lost expedition was
--- worth exactly nothing -- and that was correct while the objective was the only exit. It stopped being
--- correct when walking out became free: with a voluntary exit keeping everything, a total wipe penalty
--- turns the last fight before you turn back into an all-or-nothing coin flip, and the sensible play is
--- to leave after the first cache and never risk a second.
+-- WHY. docs/the-count.md prices a NEED at nothing and a DECISION at a mark, and then charged the
+-- FAILURE more than anything else in the game -- the bill always landing on the company that had just
+-- lost. The page had already caught itself once on exactly this (the Inn's mending toll). A lost
+-- expedition now costs marks on the count and nothing else (models/descent.lua's COUNT_WIPE), which is
+-- a clock rather than a confiscation.
 --
--- A majority loss keeps the bet live in both directions. One more spur risks most of what you are
--- carrying rather than all of it, so a bad roll is a bad day rather than a wasted one -- and the
--- quarter that survives is what stops a wipe deep in a good run feeling like the game took the run back.
-Player.WIPE_LOSS = 0.75
+-- WHAT STILL READS THE ENTRY SNAPSHOT is Player.atRisk below, and it is NOT a leftover of this. The
+-- stair toll spends it (states/game.lua's game:payToll): a gate that asks for a share of the HAUL has
+-- to know which of the things a company is holding the run actually found, and that is the same diff.
 
 -- WHAT THIS EXPEDITION HAS FOUND, as a map from the LIVE item instance to how many of it are at stake.
 -- `before` is the entry snapshot -- the company exactly as it walked in.
@@ -1081,52 +1076,50 @@ function Player.takeAtRisk(player, before)
     return out
 end
 
--- Take a wipe's cut. `before` is the entry snapshot -- the company as it walked in -- and everything
--- the run gained on top of it is what is at risk.
---
--- MEASURED AGAINST THE SNAPSHOT rather than tracked as a running tally, so no grant seam on the way in
--- had to learn a new rule: whatever is held now, minus whatever was held then, is what this run found.
---
--- THREE THINGS IT DELIBERATELY DOES NOT TOUCH:
---   items    A sword out of a chest is a thing a body is carrying, and the bodies came home. Ore is
---            what gets dropped in a rout. (It is also what keeps a wipe from undoing the one reward a
---            player can see and name.)
---   wounds   The whole point of an injury is that it outlives the run that caused it.
---   what was brought   Only GAINS are at risk. A company that spent more on the road than it found
---            walks home with its purse untouched rather than being billed the difference.
---
--- GOLD USED TO BE THE FIRST THING IT TOOK, and the line is gone rather than moved. The economy split
--- (models/scrip.lua): a run's coin is scrip, which evaporates at every exit including this one
--- (Scrip.clear), and the campaign's coin is no longer a number a run can gain -- it arrives as
--- VALUABLES, objects in the pack (models/valuable.lua). So the wipe's cut on the campaign's income is
--- already levied, by the mechanism that was always the right one to levy it: the pack hits the floor
--- where the company fell (Descent.dropPack) and lies there until somebody walks back down for it.
---
--- Which is strictly better than the percentage was, and it is worth saying which way. A haircut is
--- unrecoverable by construction -- there is nowhere for the taken quarter to BE. A pile is a place. The
--- sting is the same size and the player can answer it, and answering it is another descent.
---
--- Keeping both would have billed one loss twice, which is the failure this note exists to stop somebody
--- re-introducing when they notice that a wipe no longer costs coin. It costs the coin's whole source.
---
--- Returns what was actually taken, as { gold = n, materials = { id = n } }. `gold` is retained in the
--- shape, always zero, because two callers and a spec read the field and a table that changes shape on a
--- resume is worse than a field that honestly reports nothing.
-function Player.loseHaul(player, before, share)
-    share = share or Player.WIPE_LOSS
-    local taken = { gold = 0, materials = {} }
-    if not (player and before) then return taken end
+-- ---------------------------------------------------------------------------
+-- The discovery ledger: what this company has seen come out of the rift
+-- ---------------------------------------------------------------------------
 
-    player.materials = player.materials or {}
-    for id, count in pairs(player.materials) do
-        local gained = math.max(0, (count or 0) - ((before.materials or {})[id] or 0))
-        local lost = math.floor(gained * share)
-        if lost > 0 then
-            player.materials[id] = math.max(0, count - lost)
-            taken.materials[id] = lost
+-- WHAT IT IS FOR. Above the opener rung a house sells nothing (tools/drop_tier.lua's recut): weapons,
+-- utilities and armor are found in the rift or not at all. This is the mark that says a thing HAS been
+-- found -- and a marked item is what a shelf will deal a second copy of (models/vendor.lua). So the
+-- first of anything is earned and every one after it is bought, which is the whole of the change.
+--
+-- ONE FLAT SET, `{ [itemId] = true }`, never a count and never a level. What is being remembered is
+-- "this exists and I have held one", which is a fact about the CAMPAIGN and not about the stack in the
+-- stash right now -- selling the last one does not un-discover it, and a +3 sword is the same discovery
+-- as a +0 one because it is the same line on the same shelf.
+--
+-- STAMPED WHEN AN EXPEDITION ENDS, from both exits. The stair banks and a wipe now also comes home
+-- with everything (docs/the-count.md), so both surface, and both discover. Not stamped at pickup: the
+-- sentence the design is built on is that carrying a thing OUT is what opens its line, and while there
+-- is no route that loses a haul today, a stamp at the surface stays correct if one ever returns.
+function Player.recordFound(player)
+    if not player then return 0 end
+    player.found = player.found or {}
+    local added = 0
+    local function mark(item)
+        if item and item.id and not player.found[item.id] then
+            player.found[item.id] = true
+            added = added + 1
+            -- ...AND THE HOUSE IT BELONGS TO WEARS A DOT. A discovery is new stock in the exact sense
+            -- the mark was built for -- a line that was not for sale before and is now -- so it uses
+            -- the same channel a quest-opened shelf does (Vendor.hasMarkedStock, states/hub.lua)
+            -- rather than a second notification the city would have to learn.
+            Player.markNew(player, Player.NEW_STOCK, item.id)
         end
     end
-    return taken
+    for _, char in ipairs(player.roster or {}) do
+        for cell = 1, Character.MAX_INVENTORY do mark((char.inventory or {})[cell]) end
+    end
+    for _, it in ipairs(player.stash or {}) do mark(it) end
+    return added
+end
+
+-- Has this company ever carried one of these out? Tolerant of a player with no ledger at all, which is
+-- every save written before this existed.
+function Player.hasFound(player, itemId)
+    return (player and player.found and player.found[itemId]) == true
 end
 
 -- ---------------------------------------------------------------------------

@@ -24,6 +24,7 @@ return {
     sprite = "assets/items/unkept_watch.png",
     type = "utility",
     class = "creature",
+    dropTier = 3,
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_torpor", "trait_boss_phases" },

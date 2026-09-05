@@ -24,7 +24,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "knight",
-    dropTier = 2,
+    dropTier = 3,
     --                       level:  0  1  2  3  4  5  6  7  8  9  10
     bonus = { defense = Curve.ramp(2, 12),
               magicDefense = Curve.ramp(2, 12) },

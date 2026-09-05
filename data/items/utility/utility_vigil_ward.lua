@@ -15,6 +15,7 @@ return {
     sprite = "assets/items/utility_vigil_ward.png",
     type = "utility",
     class = "creature",
+    dropTier = 3,
     tags = { "dark" },
     noSteal = true, -- it is part of the vigil, not equipment
     traits = { "trait_gaunt_vigil" },

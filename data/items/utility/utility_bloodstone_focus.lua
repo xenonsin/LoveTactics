@@ -9,8 +9,8 @@ return {
     type = "utility",
     tags = { "arcane" },
     class = "mage",
-    price = 495,
     unlockQuests = 5,
+    dropTier = 6,
     traits = { "trait_overchannel" },
     -- spells paid for in life: the focus is the bargain
     bonus = { magicDamage = 3, defense = -1 },

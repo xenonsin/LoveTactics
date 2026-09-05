@@ -15,6 +15,7 @@ return {
     sprite = "assets/items/great_claws.png",
     type = "weapon",
     class = "creature",
+    dropTier = 5,
     tags = { "natural", "slash", "physical", "melee" },
     noSteal = true, -- a pickpocket cannot lift the claws off a bear's hands
     activeAbility = {

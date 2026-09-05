@@ -17,6 +17,7 @@ return {
     sprite = "assets/items/gilded_standard.png",
     type = "utility",
     class = "creature",
+    dropTier = 5,
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_formation_fighter", "trait_close_ranks" },

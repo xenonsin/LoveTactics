@@ -27,7 +27,7 @@ return {
     type = "armor",
     tags = { "cloth", "arcane" },
     class = "mage",
-    dropTier = 4,
+    dropTier = 5,
     incense = { hazard = "hazard_unravelling", radius = 1 },
     bonus = { magicDefense = Curve.ramp(4, 14), movement = -1 },
 }

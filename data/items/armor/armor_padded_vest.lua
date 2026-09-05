@@ -10,6 +10,7 @@ return {
     sprite = "assets/items/padded_vest.png",
     type = "armor",
     class = "creature",
+    dropTier = 2,
     tags = { "cloth" },
     -- Light tier: minimal protection, and a single square of pace.
     --

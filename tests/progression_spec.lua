@@ -225,9 +225,13 @@ return {
 
             -- A discipline item carries a SECOND lock (its discipline must be unlocked) that quests never
             -- lift, so it is not part of this quest-only measure -- count only quest-gated wares.
+            -- ...AND A THIRD LOCK JOINED IT. Above the opener rung a house sells nothing the company
+            -- has not carried out of the rift (models/vendor.lua's lockReason), and no amount of
+            -- standing lifts that -- it is answered by going down. So the measure is the RUNG lock
+            -- alone, which is the only one this case was ever about.
             local lockedAtLow, lockedAtHigh = 0, 0
-            for _, e in ipairs(low) do if e.locked and not e.discipline then lockedAtLow = lockedAtLow + 1 end end
-            for _, e in ipairs(high) do if e.locked and not e.discipline then lockedAtHigh = lockedAtHigh + 1 end end
+            for _, e in ipairs(low) do if e.lockReason == "rung" then lockedAtLow = lockedAtLow + 1 end end
+            for _, e in ipairs(high) do if e.lockReason == "rung" then lockedAtHigh = lockedAtHigh + 1 end end
 
             assert(lockedAtLow > 0, "a player with no quests done should see items they cannot buy yet")
             assert(lockedAtHigh == 0, "a player past every gate should have everything quest-unlocked")
@@ -276,9 +280,15 @@ return {
                 end
                 assert(vendorId, "class '" .. class .. "' has no vendor")
 
-                local entry = Vendor.stock(vendorId, 0)[1]
-                assert(entry and not entry.locked,
-                    vendorId .. " has nothing a new player can buy")
+                -- SOMETHING on the opening shelf, not the FIRST thing on it. The shelf now sorts by
+                -- rank across both axes, and a house's shallowest FIND (rank 0, cheap) can sort ahead
+                -- of its opener weapon while being unbuyable until one has been carried out. What the
+                -- house owes a new company is a floor to arm itself from, not a particular first row.
+                local buyable = 0
+                for _, e in ipairs(Vendor.stock(vendorId, 0)) do
+                    if not e.locked then buyable = buyable + 1 end
+                end
+                assert(buyable > 0, vendorId .. " has nothing a new player can buy")
             end
         end,
     },
@@ -331,8 +341,28 @@ return {
                 local def = Item.defs[id]
                 assert(def, id .. " has gone missing")
                 assert(def.class == class, id .. " should be sold by " .. class)
-                assert((def.unlockQuests or 0) == 0,
-                    id .. " was available from the first visit at the Cafe and must stay so")
+                -- THE GATE MOVED FROM A RUNG TO A DEPTH for the four utilities here. The shelf recut
+                -- took price off everything above a house's opener weapon (tools/drop_tier.lua), and
+                -- these went with it: they are found in the rift now, and the house stocks them once
+                -- one has been carried out. So the promise this case keeps is no longer "buyable on the
+                -- first visit" -- it is that the goods still have a HOME, on the class shelf they were
+                -- redistributed to, at the shallowest depth the rift deals anything.
+                --
+                -- The consumable is the exception and still opens un-gated: a consumable keeps its
+                -- price, because the stock decision made before a descent has to be makeable.
+                if def.price then
+                    assert((def.unlockQuests or 0) == 0,
+                        id .. " was available from the first visit at the Cafe and must stay so")
+                else
+                    -- A DEPTH, AND DELIBERATELY NOT A SHALLOW ONE. These sat at rung 0 because the
+                    -- general store handed them over on the first visit -- a hand-carve, not a grade.
+                    -- The recut ranks by GRADE, and grade does not agree: the torch and the boots land
+                    -- at depth 1, the sandals at 3, the stormglass rod at 5. That drift is real and is
+                    -- the decision working rather than a bug -- what a thing is worth now decides where
+                    -- it is, on this axis as on the other. Pinned as "it has a home" rather than at a
+                    -- number, so a re-grade moves it without reddening this.
+                    assert(def.dropTier, id .. " is found now and must have a depth to be found at")
+                end
 
                 local vendorId
                 for vid, vdef in pairs(Vendor.defs) do
@@ -342,8 +372,13 @@ return {
                 for _, entry in ipairs(Vendor.stock(vendorId, 0)) do
                     if entry.id == id then found = entry end
                 end
-                assert(found and not found.locked,
-                    id .. " is not buyable at " .. tostring(vendorId) .. " on the opening shelf")
+                -- On the shelf either way. A priced one is buyable outright; a found one stands there
+                -- named and unbuyable until it has been carried out, which is the whole point of
+                -- showing it (models/vendor.lua's lockReason).
+                assert(found, id .. " is not on " .. tostring(vendorId) .. "'s shelf at all")
+                assert(def.price and not found.locked or found.lockReason == "undiscovered",
+                    id .. " is shut at " .. tostring(vendorId) .. " for the wrong reason: " ..
+                    tostring(found.lockReason))
             end
         end,
     },

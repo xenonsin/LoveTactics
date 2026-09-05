@@ -155,7 +155,31 @@ end
 -- reached. One shelf per house could take a single number because a house sold one class; the market
 -- sells all seven (models/market.lua), and there each ware is gated on the level of ITS OWN class. A
 -- bare number still works and means what it always meant, so every existing caller is untouched.
-function Vendor.stock(vendorId, questsDone, recipes, unlocked, levels)
+-- WHAT A FOUND WARE COSTS. Above the opener rung nothing is authored with a price any more
+-- (tools/drop_tier.lua's recut): a weapon, a utility or a piece of armor carries a `dropTier` instead,
+-- and a shelf only deals it once the company has carried one out. So the price has to be DERIVED, and
+-- the material is already there -- a dropTier is the item's grade rank, the same rank a slot is, spread
+-- along depth rather than along a shelf (docs/shelf.md). Read it as the slot it would have had.
+--
+-- OFF BY ONE ON PURPOSE: tiers run 1..cap and slots run 0..cap-1, so tier 1 prices at Grade.PRICE_BASE,
+-- level with a house's opener. A found thing from the top of the rift and a bought thing from the
+-- bottom of a ladder are worth the same, which is the one place these two axes have to agree.
+-- Required INSIDE rather than at the top of the file, the same way sellValue reaches models.valuable.
+-- Two reasons and both matter: Grade pulls Combat in behind it, which is the heaviest module in the
+-- game to hang off a table every quest and shop already loads -- and a new top-level require reorders
+-- `pairs` over the registry, which is enough on its own to redden a spec that has nothing to do with
+-- this change.
+function Vendor.foundPrice(item)
+    if not (item and item.dropTier) then return nil end
+    return require("models.grade").priceFor(math.max(0, item.dropTier - 1), item.type)
+end
+
+-- `found` is an optional bare set { itemId = true } of what this company has carried out of the rift
+-- (models/player.lua's Player.recordFound). An unpriced, dropTier-carrying ware is listed EITHER WAY --
+-- seeing what the rift holds is the whole point of the shelf now -- but stays `locked` until it is in
+-- that set. Bare set rather than a player, for the reason every other gate here takes one: this module
+-- does not know what a player is.
+function Vendor.stock(vendorId, questsDone, recipes, unlocked, levels, found)
     local def = Vendor.defs[vendorId]
     if not def then return {} end
     local rungOf = questsDone
@@ -166,8 +190,22 @@ function Vendor.stock(vendorId, questsDone, recipes, unlocked, levels)
 
     local stock = {}
     for id, item in pairs(Item.defs) do
-        if item.price and Vendor.sells(def, item) then
+        local foundPrice = not item.price and Vendor.foundPrice(item) or nil
+        if (item.price or foundPrice) and Vendor.sells(def, item) then
+            -- TWO NUMBERS THAT USED TO BE ONE, and they have to part now that half the catalogue has no
+            -- rung at all.
+            --
+            --   unlockQuests  THE RANK, and every blueprint still carries it -- it is the item's grade
+            --                 position and models/balance.lua reads it as the power level. Reported to
+            --                 everyone downstream: which band a row files under, how the shelf sorts,
+            --                 whether the Market counts it a staple (models/market.lua).
+            --   authoredRung  THE GATE, which is the rank ONLY on a ware that is for sale. A found one
+            --                 asks nothing of your standing -- carrying one out is its whole gate -- so
+            --                 it reads 0 and can never be rung-locked on top of being undiscovered.
+            --                 Two gates on one tile would mean finding a thing and still being refused
+            --                 it, for a rung it never sat on.
             local unlockQuests = item.unlockQuests or 0
+            local authoredRung = item.price and unlockQuests or 0
             local level = (recipes and recipes[id]) or 0
             -- AN EARNED CLASS'S STOCK is locked until that class is unlocked, on top of any quest gate
             -- -- and, if it names an unlockLevel, until the class has grown that far.
@@ -184,6 +222,22 @@ function Vendor.stock(vendorId, questsDone, recipes, unlocked, levels)
             if unlockLevel and ((levels and levels[class] or 0) < unlockLevel) then
                 classLocked = true
             end
+            -- A FOUND WARE IS SHUT UNTIL IT HAS BEEN CARRIED OUT, on top of every other gate. Listed
+            -- regardless: a shelf that hid what it could not yet deal would be a record of what you
+            -- have, and the reason this shelf exists is to be a record of what there IS.
+            local undiscovered = foundPrice ~= nil and not (found and found[id])
+
+            -- WHY THE LOCK NEEDS A REASON AND NOT JUST A FLAG. There are three ways a tile can be shut
+            -- now -- the house's rung, the discipline, and never having found one -- and a rack that
+            -- greys all three identically tells the player "no" three times without ever saying which
+            -- of three completely different things to go and do about it. Decided here, once, for the
+            -- same reason `discipline` is: the readers all want the same answer and none of them
+            -- should be re-deriving it.
+            local lockReason = nil
+            if undiscovered then lockReason = "undiscovered"
+            elseif classLocked then lockReason = "class"
+            elseif rungOf(item) < authoredRung then lockReason = "rung" end
+
             stock[#stock + 1] = {
                 id = id,
                 name = item.name,
@@ -191,7 +245,10 @@ function Vendor.stock(vendorId, questsDone, recipes, unlocked, levels)
                 flavor = item.flavor,
                 type = item.type,
                 level = level,
-                price = Vendor.priceFor(item.price, level),
+                price = Vendor.priceFor(item.price or foundPrice, level),
+                -- Where the rift gives it up, on a shelf that cannot sell it yet: the one thing a
+                -- player can act on when the answer is "you have not found one".
+                dropTier = item.dropTier,
                 unlockQuests = unlockQuests,
                 class = class,
                 -- The row's own name for "this is a deeper cut, not the open rack": the class when it
@@ -200,7 +257,8 @@ function Vendor.stock(vendorId, questsDone, recipes, unlocked, levels)
                 -- only -- so the check is made once, here, rather than at each reader.
                 discipline = earned and class or nil,
                 unlockLevel = unlockLevel,
-                locked = (rungOf(item) < unlockQuests) or classLocked,
+                locked = lockReason ~= nil,
+                lockReason = lockReason,
             }
         end
     end
@@ -225,7 +283,11 @@ function Vendor.hasMarkedStock(vendorId, marked)
     if not (def and marked) then return false end
     for id in pairs(marked) do
         local item = Item.defs[id]
-        if item and item.price and Vendor.sells(def, item) then return true end
+        -- `price or dropTier`, because a shelf's stock now arrives two ways. Reading `price` alone
+        -- would have left the city silent about the one thing the company just went down and got: a
+        -- discovery opens a line permanently, and the walk back from the Rift should point at the door
+        -- it opened rather than ask the player to re-read seven shelves.
+        if item and (item.price or item.dropTier) and Vendor.sells(def, item) then return true end
     end
     return false
 end
@@ -300,7 +362,12 @@ end
 -- `price` was never for sale and so can't be sold (returns 0) -- the Party screen refuses those
 -- rather than giving them away for nothing. One place so the panel and its test agree on the rate.
 function Vendor.sellValue(item)
-    if not (item and item.price) then return 0 end
+    -- A FOUND WARE SELLS TOO, at the price its dropTier implies (Vendor.foundPrice). Reading `price`
+    -- alone here would have made every weapon, utility and piece of armor above the opener rung worth
+    -- nothing at a counter the moment the recut took their prices off -- a company that hauled out a
+    -- duplicate would be carrying a thing it could neither use twice nor sell.
+    local base = item and (item.price or Vendor.foundPrice(item))
+    if not base then return 0 end
     if Item.isBound(item) then return 0 end -- a bound relic is never for sale, whatever price it carries
     -- A VALUABLE PAYS ITS FULL PRICE, and the exception is not generosity -- the two numbers mean
     -- different things. Gear's `price` is what a shop CHARGES, so half of it back is the shop's margin
@@ -310,7 +377,7 @@ function Vendor.sellValue(item)
     if require("models.valuable").is(item) then
         return require("models.valuable").value(item)
     end
-    return math.floor(Vendor.priceFor(item.price, item.level or 0) * 0.5)
+    return math.floor(Vendor.priceFor(base, item.level or 0) * 0.5)
 end
 
 return Vendor

@@ -25,6 +25,7 @@ return {
     sprite = "assets/items/maw_of_the_unfed.png",
     type = "utility",
     class = "creature",
+    dropTier = 3,
     tags = { "relic" },
     noSteal = true, -- nothing takes this off you; you took it off her
     traits = { "trait_ravenous" },

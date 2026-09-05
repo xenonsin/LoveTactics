@@ -19,6 +19,7 @@ return {
     sprite = "assets/items/beggars_bowl.png",
     type = "utility",
     class = "creature",
+    dropTier = 5,
     tags = { "relic" },
     noSteal = true,
     traits = { "trait_beggars_due" },

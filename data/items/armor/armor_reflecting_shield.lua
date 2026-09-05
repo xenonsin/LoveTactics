@@ -26,7 +26,7 @@ return {
     type = "armor",
     tags = { "shield" },
     class = "knight",
-    dropTier = 5,
+    dropTier = 6,
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     resist = { physical = 1 },
     waitBehavior = {

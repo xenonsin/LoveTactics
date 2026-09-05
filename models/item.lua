@@ -826,13 +826,17 @@ function Item.instantiate(id, quantity, level)
         discipline = def.discipline,           -- shop taxonomy: the locked discipline this item belongs to (docs/classes.md)
         price = def.price,                     -- vendor gold cost; nil means it is never sold
         -- LOOT WITH NO USE BUT TO BE SOLD (models/valuable.lua). Both fields have to ride the instance
-        -- rather than be looked up off the blueprint, because the two things that read them are handed
-        -- live items and nothing else: the mule weighs what is in the stash (Mule.load), and the counter
-        -- prices what is on it (Vendor.sellValue). `price` above is its WORTH here, not a shelf cost --
-        -- nobody stocks one (Vendor.sells refuses them).
+        -- rather than be looked up off the blueprint, because the thing that reads them is handed live
+        -- items and nothing else: the counter prices what is on it (Vendor.sellValue). `price` above is
+        -- its WORTH here, not a shelf cost -- nobody stocks one (Vendor.sells refuses them).
         valuable = def.valuable,
-        bulk = def.bulk,                       -- how many mule slots it takes on the way out (default 1)
-        unlockQuests = def.unlockQuests,       -- how many of the vendor's quests must be done before it is on sale (default 0)
+        bulk = def.bulk,                       -- how many slots it takes on the way out (default 1)
+        -- THE DEPTH IT IS FOUND AT, and it rides the instance for exactly the reason the two above do.
+        -- Most of the catalogue carries no `price` since the shelf recut (docs/shelf.md), so a counter
+        -- handed a live sword works out what it is worth from this (Vendor.foundPrice) -- and a counter
+        -- that could not see it paid nothing for every weapon, utility and piece of armor in the game.
+        dropTier = def.dropTier,
+        unlockQuests = def.unlockQuests,       -- its grade rank; also the shelf gate, on anything priced
         level = math.max(0, level or 0),       -- upgrade level; 0 = a base, un-forged item
     }
 

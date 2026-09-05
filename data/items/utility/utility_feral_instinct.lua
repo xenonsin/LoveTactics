@@ -13,6 +13,7 @@ return {
     sprite = "assets/items/feral_instinct.png",
     type = "utility",
     class = "creature",
+    dropTier = 3,
     tags = { "beast" },
     noSteal = true, -- an innate instinct, not a trinket: a pickpocket cannot lift it (like a beast's Fangs)
     traits = { "trait_melee_counter" },

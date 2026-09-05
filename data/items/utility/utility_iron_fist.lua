@@ -12,8 +12,8 @@ return {
     type = "utility",
     tags = { "fist" },
     class = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
-    price = 330,
     unlockQuests = 3,
+    dropTier = 2,
     unarmedBonus = { damage = Curve.ramp(4, 14) },
     -- a gauntlet guards the hand; the Power is unarmedBonus's, not a weapon's
     bonus = { defense = 1 },

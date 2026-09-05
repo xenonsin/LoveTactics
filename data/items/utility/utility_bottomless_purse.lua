@@ -26,6 +26,7 @@ return {
     sprite = "assets/items/bottomless_purse.png",
     type = "utility",
     class = "creature",
+    dropTier = 1,
     tags = { "relic" },
     noSteal = true, -- you took it off her; nothing takes it back
     bonus = { defense = Curve.ramp(2, 12) },

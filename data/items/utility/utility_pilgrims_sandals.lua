@@ -32,8 +32,8 @@ return {
     type = "utility",
     tags = { "boots", "holy" },
     class = "theurge", -- mage x priest; a divine hazard laid by walking rather than by casting
-    price = 410,
     unlockQuests = 4,
+    dropTier = 3,
     -- Far shorter-lived than a priest's cast Sanctuary (15): a footprint is a moment of hallowed
     -- ground, not a consecration, and the wearer paints one on EVERY tile it crosses. But ~2 turns
     -- rather than 2 ticks -- a print that faded inside half a turn was gone before anyone could stand

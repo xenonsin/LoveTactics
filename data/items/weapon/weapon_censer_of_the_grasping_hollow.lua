@@ -26,7 +26,7 @@ return {
     type = "weapon",
     tags = { "censer", "impact", "physical", "earth", "melee" },
     class = "priest",
-    dropTier = 2,
+    dropTier = 4,
     incense = {
         hazard = "hazard_grasping_hollow",
         radius = 1,

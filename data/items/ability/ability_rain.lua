@@ -10,6 +10,7 @@ return {
     sprite = "assets/items/ability_rain.png",
     type = "ability",
     class = "creature",
+    dropTier = 1,
     tags = { "water", "magical" },
     activeAbility = {
         target = "tile",

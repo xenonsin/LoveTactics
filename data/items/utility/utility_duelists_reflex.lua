@@ -12,8 +12,8 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "fighter",
-    price = 80,
     unlockQuests = 0,
+    dropTier = 5,
     traits = { "trait_dodge" },
     -- a deflection is guard, arriving late
     bonus = { defense = 2 },

@@ -325,7 +325,8 @@ function InventoryGrid:draw()
         end
     end
 
-    -- AT-RISK cells: what this expedition found, and would leave on the floor if the company went down.
+    -- FIND cells: what this expedition picked up rather than marched in with -- which is the set the
+    -- stair's toll may take a share of, and the set it may never reach past (states/game.lua).
     -- BOTTOM-LEFT, which is the one corner of a cell that is still free -- the lock and the stack count
     -- hold the top-left and the default-action star the top-right -- and just above the name band so it
     -- never sits on a word. The stash wears the same mark in the same corner (ui/pool_grid.lua): an item

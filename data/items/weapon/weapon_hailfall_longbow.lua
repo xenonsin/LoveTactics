@@ -31,8 +31,8 @@ return {
     tags = { "longbow", "pierce", "physical", "ranged" },
     hands = 2, -- every bow is two-handed (docs/weapons.md)
     class = "hunter",
-    price = 740,
     unlockQuests = 8,
+    dropTier = 8,
     activeAbility = {
         target = "tile",       -- ground, not a body: the volley falls on a place
         allowOccupied = true,  -- and that place may well have somebody standing in it

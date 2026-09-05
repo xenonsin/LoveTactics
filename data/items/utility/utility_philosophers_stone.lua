@@ -17,8 +17,8 @@ return {
     type = "utility",
     tags = { "arcane", "illusion" },
     class = "alchemist",
-    price = 740,
     unlockQuests = 8,
+    dropTier = 8,
     noCopy = true,
     activeAbility = {
         target = "enemy",

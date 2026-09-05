@@ -15,8 +15,8 @@ return {
     type = "utility",
     tags = { "arcane" },
     class = "spellbreaker", -- knight x mage; Counterspell -- the aimed spell is unravelled outright
-    price = 495,
     unlockQuests = 5,
+    dropTier = 5,
     traits = { "trait_counter_magic" },
     -- unravelling a spell aimed at you
     bonus = { magicDefense = 2 },

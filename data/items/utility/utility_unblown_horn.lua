@@ -24,6 +24,7 @@ return {
     sprite = "assets/items/unblown_horn.png",
     type = "utility",
     class = "creature",
+    dropTier = 5,
     tags = { "relic" },
     noSteal = true,
     traits = { "trait_kept_watch" },

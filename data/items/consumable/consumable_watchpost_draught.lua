@@ -19,7 +19,7 @@ return {
     type = "consumable",
     tags = { "potion", "restorative" },
     class = "knight",
-    dropTier = 1,
+    dropTier = 2,
     activeAbility = {
         target = "ally", -- includes the user (a unit is its own ally)
         support = true,

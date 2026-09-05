@@ -20,8 +20,8 @@ return {
     tags = { "hammer", "impact", "physical", "melee" },
     hands = 2, -- a two-handed maul, as every hammer is
     class = "fighter",
-    price = 660,
     unlockQuests = 7,
+    dropTier = 7,
     activeAbility = {
         target = "enemy",
         range = 1,

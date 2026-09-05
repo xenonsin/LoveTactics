@@ -25,6 +25,7 @@ return {
     sprite = "assets/items/codex_unanswered.png",
     type = "utility",
     class = "creature",
+    dropTier = 5,
     tags = { "relic" },
     noSteal = true, -- nothing takes this off you; you took it off her
     traits = { "trait_counter_magic" },

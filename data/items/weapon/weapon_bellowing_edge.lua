@@ -20,8 +20,8 @@ return {
     tags = { "greatsword", "slash", "physical", "melee" },
     hands = 2,
     class = "fighter",
-    price = 740,
     unlockQuests = 8,
+    dropTier = 7,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

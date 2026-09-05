@@ -19,6 +19,7 @@ return {
     sprite = "assets/items/wyrmling_breath.png",
     type = "weapon",
     class = "creature",
+    dropTier = 8,
     tags = { "natural", "fire", "magical", "ranged" },
     noSteal = true,
     activeAbility = {

@@ -28,6 +28,7 @@ return {
     sprite = "assets/items/second_wash.png",
     type = "utility",
     class = "creature",
+    dropTier = 2,
     tags = { "natural" },
     noSteal = true,
     -- The reflection IS the phase, so the trait carries its own 50% gate and no boss_phases table is

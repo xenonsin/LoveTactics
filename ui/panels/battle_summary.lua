@@ -169,7 +169,7 @@ function BattleSummary.new(opts)
     -- and scrip is exactly that, a different kind. One goes home and buys forge rungs; the other is
     -- spent before the company reaches the stair or it is burned. Summing them would report a number
     -- the player cannot spend anywhere.
-    self.scrip = math.max(0, spoils.scrip or 0)
+    self.scrip = 0 -- the run purse is deleted (models/spoils.lua); a fight pays gold and only gold
     -- One line under the encounter's name saying what this win was paid FOR, when the payout was not
     -- simply the rate for clearing the board -- "1 of 2 survivors walked out"
     -- (models/encounter_battle.lua's rescue pay). It is the reason the gold below it is the number it

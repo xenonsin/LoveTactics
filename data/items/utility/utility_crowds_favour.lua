@@ -25,8 +25,8 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "champion",
-    price = 330,
     unlockQuests = 3,
+    dropTier = 2,
     traits = { "trait_still_standing" },
     charge = { key = "defiance", from = { "hitTaken", "allyStruck" }, max = 8 },
     -- it banks guard from the crowd already, so this is the other school

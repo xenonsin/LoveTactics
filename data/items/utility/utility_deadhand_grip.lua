@@ -27,8 +27,8 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "rogue",
-    price = 330,
     unlockQuests = 3,
+    dropTier = 3,
     statusImmunity = { "status_disarmed" },
     -- a grip nothing takes the weapon out of
     bonus = { damage = 1, defense = 1 },

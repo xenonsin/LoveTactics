@@ -1,48 +1,84 @@
 # The Count
 
-**The price on coming back up early.** One number on the descent run, `models/descent.lua`, drawn on the
-Rift's own plate in the city. It climbs when the company takes the ascent stair and falls when it goes
-deeper.
+**The price on an expedition that ends with the floor unfinished.** One number on the descent run,
+`models/descent.lua`, drawn on the Rift's own plate in the city. It climbs when the company comes back
+up — by the stair or by dying — and falls when it goes deeper.
 
 ## What it is for
 
-Every other event in the descent's loop was already priced, and priced well:
+Every other event in the descent's loop is priced, and the table is now the whole of it:
 
 | Event | What it is | What it costs |
 |---|---|---|
 | Healing | a need | nothing, and it stays that way |
 | Setting a bone | a need | nothing, and it did not always — see below |
-| A wipe | a failure | the haul as a guarded pack, most of the purse, a wound on every head |
-| **Climbing out** | **a decision** | **nothing at all** |
+| **Climbing out** | **a decision** | **one mark** (`Descent.COUNT_STAIR`) |
+| **A wipe** | **a failure** | **two marks** (`Descent.COUNT_WIPE`), and nothing else at all |
 
-> **The second row used to break the law this page states**, and it took two passes to notice. Mending
-> a wound was 120 gold at a counter; then it was a bed at the Inn, 60 a wound at the door plus a day
-> per wound with the body out of the company. Both are a price on *needing to recover* — and a wipe
-> wounds the whole expedition by construction, so the bill always landed on the company that had just
-> lost. The Inn is deleted, the toll with it. A wound lasts the **expedition** and the surface ends it
-> for free (`models/wound.lua`); underground it is shed only by a decision with an alternative — a Rest
-> spent on Bind instead of on Heal, Sharpen or Study, or a crossroads dilemma that offers it. That
-> leaves the count as the campaign's only cross-run meter, which is the whole of what this page argues
-> it should be.
+> **The third row used to break the law this page states, and so did the fourth.** Mending a wound was
+> 120 gold at a counter; then a bed at the Inn, 60 a wound plus a day with the body out of the company.
+> Both are a price on *needing to recover* — and a wipe wounds the whole expedition by construction, so
+> the bill always landed on the company that had just lost. The Inn is deleted, the toll with it.
+>
+> **A wipe was the same error one row up, and much larger.** It took the haul as a guarded pack, three
+> quarters of the run's forging stock, the whole run purse and a wound on every head — the most
+> expensive line in the game, charged to the failure, in a document whose argument is that failures are
+> not where you put the price. All of it is deleted: `Player.loseHaul`, `Descent.dropPack` and the pile
+> system it fed, and the wound the rout inflicted (which the surface cleared for free a screen later
+> anyway). **Losing takes nothing a company can carry.**
 
-So the optimal play was to walk back to the ascent tile after every fight, go up, take the city's free
-`Player.restore`, and come back down to a floor already cleared and already lit — `Descent.keepFloor`
-keeps the board, so the return trip crossed dead ground. The retreat was meant to be *"priced in the
-distance back to it"* (`states/game.lua`, the ascent branch); after one pass that distance is free.
+## Why a wipe still costs two
 
-**The voluntary climb-out is the only event in the loop that is a decision with an alternative.** That is
-why it is the one being charged, and the constraint that produced it is worth stating, because several
-cheaper designs were built and thrown away against it:
+Because it has to cost *more than the stair*, and the reason is arithmetic rather than justice.
 
-> A cost on recovery is a tax on *needing* to recover, and needing to recover is what being bad at the
-> game looks like.
+Both exits now leave the company holding exactly what it held. But a wipe happens **where the company
+is standing**, and the stair has to be walked back to. Price them the same and dying is strictly the
+cheaper way home — the optimal play becomes *loot until threatened, then throw the fight*. One extra
+mark is the smallest thing that closes that, and it is paid on a clock rather than out of a pack.
 
-Healing, beds and rests all fail that test — the first two are needs and the third is a need with a
-timer. (The Inn was built anyway and then deleted for exactly this reason; see the note above the
-table.) So does a **bounded allowance** (one bed per floor reached, *Darkest Dungeon 2*'s inn), which is
-the same defect wearing a counter: a cap is equal in supply and unequal in impact, and only the
-struggling player ever reaches it. The failure case is exempt here for the same reason — a wipe already
-costs more than a retreat, and charging it twice would make dying the cheaper move.
+It does bend this page's own law, and the bend is worth naming rather than hiding: one mark on a meter
+most companies never approach is a different order of thing from haul + purse + wounds.
+
+## What the rates measure, re-run with wipes in the tally
+
+`COUNT_MAX` is 15. A new floor pays one mark off; a sealed circle pays `COUNT_SEAL` (2). Against the
+stair at 1 and a wipe at 2:
+
+| Play style | Per floor | Where it ends up |
+|---|---|---|
+| Pressing on | −1 | never leaves the lowest band |
+| One withdrawal a floor | 0 | never leaves the lowest band either |
+| Two a floor | 0 over a circle | the seals cancel it exactly |
+| **Losing one floor in three** | **−⅓** | **still falls — a bad run is not a doomed one** |
+| **Losing half its floors** | **0** | **break-even: the ceiling is never reached, but never recedes** |
+| **Losing every floor** | **+1** | **the breach, in fifteen floors** |
+| Shuttling (7 a floor) | +6 | full on floor three |
+
+**The break-even is losing half your floors**, which is the number to watch. Below it the tally falls
+whatever else the company does; above it, it climbs. That is a defensible line — a company losing more
+than half its fights is a failing campaign and the Crown coming up the stair is the right ending for one
+— but it does mean the player most likely to meet the breach is now the one having the worst time.
+Combine it with a withdrawal a floor and a third of floors lost and the tally climbs at ⅔ a floor.
+
+**If that reads badly in play, the dial is `COUNT_MAX`, not `COUNT_WIPE`.** Lowering the wipe to one
+mark re-opens the suicide exit above; raising the ceiling costs nothing but patience.
+
+## The count is now carrying the pacing alone
+
+Worth saying out loud, because it was one of four pressures and is now the only one. A descent used to
+be bounded in three other ways: a carry cap (the mule held 8-20 slots and had to be sent home), a
+dropped pack on a wipe, and a purse that evaporated at every exit. All three are deleted. There is no
+ceiling on a haul, no floor under a loss, and no coin that expires.
+
+That is deliberate -- looting should feel unconstrained, and the mule was a bet-bounder for a bet
+nobody collects on any more. But `models/mule.lua` was written around a sentence worth keeping in
+view:
+
+> nothing capped what could go INTO it, so the honest play was to hoover up every chest on every
+> floor and carry an unbounded sack into the next fight. **A bet with no ceiling is not a bet.**
+
+That play is back by construction. What is left holding the shape of a campaign is this number, so
+the next pass over the descent should treat it as load-bearing rather than incidental.
 
 ## The fiction, which was already written
 
@@ -83,20 +119,21 @@ number rises in — so every way down pays back exactly once (the landing's stai
 way), and **re-entering a floor the company climbed out of pays nothing**, because the number does not
 move. The walk back to where they were is correctly worth zero.
 
-A wipe cannot reach any of this. `Descent.climbOut` has one call site and the loss path is not it.
+A WIPE REACHES IT NOW. `Descent.climbOut` had one call site and the loss path deliberately was not it,
+because a wipe already cost the haul, the purse and a wound on every head. It costs none of those any
+more, so the exemption inverted: the rout charges `Descent.COUNT_WIPE` directly, and the count means an
+expedition that ended with the floor unfinished — one meaning covering both exits, rather than a rule
+with a carve-out for the worse way of doing it.
 
 ### What it produces
 
 A full descent pays back 28 on its own — fourteen floors stepped onto, seven circles sealed.
 
-| Play style | Withdrawals a floor | Where it ends up |
-|---|---|---|
-| Pressing on | 1 | never leaves the lowest band |
-| Cautious | 2 | never leaves the lowest band either — the seals cancel it exactly |
-| Careless | 3 | near the top by the bottom of the rift, in the band where the plaza boards up |
-| Shuttling | 7 | full on floor three |
+The full table, wipes included, is at the top of this page under "What the rates measure". In brief:
+one withdrawal a floor nets zero, two a floor is cancelled by the seals, three fills near the top by
+the bottom of the rift, and seven is full on floor three.
 
-`tests/count_spec.lua` pins both, measured at the worst moment of each floor rather than after the stair
+`tests/count_spec.lua` pins these, measured at the worst moment of each floor rather than after the stair
 has paid it back — a peak read post-descent flatters every play style equally and proves nothing.
 
 **These ratios are provisional and are meant to be measured.** `COUNT_MAX = 15` is derived from a floor's
@@ -215,8 +252,8 @@ cannot be trimmed off by an arena cap, and the champions behind them are exactly
 own ground, so it ends where the bottom ends — `Player.finishCampaign`, the run cleared, the credits with
 New Game+ offered. Two roads, one ending.
 
-**Losing it is a wipe**, with no special case at all: the company wakes at the Gate with the run intact,
-the haul on the floor as a guarded pack, and the tally still full. That is what makes the breach a state
+**Losing it is a wipe**, with no special case at all: the company wakes at the Gate holding everything it
+was holding, two further marks on a tally that was already full. That is what makes the breach a state
 to fight out of rather than a game over — and the way out is down. Every new floor prunes a mark and every
 circle sealed prunes two, so a company that walked itself into the ceiling can always walk itself back
 under it. `tests/breach_spec.lua` pins that, along with the one thing the failure route could silently

@@ -15,6 +15,7 @@ return {
     sprite = "assets/items/sentry_bolt.png",
     type = "weapon",
     class = "creature",
+    dropTier = 2,
     tags = { "natural", "pierce", "physical", "ranged" },
     noSteal = true, -- a construct's body is not loot
     activeAbility = {

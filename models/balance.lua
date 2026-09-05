@@ -508,8 +508,8 @@ end
 function Balance.progressedWeapon(prestige, family)
     local best, bestSlot = nil, -1
     for id, def in pairs(Item.defs) do
-        if def.price and def.type == "weapon" and Balance.familyOf(def) == family then
-            local slot = def.unlockQuests or 0
+        if (def.price or def.dropTier) and def.type == "weapon" and Balance.familyOf(def) == family then
+            local slot = Balance.slotOf(def)
             if slot <= (prestige or 1) and slot > bestSlot and Balance.gradesOnMagnitude(def) then
                 best, bestSlot = id, slot
             end
@@ -1240,7 +1240,7 @@ end
 -- The standing an ITEM should be judged at: the earlier of its shelf gate and when it is first faced.
 function Balance.itemPrestige(id, def)
     def = def or Item.defs[id]
-    local prestige = Balance.prestigeForSlot(def and def.unlockQuests)
+    local prestige = Balance.prestigeForSlot(def and Balance.slotOf(def))
     local faced = Balance.facedAt()[id]
     if faced and faced < prestige then prestige = faced end
     return prestige
@@ -1258,7 +1258,7 @@ function Balance.wielderStatFor(idOrItem)
     for _, t in ipairs(def.tags or {}) do
         if t == "magical" then magical = true end
     end
-    local prestige = Balance.prestigeForSlot(def.unlockQuests) -- the standing its rung is bought at, not the rung
+    local prestige = Balance.prestigeForSlot(Balance.slotOf(def)) -- the standing its rung is bought at, not the rung
     local ref = Balance.refChar(prestige, magical and "mage" or nil)
     return (magical and ref.stats.magicDamage or ref.stats.damage) or 0
 end
@@ -1295,11 +1295,37 @@ end
 -- Lodge reach 14). Reading the data's own deepest gate keeps the ladder as long as the shelf really is,
 -- and moves it the day a slot is added. Memoized.
 local maxSlotCache
+-- THE RANK AN ITEM IS JUDGED AT, whichever axis it was put on.
+--
+-- A priced ware names a rung (`unlockQuests`) and that rung is its power level -- later slot, bigger
+-- number, which is the rule this whole file exists to enforce. An unpriced one has no rung at all: it
+-- is found in the rift, and what stands in for the rung is the DEPTH it falls at (`dropTier`), which is
+-- the identical grade spread along the other axis (docs/shelf.md, tools/drop_tier.lua).
+--
+-- AND A `dropTier` IS DELIBERATELY NOT CONSULTED. It is tempting -- a depth looks like a rank, and
+-- Vendor.foundPrice does read it as one to derive a price. But tools/drop_tier.lua spreads that axis
+-- EVENLY BY COUNT and says so in as many words: "what is being decided here is an order, not a
+-- magnitude." Feeding it to slotTarget re-premises sixty-four long-settled items at once, every one of
+-- them suddenly under a target drawn from a number that was never a power level.
+--
+-- WHICH IS THE POINT OF THE SHELF RECUT, STATED AS A RULE: it changes where a thing is BOUGHT, never
+-- what it does. Every blueprint kept its `unlockQuests` through the recut precisely so that this file
+-- reads exactly what it read before, and no magnitude in the game moved.
+function Balance.slotOf(def)
+    return (def and def.unlockQuests) or 0
+end
+
 function Balance.maxSlot()
     if maxSlotCache then return maxSlotCache end
     local m = 0
     for _, def in pairs(Item.defs) do
-        if def.price and (def.unlockQuests or 0) > m then m = def.unlockQuests end
+        -- `price or dropTier` -- the span is over everything the ladder ranks, and after the recut most
+        -- of what it ranks is unpriced. Reading `price` alone would have collapsed the span to the
+        -- abilities' ladder and re-scaled every weapon target against it.
+        if def.price or def.dropTier then
+            local slot = Balance.slotOf(def)
+            if slot > m then m = slot end
+        end
     end
     maxSlotCache = m
     return m
@@ -1410,7 +1436,7 @@ function Balance.itemMagnitude(id)
     if type(have) ~= "number" then return nil end
 
     local fam = Balance.familyOf(def)
-    local want = Balance.slotTarget(fam, def.unlockQuests or 0)
+    local want = Balance.slotTarget(fam, Balance.slotOf(def))
     if not want then return nil end
     return want, have, have / math.max(1, want), fam
 end

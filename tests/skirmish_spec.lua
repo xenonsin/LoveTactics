@@ -157,8 +157,8 @@ return {
         local shallow, deep, campaign = 0, 0, 0
         local N = 40
         for _ = 1, N do
-            shallow = shallow + Spoils.roll({ count = 4, day = 1, kind = "combat", floorLevel = 1 }).scrip
-            deep = deep + Spoils.roll({ count = 4, day = 1, kind = "combat", floorLevel = 13 }).scrip
+            shallow = shallow + Spoils.roll({ count = 4, day = 1, kind = "combat", floorLevel = 1 }).gold
+            deep = deep + Spoils.roll({ count = 4, day = 1, kind = "combat", floorLevel = 13 }).gold
             -- The campaign leg reads `gold` and the two descent legs read `scrip`, which is not a
             -- mismatch: a fight pays the purse of the place it was fought in (models/spoils.lua), and
             -- both come off the same rollGold. The magnitudes are what this compares.
@@ -205,8 +205,8 @@ return {
         local fresh, veteran = 0, 0
         local N = 40
         for _ = 1, N do
-            fresh = fresh + Spoils.roll({ count = 4, day = 1, kind = "combat", floorLevel = 1 }).scrip
-            veteran = veteran + Spoils.roll({ count = 4, day = 20, kind = "combat", floorLevel = 1 }).scrip
+            fresh = fresh + Spoils.roll({ count = 4, day = 1, kind = "combat", floorLevel = 1 }).gold
+            veteran = veteran + Spoils.roll({ count = 4, day = 20, kind = "combat", floorLevel = 1 }).gold
         end
         assert(math.abs(fresh - veteran) / fresh < 0.15,
             "floor 1 paid a prestige-20 company " .. math.floor(veteran / fresh * 100) ..

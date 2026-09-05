@@ -12,7 +12,12 @@ return {
     -- house that hunts in the dark is the one that sells the light to do it by.
     class = "hunter",
     unlockQuests = 0, -- opening shelf: a party should be able to see on its first night out
+    -- THE ONE NAMED EXCEPTION TO THE SHELF RECUT (tools/drop_tier.lua). Every other utility came off
+    -- the shelf and is found in the rift; a torch is bought, because seeing in the dark is not a thing
+    -- a company should have to get lucky about. It still drops at depth 1 as well, so a run that did
+    -- not think to buy one is not walking blind to the bottom.
     price = 80, -- no magnitude to scale, so it never forges past the plain thing it is
+    dropTier = 1,
     -- seeing further is aiming better, even on a torch
     bonus = { skill = 1 },
 }

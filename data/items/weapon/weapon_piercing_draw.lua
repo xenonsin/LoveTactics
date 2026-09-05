@@ -24,8 +24,8 @@ return {
     tags = { "longbow", "pierce", "physical", "ranged" },
     hands = 2,
     class = "hunter",
-    price = 740,
     unlockQuests = 8,
+    dropTier = 8,
     activeAbility = {
         target = "enemy",
         range = 5,

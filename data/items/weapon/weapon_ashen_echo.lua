@@ -24,6 +24,7 @@ return {
     sprite = "assets/items/ashen_echo.png",
     type = "weapon",
     class = "creature",
+    dropTier = 2,
     tags = { "natural", "impact", "physical", "melee" },
     noSteal = true,
     activeAbility = {

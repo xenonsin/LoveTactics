@@ -26,7 +26,7 @@ return {
     type = "weapon",
     tags = { "censer", "impact", "physical", "water", "melee" },
     class = "priest",
-    dropTier = 2,
+    dropTier = 4,
     incense = {
         hazard = "hazard_rain",
         radius = 1,

@@ -27,7 +27,7 @@ return {
     type = "armor",
     tags = { "cloth", "holy" },
     class = "priest",
-    dropTier = 3,
+    dropTier = 4,
     traits = { "trait_martyrs_vow" },
     bonus = { magicDefense = Curve.ramp(3, 13), defense = Curve.ramp(2, 12), movement = -1 },
 }

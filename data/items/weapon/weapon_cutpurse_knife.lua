@@ -21,8 +21,8 @@ return {
     type = "weapon",
     tags = { "dagger", "pierce", "physical", "guile", "melee" },
     class = "rogue",
-    price = 660,
     unlockQuests = 7,
+    dropTier = 7,
     activeAbility = {
         target = "enemy",
         range = 1,

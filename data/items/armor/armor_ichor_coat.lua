@@ -25,7 +25,7 @@ return {
     type = "armor",
     tags = { "leather", "poison" },
     class = "alchemist",
-    dropTier = 4,
+    dropTier = 6,
     traits = { "trait_spiteful_ichor" },
     bonus = { defense = Curve.ramp(5, 15), movement = -1 },
     resist = { poison = 3 },

@@ -23,8 +23,8 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "totemist",
-    price = 410,
     unlockQuests = 4,
+    dropTier = 3,
     traits = { "trait_totem_carvers_kit" },
     -- everything you raise stands up sturdier
     bonus = { magicDefense = 1 },

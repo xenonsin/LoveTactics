@@ -27,6 +27,7 @@ return {
     sprite = "assets/items/anvils_face.png",
     type = "utility",
     class = "creature",
+    dropTier = 6,
     tags = { "relic" },
     noSteal = true, -- nothing takes this off you; you took it off the body
     traits = { "trait_anvil_face" },

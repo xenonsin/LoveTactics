@@ -23,6 +23,7 @@ return {
     sprite = "assets/items/marginal_gloss.png",
     type = "utility",
     class = "creature",
+    dropTier = 5,
     tags = { "relic" },
     noSteal = true,
     traits = { "trait_glossed" },

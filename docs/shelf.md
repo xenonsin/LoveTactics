@@ -1,29 +1,80 @@
 # The shelf
 
-Where an item sits, what it costs, and why neither is authored by hand any more.
+Where an item sits, whether it is for sale at all, and why none of it is authored by hand any more.
 
-Every priced item in the game names a **slot** (`unlockQuests`, the rung of its class's ladder it sits
-on) and a **price**. Both used to be typed into the blueprint. Both are now derived, in one direction:
+Every item names a **slot** (`unlockQuests`, its rank on its class's ladder). Most items name **no
+price**, because most of the catalogue is not for sale:
 
 ```
-grade  ->  slot  ->  price
+grade  ->  slot  ->  price        (abilities, consumables, a house's opening weapon)
+grade  ->  slot  ->  dropTier     (everything else: weapons, utilities, armor)
 ```
 
-An item's **grade** is what it is worth. Its rank within its class sets its **slot**. Its slot sets
-its **price**. Nothing flows the other way, and two specs enforce that.
+An item's **grade** is what it is worth. Its rank within its class sets its **slot**. For the small
+priced half, the slot sets its **price**; for the rest, the grade sets the **depth** the rift gives it
+up at. Nothing flows the other way, and two specs enforce that.
 
 - The grader: `models/grade.lua`
-- The instrument: `& "E:\LOVE\lovec.exe" . grade-report [full | diff | explain ID | traits | apply]`
-- The guard: `tests/grade_spec.lua`
+- The instruments: `. grade-report [full | diff | explain ID | traits | apply]` and
+  `. drop-tier [recut] [apply]`
+- The guards: `tests/grade_spec.lua`, `tests/discovery_spec.lua`
 
 > **The field is still called `unlockQuests` and no quest has opened a shelf for some time.** The name
-> survived two re-cuts because renaming it means touching every priced blueprint in the game to change
+> survived three re-cuts because renaming it means touching every blueprint in the game to change
 > nothing, and a 485-file rename that subtracts nothing is 485 chances to be off by one. It means *the
 > rung*, and the rung is a class level (**The slot**, below).
 >
-> On an item with no price it means nothing at all: an unpriced ware carries a `dropTier` instead —
-> the same grade, spread along DEPTH rather than along a shelf, because a thing with no shelf to sit on
-> still has a place it belongs (`tools/drop_tier.lua`, and `Spoils.lootCandidates` is what admits it).
+> **It stays on an unpriced ware, and that was learned the hard way.** It looks like shelf furniture
+> once a thing is not for sale — but the rung IS the grade rank, and `models/balance.lua` reads it as
+> the item's power level. Stripping it in the recut made two hundred blueprints answer slot 0, every
+> one of them measured against the opening rung's budget. The gate moved instead of the field:
+> `Vendor.stock` simply does not apply a rung gate to an unpriced ware, because its gate is having
+> found one.
+
+---
+## The recut: a house is a record, not a catalogue
+
+Above a house's **opening weapon**, nothing is for sale. Weapons, utilities and armor are found in the
+rift or not at all — and a counter deals one only once the company has **carried one out**.
+
+| Kind | Reaches the player by | Carries |
+|---|---|---|
+| Ability | bought, on the class ladder | `price`, `unlockQuests` |
+| Consumable | bought — the stock decision before a descent has to be makeable | `price`, `unlockQuests` |
+| Opening weapon (rung 0) | bought — the floor that re-arms a company holding nothing | `price`, `unlockQuests` |
+| Weapon, utility, armor above that | **found**, then stocked forever | `unlockQuests`, `dropTier` |
+
+**The floor is the rung, not the word "iron".** Nine of the ten iron weapons sit at `unlockQuests = 0`,
+but two houses have no iron anything — the Cathedral's rung 0 is a censer and the Alchemist's is a
+lancet. Cutting on the name would leave two of seven classes with no purchasable weapon at all. Cutting
+on the rung covers all seven exactly once and is derived, so a later re-cut of the ladder moves it.
+`. drop-tier recut` reports what each house still sells and warns if a **root** class loses its floor.
+
+**A shelf shows what it cannot yet deal.** A found ware stands on the rack named, silhouetted, with the
+depth it falls at where its price would go — the same rule a shut discipline path follows. That is the
+point of the change: a house is a **want list** that sends the player down a stair, where a catalogue
+was a checklist that sent them shopping.
+
+Three refusals, three words, one field (`Vendor.stock`'s `lockReason`):
+
+| `lockReason` | What the player does about it |
+|---|---|
+| `"rung"` | grow the class |
+| `"class"` | unlock the discipline |
+| `"undiscovered"` | go down and carry one out |
+
+**A found ware has no rung gate.** Two gates on one tile would mean finding a thing and still being
+refused it, for a rung it never sat on — so `Vendor.stock` reads the authored rung only when there is a
+price beside it.
+
+**What a found ware costs, once stocked**, is derived the same way everything else is:
+`Vendor.foundPrice` reads its `dropTier` as the slot it would have had, off by one so the shallowest
+find prices level with a house's opener. `Vendor.sellValue` uses the same figure, or a duplicate hauled
+out would be a thing the player could neither use twice nor sell.
+
+**The new obligation.** A shelf *guarantees* an item is reachable; a drop table does not. Reachability
+stopped being structural and became statistical the day this landed, and any item whose honest answer
+is "not at the depths people play" is content that does not exist.
 
 Related: [balance.md](balance.md) is about bodies against weapons — how hard a thing hits and how
 much a body takes. This is about where a thing *belongs*. The two meet at one place: the slot a grade

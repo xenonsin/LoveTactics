@@ -27,6 +27,7 @@ return {
     sprite = "assets/items/cinder_spit.png",
     type = "weapon",
     class = "creature",
+    dropTier = 1,
     -- `magical` routes the damage through magicDamage/magicDefense; `natural` is the family (a
     -- creature's body, never sold and never stolen), and the only archetype tag here.
     tags = { "natural", "fire", "magical" },

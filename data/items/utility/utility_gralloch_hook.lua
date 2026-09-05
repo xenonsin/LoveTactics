@@ -28,6 +28,7 @@ return {
     sprite = "assets/items/gralloch_hook.png",
     type = "utility",
     class = "creature",
+    dropTier = 2,
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_engorge", "trait_boss_phases" },

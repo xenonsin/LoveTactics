@@ -14,7 +14,7 @@ return {
     -- else by the time the blow lands, and the cheapest answer to that is a better boot.
     class = "rogue",
     unlockQuests = 0, -- opening shelf: the plainest rung of the Undercroft's movement ladder
-    price = 80,
+    dropTier = 1,
     -- Movement is a per-level table (levels 0..10): the boots carry more speed the higher they go.
     --                   level:  0  1  2  3  4  5  6  7  8  9  10
     bonus = { movement = { 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3 } },

@@ -22,8 +22,8 @@ return {
     type = "weapon",
     tags = { "sword", "slash", "physical", "melee" },
     class = "spellbreaker",
-    price = 660,
     unlockQuests = 7,
+    dropTier = 7,
     traits = { "trait_parry" },
     activeAbility = {
         target = "enemy",

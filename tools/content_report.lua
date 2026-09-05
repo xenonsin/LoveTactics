@@ -194,15 +194,32 @@ end
 --
 -- The second is why this is a report rather than a grep. `unlockQuests` names no quest, so no search
 -- over the doomed files can find what they were holding up.
--- EVERY WAY AN UNPRICED ITEM CAN STILL REACH A PLAYER once its quest is gone. An unpriced item cannot
--- come off a cache, a corpse or a merchant: models/spoils.lua draws its pool from PRICED items inside a
--- price band, and says so. So the sources are finite and worth naming, because the first draft of this
--- report knew about none of them and reported all seven general relics as orphaned when every one of
--- them is paid off the body standing on its circle's stair.
+-- EVERY WAY AN UNPRICED ITEM CAN STILL REACH A PLAYER once its quest is gone.
+--
+-- IT USED TO SAY an unpriced item could not come off a cache, a corpse or a merchant, because
+-- models/spoils.lua drew its pool from PRICED items inside a price band. That is no longer true and has
+-- not been since `dropTier` landed: Spoils.lootCandidates admits an unpriced ware at its depth, and
+-- after the shelf recut (tools/drop_tier.lua) MOST of the catalogue reaches the player that way and no
+-- other. So the rift is the first source listed, and it is the one that carries a number.
+--
+-- WHICH CHANGES WHAT THIS REPORT IS. A shelf GUARANTEED an item was reachable; a drop table does not.
+-- Reachability is statistical now, so "has a depth" is the floor this can check and not the ceiling --
+-- an item whose depth is past where people actually play is content that does not exist, and only a
+-- played measurement can say so.
 local function otherSources()
     local Descent = require("models.descent")
     local Character = require("models.character")
+    local Item = require("models.item")
     local out = {}
+
+    -- THE RIFT ITSELF, which is now the largest source in the game by a wide margin. Named with its
+    -- depth rather than as a bare "it drops", because the depth is the only part a reader can act on:
+    -- it is what tells you whether the thing is reachable in the floors a campaign actually walks.
+    for id, def in pairs(Item.defs) do
+        if def.dropTier and not def.bound then
+            out[id] = "found in the rift, from depth " .. def.dropTier
+        end
+    end
 
     -- What a circle's guardian and its lieutenant hand over. This IS the re-home the retired board's
     -- slot-10 quests used to do, already built (Descent.DROPS).

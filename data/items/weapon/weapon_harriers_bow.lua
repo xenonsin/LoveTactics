@@ -30,8 +30,8 @@ return {
     type = "weapon",
     tags = { "bow", "pierce", "physical", "ranged" },
     class = "skirmisher",
-    price = 740,
     unlockQuests = 8,
+    dropTier = 7,
     hands = 2, -- the family contract: every bow is two-handed (docs/weapons.md)
     activeAbility = {
         target = "enemy",

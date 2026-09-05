@@ -19,6 +19,7 @@ return {
     sprite = "assets/items/unarmed.png", -- never rendered (hidden from the grid); ok if missing
     type = "weapon",
     class = "creature",
+    dropTier = 1,
     tags = { "unarmed", "physical", "melee" },
     activeAbility = {
         target = "enemy",

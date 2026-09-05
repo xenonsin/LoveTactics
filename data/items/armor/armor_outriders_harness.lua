@@ -24,8 +24,8 @@ return {
     type = "armor",
     tags = { "leather" },
     class = "skirmisher",
-    price = 575,
     unlockQuests = 6,
+    dropTier = 5,
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     traits = { "trait_outriders_harness" },
 }

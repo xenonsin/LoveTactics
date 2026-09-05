@@ -9,8 +9,8 @@ return {
     type = "utility",
     tags = { "holy" },
     class = "paladin", -- knight x priest; the Ward aura's thesis -- your body in place of the one beside you
-    price = 330,
     unlockQuests = 3,
+    dropTier = 2,
     traits = { "trait_martyrs_vow" },
     -- standing in front of somebody is guard
     bonus = { defense = 2 },

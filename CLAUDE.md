@@ -89,15 +89,17 @@ The codebase is organized into layers loaded via `require()`. See
   daggers bleed) — see [docs/weapons.md](docs/weapons.md), enforced by `tests/weapon_spec.lua`.
   Every item also belongs to a **class**, which is the vendor shelf that stocks it and never an equip
   gate (anyone can carry anything) — see [docs/classes.md](docs/classes.md), enforced by
-  `tests/class_spec.lua`. An item's `unlockQuests` and `price` are **derived, not authored**: what a
-  thing is worth sets the slot it unlocks from, and the slot sets the price — see
-  [docs/shelf.md](docs/shelf.md) (`models/grade.lua`, `. grade-report`). `data/meals/` is the one
-  content type that is *not* an item: the Cafe's supper, one per day out, worn by the whole company —
-  see [docs/meals.md](docs/meals.md). `data/items/valuable/` is an item with no use at all: loot that
-  exists to be carried out and sold, which is how the campaign earns gold — the other currency is
-  **scrip**, the run's own weightless coin, spent underground and burned at every exit. See
-  [docs/economy.md](docs/economy.md); the two purses never touch, and `tests/economy_spec.lua` is what
-  keeps it that way.
+  `tests/class_spec.lua`. An item's `unlockQuests` is its **grade rank, derived not authored** — what a
+  thing is worth sets where it sits — and only three kinds of thing carry a `price` at all: abilities,
+  consumables, and a house's opening weapon. **Everything else is found in the rift** (`dropTier`) and
+  a counter stocks it only once the company has carried one out (`Player.recordFound`, `Vendor.stock`'s
+  `lockReason`). See [docs/shelf.md](docs/shelf.md) (`models/grade.lua`, `. grade-report`,
+  `. drop-tier recut`). `data/meals/` is the one content type that is *not* an item: the Cafe's supper,
+  one per day out, worn by the whole company — see [docs/meals.md](docs/meals.md).
+  `data/items/valuable/` is an item with no use at all: loot that exists to be carried out and sold.
+  There is **one currency**, gold, and what keeps an underground purchase from being priced against a
+  permanent upgrade is a ceiling rather than a second purse (`Spoils.askingPrice`). See
+  [docs/economy.md](docs/economy.md); `tests/economy_spec.lua` is what keeps it that way.
 - **`assets/`** — images/audio/maps referenced by path from data files (e.g.
   `assets/hub/city.png`), loaded lazily through `models/sprite.lua`. A missing file resolves to its
   path string rather than crashing, so art can land incrementally — which also means the art debt is

@@ -28,8 +28,8 @@ return {
     type = "weapon",
     tags = { "wand", "dark", "magical" }, -- magical: routes through magicDamage / magicDefense
     class = "necromancer",
-    price = 245,
     unlockQuests = 2,
+    dropTier = 1,
     activeAbility = {
         target = "enemy",
         range = 5,

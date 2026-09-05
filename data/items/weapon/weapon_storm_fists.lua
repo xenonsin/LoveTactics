@@ -10,6 +10,7 @@ return {
     sprite = "assets/items/storm_fists.png",
     type = "weapon",
     class = "creature",
+    dropTier = 3,
     tags = { "natural", "lightning", "magical", "melee" },
     noSteal = true,
     activeAbility = {

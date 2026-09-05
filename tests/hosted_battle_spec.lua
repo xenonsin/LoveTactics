@@ -56,10 +56,12 @@ return {
         name = "the wipe clears the fight it lost, like every other way out of one",
         fn = function()
             local src = source()
-            -- The rout: the branch that drops the haul, puts the floor away and hands the company to
-            -- the Gate. Read from the pack drop to the switch that leaves.
-            local wipe = between(src, "Descent.dropPack(game.descent, floor", "State.switch(require(\"states.gate\")")
-            assert(wipe:find("Descent.keepFloor", 1, true),
+            -- The rout: the branch that charges the count and hands the company to the Gate. It used to
+            -- be anchored on the pack drop, which was the first thing it did; nothing is dropped any
+            -- more, so the anchor moved to the thing a wipe now DOES -- put two marks on the tally.
+            local wipe = between(src, "Descent.countBy(game.player, Descent.COUNT_WIPE)",
+                "State.switch(require(\"states.gate\")")
+            assert(wipe:find("Player.recordFound", 1, true),
                 "the wipe branch was not found where it was -- re-anchor this case rather than deleting it")
             assert(wipe:find("game.battle = nil", 1, true),
                 "the wipe leaves states/game.lua holding the battle it just lost: walking back down the "

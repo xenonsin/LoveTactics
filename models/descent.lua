@@ -1276,6 +1276,9 @@ end
 -- that it lives on the RUN rather than on the floor: the whole descent is one expedition, so the
 -- snapshot is taken once at the top and every floor after it shares the same way back.
 function Descent.new(player, seed)
+    -- Lifted out of the table below because two fields are dealt FROM it (see `seed` and `companion`),
+    -- and a constructor cannot read its own keys while it is being built.
+    local runSeed = seed or (player and require("models.seed").run(player)) or (os.time() % 1000000)
     return {
         floor = 1,
         -- OFF THE SAVE'S OWN SEED, not off the clock (models/seed.lua). It was `os.time()`, which is a
@@ -1286,7 +1289,7 @@ function Descent.new(player, seed)
         --
         -- An explicit `seed` still wins, which is what a spec pins a run with. The clock survives only
         -- for a run with no player behind it at all -- a fixture, never live play.
-        seed = seed or (player and require("models.seed").run(player)) or (os.time() % 1000000),
+        seed = runSeed,
         -- WHICH ORDER THE SEVEN CIRCLES COME IN, decided once, here, at the mouth of the run.
         --
         -- False is Dante's order and true is this run's own shuffle; what flips it is having broken the
@@ -1303,6 +1306,10 @@ function Descent.new(player, seed)
         -- and wrong here twice over: a run's layout would depend on ambient state, and a headless
         -- caller passing no player would go and read the player's real save file to lay out its floors.
         shuffled = (player and require("models.player").hasFinishedCampaign(player)) or nil,
+        -- WHO IS STANDING DOWN THERE, AND ON WHICH FLOOR, or nil for a descent that offers nobody. One
+        -- per run, dealt here for the reason `shuffled` is dealt here: the seed cannot know which
+        -- counters this company has walked into. See Descent.dealCompanion.
+        companion = Descent.dealCompanion(runSeed, player),
         -- Taken at the first floor and then carried by reference for the rest of the descent. See above.
         entry = nil,
         -- Quest ids banked but not yet paid out. Nothing writes this until authored floors land; it is
@@ -1365,11 +1372,11 @@ Descent.FILE = "descent_run.lua"
 -- -- spoils, caches and the overworld's own merchant stops -- and an opening purse that could buy its
 -- way past floor one would settle the run before a tile of it was walked.
 --
--- IT IS SCRIP NOW, and this constant is an alias rather than a second number. The economy split
--- (models/scrip.lua): a run spends its own weightless coin, so what a company "walks in with" is the
--- thing Scrip.OPENING names. Kept under its old name because the argument above is the argument that
--- chose the number and belongs beside it, and because a spec pins it.
-Descent.OPENING_GOLD = require("models.scrip").OPENING
+-- IT IS PLAIN GOLD AGAIN. It was an alias for Scrip.OPENING while a descent had a purse of its own;
+-- that purse is deleted (models/spoils.lua) and the number comes home to the constant whose name it
+-- always wore. The figure is unchanged, which is the point: a company walks into the rift with exactly
+-- what it walked in with before, in the only currency there now is.
+Descent.OPENING_GOLD = 50
 
 -- WHO WALKS IN. Four of the roster, chosen at the Gate before the stair (Descent.party).
 --
@@ -1503,227 +1510,25 @@ end
 -- deployment phase, which counts against Player.MAX_FIELD where it always did.
 
 -- ---------------------------------------------------------------------------
--- What the company dropped where it fell
+-- What the company dropped where it fell -- DELETED, and what took its place
 -- ---------------------------------------------------------------------------
-
--- HOW BIG A PILE HAS TO BE BEFORE SOMEBODY ELSE COMES FOR IT. See packGuard.
-Descent.PACK_COMPANY_ITEMS = 10
-
--- WHAT IS STANDING OVER A PILE, resolved when the company falls and stored on the drop as a plain id
--- list. A pile is a FIGHT (see dropPack), and this is the cast of it.
 --
--- TWO FICTIONS, and the pile itself picks which one. A small pile draws the circle's own vermin, which
--- are already authored -- the gorge flies, the coin chitters, the cinder kin that fill out that sin's
--- honour guard (Descent.SINS). A big one draws a RIVAL COMPANY: you are not the only outfit down here,
--- word travels, and four bodies' worth of kit lying unattended is the best day somebody else has had
--- all season. Same warband draw the road's own company fight uses (models/warband.lua).
+-- NOTHING IS DROPPED ANY MORE. A wipe brings the company home with everything it walked in with and
+-- everything it found, and charges two marks on the count instead (Descent.COUNT_WIPE, states/game.lua's
+-- wipe branch). What stood here was the other half of a bill that no longer exists.
 --
--- SO THE GUARD IS PRICED OFF WHAT YOU LOST rather than off the floor, and that is the whole of why it is
--- shaped this way: the pile you leave on your first bad night is four or five things and the thing over
--- it is vermin, while the pile a full company leaves on floor twelve is a company's worth of gear and
--- somebody good is wearing it by the time you get back. The recovery fight scales with the disaster,
--- which is the only version of it a player who died early can actually walk back into.
+-- WHAT WENT, said out loud because it was a whole feature and not a function: Descent.dropPack seated a
+-- guarded pile on the tile the party fell on; Descent.packGuard drew the rival company standing over it,
+-- ONCE, so the second attempt was the same fight as the first; Descent.dropsOn, Descent.packSeat and
+-- Descent.markPacks put the markers on the board; Descent.strandPacks carried the piles out of a closing
+-- rift onto the company, and Descent.lostAt / Descent.claimLost / Descent.takePack were how a later dive
+-- got them back. Two encounter blueprints went with them (encounter_pack_drawn, encounter_pack_scavengers)
+-- and so did the pile fields in models/save.lua.
 --
--- COUNTED IN ITEMS, NOT IN GOLD, and the obvious alternative is wrong here: `price` is nil on exactly
--- the pieces a descent pays out -- a general's relic is unpriced because it is never sold -- so pricing
--- the pile would have read a bag of the best things you own as worthless.
---
--- RESOLVED ONCE, HERE, and stored. Deciding it at the marker instead would re-draw the company every
--- time the floor was re-entered, and a fight that is four bodies before the save and six after it is
--- not a fight the player can plan against. Plain strings, so it rides in a save like everything else on
--- a run (see the `drops` note on why a closure here would take the save write down).
-function Descent.packGuard(run, floor, count)
-    local sin = Descent.sinAt(run, floor)
-    -- The circle's small things. Never its lieutenant: what comes for a spilled pack is what already
-    -- lives on this floor, and a named body does not scavenge. Depth does the rest of the work -- a
-    -- floor-fourteen gorge fly is a floor-fourteen body (Descent.dangerLevel).
-    --
-    -- The BOTTOM has no vermin of its own -- Descent.sinAt returns nothing for the Hollow Crown's floor
-    -- -- so a pile spilled down there is always somebody else's find, whatever its size.
-    local filler = sin and sin.minor and sin.minor.filler
-    if filler and (count or 0) < Descent.PACK_COMPANY_ITEMS then
-        local list = {}
-        for _ = 1, 2 + math.floor((floor or 1) / 4) do list[#list + 1] = filler end
-        return "drawn", list
-    end
-    -- models/warband.lua requires nothing, so this cannot close a cycle back through here.
-    local Warband = require("models.warband")
-    return "scavengers", Warband.compose({ quest = { descent = run }, day = floor })
-end
-
--- Drop `items` on floor `floor` at (x, y). Snapshotted on the way in, for the reason `drops` gives.
---
--- PILES ACCUMULATE, and a pile is GUARDED. Both halves of that replaced one rule -- dropping a pack
--- used to destroy the last one wherever it was lying -- and the rule is worth writing down because it
--- was load-bearing and its replacement has to carry the same weight.
---
--- WHY IT WENT. It was Dark Souls' bloodstain, and it was borrowed from a game where the thing on the
--- ground is a FLOW: souls come back by playing, so a lost stain is deferred income. Down here the pile
--- is kit, kit comes off the floors, and the Gate store sells draughts and a spare blade -- so the pile
--- is not income, it is the entire economy, and deleting it deleted things the save could never mint
--- again. A second bad night on the way back turned an expensive mistake into a permanent one.
---
--- WHAT REPLACES IT. Deleting a limiter obliges you to name its replacement, and the replacement is that
--- the pile has something standing on it (Descent.packGuard). "What stops the player simply walking
--- back" is answered by a fight rather than by a threat to erase what they are walking back for -- and
--- the fight is priced off the size of the pile, so the walk back is dangerous in proportion to what is
--- lying there rather than in proportion to how badly the player needs it.
---
--- ONE PILE PER TILE. A second wipe on the same square MERGES into the pile already there -- and
--- re-resolves its guard, because the pile just got bigger. One heap, one marker, one guard, one walk
--- back; two piles side by side would be two fights for what was one mistake made twice. Wipes on
--- different tiles are different piles, which is the point. Matched on the square the pile IS LYING ON
--- (Descent.markPacks writes a slid pile's seat back onto it), never the square the bodies fell on --
--- so the pile that merges is the one the player can see.
---
--- ONE PILE PER WIPE rather than one per body, unchanged: the company went down together, in a heap, and
--- four markers on four adjacent tiles would be four walks for one mistake.
---
--- An EMPTY drop is not a drop. A company that wiped carrying nothing leaves nothing, and a marker
--- promising a pack that hands over an empty list reads as a bug however correct the bookkeeping is.
-function Descent.dropPack(run, floor, x, y, items)
-    if not (run and items and #items > 0) then return nil end
-    local Save = require("models.save")
-    floor = floor or 1
-    run.drops = run.drops or {}
-
-    -- The pile already lying on this square, if there is one. Matched on the tile rather than on the
-    -- floor, so two deaths on one floor leave two piles and two deaths on one tile leave one.
-    local pile
-    for _, d in ipairs(run.drops) do
-        if d.floor == floor and d.x == x and d.y == y then pile = d break end
-    end
-    if not pile then
-        run.dropSeq = (run.dropSeq or 0) + 1
-        -- An id rather than the table itself, because the board's marker carries a COPY of this entry
-        -- through a save (the grid snapshot holds the encounter whole) and Descent.takePack has to be
-        -- able to say which pile it is standing on after a reload.
-        pile = { id = "drop" .. run.dropSeq, floor = floor, x = x, y = y, items = {}, count = 0 }
-        run.drops[#run.drops + 1] = pile
-    end
-
-    for _, item in ipairs(items) do pile.items[#pile.items + 1] = Save.snapshotItem(item) end
-    pile.count = #pile.items
-    pile.guard, pile.guardIds = Descent.packGuard(run, floor, pile.count)
-    return pile
-end
-
--- Every pile lying on `floor`, so the board can put a marker on each. Cheap and called once per entry.
-function Descent.dropsOn(run, floor)
-    local out = {}
-    for _, d in ipairs((run and run.drops) or {}) do
-        if d.floor == floor then out[#out + 1] = d end
-    end
-    return out
-end
-
--- The blueprint that supplies a pile's fiction, keyed by the guard drawn when it fell
--- (Descent.packGuard). A pile from before the guard existed names neither and stays a walk-on pickup.
-local PACK_BLUEPRINT = { scavengers = "encounter_pack_scavengers", drawn = "encounter_pack_drawn" }
-
--- WHERE A PILE CAN ACTUALLY BE SEEN, given where it fell. Returns the cell to put the marker on, or nil
--- if there is nowhere on the floor to put one.
---
--- A MARKER MUST NOT GO OVER ANOTHER STOP -- a pack drawn over the way up, or over a fight nobody has
--- cleared yet, deletes the thing underneath it -- and for as long as that rule was the WHOLE of the
--- answer, the common case had no marker at all. The common case is the point: a company wipes at a
--- FIGHT, the fight is lost so its stop stays armed, and the pile lands on a tile that is already spoken
--- for. The pack sat on the run, correctly bookkept and invisible, and the one thing the mode asks you
--- to walk back down for was a coordinate the player had never been shown.
---
--- So the pile SLIDES. The nearest walkable tile with nothing on it, breadth-first from where they fell
--- -- one step, in every case that matters: the doorway of the room they died in. It is also the honest
--- fiction, since a pack does not stay neatly under the body that was carrying it.
---
--- HIDDEN GROUND IS NOT A SEAT. A marker behind a secret door the party has not found is drawn into
--- black (Overworld:isHidden gates the reveal), which is the same invisibility this exists to end.
-function Descent.packSeat(grid, x, y)
-    if not (grid and x and y) then return nil end
-    local start = grid:get(x, y)
-    if not start then return nil end
-    if not (start.encounter or grid:isHidden(start)) then return start end
-    local seen = { [grid:cellKey(x, y)] = true }
-    local q, qi = { start }, 1
-    while qi <= #q do
-        local c = q[qi]; qi = qi + 1
-        for _, n in ipairs(grid:pathNeighbors(c.x, c.y)) do
-            local key = grid:cellKey(n.x, n.y)
-            if not seen[key] then
-                seen[key] = true
-                if not (n.encounter or grid:isHidden(n)) then return n end
-                q[#q + 1] = n
-            end
-        end
-    end
-    return nil
-end
-
--- Put a marker on every pile lying on THIS floor, and take away the ones that have been lifted. Run
--- whenever the list can have changed -- a floor entered, a pile picked up.
---
--- The marker is an `encounter` of kind "pack", for the reason the way up is one (models/overworld.lua's
--- placeExit): the marker pipeline, the fog and the walk-onto-it seam all come free, and a bespoke cell
--- field would have meant writing all three again. It carries the run entry itself, so the stop knows
--- which pile it is standing on without searching.
---
--- THE SEAT IS WRITTEN BACK ONTO THE DROP. Where a pile lies is where its marker is, from the first
--- moment anybody could have seen it -- so a pile that slid off a fight tile (Descent.packSeat) does not
--- slide again on the next visit, a second wipe on the same fight leaves a second pile rather than
--- merging into one the player can no longer find, and the tile the run names is the tile the marker is
--- on. What is given up is the exact square the bodies fell on, which nothing reads and nobody is shown.
--- `player` is optional and is what carries STRANDED piles onto the board -- the ones a closed rift left
--- behind (Descent.strandPacks). They are seated exactly as this run's own are and are indistinguishable
--- once down: the same marker, the same guard, the same walk back. What differs is only where the ledger
--- lives, and a pile the company lost two rifts ago has to be as recoverable as one it lost this hour.
-function Descent.markPacks(run, grid, floor, player)
-    if not (run and grid) then return 0 end
-    -- Clear first, so a pack picked up leaves no marker behind and a re-entry does not double them.
-    for y = 1, grid.rows do
-        for x = 1, grid.cols do
-            local c = grid.cells[y][x]
-            if c.encounter and c.encounter.kind == "pack" then c.encounter = nil end
-        end
-    end
-    -- This run's piles, then the ones carried over from rifts that closed on them. Concatenated rather
-    -- than merged into either ledger: the two are written and cleared by different owners, and a pile
-    -- that lived in both would be picked up twice.
-    local piles = {}
-    for _, d in ipairs(Descent.dropsOn(run, floor)) do piles[#piles + 1] = d end
-    for _, d in ipairs(Descent.lostAt(player, floor)) do piles[#piles + 1] = d end
-
-    local n = 0
-    for _, drop in ipairs(piles) do
-        -- Seated in list order, and each seat is taken as it is filled: two piles that would land on one
-        -- tile get one tile each, because the second one's search sees the first one's marker.
-        --
-        -- A STRANDED PILE HAS NO SEAT TO ASK FOR. Its coordinates named a tile on a board that no longer
-        -- exists (Descent.strandPacks drops them deliberately rather than carrying a lie), so the search
-        -- starts from the middle of this floor and slides outward to the first free ground -- which is
-        -- what packSeat does for every pile anyway. Without this the pile would ask for tile nil and
-        -- quietly fail to appear, and the company would dive for something that was never seeded.
-        local sx = drop.x or math.max(1, math.floor(grid.cols / 2))
-        local sy = drop.y or math.max(1, math.floor(grid.rows / 2))
-        local c = Descent.packSeat(grid, sx, sy)
-        if c then
-            drop.x, drop.y = c.x, c.y
-            c.encounter = {
-                -- A PILE IS A FIGHT. `id` names the blueprint that supplies the fiction and
-                -- `composition` is the cast, drawn once when the company fell and kept on the drop
-                -- (Descent.packGuard) so the same company is standing there on the second attempt as on
-                -- the first. A drop from before this landed carries neither and stays a walk-on pickup:
-                -- a player who put a pack down under the old rules did not agree to fight for it.
-                kind = "pack",
-                name = "What You Dropped",
-                drop = drop,
-                id = PACK_BLUEPRINT[drop.guard],
-                composition = drop.guardIds,
-            }
-            n = n + 1
-        end
-    end
-    return n
-end
-
+-- WHY IT WAS DELETED RATHER THAN LEFT SWITCHED OFF: a pile system nothing writes to is a save shape, a
+-- fight blueprint and a map marker sitting in the tree waiting to be mistaken for live code -- and the
+-- Gate's promise to a wiped company ("everything they were carrying is still down there") would have
+-- gone on being true in the source and false in the game.
 -- ---------------------------------------------------------------------------
 -- The way down
 -- ---------------------------------------------------------------------------
@@ -1824,118 +1629,6 @@ function Descent.floorBoard(run, floor)
     return (run and run.floors or {})[tostring(floor or 1)]
 end
 
--- ---------------------------------------------------------------------------
--- What a closed rift leaves behind
--- ---------------------------------------------------------------------------
-
--- CARRY THIS RUN'S PILES OUT OF IT AND ONTO THE COMPANY, tagged with the depth they were lost at.
---
--- THE PILE IS THE PROBLEM A RESET CREATES. `run.drops` was the right home while a descent outlived
--- every climb-out -- the pile lay on floor nine and you walked back down to floor nine for it. A
--- descent that is thrown away when you leave has no floor nine to walk back to, so the pile would die
--- with the run: an expensive mistake made permanent, which is precisely what Descent.dropPack's own
--- header says the design refuses ("the pile is not income, it is the entire economy").
---
--- SO IT MOVES TO THE PLAYER AND WAITS FOR A DEPTH. `Descent.markPacks` seats a stranded pile on the
--- next run that reaches the floor it was lost on, guard and all -- which makes the walk back a DIVE
--- back, and that is better than it was: you have to earn your way down to your own corpse rather than
--- stroll across ground you had already cleared.
---
--- Called on both exits, because both throw the run away. Idempotent: it empties `run.drops` as it goes,
--- so a second call carries nothing twice.
-function Descent.strandPacks(player, run)
-    if not (player and run) then return 0 end
-    local moved = 0
-    player.lostPacks = player.lostPacks or {}
-    for _, d in ipairs(run.drops or {}) do
-        -- The seat (x, y) is deliberately dropped. It named a tile on a board that no longer exists,
-        -- and carrying it would seat a pile at a coordinate the next floor may not even have --
-        -- Descent.markPacks finds it a seat on whatever ground it lands on.
-        player.lostPacks[#player.lostPacks + 1] = {
-            id = d.id, floor = d.floor, count = d.count, items = d.items,
-            guard = d.guard, guardIds = d.guardIds,
-        }
-        moved = moved + 1
-    end
-    run.drops = {}
-    return moved
-end
-
--- The piles this company has left down there, at `floor`. Empty for a depth it has never lost anything
--- on, which is every depth for a company that has never wiped.
-function Descent.lostAt(player, floor)
-    local out = {}
-    for _, d in ipairs((player and player.lostPacks) or {}) do
-        if (d.floor or 1) == (floor or 1) then out[#out + 1] = d end
-    end
-    return out
-end
-
--- Take a stranded pile back off the company's ledger, by id. Called when the pile is picked up, so a
--- recovered pack cannot be seeded again on a later run.
-function Descent.claimLost(player, id)
-    local list = (player and player.lostPacks) or {}
-    for i, d in ipairs(list) do
-        if d.id == id then table.remove(list, i) return d end
-    end
-    return nil
-end
-
--- Pick a dropped pack up off the floor. Returns the LIVE items, rebuilt from their snapshots, and drops
--- the entry -- so a pack is recoverable exactly once and cannot be walked over twice for two copies of
--- everything the company owned.
---
--- MATCHED BY ID FIRST, and identity is only the fallback. The marker the player walked onto carries the
--- entry it was built from (markBodies), and a floor that has been through a save and back hands over a
--- COPY of it -- the grid snapshot stores the encounter whole, drop and all -- so `d == entry` was true
--- exactly until somebody reloaded. It survived the one-pile rule because there was never a second entry
--- for the copy to be confused with; there is now.
--- `player` is optional and is what lets a STRANDED pile be picked up -- one carried over from a rift
--- that closed on it (Descent.strandPacks). Both ledgers are searched, and whichever holds it is the one
--- it comes off, so a recovered pack can never be seeded again.
-function Descent.takePack(run, entry, player)
-    if not (run and entry) then return nil end
-    local pool = {}
-    for _, d in ipairs(run.drops or {}) do pool[#pool + 1] = { d = d, run = true } end
-    for _, d in ipairs((player and player.lostPacks) or {}) do pool[#pool + 1] = { d = d } end
-    for _, slot in ipairs(pool) do
-        local d = slot.d
-        if d == entry or (entry.id and d.id == entry.id) then
-            entry = d -- the live entry, never the marker's copy: it is the one holding the real items
-            if slot.run then
-                for i, x in ipairs(run.drops) do
-                    if x == d then table.remove(run.drops, i) break end
-                end
-            else
-                Descent.claimLost(player, d.id)
-            end
-            local Item = require("models.item")
-            local out = {}
-            for _, snap in ipairs(entry.items or {}) do
-                local item = Item.instantiate(snap.id, snap.level)
-                if item then
-                    item.quantity = snap.quantity or 1
-                    out[#out + 1] = item
-                end
-            end
-            return out
-        end
-    end
-    return nil
-end
-
--- A PLAYER-SHAPED PROFILE FOR ONE RUN, and the reason this exists rather than a new shape.
---
--- states/game.lua, states/battle.lua, models/spoils.lua, models/wound.lua and the relic stack all take a
--- `player` and read a dozen fields off it. A descent could have been given its own object and every one
--- of them taught a second shape; instead it gets the shape they already know, built by Player.new and
--- then overwritten where a clean run differs from a new campaign. The entire overworld/battle/spoils
--- stack then runs a descent unchanged, which is the same trick Descent.floorQuest plays on the quest
--- format one layer up.
---
--- WHAT MAKES IT A DESCENT'S rather than a campaign's is one field: `saveFile`. Player.save writes to it,
--- so every existing save point in the game persists this company to the descent's file and none of them
--- can reach `save.lua`. See Player.save for why that beats a per-call-site flag.
 --
 -- `chars` is the company the run walks in with -- one body (Descent.startingCompany), already
 -- instantiated with its authored kit. Taken as a list rather than as the id, because what the roster
@@ -1960,11 +1653,10 @@ function Descent.newProfile(chars)
     profile.materials = {}
     profile.recipes = {}
     profile.newItems = {}
-    -- NO CAMPAIGN GOLD AND AN OPENING SCRIP PURSE (models/scrip.lua). A run's company has earned the
-    -- campaign nothing yet -- gold only exists here as valuables in the pack, and the pack is empty --
-    -- and what it walks in with is the coin the floors themselves deal in.
-    profile.gold = 0
-    require("models.scrip").open(profile)
+    -- THE OPENING PURSE. A run's company starts with Descent.OPENING_GOLD and nothing else: it has
+    -- earned the campaign nothing yet, and what it walks in with is the float the floors are priced
+    -- against. One currency, so this is one line where it used to be two.
+    profile.gold = Descent.OPENING_GOLD
 
     -- The campaign's meters, left at their zero. Nothing in a descent moves them any more -- levels come
     -- from what each body does in the fighting now (models/experience.lua) rather than from prestige --
@@ -2245,50 +1937,78 @@ end
 -- a party that had stopped growing -- so the one reward the descent has that is not gear arrived all at
 -- once, at the shallowest point, and never again.
 --
--- Spread out, a recruit is what a floor is FOR. Each of the six is met at a different depth, the party
--- is a different shape on every floor, and going one deeper is a body rather than a number.
+-- ONE PER DESCENT, ON A FLOOR THE RUN ROLLS FOR. This used to be one per FLOOR: the six recruiting
+-- houses were shuffled and dealt a body apiece onto floors one through six, so every descent met every
+-- companion in order and the roster filled itself on a schedule. What replaces it is a chance: each
+-- floor of the run is rolled at COMPANION_CHANCE, the first floor to hit is where somebody is standing,
+-- and that is the whole of the descent's offering. A run can come up having met nobody.
 --
--- THE COST, STATED PLAINLY: an opener hands over slot 0, a band of gear balanced against the shallowest
--- floors (docs/balance.md), so the sixth companion's kit lands well under the depth it is met at. The
--- FIGHT does not have that problem -- Descent.floorObjectives overrides the errand's authored
--- `floorLevel` with the floor's own -- and the payout that matters here is the body, which does not go
--- stale. Rebalancing the openers' `rewardItems` against depth is the follow-up, not a reason to pile six
--- introductions into two boards.
+-- WHY A ROLL BEATS A ROTA. A dealt rota makes the recruit an errand you are owed on a timetable -- go
+-- down, collect the body the schedule says is yours. A roll makes going one floor deeper the only way
+-- to buy another chance at one, which is the same greed dial every other decision on a floor is hung
+-- from, and it makes actually finding one an event rather than an appointment.
+--
+-- THE HOUSE HAS TO BE SOMEWHERE THE COMPANY HAS BEEN. The deck is drawn only from houses whose counter
+-- this player has actually walked into, which is a door that opens on level 1 of that house's class
+-- (`unlockClassLevel`) -- so what is dealt down here is a body from a discipline the company has been
+-- playing and a house it has met, rather than a stranger from a shop it has never heard of.
+--
+-- (The companion is NOT the shopkeeper. That was tried and reversed: a shopkeeper is somebody you buy
+-- from and keep buying from, and a companion is met on a floor and leaves with you. The visit gate
+-- survives the reversal because its real job was never the introduction -- it is what stops the one
+-- deal a descent gets being spent on a house the player has no reason to care about yet.)
 --
 -- SIX, NOT SEVEN. The Bastion's companion is Rowan, who is sworn in the prologue, so its opener grants
 -- nobody and Errand.houses leaves it out -- the deck is what actually recruits, not what names a body.
--- One sin's floor therefore carries no companion, and which one moves with the seed.
 --
--- Derived from the seed, never stored, for the same reason the sins are: a resume re-derives the floor
--- from a seed and a depth, and a stored order is a second copy that can disagree with it. Whether the
--- companion is actually SEATED is a separate question and belongs to the player, not the run -- see
--- Descent.floorObjectives.
-local function shuffledHouses(seed)
-    -- Off Errand.houses rather than the sins' own vendors: a house whose posting recruits nobody must
-    -- not take a floor's slot, and this is the one place that could seat it. Sorted before the shuffle
-    -- because `pairs` order is not stable across processes and this deck must be a function of the seed
-    -- alone -- an unsorted deck is a resumed run that meets a different body on floor four.
+-- STAMPED AT THE MOUTH OF THE RUN rather than re-derived per floor, and it is the same call `shuffled`
+-- makes directly above (Descent.new). The floor is a pure function of the seed, but WHO is standing on
+-- it depends on which counters the company had visited and who it had already recruited when it walked
+-- in -- and the seed cannot know either. Re-deriving would also break the one rule this is for: recruit
+-- the body on floor three, re-enter floor three, and a freshly-filtered deck would seat the NEXT
+-- companion on the same ground. Stamped once, a descent offers one and only one.
+Descent.COMPANION_CHANCE = 25 -- percent, rolled per floor; ~87% that a run meets somebody at all
+
+-- Deal this run's single companion, as { house, floor }, or nil for a descent that meets nobody.
+-- `player` may be nil (a fixture with no company behind it), and then every recruiting house is
+-- eligible -- there is nobody whose visits could narrow it.
+function Descent.dealCompanion(seed, player)
+    local floor
+    for f = 1, Descent.CIRCLE_FLOORS do
+        -- 977 is a salt the sins (floor = 0) and the shuffle below (991) never pass, so the three rolls
+        -- cannot come out in step.
+        if (hash(seed, 977, f) % 100) < Descent.COMPANION_CHANCE then floor = f break end
+    end
+    if not floor then return nil end
+
+    local Errand = require("models.errand")
+    local Player = require("models.player")
     local deck = {}
-    for vendorId in pairs(require("models.errand").houses()) do deck[#deck + 1] = vendorId end
+    for vendorId in pairs(Errand.houses()) do
+        -- Met at their counter, and not already walking with you. Errand.doorOpen is that house's
+        -- opener being finished, which is exactly "they joined".
+        local met = (player == nil) or Player.hasVisitedVendor(player, vendorId)
+        if met and not (player and Errand.doorOpen(player, vendorId)) then deck[#deck + 1] = vendorId end
+    end
+    if #deck == 0 then return nil end
+    -- Sorted before the shuffle because `pairs` order is not stable across processes, and this pick must
+    -- be a function of the seed and the company alone.
     table.sort(deck)
     for i = #deck, 2, -1 do
-        -- Salted off the sins' own shuffle (which passes floor = 0) so the two permutations cannot come
-        -- out in step. 991 is arbitrary and only has to be a number the sins never pass.
         local j = (hash(seed, 991, i) % i) + 1
         deck[i], deck[j] = deck[j], deck[i]
     end
-    return deck
+    return { house = deck[1], floor = floor }
 end
 
 -- Still a LIST rather than one id, and the callers are why: Descent.floorObjectives loops it and the
--- spec counts it. A floor carries at most one today, and the shape says "however many this floor has"
--- so that a later decision to double up on a deep floor is a change here and nowhere else.
+-- spec counts it. A floor carries at most one, and the shape says "however many this floor has" so that
+-- a later decision to stand two on a deep floor is a change here and nowhere else.
 function Descent.openersAt(run, floor)
     floor = math.max(1, floor or 1)
-    if floor > Descent.CIRCLE_FLOORS then return {} end
-    local deck = shuffledHouses(run and run.seed)
-    local vendorId = deck[floor]
-    return vendorId and { vendorId } or {}
+    local dealt = run and run.companion
+    if dealt and dealt.house and dealt.floor == floor then return { dealt.house } end
+    return {}
 end
 
 -- Which biome this floor wears: its sin's, and the underworld at the bottom -- where the campaign's own
@@ -2778,6 +2498,22 @@ Descent.COUNT_MAX = 15
 -- (Descent.FLOORS_PER_CIRCLE), so a seal pays back the floor it stood on and the one above it.
 Descent.COUNT_SEAL = 2
 
+-- WHAT EACH EXIT PUTS ON IT. Both of them now: an expedition that ends without the floor finished pays
+-- the count whether it ended on the stair or on the floor, and that is the count's whole meaning since
+-- the wipe stopped costing anything material (states/game.lua's wipe branch, docs/the-count.md).
+--
+-- THE WIPE IS DEARER THAN THE STAIR AND HAS TO BE. They cost the same materially -- nothing -- so if
+-- they cost the same here too, dying would be the CHEAPER exit: it happens where the company stands and
+-- the stair has to be walked back to. Equal rates would make "loot until threatened, then die" the
+-- game's best move. One mark of difference is enough to price the walk, and it is the smallest thing
+-- that can be.
+--
+-- NAMED HERE RATHER THAN WRITTEN AT THE TWO CALL SITES, because these are the dial B5's re-measure
+-- turns: the bands below were sized when a wipe paid nothing at all, and folding wipes in moves what
+-- every play style scores.
+Descent.COUNT_STAIR = 1
+Descent.COUNT_WIPE = 2
+
 -- The bands, as the lowest count each begins at. Ordered deepest-first so a lookup walks it and stops.
 --
 -- MOST OF THEM SAY NOTHING, and that is the point of a meter. The marks already say where the tally
@@ -2902,12 +2638,19 @@ function Descent.retreat(run, player)
     return run.floor
 end
 
--- The company took the ascent stair. THE ONE CALLER IS states/game.lua's ascent branch and it must stay
--- that way: a wipe also ends an expedition and also wakes the company at the Rift, and it is exempt --
--- it already costs the haul, the purse and a wound on every head, and charging the failure twice is the
--- exact thing this design is built not to do.
+-- The company took the ascent stair.
+--
+-- THE EXEMPTION IS GONE. A wipe used to be excused this "because it already costs the haul, the purse
+-- and a wound on every head, and charging the failure twice is the exact thing this design is built not
+-- to do" -- and that sentence is exactly why the wipe is charged now that it costs none of those. The
+-- failure is still billed once; the bill just moved to the only meter left (Descent.COUNT_WIPE).
+--
+-- WHICH GIVES THE COUNT A BETTER NOUN. It used to mean "you came back up early" with a carve-out for
+-- the worse way of doing it. It now means an EXPEDITION THAT ENDED WITH THE FLOOR UNFINISHED -- one
+-- meaning covering both exits, which is why the two rates sit together above rather than one being a
+-- rule and the other an exception to it.
 function Descent.climbOut(player)
-    return Descent.countBy(player, 1)
+    return Descent.countBy(player, Descent.COUNT_STAIR)
 end
 
 -- ---------------------------------------------------------------------------
@@ -3130,15 +2873,11 @@ function Descent.snapshot(run)
         landing = {}
         for i, id in ipairs(run.landing) do landing[i] = id end
     end
-    -- The dropped packs ride out whole. Each entry is already plain data (Descent.dropPack snapshots on
-    -- the way in), so this is a copy rather than a conversion -- and it has to be a copy, or the saved
-    -- table would still be the one the run is mutating.
-    --
-    -- `id` and the guard travel with them, and BOTH have to: the id is how a marker rebuilt after a load
-    -- names its pile (Descent.takePack), and `guardIds` is the company standing over it, drawn once when
-    -- the party fell. Re-drawing that on resume would change the fight under a player who had already
-    -- looked at it. `guardIds` is a flat list of id strings, which is the only reason it can be here --
-    -- a composition function would take the save write down (see the `drops` note on the run).
+    -- THE DROPPED PACKS ARE GONE and this still copies them, which is deliberate for exactly one
+    -- release: nothing writes `run.drops` any more (the pile system is deleted -- see "What the company
+    -- dropped where it fell"), but a save written before the deletion is still carrying a list, and a
+    -- snapshot that silently omitted it would rewrite that player's save on the next autosave. Copying
+    -- an empty list costs nothing and copying an old one loses nothing.
     local drops = {}
     for i, d in ipairs(run.drops or {}) do
         drops[i] = { id = d.id, floor = d.floor, x = d.x, y = d.y, count = d.count, items = d.items,
@@ -3151,6 +2890,13 @@ function Descent.snapshot(run)
         -- older save and a first descent both read as -- so this is purely additive and Save.VERSION
         -- does not move. A run resumed after the Crown fell keeps the order it opened with.
         shuffled = run.shuffled or nil,
+        -- The one companion this run offers, and where (Descent.dealCompanion). It HAS to ride: the
+        -- floor is re-derivable from the seed but the body is not, and a resume that re-dealt would hand
+        -- a different name to a company already standing in the chamber. Nil on a run that offers
+        -- nobody and on any save written before this existed, which read the same way -- purely
+        -- additive, so Save.VERSION does not move.
+        companion = (run.companion and run.companion.house) and
+            { house = run.companion.house, floor = run.companion.floor or 1 } or nil,
         cleared = run.cleared or 0,
         pending = pending,
         -- (Iselle's tally STOOD HERE and has moved to the player -- see Descent.count for why. A run
@@ -3158,12 +2904,6 @@ function Descent.snapshot(run)
         -- writes it beside `climbedOut` now, and reads an old save's `descentRun.count` forward off the
         -- raw snapshot so nobody's tally is dropped on the way in.)
         --
-        -- HOW LONG THE MULE IS STILL AWAY (models/mule.lua), in fights. On the RUN rather than on the
-        -- player, which is the opposite call to the tally above and for the opposite reason: a trip is
-        -- something happening inside one expedition, and a company must never walk into a fresh rift
-        -- with a mule notionally still halfway home. Nil while it is standing right there, which is
-        -- what an older save reads as too.
-        muleAway = (run.muleAway or 0) > 0 and run.muleAway or nil,
         -- WHICH STAIRS HAVE BEEN PAID FOR, keyed by floor as a string (the same reason `floors` is:
         -- Save.encode round-trips a numeric key inconsistently). Greed's gate is the only thing that
         -- writes it, and it has to ride: a company that paid, climbed out and came back down must not
@@ -3213,10 +2953,13 @@ function Descent.restore(snap)
         -- Absent on an older save and on a first descent alike, and both read as Dante's order --
         -- which is what they are (Descent.sinOrder).
         shuffled = snap.shuffled or nil,
+        -- Absent on an older save and on a run that offers nobody alike, and both read as "nobody is
+        -- down there", which is what they are.
+        companion = (type(snap.companion) == "table" and snap.companion.house) and
+            { house = snap.companion.house, floor = tonumber(snap.companion.floor) or 1 } or nil,
         cleared = snap.cleared or 0,
         pending = pending,
         -- (No `count` -- the tally is the player's. models/save.lua carries an old save's forward.)
-        muleAway = type(snap.muleAway) == "number" and snap.muleAway or nil, -- see snapshot
         tollPaid = (function()                                              -- ...and see snapshot
             if type(snap.tollPaid) ~= "table" then return nil end
             local out = {}

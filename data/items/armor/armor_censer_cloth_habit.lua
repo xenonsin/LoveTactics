@@ -24,7 +24,7 @@ return {
     type = "armor",
     tags = { "cloth", "holy" },
     class = "priest",
-    dropTier = 4,
+    dropTier = 5,
     incense = { hazard = "hazard_sacred", radius = 1 },
     bonus = { magicDefense = Curve.ramp(3, 13), defense = Curve.ramp(2, 12), movement = -1 },
 }

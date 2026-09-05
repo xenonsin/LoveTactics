@@ -346,7 +346,7 @@ function EncounterBattle.spoils(opts)
     local skimmed = combat and combat.skimmed or 0
     if skimmed > 0 then
         spoils = spoils or { gold = 0, scrip = 0, loot = {} }
-        spoils.scrip = (spoils.scrip or 0) + skimmed
+        spoils.gold = (spoils.gold or 0) + skimmed
     end
     -- Bounties settled during the fight (Combat.bounty -- a Struck Ledger paid out when its mark
     -- fell, a body spent to the Ledger's Due) ride out on exactly the same path. Every caller of
@@ -355,7 +355,7 @@ function EncounterBattle.spoils(opts)
     local bounty = combat and combat.bounty or 0
     if bounty > 0 then
         spoils = spoils or { gold = 0, scrip = 0, loot = {} }
-        spoils.scrip = (spoils.scrip or 0) + bounty
+        spoils.gold = (spoils.gold or 0) + bounty
     end
 
     return spoils

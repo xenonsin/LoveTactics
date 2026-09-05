@@ -29,7 +29,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "knight",
-    dropTier = 1,
+    dropTier = 2,
     traits = { "trait_oathward_declared" },
     -- every blow on the named is taken here
     bonus = { defense = 2 },

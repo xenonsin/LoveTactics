@@ -29,7 +29,7 @@ return {
     tags = { "spear", "pierce", "physical", "water", "melee" },
     hands = 2,
     class = "knight",
-    dropTier = 7,
+    dropTier = 8,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

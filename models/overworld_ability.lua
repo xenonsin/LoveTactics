@@ -261,12 +261,13 @@ A.ledger = {
 A.jubilee = {
     encounterCleared = function(_, _, ctx)
         if not isCombat(ctx.cell) then return end
-        local Scrip = require("models.scrip")
-        local base = ctx.spoils and ctx.spoils.scrip or 0
+        -- Read off `gold` rather than the retired `scrip` field: one purse now (models/spoils.lua),
+        -- and a rolled fight pays it at the same number the split had it paying the other one.
+        local base = ctx.spoils and ctx.spoils.gold or 0
         local bonus = math.max(3, math.floor(base * 0.25))
         if ctx.player then
-            Scrip.add(ctx.player, bonus)
-            say(ctx, "Clem's cut  +" .. bonus .. Scrip.SUFFIX)
+            require("models.player").addGold(ctx.player, bonus)
+            say(ctx, "Clem's cut  +" .. bonus .. "g")
         end
     end,
 }

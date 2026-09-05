@@ -15,8 +15,8 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "sentinel", -- deeper cut of the shelf: buyable only once the sentinel gate is cleared
-    price = 245,
     unlockQuests = 2,
+    dropTier = 2,
     traits = { "trait_unyielding" },
     -- shrugging a debuff off as it lands
     bonus = { magicDefense = 2 },

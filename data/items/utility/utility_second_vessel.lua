@@ -24,6 +24,7 @@ return {
     sprite = "assets/items/second_vessel.png",
     type = "utility",
     class = "creature",
+    dropTier = 4,
     tags = { "relic" },
     noSteal = true,
     traits = { "trait_covetous_eye" },

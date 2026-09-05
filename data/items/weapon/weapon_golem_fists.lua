@@ -21,6 +21,7 @@ return {
     sprite = "assets/items/golem_fists.png",
     type = "weapon",
     class = "creature",
+    dropTier = 2,
     tags = { "natural", "impact", "physical", "melee" },
     noSteal = true,
     traits = { "trait_oathward" }, -- the wall's guard rides on the body, since blueprint traits do not attach

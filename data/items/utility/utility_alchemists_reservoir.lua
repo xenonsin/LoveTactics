@@ -13,8 +13,8 @@ return {
     type = "utility",
     tags = { "satchel", "arcane" },
     class = "alchemist",
-    price = 575,
     unlockQuests = 6, -- backfills the rung Disarm left when it went to the Undercroft
+    dropTier = 5,
     traits = { "trait_alchemists_reservoir" },
     -- a caster's harness: it exists to keep a spell going out
     bonus = { magicDamage = 1 },

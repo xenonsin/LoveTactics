@@ -10,6 +10,7 @@ return {
     sprite = "assets/items/stone_fists.png",
     type = "weapon",
     class = "creature",
+    dropTier = 5,
     tags = { "natural", "impact", "physical", "melee" },
     noSteal = true,
     activeAbility = {

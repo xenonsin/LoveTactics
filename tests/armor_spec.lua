@@ -21,10 +21,6 @@ local Class = require("models.class") -- roots(): the seven shelves, since the f
 local Character = require("models.character")
 local Combat = require("models.combat")
 
--- Five per shelf: the floor AND the intent. Stated as a constant so a shelf that grows keeps the same
--- promise rather than drifting to whatever it happened to be authored with.
-local QUEST_ONLY_PER_SHELF = 5
-
 local function hasTag(def, tag)
     for _, t in ipairs(def.tags or {}) do if t == tag then return true end end
     return false
@@ -67,34 +63,43 @@ end
 
 return {
     {
-        name = "every class shelf carries armor, and five pieces of it are quest-only",
+        -- ARMOR IS FOUND NOW, ALL OF IT. The shelf recut kept a price on three things only -- abilities,
+        -- consumables, and a house's opener weapon (tools/drop_tier.lua) -- so the split this case used
+        -- to measure, five quest-only pieces against a buyable rack, has no buyable half left to
+        -- measure against. What replaces it is the promise that actually matters: every house has armor
+        -- to be found, and every piece of it has a depth to be found at, so none of it is unreachable.
+        name = "every class shelf carries armor, and all of it is found in the rift",
         fn = function()
             for class in pairs(Class.roots()) do
                 local armors = armorsOf(class)
                 assert(#armors > 0, class .. " has no armor at all -- see docs/classes.md")
-                local questOnly, buyable = {}, {}
                 for _, a in ipairs(armors) do
-                    if a.def.price then buyable[#buyable + 1] = a.id else questOnly[#questOnly + 1] = a.id end
+                    assert(not a.def.price,
+                        a.id .. " still carries a price -- armor is found, not stocked (docs/shelf.md)")
+                    assert(a.def.dropTier or a.def.bound,
+                        a.id .. " has neither a price nor a depth: it can never reach a player")
                 end
-                assert(#questOnly == QUEST_ONLY_PER_SHELF,
-                    class .. " has " .. #questOnly .. " quest-only armor(s), not " .. QUEST_ONLY_PER_SHELF
-                        .. " -- a `class` with no `price` is the reward shape (docs/classes.md)")
-                assert(#buyable > 0, class .. " sells no armor at all: its shelf cannot be shopped")
             end
         end,
     },
     {
-        name = "a quest-only armor names a class and no price; a buyable one names both and a quest gate",
+        -- A RUNG ON AN UNPRICED WARE IS NOT DEAD DATA ANY MORE, and this case used to say it was. The
+        -- rung is the item's GRADE RANK -- what models/balance.lua reads as its power level -- and it
+        -- was only ever ALSO a shelf gate. The recut took the price and left the rank, and the gate
+        -- moved to a different question entirely: have you carried one out (models/vendor.lua). So what
+        -- an armor piece owes is a rank, always, and a price never.
+        name = "every armor names a class and a rank, and none of it is for sale",
         fn = function()
             for class in pairs(Class.roots()) do
                 for _, a in ipairs(armorsOf(class)) do
-                    if a.def.price then
-                        assert(a.def.unlockQuests ~= nil,
-                            a.id .. " is for sale with no unlockQuests: nothing gates it")
-                    else
-                        assert(a.def.unlockQuests == nil,
-                            a.id .. " is quest-only but carries an unlockQuests -- a rung on a shelf it is not on")
-                    end
+                    assert(not a.def.price,
+                        a.id .. " is for sale -- armor is found now (tools/drop_tier.lua)")
+                    -- A RANK OR A DEPTH, and either will do. Everything the recut moved kept its
+                    -- `unlockQuests` -- that is the grade position models/balance.lua measures against.
+                    -- The pieces that were quest-only long before the recut never had one and grade at
+                    -- the opening rung, which is a settled position and not this case's argument.
+                    assert(a.def.unlockQuests ~= nil or a.def.dropTier or a.def.bound,
+                        a.id .. " has neither a rank nor a depth: nothing places it at all")
                 end
             end
         end,

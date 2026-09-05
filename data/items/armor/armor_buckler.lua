@@ -11,8 +11,8 @@ return {
     type = "armor",
     tags = { "shield" }, -- a Shield Bash item beside it in the grid can bash with it
     class = "knight",
-    price = 410,
     unlockQuests = 4, -- a family's base weapon is always rank 1 (docs/weapons.md); the buckler is the shield's
+    dropTier = 6,
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     resist = { physical = 1 },
     -- Defend brace: the temporary +defense while braced, tuned here and climbing with the forge.

@@ -20,6 +20,7 @@ return {
     sprite = "assets/items/larder_hook.png",
     type = "utility",
     class = "creature",
+    dropTier = 4,
     tags = { "relic" },
     noSteal = true,
     traits = { "trait_larder" },
