@@ -854,13 +854,21 @@ function Shop:buildFenceRows()
     end
 end
 
--- Why the fence will not take this piece. Read by the detail column, so a greyed row explains itself
--- rather than merely refusing.
-function Shop:fenceLockReason(row)
-    local item = row.item
+-- The two refusals that belong to the PIECE rather than to the counter it is standing on, so the Sell
+-- tab and the Fence give one answer for them instead of two. Nil when nothing about the item itself is
+-- in the way and the counter has to speak for itself.
+local function unsellable(item)
     if not item then return "Nothing to trade." end
     if Item.isBound(item) then return "Bound to its bearer. Not yours to trade, whatever it is worth." end
     if not item.price then return "Never had a price. Nobody will take it, here least of all." end
+    return nil
+end
+
+-- Why the fence will not take this piece. Read by the detail column, so a greyed row explains itself
+-- rather than merely refusing.
+function Shop:fenceLockReason(row)
+    local held = unsellable(row.item)
+    if held then return held end
     return "Nothing of its worth on this shelf yet -- run more of this house's line and come back."
 end
 
@@ -1018,6 +1026,32 @@ function Shop:lockReason(entry)
         return "Locked: complete " .. remaining .. " more of this house's " .. quests .. "."
     end
     return "Locked."
+end
+
+-- WHY THE TILE UNDER THE CURSOR CANNOT BE TAKEN, for the tooltip that is already open on it. Nil when
+-- the transaction would go through, so an ordinary piece's card closes on its flavour as it always has.
+--
+-- The rack says THAT a piece is out of reach twice over -- a greyed plate for a gate, a red price for an
+-- empty purse (ui/pool_grid.lua) -- and neither says WHICH gate or HOW short. That sentence used to live
+-- in the detail pane beside the list; the pane went with the switch to tiles, so it goes where the rest
+-- of the reading went. It is the same sentence the footer prints on the press (Shop:buy), reached by
+-- hovering instead of by being refused.
+--
+-- Gold is asked SECOND: a locked piece has no price worth discussing, and being told the purse is short
+-- of a number that is not yet on offer would send the player after the wrong thing.
+function Shop:refuseReason(row)
+    if not row then return nil end
+    if self.mode == "buy" then
+        if row.locked then return row.entry and self:lockReason(row.entry) or "Locked." end
+        local price = row.entry and row.entry.price or 0
+        local gold = self.player.gold or 0
+        if gold < price then
+            return "Not enough gold: it asks " .. price .. "g and the purse holds " .. gold .. "g."
+        end
+    elseif self.mode == "sell" and row.locked then
+        return unsellable(row.item) or "Cannot be sold here."
+    end
+    return nil
 end
 
 -- Buying ASKS first. A shelf row is one press away from the cursor on every input device -- and on the
@@ -1300,10 +1334,14 @@ end
 -- question, one door down.
 function Shop:drawGridTooltip()
     if self.confirm or self.quantityPopup or self.itemDebug then return end
-    local item, ax, ay
+    local item, ax, ay, row
     if InputMode.isMouse() then
         for _, g in ipairs(self.sections) do
-            if g.pool.hover then item, ax, ay = g.pool:itemAt(g.pool.hover), self.mx, self.my break end
+            if g.pool.hover then
+                item, row = g.pool:itemAt(g.pool.hover), g.rows[g.pool.hover]
+                ax, ay = self.mx, self.my
+                break
+            end
         end
     else
         -- On the house shelf the cursor can be in the band column instead, where there is no tile to
@@ -1311,12 +1349,14 @@ function Shop:drawGridTooltip()
         -- happened to leave under it.
         local g = (not (self:usesShelf() and self.zone == "bands")) and self:focusedSection() or nil
         if g and g.pool then
-            item = g.pool:itemAt(g.pool.cursor)
+            item, row = g.pool:itemAt(g.pool.cursor), g.rows[g.pool.cursor]
             local cx, cy, cw = g.pool:cellRect(g.pool.cursor)
             if cx then ax, ay = cx + cw, cy end
         end
     end
-    if item and ax then ItemTooltip.draw(item, ax, ay, Scale.WIDTH) end
+    if item and ax then
+        ItemTooltip.draw(item, ax, ay, Scale.WIDTH, nil, nil, self:refuseReason(row))
+    end
 end
 
 -- What the rail says beyond the name and the gate Menu has already printed: the count hard right on the

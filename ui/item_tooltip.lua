@@ -14,6 +14,13 @@
 --
 --   ItemTooltip.draw(item, mx, my, maxRight, nil, char)  -- owner: warns on a price it can never meet
 --
+-- `warn` is the last argument of both halves, and it carries the one thing on the card the ITEM cannot
+-- know: a sentence from whatever surface is showing it saying why this copy cannot be had -- a shelf's
+-- gate, an empty purse, a counter that will not take it (ui/panels/shop.lua). It closes the mechanical
+-- half of the box in the same red the unpayable prices wear:
+--
+--   ItemTooltip.draw(item, mx, my, maxRight, nil, nil, "Locked: grow Knight to level 4.")
+--
 -- `draw` is measure-then-paint, and both halves are public for a caller that has to place the box
 -- itself rather than hang it off a cursor:
 --
@@ -231,8 +238,9 @@ end
 -- `actor` (optional) is the unit the ability is priced and gated against: whatever stops it from
 -- being cast right now (Combat.itemBlockReason) reddens the offending row and closes the ability
 -- section with a `warn` block spelling the reason out. `owner` (optional) is the out-of-battle
--- character carrying it, and asks the permanent version of the same question instead.
-local function buildBlocks(item, actor, innerW, out, owner)
+-- character carrying it, and asks the permanent version of the same question instead. `warn`
+-- (optional) is the CALLER's own refusal -- see the file header -- closing the card the same way.
+local function buildBlocks(item, actor, innerW, out, owner, warn)
     local blocks = {}
     -- The one reason this item can't be activated (nil when it can, or when it's passive).
     local blocked = Combat.itemBlockReason(actor, item)
@@ -731,6 +739,16 @@ local function buildBlocks(item, actor, innerW, out, owner)
         if adjacent then blocks[#blocks + 1] = { kind = "warn", text = adjacent.text } end
     end
 
+    -- WHY THIS COPY CANNOT BE HAD, in the words of the surface it is standing on. A greyed plate and a
+    -- red price say THAT something is wrong; only the reading says what, and since the reading is the
+    -- one surface every screen in the city shares, this is where a shop's gate gets said -- not in a
+    -- detail pane the tile language deleted. It stands with the other refusals and above the story
+    -- line, because it is mechanical and the flavour keeps the last word.
+    if warn and warn ~= "" then
+        blocks[#blocks + 1] = { kind = "sep" }
+        blocks[#blocks + 1] = { kind = "warn", text = warn }
+    end
+
     -- The story line has the tooltip's last word, below everything mechanical (docs/item-text.md).
     if ItemTooltip.SHOW_FLAVOR and item.flavor and item.flavor ~= "" then
         blocks[#blocks + 1] = { kind = "sep" }
@@ -747,7 +765,7 @@ end
 -- one per carried piece) has to know how tall each box is BEFORE it can decide where any of them goes.
 -- It is also the expensive half -- the dry run and the wrapping live here -- so such a caller can
 -- memoize the layout per item and repaint it every frame for free.
-function ItemTooltip.measure(item, actor, owner)
+function ItemTooltip.measure(item, actor, owner, warn)
     if not item then return nil end
     local title, body, small, power = fonts()
     local pad, w = 9, ItemTooltip.WIDTH
@@ -756,7 +774,7 @@ function ItemTooltip.measure(item, actor, owner)
     -- One dry run per hover, shared: the blocks below quote its numbers and the glossary column beside
     -- the box names the statuses it turned up.
     local out = Combat.abilityOutput(actor, item) or false
-    local blocks = buildBlocks(item, actor, innerW, out, owner)
+    local blocks = buildBlocks(item, actor, innerW, out, owner, warn)
     local titleH, bodyH, smallH, powerH = title:getHeight(), body:getHeight(), small:getHeight(), power:getHeight()
 
     -- Measure: sum each block's height (wrapping desc against innerW, cached for the draw pass).
@@ -913,8 +931,8 @@ end
 
 -- Draw the tooltip for `item` anchored near (mx, my). `maxRight` caps the box's right edge so it
 -- never slides under a side panel (defaults to the screen width). No-op when item is nil.
-function ItemTooltip.draw(item, mx, my, maxRight, actor, owner)
-    local layout = ItemTooltip.measure(item, actor, owner)
+function ItemTooltip.draw(item, mx, my, maxRight, actor, owner, warn)
+    local layout = ItemTooltip.measure(item, actor, owner, warn)
     if not layout then return end
     local w, h = layout.w, layout.h
     maxRight = maxRight or Scale.WIDTH
