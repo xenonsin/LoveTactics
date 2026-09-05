@@ -1,6 +1,6 @@
 -- WHAT A HAZARD COSTS IS STATED IN THE FLOOR'S OWN UNITS, and this is the guard on that.
 --
--- The four descent hazards (models/descent.lua's Descent.HAZARDS) were tuned against a 40x40 board of
+-- The descent hazards (models/descent.lua's Descent.HAZARDS) were tuned against a 40x40 board of
 -- tiles -- 931 walkable, a forty-step crossing -- and their numbers were literals in states/game.lua:
 -- the Turning Floor unlearned a 13x13 block, the Translation wanted somewhere eight steps off, the Dark
 -- ran thirty steps. Every one of those reads as "a neighbourhood", "a long way" and "a stretch" on that

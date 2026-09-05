@@ -3725,10 +3725,10 @@ function game:openEncounter(cell, opts)
         return
     end
 
-    -- ---- THE FOUR HAZARDS (data/encounters/encounter_dark.lua and siblings) -------------------------
+    -- ---- THE THREE HAZARDS (data/encounters/encounter_dark.lua and siblings) ------------------------
     --
     -- What makes a descent floor a place that lies to you rather than a route with fights on it. All
-    -- four resolve WITHOUT a panel and without a choice: a hazard you are asked to confirm is a door,
+    -- three resolve WITHOUT a panel and without a choice: a hazard you are asked to confirm is a door,
     -- and the thing being borrowed here is the square that does it to you before you have finished
     -- stepping. The toast is the whole of the telling.
     --
@@ -3816,26 +3816,6 @@ function game:openEncounter(cell, opts)
         end
         game:applyVision()
         saveRun()
-        return
-    end
-
-    -- THE SINK: a floor deeper, at whatever health you were carrying, with the stair you skipped still
-    -- held. The circle is NOT credited and its boon is not paid -- falling past a general is not beating
-    -- one -- so a sink arrives deeper and poorer, which is the trap under the shortcut.
-    if kind == "sink" then
-        cell.cleared = true
-        local run = game.descent
-        if not run or Descent.isBottom(Descent.depth(run) + 1) then
-            -- Nothing under the bottom to fall into. A hole that could drop the company past the Hollow
-            -- Crown would end a run by accident.
-            game:pushToast("The floor gives, and holds.")
-            saveRun()
-            return
-        end
-        Descent.keepFloor(run, Descent.depth(run), game.grid:snapshot())
-        Descent.advance(run, game.player)
-        game:pushToast("The floor gives way.")
-        State.switch(require("states.game"), Descent.floorQuest(run, game.player), game.day, game.player)
         return
     end
 

@@ -580,11 +580,11 @@ local function markerColor(kind, enc)
     -- and the next circle below without either being mistaken for a fight or a gift.
     if kind == "stair" then return 0.62, 0.58, 0.72 end
     if kind == "pack" then return 0.80, 0.72, 0.42 end -- what you dropped when the company went down
-    -- THE FOUR HAZARDS share one colour, and that is the point of them: a descent floor's hostile
+    -- THE THREE HAZARDS share one colour, and that is the point of them: a descent floor's hostile
     -- geography is a category the player learns to recognise ("something is wrong with this square"),
-    -- not four things to memorise. The MARK says which; the colour says only that it is not a fight and
+    -- not three things to memorise. The MARK says which; the colour says only that it is not a fight and
     -- not a gift. A sour green-grey, kept well away from the treasure jade and the rest's teal.
-    if kind == "dark" or kind == "spinner" or kind == "translation" or kind == "sink" then
+    if kind == "dark" or kind == "spinner" or kind == "translation" then
         return 0.45, 0.52, 0.44
     end
     return 0.85, 0.25, 0.25 -- combat
@@ -738,8 +738,8 @@ function MarkerIcon.rest(x, y, w, h, r, g, b, a)
     love.graphics.polygon("fill", x + w / 2, y + h * 0.38, x + w * 0.34, y + h, x + w * 0.66, y + h)
 end
 
--- THE FOUR HAZARDS. One colour between them (see markerColor) and four marks, so the category reads at
--- a glance and the particular reads on a look. Each is the thing it does to you, drawn:
+-- THE THREE HAZARDS. One colour between them (see markerColor) and three marks, so the category reads
+-- at a glance and the particular reads on a look. Each is the thing it does to you, drawn:
 
 -- THE DARK: a lamp flame pinched to nothing. A disc with a bite out of it -- light, most of it gone.
 function MarkerIcon.dark(x, y, w, h, r, g, b, a)
@@ -764,16 +764,6 @@ function MarkerIcon.translation(x, y, w, h, r, g, b, a)
     love.graphics.setColor(r, g, b, a)
     love.graphics.circle("fill", x + w * 0.22, y + h * 0.74, w * 0.17)
     love.graphics.circle("line", x + w * 0.78, y + h * 0.26, w * 0.17)
-end
-
--- THE SINK: a mouth in the floor, and the way through it is down.
-function MarkerIcon.sink(x, y, w, h, r, g, b, a)
-    love.graphics.setColor(r, g, b, a)
-    love.graphics.ellipse("line", x + w / 2, y + h * 0.30, w * 0.40, h * 0.16)
-    love.graphics.polygon("fill",
-        x + w * 0.30, y + h * 0.42,
-        x + w * 0.70, y + h * 0.42,
-        x + w * 0.50, y + h)
 end
 
 -- WHAT YOU DROPPED: a bundle, tied. Everything the company was carrying when it went down, in a heap

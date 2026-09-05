@@ -12,9 +12,9 @@
 -- back under, and the map has a hole in it exactly where you are standing. Everything you learned about
 -- the rest of the floor is still yours, which is right; what is gone is your bearings.
 --
--- Deliberately not a teleport. The Sink (encounter_sink) is the stop that MOVES you, and two stops that
--- both move you would be one stop with two names. This one leaves you where you stand and takes the
--- knowledge instead, which is the half of a spinner that survived the translation.
+-- Deliberately not a teleport. The Translation (encounter_translation) is the stop that MOVES you, and
+-- two stops that both move you would be one stop with two names. This one leaves you where you stand and
+-- takes the knowledge instead, which is the half of a spinner that survived the translation.
 --
 -- `weight = 0`: authored-only. See encounter_dark.lua.
 return {

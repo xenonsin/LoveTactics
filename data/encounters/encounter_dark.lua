@@ -1,4 +1,4 @@
--- Encounter blueprint. THE DARK: ground the lamp will not reach into, and the first of the four
+-- Encounter blueprint. THE DARK: ground the lamp will not reach into, and the first of the three
 -- hazards that make a descent floor a place that lies to you rather than a route with fights on it.
 --
 -- WHAT WIZARDRY'S DARKNESS SQUARES ACTUALLY DO, translated. There, they kill your light spell and you
@@ -13,7 +13,7 @@
 --
 -- `kind = "dark"`, resolved in states/game.lua. `weight = 0`, so it never turns up on a rolled campaign
 -- board -- the descent's own pool is the only thing that gives it a weight (models/descent.lua's
--- Descent.floorPool), which is what scopes all four hazards to the floors they were written for.
+-- Descent.floorPool), which is what scopes all three hazards to the floors they were written for.
 return {
     name = "The Dark",
     kind = "dark",

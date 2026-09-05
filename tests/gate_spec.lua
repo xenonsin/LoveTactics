@@ -463,14 +463,14 @@ return {
     end },
 
     { name = "a wipe puts the floor away like every other way off it", fn = function()
-        -- WHY THIS IS WRITTEN AGAINST THE SOURCE. There are four routes off a floor -- the stair down,
-        -- the way up, a sink, and a wipe -- and all four are branches inside states/game.lua, the last
-        -- of them a closure hanging off a battle panel's `onLoss`. None can be reached from a headless
-        -- spec, so the invariant is stated where it CAN be checked: the branch that sends a wiped
-        -- company up to the Gate keeps its board on the way.
+        -- WHY THIS IS WRITTEN AGAINST THE SOURCE. There are three routes off a floor -- the stair down,
+        -- the way up, and a wipe -- and all three are branches inside states/game.lua, the last of them
+        -- a closure hanging off a battle panel's `onLoss`. None can be reached from a headless spec, so
+        -- the invariant is stated where it CAN be checked: the branch that sends a wiped company up to
+        -- the Gate keeps its board on the way.
         --
         -- It shipped without one, and the shape of the miss is the reason for the tripwire: the other
-        -- three routes all kept their board, so the feature worked everywhere anybody looked. What a
+        -- routes all kept their board, so the feature worked everywhere anybody looked. What a
         -- wipe did instead was roll a fresh floor N for the walk back -- against a Gate that had just
         -- promised "they are still there, and so is everything they were carrying", with the pile
         -- seated onto the new ground by the coordinates it fell on (states/game.lua's markBodies), so

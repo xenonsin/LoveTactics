@@ -613,16 +613,23 @@ Descent.FLOOR_RESTS = 1
 -- absolute fight budget now and the generator takes it as `combatBudget`, which wins over the share.
 -- See Descent.FLOOR_FIGHTS for the measurement that retired it.)
 
--- THE FOUR HAZARDS, and the weight each gets on a descent floor.
+-- THE THREE HAZARDS, and the weight each gets on a descent floor.
 --
--- They are authored at `weight = 0` (data/encounters/encounter_dark.lua and its three siblings) so a
+-- They are authored at `weight = 0` (data/encounters/encounter_dark.lua and its two siblings) so a
 -- rolled campaign board can never produce one -- a quest board's leg is a road through country, and a
--- hole that drops the company a floor has nowhere to drop them. Giving them a weight HERE is what scopes
--- all four to the only place they mean anything, without a second pool to keep in step.
+-- stretch of dungeon that unlearns your bearings has none to take. Giving them a weight HERE is what
+-- scopes all three to the only place they mean anything, without a second pool to keep in step.
+--
+-- (A FOURTH STOOD HERE AND IS GONE: the Sink, a hole that dropped the company a floor. It was the one
+-- hazard that moved the run rather than the company's knowledge of it, and what it actually did was
+-- skip a floor's guardian -- so the circle went uncredited, the boon unpaid, and a company arrived
+-- deeper and poorer with a fight waiting on the way back up. That is a punishment for walking, dealt
+-- by a square, with no decision anywhere in it. The three that remain all cost knowledge or steps and
+-- leave the descent's own shape alone, which is the line: a floor may lie to you, it may not move you
+-- off itself.)
 --
 -- Weighted well below a fight and unevenly among themselves, by how much each one costs. The Dark and
--- the Turning Floor take knowledge and are cheap enough to meet often; the Translation costs a long walk;
--- the Sink costs a floor, and one every few floors is a horror where one a floor is a mode about falling.
+-- the Turning Floor take knowledge and are cheap enough to meet often; the Translation costs a long walk.
 -- ORDERED, and that is not tidiness. The generator draws its stops out of this pool in list order, so a
 -- pool assembled by walking a keyed table with `pairs` would lay a DIFFERENT floor on the same seed on
 -- another machine -- the identical rule Descent.SINS is ordered for.
@@ -630,7 +637,6 @@ Descent.HAZARDS = {
     { id = "encounter_dark", weight = 1.2 },
     { id = "encounter_spinner", weight = 1.0 },
     { id = "encounter_translation", weight = 0.7 },
-    { id = "encounter_sink", weight = 0.4 },
 }
 
 -- ---------------------------------------------------------------------------
@@ -1780,7 +1786,7 @@ end
 --                   and the stair she was holding is a place now (Descent.openStair), which is why it
 --                   is still standing open on a floor the company comes back down to.
 --   caches, the reliquary, the recruit, the shrine, the merchant, a crossroads
---   the hazards     a sink you have already fallen through is a hole, not an ambush
+--   the hazards     a stretch you have already walked blind through is ground, not an ambush
 --   secret doors    found is found; that is the whole point of keeping the floor
 --   a dropped pack  it is yours, and it is not a monster
 --

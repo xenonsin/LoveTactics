@@ -1,9 +1,9 @@
--- Tests for what a descent floor is made of beyond its stops: the four hazards, and the doors that read
+-- Tests for what a descent floor is made of beyond its stops: the three hazards, and the doors that read
 -- as wall until somebody looks.
 --
 -- Both are scoped to the descent and BOTH SCOPING RULES ARE ASSERTED HERE, in each direction. A hazard
--- that leaked onto a campaign board would be a hole dropping a quest party through a floor that does not
--- exist; a secret on one would be content the player walks past once and never sees again, since a
+-- that leaked onto a campaign board would be a stretch of dungeon dark laid across open country; a
+-- secret on one would be content the player walks past once and never sees again, since a
 -- campaign ground is walked once and left. The inverse cases are the ones that catch a regression,
 -- because the feature working is visible in play and the leak is not.
 
@@ -42,7 +42,7 @@ local function countKind(grid, kind)
 end
 
 return {
-    { name = "the four hazards are authored inert and given weight only by a descent", fn = function()
+    { name = "the three hazards are authored inert and given weight only by a descent", fn = function()
         -- The scoping rule, from both ends. Each blueprint is authored at weight 0 so the campaign's own
         -- pool cannot produce one; Descent.floorPool is what gives them a weight, and it is the only
         -- thing that does.
@@ -183,8 +183,8 @@ return {
 
 
     { name = "a campaign ground grows no hazards and no secrets", fn = function()
-        -- The inverse, and the one that actually catches a regression: a hole that dropped a quest party
-        -- through a floor that does not exist, or ground a company walks past once and never sees.
+        -- The inverse, and the one that actually catches a regression: dungeon geography seated on open
+        -- country, or ground a company walks past once and never sees.
         local grid = Overworld.generate({
             cols = 15, rows = 13, biome = "forest", seed = 5, encounterCount = { min = 8, max = 8 },
             encounters = Encounter.pool({ biome = "forest", day = 20, prestige = 10 }),
