@@ -15,8 +15,7 @@ that would spoil it never gets close enough to bite. "Can I afford this" stops b
 
 | | What it is | Where it is earned | Where it is spent |
 |---|---|---|---|
-| **Gold** | A number on the player | Every won fight, rolled by depth; authored payouts at ends | Everywhere: the seven shelves, the Forge, the Cafe, the road's Merchant, the Crossroads, the money kit |
-| **Valuables** | Objects with a price, no class, no effect and no use | Ends only: elites, objectives, generals | Sold at a counter, at **par** ([models/valuable.lua](../models/valuable.lua)) |
+| **Gold** | A number on the player | Every won fight, rolled by depth; an **end purse** on top at every end ([`Spoils.endPurse`](../models/spoils.lua)); authored payouts | Everywhere: the seven shelves, the Forge, the Cafe, the road's Merchant, the Crossroads, the money kit |
 
 ## There were two purses, and why there are not
 
@@ -42,23 +41,31 @@ wipe stopped costing anything ([docs/the-count.md](the-count.md)). **Magnitude**
 unlike the other three it needs no object to hang on: only a number, anchored to the grader so a re-cut
 of the shelf moves it.
 
-## Why gold is also objects
+## Gold was objects for a while, and is not
 
-The campaign's real income arrives as **valuables** — loot with a price and no use whatever — and that
-is unchanged by the merge. Making it physical is what lets a haul be a decision at all:
+The campaign's real income arrived as **valuables** — priced loot with no use whatever, dropped by ends,
+carried out of the rift and sold at a counter. **Weight was the entire argument.** A valuable took mule
+slots, so treasure competed with the gear you found; it rode in the pack, so a wipe dropped the takings
+where the company fell. Both of those systems are deleted — the mule has no cap to fill and a wipe takes
+nothing — and what was left was an inventory step standing between winning a fight and being paid for
+it: carry the idol home, open a shop, click sell. **A step with no decision in it is not a decision.**
+`models/valuable.lua` and `data/items/valuable/` are gone.
 
-- **Bulk is the knob.** A valuable declares how many slots it takes, and **worth per slot climbs with
-  bulk** (`tests/economy_spec.lua` pins this). A three-slot idol is worth more per slot than three
-  pocket pieces, so *"leave the censer, take the idol"* is a real question where a set that all weighed
-  one would only ever ask "how many".
-- **It is what the stair's toll takes a share of.** A gate that demands *n* finds counts the haul, and
-  may never reach into the kit a company marched down with (`Player.atRisk`, `game:payToll`). That diff
-  is the one piece of the old risk apparatus that outlived it.
+**What survived is the shape**, because the shape is why the descent has a direction. An end pays an
+**end purse** in coin on top of what its fight was worth (`Spoils.endPurse`):
 
-**Valuables are lumpy, not litter.** They fall off ends — elites, objectives, generals — never off an
-ordinary body, because one valuable per fight would be an inventory chore with a floor's worth of
-clicking in it. The ambient income is plain coin. That split is still the whole economy in one line:
-**the grind funds spending, the work you chose to walk to funds the campaign.**
+- **Lumpy, not litter.** Only an end pays one — an elite, an objective, a general, which pays double —
+  never an ordinary body. **The grind funds spending, the work you chose to walk to funds the
+  campaign.** Spreading it over every fight would make the whole floor worth the same to walk.
+- **It climbs steeply**, far faster than an ordinary fight's gold (`GOLD_DEPTH_SLOPE`). That climb is
+  what the greed at a landing is weighing. It goes flat at floor 11, which is where the old pool topped
+  out — a campaign road passes its *day* in as depth and the calendar runs to 40.
+- **The numbers are the old ladder's, measured.** The valuable pool ran 110g on floor 1 to 1,500g on
+  floor 11, drawn twice with the dearer kept: ~150g and ~850g expected. A base of 130 on a slope of 0.55
+  tracks that at every rung it had, so measurements taken against the object economy still read.
+- **The stair's toll is unaffected.** It takes a share of the *finds*, counted by the head, and may
+  never reach into the kit a company marched down with (`Player.atRisk`, `game:payToll`). That diff is
+  the one piece of the old risk apparatus that outlived it.
 
 ### What the mule's deletion took with it
 
@@ -97,16 +104,15 @@ burning coin the Forge is waiting for is a real decision taken at the moment of 
 ## The invariant
 
 One claim, and it is about what *cannot* happen: **nothing underground is ever priced against a
-permanent upgrade.** The failure mode is silent — a valuable that slips into `Spoils.shelf` does not
-crash, it just puts the thing the player is descending to fetch on a counter for sale — so it is pinned
-in [tests/economy_spec.lua](../tests/economy_spec.lua) rather than left to reading.
+permanent upgrade.** The failure mode is silent — an ask that drifts over the ceiling does not crash, it
+just puts a floor-three relic beside a forge rung — so it is pinned in
+[tests/economy_spec.lua](../tests/economy_spec.lua) rather than left to reading.
 
-The exceptions that make it work, each one line somewhere and each invisible if it broke:
+What holds it up, each one line somewhere and each invisible if it broke:
 
 - `Spoils.askingPrice` clamps every underground quote, or a relic slate reaches a forge rung again.
-- `lootCandidates` refuses valuables, or every idol in the data turns up as ordinary loot.
-- `Vendor.sells` refuses them, or the Market — which stocks everything priced — sells them back to you.
-- `Vendor.sellValue` pays them at **par**, not the 50% gear takes, because nobody ever sold you one: a
-  valuable's price is its worth, and halving it here would mean every file authored at double.
-- `Item.instantiate` copies `valuable` and `bulk` onto the instance, or the counter — which is handed
-  live items and nothing else — cannot see them.
+- `Spoils.endPurse` is the only place an end's income is decided, and it is capped at floor 11, or a
+  late campaign road out-pays the bottom of the rift.
+- **Every price in the game is a shelf price**, so every price needs a shelf
+  (`tests/progression_spec.lua`). The one exception was the valuable, whose number was what a counter
+  *paid*; the same spec is what would catch one being authored back in.

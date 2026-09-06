@@ -29,8 +29,7 @@ local EncounterPanel = require("ui.panels.encounter")
 local LootReveal = require("ui.panels.loot_reveal")
 local RelicOffer = require("ui.panels.relic_offer")   -- the Reliquary's pick-one-of-three
 local RelicReveal = require("ui.panels.relic_reveal") -- the Sin's Altar's single relic + toll
-local Merchant = require("ui.panels.merchant") -- the road's shop: ordinary goods for scrip
-local Valuable = require("models.valuable") -- ...and the campaign's, which is objects and has weight
+local Merchant = require("ui.panels.merchant") -- the road's shop: ordinary goods, priced under the ceiling
 local Choice = require("ui.panels.choice")
 local Crossroads = require("models.crossroads")
 local RestChoice = require("ui.panels.rest_choice")
@@ -439,15 +438,13 @@ function game:refreshHaul()
     -- in the Loadout and the pile a wipe actually drops are one answer asked three times. They used to
     -- be two counts computed the same way in two files, which is exactly how a readout goes quietly
     -- false (the badge would have been the third).
-    -- ITEMS, AND WHAT THE VALUABLES AMONG THEM ARE WORTH. The second figure is the whole reason the
-    -- greed decision has teeth now (models/valuable.lua): the campaign's income IS these objects, so
-    -- "carried this run" without a gold number beside it would be reporting a pile of gear and quietly
-    -- omitting the takings. Read off the same atRisk keys rather than tallied at the grant, for the
-    -- reason this whole function is a diff.
-    local items, worth = 0, 0
-    for item, n in pairs(Player.atRisk(game.player, entry)) do
+    -- THE ITEMS, off the same atRisk keys the toll spends rather than tallied at the grant, for the
+    -- reason this whole function is a diff. There was a second figure here -- what the VALUABLES among
+    -- them were worth -- and it went with the valuables themselves (models/spoils.lua's END_PURSE): an
+    -- end pays coin now, so the takings are in `gold` below with everything else the run earned.
+    local items = 0
+    for _, n in pairs(Player.atRisk(game.player, entry)) do
         items = items + n
-        worth = worth + n * Valuable.value(item)
     end
 
     local materials = 0
@@ -460,13 +457,12 @@ function game:refreshHaul()
     -- for (models/spoils.lua, states/game.lua's objective branch).
     for _, n in pairs(game.map and game.map.cacheHaul or {}) do materials = materials + (n or 0) end
 
-    -- Gold gained as a NUMBER, which since the economy split is only ever an authored objective purse
-    -- (models/scrip.lua) -- a rolled fight pays scrip and the campaign's real income arrives as the
-    -- valuables counted above. Kept because an errand still pays one, and because zero is a reading.
+    -- Gold gained, which is now the whole of what the run earned in coin: the wage every fight pays, the
+    -- purse an end adds on top of it, and an errand's authored payout.
     local gold = math.max(0, (game.player.gold or 0) - (entry.gold or 0))
 
-    game.haul = (items > 0 or gold > 0 or worth > 0 or materials > 0)
-        and { items = items, gold = gold, worth = worth, materials = materials } or nil
+    game.haul = (items > 0 or gold > 0 or materials > 0)
+        and { items = items, gold = gold, materials = materials } or nil
 end
 
 -- WHAT THE CIRCLE'S GATE READS RIGHT NOW (models/descent.lua's Descent.gateState). This is the only
@@ -543,8 +539,9 @@ function game:payToll(n)
 end
 
 -- The haul as a plain phrase ("4 items, 210 gold, 6 stock"), or nil when the run has found nothing.
--- One writer for it, so the turn-back confirmation and the defeat panel name the same loss the same way
--- -- a player who reads "4 items" before the fight and "3 items" after it has been told the rule wrong.
+-- One writer for it, so every surface that names what the expedition is carrying names it the same way.
+-- It fed the defeat panel too, until a loss stopped taking anything; what is left reads it at the way
+-- out, where the question is what climbs the stair rather than what a wipe would take.
 function game:haulPhrase()
     if not game.haul then return nil end
     local parts = {}
@@ -1867,15 +1864,12 @@ function game:openEncounter(cell, opts)
                 -- eating a reward rather than as a bag being full.
                 --
                 -- EVERYTHING FITS. There is no carry cap any more -- the mule is deleted along with the
-                -- wipe penalty its ceiling existed to bound -- so a rolled find, a valuable and a
-                -- sealed husk all simply land. `left` is kept at nought rather than removed because the
-                -- toast below still names what arrived, and a count that can only be zero is cheaper
-                -- than three call sites learning a new shape.
+                -- wipe penalty its ceiling existed to bound -- so a rolled find and a sealed husk both
+                -- simply land. `left` is kept at nought rather than removed because the toast below
+                -- still names what arrived, and a count that can only be zero is cheaper than three
+                -- call sites learning a new shape.
                 local left = 0
                 for _, id in ipairs(spoils.loot or {}) do
-                    Player.grantItem(game.player, id)
-                end
-                for _, id in ipairs(spoils.valuables or {}) do
                     Player.grantItem(game.player, id)
                 end
                 -- ...and the unread find, on the rare stop that paid one (models/identify.lua). Granted
@@ -2054,10 +2048,6 @@ function game:openEncounter(cell, opts)
             -- Who is still standing when the last door opens; read only by the finale's composition
             -- (data/quests/quest_the_gate_below.lua) and nil-safe everywhere else.
             generalsStanding = Calendar.generalsStanding(game.player),
-            -- What this run stands to lose here, named on the defeat panel (ui/panels/battle_summary).
-            -- Read at launch rather than at the loss, because by then the rollback has already put it
-            -- back and there would be nothing left to count.
-            lostHaul = game:haulPhrase(),
             -- What the defeat panel's button is called, and it has to name what the button DOES. It said
             -- "End the Run", which was accurate when a wipe ended everything and is now the one thing a
             -- wipe does not do: onLoss below drops the pack, wounds the company and wakes them at the
@@ -2299,17 +2289,12 @@ function game:openEncounter(cell, opts)
                         game:openLanding(cell)
                         return
                     end
+                    -- ...AND WHAT THE GENERAL WAS STANDING ON. An end's purse is the campaign's actual
+                    -- income (models/spoils.lua's END_PURSE), so the richest stop in a run pays into the
+                    -- purse that matters. It arrived as objects to be carried out and sold for as long
+                    -- as there was something to carry them in; it is coin now, and lands here.
                     if game.player and spoils and (spoils.gold or 0) > 0 then
                         Player.addGold(game.player, spoils.gold)
-                    end
-                        -- ...AND WHAT THE GENERAL WAS STANDING ON. The valuables an end leaves are the
-                    -- campaign's actual income (models/valuable.lua), so the richest stop in a run pays
-                    -- into the purse that matters. All of it lands: there is no carry cap to leave any
-                    -- of it on the floor now that the mule is deleted.
-                    if game.player and spoils then
-                        for _, id in ipairs(spoils.valuables or {}) do
-                            Player.grantItem(game.player, id)
-                        end
                     end
                     -- The objective fight's OWN salvage (models/spoils.lua) is paid through the quest
                     -- rather than granted here, so it inherits Quest.complete's double-payout guard and
@@ -4215,40 +4200,19 @@ function game.drawHud()
         RelicStrip.draw(game.relicState, STRIP_X,
             STRIP_Y + PartyStatus.stripHeight(#((game.player and game.player.roster) or {})) + 6, mx, my)
 
-        -- WHAT THIS RUN IS CARRYING. Stacked under the relics, because both answer the same question --
-        -- what has this expedition accrued -- and because the decision it feeds is taken out here on the
-        -- map, not in a panel. Without a figure on screen there is nothing to be greedy about: the
-        -- push-one-more-spur choice is a bet, and a bet needs a stake the player can see. It also means
-        -- a wipe takes something the player was watching rather than something they find out about.
+        -- "CARRIED THIS RUN" STOOD HERE, and it is deleted. It named the stake in a bet -- what an
+        -- expedition had accrued and would hand back by dying -- and the bet is gone: a wipe takes
+        -- nothing material now (the wipe branch above), so every find, every ingot and every coin was
+        -- already the player's the moment it landed. What was left was a second, quieter count of the
+        -- stash sitting beside the purse and claiming to be provisional.
         --
-        -- Absent entirely when the run has found nothing yet -- an empty ledger is not information, and
-        -- a row of zeroes would read as a broken readout.
-        -- No longer offset by the relic readout: the tray moved to the left column under the vitals, so
-        -- the right edge is the haul's alone and it starts where the relics used to.
+        -- WHAT STILL ASKS THE QUESTION asks it where it is still a question: the stair's own card, which
+        -- quotes the haul because the toll takes a share of it, and the way-out prompt, which names what
+        -- climbs out with the company (game:haulPhrase). Both are read at a decision. This was read at
+        -- all times and fed none.
         local x = Scale.WIDTH - 16
         local y = 60
         love.graphics.setFont(hudFont)
-        if game.haul then
-            -- Named for what it IS, not what it counts: "carried" says the thing the number turns on --
-            -- that none of this is yours yet.
-            love.graphics.setColor(Theme.muted)
-            love.graphics.printf("Carried this run", x - 240, y, 240, "right")
-            local parts = {}
-            if game.haul.items > 0 then
-                parts[#parts + 1] = game.haul.items .. (game.haul.items == 1 and " item" or " items")
-            end
-            -- WHAT THE VALUABLES IN THAT COUNT ARE WORTH, folded in with the coin rather than given a
-            -- figure of its own: to the player they are the same number -- gold that reaches the city --
-            -- and splitting "12g earned" from "900g carried" into two rows would be reporting the
-            -- plumbing. Summed, because the decision it feeds is one decision.
-            local coin = (game.haul.gold or 0) + (game.haul.worth or 0)
-            if coin > 0 then parts[#parts + 1] = coin .. "g" end
-            if game.haul.materials > 0 then parts[#parts + 1] = game.haul.materials .. " stock" end
-            love.graphics.setColor(Theme.accentAmber)
-            love.graphics.printf(table.concat(parts, "   "), x - 240, y + 18, 240, "right")
-            love.graphics.setColor(1, 1, 1)
-            y = y + 44
-        end
 
         -- THE RUN'S PURSE (models/scrip.lua), between the haul and the mule -- which is where it belongs
         -- in the reading as well as on the screen: the haul is what goes home, the mule is what will

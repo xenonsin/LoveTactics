@@ -825,13 +825,8 @@ function Item.instantiate(id, quantity, level)
         class = def.class,                     -- which class vendor sells it; nil = sold by none
         discipline = def.discipline,           -- shop taxonomy: the locked discipline this item belongs to (docs/classes.md)
         price = def.price,                     -- vendor gold cost; nil means it is never sold
-        -- LOOT WITH NO USE BUT TO BE SOLD (models/valuable.lua). Both fields have to ride the instance
-        -- rather than be looked up off the blueprint, because the thing that reads them is handed live
-        -- items and nothing else: the counter prices what is on it (Vendor.sellValue). `price` above is
-        -- its WORTH here, not a shelf cost -- nobody stocks one (Vendor.sells refuses them).
-        valuable = def.valuable,
-        bulk = def.bulk,                       -- how many slots it takes on the way out (default 1)
-        -- THE DEPTH IT IS FOUND AT, and it rides the instance for exactly the reason the two above do.
+        -- THE DEPTH IT IS FOUND AT, and it rides the instance rather than being looked up off the
+        -- blueprint, because the thing that reads it is handed live items and nothing else.
         -- Most of the catalogue carries no `price` since the shelf recut (docs/shelf.md), so a counter
         -- handed a live sword works out what it is worth from this (Vendor.foundPrice) -- and a counter
         -- that could not see it paid nothing for every weapon, utility and piece of armor in the game.

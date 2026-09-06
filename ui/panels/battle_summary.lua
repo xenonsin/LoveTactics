@@ -148,11 +148,9 @@ function BattleSummary.new(opts)
     self.actions = opts.actions or {}
     self.finished = false
     self.subtitle = opts.encounter and opts.encounter.name or nil
-    -- What the run was carrying and just lost, as a plain phrase ("4 items, 210 gold"). Defeat only, and
-    -- only when the expedition had actually found something. A loss the player cannot see is a loss they
-    -- report as a bug -- and it is also the beat that teaches the rule, since somebody who watches four
-    -- items go plays the next run differently. Nil on a win, where nothing was at stake by definition.
-    self.lost = (not self.win) and opts.lost or nil
+    -- "LOST WITH THE RUN" STOOD HERE, naming what a defeat took out of the pack, and it is deleted with
+    -- the taking: losing costs nothing material anywhere in the game now (states/game.lua's wipe
+    -- branch), so the line was announcing a charge nobody was billed.
     -- Optional "Review Combat Log" affordance: a callback that opens the fight's log OVER this panel
     -- (states/battle.lua). Laid out below the action row when present; does NOT dismiss the panel.
     self.onReviewLog = opts.onReviewLog
@@ -225,23 +223,6 @@ function BattleSummary.new(opts)
         self.cards[#self.cards + 1] = {
             name = "Crossing Token", count = awarded.vouchers,
             sprite = Sprite.load("assets/ui/crossing_token.png"),
-        }
-    end
-
-    -- THE VALUABLES, ABOVE THE LOOT (models/valuable.lua). Ranked by the same rule that puts the
-    -- objective's payout at the top of this list -- worth -- and by a second one that only applies here:
-    -- these ARE the campaign's income. A run of cards that opened with the potion and buried the idol
-    -- would bury the only thing on the panel that pays for a forge rung.
-    --
-    -- Collapsed by id like the loot below, because two censers really are two of one thing.
-    local vOrder, vTally = {}, {}
-    for _, id in ipairs(spoils.valuables or {}) do
-        if vTally[id] then vTally[id] = vTally[id] + 1 else vTally[id] = 1; vOrder[#vOrder + 1] = id end
-    end
-    for _, id in ipairs(vOrder) do
-        local item = Item.instantiate(id, vTally[id])
-        self.cards[#self.cards + 1] = {
-            name = item.name, sprite = item.sprite, count = vTally[id], item = item,
         }
     end
 
@@ -405,8 +386,7 @@ function BattleSummary.new(opts)
     local y = 34
     self.bannerRelY = y; y = y + 62
     if self.subtitle then self.subRelY = y; y = y + 26 end
-    -- Reserved rather than drawn into the gap under the subtitle (which is what the defeat's `lost`
-    -- line does, on a panel that has no gold line to collide with).
+    -- Reserved rather than drawn into the gap under the subtitle.
     if self.note then self.noteRelY = y - 6; y = y + 20 end
     if hasGold then self.goldRelY = y; y = y + 46 end
     -- The scrip line sits under the coin and is shorter, because it is a smaller claim: this is what the
@@ -729,15 +709,6 @@ function BattleSummary:draw()
         love.graphics.setFont(self.subFont)
         love.graphics.setColor(0.93, 0.76, 0.35, alpha)
         love.graphics.printf(self.note, bx, by + self.noteRelY, self.boxW, "center")
-    end
-
-    -- The haul that went down with the run, under the encounter's name. Same warm red as the Defeat
-    -- banner, so it reads as part of the same sentence rather than as a second announcement.
-    if self.lost then
-        love.graphics.setFont(self.subFont)
-        love.graphics.setColor(0.95, 0.45, 0.42, alpha)
-        love.graphics.printf("Lost with the run: " .. self.lost,
-            bx, by + self.subRelY + self.subFont:getHeight() + 4, self.boxW, "center")
     end
 
     -- Gold line: a coin + the counting-up total.

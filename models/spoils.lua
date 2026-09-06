@@ -5,13 +5,16 @@
 --
 --   local s = Spoils.roll({ enemyUnits = battle.enemyUnits, prestige = 3, kind = "combat" })
 --   -- s = { gold = 71, loot = { "consumable_healing_potion" },
---   --       valuables = {}, materials = { material_iron_scrap = 1 } }
+--   --       materials = { material_iron_scrap = 1 } }
 --
--- ONE PURSE AND A PILE. `gold` is what a fight pays, rolled for an ordinary one and authored for an
--- end; `valuables` is the campaign's other income, objects that only an end drops and that have to be
--- carried out and sold (models/valuable.lua). There was a second purse here for a while -- scrip, the
--- run's own weightless coin, which died at the surface -- and it is deleted; see Spoils.roll, where the
--- reasoning lives.
+-- ONE PURSE AND A PILE. `gold` is what a fight pays -- rolled for an ordinary one, authored for an end,
+-- and with an END PURSE on top of either (Spoils.endPurse) when the fight was one of the ends the
+-- campaign's income is weighted onto. There were two other kinds of money here and both are deleted:
+-- scrip, the run's own weightless coin that died at the surface, and VALUABLES -- priced objects with
+-- no use, carried out of the rift and sold at a counter. The valuables were the mule's and the
+-- bloodstain's freight, and both of those systems are gone; what was left was an object standing in
+-- for a number, so an end pays the number now. See Spoils.endPurse for the arithmetic that replaced
+-- them, and Spoils.roll for why there is one purse.
 --
 -- The third field is the FLOOR, and unlike the other two it is not a roll -- see "Salvage" below.
 --
@@ -44,7 +47,6 @@
 local Item = require("models.item")
 local Character = require("models.character")
 local Material = require("models.material")
-local Valuable = require("models.valuable") -- the campaign's coin, which arrives as objects with weight
 
 local Spoils = {}
 
@@ -78,6 +80,45 @@ local ELITE_GOLD_MULT = 1.8 -- an elite fight pays out richer than a like-sized 
 -- comes out around three and a half times floor 1 -- materially richer, which is the greed the landing
 -- question needs, and still inside the band where one cleared floor buys roughly one thing off a shelf.
 local GOLD_DEPTH_SLOPE = 0.2
+
+-- THE END PURSE: what an end hands over on top of what its fight was worth, and the whole of what the
+-- valuables used to be.
+--
+-- The campaign's income was objects for a while -- priced loot with no use, dropped only by ends and
+-- sold at a counter in the city. Objects were the point: they took mule slots, so treasure competed
+-- with the gear you found, and they rode in the pack, so a wipe dropped the takings where the company
+-- fell. Both of those systems are deleted. Everything the weight was for went with them, and what was
+-- left was an inventory step between winning a fight and being paid for it -- carry the idol home,
+-- open a shop, click sell -- with no decision anywhere in it.
+--
+-- So an end pays coin. WHAT DID NOT CHANGE is the shape the valuables gave the economy, because that
+-- shape is the reason the descent has a direction:
+--
+--   LUMPY, NOT LITTER  only an end pays one -- an elite, an objective, a general -- never an ordinary
+--                      body. The grind funds spending; the work you chose to walk to funds the
+--                      campaign. Paying every fight a share of this instead would flatten the two
+--                      incomes into one and make the whole floor worth the same to walk.
+--   IT CLIMBS STEEPLY  much steeper than GOLD_DEPTH_SLOPE, which is deliberate. An ordinary fight's
+--                      gold is a wage and rises gently; this is the thing that makes floor eleven
+--                      worth the risk of floor eleven, so it is what the greed in the landing question
+--                      is actually weighing.
+--
+-- THE NUMBERS ARE THE OLD LADDER'S, measured rather than re-invented: the valuable pool ran from a
+-- 110-gold thurible on floor 1 to a 1,500-gold reliquary on floor 11, drawn twice with the dearer kept,
+-- which came out at ~150 gold on the first floor and ~850 on the eleventh. A base of 130 on a slope of
+-- 0.55 tracks that within a few gold at every rung the old pool had, so every measurement taken against
+-- the object economy still reads.
+local END_PURSE = 130       -- what an end's takings are worth on floor 1
+local END_PURSE_SLOPE = 0.55 -- ...and what each level of depth after the first adds
+-- WHERE THE CLIMB STOPS, and it is the top rung of the ladder above rather than a round number: the
+-- old pool held nothing deeper than floor 11, so its expected haul went flat there. A campaign road
+-- passes its DAY in as depth (Spoils.roll) and the calendar runs to 40 -- without this, a late road
+-- elite would pay four times what the deepest floor in the game does.
+local END_PURSE_CAP = 11
+-- HOW MANY SHARES EACH KIND OF END PAYS. The old ladder's own counts: an elite is a fight the player
+-- could have walked around, an objective is the one they came down for, and a general closes a circle
+-- and pays double.
+local END_PURSE_SHARES = { elite = 1, objective = 1, general = 2 }
 -- The chance a given drop is drawn off the beaten bodies rather than the generic price band, when
 -- both pools have something in them. Not 1.0: at 1.0 a fight against people who happened to carry
 -- no consumables can never pay a potion, and the band is the only thing that stocks the everyday
@@ -107,6 +148,24 @@ local function rollGold(count, mult, kind, override, scale)
     local gold = base * jitter * (scale or 1)
     if kind == "elite" then gold = gold * ELITE_GOLD_MULT end
     return math.max(1, math.floor(gold + 0.5))
+end
+
+-- What an end leaves on top of its fight's own gold, in coin. Nought for an ordinary fight, which is
+-- the point rather than an omission (see END_PURSE).
+--
+-- FLAT, WHERE THE FIGHT'S GOLD JITTERS. The old valuables varied because a draw from a pool varies,
+-- not because anybody wanted an end's takings to be a surprise -- and the surprise was in WHICH object
+-- turned up, which a number cannot offer anyway. What is left is a figure the player can plan a descent
+-- against, which is what the greed decision at the landing wants: "one more floor is worth this much"
+-- is only a decision if the much is knowable.
+--
+-- Public because two callers need it and they are not both inside this file: Spoils.roll folds it into
+-- a rolled fight, and models/encounter_battle.lua pays it to the general, whose fight rolls nothing.
+function Spoils.endPurse(kind, depth)
+    local shares = END_PURSE_SHARES[kind or ""] or 0
+    if shares <= 0 then return 0 end
+    depth = math.min(END_PURSE_CAP, math.max(1, math.floor(tonumber(depth) or 1)))
+    return math.floor(shares * END_PURSE * (1 + END_PURSE_SLOPE * (depth - 1)) + 0.5)
 end
 
 -- The ceiling of the ROAD BAND on `day`: how dear a thing a run can turn up at all. One number,
@@ -151,12 +210,6 @@ local function lootCandidates(maxPrice, tier)
     tier = tier or 0
     for id, def in pairs(Item.defs) do
         if def.bound then -- nailed to one grid; never earned, bought, stolen or found
-        elseif def.valuable then
-            -- A VALUABLE IS PRICED AND IS NOT STOCK. It carries a `price` because that is its worth at a
-            -- city counter (models/valuable.lua), and this pool reads `price` as the "shoppable" marker
-            -- -- so without this line every idol in the data would turn up as ordinary loot AND on the
-            -- road Merchant's shelf, which would be the road selling you the thing you are down here to
-            -- carry back. Valuables reach a player one way, off an end (Valuable.roll).
         elseif def.price and def.price > 0 and def.price <= maxPrice then
             local weight = 1 + math.max(0, maxPrice - def.price) / maxPrice -- ~1 (dear) .. ~2 (cheap)
             if def.type == "consumable" then weight = weight * 2 end
@@ -565,13 +618,19 @@ function Spoils.roll(opts)
     -- version still reads.
     local authored = opts.rewardGold and math.max(0, math.floor(opts.rewardGold)) or nil
     local rolled = authored and 0 or rollGold(count, mult, kind, nil, scale)
+    -- WHAT THE CAMPAIGN ACTUALLY EARNS, and only an end pays any (Spoils.endPurse). An ordinary fight
+    -- adds nought, which is the point rather than an omission: the grind pays a wage and the work you
+    -- chose to walk to pays the campaign.
+    --
+    -- NOT ON TOP OF AN AUTHORED PURSE, and that is this file's oldest rule rather than a new exception:
+    -- `rewardGold` short-circuits the whole computation, because it is an exact figure somebody wrote
+    -- down for THIS fight. The valuables it replaces did land on top of one -- they were objects and
+    -- the fight's gold was a number, so neither could speak for the other -- and now that both are coin
+    -- an authored payout can say the whole of what an end pays, which is what authoring one is for.
+    local purse = authored and 0 or Spoils.endPurse(kind, opts.floorLevel or day)
     return {
-        gold = authored or rolled,
+        gold = (authored or rolled) + purse,
         loot = rollLoot(day, kind, opts.loot, opts.enemyUnits, scale, opts.floorLevel),
-        -- WHAT THE CAMPAIGN ACTUALLY EARNS, and only an end leaves any (models/valuable.lua). An
-        -- ordinary fight rolls an empty list, which is the point rather than an omission: the grind pays
-        -- coin and the work you chose to walk to pays objects.
-        valuables = Valuable.roll({ kind = kind, depth = opts.floorLevel or day }),
         -- The unread piece, on the rare stop that pays one. A SEPARATE field from `loot` rather than an
         -- entry in it, because the two are granted differently and by different code: loot is a list of
         -- ids that Player.grantItem instantiates in the clear, and this is a list of finds that

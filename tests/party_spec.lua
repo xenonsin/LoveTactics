@@ -17,13 +17,13 @@ local Party = require("ui.panels.party")
 -- filters below decide what this file is actually about rather than `pairs` order does -- a new item
 -- type can change which id comes out first, and this pick has already been moved once by exactly that.
 --
--- VALUABLES ARE EXCLUDED, and it is not a convenience: a valuable's `price` is what a counter PAYS for
--- it rather than what one charges, so it sells at par and is the one priced thing in the game that this
--- case's rule does not describe (models/valuable.lua). Its own rule is pinned in tests/economy_spec.lua.
--- Without the filter this spec passes or fails on hash order.
+-- IT USED TO EXCLUDE VALUABLES, which were the one priced thing whose number was what a counter PAID
+-- rather than what a shop charged -- so they sold at par and this case's rule did not describe them.
+-- They are deleted (models/spoils.lua's END_PURSE) and the filter went with them: every price in the
+-- game is a shelf price again.
 local pricedId, noPriceId
 for id, def in pairs(Item.defs) do
-    if def.price and def.type ~= "consumable" and not def.valuable and not pricedId then
+    if def.price and def.type ~= "consumable" and not pricedId then
         pricedId = id
     end
     -- NEITHER A PRICE NOR A DEPTH, which is what "was never for sale" means since the shelf recut. An

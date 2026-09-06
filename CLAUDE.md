@@ -96,8 +96,8 @@ The codebase is organized into layers loaded via `require()`. See
   `lockReason`). See [docs/shelf.md](docs/shelf.md) (`models/grade.lua`, `. grade-report`,
   `. drop-tier recut`). `data/meals/` is the one content type that is *not* an item: the Cafe's supper,
   one per day out, worn by the whole company — see [docs/meals.md](docs/meals.md).
-  `data/items/valuable/` is an item with no use at all: loot that exists to be carried out and sold.
-  There is **one currency**, gold, and what keeps an underground purchase from being priced against a
+  There is **one currency**, gold — no valuables to carry out and sell, no scrip; an end simply pays a
+  richer purse (`Spoils.endPurse`) — and what keeps an underground purchase from being priced against a
   permanent upgrade is a ceiling rather than a second purse (`Spoils.askingPrice`). See
   [docs/economy.md](docs/economy.md); `tests/economy_spec.lua` is what keeps it that way.
 - **`assets/`** — images/audio/maps referenced by path from data files (e.g.

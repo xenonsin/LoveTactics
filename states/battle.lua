@@ -625,13 +625,9 @@ local function finishBattle(result)
         benchShare = benchShare,
         encounter = battle.encounter,
         actions = actions,
-        -- What the overworld run was carrying, named on a defeat so the cost of the loss is on the panel
-        -- that announces it rather than discovered later in the stash. Supplied by the launcher
-        -- (states/game.lua) because only it knows what the expedition has picked up; nil everywhere else.
-        -- ...and NOT on a rout, which is the half this line used to get wrong the moment a defeat stopped
-        -- always being a wipe. The haul is taken by the Gate branch alone; a company that falls back keeps
-        -- every find it made, so naming them here would be pricing a loss the player is not being charged.
-        lost = result == "loss" and not battle.routed and battle.lostHaul or nil,
+        -- What the overworld run was carrying used to be named here on a defeat, and is not: a loss takes
+        -- nothing material from anybody now (states/game.lua's wipe branch), so the panel would have been
+        -- pricing a loss the player is not being charged.
         -- The log survives the fight; let the player read back how it went before leaving the panel.
         onReviewLog = openLogReview,
     })
@@ -4652,9 +4648,6 @@ function battle.enter(self, opts)
     -- having dropped its pack. finishBattle picks between them off `battle.routed`.
     battle.routedLabel = opts.routedLabel
     battle.onRetry = opts.onRetry
-    -- A phrase naming what the overworld run stands to lose here ("4 items, 210 gold"), shown on the
-    -- defeat panel. Passed down rather than computed, since the fight knows nothing about the run.
-    battle.lostHaul = opts.lostHaul
     battle.encounter = opts.encounter or { kind = "combat", name = "Battle" }
     -- What clearing an OBJECTIVE pays, as a function to ask when the fight is decided
     -- (states/game.lua's previewObjectiveReward). An objective's spoils are the salvage floor and

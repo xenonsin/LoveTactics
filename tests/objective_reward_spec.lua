@@ -118,7 +118,15 @@ return {
         })
         assert(paid, "an objective fight still pays")
         assert(#(paid.loot or {}) == 0, "an objective rolls no loot of its own")
-        assert((paid.gold or 0) == 0, "and no gold -- both are the objective's to pay, not the roll's")
+        -- THE GOLD IT DOES PAY IS THE END PURSE and nothing else (models/spoils.lua's END_PURSE): what
+        -- the fight LEFT, not what the job pays. The job's own purse and goods are the objective's,
+        -- handed over by the beat after this panel closes. A valuable stood here until the objects were
+        -- deleted, granted by the same call for the same reason -- so what is pinned is that this is the
+        -- END's share, at the end's own rate, rather than a second copy of the work's payout.
+        local Spoils = require("models.spoils")
+        assert((paid.gold or 0) == Spoils.endPurse("general", 4),
+            "an objective paid " .. tostring(paid.gold) .. " where the end purse is "
+            .. Spoils.endPurse("general", 4) .. " -- the job's purse is not the roll's to pay")
         assert(paid.awarded == nil, "the roll never invents this field; the battle state attaches it")
         assert(next(paid.materials or {}) ~= nil, "but the salvage floor still stands under it")
     end },

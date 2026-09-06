@@ -282,19 +282,17 @@ function EncounterBattle.spoils(opts)
             houseMaterial = opts.houseMaterial,
         })
     elseif kind == "objective" then
-        -- The general pays through Quest.complete, not through spoils -- but the SALVAGE floor is
+        -- The general's JOB pays through Quest.complete, not through spoils -- but the SALVAGE floor is
         -- owed by every won fight, and the last fight of a run is not the one to make an exception
-        -- of. Materials only: no gold and no loot roll here, so the quest stays the single payout
-        -- seam for both (states/game.lua's objective branch).
-        spoils = { gold = 0, scrip = 0, loot = {}, materials = Spoils.materials({
+        -- of. No loot roll here, so the quest stays the single seam for the goods.
+        --
+        -- ...AND THE END PURSE (models/spoils.lua), for the same reason the salvage is here rather than
+        -- in Quest.complete: it is what the fight LEFT, not what the job paid. The general is the
+        -- archetypal end, so refusing him one would exempt the richest stop in the run from the seam the
+        -- campaign's income is weighted onto. It stood here as a valuable before the objects went.
+        spoils = { gold = Spoils.endPurse("general", opts.floorLevel or opts.day),
+        loot = {}, materials = Spoils.materials({
             kind = kind, tier = encounter.tier, houseMaterial = opts.houseMaterial,
-        }),
-        -- ...AND THE VALUABLES, for the same reason the salvage is here rather than in Quest.complete:
-        -- they are what the fight LEFT, not what the job paid. The general is the archetypal end, so
-        -- refusing him a valuable would exempt the richest stop in the run from the only seam the
-        -- campaign's coin comes through (models/valuable.lua).
-        valuables = require("models.valuable").roll({
-            kind = "general", depth = opts.floorLevel or opts.day,
         }) }
     end
 
