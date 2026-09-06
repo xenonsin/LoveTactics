@@ -374,6 +374,12 @@ function Descent.objectiveReward(player, run, objSpec)
         return (out.gold > 0 or #out.items > 0) and out or nil
     end
 
+    -- A WARD PAYS NOTHING BEYOND THE FIGHT'S OWN SPOILS. She is the circle's GATE rather than the floor's
+    -- end, so the guardian's piece below is not hers to hand over -- a card naming it here would promise
+    -- the general's drop for beating her doorkeeper, and the grant this screen mirrors (states/game.lua's
+    -- ward branch in onWin) hands over nothing at all.
+    if objSpec and objSpec.wardFor then return nil end
+
     -- THE STAIR GUARDIAN: what was on the body, then what the circle paid toward the next company.
     local depth = Descent.depth(run)
     local beaten = Descent.sinAt(run, depth)

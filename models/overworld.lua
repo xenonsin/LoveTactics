@@ -494,12 +494,19 @@ function Overworld:placeObjectiveAndGates(params)
     -- composition FUNCTION (the finale sizes itself by how many generals are still standing) and the
     -- floor is serialized whole into the save, which has to stay plain data. states/game.lua looks the
     -- spec back up by this id when the cell is engaged.
+    --
+    -- `wardFor` RIDES ALONG FOR THE SAME REASON, and it is not decoration: a circle's ward is the one
+    -- end that carries no quest id (models/descent.lua's floorObjectives), so without a mark of its own
+    -- the cell was indistinguishable from the stair -- states/game.lua's objectiveAt resolved it to
+    -- `objectives[1]`, which made the lieutenant's tile a second copy of the general's fight, and
+    -- beating it opened a second stair down beside the real one. A string, so the board stays plain data.
     self.objectives = {}
     for i, cell in ipairs(chosen) do
         local spec = specs[i] or {}
         cell.encounter = { kind = "objective", name = spec.name or "Objective",
-            questId = spec.questId, meet = spec.meet or nil }
-        self.objectives[i] = { x = cell.x, y = cell.y, questId = spec.questId }
+            questId = spec.questId, wardFor = spec.wardFor, meet = spec.meet or nil }
+        self.objectives[i] = { x = cell.x, y = cell.y, questId = spec.questId,
+            wardFor = spec.wardFor }
     end
     -- The deepest end, still under its old name. Everything that wants "the far end of this floor" as a
     -- single cell -- the opening pan, the report tools, the two map relics -- reads this.

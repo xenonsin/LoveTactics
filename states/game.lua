@@ -825,10 +825,22 @@ end
 -- ...and its objective spec: what is fought there, what scene it opens with, how deep it is.
 local function objectiveAt(cell)
     local mp = (game.quest and game.quest.map) or {}
-    local id = cell and cell.encounter and cell.encounter.questId
+    local enc = cell and cell.encounter
+    local id = enc and enc.questId
     if id then
         for _, spec in ipairs(mp.objectives or {}) do
             if spec.questId == id then return spec end
+        end
+    end
+    -- THE WARD IS THE OTHER END WITH NO QUEST ID ON IT (models/descent.lua's floorObjectives), and the
+    -- fallback below is what it used to hit: a warded circle's lieutenant resolved to the STAIR's spec,
+    -- so her tile opened the general's fight, the stair gate barred it as though it were the stair, and
+    -- winning it ran the landing -- crediting the circle, paying the general's piece, and opening a
+    -- second way down beside the real one. Matched on the mark the cell carries, exactly as an errand is
+    -- matched on its quest id.
+    if enc and enc.wardFor then
+        for _, spec in ipairs(mp.objectives or {}) do
+            if spec.wardFor == enc.wardFor then return spec end
         end
     end
     return (mp.objectives and mp.objectives[1]) or mp.objective
@@ -2161,6 +2173,23 @@ function game:openEncounter(cell, opts)
                         require("models.sound").music("music.overworld")
                         game.battle = nil -- the fight is over; the map has input again (it never stopped being the state)
                         game:refreshMuster() -- the fight was paid for in health and potions; re-rate
+
+                        -- THE WARD BROKEN. A warded circle bars its stair with a BODY (models/descent.lua's
+                        -- GATES), standing at its own dead end -- and all that beating her does is unbar
+                        -- it. She is not the floor's end, so she must not come through the landing: that
+                        -- credited the circle, dealt the general's own piece and turned the lieutenant's
+                        -- tile into a second stair down, which let a company walk past Luxuria entirely
+                        -- and climb back up onto a stair they had never come down by.
+                        --
+                        -- The cell keeps its encounter and stays cleared, because that pair IS the gate's
+                        -- reading (game:stairGate's `wardDown`). What she was carrying was already paid by
+                        -- grantSideSpoils above, and a ward owes nothing else (Descent.objectiveReward).
+                        if objSpec and objSpec.wardFor then
+                            game:pushToast((objSpec.name or "The ward") ..
+                                " is beaten -- the way down is unbarred")
+                            saveRun()
+                            return
+                        end
 
                         -- AN ERRAND FINISHED. A floor carries the stair AND whatever a house asked for
                         -- down here, each on its own end (models/descent.lua's floorObjectives), so the

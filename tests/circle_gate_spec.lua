@@ -158,6 +158,60 @@ return {
         end
     end },
 
+    { name = "a ward wears a mark of its own on the board", fn = function()
+        -- THE BUG THIS PINS. A ward is the one end that carries no quest id, and the cell used to carry
+        -- nothing to tell it apart -- so states/game.lua matched the lieutenant's tile to the STAIR's
+        -- spec, fought the general on it, and opened a second way down when she fell. The mark is what
+        -- the board hands back, and it has to survive being put away and taken out again with it.
+        local Overworld = require("models.overworld")
+        local lust
+        for _, sin in ipairs(Descent.SINS) do if sin.id == "lust" then lust = sin end end
+        local ends = Descent.floorObjectives(nil, 1, lust, 3, true)
+
+        local function wards(grid)
+            local n, mark = 0, nil
+            for y = 1, grid.rows do
+                for x = 1, grid.cols do
+                    local e = grid.cells[y][x].encounter
+                    if e and e.wardFor then n, mark = n + 1, e.wardFor end
+                end
+            end
+            return n, mark
+        end
+
+        local grid = Overworld.generate({
+            biome = lust.biome, cols = 11, rows = 11, seed = 4242, keyCount = 0,
+            encounterCount = { min = 6, max = 6 },
+            encounters = { { kind = "combat", weight = 1 } },
+            objectives = ends,
+        })
+        local n, mark = wards(grid)
+        assert(n == 1, "her floor stands exactly one ward on it, not " .. n)
+        assert(mark == lust.id, "and it names the circle it bars: " .. tostring(mark))
+        assert(not (grid.objective and grid.objective.wardFor),
+            "the floor's END is the stair, never the ward standing beside it")
+
+        local back = Overworld.fromSnapshot(grid:snapshot())
+        local n2, mark2 = wards(back)
+        assert(n2 == 1 and mark2 == lust.id, "and a floor put away comes back still knowing which end is which")
+    end },
+
+    { name = "a ward pays nothing of the general's", fn = function()
+        -- What beating the doorkeeper does is UNBAR the stair. The piece the guardian was carrying, the
+        -- house stock behind it and the circle's own credit all belong to the body on the stair -- and
+        -- the victory screen must not promise any of it for the fight two dead ends away.
+        local Player = require("models.player")
+        local player = Player.new()
+        local run = Descent.new(player, 7)
+        local lust
+        for _, sin in ipairs(Descent.SINS) do if sin.id == "lust" then lust = sin end end
+        local ends = Descent.floorObjectives(nil, 1, lust, 3, true)
+        local ward
+        for _, spec in ipairs(ends) do if spec.wardFor then ward = spec end end
+        assert(Descent.objectiveReward(player, run, ward) == nil, "a ward names no reward at all")
+        assert(Descent.objectiveReward(player, run, ends[1]), "and the stair beside it still pays")
+    end },
+
     { name = "the toll ledger rides the run", fn = function()
         -- A company that paid, climbed out and came back down must not be billed twice for the stair it
         -- already bought -- and the key is a string for the reason `floors` is (Save.encode round-trips
