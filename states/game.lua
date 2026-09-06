@@ -261,12 +261,34 @@ local function announcePickup(kind, payload)
     -- Nil `floorLevel` pays nothing and that is how the campaign opts out, exactly as every other sealed
     -- draw does: a mystery blade on a road whose counter is three stops away is a reward with nowhere to
     -- collect it.
+    -- ...AND IT IS NAMED ON A SCREEN RATHER THAN IN THE CORNER OF THE MAP. The materials above keep
+    -- their toast -- a cache is the floor, and a line is the right size for it -- but the husk is the
+    -- best thing the rift hands over anywhere, and a payout read after the player has stopped looking
+    -- for one is a payout that arrived in silence. So it gets the chest's own reveal, which already
+    -- knows how to draw a husk (ui/panels/loot_reveal.lua's `sealed`). The walk stops on its own: the
+    -- map is only stepped while no panel is open (game.update).
+    --
+    -- GRANTED FIRST, REVEALED AFTER, which is the opposite order to the chest -- and it has to be. A
+    -- chest's cell stays uncleared until its own Take, so a dismissal there costs nothing; this marker
+    -- is already picked up by the time the pickup is announced, so a reveal that granted on Take could
+    -- lose the find to an Esc. The panel here is a REPORT of something the company already has, which
+    -- is why both its exits do the same thing.
     if payload and payload.secret then
-        for _, find in ipairs(Spoils.rollSealed({
+        local found = Spoils.rollSealed({
             kind = "secret", floorLevel = game.quest and game.quest.floorLevel or nil,
-        })) do
-            Identify.grant(game.player, find.id, find.floor)
-            game:pushToast("Sealed in the vault -- nobody here can read it")
+        })
+        if #found > 0 then
+            for _, find in ipairs(found) do
+                Identify.grant(game.player, find.id, find.floor)
+            end
+            local close = function() game.activePanel = nil end
+            game.activePanel = LootReveal.new({
+                encounter = { name = "The Vault" },
+                description = "What the door was hiding. Nobody down here can read it.",
+                sealed = found,
+                onCollect = close,
+                onCancel = close,
+            })
         end
     end
 end
@@ -3188,6 +3210,9 @@ function game:openEncounter(cell, opts)
     -- in through a ctx of helpers, so the dilemma data never touches a model directly.
     if kind == "crossroads" then
         local rnd = function() return (love.math and love.math.random()) or math.random() end
+        -- What the answer handed up unread, set by ctx.grantSealed below and read by the option's
+        -- callback after it. See grantSealed for why the find cannot open its own reveal.
+        local sealedFound
         local ctx = {
             rnd = rnd,
             notify = function(m) game:pushToast(m) end,
@@ -3243,13 +3268,21 @@ function game:openEncounter(cell, opts)
             -- and every magnitude already resolves per level off an authored curve -- and it puts a
             -- second beat on the find, back at the Touchstone. Returns false on a campaign board (no
             -- floorLevel) so a dilemma can say so rather than silently paying nothing.
+            --
+            -- WHAT IT PAID IS SHOWN, not toasted, for the reason the vault's own find is (announcePickup):
+            -- a reward belongs on a screen. It cannot open that screen from here, though -- this runs
+            -- inside o.resolve, and the line after that call clears the panel it would have set -- so the
+            -- find is HELD and the option's callback opens the reveal once the dilemma is off the screen.
             grantSealed = function()
                 local floor = game.quest and game.quest.floorLevel
                 if not floor then return false end
                 local got = Spoils.rollSealed({ kind = "offer", floorLevel = floor })
-                for _, find in ipairs(got) do Identify.grant(game.player, find.id, find.floor) end
                 if #got == 0 then return false end
-                game:pushToast("Sealed -- nobody here can read it")
+                -- Granted here and reported afterwards, never the other way round: the dilemma has been
+                -- answered and the stop is cleared, so dismissing the reveal must not be able to cost the
+                -- player a piece they have already earned.
+                for _, find in ipairs(got) do Identify.grant(game.player, find.id, find.floor) end
+                sealedFound = got
                 return true
             end,
         }
@@ -3264,8 +3297,22 @@ function game:openEncounter(cell, opts)
                 label = o.label, desc = o.desc,
                 cb = function()
                     cell.cleared = true
+                    sealedFound = nil -- an answer reports its OWN find, never the last one's
                     o.resolve(ctx)
                     game.activePanel = nil
+                    -- ...and what came up unread takes the dilemma's place on screen, in the same panel
+                    -- a chest and a vault use. Opened here rather than inside the resolve, which the
+                    -- line above would have wiped.
+                    if sealedFound then
+                        local close = function() game.activePanel = nil end
+                        game.activePanel = LootReveal.new({
+                            encounter = { name = cell.encounter.name or "Crossroads" },
+                            description = "It came up with the rest. Nobody down here can read it.",
+                            sealed = sealedFound,
+                            onCollect = close,
+                            onCancel = close,
+                        })
+                    end
                     saveRun()
                 end,
             }
