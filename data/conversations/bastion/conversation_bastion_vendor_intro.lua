@@ -1,18 +1,31 @@
 -- Conversation authored inline (English); localization ids (`tag`) are stamped by
 -- tools/extract_strings.lua and must not be hand-edited. See models/conversation.lua.
+--
+-- THE SHOPKEEPER GREETS YOU, and the shopkeeper is the house's own person (data/vendors/bastion.lua's
+-- `portrait`). Not the companion: fronting each counter with the body its line earns was tried and
+-- reversed -- see Shop:drawKeeper. A companion is met on a floor and leaves with you; a shopkeeper is
+-- somebody you buy from and keep buying from.
+--
+-- WHY THE DOOR IS OPEN is the one thing this scene has to say, and it is a real gate rather than a
+-- story beat: a house opens at level 1 of its class in any body on the roster (`unlockClassLevel`), so
+-- the company has been fighting in this discipline and the house has noticed.
+--
+-- ROWAN IS THE ONE COMPANION WHO CAN BE STANDING HERE. She is sworn in the prologue
+-- (data/player.lua's startingRoster), where every other companion is recruited underground and cannot
+-- have been by a first visit -- so hers is the only `has` block a greeting can carry that will ever
+-- fire. She is also the mentor, and a house is exactly the thing she has an opinion about.
 return {
     title = "Those Who Hold",
     cast  = { "bastion", "character_avatar", { id = "character_rowan", when = { has = "character_rowan" } } },
 
     script = {
-        { "bastion", "The column reached Highwatch. Twelve days without supply, and it reached them. That is why you are standing here.", tag = 7 },
-        { "bastion", "The Watch outfits those who hold. Shields that outlast the arm behind them. Mail a knight can be found standing in. We do not arm those who run. State your post, or your reason for having none.", tag = 1 },
-        { "character_avatar", "I hold what's mine. That's post enough.", tag = 2 },
+        { "bastion", "Somebody in your company has been fighting the way this order fights. That is the only reason this door is open to you.", tag = 1 },
+        { "bastion", "The Watch outfits those who hold. Plate a knight can be found standing in, and shields that outlast the arm behind them.", tag = 2 },
+        { "character_avatar", "I hold what's mine. Is that post enough?", tag = 3 },
+        { "bastion", "It will do. We do not arm those who run, and you have not run yet.", tag = 4 },
         { when = { has = "character_rowan" }, script = {
-            { "character_rowan", "I held a post on this order's line before I ever held a sword for {name}. Greywatch. The quartermaster knows the face, if not the years on it.", tag = 3 },
-            { "bastion", "Squire Rowan. Greywatch's own. It is an honor to arm you again.", tag = 4 },
-            { "character_rowan", "It is Rowan of no post now. I kept the oath and gave up the wall. I hold something better than a line these days. Outfit us both.", tag = 5 },
+            { "character_rowan", "Take the plate first, {name}! Everything else on that rack only works while you are still on your feet.", tag = 5 },
         } },
-        { "bastion", "Hold until relieved, then. The shelf is yours. The order remembers the ones who stay.", tag = 6 },
+        { "bastion", "Hold until relieved, then. The shelf is yours, and the order remembers the ones who stay.", tag = 6 },
     },
 }

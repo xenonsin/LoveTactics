@@ -1949,6 +1949,10 @@ end
 -- floor of the run is rolled at COMPANION_CHANCE, the first floor to hit is where somebody is standing,
 -- and that is the whole of the descent's offering. A run can come up having met nobody.
 --
+-- WITH ONE BODY OUTSIDE THE ROLL ENTIRELY: Saber stands on floor one of every descent until she joins,
+-- and the roll does not run at all while she is outstanding. See Descent.SCRIPTED_COMPANION below for
+-- why the first companion in the game cannot be one the dice may never hand over.
+--
 -- WHY A ROLL BEATS A ROTA. A dealt rota makes the recruit an errand you are owed on a timetable -- go
 -- down, collect the body the schedule says is yours. A roll makes going one floor deeper the only way
 -- to buy another chance at one, which is the same greed dial every other decision on a floor is hung
@@ -1975,10 +1979,51 @@ end
 -- companion on the same ground. Stamped once, a descent offers one and only one.
 Descent.COMPANION_CHANCE = 25 -- percent, rolled per floor; ~87% that a run meets somebody at all
 
+-- SABER IS THE FIRST BODY THE RIFT OFFERS, AND SHE IS NOT ROLLED FOR. Until the Colosseum's posting is
+-- finished -- which is to say until she is walking with you -- every descent stands her at a dead end on
+-- floor one, and the roll below never runs.
+--
+-- WHY THE ONE COMPANION IS SCRIPTED WHEN THE REST ARE DEALT. The roll is a greed dial: one more floor
+-- buys one more chance at a body, and a run can come up having met nobody. That is the right shape for a
+-- company that already knows what a companion IS -- and it is the wrong shape for the first descent in
+-- the game, where the same rules produce a run with a 75% chance of an empty first floor, a party of two
+-- for as long as the dice like, and no demonstration anywhere that the hole in the ground gives you
+-- PEOPLE as well as loot. The one reward the descent has that is not gear cannot be the one reward a new
+-- player might never see.
+--
+-- ...AND THE VISIT GATE CANNOT PRODUCE HER, WHICH IS THE OTHER HALF. The deck below is drawn only from
+-- counters this company has walked into, and on the first morning it has walked into none: the seven
+-- shelves are behind a class level AND behind the first descent (data/buildings/houses.lua), which is
+-- the descent this is about. So the rolled path deals nobody on the run where meeting somebody matters
+-- most, and no amount of tuning COMPANION_CHANCE changes that -- the deck is empty, not unlucky.
+--
+-- WHY HER AND WHY FLOOR ONE. Saber is the veteran who tests every newcomer with the same opening
+-- (data/quests/colosseum/quest_colosseum_slot_01.lua) -- her whole premise is being the first real fight
+-- somebody has, and her bout is authored as the shallowest thing the Colosseum posts. Floor one because
+-- a scripted meeting the player can walk past on the roll's terms is a scripted meeting that does not
+-- happen; the first board a new company ever stands on is the one place it is certain to look.
+--
+-- IT IS NOT A HANDOUT. She still asks, and the ask is still the second beat: accepting marks one more end
+-- on the same floor and the company has to walk it and win it (models/errand.lua). What is scripted is
+-- the MEETING, not the recruit -- a run can still climb out having said no.
+Descent.SCRIPTED_COMPANION = "colosseum"       -- Saber's house (data/vendors/colosseum.lua's `companion`)
+Descent.SCRIPTED_COMPANION_FLOOR = 1           -- the first board a new company ever stands on
+
 -- Deal this run's single companion, as { house, floor }, or nil for a descent that meets nobody.
--- `player` may be nil (a fixture with no company behind it), and then every recruiting house is
--- eligible -- there is nobody whose visits could narrow it.
+-- `player` may be nil (a fixture with no company behind it), and then nothing is scripted -- there is no
+-- roster to be missing her from -- and every recruiting house is eligible, because there is nobody whose
+-- visits could narrow it.
 function Descent.dealCompanion(seed, player)
+    local Errand = require("models.errand")
+    local Player = require("models.player")
+
+    -- The scripted first meeting, asked before the roll and before the visit gate for the reasons above.
+    -- Errand.doorOpen is her posting being finished, which is exactly "she joined".
+    local scripted = Descent.SCRIPTED_COMPANION
+    if player and Errand.houses()[scripted] and not Errand.doorOpen(player, scripted) then
+        return { house = scripted, floor = Descent.SCRIPTED_COMPANION_FLOOR }
+    end
+
     local floor
     for f = 1, Descent.CIRCLE_FLOORS do
         -- 977 is a salt the sins (floor = 0) and the shuffle below (991) never pass, so the three rolls
@@ -1987,8 +2032,6 @@ function Descent.dealCompanion(seed, player)
     end
     if not floor then return nil end
 
-    local Errand = require("models.errand")
-    local Player = require("models.player")
     local deck = {}
     for vendorId in pairs(Errand.houses()) do
         -- Met at their counter, and not already walking with you. Errand.doorOpen is that house's
@@ -2445,6 +2488,38 @@ function Descent.reached(player, floor)
     return player.deepest
 end
 
+-- WHAT A COMPANY HAS TO HAVE DONE BEFORE IT IS SHOWN THE AI CONTROLS -- the Armory's Tactics tab and
+-- the fight's Auto button (ui/panels/party.lua, states/battle.lua's autoAllowed). One floor: the very
+-- first descent unlocks them, and until then neither control is drawn anywhere.
+--
+-- WHY THEY ARE HIDDEN AT ALL. Tactics and Auto are the same feature seen twice -- a rule list, and the
+-- switch that hands the turn to it -- and they are the one part of this game that plays it FOR you.
+-- Offered on the first screen, they are a shortcut past the thing being taught, chosen by a player with
+-- no idea what they are shortcutting. Offered after a floor, they are an answer to a question the player
+-- has now asked themselves ("do I have to move all four of these every turn?"). Nothing about the
+-- feature changes; what changes is that it has become a decision.
+--
+-- Read off `deepest` rather than a flag of its own, so it is the same ledger every other depth gate in
+-- the game uses (models/building.lua's unlockDepth, models/market.lua's stock).
+Descent.TACTICS_DEPTH = 1
+
+function Descent.tacticsUnlocked(player)
+    return Descent.deepest(player) >= Descent.TACTICS_DEPTH
+end
+
+-- ...and whether the window explaining them has been read. A one-way mark of the same shape as
+-- `tallyTaught`: set when the tutorial window is closed (states/hub.lua), and until then the Armory
+-- wears the red dot so an unlock that happened underground is still announced in the city.
+function Descent.tacticsTaught(player)
+    return (player and player.tacticsTaught) or false
+end
+
+function Descent.markTacticsTaught(player)
+    if not player then return false end
+    player.tacticsTaught = true
+    return true
+end
+
 -- ---------------------------------------------------------------------------
 -- The count: what the company left forming behind it
 -- ---------------------------------------------------------------------------
@@ -2454,8 +2529,8 @@ end
 -- do not stay dug: nothing down there is born, it FORMS, out of whatever is at the bottom of the hole.
 -- The Crown pays by the floor to keep the number down and the trade calls it pruning. Leave the deep
 -- floors unpruned and the count climbs, and what is down there comes up the stair and out into the
--- country -- which is Bellmere, which is the fight the game opens on
--- (data/conversations/prologue/conversation_prologue_sponsor.lua).
+-- country -- which is Bellmere, which is the fight the game opens on. NOTE: no scene states this to the
+-- player before they descend any more; see the note on Descent.gateCoached.
 --
 -- WHAT IT IS FOR, MECHANICALLY. Every other event in the loop is already priced and priced well: a wipe
 -- drops the haul as a pack with a guard on it, takes most of the purse and wounds every head
@@ -2686,8 +2761,8 @@ end
 
 -- WHO COMES UP THE STAIR. The Hollow Crown, and every general whose circle is still unsealed.
 --
--- Iselle's own line is the spec (data/conversations/prologue/conversation_prologue_sponsor.lua): the
--- deep floors go unpruned, the count climbs, and what is down there comes up and out into the country.
+-- The premise is the spec: the deep floors go unpruned, the count climbs, and what is down there comes
+-- up and out into the country.
 -- What is down there is what is at the bottom, so the fight is the bottom's -- met on floor three in a
 -- corridor rather than on its own ground, which is the point.
 --
@@ -2737,12 +2812,16 @@ function Descent.markClimbedOut(player)
     return true
 end
 
--- Has Iselle explained the tally yet? A SECOND one-way mark, and the two are deliberately not one.
+-- Has the tally's tutorial window been read yet? A SECOND one-way mark, and the two are deliberately
+-- not one.
 --
--- `climbedOut` is set the instant the stair is taken, because the readout has to be on screen while she
--- points at it. This one is set when her scene has actually finished, and it is what stops the scene
--- playing twice -- including for a player who quit the game in the middle of it, which a flag passed
--- through the state switch would not survive.
+-- `climbedOut` is set the instant the stair is taken, because the readout has to be on screen before
+-- anything can explain it. This one is set when the window is CLOSED (states/gate.lua) -- a modal has
+-- certainly been read -- and it is saved there rather than passed through the state switch, which would
+-- not survive a quit.
+--
+-- IT USED TO GATE A SCENE -- ten lines of Iselle at the stair saying what the meter counts. It is a
+-- tutorial window now (ui/panels/tutorial_note.lua) and the scene is deleted.
 function Descent.tallyTaught(player)
     return (player and player.tallyTaught) or false
 end
@@ -2750,6 +2829,27 @@ end
 function Descent.markTallyTaught(player)
     if not player then return false end
     player.tallyTaught = true
+    return true
+end
+
+-- HAS THE STAIR BEEN TAKEN AT LEAST ONCE? The same one-shot shape, for the Rift's own first-visit
+-- coaching: a bubble on the descend row (states/gate.lua) telling the player what the one button on
+-- that screen does.
+--
+-- IT REPLACES A SCENE. A sponsor stood at the top of the stair and spent twenty lines arriving at
+-- "then we go down"; the instruction is a bubble now and the scene is deleted.
+--
+-- SPENT BY THE DEED, not by the screen being seen -- it is set in `descend`, so a company that walks in
+-- and back out is coached again. A flag on the player rather than a hub stage, for the same reason as
+-- the tally above: the hub spends `hubIntro` when the door OPENS, so it is gone by the time this state
+-- enters, and a flag passed through the switch would not survive a quit.
+function Descent.gateCoached(player)
+    return (player and player.gateCoached) or false
+end
+
+function Descent.markGateCoached(player)
+    if not player then return false end
+    player.gateCoached = true
     return true
 end
 

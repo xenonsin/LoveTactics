@@ -182,6 +182,38 @@ local function bandPrice(day)
     return 40 + math.max(1, day or 1) * 60
 end
 
+-- THE SHALLOWEST TIER THE RIFT MAY GIVE A THING UP AT, on the 1..CLASS_LEVEL_CAP ladder the finds are
+-- banded along (tools/drop_tier.lua) and the one a fight reads its own depth off (rollLoot).
+--
+-- TWO NUMBERS, AND THE ANSWER IS THE DEEPER OF THEM, because an item is held back by two different
+-- things and either one alone lets the other through:
+--
+--   ITS RANK          what the thing is worth. A find wears it as `dropTier` outright; a priced item
+--                     wears it as `unlockQuests`, the grade rank that IS its shelf slot (docs/shelf.md).
+--                     The two are one ladder a rung apart -- Vendor.foundPrice already reads a find's
+--                     rank as `dropTier - 1` -- so `unlockQuests + 1` here is that identity read
+--                     backwards and not a second mapping anybody has to keep in step.
+--
+--   ITS CLASS'S GATE  what had to be played for before anybody may hold it. Warden asks knight 8 and
+--                     hunter 8 (data/classes/warden.lua); a vendor greys a crossing's stock until that
+--                     is paid (models/vendor.lua) and this pool had no such rule at all.
+--
+-- THE SECOND HALF IS THE BUG THIS ANSWERS. Rank is measured worth (models/grade.lua) and worth is the
+-- wrong instrument for "who is allowed it" -- deliberately so, since a grade that read a gate would be
+-- reading its own output. So a Warden charm whose numbers are small graded shallow, and the deepest-
+-- gated kit in the game fell out of floor one: 26 earned-class items sat at tier 1 or 2, one of them
+-- behind an eight-rung gate. A gate is not a magnitude, and the pool has to ask for it separately.
+--
+-- THE GOLD BAND IS UNTOUCHED AND STILL APPLIES ON TOP for a priced item. How dear a thing is and how
+-- deep it belongs are different questions; the band answers what the road can afford, this answers what
+-- the road is allowed to have, and neither stands in for the other (docs/economy.md).
+function Spoils.depthOf(def)
+    if not def then return 0 end
+    local Class = require("models.class") -- lazy: class -> item -> here at require time
+    local rank = def.dropTier or ((def.unlockQuests or 0) + 1)
+    return math.max(rank, Class.gateLevel(def.class))
+end
+
 -- The drop pool: every PRICED item within a prestige-scaled price band. Price is the "shoppable"
 -- marker -- natural weapons, bound relics and quest items have none, so they can never drop. Cheaper
 -- items (and consumables) weight heavier, so the common reward is a potion, not the best sword you
@@ -205,17 +237,32 @@ end
 --
 -- `bound` is still refused outright, and so is a signature: those ride one body's grid and are nobody's
 -- to find (tools/drop_tier.lua assigns neither).
-local function lootCandidates(maxPrice, tier)
+--
+-- AND NOTHING DEEPER THAN THE FLOOR REACHES, on either half. See Spoils.depthOf: the tier gate used to
+-- be read off `dropTier` alone, which meant the priced half was gated by GOLD and by nothing else and
+-- the found half could not see a class gate at all.
+--
+-- `pricedOnly` drops the found half for a caller that is stocking a COUNTER rather than a floor
+-- (Spoils.shelf). It is a parameter and not a second function because the two want the same band, the
+-- same weighting and the same gate -- what a cart may sell is a subset of what the road may turn up,
+-- and the subset is "somebody wrote a price on it". Before the gate landed this happened by accident:
+-- the shelf passed no tier at all, so the found half fell out of a `dropTier <= 0` test on its own.
+local function lootCandidates(maxPrice, tier, pricedOnly)
     local pool = {}
     tier = tier or 0
     for id, def in pairs(Item.defs) do
+        local priced = def.price and def.price > 0
         if def.bound then -- nailed to one grid; never earned, bought, stolen or found
-        elseif def.price and def.price > 0 and def.price <= maxPrice then
-            local weight = 1 + math.max(0, maxPrice - def.price) / maxPrice -- ~1 (dear) .. ~2 (cheap)
-            if def.type == "consumable" then weight = weight * 2 end
-            pool[#pool + 1] = { id = id, weight = weight }
-        elseif def.dropTier and def.dropTier <= tier then
-            local weight = 1 + math.max(0, tier - def.dropTier) / math.max(1, tier)
+        elseif not (priced or (def.dropTier and not pricedOnly)) then -- nothing this caller may hand over
+        elseif Spoils.depthOf(def) > tier then -- ranked or gated deeper than this floor reaches
+        elseif priced then
+            if def.price <= maxPrice then
+                local weight = 1 + math.max(0, maxPrice - def.price) / maxPrice -- ~1 (dear) .. ~2 (cheap)
+                if def.type == "consumable" then weight = weight * 2 end
+                pool[#pool + 1] = { id = id, weight = weight }
+            end
+        else
+            local weight = 1 + math.max(0, tier - Spoils.depthOf(def)) / math.max(1, tier)
             if def.type == "consumable" then weight = weight * 2 end
             pool[#pool + 1] = { id = id, weight = weight }
         end
@@ -335,6 +382,12 @@ Spoils.SEALED_CHANCE = { combat = 0.15, elite = 0.35, treasure = 0.35, secret = 
 -- How far above the road's own band a CHEST may reach, as a multiple of it. See sealedCandidates.
 Spoils.SEALED_ABOVE = 2.5
 
+-- The same reach read on the RANK ladder instead of on gold: how many rungs above the floor's own tier a
+-- sealed piece may come from. Two, which is what SEALED_ABOVE already buys in practice -- floor one's
+-- band is 100 and its ceiling 250, and the price ladder puts rank 2 at 245 -- so this is the gold bound
+-- said in the unit that can also see a class gate, not a second, tighter rule.
+Spoils.SEALED_REACH = 2
+
 -- WHAT A SEALED ROOM DRAWS FROM, and it is a SLICE rather than a taller ceiling.
 --
 -- Raising the reach was the obvious answer and it is inert, which a spec caught on its first run: a
@@ -369,15 +422,25 @@ Spoils.SECRET_SLICE = 0.5
 --
 -- Bounded above as well as below. An unbounded draw would let the first floor's first chest hand over
 -- the dearest object in the game, and a ceiling that a run can raise by descending is the whole point.
+--
+-- ...AND BOUNDED ON THE RANK AXIS TOO, by Spoils.SEALED_REACH rather than by the ordinary drop's flat
+-- tier gate. A chest exists to reach ABOVE what the floor pays, so gating it at the floor's own rung
+-- would delete the feature: the pool is everything priced above the band, and on floor one there is
+-- nothing at rank 0 dearer than rank 0. What a seal may NOT do is reach past a gate nobody has opened,
+-- which is a different bound and the one that was missing -- floor one's chests were sealing Warden
+-- casts. See Spoils.depthOf.
 local function sealedCandidates(floor, kind, enemyUnits)
     local Identify = require("models.identify") -- lazy: identify -> player -> save -> descent -> here
     local pool = {}
     if kind == "treasure" or kind == "secret" or kind == "offer" then
         local band = bandPrice(floor)
         local top = band * Spoils.SEALED_ABOVE
+        local Class = require("models.class")
+        local reach = math.min(Class.CLASS_LEVEL_CAP, math.max(1, floor or 1) + Spoils.SEALED_REACH)
         local priced = {}
         for id, def in pairs(Item.defs) do
-            if def.price and def.price > band and def.price <= top and Identify.canSeal(def) then
+            if def.price and def.price > band and def.price <= top
+                and Spoils.depthOf(def) <= reach and Identify.canSeal(def) then
                 priced[#priced + 1] = { id = id, weight = 1, price = def.price }
             end
         end
@@ -437,6 +500,12 @@ end
 -- `exclude` is an optional bare set of ids to keep off the shelf. Returns fewer than `count` (or
 -- nothing) when the band is too thin to fill it, which the caller must handle -- a market with an empty
 -- shelf is a stop with nothing on it.
+--
+-- `floorLevel` IS HOW DEEP THE CART IS STOCKED, and it is the same field Spoils.roll takes and means
+-- the same thing by. Without one the depth comes off `day`, which is what the campaign's roads want and
+-- what the descent's cart emphatically does not: a run's day is a borrowed number (Descent.poolDay) and
+-- the thing a player has actually done is walk down a stair. The caller passes the DEEPEST floor the
+-- company has ever stood on, so the cart carries what the far end of its own experience drops.
 
 -- ---------------------------------------------------------------------------
 -- The ceiling: what the rift is allowed to ask for anything
@@ -479,7 +548,16 @@ function Spoils.shelf(opts)
     local taken = {}
     for id in pairs(opts.exclude or {}) do taken[id] = true end
 
-    local pool = lootCandidates(bandPrice(opts.day))
+    -- THE SAME DEPTH THE ROAD'S OWN DROPS READ, and it has to be passed now that the pool gates on one
+    -- (Spoils.depthOf). It used to be left nil, which said the right thing by accident twice over: no
+    -- tier meant no found stock, and it also meant no gate, so the cart was free to sell a crossing's
+    -- cast to a company eight rungs short of the crossing. Read off the day, exactly as rollLoot reads
+    -- it off the floor -- and `pricedOnly`, because a cart sells what somebody priced and the rest of
+    -- the catalogue is found or not had at all (docs/shelf.md).
+    local Class = require("models.class")
+    local day = math.max(1, opts.day or 1)
+    local depth = math.max(1, opts.floorLevel or day)
+    local pool = lootCandidates(bandPrice(day), math.min(Class.CLASS_LEVEL_CAP, depth), true)
     local out = {}
     for _ = 1, count do
         local available = {}

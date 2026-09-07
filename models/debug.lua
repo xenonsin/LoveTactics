@@ -51,7 +51,7 @@ end
 -- a hunt through data/ for the file it came out of.
 --
 -- `rel` is a project-relative path exactly as love.filesystem spells it
--- ("data/conversations/prologue/conversation_prologue_sponsor.lua"); it is resolved against the
+-- ("data/conversations/prologue/conversation_prologue_arrival.lua"); it is resolved against the
 -- launched source directory, which is where the file a `require` actually read lives.
 --
 -- Two ways in, in order, because there is no portable "open this in the user's editor":
@@ -71,6 +71,17 @@ end
 -- one wrapping a batch file stays on screen after the editor is up. The scheme handler is registered
 -- against Code.exe directly, so ShellExecute reaches it without a shell in between. The template is
 -- the one path left that can spawn a console, and only because the user asked for a command by name.
+--
+-- With one exception, which is the whole reason `codeGoto` exists. ShellExecute hands the handler the
+-- CALLER's environment, and `vscode://` is registered as `Code.exe --open-url -- "%1"` -- the same
+-- binary VS Code runs as a bare Node whenever ELECTRON_RUN_AS_NODE=1 is set. Launch the game from
+-- anything descended from VS Code's extension host (its integrated terminal is scrubbed of the flag,
+-- an agent's shell is not) and the game inherits it, Code.exe starts as Node, and Node answers
+-- `bad option: --open-url` to a console nobody is watching. None of that is detectable from here:
+-- ShellExecute succeeded, so openURL reports true and the file:// fallback never runs -- and file://
+-- would reach the same poisoned Code.exe through the .lua association anyway. So the flag is read
+-- directly, and in that one case the .cmd shim wins: it sets ELECTRON_RUN_AS_NODE itself and hands
+-- Code.exe the CLI entry point, which makes it the one route the inherited flag cannot break.
 --
 -- Returns true if something was launched. It never raises: a debug shortcut that crashes the game
 -- when an editor is missing is worse than one that quietly does nothing, and the caller prints the
@@ -105,6 +116,18 @@ local function openURL(url)
     return ran and opened == true
 end
 
+-- The `vscode://` route is unusable when the game inherited ELECTRON_RUN_AS_NODE (see above), so in
+-- that one case go round the scheme handler through the `code` shim, which is immune to the flag
+-- because it sets it deliberately. Returns false -- leaving the URLs to try -- when the flag is
+-- absent, which is every launch from a terminal of the developer's own.
+local function codeGoto(abs, line)
+    local inherited = os.getenv("ELECTRON_RUN_AS_NODE")
+    if not inherited or inherited == "" then return false end
+    if love.system.getOS() ~= "Windows" then return false end
+    spawn(('code -g "%s:%d"'):format(abs:gsub("/", "\\"), line))
+    return true
+end
+
 function Debug.openFile(rel, line)
     if not Debug.enabled or not rel then return false end
     local abs = love.filesystem.getSource() .. "/" .. rel
@@ -117,6 +140,8 @@ function Debug.openFile(rel, line)
         spawn(cmd)
         return true
     end
+
+    if codeGoto(abs, line) then return true end
 
     local path = urlPath(abs)
     if openURL("vscode://file/" .. path .. ":" .. line .. ":1") then return true end

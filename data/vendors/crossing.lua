@@ -21,6 +21,8 @@
 -- deep you went.
 return {
     name = "The Crossing",
+    -- The shopkeeper's face, for the greeting this counter plays and any scene it speaks in.
+    portrait = "assets/portraits/crossing.png",
     sells = false, -- sells no ITEMS; its whole offer is the crossing (models/voucher.lua)
     description = "Bring up a token and it will hold the tear long enough for one of them to come through.",
 }

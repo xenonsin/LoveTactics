@@ -2,7 +2,7 @@
 
 > **Generated** from [../data/sounds.lua](../data/sounds.lua) by `& "E:\LOVE\love.exe" . audio-commission` (use `lovec.exe` for console output). **Do not hand-edit** -- change a cue's `length`/`desc` in `data/sounds.lua` and regenerate. Direction, format, sourcing and the on-disk count live in [audio-assets.md](audio-assets.md) (and `. audio-report`).
 
-**48 cues** across 5 buckets. Each row is one sound to source or record; `Trim` is the in-engine mix level (blank = full), applied on top of a file delivered at a consistent working loudness.
+**57 cues** across 8 buckets. Each row is one sound to source or record; `Trim` is the in-engine mix level (blank = full), applied on top of a file delivered at a consistent working loudness.
 
 ## music — 8
 
@@ -77,6 +77,30 @@ Progress stings -- the moments the game marks. Mono, 44.1kHz.
 | `quest.complete` | `assets/audio/quest/complete.ogg` | 1-2s |  | An objective / quest clears. THE reward sting -- the moment the game most wants to celebrate. |
 | `quest.join` | `assets/audio/quest/join.ogg` | 1-1.5s |  | A companion joins the party (the join banner). A warm, welcoming flourish. |
 | `quest.levelup` | `assets/audio/quest/levelup.ogg` | 1-1.5s |  | A companion levels up. A rising, celebratory chime. |
+
+## rift — 4
+
+| Cue | File | Length | Trim | Brief |
+|---|---|---|---|---|
+| `rift.open` | `assets/audio/rift/open.ogg` | 0.7-1s | 0.9 | A crossing token is spent and the tear begins to open: light gathering, a ring closing in. Airy and rising, a held intake of breath -- pure anticipation, carrying NO information about what is coming, because every crossing sounds identical here. Think a portal drawing breath, not a spell being cast. |
+| `rift.overshoot` | `assets/audio/rift/overshoot.ogg` | 0.6-1.2s |  | The rarest event in the game: the rift deals somebody ranked ABOVE the token that opened it, and the ring breaks. A glassy shatter with a bright rising tail over it -- something giving way and something wonderful coming through. Layered OVER rift.surge, so it must sit above that cue rather than replace it. This is the sound players will remember; spend the budget here. |
+| `rift.star` | `assets/audio/rift/star.ogg` | <=0.3s | 0.75 | One rank pip strikes in above the rift. A clean bright chime with a short tail -- struck, not swelled. Fired one to five times in quick succession and pitch-shifted UP each time at the call site, so the run reads as a rising figure; it must sound musical repeated and transposed, so no strong inharmonic content. |
+| `rift.surge` | `assets/audio/rift/surge.ogg` | 0.4-1s |  | The rift floods with light just before the body arrives -- the payoff beat. A warm bloom/whoosh that resolves rather than builds; the exhale answering rift.open. Fires at every rank, so it must not sound rare. |
+
+## shop — 1
+
+| Cue | File | Length | Trim | Brief |
+|---|---|---|---|---|
+| `shop.buy` | `assets/audio/shop/buy.ogg` | 0.4-0.7s | 0.85 | A purchase is committed at a shop counter: coins counted out and the piece pushed across the wood. Warm and mercantile -- a short handful of coin chink over a soft wooden set-down. Satisfied and final, and clearly a TRANSACTION rather than a prize: none of treasure.reveal's shimmer and no fanfare, and short enough to fire several times in a row while a player stocks up. |
+
+## stone — 4
+
+| Cue | File | Length | Trim | Brief |
+|---|---|---|---|---|
+| `stone.break` | `assets/audio/stone/break.ogg` | 0.6-1.2s |  | The rarest reading: a piece climbs its whole ladder and the lamp glass over the counter fails. A sharp glassy CRACK with a bright ringing tail rising out of it -- something giving way, and something very good underneath it. Layered OVER stone.reveal rather than replacing it, so it must sit above that cue. The counterpart to rift.overshoot; spend the budget here. |
+| `stone.mark` | `assets/audio/stone/mark.ogg` | <=0.3s | 0.75 | One rung of the reading strikes in. A small bright STRUCK tone with a short metallic tail, like a jeweller's hammer on a stamp -- struck, never swelled. Fired one to ten times in quick succession and pitch-shifted UP each time at the call site, so it must sound musical repeated and transposed; no strong inharmonic content. |
+| `stone.read` | `assets/audio/stone/read.ogg` | 0.6-0.9s | 0.85 | A piece is laid on the touchstone and drawn across it. A low stone-on-metal SCRAPE with a lamp-glass creak over it, settling into a held hum -- the instrument being used, before it has said anything. Identical for every reading, so it must carry NO information about what is coming: this is the anticipation beat. |
+| `stone.reveal` | `assets/audio/stone/reveal.ogg` | 0.4-1s |  | The true item declares itself. A warm ringing bloom that RESOLVES rather than builds, like struck metal finding its note -- the answer to stone.read. Fires at every level, so it must not sound rare or triumphant; the level is carried by the marks before it, not by this. |
 
 ## treasure — 2
 

@@ -110,6 +110,12 @@ return {
     ["quest.join"] = { file = "assets/audio/quest/join.ogg", category = "sfx",
         length = "1-1.5s", desc = "A companion joins the party (the join banner). A warm, welcoming flourish." },
 
+    -- The counter -- a purchase going through (ui/panels/shop.lua's commitBuy). ONE CUE, ON THE COMMIT
+    -- and never on the question: the buy confirmation is a modal with a Cancel on it, and a coin sound
+    -- under the asking would tell the player they had spent something they had not.
+    ["shop.buy"] = { file = "assets/audio/shop/buy.ogg", category = "sfx", volume = 0.85,
+        length = "0.4-0.7s", desc = "A purchase is committed at a shop counter: coins counted out and the piece pushed across the wood. Warm and mercantile -- a short handful of coin chink over a soft wooden set-down. Satisfied and final, and clearly a TRANSACTION rather than a prize: none of treasure.reveal's shimmer and no fanfare, and short enough to fire several times in a row while a player stocks up." },
+
     -- Treasure -- the chest-opening loot reveal (ui/panels/loot_reveal.lua). Two beats: the lid
     -- unlatches and swings, then it pops open on a burst of light and spilling coins.
     ["treasure.open"] = { file = "assets/audio/treasure/open.ogg", category = "sfx", volume = 0.8,

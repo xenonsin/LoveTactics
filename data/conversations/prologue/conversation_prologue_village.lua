@@ -22,7 +22,7 @@ return {
 
     script = {
         { "character_rowan", "Look at it, {name}. The market row, the bell tower, the gate your father set the first stone in. All of it, inside a night.", tag = 4 },
-        { "character_rowan", "This is not a raid. The Demon Lord's army empties whole valleys like this and moves on before the ash is cold.", tag = 2 },
+        { "character_rowan", "Nothing marched on this town. It came up out of the field behind your father's house, and it has not stopped walking since.", tag = 2 },
         { "character_rowan", "Two of them have seen us, and they will not come to you. Watch how I take mine.", tag = 3 },
     },
 }

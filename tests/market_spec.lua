@@ -193,8 +193,11 @@ return {
         end,
     },
     {
-        name = "nothing on the counter is locked, and the whole of it fits in a player's head",
+        name = "no ladder is greyed on the counter, and the whole of it fits in a player's head",
         fn = function()
+            -- A company that has bought nothing today. The one lock this counter deals is `sold`, and
+            -- it is the case below; what is pinned here is that NO GATE reaches this shelf -- no rung,
+            -- no discipline, no undiscovered ware -- because there is no ladder on it to show.
             local p = Player.new()
             recruitAll(p)
             local stock = Market.stock(p, 3)
@@ -208,6 +211,67 @@ return {
             -- THE CEILING, and it is the whole complaint. The counter listed 485 rows before this;
             -- the number a player can hold is the number of decisions they can compare.
             assert(#stock <= 30, "the counter is out with " .. #stock .. " rows, which is a catalogue")
+        end,
+    },
+    {
+        name = "a rolled row is one each: bought today, it is greyed where it stood",
+        fn = function()
+            local p = Player.new()
+            recruitAll(p)
+
+            local before = Market.stock(p, 4)
+            local today = rack(p, 4, Market.TODAY)
+            assert(#today == Market.ROTATION, "the fixture needs a full rotation")
+            local taken = today[1].id
+            Market.recordSold(p, 4, taken)
+
+            local after = Market.stock(p, 4)
+            assert(#after == #before, "the counter keeps its width: a bought row goes grey, not away")
+            local found = false
+            for i, row in ipairs(after) do
+                assert(row.id == before[i].id, "row " .. i .. " moved; the day's deal must not re-deal")
+                if row.id == taken then
+                    found = true
+                    assert(row.rack == Market.TODAY, "and it is still on the rack it was dealt onto")
+                    assert(row.sold and row.locked and row.lockReason == "sold",
+                        taken .. " was bought today and is still on offer")
+                else
+                    assert(not row.locked, row.id .. " went off the counter with somebody else's buy")
+                end
+            end
+            assert(found, taken .. " left the counter instead of being greyed on it")
+
+            -- THE STANDING RACK IS NOT ONE EACH. A draught bought is a draught the counter still sells:
+            -- the rack that answers a need cannot run out, which is the whole reason it is standing.
+            local staple = rack(p, 4, Market.COUNTER)[1]
+            Market.recordSold(p, 4, staple.id)
+            for _, row in ipairs(Market.stock(p, 4)) do
+                if row.rack == Market.COUNTER then
+                    assert(not row.locked, row.id .. " is greyed on the standing rack")
+                end
+            end
+        end,
+    },
+    {
+        name = "what was bought today is inert tomorrow, however the roll falls",
+        fn = function()
+            -- THE RECORD IS STAMPED WITH ITS DAY (models/market.lua), which is what makes it expire on
+            -- its own. The roll can deal the same ware again next week; a set that only grew would grey
+            -- it out for the rest of the campaign, and nothing walks the seam to clear it.
+            local p = Player.new()
+            recruitAll(p)
+            for _, row in ipairs(rack(p, 6, Market.TODAY)) do Market.recordSold(p, 6, row.id) end
+
+            for _, row in ipairs(Market.stock(p, 6)) do
+                if row.rack == Market.TODAY then assert(row.sold, "all three were taken on day 6") end
+            end
+            for day = 7, 12 do
+                for _, row in ipairs(Market.stock(p, day)) do
+                    assert(not row.sold, row.id .. " is still greyed on day " .. day)
+                end
+            end
+            assert(not Market.isSold(p, 7, rack(p, 6, Market.TODAY)[1].id),
+                "yesterday's shopping says nothing about today")
         end,
     },
     {
@@ -247,6 +311,41 @@ return {
             end
 
             assert(Market.markOpened(p) == nil, "the same rack is never announced a second time")
+        end,
+    },
+    {
+        -- WHAT THE COUNTER IS BANDED AGAINST, and it is one thing: the deepest floor this company has
+        -- ever stood on. Two halves, and the first is a deletion -- the tier used to be the highest of
+        -- depth, the roster's best class level and its spread, so a company that had never gone down
+        -- could still open the deep end of the counter by levelling at home.
+        name = "the counter's tier is the deepest floor reached, and nothing else moves it",
+        fn = function()
+            local Descent = require("models.descent")
+            local p = Player.new()
+            assert(Market.tier(p) == 0, "a company that has never gone down bands at nought")
+
+            -- A body several rungs up its class, still having descended nowhere. Written straight onto
+            -- the ladder the tier used to read, so the case fails if either reading comes back.
+            local char = assert(p.roster and p.roster[1], "a new company has a body to level")
+            char.technique = char.technique or {}
+            char.technique.knight = Class.classLevelCost(Class.CLASS_LEVEL_CAP)
+            assert(Class.classLevel(char, "knight") == Class.CLASS_LEVEL_CAP,
+                "the fixture has to actually stand at the top of a ladder")
+            assert(Market.tier(p) == 0,
+                "class levels are practice, not a place: they must not band the counter")
+
+            -- ...AND IN THE RIFT'S OWN UNIT. A floor is worth two levels, so the fourth floor bands at
+            -- seven and not at four -- which is the ladder the floors themselves deal their finds on.
+            Descent.reached(p, 4)
+            assert(Market.tier(p) == Descent.floorLevel({ floor = 4 }),
+                "the counter bands on what the floor is worth, not on its number")
+
+            -- Monotone and capped: the record does not fall when the company climbs out, and the tier
+            -- and a rung stay the same unit however deep the rift goes.
+            Descent.reached(p, 2)
+            assert(Market.tier(p) == Descent.floorLevel({ floor = 4 }), "a record is not lowered")
+            Descent.reached(p, 15)
+            assert(Market.tier(p) == Class.CLASS_LEVEL_CAP, "the tier is a rung and stops where rungs do")
         end,
     },
 }

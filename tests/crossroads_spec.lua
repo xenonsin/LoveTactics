@@ -177,9 +177,9 @@ return {
     {
         name = "a wager pays on a good roll and wounds on a bad one",
         fn = function()
-            -- The old altar's case, rehomed onto the dilemma that replaced it: the hole in the floor with
-            -- something breathing under it. Same shape, same two branches, and the assertion is what the
-            -- branch DID rather than that it survived.
+            -- The old altar's case, rehomed onto the dilemma that replaced it: the silted crawl with
+            -- something breathing at the end of it. Same shape, same two branches, and the assertion is
+            -- what the branch DID rather than that it survived.
             local hole = Crossroads.SHARED[2]
             local log, ctx = recorder(0.9) -- above the 0.55 gate -> it wakes
             hole.options[1].resolve(ctx)

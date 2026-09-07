@@ -27,8 +27,16 @@
 -- road, bled for at a stone -- and, since the seven houses came back on a class gate, by climbing the
 -- class whose shelf sells it (data/buildings/houses.lua). The town shop is where you replace what you
 -- spent and arm a body you just recruited, and the three rolled rows are the reason to come back
--- tomorrow. Nothing is greyed here: a rotation is not a ladder, and a locked row on a counter this
--- small is the shop advertising at you. The ladders are next door, and they do their own banding.
+-- tomorrow. No LADDER is greyed here: a rotation is not a ladder, and a rung-locked row on a counter
+-- this small is the shop advertising at you. The ladders are next door, and they do their own banding.
+--
+-- ONE EACH OFF TODAY'S RACK, and that is the only thing this counter ever greys. The three rolled rows
+-- are the perishable half -- what is out today and gone by morning -- and a row a player can buy four
+-- of is not out today, it is simply cheap. So a purchase takes that row off the counter until the roll
+-- turns over (Market.recordSold), and the row is GREYED WHERE IT STOOD rather than removed: the rack is
+-- three tiles wide and the whole of it is the day's news, so a rack that shortens as you shop reads as
+-- stock that was never dealt. THE STANDING RACK IS NEVER TOUCHED BY THIS -- it is the answer to a need,
+-- and a need is the one thing this file has settled it will not price.
 --
 -- DETERMINISTIC FROM THE DAY, never re-rolled on opening. This is the rule models/request.lua
 -- established for the board it used to draw and it is the same rule for the same reason: "I will come
@@ -75,6 +83,44 @@ Market.STAPLE_RUNG = 0
 Market.ROTATION = 3
 
 -- ---------------------------------------------------------------------------
+-- What is already off today's rack
+-- ---------------------------------------------------------------------------
+--
+-- STAMPED WITH THE DAY IT BELONGS TO, and that is what makes it self-expiring: `player.marketSold` is
+-- one record, `{ day = n, ids = { [id] = true } }`, and a record whose day is not today's answers
+-- nothing at all. No sweep to run on the night seam, nothing for models/gate.lua to remember to clear,
+-- and no way for yesterday's shopping to grey a row out of tomorrow's roll -- which is the failure a
+-- growing set of ids would have, since the roll can deal the same ware again next week.
+--
+-- One record rather than a set per day for the same reason: a day that is over is not a thing anybody
+-- can ask about, so keeping it is a save file that grows for the life of a campaign.
+
+-- The ids already bought off today's rack, or nil when nothing on `day` has been.
+function Market.soldToday(player, day)
+    local rec = player and player.marketSold
+    if not (rec and rec.day == (day or 1)) then return nil end
+    return rec.ids
+end
+
+function Market.isSold(player, day, id)
+    local ids = Market.soldToday(player, day)
+    return (ids and ids[id]) == true
+end
+
+-- Take `id` off today's rack. Called on the COMMIT of a purchase (ui/panels/shop.lua's commitBuy) and
+-- only for a row that came off Market.TODAY -- the standing rack sells the same draught all day.
+function Market.recordSold(player, day, id)
+    if not (player and id) then return end
+    day = day or 1
+    local rec = player.marketSold
+    if not (rec and rec.day == day) then
+        rec = { day = day, ids = {} }
+        player.marketSold = rec
+    end
+    rec.ids[id] = true
+end
+
+-- ---------------------------------------------------------------------------
 -- The counter: the plain kit, standing
 -- ---------------------------------------------------------------------------
 
@@ -119,47 +165,33 @@ end
 -- The tier: how far along this company is
 -- ---------------------------------------------------------------------------
 --
--- THREE READINGS, AND THE HIGHEST OF THEM WINS. Not their average, and the difference matters:
+-- ONE READING: THE DEEPEST FLOOR THIS COMPANY HAS EVER STOOD ON (Descent.deepest), and what the
+-- counter deals is what that floor is worth.
 --
---   depth            the deepest floor this company has ever stood on (Descent.deepest)
---   the specialist   the best class level any one body holds (Class.rosterLevel)
---   the spread       total class levels across the roster, over the seven classes
+-- IT USED TO BE THREE -- depth, the best class level any one body held, and the roster's total spread
+-- over the seven roots -- with the highest winning. The argument was that a company which committed
+-- hard without going deep should still open stock worth its while, and it is a decent argument about
+-- CLASS LEVELS. It is the wrong argument about a shop. A counter is stocked against what the company
+-- has SEEN, not against what it has practised: the deep end of this catalogue is a place, the player
+-- goes there and comes back knowing what is down there, and the shop is the city answering that. Two
+-- of the three readings could carry the counter past a floor nobody had walked, which is the shop
+-- telling the player about goods on a floor they have not met.
 --
--- Averaging three numbers that already move together adds no information over the first of them and
--- hides which one is doing the work. Taking the maximum is what earns the word: a company that went
--- deep without committing to anything, and one that committed hard without going deep, both open stock
--- worth their while -- and each reading names its own decision instead of being diluted by the other
--- two.
+-- IN THE RIFT'S OWN UNIT, and that is the half that was quietly wrong rather than merely arguable.
+-- `deepest` is a floor NUMBER and a floor is worth two levels (Descent.LEVEL_PER_FLOOR), so reading
+-- the number raw had the counter running at half the ladder the floors themselves deal on: standing on
+-- floor five, the rift gives up its tier-8 finds (models/spoils.lua) and the market was still banding
+-- at 5. Descent.floorLevel is the conversion, and it is the same one every other depth reading in the
+-- game makes.
 --
 -- Capped at the class ladder's own height so the tier and a rung are the same unit, which is what lets
--- the rotation filter on `unlockQuests` directly.
+-- the rotation filter on `unlockQuests` directly. Nought for a company that has never gone down: the
+-- counter opens on its standing rack, which is the plain kit and is never banded.
 function Market.tier(player)
     local Descent = require("models.descent")
-    local cap = Class.CLASS_LEVEL_CAP
-
-    local depth = Descent.deepest(player)
-
-    local best, total = 0, 0
-    for _, char in ipairs((player and player.roster) or {}) do
-        for key in pairs(char.technique or {}) do
-            local n = Class.classLevel(char, key)
-            total = total + n
-            if n > best then best = n end
-        end
-    end
-
-    -- THE SEVEN, not the forty-six. The spread is asking "how broadly has this company committed",
-    -- and the denominator has to be the number of careers a company can spread ACROSS -- which is the
-    -- roots. Counting the earned classes too would divide the same tally by six times the number and
-    -- make the reading answer nought for everybody.
-    --
-    -- Class.roots() is keyed by id rather than being a list, so it is counted rather than
-    -- measured with `#` -- which answers 0 on a map and would divide by nought here.
-    local classes = 0
-    for _ in pairs(Class.roots()) do classes = classes + 1 end
-
-    local spread = math.floor(total / math.max(1, classes))
-    return math.max(0, math.min(cap, math.max(depth, best, spread)))
+    local deepest = Descent.deepest(player)
+    if deepest <= 0 then return 0 end
+    return math.min(Class.CLASS_LEVEL_CAP, Descent.floorLevel({ floor = deepest }))
 end
 
 -- ---------------------------------------------------------------------------
@@ -206,12 +238,16 @@ end
 
 -- What is on the counter on `day`: today's three, then the standing rack. Each row carries `rack`.
 --
--- Both racks are BUYABLE, always. The rotation draws from wares that are unlocked and at or under the
--- company's tier, so a rolled row is always something the player can act on, and the standing rack is
--- plain kit that is never locked by definition. Nothing on this list is greyed -- see the header.
+-- Both racks are BUYABLE, always -- until one of today's three is bought. The rotation draws from wares
+-- that are unlocked and at or under the company's tier, so a rolled row is always something the player
+-- can act on, and the standing rack is plain kit that is never locked by definition. The one lock this
+-- counter deals is `sold`: a rolled row this company has already taken today, greyed where it stands
+-- (see the header). It carries `locked` too, so every reader that already refuses a shut row -- the
+-- press, the tile, the tooltip's refusal -- refuses this one without being taught a new word.
 function Market.stock(player, day)
     day = day or 1
     local tier = Market.tier(player)
+    local sold = Market.soldToday(player, day)
 
     local counter, pool = {}, {}
     for _, row in ipairs(Market.catalogue(player)) do
@@ -232,10 +268,17 @@ function Market.stock(player, day)
         return a.id < b.id
     end)
 
+    -- SOLD IS STAMPED AFTER THE DEAL, never filtered before it: the three rows a day deals are a fact
+    -- about the day, and dropping a bought one here would promote a fourth ware onto a rack the player
+    -- has already read. The row keeps its place and goes grey.
     local today = {}
     for i = 1, math.min(Market.ROTATION, #pool) do
-        pool[i].rack = Market.TODAY
-        today[#today + 1] = pool[i]
+        local row = pool[i]
+        row.rack = Market.TODAY
+        if sold and sold[row.id] then
+            row.sold, row.locked, row.lockReason = true, true, "sold"
+        end
+        today[#today + 1] = row
     end
 
     -- Cheapest first WITHIN a rack, and the racks stay in their order. Sorting the whole list would

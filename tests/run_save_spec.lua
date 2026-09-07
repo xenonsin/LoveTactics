@@ -179,8 +179,21 @@ return {
         -- from `resume.descent` and the live player. The lookup below is objectiveAt's, spelled out.
         name = "a resumed descent floor still knows whose work each of its ends is",
         fn = function()
+            -- A company that has met every trainer, standing on the floor its run dealt one onto. The
+            -- posting is what this case is about, and a descent only offers one, on a floor it rolls for
+            -- (models/descent.lua's Descent.dealCompanion) -- so the fixture has to go and find it
+            -- rather than assume floor one always seats work, which is what the old rota guaranteed.
             local player = Player.new()
-            local run = Descent.new(player)
+            for vendorId in pairs(require("models.errand").houses()) do
+                Player.markVendorVisited(player, vendorId)
+            end
+            local run
+            for seed = 1, 200 do
+                run = Descent.new(player, seed)
+                if run.companion then break end
+            end
+            assert(run and run.companion, "no seed in 200 dealt a companion to a company that met them all")
+            run.floor = run.companion.floor
             player.descentRun = run
             local quest = Descent.floorQuest(run, player)
             local mp = quest.map
@@ -189,7 +202,7 @@ return {
             for _, spec in ipairs(mp.objectives or {}) do
                 if spec.questId then errands = errands + 1 end
             end
-            assert(errands > 0, "floor one seats no house work at all, so this proves nothing")
+            assert(errands > 0, "floor " .. run.floor .. " seats no house work at all, so this proves nothing")
 
             local g = Overworld.generate({
                 cols = mp.cols, rows = mp.rows, biome = mp.biome, seed = 7,

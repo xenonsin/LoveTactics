@@ -76,6 +76,25 @@ out would be a thing the player could neither use twice nor sell.
 stopped being structural and became statistical the day this landed, and any item whose honest answer
 is "not at the depths people play" is content that does not exist.
 
+**A floor hands over nothing ranked or gated deeper than it reaches** (`Spoils.depthOf`). Two numbers,
+and the answer is the deeper of them:
+
+| | Where it is read | What it answers |
+|---|---|---|
+| **Rank** | `dropTier`, or `unlockQuests + 1` for a priced ware | how dear a thing is |
+| **Class gate** | the highest level in the class's `requires` (`Class.gateLevel`) | who is allowed it at all |
+
+The second half is the one a grade cannot see and must not: the grader reads what a thing *does*, and a
+grade that read a gate would be reading its own output. So a Warden charm with small numbers on it
+graded shallow, and the deepest-gated kit in the game fell out of floor one — 26 earned-class items sat
+at `dropTier` 1 or 2, one of them behind an eight-rung gate. A vendor already greys a crossing's stock
+until the crossing is earned; the rift now refuses it for the same reason and reads the same field.
+
+The gold band still applies on top for a priced ware. *How dear* and *how deep* are different
+questions, and neither stands in for the other. The one place the rank half is loosened is a **sealed**
+find: a chest exists to reach above the floor's own band, so it reaches `Spoils.SEALED_REACH` rungs past
+it — but never past a class gate, which is skipping rather than reaching.
+
 Related: [balance.md](balance.md) is about bodies against weapons — how hard a thing hits and how
 much a body takes. This is about where a thing *belongs*. The two meet at one place: the slot a grade
 assigns is the slot `Balance.slotTarget` then reads to grant the item its magnitude.

@@ -203,8 +203,8 @@ function Dialogue.new(def, onComplete, convId)
             slot = entry.slot,
             -- `enters` holds a member OFF STAGE until their first line, so somebody who arrives
             -- partway through a scene arrives instead of having been standing there all along. The
-            -- alarm in the prologue is the case it was built for: a steward who is already on stage
-            -- has spent his entrance before he opens his mouth.
+            -- fire in the prologue is the case it was built for: the knight who comes running to it is
+            -- worth nothing if she has been standing in the room since the first domestic line.
             present = not entry.enters,
             fade = entry.enters and 0 or 1,
         }

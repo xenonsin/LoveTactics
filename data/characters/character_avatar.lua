@@ -4,7 +4,7 @@
 -- class-less fallback). The blank slate is what the rank buys: a small holding's child was trained in
 -- nothing in particular, and the only reason this body can hold a sword is that Rowan taught it.
 --
--- THE BODY NOT CHOSEN IS NOT WASTED. Character creation offers two; the other one is Ellis, the
+-- THE BODY NOT CHOSEN IS NOT WASTED. Character creation offers two; the other one is Bryn, the
 -- sibling standing in the house the prologue burns, whose portrait is resolved off `player.body` in
 -- models/conversation.lua's `speaker`. Both sprite sets ship in every save.
 -- Starts with a sword and

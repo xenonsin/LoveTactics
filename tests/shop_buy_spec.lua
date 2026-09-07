@@ -11,6 +11,8 @@
 
 local Shop = require("ui.panels.shop")
 local Errand = require("models.errand")
+local Market = require("models.market") -- TODAY: the perishable rack, one of each per day
+local Sound = require("models.sound")
 local Vendor = require("models.vendor")
 
 -- A ledger with every house's door open and nothing else run. The shelf gates on Quest.shelfRung --
@@ -226,6 +228,72 @@ return {
                     "the cursor holds: " .. cursor .. " -> " .. after.pool.cursor)
                 assert(after.pool.offset == offset,
                     "and so does the scroll: " .. offset .. " -> " .. after.pool.offset)
+            end)
+        end,
+    },
+    {
+        name = "a committed purchase makes the sound a counter makes",
+        fn = function()
+            -- ON THE COMMIT AND NOWHERE ELSE. The press only ASKS -- the confirmation carries a Cancel
+            -- -- so a coin cue under the question would tell the player they had spent gold they still
+            -- have. Sound.play is captured rather than heard: the suite runs windowless and the file
+            -- may not exist yet (models/sound.lua is tolerant of both), so what is under test is which
+            -- cue is asked for and when.
+            stubFonts(function()
+                local fired = {}
+                local real = Sound.play
+                Sound.play = function(id) fired[#fired + 1] = id end
+                local ok, err = pcall(function()
+                    local panel, row = anyBuyableRow(9999)
+                    assert(panel and row, "no shipped shelf has a buyable row")
+                    panel:buy(row)
+                    assert(#fired == 0, "asking the question spends nothing and sounds like nothing")
+                    panel:commitBuy(row.entry)
+                    assert(fired[1] == "shop.buy",
+                        "the commit plays shop.buy, not " .. tostring(fired[1]))
+                    assert(#fired == 1, "and plays it once")
+                end)
+                Sound.play = real
+                assert(ok, err)
+            end)
+        end,
+    },
+    {
+        name = "buying one of today's three takes it off the counter and greys it in place",
+        fn = function()
+            -- THE WHOLE SEAM, from the press to the tile: the panel records the sale against the day
+            -- (models/market.lua), the counter deals the same three rows back with one of them shut,
+            -- and the rack draws that one as SOLD rather than as padlocked -- a padlock says "climb
+            -- further" about a thing the company owns already.
+            stubFonts(function()
+                local panel = shopFor(marketId(), 9999)
+                local function todayRack()
+                    for _, s in ipairs(panel.sections) do
+                        if s.key == Market.TODAY then return s end
+                    end
+                end
+                local rack = todayRack()
+                assert(rack and #rack.rows > 0, "the counter deals a rotation")
+                local id, width = rack.rows[1].entry.id, #rack.rows
+                assert(not rack.rows[1].locked, "and it is buyable before it is bought")
+
+                panel:commitBuy(rack.rows[1].entry)
+
+                local after = todayRack()
+                assert(after and #after.rows == width,
+                    "the rack keeps its width: " .. width .. " -> " .. #((after or {}).rows or {}))
+                local row = after.rows[1]
+                assert(row.entry.id == id, "and the bought ware keeps its place on it")
+                assert(row.locked and row.entry.lockReason == "sold", "greyed, and it says why")
+                assert(row.label:find("sold out"), "the row quotes no price it cannot be bought at")
+                assert(after.pool:cellAt(1).entry.sold, "and the tile draws it sold, not padlocked")
+                assert((panel:lockReason(row.entry) or ""):find("morning"),
+                    "the refusal names the clock, since waiting is the only answer to it")
+
+                -- Pressing it again refuses rather than raising a second confirmation.
+                panel.confirm = nil
+                panel:buy(row)
+                assert(panel.confirm == nil, "a sold row cannot be bought twice in a day")
             end)
         end,
     },

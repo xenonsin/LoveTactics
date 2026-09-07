@@ -349,9 +349,10 @@ local function openLoadout()
     if game.coach == "loadout" then game.coach = "equip" end
     game.activePanel = Party.new({
         player = game.player,
-        -- The Tactics tab is taught later, at the hub; hide it on the flight leg (before the player has
-        -- ever reached the city) so the overworld Loadout is just the equip lesson.
-        tactics = game.tutorial ~= "flight",
+        -- The Tactics tab is hidden until the company has been down once (Descent.tacticsUnlocked) --
+        -- the rule list is a shortcut past the thing being taught until the player has felt the thing.
+        -- The flight leg is doubly excluded: it is before the city, and before any floor.
+        tactics = game.tutorial ~= "flight" and Descent.tacticsUnlocked(game.player),
         -- The roll is the city's lesson too: a body on the flight leg has one job and no ladder to
         -- read, so the tab arrives with the town that explains it.
         classes = game.tutorial ~= "flight",
@@ -3136,7 +3137,18 @@ function game:openEncounter(cell, opts)
         local enc = cell.encounter
         if not enc.stock then
             enc.stock = {}
-            for _, id in ipairs(Spoils.shelf({ prestige = game.day, count = 3 })) do
+            -- STOCKED AGAINST THE DEEPEST FLOOR THIS COMPANY HAS EVER STOOD ON, which is the rule the
+            -- city's counter follows too (Market.tier). A cart is a shop, and a shop deals what its
+            -- customers have seen.
+            --
+            -- IT USED TO PASS `prestige`, AND Spoils.shelf READS `day`. So the field was nil at every
+            -- call, the band fell back to its floor, and the wandering market has been stocked at the
+            -- day-one band -- nothing dearer than 100 gold -- for the whole of the descent however far
+            -- down it was met. Both numbers are derived from the floor now rather than named twice:
+            -- the band off the day that floor borrows, the depth off the level it fights at.
+            local deep = { floor = math.max(1, Descent.deepest(game.player)) }
+            for _, id in ipairs(Spoils.shelf({ day = Descent.poolDay(deep),
+                floorLevel = Descent.floorLevel(deep), count = 3 })) do
                 -- CLAMPED TO WHAT THE RIFT MAY ASK (Spoils.askingPrice). One purse now, so an
                 -- unclamped shelf price down here would be weighed against a permanent upgrade --
                 -- which is the failure the retired second currency existed to prevent.

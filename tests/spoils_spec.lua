@@ -328,6 +328,60 @@ return {
         end,
     },
 
+    {
+        -- WHAT A FLOOR IS ALLOWED TO HAND OVER, and the reason there are two halves to the answer:
+        -- floor one was dropping Warden kit. A crossing asks eight rungs in two houses
+        -- (data/classes/warden.lua) and the drop pool ranked a find by what it was WORTH and by
+        -- nothing else, so anything gated deep and tuned light graded shallow and fell out at the top
+        -- of the rift. The priced half was worse: it had no tier gate at all, only a gold band, so a
+        -- 165-gold crossing cast was reachable the moment the band cleared 165.
+        --
+        -- Rolled rather than read off lootCandidates, because the gate has to hold at the seam a
+        -- player actually meets -- and with no `enemyUnits`, so every id here came out of the band.
+        -- A body's own kit is a different promise (you took his axe) and is authored, not rolled.
+        name = "a floor gives up nothing ranked or gated deeper than it reaches",
+        fn = function()
+            local Class = require("models.class")
+            for _, floorLevel in ipairs({ 1, 3, 5, 7 }) do
+                local tier = math.min(Class.CLASS_LEVEL_CAP, floorLevel)
+                for _ = 1, 200 do
+                    local s = Spoils.roll({ count = 3, day = floorLevel, floorLevel = floorLevel })
+                    for _, id in ipairs(s.loot) do
+                        local def = Item.defs[id]
+                        assert(Spoils.depthOf(def) <= tier, string.format(
+                            "%s (rank/gate %d) fell out of a floor that only reaches tier %d",
+                            id, Spoils.depthOf(def), tier))
+                    end
+                end
+            end
+        end,
+    },
+    {
+        -- The same rule where it is loosest. A chest deliberately reaches ABOVE the floor's own band
+        -- (Spoils.SEALED_ABOVE) and so above its own rung, which is the feature -- but reaching past a
+        -- gate nobody has opened is not reaching, it is skipping, and floor one's chests were sealing
+        -- crossing casts. Both sealable kinds, since `secret` takes a slice of the same pool.
+        name = "a sealed find reaches above the band but never past a class gate",
+        fn = function()
+            local Class = require("models.class")
+            for _, kind in ipairs({ "treasure", "secret" }) do
+                local sealed = 0
+                for _ = 1, 200 do
+                    for _, find in ipairs(Spoils.rollSealed({ kind = kind, floorLevel = 1 })) do
+                        sealed = sealed + 1
+                        local def = Item.defs[find.id]
+                        assert(Class.gateLevel(def.class) <= 1 + Spoils.SEALED_REACH, string.format(
+                            "%s is gated at class level %d and was sealed on floor one",
+                            find.id, Class.gateLevel(def.class)))
+                    end
+                end
+                -- ...and the bound must not have emptied the pool: a rank gate read as flatly as the
+                -- ordinary drop's would leave floor one with nothing above its own band to seal.
+                assert(sealed > 0, "floor one's " .. kind .. " stops must still seal something")
+            end
+        end,
+    },
+
     -- ---- The Merchant's shelf (Spoils.shelf) --------------------------------------------------
 
     {
@@ -381,6 +435,34 @@ return {
                     assert(id ~= banned, "an excluded ware was stocked anyway: " .. tostring(banned))
                 end
             end
+        end,
+    },
+    {
+        -- THE CART IS STOCKED AGAINST A DEPTH, which is what states/game.lua passes it: the deepest
+        -- floor the company has ever stood on, converted the way every other depth reading converts.
+        -- Before this the call site named a field (`prestige`) the function does not read, so the band
+        -- fell back to its floor and the wandering market was stocked at the day-one band wherever it
+        -- was met -- nothing on it dearer than 100 gold, for the whole of a descent.
+        name = "a deeper cart stocks deeper than a shallow one",
+        fn = function()
+            local seen = {}
+            for _, depth in ipairs({ 1, 8 }) do
+                local best = 0
+                for day = 1, 40 do
+                    -- Every id the cart could deal at this depth, over the whole band it is drawn
+                    -- from, so the comparison is about the POOL and not about one lucky roll.
+                    for _, id in ipairs(Spoils.shelf({ day = day, floorLevel = depth, count = 50 })) do
+                        local def = Item.defs[id]
+                        assert(def.price and def.price > 0, "a cart deals priced stock: " .. id)
+                        assert(Spoils.depthOf(def) <= depth,
+                            id .. " is deeper than the floor the cart was stocked against")
+                        if def.price > best then best = def.price end
+                    end
+                end
+                seen[depth] = best
+            end
+            assert(seen[8] > seen[1],
+                "a cart stocked against the deep end must reach past what floor one's does")
         end,
     },
     {

@@ -24,15 +24,12 @@ return {
     ["line.conversation_alchemist_slot_01_outro.3"] = { en = "Then you are the first. Four consignments have come off that road this season and three came back as a smell.", ja = "" },  -- TODO
     ["line.conversation_alchemist_slot_01_outro.4"] = { en = "The college will be told it was recovered intact. They will not be told by whom, because they would try to hire you.", ja = "" },  -- TODO
     ["line.conversation_alchemist_slot_01_outro.5"] = { en = "Come to the Crucible instead. Our counter is on the markets and it is open to you.", ja = "" },  -- TODO
-    ["line.conversation_alchemist_vendor_intro.1"] = { en = "The Crucible. We refine your gear and brew your medicine, and we teach the one truth the others are too timid for: excellence is a substance, not a self. No one is born better. Anything can be transferred.", ja = "" },  -- TODO
-    ["line.conversation_alchemist_vendor_intro.2"] = { en = "Transferred from whom?", ja = "" },  -- TODO
-    ["line.conversation_alchemist_vendor_intro.3"] = { en = "From a source. Does a formula have feelings? A self is inventory, friend, and we are the only ones honest enough to say so. Buy, and be improved.", ja = "" },  -- TODO
-    ["line.conversation_alchemist_vendor_intro.4"] = { en = "A self is not inventory. I have held the ones you decanted and dropped. There was someone in each of them.", ja = "" },  -- TODO
-    ["line.conversation_alchemist_vendor_intro.5"] = { en = "Ren. You could have been a Philosopher. Instead you give the Work away and weep over spoiled batches.", ja = "" },  -- TODO
-    ["line.conversation_alchemist_vendor_intro.6"] = { en = "They were not batches. Sell {name} the tinctures. Keep the philosophy.", ja = "" },  -- TODO
-    ["line.conversation_alchemist_vendor_intro.7"] = { en = "As you wish. The shelf is open. Improvement is only ever a purchase away.", ja = "" },  -- TODO
-    ["line.conversation_alchemist_vendor_intro.8"] = { en = "The consignment came in intact. Seals whole. I have been told to stop mentioning it and I will not.", ja = "" },  -- TODO
-    ["line.conversation_alchemist_vendor_intro.9"] = { en = "You finished it. I said to ask for me here -- so I am asking. I go with you.", ja = "" },  -- TODO
+    ["line.conversation_alchemist_vendor_intro.1"] = { en = "Somebody in your company has been doing the Work. That is the only credential this house recognises.", ja = "" },  -- TODO
+    ["line.conversation_alchemist_vendor_intro.2"] = { en = "The Crucible refines your gear and brews your medicine. Poison and acid, coatings, elixirs, and auras that lend you what you are not.", ja = "" },  -- TODO
+    ["line.conversation_alchemist_vendor_intro.3"] = { en = "Lend it from whom?", ja = "" },  -- TODO
+    ["line.conversation_alchemist_vendor_intro.4"] = { en = "From a source. Does a formula have feelings? Buy, friend, and be improved.", ja = "" },  -- TODO
+    ["line.conversation_alchemist_vendor_intro.5"] = { en = "Buy the tinctures and leave the philosophy on the shelf, {name}.", ja = "" },  -- TODO
+    ["line.conversation_alchemist_vendor_intro.6"] = { en = "As you wish. The shelf is open, and improvement is only ever a purchase away.", ja = "" },  -- TODO
     ["line.conversation_arcanum_discipline_unlocked.1"] = { en = "You have opened the {discipline}'s discipline, {name}. The Arcanum unseals what it holds for that study. The shelf is longer for you now.", ja = "" },  -- TODO
     ["line.conversation_arcanum_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_arcanum_discipline_unlocked.3"] = { en = "There is always more to learn on that road. Good. Take only what you will practise.", ja = "" },  -- TODO
@@ -54,15 +51,12 @@ return {
     ["line.conversation_arcanum_slot_01_outro.3"] = { en = "There were six. Two of them are still down there.", ja = "" },  -- TODO
     ["line.conversation_arcanum_slot_01_outro.4"] = { en = "You will want a table, light, and someone who can read it. The Arcanum has all three.", ja = "" },  -- TODO
     ["line.conversation_arcanum_slot_01_outro.5"] = { en = "Our counter is on the markets. Come and use it. That is what it is for.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_vendor_intro.1"] = { en = "The Arcanum. We win the wars the crown cannot and turn back the plagues its physicians can't name. Buy what you like. Everything on this shelf was earned by someone.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_vendor_intro.2"] = { en = "Earned by whom?", ja = "" },  -- TODO
-    ["line.conversation_arcanum_vendor_intro.3"] = { en = "Does it matter, so long as it works? No one else can do what we do. That is the beginning and end of the question.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_vendor_intro.4"] = { en = "It matters. It always mattered.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_vendor_intro.5"] = { en = "Sister. You were the finest hand on this floor before you grew a conscience over it.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_vendor_intro.6"] = { en = "I grew eyes. Sell {name} the wares, and keep the rest.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_vendor_intro.7"] = { en = "...As you wish. The shelf is open. We only ask that what we sell be used as we intended, and we always know when it is not.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_vendor_intro.8"] = { en = "The grimoire is drying on a table upstairs. Four pages are legible. You brought us four more than we had.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_vendor_intro.9"] = { en = "You finished it. I said to ask for me here -- so I am asking. I go with you.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_vendor_intro.1"] = { en = "Somebody in your company has been working. Practice leaves a mark, and this house is built to read it.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_vendor_intro.2"] = { en = "The Arcanum wins the wars the crown cannot. Elements, wind-ups, hazards laid on a tile and left standing there.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_vendor_intro.3"] = { en = "Everything here was made by somebody.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_vendor_intro.4"] = { en = "By somebody, yes. Does it matter who, so long as it works? No one else can do what we do.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_vendor_intro.5"] = { en = "Buy the long spells, {name}. A wind-up costs a turn you were going to spend anyway.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_vendor_intro.6"] = { en = "The shelf is open. We ask only that what we sell be used as we intended, and we always know when it is not.", ja = "" },  -- TODO
     ["line.conversation_bastion_discipline_unlocked.1"] = { en = "You have earned the {discipline} road, {name}. The quartermaster has moved its gear onto your rack. The Watch keeps that kit for the ones who prove they can carry it.", ja = "" },  -- TODO
     ["line.conversation_bastion_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_bastion_discipline_unlocked.3"] = { en = "I trained beside a few who took that road. It is a good one. Do not let the rack outgrow the arm.", ja = "" },  -- TODO
@@ -134,13 +128,12 @@ return {
     ["line.conversation_bastion_slot_05_outro.7"] = { en = "The armoury is still full, {name}. Racked and oiled and sixty spears deep.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_05_outro.8"] = { en = "Forty-one people walked out of this fort and not one of them took a weapon with them.", ja = "" },  -- TODO
     ["line.conversation_bastion_slot_05_outro.9"] = { en = "...", ja = "" },  -- TODO
-    ["line.conversation_bastion_vendor_intro.1"] = { en = "The Watch outfits those who hold. Shields that outlast the arm behind them. Mail a knight can be found standing in. We do not arm those who run. State your post, or your reason for having none.", ja = "" },  -- TODO
-    ["line.conversation_bastion_vendor_intro.2"] = { en = "I hold what's mine. That's post enough.", ja = "" },  -- TODO
-    ["line.conversation_bastion_vendor_intro.3"] = { en = "I held a post on this order's line before I ever held a sword for {name}. Greywatch. The quartermaster knows the face, if not the years on it.", ja = "" },  -- TODO
-    ["line.conversation_bastion_vendor_intro.4"] = { en = "Squire Rowan. Greywatch's own. It is an honor to arm you again.", ja = "" },  -- TODO
-    ["line.conversation_bastion_vendor_intro.5"] = { en = "It is Rowan of no post now. I kept the oath and gave up the wall. I hold something better than a line these days. Outfit us both.", ja = "" },  -- TODO
-    ["line.conversation_bastion_vendor_intro.6"] = { en = "Hold until relieved, then. The shelf is yours. The order remembers the ones who stay.", ja = "" },  -- TODO
-    ["line.conversation_bastion_vendor_intro.7"] = { en = "The column reached Highwatch. Twelve days without supply, and it reached them. That is why you are standing here.", ja = "" },  -- TODO
+    ["line.conversation_bastion_vendor_intro.1"] = { en = "Somebody in your company has been fighting the way this order fights. That is the only reason this door is open to you.", ja = "" },  -- TODO
+    ["line.conversation_bastion_vendor_intro.2"] = { en = "The Watch outfits those who hold. Plate a knight can be found standing in, and shields that outlast the arm behind them.", ja = "" },  -- TODO
+    ["line.conversation_bastion_vendor_intro.3"] = { en = "I hold what's mine. Is that post enough?", ja = "" },  -- TODO
+    ["line.conversation_bastion_vendor_intro.4"] = { en = "It will do. We do not arm those who run, and you have not run yet.", ja = "" },  -- TODO
+    ["line.conversation_bastion_vendor_intro.5"] = { en = "Take the plate first, {name}! Everything else on that rack only works while you are still on your feet.", ja = "" },  -- TODO
+    ["line.conversation_bastion_vendor_intro.6"] = { en = "Hold until relieved, then. The shelf is yours, and the order remembers the ones who stay.", ja = "" },  -- TODO
     ["line.conversation_cafe_vendor_intro.1"] = { en = "You'll want feeding before you go. One order, {name}, and one is the whole of it. I'll not send a company up the hill on two breakfasts and a stomachache.", ja = "" },  -- TODO
     ["line.conversation_cafe_vendor_intro.2"] = { en = "One meal does that much?", ja = "" },  -- TODO
     ["line.conversation_cafe_vendor_intro.3"] = { en = "Mine does. Every one of yours eats it and every one of them carries it until the work is done. Read the board before you order. What's good for a long walk isn't what's good for a bad afternoon.", ja = "" },  -- TODO
@@ -199,14 +192,12 @@ return {
     ["line.conversation_cathedral_slot_04_outro.7"] = { en = "Blooded. That is the word for it. There is a rite, and the rite puts something into a child, and what it puts in is not the Light.", ja = "" },  -- TODO
     ["line.conversation_cathedral_slot_04_outro.8"] = { en = "It is demon's blood.", ja = "" },  -- TODO
     ["line.conversation_cathedral_slot_04_outro.9"] = { en = "...You are certain.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_vendor_intro.1"] = { en = "You come armed and you come clean. The faithful arm those who purge. Wards, relics, water that burns what should not walk. Kneel when you take them, and the taking is made holy.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_vendor_intro.2"] = { en = "I'll take them standing.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_vendor_intro.3"] = { en = "Give what is offered and no more, quartermaster. {name} came for a censer, not a catechism.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_vendor_intro.4"] = { en = "Sister. The cloth suits you still, whatever you tell the road.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_vendor_intro.5"] = { en = "It was never offered to me either. It was put on me. I wear what I choose to now. Arm us, and keep the sermon.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_vendor_intro.6"] = { en = "...As you will. The shelf is open. The faith asks only that its gifts be used as it intended them, and it always knows when they are not.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_vendor_intro.7"] = { en = "The mill business. That was you. Word came up the road before you did.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_vendor_intro.8"] = { en = "You finished it. I said to ask for me here -- so I am asking. I go with you.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_vendor_intro.1"] = { en = "There is someone in your company doing the Light's work with no chapel to do it in. Word came up the road before you did.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_vendor_intro.2"] = { en = "The faithful arm those who purge. Wards, relics, and water that burns what should not be walking.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_vendor_intro.3"] = { en = "Do I have to kneel for them?", ja = "" },  -- TODO
+    ["line.conversation_cathedral_vendor_intro.4"] = { en = "Kneel and the taking is made holy. Stand and it is only a purchase. Both are permitted.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_vendor_intro.5"] = { en = "Take a ward, {name}. Ground you have closed is ground nothing crosses, and that is worth more than the sermon attached to it.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_vendor_intro.6"] = { en = "The shelf is open. The faith asks only that its gifts be used as it intended them.", ja = "" },  -- TODO
     ["line.conversation_colosseum_discipline_unlocked.1"] = { en = "The {discipline}'s work is on your card now, {name}. The stable stocks for the fighters who reach it, and you reached it. Spend, and spend well.", ja = "" },  -- TODO
     ["line.conversation_colosseum_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_colosseum_discipline_unlocked.3"] = { en = "Knew you had it in you. That gear's sharper than the house lets most touch. Go on, kit up.", ja = "" },  -- TODO
@@ -271,13 +262,12 @@ return {
     ["line.conversation_colosseum_slot_06_intro.3"] = { en = "BEAT: Saber says nothing yet, but the mirror lands on both of them: the house that isn't one has started behaving like the others because they are winning.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_06_outro.1"] = { en = "BEAT: Saber asks it straight. Do you mean to keep taking the top billing?, and makes clear she wants a real answer, not a shrug.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_06_outro.2"] = { en = "BEAT: the choice is the player's, and the scene leaves it standing rather than resolving it. The billing is how they get to Ira at all.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_vendor_intro.1"] = { en = "You walked off the sand still breathing, so the shelf is yours. Steel, leathers, the little cruelties that keep a fighter on the card one more week. No house behind you? Good. A house takes a cut. I only take coin.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_vendor_intro.2"] = { en = "Then coin is all you'll get.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_vendor_intro.3"] = { en = "He says that to every fresh name, {name}. The cut comes later, dressed as a favour. I've worn three houses' colors and paid each one twice.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_vendor_intro.4"] = { en = "And yet here you stand, veteran, shilling for a team with nothing behind it.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_vendor_intro.5"] = { en = "Nothing behind it is the only thing on this sand I have ever trusted. Sell them the good leathers, not the ones you move on the losers.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_vendor_intro.6"] = { en = "...The good leathers, then. Win loud, {name}. The crowd keeps a name, and a name is the only thing here I can't sell you. You earn that one blow by blow.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_vendor_intro.7"] = { en = "The gatekeeper is still telling people about that bout. Loudly, and with himself winning it.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_vendor_intro.1"] = { en = "Word reaches this stable before the fighters do. Somebody under your banner has been winning up close.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_vendor_intro.2"] = { en = "So the shelf is yours. Steel, leathers, and the little cruelties that keep a fighter on the card one more week.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_vendor_intro.3"] = { en = "What does the house take for that?", ja = "" },  -- TODO
+    ["line.conversation_colosseum_vendor_intro.4"] = { en = "Nothing. A house takes a cut and I only take coin. You have no house behind you, which is the best thing about you.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_vendor_intro.5"] = { en = "Buy the heavy end of it, {name}. What he calls cruelty is a stun, and a stun is a turn nobody spends on you.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_vendor_intro.6"] = { en = "Win loud. The crowd keeps a name, and a name is the one thing here I cannot sell you.", ja = "" },  -- TODO
     ["line.conversation_descent_crown.1"] = { en = "You came a long way down to meet me. There is no me to meet.", ja = "" },  -- TODO
     ["line.conversation_descent_crown.2"] = { en = "Seven wants, and seven people who agreed to carry one each, because a want cannot walk about on its own. You went past every one of them to get here.", ja = "" },  -- TODO
     ["line.conversation_descent_crown.3"] = { en = "You did not know a single one of their names this morning. That is the part I like.", ja = "" },  -- TODO
@@ -297,11 +287,11 @@ return {
     ["line.conversation_descent_sloth.2"] = { en = "I held a post once. Nobody came. You will find out what I found out, and it will take you about fifteen years.", ja = "" },  -- TODO
     ["line.conversation_descent_wrath.1"] = { en = "Do not make it quick. A quick blow is a blow somebody is holding back.", ja = "" },  -- TODO
     ["line.conversation_descent_wrath.2"] = { en = "I have had a lifetime of being handled. Come and hit me properly.", ja = "" },  -- TODO
-    ["line.conversation_flight_champion.1"] = { en = "Stop here, {name}. That one at the head of them is no imp. It has a name where they carry none, and it leads this whole raiding party. This is the thing that has been walking the road behind us.", ja = "" },  -- TODO
+    ["line.conversation_flight_champion.1"] = { en = "Stop here, {name}. That one has a name. The rest don't. It's the biggest thing that came up out of your father's field.", ja = "" },  -- TODO
     ["line.conversation_flight_champion.2"] = { en = "It's between us and the capital.", ja = "" },  -- TODO
-    ["line.conversation_flight_champion.3"] = { en = "It is. And it will not fall to the swarm-work that served against the rest. It takes blows the grunts could not, and the imps beside it only want to keep us busy while it reaches you.", ja = "" },  -- TODO
+    ["line.conversation_flight_champion.3"] = { en = "It is. It won't go down the way the others did, and the imps will throw themselves at us to keep us off it.", ja = "" },  -- TODO
     ["line.conversation_flight_champion.4"] = { en = "Then we cut it down and the imps stop mattering.", ja = "" },  -- TODO
-    ["line.conversation_flight_champion.5"] = { en = "Just so. Put it down and the road opens. Stay off its reach, let it come onto our line, and we end this at the gate rather than inside it. Ready when you are.", ja = "" },  -- TODO
+    ["line.conversation_flight_champion.5"] = { en = "Then stay out of its reach, and let it come to us.", ja = "" },  -- TODO
     ["line.conversation_flight_event_shrine.1"] = { en = "A wayside shrine, still standing where everything around it burned.", ja = "" },  -- TODO
     ["line.conversation_flight_event_shrine.2"] = { en = "Someone tended it to the last, and cut a healer's rite into the stone. It feels wrong to walk straight past. Choose...", ja = "" },  -- TODO
     ["line.conversation_flight_event_shrine.3"] = { en = "Kneel and learn the rite by heart.", ja = "" },  -- TODO
@@ -338,90 +328,47 @@ return {
     ["line.conversation_hunters_lodge_slot_01_outro.3"] = { en = "It walked out of the fog and stopped. It had a look at us first.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_slot_01_outro.4"] = { en = "It always does. That is why it is on the wall and not in a pot.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_slot_01_outro.5"] = { en = "The Lodge keeps a counter in the markets. It is open to you now. Ask for me by the wall.", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_vendor_intro.1"] = { en = "The Lodge. We clear the beasts that would eat your children and feed your town on what's left. Honest work, honest coin. The board's always open. Take a bounty, take a trophy.", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_vendor_intro.2"] = { en = "Always open. It never closes?", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_vendor_intro.3"] = { en = "The wild always makes more game. That is the mercy of it. There is always another beast worth killing. Rank up, and one day you'll be a Grand Hunter, and they'll carve your name on the wall.", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_vendor_intro.4"] = { en = "I have read the names on that wall. Some of them I hunted.", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_vendor_intro.5"] = { en = "...You take only what you need, girl. That is why we could never crown you. You were the finest tracker the wood ever grew.", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_vendor_intro.6"] = { en = "It is why the wood never turned on me. Sell {name} the bows. Keep the crown.", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_vendor_intro.7"] = { en = "As you like. The board's open. There's always another beast worth killing.", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_vendor_intro.8"] = { en = "The stag is on the wall. Fourteen points, and every one of them yours.", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_vendor_intro.9"] = { en = "You finished it. I said to ask for me here -- so I am asking. I go with you.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.1"] = { en = "There it is. Walls still standing, gates still shut. The capital.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.10"] = { en = "It's been like this for weeks. The demons push, a village burns, and everyone still breathing runs for the capital. The city's fit to burst, work's gone dry, and food with it.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.11"] = { en = "But coin still moves for those who can hold a blade. Register with the Adventurers' Guild. The quest board takes anyone who'll take a contract. Pays a good deal better than queuing for bread.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.12"] = { en = "Work that pays. That, we can do.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.13"] = { en = "The board, then. We'll want coin before we want anything else.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.14"] = { en = "I am the baron of Bellmere's child. The town burned four nights ago.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.15"] = { en = "Bellmere. That's the whole eastern line gone, then.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.2"] = { en = "The Bastion holds this wall. If anywhere is still holding, {name}, it is behind these stones.", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_vendor_intro.1"] = { en = "There is a hunter in your company. The wood tells us that before you do.", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_vendor_intro.2"] = { en = "The Lodge clears the beasts that would eat your children and feeds your town on what is left. Honest work, honest coin.", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_vendor_intro.3"] = { en = "Never? Not one day in the year?", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_vendor_intro.4"] = { en = "The wild always makes more game. That is the mercy of it. There is always another beast worth killing.", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_vendor_intro.5"] = { en = "Take a bow and the traps together, {name}. Half of what they sell here does nothing without the other half beside it.", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_vendor_intro.6"] = { en = "Draw what you need. Rank up, and one day they carve your name on that wall.", ja = "" },  -- TODO
+    ["line.conversation_prologue_arrival.1"] = { en = "There it is. Walls still standing, gates still shut.", ja = "" },  -- TODO
+    ["line.conversation_prologue_arrival.10"] = { en = "It won't stop, either. The Rift under this city has to be cleared, deep and often.", ja = "" },  -- TODO
+    ["line.conversation_prologue_arrival.11"] = { en = "Not many can, and fewer will. So the deep floors get left, and whatever's down there comes up.", ja = "" },  -- TODO
+    ["line.conversation_prologue_arrival.13"] = { en = "The Rift, then. We'll want coin before we want anything else.", ja = "" },  -- TODO
+    ["line.conversation_prologue_arrival.14"] = { en = "I'm the baron of Bellmere's child. The town burned four nights ago.", ja = "" },  -- TODO
+    ["line.conversation_prologue_arrival.15"] = { en = "Bellmere. That's the whole eastern line gone, then. Papers, a seal, anything to say who you are?", ja = "" },  -- TODO
+    ["line.conversation_prologue_arrival.16"] = { en = "That's what this street is running from. It's also work, if you can hold a blade. Better than queuing for bread.", ja = "" },  -- TODO
+    ["line.conversation_prologue_arrival.2"] = { en = "The Bastion holds this wall. If anywhere's still standing, {name}, it's behind these stones.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.3"] = { en = "More of them. Third column through the gate since morning. Where are we meant to put them all?", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.4"] = { en = "Not under my roof, that's certain. Barely bread enough for the mouths already inside.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.5"] = { en = "You there. Off the road, with the others. Nobody passes until they're processed. Names, and where you've run from.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.6"] = { en = "Papers, a token, a seal, anything to say who you are. No? Then you'll wait like the rest of them until I say oth--", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.7"] = { en = "...That plate. That's Bastion steel. You're a sworn knight of the Order?", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.8"] = { en = "I held the eastern wall. The wall is ash now. I brought out who I could.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.9"] = { en = "Forgive me, ser. We don't see many of the Order come through on foot these days. Pass. You, and the ones at your back.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.1"] = { en = "I can still see the hall from here. All of it is still burning.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.10"] = { en = "Not this ground. It was never the ground. We go to the capital while its walls are still standing.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.11"] = { en = "Your father. Ellis. Odo at the bell, where you would expect him. I could not reach that side of the town in time.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.2"] = { en = "I went back through the east quarter, {name}. There is nobody left to bring out.", ja = "" },  -- TODO
+    ["line.conversation_prologue_arrival.4"] = { en = "Not under my roof. Barely bread enough for the mouths already inside.", ja = "" },  -- TODO
+    ["line.conversation_prologue_arrival.5"] = { en = "Off the road, with the others. Names, and where you've run from.", ja = "" },  -- TODO
+    ["line.conversation_prologue_arrival.7"] = { en = "...That plate. That's Bastion steel. Forgive me, ser. Pass, and the ones at your back.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.1"] = { en = "I can still see the hall from here.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.10"] = { en = "Away from it, and not alone. The capital, {name}. Tonight.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.11"] = { en = "I sent them to the west road. It was already cut off.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.2"] = { en = "There's nobody left to bring out, {name}. Your father. Bryn.", ja = "" },  -- TODO
     ["line.conversation_prologue_flee.4"] = { en = "You were told to keep me alive. You kept me alive.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.5"] = { en = "I was charged with the body of a baron's child, and that is the whole of what I did tonight.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.6"] = { en = "The man who charged me is dead. The house that paid the Order is ash. There is nothing standing over me now.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.7"] = { en = "So I will say one of my own. It is two words.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.8"] = { en = "We shall hold.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.9"] = { en = "Hold what? There is nothing here left to hold.", ja = "" },  -- TODO
-    ["line.conversation_prologue_intro.1"] = { en = "Father wants the whole house at the table tonight, before the roads close.", ja = "" },  -- TODO
-    ["line.conversation_prologue_intro.10"] = { en = "Ellis will bring them out. Stay at my shoulder and do what I tell you.", ja = "" },  -- TODO
-    ["line.conversation_prologue_intro.2"] = { en = "He'll say that, and then he'll eat where he always eats. At his desk.", ja = "" },  -- TODO
-    ["line.conversation_prologue_intro.3"] = { en = "Then we sit and wait for him, {name}. Both of us. I am not doing it on my own.", ja = "" },  -- TODO
-    ["line.conversation_prologue_intro.4"] = { en = "Ser Rowan. {name}. There is fire on the eastern fields!", ja = "" },  -- TODO
-    ["line.conversation_prologue_intro.5"] = { en = "Not one rick burning. The whole line of them, from the mill road down to the east wall.", ja = "" },  -- TODO
-    ["line.conversation_prologue_intro.6"] = { en = "That is an army. The Demon Lord's people burn a valley from its edge inward.", ja = "" },  -- TODO
-    ["line.conversation_prologue_intro.7"] = { en = "I'll get father and the household onto the west road. Ring the bell, Odo, and keep ringing it.", ja = "" },  -- TODO
-    ["line.conversation_prologue_intro.8"] = { en = "The east wall is nearest and it is thinnest. {name}, with me. We hold the lane while the town empties.", ja = "" },  -- TODO
-    ["line.conversation_prologue_intro.9"] = { en = "And the house?", ja = "" },  -- TODO
-    ["line.conversation_prologue_ruins.2"] = { en = "Many did. We held that gate long enough for them to run.", ja = "" },  -- TODO
-    ["line.conversation_prologue_ruins.3"] = { en = "Look down the valley, {name}. Those villages burned too, with no one to hold a gate. Survivors will be hiding in the hills.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.5"] = { en = "My orders were one line. Keep the baron's child alive. That's all I did tonight.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.6"] = { en = "The man who wrote them is dead. There's nobody left to give me another.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.8"] = { en = "So I'm giving myself one. We go on.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.9"] = { en = "Go on where? The field is still open.", ja = "" },  -- TODO
+    ["line.conversation_prologue_intro.4"] = { en = "{name}. The east field is burning. All of it.", ja = "" },  -- TODO
+    ["line.conversation_prologue_intro.5"] = { en = "There's a rift open above it. Things are climbing out onto the road.", ja = "" },  -- TODO
+    ["line.conversation_prologue_intro.6"] = { en = "I've come from that field. The wall's no good to us. They're already past it.", ja = "" },  -- TODO
+    ["line.conversation_prologue_intro.7"] = { en = "Bryn. The bell, then every door on the market row. Get father onto the west road.", ja = "" },  -- TODO
+    ["line.conversation_prologue_intro.8"] = { en = "There's one lane up from that field. {name}, with me. We hold it while the town gets out.", ja = "" },  -- TODO
+    ["line.conversation_prologue_ruins.2"] = { en = "Many did. We held that lane long enough.", ja = "" },  -- TODO
+    ["line.conversation_prologue_ruins.3"] = { en = "Look down the valley, {name}. Ours wasn't the only field that opened last night.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.4"] = { en = "Then let's find them.", ja = "" },  -- TODO
-    ["line.conversation_prologue_ruins.5"] = { en = "Good! We take the king's road to the capital, {name}. We'll be safe behind its walls, and we save anyone we can along the way.", ja = "" },  -- TODO
+    ["line.conversation_prologue_ruins.5"] = { en = "The king's road to the capital, then. We'll be safe behind its walls, and we save who we can on the way.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.6"] = { en = "Bellmere is gone. I don't know who else made it out.", ja = "" },  -- TODO
-    ["line.conversation_prologue_sponsor.1"] = { en = "Before you join that queue. You are the two who came in with the Bellmere column, and one of you is wearing Bastion plate.", ja = "" },  -- TODO
-    ["line.conversation_prologue_sponsor.10"] = { en = "Nothing down there is born. It forms. That is the other half of the trade, and the Crown pays by the floor to keep the count down. We call it pruning.", ja = "" },  -- TODO
-    ["line.conversation_prologue_sponsor.11"] = { en = "The Crown should have soldiers down there.", ja = "" },  -- TODO
-    ["line.conversation_prologue_sponsor.12"] = { en = "It has. Two companies of the Watch, on the first three floors, and they will not go past them.", ja = "" },  -- TODO
-    ["line.conversation_prologue_sponsor.13"] = { en = "So the deep floors go unpruned. Then the count climbs, and what is down there comes up the stair and out into the country.", ja = "" },  -- TODO
-    ["line.conversation_prologue_sponsor.14"] = { en = "The eastern line.", ja = "" },  -- TODO
-    ["line.conversation_prologue_sponsor.15"] = { en = "Bellmere, four nights ago. That did not come over the hills, it came up out of this ground.", ja = "" },  -- TODO
-    ["line.conversation_prologue_sponsor.16"] = { en = "Here are my terms. I pay for the people you pull out, the steel they carry and the bed they sleep in.", ja = "" },  -- TODO
-    ["line.conversation_prologue_sponsor.17"] = { en = "Whatever you bring up is yours. You sell it at my counter and I take my share there.", ja = "" },  -- TODO
-    ["line.conversation_prologue_sponsor.18"] = { en = "That is a great deal of coin to stake on strangers.", ja = "" },  -- TODO
-    ["line.conversation_prologue_sponsor.19"] = { en = "I staked four companies this season and two of them came back up. I need people who will go deeper than that.", ja = "" },  -- TODO
-    ["line.conversation_prologue_sponsor.2"] = { en = "We were told to register at the guild.", ja = "" },  -- TODO
-    ["line.conversation_prologue_sponsor.20"] = { en = "{name}. The wall we held is ash and there is nothing east of here to go back to. This is work, and it is the only work.", ja = "" },  -- TODO
-    ["line.conversation_prologue_sponsor.21"] = { en = "Then we go down.", ja = "" },  -- TODO
-    ["line.conversation_prologue_sponsor.22"] = { en = "The stair is the far side of the north quarter. Beside it there is a smaller tear that people come up out of. Take whoever it gives you, and be sensible about how deep you go on the first day.", ja = "" },  -- TODO
-    ["line.conversation_prologue_sponsor.3"] = { en = "You were. Eleven hundred people in this city can hold a blade and every one of them is standing in that line.", ja = "" },  -- TODO
-    ["line.conversation_prologue_sponsor.4"] = { en = "They are all queuing for the same work. I am offering it to you here, and I pay better than the board does.", ja = "" },  -- TODO
-    ["line.conversation_prologue_sponsor.5"] = { en = "Say it plainly.", ja = "" },  -- TODO
-    ["line.conversation_prologue_sponsor.6"] = { en = "The stair under the north quarter. You will have seen the lamps over it on your way in. Everyone calls it the Rift.", ja = "" },  -- TODO
-    ["line.conversation_prologue_sponsor.7"] = { en = "The city sits on it. The market you walked through is stocked out of it, and so is the treasury.", ja = "" },  -- TODO
-    ["line.conversation_prologue_sponsor.8"] = { en = "Four houses pay companies to go down and dig. Mine is one of the four. Mine is the smallest.", ja = "" },  -- TODO
-    ["line.conversation_prologue_sponsor.9"] = { en = "And the things that live down there?", ja = "" },  -- TODO
-    ["line.conversation_prologue_village.2"] = { en = "This is not a raid. The Demon Lord's army empties whole valleys like this and moves on before the ash is cold.", ja = "" },  -- TODO
+    ["line.conversation_prologue_ruins.7"] = { en = "Nobody stood in the road at those. Whoever ran is out in the hills.", ja = "" },  -- TODO
+    ["line.conversation_prologue_village.2"] = { en = "Nothing marched on this town. It came up out of the field behind your father's house, and it has not stopped walking since.", ja = "" },  -- TODO
     ["line.conversation_prologue_village.3"] = { en = "Two of them have seen us, and they will not come to you. Watch how I take mine.", ja = "" },  -- TODO
     ["line.conversation_prologue_village.4"] = { en = "Look at it, {name}. The market row, the bell tower, the gate your father set the first stone in. All of it, inside a night.", ja = "" },  -- TODO
-    ["line.conversation_rift_tally.1"] = { en = "You came up.", ja = "" },  -- TODO
-    ["line.conversation_rift_tally.10"] = { en = "Be sensible about how often you come up.", ja = "" },  -- TODO
-    ["line.conversation_rift_tally.2"] = { en = "That is allowed. It is paid for. Look at the tally beside the stair before you do it again.", ja = "" },  -- TODO
-    ["line.conversation_rift_tally.3"] = { en = "What is it counting?", ja = "" },  -- TODO
-    ["line.conversation_rift_tally.4"] = { en = "What is down there. I told you it forms, and I told you what we call keeping the number down.", ja = "" },  -- TODO
-    ["line.conversation_rift_tally.5"] = { en = "You pruned the floors you walked. The one you turned your back on starts filling again tonight.", ja = "" },  -- TODO
-    ["line.conversation_rift_tally.6"] = { en = "Go deeper and the tally comes down. Come up and it climbs. There is nothing else in it.", ja = "" },  -- TODO
-    ["line.conversation_rift_tally.7"] = { en = "And when it fills.", ja = "" },  -- TODO
-    ["line.conversation_rift_tally.8"] = { en = "Then it does not wait for anybody to go down. It comes up this stair and out into the streets.", ja = "" },  -- TODO
-    ["line.conversation_rift_tally.9"] = { en = "You watched that happen at Bellmere. This city is larger and the stair is in the middle of it.", ja = "" },  -- TODO
     ["line.conversation_touchstone_vendor_intro.1"] = { en = "Four houses dig that hole and not one of them trusts the other three to say what came out of it. So they pay me to say it. Everything that comes up unnamed comes up here.", ja = "" },  -- TODO
     ["line.conversation_touchstone_vendor_intro.10"] = { en = "Not on this counter.", ja = "" },  -- TODO
     ["line.conversation_touchstone_vendor_intro.11"] = { en = "No. I checked.", ja = "" },  -- TODO
@@ -478,15 +425,12 @@ return {
     ["line.conversation_undercroft_slot_01_outro.3"] = { en = "I knew. I wanted to see what you did about the one I could not give you.", ja = "" },  -- TODO
     ["line.conversation_undercroft_slot_01_outro.4"] = { en = "Most people come back and tell me the job was short a key. You came back with the box.", ja = "" },  -- TODO
     ["line.conversation_undercroft_slot_01_outro.5"] = { en = "There is a stair off the markets with no sign on it. Take it. The shelf down there is yours to shop.", ja = "" },  -- TODO
-    ["line.conversation_undercroft_vendor_intro.1"] = { en = "No sign, no door you'd notice. Good. You found us anyway. The Undercroft looks after its own, friend. Debts, and the quiet murder of the people who won't pay them. Everything on this floor belonged to someone else once. That's just business.", ja = "" },  -- TODO
-    ["line.conversation_undercroft_vendor_intro.2"] = { en = "And the people it belonged to?", ja = "" },  -- TODO
-    ["line.conversation_undercroft_vendor_intro.3"] = { en = "Owed. Everyone's owed, up above. Your house, your city's water, your king's war. We just hold the note. A debt is a debt. That's not cruelty, that's the world.", ja = "" },  -- TODO
-    ["line.conversation_undercroft_vendor_intro.4"] = { en = "I used to say that word for word. I collected on it, too. That's the lie. 'we look after our own,' over a floor that owns every soul on it.", ja = "" },  -- TODO
-    ["line.conversation_undercroft_vendor_intro.5"] = { en = "Clem. You were the best blade we ever ran. Then you started burning the paper.", ja = "" },  -- TODO
-    ["line.conversation_undercroft_vendor_intro.6"] = { en = "I started reading it. Sell {name} the kit. Keep the family.", ja = "" },  -- TODO
-    ["line.conversation_undercroft_vendor_intro.7"] = { en = "As you like. Floor's open. Everything's for sale, and everything's owed.", ja = "" },  -- TODO
-    ["line.conversation_undercroft_vendor_intro.8"] = { en = "Three doors and two keys, and you came back with the box. That is why this counter is open.", ja = "" },  -- TODO
-    ["line.conversation_undercroft_vendor_intro.9"] = { en = "You finished it. I said to ask for me here -- so I am asking. I go with you.", ja = "" },  -- TODO
+    ["line.conversation_undercroft_vendor_intro.1"] = { en = "There is a hand in your company who knows the trade. We hear about quiet work, friend. That is why this counter is open to you.", ja = "" },  -- TODO
+    ["line.conversation_undercroft_vendor_intro.2"] = { en = "No sign, no door you would notice, and you found us anyway. Everything on this floor belonged to somebody else once.", ja = "" },  -- TODO
+    ["line.conversation_undercroft_vendor_intro.3"] = { en = "And the people it belonged to?", ja = "" },  -- TODO
+    ["line.conversation_undercroft_vendor_intro.4"] = { en = "Owed. Everyone is owed, up above. We only hold the note. That is not cruelty, that is the world.", ja = "" },  -- TODO
+    ["line.conversation_undercroft_vendor_intro.5"] = { en = "Buy from him and pay him in coin, {name}. Owe this house nothing.", ja = "" },  -- TODO
+    ["line.conversation_undercroft_vendor_intro.6"] = { en = "The floor is open. Everything is for sale, and everything is owed.", ja = "" },  -- TODO
     ["name.alchemist"] = { en = "The Crucible", ja = "" },  -- TODO
     ["name.arcanum"] = { en = "The Arcanum", ja = "" },  -- TODO
     ["name.bastion"] = { en = "The Bastion", ja = "" },  -- TODO
@@ -511,7 +455,6 @@ return {
     ["name.character_saber"] = { en = "Saber", ja = "" },  -- TODO
     ["name.colosseum"] = { en = "The Colosseum", ja = "闘技場" },
     ["name.hunters_lodge"] = { en = "Hunter's Lodge", ja = "" },  -- TODO
-    ["name.inn"] = { en = "The Inn", ja = "" },  -- TODO
     ["name.touchstone"] = { en = "The Touchstone", ja = "" },  -- TODO
     ["name.undercroft"] = { en = "The Undercroft", ja = "" },  -- TODO
     ["title.conversation_alchemist_discipline_unlocked"] = { en = "A New Formula", ja = "" },  -- TODO
@@ -538,7 +481,7 @@ return {
     ["title.conversation_cathedral_errand_found"] = { en = "The Miller's Ghost", ja = "" },  -- TODO
     ["title.conversation_cathedral_slot_01_outro"] = { en = "The Mill Is Quiet", ja = "" },  -- TODO
     ["title.conversation_cathedral_slot_04_outro"] = { en = "The Purge in the Fold", ja = "" },  -- TODO
-    ["title.conversation_cathedral_vendor_intro"] = { en = "Arm Those Who Purge", ja = "" },  -- TODO
+    ["title.conversation_cathedral_vendor_intro"] = { en = "The Cathedral", ja = "" },  -- TODO
     ["title.conversation_colosseum_discipline_unlocked"] = { en = "A New Card", ja = "" },  -- TODO
     ["title.conversation_colosseum_errand_asked"] = { en = "The Card's Opener", ja = "" },  -- TODO
     ["title.conversation_colosseum_errand_found"] = { en = "The Card's Opener", ja = "" },  -- TODO
@@ -572,9 +515,7 @@ return {
     ["title.conversation_prologue_flee"] = { en = "Ashes", ja = "" },  -- TODO
     ["title.conversation_prologue_intro"] = { en = "Bellmere", ja = "" },  -- TODO
     ["title.conversation_prologue_ruins"] = { en = "The Road", ja = "" },  -- TODO
-    ["title.conversation_prologue_sponsor"] = { en = "The Rift", ja = "" },  -- TODO
     ["title.conversation_prologue_village"] = { en = "The Lane", ja = "" },  -- TODO
-    ["title.conversation_rift_tally"] = { en = "The Tally", ja = "" },  -- TODO
     ["title.conversation_touchstone_vendor_intro"] = { en = "The Touchstone", ja = "" },  -- TODO
     ["title.conversation_tutorial_flight"] = { en = "The Open Road", ja = "" },  -- TODO
     ["title.conversation_tutorial_village"] = { en = "Rowan's Lesson", ja = "" },  -- TODO

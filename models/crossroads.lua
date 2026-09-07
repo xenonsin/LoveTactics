@@ -65,9 +65,9 @@ Crossroads.SHARED = {
         },
     },
     {
-        prompt = "The floor has given way here. Something below is faintly, regularly, breathing.",
+        prompt = "A crawl runs off the passage here, silted almost shut. At the far end of it something is faintly, regularly, breathing.",
         options = {
-            { label = "Go down", desc = "Whatever sleeps under a floor was worth sealing under one.",
+            { label = "Go in on your belly", desc = "Whatever has slept that long has slept on top of something.",
                 resolve = function(ctx)
                     if ctx.rnd() < 0.55 and ctx.grantRelic("rare") then
                         -- the grant speaks for itself
@@ -76,7 +76,7 @@ Crossroads.SHARED = {
                         ctx.notify("It wakes enough to object")
                     end
                 end },
-            { label = "Board it over", desc = "Leave it. Take nothing and be owed nothing.", resolve = function() end },
+            { label = "Pack the silt back", desc = "Leave it. Take nothing and be owed nothing.", resolve = function() end },
         },
     },
     {

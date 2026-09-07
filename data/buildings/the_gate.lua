@@ -8,15 +8,17 @@
 -- come up out of. This one wears the name -- it is the older, the larger, and the one the whole city
 -- grew up against -- and the other is named for what is done at it, so the two never trade places.
 --
--- THE PLAYER IS TOLD THE NAME ONCE, by the sponsor, in the line that exists to do exactly that
--- ("Everyone calls it the Rift" -- conversation_prologue_sponsor). A place the fiction never names is
--- a place the player calls by whatever the card says, so that line and this field must always agree.
+-- THE PLAYER IS TOLD THE NAME ONCE, by the city guard, in the line that sends them here ("the Rift
+-- under this city has to be cleared" -- conversation_prologue_arrival). A place the fiction never names is a place the
+-- player calls by whatever the card says, so that line and this field must always agree. It used to be
+-- the sponsor's line, back when she intercepted the party in the street; she now meets them AT the
+-- stair, so somebody who already knows the way has to name it first.
 --
 -- WHAT THE PLAYER IS DOING HERE. The prologue ends by walking into the capital with Rowan sworn beside
 -- you, and the guard scene plays over the city. What used to happen next was the Quest Board: the seven
--- houses' work, forty days, a deadline. What happens now is that a sponsor is at the gate hiring able
--- bodies to go down (data/conversations/prologue/conversation_prologue_sponsor.lua), and the tear in
--- the ground is the game.
+-- houses' work, forty days, a deadline. What happens now is that the guard points at this stair and the
+-- screen behind it coaches the one button on it (states/gate.lua). A sponsor used to stand at the top of
+-- the stair and say the same thing in twenty lines; she is cut. The tear in the ground is the game.
 --
 -- SO THIS CARD REPLACES THE QUEST BOARD, in its slot and in its role. The board's data is still on disk
 -- and every quest with it -- nothing was deleted -- but models/building.lua retires it from the city, so

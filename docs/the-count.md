@@ -80,16 +80,24 @@ view:
 That play is back by construction. What is left holding the shape of a campaign is this number, so
 the next pass over the descent should treat it as load-bearing rather than incidental.
 
-## The fiction, which was already written
+## The fiction, which is no longer spoken
 
-Iselle, in the first conversation of the game
-(`data/conversations/prologue/conversation_prologue_sponsor.lua`):
+The premise this number measures:
 
-> Nothing down there is born. It forms. That is the other half of the trade, and the Crown pays by the
-> floor to keep the count down. We call it pruning.
+> Nothing down there is born. It forms. The Crown pays by the floor to keep the count down, and the
+> trade calls it pruning. Leave the deep floors unpruned and the count climbs, and what is down there
+> comes up the stair and out into the country.
+
+> **Nobody says it any more; the tutorial window states it.** It used to live in two Iselle scenes — one
+> at the top of the stair before the first descent (`conversation_prologue_sponsor`) and one the first
+> time a company came back up early (`conversation_rift_tally`). Both are deleted. The descend row got a
+> coach bubble, and this meter got a tutorial window (`ui/panels/tutorial_note.lua`) which carries the
+> rates, the ceiling, what filling it costs, *and* the two sentences of premise above — "nothing down
+> there is born, it forms", and that a full tally is what happened to Bellmere.
 >
-> So the deep floors go unpruned. Then the count climbs, and what is down there comes up the stair and
-> out into the country.
+> So the idea survives, in the player's own register rather than a shopkeeper's. What is genuinely gone
+> is the TRADE around it: four houses competing for the stair, who stakes an expedition, and why the
+> Crown pays. None of that is stated anywhere now.
 >
 > Bellmere, four nights ago. That did not come over the hills, it came up out of this ground.
 
@@ -175,10 +183,10 @@ the ledger, or the readout comes off the plaza the morning after it was earned.
 
 Two one-way marks, and they are deliberately not one:
 
-- `player.climbedOut` — set the instant the stair is taken, because the marks have to be on screen while
-  Iselle points at them. Gates the readout and the Way Up transition.
-- `player.tallyTaught` — set when her scene has finished. Gates the scene, and survives a player quitting
-  in the middle of it, which a flag passed through the state switch would not.
+- `player.climbedOut` — set the instant the stair is taken, because the marks have to be on screen before
+  anything can point at them. Gates the readout and the Way Up transition.
+- `player.tallyTaught` — spent by the next descent (`states/gate.lua`). Gates the coach bubble that
+  explains the meter, and survives a quit, which a flag passed through the state switch would not.
 
 ### The bands
 

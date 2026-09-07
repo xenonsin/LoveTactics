@@ -352,12 +352,19 @@ end
 -- The ceiling, in words
 -- ---------------------------------------------------------------------------
 
+-- THE CEILING IS A CLASS LEVEL, and so is the sentence. It read "complete more of the Bastion's
+-- quests", which was true of the ladder Forge.ceilingFor used to lay this on and names a deed no house
+-- posts any more: what raises the bench now is how far the company has climbed in the item's OWN class
+-- (Class.rosterLevel). The house is still named, because the class is a thing you go somewhere to
+-- climb, and the shop's own lock line names it the same way (ui/panels/shop.lua's lockReason).
 function ForgePanel:ceilingReason(item)
     local class = Item.classOf(item)
     if class then
+        local name = Item.classDisplayName(class) or class
         local vendorId = Forge.houseVendorFor(class)
-        local house = vendorId and (Vendor.get(vendorId) or {}).name or "its house"
-        return "Complete more of " .. house .. "'s quests to forge past this."
+        local house = vendorId and (Vendor.get(vendorId) or {}).name
+        local where = house and (" Its house is " .. house .. ".") or ""
+        return "Grow " .. name .. " further to forge past this." .. where
     end
     return "Locked."
 end

@@ -313,10 +313,15 @@ end
 -- Record that the player has been shown this door, so it is never announced again. Called when the
 -- coached card is actually walked into -- by the deed, not by the bubble being read, for the reason the
 -- first visit's hire stage is: a lesson satisfied by reading a card teaches reading cards.
+--
+-- Returns true only when it actually flipped, so a caller persists on the transition rather than on
+-- every door it opens (Player.seeNew draws the same line for the item dots).
 function Building.markSeen(player, id)
-    if not (player and id) then return end
+    if not (player and id) then return false end
     player.seenDoors = player.seenDoors or {}
+    if player.seenDoors[id] then return false end
     player.seenDoors[id] = true
+    return true
 end
 
 -- Record every door the city currently has open, announcing none of them. The first look at the city,
@@ -328,11 +333,18 @@ end
 -- sponsor's scene would be a fourth thing happening before the player has pressed anything). On a save
 -- written before any of this existed it is however much of the city that company had already earned,
 -- which is exactly right: they have been using those rooms for hours.
+--
+-- BOTH BOARDS, because both draw off this ledger now. The plaza spends it on the coach bubble; the
+-- square spends it on the red dot on a shelf that opened while nobody was standing there
+-- (states/houses.lua). One ledger and not two: building ids are unique across the registry, and a
+-- second copy of "which doors has this player been shown" is the copy that goes stale.
 function Building.seedSeen(player)
     if not player then return end
     player.seenDoors = player.seenDoors or {}
-    for _, b in ipairs(Building.list(player, { district = "city" })) do
-        if not b.locked then player.seenDoors[b.id] = true end
+    for district in pairs(Building.DISTRICTS) do
+        for _, b in ipairs(Building.list(player, { district = district })) do
+            if not b.locked then player.seenDoors[b.id] = true end
+        end
     end
 end
 

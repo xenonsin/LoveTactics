@@ -70,6 +70,27 @@ function Class.isEarned(id)
     return def ~= nil and next(def.requires or {}) ~= nil
 end
 
+-- THE HIGHEST CLASS LEVEL `id` ASKS FOR: 0 for a root, for a classless thing, or for an unknown tag.
+--
+-- `requires` is a map of parent class to the rung that parent must stand at -- Warden asks knight 8 AND
+-- hunter 8 -- and every reader so far has wanted the whole map: may I have this, and what is missing.
+-- This wants the one number the map implies, which is how far into the game the class is AT ALL, quoted
+-- on the same 1..CLASS_LEVEL_CAP ladder a rung is. The MAX and not a sum or an average: a crossing is
+-- reachable once its DEAREST condition is paid, and the other half being cheap does not make it earlier.
+--
+-- It exists because the rift had no version of the shelf's lock. A vendor greys a crossing's stock until
+-- it is unlocked (models/vendor.lua) and the drop pool ranked a find by what it was WORTH and by nothing
+-- else -- so a Warden charm with small numbers on it fell out of floor one, eight rungs before anybody
+-- could have earned the class it belongs to. See Spoils.depthOf.
+function Class.gateLevel(id)
+    local def = id and Class.defs[id]
+    local n = 0
+    for _, need in pairs(def and def.requires or {}) do
+        if type(need) == "number" and need > n then n = need end
+    end
+    return n
+end
+
 -- The ROOT classes `id` descends from, as a list. A root answers itself; an earned class answers its
 -- parents (which are roots -- tests/class_ladder_spec pins that). {} for an unknown id.
 --

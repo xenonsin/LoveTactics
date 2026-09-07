@@ -118,23 +118,42 @@ The seven-general arc above is the middle of a three-act shape, not the whole of
   keep, a market row, a household of a dozen. The rank is deliberately low. A duke's seat falling is
   a national event, heralds and mourning and a court hunting for surviving heirs, and that fights
   everything Act 1 needs; a baron's holding falling is a line in a dispatch, so nobody is looking for
-  you at all. The family dies with the town — the father, **Ellis** the sibling, and **Odo** the
-  steward at the bell. Nothing is carried out of it. A small holding's seal and papers lived in its
+  you at all. The family dies with the town — the father and **Bryn** the sibling. Nothing is carried
+  out of it. A small holding's seal and papers lived in its
   keep and the keep burned in a night, so the avatar reaches the capital with no way to prove who
   they are and no household left to say it for them. *Nobody at the gate disbelieves the claim.
   Nobody bothers to check it* — see
   `data/conversations/prologue/conversation_prologue_arrival.lua`, where the guard acknowledges the
   town and walks straight past the claim, and the party gets through on the Bastion plate instead.
 
-  **Ellis is the body the player did not choose.** Character creation offers two bodies and only one
+  **Bryn is the body the player did not choose.** Character creation offers two bodies and only one
   of them is you; the other is standing in the house when it burns. It costs no art — the portrait is
   resolved in `Conversation.speaker`, beside the avatar's own runtime override — and it turns a menu
-  choice made before the first line of dialogue into something the player loses. Ellis is addressed
+  choice made before the first line of dialogue into something the player loses. Bryn is addressed
   by name and never by relation: a body is a sprite set and never a gender label, so *sister* and
   *brother* are both wrong here by construction.
 
-  The steward **cannot reach the capital**. A surviving member of the household is a witness, and
-  every scene where the city turns the avatar away becomes a scene the player argues with.
+  **The opening scene starts already burning.** Five lines, no domestic beat, and the avatar does not
+  speak in it. Bryn is the alarm and names the rift; the steward Odo, who used to carry the fire in and
+  die off screen at the bell, is cut. Rowan enters to the report and gives one order each — Bryn away
+  to the bell and the west road, the avatar kept at her shoulder — which is how the sibling leaves the
+  stage alive and is dead by the next scene without the player watching. It ends on the order that
+  keeps them.
+
+  Two things this costs. The dead no longer stand on screen doing anything ordinary first, so the loss
+  is carried by the portrait and by the ash scene. And **one word** now establishes the family: Rowan's
+  *"get **father** onto the west road,"* said to Bryn in front of the avatar. It must survive any later
+  trim.
+
+  **No member of the household reaches the capital.** A survivor is a witness, and every scene where
+  the city turns the avatar away becomes a scene the player argues with.
+
+  **What burns Bellmere is a rift, not an army.** It tears open in the holding's own east field and
+  what walks out of it comes up the lane. This is why the prologue turns on a *lane* and never a wall:
+  the east wall is on the wrong side of the thing from the first line, and the lane is the board the
+  first fight is played on. The scene shows the player *that* a rift opened; Iselle supplies *why* one
+  did — an unpruned deep floor, which is her own trade's failure — and the Rift tally scene later tells
+  them straight out that they watched it happen.
 
   The one thing this owes the rest of the game: the avatar wants the name back, and that is **never a
   quest line**. The spine is seven generals. It is paid off exactly once, on the Colosseum's sand,
@@ -352,17 +371,24 @@ her. "Hold until relieved" reads as procedure, because that is what it is — an
 to tell a regulation from a vow *is* the sin. Rowan recites it flat at slot 1, the way you recite
 something you were handed.
 
-Her own is two words, sworn in the ash of Bellmere
+Her own is three, sworn in the ash of Bellmere
 (`data/conversations/prologue/conversation_prologue_flee.lua`):
 
-> **We shall hold.**
+> **We go on.**
 
 **The scene exists to strip her of every order she has, and then let her speak.** She arrives in the
 ash carrying two things issued to her by institutions — the Bastion's *hold until relieved*, and the
 posting that made a baron's child her duty. The baron is dead, the house that paid the Order is ash,
 and the assignment has nobody standing behind it any more. She has no orders for the first time in
-fifteen years, and *We shall hold* lands in that gap. It is the first thing she has ever said
+fifteen years, and *We go on* lands in that gap. It is the first thing she has ever said
 uncommanded, which is the entire reason it is hers and *hold until relieved* is not.
+
+> It used to be **We shall hold**, and the rift premise killed that. You cannot hold ground against a
+> hole that is still open behind you, and the scene says so two lines later — *"Go on where? The field
+> is still open."* The Bastion's own sentence is still *hold*, carved over the cells
+> (`data/items/ability/ability_closed_ring.lua`), and it now cuts the right way round: the Order's word
+> is **hold**, and the first thing she says without them is not. Nothing else moved — the load was
+> never on the verb.
 
 The whole load is on the **we**. She does not promise to protect the player; she promises they are not
 holding alone — the order's grammar, made plural. Its flaw is inside it: **she decided you were a "we"
@@ -371,7 +397,7 @@ been treating a duty roster as a bond for fifteen years and has never once had t
 It is also an apology aimed at the wrong person — she failed to reach Greywatch, so she is early for
 you forever.
 
-Oath two is **the same two words, meant at someone**. The wording never changes; what changes is that
+Oath two is **the same words, meant at someone**. The wording never changes; what changes is that
 she now *names* who she means by it, every fight — the first time she chooses rather than reflexes.
 When she eventually names someone other than the player, that is the arc closing, not a betrayal.
 

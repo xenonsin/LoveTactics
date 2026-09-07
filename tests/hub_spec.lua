@@ -168,29 +168,34 @@ return {
             local Descent = require("models.descent")
             local Errand = require("models.errand")
 
-            local run = Descent.new(Player.new(), 4242)
+            -- A COMPANION IS MET AT THEIR COUNTER FIRST, so a company that has visited nobody is
+            -- offered nobody. This one has walked into every house -- and has Saber already, because she
+            -- is scripted onto floor one until she joins and the roll never runs while she is outstanding
+            -- (Descent.SCRIPTED_COMPANION). What is being seated here is a ROLLED posting.
             local p = Player.new()
-            p.completedQuests = {}
+            p.completedQuests = { [Errand.opener(Descent.SCRIPTED_COMPANION)] = true }
+            for vendorId in pairs(Errand.houses()) do Player.markVendorVisited(p, vendorId) end
 
-            -- ONE COMPANION PER FLOOR, EACH EXACTLY ONCE. The deal is a permutation rather than a roll:
-            -- one that dealt Wrath three times would leave three bodies unrecruitable for the whole run.
-            -- Spread rather than piled into the shallows so the party is a different shape on every
-            -- floor -- see models/descent.lua's Descent.openersAt.
-            local seen = {}
+            -- ONE PER DESCENT, on a floor the run rolls for (Descent.dealCompanion). It was one per
+            -- FLOOR, a permutation dealt across the first six -- which made the roster fill itself on a
+            -- schedule whether or not the player went looking.
+            local run, dealt
+            for seed = 4242, 4400 do
+                run = Descent.new(p, seed)
+                if run.companion then dealt = run.companion break end
+            end
+            assert(dealt, "no seed in 159 offered anybody to a company that has met every house")
+
+            local seen = 0
             for floor = 1, Descent.FLOORS do
                 local here = Descent.openersAt(run, floor)
                 assert(#here <= 1, "floor " .. floor .. " carries " .. #here .. " companions, not one")
-                for _, house in ipairs(here) do
-                    assert(not seen[house], house .. " is posted twice")
-                    seen[house] = true
-                end
+                seen = seen + #here
             end
-            for house in pairs(Errand.houses()) do
-                assert(seen[house], house .. "'s companion is never offered anywhere in the stack")
-            end
+            assert(seen == 1, "a descent offers one companion; this one offered " .. seen)
             -- The Bastion is what the gate is for: it names Rowan, who is sworn in the prologue, so its
-            -- posting recruits nobody and must never take a floor's slot.
-            assert(not seen.bastion, "the Bastion posts a recruit for a body already in the company")
+            -- posting recruits nobody and must never be dealt.
+            assert(dealt.house ~= "bastion", "the Bastion posts a recruit for a body already in the company")
 
             -- The seating itself: a shut house's opener is one more end on the board, and it stops being
             -- one the moment that door is open.
@@ -203,12 +208,13 @@ return {
                 return ids
             end
 
-            local house = Descent.openersAt(run, 1)[1]
-            local opener = Errand.opener(house)
-            assert(endsOn(p, 1)[opener], house .. "'s opener is not on the floor that posts it")
+            local opener = Errand.opener(dealt.house)
+            assert(endsOn(p, dealt.floor)[opener],
+                dealt.house .. "'s opener is not on floor " .. dealt.floor .. ", which posts it")
 
             p.completedQuests[opener] = true
-            assert(not endsOn(p, 1)[opener], "an open house is still posting the job that opened it")
+            assert(not endsOn(p, dealt.floor)[opener],
+                "a house whose companion has joined is still posting the job that recruited her")
         end,
     },
     -- ("the city's front door is the Gate, and the board is parked rather than cut" stood here. It
@@ -218,10 +224,11 @@ return {
     -- thing left to assert. The Gate standing alone in the plaza is covered by the case below, which
     -- counts the doors the city opens on.)
     {
-        -- THE CITY GROWS ON WHAT THE COMPANY HAS DONE. Five of the eight cards on the plaza do nothing
-        -- on a fresh save -- there is no shelf to browse, no supper worth buying for a road nobody has
-        -- walked and nothing in the bag to forge -- so each arrives on the deed that
-        -- gives it a job. Pinned card by card, because the whole value of the staging is the ORDER.
+        -- THE CITY GROWS ON WHAT THE COMPANY HAS DONE. Six of the eight cards on the plaza do nothing
+        -- on a fresh save -- there is no shelf worth browsing before anything has been carried out of the
+        -- rift, no supper worth buying for a road nobody has walked and nothing in the bag to forge -- so
+        -- each arrives on the deed that gives it a job. Pinned card by card, because the whole value of
+        -- the staging is the ORDER.
         name = "the plaza opens on two doors, and the rest arrive on the deeds that give them work",
         fn = function()
             local Descent = require("models.descent")
@@ -235,17 +242,20 @@ return {
                 error(id .. " is not a card in the city at all")
             end
 
-            -- A FRESH SAVE OPENS ON THREE: hire somebody, look at what they carry, go down.
+            -- A FRESH SAVE OPENS ON TWO: look at what the company carries, and go down.
             local fresh = Player.new()
             local open = {}
             for _, b in ipairs(Building.list(fresh, { district = "city" })) do
                 if not b.locked then open[#open + 1] = b.id end
             end
             table.sort(open)
-            -- Three, not four: the roll was a card of its own for a while and is a tab of the Armory
-            -- now (ui/class_editor.lua), which is the same door the question was always behind.
-            assert(table.concat(open, ",") == "armory,market,the_gate",
-                "a fresh city opens on the armory, the market and the stair; got " ..
+            -- TWO, AND THE MARKET IS THE ONE THAT LEFT. It stood open on the first morning for a long
+            -- time on the argument that a shelf of unaffordable things teaches the ladder -- but the
+            -- first morning has one thing to teach and it is the stair, and a counter stocks a ware only
+            -- once the company has carried one out, so the shop it opened onto was mostly locked rows
+            -- anyway (data/buildings/market.lua). It arrives on the first descent with the rest of them.
+            assert(table.concat(open, ",") == "armory,the_gate",
+                "a fresh city opens on the armory and the stair; got " ..
                 table.concat(open, ", "))
 
             -- THE INN IS NOT A CARD ANY MORE, and its absence is asserted rather than assumed: it was
@@ -258,8 +268,9 @@ return {
             assert(not pcall(shut, hurt, "the_inn"),
                 "the Inn is still a card in the city -- the wound toll is supposed to be gone with it")
 
-            -- THE CAFE at floor two and THE FORGE at floor four, off the company's own depth record.
-            for id, need in pairs({ cafe = 2, forge = 4 }) do
+            -- THE MARKET on the first floor, THE CAFE at floor two and THE FORGE at floor four, off the
+            -- company's own depth record.
+            for id, need in pairs({ market = 1, cafe = 2, forge = 4 }) do
                 for floor = 0, need do
                     local p2 = Player.new()
                     Descent.reached(p2, floor)
@@ -279,7 +290,7 @@ return {
             -- standing 20 is past every threshold this city has ever had.
             local decorated = Player.new()
             decorated.completedQuests = standingOf(20)
-            for _, id in ipairs({ "cafe", "forge" }) do
+            for _, id in ipairs({ "market", "cafe", "forge" }) do
                 assert(shut(decorated, id), id .. " opened on standing rather than on its deed")
             end
         end,
@@ -331,7 +342,22 @@ return {
             Character.recordTechnique(knight.roster[1], "knight", Class.classLevelCost(1))
             assert(not shut(knight, "bastion", "houses"), "knight 1 did not open the Bastion")
             assert(shut(knight, "arcanum", "houses"), "knight 1 opened the mages' shelf as well")
-            assert(not shut(knight, "houses", "city"), "the first house did not put the square in the city")
+
+            -- THE CARD IN THE CITY WANTS BOTH: a tenant, and the stair walked. The tenant gate alone
+            -- could stand it open on the first morning -- a played prologue banks class technique on its
+            -- way into the capital -- and the first morning is the one screen where the Rift has to be
+            -- the only thing worth pressing (data/buildings/houses.lua). Pinned in both directions,
+            -- because either gate silently going missing leaves the other looking like the whole rule.
+            assert(shut(knight, "houses", "city"),
+                "a tenant put the square in the city before the company had been down at all")
+            require("models.descent").reached(knight, 1)
+            assert(not shut(knight, "houses", "city"),
+                "a tenant and a floor walked did not put the square in the city")
+
+            local walked = Player.new()
+            require("models.descent").reached(walked, 6)
+            assert(shut(walked, "houses", "city"),
+                "the square opened onto seven locked plates for a company that has climbed nothing")
 
             -- ANY body on the roster, not the one standing in front of you: a shelf is bought from with
             -- one purse into one stash, so the company's deepest holder is what the door asks about.

@@ -34,6 +34,7 @@ local StatTooltip = require("ui.stat_tooltip")
 local NoteTooltip = require("ui.note_tooltip")
 local ButtonPrompt = require("ui.button_prompt")
 local DebugMenu = require("ui.panels.debug_menu") -- the right-click item menu (development builds only)
+local TutorialNote = require("ui.panels.tutorial_note") -- the window the Tactics tab opens with, once
 local InputMode = require("input_mode")
 local Character = require("models.character")
 local Player = require("models.player")
@@ -43,6 +44,7 @@ local Combat = require("models.combat") -- for Combat.unpayableCosts: the equip-
 local Growth = require("models.growth")
 local Class = require("models.class")
 local Debug = require("models.debug")
+local Descent = require("models.descent") -- for the Tactics lesson's read/unread ledger
 local Scale = require("scale")
 local Theme = require("ui.theme")
 
@@ -474,6 +476,44 @@ function Party:columnEditor()
     return self.editors[self.mode]
 end
 
+-- IS THE TACTICS LESSON STILL UNREAD? The tab and the Auto button it drives unlock underground
+-- (Descent.tacticsUnlocked), so the first time it is on this strip it is a control the player has
+-- never met -- it wears a red pip until the window behind it has been read, and opening it plays that
+-- window once. Both halves ask this one question.
+--
+-- Only for a real campaign player: `persist` is already this panel's word for "this is the save file's
+-- company", so the draft's synthetic roster and the debug character editor (which points the tab at a
+-- blueprint's own rule list) are out by the same line that keeps them out of the save.
+function Party:tacticsUnread()
+    if not (self.persist and self.player) then return false end
+    for _, m in ipairs(self.modes) do
+        if m == "tactics" then return not Descent.tacticsTaught(self.player) end
+    end
+    return false
+end
+
+-- The lesson, opened IN FRONT OF the tab rather than instead of it: the tab the player pressed is
+-- already up behind the window, so dismissing it leaves them on the screen they asked for rather than
+-- back where they started. Reading it is what puts the pip -- and the Armory's door dot -- out.
+function Party:openTacticsNote()
+    self.tacticsNote = TutorialNote.new({
+        title = "Tactics",
+        body = "Your company can be taught to fight on its own.\n"
+            .. "\n"
+            .. "This tab gives each body a list of rules, read top to bottom on its turn -- who to "
+            .. "strike, when to fall back, what to save its breath for. A body with no rule it can "
+            .. "obey simply waits for you.\n"
+            .. "\n"
+            .. "In a fight, Auto hands the turn to those rules. Turn it off at any time and the "
+            .. "company is yours again. Nothing is decided that you cannot take back.",
+        onClose = function()
+            self.tacticsNote = nil
+            Descent.markTacticsTaught(self.player)
+            if Player.save then Player.save() end
+        end,
+    })
+end
+
 function Party:setMode(mode)
     if self.mode == mode then return end
     -- Never carry a held item across a tab switch: the hand would still be full on a screen with
@@ -481,8 +521,10 @@ function Party:setMode(mode)
     self.grid:cancelPickup()
     self.pool:cancelPickup()
     self.drag = nil
+    local unread = (mode == "tactics") and self:tacticsUnread()
     self.mode = mode
     self:setFocus(self:columnEditor() and "editor" or "grid")
+    if unread then self:openTacticsNote() end
 end
 
 function Party:cycleMode(delta)
@@ -1667,6 +1709,7 @@ end
 function Party:update(dt)
     -- Top the debug catalog back up between actions, so an equipped item is instantly replaced.
     if self.debugAll and self:catalogIdle() then self:restockCatalog() end
+    if self.tacticsNote then self.tacticsNote:update(dt) return end
     if self.quantityPopup then self.quantityPopup:update(dt) return end
     -- Poll the analog stick for navigation, edge-detected so a held stick steps one cell per push
     -- (mirrors ui/battle_map.lua). D-pad is handled directly in gamepadpressed.
@@ -1745,6 +1788,9 @@ function Party:draw()
     if not self.drag and not self.itemDebug then self:drawActiveTooltip() end
     if self.quantityPopup then self.quantityPopup:draw() end
     if self.itemDebug then self.itemDebug:draw() end -- last: it is modal over everything above
+    -- ...except the lesson, which is modal over the item menu too: it dims the whole screen and every
+    -- input below is routed to it while it stands.
+    if self.tacticsNote then self.tacticsNote:draw() end
     love.graphics.setColor(1, 1, 1)
 end
 
@@ -2091,6 +2137,12 @@ function Party:drawModeSelector()
         love.graphics.setLineWidth(1)
         Theme.set(active and Theme.accentAmber or Theme.muted)
         love.graphics.printf(MODE_LABEL[m], r.x, r.y + (r.h - self.smallFont:getHeight()) / 2, r.w, "center")
+        -- The unread mark, in the same bead the city puts on a door nobody has opened
+        -- (ui/building_map.lua): the tab arrived while the company was underground, so the strip has
+        -- to say which of these four is the new one. It goes out when the window behind it is read.
+        if m == "tactics" and self:tacticsUnread() then
+            Glyphs.unseenDot(r.x + r.w - 7, r.y + 7, 4)
+        end
     end
     love.graphics.setColor(1, 1, 1)
 end
@@ -2387,6 +2439,7 @@ function Party:openItemDebug(x, y)
 end
 
 function Party:cursorKind(x, y)
+    if self.tacticsNote then return self.tacticsNote:cursorKind(x, y) end
     if self.itemDebug then return self.itemDebug:cursorKind(x, y) end
     if self.quantityPopup then return self.quantityPopup:cursorKind(x, y) end
     if self.closeButton:contains(x, y) then return "hand" end
@@ -2405,6 +2458,7 @@ end
 
 function Party:mousemoved(x, y)
     self.mx, self.my = x, y
+    if self.tacticsNote then self.tacticsNote:mousemoved(x, y) return end
     if self.itemDebug then self.itemDebug:mousemoved(x, y) return end
     if self.quantityPopup then self.quantityPopup:mousemoved(x, y) return end
     self.closeButton:mousemoved(x, y)
@@ -2429,6 +2483,7 @@ end
 
 function Party:wheelmoved(_, dy)
     if dy == 0 then return end
+    if self.tacticsNote then return end -- a window with one button out scrolls nothing
     if self.itemDebug then self.itemDebug:wheelmoved(0, dy) return end
     if self.quantityPopup then self.quantityPopup:wheelmoved(dy) return end
     local x, y = Scale.toGame(love.mouse.getPosition())
@@ -2451,9 +2506,11 @@ function Party:wheelmoved(_, dy)
 end
 
 function Party:mousepressed(x, y, button)
-    -- The debug context menu is the top-most thing on this panel while it is up, so it is asked first;
-    -- the split-quantity popup is the next modal down and still owns the pointer under it. Only once
-    -- both are closed does a right-click over a cell -- grid or stash -- open the menu on that item.
+    -- The Tactics lesson is the top-most thing on this panel while it stands (any press dismisses it);
+    -- the debug context menu is the next one down, then the split-quantity popup, which still owns the
+    -- pointer under it. Only once all three are closed does a right-click over a cell -- grid or stash
+    -- -- open the menu on that item.
+    if self.tacticsNote then self.tacticsNote:mousepressed(x, y, button) return end
     if self.itemDebug then self.itemDebug:mousepressed(x, y, button) return end
     if self.quantityPopup then self.quantityPopup:mousepressed(x, y, button) return end
     if button == 2 then self:openItemDebug(x, y) return end
@@ -2580,6 +2637,7 @@ function Party:mousepressed(x, y, button)
 end
 
 function Party:mousereleased(x, y, button)
+    if self.tacticsNote then return end -- the press that dismissed it does not also drop an item
     if self.quantityPopup then self.quantityPopup:mousereleased(x, y, button) return end
     if button ~= 1 then return end
     -- An editor column owns the whole box while it is up (see mousepressed), including the release
@@ -2601,6 +2659,7 @@ function Party:mousereleased(x, y, button)
 end
 
 function Party:keypressed(key)
+    if self.tacticsNote then self.tacticsNote:keypressed(key) return end
     if self.itemDebug then self.itemDebug:keypressed(key) return end
     if self.quantityPopup then self.quantityPopup:keypressed(key) return end
     -- Number keys jump straight to a tab, in the order the strip shows them.
@@ -2652,6 +2711,7 @@ function Party:keypressed(key)
 end
 
 function Party:gamepadpressed(joystick, button)
+    if self.tacticsNote then self.tacticsNote:gamepadpressed(joystick, button) return end
     if self.itemDebug then self.itemDebug:gamepadpressed(joystick, button) return end
     if self.quantityPopup then self.quantityPopup:gamepadpressed(joystick, button) return end
     -- Triggers switch tab, shoulders switch character. The shoulders were already the character

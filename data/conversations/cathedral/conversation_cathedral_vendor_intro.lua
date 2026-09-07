@@ -1,21 +1,21 @@
 -- Conversation authored inline (English); localization ids (`tag`) are stamped by
 -- tools/extract_strings.lua and must not be hand-edited. See models/conversation.lua.
+--
+-- The shopkeeper greets you and the shopkeeper is the house's own person; the door is open because the
+-- company has been fighting in this discipline. See data/conversations/bastion/ for both, and for why
+-- Rowan is the only companion a first-visit greeting can carry.
 return {
-    title = "Arm Those Who Purge",
-    cast  = { "cathedral", "character_avatar", { id = "character_amana", when = { has = "character_amana" } } },
+    title = "The Cathedral",
+    cast  = { "cathedral", "character_avatar", { id = "character_rowan", when = { has = "character_rowan" } } },
 
     script = {
-        { "cathedral", "The mill business. That was you. Word came up the road before you did.", tag = 7 },
-        { when = { has = "character_amana" }, script = {
-            { "character_amana", "You finished it. I said to ask for me here -- so I am asking. I go with you.", tag = 8 },
+        { "cathedral", "There is someone in your company doing the Light's work with no chapel to do it in. Word came up the road before you did.", tag = 1 },
+        { "cathedral", "The faithful arm those who purge. Wards, relics, and water that burns what should not be walking.", tag = 2 },
+        { "character_avatar", "Do I have to kneel for them?", tag = 3 },
+        { "cathedral", "Kneel and the taking is made holy. Stand and it is only a purchase. Both are permitted.", tag = 4 },
+        { when = { has = "character_rowan" }, script = {
+            { "character_rowan", "Take a ward, {name}. Ground you have closed is ground nothing crosses, and that is worth more than the sermon attached to it.", tag = 5 },
         } },
-        { "cathedral", "You come armed and you come clean. The faithful arm those who purge. Wards, relics, water that burns what should not walk. Kneel when you take them, and the taking is made holy.", tag = 1 },
-        { "character_avatar", "I'll take them standing.", tag = 2 },
-        { when = { has = "character_amana" }, script = {
-            { "character_amana", "Give what is offered and no more, quartermaster. {name} came for a censer, not a catechism.", tag = 3 },
-            { "cathedral", "Sister. The cloth suits you still, whatever you tell the road.", tag = 4 },
-            { "character_amana", "It was never offered to me either. It was put on me. I wear what I choose to now. Arm us, and keep the sermon.", tag = 5 },
-        } },
-        { "cathedral", "...As you will. The shelf is open. The faith asks only that its gifts be used as it intended them, and it always knows when they are not.", tag = 6 },
+        { "cathedral", "The shelf is open. The faith asks only that its gifts be used as it intended them.", tag = 6 },
     },
 }

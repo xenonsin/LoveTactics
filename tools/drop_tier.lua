@@ -20,6 +20,14 @@
 -- (docs/shelf.md); an unpriced one has no slot to sit on, so its grade sets the DEPTH at which the rift
 -- will give it up instead. Same instrument, same ranking, a different axis to spread it along.
 --
+-- WHAT THIS PASS DOES NOT DECIDE, AND MUST NOT. A `dropTier` is the WORTH axis -- what a thing is
+-- graded at, and (through Vendor.foundPrice) what a counter charges for one once you have carried it
+-- out. Whether the player is ALLOWED it is a second question, answered at roll time by Spoils.depthOf
+-- off the class's own gate, so a Warden find is refused floor one whatever it grades. Folding that
+-- gate into the number written here would be the same mistake in a different file: it would re-price
+-- twenty-six items by moving them eight rungs up a ladder that means "how good", to say something
+-- about who has earned them. Two axes, one field each.
+--
 -- WHAT IS DELIBERATELY LEFT ALONE:
 --
 --   SIGNATURES     an item tagged `signature` is a discipline exemplar's own relic -- Dov's Doorstone,

@@ -89,25 +89,33 @@ end
 -- Drawn as a filled disc inside a dark rim, because it sits over whatever the icon happens to be --
 -- a bright sprite, a tinted plate, a lit border -- and a bare disc loses its edge against the warm
 -- ones. Centred on (cx, cy) rather than filling a box: every caller anchors it to a corner.
--- The AT-RISK mark: worn by anything this expedition FOUND rather than marched in with, so a wipe
--- would leave it in a heap on the floor (models/player.lua's Player.atRisk). Descent only -- there is
--- nothing to lose on a campaign board, and nothing draws it there.
+
+-- The FIND mark: worn by anything this expedition picked up rather than marched in with
+-- (models/player.lua's Player.atRisk). Descent only, and nothing draws it on a campaign board.
 --
--- WHAT IT HAS TO SAY IS "THIS FALLS", so it is a downward arrow rather than a warning triangle or a
--- coloured border. A border says "this cell is special" and leaves the player to guess which way; an
--- arrow has a direction, and the direction IS the meaning.
+-- IT USED TO MEAN "THIS FALLS", and that is why it is an arrow. A wipe dropped everything the run had
+-- found as a guarded heap, so the mark was a forecast of a loss and the arrow pointed the way the
+-- items were about to go. Nothing is dropped any more -- losing costs marks on the count and nothing
+-- a company can carry (models/descent.lua's COUNT_WIPE).
+--
+-- WHAT IT MEANS NOW is the other reader of exactly the same set, and it was always the more precise
+-- one: the stair's toll takes a share of THE HAUL and may never reach into the kit somebody marched
+-- down with (states/game.lua's game:payToll). So the mark still answers a question the player has to
+-- be able to answer at a gate -- which of these can she take -- and deleting it with the pile would
+-- have taken a live readout down with a dead one.
+--
+-- The arrow survives the change of meaning because the direction still holds: what is marked is what
+-- leaves the company's hands when a toll is paid.
 --
 -- ONE SHAPE, NOT TWO. It was a satchel with an arrow cut through it -- the pile marker's own silhouette
--- (ui/overworld_map.lua's MarkerIcon.pack), so the mark and the thing it becomes would be the same
--- picture -- and at ten pixels that is not a satchel, it is a dark blob with two gold nubs on it. The
--- bag body is four pixels tall at this size and the arrow cut eats all but its corners. Compound marks
--- need room; a corner badge has none, so it gets the half that carries the meaning.
+-- -- and at ten pixels that is not a satchel, it is a dark blob with two gold nubs on it. The bag body
+-- is four pixels tall at this size and the arrow cut eats all but its corners. Compound marks need
+-- room; a corner badge has none, so it gets the half that carries the meaning.
 --
--- THE SAME BONE-GOLD THE PILE MARKER WEARS is what survives of the link, and it is the whole reason
--- this is not simply a red warning: what these items become is that satchel on that tile, and the
--- colour is what the player recognises when they walk back for it. Saturated red is also spoken for --
--- it is the unseen dot, in the opposite corner of the same cell, and two urgent reds on one card would
--- leave neither of them meaning anything.
+-- BONE-GOLD RATHER THAN A WARNING RED, and that outlives the pile it was matched to: this is a fact
+-- about an item, not an alarm. Saturated red is also spoken for -- it is the unseen dot, in the
+-- opposite corner of the same cell, and two urgent reds on one card would leave neither meaning
+-- anything.
 --
 -- Centred on (cx, cy) like the dot above, because every caller anchors it to a corner.
 local AT_RISK = { 0.85, 0.76, 0.44 }
@@ -279,6 +287,29 @@ function Glyphs.star(x, y, w, h, r, g, b, a, hollow)
         pts[#pts + 1] = cy + math.sin(ang) * rad
     end
     love.graphics.polygon("fill", pts)
+end
+
+-- THE PADLOCK: a shackle arc over a solid body. The game's mark for "this is shut", wherever the
+-- reason is somewhere else -- a resource an ability locks away for the fight (ui/combat_panel.lua's
+-- reserve badge) and a shelf row the company has not earned (ui/pool_grid.lua's store cell).
+--
+-- IT REPLACED THE WORD ON A TILE, which is why it is here rather than left in the panel that drew it
+-- first. A 64px cell had "locked" printed across the middle of it in five-point type: a word is the one
+-- thing on a rack of pictures that has to be READ, it says the same thing on every shut tile at the
+-- length of a name, and it does not survive being narrower. The lock is legible at a glance, at any
+-- size the wash under it allows, and in any language.
+--
+-- It says SHUT and never why. The reason is a sentence and belongs where sentences go -- the footer on
+-- a press (ui/panels/shop.lua's lockReason), the gate under a band's name in the rail.
+function Glyphs.padlock(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a or 1)
+    -- The body takes the bottom ~58%, the shackle arcs over it out of the same stroke: a lock read at
+    -- badge size is a bar with a loop on it, and any more detail than that silts up.
+    local cx, bodyTop = x + w / 2, y + h * 0.42
+    love.graphics.setLineWidth(math.max(1.5, w * 0.11))
+    love.graphics.arc("line", "open", cx, bodyTop, w * 0.28, math.pi, 2 * math.pi)
+    love.graphics.setLineWidth(1)
+    love.graphics.rectangle("fill", x + w * 0.1, bodyTop, w * 0.8, h - h * 0.42, 1, 1)
 end
 
 -- A whole rank in one call: `stars` filled pips out of `outOf`, laid left to right inside (x, y, w, h)

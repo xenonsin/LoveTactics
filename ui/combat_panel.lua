@@ -1152,13 +1152,11 @@ end
 
 -- Small padlock (shackle arc over a body) for the reserve badge: the resource this ability locks
 -- away, told apart from the cost glyphs because it never comes back on its own.
+--
+-- The shape moved to ui/glyphs.lua when the vendor's shut tiles wanted it too, the same way the
+-- hourglass above did: one mark, drawn once, however many things are shut.
 function CombatPanel:drawLock(x, y, w, h, r, g, b, a)
-    love.graphics.setColor(r, g, b, a or 1)
-    local cx, bodyTop = x + w / 2, y + h * 0.42
-    love.graphics.setLineWidth(1.5)
-    love.graphics.arc("line", "open", cx, bodyTop, w * 0.28, math.pi, 2 * math.pi)
-    love.graphics.setLineWidth(1)
-    love.graphics.rectangle("fill", x + w * 0.1, bodyTop, w * 0.8, h - h * 0.42, 1, 1)
+    Glyphs.padlock(x, y, w, h, r, g, b, a)
 end
 
 -- A summoning circle with something bound inside it: the glyph for an ability whose creature is

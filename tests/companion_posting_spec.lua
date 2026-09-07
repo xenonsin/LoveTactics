@@ -29,6 +29,17 @@ local function houses()
     return ids
 end
 
+-- SABER IS OUTSIDE THE ROLL, so every case below that is ABOUT the roll has to start from a company that
+-- already has her: while her posting is outstanding the descent deals her onto floor one and the dice are
+-- never thrown (Descent.SCRIPTED_COMPANION). A fixture that forgot this would not fail loudly -- it would
+-- quietly re-test the scripted path under a name that says "roll", which is the failure mode this helper
+-- exists to make impossible to reach by accident.
+local function saberJoined(done)
+    done = done or {}
+    done[Errand.opener(Descent.SCRIPTED_COMPANION)] = true
+    return done
+end
+
 return {
     {
         -- The whole roster arrives this way, so a class that names a companion and cannot post an ask
@@ -189,46 +200,169 @@ return {
         end,
     },
     {
-        -- ONE PER FLOOR IS THE PACING, and it is the thing this file exists to hold. Dealt into the
-        -- first two floors, the whole roster arrived inside two boards and every floor under them was
-        -- fought by a party that had stopped growing. Spread out, going one deeper is a body.
-        name = "one companion stands per floor, each of them exactly once",
+        -- ONE PER DESCENT IS THE PACING, and it is the thing this file exists to hold. It was one per
+        -- FLOOR -- the six houses shuffled and dealt a body apiece onto floors one through six -- so
+        -- every run met everybody on a schedule and the roster filled itself whether or not the player
+        -- went looking. A roll makes one floor deeper the only way to buy another chance at a body.
+        name = "a descent offers one companion at most, on one floor",
         fn = function()
-            local run = { seed = 12345 }
-            local seen = {}
-            for floor = 1, Descent.FLOORS do
-                local here = Descent.openersAt(run, floor)
-                assert(#here <= 1,
-                    "floor " .. floor .. " carries " .. #here .. " companions -- that is a queue, not a meeting")
-                for _, vendorId in ipairs(here) do
-                    assert(not seen[vendorId], vendorId .. " is posted on two floors")
-                    seen[vendorId] = floor
+            local visited = company(saberJoined())
+            for _, vendorId in ipairs(houses()) do Player.markVendorVisited(visited, vendorId) end
+
+            for _, seed in ipairs({ 12345, 777, 4242, 99, 31337 }) do
+                local run = Descent.new(visited, seed)
+                local seen = 0
+                for floor = 1, Descent.FLOORS do
+                    local here = Descent.openersAt(run, floor)
+                    assert(#here <= 1, "floor " .. floor .. " carries " .. #here
+                        .. " companions -- that is a queue, not a meeting")
+                    seen = seen + #here
+                end
+                assert(seen <= 1, "seed " .. seed .. " deals " .. seen
+                    .. " companions in one descent; the whole point is that it deals one")
+                if run.companion then
+                    assert(run.companion.floor >= 1 and run.companion.floor <= Descent.CIRCLE_FLOORS,
+                        "dealt onto floor " .. tostring(run.companion.floor) .. ", which is not a circle")
+                    assert(Errand.houses()[run.companion.house],
+                        run.companion.house .. " recruits nobody and must not be dealt")
                 end
             end
-
-            local n = 0
-            for vendorId in pairs(Errand.houses()) do
-                n = n + 1
-                assert(seen[vendorId], vendorId .. "'s companion stands on no floor at all")
-            end
-            assert(n == 6, "six companions are recruited underground, got " .. n)
-
-            -- And they are spread rather than clustered: the deepest meeting is as far down as there are
-            -- bodies to meet, which is what "one per floor" means when it is working.
-            local deepest = 0
-            for _, floor in pairs(seen) do deepest = math.max(deepest, floor) end
-            assert(deepest == n, "the last companion is met on floor " .. deepest .. ", not " .. n)
         end,
     },
     {
-        -- Derived from the seed, never stored: a resume rebuilds a floor from (seed, depth) alone, and a
-        -- stored order is a second copy that can disagree with it.
-        name = "the deal is a function of the seed, so a resumed run meets the same bodies",
+        -- SABER IS THE FIRST BODY THE RIFT OFFERS, AND SHE IS NOT ROLLED FOR (Descent.SCRIPTED_COMPANION).
+        --
+        -- Everything else in this file is about a roll that can come up empty, which is the right shape
+        -- for a company that already knows what a companion is. It is the wrong shape for the FIRST
+        -- descent: the deck is drawn from counters the company has walked into, the seven shelves are
+        -- behind a class level and behind that very descent (data/buildings/houses.lua), so on the run
+        -- where meeting somebody matters most the deck is empty rather than unlucky and the rolled path
+        -- deals nobody at all. Pinned across a spread of seeds because "every descent" is the claim.
+        name = "Saber stands on floor one of every descent until she joins",
         fn = function()
-            local a = Descent.openersAt({ seed = 777 }, 1)
-            local b = Descent.openersAt({ seed = 777 }, 1)
-            assert(#a == #b, "the same seed dealt a different count")
-            for i = 1, #a do assert(a[i] == b[i], "the same seed dealt a different house at " .. i) end
+            local fresh = company() -- a new game: nothing done, nobody visited
+            local scripted = Descent.SCRIPTED_COMPANION
+            local opener = Errand.opener(scripted)
+            assert(opener and Quest.defs[opener].rewardCharacter == "character_saber",
+                scripted .. "'s posting does not hand over Saber, so scripting it recruits somebody else")
+
+            for _, seed in ipairs({ 1, 12345, 777, 4242, 99, 31337 }) do
+                local dealt = Descent.new(fresh, seed).companion
+                assert(dealt, "seed " .. seed .. " offered a new company nobody at all")
+                assert(dealt.house == scripted and dealt.floor == 1, "seed " .. seed .. " put "
+                    .. dealt.house .. " on floor " .. dealt.floor .. " instead of Saber on floor one")
+                -- ...and she is actually SEATED there, which is the half the deal cannot promise on its
+                -- own: openersAt is what the floor builder reads.
+                local here = Descent.openersAt(Descent.new(fresh, seed), 1)
+                assert(#here == 1 and here[1] == scripted, "floor one seats nobody")
+            end
+
+            -- A NIL PLAYER TAKES THE ROLL. It is a fixture with no roster to be missing her from, so
+            -- there is nothing for the script to answer -- and a scripted meeting on every headless floor
+            -- built without a company would hand a recruit to every spec that never asked for one. The
+            -- roll can come up empty and the script cannot, so an empty seed is the proof it ran.
+            local emptyForNobody = false
+            for seed = 1, 200 do
+                if not Descent.dealCompanion(seed, nil) then emptyForNobody = true break end
+            end
+            assert(emptyForNobody, "a nil player is being handed the scripted meeting rather than the roll")
+
+            -- ...and the moment her posting is finished the script is spent and the roll takes over. This
+            -- is what stops a descent spending its one offer on a body already in the party.
+            local joined = company(saberJoined())
+            for _, vendorId in ipairs(houses()) do Player.markVendorVisited(joined, vendorId) end
+            for seed = 1, 200 do
+                local dealt = Descent.new(joined, seed).companion
+                assert(not (dealt and dealt.house == scripted),
+                    "Saber was offered again after she had joined")
+            end
+        end,
+    },
+    {
+        -- A run CAN meet nobody, and that is the feature rather than a hole: if every descent produced a
+        -- body the roll would be a rota with extra steps.
+        name = "some descents offer nobody at all",
+        fn = function()
+            local visited = company(saberJoined())
+            for _, vendorId in ipairs(houses()) do Player.markVendorVisited(visited, vendorId) end
+            local empty, dealt = 0, 0
+            for seed = 1, 400 do
+                if Descent.new(visited, seed).companion then dealt = dealt + 1 else empty = empty + 1 end
+            end
+            assert(empty > 0, "every one of 400 seeds met somebody; the roll is not a roll")
+            assert(dealt > 0, "no seed in 400 met anybody; the roll never fires")
+        end,
+    },
+    {
+        -- YOU MEET THE TRAINER FIRST. A companion stands behind their house's counter; the posting is
+        -- the second half. A house whose door this company has never opened must post nobody, or the
+        -- body is recruited by somebody who has never met them.
+        name = "only a house whose counter has been visited posts its companion",
+        fn = function()
+            -- Saber already in the company, or the scripted deal answers before the visit gate is ever
+            -- consulted and this case would be measuring the wrong path (Descent.SCRIPTED_COMPANION).
+            local stranger = company(saberJoined())
+            local dealtToStranger = 0
+            for seed = 1, 200 do
+                if Descent.new(stranger, seed).companion then dealtToStranger = dealtToStranger + 1 end
+            end
+            assert(dealtToStranger == 0,
+                "a company that has walked into no shop was still offered " .. dealtToStranger .. " bodies")
+
+            -- One counter visited, and only that house can be dealt.
+            local one = houses()[1]
+            local met = company(saberJoined())
+            Player.markVendorVisited(met, one)
+            for seed = 1, 200 do
+                local dealt = Descent.new(met, seed).companion
+                if dealt then
+                    assert(dealt.house == one,
+                        "dealt " .. dealt.house .. " to a company that has only met " .. one)
+                end
+            end
+        end,
+    },
+    {
+        -- Nobody is offered twice. Once they are walking with you their posting is finished work, and a
+        -- descent that spent its one deal on it would offer nothing at all.
+        name = "a companion already recruited is never dealt again",
+        fn = function()
+            local one = houses()[1]
+            local p = company(saberJoined({ [Errand.opener(one)] = true }))
+            for _, vendorId in ipairs(houses()) do Player.markVendorVisited(p, vendorId) end
+            for seed = 1, 200 do
+                local dealt = Descent.new(p, seed).companion
+                assert(not (dealt and dealt.house == one),
+                    one .. " was dealt again after its companion had joined")
+            end
+        end,
+    },
+    {
+        -- The floor is a function of the seed; WHO is standing on it is not, so the deal is stamped on
+        -- the run and rides in the save. A resume that re-dealt would hand a different name to a company
+        -- already standing in the chamber -- and re-entering a cleared floor would seat the NEXT body on
+        -- the same ground, which is two companions from one descent's single offer.
+        name = "the deal is stamped on the run and survives a save",
+        fn = function()
+            local p = company(saberJoined())
+            for _, vendorId in ipairs(houses()) do Player.markVendorVisited(p, vendorId) end
+            local a, b = Descent.new(p, 777), Descent.new(p, 777)
+            assert((a.companion == nil) == (b.companion == nil), "the same seed dealt differently")
+            if a.companion then
+                assert(a.companion.house == b.companion.house and a.companion.floor == b.companion.floor,
+                    "the same seed and the same company dealt a different meeting")
+            end
+
+            p.descentRun = Descent.new(p, 4242)
+            local before = p.descentRun.companion
+            local back = Save.restore(Save.decode("return " .. Save.encode(Save.snapshot(p), 0)))
+            local after = back.descentRun and back.descentRun.companion
+            if before then
+                assert(after and after.house == before.house and after.floor == before.floor,
+                    "the run came back offering somebody else")
+            else
+                assert(after == nil, "a run that offered nobody came back offering somebody")
+            end
         end,
     },
     {

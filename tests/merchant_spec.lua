@@ -30,7 +30,9 @@ end
 -- reports as sold, standing in for the caller's spend-and-grant.
 local function marketFor(gold)
     local stock = {}
-    for _, id in ipairs(Spoils.shelf({ prestige = 3, count = 3 })) do
+    -- Day and depth, which is what the call site passes now: a cart is stocked against the deepest
+    -- floor the company has stood on, not against a field the function never read (`prestige`).
+    for _, id in ipairs(Spoils.shelf({ day = 3, floorLevel = 3, count = 3 })) do
         stock[#stock + 1] = { id = id, price = Item.defs[id].price }
     end
     local purse, bought = gold, {}

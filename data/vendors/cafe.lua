@@ -16,6 +16,8 @@
 -- Vendor.stock is empty and no item can drift onto this counter by acquiring (or losing) a class.
 return {
     name = "The Cafe",
+    -- The shopkeeper's face, for the greeting this counter plays and any scene it speaks in.
+    portrait = "assets/portraits/cafe.png",
     sells = false, -- sells no ITEMS; its whole offer is the meal menu (models/meal.lua)
     meals = true,  -- the kitchen: what ui/panels/cafe.lua opens onto
     description = "One hot meal before the road, and it stays with you the whole way out.",

@@ -5,8 +5,12 @@
 
   Three things it does that the generated page does not:
 
-    * LETTERBOXES. The game is authored in a fixed 1280x720 logical space (scale.lua) and the
-      canvas keeps that as its backing store; CSS scales it to the viewport at 16:9. Emscripten
+    * LETTERBOXES -- and on a TOUCHSCREEN, hands the whole viewport over instead. The game is
+      authored in a fixed 1280x720 logical space (scale.lua) and CSS scales the canvas to a 16:9
+      box, exactly as it always has on a pointing device. A coarse pointer is the one exception:
+      there the box takes the whole screen, the game draws its own bars, and the drawing buffer
+      -- which SDL sizes from this element's CSS box whenever a resize event reaches it -- goes
+      portrait with the handset, which is what scale.lua's quarter turn needs to see. Emscripten
       maps pointer events through getBoundingClientRect, so a CSS-scaled canvas still reports
       correct mouse coordinates -- but a canvas with border or padding does not, which is why
       the rule below zeroes both and why nothing else may sit inside #stage.
@@ -27,7 +31,16 @@
 <html lang="en-us">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, minimum-scale=1, maximum-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, minimum-scale=1, maximum-scale=1, viewport-fit=cover">
+    <!-- Added to the Home Screen, an iPhone launches this chromeless and full-bleed. That is the
+         ONLY full screen iOS has to offer a canvas: Safari implements the Fullscreen API for
+         <video> and nothing else, so the Fullscreen button below hides itself there rather than
+         standing about doing nothing. -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="__TITLE__">
+    <meta name="theme-color" content="#0e0f10">
     <title>__TITLE__</title>
     <!-- Inline so the browser stops asking for /favicon.ico and logging a 404 against a host
          that has no such file. A board tile in the theme's gold on its mount -- a placeholder
@@ -49,18 +62,32 @@
         margin: 0; padding: 0; height: 100%; overflow: hidden;
         background: var(--mount); color: var(--ink);
         font: 14px/1.5 Georgia, "Times New Roman", serif;
+        /* A phone treats a canvas like any other page: a drag scrolls, a second tap zooms, a long
+           press selects and offers a callout. All three belong to the game instead. */
+        overscroll-behavior: none; touch-action: none;
+        -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
       }
       #stage {
         position: fixed; inset: 0;
         display: flex; align-items: center; justify-content: center;
       }
-      /* No border, no padding: see the header. The backing store stays 1280x720; only the box scales. */
+      /* No border, no padding: see the header. On a pointing device the box stays the 16:9 it has
+         always been, so a desktop browser looks exactly as it did. */
       #canvas {
         display: block; border: 0 none; padding: 0; outline: none;
         background: #000;
         width:  min(100vw, calc(100vh * 16 / 9));
         height: min(100vh, calc(100vw * 9 / 16));
+        touch-action: none;
         visibility: hidden;
+      }
+      /* A finger -- so a handset or a tablet, the one screen whose shape is not up for negotiation.
+         There the box takes the whole viewport and the GAME draws the letterbox bars, which is what
+         hands the engine a portrait drawable to turn (scale.lua). */
+      .touch-only { display: none; }
+      @media (pointer: coarse) {
+        #canvas { width: 100%; height: 100%; }
+        .touch-only { display: inline; }
       }
       #gate {
         position: fixed; inset: 0; z-index: 10;
@@ -104,7 +131,7 @@
       <div id="bar"><div id="fill"></div></div>
       <div id="status">Downloading&hellip;</div>
       <button id="start">Play</button>
-      <div id="note">Roughly 32&nbsp;MB on a first visit; your browser caches it afterwards. Mouse, keyboard and gamepad all work.</div>
+      <div id="note">Roughly 32&nbsp;MB on a first visit; your browser caches it afterwards. Mouse, touch, keyboard and gamepad all work.<span class="touch-only"> Held upright, the picture is turned a quarter turn &mdash; tilt the handset to the left to read it.</span></div>
     </div>
 
     <button id="full" onclick="goFullScreen()">Fullscreen</button>
@@ -137,10 +164,50 @@
         start.style.display = 'inline-block';
       }
 
+      // Fullscreen the DOCUMENT, not the canvas. Emscripten rewrites a canvas's own dimensions when
+      // it is the fullscreen element; taking the whole document leaves the canvas an ordinary
+      // element filling an ordinary (now screen-sized) viewport, which the resize below handles
+      // like any other.
+      //
+      // iOS Safari has no Fullscreen API outside <video> -- requestFullscreen is simply not there,
+      // which is why the button used to do nothing on an iPhone. It is offered only where it works;
+      // elsewhere the way to a chromeless game is Share -> Add to Home Screen (see the metas above).
+      var fsTarget = document.documentElement;
+      var fsRequest = fsTarget.requestFullscreen || fsTarget.webkitRequestFullscreen
+                   || fsTarget.mozRequestFullScreen || fsTarget.msRequestFullscreen;
+
       function goFullScreen() {
-        var c = document.getElementById('canvas');
-        var req = c.requestFullscreen || c.webkitRequestFullscreen || c.mozRequestFullScreen;
-        if (req) req.call(c);
+        if (!fsRequest) return;
+        var inFs = document.fullscreenElement || document.webkitFullscreenElement;
+        if (inFs) {
+          var exit = document.exitFullscreen || document.webkitExitFullscreen;
+          if (exit) exit.call(document);
+        } else {
+          fsRequest.call(fsTarget);
+          // Android and desktop Chrome will hold a landscape lock once the page is fullscreen; iOS
+          // has no orientation lock at all, and needs none -- scale.lua turns the picture instead.
+          if (screen.orientation && screen.orientation.lock) {
+            var p = screen.orientation.lock('landscape');
+            if (p && p.catch) p.catch(function () {});
+          }
+        }
+      }
+
+      // SDL sizes the drawing buffer from the canvas's CSS box, but only when a resize event
+      // reaches it. Several things move that box without one: the gate coming down, an iPhone's
+      // URL bar sliding away, a rotation reported before the new size has settled. Re-announcing
+      // it costs nothing (the engine ignores a size it already has) and is what keeps the buffer,
+      // the element and the game's own letterbox agreeing on one shape.
+      function announceSize() {
+        window.dispatchEvent(new Event('resize'));
+      }
+      window.addEventListener('orientationchange', function () {
+        announceSize();
+        setTimeout(announceSize, 120);
+        setTimeout(announceSize, 400);
+      }, false);
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', announceSize, false);
       }
 
       // The game owns these keys; the page must not scroll or space-activate anything underneath.
@@ -150,8 +217,13 @@
         }
       }, false);
 
+      // A coarse pointer is a finger: the extra argument is how main.lua knows it is running on a
+      // handset, and it is the ONLY thing that lets scale.lua turn the picture a quarter turn. A
+      // mouse never sends it, so a desktop browser plays precisely the game the desktop build does.
+      var IS_TOUCH = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+
       var Module = {
-        arguments: ['./game.love'],
+        arguments: IS_TOUCH ? ['./game.love', 'mobile'] : ['./game.love'],
         INITIAL_MEMORY: __MEMORY__,
         printErr: console.error.bind(console),
         canvas: (function () {
@@ -240,12 +312,20 @@
       start.addEventListener('click', function () {
         gate.classList.add('gone');
         document.getElementById('canvas').style.visibility = 'visible';
-        full.style.display = 'block';
+        // A button that cannot do its one job is worse than no button: see goFullScreen.
+        if (fsRequest) full.style.display = 'block';
         resumeAudio();
         document.getElementById('canvas').focus();
+        // The canvas has just become visible and the phone's URL bar is about to move: tell the
+        // engine what shape it is now playing on, and again once the browser has settled.
+        announceSize();
+        setTimeout(announceSize, 250);
+        setTimeout(announceSize, 1000);
       });
     </script>
-    <script src="game.js"></script>
-    <script async src="love.js" onload="applicationLoad()"></script>
+    <!-- ?v= is a content hash stamped in by tools/web-build.ps1 (Set-CacheStamp), so a republished
+         bundle is actually fetched instead of served from a ten-minute-old cache. -->
+    <script src="game.js?v=__GAME_JS__"></script>
+    <script async src="love.js?v=__LOVE_JS__" onload="applicationLoad()"></script>
   </body>
 </html>

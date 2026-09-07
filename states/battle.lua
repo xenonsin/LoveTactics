@@ -263,8 +263,13 @@ end
 -- Whether the player may hand their side (or a single unit) to the AI. Auto-battle is disallowed for
 -- the whole of a tutorial fight -- a lesson exists to make the student take the actions themselves, so
 -- the Auto control is hidden, its key/pad bindings go dead, and any per-unit autoBattle flag is ignored.
+--
+-- AND UNTIL THE FIRST DESCENT IS DONE, for the reason Descent.tacticsUnlocked gives: Auto is the switch
+-- that hands the turn to the rule list, so it appears with the tab that edits it and never before. Both
+-- halves of one feature, gated on one predicate, so the button can never stand there with no Tactics
+-- tab behind it to explain what it will do.
 local function autoAllowed()
-    return not battle.tutorial
+    return not battle.tutorial and require("models.descent").tacticsUnlocked(battle.player)
 end
 
 -- Whether a point is over one of the drawer's entries (never the hamburger itself, which is handled
@@ -332,12 +337,21 @@ local function openSettings()
     local rows = #Settings.defs + 1 -- every option, plus the Back row
     local rowH, rowSp, listW = 40, 8, 620
     local listH = rows * rowH + (rows - 1) * rowSp
-    local padTop, padBottom = 64, 78 -- title above the list; description + hint below it
+    -- The description gutter is MEASURED off the longest option's prose rather than assumed to be two
+    -- lines, and the panel grows to hold it. This overlay sizes itself to its contents, so the only
+    -- way the prose can collide with the hint under it is by being given less room than it needs --
+    -- which is exactly what a hardcoded gutter does the first time an option is written a line longer.
+    local descH = SettingsMenu.descriptionHeight(overlayBodyFont, listW)
+    local padTop = 64                          -- title above the list
+    local padBottom = 14 + descH + 12 + 28     -- gap, description, gap, hint band
     local panelW = listW + 60
     local panelH = padTop + listH + padBottom
     local panelX = (Scale.WIDTH - panelW) / 2
     local panelY = (Scale.HEIGHT - panelH) / 2
-    battle.settings = { x = panelX, y = panelY, w = panelW, h = panelH }
+    battle.settings = {
+        x = panelX, y = panelY, w = panelW, h = panelH,
+        descY = panelY + padTop + listH + 14,
+    }
     battle.settingsMenu = SettingsMenu.build(closeSettings, {
         buttonWidth = listW,
         buttonHeight = rowH,
@@ -4538,9 +4552,10 @@ function battle.openDeployLoadout(player)
         -- them with a bar -- so "am I kitting someone who is actually in this fight?" is answered on
         -- the screen the kit is changed on.
         fielded = standing,
-        -- Rule lists are the city's lesson: before the flight tutorial has reached it, this screen is
-        -- the equip screen and nothing else -- the same line states/game.lua draws over the overworld.
-        tactics = not battle.tutorial,
+        -- Rule lists are hidden until the company has been down once (Descent.tacticsUnlocked), and
+        -- during a tutorial fight on top of that -- the same line states/game.lua draws over the
+        -- overworld, and the same one autoAllowed draws for the switch that runs them.
+        tactics = not battle.tutorial and require("models.descent").tacticsUnlocked(battle.player),
         -- ...and the roll with it, for the same reason: on the flight leg this screen is the equip
         -- lesson and nothing else.
         classes = not battle.tutorial,
@@ -5634,7 +5649,7 @@ function battle.drawSettingsOverlay()
     if item and item.description then
         love.graphics.setFont(overlayBodyFont)
         Theme.set(Theme.ink)
-        love.graphics.printf(item.description, p.x + 30, p.y + p.h - 66, p.w - 60, "left")
+        love.graphics.printf(item.description, p.x + 30, p.descY, p.w - 60, "left")
     end
 
     love.graphics.setFont(overlayBodyFont)

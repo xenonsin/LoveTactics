@@ -66,6 +66,11 @@ local function openShelf(building)
 end
 
 local function openHouse(building)
+    -- A DOOR IS SPENT BY BEING WALKED INTO, which is the rule the plaza's coached cards keep and for
+    -- the same reason (models/building.lua's markSeen): the dot says a shelf opened, and a dot cleared
+    -- by being looked at would take the news off a counter nobody has stood at. Saved on the
+    -- transition only -- markSeen reports whether it flipped -- rather than on every door opened.
+    if Building.markSeen(houses.player, building.id) then Player.save() end
     if not building.vendor then openShelf(building); return end
     VendorVisit.play(houses.player, building.vendor, function() openShelf(building) end)
 end
@@ -80,12 +85,24 @@ function houses.enter(self, opts)
     local cards = Building.list(houses.player, { district = "houses" })
     map = BuildingMap.new(cards, {
         onActivate = openHouse,
-        -- The red unseen dot: this shelf is carrying wares the player has never looked at -- a rung
-        -- their class level opened while they were underground, which is the one thing a square of
-        -- seven counters cannot say any other way. The Houses card out in the city carries the OR of
-        -- these (states/hub.lua), since a mark behind a door behind a door is a mark nobody sees.
+        -- The red unseen dot, and it answers two questions with one mark because they are the same
+        -- question -- there is something behind this door you have not seen:
+        --
+        --   the DOOR    this house opened and has never been walked into (models/building.lua's
+        --               seenDoors). A shelf is unlocked by a class level, which is banked underground
+        --               and lands in a square the player is not standing in -- so a house can open with
+        --               nobody watching, and the six still shut beside it make the seventh's plate
+        --               turning from "???" to a name easy to walk straight past. The plaza coaches its
+        --               grown doors with a bubble; this board is behind a card and gets a dot.
+        --   the SHELF   it is carrying wares the player has never looked at -- a rung their class level
+        --               opened while they were underground.
+        --
+        -- Cleared differently on purpose: the door goes out on being ENTERED (openHouse), the wares on
+        -- being READ (Player.seeNew, in the shop). The Houses card out in the city carries the OR of
+        -- all of it (states/hub.lua), since a mark behind a door behind a door is a mark nobody sees.
         badge = function(b)
-            return Vendor.hasMarkedStock(b.vendor, houses.player and houses.player.newStock)
+            return not Building.seenDoor(houses.player, b.id)
+                or Vendor.hasMarkedStock(b.vendor, houses.player and houses.player.newStock)
         end,
     })
     back = CloseButton.new(Scale.WIDTH - 24, 24)

@@ -91,9 +91,11 @@ function PoolGrid.new(opts)
     -- optional -- a pool given neither simply never dots anything.
     self.isNew = opts.isNew
     self.onSeen = opts.onSeen
-    -- `isAtRisk(item)` badges anything this expedition FOUND -- a wipe leaves it on the floor
-    -- (models/player.lua's Player.atRisk). Optional and nil outside a descent, so a campaign Loadout
-    -- and every shop shelf draw exactly what they always did.
+    -- `isAtRisk(item)` badges anything this expedition FOUND rather than marched in with -- the set the
+    -- stair's toll takes its share from (models/player.lua's Player.atRisk, states/game.lua's
+    -- game:payToll). It used to mean "a wipe leaves this on the floor", which stopped being true when
+    -- the pile system was deleted; the set is identical and the second reader outlived the first.
+    -- Optional and nil outside a descent, so a campaign Loadout and every shop shelf are untouched.
     self.isAtRisk = opts.isAtRisk
     -- `priceOf(item, cell) -> string|nil` puts a gold badge on a STASH cell: the shop's Sell shelf is
     -- the stash with a price on it, and what a piece is worth is the whole of the decision there. A
@@ -103,6 +105,9 @@ function PoolGrid.new(opts)
     -- `purse() -> gold`, optional: what the company can spend, for reddening a store price it cannot
     -- reach. A function rather than a number because the figure moves with every purchase.
     self.purse = opts.purse
+    -- `emptyText() -> string|nil`, optional: what an empty well says when the host, not the counter,
+    -- is what emptied it (see the draw). Nil for every pool that cannot narrow itself.
+    self.emptyText = opts.emptyText
     self.nameFont = Theme.body(11)
     self.smallFont = Theme.body(11)
     self.bigFont = Theme.display(20)
@@ -146,6 +151,9 @@ function PoolGrid:setStore(entries)
             entry = entry,
             price = entry.price,
             locked = entry.locked,
+            undiscovered = entry.undiscovered,
+            sold = entry.sold,
+            depth = entry.depth,
         }
     end
     self:clampView()
@@ -264,7 +272,12 @@ function PoolGrid:draw()
     if self:count() == 0 then
         love.graphics.setFont(self.nameFont)
         Theme.set(Theme.muted)
-        local empty = self.mode == "store" and "Nothing for sale" or "Stash is empty"
+        -- WHOSE EMPTINESS IS IT. "Nothing for sale" is the counter's answer; a rack emptied by the
+        -- viewer's own filter is not the shop being bare, and saying so would send them out of a shop
+        -- that has the thing they came for. A host that can narrow its own rack says so through
+        -- `emptyText` (a function, asked at draw, since what emptied the well can change per frame).
+        local empty = (self.emptyText and self.emptyText())
+            or (self.mode == "store" and "Nothing for sale" or "Stash is empty")
         love.graphics.printf(empty, self.x, self.y + self.h / 2 - 8, self.w, "center")
         love.graphics.setColor(1, 1, 1)
         return
@@ -328,8 +341,21 @@ function PoolGrid:drawCell(i, sx, sy)
     local unseen = self.isNew and self.isNew(item, cell) or false
     local badgeInset = unseen and 16 or 4
     love.graphics.setFont(self.smallFont)
-    local price = (self.mode == "store") and (tostring(cell.price) .. "g")
-        or (self.priceOf and self.priceOf(item, cell)) or nil
+    -- AN UNFOUND CELL QUOTES A DEPTH WHERE A PRICE WOULD GO, because a price it cannot be bought at is
+    -- a number no decision reads, and the depth is the one figure that answers "what do I do about
+    -- this". Same corner, same terse shape as "80g" -- a figure with its unit letter -- and the sentence
+    -- that spells it out is on the dwell (ui/panels/shop.lua's lockReason).
+    -- A SOLD CELL QUOTES NOTHING HERE. Its word goes on OVER the grey wash further down rather than
+    -- under it, which is the only way a five-point figure survives the wash at all -- and there is no
+    -- price to print anyway, for the same reason an unfound cell has none.
+    local price
+    if self.mode == "store" then
+        if cell.sold then price = nil
+        elseif cell.undiscovered and cell.depth then price = "d" .. cell.depth
+        else price = tostring(cell.price) .. "g" end
+    else
+        price = self.priceOf and self.priceOf(item, cell) or nil
+    end
     local qty = (item.quantity or 1) > 1 and ("x" .. item.quantity) or nil
     if price then
         -- PRICED AGAINST THE PURSE. A store cell the company cannot afford draws its figure in the
@@ -337,8 +363,11 @@ function PoolGrid:drawCell(i, sx, sy)
         -- answered by scanning the rack instead of by pressing each tile and being told no. Gold is read
         -- through a getter because it changes under a shelf that is not rebuilt (`purse`, optional: a
         -- pool given none prices everything in amber, which is every rack outside a shop).
+        -- A depth is not priced against anything, so it wears neither the gold nor the refusal red: it
+        -- is a fact about where the thing lives, and reddening it would read as "too expensive".
         local afford = not (self.purse and cell.price and cell.price > (self.purse() or 0))
-        Theme.set(afford and Theme.accentAmber or Theme.accentWeapon, dim)
+        Theme.set(cell.undiscovered and Theme.muted
+            or afford and Theme.accentAmber or Theme.accentWeapon, dim)
         love.graphics.printf(price, sx, sy + 3, CELL - badgeInset, "right")
         -- A priced stack sends its count to the OPPOSITE corner: two numbers stacked in one corner
         -- read as one number, and the count is the smaller question of the two.
@@ -351,18 +380,55 @@ function PoolGrid:drawCell(i, sx, sy)
         love.graphics.printf(qty, sx, sy + 3, CELL - badgeInset, "right")
     end
 
-    -- Quest-locked store cell: greyed, so seeing what more quests will buy is still possible.
-    if cell.locked then
+    -- A SHUT STORE CELL: greyed, so what climbing further buys is still there to be seen, and a
+    -- padlock over the wash (ui/glyphs.lua).
+    --
+    -- IT WAS THE WORD "locked", printed across the middle of the cell. One word of five-point type on a
+    -- rack of pictures is the only thing on the shelf that has to be read rather than seen -- and it
+    -- said the same thing on every shut tile, at the length of a name, in the one part of the cell the
+    -- icon was using. The lock is the mark for this everywhere else in the game already (an ability's
+    -- reserve badge, a bound cell in the grid), and it reads at a glance in any language.
+    --
+    -- WHY it is shut is a sentence, and stays where sentences go: the footer, on a press
+    -- (ui/panels/shop.lua's lockReason). The tile's job is to say there is a gate at all.
+    -- AN UNFOUND CELL IS A SILHOUETTE, NOT A PADLOCK. Above the opener rung a house sells nothing it
+    -- has not been shown first (models/vendor.lua's lockReason), and that is a different answer from
+    -- "climb further": the padlock says there is a gate, and there is no gate here -- there is a thing
+    -- the company has never held. So the wash goes almost opaque and the icon reads as a shape rather
+    -- than a picture, which is what "we know this exists, we have not seen one" looks like.
+    --
+    -- NO LOCK ON TOP OF IT. Two marks for two different refusals stacked on one tile would teach the
+    -- player that both mean the same thing, which is the exact drift this split was made to stop.
+    -- A SOLD CELL IS GREY AND SAYS SO IN A WORD, with no padlock over it. It is the third refusal on
+    -- this rack and it is neither of the other two: the market's rolled rows go one each per day
+    -- (models/market.lua), so what is greyed here is a thing the company owns already -- there is no
+    -- gate to climb and nothing left to find, and the padlock's whole sentence is "there is a gate".
+    -- The word takes the corner the price had, in the refusal colour, drawn over the wash so it reads;
+    -- the sentence that dates it ("in the morning") stays where sentences go, on the press and the
+    -- dwell (ui/panels/shop.lua's lockReason).
+    if cell.sold then
+        Theme.set(Theme.mount, 0.72)
+        love.graphics.rectangle("fill", sx, sy, CELL, CELL, 6, 6)
+        love.graphics.setFont(self.smallFont)
+        Theme.set(Theme.accentWeapon)
+        love.graphics.printf("sold", sx, sy + 3, CELL - badgeInset, "right")
+    elseif cell.undiscovered then
+        Theme.set(Theme.mount, 0.88)
+        love.graphics.rectangle("fill", sx, sy, CELL, CELL, 6, 6)
+    elseif cell.locked then
         Theme.set(Theme.mount, 0.6)
         love.graphics.rectangle("fill", sx, sy, CELL, CELL, 6, 6)
-        Theme.set(Theme.accentWeapon, 0.9)
-        love.graphics.printf("locked", sx, sy + CELL / 2 - 6, CELL, "center")
+        local lw, lh = 20, 22
+        local shut = Theme.accentWeapon -- the refusal colour the word wore, kept: only the shape changed
+        Glyphs.padlock(sx + CELL / 2 - lw / 2, sy + CELL / 2 - lh / 2, lw, lh,
+            shut[1], shut[2], shut[3], 0.9)
     end
 
     -- Unseen: the red dot, top-right, over the locked wash and the name band so it survives both.
     if unseen then Glyphs.unseenDot(sx + CELL - 7, sy + 7, 4) end
 
-    -- AT-RISK: what this expedition found, and would leave on the floor if the company went down.
+    -- FINDS: what this expedition picked up rather than marched in with -- the set the stair's toll
+    -- takes its share from, and never past.
     -- Bottom-left, which is the corner the grid puts it in too (ui/inventory_grid.lua) -- an item has to
     -- carry the same answer in the same place whether the player is looking at it in somebody's hands
     -- or in the pile. Over the locked wash for the same reason the dot is.

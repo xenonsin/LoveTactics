@@ -1,7 +1,7 @@
 -- THE CITY COACHING A DOOR IT HAS JUST GROWN (models/building.lua's seenDoors block, states/hub.lua's
 -- coachNextDoor).
 --
--- Five of the eight cards on the plaza are shut on a fresh save and each opens on a deed done
+-- Six of the eight cards on the plaza are shut on a fresh save and each opens on a deed done
 -- underground. The player comes up, a card that was three question marks is a name, and without this
 -- nothing says it happened or what the room is for. So the city puts a bubble on the card -- the same
 -- one the first visit puts on the hall and the stair -- and refuses every other card until it has been
@@ -13,6 +13,7 @@
 -- coaching the same door twice, and forgetting a door across a save.
 
 local Building = require("models.building")
+local Class = require("models.class")
 local Player = require("models.player")
 local Save = require("models.save")
 
@@ -31,7 +32,7 @@ local function contains(list, id)
     return false
 end
 
--- A player standing in a city they have already looked at: the ledger seeded off the three cards a
+-- A player standing in a city they have already looked at: the ledger seeded off the two cards a
 -- fresh save opens with, and nothing owed an announcement.
 local function seededPlayer()
     local p = Player.new()
@@ -151,21 +152,66 @@ return {
         end,
     },
     {
+        -- THE SECOND BOARD, whose doors are announced by a DOT rather than by a bubble. The square is
+        -- behind a card (states/houses.lua), so there is no plate on the plaza to pin a bubble to and
+        -- nothing else on the screen that can say a shelf opened -- and a house opens on a class level,
+        -- which is banked underground, so it opens with nobody standing there.
+        --
+        -- Read off the same ledger, which is the whole of why this case is here: the seeding walks both
+        -- boards, or a company that has been shopping at the Colosseum for hours comes back to a dot on
+        -- it. What the two boards do NOT share is how the mark is spent -- the plaza's on the coached
+        -- card being walked into, the square's on the house being walked into (openHouse) -- and both
+        -- are Building.markSeen.
+        name = "a house that opens is unseen until it is walked into, and seeding covers the square",
+        fn = function()
+            local p = Player.new()
+            -- One body a single class level into the fighter, which is the Colosseum's gate
+            -- (data/buildings/colosseum.lua's unlockClassLevel, read through data/vendors/colosseum).
+            p.roster = { { technique = { fighter = Class.classLevelCost(1) } } }
+            Building.seedSeen(p)
+            assert(Building.seenDoor(p, "colosseum"),
+                "a house already open when the ledger was created was never news")
+
+            -- ...and the one next door is still shut, so it is not seeded and cannot be a dot either:
+            -- a locked plate never carries one (ui/building_map.lua).
+            assert(not Building.seenDoor(p, "bastion"), "a shut house is not seeded")
+
+            -- The knight climbs a rung while the company is below. Its shelf is open on the way home,
+            -- and nothing has been shown to anybody.
+            p.roster[1].technique.knight = Class.classLevelCost(1)
+            local houses = Building.list(p, { district = "houses" })
+            local bastion
+            for _, h in ipairs(houses) do if h.id == "bastion" then bastion = h end end
+            assert(bastion and not bastion.locked, "a class level opens that class's house")
+            assert(not Building.seenDoor(p, "bastion"), "...and it is owed a dot")
+
+            assert(Building.markSeen(p, "bastion"), "walking in spends the dot, and reports the flip")
+            assert(Building.seenDoor(p, "bastion"), "a house walked into is never news again")
+            assert(not Building.markSeen(p, "bastion"),
+                "...so the second walk saves nothing, which is what the return value is for")
+        end,
+    },
+    {
         -- BOARD ORDER, so a trip that opened two doors announces them in the order they are read rather
         -- than in whatever order pairs() happened to walk the registry -- which is not stable and would
         -- make the sequence differ between runs of the same save.
         name = "several doors opening at once are announced in board order",
         fn = function()
             local p = seededPlayer()
-            p.deepest = 4       -- the Forge (order 6) and the Cafe (order 7), in one trip
+            -- Three at once: the Market (order 4, floor one), the Forge (order 6, floor four) and the
+            -- Cafe (order 7, floor two). A company that went straight to four on its first trip comes
+            -- back up owed all of them.
+            p.deepest = 4
 
             local owed = Building.unannounced(p)
-            assert(#owed >= 2, "two doors opened; got " .. table.concat(idsOf(owed), ", "))
+            assert(#owed >= 3, "three doors opened; got " .. table.concat(idsOf(owed), ", "))
             for i = 2, #owed do
                 assert(owed[i - 1].order < owed[i].order,
                     "announcements are out of board order: " .. table.concat(idsOf(owed), ", "))
             end
-            assert(owed[1].id == "forge", "the Forge sorts ahead of the Cafe, which is board order")
+            assert(owed[1].id == "market",
+                "the Market sorts ahead of the Forge and the Cafe, which is board order; got "
+                    .. table.concat(idsOf(owed), ", "))
         end,
     },
     {
@@ -177,6 +223,11 @@ return {
         fn = function()
             local p = seededPlayer()
             p.deepest = 2
+            -- Both the doors two floors opened, walked into: the Market on floor one and the Cafe on
+            -- floor two. The claim below is that a LOADED save owes nothing, so everything the trip grew
+            -- has to have been spent before the round-trip -- one door left unwalked would make this
+            -- case pass or fail on the leftover rather than on the ledger.
+            Building.markSeen(p, "market")
             Building.markSeen(p, "cafe")
 
             local restored = Save.restore(Save.snapshot(p))

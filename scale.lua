@@ -13,9 +13,14 @@
 --   -- love.draw:
 --   Scale.start(); state:draw(); Scale.finish()
 --   -- love.load / love.resize:
---   Scale.resize(love.graphics.getDimensions())
+--   Scale.resize(love.graphics.getPixelDimensions())
 --   -- mouse callbacks:
 --   local gx, gy = Scale.toGame(x, y)
+--
+-- The fit is computed against the DRAWABLE (getPixelDimensions), not the window, because in a
+-- browser those are two different sizes; Scale.toGame converts a pointer from one to the other.
+-- A drawable taller than it is wide is fitted turned a quarter turn clockwise, so a phone held
+-- upright still plays the game full-screen. See Scale.rotated.
 --
 -- The frame is composited into a canvas sized to the REAL WINDOW (not the 1280x720 logical
 -- space): Scale.start binds it and applies the letterbox translate+scale up front, so every
@@ -56,14 +61,62 @@ Scale.scale = 1
 Scale.offsetX = 0
 Scale.offsetY = 0
 
--- Recompute the fit for a given real window size. Call on load and on resize.
+-- A drawable taller than it is wide -- a phone held upright in a browser -- is fitted with the
+-- logical space turned a QUARTER TURN CLOCKWISE rather than pillarboxed into a strip across the
+-- middle. The game's top edge then runs down the right-hand side of the screen, so the player
+-- turns the device anticlockwise to read it, and the whole screen is used either way up.
+--
+-- Nothing above this file knows: every draw goes through Scale.start and every pointer position
+-- through Scale.toGame, so the rotation lives entirely in the two of them and their inverse.
+-- ...where the screen is a thing the player holds. A desktop window dragged into a tall shape is
+-- pillarboxed as it always was, since a monitor does not turn: main.lua sets this on the browser
+-- and mobile builds only.
+Scale.allowRotate = false
+Scale.rotated = false
+
+-- Pointer positions arrive in WINDOW units; everything here is in drawable PIXELS. On the desktop
+-- the two are the same number and this is 1. In a browser they part company (see syncPixelScale).
+Scale.pixelScale = 1
+
+-- The fitted rect on screen, in pixels -- the logical space's own width and height when upright,
+-- swapped when it is turned.
+function Scale.fittedW() return (Scale.rotated and Scale.HEIGHT or Scale.WIDTH) * Scale.scale end
+function Scale.fittedH() return (Scale.rotated and Scale.WIDTH or Scale.HEIGHT) * Scale.scale end
+
+-- love.graphics.getDimensions reports the WINDOW, love.graphics.getPixelDimensions the DRAWABLE,
+-- and mouse callbacks speak the first while the frame is rasterised into the second. On the desktop
+-- they agree, so the ratio is 1 and nothing about this file changes. In a browser they do not: SDL
+-- tracks the canvas element's CSS box while the drawing buffer keeps whatever size it was made at,
+-- and fitting to the window while drawing into the buffer is what drew the whole game into the
+-- top-left corner of a phone's canvas.
+function Scale.syncPixelScale()
+    local g = love.graphics
+    if not (g and g.getPixelWidth and g.getWidth) then Scale.pixelScale = 1 return end
+    local ok, uw = pcall(g.getWidth)
+    local okp, pw = pcall(g.getPixelWidth)
+    if ok and okp and uw and uw > 0 and pw and pw > 0 then
+        Scale.pixelScale = pw / uw
+    else
+        Scale.pixelScale = 1
+    end
+end
+
+-- Recompute the fit for a given drawable size, IN PIXELS. Call on load and on resize.
 function Scale.resize(windowW, windowH)
-    local s = math.min(windowW / Scale.WIDTH, windowH / Scale.HEIGHT)
+    local rotated = Scale.allowRotate and windowH > windowW
+    local s
+    if rotated then
+        s = math.min(windowH / Scale.WIDTH, windowW / Scale.HEIGHT)
+    else
+        s = math.min(windowW / Scale.WIDTH, windowH / Scale.HEIGHT)
+    end
+    Scale.rotated = rotated
     Scale.scale = s
-    Scale.offsetX = math.floor((windowW - Scale.WIDTH * s) / 2)
-    Scale.offsetY = math.floor((windowH - Scale.HEIGHT * s) / 2)
+    Scale.offsetX = math.floor((windowW - (rotated and Scale.HEIGHT or Scale.WIDTH) * s) / 2)
+    Scale.offsetY = math.floor((windowH - (rotated and Scale.WIDTH or Scale.HEIGHT) * s) / 2)
     Scale.windowW = windowW
     Scale.windowH = windowH
+    Scale.syncPixelScale()
     -- The canvas is sized to the real window, so a resize retires it; ensureCanvas rebuilds it at
     -- the new size on the next frame. (noCanvas stays latched -- a driver that failed once still
     -- gets the fallback path.) Release the old target rather than leaning on the GC, since dragging
@@ -80,9 +133,12 @@ end
 function Scale.ensureCanvas()
     if Scale.canvas then return Scale.canvas end
     if Scale.noCanvas then return nil end
-    local w = Scale.windowW or love.graphics.getWidth()
-    local h = Scale.windowH or love.graphics.getHeight()
-    local okC, canvas = pcall(love.graphics.newCanvas, w, h)
+    local w = Scale.windowW or love.graphics.getPixelWidth()
+    local h = Scale.windowH or love.graphics.getPixelHeight()
+    -- dpiscale 1 because w and h are already the drawable's PIXELS. Left to itself a new canvas
+    -- takes love.graphics.getDPIScale() and multiplies, which on a browser canvas is neither 1 nor
+    -- a whole number -- a target a third too big, blitted a third too big, over the same drawable.
+    local okC, canvas = pcall(love.graphics.newCanvas, w, h, { dpiscale = 1 })
     if not okC or not canvas then
         Scale.noCanvas = true
         return nil
@@ -105,25 +161,43 @@ end
 -- (into the window-sized canvas), so the logical space rasterises at native display resolution; the
 -- scissor clips to the logical rect so nothing bleeds into the bars. Without the canvas, fall back to
 -- blacking the window and applying the same translate/scale/scissor directly, exactly as before.
+--
+-- The transform is a quarter turn clockwise on a portrait drawable: the logical origin lands at
+-- the top-RIGHT of the fitted rect and the logical x axis runs down the screen. Scale.toGame is
+-- the exact inverse, so a widget is clicked where it is seen.
+local function applyFit()
+    love.graphics.push()
+    if Scale.rotated then
+        love.graphics.translate(Scale.offsetX + Scale.HEIGHT * Scale.scale, Scale.offsetY)
+        love.graphics.rotate(math.pi / 2)
+    else
+        love.graphics.translate(Scale.offsetX, Scale.offsetY)
+    end
+    love.graphics.scale(Scale.scale, Scale.scale)
+    -- The scissor is in screen pixels, untouched by the transform above, so it takes the fitted
+    -- rect as it lies on the drawable -- turned on its side when the frame is.
+    love.graphics.setScissor(Scale.offsetX, Scale.offsetY, Scale.fittedW(), Scale.fittedH())
+end
+
 function Scale.start()
+    -- The drawable can change size without a resize event ever reaching us -- a browser canvas does
+    -- exactly that -- and a stale fit draws the whole frame into one corner of the buffer. Two
+    -- integers a frame is the cheapest insurance there is.
+    local okD, pw, ph = pcall(love.graphics.getPixelDimensions)
+    if okD and pw and pw > 0 and (pw ~= Scale.windowW or ph ~= Scale.windowH) then
+        Scale.resize(pw, ph)
+    end
+
     local canvas = Scale.ensureCanvas()
     if canvas then
         love.graphics.setCanvas(canvas)
         love.graphics.clear(0, 0, 0, 1)
-        love.graphics.push()
-        love.graphics.translate(Scale.offsetX, Scale.offsetY)
-        love.graphics.scale(Scale.scale, Scale.scale)
-        love.graphics.setScissor(Scale.offsetX, Scale.offsetY,
-            Scale.WIDTH * Scale.scale, Scale.HEIGHT * Scale.scale)
+        applyFit()
         Scale.usingCanvas = true
     else
         Scale.usingCanvas = false
         love.graphics.clear(0, 0, 0, 1)
-        love.graphics.push()
-        love.graphics.translate(Scale.offsetX, Scale.offsetY)
-        love.graphics.scale(Scale.scale, Scale.scale)
-        love.graphics.setScissor(Scale.offsetX, Scale.offsetY,
-            Scale.WIDTH * Scale.scale, Scale.HEIGHT * Scale.scale)
+        applyFit()
     end
 end
 
@@ -207,9 +281,28 @@ end
 
 -- Convert real window coordinates (e.g. from mouse callbacks) to logical
 -- coordinates. Points inside the letterbox bars map outside [0,WIDTH]x[0,HEIGHT].
+--
+-- Two conversions, in this order: window units to drawable pixels (1:1 on the desktop), then the
+-- inverse of the fit applied in applyFit -- including the quarter turn, which swaps the axes and
+-- runs the logical y back from the right-hand edge.
 function Scale.toGame(x, y)
-    return (x - Scale.offsetX) / Scale.scale,
-           (y - Scale.offsetY) / Scale.scale
+    local px, py = x * Scale.pixelScale, y * Scale.pixelScale
+    if Scale.rotated then
+        return (py - Scale.offsetY) / Scale.scale,
+               (Scale.offsetX + Scale.HEIGHT * Scale.scale - px) / Scale.scale
+    end
+    return (px - Scale.offsetX) / Scale.scale,
+           (py - Scale.offsetY) / Scale.scale
+end
+
+-- The same conversion for a MOVEMENT rather than a position: no offsets, and the turn is a plain
+-- axis swap. (A drag of dx across a turned screen is a drag of dx DOWN the logical space.)
+function Scale.toGameDelta(dx, dy)
+    local px, py = dx * Scale.pixelScale, dy * Scale.pixelScale
+    if Scale.rotated then
+        return py / Scale.scale, -px / Scale.scale
+    end
+    return px / Scale.scale, py / Scale.scale
 end
 
 return Scale

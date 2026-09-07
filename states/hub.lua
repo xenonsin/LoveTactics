@@ -77,35 +77,36 @@ end
 -- the eye goes for buildings, so the left corner is the one piece of chrome nothing else wants.
 local BURGER_X, BURGER_Y = 18, 18
 
--- THE FIRST-VISIT TUTORIAL, WHICH IS TWO DOORS AND IN THIS ORDER.
+-- THE FIRST-VISIT TUTORIAL, WHICH IS ONE DOOR AND IT GOES DOWN.
 --
--- `player.hubIntro` runs "arrival" -> "hire" -> "coach" -> nil, and each stage coaches exactly one card
--- and refuses every other. The order is the loop stated as two clicks:
+-- `player.hubIntro` runs "arrival" -> "coach" -> nil. The arrival is the guard's scene played over the
+-- city; the coach is a bubble on the Rift with every other card refused until it has been walked into.
 --
---   hire    the Hiring Hall. The player is NOT on the board -- every body that walks down the stair is
---           somebody hired here or found on a floor -- so a company of two going down a stair that has
---           already swallowed four companies is the first thing to fix, and the sponsor has already paid
---           for the fix (models/voucher.lua's Voucher.stake plants the voucher before the city opens).
---           Spent by the hire actually joining rather than by the panel being opened: a lesson satisfied
---           by looking at a room teaches looking at rooms.
---   coach   the Gate, where the sponsor has just sent them (conversation_prologue_sponsor).
+--   coach   the Rift, where the guard has just sent them (conversation_prologue_arrival). The stair
+--           itself is coached on the far side of that door, by a bubble on the descend row
+--           (states/gate.lua) -- this stage only gets them through it.
 --
--- THE HALL GOES FIRST because the Gate is one-way. A player coached straight down the stair takes the
--- prologue's two bodies onto floor one, and the room that would have fixed that is a card they were told
--- not to press. Teaching the hire first also teaches what the hall IS, which is the one building in the
--- city whose stock a player has to understand to use it: it fills from the floors, not from a shelf.
+-- ONE DOOR, AND THE CITY IS ARRANGED TO AGREE WITH IT. A tutorial that coaches one card while eight
+-- others stand open is a tutorial arguing with the board it is drawn on, so the plaza opens on TWO cards
+-- -- the Armory and the stair -- and every other room arrives on the deed that gives it a job
+-- (models/building.lua's gate block). The Market and the Houses were the last two to move: both were
+-- standing open on the first morning, and both now wait for the first descent, so the one screen a new
+-- player is looking at has the hole in the ground and nothing else worth pressing.
 --
--- The Gate stage was the Quest Board, which is retired (models/building.lua's RETIRED). Coaching a door
--- the city no longer has would have left the arrival pointing at nothing and the coach bubble anchored
--- to a rect that does not exist.
 -- THERE WAS A `hire` STAGE BEFORE THIS ONE, and it coached the Crossing: the sponsor's staked voucher,
 -- a rigged first pull that dealt Saber, and a lesson in what a pull looked like. The Crossing is retired
--- and there is no pull to teach, so the arrival now hands straight to the Rift. Saber is earned at the
--- Colosseum's own work like every other companion.
+-- and there is no pull to teach, so the arrival hands straight to the Rift -- and Saber is met where she
+-- belongs, standing on floor one (models/descent.lua's Descent.SCRIPTED_COMPANION). The old stage is why
+-- `stage.hire` is still read below: a stage that names a hire is spent by the body JOINING rather than
+-- by the door being opened, and the rule is kept for whatever is coached that way next.
+--
+-- (The Gate stage was the Quest Board before that, which is cut outright. Coaching a door the city no
+-- longer has would leave the arrival pointing at nothing and the bubble anchored to a rect that is not
+-- there -- which is the failure both retirements had to be walked through.)
 local INTRO_STAGES = {
     coach = {
         building = "the_gate",
-        text = "the Rift. The sponsor is waiting.",
+        text = "the Rift. The stair down is inside.",
     },
 }
 
@@ -302,6 +303,11 @@ local function launchPanel(building)
         -- The Armory (Loadout) shelf gets a weapon-type / discipline filter over the stash; other
         -- buildings' panels ignore the field.
         filters = (moduleName == "party") and armoryFilters(hub.player) or nil,
+        -- THE TACTICS TAB IS NOT THERE ON THE FIRST MORNING. It arrives with the first descent
+        -- (Descent.tacticsUnlocked), together with the Auto button it drives -- a rule list offered
+        -- before the player has taken a turn is a shortcut past the thing being taught. The panel's
+        -- own default is on, so this is the only place the city says otherwise.
+        tactics = (moduleName ~= "party") or Descent.tacticsUnlocked(hub.player),
         -- THE HIRING HALL HANDS THE SCREEN OVER MID-VISIT. A pull opens a reveal
         -- (ui/panels/hire_reveal.lua) that owns the whole screen, and the hall goes back UNDER it
         -- rather than beside it -- so this state swaps `activePanel` for the reveal and swaps the hall
@@ -338,6 +344,12 @@ local function launchPanel(building)
         end,
         onClose = dismissPanel,
     })
+
+    -- THE TACTICS WINDOW IS BEHIND THE TAB IT EXPLAINS, not in front of this door: the Loadout panel
+    -- pips the unread tab and plays the lesson when it is pressed (ui/panels/party.lua's
+    -- tacticsUnread / openTacticsNote), so the room opens on the screen the player pressed it for and
+    -- the explanation arrives at the control being explained. Reading it there is what puts the
+    -- Armory's red dot below out, on the same ledger (Descent.tacticsTaught).
     activePanel = opened
 end
 
@@ -396,10 +408,10 @@ local function openPanel(building)
         -- the company (see introAdvance), so a player who walks in, reads her card and walks out is
         -- coached back to the room rather than left in a city that thinks the lesson landed.
         if not stage.hire then hub.player.hubIntro = nil end
-        -- No scene between the coach and the door any more. The flier was Rowan spotting the
-        -- Colosseum's contract ON the Quest Board -- a beat about a board that is retired
-        -- (models/building.lua's RETIRED), so playing it here would have her read a notice off a wall
-        -- the city does not have. The sponsor said everything this moment needs to say, one screen ago.
+        -- No scene between the coach and the door. The flier was Rowan spotting the Colosseum's contract
+        -- ON the Quest Board -- a beat about a board that is retired (models/building.lua's RETIRED), so
+        -- playing it here would have her read a notice off a wall the city does not have. The guard said
+        -- everything this moment needs to say, and the sponsor is waiting on the other side of the door.
         launchPanel(building)
         return
     end
@@ -508,14 +520,32 @@ function hub.enter()
             end
             -- The Houses card carries the OR of the seven behind it (states/houses.lua draws the same
             -- dot per shelf in there): a mark behind a door behind a door is a mark nobody sees.
+            --
+            -- Both halves of that dot, and the first is why this branch matters more than the shelves
+            -- do. A house opens on a class level, which is banked underground -- so the square grows a
+            -- counter while the player is somewhere else entirely, and the only card that can say so is
+            -- this one. The plaza's own grown doors get a coach bubble instead (Building.unannounced);
+            -- the ledger under both is the same one.
             if b.state == "houses" then
                 for _, house in ipairs(Building.list(hub.player, { district = "houses" })) do
                     if not house.locked
-                        and Vendor.hasMarkedStock(house.vendor, hub.player.newStock) then return true end
+                        and (not Building.seenDoor(hub.player, house.id)
+                            or Vendor.hasMarkedStock(house.vendor, hub.player.newStock)) then
+                        return true
+                    end
                 end
                 return false
             end
-            if b.panel == "party" then return Player.hasNewStash(hub.player) end
+            -- THE ARMORY carries two things: stash nobody has read, and a TAB nobody has met. The
+            -- second is why this branch is an `or` -- Tactics and Auto unlock on the first descent,
+            -- which happens underground, so the door itself is the only thing that can say the room
+            -- has grown a control since the player last stood in it. It clears when the window
+            -- explaining them has been read (Descent.tacticsTaught), not on being seen, for the same
+            -- reason the voucher's does: an unread feature is a thing you still have to look at.
+            if b.panel == "party" then
+                return Player.hasNewStash(hub.player)
+                    or (Descent.tacticsUnlocked(hub.player) and not Descent.tacticsTaught(hub.player))
+            end
             return false
         end,
     }
@@ -542,32 +572,21 @@ function hub.enter()
     focusCoachedCard()
 
     -- First arrival at the capital (New Game only; the prologue set this flag -- states/prologue.lua).
-    -- TWO SCENES BACK TO BACK, and the second is the hinge of the whole game.
+    -- ONE SCENE: the guard's arrival, played over the city the player is now looking at.
     --
-    -- The guard's arrival plays over the city the player is now looking at, and it ends with the party
-    -- deciding to register at the Adventurers' Guild -- which is where this used to hand off to the
-    -- Quest Board and forty days of contracts. Somebody gets to them first: a sponsor with a hole under
-    -- the north quarter and nobody willing to go into it (conversation_prologue_sponsor).
-    --
-    -- An INTERCEPTION rather than a rewrite of the guard's lines. The arrival scene is authored, tagged
-    -- and translated; the honest way to change what game this is was to have the party's decision
-    -- overtaken rather than edited. The board is still there in the fiction. They never reach it.
+    -- IT USED TO BE TWO. A sponsor intercepted the party in the street straight afterwards, because the
+    -- guard's lines sent them to the Adventurers' Guild and something had to overtake that decision
+    -- before they reached the board. The guard names the Rift and points at it himself now -- the man
+    -- processing refugees all week knows where the work is -- so there is nothing left to intercept.
+    -- Iselle is at the top of the stair instead, and states/gate.lua plays her on the first visit there.
     --
     -- On its close the intro moves to its coaching stage, where the Gate is the only door that opens
     -- (see openPanel and hub.draw). A loaded save never carries this flag, so its hub opens straight to
     -- free play.
     if hub.player.hubIntro == "arrival" then
         Conversation.play("conversation_prologue_arrival", function()
-            Conversation.play("conversation_prologue_sponsor", function()
-                -- HER TERMS USED TO BE MADE GOOD HERE -- "I pay for the people you hire" bought a staked
-                -- voucher before the party had turned round to look at the city. There is nothing to
-                -- spend it at now, so the arrival hands straight to the Rift.
-                --
-                -- The sponsor's scene still makes that promise in its prose. It wants rewriting, or she
-                -- is offering to pay for a thing the city no longer sells.
-                hub.player.hubIntro = "coach"
-                Player.save()
-            end)
+            hub.player.hubIntro = "coach"
+            Player.save()
         end)
         return -- nothing else opens over the arrival; there is no pending summary on a first visit
     end

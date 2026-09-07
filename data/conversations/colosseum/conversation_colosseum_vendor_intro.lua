@@ -1,18 +1,21 @@
 -- Conversation authored inline (English); localization ids (`tag`) are stamped by
 -- tools/extract_strings.lua and must not be hand-edited. See models/conversation.lua.
+--
+-- The shopkeeper greets you and the shopkeeper is the house's own person; the door is open because the
+-- company has been fighting in this discipline. See data/conversations/bastion/ for both, and for why
+-- Rowan is the only companion a first-visit greeting can carry.
 return {
     title = "The Shelf and the Sand",
-    cast  = { "colosseum", "character_avatar", { id = "character_saber", when = { has = "character_saber" } } },
+    cast  = { "colosseum", "character_avatar", { id = "character_rowan", when = { has = "character_rowan" } } },
 
     script = {
-        { "colosseum", "The gatekeeper is still telling people about that bout. Loudly, and with himself winning it.", tag = 7 },
-        { "colosseum", "You walked off the sand still breathing, so the shelf is yours. Steel, leathers, the little cruelties that keep a fighter on the card one more week. No house behind you? Good. A house takes a cut. I only take coin.", tag = 1 },
-        { "character_avatar", "Then coin is all you'll get.", tag = 2 },
-        { when = { has = "character_saber" }, script = {
-            { "character_saber", "He says that to every fresh name, {name}. The cut comes later, dressed as a favour. I've worn three houses' colors and paid each one twice.", tag = 3 },
-            { "colosseum", "And yet here you stand, veteran, shilling for a team with nothing behind it.", tag = 4 },
-            { "character_saber", "Nothing behind it is the only thing on this sand I have ever trusted. Sell them the good leathers, not the ones you move on the losers.", tag = 5 },
+        { "colosseum", "Word reaches this stable before the fighters do. Somebody under your banner has been winning up close.", tag = 1 },
+        { "colosseum", "So the shelf is yours. Steel, leathers, and the little cruelties that keep a fighter on the card one more week.", tag = 2 },
+        { "character_avatar", "What does the house take for that?", tag = 3 },
+        { "colosseum", "Nothing. A house takes a cut and I only take coin. You have no house behind you, which is the best thing about you.", tag = 4 },
+        { when = { has = "character_rowan" }, script = {
+            { "character_rowan", "Buy the heavy end of it, {name}. What he calls cruelty is a stun, and a stun is a turn nobody spends on you.", tag = 5 },
         } },
-        { "colosseum", "...The good leathers, then. Win loud, {name}. The crowd keeps a name, and a name is the only thing here I can't sell you. You earn that one blow by blow.", tag = 6 },
+        { "colosseum", "Win loud. The crowd keeps a name, and a name is the one thing here I cannot sell you.", tag = 6 },
     },
 }

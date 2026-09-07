@@ -1,22 +1,21 @@
 -- Conversation authored inline (English); localization ids (`tag`) are stamped by
 -- tools/extract_strings.lua and must not be hand-edited. See models/conversation.lua.
+--
+-- The shopkeeper greets you and the shopkeeper is the house's own person; the door is open because the
+-- company has been fighting in this discipline. See data/conversations/bastion/ for both, and for why
+-- Rowan is the only companion a first-visit greeting can carry.
 return {
     title = "The Hunter's Lodge",
-    cast  = { "hunters_lodge", "character_avatar", { id = "character_kaya", when = { has = "character_kaya" } } },
+    cast  = { "hunters_lodge", "character_avatar", { id = "character_rowan", when = { has = "character_rowan" } } },
 
     script = {
-        { "hunters_lodge", "The stag is on the wall. Fourteen points, and every one of them yours.", tag = 8 },
-        { when = { has = "character_kaya" }, script = {
-            { "character_kaya", "You finished it. I said to ask for me here -- so I am asking. I go with you.", tag = 9 },
+        { "hunters_lodge", "There is a hunter in your company. The wood tells us that before you do.", tag = 1 },
+        { "hunters_lodge", "The Lodge clears the beasts that would eat your children and feeds your town on what is left. Honest work, honest coin.", tag = 2 },
+        { "character_avatar", "Never? Not one day in the year?", tag = 3 },
+        { "hunters_lodge", "The wild always makes more game. That is the mercy of it. There is always another beast worth killing.", tag = 4 },
+        { when = { has = "character_rowan" }, script = {
+            { "character_rowan", "Take a bow and the traps together, {name}. Half of what they sell here does nothing without the other half beside it.", tag = 5 },
         } },
-        { "hunters_lodge", "The Lodge. We clear the beasts that would eat your children and feed your town on what's left. Honest work, honest coin. The board's always open. Take a bounty, take a trophy.", tag = 1 },
-        { "character_avatar", "Always open. It never closes?", tag = 2 },
-        { "hunters_lodge", "The wild always makes more game. That is the mercy of it. There is always another beast worth killing. Rank up, and one day you'll be a Grand Hunter, and they'll carve your name on the wall.", tag = 3 },
-        { when = { has = "character_kaya" }, script = {
-            { "character_kaya", "I have read the names on that wall. Some of them I hunted.", tag = 4 },
-            { "hunters_lodge", "...You take only what you need, girl. That is why we could never crown you. You were the finest tracker the wood ever grew.", tag = 5 },
-            { "character_kaya", "It is why the wood never turned on me. Sell {name} the bows. Keep the crown.", tag = 6 },
-        } },
-        { "hunters_lodge", "As you like. The board's open. There's always another beast worth killing.", tag = 7 },
+        { "hunters_lodge", "Draw what you need. Rank up, and one day they carve your name on that wall.", tag = 6 },
     },
 }

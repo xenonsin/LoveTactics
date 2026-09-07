@@ -65,6 +65,7 @@ local Choice = require("ui.panels.choice") -- the generic yes/no modal, hosted h
 local DebugMenu = require("ui.panels.debug_menu") -- the right-click item menu (development builds only)
 local CloseButton = require("ui.close_button")
 local PoolGrid = require("ui.pool_grid") -- the stash's grid of item tiles; the market's counter is one
+local PoolControls = require("ui.pool_controls") -- the Filter/Sort pair that rides a rack's header line
 local ItemTooltip = require("ui.item_tooltip") -- printFlavor (sheared italic story line) + printDiscipline
 local GlossaryPanel = require("ui.glossary_panel")
 local Glossary = require("models.glossary")
@@ -76,6 +77,7 @@ local Class = require("models.class") -- unlockedSet: gates a shelf's locked dis
 local Market = require("models.market") -- the one counter: what it has out today, and off which rack
 local Calendar = require("models.calendar") -- the day today's rotation is dealt against
 local Combat = require("models.combat")
+local Sound = require("models.sound") -- shop.buy: the coin cue a committed purchase makes
 local Sprite = require("models.sprite")
 local Scale = require("scale")
 local InputMode = require("input_mode")
@@ -87,6 +89,21 @@ Shop.__index = Shop
 
 -- The Armory's box (ui/panels/party.lua), for the reason the header gives.
 local BOX_W, BOX_H = 1160, 650
+-- THE KEEPER PANE: who is behind this counter. A house's trainer is its COMPANION -- they turn up
+-- because the company has been fighting in their discipline, and recruiting them is a separate piece of
+-- work done underground (models/errand.lua) -- so the face here is a body already in the art budget
+-- rather than a shopkeeper drawn for one screen.
+--
+-- THIS PANE WAS DELETED AND IS BACK, and the reason it was deleted is the reason it can return. It went
+-- because it was a tinted plate standing in for a painting that was never commissioned and, at the
+-- time, never would be: the houses had shopkeepers of their own, and seven more portraits was seven
+-- more than the budget had. The trainer is one of the six the game is already paying for.
+--
+-- 236 x 380 is the new exemplar rather than a copy of one. Every shelf used to fit its keeper into
+-- 236 x 356 and every one of those panes has since been cut, so there is nothing left to back-solve
+-- against; this is the number the rest should take. Width first, because the column it stands in is
+-- what the rail and the rack are measured off.
+local KEEPER_W, KEEPER_H = 236, 380
 -- The house's bar across the top of it: mark and name, the tabs, and the purse. It replaces the vendor
 -- card that used to hold a 240px column open for three lines of text.
 local TOPBAR_H = 76
@@ -187,10 +204,31 @@ function Shop.new(opts)
         MODE_LABEL[self.service.id] = self.service.label or "Service"
     end
 
+    self.controls = self:newControls()
     self:layout()
     self:refresh()
     self.closeButton = CloseButton.new(self.boxX + BOX_W, self.boxY)
     return self
+end
+
+-- WHAT IS ON THE RACK, AND IN WHAT ORDER (ui/pool_controls.lua). A house's base shelf runs to dozens of
+-- pieces and the Market's counter is the whole plain catalogue -- both are a wall of tiles the player
+-- crosses with one question in mind ("what armour is here", "what can I afford"), and until now the
+-- only way to ask it was to read every tile. The rail answers a different question: it bands by PATH,
+-- which is the ladder, not the kit.
+--
+-- ONE PAIR, REBUILT PER TAB, because the two tabs deal different lists and their default orders are
+-- named for what they are: Buy leads with the shelf's own rung order, Sell with the stash's arrival
+-- order. Both keep the same words for the orders they share (ui/pool_controls.lua's two lists).
+function Shop:newControls()
+    return PoolControls.new({
+        sorts = (self.mode == "sell") and PoolControls.STASH_SORTS or PoolControls.SHELF_SORTS,
+        smallFont = self.smallFont,
+        tinyFont = Theme.body(11),
+        -- A pick rebuilds the racks and nothing else: the view is the only thing either control
+        -- touches, so no transaction path and no ledger can hear about it.
+        onChange = function() self:applyView() end,
+    })
 end
 
 -- WHERE EVERYTHING SITS, re-asked on every tab change because the three shapes this panel takes want
@@ -219,30 +257,39 @@ function Shop:layout()
         self.segRects[m] = { x = x0 + 330 + (i - 1) * (segW + 4), y = self.modeY, w = segW, h = self.modeH }
     end
 
-    -- The rail's head: what the house IS, in its own words, above the ladder it keeps. This is all that
-    -- is left of the vendor card, and it is the half worth keeping.
-    self.railHeadY = self.topY + 14
-    local descW = RAIL_W - RAIL_PAD * 2
-    local _, wrapped = self.smallFont:getWrap(self.def.description or "", descW)
-    self.railHeadH = 14 + math.min(#wrapped, 4) * self.smallFont:getHeight() + 16
-    self.railListY = self.topY + self.railHeadH
+    -- The ladder starts at the top of its own column now: what the house IS is said under the keeper's
+    -- face instead (Shop:drawKeeper), which is where a sentence about the house belongs.
+    self.railListY = self.topY + 12
 
     if self:usesShelf() then
-        -- Rail, then rack: the band names down the left, the band's stock filling the rest.
-        self.listLeft, self.listW = x0, RAIL_W
-        self.rackLeft = x0 + RAIL_W + 24
+        -- KEEPER, RAIL, RACK: who keeps this counter, what they teach, and what is on it. Three columns
+        -- and the last one takes what is left, which is eight tiles across -- a Knight band's thirty-five
+        -- pieces in five rows, still on one screen.
+        self.keeperX, self.keeperW = x0 + 24, KEEPER_W
+        self.keeperY = self.topY + 18
+        self.listLeft, self.listW = self.keeperX + KEEPER_W + 24, RAIL_W
+        self.rackLeft = self.listLeft + RAIL_W + 24
         self.rackW = x0 + W - 24 - self.rackLeft
         self.rackTop = self.topY + 18
         -- The band's own heading line sits above the tiles; the pool starts under it and its rect never
         -- moves, so the tiles do not shift down the column when a wordier band is picked.
         self.bandTop = self.rackTop + 34
         self.bandH = floor - self.bandTop
+        -- The two controls ride the heading line's right end rather than taking a line of their own:
+        -- 26px of rack is a row of tiles, and what they narrow is the thing that row would have held.
+        -- The heading gives way to them instead (Shop:drawBandPane measures against controlsLeft).
+        self.controlsLeft = self:layoutControls(self.rackLeft + self.rackW, self.rackTop,
+            { x = self.rackLeft, y = self.bandTop, w = self.rackW, h = self.bandH })
     elseif self:usesGrid() then
         -- The stash and the Market: racks the full width of the box, no ladder to leave room for.
         self.gridLeft = x0 + 24
         self.gridW = W - 48
         self.gridTop = self.topY + 18
         self.gridBottom = floor
+        -- ...and here they ride the first rack's own label line, opposite its name and count, which is
+        -- where the Armory keeps them over the stash (ui/panels/party.lua).
+        self.controlsLeft = self:layoutControls(self.gridLeft + self.gridW, self.gridTop - 2,
+            { x = self.gridLeft, y = self.gridTop, w = self.gridW, h = self.gridBottom - self.gridTop })
     else
         -- The Fence: two steps in one list (models/vendor.lua), and the only surface here that still
         -- earns a detail column -- what it compares is one item against another, in prose.
@@ -251,6 +298,75 @@ function Shop:layout()
         self.detailW = x0 + W - 40 - self.detailX
         self.detailY = self.topY + 24
     end
+end
+
+-- Put the Filter/Sort pair on a rack's header line, hanging their dropdowns over `area` (the rack
+-- itself: an open panel covers what it is narrowing, and reserves no height while it is shut). Returns
+-- the x the pair starts at, so the heading beside them can be measured against it.
+-- The placement is REMEMBERED, because the pair is laid out twice for one shape: once here, off the
+-- rects Shop:layout has just computed, and again the moment refresh knows what there is to filter by --
+-- the chip strip's own height depends on the chips.
+local CONTROLS_H = 22
+function Shop:layoutControls(edge, y, area)
+    if not self.controls then return edge end
+    self.controlsAt = { edge = edge, y = y, area = area }
+    self.controlsLeft = self.controls:layout(edge, y, CONTROLS_H, area)
+    return self.controlsLeft
+end
+
+function Shop:relayoutControls()
+    local at = self.controlsAt
+    if at then self:layoutControls(at.edge, at.y, at.area) end
+end
+
+-- Re-cut the racks under the controls' current view. A pick changes what is SHOWN and nothing else, so
+-- this is the whole of what a filter or an order costs: the same builders the shelf already runs, over
+-- the same rows, with the view applied as they are handed to a pool.
+function Shop:applyView()
+    if self:usesShelf() then self:buildBandSection()
+    elseif self:usesGrid() then self:buildSections() end
+end
+
+-- The rows a rack should actually show. Every rack goes through here, so neither shelf can end up
+-- drawing the unfiltered list; the row objects come back untouched, which is what keeps a press on a
+-- tile turning back into the transaction the row already knew how to run.
+function Shop:viewRows(rows)
+    if not self.controls then return rows end
+    return self.controls:apply(rows)
+end
+
+-- WHAT THERE IS TO FILTER BY, read off the stock rather than off the catalogue: a chip for a type this
+-- counter does not stock is a control that can only ever empty the rack. Type alone -- the house's rail
+-- already bands by class, and the Market deals one rack of plain kit -- so a second axis here would be
+-- two controls answering the question the column to the left answers.
+--
+-- Asked of the WHOLE shelf, not of the band on screen. The chips would otherwise change under the hand
+-- every time the rail's cursor moved, which is a strip that cannot be learned.
+local function titleCase(s)
+    return (tostring(s):gsub("^%l", string.upper))
+end
+
+function Shop:filterGroups()
+    local seen, types = {}, {}
+    local function note(row)
+        local t = row.item and row.item.type
+        if t and not seen[t] then seen[t] = true; types[#types + 1] = t end
+    end
+    for _, row in ipairs(self.rows or {}) do
+        if row.header then
+            for _, sub in ipairs(row.rows or {}) do note(sub) end
+        else
+            note(row)
+        end
+    end
+    -- One type is not a choice: every chip on the strip would either change nothing or empty the rack.
+    if #types < 2 then return nil end
+    table.sort(types)
+    return { {
+        label = "Type", options = types, selected = {},
+        valueOf = function(item) return item and item.type end,
+        format = titleCase,
+    } }
 end
 
 -- THE BUY LIST IS THE LADDER, AND NOTHING ELSE. Every row on it is a BAND -- the house's own rack,
@@ -283,7 +399,7 @@ function Shop:buildBuyRows()
 
     local groups, order = {}, {}
     local stock = Vendor.stock(self.vendorId, self.shelfRung, self.player.recipes,
-        Class.unlockedSet(self.player), Class.levelSet(self.player))
+        Class.unlockedSet(self.player), Class.levelSet(self.player), self.player.found)
     for _, entry in ipairs(stock) do
         -- Instantiate at the item's recipe tier, so its name (+n) and stats reflect what's bought.
         local item = Item.instantiate(entry.id, nil, entry.level)
@@ -307,7 +423,11 @@ function Shop:buildBuyRows()
         if isNew then g.isNew = true end -- so a shut section still shows there is something under it
         g.rows[#g.rows + 1] = {
             item = item, entry = entry,
-            label = item.name .. "  -  " .. (entry.locked and "locked" or (entry.price .. "g")),
+            -- Three refusals, three words. "locked" on all of them said no three times without ever
+            -- saying which of three different things to go and do about it (models/vendor.lua's
+            -- lockReason); "not found" is the one that sends the player down a stair.
+            label = item.name .. "  -  " .. (entry.lockReason == "undiscovered" and "not found"
+                or entry.locked and "locked" or (entry.price .. "g")),
             locked = entry.locked,
             isNew = isNew,
         }
@@ -393,9 +513,13 @@ function Shop:buildMarketRows()
         end
         -- Instantiate at the item's recipe tier, so its name (+n) and stats reflect what's bought.
         local item = Item.instantiate(entry.id, nil, entry.level)
+        -- A ROLLED ROW ALREADY BOUGHT TODAY reads as taken rather than as priced: the price is the one
+        -- thing left to say about a ware that can still be bought, and quoting it on one that cannot is
+        -- a figure no decision reads (models/market.lua's `sold`).
         self.rows[#self.rows + 1] = {
             item = item, entry = entry,
-            label = item.name .. "  -  " .. entry.price .. "g",
+            label = item.name .. "  -  " .. (entry.sold and "sold out" or (entry.price .. "g")),
+            locked = entry.locked,
             isNew = Player.isNew(self.player, Player.NEW_STOCK, entry.id),
         }
     end
@@ -445,6 +569,11 @@ function Shop:buildSections()
     -- inside the well, which is the same answer in the same place as a full one.
     if #groups == 0 then open(self.mode, GRID_SECTION_LABEL[self.mode] or "Stock") end
 
+    -- The view goes on HERE, after the racks are cut and before they are measured: a filter changes how
+    -- deep a rack is, and a rack sized against the stock it is no longer showing would leave a well of
+    -- empty rows under the tiles that survived.
+    for _, g in ipairs(groups) do g.rows = self:viewRows(g.rows) end
+
     local cols = PoolGrid.colsFor(self.gridW)
     local y = self.gridTop
     for i, g in ipairs(groups) do
@@ -485,8 +614,13 @@ function Shop:buildBandSection()
     -- given the whole column for a band of five drew an empty box four rows deep under them -- which
     -- reads as a screen that failed to finish rather than as a house with a short shelf. It still takes
     -- no MORE than the room, so a band deeper than the column scrolls exactly as it did.
-    local g = { key = row.key, label = row.label, rows = row.rows }
-    local rows = math.ceil(#row.rows / PoolGrid.colsFor(self.rackW))
+    -- The band's stock as the controls have it: a fresh list, so the band itself still holds every
+    -- piece it stocks and a filter is one press away from being taken back off.
+    local g = { key = row.key, label = row.label, rows = self:viewRows(row.rows) }
+    -- A filter can empty the rack, and the well is still drawn -- one row deep, saying so inside the
+    -- box (Shop:newPool's emptyText). A band with no stock at all is the other case entirely and never
+    -- reaches here: it has no rack, and the pane beside it argues for the gate instead.
+    local rows = math.max(1, math.ceil(#g.rows / PoolGrid.colsFor(self.rackW)))
     g.pool = self:newPool(self.bandTop, math.min(self.bandH, PoolGrid.heightForRows(rows)),
         self.rackLeft, self.rackW)
     g.labelY = self.bandTop -- unused by this shelf, kept so a section is a section either way
@@ -531,6 +665,12 @@ function Shop:newPool(y, h, x, w)
         -- home" is answered by scanning the rack. A SELL price is money coming the other way and is
         -- never out of reach, so that tab hands over nothing to compare against.
         purse = (self.mode ~= "sell") and function() return self.player.gold or 0 end or nil,
+        -- An empty rack answers for ITSELF: a shelf with nothing on it and a shelf you have narrowed to
+        -- nothing are two different facts, and only the first one is the shop's.
+        emptyText = function()
+            if self.controls and self.controls:isNarrowed() then return "Nothing here matches the filter" end
+            return nil
+        end,
     })
 end
 
@@ -549,6 +689,16 @@ function Shop:fillPool(g)
                 id = row.entry and row.entry.id,
                 price = row.entry and row.entry.price or 0,
                 locked = row.locked,
+                -- A SHUT TILE AND AN UNFOUND ONE ARE NOT THE SAME REFUSAL and must not draw the same.
+                -- One is a gate the player climbs to; the other is a thing that is not in the world yet
+                -- as far as this company is concerned. The tile carries the distinction and the depth
+                -- it is answered at (ui/pool_grid.lua).
+                undiscovered = row.entry and row.entry.lockReason == "undiscovered" or nil,
+                -- AND A THIRD REFUSAL, for the same reason there is a second: a rolled row bought today
+                -- is neither a gate to climb nor a thing never held, and a padlock over it would say
+                -- "come back when you are stronger" about something the player owns already.
+                sold = row.entry and row.entry.lockReason == "sold" or nil,
+                depth = row.entry and row.entry.dropTier or nil,
                 item = row.item, -- already instantiated at the level it sells at
                 row = row,
             }
@@ -737,6 +887,16 @@ function Shop:refresh()
         end
     end
 
+    -- WHAT THE CONTROLS OFFER FOLLOWS THE STOCK, so a shelf that grew a rung offers the type that came
+    -- with it, and a tab with one kind of thing on it offers no strip at all. Done here rather than at
+    -- open: the rows are rebuilt after every transaction, and a chip for a type nothing on the counter
+    -- has any more is a control that can only empty the rack. Selections that still match survive it
+    -- (PoolControls:setFilters); the strip is then re-measured, since its height is its chips'.
+    if self.controls and self:hasPools() then
+        self.controls:setFilters(self:filterGroups())
+        self:relayoutControls()
+    end
+
     -- The grid shelf stops here: it reads the same rows, and a Menu built over them would be a second
     -- cursor on the same list with nothing drawing it.
     if self:usesGrid() then
@@ -797,6 +957,10 @@ function Shop:setMode(mode)
     self.mode = mode
     self.swapFrom = nil -- leaving the fence puts down whatever was being traded
     self.menu = nil
+    -- A NEW PAIR PER TAB, and not only because the two tabs name their default order differently
+    -- (Shop:newControls): a filter is an answer about the list it was set on, and carrying "Type:
+    -- armor" from the shelf onto the stash would hide the potions somebody just came to sell.
+    self.controls = self:newControls()
     self:layout() -- the three tabs are three shapes; see Shop:layout
     -- A new tab opens at its top, on its first rack, in the column the cursor starts in: the carried
     -- cursor is a promise about the list you were reading, and this is a different one.
@@ -869,7 +1033,10 @@ end
 function Shop:fenceLockReason(row)
     local held = unsellable(row.item)
     if held then return held end
-    return "Nothing of its worth on this shelf yet -- run more of this house's line and come back."
+    -- The fence trades against THIS SHELF, and the shelf is open as far as the house's class is climbed
+    -- (Quest.shelfRung). So what is missing is a rung, not an errand -- this line asked for work no
+    -- house posts any more.
+    return "Nothing of its worth on this shelf yet -- grow this house's class and come back."
 end
 
 -- Do the trade: the piece on the counter leaves the stash, its replacement arrives, the fee is paid.
@@ -981,9 +1148,9 @@ function Shop:activateRow(row)
     end
 end
 
--- Why a greyed shelf row is not yet buyable. A discipline row is held by its own gate quest, which no
--- amount of this house's ordinary quests will open -- so that reason LEADS when the discipline is still
--- locked, and only a plain quest-count row falls back to "complete N more of this house's quests".
+-- Why a greyed shelf row is not yet buyable. A discipline row is held by its own gate, which no amount
+-- of climbing the house's own class will open -- so that reason LEADS when the discipline is still
+-- locked, and only a plain rung row falls back to "grow <class> to level N".
 --
 -- The Buy list collapses a fully-locked path to its header (buildBuyRows), so the first branch below is
 -- not normally reachable FROM the shelf any more -- Shop:pathMeta says the same thing, compressed, on
@@ -991,6 +1158,29 @@ end
 -- is not the only thing that decides which rows exist: Vendor.stock still returns that stock, and a
 -- future caller (or a change to the collapse rule) must not silently fall through to "Locked."
 function Shop:lockReason(entry)
+    -- ALREADY TAKEN, and it is the one refusal here that is answered by WAITING. It leads because it is
+    -- the shallowest: the ware is unlocked, found, affordable and the company owns one, and every
+    -- sentence below would be a lie about a row that was buyable ten seconds ago. It names the clock
+    -- rather than the ware, since "you bought this" is a thing the player already knows and "tomorrow"
+    -- is the only part they can act on.
+    if entry.lockReason == "sold" then
+        return "Bought today. The counter deals three fresh wares in the morning."
+    end
+    -- NOT FOUND YET, and this is the only refusal on the shelf the player answers by going DOWN rather
+    -- than by growing a class. It is checked first because it outranks the others: a company that has
+    -- never held one of these cannot buy it at any rung, in any discipline, at any level.
+    --
+    -- IT NAMES A DEPTH, which is the whole reason the row is shown at all. "You have not found one" is
+    -- true and useless in the same way "unlock the Ninja path first" was -- it restates the lock. The
+    -- tier turns it into somewhere to go, and a shelf full of these is the want list the houses became
+    -- when they stopped selling this half of the catalogue (tools/drop_tier.lua).
+    if entry.lockReason == "undiscovered" then
+        if entry.dropTier then
+            return "Not found: the rift gives this up from depth " .. entry.dropTier ..
+                ". Carry one out and this counter will stock it."
+        end
+        return "Not found: carry one out of the rift and this counter will stock it."
+    end
     if entry.discipline and not Class.isUnlocked(self.player, entry.discipline) then
         -- A CROSSING names the parent path still missing, and the house that teaches it. "Unlock the
         -- Ninja path first" is true and useless -- it restates the lock. Naming the Arcanum turns it
@@ -1020,10 +1210,22 @@ function Shop:lockReason(entry)
         local name = Class.displayName(entry.discipline) or entry.discipline
         return "Locked: grow " .. name .. " to level " .. entry.unlockLevel .. "."
     end
-    local remaining = (entry.unlockQuests or 0) - (self.shelfRung or 0)
-    if remaining > 0 then
-        local quests = remaining == 1 and "quest" or "quests"
-        return "Locked: complete " .. remaining .. " more of this house's " .. quests .. "."
+    -- THE RUNG IS A CLASS LEVEL, and this sentence was the last place still calling it a quest count.
+    -- A house asks for no work at all any more -- its shelf climbs as the class it teaches does
+    -- (Quest.shelfRung -> Class.rosterLevel) -- so "complete 3 more of this house's quests" named a
+    -- deed the player cannot go and do, in a currency the game stopped counting. `unlockQuests` keeps
+    -- its authored name on the blueprint (docs/shelf.md, where it is the derived slot); what it MEANS
+    -- is the rung, and the rung is a level.
+    --
+    -- Said in the class's own words, and the class is the entry's rather than the house's: the Market
+    -- sells all seven and gates each ware on its own class (models/market.lua's per-item rung), so a
+    -- shelf-wide name would be wrong on the one counter that has no class of its own.
+    local need = entry.unlockQuests or 0
+    if need > (self.shelfRung or 0) then
+        local class = entry.class or self.def.class
+        local name = class and (Item.classDisplayName(class) or class)
+        if name then return "Locked: grow " .. name .. " to level " .. need .. "." end
+        return "Locked: grow this house's class to level " .. need .. "."
     end
     return "Locked."
 end
@@ -1033,9 +1235,9 @@ end
 --
 -- The rack says THAT a piece is out of reach twice over -- a greyed plate for a gate, a red price for an
 -- empty purse (ui/pool_grid.lua) -- and neither says WHICH gate or HOW short. That sentence used to live
--- in the detail pane beside the list; the pane went with the switch to tiles, so it goes where the rest
--- of the reading went. It is the same sentence the footer prints on the press (Shop:buy), reached by
--- hovering instead of by being refused.
+-- in the detail pane beside the list; the pane is gone with the switch to tiles, so it goes where the
+-- rest of the reading went. It is the same sentence the footer prints on the press (Shop:buy), reached
+-- by hovering instead of by being refused.
 --
 -- Gold is asked SECOND: a locked piece has no price worth discussing, and being told the purse is short
 -- of a number that is not yet on offer would send the player after the wrong thing.
@@ -1118,6 +1320,17 @@ function Shop:commitBuy(entry)
     end
     local item = Item.instantiate(entry.id, nil, entry.level)
     Player.addToStash(self.player, item)
+    -- The gold has actually left the purse, so the counter makes the sound a counter makes. ON THE
+    -- COMMIT and not on Shop:buy, which only asks: the confirmation carries a Cancel, and coins under
+    -- the question would tell the player they had spent something they had not.
+    Sound.play("shop.buy")
+    -- ONE EACH OFF TODAY'S RACK. The three rolled rows are the counter's perishable half
+    -- (models/market.lua): taking one takes it off the counter until the roll turns over, where it
+    -- stands greyed rather than vanishing. The standing rack is untouched -- it sells the same draught
+    -- all day, which is the whole of what a standing rack is for.
+    if entry.rack == Market.TODAY then
+        Market.recordSold(self.player, Calendar.day(self.player), entry.id)
+    end
     -- Unseen in the stash until looked at, exactly like a granted reward: the message below says it is
     -- in the stash, and the dot is what makes that findable once the stash is sixty rows long. (An
     -- inventory RESHUFFLE never marks -- see Player.markNew -- so only arrivals dot.)
@@ -1204,6 +1417,7 @@ function Shop:draw()
     if self:usesGrid() then
         self:drawSections()
     elseif self:usesShelf() and self:hasRows() then
+        self:drawKeeper()
         self:drawRail()
         self.menu:draw()
         self:drawRailMeta()
@@ -1227,11 +1441,20 @@ function Shop:draw()
         love.graphics.printf(empty, self.boxX, self.boxY + 240, BOX_W, "center")
     end
 
+    -- The two view controls, on whichever header line this shape gave them (Shop:layoutControls) --
+    -- drawn after the racks, so a button is never under a well's border, and before the tooltip and the
+    -- modals, which are the things that are allowed to cover them.
+    if self:hasPools() then self.controls:draw() end
+
     self:drawFooter()
     self.closeButton:draw()
     -- Over the box and under the modals: the tooltip IS the detail pane now, and a pane that a
     -- confirmation could print through would be worse than no pane at all.
-    if self:hasPools() then self:drawGridTooltip() end
+    -- An open dropdown owns the rack it covers, so the tooltip stands down while it is up: the pointer
+    -- is on a chip, and a reading of whatever tile happens to be under the panel is an answer to a
+    -- question nobody asked.
+    if self:hasPools() and not self.controls:isOpen() then self:drawGridTooltip() end
+    if self:hasPools() then self.controls:drawOverlay() end
     if self.quantityPopup then self.quantityPopup:draw() end
     if self.confirm then self.confirm:draw() end
     if self.itemDebug then self.itemDebug:draw() end -- last: it is modal over everything above
@@ -1284,17 +1507,68 @@ end
 -- THE RAIL: the house's own sentence, then its ladder. Menu draws the band rows themselves (name over
 -- gate, see Menu:drawHeader); this is the ground they stand on and the head above them.
 function Shop:drawRail()
-    local x0 = self.boxX
+    local x = self.listLeft
     Theme.set(Theme.panel2)
-    love.graphics.rectangle("fill", x0, self.topY, RAIL_W, self.boxY + BOX_H - self.topY,
-        0, 0, Theme.R, Theme.R)
+    love.graphics.rectangle("fill", x, self.topY, RAIL_W, self.boxY + BOX_H - self.topY, Theme.R, Theme.R)
     Theme.set(Theme.hairline)
-    love.graphics.line(x0 + RAIL_W, self.topY, x0 + RAIL_W, self.boxY + BOX_H - 8)
+    love.graphics.line(x + RAIL_W, self.topY + 6, x + RAIL_W, self.boxY + BOX_H - 14)
+end
+
+-- WHO IS BEHIND THIS COUNTER: the shopkeeper, who is the vendor's own person and carries the vendor's
+-- own portrait (data/vendors/*.lua's `portrait`). Their face, the house's name, and under it the one
+-- sentence the house says about itself.
+--
+-- IT IS NOT THE COMPANION. That was tried and reversed: fronting each shelf with the house's companion
+-- would have meant no vendor ever needed a face, and the six portraits already in the budget doing
+-- triple duty. It also made every counter a person you were on your way to recruiting, which is a
+-- different relationship from the one a shop wants. A shopkeeper is somebody you buy from and keep
+-- buying from; a companion is met on a floor and leaves with you (models/errand.lua).
+--
+-- UNTIL THE ART LANDS, THE HOUSE'S MARK STANDS IN, big and in the house's own colour
+-- (ui/vendor_icons.lua). That is a deliberate placeholder rather than the letter-box the dialogue box
+-- falls back to: a mark is a shape this player already meets on the shop's title and alone on a 32px
+-- tile out on the ground, so a pane carrying it says something true about the house rather than drawing
+-- a hole where a painting goes.
+function Shop:drawKeeper()
+    local x, y, w = self.keeperX, self.keeperY, self.keeperW
+    local body = self.def
+
+    Theme.set(Theme.slot)
+    love.graphics.rectangle("fill", x, y, w, KEEPER_H, Theme.R, Theme.R)
+    Theme.set(Theme.frame)
+    love.graphics.rectangle("line", x, y, w, KEEPER_H, Theme.R, Theme.R)
+
+    local art = body and body.portrait and Sprite.load(body.portrait)
+    if type(art) == "userdata" then
+        local sw, sh = art:getDimensions()
+        -- Fitted to the pane and pinned to its FOOT, the way a bust stands on a line rather than
+        -- floating in a box: a portrait taller than it is wide crops from the top, never the chin.
+        local scale = math.max(w / sw, KEEPER_H / sh)
+        love.graphics.setScissor(x + 1, y + 1, w - 2, KEEPER_H - 2)
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.draw(art, x + w / 2, y + KEEPER_H, 0, scale, scale, sw / 2, sh)
+        love.graphics.setScissor()
+    else
+        local r, g, b = VendorIcons.color(self.vendorId)
+        local size = w * 0.52
+        VendorIcons.draw(self.vendorId, x + w / 2 - size / 2, y + KEEPER_H / 2 - size * 0.62,
+            size, size, r or 0.6, g or 0.6, b or 0.7, 0.5)
+    end
+
+    -- The name plate along the pane's foot, over whatever is behind it, so a face and a mark both get
+    -- named in the same place.
+    local plate = 30
+    love.graphics.setColor(0, 0, 0, 0.62)
+    love.graphics.rectangle("fill", x + 1, y + KEEPER_H - plate - 1, w - 2, plate, 0, 0, Theme.R, Theme.R)
+    love.graphics.setFont(self.bodyFont)
+    Theme.set(Theme.accentAmber)
+    local who = (body and body.name) or self.title
+    love.graphics.printf(Theme.ellipsize(who, self.bodyFont, w - 20),
+        x, y + KEEPER_H - plate + 5, w, "center")
 
     love.graphics.setFont(self.smallFont)
     Theme.set(Theme.muted)
-    love.graphics.printf(self.def.description or "", x0 + RAIL_PAD, self.railHeadY,
-        RAIL_W - RAIL_PAD * 2, "left")
+    love.graphics.printf(self.def.description or "", x, y + KEEPER_H + 12, w, "left")
 end
 
 function Shop:drawModeSelector()
@@ -1436,6 +1710,11 @@ function Shop:drawBandPane()
     love.graphics.print(name, x, ty)
     local after = x + self.headFont:getWidth(name) + 14
 
+    -- The Filter/Sort pair shares this line, hard right (Shop:layoutControls), so what is left of it
+    -- is what the gate clause may take. Measured rather than fixed: the pair is two words wide at the
+    -- Market and three at a house, and a clamp guessed at either would ellipsize the other.
+    local gateRoom = math.max(60, (self.controlsLeft or (x + w)) - after - 12)
+
     love.graphics.setFont(self.smallFont)
     local sy = ty + self.headFont:getHeight() - self.smallFont:getHeight() - 1
     -- (No count here. The rail row for this same band is printing it 400px to the left, and one figure
@@ -1446,7 +1725,7 @@ function Shop:drawBandPane()
     Theme.set(row.shut and Theme.muted or Theme.cursor)
     -- The base shelf is not a path and pathMeta gives it nothing; say what it is instead of nothing.
     love.graphics.print(Theme.ellipsize(row.pathLine or "this house's own rack", self.smallFont,
-        w * 0.42), after, sy)
+        math.min(w * 0.42, gateRoom)), after, sy)
 
     local g = self.sections[1]
     if g and g.pool and g.key == row.key then
@@ -1649,9 +1928,19 @@ function Shop:drawFooter()
     -- On the grid the third clause names what the sticks and the arrow keys DO -- they walk the tiles
     -- rather than scroll a column, and on the keyboard they are no longer the way across the tabs.
     local grid = self:hasPools()
-    local hint = InputMode.isGamepad()
-        and ("A: confirm    LB/RB: " .. cycle .. (grid and "    D-pad: move" or "    D-pad: scroll") .. "    B: close")
-        or ("Enter: confirm    Tab: " .. cycle .. (grid and "    Arrows: move" or "    Wheel: scroll") .. "    Esc: close")
+    -- THE TWO CONTROLS ARE NAMED HERE OR THEY ARE MOUSE-ONLY. There is no region to Tab into -- Tab
+    -- already cycles the tabs on this panel -- so each has a key of its own, and a key nothing on the
+    -- screen mentions is a key nobody presses. Only while there is a rack to narrow, and only for the
+    -- pair that is actually offered: a tab with one kind of thing on it grows no strip (filterGroups).
+    local narrows = grid and self.controls and self.controls.filters ~= nil
+    local pad = InputMode.isGamepad()
+    local view = ""
+    if grid then
+        view = (pad and "    X: sort" or "    R: sort") .. (narrows and (pad and "    Y: filter" or "    F: filter") or "")
+    end
+    local hint = pad
+        and ("A: confirm    LB/RB: " .. cycle .. (grid and "    D-pad: move" or "    D-pad: scroll") .. view .. "    B: close")
+        or ("Enter: confirm    Tab: " .. cycle .. (grid and "    Arrows: move" or "    Wheel: scroll") .. view .. "    Esc: close")
     love.graphics.printf(hint, self.boxX, self.hintY, BOX_W, "center")
 end
 
@@ -1697,6 +1986,10 @@ function Shop:mousemoved(x, y)
     if self.confirm then self.confirm:mousemoved(x, y) return end
     if self.quantityPopup then self.quantityPopup:mousemoved(x, y) return end
     self.closeButton:mousemoved(x, y)
+    -- An open dropdown takes the pointer whole: it covers the rack, and a hover that lit a tile under
+    -- it would move the rack's cursor to somewhere the player cannot see.
+    if self:hasPools() and self.controls:mousemoved(x, y) then return end
+    if self:hasPools() and self.controls:isOpen() then return end
     if self:hasPools() then
         for _, g in ipairs(self.sections) do g.pool:mousemoved(x, y) end
     end
@@ -1718,6 +2011,7 @@ function Shop:cursorKind(x, y)
     for _, m in ipairs(self.modes) do
         if pointIn(self.segRects[m], x, y) then return "hand" end
     end
+    if self:hasPools() and self.controls:pointerOver(x, y) then return "hand" end
     if self:hasPools() then
         for _, g in ipairs(self.sections) do
             if g.pool:contains(x, y) then return "hand" end -- cells and the two scroll arrows
@@ -1731,6 +2025,8 @@ function Shop:wheelmoved(dx, dy)
     if self.itemDebug then self.itemDebug:wheelmoved(dx, dy) return end
     if self.confirm then return end -- the list must not scroll out from under the question
     if self.quantityPopup then self.quantityPopup:wheelmoved(dy) return end
+    -- ...and neither must the rack, under an open dropdown standing on top of it.
+    if self:hasPools() and self.controls:isOpen() then return end
     if self:hasPools() then
         -- The rack UNDER THE POINTER scrolls, not the focused one: with two racks stacked, a wheel
         -- that moved the other one would read as the shelf ignoring the mouse. On the house shelf the
@@ -1757,6 +2053,9 @@ function Shop:mousepressed(x, y, button)
     for _, m in ipairs(self.modes) do
         if pointIn(self.segRects[m], x, y) then self:setMode(m) return end
     end
+    -- BEFORE THE RACKS, always: the dropdowns are drawn over the tiles, so a press that fell through
+    -- one of them would shut a menu and buy a sword with the same click.
+    if self:hasPools() and self.controls:mousepressed(x, y, button) then return end
     if self:hasPools() then
         for i, g in ipairs(self.sections) do
             local hit, cell = g.pool:mousepressed(x, y, button)
@@ -1787,8 +2086,17 @@ function Shop:keypressed(key)
     if self.itemDebug then self.itemDebug:keypressed(key) return end
     if self.confirm then self.confirm:keypressed(key) return end
     if self.quantityPopup then self.quantityPopup:keypressed(key) return end
+    -- An open dropdown owns the keyboard, Esc and Tab included: while a panel is up those two shut it
+    -- rather than closing the shop or changing tab under it (PoolControls answers true for both).
+    if self:hasPools() and self.controls:keypressed(key) then return end
     if key == "escape" then self:close() return end
     if key == "tab" then self:cycleMode(1) return end
+    -- The two view controls, each on a key the footer names. Not Tab: that is the tab strip's, and a
+    -- second meaning for it would be the one key on this panel that does two things.
+    if self:hasPools() then
+        if key == "f" then self.controls:toggle("filters") return end
+        if key == "r" then self.controls:toggle("sort") return end
+    end
     -- Wherever there are tiles left/right walk them, so Tab (and the shoulders) are the only way across
     -- the tabs. A plain list has one column and can spare the two keys; a rack cannot.
     if self:usesGrid() then self:gridNav(key) return end
@@ -1807,6 +2115,11 @@ function Shop:gamepadpressed(joystick, button)
     if self.itemDebug then self.itemDebug:gamepadpressed(joystick, button) return end
     if self.confirm then self.confirm:gamepadpressed(joystick, button) return end
     if self.quantityPopup then self.quantityPopup:gamepadpressed(joystick, button) return end
+    if self:hasPools() and self.controls:gamepadpressed(joystick, button) then return end
+    -- Y and X open the two view controls -- the free face buttons, with A on the transaction and B on
+    -- the way out. Named in the footer beside their keyboard halves (Shop:drawFooter).
+    if self:hasPools() and button == "y" then self.controls:toggle("filters") return end
+    if self:hasPools() and button == "x" then self.controls:toggle("sort") return end
     if button == "b" then self:close()
     elseif button == "leftshoulder" then self:cycleMode(-1)
     elseif button == "rightshoulder" then self:cycleMode(1)

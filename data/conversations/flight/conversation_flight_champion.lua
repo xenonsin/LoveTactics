@@ -2,26 +2,26 @@
 -- tools/extract_strings.lua and must not be hand-edited. See models/conversation.lua.
 --
 -- Played at the opening of the Demon Champion fight -- the mini-boss the flight leg ends on
--- (states/prologue.lua's FLIGHT_QUEST.objective.opening, fielded by states/battle.lua). This is not a
--- guided fight, so it gets the ORDINARY scene staging -- full portraits, title, the usual dim -- with
--- the board frozen behind it; only a lesson's opening borrows the compact gutter panel the mentor
--- speaks from (data/conversations/prologue_village.lua). The champion and its two imps are already
--- standing on the lane while Rowan talks: the last still moment before the first foe the game frames
--- as a BOSS.
+-- (states/prologue.lua's FLIGHT_QUEST.objective.opening, fielded by states/battle.lua). Ordinary scene
+-- staging, board frozen behind it, the champion and its two imps already standing on the lane.
 --
--- Its job is to reset the scale. Every fight before this one has been a horde -- imps that die to one
--- blow, a grunt that takes several. This one has a NAME, and Rowan says so: you do not swarm it down,
--- you cut it down, and the road home is on the far side of it. The avatar's line is the answer of
--- someone who has already walked the whole valley to get here and is not turning back at the gate.
+-- Its job is to reset the scale. Every fight before this has been a horde. This one has a NAME: you do
+-- not swarm it down, you cut it down, and the road home is on the far side of it.
+--
+-- IT COMMANDS NOTHING. Rowan used to call the imps a "raiding party" that it "leads", which is army
+-- fiction from the draft where an army burned Bellmere. It is the largest thing that came up out of
+-- that field, with the small ones trailing after -- not a commander the horde falls apart without, but
+-- the reason the horde is on this road at all. The tactical instruction still matches the objective
+-- (`assassinate`): it ends when the champion goes down, not when the board clears.
 return {
     title = "The Champion",
     cast  = { "character_rowan", "character_avatar" },
 
     script = {
-        { "character_rowan", "Stop here, {name}. That one at the head of them is no imp. It has a name where they carry none, and it leads this whole raiding party. This is the thing that has been walking the road behind us.", tag = 1 },
+        { "character_rowan", "Stop here, {name}. That one has a name. The rest don't. It's the biggest thing that came up out of your father's field.", tag = 1 },
         { "character_avatar", "It's between us and the capital.", tag = 2 },
-        { "character_rowan", "It is. And it will not fall to the swarm-work that served against the rest. It takes blows the grunts could not, and the imps beside it only want to keep us busy while it reaches you.", tag = 3 },
+        { "character_rowan", "It is. It won't go down the way the others did, and the imps will throw themselves at us to keep us off it.", tag = 3 },
         { "character_avatar", "Then we cut it down and the imps stop mattering.", tag = 4 },
-        { "character_rowan", "Just so. Put it down and the road opens. Stay off its reach, let it come onto our line, and we end this at the gate rather than inside it. Ready when you are.", tag = 5 },
+        { "character_rowan", "Then stay out of its reach, and let it come to us.", tag = 5 },
     },
 }

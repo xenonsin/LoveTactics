@@ -3,6 +3,10 @@
 return {
     name = "The Bastion",
     class = "knight",
+    -- THE SHOPKEEPER'S FACE. Read by the shop's keeper pane (ui/panels/shop.lua) and by any
+    -- scene this house speaks in. A vendor is its own person, not the companion its line earns:
+    -- see Shop:drawKeeper for the version where the two were one and why it was reversed.
+    portrait = "assets/portraits/bastion.png",
     description = "An order that measures a knight by what they refused to abandon.",
     sin = "sloth",
     -- The companion this house's line earns. Authored here rather than derived: the pairing is a design

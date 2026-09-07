@@ -1,41 +1,39 @@
 -- Conversation authored inline (English); localization ids (`tag`) are stamped by
 -- tools/extract_strings.lua and must not be hand-edited. See models/conversation.lua.
 --
--- The first scene in the game. Its job is to spend twenty seconds in a house before burning it: the
--- player is the baron of Bellmere's child, and the people who die that night have to stand on screen
--- first or their deaths are a fact in a document rather than a loss.
+-- The first scene in the game, and it OPENS IN THE ALARM -- no domestic beat, and the avatar does not
+-- speak in it. Five lines from the first word to the order that sends the player at the lane.
 --
--- ELLIS IS THE BODY THE PLAYER DID NOT CHOOSE. Character creation offers two and only one of them is
--- you; the other is your sibling, and it is the other one's face standing here. That costs no art
--- (the portrait is resolved in models/conversation.lua's `speaker`, beside the avatar's own override)
--- and it turns a menu choice made before the first line into something the player loses. Ellis is
--- addressed by name and never by relation -- a body is a sprite set and never a gender label
--- (docs/story.md), so "sister" and "brother" are both wrong here by construction.
+-- BRYN IS THE BODY THE PLAYER DID NOT CHOOSE. Creation offers two; the other one is your sibling and
+-- is standing here. Costs no art (the portrait resolves off `player.body` in models/conversation.lua's
+-- `speaker`). Addressed by name and never by relation -- a body is a sprite set, not a gender label --
+-- so ONE WORD carries the family: Rowan's "get father onto the west road", said to Bryn in front of
+-- the avatar. It is load-bearing; do not lose it in a trim.
 --
--- Odo is the household's steward, and he is the alarm. He is authored `enters`, so he is NOT on stage
--- for the domestic opening and walks on with the fire (ui/dialogue.lua) -- a man already standing in
--- the room has spent his entrance before he opens his mouth, which is the whole value of the beat.
--- He does not survive the night (see prologue_flee): a surviving member of the household is a witness,
--- and every scene where the capital turns the avatar away becomes a scene the player argues with.
+-- Bryn is also the alarm, and names the rift. Nobody glosses it: a hole standing open above your own
+-- field is not arcane knowledge. What one IS gets sold two scenes later, by somebody whose trade it is
+-- (the city guard, at the capital's gate). The household's steward used to carry the fire in; cutting him
+-- is what lets the scene open on the alarm at all.
 --
--- Rowan is already sworn here -- she is the Order's knight on the post Bellmere sits behind, and the
--- baron's child is what that posting turned into. She taught the avatar the sword, which is the only
--- reason a small holding's child can hold one. The oath she says in the ash afterwards is NOT this
--- assignment; see prologue_flee for the difference, which is the whole of her line.
+-- ROWAN IS AUTHORED `enters` (ui/dialogue.lua): off stage for Bryn's two lines, and the report is what
+-- she arrives TO. She brings a lane and one order each -- Bryn away, the avatar kept -- which is how
+-- the sibling leaves alive and is dead by prologue_flee without the player watching. The scene ends on
+-- the order that keeps them; the avatar objecting to it would be the player's reluctance written into
+-- their mouth before they have any.
+--
+-- No wall: the rift opened inside the holding's own fields, so the east wall is on the wrong side of
+-- it and the prologue turns on the lane -- which is the board the fight is played on
+-- (data/arenas/tutorial_village.lua). Rowan is already sworn here; the oath in the ash is NOT this
+-- assignment, see prologue_flee.
 return {
     title = "Bellmere",
-    cast  = { { id = "sibling", name = "Ellis" }, { id = "steward", name = "Odo", enters = true }, "character_rowan", "character_avatar" },
+    cast  = { { id = "sibling", name = "Bryn" }, { id = "character_rowan", enters = true }, "character_avatar" },
 
     script = {
-        { "sibling", "Father wants the whole house at the table tonight, before the roads close.", tag = 1 },
-        { "character_avatar", "He'll say that, and then he'll eat where he always eats. At his desk.", tag = 2 },
-        { "sibling", "Then we sit and wait for him, {name}. Both of us. I am not doing it on my own.", tag = 3 },
-        { "steward", "Ser Rowan. {name}. There is fire on the eastern fields!", tag = 4 },
-        { "steward", "Not one rick burning. The whole line of them, from the mill road down to the east wall.", tag = 5 },
-        { "character_rowan", "That is an army. The Demon Lord's people burn a valley from its edge inward.", tag = 6 },
-        { "sibling", "I'll get father and the household onto the west road. Ring the bell, Odo, and keep ringing it.", tag = 7 },
-        { "character_rowan", "The east wall is nearest and it is thinnest. {name}, with me. We hold the lane while the town empties.", tag = 8 },
-        { "character_avatar", "And the house?", tag = 9 },
-        { "character_rowan", "Ellis will bring them out. Stay at my shoulder and do what I tell you.", tag = 10 },
+        { "sibling", "{name}. The east field is burning. All of it.", tag = 4 },
+        { "sibling", "There's a rift open above it. Things are climbing out onto the road.", tag = 5 },
+        { "character_rowan", "I've come from that field. The wall's no good to us. They're already past it.", tag = 6 },
+        { "character_rowan", "Bryn. The bell, then every door on the market row. Get father onto the west road.", tag = 7 },
+        { "character_rowan", "There's one lane up from that field. {name}, with me. We hold it while the town gets out.", tag = 8 },
     },
 }

@@ -1210,4 +1210,33 @@ return {
         assert(quest.map.objective.enemyCap == false, "the descriptor's own stair is exempt")
         assert(quest.map.objectives[1].enemyCap == false, "...and so is the one on the ends list")
     end },
+
+    { name = "the AI controls unlock on the first floor reached, not before", fn = function()
+        -- Tactics (the rule list) and Auto (the switch that hands the turn to it) are one feature seen
+        -- twice, so ONE predicate gates both -- states/battle.lua's autoAllowed and the party panel's
+        -- `tactics` opt both call this. A button that could stand there with no tab behind it to
+        -- explain what it does is the failure this pins.
+        local p = Player.new()
+        assert(not Descent.tacticsUnlocked(p), "a company that has never gone down is not offered them")
+        Descent.reached(p, 1)
+        assert(Descent.tacticsUnlocked(p), "one floor is the whole gate (Descent.TACTICS_DEPTH)")
+        -- Read off `deepest`, which is monotone, so climbing out cannot take the feature away again.
+        Descent.reached(p, 1)
+        assert(Descent.tacticsUnlocked(p), "and coming back up does not re-lock it")
+    end },
+
+    { name = "the Tactics window is a one-way mark, independent of the unlock", fn = function()
+        -- Two marks and not one, for the same reason the tally's pair are: the unlock happens
+        -- underground and the window is read in the city, so between them sits a red dot on the Armory
+        -- (states/hub.lua's badge) that only the second mark puts out.
+        local p = Player.new()
+        Descent.reached(p, 1)
+        assert(Descent.tacticsUnlocked(p) and not Descent.tacticsTaught(p),
+            "unlocked and unread is exactly the state the dot draws on")
+        Descent.markTacticsTaught(p)
+        assert(Descent.tacticsTaught(p), "and reading the window puts it out")
+        local back = Save.restore(reserialize(Save.snapshot(p)))
+        assert(Descent.tacticsUnlocked(back), "the unlock rides the save on `deepest`...")
+        assert(Descent.tacticsTaught(back), "...and the window is not shown a second time")
+    end },
 }

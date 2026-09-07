@@ -12,6 +12,10 @@
 return {
     name = "The Undercroft",
     class = "rogue",
+    -- THE SHOPKEEPER'S FACE. Read by the shop's keeper pane (ui/panels/shop.lua) and by any
+    -- scene this house speaks in. A vendor is its own person, not the companion its line earns:
+    -- see Shop:drawKeeper for the version where the two were one and why it was reversed.
+    portrait = "assets/portraits/undercroft.png",
     description = "No sign, no door you'd notice. Everything inside belonged to someone else.",
     sin = "greed",
     -- The companion this house's line earns; see data/vendors/bastion.lua for why it is authored here.

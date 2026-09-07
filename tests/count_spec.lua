@@ -213,13 +213,13 @@ return {
     { name = "the two marks are one-way and independent", fn = function()
         local p = Player.new()
         assert(not Descent.everClimbedOut(p), "a fresh company has never turned back")
-        assert(not Descent.tallyTaught(p), "and nobody has explained the tally to it")
+        assert(not Descent.tallyTaught(p), "and nobody has read what the tally is for")
         Descent.markClimbedOut(p)
         assert(Descent.everClimbedOut(p), "the readout opens the instant the stair is taken")
         assert(not Descent.tallyTaught(p),
-            "but the scene has not played yet -- that is why these are two marks and not one")
+            "but its nugget has not been spent yet -- that is why these are two marks and not one")
         Descent.markTallyTaught(p)
-        assert(Descent.tallyTaught(p), "and it closes when her scene finishes")
+        assert(Descent.tallyTaught(p), "and it closes on the next descent (states/gate.lua)")
         -- One-way: the count falling back to nought must not un-teach anything.
         local run = Descent.new(p, 1)
         Descent.advance(run, p)
@@ -233,7 +233,7 @@ return {
         Descent.markTallyTaught(p)
         local back = Save.restore(Save.decode("return " .. Save.encode(Save.snapshot(p), 0)))
         assert(Descent.everClimbedOut(back), "the readout stays open across a load")
-        assert(Descent.tallyTaught(back), "and she does not explain it twice")
+        assert(Descent.tallyTaught(back), "and the nugget is not shown twice")
     end },
 
     { name = "a new lap opens on a rift nobody has left unpruned", fn = function()
@@ -247,7 +247,7 @@ return {
         Player.newGamePlus(p)
         assert(Descent.count(p) == 0, "a new lap begins on a quiet rift")
         assert(Descent.everClimbedOut(p) and Descent.tallyTaught(p),
-            "but the marks are things this player did and was told, and carry")
+            "but the marks are things this player did and was shown, and carry")
     end },
 
     { name = "a circle sealed underground takes its general out of the finale", fn = function()

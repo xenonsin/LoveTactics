@@ -12,8 +12,8 @@
 -- stay unique across the whole tree.
 --
 -- A SECOND return value maps each id back to the file it came from
--- ("data/conversations/prologue/conversation_prologue_sponsor.lua"), which the id alone cannot
--- say once subfolders are in play -- knowing a scene is `conversation_prologue_sponsor` does not
+-- ("data/conversations/prologue/conversation_prologue_arrival.lua"), which the id alone cannot
+-- say once subfolders are in play -- knowing a scene is `conversation_prologue_arrival` does not
 -- tell you it lives under prologue/. It is returned rather than folded into the defs so nothing
 -- downstream has to know it exists (`local defs = Registry.load(...)` is unchanged), and it is what
 -- lets a debug affordance open a blueprint's source (see models/debug.lua's openFile).

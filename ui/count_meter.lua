@@ -1,9 +1,9 @@
 -- ISELLE'S TALLY, drawn. One widget, three surfaces, so the player learns to read it once.
 --
 -- WHAT IT SHOWS is models/descent.lua's count: what the company has left forming behind it. It climbs
--- when they come back up the stair early and falls when they go deeper, and the fiction for it is the
--- first conversation in the game (data/conversations/prologue/conversation_prologue_sponsor.lua --
--- nothing down there is born, it forms, and the trade is paid by the floor to keep the number down).
+-- when they come back up the stair early and falls when they go deeper. A tutorial window explains the
+-- whole thing -- the rates, the ceiling and what filling it costs -- the first time this widget is on
+-- screen (states/gate.lua, ui/panels/tutorial_note.lua).
 --
 -- MARKS RATHER THAN A BAR, and that is the one real decision in this file. The thing being shown is an
 -- INTEGER that moves one step at a time; a continuous fill would claim a continuous quantity and hide

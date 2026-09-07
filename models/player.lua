@@ -1222,7 +1222,7 @@ function Player.newGamePlus(player)
     -- fresh one would open it on a breach warning earned by a company that has since won.
     --
     -- `climbedOut` and `tallyTaught` are deliberately NOT reset: both are one-way marks about things
-    -- this player has done and been told, and re-teaching the tally is not a reward (the same argument
+    -- this player has done and been shown, and re-teaching the tally is not a reward (the same argument
     -- Save.snapshot makes for the visited-vendor flags).
     player.count = 0
     -- A supper is bought for one expedition. The last run's is not owed to the first day of the next.

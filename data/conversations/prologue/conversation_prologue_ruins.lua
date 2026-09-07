@@ -1,41 +1,38 @@
 -- Conversation authored inline (English); localization ids (`tag`) are stamped by
 -- tools/extract_strings.lua and must not be hand-edited. See models/conversation.lua.
--- NOTE FOR WHOEVER ADDS THE NEXT LINE HERE: `extract-strings` REWRITES this file when it stamps an
--- untagged line, and its serializer only knows about `title`, `cast` and `script` -- comments and any
--- other field are dropped on the way through. Author the line, run the tool, then put this header
--- back. Once every line carries a tag the tool leaves the file alone.
+-- This header survives a re-stamp: the tool reads the leading run of `--` lines back off disk and
+-- re-emits it (tools/extract_strings.lua, `headerLines`). A comment further DOWN the file does not.
 --
--- Played when the overworld map first appears (the flight leg's `opening` in states/prologue.lua,
--- fielded by states/game.lua). Staged as an ORDINARY scene -- full portraits, title, the usual dim --
--- exactly like prologue_intro and prologue_flee either side of it. It is a story beat that happens to
--- be triggered by a map rather than a beat about the map, and the compact `overScene` staging is kept
--- for the one case that genuinely needs it: a GUIDED fight's opening, where the board underneath is
--- being read tile by tile and the mentor is about to speak from the same gutter panel
--- (data/conversations/prologue_village.lua). Every other battle opening is staged like this one.
+-- Played when the overworld map first appears (the flight leg's `opening` in states/prologue.lua).
+-- Staged as an ORDINARY scene, like the beats either side of it; the compact `overScene` staging is
+-- kept for a GUIDED fight's opening, where the board is being read tile by tile
+-- (conversation_prologue_village.lua).
 --
--- It has three jobs:
+-- Three jobs:
 --
---   * The AFTERMATH. prologue_flee is a character beat -- Rowan's oath, sworn over her own dead
---     ground, and it belongs to the village. This is the wider shot: the valley, not the lane, and
---     the scale of what the Demon Lord's army actually did in a single night.
---   * The MAP. It is the first one the player has seen, and it arrives with no explanation --
---     markers, fog, a road. Naming what those are FOR (survivors to reach, a capital to reach before
---     the demons do) turns a screen of icons into an errand. Said one scene earlier, on the black
---     between beats, it would have been describing something not yet on screen.
---   * The AVATAR'S VOICE. This is the first time the player's own character speaks, and it is the
---     right place for it: the survivor of the burning village is the one person here with standing
---     to ask whether anyone else got out. Rowan carries the answers, but the errand -- go and find
---     them -- is the avatar's line, not hers. She agrees with it rather than issuing it, which is
---     the whole difference between a companion and a quest-giver.
+--   * The SCALE. prologue_flee is one town wide. This is the valley, and what it widens to is that
+--     BELLMERE'S WAS NOT THE ONLY FIELD THAT OPENED -- every column of smoke is another one. First
+--     time the game says the rifts are a condition of the world rather than the player's bad night.
+--     Rowan does NOT know why they open; she is reading smoke. The cause is Iselle's to sell, and a
+--     knight who already had it would leave that scene with nothing.
+--   * The MAP. The player's first one, arriving with no explanation -- markers, fog, a road. Naming
+--     what they are FOR turns a screen of icons into an errand.
+--   * The AVATAR'S VOICE. The errand -- go and find them -- is the avatar's line, not Rowan's. She
+--     agrees with it rather than issuing it, which is the difference between a companion and a
+--     quest-giver.
+--
+-- "Safe behind its walls" is dramatic irony and stays: the capital is sitting on the largest rift
+-- there is, which is the sponsor scene's to reveal.
 return {
     title = "The Road",
     cast  = { "character_avatar", "character_rowan" },
 
     script = {
         { "character_avatar", "Bellmere is gone. I don't know who else made it out.", tag = 6 },
-        { "character_rowan", "Many did. We held that gate long enough for them to run.", tag = 2 },
-        { "character_rowan", "Look down the valley, {name}. Those villages burned too, with no one to hold a gate. Survivors will be hiding in the hills.", tag = 3 },
+        { "character_rowan", "Many did. We held that lane long enough.", tag = 2 },
+        { "character_rowan", "Look down the valley, {name}. Ours wasn't the only field that opened last night.", tag = 3 },
+        { "character_rowan", "Nobody stood in the road at those. Whoever ran is out in the hills.", tag = 7 },
         { "character_avatar", "Then let's find them.", tag = 4 },
-        { "character_rowan", "Good! We take the king's road to the capital, {name}. We'll be safe behind its walls, and we save anyone we can along the way.", tag = 5 },
+        { "character_rowan", "The king's road to the capital, then. We'll be safe behind its walls, and we save who we can on the way.", tag = 5 },
     },
 }

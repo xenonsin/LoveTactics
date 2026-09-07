@@ -29,6 +29,9 @@ local Menu = require("ui.menu")
 local Theme = require("ui.theme")
 local SeedReadout = require("ui.seed_readout") -- the numbers behind the stair, in a dev build only
 local Picker = require("ui.expedition_picker") -- four plates over the company; who goes down
+local CoachBubble = require("ui.coach_bubble") -- the first visit's one instruction, pinned to the row
+local TutorialNote = require("ui.panels.tutorial_note") -- ...and the window that explains the tally
+local Locale = require("models.locale")        -- ...and the key cap it wears, or nil on the mouse
 
 local gate = {}
 
@@ -68,6 +71,13 @@ local countMeter = require("ui.count_meter").new()
 -- and re-snapshotting there would bank a run's finds just for walking downstairs.
 local function descend()
     gate.panel = nil
+    -- The first visit's coach bubble is spent HERE, by the deed, not by the screen having been looked
+    -- at -- the same rule the city's door coaching keeps (states/hub.lua). Saved with the descent so a
+    -- player who quits on floor one does not come back up to be taught the button again.
+    if not Descent.gateCoached(gate.player) then
+        Descent.markGateCoached(gate.player)
+        Player.save()
+    end
     local run = gate.run or Descent.new(gate.player)
     run.entry = nil
     Player.active = gate.player
@@ -108,6 +118,9 @@ function gate:build()
         items[#items + 1] = {
             label = "Down to floor " .. Descent.depth(gate.run),
             action = descend,
+            -- THE ONE ROW THE FIRST VISIT COACHES. Marked here rather than found by index, because the
+            -- row above it is conditional and an index would silently move (see gate.draw).
+            coach = true,
         }
     end
     -- THERE IS NO "WAIT A DAY" ROW, and its deletion is the design rather than a tidy-up.
@@ -173,18 +186,37 @@ function gate.enter(self, opts)
     require("ui.screen_fx").reset()
     gate:build()
 
-    -- SHE EXPLAINS THE TALLY, ONCE, THE FIRST TIME THEY COME BACK UP EARLY. The mark that opens the
-    -- readout is set the instant the stair is taken (states/game.lua), so by the time this runs the
-    -- marks are already on screen and she has something to point at. The second mark is set when the
-    -- scene has actually finished, which is what survives a player quitting in the middle of it.
+    -- THE TALLY EXPLAINS ITSELF, ONCE, THE FIRST TIME IT IS ON SCREEN -- which is the first time the
+    -- company has turned back, since that mark is what draws the meter at all (Descent.everClimbedOut,
+    -- set the instant the stair is taken). So by the time this opens, the marks are already behind it.
     --
-    -- Not gated on `opts` for that reason: a flag passed through the switch would be gone on the next
-    -- load, and this is the only place the mechanic is ever explained.
+    -- A WINDOW RATHER THAN A BUBBLE, because the tally is a FEATURE and not a control: a number, three
+    -- rules that move it and a failure state at the top. A tail on the readout can say "this climbs when
+    -- you come up"; it cannot say what filling it costs. See ui/panels/tutorial_note.lua for where that
+    -- line is drawn. The descend row keeps its bubble -- "press this" is exactly what a bubble is for.
+    --
+    -- It replaces a ten-line scene in which Iselle stood at the stair and said the same thing in
+    -- character. The mark is spent when the window is CLOSED (a modal has certainly been read), and it
+    -- is saved there rather than passed through the switch, which would not survive a quit.
     if Descent.everClimbedOut(gate.player) and not Descent.tallyTaught(gate.player) then
-        require("models.conversation").play("conversation_rift_tally", function()
-            Descent.markTallyTaught(gate.player)
-            Player.save()
-        end)
+        gate.panel = TutorialNote.new({
+            title = "The Tally",
+            body = "Beside the stair is a count of what is forming on the floors you have left behind. "
+                .. "Nothing down there is born -- it forms, and it does not stop.\n"
+                .. "\n"
+                .. "Climb out early and the count rises by " .. Descent.COUNT_STAIR
+                .. ". Lose the company and it rises by " .. Descent.COUNT_WIPE
+                .. ". Every new floor you reach takes one back off, and sealing a circle takes off "
+                .. Descent.COUNT_SEAL .. ".\n"
+                .. "\n"
+                .. "Fill all " .. Descent.COUNT_MAX .. " marks and what is below stops waiting to be "
+                .. "found. It comes up the stair on its own -- which is what happened to Bellmere.",
+            onClose = function()
+                gate.panel = nil
+                Descent.markTallyTaught(gate.player)
+                Player.save()
+            end,
+        })
     end
 end
 
@@ -238,12 +270,36 @@ function gate.draw()
     Theme.set(Theme.accentAmber)
     love.graphics.printf((p.gold or 0) .. " gold", Scale.WIDTH / 2 + 40, 178, 300, "right")
 
-    -- ...and the other half of the ledger, once she has explained what it is (Descent.everClimbedOut).
+    -- ...and the other half of the ledger, once the company has ever turned back (Descent.everClimbedOut).
     if Descent.everClimbedOut(p) and gate.run then
         countMeter:draw(Scale.WIDTH / 2 + 40, 250, 300, gate.player)
     end
 
     if gate.menu then gate.menu:draw() end
+
+    -- THE FIRST VISIT'S ONE INSTRUCTION, pinned to the row that takes them down.
+    --
+    -- This replaces a whole scene. A sponsor used to be standing at the top of the stair the first time
+    -- the company walked in, and the last thing she did was tell them to go down -- twenty lines to
+    -- deliver one instruction the player could not otherwise guess. The instruction is now a bubble on
+    -- the button, which is where an instruction belongs (ui/coach_bubble.lua is the half of the tutorial
+    -- allowed to say "click"), and it is spent by the DEED: it stands until they actually descend, so a
+    -- player who walks in, reads the company over and walks back out is coached again next time.
+    --
+    -- Not drawn under a panel or over the hover card -- a modal owns the screen it opened, and a bubble
+    -- pointing at a button behind it is pointing at nothing the player can press.
+    if not gate.panel and gate.menu and not Descent.gateCoached(gate.player) then
+        for _, item in ipairs(gate.menu.items) do
+            if item.coach and item.x then
+                local key = Locale.selectKey() -- "Enter" / "A", or nil on the mouse
+                local text = key and "to take the stair down." or "Click to take the stair down."
+                CoachBubble.draw(text, { x = item.x, y = item.y, w = item.w, h = item.h },
+                                 { prefer = "above", key = key })
+                break
+            end
+        end
+    end
+
 
     -- The hovered body's card, LAST of the screen's own layers. A full one is most of the screen tall
     -- (ui/body_tooltip.lua), so drawn with the company it would be clipped by the two buttons under it;

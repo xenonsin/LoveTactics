@@ -37,6 +37,12 @@ local Quest = require("models.quest")
 
 local Errand = {}
 
+-- A COMPANION IS MET IN TOWN AND RECRUITED BELOW. They stand behind their house's counter -- they turn
+-- up there because the company has been fighting in their discipline, which is the shop's own
+-- `unlockClassLevel` -- and that meeting is free. What costs something is the posting: one descent
+-- offers one of them (Descent.dealCompanion), on a floor it rolls for, drawn only from the counters
+-- this company has actually walked into.
+--
 -- THE ASK A HOUSE'S COMPANION MAKES: that class's own `slot_01`, or nil if it has none.
 --
 -- Named for the slot rather than taken off the front of a sorted list, and that is not a nicety. The
@@ -88,8 +94,8 @@ end
 -- The floor a companion's ask is found on: the one they were met on, which is where it was marked.
 --
 -- Falls back to the first floor for an ask that somehow has no record, so a posting can never point at
--- a floor that does not exist. One companion is dealt per floor (Descent.openersAt), so a run meets
--- them a floor at a time rather than all at once in the shallows.
+-- a floor that does not exist. A descent deals ONE companion, onto a floor it rolls for
+-- (Descent.dealCompanion), so what this answers is "the floor that run put them on".
 function Errand.floorFor(player, vendorId)
     local opener = Errand.opener(vendorId)
     return (opener and ((player and player.errands) or {})[opener]) or 1

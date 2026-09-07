@@ -10,9 +10,17 @@
 -- a square of seven locked plates. That is a door onto a corridor of doors, and the one thing it can
 -- teach ("come back when you have played something") is a sentence the card says by not being there.
 --
+-- ...AND NOT BEFORE THE STAIR HAS BEEN WALKED (`unlockDepth`), which is the gate on top of that one.
+-- The class level is what the square is FOR; the depth is about the first morning, which has exactly one
+-- thing to teach. A prologue that ends in two won fights can bank a class rung on its way into the city,
+-- so the tenant gate alone could stand this card open on the plaza next to the Rift -- a second door on
+-- the one screen where there should be no second door. Both gates ANDed, and the square arrives on the
+-- way back up from floor one at the earliest.
+--
 -- IT IS NOT THE MARKET, and the plaza carries both. The Market is the town's counter: plain kit and
--- three rolled rows a day, open on the first morning, any class (models/market.lua). A house is one
--- class's whole ladder, never rolled, growing as that class does. Day-one shopping and earned shopping.
+-- three rolled rows a day, any class, and only the first descent in its way (models/market.lua). A house
+-- is one class's whole ladder, never rolled, growing as that class does. Broad shopping and earned
+-- shopping, one card each.
 --
 -- `state` rather than `panel`: the square is a whole screen, like the Gate. A pop-up would have to host
 -- a second pop-up -- the shop panel opens over it -- and two stacked overlays over a painted city is a
@@ -27,5 +35,6 @@ return {
     state = "houses",
     description = "Seven shelves around one square, each opened by climbing its class.",
     unlockAnyHouse = true, -- see models/building.lua
+    unlockDepth = 1,       -- ...and not on the first morning; see above
     unlockPrestige = 1,
 }

@@ -642,6 +642,13 @@ function Save.snapshot(player)
         -- must not come off the plaza the morning after it was earned (models/descent.lua).
         climbedOut = player.climbedOut or nil,
         tallyTaught = player.tallyTaught or nil, -- ...and whether she has explained it. See Descent.tallyTaught.
+        -- ...and whether the stair has ever been taken, which is what spends the Rift's own first-visit
+        -- coaching (states/gate.lua's bubble on the descend row). Same one-way shape: without it here, a
+        -- player who quits on floor one is taught the button again on the way back up.
+        gateCoached = player.gateCoached or nil,
+        -- ...and whether the window explaining Tactics and Auto has been read. The UNLOCK itself is not
+        -- saved: it is read off `deepest`, which already rides this snapshot (Descent.tacticsUnlocked).
+        tacticsTaught = player.tacticsTaught or nil,
         -- ...AND THE TALLY ITSELF, which used to ride on the run (models/descent.lua's snapshot) and now
         -- rides here beside the mark that gates its readout. The note above is the reason it had to move:
         -- it said the tally "falls back to nought the moment they descend again", which was survivable
@@ -683,6 +690,21 @@ function Save.snapshot(player)
         -- absorbed by the next call. (`shelfRung` stood here and watermarked class LEVELS, which
         -- stopped meaning anything when a rung stopped putting a named ware on the counter.)
         marketRacks = player.marketRacks and next(player.marketRacks) and player.marketRacks or nil,
+        -- WHAT IS ALREADY OFF TODAY'S RACK (Market.recordSold). One each of the three rolled rows per
+        -- day, so which of them this company has taken has to outlive a save -- otherwise a player who
+        -- quits and comes back finds the day's news all back on the counter, which is the reopen-until-
+        -- it-says-yes lever the deterministic roll exists to close. Written with its day, so a record
+        -- that is not today's is inert rather than wrong. Purely additive: absent on an older save,
+        -- which reads as a company that has bought nothing today.
+        marketSold = (function()
+            local rec = player.marketSold
+            if not (rec and rec.day) then return nil end
+            local ids = nil
+            for id, taken in pairs(rec.ids or {}) do
+                if taken then ids = ids or {}; ids[id] = true end
+            end
+            return ids and { day = rec.day, ids = ids } or nil
+        end)(),
         newStock = newStock,
         lastDeployed = lastDeployed,
         roster = roster,
@@ -997,6 +1019,10 @@ function Save.restore(snap)
         wounded = snap.wounded == true, -- ...and no history of any, which is what an older save reads as
         climbedOut = snap.climbedOut == true, -- ...and has never turned back, which is what one reads as too
         tallyTaught = snap.tallyTaught == true, -- ...so nobody has had to explain the tally to them yet
+        -- ...and an older save has not been coached at the stair by this flag. Harmless where it is
+        -- wrong: the worst case is one bubble over a button that company has pressed before.
+        gateCoached = snap.gateCoached == true,
+        tacticsTaught = snap.tacticsTaught == true, -- ...nor read the Tactics window, same worst case
         -- The tally (Descent.count). READ OFF THE RUN AS A FALLBACK, because that is where every save
         -- written before the move put it -- and it is read from the RAW snapshot rather than from the
         -- restored run, which no longer carries the field at all. A company mid-descent when this landed
@@ -1031,6 +1057,18 @@ function Save.restore(snap)
         -- simply never matches a live one and is inert, which is the same forgiving default the
         -- dots above take.
         marketRacks = snap.marketRacks or {},
+        -- Today's sold rows, restored as written. An id that has since left data/ is dropped the way
+        -- every other remembered id is, and a record from another day is left alone rather than
+        -- discarded here: Market.soldToday is what decides it has expired, and it is the only reader.
+        marketSold = (function()
+            local rec = snap.marketSold
+            if type(rec) ~= "table" or type(rec.day) ~= "number" then return nil end
+            local ids = {}
+            for id, taken in pairs(rec.ids or {}) do
+                if taken and known(Item.defs, id) then ids[id] = true end
+            end
+            return { day = rec.day, ids = ids }
+        end)(),
         newStock = newStock,
         lastDeployed = lastDeployed,
         roster = roster,

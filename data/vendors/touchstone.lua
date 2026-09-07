@@ -15,6 +15,8 @@
 -- the price tag.
 return {
     name = "The Touchstone",
+    -- The shopkeeper's face, for the greeting this counter plays and any scene it speaks in.
+    portrait = "assets/portraits/touchstone.png",
     sells = false, -- sells no ITEMS; its whole offer is the reading (models/identify.lua)
     description = "Bring up what nobody can name. The stone will say what it is.",
 }

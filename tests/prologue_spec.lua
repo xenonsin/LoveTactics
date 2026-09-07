@@ -123,15 +123,15 @@ return {
     {
         name = "the sibling in the burning town wears the body the player did not choose",
         fn = function()
-            -- Ellis costs no art: whichever of the two creation bodies the avatar is not, the sibling
+            -- Bryn costs no art: whichever of the two creation bodies the avatar is not, the sibling
             -- is. Nothing else in the game resolves a portrait off `player.body` except the avatar's
             -- own override, so this pins the second one (models/conversation.lua, `speaker`).
             local prev = Player.active
             for body, other in pairs({ [1] = 2, [2] = 1 }) do
                 Player.active = Player.new()
                 Player.active.body = body
-                local who = Conversation.speaker("sibling", { name = "Ellis" })
-                assert(who.name == "Ellis", "the cast entry still names the sibling")
+                local who = Conversation.speaker("sibling", { name = "Bryn" })
+                assert(who.name == "Bryn", "the cast entry still names the sibling")
                 assert(who.portrait == "assets/portraits/avatar_" .. other .. ".png",
                        "body " .. body .. " must leave the sibling wearing body " .. other)
             end
@@ -140,23 +140,30 @@ return {
             Player.active.body = 1
             Player.applyAvatarBody(Player.active)
             local me = Conversation.speaker("character_avatar")
-            local them = Conversation.speaker("sibling", { name = "Ellis" })
+            local them = Conversation.speaker("sibling", { name = "Bryn" })
             assert(me.portrait ~= them.portrait, "the sibling is the OTHER body, never a second you")
             Player.active = prev
         end,
     },
     {
-        name = "the steward is off stage until the fire, and walks on when he speaks",
+        name = "Rowan is off stage until the fire, and walks on when she speaks",
         fn = function()
-            -- The alarm is worth nothing said by a man who has been standing in the room since the
-            -- first line, so Odo is authored `enters` (ui/dialogue.lua). This pins the data end of
-            -- that -- the widget itself needs love.graphics and cannot be built headless.
+            -- Bryn carries the alarm from inside the room and names the rift; Rowan is the one who
+            -- arrives to it, so she is authored `enters` (ui/dialogue.lua) -- a knight already standing
+            -- in the domestic opening has spent her entrance before she opens her mouth. This pins the
+            -- data end of that -- the widget needs love.graphics and cannot be built headless.
             local def = Conversation.defs["conversation_prologue_intro"]
             local entering, firstLine = {}, {}
             for _, raw in ipairs(def.cast) do
                 if type(raw) == "table" and raw.enters then entering[raw.id] = true end
             end
-            assert(entering.steward, "Odo must enter rather than open the scene on stage")
+            assert(entering.character_rowan, "Rowan must enter rather than open the scene on stage")
+            -- The sibling is the alarm and so must be present from the first line, not walked on.
+            for _, raw in ipairs(def.cast) do
+                if type(raw) == "table" and raw.id == "sibling" then
+                    assert(not raw.enters, "Bryn opens the scene on stage -- they are the one the night takes")
+                end
+            end
             for i, node in ipairs(def.script) do
                 local by = node.by or node[1]
                 if by and not firstLine[by] then firstLine[by] = i end
