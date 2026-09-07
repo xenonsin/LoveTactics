@@ -63,4 +63,25 @@ return {
             end
         end,
     },
+    {
+        -- A UTF-8 byte-order mark is the one malformation the compile check above cannot see: LuaJIT
+        -- skips it, so the desktop game and this whole suite run happily, while the web build --
+        -- love.js is plain Lua 5.1, which has no such tolerance -- dies at require time with
+        -- "unexpected symbol near '<mojibake>'". PowerShell's Set-Content -Encoding utf8 writes one
+        -- by default, so any tool or hand-edit that goes through it can plant a crash that only the
+        -- browser will ever report.
+        name = "no Lua file opens with a byte-order mark",
+        fn = function()
+            local checked = 0
+            for _, dir in ipairs({ "states", "ui", "models", "data", "tests", "tools" }) do
+                for _, path in ipairs(chunksIn(dir)) do
+                    local head = love.filesystem.read(path, 3)
+                    assert(head ~= "\239\187\191",
+                        path .. " starts with a UTF-8 BOM -- LuaJIT ignores it, love.js does not")
+                    checked = checked + 1
+                end
+            end
+            assert(checked > 0, "no Lua files found -- the check is testing nothing")
+        end,
+    },
 }

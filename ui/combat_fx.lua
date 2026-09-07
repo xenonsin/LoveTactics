@@ -1,4 +1,4 @@
-﻿-- Combat animation controller. The combat model (models/combat.lua) resolves an action instantly
+-- Combat animation controller. The combat model (models/combat.lua) resolves an action instantly
 -- and headlessly; it only records small plain-data cues (Combat.pushFx -> combat.fx). This view-side
 -- controller turns a drained cue list into the reactions that make an exchange legible: a damage
 -- number floats up, the struck unit shakes + flashes and its HP bar drains smoothly, the attacker

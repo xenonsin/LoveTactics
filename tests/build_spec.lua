@@ -1,4 +1,4 @@
-﻿-- Tests for models/build.lua: freezing a player's team and the tactics they wrote for it, so it can
+-- Tests for models/build.lua: freezing a player's team and the tactics they wrote for it, so it can
 -- be fought while its author is offline.
 --
 -- The load-bearing claim is that the GAMBITS survive. A build that brings back the right bodies with

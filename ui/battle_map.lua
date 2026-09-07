@@ -1277,13 +1277,13 @@ function BattleMap:drawUnits()
         local rot, sx, sy = 0, 1, 1
         local glow, gr, gg, gb = 0, 0, 0, 0
         local awaiting = false
-        if self:heldUnit(u) then goto continue end -- a summon not yet revealed draws nothing
-        if self.fx then
+        local held = self:heldUnit(u) -- a summon not yet revealed draws nothing
+        if self.fx and not held then
             offX, offY, flash, fade, rot, sx, sy = self.fx:spriteState(u, s)
             glow, gr, gg, gb = self.fx:castGlow(u)
             awaiting = self.fx:awaiting(u)
         end
-        if u.alive or fade > 0 or awaiting then
+        if not held and (u.alive or fade > 0 or awaiting) then
             -- The body fills its whole footprint box (one cell for a 1×1 unit). Sprite and token are
             -- sized to and centred in the box, so a 2×2 ogre draws twice as tall and wide as a man.
             local wx, wy, bw, bh = self:cellBox(u.x, u.y, u.w, u.h)
@@ -1381,7 +1381,6 @@ function BattleMap:drawUnits()
                 end
             end
         end
-        ::continue::
     end
 end
 

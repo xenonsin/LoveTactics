@@ -1,4 +1,4 @@
-﻿-- Tests for the tactical AI (models/ai.lua): the condition vocabulary, the posture layer, and the
+-- Tests for the tactical AI (models/ai.lua): the condition vocabulary, the posture layer, and the
 -- scored search over (stand tile, item, target). Pure logic only, so it runs headless.
 --
 -- The four cases that used to live in tests/combat_spec.lua under `planEnemyAction` are deliberately

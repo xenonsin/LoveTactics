@@ -1,4 +1,4 @@
-﻿-- Tests for the animation controller (ui/combat_fx.lua) -- specifically the one thing about it that
+-- Tests for the animation controller (ui/combat_fx.lua) -- specifically the one thing about it that
 -- is not a matter of taste: WHERE a sprite is drawn while a cue waits its turn.
 --
 -- The model resolves an exchange atomically, so a knocked-back unit's unit.x/unit.y read as the far

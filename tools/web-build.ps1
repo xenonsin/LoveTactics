@@ -217,21 +217,62 @@ function Invoke-LoveJs {
         }
     }
 
-    Set-ShippingPage
+    # Stamp each fetched artifact's URL with a hash of its own contents. Without this the browser
+    # keeps serving the PREVIOUS deploy's 28 MB game.data -- Pages hands it out as max-age=600
+    # under a name that never changes -- so a republished bundle goes on running the old Lua, and
+    # a crash that was fixed goes on crashing.
+    $gameJs, $loveJs = Set-CacheStamp
+
+    Set-ShippingPage $gameJs $loveJs
 
     $mb = (Get-ChildItem $Web -Recurse -File | Measure-Object -Property Length -Sum).Sum / 1MB
     $engine = if ($Threaded) { 'threaded' } else { 'compat' }
     Write-Host ("compiled -> build/web ({0:N1} MB total, {1})" -f $mb, $engine)
 }
 
+# Content-hashed URLs for the four artifacts a player's browser fetches. game.js asks for
+# game.data by a fixed name, love.js asks for love.wasm by a fixed name, and index.html asks for
+# both scripts. GitHub Pages serves every one of them with max-age=600 and offers no way to say
+# otherwise, so a returning player runs whatever mixture of old and new files their cache happens
+# to hold. Each URL carries ?v=<hash of that file>: a file that did not change keeps its URL and
+# its cached copy, one that did is fetched fresh. Per-file hashes rather than a single build
+# stamp for exactly that reason -- love.wasm is 4.7 MB and changes only when love.js is upgraded.
+# Returns the two script stamps, which the page hangs its <script> tags off.
+function Set-CacheStamp {
+    function Get-Stamp([string]$file) {
+        (Get-FileHash -Algorithm SHA256 -Path (Join-Path $Web $file)).Hash.Substring(0, 12).ToLower()
+    }
+
+    # These two patterns are love.js's generated glue, not ours. If an upgrade rewords either one,
+    # stop: a silently un-stamped URL is the whole bug this function exists to prevent.
+    $glue = @(
+        @{ file = 'game.js'; find = "REMOTE_PACKAGE_BASE = 'game.data'"; asset = 'game.data' },
+        @{ file = 'love.js'; find = 'wasmBinaryFile="love.wasm"';        asset = 'love.wasm' }
+    )
+    $utf8 = New-Object System.Text.UTF8Encoding $false
+    foreach ($g in $glue) {
+        $path = Join-Path $Web $g.file
+        $text = [System.IO.File]::ReadAllText($path)
+        if (-not $text.Contains($g.find)) {
+            throw "web-build: $($g.file) no longer contains [$($g.find)] -- love.js has changed its glue, and $($g.asset) would ship on an un-stamped URL that browsers keep serving stale"
+        }
+        $stamped = $g.find.Replace($g.asset, "$($g.asset)?v=$(Get-Stamp $g.asset)")
+        [System.IO.File]::WriteAllText($path, $text.Replace($g.find, $stamped), $utf8)
+    }
+
+    # Hashed after patching, so each script's own stamp covers the URL it was just given.
+    return (Get-Stamp 'game.js'), (Get-Stamp 'love.js')
+}
+
 # love.js writes a demo page: an 800x600 canvas on a sky-blue ground, no download progress, and
 # the engine started before the player has clicked anything. tools/web/index.html replaces it.
-# The emscripten glue (love.js, love.wasm, game.js, game.data) is left exactly as generated.
-function Set-ShippingPage {
+# The emscripten glue (love.js, love.wasm, game.js, game.data) is left exactly as generated,
+# apart from the cache stamps above.
+function Set-ShippingPage([string]$GameJs, [string]$LoveJs) {
     $template = Join-Path $PSScriptRoot 'web/index.html'
     if (-not (Test-Path $template)) { throw 'web-build: tools/web/index.html is missing' }
 
-    $html = (Get-Content $template -Raw).Replace('__TITLE__', 'Project Tactics').Replace('__MEMORY__', "$Memory")
+    $html = (Get-Content $template -Raw).Replace('__TITLE__', 'Project Tactics').Replace('__MEMORY__', "$Memory").Replace('__GAME_JS__', $GameJs).Replace('__LOVE_JS__', $LoveJs)
     # UTF-8 with no BOM: a BOM ahead of the doctype drops the browser into quirks mode.
     $utf8 = New-Object System.Text.UTF8Encoding $false
     [System.IO.File]::WriteAllText((Join-Path $Web 'index.html'), $html, $utf8)

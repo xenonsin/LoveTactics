@@ -1,4 +1,4 @@
-﻿-- Tests for the debug editor's blueprint writer (tools/write_character.lua): the round trip out of a
+-- Tests for the debug editor's blueprint writer (tools/write_character.lua): the round trip out of a
 -- live character and back into a data/characters/*.lua table.
 --
 -- Only the pure half is exercised -- M.serialize plus a loadstring -- because M.write touches the
