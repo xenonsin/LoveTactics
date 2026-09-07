@@ -349,26 +349,25 @@ return {
     ["line.conversation_prologue_flee.1"] = { en = "I can still see the hall from here.", ja = "" },  -- TODO
     ["line.conversation_prologue_flee.10"] = { en = "Away from it, and not alone. The capital, {name}. Tonight.", ja = "" },  -- TODO
     ["line.conversation_prologue_flee.11"] = { en = "I sent them to the west road. It was already cut off.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.2"] = { en = "There's nobody left to bring out, {name}. Your father. Bryn.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.2"] = { en = "There's nobody left to bring out, {name}. Your father is gone.", ja = "" },  -- TODO
     ["line.conversation_prologue_flee.4"] = { en = "You were told to keep me alive. You kept me alive.", ja = "" },  -- TODO
     ["line.conversation_prologue_flee.5"] = { en = "My orders were one line. Keep the baron's child alive. That's all I did tonight.", ja = "" },  -- TODO
     ["line.conversation_prologue_flee.6"] = { en = "The man who wrote them is dead. There's nobody left to give me another.", ja = "" },  -- TODO
     ["line.conversation_prologue_flee.8"] = { en = "So I'm giving myself one. We go on.", ja = "" },  -- TODO
     ["line.conversation_prologue_flee.9"] = { en = "Go on where? The field is still open.", ja = "" },  -- TODO
-    ["line.conversation_prologue_intro.4"] = { en = "{name}. The east field is burning. All of it.", ja = "" },  -- TODO
-    ["line.conversation_prologue_intro.5"] = { en = "There's a rift open above it. Things are climbing out onto the road.", ja = "" },  -- TODO
-    ["line.conversation_prologue_intro.6"] = { en = "I've come from that field. The wall's no good to us. They're already past it.", ja = "" },  -- TODO
-    ["line.conversation_prologue_intro.7"] = { en = "Bryn. The bell, then every door on the market row. Get father onto the west road.", ja = "" },  -- TODO
-    ["line.conversation_prologue_intro.8"] = { en = "There's one lane up from that field. {name}, with me. We hold it while the town gets out.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.2"] = { en = "Many did. We held that lane long enough.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.3"] = { en = "Look down the valley, {name}. Ours wasn't the only field that opened last night.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.4"] = { en = "Then let's find them.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.5"] = { en = "The king's road to the capital, then. We'll be safe behind its walls, and we save who we can on the way.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.6"] = { en = "Bellmere is gone. I don't know who else made it out.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.7"] = { en = "Nobody stood in the road at those. Whoever ran is out in the hills.", ja = "" },  -- TODO
-    ["line.conversation_prologue_village.2"] = { en = "Nothing marched on this town. It came up out of the field behind your father's house, and it has not stopped walking since.", ja = "" },  -- TODO
-    ["line.conversation_prologue_village.3"] = { en = "Two of them have seen us, and they will not come to you. Watch how I take mine.", ja = "" },  -- TODO
-    ["line.conversation_prologue_village.4"] = { en = "Look at it, {name}. The market row, the bell tower, the gate your father set the first stone in. All of it, inside a night.", ja = "" },  -- TODO
+    ["line.conversation_prologue_village.1"] = { en = "Look at the field, {name}! Bellmere is burning.", ja = "" },  -- TODO
+    ["line.conversation_prologue_village.2"] = { en = "That torn place above the fire is a rift. It opened at dusk.", ja = "" },  -- TODO
+    ["line.conversation_prologue_village.3"] = { en = "They open where they please, all over the world. No one has ever shut one.", ja = "" },  -- TODO
+    ["line.conversation_prologue_village.4"] = { en = "Demons climb out while it stands. More are coming up behind these.", ja = "" },  -- TODO
+    ["line.conversation_prologue_village.5"] = { en = "Your father has the town on the west road.", ja = "" },  -- TODO
+    ["line.conversation_prologue_village.6"] = { en = "This is the only lane up from the field. We hold it until they are clear, {name}!", ja = "" },  -- TODO
+    ["line.conversation_prologue_village.7"] = { en = "Two of them have seen us. Watch how I take mine.", ja = "" },  -- TODO
     ["line.conversation_touchstone_vendor_intro.1"] = { en = "Four houses dig that hole and not one of them trusts the other three to say what came out of it. So they pay me to say it. Everything that comes up unnamed comes up here.", ja = "" },  -- TODO
     ["line.conversation_touchstone_vendor_intro.10"] = { en = "Not on this counter.", ja = "" },  -- TODO
     ["line.conversation_touchstone_vendor_intro.11"] = { en = "No. I checked.", ja = "" },  -- TODO
@@ -513,9 +512,8 @@ return {
     ["title.conversation_hunters_lodge_vendor_intro"] = { en = "The Hunter's Lodge", ja = "" },  -- TODO
     ["title.conversation_prologue_arrival"] = { en = "The Capital", ja = "" },  -- TODO
     ["title.conversation_prologue_flee"] = { en = "Ashes", ja = "" },  -- TODO
-    ["title.conversation_prologue_intro"] = { en = "Bellmere", ja = "" },  -- TODO
     ["title.conversation_prologue_ruins"] = { en = "The Road", ja = "" },  -- TODO
-    ["title.conversation_prologue_village"] = { en = "The Lane", ja = "" },  -- TODO
+    ["title.conversation_prologue_village"] = { en = "Bellmere", ja = "" },  -- TODO
     ["title.conversation_touchstone_vendor_intro"] = { en = "The Touchstone", ja = "" },  -- TODO
     ["title.conversation_tutorial_flight"] = { en = "The Open Road", ja = "" },  -- TODO
     ["title.conversation_tutorial_village"] = { en = "Rowan's Lesson", ja = "" },  -- TODO

@@ -21,9 +21,17 @@
 -- only shape a promise can take, for her, is an order. She does not ANNOUNCE the vow first -- an
 -- earlier draft had her say she was about to say something, which telegraphs the line and buys nothing.
 --
--- SHE SENT THEM TO THE WEST ROAD -- her own order in the opening scene -- and this is where the player
--- learns it was a death sentence. The avatar tries to absolve her; she refuses. That is what makes the
--- vow something she does INSTEAD of grieving.
+-- SHE SENT THEM TO THE WEST ROAD -- her own line in the opening scene, where she says the father has
+-- the town on it -- and this is where the player learns it was a death sentence. The avatar tries to
+-- absolve her; she refuses. That is what makes the vow something she does INSTEAD of grieving.
+--
+-- THE FATHER IS THE ONLY BODY NAMED, and it used to be two. The sibling Bryn was cut with
+-- conversation_prologue_intro (see conversation_prologue_village.lua for that whole deletion), so
+-- there is no second name to lose here. It costs the line nothing: a list of two was never what made
+-- it land, and the one name left is the one the opening scene put on that road out loud.
+--
+-- THIS IS ALSO WHERE ROWAN IS EXPLAINED, one scene after the player first obeys her rather than two.
+-- "My orders were one line" is the first statement in the game of what she is and why she is here.
 --
 -- "[Rowan has joined your Party]" lands at the end of this scene (Conversation.drainJoins; see the
 -- comment in states/prologue.lua for why it survives the fight in between).
@@ -33,7 +41,7 @@ return {
 
     script = {
         { "character_avatar", "I can still see the hall from here.", tag = 1 },
-        { "character_rowan", "There's nobody left to bring out, {name}. Your father. Bryn.", tag = 2 },
+        { "character_rowan", "There's nobody left to bring out, {name}. Your father is gone.", tag = 2 },
         { "character_rowan", "I sent them to the west road. It was already cut off.", tag = 11 },
         { "character_avatar", "You were told to keep me alive. You kept me alive.", tag = 4 },
         { "character_rowan", "My orders were one line. Keep the baron's child alive. That's all I did tonight.", tag = 5 },

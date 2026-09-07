@@ -130,17 +130,44 @@ function Sound.play(id, opts)
     return source
 end
 
+-- Resolve a bed to the first cue in its `fallback` chain whose file is actually on disk.
+--
+-- A BED THAT HAS NOT BEEN WRITTEN DOES NOT MERELY FAIL TO PLAY -- it takes the one that was playing
+-- with it, because Sound.music stops the running track before it discovers the new one cannot load.
+-- That is not the art debt showing through, it is the art debt reaching backwards: every objective
+-- fight in the game asks for `music.boss`, which is uncommissioned, so the fight fell silent the
+-- instant it began and stayed silent through the win. So an unwritten bed asks for the nearest one
+-- that exists instead (data/sounds.lua names the chain), and the fallback disappears on its own the
+-- day the file lands. `seen` guards a chain authored into a cycle.
+--
+-- Resolved by asking the filesystem rather than by loading and catching the failure -- the same
+-- reason models/sprite.lua asks: under love.js a failed load does not raise, it stops the main loop.
+local function resolveMusic(id)
+    local seen = {}
+    while id and not seen[id] do
+        seen[id] = true
+        local def = Sound.cues[id]
+        if not def or not def.file then return nil end
+        local canAsk = love and love.filesystem and love.filesystem.getInfo
+        if not canAsk or love.filesystem.getInfo(def.file) then return id, def end
+        id = def.fallback
+    end
+    return nil
+end
+
 -- Start (or keep) the looping bed named by `id`. Asking for the track already playing is a no-op, so
--- a state that sets its own music on every `enter` does not restart the bed each time it is entered.
+-- a state that sets its own music on every `enter` does not restart the bed each time it is entered
+-- -- and that is asked of the RESOLVED id, so a state re-entering a fight whose boss bed falls back
+-- to the ordinary one does not restart the ordinary one either.
 -- `nil` stops the music, so `Sound.music(biome.music)` works with no branch at the call site.
 function Sound.music(id)
     if id == nil then return Sound.stopMusic() end
-    if current and current.id == id then return current.source end
+
+    local resolved, def = resolveMusic(id)
+    if not resolved then Sound.stopMusic(); return nil end
+    if current and current.id == resolved then return current.source end
 
     Sound.stopMusic()
-
-    local def = Sound.cues[id]
-    if not def or not def.file then return nil end
 
     local source = Sound.load(def.file, "stream")
     if not isSource(source) then return nil end
@@ -150,7 +177,7 @@ function Sound.music(id)
         source:setVolume(Sound.volumeOf("music") * (def.volume or 1))
         source:play()
     end)
-    current = { id = id, source = source }
+    current = { id = resolved, source = source }
     return source
 end
 

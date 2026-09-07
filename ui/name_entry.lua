@@ -212,8 +212,11 @@ end
 -- ---------------------------------------------------------------------------
 
 function NameEntry:draw()
-    love.graphics.setColor(0.10, 0.11, 0.15)
-    love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
+    -- The SAME ground every other screen stands on (Theme.drawMount), and it used to be a hand-mixed
+    -- navy laid down right here. Character creation runs this widget as its second step, straight off
+    -- a first step drawn on the mount, so the two halves of one flow changed colour underneath the
+    -- player between the picture and the name.
+    Theme.drawMount(Scale.WIDTH, Scale.HEIGHT)
 
     -- The prompt.
     love.graphics.setFont(self.titleFont)

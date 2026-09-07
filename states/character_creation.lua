@@ -3,14 +3,25 @@
 -- then the NAME. The name is asked here rather than on the Colosseum's sand because Rowan is sworn
 -- to you from the first scene and has to be able to address you (see docs/story.md).
 --
+-- THE BODY STEP SHOWS THE BODIES. It used to be ui/menu.lua carrying two rows that read "Body 1" and
+-- "Body 2", under the heading "Who will you be?" -- a question about a face, answered by an index,
+-- with the faces themselves nowhere on the screen. It is now a pair of portrait cards
+-- (ui/portrait_choice.lua) and the pictures are the choice.
+--
+-- IT IS ALSO THE ONLY PLACE THE CHOICE IS EVER PAID OFF. The unchosen body used to go on Bryn, a
+-- sibling standing in the house the prologue burned, so the menu meant something one scene later and
+-- off screen; that scene is cut (data/conversations/prologue/conversation_prologue_village.lua). So
+-- the picture is not decoration on the step, it is the whole of what makes the step a decision.
+--
 -- Reached from states/menu.lua's New Game after Player.start(true) has built the fresh player, so
 -- both choices write straight onto Player.active; states/prologue.lua reads them in `begin`.
 --
--- Reuses ui/menu.lua and ui/name_entry.lua, which each carry mouse + keyboard + gamepad (the
--- project's three-input standard). See states/menu.lua for the same menu widget on the title screen.
+-- Reuses ui/portrait_choice.lua and ui/name_entry.lua, which each carry mouse + keyboard + gamepad
+-- (the project's three-input standard). Both draw on Theme.drawMount, so the two steps of one flow
+-- stand on the same ground.
 
 local State = require("states")
-local Menu = require("ui.menu")
+local PortraitChoice = require("ui.portrait_choice")
 local NameEntry = require("ui.name_entry")
 local Player = require("models.player")
 local Scale = require("scale")
@@ -28,7 +39,9 @@ local widget
 local function askName()
     creation.mode = "name"
     widget = NameEntry.new({
-        prompt = "And what do they call you?",
+        -- "And what do they call you?" stood here, and the "And" was continuing a conversation the
+        -- step before it never started: the body step asks a question with a picture, not a sentence.
+        prompt = "What do they call you?",
         onSubmit = function(name)
             if Player.active then Player.active.name = name end
             State.switch(require("states.prologue"))
@@ -44,10 +57,14 @@ end
 
 function creation.enter()
     creation.mode = "body"
-    widget = Menu.new({
-        { label = "Body 1", action = function() chooseBody(1) end },
-        { label = "Body 2", action = function() chooseBody(2) end },
-    }, { startY = 320 })
+    -- The portrait paths the avatar blueprint and models/conversation.lua's `speaker` already resolve
+    -- to off `player.body`, so the card shows the face the game will actually draw for this save
+    -- rather than a picture chosen for the menu. Both are uncommissioned today and the card says so;
+    -- see the header of ui/portrait_choice.lua on why the composed board token is not borrowed here.
+    widget = PortraitChoice.new({
+        { label = "Body 1", portrait = "assets/portraits/avatar_1.png", action = function() chooseBody(1) end },
+        { label = "Body 2", portrait = "assets/portraits/avatar_2.png", action = function() chooseBody(2) end },
+    }, { centerY = 486 }) -- centred in the band under the prompt at 230; see ui/portrait_choice.lua
 end
 
 function creation.update(dt)

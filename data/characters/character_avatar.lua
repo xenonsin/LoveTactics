@@ -4,9 +4,12 @@
 -- class-less fallback). The blank slate is what the rank buys: a small holding's child was trained in
 -- nothing in particular, and the only reason this body can hold a sword is that Rowan taught it.
 --
--- THE BODY NOT CHOSEN IS NOT WASTED. Character creation offers two; the other one is Bryn, the
--- sibling standing in the house the prologue burns, whose portrait is resolved off `player.body` in
--- models/conversation.lua's `speaker`. Both sprite sets ship in every save.
+-- THE BODY IS CHOSEN ON ITS OWN FACE. Character creation offers two and shows both portraits side by
+-- side (states/character_creation.lua); the chosen one is stamped onto the instance by
+-- Player.applyAvatarBody and is what every conversation draws. The unchosen one used to be spent on
+-- Bryn, a sibling who stood in the house the prologue burned, and that scene is deleted -- so the
+-- choice is now answered where it is asked rather than paid off once, off screen, four lines later.
+-- Both sprite sets still ship in every save.
 -- Starts with a sword and
 -- the coat off their own back -- the prologue's overworld leg introduces the remaining item types one
 -- at a time.

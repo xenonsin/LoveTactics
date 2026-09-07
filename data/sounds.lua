@@ -162,6 +162,12 @@ return {
 
     -- Music beds -- streamed, looping, one per place the player spends time (states/*). Seamless loops
     -- (author tail-to-head), 44.1kHz stereo. `music.credits` is the exception: it ENDS (loop = false).
+    --
+    -- `fallback` names the bed to play while this one is still uncommissioned (models/sound.lua,
+    -- resolveMusic). It is not a mixing decision -- it is what keeps an unwritten track from SILENCING
+    -- the one already playing, which is what a missing bed does otherwise. Only worth naming where a
+    -- near neighbour exists and the wrong-but-present bed beats dead air; a track with no honest
+    -- neighbour (victory, defeat) names none and still falls to silence until it is written.
     ["music.menu"] = { file = "assets/audio/music/menu.ogg", category = "music", volume = 0.8,
         length = "60-120s loop", desc = "Title screen. Calm, inviting, sits under a still screen -- the game's face." },
     ["music.hub"] = { file = "assets/audio/music/hub.ogg", category = "music", volume = 0.8,
@@ -170,7 +176,7 @@ return {
         length = "90-150s loop", desc = "The campaign map. Travelling, light forward motion, low tension." },
     ["music.battle"] = { file = "assets/audio/music/battle.ogg", category = "music",
         length = "60-120s loop", desc = "Ordinary battles. Tactical tension, steady pulse, never frantic." },
-    ["music.boss"] = { file = "assets/audio/music/boss.ogg", category = "music",
+    ["music.boss"] = { file = "assets/audio/music/boss.ogg", category = "music", fallback = "music.battle",
         length = "60-120s loop", desc = "The seven generals / objective fights. The wall of the run -- heavier, thematic, a real antagonist." },
     ["music.victory"] = { file = "assets/audio/music/victory.ogg", category = "music", volume = 0.8,
         length = "40-90s loop", desc = "Plays the instant a fight is won, under the spoils panel. Warm, triumphant, unhurried -- the exhale after the battle bed; loops while the player reads the reward and the log." },

@@ -117,21 +117,12 @@ function Conversation.speaker(id, override)
         end
     end
 
-    -- The prologue's sibling wears THE BODY THE PLAYER DID NOT CHOOSE. Character creation offers two
-    -- and only one of them is you; the other one is standing in the house that burns, which costs no
-    -- art at all and makes a menu choice made before the first line into something the player loses.
-    --
-    -- Resolved here rather than as a `portrait` on the cast entry because it is a fact about the SAVE
-    -- -- which of the two bodies was picked -- and no static path written into data can say that. The
-    -- cast entry's own `portrait` override survives extraction perfectly well (see
-    -- tools/extract_strings.lua's serializeCastEntry, which carries name/portrait/slot/enters through);
-    -- it just cannot express "whichever one they are not". Same carve-out the avatar gets directly
-    -- above, for the same underlying reason: no blueprint can name a body chosen at runtime.
-    if id == "sibling" and not override.portrait then
-        local ok, Player = pcall(require, "models.player")
-        local body = (ok and Player.active and Player.active.body == 2) and 2 or 1
-        portrait = "assets/portraits/avatar_" .. ((body == 2) and 1 or 2) .. ".png"
-    end
+    -- (A second carve-out stood here and is GONE with the scene it served. The prologue's sibling,
+    -- Bryn, wore whichever of the two creation bodies the avatar did not, resolved off `player.body`
+    -- exactly as the avatar's own portrait is. It was the only thing in the game that read that field
+    -- backwards. Its scene -- conversation_prologue_intro -- is deleted, and the body choice earns its
+    -- weight at the point it is made now, on a portrait preview at character creation, rather than
+    -- through a sibling the player meets once and never sees again.)
 
     local base = override.name or (def and def.name)
     return {

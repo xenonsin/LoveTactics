@@ -14,12 +14,18 @@ local Conversation = require("models.conversation")
 -- not played as a scene -- it is the village fight's speech-bubble text (models/tutorial.lua) -- but
 -- it lives in the same folder and must resolve like any other. See states/hub.lua for the arrival.
 local PROLOGUE_SCENES = {
-    "conversation_prologue_intro", "conversation_prologue_flee", "conversation_prologue_arrival",
+    "conversation_prologue_village", "conversation_prologue_flee", "conversation_prologue_arrival",
     "conversation_colosseum_slot_01_outro", "conversation_tutorial_village",
 }
 -- `conversation_prologue_flier` was the sixth and is DELETED. `. content-report` reported it as an
 -- orphan -- no route in the game names it, and this list was the only thing that did, which is exactly
 -- the shape a scene takes when it is written and then never wired. Five spoken lines went with it.
+--
+-- `conversation_prologue_intro` was the first and is ALSO deleted, for the opposite reason: it was
+-- wired, and playing it was the problem. It stood in front of the village fight as a full visual-novel
+-- beat with no portrait art to render, so the game's opening was grey letterboxes on black. Its work
+-- moved into `conversation_prologue_village`, which is played over the board itself, and which is why
+-- that id is now the first entry above rather than a bubble-text file like `tutorial_village`.
 
 return {
     {
@@ -121,58 +127,54 @@ return {
         end,
     },
     {
-        name = "the sibling in the burning town wears the body the player did not choose",
+        name = "the first scene in the game is the one played over the board",
         fn = function()
-            -- Bryn costs no art: whichever of the two creation bodies the avatar is not, the sibling
-            -- is. Nothing else in the game resolves a portrait off `player.body` except the avatar's
-            -- own override, so this pins the second one (models/conversation.lua, `speaker`).
-            local prev = Player.active
-            for body, other in pairs({ [1] = 2, [2] = 1 }) do
-                Player.active = Player.new()
-                Player.active.body = body
-                local who = Conversation.speaker("sibling", { name = "Bryn" })
-                assert(who.name == "Bryn", "the cast entry still names the sibling")
-                assert(who.portrait == "assets/portraits/avatar_" .. other .. ".png",
-                       "body " .. body .. " must leave the sibling wearing body " .. other)
-            end
-            -- The avatar keeps its own face: the two must never resolve to the same portrait.
-            Player.active = Player.new()
-            Player.active.body = 1
-            Player.applyAvatarBody(Player.active)
-            local me = Conversation.speaker("character_avatar")
-            local them = Conversation.speaker("sibling", { name = "Bryn" })
-            assert(me.portrait ~= them.portrait, "the sibling is the OTHER body, never a second you")
-            Player.active = prev
+            -- The prologue's first beat is the village FIGHT, and the only scene in front of it is
+            -- that fight's own opening, drawn over the board (data/tutorials/village.lua's `opening`).
+            -- There used to be a full visual-novel beat before it and there must not be one again: it
+            -- is the beat that has no art to draw, and it is the one every new player meets first.
+            --
+            -- Pinned off the tutorial rather than off states/prologue.lua's beat list, because the
+            -- lesson is what actually names the scene, and a beat re-added to the sequencer would be
+            -- caught by the deleted-id assertion below instead.
+            local village = require("models.tutorial").defs["village"]
+            assert(village, "the village lesson must exist")
+            assert(village.opening == "conversation_prologue_village",
+                   "the village fight opens on the scene that replaced the cut intro")
+            assert(Conversation.defs["conversation_prologue_intro"] == nil,
+                   "conversation_prologue_intro is deleted; its work belongs to the over-board opening")
         end,
     },
     {
-        name = "Rowan is off stage until the fire, and walks on when she speaks",
+        name = "the opening scene explains the rift, in the mentor's voice alone",
         fn = function()
-            -- Bryn carries the alarm from inside the room and names the rift; Rowan is the one who
-            -- arrives to it, so she is authored `enters` (ui/dialogue.lua) -- a knight already standing
-            -- in the domestic opening has spent her entrance before she opens her mouth. This pins the
-            -- data end of that -- the widget needs love.graphics and cannot be built headless.
-            local def = Conversation.defs["conversation_prologue_intro"]
-            local entering, firstLine = {}, {}
+            -- THE PREMISE IS SAID OUT LOUD, and this is the assertion that keeps it that way. The
+            -- scene it replaced named a rift in its second line and glossed it nowhere, on the theory
+            -- that a hole over your own field explains itself. What the player actually has at that
+            -- moment is a noun attached to nothing, in the first thirty seconds of the game.
+            local def = Conversation.defs["conversation_prologue_village"]
+            assert(def, "the village opening must exist")
+            local said = {}
+            for _, node in ipairs(def.script) do
+                local text = node.text or node[2]
+                if type(text) == "string" then said[#said + 1] = text:lower() end
+            end
+            local all = table.concat(said, " ")
+            assert(all:find("rift", 1, true), "the opening names the rift")
+            assert(all:find("close", 1, true) or all:find("shut", 1, true),
+                   "the opening says a rift is not something anyone closes")
+            assert(all:find("demon", 1, true), "the opening says what comes out of one")
+            -- Whose voice it is in is pinned next door, by tests/tutorial_spec.lua: a lesson's opening
+            -- is the mentor's alone, because it is the voice that teaches the seven steps after it.
+            -- What THIS asserts is the other half -- that the scene carrying the premise is still the
+            -- one the lesson opens on, so the two rules cannot drift apart into a scene that explains
+            -- the world in somebody else's mouth.
+            --
+            -- Nobody it cannot draw, either. The cut scene's third speaker was the sibling, resolved
+            -- off `player.body` in models/conversation.lua; that carve-out went with it.
             for _, raw in ipairs(def.cast) do
-                if type(raw) == "table" and raw.enters then entering[raw.id] = true end
-            end
-            assert(entering.character_rowan, "Rowan must enter rather than open the scene on stage")
-            -- The sibling is the alarm and so must be present from the first line, not walked on.
-            for _, raw in ipairs(def.cast) do
-                if type(raw) == "table" and raw.id == "sibling" then
-                    assert(not raw.enters, "Bryn opens the scene on stage -- they are the one the night takes")
-                end
-            end
-            for i, node in ipairs(def.script) do
-                local by = node.by or node[1]
-                if by and not firstLine[by] then firstLine[by] = i end
-            end
-            -- An entering member who never speaks would simply never appear, which is a silently
-            -- empty cast slot rather than an entrance.
-            for id in pairs(entering) do
-                assert(firstLine[id], id .. " enters but never speaks, so it never walks on")
-                assert(firstLine[id] > 1, id .. " enters on the very first line, which is just being present")
+                local id = type(raw) == "table" and raw.id or raw
+                assert(id ~= "sibling", "the sibling is cut, and nothing may cast one again")
             end
         end,
     },

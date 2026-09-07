@@ -243,12 +243,16 @@ end
 -- Build the ordered beat list. Held as a builder so a fresh New Game always starts clean.
 local function buildBeats()
     return {
-        scene("conversation_prologue_intro"),
+        -- THE FIRST BEAT IS THE FIGHT, and there is deliberately no scene in front of it. A five-line
+        -- visual-novel opening (`conversation_prologue_intro`) stood here and is deleted; everything it
+        -- said is said over the board instead, by the fight's own opening scene. See
+        -- data/conversations/prologue/conversation_prologue_village.lua for what moved and what went.
+        -- So a New Game reaches a tactics board on the click after the name is typed.
         action(function() Player.recruit(Player.active, "character_rowan") end), -- Rowan joins for the fight
         battle(VILLAGE_MAP),
         -- The oath is sworn once the village is held, and "[Rowan has joined your Party]" lands at the
-        -- end of this "Ashes" scene -- folded on by Conversation.drainJoins, because her recruit two
-        -- beats up queued it (models/conversation.lua). It survives the battle in between because that
+        -- end of this "Ashes" scene -- folded on by Conversation.drainJoins, because her recruit one
+        -- beat up queued it (models/conversation.lua). It survives the battle in between because that
         -- fight's tutorial opening plays with `deferJoins` (states/battle.lua): an over-the-board scene
         -- refuses the banner and holds it for the next full scene, which is this one. Every companion is
         -- announced this way, so the prologue does not special-case its first one.
@@ -295,11 +299,19 @@ end
 -- Reached from character creation (a fresh New Game -> begin) or from resume() after a battle/overworld
 -- leg (pendingAdvance -> advance). Those are the only two callers, so a plain flag check suffices.
 function prologue.enter()
-    -- The prologue has no bed of its own -- its scenes play over a plain backdrop -- so silence the
-    -- track the previous screen left running (the title's `music.menu` on the first entry, a fight's
-    -- bed on a resume). Its battles and the overworld leg each set their own music on enter, and the
-    -- final beat hands off to the hub, which sets `music.hub`; so nothing here re-starts a bed.
-    require("models.sound").stopMusic()
+    -- THE BED THE SCENES ARE PLAYED UNDER, and it used to be silence -- a bare stopMusic() here, the
+    -- only one in the game. The reasoning was that the prologue owns no screen of its own, and it was
+    -- wrong in the direction that costs the most: this state is the first thing a new player reaches
+    -- past the title, so the game's answer to New Game was the music stopping. Worse on the way back
+    -- through -- a resume lands here holding `music.victory`, so the scene sworn over the ash of
+    -- Bellmere would have opened under the bed that plays when you win something.
+    --
+    -- `music.menu` rather than a bed of Act 0's own: it is the game's face, calm and written to sit
+    -- under a still screen, which is exactly what a conversation over a plain backdrop is. Its
+    -- battles and the overworld leg still set their own on enter, and the final beat hands off to the
+    -- hub, so this only ever covers the scene beats. Idempotent, so arriving from the title (already
+    -- playing it) does not restart the track.
+    require("models.sound").music("music.menu")
     if prologue.pendingAdvance then
         prologue.pendingAdvance = false
         prologue.next()
