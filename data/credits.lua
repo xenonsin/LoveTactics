@@ -12,7 +12,7 @@
 -- quietly dropped, because a credits screen that lists only what exists reads as though nothing is
 -- missing, and quite a lot is still missing. See docs/roadmap.md.
 return {
-    title = "LoveTactics",
+    title = "Project Tactics",
 
     sections = {
         {

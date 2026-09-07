@@ -6,7 +6,7 @@ drops straight in. See [art-assets.md](art-assets.md) for the wider art plan.
 
 ## The project
 
-**LoveTactics** — a 2D tactics RPG built in LÖVE2D. Tone: **bright heroic fantasy** (not
+**Project Tactics** — a 2D tactics RPG built in LÖVE2D. Tone: **bright heroic fantasy** (not
 grim-dark). Battles play out on a **top-down, square-grid tactical board**, in the tradition of
 Game Boy Advance *Fire Emblem*. We need terrain tiles that dress that grid.
 

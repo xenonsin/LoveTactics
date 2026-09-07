@@ -1,5 +1,5 @@
 function love.conf(t)
-    t.window.title = "LoveTactics"
+    t.window.title = "Project Tactics"
 
     -- Names the save directory love.filesystem writes into (see models/save.lua).
     -- Without it there is no write directory and every save silently fails.

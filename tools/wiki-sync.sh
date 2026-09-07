@@ -158,7 +158,7 @@ shopt -u nullglob
 {
   banner_for "(generated index)"
   cat <<'EOF'
-# LoveTactics
+# Project Tactics
 
 A 2D tactics game built with [LÖVE2D](https://love2d.org/) (Lua). Seven vendors,
 seven deadly sins, and a party you assemble one companion at a time.
@@ -175,7 +175,7 @@ EOF
 
 # --- _Sidebar.md -------------------------------------------------------------
 {
-  printf '### LoveTactics\n\n'
+  printf '### Project Tactics\n\n'
   printf -- '- [Home](Home)\n'
   for i in "${!BASENAMES[@]}"; do
     printf -- '- [%s](%s)\n' "${TITLES[$i]}" "${TITLES[$i]}"

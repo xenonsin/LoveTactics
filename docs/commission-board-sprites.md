@@ -8,7 +8,7 @@ is here. Deeper character context — personalities, story roles, faction looks 
 
 ## The project
 
-**LoveTactics** — a 2D tactics RPG. Tone: **bright heroic fantasy**, not grim-dark. Battles play out
+**Project Tactics** — a 2D tactics RPG. Tone: **bright heroic fantasy**, not grim-dark. Battles play out
 on a grid of 64px tiles, where each combatant is a small sprite that idles, moves, attacks, takes
 hits and falls — the readable, lively unit art of a game like *Fire Emblem Heroes*.
 

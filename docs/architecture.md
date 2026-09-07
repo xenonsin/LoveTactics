@@ -1,6 +1,6 @@
 # Architecture
 
-LoveTactics is a LÖVE2D (Lua 5.1) game with no build step — the LÖVE runtime interprets
+Project Tactics is a LÖVE2D (Lua 5.1) game with no build step — the LÖVE runtime interprets
 the source directly. Code is organized into layers, loaded via `require()`.
 
 ```

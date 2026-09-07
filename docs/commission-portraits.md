@@ -28,7 +28,7 @@ constraints (`ui/dialogue.lua`, `data/characters/*.lua`) and the existing plan i
 
 ## The project
 
-**LoveTactics** — a 2D tactics RPG built in LÖVE2D. Tone: **bright heroic fantasy** (not
+**Project Tactics** — a 2D tactics RPG built in LÖVE2D. Tone: **bright heroic fantasy** (not
 grim-dark). Story is told visual-novel style: **full standing portraits** stand along the bottom of
 a dialogue box and lean in over it as the speaker (à la Fire Emblem support scenes).
 

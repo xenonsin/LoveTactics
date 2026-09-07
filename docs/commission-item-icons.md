@@ -8,7 +8,7 @@ plan and [credits-icons.md](credits-icons.md) for the licence exposure this comm
 
 ## The project
 
-**LoveTactics** — a 2D tactics RPG built in LÖVE2D. Tone: **bright heroic fantasy**, not grim-dark.
+**Project Tactics** — a 2D tactics RPG built in LÖVE2D. Tone: **bright heroic fantasy**, not grim-dark.
 
 Item icons are **panel furniture**. No item or ability sprite is ever drawn on the battlefield, so
 these never sit beside a painted unit in the same role — they live in the inventory grid, the shop

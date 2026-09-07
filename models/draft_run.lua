@@ -666,7 +666,7 @@ DraftRun.FILE = "draft_run.lua"
 -- Write the run to the save directory. Isolated from the campaign save (its own file), so a draft run
 -- and the campaign never read or overwrite each other. Returns true, or false plus a message.
 function DraftRun.write(run)
-    local source = "-- LoveTactics draft run. Generated file.\nreturn "
+    local source = "-- Project Tactics draft run. Generated file.\nreturn "
         .. Save.encode(DraftRun.snapshot(run), 0) .. "\n"
     return love.filesystem.write(DraftRun.FILE, source)
 end

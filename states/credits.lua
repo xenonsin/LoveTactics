@@ -58,7 +58,7 @@ function credits.buildLines(def, iconsDef)
     local out = {}
     local function add(kind, text) out[#out + 1] = { kind = kind, text = text } end
 
-    add("title", def.title or "LoveTactics")
+    add("title", def.title or "Project Tactics")
     add("blank")
 
     for _, section in ipairs(def.sections or {}) do
@@ -240,7 +240,7 @@ function credits.draw()
     else
         love.graphics.setFont(credits.titleFont)
         love.graphics.setColor(0.95, 0.85, 0.55)
-        love.graphics.printf("LoveTactics", 0, Scale.HEIGHT / 2 - 130, Scale.WIDTH, "center")
+        love.graphics.printf("Project Tactics", 0, Scale.HEIGHT / 2 - 130, Scale.WIDTH, "center")
         love.graphics.setFont(credits.lineFont)
         love.graphics.setColor(0.65, 0.67, 0.75)
         love.graphics.printf("Thank you for playing.", 0, Scale.HEIGHT / 2 - 56, Scale.WIDTH, "center")

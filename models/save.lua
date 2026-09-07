@@ -1062,7 +1062,7 @@ end
 
 -- Returns true on success, or false plus a message.
 function Save.write(player, file)
-    local source = "-- LoveTactics save. Generated file; edit at your own risk.\nreturn "
+    local source = "-- Project Tactics save. Generated file; edit at your own risk.\nreturn "
         .. encode(Save.snapshot(player), 0) .. "\n"
     return love.filesystem.write(fileOf(file), source)
 end

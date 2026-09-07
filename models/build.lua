@@ -226,7 +226,7 @@ end
 -- property that makes a build safe to hand around, since an authored rule is scalars all the way
 -- down (models/ai.lua) and anything that is not has no business travelling.
 function Build.encode(snap)
-    return "-- LoveTactics build. Generated file.\nreturn " .. Save.encode(snap, 0) .. "\n"
+    return "-- Project Tactics build. Generated file.\nreturn " .. Save.encode(snap, 0) .. "\n"
 end
 
 -- Decoding runs the chunk in an empty environment (see Save.decode), so a build that arrives from

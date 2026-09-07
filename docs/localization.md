@@ -48,7 +48,7 @@ The real distinction is **edit-format vs runtime-format**, not one layout beatin
 
 The professional pipeline uses both: author in a grid (or a TMS such as Crowdin/Lokalise), then
 **compile** to per-language runtime tables (Unity String Tables per locale, Unreal `.locres`,
-gettext `.mo`). For LoveTactics — hand-edited Lua, ~2 languages, no TMS — we maintain a single
+gettext `.mo`). For Project Tactics — hand-edited Lua, ~2 languages, no TMS — we maintain a single
 artifact, and the grid is the better single artifact.
 
 ### Trade-offs

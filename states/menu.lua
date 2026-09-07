@@ -454,7 +454,7 @@ function menu.draw()
 
     love.graphics.setFont(titleFont)
     Theme.set(Theme.accentAmber)
-    love.graphics.printf("LoveTactics", 0, 120, screenW, "center")
+    love.graphics.printf("Project Tactics", 0, 120, screenW, "center")
 
     widget:draw()
 

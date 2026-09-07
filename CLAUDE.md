@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-LoveTactics is a 2D tactics game built with [LÖVE2D](https://love2d.org/) (Love2D), a Lua game framework.
+Project Tactics is a 2D tactics game built with [LÖVE2D](https://love2d.org/) (Love2D), a Lua game framework.
 
 ## Running the Game
 
