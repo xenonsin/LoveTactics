@@ -234,7 +234,26 @@ function love.load(args)
         return
     end
 
-    Scale.resize(love.graphics.getDimensions())
+    -- A SCREEN THE PLAYER CAN TURN may be played upright, and scale.lua answers that by fitting the
+    -- logical space a quarter turn instead of pillarboxing it into a strip across the middle. It is
+    -- opt-in because a desktop monitor does not turn: a window dragged tall stays pillarboxed.
+    --
+    -- Two ways in. tools/web/index.html passes `mobile` as an extra argument when the browser
+    -- reports a coarse pointer -- a finger -- which is the only signal a web build gets; and a
+    -- native handset build says so itself. The argument is SCANNED for rather than read off
+    -- args[1], since the subcommand ladder above owns that slot.
+    local os_ = love.system.getOS()
+    if os_ == "Android" or os_ == "iOS" then
+        Scale.allowRotate = true
+    else
+        for _, a in ipairs(args or {}) do
+            if a == "mobile" then Scale.allowRotate = true break end
+        end
+    end
+
+    -- The DRAWABLE, not the window: in a browser the two are different sizes, and fitting to the
+    -- window while drawing into the buffer is what put the whole frame in one corner (see scale.lua).
+    Scale.resize(love.graphics.getPixelDimensions())
 
     -- Two-window duel harness, for developing the netplay protocol against a real socket:
     --   love . duel host [auto]      (window 1, listens)
@@ -389,17 +408,21 @@ love.draw = function()
     Scale.finish()
 end
 
+-- The event reports the WINDOW's new size; the fit is computed against the drawable, which is a
+-- different number in a browser. The state still hears the window size it always did.
 love.resize = function(w, h)
-    Scale.resize(w, h)
+    Scale.resize(love.graphics.getPixelDimensions())
     local state = State.current
     if state and state.resize then state.resize(w, h) end
 end
 
--- mousemoved also carries (dx, dy) deltas in real pixels; scale them too.
+-- mousemoved also carries (dx, dy) deltas in real pixels; convert them through Scale as well.
+-- toGameDelta rather than a bare divide: on a turned screen a drag across the glass is a drag DOWN
+-- the logical space, and window units are not drawable pixels in a browser.
 love.mousemoved = function(x, y, dx, dy, istouch)
     InputMode.set("mouse")
     local gx, gy = Scale.toGame(x, y)
-    local sdx, sdy = dx / Scale.scale, dy / Scale.scale
+    local sdx, sdy = Scale.toGameDelta(dx, dy)
     local overlay = Conversation.active
     if overlay then
         if overlay.mousemoved then overlay:mousemoved(gx, gy, sdx, sdy, istouch) end
@@ -418,7 +441,7 @@ love.keypressed = function(key, ...)
     if key == "f11" then
         local full = love.window.getFullscreen()
         love.window.setFullscreen(not full, "desktop")
-        Scale.resize(love.graphics.getDimensions())
+        Scale.resize(love.graphics.getPixelDimensions())
         return
     end
     local overlay = Conversation.active
