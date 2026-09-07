@@ -36,7 +36,10 @@ local PoolCallout = require("ui.pool_callout")
 local CombatPanel = {}
 CombatPanel.__index = CombatPanel
 
-local PANEL_W = 320
+-- 320 -> 410. See states/battle.lua's LEFT_W: the fight screen carried 184px of centring slack
+-- around a board that is a fixed 512 and cannot grow into it, so the width goes to the two columns
+-- instead -- this one first, because the densest text in the game is in it.
+local PANEL_W = 410
 CombatPanel.WIDTH = PANEL_W -- so states can reserve the same right-side margin
 local SLIM_H = 34      -- a non-current turn card: small portrait, name, one thin HP bar (no numbers)
 local CURRENT_H = 82   -- the acting unit's card: taller, larger portrait, full numbered HP/MP/SP
@@ -46,7 +49,11 @@ local INTENT_COL = 30  -- right column reserved on a foe's slim card for its pre
 local CURRENT_TOP_GAP = 34 -- room above the acting card for its "Current Turn" caption + breathing space
 -- Item slots are rectangular (wider than tall) and kept compact so the turn-order
 -- strip above them gets the bulk of the panel height.
-local SLOT_W = 96
+-- 96 -> 118 so the widened panel does not simply grow its own margins: the grid is 3*118+12 = 366
+-- inside 410, leaving 22 a side. The HEIGHT is deliberately unchanged -- the icon scales to
+-- min((sw-8)/iw, (sh-8)/ih) and is already height-bound, so the extra width goes entirely to the
+-- name band under it, which is what was ellipsizing.
+local SLOT_W = 118
 local SLOT_H = 58
 local SLOT_GAP = 6
 local COLS, ROWS = 3, 3

@@ -64,6 +64,44 @@ local SHAKE_OVERSCALE_MAX = 1.06
 Scale.WIDTH = 1280
 Scale.HEIGHT = 720
 
+-- WHICH LAYOUT THE SCREEN IS BIG ENOUGH FOR.
+--
+-- A glyph's cap height subtends roughly `1.12 * size * Scale.scale` arcminutes, and about 12 of
+-- those is the floor for a glance (see ui/theme.lua's Theme.MIN_BODY for the whole derivation). With
+-- the body floor at 14 that puts the break-even at a fit of 0.77 -- so the desktop arrangement holds
+-- down to a 1024x576 window and a handheld one takes over below it.
+--
+-- The fit is a good instrument in a BROWSER, because a CSS pixel is defined as an angular unit: it
+-- subtends about the same 1.6' on a phone at arm's length as on a monitor at desk distance, which is
+-- why one threshold serves a handset and a shrunken window alike. It is a bad instrument on a native
+-- handheld -- a Switch is 1280x720 at fit 1.0, indistinguishable from a desktop by this test, while
+-- its pixels subtend 0.92' against a CSS pixel's 1.6'. So a native handheld has to SAY SO, which is
+-- what forceHandheld is for; main.lua sets it from the same signal that arms the quarter turn.
+Scale.HANDHELD_ENTER = 0.80 -- drop to the handheld arrangement below this fit...
+Scale.HANDHELD_EXIT  = 0.90 -- ...and only climb back out above this one
+Scale.forceHandheld = false -- a screen that knows it is small however the arithmetic reads
+Scale.handheld = false      -- the live answer, recomputed every resize
+
+-- Measure a window against the DESKTOP space, never against the live one. Switching arrangements
+-- changes Scale.WIDTH/HEIGHT, which would change this fit, which would switch the arrangement back:
+-- a loop that oscillates every frame. The desktop space is the fixed yardstick that breaks it.
+--
+-- Long axis against 1280, short against 720, so a screen held either way up gives the same answer as
+-- the quarter-turned frame it is about to draw.
+function Scale.layoutFit(windowW, windowH)
+    if not (windowW and windowH and windowW > 0 and windowH > 0) then return 1 end
+    return math.min(math.max(windowW, windowH) / 1280, math.min(windowW, windowH) / 720)
+end
+
+-- The predicate, with a deadband: a window dragged across the boundary must not re-lay the whole
+-- screen on every frame of the drag, so leaving costs more than entering did.
+function Scale.wantsHandheld(windowW, windowH)
+    if Scale.forceHandheld then return true end
+    local fit = Scale.layoutFit(windowW, windowH)
+    if Scale.handheld then return fit < Scale.HANDHELD_EXIT end
+    return fit < Scale.HANDHELD_ENTER
+end
+
 Scale.scale = 1
 Scale.offsetX = 0
 Scale.offsetY = 0
@@ -102,6 +140,11 @@ function Scale.resize(windowW, windowH)
     Scale.offsetY = math.floor((windowH - (rotated and Scale.WIDTH or Scale.HEIGHT) * s) / 2)
     Scale.windowW = windowW
     Scale.windowH = windowH
+    -- Answered on every resize, and read by whoever lays out. Deliberately does NOT switch
+    -- Scale.WIDTH/HEIGHT yet: only one arrangement is registered, so the rule is a no-op that
+    -- reports -- which is exactly how it wants to ship, since it can then be exercised on its own by
+    -- dragging a window across 1024x576 before anything depends on the answer.
+    Scale.handheld = Scale.wantsHandheld(windowW, windowH)
     -- The canvas is sized to the real window, so a resize retires it; ensureCanvas rebuilds it at
     -- the new size on the next frame. (noCanvas stays latched -- a driver that failed once still
     -- gets the fallback path.) Release the old target rather than leaning on the GC, since dragging

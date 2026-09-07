@@ -101,6 +101,26 @@ local BODY_ITALIC_PATH = "assets/fonts/ui-body-italic.ttf" -- Alegreya Sans Ital
 local displayCache, bodyCache, italicCache, bodyItalicCache = {}, {}, {}, {}
 local hasDisplay, hasBody, hasItalic, hasBodyItalic = nil, nil, nil, nil
 
+-- THE LEGIBILITY FLOOR. No face is ever built below these, whatever a caller asks for.
+--
+-- Text size in pixels means nothing across screens; what an eye resolves is ANGULAR size, and the
+-- rule of thumb is that comfortable reading wants a cap height near 20 arcminutes and about 12 is
+-- the floor for a glance. In this game's units a glyph's cap subtends roughly
+--
+--   arcminutes  ~=  1.12 * size * Scale.scale
+--
+-- so the 11px this ramp used to bottom out at reads as 18' on a desktop monitor (fine), 7' on a
+-- Switch held at arm's length, and under 7' on a phone -- a third of what a glance needs. The floor
+-- cannot fix a handheld on its own (that wants ~19px, which no arrangement of this screen carries),
+-- but it is the one change that helps EVERY platform at once and it costs a few lines here.
+--
+-- Deliberately blunt: a floor at the factory catches all ~74 call sites that sat below it, including
+-- the ones nobody remembers writing. The price is that some name bands ellipsize sooner --
+-- Theme.fitText's step-down now stops here rather than shrinking to 8 -- which is the right trade,
+-- because a name trimmed to fit is readable and a name rendered at 9px is not.
+Theme.MIN_BODY = 14
+Theme.MIN_DISPLAY = 15
+
 -- Text crispness at any window size. The whole game is authored in a 1280x720 logical space and
 -- letterbox-scaled UP to the real window (see scale.lua); a font's glyph atlas is baked ONCE at its
 -- point size, so when the window is maximised/fullscreened that fixed atlas gets transform-scaled up
@@ -153,7 +173,7 @@ local function fontDpiScale()
     return fontDpi
 end
 function Theme.display(size)
-    size = size or 15
+    size = math.max(size or 15, Theme.MIN_DISPLAY)
     local f = displayCache[size]
     if f then return f end
     if hasDisplay == nil then
@@ -164,7 +184,7 @@ function Theme.display(size)
     return f
 end
 function Theme.body(size)
-    size = size or 13
+    size = math.max(size or 13, Theme.MIN_BODY)
     local f = bodyCache[size]
     if f then return f end
     if hasBody == nil then
@@ -178,7 +198,7 @@ end
 -- display face when the italic ttf is absent -- never to the LOVE default -- so it degrades to
 -- non-slanted rather than off-family.
 function Theme.displayItalic(size)
-    size = size or 13
+    size = math.max(size or 13, Theme.MIN_DISPLAY)
     local f = italicCache[size]
     if f then return f end
     if hasItalic == nil then hasItalic = love.filesystem.getInfo(ITALIC_PATH) ~= nil end
@@ -188,7 +208,7 @@ function Theme.displayItalic(size)
 end
 -- The italic sans (Alegreya Sans Italic), for an italic aside in a data-face context.
 function Theme.bodyItalic(size)
-    size = size or 13
+    size = math.max(size or 13, Theme.MIN_BODY)
     local f = bodyItalicCache[size]
     if f then return f end
     if hasBodyItalic == nil then hasBodyItalic = love.filesystem.getInfo(BODY_ITALIC_PATH) ~= nil end
@@ -232,7 +252,10 @@ end
 -- it appears on; a name too long for it ellipsizes, and the full name is a hover away in the item
 -- tooltip. Returns font + text to print at native scale, like Theme.fitText.
 function Theme.itemTileName(text, maxW)
-    local size = (maxW >= 80 and 11) or (maxW >= 62 and 10) or 9
+    -- The ladder used to run 11/10/9, every rung of which is now under Theme.MIN_BODY and would
+    -- flatten to one size -- which would quietly delete the "a wider band gets bigger type" rule
+    -- this function exists for. Re-cut above the floor so it still says something.
+    local size = (maxW >= 80 and 16) or (maxW >= 62 and 15) or 14
     local font = Theme.body(size)
     return font, Theme.ellipsize(text, font, maxW)
 end

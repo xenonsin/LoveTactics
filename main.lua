@@ -250,6 +250,10 @@ function love.load(args)
         end
     end
     Scale.allowRotate = handheld
+    -- ...and the same signal declares the screen SMALL, which the fit alone cannot work out: a native
+    -- handheld is 1280x720 at fit 1.0 and reads as a desktop, while its pixels subtend little over
+    -- half what a browser's do. See Scale.wantsHandheld.
+    Scale.forceHandheld = handheld
     -- The same signal says the game is played with a FINGER, which has no hover for a drawn cursor
     -- to follow (see input_mode.lua). Start in touch mode rather than waiting for the first tap to
     -- say so, or the glyph appears on that tap and strands itself there.
