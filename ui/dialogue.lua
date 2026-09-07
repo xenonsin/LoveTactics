@@ -24,6 +24,7 @@ local Conversation = require("models.conversation")
 local Locale = require("models.locale")
 local Item = require("models.item")
 local ButtonPrompt = require("ui.button_prompt")
+local SpeechBox = require("ui.speech_box")
 local ItemTooltip = require("ui.item_tooltip")
 local Debug = require("models.debug")
 local utf8 = require("utf8") -- the typewriter reveals whole CHARACTERS, not bytes (CJK is multibyte)
@@ -66,9 +67,10 @@ local STAGE_RISE = 110 -- pixels below the mark an arriving portrait starts, hid
 local REVEAL_CPS = 45  -- typewriter speed, characters per second
 local TYPE_MIN_GAP = 0.055 -- min seconds between typewriter key-taps, so a fast reveal doesn't machine-gun the cue
 -- Over a live scene there is no room for a full VN cast, so the speaker is shown as a single small
--- bust at the box's left end, with the name plate above it and the line indented past both.
-local SIDE_PORTRAIT_W = 118
-local SIDE_PAD = 16
+-- bust at the box's right end, with the name plate on the left and the line reading out toward the face.
+-- That panel is ui/speech_box.lua -- shared with the in-battle mentor (ui/tutorial_prompt.lua), which
+-- speaks from the identical rectangle seconds after a lesson's opening scene leaves it.
+local SIDE_PAD = SpeechBox.PAD
 
 -- Greyed (inactive) portrait tint and its letter-box fallback fill; active is full colour.
 local INACTIVE_TINT = { 0.34, 0.35, 0.42 }
@@ -137,7 +139,6 @@ function Dialogue.new(def, onComplete, convId)
 
     self.titleFont = uiFont(22)
     self.nameFont = uiFont(20)
-    self.textFont = uiFont(22)
     self.choiceFont = uiFont(19)
     self.rewardFont = uiFont(14) -- the smaller "what you'll get" line under a choice
     self.fallbackFont = uiFont(64)
@@ -154,6 +155,18 @@ function Dialogue.new(def, onComplete, convId)
     self.boxW = box and box.w or (Scale.WIDTH - BOX_MARGIN * 2)
     self.boxH = box and box.h or BOX_H
     self.boxY = box and box.y or (Scale.HEIGHT - BOX_H - BOX_BOTTOM_GAP)
+
+    -- The spoken line's face, chosen AFTER the box is known because over a live scene the box is
+    -- whatever the caller could spare. A full-screen bar is 150 tall and takes the authored 22; the
+    -- gutter under an 8x8 board is about a hundred, and at 22 that is one wrapped row per page -- the
+    -- village opening read out a clause at a time, a click per clause. SpeechBox.font steps down the
+    -- ladder until three rows fit the room there actually is (measured, never scaled).
+    if self.overScene then
+        local _, _, _, th = SpeechBox.textArea(self.boxX, self.boxY, self.boxW, self.boxH)
+        self.textFont = SpeechBox.font(th)
+    else
+        self.textFont = uiFont(22)
+    end
 
     -- Normalize the positional script into { by, text, id, goto, name, portrait, choices } nodes so
     -- the rest of the widget reads named fields regardless of how the scene was authored.
@@ -237,9 +250,16 @@ end
 -- into. Over a live scene the width stops short of the side bust standing at the right end; the height
 -- stops short of the footer control hints along the bottom (drawn at boxH - 26).
 function Dialogue:textArea()
+    -- Over a live scene the rect is the shared panel's, to the pixel -- see ui/speech_box.lua. It is
+    -- both wider and taller than this one: the name plate is pinned to a fixed spot on the top edge
+    -- rather than floating to wherever the speaker is standing (so the line can start higher, flush
+    -- under it), and the footer hints move down onto the bottom edge rather than sitting inside the
+    -- box (so it runs lower).
+    if self.overScene then
+        return SpeechBox.textArea(self.boxX, self.boxY, self.boxW, self.boxH)
+    end
     local x = self.boxX + 28
     local w = self.boxW - 56
-    if self.overScene then w = self:sideBustLeft() - SIDE_PAD - x end
     local y = self.boxY + 22
     local h = self.boxH - (y - self.boxY) - 34 -- leave 8px above the footer hints at boxH - 26
     return x, y, w, h
@@ -396,8 +416,20 @@ function Dialogue:sourceRect()
     local segs = self:sourceSegments()
     if not segs then return nil end
     local w = ButtonPrompt.width(segs)
-    local y = self.boxY + self.boxH - 26
+    local y = self:hintY()
     return { x = self.boxX + 28, y = y - 6, w = w, h = ButtonPrompt.height() + 10 }
+end
+
+-- The row the footer control hints are drawn on.
+--
+-- Inside the box normally. Over a live scene it STRADDLES the bottom edge instead, mirroring the name
+-- plate on the top one -- the box there is the gutter under the board and every row it gives up is a
+-- row of the line, so the hints step off the paper rather than eat a third of it. They still clear
+-- the screen: the over-scene box is laid out with a margin below it (states/battle.lua), which is
+-- what the overhanging half sits in.
+function Dialogue:hintY()
+    if self.overScene then return self.boxY + self.boxH - ButtonPrompt.height() / 2 end
+    return self.boxY + self.boxH - 26
 end
 
 -- Open the scene's file at the current line. The path is printed as well as opened: if no editor
@@ -607,39 +639,7 @@ end
 -- Left edge of the over-scene bust's column. Everything else in the box (the line, the name plate,
 -- the footer hints, the choice list) stops short of it, so one place decides where that column is.
 function Dialogue:sideBustLeft()
-    return self.boxX + self.boxW - SIDE_PAD - SIDE_PORTRAIT_W
-end
-
--- The over-scene speaker's bust, standing at the RIGHT end of the text box and rising over its top
--- edge, visual-novel style -- the same framing as the in-battle mentor panel (ui/tutorial_prompt.lua),
--- and the side Fire Emblem puts its speaker on: the line reads out from the left margin toward the
--- face, instead of the eye having to jump the portrait to reach the first word.
---
--- Bottom-anchored and drawn IN FRONT of the box: behind it the opaque fill swallows everything but a
--- sliver of head. Real art gets the full height; the letter fallback is held inside the box instead,
--- because a blank rectangle overflowing the panel reads as a stray box, not as someone leaning in.
-function Dialogue:drawSideBust(member)
-    local cx = self:sideBustLeft() + SIDE_PORTRAIT_W / 2
-    local baseY = self.boxY + self.boxH - 8
-    local image = member.image
-    if type(image) == "userdata" then
-        local sw, sh = image:getDimensions()
-        local scale = math.min((self.boxH + 78) / sh, SIDE_PORTRAIT_W / sw)
-        love.graphics.setColor(ACTIVE_TINT[1], ACTIVE_TINT[2], ACTIVE_TINT[3])
-        love.graphics.draw(image, cx, baseY, 0, scale, scale, sw / 2, sh)
-        return
-    end
-    local w, h = SIDE_PORTRAIT_W, self.boxH - 16
-    love.graphics.setColor(FALLBACK_ACTIVE[1] * 0.7, FALLBACK_ACTIVE[2] * 0.7, FALLBACK_ACTIVE[3] * 0.7)
-    love.graphics.rectangle("fill", cx - w / 2, baseY - h, w, h, 8, 8)
-    love.graphics.setColor(0.5, 0.55, 0.7)
-    love.graphics.rectangle("line", cx - w / 2, baseY - h, w, h, 8, 8)
-    love.graphics.setFont(self.fallbackFont)
-    love.graphics.setColor(0.92, 0.92, 0.96)
-    -- First CHARACTER of the name (not first byte) -- a multibyte glyph must not be cut apart.
-    local name = member.name or "?"
-    local initial = name:sub(1, (utf8.offset(name, 2) or (#name + 1)) - 1)
-    love.graphics.printf(initial, cx - w / 2, baseY - h / 2 - self.fallbackFont:getHeight() / 2, w, "center")
+    return SpeechBox.bustLeft(self.boxX, self.boxW)
 end
 
 function Dialogue:draw()
@@ -657,8 +657,8 @@ function Dialogue:draw()
     -- bottom-anchored VN bust is nearly half the screen tall and stands in the middle of it, which is
     -- exactly where a battlefield keeps its battle -- the first cut of the village opening put
     -- Rowan's portrait squarely over the party and the two imps the scene is pointing at. So the
-    -- speaker moves into the box's left end, under the name plate, the way the in-battle mentor
-    -- panel frames her (ui/tutorial_prompt.lua).
+    -- speaker moves into the box's right end, beside her own line, the way the in-battle mentor
+    -- panel frames her -- which is the same panel, ui/speech_box.lua.
     --
     -- Only the BATTLE opening uses this mode. A scene over the overworld keeps the ordinary staging
     -- (prologue_ruins) -- a fogged map is not a board being read tile by tile, and the story scenes
@@ -680,39 +680,41 @@ function Dialogue:draw()
         love.graphics.print(self.title, 40, 28)
     end
 
-    -- The text box.
-    Theme.set(Theme.panel, 0.94)
-    love.graphics.rectangle("fill", self.boxX, self.boxY, self.boxW, self.boxH, Theme.R, Theme.R)
-    Theme.set(Theme.frame)
-    love.graphics.rectangle("line", self.boxX, self.boxY, self.boxW, self.boxH, Theme.R, Theme.R)
-
-    -- Over a live scene, the speaker instead stands at the box's left end (see :drawSideBust).
-    if self.overScene and activeMember then self:drawSideBust(activeMember) end
-
-    -- Speaker name plate, sitting on the top edge of the box near the active speaker's slot.
     local speakerName = (activeMember and activeMember.name)
         or (node and node.name)
         or (activeId and Conversation.speaker(activeId, node).name)
-    if speakerName then
-        love.graphics.setFont(self.nameFont)
-        local plateW = self.nameFont:getWidth(speakerName) + 36
-        -- Over a live scene the plate is pinned to the RIGHT end of the box, over the side bust it
-        -- names -- there is no portrait slot out on the screen for it to point at.
-        local plateX
-        if self.overScene then
-            plateX = self:sideBustLeft() + SIDE_PORTRAIT_W / 2 - plateW / 2
-            plateX = math.min(plateX, self.boxX + self.boxW - plateW - 6)
-        else
-            plateX = (activeMember and activeMember.centerX or self.boxX + 120) - plateW / 2
-            plateX = math.max(self.boxX, math.min(plateX, self.boxX + self.boxW - plateW))
-        end
-        local plateY = self.boxY - 20
-        Theme.set(Theme.slot)
-        love.graphics.rectangle("fill", plateX, plateY, plateW, 32, Theme.R, Theme.R)
+
+    -- The text box. Over a live scene the whole panel -- fill, frame, the bust standing at the right
+    -- end, the name plate at the left -- is ui/speech_box.lua, which the in-battle mentor draws through
+    -- as well: the lesson's opening scene hands off to her standing instruction in the same
+    -- rectangle, and the two must be one object rather than two that look alike.
+    if self.overScene then
+        SpeechBox.draw(self.boxX, self.boxY, self.boxW, self.boxH, {
+            name = speakerName,
+            bust = activeMember ~= nil,
+            portrait = activeMember and activeMember.image,
+        })
+    else
+        Theme.set(Theme.panel, 0.94)
+        love.graphics.rectangle("fill", self.boxX, self.boxY, self.boxW, self.boxH, Theme.R, Theme.R)
         Theme.set(Theme.frame)
-        love.graphics.rectangle("line", plateX, plateY, plateW, 32, Theme.R, Theme.R)
-        Theme.set(Theme.accentAmber)
-        love.graphics.printf(speakerName, plateX, plateY + 5, plateW, "center")
+        love.graphics.rectangle("line", self.boxX, self.boxY, self.boxW, self.boxH, Theme.R, Theme.R)
+
+        -- Speaker name plate, sitting on the top edge of the box near the active speaker's slot --
+        -- which is out on the screen here, where the cast is standing.
+        if speakerName then
+            love.graphics.setFont(self.nameFont)
+            local plateW = self.nameFont:getWidth(speakerName) + 36
+            local plateX = (activeMember and activeMember.centerX or self.boxX + 120) - plateW / 2
+            plateX = math.max(self.boxX, math.min(plateX, self.boxX + self.boxW - plateW))
+            local plateY = self.boxY - 20
+            Theme.set(Theme.slot)
+            love.graphics.rectangle("fill", plateX, plateY, plateW, 32, Theme.R, Theme.R)
+            Theme.set(Theme.frame)
+            love.graphics.rectangle("line", plateX, plateY, plateW, 32, Theme.R, Theme.R)
+            Theme.set(Theme.accentAmber)
+            love.graphics.printf(speakerName, plateX, plateY + 5, plateW, "center")
+        end
     end
 
     -- The (revealed slice of the) current PAGE -- sliced on a CHARACTER boundary so a multibyte glyph
@@ -814,7 +816,7 @@ function Dialogue:draw()
             or { { glyph = "Click", label = "Advance" }, { glyph = "Esc", label = "Skip" } }
     end
     -- Right-aligned in the box, but pulled in ahead of the side bust when one stands at that end.
-    local hintX, hintY = self.boxX, self.boxY + self.boxH - 26
+    local hintX, hintY = self.boxX, self:hintY()
     local hintW = self.overScene and (self:sideBustLeft() - SIDE_PAD - self.boxX) or (self.boxW - 24)
 
     -- The development-only "edit this scene" control takes the other end of the same footer, and the
