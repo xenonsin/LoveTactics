@@ -31,6 +31,22 @@ local function rangeLabel(value, def)
     return value .. "%"
 end
 
+-- The pixel height of the TALLEST description any row in this list can print at `width`, measured
+-- rather than assumed. A screen showing the list reserves that band BEFORE laying the rows out, so
+-- the prose keeps the same space whichever row is highlighted, and a newly added option can never
+-- push the list down over it. Both hosts -- the settings screen and the in-battle overlay -- size
+-- their description gutter from here, so a long description cannot desynchronise the two.
+function SettingsMenu.descriptionHeight(font, width)
+    local lines = 1
+    for _, def in ipairs(Settings.defs) do
+        if def.description then
+            local _, wrapped = font:getWrap(def.description, width)
+            lines = math.max(lines, #wrapped)
+        end
+    end
+    return lines * font:getHeight()
+end
+
 function SettingsMenu.build(onBack, opts)
     opts = opts or {}
     local items = {}
@@ -100,6 +116,9 @@ function SettingsMenu.build(onBack, opts)
 
     return Menu.new(items, {
         buttonWidth = opts.buttonWidth or 620,
+        -- Forwarded so a host with less room than the list needs scrolls it -- with ui/menu.lua's own
+        -- carets -- rather than running it off the bottom of whatever sits below.
+        maxVisible = opts.maxVisible,
         buttonHeight = opts.buttonHeight or 46,
         spacing = opts.spacing or 10,
         startY = opts.startY,
