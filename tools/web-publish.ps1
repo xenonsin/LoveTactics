@@ -56,7 +56,7 @@ if (-not (Test-Path (Join-Path $Web '.nojekyll'))) {
 }
 
 $sourceSha = (Invoke-Git @('rev-parse', '--short', 'HEAD')).Trim()
-$dirty     = (Invoke-Git @('status', '--porcelain')) -ne $null
+$dirty     = @(Invoke-Git @('status', '--porcelain')).Count -gt 0
 $mb        = (Get-ChildItem $Web -Recurse -File -Force | Measure-Object -Property Length -Sum).Sum / 1MB
 
 Write-Host ("publishing build/web ({0:N1} MB) as {1}, built from {2}{3}" -f $mb, $Branch, $sourceSha, $(if ($dirty) { ' plus uncommitted changes' } else { '' }))
@@ -69,12 +69,19 @@ if (-not $PSCmdlet.ShouldProcess("$Remote/$Branch", 'force-push the web build'))
 
 $stage = Join-Path ([System.IO.Path]::GetTempPath()) ("lovetactics-pages-" + [guid]::NewGuid().ToString('N').Substring(0, 8))
 
+# The orphan is built on a THROWAWAY branch name and pushed by refspec, never on `gh-pages`
+# itself. A publish leaves the local branch it checked out behind, so building on `gh-pages`
+# works exactly once and every later run dies on "A branch named 'gh-pages' already exists" --
+# with the bundle already staged and the worktree half made. The remote branch is what matters;
+# the local name is scaffolding and is deleted below.
+$temp = "pages-build-" + [guid]::NewGuid().ToString('N').Substring(0, 8)
+
 try {
     Invoke-Git @('worktree', 'add', '--detach', $stage) | Out-Null
 
     # An orphan checkout keeps main's files in the index, so clear it before copying ours in --
     # otherwise the published branch carries the whole source tree alongside the bundle.
-    Invoke-Git @('checkout', '--orphan', $Branch) -In $stage | Out-Null
+    Invoke-Git @('checkout', '--orphan', $temp) -In $stage | Out-Null
     Invoke-Git @('rm', '-rf', '--quiet', '.') -In $stage | Out-Null
 
     Copy-Item -Path (Join-Path $Web '*') -Destination $stage -Recurse -Force
@@ -84,11 +91,16 @@ try {
 
     Invoke-Git @('add', '-A') -In $stage | Out-Null
     Invoke-Git @('commit', '-m', "Publish the web build from $sourceSha") -In $stage | Out-Null
-    Invoke-Git @('push', '--force', $Remote, "${Branch}:${Branch}") -In $stage | Out-Null
+    Invoke-Git @('push', '--force', $Remote, "${temp}:${Branch}") -In $stage | Out-Null
 
     Write-Host "pushed $Remote/$Branch -- https://xenonsin.github.io/LoveTactics/"
 } finally {
     # --force because the orphan checkout leaves the worktree on a branch git would rather keep.
-    & git -C $Root worktree remove --force $stage 2>&1 | Out-Null
+    # No 2>&1 here either: cleanup chatter on stderr must not become a terminating error and mask
+    # whatever real failure sent us into this block.
+    & git -C $Root worktree remove --force $stage | Out-Null
     if (Test-Path $stage) { Remove-Item -Recurse -Force $stage -ErrorAction SilentlyContinue }
+    # The scaffolding branch goes with it, so the next publish starts from the same clean slate
+    # this one did.
+    & git -C $Root branch -D $temp | Out-Null
 }
