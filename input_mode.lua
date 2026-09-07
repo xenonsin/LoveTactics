@@ -43,6 +43,21 @@ function InputMode.axis(value)
     end
 end
 
+-- Pick a control hint's wording for the device actually in the player's hands. Every prompt in the
+-- game used to be written `InputMode.isGamepad() and "A to continue" or "Click to continue"`, which
+-- has only two branches -- so a handset, which is mouse mode (see above), was told to click.
+--
+--   InputMode.pick("A to continue", "Tap to continue", "Enter / Click to continue")
+--
+-- `touchText` may be nil, meaning "a finger has no route to this at all" -- the caller then draws
+-- nothing rather than naming a key that is not there. A prompt that advertises Esc to someone
+-- holding a phone is worse than silence: it says the function exists and is reachable, and it is not.
+function InputMode.pick(padText, touchText, keyText)
+    if InputMode.isGamepad() then return padText end
+    if InputMode.touch then return touchText end
+    return keyText
+end
+
 function InputMode.isKeyboard() return InputMode.current == "keyboard" end
 function InputMode.isMouse() return InputMode.current == "mouse" end
 function InputMode.isGamepad() return InputMode.current == "gamepad" end

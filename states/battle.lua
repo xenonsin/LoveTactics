@@ -6067,20 +6067,27 @@ function battle.drawHudText(boardX, boardW)
                     or ("Enter on a target to " .. (set or harm or "strike"))
                 hint = verb .. (canAim and "  ·  Tab to aim next" or "")
                     .. "  ·  number keys to switch  ·  Esc to cancel"
-            else -- mouse
-                local verb = battle.armedTile and ("Click a tile to " .. (set or ("place " .. name)))
-                    or battle.armedSupport and "Click an ally to support"
-                    or ("Click a target to " .. (set or harm or "strike"))
-                hint = verb .. "  ·  click the item / Esc to cancel"
+            else -- a pointer: a mouse or a finger, which press the same things by different names
+                local press = InputMode.touch and "Tap" or "Click"
+                local verb = battle.armedTile and (press .. " a tile to " .. (set or ("place " .. name)))
+                    or battle.armedSupport and (press .. " an ally to support")
+                    or (press .. " a target to " .. (set or harm or "strike"))
+                -- Esc is not on a handset, so the finger's route out is the one that is: pressing the
+                -- armed item again. Naming a key that is not there would advertise a way out that
+                -- does not exist.
+                hint = verb .. (InputMode.touch and "  ·  tap the item again to cancel"
+                    or "  ·  click the item / Esc to cancel")
             end
         elseif Combat.hasMoved(battle.combat) then
             hint = pad and "A on a foe in range to attack  ·  Y to switch item  ·  X to hold this turn"
                 or kbd and "Enter on a foe in range to attack  ·  number keys to switch  ·  Space to hold this turn"
-                or "Click a foe in range to attack  ·  click an item  ·  Wait to hold this turn"
+                or (InputMode.touch and "Tap a foe in range to attack  ·  tap an item  ·  Wait to hold this turn"
+                    or "Click a foe in range to attack  ·  click an item  ·  Wait to hold this turn")
         else
             hint = pad and "A on a blue tile to move  ·  a foe in red range to attack  ·  Y to arm  ·  X to delay"
                 or kbd and "Enter on a blue tile to move  ·  a foe in red range to attack  ·  number keys to arm  ·  Space to delay"
-                or "Click a blue tile to move  ·  a foe in red range to attack  ·  an item  ·  Wait to delay"
+                or (InputMode.touch and "Tap a blue tile to move  ·  a foe in red range to attack  ·  an item  ·  Wait to delay"
+                    or "Click a blue tile to move  ·  a foe in red range to attack  ·  an item  ·  Wait to delay")
         end
     else
         hint = "Enemy acting..."

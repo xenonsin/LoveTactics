@@ -109,7 +109,7 @@ function TutorialNote:draw()
     end
 
     Theme.set(Theme.muted)
-    local hint = InputMode.isGamepad() and "A to continue" or "Click, or press Enter to continue"
+    local hint = InputMode.pick("A to continue", "Tap to continue", "Click, or press Enter to continue")
     love.graphics.printf(hint, self.boxX, self.boxY + self.boxH - 34, BOX_W, "center")
 
     self.closeButton:draw()

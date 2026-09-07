@@ -536,7 +536,7 @@ function Advancement:drawFooter()
     love.graphics.setFont(self.smallFont)
     love.graphics.setColor(0.6, 0.63, 0.7)
     -- Show the glyph for the device last used: pad button only in gamepad mode, keyboard/mouse otherwise.
-    local hint = InputMode.isGamepad() and "A to continue" or "Enter / Click X to continue"
+    local hint = InputMode.pick("A to continue", "Tap to continue", "Enter / Click X to continue")
     love.graphics.printf(hint, self.boxX, self.boxY + self.boxH - 30, BOX_W, "center")
 end
 

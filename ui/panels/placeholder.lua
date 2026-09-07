@@ -57,7 +57,7 @@ function Placeholder:draw()
     love.graphics.printf("Coming soon.", self.boxX, self.boxY + 110, BOX_W, "center")
     Theme.set(Theme.muted)
     -- Show the glyph for the device last used: pad button only in gamepad mode, keyboard/mouse otherwise.
-    local hint = InputMode.isGamepad() and "B to close" or "Click X, or Esc to close"
+    local hint = InputMode.pick("B to close", "Tap X to close", "Click X, or Esc to close")
     love.graphics.printf(hint, self.boxX, self.boxY + BOX_H - 40, BOX_W, "center")
 
     self.closeButton:draw()

@@ -420,6 +420,26 @@ function Dialogue:sourceRect()
     return { x = self.boxX + 28, y = y - 6, w = w, h = ButtonPrompt.height() + 10 }
 end
 
+-- The SKIP control, and it exists only for a finger.
+--
+-- Skipping a scene is `escape` on a keyboard and `B` on a pad; a touchscreen has neither, so until
+-- this the footer told a phone player to press Esc and the function was simply unreachable -- every
+-- scene had to be tapped through line by line. A key that is not on the device is not a control, so
+-- touch gets a real one: a plate at the footer's left, tapped like any other button.
+--
+-- Nil on every other device, which is what keeps it off the desktop screen -- there the hint row
+-- already names a key that works, and a second way to do it would be clutter. Sized off the same
+-- ButtonPrompt metrics as the source control beside it so the row reads as one run of plates.
+function Dialogue:skipRect()
+    if not InputMode.touch then return nil end
+    local w = ButtonPrompt.width({ { glyph = "Skip", label = "" } })
+    local y = self:hintY()
+    local x = self.boxX + 28
+    local src = self:sourceRect()
+    if src then x = src.x + src.w + 30 end -- dev builds: fall in behind "edit this scene"
+    return { x = x, y = y - 6, w = w, h = ButtonPrompt.height() + 10 }
+end
+
 -- The row the footer control hints are drawn on.
 --
 -- Inside the box normally. Over a live scene it STRADDLES the bottom edge instead, mirroring the name
@@ -570,6 +590,12 @@ function Dialogue:mousepressed(x, y, button)
     -- the file was opened.
     if pointIn(self:sourceRect(), x, y) then
         self:openSource()
+        return
+    end
+    -- ...and the touch-only Skip plate, for the same reason: it sits inside the box, where every
+    -- other press advances the line.
+    if pointIn(self:skipRect(), x, y) then
+        self:finish()
         return
     end
     -- A click on a choice option commits it; a click anywhere else advances the line.
@@ -805,15 +831,20 @@ function Dialogue:draw()
     end
 
     -- Footer control hints, bottom-right of the box.
+    -- Skip is missing from the touch row on purpose: a finger has no Esc and no B, so naming either
+    -- would advertise a way out that is not there. It gets a control of its own instead -- see
+    -- skipRect, drawn below -- which is the only honest way to offer it.
     local segs
     if self:choicesActive() then
-        segs = InputMode.isGamepad()
-            and { { glyph = "A", label = "Choose" }, { glyph = "B", label = "Skip" } }
-            or { { glyph = "Enter", label = "Choose" }, { glyph = "Esc", label = "Skip" } }
+        segs = InputMode.pick(
+            { { glyph = "A", label = "Choose" }, { glyph = "B", label = "Skip" } },
+            { { glyph = "Tap", label = "Choose" } },
+            { { glyph = "Enter", label = "Choose" }, { glyph = "Esc", label = "Skip" } })
     else
-        segs = InputMode.isGamepad()
-            and { { glyph = "A", label = "Advance" }, { glyph = "B", label = "Skip" } }
-            or { { glyph = "Click", label = "Advance" }, { glyph = "Esc", label = "Skip" } }
+        segs = InputMode.pick(
+            { { glyph = "A", label = "Advance" }, { glyph = "B", label = "Skip" } },
+            { { glyph = "Tap", label = "Advance" } },
+            { { glyph = "Click", label = "Advance" }, { glyph = "Esc", label = "Skip" } })
     end
     -- Right-aligned in the box, but pulled in ahead of the side bust when one stands at that end.
     local hintX, hintY = self.boxX, self:hintY()
@@ -836,6 +867,20 @@ function Dialogue:draw()
         hintX = r.x + r.w + 24
         hintW = hintW - (hintX - self.boxX)
     end
+    -- The touch-only Skip plate (see skipRect). Drawn on the same row and in the same dress as the
+    -- source control, because it is the same kind of thing: the one item on this row you press.
+    local skip = self:skipRect()
+    if skip then
+        Theme.set(Theme.slot, 0.75)
+        love.graphics.rectangle("fill", skip.x - 6, skip.y, skip.w + 12, skip.h, Theme.R, Theme.R)
+        Theme.set(Theme.frame)
+        love.graphics.rectangle("line", skip.x - 6, skip.y, skip.w + 12, skip.h, Theme.R, Theme.R)
+        ButtonPrompt.draw({ { glyph = "Skip", label = "", color = Theme.accentAmber } },
+            skip.x, hintY, skip.w, { align = "left" })
+        local right = skip.x + skip.w + 24
+        if right > hintX then hintW = hintW - (right - hintX) hintX = right end
+    end
+
     ButtonPrompt.draw(segs, hintX, hintY, hintW, { align = "right" })
 
     love.graphics.setColor(1, 1, 1)

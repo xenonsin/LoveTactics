@@ -629,8 +629,12 @@ function DeployPhase:draw(bounds)
                 line = roomy and "D-pad: choose a lit tile   A: set down (on an ally to trade places)   B: cancel"
                     or "A: set down   B: cancel"
             elseif InputMode.isMouse() then
-                line = roomy and "Click a lit tile to set them down; on an ally to trade places"
-                    or "Click a lit tile"
+                -- A finger presses what a mouse clicks; only the word differs (input_mode.lua).
+                line = InputMode.touch
+                    and (roomy and "Tap a lit tile to set them down; on an ally to trade places"
+                        or "Tap a lit tile")
+                    or (roomy and "Click a lit tile to set them down; on an ally to trade places"
+                        or "Click a lit tile")
             else
                 line = roomy and "Arrows: choose a lit tile   Space: set down (on an ally to trade places)   Esc: cancel"
                     or "Space: set down   Esc: cancel"
@@ -643,6 +647,7 @@ function DeployPhase:draw(bounds)
             -- Says the swap outright. It is the whole of the phase on a board where everyone is already
             -- standing -- a player who does not know a drop on an ally trades their places has no
             -- move but shuffling into the gaps.
+            -- No touch branch: "drag" is the same word and the same gesture with a finger.
             line = roomy and "Drag a body to another lit tile; drop on an ally to trade places"
                 or "Drag between lit tiles"
         else

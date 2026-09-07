@@ -91,7 +91,7 @@ function SystemMenu:draw()
 
     love.graphics.setFont(self.hintFont)
     Theme.set(Theme.muted)
-    local hint = InputMode.isGamepad() and "B to close" or "Click X, or Esc to close"
+    local hint = InputMode.pick("B to close", "Tap X to close", "Click X, or Esc to close")
     love.graphics.printf(hint, self.boxX, self.boxY + BOX_H - 34, BOX_W, "center")
 
     self.closeButton:draw()

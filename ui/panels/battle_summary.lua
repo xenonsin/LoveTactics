@@ -877,7 +877,7 @@ function BattleSummary:draw()
     else
         love.graphics.setFont(self.hintFont)
         love.graphics.setColor(0.55, 0.6, 0.7)
-        local hint = InputMode.isGamepad() and "A to skip" or "Click / Enter to skip"
+        local hint = InputMode.pick("A to skip", "Tap to skip", "Click / Enter to skip")
         love.graphics.printf(hint, bx, self.buttonY + BUTTON_H / 2 - 9, self.boxW, "center")
     end
 
