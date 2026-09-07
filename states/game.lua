@@ -169,6 +169,24 @@ local function useVisible()
     return game.itemsVisible and game.useUnlocked
 end
 
+-- THE EQUIP LESSON IS A DOOR, NOT A SIGN. The one coach step out here that asks for a BUTTON rather
+-- than a step holds the road shut until that button is pressed: the chest is open, the loot is in the
+-- stash, and the only move left on this leg is opening the panel it went into.
+--
+-- Left as a suggestion it is simply walked past -- WASD is already under the player's fingers from the
+-- move lesson two beats earlier -- and the next thing on that trail is the champion. The bubble is
+-- still up when the fight opens, pinned to a button the battle screen has covered over, pointing at
+-- the wrong plate in the wrong sidebar; and the player arrives at the leg's one real fight carrying a
+-- reward nobody ever showed them how to wear. Same shape as the guided fight's gate
+-- (models/tutorial.lua): while a lesson is owed, narrow what is legal to the thing being asked for.
+--
+-- Only the map is held. Every other control on this leg is already hidden (backVisible, useVisible),
+-- so Items is the single live thing on the screen, which is what makes the hold readable rather than
+-- a game that stopped responding.
+local function mapHeld()
+    return game.coach == "loadout"
+end
+
 -- Where each button actually sits this frame. One reading of the row, used by the draw, the hit test
 -- and the cursor alike -- three copies of "which lane is Use in" is how a button ends up clickable
 -- somewhere it is not drawn.
@@ -3974,6 +3992,7 @@ function game.update(dt)
         -- what the muster ruler is made of -- so re-rate here and the markers answer to the
         -- weapon that was just handed over before the player has taken a step.
         if game.panelWasOpen then game:refreshMuster() end
+        game.map.locked = mapHeld()
         game.map:update(dt)
     end
     game.panelWasOpen = game.activePanel ~= nil

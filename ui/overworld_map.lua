@@ -423,6 +423,17 @@ function OverworldMap:update(dt)
     end
     if self.slideT > 0 then self.slideT = math.max(0, self.slideT - dt) end
 
+    -- HELD SHUT. `locked` is set from outside (states/game.lua, while a coach step is waiting on a
+    -- BUTTON rather than on a step) and it stops the company WALKING -- nothing else. The camera and
+    -- the token slide above it keep running, so a lock taken mid-hop finishes the hop instead of
+    -- freezing the token half a tile out. A burst or a queued click-walk in flight is dropped rather
+    -- than paused: resuming one the moment the lock lifts would spend a step the player asked for
+    -- several beats ago, on a board they have since been taught something about.
+    if self.locked then
+        self.heldDir, self.autoPath = nil, nil
+        return
+    end
+
     local dx, dy = self:heldDirection()
     if dx ~= 0 or dy ~= 0 then
         self.autoPath = nil -- manual input cancels any click-to-path walk
@@ -1389,7 +1400,7 @@ function OverworldMap:gamepadpressed(_, _) end
 -- trail to auto-walk there (an adjacent tile is just the one-step case). Keeps the
 -- whole overworld playable with the mouse alone; the walk stops on encounters.
 function OverworldMap:mousepressed(x, y, button)
-    if button ~= 1 then return end
+    if button ~= 1 or self.locked then return end
     local cx, cy = self.grid:pixelToCell(x + self.camX, y + self.camY)
     local path = self:pathTo(cx, cy)
     if path then

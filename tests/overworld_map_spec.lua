@@ -75,6 +75,42 @@ end
 
 return {
     {
+        name = "a locked map refuses to walk, by click or by queued path",
+        fn = function()
+            -- The hold behind the flight tutorial's equip lesson (states/game.lua's mapHeld): while a
+            -- coach step is waiting on a BUTTON, the road is shut, or the player walks off the chest
+            -- and into the champion's fight with the lesson still owed. Pinned here rather than in
+            -- the state because this is the half that has to actually stop a step.
+            local grid = genOpen(3)
+            revealAll(grid)
+            local w = walker(grid)
+            w.slideT, w.slideDur, w.visionRadius = 0, 0, 2
+            w.camX, w.camY = 0, 0
+            local sx, sy = w.px, w.py
+
+            local path = w:pathTo(grid.objective.x, grid.objective.y)
+            assert(path and #path > 0, "fixture: expected a route to walk")
+
+            -- A click while held queues nothing at all.
+            w.locked = true
+            local ox, oy = grid:cellToPixel(grid.objective.x, grid.objective.y)
+            w:mousepressed(ox, oy, 1)
+            assert(w.autoPath == nil, "a click while held must not queue a walk")
+
+            -- ...and a walk already queued when the hold came down is DROPPED, not paused: it would
+            -- otherwise spend a step the moment the lesson was answered.
+            w.autoPath, w.autoTimer = { { path[1][1], path[1][2] } }, 0
+            w:update(0.5)
+            assert(w.autoPath == nil, "a queued walk is dropped by the hold")
+            assert(w.px == sx and w.py == sy, "the token moved while the map was held")
+
+            -- Lifting it hands the map back whole -- a click travels again.
+            w.locked = false
+            w:mousepressed(ox, oy, 1)
+            assert(w.autoPath ~= nil, "the map must travel again once the hold lifts")
+        end,
+    },
+    {
         name = "pathTo reaches the objective across revealed trail",
         fn = function()
             local grid = genOpen(3)
