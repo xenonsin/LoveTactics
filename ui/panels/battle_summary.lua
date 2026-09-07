@@ -306,11 +306,17 @@ function BattleSummary.new(opts)
     local techOnly = {}
     for _, actor in ipairs(opts.technique or {}) do
         local rows, total = {}, 0
+        -- The rungs this body's hands crossed during the fight (models/combat.lua stamps them as they
+        -- happen). The board floats a crossing as it lands, but it cannot float the one earned by the
+        -- killing blow -- this panel is already up by then -- so the house row carries it here as well:
+        -- the rare reading that a fight is actually FOR should not be lost to the swing that won it.
+        local reached = {}
+        for _, rung in ipairs(actor.rungs or {}) do reached[rung.key] = rung.level end
         for _, house in ipairs(actor.houses or {}) do
             local amount = house.amount or 0
             if amount > 0 then
                 local name = Class.displayName(house.key) or (house.key:gsub("^%l", string.upper))
-                rows[#rows + 1] = { name = name, amount = amount }
+                rows[#rows + 1] = { name = name, amount = amount, rung = reached[house.key] }
                 total = total + amount
             end
         end
@@ -808,8 +814,16 @@ function BattleSummary:draw()
             end
             love.graphics.setFont(self.techFont)
             for _, row in ipairs(group.rows) do
-                love.graphics.setColor(0.60, 0.64, 0.74, alpha)
-                love.graphics.printf(row.name, bx, ty, half - 10, "right")
+                -- A house that crossed a rung this fight wears the rung it reached and takes the gold,
+                -- the same way a body that levelled turns its "Lv 12" gold a few lines above: "Knight 3
+                -- +14" says what the fight BUILT where the rest of the column only says what it paid.
+                if row.rung then
+                    love.graphics.setColor(GOLD[1], GOLD[2], GOLD[3], alpha)
+                    love.graphics.printf(row.name .. " " .. row.rung, bx, ty, half - 10, "right")
+                else
+                    love.graphics.setColor(0.60, 0.64, 0.74, alpha)
+                    love.graphics.printf(row.name, bx, ty, half - 10, "right")
+                end
                 love.graphics.setColor(0.93, 0.76, 0.35, alpha)
                 love.graphics.printf("+" .. row.amount, bx + half + 10, ty, half - 10, "left")
                 ty = ty + TECH_ROW_H

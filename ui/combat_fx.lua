@@ -653,10 +653,14 @@ function CombatFx:hit(unit, amount, lethal, attacker, cell, critical)
     end
 end
 
-function CombatFx:floatText(unit, text, color, big)
+-- `stack` lifts this floater a whole line clear of stack 0, for the few callers that put more than one
+-- line over the SAME body at the same moment (an action that crosses two class rungs at once). They
+-- are one reading in two lines rather than two numbers racing each other off one head, so the jitter is
+-- dropped too -- a stack has to hold its column to read as a stack.
+function CombatFx:floatText(unit, text, color, big, stack)
     self.floaters[#self.floaters + 1] = {
         unit = unit, text = text, color = color, age = 0, life = FLOAT_LIFE,
-        jx = math.random(-7, 7), big = big,
+        jx = (stack and 0) or math.random(-7, 7), big = big, stack = stack or 0,
     }
 end
 
@@ -1056,7 +1060,10 @@ function CombatFx:drawFloaters(map)
         love.graphics.setFont(font)
         local tw = font:getWidth(f.text)
         local x = wx + size / 2 - tw / 2 + (f.jx or 0)
+        -- Stacked lines climb together: the rise is applied once and the stack offset sits on top of
+        -- it, so a two-line reading holds its spacing for the whole drift instead of splitting apart.
         local y = wy + size * 0.28 - FLOAT_RISE * easeOut(p)
+            - (f.stack or 0) * (font:getHeight() + 2)
         love.graphics.setColor(0, 0, 0, 0.7 * a)
         love.graphics.print(f.text, x + 1, y + 1)
         love.graphics.setColor(f.color[1], f.color[2], f.color[3], a)

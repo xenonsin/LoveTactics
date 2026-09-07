@@ -9668,9 +9668,20 @@ end
 -- the same ledger split by whose hand banked it, `{ { char, name, houses = { { key, amount } } } }` in
 -- first-award order, and it is what the summary panel reports: technique is earned per body (the bill
 -- spends from one body, and specializing is what makes it pay), so "+6 Rogue" is only half a fact
--- until it says which of the four earned it. `combat.techniqueAward` is the LAST award only -- a
--- one-shot the battle state drains to float "+2 Ninja" over the caster (states/battle.lua) and then
--- clears, so a capped-out action floats nothing rather than a misleading zero.
+-- until it says which of the four earned it. Each actor row also carries `rungs` -- the ladder steps
+-- its hands took this fight -- which is what lets the summary print "Knight 3" beside the house that
+-- reached it, whether the crossing landed mid-fight or on the killing blow.
+--
+-- NOTHING IS ARMED FOR AN ORDINARY ACTION. `combat.techniqueCrossing` is a one-shot the battle state
+-- drains, and it is set ONLY when banking pushed a house up a rung (Class.classLevel steps): 23, 69,
+-- 138, 230 ... An action that merely banks two technique says nothing at all, because two is a
+-- twenty-third of a decision, and the fifteen "+1 Knight  +1 Fighter" floaters a fight used to throw
+-- were a receipt for a choice nobody could act on -- each one also costing a beat, since the award
+-- waited for the board to settle and the turn hand-off then waited on the award.
+--
+-- So what accrues stays ambient (the summary reports it at the end of the fight, the party sheet reads
+-- it between them) and only the crossing speaks. That is FFT's job level and Fire Emblem's level-up:
+-- neither game floats its currency per hit, and neither shows the accrual during one.
 -- SPLIT BETWEEN THE HANDS AND THE BADGE. An action banks against the class of the thing in the hand,
 -- as it always has -- and when the body is standing in a DIFFERENT class, that class takes
 -- Class.TECHNIQUE_DECLARED_SHARE out of the same award (FFT's rule; see the constant for the argument
@@ -9680,7 +9691,7 @@ end
 -- Each half is capped independently, because the cap is per house across the whole field -- so a capped
 -- hand does not stop the badge earning, and either half alone still arms the floater.
 function Combat.awardTechnique(combat, unit, item)
-    combat.techniqueAward = nil
+    combat.techniqueCrossing = nil
     local key = Class.growthClasses(item)[1]
     if not key then return 0 end
 
@@ -9689,13 +9700,21 @@ function Combat.awardTechnique(combat, unit, item)
     -- of houses, and an ordered list is what both the display and a stable reading want anyway.
     combat.techniqueByActor = combat.techniqueByActor or {}
 
+    -- The rungs this ACTION pushed a house over, hands before badge -- the whole of what the board is
+    -- allowed to say about technique. Read either side of the bank rather than derived from the
+    -- amount: the ladder is triangular and a body can be handed technique from anywhere (a scripted
+    -- grant, a restored save), so "did this cross" is a question only the two levels can answer.
+    local crossings = {}
+
     local function bank(house, want)
         if not house or want <= 0 then return 0 end
         local earned = combat.techniqueEarned[house] or 0
         local amount = math.min(want, Class.TECHNIQUE_PER_BATTLE - earned)
         if amount <= 0 then return 0 end
 
+        local before = Class.classLevel(unit.char, house)
         Character.recordTechnique(unit.char, house, amount)
+        local after = Class.classLevel(unit.char, house)
         combat.techniqueEarned[house] = earned + amount
 
         local actor
@@ -9715,24 +9734,29 @@ function Combat.awardTechnique(combat, unit, item)
             actor.houses[#actor.houses + 1] = row
         end
         row.amount = row.amount + amount
+
+        if after > before then
+            crossings[#crossings + 1] = { key = house, level = after }
+            -- The same step onto the body's own row, so the summary can name it however the fight
+            -- ended. The floater below is dropped when the crossing lands on the killing blow (the
+            -- panel owns the frame by then), and without this that crossing would be announced
+            -- nowhere -- the one reading a player most wants is the one the last swing earned.
+            actor.rungs = actor.rungs or {}
+            actor.rungs[#actor.rungs + 1] = { key = house, level = after }
+        end
         return amount
     end
 
     local declared = Growth.classOf(unit.char)
     local share = (declared ~= key) and Class.TECHNIQUE_DECLARED_SHARE or 0
 
-    -- The hands are named first so the floater leads with the house the player just SWUNG; the badge
-    -- rides behind it. Only when the hands bank nothing does the badge take the front, which is the
-    -- one case where leading with the item's house would print a zero.
-    local awards = {}
+    -- The hands bank first so that when one action crosses TWO rungs, the stack reads top-down with
+    -- the house the player just SWUNG at the top and the badge under it. Both halves are capped
+    -- independently, so either can cross on its own.
     local hands = bank(key, Class.TECHNIQUE_PER_ACTION - share)
-    if hands > 0 then awards[#awards + 1] = { discipline = key, amount = hands } end
     local badge = bank(declared, share)
-    if badge > 0 then awards[#awards + 1] = { discipline = declared, amount = badge } end
-    if #awards == 0 then return 0 end
 
-    combat.techniqueAward = { unit = unit,
-        discipline = awards[1].discipline, amount = awards[1].amount, also = awards[2] }
+    if #crossings > 0 then combat.techniqueCrossing = { unit = unit, rungs = crossings } end
     return hands + badge
 end
 

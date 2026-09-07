@@ -5063,40 +5063,43 @@ end
 -- or by a queued command (auto-battle), and every one of them would otherwise need its own copy of
 -- this. The model banks synchronously inside useItem, so the award is here the same frame.
 --
--- ONE one-shot: `techniqueAward`, "+2 Ninja" / "+2 Knight" -- what this action banked on the ledger
--- that both bills the Forge and apportions the next level-up (Combat.awardTechnique). There used to be
--- a second, quieter floater for the class vote, because technique only spoke for discipline stock --
--- locked content on 233 of 638 items -- so an opening hand of plain gear floated nothing at all. Every
--- house banks the same currency now, so there is one thing to say and one way to say it.
+-- ONE one-shot, and it is NOT armed by an ordinary action: `techniqueCrossing`, set only where banking
+-- pushed a house up a rung of the class ladder (Combat.awardTechnique). An action banks two technique
+-- and used to float "+1 Knight  +1 Fighter" for it, fifteen times a fight -- a receipt for a figure no
+-- decision reads, since technique only decides anything at 23, 69, 138, 230 ... What accrues is now
+-- silent: the summary panel reports the fight's whole ledger at the end and the party sheet reads it
+-- between fights, which is where that question is actually asked.
 --
 -- It is only PARKED here, not shown: see releaseGrowthAward.
 local function bankGrowthAward()
     local combat = battle.combat
     if not combat then return end
 
-    local award = combat.techniqueAward
-    if not award then return end
-    combat.techniqueAward = nil
-    -- The key is a class id OR a discipline id, so resolve it the way every other surface does:
-    -- "plague_knight" is "Plague Knight", which title-casing alone would render "Plague_knight".
-    local function phrase(a)
-        local name = Class.displayName(a.discipline) or (a.discipline:gsub("^%l", string.upper))
-        return "+" .. a.amount .. " " .. name
+    local crossing = combat.techniqueCrossing
+    if not crossing then return end
+    combat.techniqueCrossing = nil
+    -- "Knight 3" -- the same phrase the party sheet prints for a rung (Party.growthParts), because a
+    -- reading a player meets in two places under two names is two things to learn. The key is a class
+    -- id OR a discipline id, so resolve it the way every other surface does: "plague_knight" is
+    -- "Plague Knight", which title-casing alone would render "Plague_knight".
+    local lines = {}
+    for _, rung in ipairs(crossing.rungs) do
+        local name = Class.displayName(rung.key) or (rung.key:gsub("^%l", string.upper))
+        lines[#lines + 1] = name .. " " .. rung.level
     end
-    -- ONE FLOATER, TWO HOUSES WHEN THE ACTION SPLIT. A body standing in a class it is not swinging
-    -- banks into both (Combat.awardTechnique), and the second half is the whole visible consequence of
-    -- the badge -- float only the first and the rule the player is being taught is invisible. Two
-    -- floaters would be two amber texts racing each other off the same head, so they share one line.
-    local text = phrase(award)
-    if award.also then text = text .. "   " .. phrase(award.also) end
-    battle.pendingAward = { unit = award.unit, text = text }
+    battle.pendingAward = { unit = crossing.unit, lines = lines }
 end
 
--- Float a parked award -- but only once the action that earned it has finished being an action.
+-- Float a parked crossing -- but only once the action that earned it has finished being an action.
 --
 -- It is a damage number in every respect but timing: the same channel (CombatFx:floatText), the same
 -- drift and fade, amber rather than the damage reds or the heal green because that is the accent this
--- UI reserves for what is live and earned. It lands on the CASTER while damage lands on the TARGET.
+-- UI reserves for what is live and earned. It lands on the CASTER's body on the BOARD, where the
+-- player is already looking, and not on that body's card in the side panel.
+--
+-- STACKED, NEVER STRUNG ACROSS. An action that crosses two rungs at once (the hands and the badge both
+-- stepping up) prints them one above the other, the swung house on top -- one reading in two lines,
+-- rather than two phrases sharing a line and being read as one.
 --
 -- What changed is WHEN. It used to go out the instant it was banked -- one more piece of amber text
 -- thrown up in the same frame as the reds, the burst, the shake and the HP drain -- and it was there
@@ -5113,14 +5116,21 @@ end
 local function releaseGrowthAward()
     local award = battle.pendingAward
     if not award then return end
-    -- The fight is decided: the summary panel owns the frame now, and it reports the whole fight's
-    -- ledger anyway. Drop it rather than float a number under a victory banner.
+    -- The fight is decided: the summary panel owns the frame now. Drop the floater rather than throw
+    -- one under a victory banner -- the crossing itself is not lost, because it also rode out on the
+    -- body's own ledger row and the panel names it there (Combat.awardTechnique's `rungs`).
     if battle.over or battle.summary then battle.pendingAward = nil; return end
     if walking() then return end
     if battle.pendingAdvance and battle.pendingAdvance.hold > 0 then return end
     if battle.fx:busy() or not battle.fx:hpSettled() or not battle.fx:floatersDone() then return end
     battle.pendingAward = nil
-    battle.fx:floatText(award.unit, award.text, Theme.accentAmber)
+    -- Bottom line at stack 0 and the first line above it, so the swung house heads the column.
+    for i, line in ipairs(award.lines) do
+        battle.fx:floatText(award.unit, line, Theme.accentAmber, true, #award.lines - i)
+    end
+    -- The one moment in this system that earns a sound, and the cue already exists for exactly this
+    -- shape of moment: "a companion levels up -- a rising, celebratory chime" (data/sounds.lua).
+    Sound.play("quest.levelup")
 end
 
 function battle.update(dt)
