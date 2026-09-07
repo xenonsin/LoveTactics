@@ -12,8 +12,28 @@ local InputMode = { current = "keyboard" }
 -- Ignore analog drift: only a real deflection past this counts as "using the gamepad".
 InputMode.AXIS_DEADZONE = 0.5
 
+-- A FINGER IS A MOUSE, with one exception. SDL delivers a tap as a mouse event, and every screen
+-- in the game is right to treat it as one -- a tap presses what a click presses, and the dozens of
+-- `InputMode.isMouse()` branches that suppress keyboard/pad focus rings want to be true on a
+-- handset too. So touch stays inside "mouse" mode rather than becoming a fourth one.
+--
+-- The exception is HOVER, which a finger does not have. main.lua hides the OS pointer while the
+-- mouse is live and draws ui/cursor.lua's glyph at it instead; with no pointer to follow, that
+-- glyph strands itself wherever the last tap landed and sits there for the rest of the session.
+-- This flag is what tells the two apart. It is set from the `istouch` every pointer callback
+-- already carries, so a tablet with a mouse plugged in gets its cursor back on the first real
+-- move, and cleared the same way.
+InputMode.touch = false
+
 function InputMode.set(mode)
     InputMode.current = mode
+end
+
+-- A pointer event, from either kind of pointer. `istouch` is the flag LOVE passes to mousemoved /
+-- mousepressed / mousereleased.
+function InputMode.pointer(istouch)
+    InputMode.current = "mouse"
+    InputMode.touch = istouch and true or false
 end
 
 -- Set gamepad mode only when an axis actually moves past the deadzone (stick drift stays quiet).

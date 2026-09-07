@@ -13,13 +13,20 @@
 --   -- love.draw:
 --   Scale.start(); state:draw(); Scale.finish()
 --   -- love.load / love.resize:
---   Scale.resize(love.graphics.getPixelDimensions())
+--   Scale.resize(love.graphics.getDimensions())
 --   -- mouse callbacks:
 --   local gx, gy = Scale.toGame(x, y)
 --
--- The fit is computed against the DRAWABLE (getPixelDimensions), not the window, because in a
--- browser those are two different sizes; Scale.toGame converts a pointer from one to the other.
--- A drawable taller than it is wide is fitted turned a quarter turn clockwise, so a phone held
+-- ONE SET OF UNITS. Everything here -- the fit, the offsets, the scissor, the canvas, the pointer
+-- conversion -- is in the WINDOW's own coordinates, which is also what love.graphics draws in and
+-- what mouse callbacks report. The real pixel count underneath can be larger: conf.lua asks for a
+-- high-DPI drawable, so on a phone browser (and a retina panel) one window unit is three device
+-- pixels. That density belongs to the RASTERISER, not to the layout -- LOVE applies it to every
+-- draw on its own, ui/theme.lua bakes glyph atlases against it, and the canvas below carries it --
+-- so nothing in this file, or above it, ever has to see a pixel. Mixing the two is what drew the
+-- frame three times too large and off the side of the screen.
+--
+-- A window taller than it is wide is fitted turned a quarter turn clockwise, so a phone held
 -- upright still plays the game full-screen. See Scale.rotated.
 --
 -- The frame is composited into a canvas sized to the REAL WINDOW (not the 1280x720 logical
@@ -74,34 +81,13 @@ Scale.offsetY = 0
 Scale.allowRotate = false
 Scale.rotated = false
 
--- Pointer positions arrive in WINDOW units; everything here is in drawable PIXELS. On the desktop
--- the two are the same number and this is 1. In a browser they part company (see syncPixelScale).
-Scale.pixelScale = 1
-
--- The fitted rect on screen, in pixels -- the logical space's own width and height when upright,
--- swapped when it is turned.
+-- The fitted rect on screen, in window units -- the logical space's own width and height when
+-- upright, swapped when it is turned.
 function Scale.fittedW() return (Scale.rotated and Scale.HEIGHT or Scale.WIDTH) * Scale.scale end
 function Scale.fittedH() return (Scale.rotated and Scale.WIDTH or Scale.HEIGHT) * Scale.scale end
 
--- love.graphics.getDimensions reports the WINDOW, love.graphics.getPixelDimensions the DRAWABLE,
--- and mouse callbacks speak the first while the frame is rasterised into the second. On the desktop
--- they agree, so the ratio is 1 and nothing about this file changes. In a browser they do not: SDL
--- tracks the canvas element's CSS box while the drawing buffer keeps whatever size it was made at,
--- and fitting to the window while drawing into the buffer is what drew the whole game into the
--- top-left corner of a phone's canvas.
-function Scale.syncPixelScale()
-    local g = love.graphics
-    if not (g and g.getPixelWidth and g.getWidth) then Scale.pixelScale = 1 return end
-    local ok, uw = pcall(g.getWidth)
-    local okp, pw = pcall(g.getPixelWidth)
-    if ok and okp and uw and uw > 0 and pw and pw > 0 then
-        Scale.pixelScale = pw / uw
-    else
-        Scale.pixelScale = 1
-    end
-end
-
--- Recompute the fit for a given drawable size, IN PIXELS. Call on load and on resize.
+-- Recompute the fit for a given WINDOW size (love.graphics.getDimensions, the units mouse
+-- callbacks report). Call on load and on resize.
 function Scale.resize(windowW, windowH)
     local rotated = Scale.allowRotate and windowH > windowW
     local s
@@ -116,7 +102,6 @@ function Scale.resize(windowW, windowH)
     Scale.offsetY = math.floor((windowH - (rotated and Scale.WIDTH or Scale.HEIGHT) * s) / 2)
     Scale.windowW = windowW
     Scale.windowH = windowH
-    Scale.syncPixelScale()
     -- The canvas is sized to the real window, so a resize retires it; ensureCanvas rebuilds it at
     -- the new size on the next frame. (noCanvas stays latched -- a driver that failed once still
     -- gets the fallback path.) Release the old target rather than leaning on the GC, since dragging
@@ -133,12 +118,16 @@ end
 function Scale.ensureCanvas()
     if Scale.canvas then return Scale.canvas end
     if Scale.noCanvas then return nil end
-    local w = Scale.windowW or love.graphics.getPixelWidth()
-    local h = Scale.windowH or love.graphics.getPixelHeight()
-    -- dpiscale 1 because w and h are already the drawable's PIXELS. Left to itself a new canvas
-    -- takes love.graphics.getDPIScale() and multiplies, which on a browser canvas is neither 1 nor
-    -- a whole number -- a target a third too big, blitted a third too big, over the same drawable.
-    local okC, canvas = pcall(love.graphics.newCanvas, w, h, { dpiscale = 1 })
+    local w = Scale.windowW or love.graphics.getWidth()
+    local h = Scale.windowH or love.graphics.getHeight()
+    -- w and h are WINDOW units, so the canvas takes the display's density explicitly: it is
+    -- addressed as w x h, exactly like the window it stands in for, and carries w*dpi by h*dpi real
+    -- texels underneath. That is what keeps the game rasterising at the screen's own resolution
+    -- instead of a third of it. Passing 1 here would throw that resolution away while leaving every
+    -- coordinate in this file looking correct, which is the silent version of this bug.
+    local okDpi, dpi = pcall(love.graphics.getDPIScale)
+    if not (okDpi and type(dpi) == "number" and dpi > 0) then dpi = 1 end
+    local okC, canvas = pcall(love.graphics.newCanvas, w, h, { dpiscale = dpi })
     if not okC or not canvas then
         Scale.noCanvas = true
         return nil
@@ -183,9 +172,9 @@ function Scale.start()
     -- The drawable can change size without a resize event ever reaching us -- a browser canvas does
     -- exactly that -- and a stale fit draws the whole frame into one corner of the buffer. Two
     -- integers a frame is the cheapest insurance there is.
-    local okD, pw, ph = pcall(love.graphics.getPixelDimensions)
-    if okD and pw and pw > 0 and (pw ~= Scale.windowW or ph ~= Scale.windowH) then
-        Scale.resize(pw, ph)
+    local okD, ww, wh = pcall(love.graphics.getDimensions)
+    if okD and ww and ww > 0 and (ww ~= Scale.windowW or wh ~= Scale.windowH) then
+        Scale.resize(ww, wh)
     end
 
     local canvas = Scale.ensureCanvas()
@@ -282,27 +271,25 @@ end
 -- Convert real window coordinates (e.g. from mouse callbacks) to logical
 -- coordinates. Points inside the letterbox bars map outside [0,WIDTH]x[0,HEIGHT].
 --
--- Two conversions, in this order: window units to drawable pixels (1:1 on the desktop), then the
--- inverse of the fit applied in applyFit -- including the quarter turn, which swaps the axes and
--- runs the logical y back from the right-hand edge.
+-- Exactly the inverse of the fit applied in applyFit -- including the quarter turn, which swaps the
+-- axes and runs the logical y back from the right-hand edge. A pointer arrives in window units and
+-- the fit is computed in window units, so there is nothing to reconcile first.
 function Scale.toGame(x, y)
-    local px, py = x * Scale.pixelScale, y * Scale.pixelScale
     if Scale.rotated then
-        return (py - Scale.offsetY) / Scale.scale,
-               (Scale.offsetX + Scale.HEIGHT * Scale.scale - px) / Scale.scale
+        return (y - Scale.offsetY) / Scale.scale,
+               (Scale.offsetX + Scale.HEIGHT * Scale.scale - x) / Scale.scale
     end
-    return (px - Scale.offsetX) / Scale.scale,
-           (py - Scale.offsetY) / Scale.scale
+    return (x - Scale.offsetX) / Scale.scale,
+           (y - Scale.offsetY) / Scale.scale
 end
 
 -- The same conversion for a MOVEMENT rather than a position: no offsets, and the turn is a plain
 -- axis swap. (A drag of dx across a turned screen is a drag of dx DOWN the logical space.)
 function Scale.toGameDelta(dx, dy)
-    local px, py = dx * Scale.pixelScale, dy * Scale.pixelScale
     if Scale.rotated then
-        return py / Scale.scale, -px / Scale.scale
+        return dy / Scale.scale, -dx / Scale.scale
     end
-    return px / Scale.scale, py / Scale.scale
+    return dx / Scale.scale, dy / Scale.scale
 end
 
 return Scale

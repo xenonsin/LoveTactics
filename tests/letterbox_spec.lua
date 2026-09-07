@@ -148,7 +148,11 @@ return {
         name = "main.lua switches the turn on for a handset",
         fn = function()
             local src = assert(love.filesystem.read("main.lua"), "main.lua is readable")
-            assert(src:find("Scale.allowRotate%s*=%s*true"),
+            -- Read what allowRotate is assigned FROM rather than matching a literal `true`: the flag
+            -- is set from the same handset test that arms touch mode, so pinning the spelling of the
+            -- right-hand side would redden this on a rename while the feature still worked.
+            local assigned = src:match("Scale%.allowRotate%s*=%s*([%w_]+)")
+            assert(assigned and assigned ~= "false" and assigned ~= "nil",
                 "nothing in main.lua turns Scale.allowRotate on -- scale.lua's quarter turn is dead code")
             assert(src:find("\"mobile\""),
                 "main.lua does not look for the `mobile` argument the web shell passes on a touchscreen")

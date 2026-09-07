@@ -5,6 +5,7 @@
 -- actually depend on. The drawing itself is covered by the in-game verification pass.
 
 local Cursor = require("ui.cursor")
+local InputMode = require("input_mode")
 
 -- Every kind the states can return (battle.cursorKind + the menu/hub hand/arrow) must be mapped.
 local EXPECTED = {
@@ -33,6 +34,39 @@ return {
         fn = function()
             assert(Cursor.KINDS["no-such-kind"] == nil, "unexpected glyph for an unknown kind")
             assert(type(Cursor.KINDS.arrow) == "function", "arrow fallback glyph missing")
+        end,
+    },
+    {
+        -- A finger is a mouse for every purpose but one. The dozens of InputMode.isMouse() branches
+        -- across the states must stay true under touch -- a tap presses what a click presses -- so
+        -- the difference rides a separate flag rather than a fourth mode.
+        name = "a touch pointer is still mouse mode, and is flagged as touch",
+        fn = function()
+            local mode, touch = InputMode.current, InputMode.touch
+            InputMode.pointer(true)
+            assert(InputMode.isMouse(), "a tap must leave the game in mouse mode")
+            assert(InputMode.touch, "a tap must be flagged as touch")
+            InputMode.pointer(false)
+            assert(InputMode.isMouse(), "a real mouse is mouse mode")
+            assert(not InputMode.touch, "a real mouse must clear the touch flag, so its cursor returns")
+            InputMode.current, InputMode.touch = mode, touch
+        end,
+    },
+    {
+        -- The drawn cursor replaces a HIDDEN OS pointer, and a finger has no pointer to hide or to
+        -- follow: left ungated the glyph appears on the first tap and sits there for the whole
+        -- session. love.draw cannot run headlessly, so the gate is read off the source -- the same
+        -- check the quarter turn needed (tests/letterbox_spec.lua) for the same reason.
+        name = "main.lua draws no cursor for a finger, and arms touch mode on a handset",
+        fn = function()
+            local src = assert(love.filesystem.read("main.lua"), "main.lua is readable")
+            assert(src:find("InputMode%.isMouse%(%)%s+and%s+not%s+InputMode%.touch"),
+                "love.draw no longer excludes touch from the drawn cursor -- a tap will strand a "
+                .. "glyph on the screen for the rest of the session")
+            assert(src:find("InputMode%.touch%s*="),
+                "main.lua never arms touch mode, so a handset shows the cursor until its first tap")
+            assert(src:find("InputMode%.pointer%("),
+                "the pointer callbacks no longer report which kind of pointer they came from")
         end,
     },
 }

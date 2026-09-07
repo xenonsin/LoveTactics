@@ -14,6 +14,22 @@ function love.conf(t)
     t.window.minwidth = 640
     t.window.minheight = 360
 
+    -- Rasterise at the DISPLAY's real pixel density, not the window's logical one.
+    --
+    -- Without this a phone browser hands the engine an 844x390 drawable for a 2532x1170 screen: the
+    -- 1280x720 logical space is fitted at 0.54 -- a DOWNSCALE, an 11px glyph rasterised into six
+    -- pixels -- and the browser then blows that up threefold to fill the display. Text arrives at
+    -- about a fifth of the resolution the screen can show, which is most of why the web build was
+    -- illegible on a handset. With it the same fit is 1.63, an upscale, and text is sharp.
+    --
+    -- The density is the RASTERISER's business and nobody else's. LOVE keeps drawing in window
+    -- units and applies the scale itself, so scale.lua fits, offsets and scissors in those units
+    -- throughout (it must not mix in pixels -- that draws the frame three times too large and off
+    -- the side of the screen); its compositing canvas carries the density explicitly, and
+    -- ui/theme.lua bakes its glyph atlases against it. On a display whose density is 1 -- an
+    -- ordinary desktop monitor -- every one of those numbers is what it always was.
+    t.window.highdpi = true
+
     -- Run headless (no window) for every console subcommand that only prints: `lovec . test`,
     -- `lovec . balance-report`, and friends (the dispatch ladder lives in main.lua).
     --

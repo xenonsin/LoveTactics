@@ -108,19 +108,46 @@ local hasDisplay, hasBody, hasItalic, hasBodyItalic = nil, nil, nil, nil
 -- to show it. LOVE's newFont(path, size, hinting, DPISCALE) bakes the atlas at size*dpiscale pixels
 -- while still reporting every metric (getWidth/getHeight) in LOGICAL units -- so baking at the largest
 -- scale the window can ever reach keeps text 1:1 crisp when maximised, downsamples cleanly when the
--- window is smaller, and needs ZERO changes to any layout/widget code. Computed once from the desktop
--- size (the ceiling on how large the window can grow), clamped and guarded for the headless runner.
+-- window is smaller, and needs ZERO changes to any layout/widget code. Computed once, clamped and
+-- guarded for the headless runner.
+--
+-- Two candidates, and the LARGER wins, because on a handset the two disagree by the display's
+-- pixel density (conf.lua asks for a high-DPI drawable):
+--
+--   * the DESKTOP size, which is the ceiling on how large a resizable window can grow -- reported
+--     in the window's own logical units, so it is multiplied by the density to reach real pixels;
+--   * the CURRENT DRAWABLE, which on a browser canvas is the honest pixel count and the only one
+--     that is right when a phone reports its screen the short way round.
+--
+-- Both are measured the way scale.lua fits: the LONG axis against 1280 and the short against 720,
+-- so a portrait screen -- or a portrait report of a landscape one -- gives the same answer as the
+-- quarter-turned frame it is about to draw.
 local fontDpi
+local function fitFor(w, h)
+    if not (w and h and w > 0 and h > 0) then return 0 end
+    return math.min(math.max(w, h) / 1280, math.min(w, h) / 720)
+end
 local function fontDpiScale()
     if fontDpi then return fontDpi end
     fontDpi = 1
+
+    -- The window's logical units per real pixel: 1 on an ordinary monitor, the browser's
+    -- devicePixelRatio on a handset, 2 on a retina panel.
+    local density = 1
+    if love.window and love.window.getDPIScale then
+        local okd, d = pcall(love.window.getDPIScale)
+        if okd and type(d) == "number" and d > 0 then density = d end
+    end
+
     if love.window and love.window.getDesktopDimensions then
         local ok, dw, dh = pcall(love.window.getDesktopDimensions)
-        if ok and dw and dh and dw > 0 and dh > 0 then
-            -- Match scale.lua's fit: the window can grow until the logical space fills the desktop.
-            fontDpi = math.min(dw / 1280, dh / 720)
-        end
+        if ok then fontDpi = math.max(fontDpi, fitFor(dw, dh) * density) end
     end
+    if love.graphics and love.graphics.getPixelDimensions then
+        local okp, pw, ph = pcall(love.graphics.getPixelDimensions)
+        if okp then fontDpi = math.max(fontDpi, fitFor(pw, ph)) end
+    end
+
     -- Never bake SMALLER than the logical size (a sub-1 desktop is nonsense); cap for atlas-memory sanity.
     fontDpi = math.max(1, math.min(fontDpi, 4))
     return fontDpi

@@ -9,8 +9,9 @@
       authored in a fixed 1280x720 logical space (scale.lua) and CSS scales the canvas to a 16:9
       box, exactly as it always has on a pointing device. A coarse pointer is the one exception:
       there the box takes the whole screen, the game draws its own bars, and the drawing buffer
-      -- which SDL sizes from this element's CSS box whenever a resize event reaches it -- goes
-      portrait with the handset, which is what scale.lua's quarter turn needs to see. Emscripten
+      -- which SDL sizes from this element's CSS box whenever a resize event reaches it, times the
+      device pixel ratio because conf.lua asks for a high-DPI drawable -- goes portrait with the
+      handset, which is what scale.lua's quarter turn needs to see. Emscripten
       maps pointer events through getBoundingClientRect, so a CSS-scaled canvas still reports
       correct mouse coordinates -- but a canvas with border or padding does not, which is why
       the rule below zeroes both and why nothing else may sit inside #stage.

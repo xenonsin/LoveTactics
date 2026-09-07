@@ -243,17 +243,21 @@ function love.load(args)
     -- native handset build says so itself. The argument is SCANNED for rather than read off
     -- args[1], since the subcommand ladder above owns that slot.
     local os_ = love.system.getOS()
-    if os_ == "Android" or os_ == "iOS" then
-        Scale.allowRotate = true
-    else
+    local handheld = (os_ == "Android" or os_ == "iOS")
+    if not handheld then
         for _, a in ipairs(args or {}) do
-            if a == "mobile" then Scale.allowRotate = true break end
+            if a == "mobile" then handheld = true break end
         end
     end
+    Scale.allowRotate = handheld
+    -- The same signal says the game is played with a FINGER, which has no hover for a drawn cursor
+    -- to follow (see input_mode.lua). Start in touch mode rather than waiting for the first tap to
+    -- say so, or the glyph appears on that tap and strands itself there.
+    InputMode.touch = handheld
 
     -- The DRAWABLE, not the window: in a browser the two are different sizes, and fitting to the
     -- window while drawing into the buffer is what put the whole frame in one corner (see scale.lua).
-    Scale.resize(love.graphics.getPixelDimensions())
+    Scale.resize(love.graphics.getDimensions())
 
     -- Two-window duel harness, for developing the netplay protocol against a real socket:
     --   love . duel host [auto]      (window 1, listens)
@@ -352,7 +356,7 @@ end
 -- the logical space the states and widgets are authored in, then route to the overlay or state.
 local function forwardMouse(name)
     love[name] = function(x, y, a, b, c)
-        InputMode.set("mouse")
+        InputMode.pointer(b) -- mousepressed/mousereleased pass istouch third; see input_mode.lua
         local gx, gy = Scale.toGame(x, y)
         local overlay = Conversation.active
         if overlay then
@@ -388,11 +392,16 @@ love.draw = function()
     -- The conversation overlay draws ON TOP of the (frozen) state, so the scene shows behind it.
     local overlay = Conversation.active
     if overlay and overlay.draw then overlay:draw() end
-    -- Context cursor: while the mouse is the active device, hide the OS pointer and draw our own
+    -- Context cursor: while a MOUSE is the active device, hide the OS pointer and draw our own
     -- glyph, chosen by the overlay's (else the state's) optional cursorKind(x, y). The mouse
     -- position -- already in the logical 1280x720 space -- is handed in so hit-testing needs no
     -- extra tracking. Drawn inside the scale transform so it shares that space.
-    if InputMode.isMouse() then
+    --
+    -- A finger is excluded even though it is otherwise a mouse (see input_mode.lua): it has no
+    -- hover, so the glyph has nothing to follow and simply strands itself where the last tap landed
+    -- for the rest of the session. Touch therefore draws no cursor and leaves the OS pointer alone
+    -- -- which on a handset is nothing at all, and on a tablet with a mouse is the real arrow.
+    if InputMode.isMouse() and not InputMode.touch then
         love.mouse.setVisible(false)
         local gx, gy = Scale.toGame(love.mouse.getPosition())
         local kind
@@ -403,24 +412,25 @@ love.draw = function()
         end
         Cursor.draw(kind or "arrow", gx, gy)
     else
-        love.mouse.setVisible(true) -- keyboard/gamepad: leave the OS arrow available
+        love.mouse.setVisible(true) -- keyboard, gamepad or finger: leave the OS arrow available
     end
     Scale.finish()
 end
 
--- The event reports the WINDOW's new size; the fit is computed against the drawable, which is a
--- different number in a browser. The state still hears the window size it always did.
+-- The event's own (w, h) are already the window's new size, but they are re-read rather than passed
+-- straight through: on a browser the event can arrive before the canvas has settled on its final
+-- shape. The state still hears the window size it always did.
 love.resize = function(w, h)
-    Scale.resize(love.graphics.getPixelDimensions())
+    Scale.resize(love.graphics.getDimensions())
     local state = State.current
     if state and state.resize then state.resize(w, h) end
 end
 
--- mousemoved also carries (dx, dy) deltas in real pixels; convert them through Scale as well.
+-- mousemoved also carries (dx, dy) deltas in window units; convert them through Scale as well.
 -- toGameDelta rather than a bare divide: on a turned screen a drag across the glass is a drag DOWN
--- the logical space, and window units are not drawable pixels in a browser.
+-- the logical space.
 love.mousemoved = function(x, y, dx, dy, istouch)
-    InputMode.set("mouse")
+    InputMode.pointer(istouch)
     local gx, gy = Scale.toGame(x, y)
     local sdx, sdy = Scale.toGameDelta(dx, dy)
     local overlay = Conversation.active
@@ -441,7 +451,7 @@ love.keypressed = function(key, ...)
     if key == "f11" then
         local full = love.window.getFullscreen()
         love.window.setFullscreen(not full, "desktop")
-        Scale.resize(love.graphics.getPixelDimensions())
+        Scale.resize(love.graphics.getDimensions())
         return
     end
     local overlay = Conversation.active
@@ -458,7 +468,7 @@ end
 -- The wheel is a mouse gesture; a pad button/stick means the player picked up the gamepad. Each
 -- updates the shared InputMode so on-screen prompts show the matching glyphs (see input_mode.lua).
 love.wheelmoved = function(x, y)
-    InputMode.set("mouse")
+    InputMode.pointer(false) -- a wheel is a real mouse by definition, never a finger
     if Conversation.active then return end
     local state = State.current
     if state and state.wheelmoved then return state.wheelmoved(x, y) end
