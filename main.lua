@@ -464,3 +464,22 @@ forwardMouse("mousereleased")
 forward("keyreleased")
 forward("textinput")
 forward("gamepadreleased")
+
+-- THE WEB BUILD'S ERROR SCREEN, bought back by deleting one call.
+--
+-- Under love.js, `love.audio.stop()` throws a JavaScript TypeError from inside emscripten's
+-- OpenAL (`_alSourceStopv` -> `setSourceState`). It is a JS exception, not a Lua one, so pcall
+-- cannot catch it, and it unwinds the emscripten main loop: update and draw are never called
+-- again. The page stays alive and the canvas keeps its last frame, so it reads as a freeze.
+--
+-- LOVE's own error handler calls `love.audio.stop()` before it draws the error screen. So on the
+-- web every Lua error was being executed into silence -- no message, no screen, no console line,
+-- nothing reaching love.errorhandler -- and every bug in the game presented as the same
+-- motionless title screen. Stubbing the call out costs a moment of sound continuing to play
+-- under a crash, and returns the error screen, which is the only way anyone finds the bug under it.
+--
+-- Desktop is untouched: there the call works, and stopping the audio when the game has fallen
+-- over is the right behaviour.
+if love.system.getOS() == "Web" then
+    love.audio.stop = function() end
+end

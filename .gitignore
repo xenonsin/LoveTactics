@@ -52,3 +52,8 @@ steam_api64.dll
 libsteam_api.so
 libsteam_api.dylib
 steam_appid.txt
+
+# The web export: the .love package and the love.js bundle built from it (tools/web-build.ps1).
+# Both are reproducible from the tree, and game.data alone is ~27 MB -- it is published to the
+# gh-pages branch by tools/web-publish.ps1, never committed to main.
+build/

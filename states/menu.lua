@@ -351,10 +351,16 @@ local function buildMenu()
         action = function() State.switch(require("states.settings"), menu) end,
     }
 
-    items[#items + 1] = {
-        label = "Exit To Desktop",
-        action = function() love.event.quit() end,
-    }
+    -- There is no desktop to exit to in a browser, and love.event.quit() there does not close
+    -- anything -- it ends the main loop and leaves a frozen canvas the player can only reload
+    -- out of. The row is dropped rather than greyed: a shut option stands named and unenterable
+    -- when its refusal teaches a gate, and "you are on the web" is not a gate worth teaching.
+    if love.system.getOS() ~= "Web" then
+        items[#items + 1] = {
+            label = "Exit To Desktop",
+            action = function() love.event.quit() end,
+        }
+    end
 
     return Menu.new(items, { startY = 280 })
 end

@@ -1,0 +1,251 @@
+<!doctype html>
+<!--
+  The shipping page for the love.js bundle. tools/web-build.ps1 copies this over the demo page
+  love.js generates, substituting __TITLE__ and __MEMORY__.
+
+  Three things it does that the generated page does not:
+
+    * LETTERBOXES. The game is authored in a fixed 1280x720 logical space (scale.lua) and the
+      canvas keeps that as its backing store; CSS scales it to the viewport at 16:9. Emscripten
+      maps pointer events through getBoundingClientRect, so a CSS-scaled canvas still reports
+      correct mouse coordinates -- but a canvas with border or padding does not, which is why
+      the rule below zeroes both and why nothing else may sit inside #stage.
+
+    * REPORTS THE DOWNLOAD. game.data is ~27 MB. Emscripten announces its progress only through
+      Module.setStatus text, so the hook below parses the byte counts back out of it and drives
+      a real bar. Without this a cold load is half a minute of black.
+
+    * GATES ON A CLICK. Browsers will not start an audio context without a user gesture, so the
+      overlay stays up until Play is pressed and that click resumes the context.
+
+      The gate holds the OVERLAY, never the engine. Love(Module) has to be called the moment
+      love.js loads: game.js does not fetch anything itself, it pushes its loader onto
+      Module.preRun, and preRun is drained by the runtime during startup. No Love(Module), no
+      startup, no preRun, no request -- a page that sits on "Downloading..." forever having
+      downloaded nothing at all.
+-->
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, minimum-scale=1, maximum-scale=1">
+    <title>__TITLE__</title>
+    <!-- Inline so the browser stops asking for /favicon.ico and logging a 404 against a host
+         that has no such file. A board tile in the theme's gold on its mount -- a placeholder
+         standing in until the game has an icon of its own. -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230e0f10'/%3E%3Cpath d='M16 4.5 L27.5 16 L16 27.5 L4.5 16 Z' fill='none' stroke='%23d4ba72' stroke-width='2.5'/%3E%3C/svg%3E">
+    <style>
+      /* The palette is ui/theme.lua's -- register 5, "Etched Atmosphere" -- so the page the game
+         loads on is the same printed stock as the game itself. */
+      :root {
+        --mount: #0e0f10;
+        --panel: #1d1e21;
+        --frame: #6b6047;
+        --ink:   #ece4d4;
+        --muted: #a89a7e;
+        --gold:  #d4ba72;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0; padding: 0; height: 100%; overflow: hidden;
+        background: var(--mount); color: var(--ink);
+        font: 14px/1.5 Georgia, "Times New Roman", serif;
+      }
+      #stage {
+        position: fixed; inset: 0;
+        display: flex; align-items: center; justify-content: center;
+      }
+      /* No border, no padding: see the header. The backing store stays 1280x720; only the box scales. */
+      #canvas {
+        display: block; border: 0 none; padding: 0; outline: none;
+        background: #000;
+        width:  min(100vw, calc(100vh * 16 / 9));
+        height: min(100vh, calc(100vw * 9 / 16));
+        visibility: hidden;
+      }
+      #gate {
+        position: fixed; inset: 0; z-index: 10;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 22px; background: var(--mount); text-align: center; padding: 24px;
+      }
+      #gate.gone { display: none; }
+      h1 {
+        margin: 0; font-size: clamp(28px, 5vw, 52px); font-weight: normal;
+        letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink);
+      }
+      #bar {
+        width: min(440px, 80vw); height: 10px;
+        background: #090a0b; border: 1px solid var(--frame);
+      }
+      #fill { height: 100%; width: 0; background: var(--gold); transition: width .15s linear; }
+      #status { color: var(--muted); font-size: 13px; letter-spacing: .06em; min-height: 1.5em; }
+      #start {
+        display: none;
+        padding: 12px 40px; font: inherit; font-size: 17px; letter-spacing: .16em;
+        text-transform: uppercase; cursor: pointer;
+        color: var(--ink); background: var(--panel); border: 1px solid var(--frame);
+      }
+      #start:hover { color: var(--gold); border-color: var(--gold); }
+      #note { color: var(--muted); font-size: 12px; max-width: 46ch; }
+      #full {
+        position: fixed; right: 10px; bottom: 8px; z-index: 5; display: none;
+        padding: 5px 12px; font: inherit; font-size: 12px; letter-spacing: .1em;
+        color: var(--muted); background: transparent; border: 1px solid var(--frame); cursor: pointer;
+      }
+      #full:hover { color: var(--gold); border-color: var(--gold); }
+    </style>
+  </head>
+  <body>
+    <div id="stage">
+      <canvas id="canvas" width="1280" height="720" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+    </div>
+
+    <div id="gate">
+      <h1>__TITLE__</h1>
+      <div id="bar"><div id="fill"></div></div>
+      <div id="status">Downloading&hellip;</div>
+      <button id="start">Play</button>
+      <div id="note">Roughly 32&nbsp;MB on a first visit; your browser caches it afterwards. Mouse, keyboard and gamepad all work.</div>
+    </div>
+
+    <button id="full" onclick="goFullScreen()">Fullscreen</button>
+
+    <script>
+      var gate    = document.getElementById('gate');
+      var fill    = document.getElementById('fill');
+      var statusEl= document.getElementById('status');
+      var start   = document.getElementById('start');
+      var full    = document.getElementById('full');
+
+      // Readiness is harder to ask for than it looks, and two obvious answers are both wrong:
+      //
+      //   * a zero run-dependency count reaches zero once for the engine's own startup, before
+      //     game.js has queued the package at all;
+      //   * calledRun is set on the way INTO the startup routine, not out of it, so it is true
+      //     while the 27 MB package is still arriving.
+      //
+      // Either alone offers Play a second in and drops the player on a black canvas. This build
+      // does not export Module.FS, so the unpacked file cannot be looked for directly. What it
+      // does expose is preloadResults, which game.js fills in only AFTER registering the package
+      // as a run dependency -- so its presence together with a zero count means that particular
+      // dependency has been through its whole life. True on the cached path as well.
+      var ready = false;
+      function markReady() {
+        if (ready) return;
+        ready = true;
+        statusEl.textContent = 'Ready.';
+        fill.style.width = '100%';
+        start.style.display = 'inline-block';
+      }
+
+      function goFullScreen() {
+        var c = document.getElementById('canvas');
+        var req = c.requestFullscreen || c.webkitRequestFullscreen || c.mozRequestFullScreen;
+        if (req) req.call(c);
+      }
+
+      // The game owns these keys; the page must not scroll or space-activate anything underneath.
+      window.addEventListener('keydown', function (e) {
+        if ([32, 37, 38, 39, 40].indexOf(e.keyCode) > -1 && gate.classList.contains('gone')) {
+          e.preventDefault();
+        }
+      }, false);
+
+      var Module = {
+        arguments: ['./game.love'],
+        INITIAL_MEMORY: __MEMORY__,
+        printErr: console.error.bind(console),
+        canvas: (function () {
+          var canvas = document.getElementById('canvas');
+          canvas.addEventListener('webglcontextlost', function (e) {
+            e.preventDefault();
+            statusEl.textContent = 'The graphics context was lost. Reload the page.';
+            gate.classList.remove('gone');
+          }, false);
+          return canvas;
+        })(),
+        // Emscripten's only progress channel is this string. "Downloading data... (n/total)" is
+        // the package fetch; anything else is a phase name worth showing verbatim.
+        totalDependencies: 0,
+        remainingDependencies: 0,
+        // Emscripten's only progress channel is this string. "Downloading data... (n/total)" is
+        // the package fetch; the empty string means it has nothing left to say.
+        setStatus: function (text) {
+          // Once Play is offered the line reads "Ready."; late progress chatter must not
+          // overwrite it with a number that has stopped being true.
+          if (!text || ready) return;
+          var m = /\((\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)\)/.exec(text);
+          if (m && text.indexOf('Downloading') === 0) {
+            var loaded = parseFloat(m[1]), total = parseFloat(m[2]);
+            fill.style.width = (100 * loaded / total) + '%';
+            statusEl.textContent = 'Downloading ' + (loaded / 1048576).toFixed(1)
+                                 + ' / ' + (total / 1048576).toFixed(1) + ' MB';
+          } else {
+            statusEl.textContent = text;
+          }
+        },
+        // Kept for the counts love.js expects to be able to set; readiness is decided by the
+        // poll below, not here.
+        monitorRunDependencies: function (left) {
+          this.remainingDependencies = left;
+          this.totalDependencies = Math.max(this.totalDependencies, left);
+        }
+      };
+
+      var waited = 0;
+      var readyPoll = setInterval(function () {
+        waited += 300;
+        if (ready) { clearInterval(readyPoll); return; }
+        try {
+          var M = window.Module;
+          if (M && M.calledRun && M.remainingDependencies === 0
+              && M.preloadResults && Object.keys(M.preloadResults).length > 0) {
+            markReady();
+            clearInterval(readyPoll);
+            return;
+          }
+        } catch (e) { /* runtime not far enough along to ask */ }
+
+        // Never strand the player behind a button that will not appear. If the signals above
+        // have not agreed inside two minutes something is wrong, and a Play they can press and
+        // report on beats a progress bar that never fills.
+        if (waited >= 120000) {
+          markReady();
+          statusEl.textContent = 'Taking longer than expected -- try Play, and reload if it stays dark.';
+          clearInterval(readyPoll);
+        }
+      }, 300);
+
+      window.onerror = function () {
+        statusEl.textContent = 'Something went wrong -- see the browser console.';
+        gate.classList.remove('gone');
+      };
+
+      // Start the engine the moment love.js has parsed -- see the header for why this cannot
+      // wait for the click. The canvas stays hidden behind the overlay meanwhile.
+      function applicationLoad() { Love(Module); }
+
+      // The click is what buys us an audio context. Emscripten installs its own resume handlers
+      // on user gestures, but which object holds the context differs between SDL builds, so
+      // resume anything reachable rather than trusting one path to exist.
+      function resumeAudio() {
+        var contexts = [];
+        try { if (Module.SDL2 && Module.SDL2.audioContext) contexts.push(Module.SDL2.audioContext); } catch (e) {}
+        try { if (window.SDL2 && window.SDL2.audioContext) contexts.push(window.SDL2.audioContext); } catch (e) {}
+        try { if (Module.audioContext) contexts.push(Module.audioContext); } catch (e) {}
+        contexts.forEach(function (ctx) {
+          if (ctx && ctx.state === 'suspended' && ctx.resume) ctx.resume();
+        });
+      }
+
+      start.addEventListener('click', function () {
+        gate.classList.add('gone');
+        document.getElementById('canvas').style.visibility = 'visible';
+        full.style.display = 'block';
+        resumeAudio();
+        document.getElementById('canvas').focus();
+      });
+    </script>
+    <script src="game.js"></script>
+    <script async src="love.js" onload="applicationLoad()"></script>
+  </body>
+</html>
