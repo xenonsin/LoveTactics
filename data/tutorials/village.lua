@@ -70,6 +70,12 @@ return {
     -- exists to give Rowan's opening kill somewhere to land: without it her demonstration resolves in
     -- the first half-second of the fight, while the player is still working out what a tile is.
     opening  = "conversation_prologue_village",
+    -- NOTHING MISSES ON THIS BOARD (Tutorial.alwaysHits -> Combat.rollsToHit). Every exchange below
+    -- is authored -- each of the player's seven steps is one click that must produce the exact
+    -- outcome Rowan just described -- and a hit roll is the one thing that can refuse it. The
+    -- tooltip reads an honest 100% while it holds, so the fight is not lying about its own dice;
+    -- the dice arrive with the first real quest, where a miss costs a plan rather than a lesson.
+    alwaysHits = true,
     speaker  = "character_rowan",     -- whose panel and portrait carry the narrative half
     scripted = { "character_rowan" }, -- Rowan runs her authored turns, not the player's hands
     -- THE TURN ORDER IS AUTHORED, like everything else here. See Tutorial.startInitiative /

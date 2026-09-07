@@ -4842,7 +4842,11 @@ function battle.enter(self, opts)
         { deferOpen = battle.deployEnabled,
           -- A draft match or a duel has a person on the other side, so the AI plays to win the
           -- objective rather than to be a fight the player can defend against. See AI.spared.
-          versus = (opts.draft or opts.session) and true or nil })
+          versus = (opts.draft or opts.session) and true or nil,
+          -- A lesson may take its whole board off the dice: the prologue's first fight is authored
+          -- click by click, and a miss there refuses the one move the player was just told to make
+          -- (Tutorial.alwaysHits). Nil for every other fight in the game.
+          alwaysHits = Tutorial.alwaysHits(battle.tutorial) or nil })
 
     -- The battle purse: the pot the greed (rogue) money kit spends in-fight (fx.spendPurse ->
     -- Combat.spendPurse), and the pot the debug "Add gold" tool funds. EVERY battle gets one now, so a

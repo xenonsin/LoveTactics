@@ -141,6 +141,24 @@ function Tutorial.opening(t)
     return t and not t.abandoned and t.def.opening or nil
 end
 
+-- Does this lesson's board roll to hit at all? A property of the whole lesson rather than of a step,
+-- because a fight in which SOME swings can miss is not the thing being bought: the value is that a
+-- player following the instruction they were just given always sees the outcome they were promised.
+--
+-- The village lesson is authored down to the cell (data/tutorials/village.lua): step 1 kills an imp,
+-- step 4 takes two with one Clear Out, step 7 finishes the grunt and wins the battle. Every one of
+-- those is a single click with no second chance behind it, and a miss turns the lesson into a fight
+-- the player cannot get out of the way they were told to -- Rowan asks again for a blow that already
+-- happened, and the first thing the game ever taught them is that it lies. Off the dice, the whole
+-- choreography lands as written. It also suppresses CRITS on the same board (Combat.rollsToHit gates
+-- both), which the lesson wants for its own reasons: a crit at CRIT_MULTIPLIER would kill the grunt
+-- early and take the last step's payoff -- the player's own click ending the fight -- away.
+--
+-- Nothing else in the game reads it, and it is not a difficulty option (see Combat.FORCE_HIT).
+function Tutorial.alwaysHits(t)
+    return t ~= nil and not t.abandoned and t.def.alwaysHits == true
+end
+
 -- ---------------------------------------------------------------------------
 -- Pacing: the lesson's own timeline
 -- ---------------------------------------------------------------------------

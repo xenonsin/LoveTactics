@@ -1379,6 +1379,12 @@ function Combat.new(arena, partyUnits, enemyUnits, opts)
         -- (models/ai.lua, AI.spared). Set by whoever starts the fight -- states/battle.lua from
         -- `opts.draft` / `opts.session` -- because the combat model has no way to know on its own.
         versus = opts.versus or nil,
+        -- Does anything on this board roll to hit? Nil for every ordinary fight; true for a board
+        -- whose exchanges are AUTHORED rather than fought -- the prologue's lesson, where a missed
+        -- swing does not teach the player anything except that the game refused their one legal
+        -- move. Read only by Combat.rollsToHit, which turns it into an honest 100 on the tooltip
+        -- rather than a lie told by the dice. Set by whoever fields the fight (states/battle.lua).
+        alwaysHits = opts.alwaysHits or nil,
         -- This battle's own draw sequence, a function of the seed that built the board. Absent for
         -- a combat with no seeded arena (a scripted layout), which falls back to Combat.random.
         rng = (arena and arena.seed) and Combat.newRandom(arena.seed) or nil,
@@ -5759,14 +5765,21 @@ end
 -- the character sheet mean something different, and this file would then owe two balance passes.
 Combat.FORCE_HIT = false
 
--- Does this blow ask the dice at all? Five ways out, and each is a promise made somewhere else:
+-- Does this blow ask the dice at all? Six ways out, and each is a promise made somewhere else:
 --   * the deterministic switch above
+--   * THE BOARD opts out     -- `combat.alwaysHits`, one whole fight in which nothing misses
 --   * no attacker            -- a trap, a tick, a hazard (see the section header)
 --   * striking yourself      -- a bomb under your own feet does not miss
 --   * the ability opts out   -- `alwaysHits`, the escape hatch for a signature that must land
 --   * the target cannot dodge -- an object, a cargo crate, anything with no body to move
+--
+-- The board-wide one is the item flag's promise at the scale of a fight, and it is deliberately the
+-- SAME word: a player who reads "always hits" on an ability has already been taught what this means.
+-- It is set by whoever fields the battle (states/battle.lua, off the lesson) and never by a
+-- difficulty option -- see the note above Combat.FORCE_HIT for why that distinction is load-bearing.
 function Combat.rollsToHit(combat, user, target, item)
     if Combat.FORCE_HIT then return false end
+    if combat and combat.alwaysHits then return false end
     if not (user and target) then return false end
     if user == target then return false end
     -- YOU DO NOT MISS YOUR OWN SIDE. Fire Emblem's staves never miss the ally they mend, and the

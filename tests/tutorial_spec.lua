@@ -549,6 +549,33 @@ return {
         end,
     },
     {
+        -- The first fight anyone plays does not roll to hit. Every step below is one click that must
+        -- produce the outcome Rowan just promised, and a miss makes her ask again for a blow that
+        -- already happened. Combat's half of this is tests/accuracy_spec.lua; what is checked here is
+        -- that the lesson still asks for it AND that the battle still reads the answer -- a data flag
+        -- nobody consults would leave the whole guarantee as prose.
+        name = "the lesson's board is off the dice, for the whole lesson and no longer",
+        fn = function()
+            assert(Tutorial.alwaysHits(Tutorial.new(TUTORIAL)),
+                "the prologue's authored fight is rolling to hit again")
+            local def = Tutorial.defs[TUTORIAL]
+            for i = 2, #def.steps + 1 do
+                assert(Tutorial.alwaysHits(atStep(i)),
+                    "step " .. i .. " put the lesson back on the dice mid-fight")
+            end
+            -- Abandoned (the avatar died, see below) the lesson stops speaking for the board, exactly
+            -- as it does for the overlays and the action gates -- what follows is an ordinary fight.
+            local dead = Tutorial.new(TUTORIAL)
+            dead.abandoned = true
+            assert(not Tutorial.alwaysHits(dead), "an abandoned lesson still holds the dice down")
+            assert(not Tutorial.alwaysHits(nil), "no tutorial means no opinion about the dice")
+
+            local src = assert(love.filesystem.read("states/battle.lua"), "battle source should be readable")
+            assert(src:find("alwaysHits = Tutorial.alwaysHits(battle.tutorial)", 1, true),
+                "states/battle.lua no longer hands the lesson's answer to Combat.new")
+        end,
+    },
+    {
         name = "the lesson opens with a scene, spoken by the mentor over a board nobody has acted on",
         fn = function()
             local def = Tutorial.defs[TUTORIAL]

@@ -227,6 +227,8 @@ works while the number on screen is the plain one.
   exactly what it draws when it walks a party into quicksand.
 - **`alwaysHits`** — the escape hatch for a signature that must land.
 - **Striking yourself.** A bomb under your own feet does not miss.
+- **A board that sets `combat.alwaysHits`** — the same promise at the scale of a whole fight. Only
+  the prologue's lesson does (see below).
 
 ## A miss is a clean miss
 
@@ -281,6 +283,28 @@ its last case proves the flag itself still works.
 
 It is deliberately **not** a difficulty option. A player-facing "never miss" would make every number on
 the character sheet mean something different, and the game would then owe two balance passes.
+
+## The first fight does not roll
+
+The prologue's village lesson takes its whole board off the dice: `alwaysHits = true` in
+[data/tutorials/village.lua](../data/tutorials/village.lua), read by `Tutorial.alwaysHits` and handed
+to `Combat.new` by [states/battle.lua](../states/battle.lua). It is the only board in the game that
+sets it.
+
+The reason is that the lesson is authored click by click — step 1 kills an imp, step 4 takes two with
+one Clear Out, step 7 finishes the grunt and *wins the battle* — and each of those is a single action
+the player was just told to take, with no second chance behind it. A miss does not make that fight
+harder; it makes Rowan ask again for a blow that already happened, and the first thing the game ever
+teaches is that it lies about its own promises. The dice arrive with the first real quest, where a
+miss costs a plan instead of a lesson.
+
+It suppresses crits on that board too — `Combat.rollsToHit` gates both — which the lesson wants
+anyway: a crit at `CRIT_MULTIPLIER` would kill the grunt early and take the last step's payoff, the
+player's own click ending the fight, away from them.
+
+Nothing is hidden by this. `Combat.hitChance` returns an honest 100 while it holds, so the preview
+simply omits both rows the way it does for a heal (see below) rather than displaying odds the board
+is not actually running.
 
 ## What the player sees
 

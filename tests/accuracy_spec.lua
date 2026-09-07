@@ -324,4 +324,31 @@ return {
             assert(dealt > 0 and Fixture.hp(d) < hp, "so the blow lands for real")
         end,
     },
+    {
+        -- The prologue's lesson is authored click by click and cannot survive a missed swing, so its
+        -- board carries the `alwaysHits` promise the whole way up from an ability to a fight. What
+        -- this case is really guarding is the SCOPE: a flag that leaked would take the dice out of
+        -- every fight in the game and no other spec would notice, because the runner pins FORCE_HIT
+        -- anyway. See docs/accuracy.md and data/tutorials/village.lua.
+        name = "a board may take itself off the dice, and only itself",
+        fn = function()
+            live()
+            local unhittable = { speed = 90, luck = 0, health = 200 }
+            local c, a, d, sword = duel({ skill = 0, luck = 0 }, unhittable)
+            assert(Combat.hitChance(c, a, d, sword) == 0, "unhittable with the dice live")
+
+            c.alwaysHits = true
+            assert(not Combat.rollsToHit(c, a, d, sword), "a board off the dice asks them for nothing")
+            assert(Combat.hitChance(c, a, d, sword) == 100, "and reads as certain rather than lying")
+            assert(Combat.critChance(c, a, d, sword) == 0, "a blow that cannot miss cannot crit either")
+            local hp = Fixture.hp(d)
+            assert(Combat.dealDamage(c, a, d, sword, {}) > 0 and Fixture.hp(d) < hp,
+                "so the authored blow lands for real")
+
+            -- The next fight is a different board, and it rolls.
+            local c2, a2, d2, sword2 = duel({ skill = 0, luck = 0 }, unhittable)
+            assert(Combat.rollsToHit(c2, a2, d2, sword2) and Combat.hitChance(c2, a2, d2, sword2) == 0,
+                "the exemption belongs to one combat, not to the model")
+        end,
+    },
 }
