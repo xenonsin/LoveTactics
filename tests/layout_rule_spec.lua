@@ -89,4 +89,86 @@ return {
                 "main.lua never declares a handheld build, so a Switch would read as a desktop")
         end,
     },
+    {
+        -- The point of the handheld space: on a phone the HEIGHT term wins the fit, so width is free.
+        -- Fixing the height at 540 and running the width out to the device's aspect buys the
+        -- legibility of a 960-wide space AND more panel room than the desktop has.
+        name = "a handheld space is short, and as wide as the screen will allow",
+        fn = function()
+            withScale(function()
+                Scale.forceHandheld = false
+                Scale.handheld = false
+
+                Scale.resize(1920, 1080)
+                assert(Scale.WIDTH == 1280 and Scale.HEIGHT == 720,
+                    "a desktop must stay on the authored space")
+
+                Scale.resize(844, 390) -- the measured handset, landscape
+                assert(Scale.HEIGHT == 540, "the handheld space fixes the height at 540")
+                assert(Scale.WIDTH == 1168,
+                    "the width must follow the device's own aspect -- got " .. Scale.WIDTH)
+                -- ...and the whole reason for it: no bars, where the authored space wasted 18%.
+                local fit = math.min(844 / Scale.WIDTH, 390 / Scale.HEIGHT)
+                assert(math.abs(844 - Scale.WIDTH * fit) < 2,
+                    "the fitted width does not fill the screen -- the bars are still there")
+            end)
+        end,
+    },
+    {
+        name = "the handheld width is clamped, so no screen can ask for a shape nothing is authored for",
+        fn = function()
+            withScale(function()
+                Scale.forceHandheld = true
+                Scale.resize(1024, 768) -- 4:3, which would want a 720-wide space
+                assert(Scale.WIDTH == 960, "a squarer screen must clamp up to 960, got " .. Scale.WIDTH)
+                Scale.resize(2560, 720) -- ultrawide, which would want 1920
+                assert(Scale.WIDTH == 1280, "an ultrawide must clamp down to 1280, got " .. Scale.WIDTH)
+            end)
+        end,
+    },
+    {
+        -- data/buildings positions every hub door by hand in the authored space, and the city art
+        -- behind them is stretched to the live one -- so the two axes must scale INDEPENDENTLY or a
+        -- hotspot drifts off the door it names.
+        name = "an authored rect travels into the live space on both axes",
+        fn = function()
+            withScale(function()
+                Scale.forceHandheld = false
+                Scale.handheld = false
+                Scale.resize(1280, 720)
+                local x, y, w, h = Scale.fromAuthored(815, 413, 270, 130)
+                assert(x == 815 and y == 413 and w == 270 and h == 130,
+                    "the authored space must be the identity on a desktop")
+
+                Scale.forceHandheld = true
+                Scale.resize(844, 390)
+                x, y, w, h = Scale.fromAuthored(815, 413, 270, 130)
+                local kx, ky = Scale.WIDTH / 1280, Scale.HEIGHT / 720
+                assert(math.abs(x - 815 * kx) < 1e-9 and math.abs(w - 270 * kx) < 1e-9,
+                    "the x axis did not follow the space")
+                assert(math.abs(y - 413 * ky) < 1e-9 and math.abs(h - 130 * ky) < 1e-9,
+                    "the y axis did not follow the space")
+                assert(math.abs(kx - ky) > 0.01,
+                    "this test proves nothing unless the two axes actually differ")
+            end)
+        end,
+    },
+    {
+        -- Almost nothing caches geometry -- 65 files read Scale.WIDTH at draw time -- but the few
+        -- that do need to be able to notice, and a counter that ticks when nothing moved is a
+        -- rebuild every frame.
+        name = "the space epoch moves only when the space does",
+        fn = function()
+            withScale(function()
+                Scale.forceHandheld = false
+                Scale.handheld = false
+                Scale.resize(1920, 1080)
+                local e = Scale.spaceEpoch
+                Scale.resize(1600, 900) -- same space, different window
+                assert(Scale.spaceEpoch == e, "the epoch moved without the space changing")
+                Scale.resize(844, 390)  -- now the space really changes
+                assert(Scale.spaceEpoch > e, "the epoch did not move when the space did")
+            end)
+        end,
+    },
 }

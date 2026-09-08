@@ -126,6 +126,18 @@ local BOARD_TILE = 64
 -- lines themselves; the measured faces are 30 / 22 / 16 tall (display 22, display 16, body 13), which
 -- with HUD_TITLE_Y / HUD_OBJECTIVE_Y / HUD_HINT_Y below sums to exactly 84 and leaves 4 clear.
 local BOARD_TOP = 88
+-- ...on a DESKTOP. A handheld space is 1168x540 (scale.lua), and 88 + 512 is already over that
+-- before the log gutter is counted -- the board would hang off the bottom of the screen. A short,
+-- wide screen has width to spare and no height at all, so the three HUD rows turn a quarter turn
+-- with everything else: they move off the top of the board and into the left column (drawHudText is
+-- handed the column's rect instead of the board's), and the board simply centres in what is left.
+--
+-- Table field rather than a local: this file is at Lua 5.1's 200-local ceiling.
+function battle.boardTop()
+    if Scale.handheld then return math.max(8, math.floor((Scale.HEIGHT - 8 * BOARD_TILE) / 2)) end
+    return BOARD_TOP
+end
+
 -- The three HUD rows above the board. Named rather than typed at their four draw sites, because they
 -- are one column of text whose spacing only reads if it is decided in one place -- and because the sum
 -- of them IS BOARD_TOP above.
@@ -151,6 +163,14 @@ local IMPACT_PAUSE = 0.5
 -- T / left-stick = threats, V / pad A = auto), so the menu is a mouse affordance and never the only way to
 -- reach them.
 local MENU_BUTTON = { x = 16, y = 16, w = 36, h = 36 }
+
+-- How far down the left column the HUD rows sit when they live there (see battle.boardTop) -- clear
+-- of the hamburger, which owns the top of it. Zero on a desktop, where they run across the board.
+-- Defined HERE rather than beside boardTop because it reads MENU_BUTTON, and a local is not in scope
+-- above its own declaration -- up there the name would quietly resolve to a nil global instead.
+function battle.hudDrop()
+    return Scale.handheld and (MENU_BUTTON.y + MENU_BUTTON.h + 10) or 0
+end
 -- Clickable "Forfeit" entry so a mouse-only player can bail out (counts as a loss). Wait/Focus/
 -- Defend is not here: it lives in a long button under the item grid (ui/combat_panel.lua).
 local forfeitButton = { x = 16, y = 60, w = 130, h = 36 }
@@ -246,6 +266,10 @@ battle.deployControlRect = { x = 16, y = 104, w = 130 }
 -- other. Read as drawTileTooltip's `dockTop`, and handed to the deployment phase for its own docked
 -- hover boxes (ui/deploy_phase.lua).
 local function menuBottom()
+    -- On a handheld the HUD rows sit in this column under the hamburger, so the docked boxes start
+    -- below THEM rather than below the button -- otherwise the terrain box is drawn over the
+    -- objective line (see battle.boardTop).
+    if Scale.handheld and not battle.deploy then return battle.hudDrop() + HUD_HINT_Y + 22 end
     -- Before the bell there is no drawer to open or shut: Settings and the turn pair always stand, so
     -- the ceiling is always under them.
     if battle.deploy then return battle.deployTurnRightButton.y + battle.deployTurnRightButton.h + 8 end
@@ -4355,6 +4379,15 @@ local function gutterRect()
     -- fight's own record, and nothing above can give the height back (the third HUD line ends at 98,
     -- six clear of BOARD_TOP).
     local y = by + bh + 4
+    -- ON A HANDHELD THERE IS NO GUTTER TO HAVE. The space is 540 tall and the board takes 512 of it
+    -- (battle.boardTop), so the strip under it is about six pixels -- enough to draw a box and not a
+    -- word inside it. The column has the room the board does not: the log drops into the bottom of
+    -- the left column instead, under the HUD rows and the docked boxes, at the column's own width.
+    -- Everything that reads this rect follows, which is the point of it being one function.
+    if Scale.handheld then
+        local top = math.floor(Scale.HEIGHT * 0.58)
+        return { x = 16, y = top, w = LEFT_W - 32, h = Scale.HEIGHT - top - 12 }
+    end
     return { x = bx, y = y, w = bw, h = Scale.HEIGHT - y - 4 }
 end
 
@@ -4970,7 +5003,7 @@ function battle.enter(self, opts)
     battle.encounterCtx = ctx
     battle.map = BattleMap.new(battle.arena,
         { combat = battle.combat, leftMargin = LEFT_W, rightMargin = PANEL_W,
-          tileSize = BOARD_TILE, topMargin = BOARD_TOP,
+          tileSize = BOARD_TILE, topMargin = battle.boardTop(),
           -- Laid ON the chamber, where the caller knows which one: an overworld fight is fought in the
           -- room it was found in and that room is already drawn behind this board (states/game.lua's
           -- `pin`). Nil for the draft, the duel and every scripted leg, which centre as before.
@@ -5381,8 +5414,8 @@ function battle.drawCoach()
     -- 320px column, so it goes above.
     local bounds = region == "panel"
         and { x = Scale.WIDTH - PANEL_W + 4, y = 4, w = PANEL_W - 8, h = Scale.HEIGHT - 8 }
-        or { x = LEFT_W + 8, y = BOARD_TOP - 4,
-             w = Scale.WIDTH - PANEL_W - LEFT_W - 16, h = Scale.HEIGHT - BOARD_TOP }
+        or { x = LEFT_W + 8, y = battle.boardTop() - 4,
+             w = Scale.WIDTH - PANEL_W - LEFT_W - 16, h = Scale.HEIGHT - battle.boardTop() }
     -- Every living body on the board, so the bubble can settle where it hides the fewest of them.
     -- Only for a board anchor: over the panel there is nowhere else to go anyway.
     local avoid
@@ -5486,7 +5519,16 @@ function battle.draw()
     if battle.deploy then
         battle.map:draw()
         battle.drawLeftColumn()
-        battle.drawEncounterLines(LEFT_W, Scale.WIDTH - LEFT_W - PANEL_W)
+        -- Deployment draws only the first two rows, and they move to the column for the same reason
+        -- the fight's three do (see battle.boardTop).
+        if Scale.handheld then
+            love.graphics.push()
+            love.graphics.translate(0, battle.hudDrop())
+            battle.drawEncounterLines(0, LEFT_W)
+            love.graphics.pop()
+        else
+            battle.drawEncounterLines(LEFT_W, Scale.WIDTH - LEFT_W - PANEL_W)
+        end
         battle.drawDeployMenu()
         -- `titleY` is the HUD's third row, which the phase's own headline takes (the row the control
         -- hint occupies once the bell rings). Handed over rather than repeated in the widget, so the
@@ -5864,7 +5906,7 @@ function battle.drawTileTooltip(mx, my)
     if InputMode.touch and battle.map and cx then
         local tx, ty, tw, th = battle.map:cellBox(cx, cy)
         topBox = { x = tx, y = ty, w = tw, h = th }
-        exOpts = { placement = "above", dockTop = BOARD_TOP, width = ActionPreview.WIDTH, gap = exGap }
+        exOpts = { placement = "above", dockTop = battle.boardTop(), width = ActionPreview.WIDTH, gap = exGap }
     else
         -- With every reference box dropped there is nothing to anchor to: start from the column floor.
         topBox = topBox or { x = 16, y = Scale.HEIGHT - 8 + exGap, w = W, h = 0 }
@@ -5972,7 +6014,18 @@ function battle.drawHud()
     -- The entries only exist while the menu is open -- closed, the column below the hamburger is the
     -- tooltips' (and a click there falls through to them, see mousepressed).
     if not battle.menuOpen then
-        battle.drawHudText(boardX, boardW)
+        -- On a handheld the three HUD rows live in the LEFT COLUMN, not across the board: the
+        -- space is 540 tall and the board needs 512 of it (see battle.boardTop). They are the
+        -- same three rows, handed the column's rect instead of the board's and dropped clear of
+        -- the hamburger, so nothing here is drawn twice or drawn differently.
+        if Scale.handheld then
+            love.graphics.push()
+            love.graphics.translate(0, battle.hudDrop())
+            battle.drawHudText(0, LEFT_W)
+            love.graphics.pop()
+        else
+            battle.drawHudText(boardX, boardW)
+        end
         return
     end
 
@@ -6010,7 +6063,18 @@ function battle.drawHud()
         battle.drawMenuEntry(winButton, "Win", true, { 0.45, 0.75, 0.50 })
     end
 
-    battle.drawHudText(boardX, boardW)
+    -- On a handheld the three HUD rows live in the LEFT COLUMN, not across the board: the
+    -- space is 540 tall and the board needs 512 of it (see battle.boardTop). They are the
+    -- same three rows, handed the column's rect instead of the board's and dropped clear of
+    -- the hamburger, so nothing here is drawn twice or drawn differently.
+    if Scale.handheld then
+        love.graphics.push()
+        love.graphics.translate(0, battle.hudDrop())
+        battle.drawHudText(0, LEFT_W)
+        love.graphics.pop()
+    else
+        battle.drawHudText(boardX, boardW)
+    end
 end
 
 -- The first two of the board's three top lines: which fight this is, and what wins it. Split out of

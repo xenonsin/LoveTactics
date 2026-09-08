@@ -77,6 +77,23 @@ Scale.HEIGHT = 720
 -- handheld -- a Switch is 1280x720 at fit 1.0, indistinguishable from a desktop by this test, while
 -- its pixels subtend 0.92' against a CSS pixel's 1.6'. So a native handheld has to SAY SO, which is
 -- what forceHandheld is for; main.lua sets it from the same signal that arms the quarter turn.
+-- THE TWO SPACES. Everything in the game -- every widget, and the absolute rects in data/buildings --
+-- is authored against 1280x720, and on a desktop that is exactly what it gets.
+--
+-- A handheld gets a SHORTER, WIDER one, and the reason is that the height term always wins the fit
+-- on a phone: `min(w/W, h/H)` is decided by h/H, so the width costs nothing. Fixing the height at
+-- 540 and letting the width run out to the device's own aspect gives a 1168x540 space on a typical
+-- handset -- the legibility of a 960-wide space (fit 0.72 rather than 0.54) with 208 more pixels of
+-- panel, and no letterbox bars, which were eating 18% of the screen. Clamped at both ends so a 4:3
+-- tablet or an ultrawide cannot produce a shape nothing is authored for.
+Scale.AUTHOR_W, Scale.AUTHOR_H = 1280, 720
+Scale.HANDHELD_H = 540
+Scale.HANDHELD_MIN_W, Scale.HANDHELD_MAX_W = 960, 1280
+-- Bumped whenever the space actually changes, so the few things that CACHE geometry rather than
+-- laying out per-frame can notice. Almost nothing needs it -- 65 files read Scale.WIDTH/HEIGHT at
+-- draw time and simply follow -- but a cached rect that does not is a panel drawn for the last shape.
+Scale.spaceEpoch = 0
+
 Scale.HANDHELD_ENTER = 0.80 -- drop to the handheld arrangement below this fit...
 Scale.HANDHELD_EXIT  = 0.90 -- ...and only climb back out above this one
 Scale.forceHandheld = false -- a screen that knows it is small however the arithmetic reads
@@ -124,9 +141,48 @@ Scale.rotated = false
 function Scale.fittedW() return (Scale.rotated and Scale.HEIGHT or Scale.WIDTH) * Scale.scale end
 function Scale.fittedH() return (Scale.rotated and Scale.WIDTH or Scale.HEIGHT) * Scale.scale end
 
+-- Put Scale.WIDTH/HEIGHT on whichever space the answer above calls for, sized to the device's own
+-- aspect when it is the handheld one. Must run BEFORE the fit is computed, since the fit is measured
+-- against the space that is about to be live.
+local function applySpace(windowW, windowH)
+    local w, h
+    if Scale.handheld then
+        h = Scale.HANDHELD_H
+        local long = math.max(windowW, windowH)
+        local short = math.max(math.min(windowW, windowH), 1)
+        -- FLOOR, not round. Rounding up can make the space fractionally wider than the device's
+        -- aspect, which hands the WIDTH term the fit and leaves a hairline bar top and bottom --
+        -- the exact thing this space exists to get rid of. Flooring keeps the height term winning,
+        -- so the short axis is always filled exactly and any leftover is a pixel of side bar.
+        w = math.floor(h * (long / short))
+        w = math.max(Scale.HANDHELD_MIN_W, math.min(w, Scale.HANDHELD_MAX_W))
+    else
+        w, h = Scale.AUTHOR_W, Scale.AUTHOR_H
+    end
+    if w ~= Scale.WIDTH or h ~= Scale.HEIGHT then
+        Scale.WIDTH, Scale.HEIGHT = w, h
+        Scale.spaceEpoch = Scale.spaceEpoch + 1
+    end
+end
+
+-- Map a rect authored in the 1280x720 space into whichever space is live. The data layer positions
+-- the hub's building hotspots by hand in that space (data/buildings), and the city art behind them is
+-- drawn stretched to Scale.WIDTH x Scale.HEIGHT -- so the two axes scale INDEPENDENTLY here on
+-- purpose: a hotspot has to distort exactly as much as the picture it is a hotspot on, or it drifts
+-- off the door it names.
+function Scale.fromAuthored(x, y, w, h)
+    local kx, ky = Scale.WIDTH / Scale.AUTHOR_W, Scale.HEIGHT / Scale.AUTHOR_H
+    return x * kx, y * ky, (w or 0) * kx, (h or 0) * ky
+end
+
 -- Recompute the fit for a given WINDOW size (love.graphics.getDimensions, the units mouse
 -- callbacks report). Call on load and on resize.
 function Scale.resize(windowW, windowH)
+    -- Which arrangement, then which space, THEN the fit -- in that order, because each reads the one
+    -- before it. (wantsHandheld deliberately measures against the authored space, never the live one,
+    -- or this sequence would feed back on itself; see there.)
+    Scale.handheld = Scale.wantsHandheld(windowW, windowH)
+    applySpace(windowW, windowH)
     local rotated = Scale.allowRotate and windowH > windowW
     local s
     if rotated then
@@ -140,11 +196,6 @@ function Scale.resize(windowW, windowH)
     Scale.offsetY = math.floor((windowH - (rotated and Scale.WIDTH or Scale.HEIGHT) * s) / 2)
     Scale.windowW = windowW
     Scale.windowH = windowH
-    -- Answered on every resize, and read by whoever lays out. Deliberately does NOT switch
-    -- Scale.WIDTH/HEIGHT yet: only one arrangement is registered, so the rule is a no-op that
-    -- reports -- which is exactly how it wants to ship, since it can then be exercised on its own by
-    -- dragging a window across 1024x576 before anything depends on the answer.
-    Scale.handheld = Scale.wantsHandheld(windowW, windowH)
     -- The canvas is sized to the real window, so a resize retires it; ensureCanvas rebuilds it at
     -- the new size on the next frame. (noCanvas stays latched -- a driver that failed once still
     -- gets the fallback path.) Release the old target rather than leaning on the GC, since dragging

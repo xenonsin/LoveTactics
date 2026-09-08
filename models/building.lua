@@ -5,6 +5,7 @@
 
 local Registry = require("models.registry")
 local Player = require("models.player")
+local Scale = require("scale") -- authored 1280x720 door rects -> the live space (see below)
 
 local Building = {}
 
@@ -216,14 +217,20 @@ function Building.list(playerOrPrestige, opts)
             if def.unlockUnidentified then
                 locked = locked or not require("models.identify").everFound(player)
             end
+            -- The ONLY place a hand-authored 1280x720 rect crosses into the live space. Every
+            -- building in data/buildings positions its door by eye against the city art, and on a
+            -- handheld that space is shorter and wider (scale.lua) -- so the rect has to travel with
+            -- it. Both axes scale independently, matching how states/hub.lua stretches the city
+            -- picture itself: a hotspot must distort exactly as much as the door it names.
+            local bx, by, bw, bh = Scale.fromAuthored(def.x, def.y, def.w, def.h)
             list[#list + 1] = {
                 id = id,
                 name = def.name,
                 order = def.order or 0,
-                x = def.x,
-                y = def.y,
-                w = def.w,
-                h = def.h,
+                x = bx,
+                y = by,
+                w = bw,
+                h = bh,
                 panel = def.panel,
                 state = def.state, -- a whole screen this door opens instead of a pop-up, or nil
                 vendor = def.vendor, -- vendor id for shop buildings; nil otherwise
