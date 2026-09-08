@@ -41,7 +41,7 @@ return {
             withScale(function()
                 local before = Scale.layoutFit(844, 390)
                 local w, h = Scale.WIDTH, Scale.HEIGHT
-                Scale.WIDTH, Scale.HEIGHT = 1168, 540 -- pretend the handheld space went live
+                Scale.WIDTH, Scale.HEIGHT = 973, 450 -- pretend the handheld space went live
                 local after = Scale.layoutFit(844, 390)
                 Scale.WIDTH, Scale.HEIGHT = w, h
                 assert(math.abs(before - after) < 1e-9,
@@ -150,8 +150,8 @@ return {
 
                 Scale.allowHandheldSpace = true -- a screen that has been laid out for it
                 Scale.resize(844, 390) -- the measured handset, landscape
-                assert(Scale.HEIGHT == 540, "the handheld space fixes the height at 540")
-                assert(Scale.WIDTH == 1168,
+                assert(Scale.HEIGHT == 450, "the handheld space fixes the height at 450")
+                assert(Scale.WIDTH == 973,
                     "the width must follow the device's own aspect -- got " .. Scale.WIDTH)
                 -- ...and the whole reason for it: no bars, where the authored space wasted 18%.
                 local fit = math.min(844 / Scale.WIDTH, 390 / Scale.HEIGHT)
@@ -167,9 +167,9 @@ return {
                 Scale.forceHandheld = true
                 Scale.allowHandheldSpace = true
                 Scale.resize(1024, 768) -- 4:3, which would want a 720-wide space
-                assert(Scale.WIDTH == 960, "a squarer screen must clamp up to 960, got " .. Scale.WIDTH)
+                assert(Scale.WIDTH == 880, "a squarer screen must clamp up to 880, got " .. Scale.WIDTH)
                 Scale.resize(2560, 720) -- ultrawide, which would want 1920
-                assert(Scale.WIDTH == 1280, "an ultrawide must clamp down to 1280, got " .. Scale.WIDTH)
+                assert(Scale.WIDTH == 1120, "an ultrawide must clamp down to 1120, got " .. Scale.WIDTH)
             end)
         end,
     },

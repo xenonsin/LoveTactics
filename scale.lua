@@ -87,8 +87,20 @@ Scale.HEIGHT = 720
 -- panel, and no letterbox bars, which were eating 18% of the screen. Clamped at both ends so a 4:3
 -- tablet or an ultrawide cannot produce a shape nothing is authored for.
 Scale.AUTHOR_W, Scale.AUTHOR_H = 1280, 720
-Scale.HANDHELD_H = 540
-Scale.HANDHELD_MIN_W, Scale.HANDHELD_MAX_W = 960, 1280
+-- 540 -> 450. The height is the whole lever: it is the axis the fit is decided on, so it alone sets
+-- how much of the screen a pixel of text is worth. At 540 a phone got 10.8 CSS px of body text and a
+-- 46pt tile; at 450 the same layout gives 13.0 px and 48.8pt, because the fit rises to meet the
+-- smaller space. A SMALLER logical space makes everything physically bigger -- the space is a choice
+-- of units, not a size.
+--
+-- 450 is not arbitrary: the board is square and 8 tiles, so a 450-tall space gives it a 56px tile and
+-- lets it fill the short axis exactly, which is the one thing that decides whether a square can be
+-- tapped (see states/battle.lua's boardTile).
+Scale.HANDHELD_H = 450
+-- The width still comes from the device's own aspect. The floor is what the fight screen needs --
+-- a 450 board plus a usable column each side -- and the ceiling stops an ultrawide asking for a shape
+-- nothing is authored for.
+Scale.HANDHELD_MIN_W, Scale.HANDHELD_MAX_W = 880, 1120
 -- Bumped whenever the space actually changes, so the few things that CACHE geometry rather than
 -- laying out per-frame can notice. Almost nothing needs it -- 65 files read Scale.WIDTH/HEIGHT at
 -- draw time and simply follow -- but a cached rect that does not is a panel drawn for the last shape.

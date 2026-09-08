@@ -150,15 +150,30 @@ local BOARD_TILE = 64
 -- lines themselves; the measured faces are 30 / 22 / 16 tall (display 22, display 16, body 13), which
 -- with HUD_TITLE_Y / HUD_OBJECTIVE_Y / HUD_HINT_Y below sums to exactly 84 and leaves 4 clear.
 local BOARD_TOP = 88
--- ...on a DESKTOP. A handheld space is 1168x540 (scale.lua), and 88 + 512 is already over that
--- before the log gutter is counted -- the board would hang off the bottom of the screen. A short,
--- wide screen has width to spare and no height at all, so the three HUD rows turn a quarter turn
--- with everything else: they move off the top of the board and into the left column (drawHudText is
--- handed the column's rect instead of the board's), and the board simply centres in what is left.
+-- ...on a DESKTOP, where the short axis has room to spare. A handheld's does not, and that -- not the
+-- font size -- is what made the game unplayable on a phone.
 --
--- Table field rather than a local: this file is at Lua 5.1's 200-local ceiling.
+-- THE BOARD IS SQUARE, so it can never be bigger than the screen's SHORT axis, and a tap target is
+-- one eighth of whatever it gets. On a handset that axis is 390 CSS px; the board was getting 277 of
+-- them, because an 88px HUD band and a 120px log gutter were sitting on the same axis and taking 29%
+-- of it -- while 454 px of width sat beside the board doing very little. A 34.7pt tile against
+-- Apple's 44pt minimum follows from that arithmetic and from nothing else, which is why two rounds of
+-- raising the type floor did not move it.
+--
+-- So on a handheld the board takes the short axis outright and everything else goes on the long one:
+-- the HUD rows into the left column (drawHudText is handed the column's rect), the log with them
+-- (gutterRect), and the tile is simply the height over eight.
+--
+-- Table fields rather than locals: this file is at Lua 5.1's 200-local ceiling.
+function battle.boardTile()
+    if Scale.inHandheldSpace then return math.floor(Scale.HEIGHT / 8) end
+    return BOARD_TILE
+end
+
 function battle.boardTop()
-    if Scale.inHandheldSpace then return math.max(8, math.floor((Scale.HEIGHT - 8 * BOARD_TILE) / 2)) end
+    if Scale.inHandheldSpace then
+        return math.max(0, math.floor((Scale.HEIGHT - 8 * battle.boardTile()) / 2))
+    end
     return BOARD_TOP
 end
 
@@ -195,6 +210,64 @@ local MENU_BUTTON = { x = 16, y = 16, w = 36, h = 36 }
 function battle.hudDrop()
     return Scale.inHandheldSpace and (MENU_BUTTON.y + MENU_BUTTON.h + 10) or 0
 end
+
+-- The two column widths, for whichever space is live. LEFT_W and PANEL_W stay ordinary locals -- they
+-- are read at a dozen sites and every one of them closes over these upvalues, so reassigning here is
+-- seen everywhere without touching a single call site.
+--
+-- On a handheld the board takes the short axis and the columns SPLIT WHAT IS LEFT, one each side, so
+-- the board stays centred. Both on one side would have been the cheaper thing to write and the wrong
+-- thing to look at: the board is the subject, and flush against an edge it reads as displaced rather
+-- than framed -- the same argument that pulled the desktop panel back from 410. It also keeps the
+-- handheld on the desktop's own structure (column, board, column), which makes it a set of different
+-- constants rather than a second arrangement to build and keep in sync, and it puts a control under
+-- each thumb of a phone held in landscape instead of leaving one idle.
+--
+-- Defined HERE, below MENU_BUTTON and the HUD rows, because it reads both -- and a local is not in
+-- scope above its own declaration, so up beside boardTile the names would quietly have resolved to
+-- nil globals. That is exactly how this landed the first time.
+--
+-- Guarded on the panel as well as the epoch, and that is not belt-and-braces: the panel is built by
+-- commitDeploy, LONG after the space last changed, so an epoch-only guard would have already run and
+-- would never touch it -- the strip override below would simply never be applied. The same class of
+-- bug as every other cached-geometry miss in this file: the thing that needs telling did not exist
+-- yet when the telling happened.
+function battle.syncLayout()
+    if battle.layoutEpoch == Scale.spaceEpoch and battle.layoutPanel == battle.panel then return end
+    battle.layoutEpoch = Scale.spaceEpoch
+    battle.layoutPanel = battle.panel
+    if Scale.inHandheldSpace then
+        local board = 8 * battle.boardTile()
+        LEFT_W = math.floor((Scale.WIDTH - board) / 2)
+        PANEL_W = Scale.WIDTH - board - LEFT_W
+    else
+        LEFT_W = 320 -- the desktop pair; see the LEFT_W declaration for where 320 / 352 come from
+        PANEL_W = CombatPanel.WIDTH
+    end
+    -- The two things that cache geometry rather than deriving it per frame.
+    if battle.panel then
+        battle.panel:relayout(PANEL_W)
+        -- THE TURN-ORDER STRIP CROSSES SIDES ON A HANDHELD. The right column is 450 tall and cannot
+        -- hold a strip, an acting card, a 3x3 grid and a Wait button together -- with the strip in it
+        -- the strip is what loses, and it draws its caption over nothing at all. It goes to the left
+        -- column, which pairs it with the docked inspector: both are things you READ, which leaves
+        -- the right column as the half you act with. The acting card stays put either way, because it
+        -- frames into the action grid directly beneath it.
+        if Scale.inHandheldSpace then
+            battle.panel.stripX, battle.panel.stripW = 0, LEFT_W
+            -- Clear of the HUD, whose hint line WRAPS to two rows in a column this narrow.
+            battle.panel.stripTop = battle.hudDrop() + HUD_HINT_Y + 80
+            battle.panel.stripFloor = math.floor(Scale.HEIGHT * 0.78)
+        end
+    end
+    if battle.map then
+        battle.map.size = battle.boardTile()
+        battle.map.leftMargin, battle.map.rightMargin = LEFT_W, PANEL_W
+        battle.map.topMargin = battle.boardTop()
+        battle.map:layout()
+    end
+end
+
 -- Clickable "Forfeit" entry so a mouse-only player can bail out (counts as a loss). Wait/Focus/
 -- Defend is not here: it lives in a long button under the item grid (ui/combat_panel.lua).
 local forfeitButton = { x = 16, y = 60, w = 130, h = 36 }
@@ -4409,7 +4482,7 @@ local function gutterRect()
     -- the left column instead, under the HUD rows and the docked boxes, at the column's own width.
     -- Everything that reads this rect follows, which is the point of it being one function.
     if Scale.inHandheldSpace then
-        local top = math.floor(Scale.HEIGHT * 0.58)
+        local top = math.floor(Scale.HEIGHT * 0.80)
         return { x = 16, y = top, w = LEFT_W - 32, h = Scale.HEIGHT - top - 12 }
     end
     return { x = bx, y = y, w = bw, h = Scale.HEIGHT - y - 4 }
@@ -4702,6 +4775,7 @@ local function openDeployPhase(opts)
 end
 
 function battle.enter(self, opts)
+    battle.syncLayout() -- before anything is laid out against the columns
     opts = opts or {}
     -- Is this fight running inside another state's screen? An overworld fight is: it is fought on the
     -- floor it was found on and the map is still drawn behind it (states/game.lua). The draft, the duel
@@ -5027,7 +5101,7 @@ function battle.enter(self, opts)
     battle.encounterCtx = ctx
     battle.map = BattleMap.new(battle.arena,
         { combat = battle.combat, leftMargin = LEFT_W, rightMargin = PANEL_W,
-          tileSize = BOARD_TILE, topMargin = battle.boardTop(),
+          tileSize = battle.boardTile(), topMargin = battle.boardTop(),
           -- Laid ON the chamber, where the caller knows which one: an overworld fight is fought in the
           -- room it was found in and that room is already drawn behind this board (states/game.lua's
           -- `pin`). Nil for the draft, the duel and every scripted leg, which centre as before.
@@ -5515,6 +5589,10 @@ function battle.drawPeek()
 end
 
 function battle.draw()
+    -- The logical space can change under a live fight (a resized window, a phone turned), and
+    -- the two columns plus the board are sized from it. Cheap: it returns at once unless the
+    -- space actually moved (Scale.spaceEpoch).
+    battle.syncLayout()
     -- HOSTED: the fight is running inside the overworld state, on the floor it was found on
     -- (states/game.lua's openEncounter), and that floor has already drawn itself under us. So the mount
     -- becomes a SCRIM rather than a wall -- the chamber, its doors and the plan of the level stay

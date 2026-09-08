@@ -59,7 +59,8 @@ local CURRENT_TOP_GAP = 34 -- room above the acting card for its "Current Turn" 
 -- 118, which made a slot noticeably wider than it is tall for no gain -- the icon is height-bound
 -- either way (it scales to min((sw-8)/iw, (sh-8)/ih)), so all that width fell to the name band, and
 -- a name band is not worth distorting the plate the whole grid is made of. The HEIGHT is unchanged.
-local SLOT_W = 100
+local SLOT_W = 100      -- the DESKTOP slot; a narrower panel derives its own (see relayout)
+local SLOT_MARGIN = 20  -- clear either side of the grid, so a narrow column still frames it
 local SLOT_H = 58
 local SLOT_GAP = 6
 local COLS, ROWS = 3, 3
@@ -226,29 +227,16 @@ function CombatPanel.new(combat, opts)
     self.captionFont = Theme.display(12) -- section captions (Current Turn / Actions) wear the serif, matching Turn Order
     -- (item names in a grid slot fit a native sans via Theme.fitText -- see drawSlot; never scaled)
 
-    self.x = Scale.WIDTH - PANEL_W
-    self.w = PANEL_W
-
-    -- Item grid: 3x3, centred horizontally. A long Wait button sits under it at the very bottom,
-    -- so the grid is lifted to make room (button height + a gap + the bottom margin).
-    self.gridW = COLS * SLOT_W + (COLS - 1) * SLOT_GAP
-    self.gridH = ROWS * SLOT_H + (ROWS - 1) * SLOT_GAP
-    self.gridX = self.x + math.floor((PANEL_W - self.gridW) / 2)
-    -- The bottom lane: one bar the width of the grid, pinned to the panel bottom. Wait/Focus/Defend
-    -- owns the whole of it, and shares it with FALL BACK on the turns that move is on offer (see
-    -- bottomBarRects). One lane, never two -- a second row reserved for a move that is legal on a
-    -- handful of turns a fight is a permanent hole in the panel.
-    self.waitBtn = { x = self.gridX, w = self.gridW, h = 34 }
-    self.waitBtn.y = Scale.HEIGHT - 16 - self.waitBtn.h
-    self.waitHover = false
-    -- The item grid sits above the bottom lane. THIS LINE WENT OUT WITH FALL BACK and had
-    -- nothing to do with it -- it sat between two of that button's fields, so the cut took it
-    -- too, and every battle since has died constructing this panel (`arithmetic on field
-    -- 'gridY' (a nil value)`). Nothing caught it: no spec builds a real panel, and the
-    -- headless suite never opens one.
-    self.gridY = self.waitBtn.y - 14 - self.gridH
+    self:relayout(opts.width)
     -- Turn strip lives above the item grid; stripTop leaves the "Turn Order" caption clear breathing
     -- room above it (top + bottom margin around the header).
+    -- WHERE THE UPCOMING STRIP LIVES. Defaults to this panel, and a host may move it: on a handheld
+    -- the right column is only 450 tall and cannot hold a strip, an acting card, a 3x3 grid and a Wait
+    -- button at once, so states/battle.lua sends the strip to the left column and keeps the rest here.
+    -- The acting card never moves -- it frames into the grid it belongs to.
+    self.stripX = self.x
+    self.stripW = w
+    self.stripFloor = nil -- set by a host that has sent the strip to another column
     self.stripTop = 52
     -- Room between the acting card and the Actions grid below it -- enough for the centered "Actions"
     -- caption to breathe above and below without floating far from the grid.
@@ -449,6 +437,44 @@ function CombatPanel:setView(view)
     self.view = view
 end
 
+-- Lay the panel out for a given width, and again whenever the logical space changes under it.
+--
+-- Split out of new() because the panel is CACHED on the battle state and the space is not fixed for
+-- its lifetime any more: a handheld gets a shorter, narrower one (scale.lua), and a panel that laid
+-- itself out once at construction would keep drawing for the shape it was born in. Everything here
+-- derives from `w` and Scale.HEIGHT, so calling it again is the whole of what a space change needs.
+--
+-- The SLOT SIZE derives too. It used to be a module constant, which is fine while there is one panel
+-- width in the game and wrong the moment there are two: a 3x3 grid of fixed 100px slots does not fit
+-- a 262px column, and would have drawn straight out through the side of it.
+function CombatPanel:relayout(w)
+    w = w or PANEL_W
+    self.x = Scale.WIDTH - w
+    self.w = w
+
+    -- Item grid: 3x3, centred horizontally, sized to the room there actually is. A long Wait button
+    -- sits under it at the very bottom, so the grid is lifted to make way (button + gap + margin).
+    self.slotW = math.min(SLOT_W, math.floor((w - SLOT_MARGIN * 2 - (COLS - 1) * SLOT_GAP) / COLS))
+    self.slotH = SLOT_H
+    self.gridW = COLS * self.slotW + (COLS - 1) * SLOT_GAP
+    self.gridH = ROWS * self.slotH + (ROWS - 1) * SLOT_GAP
+    self.gridX = self.x + math.floor((w - self.gridW) / 2)
+    -- The bottom lane: one bar the width of the grid, pinned to the panel bottom. Wait/Focus/Defend
+    -- owns the whole of it, and shares it with FALL BACK on the turns that move is on offer (see
+    -- bottomBarRects). One lane, never two -- a second row reserved for a move that is legal on a
+    -- handful of turns a fight is a permanent hole in the panel.
+    self.waitBtn = self.waitBtn or {}
+    self.waitBtn.x, self.waitBtn.w, self.waitBtn.h = self.gridX, self.gridW, 34
+    self.waitBtn.y = Scale.HEIGHT - 16 - self.waitBtn.h
+    self.waitHover = self.waitHover or false
+    -- The item grid sits above the bottom lane. THIS LINE WENT OUT WITH FALL BACK and had
+    -- nothing to do with it -- it sat between two of that button's fields, so the cut took it
+    -- too, and every battle since has died constructing this panel (`arithmetic on field
+    -- 'gridY' (a nil value)`). Nothing caught it: no spec builds a real panel, and the
+    -- headless suite never opens one.
+    self.gridY = self.waitBtn.y - 14 - self.gridH
+end
+
 function CombatPanel:contains(px, py)
     return px >= self.x and px <= self.x + self.w and py >= 0 and py <= Scale.HEIGHT
 end
@@ -457,8 +483,8 @@ end
 function CombatPanel:slotRect(index)
     local col = (index - 1) % COLS
     local row = math.floor((index - 1) / COLS)
-    return self.gridX + col * (SLOT_W + SLOT_GAP),
-        self.gridY + row * (SLOT_H + SLOT_GAP), SLOT_W, SLOT_H
+    return self.gridX + col * (self.slotW + SLOT_GAP),
+        self.gridY + row * (self.slotH + SLOT_GAP), self.slotW, self.slotH
 end
 
 -- The turn-order card `unit` currently occupies, as x, y, w, h -- or nil when it has no card on
@@ -509,7 +535,10 @@ function CombatPanel:draw()
     love.graphics.line(self.x, 0, self.x, Scale.HEIGHT)
 
     love.graphics.setFont(self.headFont)
-    Theme.caption("Turn Order", self.x, 20, self.w)
+    -- Over the strip, wherever the strip is. It followed the cards to the left column on a handheld
+    -- and this did not, which left a heading standing over an empty right column and a set of turn
+    -- cards captioned by nothing.
+    Theme.caption("Turn Order", self.stripX, self.stripTop - 32, self.stripW)
 
     self:drawTurnStrip()
     self:drawItemGrid()
@@ -636,10 +665,16 @@ function CombatPanel:entryLayout()
         turnNo = 1
         local top = y - CURRENT_H
         out[#out + 1] = { entry = entries[1], num = 1, x = self.x + 8, y = top, w = self.w - 16, h = CURRENT_H }
+        -- The acting card stays in the panel even when the upcoming strip has been sent elsewhere:
+        -- it is the half you act WITH, and it frames into the action grid directly below it.
         -- Leave extra room above the acting card so its "Current Turn" caption has somewhere to sit.
         y = top - CURRENT_TOP_GAP
         startIndex = 2
     end
+    -- A strip sent to another column stacks in ITS band rather than off the acting card,
+    -- which stays in the panel. Without this the two would be chained and moving one would
+    -- silently drag the other across the screen with it.
+    if self.stripFloor then y = self.stripFloor end
     -- Upcoming entries (uniform slim cards) hang off the current card, stacking upward directly on
     -- top of it so the whole timeline anchors from the bottom (the Current Turn box). `scroll` hides
     -- the nearest ones off the bottom of the region, so the window walks up toward later turns while
@@ -658,7 +693,7 @@ function CombatPanel:entryLayout()
         if upcoming > self.scroll then
             local top = y - SLIM_H
             if top < self.stripTop then break end
-            out[#out + 1] = { entry = entry, num = num, x = self.x + 8, y = top, w = self.w - 16, h = SLIM_H }
+            out[#out + 1] = { entry = entry, num = num, x = self.stripX + 8, y = top, w = self.stripW - 16, h = SLIM_H }
             y = top - ENTRY_GAP
         end
     end
@@ -673,7 +708,16 @@ function CombatPanel:drawTurnStrip()
         if not e.entry.preview and self.cardY[e.entry.unit] then
             y = self.cardY[e.entry.unit] -- eased slot (slides as the order reshuffles)
         end
+        -- A card drawn where entryLayout put it, which for the upcoming strip may be another column
+        -- entirely (see relayout's stripX). drawEntry lays every part of a card out from self.x, so
+        -- rather than thread a rect through all of it, the whole card is TRANSLATED into place. That
+        -- is exact rather than approximate because the two columns are the same width by
+        -- construction -- battle.syncLayout splits what the board leaves evenly, so they differ by at
+        -- most the odd pixel.
+        local shift = e.x - (self.x + 8)
+        if shift ~= 0 then love.graphics.push(); love.graphics.translate(shift, 0) end
         self:drawCard(e.entry, y, e.num, e.h)
+        if shift ~= 0 then love.graphics.pop() end
     end
     -- During the "out" phase the outgoing actor's big card stays in the frame, fading out, while its
     -- real queue card solidifies above -- so the frame never blinks empty as the turn hands off.
