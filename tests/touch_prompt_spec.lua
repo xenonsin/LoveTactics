@@ -98,6 +98,42 @@ return {
         end,
     },
     {
+        -- The authored coaching lines carry a {select} token so they can name whatever device is in
+        -- hand. Touch fell into the mouse branch and the tutorial told a phone to click on a grunt.
+        name = "a coaching line tells a finger to tap, not to click",
+        fn = function()
+            local Locale = require("models.locale")
+            withMode("mouse", true, function()
+                assert(Locale.selectWord() == "Tap", "a finger is told to click")
+                assert(Locale.substitute("{select} on the grunt to jolt it.")
+                    == "Tap on the grunt to jolt it.", "the token did not resolve for touch")
+            end)
+            withMode("mouse", false, function()
+                assert(Locale.selectWord() == "Click", "a mouse must still be told to click")
+            end)
+            -- A pad and a keyboard have a real labelled button, so they keep the drawn cap and must
+            -- not be dragged into the pointer branch by this.
+            withMode("gamepad", false, function()
+                assert(Locale.selectKey() == "A", "a pad lost its drawn cap")
+            end)
+            withMode("keyboard", false, function()
+                assert(Locale.selectKey() == "Enter", "a keyboard lost its drawn cap")
+            end)
+        end,
+    },
+    {
+        -- Reversed on 2026-09-07 after seeing it on a real handset: anchored to the tile, the
+        -- forecast covers the board, which is the one thing you need in order to aim.
+        name = "the forecast stays in the column and off the battlefield",
+        fn = function()
+            local src = assert(love.filesystem.read("states/battle.lua"), "states/battle.lua is readable")
+            local tail = src:match("Then the exchange.*$")
+            assert(tail, "the exchange stack's draw block is gone or renamed")
+            assert(not tail:find("cellBox"),
+                "the forecast is anchored to a board tile again -- it will cover the battlefield")
+        end,
+    },
+    {
         name = "the docked inspector follows a finger, which has no hover to follow",
         fn = function()
             local src = assert(love.filesystem.read("states/battle.lua"), "states/battle.lua is readable")

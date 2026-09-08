@@ -5918,23 +5918,21 @@ function battle.drawTileTooltip(mx, my)
     -- Then the exchange, each box anchored above the last. A tighter gap than the one between the
     -- reference boxes below: these are beats of a single trade and read as one unit.
     --
-    -- ON A TOUCHSCREEN IT GOES ON THE BOARD INSTEAD, anchored to the tile it is about.
+    -- IT STAYS IN THE COLUMN ON A TOUCHSCREEN TOO, and that is a reversal worth recording.
     --
-    -- "Tooltip" is doing two jobs here and they want different places. The REFERENCE boxes above --
-    -- terrain, cost, who is standing there -- are consulted occasionally and belong in a column. The
-    -- EXCHANGE is the forecast: what this costs, what it lands, what answers it. It is read while the
-    -- player is aiming, and in the column it sits up to 600px from the tile it describes, so aiming
-    -- means looking away from the finger and back. Anchored to the tile, the number is where the eye
-    -- already is. Floored at BOARD_TOP so a target on the top rank cannot push it over the HUD.
+    -- It was briefly anchored to the tile instead, on the argument that the forecast is read while
+    -- aiming and should therefore sit where the finger already is rather than 600px away in a column.
+    -- That argument does not survive a real handset: the box is bigger relative to the screen than it
+    -- is on a desktop, and it lands on the BOARD -- which is the one thing you have to see to aim at
+    -- all. Trading a glance across the screen for a hole in the battlefield is a bad trade, and it is
+    -- only obvious in a photograph of a phone.
+    --
+    -- The column is a good home for it now in a way it was not before: it used to be hover-driven and
+    -- therefore blank on a handset, and battle.mousepressed pins the hover on a tap, so a finger fills
+    -- the same boxes a mouse does.
     local exOpts = { placement = "above", dockTop = dockTop, width = W, gap = exGap }
-    if InputMode.touch and battle.map and cx then
-        local tx, ty, tw, th = battle.map:cellBox(cx, cy)
-        topBox = { x = tx, y = ty, w = tw, h = th }
-        exOpts = { placement = "above", dockTop = battle.boardTop(), width = ActionPreview.WIDTH, gap = exGap }
-    else
-        -- With every reference box dropped there is nothing to anchor to: start from the column floor.
-        topBox = topBox or { x = 16, y = Scale.HEIGHT - 8 + exGap, w = W, h = 0 }
-    end
+    -- With every reference box dropped there is nothing to anchor to: start from the column floor.
+    topBox = topBox or { x = 16, y = Scale.HEIGHT - 8 + exGap, w = W, h = 0 }
     for _, a in ipairs(exchange) do
         topBox = ActionPreview.draw(a, topBox, maxRight, exOpts) or topBox
     end

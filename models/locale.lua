@@ -101,13 +101,22 @@ local SELECT_KEY = {
     gamepad = "A",
 }
 
--- What the mouse says instead, written into the sentence like any other word.
+-- What a POINTER says instead, written into the sentence like any other word. A finger is in the
+-- same position as a mouse and for the same reason -- there is no cap to draw, because there is no
+-- button -- but it is emphatically not the same word: a handset told to "Click on the grunt" is
+-- being instructed by the one thing on screen whose whole job was to be unambiguous.
 local SELECT_WORD = "Click"
+local SELECT_WORD_TOUCH = "Tap"
 
 -- The key cap for the device in the player's hands, or nil when it has no button worth drawing
 -- (the mouse). A nil here is what tells the caller to render words rather than a pill.
 function Locale.selectKey()
     return SELECT_KEY[require("input_mode").current]
+end
+
+-- ...and for the pointing devices, which have no cap to draw: the verb their own hardware uses.
+function Locale.selectWord()
+    return require("input_mode").touch and SELECT_WORD_TOUCH or SELECT_WORD
 end
 
 -- Substitute the runtime tokens an authored line may carry:
@@ -158,7 +167,7 @@ function Locale.substitute(text)
         text = text:gsub("{posting}", function() return work end)
     end
     if text:find("{select}", 1, true) then
-        text = text:gsub("{select}", Locale.selectKey() or SELECT_WORD)
+        text = text:gsub("{select}", Locale.selectKey() or Locale.selectWord())
     end
     return text
 end
@@ -184,10 +193,13 @@ end
 --   gamepad   "{select} on the imp to strike it."  ->  "on the imp to strike it.", "A"
 --   keyboard                                       ->  "on the imp to strike it.", "Enter"
 --   mouse                                          ->  "Click on the imp to strike it.", nil
+--   touch                                          ->  "Tap on the imp to strike it.", nil
 --
 -- Two shapes because the devices genuinely differ (see SELECT_KEY): a pad and a keyboard have a
 -- labelled button, so the token is lifted OUT of the sentence for ui/coach_bubble.lua to draw as a
--- pill; a mouse does not, so the verb stays in the sentence as ordinary words and there is no cap.
+-- pill; a pointer does not, so the verb stays in the sentence as ordinary words and there is no cap.
+-- Which verb comes from Locale.selectWord -- a finger has no cap to draw either, but it does not
+-- click.
 --
 -- A line that does not open with the token comes back whole, and Locale.substitute has already
 -- turned any inner `{select}` into its label -- so nothing ever prints a raw token.
