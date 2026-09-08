@@ -5189,15 +5189,17 @@ function battle.enter(self, opts)
         if battle.tutorial then
             stage.overScene = true
             if Scale.inHandheldSpace then
-                -- No gutter to speak from: the board owns the whole short axis (battle.boardTop), so
-                -- `boardBottom + gap` is past the bottom of the screen and the rect below comes out
-                -- with a NEGATIVE height. The mentor takes a bar across the foot of the board
-                -- instead. Dropping the box entirely was the first attempt and it was worse -- with no
-                -- box the scene falls back to the full-screen presentation, busts and all, which on a
-                -- 450-tall space covers most of the board with two portrait panels.
-                local bx, _, bw = battle.map:boardRect()
-                local h = 112
-                stage.box = { x = bx, y = Scale.HEIGHT - h - 8, w = bw, h = h }
+                -- NO BOX AT ALL, which hands the dialogue its own full-width bar along the bottom.
+                --
+                -- There is no gutter to speak from here: the board owns the whole short axis
+                -- (battle.boardTop), so the desktop rect below comes out with a negative height. The
+                -- first attempt was a bar across the foot of the board, and on a handset it was
+                -- reported as not visible -- a 448x112 rect is fine in the abstract and lands as a
+                -- narrow strip once the screen is turned, because the turn transposes anything with a
+                -- long axis. The dialogue's own default is clamped into the live space by
+                -- Dialogue:fitToSpace, which is exactly the guarantee this needs: on screen, whatever
+                -- shape the screen is. `overScene` still holds, so the staging stays the compact one
+                -- rather than the full-screen scene with its busts.
             else
                 local _, by, _, bh = battle.map:boardRect()
                 local boardBottom = by + bh
@@ -6613,6 +6615,19 @@ function battle.mousemoved(x, y, dx, dy)
     if battle.hold and (math.abs(x - battle.hold.x) > 12 or math.abs(y - battle.hold.y) > 12) then
         battle.hold = nil
     end
+    -- ...and a finger that slides off the character it pressed is CARRYING it. Past the same 12px the
+    -- hold gives up at, the board cursor follows the finger, so the move band, the path and the
+    -- forecast rehearse the tile under it exactly as a hovering mouse makes them do -- and the drop
+    -- commits (battle.mousereleased). Claimed before the panel and the log get a look, because a drag
+    -- that crosses them is still aiming at the board and must not have its cursor left behind.
+    if battle.drag then
+        if not battle.drag.live
+            and (math.abs(x - battle.drag.x) > 12 or math.abs(y - battle.drag.y) > 12) then
+            battle.drag.live = true
+            battle.aim = nil -- the drag IS the aim; it must not confirm one left over from a tap
+        end
+        if battle.drag.live then battle.map:mousemoved(x, y) return end
+    end
     if battle.settingsMenu then
         battle.settingsMenu:mousemoved(x, y)
         battle.settingsClose:mousemoved(x, y)
@@ -6726,6 +6741,27 @@ function battle.holdTarget(x, y)
     return nil
 end
 
+-- DRAG TO ACT: whether a press at (x, y) has picked the acting character UP, or nil if it landed
+-- anywhere else.
+--
+-- Tap-to-aim and tap-again-to-commit is two presses with the destination hidden under the thumb for
+-- the whole of the second one. Picking the body up and dropping it where it should go is the gesture
+-- the board has always meant -- the finger names actor and destination in one continuous motion, and
+-- the preview under the drag is the rehearsal a mouse gets from its hover.
+--
+-- Only the CURRENT unit answers, and only on its own tile: every other body on the board keeps the
+-- long press that reads its card, and a drag that started nowhere in particular is not an intent.
+function battle.dragTarget(x, y)
+    if not InputMode.touch then return nil end -- a mouse acts on the press; it has no drag to wait for
+    local current = battle.current
+    if battle.over or busy() or not current or not Combat.isPlayerControlled(current) then return nil end
+    if battle.log:contains(x, y) then return nil end
+    if battle.panel and battle.panel:contains(x, y) then return nil end
+    local cx, cy = battle.map and battle.map:cellAt(x, y)
+    if not cx or Combat.unitAt(battle.combat, cx, cy) ~= current then return nil end
+    return current
+end
+
 function battle.mousepressed(x, y, button)
     if battle.fadeOut then return end -- see keypressed: the ending takes no input
     -- A FINGER HAS NO HOVER, so the docked inspector -- terrain, occupant, the exchange -- has nothing
@@ -6750,6 +6786,11 @@ function battle.mousepressed(x, y, button)
         and not (battle.deploy or battle.deployLoadout or battle.settingsMenu or battle.summary
                  or battle.logReview or battle.windupChooser or battle.spendChooser
                  or battle.bagPanel or battle.debugMenu) then
+        -- Armed here and resolved on the release, alongside the hold rather than instead of it: the
+        -- two gestures share a press and are told apart by what the finger does next. Still still,
+        -- and it is a reading; slid, and it is a drag (battle.mousemoved owns that fork).
+        battle.drag = battle.dragTarget(x, y)
+            and { x = x, y = y, unit = battle.current, item = battle.armedItem } or nil
         local target = battle.holdTarget(x, y)
         if target then
             battle.hold = { x = x, y = y, elapsed = 0, target = target }
@@ -6923,6 +6964,27 @@ end
 -- Only the wind-up slider cares about a mouse release (to end a rung drag); everything else on the
 -- board is press-driven.
 function battle.mousereleased(x, y, button)
+    -- THE DROP. The finger carried the acting character to a tile and let go, so commit there --
+    -- through the same seam the mouse, the keyboard and the pad confirm through, which is what makes
+    -- the drop mean whatever the tile means: a step onto open ground, or a swing with the armed item
+    -- at whoever is standing on it. One gesture covers both because the board already resolves both
+    -- from one aimed cell.
+    --
+    -- Let go off the board and it means nothing: cancelled, rather than spending the turn on the last
+    -- tile the finger happened to cross on its way out. A drag that never passed the slop was a tap,
+    -- and falls through to the hold below to be replayed as one.
+    if battle.drag and button == 1 then
+        local d = battle.drag
+        battle.drag = nil
+        if d.live then
+            battle.hold = nil
+            if battle.map:mousepressed(x, y, 1)
+                and d.unit == battle.current and d.item == battle.armedItem then
+                confirm()
+            end
+            return
+        end
+    end
     -- The finger came up before the hold matured, so it was an ordinary tap after all: replay the
     -- press it was holding back. `holdReplaying` is what stops the gate in mousepressed catching its
     -- own replay and holding the same press forever.

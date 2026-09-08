@@ -67,6 +67,10 @@ local COLS, ROWS = 3, 3
 -- A slot badge's pill: side padding, the glyph's width, the gap before its number, and the pill's
 -- height (see drawBadgeAt). Named because badgeSize measures a badge the same way, for a caller that
 -- must place one itself.
+-- ...on a DESKTOP. A handheld slot is 71px and its pill was 18 tall around a 9px glyph and
+-- 12pt digits, which is what a cost and an initiative look like when they were sized for a
+-- 96px slot with a name band under them. With the band gone (see drawSlot) the room is
+-- there, so the badge takes it: see relayout, which is where these become per-panel.
 local BADGE_PAD_X, BADGE_ICON_W, BADGE_GAP, BADGE_H = 5, 9, 3, 18
 -- A pool-preview CALLOUT -- the projected value quoted as a floating pill pointing at the level the
 -- bar will settle at -- is drawn by ui/pool_callout.lua, the one blueprint the hover tooltip's pool
@@ -470,6 +474,20 @@ function CombatPanel:relayout(w)
     -- neither of which exists in new() any more. Left up there, self.stripW took a nil `w` and the
     -- panel's own "Turn Order" caption crashed on the desktop the moment it started reading it --
     -- while the handheld path went on working, because battle.syncLayout sets stripW explicitly.
+    -- A SLOT'S COST AND INITIATIVE PILLS, sized to the slot they sit in.
+    --
+    -- The desktop numbers were chosen for a 96px slot carrying a name band as well. A handheld slot
+    -- is 71px and has no band any more, so the same pill reads as two specks in a corner -- and a
+    -- cost and a time cost are not decoration, they are the two numbers a turn is actually decided
+    -- on. They get the room the name gave up.
+    if Scale.inHandheldSpace then
+        self.badgePadX, self.badgeIconW, self.badgeGap, self.badgeH = 6, 13, 4, 25
+        self.badgeFont = Theme.body(17)
+    else
+        self.badgePadX, self.badgeIconW, self.badgeGap, self.badgeH = BADGE_PAD_X, BADGE_ICON_W, BADGE_GAP, BADGE_H
+        self.badgeFont = self.smallFont
+    end
+
     self.stripX = self.x
     self.stripW = w
     self.stripFloor = nil -- set by a host that has sent the strip to another column
@@ -1277,41 +1295,45 @@ end
 -- The box `amount`'s badge will fill, so a caller that is NOT putting one in a corner -- the recovery
 -- clock, which centres its badge on the icon -- can place it before drawing it.
 function CombatPanel:badgeSize(amount)
-    return BADGE_PAD_X * 2 + BADGE_ICON_W + BADGE_GAP + self.smallFont:getWidth(tostring(amount)), BADGE_H
+    return self.badgePadX * 2 + self.badgeIconW + self.badgeGap
+        + self.badgeFont:getWidth(tostring(amount)), self.badgeH
 end
 
 -- The badge proper, at an explicit position: what both the corner badges above and the centred
 -- recovery clock draw through, so every pill in the grid is built the same way.
 function CombatPanel:drawBadgeAt(bx, by, iconKind, amount, color, a)
-    love.graphics.setFont(self.smallFont)
+    love.graphics.setFont(self.badgeFont)
     local label = tostring(amount)
-    local iconW, gap, padX = BADGE_ICON_W, BADGE_GAP, BADGE_PAD_X
+    local iconW, gap, padX = self.badgeIconW, self.badgeGap, self.badgePadX
     local bw, bh = self:badgeSize(amount)
 
     love.graphics.setColor(0.06, 0.07, 0.10, 0.82 * (a or 1))
     love.graphics.rectangle("fill", bx, by, bw, bh, 4, 4)
 
     local ix = bx + padX
-    local iy = by + (bh - 10) / 2
+    -- The glyph is a proportion of the pill rather than a fixed 10, so a bigger pill gets a bigger
+    -- icon instead of a small one adrift in it.
+    local glyphH = math.floor(self.badgeH * 0.56)
+    local iy = by + (bh - glyphH) / 2
     if iconKind == "hourglass" then
-        self:drawHourglass(ix, iy, iconW, 10, color[1], color[2], color[3], a)
+        self:drawHourglass(ix, iy, iconW, glyphH, color[1], color[2], color[3], a)
     elseif iconKind == "lock" then
-        self:drawLock(ix, iy, iconW, 10, color[1], color[2], color[3], a)
+        self:drawLock(ix, iy, iconW, glyphH, color[1], color[2], color[3], a)
     elseif iconKind == "link" then
-        self:drawBrokenLink(ix, iy, iconW, 10, color[1], color[2], color[3], a)
+        self:drawBrokenLink(ix, iy, iconW, glyphH, color[1], color[2], color[3], a)
     elseif iconKind == "ring" then
-        self:drawSummonRing(ix, iy, iconW, 10, color[1], color[2], color[3], a)
+        self:drawSummonRing(ix, iy, iconW, glyphH, color[1], color[2], color[3], a)
     elseif iconKind == "sigil" then
-        self:drawSigil(ix, iy, iconW, 10, color[1], color[2], color[3], a)
+        self:drawSigil(ix, iy, iconW, glyphH, color[1], color[2], color[3], a)
     elseif iconKind == "charges" then
-        Glyphs.charges(ix, iy, iconW, 10, color[1], color[2], color[3], a)
+        Glyphs.charges(ix, iy, iconW, glyphH, color[1], color[2], color[3], a)
     else -- a cost: `iconKind` is the resource it's paid in, and each pool has its own shape
         local glyph = RES_GLYPH[iconKind] or Glyphs.manaGem
-        glyph(ix, iy, iconW, 10, color[1], color[2], color[3], a)
+        glyph(ix, iy, iconW, glyphH, color[1], color[2], color[3], a)
     end
 
     love.graphics.setColor(0.96, 0.96, 0.98, a or 1)
-    love.graphics.print(label, ix + iconW + gap, by + 3)
+    love.graphics.print(label, ix + iconW + gap, by + (bh - self.badgeFont:getHeight()) / 2)
 end
 
 function CombatPanel:drawItemGrid()
