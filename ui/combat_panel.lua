@@ -228,19 +228,6 @@ function CombatPanel.new(combat, opts)
     -- (item names in a grid slot fit a native sans via Theme.fitText -- see drawSlot; never scaled)
 
     self:relayout(opts.width)
-    -- Turn strip lives above the item grid; stripTop leaves the "Turn Order" caption clear breathing
-    -- room above it (top + bottom margin around the header).
-    -- WHERE THE UPCOMING STRIP LIVES. Defaults to this panel, and a host may move it: on a handheld
-    -- the right column is only 450 tall and cannot hold a strip, an acting card, a 3x3 grid and a Wait
-    -- button at once, so states/battle.lua sends the strip to the left column and keeps the rest here.
-    -- The acting card never moves -- it frames into the grid it belongs to.
-    self.stripX = self.x
-    self.stripW = w
-    self.stripFloor = nil -- set by a host that has sent the strip to another column
-    self.stripTop = 52
-    -- Room between the acting card and the Actions grid below it -- enough for the centered "Actions"
-    -- caption to breathe above and below without floating far from the grid.
-    self.stripBottom = self.gridY - 32
 
     self.view = { order = {}, items = {}, isPartyTurn = false }
     self.hoverIndex = nil
@@ -473,6 +460,24 @@ function CombatPanel:relayout(w)
     -- 'gridY' (a nil value)`). Nothing caught it: no spec builds a real panel, and the
     -- headless suite never opens one.
     self.gridY = self.waitBtn.y - 14 - self.gridH
+
+    -- WHERE THE UPCOMING STRIP LIVES. Defaults to this panel, and a host may move it: on a handheld
+    -- the right column is only 450 tall and cannot hold a strip, an acting card, a 3x3 grid and a Wait
+    -- button at once, so states/battle.lua sends the strip to the left column and keeps the rest here.
+    -- The acting card never moves -- it frames into the grid it belongs to.
+    --
+    -- These live HERE, not in new(), and that is not tidiness: they derive from `w` and from gridY,
+    -- neither of which exists in new() any more. Left up there, self.stripW took a nil `w` and the
+    -- panel's own "Turn Order" caption crashed on the desktop the moment it started reading it --
+    -- while the handheld path went on working, because battle.syncLayout sets stripW explicitly.
+    self.stripX = self.x
+    self.stripW = w
+    self.stripFloor = nil -- set by a host that has sent the strip to another column
+    -- stripTop leaves the caption clear breathing room above the first card.
+    self.stripTop = 52
+    -- Room between the acting card and the Actions grid below it -- enough for the centered "Actions"
+    -- caption to breathe above and below without floating far from the grid.
+    self.stripBottom = self.gridY - 32
 end
 
 function CombatPanel:contains(px, py)

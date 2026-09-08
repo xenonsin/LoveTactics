@@ -48,8 +48,12 @@ return {
 
                 -- Named one at a time rather than walked, so a failure says WHICH field went missing --
                 -- which is the entire diagnostic value here. `gridY` is the one that actually broke.
+                -- stripX/stripW/slotW/slotH joined the list after they were added and left OUT of it:
+                -- stripW took a nil and the panel's own caption crashed every desktop battle, while
+                -- this case went on passing because it was checking a list rather than the panel.
                 for _, field in ipairs({ "x", "w", "gridX", "gridY", "gridW", "gridH",
-                                         "stripTop", "stripBottom" }) do
+                                         "stripTop", "stripBottom", "stripX", "stripW",
+                                         "slotW", "slotH" }) do
                     assert(type(p[field]) == "number",
                         "CombatPanel." .. field .. " is " .. type(p[field]) .. ", not a number -- a "
                             .. "field the constructor lays out has gone missing, and every battle in "
