@@ -1,14 +1,18 @@
--- The player's created avatar -- the baron of Bellmere's child, the one who walks out of the burning
--- town, and the body the whole game is played as. Not one of the seven (see docs/story.md); has no
--- class of its own and grows into whatever the player casts (Growth.NEUTRAL_CLASS is fighter, the
--- class-less fallback). The blank slate is what the rank buys: a small holding's child was trained in
--- nothing in particular, and the only reason this body can hold a sword is that Rowan taught it.
+-- The player's created avatar -- a new hand of the Ninth Charter, the chartered rift company whose
+-- Bellmere job goes wrong in Act 0, and the body the whole game is played as. Not one of the seven
+-- (see docs/story.md); has no class of its own and grows into whatever the player casts
+-- (Growth.NEUTRAL_CLASS is fighter, the class-less fallback). The blank slate is what the JOB buys: a
+-- company hand on a first posting was trained in nothing in particular, and the only reason this body
+-- can hold a sword is that Rowan, the senior hand, taught it. It used to be the baron of Bellmere's
+-- child, orphaned by the prologue; there is no rank and no dead household any more, and what the
+-- avatar is owed at a gate is correspondingly nothing (conversation_prologue_arrival.lua).
 --
 -- THE BODY IS CHOSEN ON ITS OWN FACE. Character creation offers two and shows both portraits side by
 -- side (states/character_creation.lua); the chosen one is stamped onto the instance by
 -- Player.applyAvatarBody and is what every conversation draws. The unchosen one used to be spent on
--- Bryn, a sibling who stood in the house the prologue burned, and that scene is deleted -- so the
--- choice is now answered where it is asked rather than paid off once, off screen, four lines later.
+-- Bryn, a sibling who stood in the house the prologue burned; that scene is deleted and so is the
+-- family it stood in -- so the choice is now answered where it is asked rather than paid off once,
+-- off screen, four lines later.
 -- Both sprite sets still ship in every save.
 -- Starts with a sword and
 -- the coat off their own back -- the prologue's overworld leg introduces the remaining item types one

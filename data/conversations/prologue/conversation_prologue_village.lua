@@ -18,17 +18,26 @@
 --     fill, in silence. The words were doing the work of a visual track that was not there. Over the
 --     board there IS a visual track, and it is the thing being talked about.
 --
--- WHAT THE CUT HAD TO CARRY OVER. The sibling went with the scene and is not replaced (see
--- data/characters/character_avatar.lua on what the unchosen body is for now). The father did not:
--- he is put on the west road here so that his death lands in prologue_flee on somebody the player
--- has heard of. And Rowan is not introduced by name or office -- prologue_flee does that one scene
--- later ("Keep the baron's child alive"), which is a scene sooner than it used to.
+-- BELLMERE IS A POSTING, NOT A HOME. The avatar has no tie to this town and no rank anywhere: they
+-- are a new hand of the NINTH CHARTER, a chartered rift company working the eastern shires, and
+-- Rowan is the senior hand who trained them. That is the whole relationship -- two friends on the
+-- same payroll -- and it is why nobody in this prologue swears anything to anybody. The earlier
+-- premise made the avatar the baron of Bellmere's child and Rowan a knight the Order had POSTED to
+-- that child; both are gone, and with them the burning household and the sibling.
+--
+-- What the charter buys the scene is the one thing the old rank bought it and more cheaply: a
+-- reason for Rowan to be teaching, a reason for the avatar to be here at all, and a trade the whole
+-- rest of the game is already inside. Line 5 is where it is said -- the job was billed as a field
+-- tear and a dozen imps, and the paper was wrong. Everything that goes wrong in Act 0 goes wrong
+-- because a charter under-read a rift.
 --
 -- THE RIFT IS THE POINT OF IT. The old opening named a rift and glossed nothing, on the theory that
 -- a hole standing open over your own field explains itself. It does not: it was the first noun in
--- the game and it arrived attached to nothing. So the avatar asks, and Rowan answers in three plain
--- lines. That they open anywhere, that nobody has ever shut one, and that things climb out while one
--- stands, is the premise of the whole game and is said out loud in the first thirty seconds.
+-- the game and it arrived attached to nothing. So Rowan answers it in three plain lines. That they
+-- open anywhere, that nobody has ever shut one, and that things climb out while one stands, is the
+-- premise of the whole game and is said out loud in the first thirty seconds. It survives the
+-- re-premise unchanged: a new hand on a first job has exactly as much need to hear it as a baron's
+-- child did, and tests/prologue_spec.lua pins all three halves of it.
 --
 -- ROWAN SPEAKS ALL OF IT, and the avatar does not speak until prologue_flee. A draft gave the avatar
 -- the question that opens the exposition -- the register a player-insert is allowed, and a fix for the
@@ -36,8 +45,7 @@
 -- tests/tutorial_spec.lua is what refuses it: a lesson's opening establishes whose voice teaches for
 -- the next seven steps, and a second speaker in it costs exactly that. So the exposition is not earned
 -- by a question, it is earned by her POINTING -- "that torn place above the fire" names what is on
--- screen, which is the same job the question was doing. The avatar's first line is one scene later
--- than it reads here and two scenes earlier than it used to be, because the cut moved everything up.
+-- screen, which is the same job the question was doing.
 --
 -- Nothing here asks for the compact staging (no busts, no title, barely any dim). It does not have
 -- to: states/battle.lua applies it to EVERY conversation it plays, because that is a fact about
@@ -55,8 +63,9 @@ return {
         { "character_rowan", "That torn place above the fire is a rift. It opened at dusk.", tag = 2 },
         { "character_rowan", "They open where they please, all over the world. No one has ever shut one.", tag = 3 },
         { "character_rowan", "Demons climb out while it stands. More are coming up behind these.", tag = 4 },
-        { "character_rowan", "Your father has the town on the west road.", tag = 5 },
-        { "character_rowan", "This is the only lane up from the field. We hold it until they are clear, {name}!", tag = 6 },
+        { "character_rowan", "Our charter said a field tear and a dozen imps. Whoever wrote it never rode out here to look.", tag = 8 },
+        { "character_rowan", "The town is running for the west road. This is the only lane up from the field.", tag = 9 },
+        { "character_rowan", "We hold it until they're clear, {name}. First job or not, you're holding it with me.", tag = 10 },
         { "character_rowan", "Two of them have seen us. Watch how I take mine.", tag = 7 },
     },
 }

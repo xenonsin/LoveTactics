@@ -1,8 +1,9 @@
 -- The prologue: Act 0, the first-time experience (see docs/story.md, "The three acts"). A linear
 -- sequence of beats -- scenes, tutorial battles, an overworld leg -- that ends by opening the hub
 -- (Act 1) at the capital's gate. It builds the party through play: the created avatar starts alone,
--- and Rowan (the knight) is sworn in the ash of Bellmere -- the avatar's own town, and the family
--- holding that burns with the whole household inside it. The third companion, Saber, is NOT recruited
+-- and Rowan (the knight) walks out of Bellmere with them. Bellmere is a POSTING, not a home: the two
+-- of them are hands of the Ninth Charter, a chartered rift company, and the job kills the rest of it.
+-- Nothing is sworn to anybody in Act 0. The third companion, Saber, is NOT recruited
 -- here: the Colosseum debut that bests her is now the hub's own first-visit beat, taken from the Quest
 -- Board like any other quest (data/quests/arena_debut.lua carries the recruit and the victory scene as
 -- its reward and `outro`). See states/hub.lua, which owns the arrival. The avatar's body and NAME are
@@ -250,7 +251,7 @@ local function buildBeats()
         -- So a New Game reaches a tactics board on the click after the name is typed.
         action(function() Player.recruit(Player.active, "character_rowan") end), -- Rowan joins for the fight
         battle(VILLAGE_MAP),
-        -- The oath is sworn once the village is held, and "[Rowan has joined your Party]" lands at the
+        -- The Ninth ends once the village is held, and "[Rowan has joined your Party]" lands at the
         -- end of this "Ashes" scene -- folded on by Conversation.drainJoins, because her recruit one
         -- beat up queued it (models/conversation.lua). It survives the battle in between because that
         -- fight's tutorial opening plays with `deferJoins` (states/battle.lua): an over-the-board scene

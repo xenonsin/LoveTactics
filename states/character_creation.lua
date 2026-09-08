@@ -1,7 +1,8 @@
 -- Character creation: the first screen of a New Game, before the prologue. Two steps, in order:
 -- the avatar's BODY (`body` 1 or 2 -- which sprite set you wear, deliberately not a gender label),
--- then the NAME. The name is asked here rather than on the Colosseum's sand because Rowan is sworn
--- to you from the first scene and has to be able to address you (see docs/story.md).
+-- then the NAME. The name is asked here rather than on the Colosseum's sand because Rowan has known
+-- you since before the first scene -- same company, and she taught you the sword -- so she has to be
+-- able to address you by it (see docs/story.md).
 --
 -- THE BODY STEP SHOWS THE BODIES. It used to be ui/menu.lua carrying two rows that read "Body 1" and
 -- "Body 2", under the heading "Who will you be?" -- a question about a face, answered by an index,

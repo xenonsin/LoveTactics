@@ -114,50 +114,59 @@ The seven-general arc above is the middle of a three-act shape, not the whole of
   Adventurers' Guild sets the board in front of you. Linear by design — the overworld's locked doors
   and dead-end ambushes stay holstered until Act 1.
 
-  **The player is the baron of Bellmere's child.** The town is a small frontier holding: a stone
-  keep, a market row, a household of a dozen. The rank is deliberately low. A duke's seat falling is
-  a national event, heralds and mourning and a court hunting for surviving heirs, and that fights
-  everything Act 1 needs; a baron's holding falling is a line in a dispatch, so nobody is looking for
-  you at all. The family dies with the town — the father and **Bryn** the sibling. Nothing is carried
-  out of it. A small holding's seal and papers lived in its
-  keep and the keep burned in a night, so the avatar reaches the capital with no way to prove who
-  they are and no household left to say it for them. *Nobody at the gate disbelieves the claim.
-  Nobody bothers to check it* — see
-  `data/conversations/prologue/conversation_prologue_arrival.lua`, where the guard acknowledges the
-  town and walks straight past the claim, and the party gets through on the Bastion plate instead.
+  **The player is a hand of the Ninth Charter, and Bellmere is a posting.** The Ninth is a
+  *chartered rift company*: a licensed outfit of a dozen, paid by the crown's paper to work the small
+  field tears of the eastern shires. The avatar is its newest hand, on a first job; Rowan is the
+  senior hand who trained them. They are **friends on the same payroll**, and that is the whole of the
+  relationship — nobody in Act 0 is anybody's ward, heir, or sworn body.
 
-  **Bryn is the body the player did not choose.** Character creation offers two bodies and only one
-  of them is you; the other is standing in the house when it burns. It costs no art — the portrait is
-  resolved in `Conversation.speaker`, beside the avatar's own runtime override — and it turns a menu
-  choice made before the first line of dialogue into something the player loses. Bryn is addressed
-  by name and never by relation: a body is a sprite set and never a gender label, so *sister* and
-  *brother* are both wrong here by construction.
+  > This replaces a noble origin. The avatar used to be the baron of Bellmere's child, orphaned in
+  > the first fifteen minutes by a household that burned with the town, and Rowan used to be a knight
+  > the Order had *posted* to that child. Both are gone. What the charter buys that the rank did not:
+  > a reason the avatar is standing on a battlefield at all, a mentor who is a colleague rather than a
+  > bodyguard, and a trade the rest of the game is already inside.
 
-  **The opening scene starts already burning.** Five lines, no domestic beat, and the avatar does not
-  speak in it. Bryn is the alarm and names the rift; the steward Odo, who used to carry the fire in and
-  die off screen at the bell, is cut. Rowan enters to the report and gives one order each — Bryn away
-  to the bell and the west road, the avatar kept at her shoulder — which is how the sibling leaves the
-  stage alive and is dead by the next scene without the player watching. It ends on the order that
-  keeps them.
+  **The rank is not replaced by another one — the avatar has none.** A company hand was trained in
+  nothing in particular, which is what earns the blank slate (`Growth.NEUTRAL_CLASS`), and the only
+  reason they can hold a sword at all is that Rowan taught them. It also means they reach the capital
+  with nothing anyone at a gate is obliged to honour: the charter is void with the town it was written
+  against. *The only credential in this party is Rowan's plate* — see
+  `data/conversations/prologue/conversation_prologue_arrival.lua`, where the paper is dismissed in one
+  sentence and the party gets through on the Bastion instead.
 
-  Two things this costs. The dead no longer stand on screen doing anything ordinary first, so the loss
-  is carried by the portrait and by the ash scene. And **one word** now establishes the family: Rowan's
-  *"get **father** onto the west road,"* said to Bryn in front of the avatar. It must survive any later
-  trim.
+  **The charter is what the prologue kills.** The Ninth went down Bellmere's lane at dusk, an hour
+  ahead of the two of them, and did not come back up it. That is the loss Act 0 carries, and it is
+  *shared* — the company is a thing both of them lost, which is why the ash scene can be a
+  conversation between equals rather than one person consoling another. **Name the company, never a
+  roster of its dead.**
 
-  **No member of the household reaches the capital.** A survivor is a witness, and every scene where
-  the city turns the avatar away becomes a scene the player argues with.
+  **Nine charters work the shires, and there is more smoke than nine.** Said once, on the road
+  (`conversation_prologue_ruins.lua`), and it is the only place in Act 0 that sizes the trade. The
+  industry is real, licensed, and smaller than the problem — which is exactly the sentence the gate
+  guard says about the capital's own Rift a scene later. *No charter covers that one.* Field work is
+  paper; the Rift under the city is permanent, deeper than any paper was written for, and paid by the
+  trip. That gap is the escalation Act 0 exists to set up.
 
-  **What burns Bellmere is a rift, not an army.** It tears open in the holding's own east field and
+  **Bryn is cut, and so is the household.** Character creation still offers two bodies, but the
+  unchosen one is no longer spent on a sibling standing in a burning house — it is answered where it
+  is asked, by the portrait cards themselves (`states/character_creation.lua`). Nobody the avatar is
+  related to appears in the prologue, and the father is alive and off-stage. There is no name to win
+  back and no house to restore; **the avatar's arc is not an inheritance plot** and never becomes one.
+  `arena_debut` still promises *"win it, and they will remember your name"* — a crowd learning a name
+  you already had, which is the same promise it always was and is now the only one.
+
+  **The opening scene starts already burning**, over the board
+  (`conversation_prologue_village.lua`), and Rowan speaks all of it — a lesson's opening establishes
+  whose voice teaches the seven steps after it, and `tests/tutorial_spec.lua` enforces exactly that.
+  Its fifth line is the charter's: *the job was billed as a field tear and a dozen imps, and the paper
+  was wrong.* Everything that goes wrong in Act 0 goes wrong because a charter under-read a rift.
+
+  **What burns Bellmere is a rift, not an army.** It tears open in the town's own east field and
   what walks out of it comes up the lane. This is why the prologue turns on a *lane* and never a wall:
   the east wall is on the wrong side of the thing from the first line, and the lane is the board the
   first fight is played on. The scene shows the player *that* a rift opened; Iselle supplies *why* one
   did — an unpruned deep floor, which is her own trade's failure — and the Rift tally scene later tells
   them straight out that they watched it happen.
-
-  The one thing this owes the rest of the game: the avatar wants the name back, and that is **never a
-  quest line**. The spine is seven generals. It is paid off exactly once, on the Colosseum's sand,
-  when a crowd learns a name — which is what `arena_debut` already promises.
 - **Act 1 — the seven.** This document. Open-ended: seven vendor lines, seven companions, seven
   generals, in whatever order standing allows.
 - **Act 2 — the Gate Below.** `quest_the_gate_below` and the Hollow Crown.
@@ -168,18 +177,18 @@ to be spoken, or it isn't there.** Plant the Demon Lord as a named threat in the
 let the Guild say the rest aloud when it opens the board — the Crown is only ever as strong as its
 seven, and unmade one at a time it is hollow.
 
-You do not play one of the seven. The protagonist is a made character — the surviving second child of
-a burned frontier holding, no class of their own, growing into whatever they are cast as
-(`Growth.NEUTRAL_CLASS`). The blank slate is *earned* by the rank rather than argued around it: a
-small holding's child was trained in its roads and its ledgers and nothing in particular, and the only
+You do not play one of the seven. The protagonist is a made character — the newest hand of a
+chartered rift company, no class of their own, growing into whatever they are cast as
+(`Growth.NEUTRAL_CLASS`). The blank slate is *earned* by the job rather than argued around it: a
+company hand on a first posting was trained in nothing in particular, and the only
 reason they can hold a sword at all is that Rowan taught them. The player
 picks their **body** (1 or 2 — a sprite set, never a gender label) and types their **name** at
 character creation, before the first line is spoken (`states/character_creation.lua`).
 
-The name is asked there rather than on the sand because **Rowan is already sworn to you when the
-prologue opens** — the Order posted her to the holding Bellmere sits behind, and the baron's child is
-what that posting turned into. She is the player's bodyguard and mentor, she taught them the sword,
-and she has to be able to say your name in the burning town. A companion who knows you cannot call
+The name is asked there rather than on the sand because **Rowan has known you since before the
+prologue opens** — same company, and she is the one who put the sword in your hand. She is the
+player's mentor and, in practice, their bodyguard, and she has to be able to say your name in the
+burning town. A companion who knows you cannot call
 you "stranger." The arena
 therefore names nobody; `arena_debut` still promises *"win it, and they will remember your name"* —
 the crowd learning a name you already had is the promise, not the naming itself.
@@ -339,17 +348,19 @@ walks into at slot 8.
 ### Rowan, the same wound answered the other way
 
 She was a squire on the relief column sent to Acedia's post, and it was ordered to turn back. She has
-spent her life since being the relief that comes — which is why she took a forgotten frontier posting
-nobody at the Bastion wanted, held Bellmere's east gate until the town was empty, and stands in front
-of the body she swore to. She is compulsively the arrival that failed to happen.
+spent her life since being the relief that comes — which is why she is fifteen years into the Order
+and still working a frontier charter nobody at the Bastion wanted, and why she held Bellmere's lane
+until the town was empty. She is compulsively the arrival that failed to happen.
 
-**The flaw is in how she took the duty, not in who she gave it to.** She was *assigned* the baron's
-child, and she never told the assignment from a vow — she was handed a duty roster and turned it into
-love without once checking whether the difference mattered, or whether you wanted it. That is the
-order's own named sin answered the other way round: Acedia cannot tell a regulation from a vow, so she
-sets the thing down; Rowan cannot tell them apart, so she sanctifies it. Same confusion, opposite
-direction. `data/traits/trait_oathward.lua` is the tell — it guards whatever ally happens to be
-adjacent, unconditionally, because oath one was never really about *you*.
+**The flaw is that she cannot tell a duty from a bond — and nothing was ever issued to her about
+you.** She used to be *assigned* the baron's child, and the flaw read as a duty roster mistaken for
+love. There is no roster now: she is a colleague who happened to be paid onto the same road. The
+confusion sharpens rather than dissolves. She steps in front of whoever is standing beside her because
+that is what she is, with nothing behind it and nobody having asked her to. That is the order's own
+named sin answered the other way round: Acedia cannot tell a regulation from a vow, so she sets the
+thing down; Rowan cannot tell them apart, so she sanctifies whatever she is next to. Same confusion,
+opposite direction. `data/traits/trait_oathward.lua` is the tell — it guards whatever ally happens to
+be adjacent, unconditionally, because it never was about *you*.
 
 **She idolizes Acedia.** She swore on her name; every knight does. Her guilt is that she failed to
 reach *her*.
@@ -366,23 +377,28 @@ before Rowan does**. The gap is worth more than a simultaneous reveal; do not cl
 
 ### Her oath
 
-The vow that carries the line is the one she swore **to the player**, not the one the Bastion issued
+The vow that carries the line is the one she arrives at **by herself**, not the one the Bastion issued
 her. "Hold until relieved" reads as procedure, because that is what it is — and the order's inability
 to tell a regulation from a vow *is* the sin. Rowan recites it flat at slot 1, the way you recite
 something you were handed.
 
-Her own is three, sworn in the ash of Bellmere
+Her own is three. The first is said in the ash of Bellmere
 (`data/conversations/prologue/conversation_prologue_flee.lua`):
 
-> **We go on.**
+> **We go on. If you'll have me on the road.**
 
-**The scene exists to strip her of every order she has, and then let her speak.** She arrives in the
-ash carrying two things issued to her by institutions — the Bastion's *hold until relieved*, and the
-posting that made a baron's child her duty. The baron is dead, the house that paid the Order is ash,
-and the assignment has nobody standing behind it any more. She has no orders for the first time in
-fifteen years, and *We go on* lands in that gap. It is the first thing she has ever said
-uncommanded, which is the entire reason it is hers and *hold until relieved* is not.
+**The scene exists to strip her of every institution she has, and then let her ask.** She arrives in
+the ash carrying two things issued to her — the Bastion's *hold until relieved*, and a charter. The
+charter is void, the company that held it is dead in the lane, and for the first time in fifteen years
+there is nobody left to tell her where to stand. *We go on* lands in that gap. It is the first thing
+she has ever said uncommanded, which is the entire reason it is hers and *hold until relieved* is not.
 
+> **It is not a vow, and it used to be one.** She used to swear herself to the player here — *"So I'm
+> giving myself one. We go on"* — an order issued to herself, aimed at a person who was never
+> consulted. That is cut with the rest of the noble premise. The two of them are friends on the same
+> payroll, so what the scene can carry is a *choice*: she says where she is going and asks whether she
+> is wanted, and the avatar's last line is the yes. Everything downstream of it survives — see below.
+>
 > It used to be **We shall hold**, and the rift premise killed that. You cannot hold ground against a
 > hole that is still open behind you, and the scene says so two lines later — *"Go on where? The field
 > is still open."* The Bastion's own sentence is still *hold*, carved over the cells
@@ -390,12 +406,13 @@ uncommanded, which is the entire reason it is hers and *hold until relieved* is 
 > is **hold**, and the first thing she says without them is not. Nothing else moved — the load was
 > never on the verb.
 
-The whole load is on the **we**. She does not promise to protect the player; she promises they are not
-holding alone — the order's grammar, made plural. Its flaw is inside it: **she decided you were a "we"
-without asking.** She says it *at* you, not to you; nobody in that scene is consulted, because she has
-been treating a duty roster as a bond for fifteen years and has never once had to notice the seam.
-It is also an apology aimed at the wrong person — she failed to reach Greywatch, so she is early for
-you forever.
+The whole load is on the **we**. She does not promise to protect the player; she says they are not
+walking alone — the order's grammar, made plural. **And she asks.** That is the one thing the
+re-premise moved, and it moved the flaw rather than deleting it: the old line decided you were a "we"
+without consulting you, because she had spent fifteen years treating a roster as a bond. There is no
+roster now, so the seam sits one oath later — in oath 2, where she goes on guarding whoever is nearest
+with nothing underneath it, having asked exactly once and never again. It is still an apology aimed at
+the wrong person: she failed to reach Greywatch, so she is early for you forever.
 
 Oath two is **the same words, meant at someone**. The wording never changes; what changes is that
 she now *names* who she means by it, every fight — the first time she chooses rather than reflexes.

@@ -1,9 +1,15 @@
--- Rowan, the knight companion (diligence) and the player's FIRST recruit -- she rallies to defend
--- the burning village, fights at your shoulder, and when it is ash she swears her broken oath anew
--- to you (states/prologue.lua). She is the foil to sloth, whose general is the oath abandoned; Rowan
--- is the oath kept. The oath makes her the player's bodyguard and mentor: she guards the body she
--- swore to and teaches the trade she already knows, so hers is the voice that warns and explains and
--- the body that steps in front. See docs/story.md, "The other seven": a woman, a gender-neutral name,
+-- Rowan, the knight companion (diligence) and the player's FIRST recruit -- the senior hand of the
+-- Ninth Charter who taught the avatar the sword, fights at your shoulder over Bellmere, and when the
+-- job is ash chooses to keep walking with you rather than take the Bastion back (states/prologue.lua).
+-- She is the foil to sloth, whose general is the oath abandoned; Rowan is the oath kept. SHE SWEARS
+-- NOTHING TO THE PLAYER -- that scene is re-premised (conversation_prologue_flee.lua) -- and she is the
+-- bodyguard and mentor anyway, which is the sharper reading: she guards whoever is beside her out of
+-- compulsion, with no vow underneath it (data/traits/trait_oathward.lua), and teaches the trade she
+-- already knows. Hers is the voice that warns and explains and the body that steps in front. Oath
+-- three (data/items/utility/utility_struck_name.lua) now has further to climb: she starts the game
+-- promising nobody anything and ends it naming one ally.
+--
+-- See docs/story.md, "The other seven": a woman, a gender-neutral name,
 -- the virtue shown in how she fights (the wall that holds its post), never labeled.
 --
 -- Her blueprint id is `character_rowan`. It used to be `character_knight`, but that name was freed to

@@ -287,7 +287,7 @@ return {
     ["line.conversation_descent_sloth.2"] = { en = "I held a post once. Nobody came. You will find out what I found out, and it will take you about fifteen years.", ja = "" },  -- TODO
     ["line.conversation_descent_wrath.1"] = { en = "Do not make it quick. A quick blow is a blow somebody is holding back.", ja = "" },  -- TODO
     ["line.conversation_descent_wrath.2"] = { en = "I have had a lifetime of being handled. Come and hit me properly.", ja = "" },  -- TODO
-    ["line.conversation_flight_champion.1"] = { en = "Stop here, {name}. That one has a name. The rest don't. It's the biggest thing that came up out of your father's field.", ja = "" },  -- TODO
+    ["line.conversation_flight_champion.1"] = { en = "Stop here, {name}. That one has a name. The rest don't. It's the biggest thing that came up out of Bellmere's field.", ja = "" },  -- TODO
     ["line.conversation_flight_champion.2"] = { en = "It's between us and the capital.", ja = "" },  -- TODO
     ["line.conversation_flight_champion.3"] = { en = "It is. It won't go down the way the others did, and the imps will throw themselves at us to keep us off it.", ja = "" },  -- TODO
     ["line.conversation_flight_champion.4"] = { en = "Then we cut it down and the imps stop mattering.", ja = "" },  -- TODO
@@ -338,22 +338,25 @@ return {
     ["line.conversation_prologue_arrival.10"] = { en = "It won't stop, either. The Rift under this city has to be cleared, deep and often.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.11"] = { en = "Not many can, and fewer will. So the deep floors get left, and whatever's down there comes up.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.13"] = { en = "The Rift, then. We'll want coin before we want anything else.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.14"] = { en = "I'm the baron of Bellmere's child. The town burned four nights ago.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.15"] = { en = "Bellmere. That's the whole eastern line gone, then. Papers, a seal, anything to say who you are?", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.16"] = { en = "That's what this street is running from. It's also work, if you can hold a blade. Better than queuing for bread.", ja = "" },  -- TODO
+    ["line.conversation_prologue_arrival.14"] = { en = "Ninth Charter, out of Bellmere. There's two of us left of it.", ja = "" },  -- TODO
+    ["line.conversation_prologue_arrival.15"] = { en = "Bellmere. That's the whole eastern line gone, then. Your paper burned with the town it was written against.", ja = "" },  -- TODO
+    ["line.conversation_prologue_arrival.16"] = { en = "That's what this street is running from. No charter covers it -- it pays by the trip. Better than queuing for bread, if you can still hold a blade.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.2"] = { en = "The Bastion holds this wall. If anywhere's still standing, {name}, it's behind these stones.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.3"] = { en = "More of them. Third column through the gate since morning. Where are we meant to put them all?", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.4"] = { en = "Not under my roof. Barely bread enough for the mouths already inside.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.5"] = { en = "Off the road, with the others. Names, and where you've run from.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.7"] = { en = "...That plate. That's Bastion steel. Forgive me, ser. Pass, and the ones at your back.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.1"] = { en = "I can still see the hall from here.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.10"] = { en = "Away from it, and not alone. The capital, {name}. Tonight.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.11"] = { en = "I sent them to the west road. It was already cut off.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.2"] = { en = "There's nobody left to bring out, {name}. Your father is gone.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.4"] = { en = "You were told to keep me alive. You kept me alive.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.5"] = { en = "My orders were one line. Keep the baron's child alive. That's all I did tonight.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.6"] = { en = "The man who wrote them is dead. There's nobody left to give me another.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.8"] = { en = "So I'm giving myself one. We go on.", ja = "" },  -- TODO
+    ["line.conversation_prologue_arrival.7"] = { en = "...That plate. That's Bastion steel. Forgive me, ser. Pass, the pair of you.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.10"] = { en = "Away from it. The capital, {name}. Tonight.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.11"] = { en = "Half the town made the west road. I keep counting the half that didn't.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.12"] = { en = "You count them later, {name}. Everyone counts them later.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.13"] = { en = "The Ninth went down that lane at dusk. We came up an hour behind them.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.14"] = { en = "I know what hour we came up. I've been late before. Don't hand me this one as well.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.15"] = { en = "There's no company left to report to, and no charter to report on.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.16"] = { en = "The charter was signed in the capital. Another one gets signed there.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.17"] = { en = "You don't need another one. The Bastion would take you back tomorrow, plate and all.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.18"] = { en = "They would. Fifteen years somebody has told me where to stand, and tonight there's nobody left to tell me.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.19"] = { en = "So we go on. If you'll have me on the road.", ja = "" },  -- TODO
+    ["line.conversation_prologue_flee.20"] = { en = "Then don't fall behind.", ja = "" },  -- TODO
     ["line.conversation_prologue_flee.9"] = { en = "Go on where? The field is still open.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.2"] = { en = "Many did. We held that lane long enough.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.3"] = { en = "Look down the valley, {name}. Ours wasn't the only field that opened last night.", ja = "" },  -- TODO
@@ -361,13 +364,15 @@ return {
     ["line.conversation_prologue_ruins.5"] = { en = "The king's road to the capital, then. We'll be safe behind its walls, and we save who we can on the way.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.6"] = { en = "Bellmere is gone. I don't know who else made it out.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.7"] = { en = "Nobody stood in the road at those. Whoever ran is out in the hills.", ja = "" },  -- TODO
+    ["line.conversation_prologue_ruins.8"] = { en = "Nine charters work these shires. That is more smoke than nine.", ja = "" },  -- TODO
     ["line.conversation_prologue_village.1"] = { en = "Look at the field, {name}! Bellmere is burning.", ja = "" },  -- TODO
+    ["line.conversation_prologue_village.10"] = { en = "We hold it until they're clear, {name}. First job or not, you're holding it with me.", ja = "" },  -- TODO
     ["line.conversation_prologue_village.2"] = { en = "That torn place above the fire is a rift. It opened at dusk.", ja = "" },  -- TODO
     ["line.conversation_prologue_village.3"] = { en = "They open where they please, all over the world. No one has ever shut one.", ja = "" },  -- TODO
     ["line.conversation_prologue_village.4"] = { en = "Demons climb out while it stands. More are coming up behind these.", ja = "" },  -- TODO
-    ["line.conversation_prologue_village.5"] = { en = "Your father has the town on the west road.", ja = "" },  -- TODO
-    ["line.conversation_prologue_village.6"] = { en = "This is the only lane up from the field. We hold it until they are clear, {name}!", ja = "" },  -- TODO
     ["line.conversation_prologue_village.7"] = { en = "Two of them have seen us. Watch how I take mine.", ja = "" },  -- TODO
+    ["line.conversation_prologue_village.8"] = { en = "Our charter said a field tear and a dozen imps. Whoever wrote it never rode out here to look.", ja = "" },  -- TODO
+    ["line.conversation_prologue_village.9"] = { en = "The town is running for the west road. This is the only lane up from the field.", ja = "" },  -- TODO
     ["line.conversation_touchstone_vendor_intro.1"] = { en = "Four houses dig that hole and not one of them trusts the other three to say what came out of it. So they pay me to say it. Everything that comes up unnamed comes up here.", ja = "" },  -- TODO
     ["line.conversation_touchstone_vendor_intro.10"] = { en = "Not on this counter.", ja = "" },  -- TODO
     ["line.conversation_touchstone_vendor_intro.11"] = { en = "No. I checked.", ja = "" },  -- TODO
