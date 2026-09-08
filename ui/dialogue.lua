@@ -155,6 +155,11 @@ function Dialogue.new(def, onComplete, convId)
     self.boxW = box and box.w or (Scale.WIDTH - BOX_MARGIN * 2)
     self.boxH = box and box.h or BOX_H
     self.boxY = box and box.y or (Scale.HEIGHT - BOX_H - BOX_BOTTOM_GAP)
+    -- A conversation is a GLOBAL overlay, so it outlives the state under it and the logical space can
+    -- change beneath a scene already playing (a window resized, a phone turned, a state that opts in
+    -- to the short space switched to). The rect above was measured once; remember which space it was
+    -- measured in, so fitToSpace can put it back inside a different one.
+    self.spaceEpoch = Scale.spaceEpoch
 
     -- The spoken line's face, chosen AFTER the box is known because over a live scene the box is
     -- whatever the caller could spare. A full-screen bar is 150 tall and takes the authored 22; the
@@ -668,7 +673,29 @@ function Dialogue:sideBustLeft()
     return SpeechBox.bustLeft(self.boxX, self.boxW)
 end
 
+-- Put the box back inside the live space if the space moved under it.
+--
+-- The box may have been handed in by a caller (states/battle.lua's mentor strip) and measured against
+-- a space that is no longer current, in which case it can be wider than the screen or hanging off the
+-- bottom of it. Clamping rather than recomputing, because a caller that placed the box deliberately
+-- should keep its placement wherever it still fits -- this only pulls it back inside.
+function Dialogue:fitToSpace()
+    if self.spaceEpoch == Scale.spaceEpoch then return end
+    self.spaceEpoch = Scale.spaceEpoch
+    self.boxW = math.min(self.boxW, Scale.WIDTH - BOX_MARGIN * 2)
+    self.boxH = math.min(self.boxH, Scale.HEIGHT - BOX_BOTTOM_GAP * 2)
+    self.boxX = math.max(BOX_MARGIN, math.min(self.boxX, Scale.WIDTH - self.boxW - BOX_MARGIN))
+    self.boxY = math.max(BOX_BOTTOM_GAP, math.min(self.boxY, Scale.HEIGHT - self.boxH - BOX_BOTTOM_GAP))
+    -- The face was chosen for the old box (see the constructor): re-ask, or a shorter box wraps its
+    -- three rows into four and prints the last one past its own bottom edge.
+    if self.overScene then
+        local _, _, _, th = SpeechBox.textArea(self.boxX, self.boxY, self.boxW, self.boxH)
+        self.textFont = SpeechBox.font(th)
+    end
+end
+
 function Dialogue:draw()
+    self:fitToSpace()
     -- Dim the frozen screen behind so the text reads. An OVER-SCENE conversation dims far less: what
     -- is behind it is not a backdrop to be pushed away, it is the thing being talked about.
     love.graphics.setColor(0, 0, 0, self.overScene and 0.18 or 0.4)

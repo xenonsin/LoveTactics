@@ -77,7 +77,7 @@ local battle = {}
 -- The honest state is "the space works, the things on top of it have not been checked". Flipping
 -- this to true is one line once that pass is done; shipping it before then would be trading a
 -- measured 18% of a phone screen for overlays that fall off the bottom of it.
-battle.handheldSpace = false
+battle.handheldSpace = true
 
 -- How long the overruled ending takes to put the lights out (battle.endOverruled). Long enough to
 -- read as the world going away rather than as a cut, short enough that nobody presses a key at it.
@@ -365,8 +365,12 @@ battle.deployControlRect = { x = 16, y = 104, w = 130 }
 local function menuBottom()
     -- On a handheld the HUD rows sit in this column under the hamburger, so the docked boxes start
     -- below THEM rather than below the button -- otherwise the terrain box is drawn over the
-    -- objective line (see battle.boardTop).
-    if Scale.inHandheldSpace and not battle.deploy then return battle.hudDrop() + HUD_HINT_Y + 22 end
+    -- objective line (see battle.boardTop). Only while the drawer is SHUT: open, it reaches far
+    -- further down the column than the HUD does, and the ceiling has to clear the drawer or the
+    -- tooltips dock straight through it.
+    if Scale.inHandheldSpace and not battle.deploy and not battle.menuOpen then
+        return battle.hudDrop() + HUD_HINT_Y + 22
+    end
     -- Before the bell there is no drawer to open or shut: Settings and the turn pair always stand, so
     -- the ceiling is always under them.
     if battle.deploy then return battle.deployTurnRightButton.y + battle.deployTurnRightButton.h + 8 end
@@ -464,6 +468,17 @@ local function openSettings()
     battle.menuOpen = false
     local rows = #Settings.defs + 1 -- every option, plus the Back row
     local rowH, rowSp, listW = 40, 8, 620
+    -- ...unless the space cannot hold that. This overlay sizes itself to its CONTENTS, which is right
+    -- on a desktop and is exactly how it overflows a short one: nine rows at 40 plus the title and the
+    -- description gutter come to about 578, against a handheld space 450 tall, so the panel drew off
+    -- both ends of the screen. The rows shrink to fit rather than the list scrolling, because a
+    -- settings list you have to scroll to find Back in is a worse answer than slightly tighter rows.
+    if Scale.inHandheldSpace then
+        listW = math.min(listW, Scale.WIDTH - 120)
+        local room = Scale.HEIGHT - 32 - 64 - (14 + 12 + 28) - 40 -- margins, title, hint band, prose
+        rowSp = 5
+        rowH = math.max(26, math.min(rowH, math.floor((room - (rows - 1) * rowSp) / rows)))
+    end
     local listH = rows * rowH + (rows - 1) * rowSp
     -- The description gutter is MEASURED off the longest option's prose rather than assumed to be two
     -- lines, and the panel grows to hold it. This overlay sizes itself to its contents, so the only
@@ -5164,17 +5179,36 @@ function battle.enter(self, opts)
         -- authored scene instead: Rowan, recruited to fight the village battle, is announced in
         -- "Ashes" after it (models/conversation.lua's drainJoins).
         local stage = { deferJoins = true }
+        -- The mentor speaks from the free strip UNDER THE BOARD -- but only where there is one. On a
+        -- handheld the board takes the whole short axis by design (battle.boardTop), so `boardBottom`
+        -- IS the bottom of the screen and this rect comes out with a negative height: the box drew
+        -- off the bottom edge, which is one of the two overlay breakages that kept the short space
+        -- switched off. There, the dialogue falls back to its own full-width bar along the bottom,
+        -- which is the right answer anyway -- a scene freezes the fight, so covering board it is not
+        -- your turn to use costs nothing.
         if battle.tutorial then
-            local _, by, _, bh = battle.map:boardRect()
-            local boardBottom = by + bh
-            local x = LEFT_W + GUTTER_PAD
-            local y = boardBottom + GUTTER_GAP
             stage.overScene = true
-            stage.box = {
-                x = x, y = y,
-                w = Scale.WIDTH - PANEL_W - GUTTER_PAD - x,
-                h = Scale.HEIGHT - GUTTER_BOTTOM - y,
-            }
+            if Scale.inHandheldSpace then
+                -- No gutter to speak from: the board owns the whole short axis (battle.boardTop), so
+                -- `boardBottom + gap` is past the bottom of the screen and the rect below comes out
+                -- with a NEGATIVE height. The mentor takes a bar across the foot of the board
+                -- instead. Dropping the box entirely was the first attempt and it was worse -- with no
+                -- box the scene falls back to the full-screen presentation, busts and all, which on a
+                -- 450-tall space covers most of the board with two portrait panels.
+                local bx, _, bw = battle.map:boardRect()
+                local h = 112
+                stage.box = { x = bx, y = Scale.HEIGHT - h - 8, w = bw, h = h }
+            else
+                local _, by, _, bh = battle.map:boardRect()
+                local boardBottom = by + bh
+                local x = LEFT_W + GUTTER_PAD
+                local y = boardBottom + GUTTER_GAP
+                stage.box = {
+                    x = x, y = y,
+                    w = Scale.WIDTH - PANEL_W - GUTTER_PAD - x,
+                    h = Scale.HEIGHT - GUTTER_BOTTOM - y,
+                }
+            end
         end
         Conversation.play(opening, nil, nil, stage)
     end
@@ -6129,6 +6163,21 @@ function battle.drawHud()
         return
     end
 
+    -- AN OPAQUE PLATE UNDER THE OPEN DRAWER. On a desktop the column below the hamburger is empty
+    -- while the menu is shut, so the entries opened over nothing and needed no backing. On a handheld
+    -- that column is where the HUD rows, the turn strip and the log now live -- and the drawer landed
+    -- straight on top of all three, "Forfeit" printed through "Battle". The drawer is a transient
+    -- thing laid OVER the column, and now looks like one.
+    if Scale.inHandheldSpace then
+        local bottom = menuBottom()
+        Theme.set(Theme.mount, 0.97)
+        love.graphics.rectangle("fill", 0, 0, LEFT_W, bottom)
+        Theme.set(Theme.frame)
+        love.graphics.line(0, bottom, LEFT_W, bottom)
+        love.graphics.setColor(1, 1, 1)
+        battle.drawMenuButton() -- re-drawn: the plate just covered it
+    end
+
     -- Forfeit is a danger action -- its frame + label stay a muted red even when idle.
     battle.drawMenuEntry(forfeitButton, "Forfeit", true, { 0.78, 0.45, 0.45 })
 
@@ -6163,15 +6212,22 @@ function battle.drawHud()
         battle.drawMenuEntry(winButton, "Win", true, { 0.45, 0.75, 0.50 })
     end
 
-    -- On a handheld the three HUD rows live in the LEFT COLUMN, not across the board: the
-    -- space is 540 tall and the board needs 512 of it (see battle.boardTop). They are the
-    -- same three rows, handed the column's rect instead of the board's and dropped clear of
-    -- the hamburger, so nothing here is drawn twice or drawn differently.
+    -- On a handheld the three HUD rows live in the LEFT COLUMN, not across the board: the space is
+    -- 450 tall and the board needs all of it (see battle.boardTop). They are the same three rows,
+    -- handed the column's rect instead of the board's and dropped clear of the hamburger, so nothing
+    -- here is drawn twice or drawn differently.
+    --
+    -- ...and they are SKIPPED while the drawer is open, because on a handheld the drawer covers this
+    -- column and the rows would print straight through it -- "Forfeit" and "Battle" in the same
+    -- twenty pixels. On a desktop the rows are across the board, nowhere near the drawer, so they
+    -- carry on being drawn exactly as they were.
     if Scale.inHandheldSpace then
-        love.graphics.push()
-        love.graphics.translate(0, battle.hudDrop())
-        battle.drawHudText(0, LEFT_W)
-        love.graphics.pop()
+        if not battle.menuOpen then
+            love.graphics.push()
+            love.graphics.translate(0, battle.hudDrop())
+            battle.drawHudText(0, LEFT_W)
+            love.graphics.pop()
+        end
     else
         battle.drawHudText(boardX, boardW)
     end
