@@ -5851,9 +5851,24 @@ function battle.drawTileTooltip(mx, my)
 
     -- Then the exchange, each box anchored above the last. A tighter gap than the one between the
     -- reference boxes below: these are beats of a single trade and read as one unit.
+    --
+    -- ON A TOUCHSCREEN IT GOES ON THE BOARD INSTEAD, anchored to the tile it is about.
+    --
+    -- "Tooltip" is doing two jobs here and they want different places. The REFERENCE boxes above --
+    -- terrain, cost, who is standing there -- are consulted occasionally and belong in a column. The
+    -- EXCHANGE is the forecast: what this costs, what it lands, what answers it. It is read while the
+    -- player is aiming, and in the column it sits up to 600px from the tile it describes, so aiming
+    -- means looking away from the finger and back. Anchored to the tile, the number is where the eye
+    -- already is. Floored at BOARD_TOP so a target on the top rank cannot push it over the HUD.
     local exOpts = { placement = "above", dockTop = dockTop, width = W, gap = exGap }
-    -- With every reference box dropped there is nothing to anchor to: start from the column floor.
-    topBox = topBox or { x = 16, y = Scale.HEIGHT - 8 + exGap, w = W, h = 0 }
+    if InputMode.touch and battle.map and cx then
+        local tx, ty, tw, th = battle.map:cellBox(cx, cy)
+        topBox = { x = tx, y = ty, w = tw, h = th }
+        exOpts = { placement = "above", dockTop = BOARD_TOP, width = ActionPreview.WIDTH, gap = exGap }
+    else
+        -- With every reference box dropped there is nothing to anchor to: start from the column floor.
+        topBox = topBox or { x = 16, y = Scale.HEIGHT - 8 + exGap, w = W, h = 0 }
+    end
     for _, a in ipairs(exchange) do
         topBox = ActionPreview.draw(a, topBox, maxRight, exOpts) or topBox
     end
@@ -6431,6 +6446,11 @@ end
 
 function battle.mousepressed(x, y, button)
     if battle.fadeOut then return end -- see keypressed: the ending takes no input
+    -- A FINGER HAS NO HOVER, so the docked inspector -- terrain, occupant, the exchange -- has nothing
+    -- to follow and stays blank for the whole fight (it reads battle.mouseX). The press IS the hover
+    -- on a touchscreen: pin it here, and the same column that serves a mouse serves a finger, showing
+    -- what was last touched rather than nothing at all.
+    if InputMode.touch then battle.mouseX, battle.mouseY = x, y end
     -- The settings overlay, opened from the pre-bell Settings plate, is modal over the deployment phase (see
     -- keypressed) -- so it is asked before the phase is, and the shared block below handles it.
     if battle.deployLoadout and not battle.settingsMenu then
@@ -6567,7 +6587,32 @@ function battle.mousepressed(x, y, button)
     -- Right-click opens the context-sensitive debug menu: an item slot under the pointer gets the item
     -- menu, anything else the board menu (unit vs terrain under the cell).
     if Debug.enabled and button == 2 then openDebugMenu(x, y); return end
-    if battle.map:mousepressed(x, y, button) then confirm() end
+    if battle.map:mousepressed(x, y, button) then
+        -- ON A TOUCHSCREEN THE FIRST PRESS AIMS AND THE SECOND COMMITS.
+        --
+        -- A mouse click is preceded by a hover, so the player has already seen the move overlay, the
+        -- forecast and the tile they are about to spend the turn on. A tap has no such rehearsal: the
+        -- press that aims is the press that commits, and a fat-fingered tile costs the turn outright.
+        -- The first press moves the cursor -- which is what draws the preview and fills the inspector
+        -- above -- and only a second press on the SAME tile spends anything.
+        --
+        -- The aim carries the actor and the armed item with it, so it cannot go stale: a tap on a
+        -- tile, an enemy phase, and a tap on the same tile again is a fresh aim rather than a
+        -- confirmation of an intent formed two turns ago.
+        if InputMode.touch then
+            local cx, cy = battle.map:cellAt(x, y)
+            local a = battle.aim
+            if cx and a and a.x == cx and a.y == cy
+                and a.unit == battle.current and a.item == battle.armedItem then
+                battle.aim = nil
+                confirm()
+            else
+                battle.aim = cx and { x = cx, y = cy, unit = battle.current, item = battle.armedItem }
+            end
+        else
+            confirm()
+        end
+    end
 end
 
 -- Only the wind-up slider cares about a mouse release (to end a rung drag); everything else on the

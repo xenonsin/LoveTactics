@@ -79,4 +79,31 @@ return {
             end
         end,
     },
+    {
+        -- A mouse click is rehearsed by the hover that preceded it; a tap is not. Read off the source
+        -- because a real battle.mousepressed wants a whole live fight, and this file is the only thing
+        -- standing between the guard and a silent removal.
+        name = "the board asks a finger twice before it spends a turn",
+        fn = function()
+            local src = assert(love.filesystem.read("states/battle.lua"), "states/battle.lua is readable")
+            local tail = src:match("if battle%.map:mousepressed.*$")
+            assert(tail, "the board's commit call is gone or renamed")
+            assert(tail:find("InputMode%.touch"),
+                "a tap still commits on the first press -- one fat finger costs the turn")
+            assert(tail:find("battle%.aim"), "there is no aim to confirm against")
+            -- The staleness guard is the half that is easy to drop and impossible to see fail.
+            assert(tail:find("a%.unit == battle%.current") and tail:find("a%.item == battle%.armedItem"),
+                "the aim does not carry its actor and armed item, so a tap two turns later can confirm "
+                .. "an intent the player has forgotten forming")
+        end,
+    },
+    {
+        name = "the docked inspector follows a finger, which has no hover to follow",
+        fn = function()
+            local src = assert(love.filesystem.read("states/battle.lua"), "states/battle.lua is readable")
+            assert(src:find("if InputMode%.touch then battle%.mouseX, battle%.mouseY = x, y end"),
+                "nothing pins the hover position on a tap, so the whole left column stays blank on a "
+                .. "handset for the entire fight")
+        end,
+    },
 }
