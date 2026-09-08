@@ -144,9 +144,20 @@ function Scale.fittedH() return (Scale.rotated and Scale.WIDTH or Scale.HEIGHT) 
 -- Put Scale.WIDTH/HEIGHT on whichever space the answer above calls for, sized to the device's own
 -- aspect when it is the handheld one. Must run BEFORE the fit is computed, since the fit is measured
 -- against the space that is about to be live.
+-- OPT-IN, PER SCREEN. `Scale.handheld` says the DEVICE is small; this says the screen currently on
+-- it has actually been laid out for the short, wide space. Both must be true.
+--
+-- It is not a flag I wanted. The first cut switched the space globally the moment the rule fired,
+-- and the fight screen -- which had been reworked for it -- came out right while the body-select
+-- screen came out broken: its cards are a fixed pixel size that fits 720 and overflows 540, and it
+-- was far from the only one. A shorter space is not a free reflow. Every screen that wants it has to
+-- be looked at in it, so each says so for itself (`state.handheldSpace = true`) and the rest keep the
+-- space they were authored in until someone has done that work.
+Scale.allowHandheldSpace = false
+
 local function applySpace(windowW, windowH)
     local w, h
-    if Scale.handheld then
+    if Scale.handheld and Scale.allowHandheldSpace then
         h = Scale.HANDHELD_H
         local long = math.max(windowW, windowH)
         local short = math.max(math.min(windowW, windowH), 1)

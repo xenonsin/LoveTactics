@@ -61,6 +61,24 @@ local Player = require("models.player")
 
 local battle = {}
 
+-- OFF, and this is the switch that turns the handheld space on once it is safe.
+--
+-- The screen ITSELF is ready: battle.boardTop centres the board in 540, and the HUD rows and the
+-- combat log move into the left column (gutterRect). Verified in a 1168x540 window and in a
+-- phone-emulated browser -- board, panel, columns and prompts all correct.
+--
+-- What is NOT ready is everything that draws OVER it. A conversation is a global overlay, not a
+-- state, so Scale.allowHandheldSpace cannot gate it: the tutorial's speech box is handed a rect
+-- captured from the 720-space gutter and runs off the bottom of a 540 one. The same question is
+-- unanswered for the settings overlay, the battle summary, the wind-up chooser, the bag panel and
+-- the debug menu -- none of them have been looked at in a short space, and two of the surfaces that
+-- HAVE been looked at were wrong.
+--
+-- The honest state is "the space works, the things on top of it have not been checked". Flipping
+-- this to true is one line once that pass is done; shipping it before then would be trading a
+-- measured 18% of a phone screen for overlays that fall off the bottom of it.
+battle.handheldSpace = false
+
 -- How long the overruled ending takes to put the lights out (battle.endOverruled). Long enough to
 -- read as the world going away rather than as a cut, short enough that nobody presses a key at it.
 -- A field on the module rather than a file-scope local: this chunk sits within a couple of

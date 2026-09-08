@@ -10,8 +10,10 @@ local Scale = require("scale")
 local function withScale(fn)
     local w, h = Scale.windowW, Scale.windowH
     local hand, force = Scale.handheld, Scale.forceHandheld
+    local allow = Scale.allowHandheldSpace
     local ok, err = pcall(fn)
     Scale.handheld, Scale.forceHandheld = hand, force
+    Scale.allowHandheldSpace = allow
     if w then Scale.resize(w, h) end
     assert(ok, err)
 end
@@ -68,6 +70,7 @@ return {
         fn = function()
             withScale(function()
                 Scale.forceHandheld = true
+                Scale.allowHandheldSpace = true
                 assert(Scale.wantsHandheld(1280, 720), "a declared handheld is one at 720p")
                 assert(Scale.wantsHandheld(1920, 1080), "...and at 1080p docked")
             end)
@@ -90,6 +93,38 @@ return {
         end,
     },
     {
+        -- The guard that stopped a broken build shipping. Switching the space globally the moment
+        -- the rule fired left every screen NOT reworked for 540 tall overflowing its own bottom
+        -- edge -- the body-select cards are a fixed pixel size that fits 720 and does not fit 540.
+        name = "a screen that has not been laid out for the short space does not get it",
+        fn = function()
+            withScale(function()
+                Scale.forceHandheld = true
+                Scale.allowHandheldSpace = false -- the default, and every state that says nothing
+                Scale.resize(844, 390)
+                assert(Scale.WIDTH == 1280 and Scale.HEIGHT == 720,
+                    "an un-reworked screen was handed the handheld space and will overflow")
+                assert(Scale.handheld, "...while the DEVICE is still correctly known to be small")
+            end)
+        end,
+    },
+    {
+        name = "the battle screen opts in, and the state manager is what reads the opt-in",
+        fn = function()
+            local b = assert(love.filesystem.read("states/battle.lua"), "states/battle.lua is readable")
+            -- Deliberately asserts the FLAG EXISTS, not which way it is set. It ships false: the
+            -- board is ready for a 540-tall space but the overlays drawn over it are not, and a
+            -- conversation is a global overlay that Scale.allowHandheldSpace cannot gate. Whoever
+            -- finishes that pass flips it, and should not have to edit a test that hard-coded "off"
+            -- as though it were the intent.
+            assert(b:find("battle%.handheldSpace%s*=%s*%a+"),
+                "the battle screen no longer carries the handheld-space switch at all")
+            local s = assert(love.filesystem.read("states/init.lua"), "states/init.lua is readable")
+            assert(s:find("Scale%.allowHandheldSpace%s*=%s*state%.handheldSpace"),
+                "State.switch no longer carries the opt-in, so every screen gets the same space")
+        end,
+    },
+    {
         -- The point of the handheld space: on a phone the HEIGHT term wins the fit, so width is free.
         -- Fixing the height at 540 and running the width out to the device's aspect buys the
         -- legibility of a 960-wide space AND more panel room than the desktop has.
@@ -103,6 +138,7 @@ return {
                 assert(Scale.WIDTH == 1280 and Scale.HEIGHT == 720,
                     "a desktop must stay on the authored space")
 
+                Scale.allowHandheldSpace = true -- a screen that has been laid out for it
                 Scale.resize(844, 390) -- the measured handset, landscape
                 assert(Scale.HEIGHT == 540, "the handheld space fixes the height at 540")
                 assert(Scale.WIDTH == 1168,
@@ -119,6 +155,7 @@ return {
         fn = function()
             withScale(function()
                 Scale.forceHandheld = true
+                Scale.allowHandheldSpace = true
                 Scale.resize(1024, 768) -- 4:3, which would want a 720-wide space
                 assert(Scale.WIDTH == 960, "a squarer screen must clamp up to 960, got " .. Scale.WIDTH)
                 Scale.resize(2560, 720) -- ultrawide, which would want 1920
@@ -141,6 +178,7 @@ return {
                     "the authored space must be the identity on a desktop")
 
                 Scale.forceHandheld = true
+                Scale.allowHandheldSpace = true
                 Scale.resize(844, 390)
                 x, y, w, h = Scale.fromAuthored(815, 413, 270, 130)
                 local kx, ky = Scale.WIDTH / 1280, Scale.HEIGHT / 720
@@ -166,6 +204,7 @@ return {
                 local e = Scale.spaceEpoch
                 Scale.resize(1600, 900) -- same space, different window
                 assert(Scale.spaceEpoch == e, "the epoch moved without the space changing")
+                Scale.allowHandheldSpace = true -- a screen laid out for the short space
                 Scale.resize(844, 390)  -- now the space really changes
                 assert(Scale.spaceEpoch > e, "the epoch did not move when the space did")
             end)
