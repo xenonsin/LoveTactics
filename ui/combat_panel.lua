@@ -36,10 +36,15 @@ local PoolCallout = require("ui.pool_callout")
 local CombatPanel = {}
 CombatPanel.__index = CombatPanel
 
--- 320 -> 410. See states/battle.lua's LEFT_W: the fight screen carried 184px of centring slack
--- around a board that is a fixed 512 and cannot grow into it, so the width goes to the two columns
--- instead -- this one first, because the densest text in the game is in it.
-local PANEL_W = 410
+-- 320 -> 352. See states/battle.lua's LEFT_W for the 184px of centring slack this comes out of.
+--
+-- It was 410 for one commit and that was too much. The width the panel actually needed is the width
+-- its TEXT grew by -- the body floor went 12 -> 14, about a sixth -- not every pixel that happened to
+-- be going spare. At 410 the panel was 0.80 of the board's own width and read as the heavier half of
+-- the screen; the turn-order bars stretched into ribbons and the action slots grew margins rather
+-- than content. 352 is 0.69, the two columns come out within 32px of each other, and the board keeps
+-- 48 a side instead of being pinched to 24.
+local PANEL_W = 352
 CombatPanel.WIDTH = PANEL_W -- so states can reserve the same right-side margin
 local SLIM_H = 34      -- a non-current turn card: small portrait, name, one thin HP bar (no numbers)
 local CURRENT_H = 82   -- the acting unit's card: taller, larger portrait, full numbered HP/MP/SP
@@ -49,11 +54,12 @@ local INTENT_COL = 30  -- right column reserved on a foe's slim card for its pre
 local CURRENT_TOP_GAP = 34 -- room above the acting card for its "Current Turn" caption + breathing space
 -- Item slots are rectangular (wider than tall) and kept compact so the turn-order
 -- strip above them gets the bulk of the panel height.
--- 96 -> 118 so the widened panel does not simply grow its own margins: the grid is 3*118+12 = 366
--- inside 410, leaving 22 a side. The HEIGHT is deliberately unchanged -- the icon scales to
--- min((sw-8)/iw, (sh-8)/ih) and is already height-bound, so the extra width goes entirely to the
--- name band under it, which is what was ellipsizing.
-local SLOT_W = 118
+-- 96 -> 100, which is the panel's own change (320 -> 352) carried through rather than a slot that
+-- grew for its own sake: the grid is 3*100+12 = 312 inside 352, leaving 20 a side. It was briefly
+-- 118, which made a slot noticeably wider than it is tall for no gain -- the icon is height-bound
+-- either way (it scales to min((sw-8)/iw, (sh-8)/ih)), so all that width fell to the name band, and
+-- a name band is not worth distorting the plate the whole grid is made of. The HEIGHT is unchanged.
+local SLOT_W = 100
 local SLOT_H = 58
 local SLOT_GAP = 6
 local COLS, ROWS = 3, 3

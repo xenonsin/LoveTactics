@@ -107,13 +107,19 @@ local PANEL_W = CombatPanel.WIDTH
 -- tooltips (see drawLeftColumn). The board is centred in the gap between the two columns.
 -- Slimmer than the right panel (it only holds buttons + a tooltip), to give the board room.
 --
--- 264 -> 310, and PANEL_W 320 -> 410, spends the 184px of pure CENTRING SLACK this screen used to
+-- 264 -> 320, and PANEL_W 320 -> 352, spends the 184px of pure CENTRING SLACK this screen used to
 -- carry: the board is a fixed 8x8 at BOARD_TILE (Arena.COLS/ROWS), so it is always 512 wide and the
 -- gap around it was always 92 a side. The board cannot take that width back -- 64 is the only tile
 -- that renders 16/32/64 art cells at whole multiples -- so it goes to the two columns, which is
--- where the smallest text in the game lives. 310 + 24 + 512 + 24 + 410 = 1280, and the 24 a side is
--- deliberate: the board still has to read as a board and not as an inlay in a panel.
-local LEFT_W = 310
+-- where the smallest text in the game lives.
+--
+-- 320 + 48 + 512 + 48 + 352 = 1280, and the split matters as much as the total. The first cut was
+-- 310 / 24 / 410 -- it spent every spare pixel and put most of them on the right, which made the
+-- panel 0.80 of the board's width and the heavier half of the screen, against a left column that is
+-- EMPTY until something is hovered. Two columns within 32px of each other read as a frame; a wide
+-- one against a narrow one reads as a mistake. The 48 a side is the other half of that: the board
+-- has to read as a board and not as an inlay, and 24 was pinching it.
+local LEFT_W = 320
 
 -- The gutter under the board: the free strip between the left button column and the combat panel,
 -- below the last row of tiles. Mirrors ui/tutorial_prompt.lua's own PAD/GAP/BOTTOM so the mentor's
