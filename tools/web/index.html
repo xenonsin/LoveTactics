@@ -120,6 +120,42 @@
         color: var(--muted); background: transparent; border: 1px solid var(--frame); cursor: pointer;
       }
       #full:hover { color: var(--gold); border-color: var(--gold); }
+
+      /* ASK FOR THE PHONE TO BE TURNED, rather than turning the picture and hoping.
+         scale.lua CAN fit the game a quarter turn into an upright handset, and it does -- but a
+         turned frame stands every wide element on its end (a turn-order card is 262x34 in the game's
+         own units, which lands 34 wide and 262 tall on the glass) and leaves all the text sideways
+         regardless. Held the other way there is no rotation at all and the layout is the one it was
+         designed as. The turn stays as the fallback for anyone who dismisses this or plays with
+         orientation lock on; this is the polite ask first.
+         Coarse pointer only -- a desktop window dragged tall is not a phone and must never see it. */
+      #rotate {
+        position: fixed; inset: 0; z-index: 8; display: none;
+        flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+        background: var(--mount); text-align: center; padding: 32px;
+      }
+      @media (pointer: coarse) and (orientation: portrait) {
+        #rotate.armed { display: flex; }
+      }
+      #rotate .glyph {
+        width: 64px; height: 104px; border: 2px solid var(--gold); border-radius: 9px;
+        transform: rotate(-18deg); transform-origin: 50% 50%;
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        #rotate .glyph { animation: tip 2.4s ease-in-out infinite; }
+        @keyframes tip { 0%, 55% { transform: rotate(0deg); } 80%, 100% { transform: rotate(-90deg); } }
+      }
+      #rotate h2 {
+        margin: 0; font-size: 21px; font-weight: normal; letter-spacing: .14em;
+        text-transform: uppercase; color: var(--ink);
+      }
+      #rotate p { margin: 0; color: var(--muted); font-size: 14px; max-width: 34ch; line-height: 1.6; }
+      #rotate button {
+        margin-top: 4px; padding: 9px 22px; font: inherit; font-size: 13px; letter-spacing: .1em;
+        text-transform: uppercase; cursor: pointer;
+        color: var(--muted); background: transparent; border: 1px solid var(--frame);
+      }
+      #rotate button:hover { color: var(--gold); border-color: var(--gold); }
     </style>
   </head>
   <body>
@@ -133,6 +169,13 @@
       <div id="status">Downloading&hellip;</div>
       <button id="start">Play</button>
       <div id="note">Roughly 32&nbsp;MB on a first visit; your browser caches it afterwards. Mouse, touch, keyboard and gamepad all work.<span class="touch-only"> Held upright, the picture is turned a quarter turn &mdash; tilt the handset to the left to read it.</span></div>
+    </div>
+
+    <div id="rotate">
+      <div class="glyph"></div>
+      <h2>Turn your phone</h2>
+      <p>The battlefield is wider than it is tall. Sideways, everything sits the right way up and the squares are twice the size.</p>
+      <button id="rotate-dismiss">Play upright anyway</button>
     </div>
 
     <button id="full" onclick="goFullScreen()">Fullscreen</button>
@@ -310,8 +353,17 @@
         });
       }
 
+      // The rotate ask is armed only once the game is actually on screen -- raising it over the
+      // download gate would be asking someone to turn their phone to watch a progress bar. Dismissing
+      // it is permanent for the session: someone playing upright on purpose (orientation lock, lying
+      // down, one hand on a train) has answered the question and must not be asked again.
+      document.getElementById('rotate-dismiss').addEventListener('click', function () {
+        document.getElementById('rotate').classList.remove('armed');
+      });
+
       start.addEventListener('click', function () {
         gate.classList.add('gone');
+        if (IS_TOUCH) document.getElementById('rotate').classList.add('armed');
         document.getElementById('canvas').style.visibility = 'visible';
         // A button that cannot do its one job is worse than no button: see goFullScreen.
         if (fsRequest) full.style.display = 'block';

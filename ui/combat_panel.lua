@@ -1422,15 +1422,30 @@ function CombatPanel:drawItemGrid()
             end
 
             -- Name band overlaid along the bottom, single line scaled to fit.
-            love.graphics.setColor(0, 0, 0, 0.6 * dim)
-            love.graphics.rectangle("fill", sx + 1, sy + sh - NAME_H, sw - 2, NAME_H - 1, 0, 0, 5, 5)
-            -- One size for every slot in the grid, on a native font (never scaled); a name too long
-            -- for the band ellipsizes. The sans data face, not the serif.
-            local font, name = Theme.itemTileName(item.name or "?", sw - 8)
-            love.graphics.setFont(font)
-            local nw, nh = font:getWidth(name), font:getHeight()
-            love.graphics.setColor(0.94 * dim + 0.05, 0.94 * dim + 0.05, 0.96 * dim + 0.05)
-            love.graphics.print(name, sx + sw / 2 - nw / 2, sy + sh - NAME_H + (NAME_H - nh) / 2)
+            --
+            -- NOT ON A HANDHELD, where the panel is a 262px column and a slot is 71 of it. The type
+            -- floor left about 61px for a name that wants 78, so every band read "Iron S...",
+            -- "Leath...", "Clear..." -- three ellipses telling the player nothing three icons had
+            -- already told them. The obvious fix is a wider slot and it is not available: the 3x3 is
+            -- a MECHANIC, not a display choice (Combat.adjacencyLinks -- neighbouring cells form
+            -- auras, boosts and requirements), so the grid cannot be reshaped to fit the actions a
+            -- unit happens to carry, and widening the column would un-centre the board.
+            --
+            -- So the band goes instead, and it is the right thing to lose: it is optional detail. The
+            -- icon says which item this is, the corner badges say what it costs, and the NAME is what
+            -- you want while deciding -- which is when the slot is armed, and battle.drawHudText
+            -- prints it whole in the column where there is room.
+            if not Scale.inHandheldSpace then
+                love.graphics.setColor(0, 0, 0, 0.6 * dim)
+                love.graphics.rectangle("fill", sx + 1, sy + sh - NAME_H, sw - 2, NAME_H - 1, 0, 0, 5, 5)
+                -- One size for every slot in the grid, on a native font (never scaled); a name too
+                -- long for the band ellipsizes. The sans data face, not the serif.
+                local font, name = Theme.itemTileName(item.name or "?", sw - 8)
+                love.graphics.setFont(font)
+                local nw, nh = font:getWidth(name), font:getHeight()
+                love.graphics.setColor(0.94 * dim + 0.05, 0.94 * dim + 0.05, 0.96 * dim + 0.05)
+                love.graphics.print(name, sx + sw / 2 - nw / 2, sy + sh - NAME_H + (NAME_H - nh) / 2)
+            end
 
             -- Stack count ("xN") for a stackable consumable, in a pill just above the name band so
             -- it clears the top-corner cost/speed badges. Shown for any real stack (>1) and for a

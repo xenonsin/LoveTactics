@@ -6312,6 +6312,14 @@ function battle.drawHudText(boardX, boardW)
                 -- does not exist.
                 hint = verb .. (InputMode.touch and "  ·  tap the item again to cancel"
                     or "  ·  click the item / Esc to cancel")
+                -- ...and on a handheld the armed item is NAMED here, because its slot no longer says
+                -- so: a 71px slot cannot hold "Iron Sword" at the type floor, so ui/combat_panel.lua
+                -- drops the name band there and this line carries it instead. One name, printed whole,
+                -- for the one item that is being decided about -- which is the only moment the name is
+                -- worth the room.
+                if Scale.inHandheldSpace and name and name ~= "" then
+                    hint = name .. "  ·  " .. hint
+                end
             end
         elseif Combat.hasMoved(battle.combat) then
             hint = pad and "A on a foe in range to attack  ·  Y to switch item  ·  X to hold this turn"

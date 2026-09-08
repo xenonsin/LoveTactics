@@ -142,4 +142,32 @@ return {
                 .. "handset for the entire fight")
         end,
     },
+    {
+        -- The rotate ask, and the two ways it can silently stop working: shown to a desktop
+        -- window dragged tall, or shown over the download gate instead of the game.
+        name = "a portrait handset is asked to turn, and only a handset is",
+        fn = function()
+            local src = assert(love.filesystem.read("tools/web/index.html"), "the web shell is readable")
+            assert(src:find("id=\"rotate\"", 1, true), "there is no rotate prompt")
+            assert(src:find("pointer: coarse", 1, true) and src:find("orientation: portrait", 1, true),
+                "the prompt is not gated on BOTH a finger and a portrait screen -- a desktop window"
+                .. " dragged tall would be told to turn a monitor")
+            assert(src:find("rotate%-dismiss"), "no way past it: someone playing upright on purpose"
+                .. " (orientation lock, lying down) would be stuck behind it")
+        end,
+    },
+    {
+        -- The 3x3 item grid is a MECHANIC (Combat.adjacencyLinks: neighbouring cells form
+        -- auras, boosts and requirements), so a slot cannot be widened by reshaping the grid
+        -- to fit the actions a unit carries. The name band goes instead.
+        name = "a handheld slot shows its icon, not an ellipsis",
+        fn = function()
+            local src = assert(love.filesystem.read("ui/combat_panel.lua"), "the panel is readable")
+            assert(src:find("if not Scale%.inHandheldSpace then"),
+                "the slot name band is drawn on a handheld again -- at 71px it can only ellipsize")
+            local b = assert(love.filesystem.read("states/battle.lua"), "battle.lua is readable")
+            assert(b:find("Scale%.inHandheldSpace and name and name ~= \"\""),
+                "nothing names the armed item, so dropping the band loses the name entirely")
+        end,
+    },
 }
