@@ -134,12 +134,31 @@ return {
         end,
     },
     {
-        name = "the docked inspector follows a finger, which has no hover to follow",
+        -- A tap on the board is free -- it aims, and a second tap commits -- so the board never needed
+        -- a second gesture. A tap on an ITEM arms it, so there is no spare press to spend on reading
+        -- one, and that is what the hold is for. Superseded the hover-driven docked column, which drew
+        -- from the last tap and then stayed there over the turn order describing bare ground.
+        name = "a long press pins a reading, and a press anywhere puts it away",
         fn = function()
             local src = assert(love.filesystem.read("states/battle.lua"), "states/battle.lua is readable")
-            assert(src:find("if InputMode%.touch then battle%.mouseX, battle%.mouseY = x, y end"),
-                "nothing pins the hover position on a tap, so the whole left column stays blank on a "
-                .. "handset for the entire fight")
+            assert(src:find("function battle%.holdTarget"),
+                "nothing resolves what a long press would open")
+            assert(src:find("battle%.hold%.elapsed >= 0%.4"),
+                "the hold never matures -- there is no timer, or the threshold moved")
+            assert(src:find("battle%.inspect, battle%.hold = nil, nil"),
+                "a press does not dismiss the pinned reading")
+            -- The press that dismisses must be SWALLOWED. Without the return it would also spend
+            -- whatever it landed on, so putting a window away could cost a turn.
+            -- Anchored on the assignment, not on `if battle.inspect then` -- the draw site opens with
+            -- that same line and comes first in the file, so the loose pattern was checking the wrong
+            -- block and passing on it.
+            local dismiss = src:match("battle%.inspect, battle%.hold = nil, nil(.-)end")
+            assert(dismiss and dismiss:find("return"),
+                "the dismissing press falls through and acts on whatever was under the window")
+            assert(src:find("battle%.holdReplaying"),
+                "a press that did not become a hold is never replayed, so an ordinary tap does nothing")
+            assert(src:find("elseif InputMode%.touch then"),
+                "a finger still gets the hovered tooltip as well as the pinned one")
         end,
     },
     {

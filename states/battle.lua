@@ -5343,6 +5343,17 @@ function battle.update(dt)
         return
     end
 
+    -- A press being held. 0.4s is the usual mobile threshold -- long enough that a tap never trips it,
+    -- short enough that it does not feel like the game has stopped answering. It matures into a pinned
+    -- reading; mousereleased replays it as a tap if the finger comes up first.
+    if battle.hold then
+        battle.hold.elapsed = battle.hold.elapsed + dt
+        if battle.hold.elapsed >= 0.4 then
+            battle.inspect = battle.hold.target
+            battle.hold = nil
+        end
+    end
+
     -- The deployment phase holds the fight before it starts: no turn is running, no unit is acting, and
     -- there is nothing to advance. Only the board ticks, so its cursor and hover still feel live while
     -- the player drags their company onto it.
@@ -5726,7 +5737,22 @@ function battle.draw()
     -- When the cursor is over the open combat log, that panel owns the hover: it draws its own
     -- item/status/breakdown tooltip during its draw pass, so the board's tile tooltip must not also
     -- fire here and stack on top of it.
-    if battle.windupChooser or battle.spendChooser or battle.bagPanel then
+    if battle.inspect then
+        -- A PINNED READING, opened by a long press and closed by pressing off it (see holdTarget).
+        -- It is drawn INSTEAD of the hovered tooltips, not over them: a finger has one position, and
+        -- two boxes fighting over it is what the docked column was already doing wrong.
+        local i = battle.inspect
+        if i.item then
+            ItemTooltip.draw(i.item, i.x, i.y, Scale.WIDTH, battle.current)
+        elseif i.unit then
+            battle.drawUnitTooltip(i.unit, i.x, i.y, Scale.WIDTH)
+        end
+    elseif InputMode.touch then
+        -- ...and with nothing pinned, a finger gets NO tooltip at all. The docked column was drawn
+        -- from the last tap and simply stayed there, over the turn order, describing a tile nobody
+        -- had asked about -- "Open Ground. Flat, open field." is the answer for most of the board.
+        -- Optional detail is now asked for or absent, which is the whole point of the hold.
+    elseif battle.windupChooser or battle.spendChooser or battle.bagPanel then
         -- The wind-up / spend / bag modal owns the frame: no board / panel tooltip bleeds behind it.
         -- Suppressing the tooltip is ALL this does -- an early return here would leave draw before the
         -- modal's own draw call below, and an invisible panel that still eats every click reads as a
@@ -6582,6 +6608,11 @@ end
 
 function battle.mousemoved(x, y, dx, dy)
     battle.mouseX, battle.mouseY = x, y -- drives the status tooltip (board + panel hit-tests)
+    -- A finger that slides is dragging, not holding. 12px of slop, because a finger never rests
+    -- perfectly still and a reading that refuses to open for a steady hand is worse than none.
+    if battle.hold and (math.abs(x - battle.hold.x) > 12 or math.abs(y - battle.hold.y) > 12) then
+        battle.hold = nil
+    end
     if battle.settingsMenu then
         battle.settingsMenu:mousemoved(x, y)
         battle.settingsClose:mousemoved(x, y)
@@ -6672,6 +6703,29 @@ local function openDebugMenu(x, y)
     })
 end
 
+-- HOLD TO INSPECT: what a long press at (x, y) would open a reading of, or nil if nothing there has
+-- one worth pinning. An item slot, a turn-order card, or a body on the board.
+--
+-- A tap on the board is already harmless -- it aims, and a second tap commits -- so the board never
+-- needed a second gesture. A tap on an ITEM is different: it arms the thing. There is no free press
+-- to spend on reading it, which is why this exists for the grid and the strip and not for tiles.
+function battle.holdTarget(x, y)
+    if battle.panel then
+        local slot = battle.panel:slotIndexAt(x, y)
+        local cur = battle.current
+        local item = slot and cur and cur.char and cur.char.inventory[slot]
+        if item then return { item = item, x = x, y = y } end
+        local carded = battle.panel:unitAt(x, y)
+        if carded and carded.alive then return { unit = carded, x = x, y = y } end
+    end
+    if battle.map then
+        local cx, cy = battle.map:cellAt(x, y)
+        local body = cx and Combat.unitAt(battle.combat, cx, cy)
+        if body and body.alive then return { unit = body, x = x, y = y } end
+    end
+    return nil
+end
+
 function battle.mousepressed(x, y, button)
     if battle.fadeOut then return end -- see keypressed: the ending takes no input
     -- A FINGER HAS NO HOVER, so the docked inspector -- terrain, occupant, the exchange -- has nothing
@@ -6679,6 +6733,29 @@ function battle.mousepressed(x, y, button)
     -- on a touchscreen: pin it here, and the same column that serves a mouse serves a finger, showing
     -- what was last touched rather than nothing at all.
     if InputMode.touch then battle.mouseX, battle.mouseY = x, y end
+
+    -- A pinned reading is dismissed by pressing anywhere off it, and that press does NOTHING else --
+    -- swallowed, exactly as the assayed-kit card is (battle.peek). Dismissing a window you opened
+    -- should never also spend a turn on whatever happened to be underneath it.
+    if battle.inspect then
+        battle.inspect, battle.hold = nil, nil
+        return
+    end
+
+    -- ...and a press that MIGHT become a hold does nothing yet. It is replayed from mousereleased if
+    -- the finger comes up first (an ordinary tap), or spent on the reading if it does not. Only over
+    -- the three things that have a reading to pin, so drags, buttons and menus press as they always
+    -- did; and never while a modal owns the frame, which is what the long guard below is.
+    if InputMode.touch and button == 1 and not battle.holdReplaying
+        and not (battle.deploy or battle.deployLoadout or battle.settingsMenu or battle.summary
+                 or battle.logReview or battle.windupChooser or battle.spendChooser
+                 or battle.bagPanel or battle.debugMenu) then
+        local target = battle.holdTarget(x, y)
+        if target then
+            battle.hold = { x = x, y = y, elapsed = 0, target = target }
+            return
+        end
+    end
     -- The settings overlay, opened from the pre-bell Settings plate, is modal over the deployment phase (see
     -- keypressed) -- so it is asked before the phase is, and the shared block below handles it.
     if battle.deployLoadout and not battle.settingsMenu then
@@ -6846,6 +6923,17 @@ end
 -- Only the wind-up slider cares about a mouse release (to end a rung drag); everything else on the
 -- board is press-driven.
 function battle.mousereleased(x, y, button)
+    -- The finger came up before the hold matured, so it was an ordinary tap after all: replay the
+    -- press it was holding back. `holdReplaying` is what stops the gate in mousepressed catching its
+    -- own replay and holding the same press forever.
+    if battle.hold and button == 1 then
+        local h = battle.hold
+        battle.hold = nil
+        battle.holdReplaying = true
+        battle.mousepressed(h.x, h.y, 1)
+        battle.holdReplaying = false
+        return
+    end
     if battle.settingsMenu then return end -- the modal took the press; the release is not the board's
     -- The Loadout screen is drag-driven (stash to grid), so its release matters as much as the phase's.
     if battle.deployLoadout then battle.deployLoadout:mousereleased(x, y, button); return end

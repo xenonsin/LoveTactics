@@ -4429,6 +4429,10 @@ function game.mousereleased(x, y, button)
     if battling() then return game.battle.mousereleased(x, y, button) end
     local panel = game.activePanel
     if panel and panel.mousereleased then panel:mousereleased(x, y, button) end
+    -- The map hears the release too, and only when nothing is open over it: a swipe across the floor
+    -- is decided on the way up (OverworldMap:mousereleased), because a press cannot know yet whether
+    -- it is a tap. A release into an open panel belongs to that panel and to nothing behind it.
+    if not panel and game.map then game.map:mousereleased(x, y, button) end
 end
 
 function game.wheelmoved(dx, dy)

@@ -386,6 +386,13 @@ end
 -- gamepad d-pad, or the left analog stick -- resolved to one axis (no diagonals on
 -- the 4-neighbour grid; horizontal wins). Returns 0, 0 when nothing is held.
 function OverworldMap:heldDirection()
+    -- A swipe is a one-shot, not a held state: consumed here so it takes exactly one step, the same
+    -- step a tapped arrow key takes. Read FIRST so a gesture is never swallowed by a stuck key.
+    if self.swipe then
+        local dx, dy = self.swipe[1], self.swipe[2]
+        self.swipe = nil
+        return dx, dy
+    end
     if love.keyboard and love.keyboard.isDown then
         if love.keyboard.isDown("left", "a") then return -1, 0
         elseif love.keyboard.isDown("right", "d") then return 1, 0
@@ -1399,14 +1406,57 @@ function OverworldMap:gamepadpressed(_, _) end
 -- Mouse-only movement: click any *revealed* tile that's reachable along revealed
 -- trail to auto-walk there (an adjacent tile is just the one-step case). Keeps the
 -- whole overworld playable with the mouse alone; the walk stops on encounters.
-function OverworldMap:mousepressed(x, y, button)
-    if button ~= 1 or self.locked then return end
+-- Walk to a tapped/clicked tile, if a route there is known.
+function OverworldMap:walkToPixel(x, y)
     local cx, cy = self.grid:pixelToCell(x + self.camX, y + self.camY)
     local path = self:pathTo(cx, cy)
     if path then
         self.autoPath = path
         self.autoTimer = 0 -- take the first step on the next update tick
     end
+end
+
+-- SWIPE TO STEP, on a touchscreen.
+--
+-- A mouse points at a destination and the party walks to it; that is a good gesture for a pointer and
+-- a poor one for a thumb, which is nowhere near the tile it wants and covers it on arrival. A swipe
+-- says a DIRECTION, which is what the keyboard and the d-pad have always said here -- so it feeds the
+-- same single step they do (heldDirection) rather than becoming a second way to move.
+--
+-- Deferred to the release, because a press cannot yet know whether it is a tap. Touch only: a mouse
+-- keeps pathing on the press, with no dragging and no wait.
+--
+-- Deltas are taken in LOGICAL space, which is what makes this correct on a phone held upright. The
+-- quarter turn is already applied to the positions, so a swipe toward the top of the handset arrives
+-- here as whichever logical direction is drawn up-screen -- gesture and picture turn together.
+local SWIPE_MIN = 40  -- logical px before a drag is a swipe rather than an unsteady tap
+local SWIPE_BIAS = 1.4 -- the dominant axis must beat the other by this, or the swipe is a smudge
+
+function OverworldMap:mousepressed(x, y, button)
+    if button ~= 1 or self.locked then return end
+    if InputMode.touch then
+        self.press = { x = x, y = y }
+        return
+    end
+    self:walkToPixel(x, y)
+end
+
+function OverworldMap:mousereleased(x, y, button)
+    if button ~= 1 or not self.press then return end
+    local p = self.press
+    self.press = nil
+    if self.locked then return end
+    local dx, dy = x - p.x, y - p.y
+    local adx, ady = math.abs(dx), math.abs(dy)
+    local long, short = math.max(adx, ady), math.min(adx, ady)
+    if long >= SWIPE_MIN and long >= short * SWIPE_BIAS then
+        -- One step, in one cardinal direction. No diagonals: the grid has four neighbours.
+        if adx >= ady then self.swipe = { dx > 0 and 1 or -1, 0 }
+        else self.swipe = { 0, dy > 0 and 1 or -1 } end
+        self.autoPath = nil -- a swipe is a fresh intent; drop any walk it interrupts
+        return
+    end
+    self:walkToPixel(x, y) -- it never became a swipe, so it was a tap
 end
 
 -- BFS from the player to (tx, ty) across tiles that are both revealed (`seen`) and
