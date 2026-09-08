@@ -105,6 +105,16 @@ return {
                 assert(Scale.WIDTH == 1280 and Scale.HEIGHT == 720,
                     "an un-reworked screen was handed the handheld space and will overflow")
                 assert(Scale.handheld, "...while the DEVICE is still correctly known to be small")
+                -- The distinction a layout must branch on. Reading Scale.handheld here is what put
+                -- the fight screen's HUD in its column inside a full-height 1280x720 canvas.
+                assert(not Scale.inHandheldSpace,
+                    "the short space is not live, so nothing may lay itself out as though it were")
+            end)
+            withScale(function()
+                Scale.forceHandheld = true
+                Scale.allowHandheldSpace = true
+                Scale.resize(844, 390)
+                assert(Scale.inHandheldSpace, "the short space IS live and nothing says so")
             end)
         end,
     },

@@ -170,6 +170,13 @@ local function applySpace(windowW, windowH)
     else
         w, h = Scale.AUTHOR_W, Scale.AUTHOR_H
     end
+    -- THE PREDICATE A LAYOUT SHOULD ASK, and not the same question as Scale.handheld.
+    --
+    -- `Scale.handheld` says the DEVICE is small. This says the short space is actually live -- the
+    -- device is small AND this screen opted in. A screen that branches its layout on the first will
+    -- draw its handheld arrangement inside the 1280x720 space the moment the opt-in is off, which is
+    -- how the fight screen came to put its HUD in the column on a full-height canvas.
+    Scale.inHandheldSpace = (h == Scale.HANDHELD_H)
     if w ~= Scale.WIDTH or h ~= Scale.HEIGHT then
         Scale.WIDTH, Scale.HEIGHT = w, h
         Scale.spaceEpoch = Scale.spaceEpoch + 1

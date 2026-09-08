@@ -152,7 +152,7 @@ local BOARD_TOP = 88
 --
 -- Table field rather than a local: this file is at Lua 5.1's 200-local ceiling.
 function battle.boardTop()
-    if Scale.handheld then return math.max(8, math.floor((Scale.HEIGHT - 8 * BOARD_TILE) / 2)) end
+    if Scale.inHandheldSpace then return math.max(8, math.floor((Scale.HEIGHT - 8 * BOARD_TILE) / 2)) end
     return BOARD_TOP
 end
 
@@ -187,7 +187,7 @@ local MENU_BUTTON = { x = 16, y = 16, w = 36, h = 36 }
 -- Defined HERE rather than beside boardTop because it reads MENU_BUTTON, and a local is not in scope
 -- above its own declaration -- up there the name would quietly resolve to a nil global instead.
 function battle.hudDrop()
-    return Scale.handheld and (MENU_BUTTON.y + MENU_BUTTON.h + 10) or 0
+    return Scale.inHandheldSpace and (MENU_BUTTON.y + MENU_BUTTON.h + 10) or 0
 end
 -- Clickable "Forfeit" entry so a mouse-only player can bail out (counts as a loss). Wait/Focus/
 -- Defend is not here: it lives in a long button under the item grid (ui/combat_panel.lua).
@@ -287,7 +287,7 @@ local function menuBottom()
     -- On a handheld the HUD rows sit in this column under the hamburger, so the docked boxes start
     -- below THEM rather than below the button -- otherwise the terrain box is drawn over the
     -- objective line (see battle.boardTop).
-    if Scale.handheld and not battle.deploy then return battle.hudDrop() + HUD_HINT_Y + 22 end
+    if Scale.inHandheldSpace and not battle.deploy then return battle.hudDrop() + HUD_HINT_Y + 22 end
     -- Before the bell there is no drawer to open or shut: Settings and the turn pair always stand, so
     -- the ceiling is always under them.
     if battle.deploy then return battle.deployTurnRightButton.y + battle.deployTurnRightButton.h + 8 end
@@ -4402,7 +4402,7 @@ local function gutterRect()
     -- word inside it. The column has the room the board does not: the log drops into the bottom of
     -- the left column instead, under the HUD rows and the docked boxes, at the column's own width.
     -- Everything that reads this rect follows, which is the point of it being one function.
-    if Scale.handheld then
+    if Scale.inHandheldSpace then
         local top = math.floor(Scale.HEIGHT * 0.58)
         return { x = 16, y = top, w = LEFT_W - 32, h = Scale.HEIGHT - top - 12 }
     end
@@ -5539,7 +5539,7 @@ function battle.draw()
         battle.drawLeftColumn()
         -- Deployment draws only the first two rows, and they move to the column for the same reason
         -- the fight's three do (see battle.boardTop).
-        if Scale.handheld then
+        if Scale.inHandheldSpace then
             love.graphics.push()
             love.graphics.translate(0, battle.hudDrop())
             battle.drawEncounterLines(0, LEFT_W)
@@ -6036,7 +6036,7 @@ function battle.drawHud()
         -- space is 540 tall and the board needs 512 of it (see battle.boardTop). They are the
         -- same three rows, handed the column's rect instead of the board's and dropped clear of
         -- the hamburger, so nothing here is drawn twice or drawn differently.
-        if Scale.handheld then
+        if Scale.inHandheldSpace then
             love.graphics.push()
             love.graphics.translate(0, battle.hudDrop())
             battle.drawHudText(0, LEFT_W)
@@ -6085,7 +6085,7 @@ function battle.drawHud()
     -- space is 540 tall and the board needs 512 of it (see battle.boardTop). They are the
     -- same three rows, handed the column's rect instead of the board's and dropped clear of
     -- the hamburger, so nothing here is drawn twice or drawn differently.
-    if Scale.handheld then
+    if Scale.inHandheldSpace then
         love.graphics.push()
         love.graphics.translate(0, battle.hudDrop())
         battle.drawHudText(0, LEFT_W)
