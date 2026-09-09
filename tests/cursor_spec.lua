@@ -69,4 +69,43 @@ return {
                 "the pointer callbacks no longer report which kind of pointer they came from")
         end,
     },
+    {
+        -- A fight is fought on the floor it was found on: states/game.lua stays the state and the board
+        -- draws on top of it (battle.hosted). Every other input handler there hands the fight its input
+        -- first; the cursor has to do the same, or every quest fight and every prologue stop shows one
+        -- arrow whatever it is aimed at -- foe, walkable tile, combat panel and all. Read off the source
+        -- for the reason the main.lua case above is: states/game.lua builds fonts at require time and
+        -- cannot be loaded without a window.
+        name = "the overworld hands a hosted fight the cursor, as it hands it every other input",
+        fn = function()
+            local src = assert(love.filesystem.read("states/game.lua"), "states/game.lua is readable")
+            local body = src:match("function game:cursorKind%(.-\n(.-)\nend\n")
+            assert(body, "states/game.lua no longer defines game:cursorKind")
+            assert(body:find("battling%(%)") and body:find("game%.battle%.cursorKind"),
+                "the overworld answers for the cursor while a fight is hosted on it -- the whole "
+                .. "board, foes and panel included, will read as one arrow")
+        end,
+    },
+    {
+        -- A `target = "tile"` weapon -- a spear's line, an axe's arc -- arrives under the same `place`
+        -- kind a trap laid or a sentry emplaced does, because a footprint is authored around a square.
+        -- Handing all of them the placement reticle put one glyph over every tile a whole weapon family
+        -- could reach, foe and empty dirt alike, so the cursor said the same thing everywhere. What the
+        -- swing CATCHES is what decides it. Read off the source for the reason the drag guards are
+        -- (tests/battle_drag_spec.lua): the reading wants a whole rolled fight standing behind it.
+        name = "a tile-aimed swing that catches a body reads as a blow, not as a placement",
+        fn = function()
+            local src = assert(love.filesystem.read("states/battle.lua"), "states/battle.lua is readable")
+            local body = src:match("function battle%.boardCursorKind%(%)\n(.-)\nend\n")
+            assert(body, "states/battle.lua no longer defines battle.boardCursorKind")
+            assert(body:find("a%.order"),
+                "the tile-aimed branch no longer asks the dry run which bodies the cast would touch")
+            assert(body:find("a%.actor"),
+                "the tile-aimed branch counts the caster among the bodies it caught, so a ward "
+                .. "centred on the caster reads as a blow")
+            assert(body:find('kind%s*=%s*"ability"'),
+                "nothing promotes a tile-aimed cast that lands on a foe to a blow -- a spear and an "
+                .. "axe wear the placement reticle over every square they can reach")
+        end,
+    },
 }

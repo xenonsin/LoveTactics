@@ -7094,22 +7094,39 @@ end
 function battle.boardCursorKind()
     local a = battle.hoverAction
     if not a then return nil end
-    if a.kind == "move" then return a.blink and "blink" or "move" end
-    if a.kind == "strikeTrap" then return "break" end
-    if a.kind == "place" then return "target" end
+    -- WHAT A TILE-AIMED CAST IS AIMED AT is the tile; what it DOES may still be hit someone, and the
+    -- cursor names the deed. `place` is the kind every `target = "tile"` ability arrives under -- a
+    -- trap laid, a sentry emplaced, a wall raised, and equally a spear's line and an axe's arc, which
+    -- are aimed through a square because that is how a footprint is authored, not because they put
+    -- anything on the ground. Left alone, a whole weapon family wore the placement reticle over every
+    -- square it could reach, foe and empty dirt alike, and so said the same thing everywhere.
+    --
+    -- So the dry run decides it: any body the swing would touch (`order`, every affected unit) that is
+    -- not the caster makes this a blow, and it falls through to the branches below and reads as one. A
+    -- summon dropped on clear ground and a ward centred on the caster touch nobody else and keep the
+    -- reticle they have always had.
+    local kind = a.kind
+    if kind == "place" then
+        for _, e in ipairs(a.order or {}) do
+            if e.unit and e.unit ~= a.actor then kind = "ability" break end
+        end
+    end
+    if kind == "move" then return a.blink and "blink" or "move" end
+    if kind == "strikeTrap" then return "break" end
+    if kind == "place" then return "target" end
     -- A harmless cast aims at a body without swinging at it, so it wears the reticle rather than the
     -- sword or the wand -- the one glyph that says "this one, here" and promises no blow. Read off the
     -- item's own blueprint, like every other reading of `harmless`.
-    if a.kind == "ability" and Combat.isHarmlessAbility(a.item and a.item.activeAbility) then
+    if kind == "ability" and Combat.isHarmlessAbility(a.item and a.item.activeAbility) then
         return "target"
     end
     -- Striking or offensively casting on a foe: a sword for a physical hit, a wand for a magical
     -- one. The turn auto-arms the actor's default action, so an ordinary weapon attack arrives as
     -- an armed "ability" too -- the tag, not the kind, is what tells a sword swing from a spell.
-    if a.kind == "attack" or (a.kind == "ability" and not a.support) then
+    if kind == "attack" or (kind == "ability" and not a.support) then
         return itemHasTag(a.item, "magical") and "cast" or "attack"
     end
-    if a.kind == "ability" and a.support then return "heal" end
+    if kind == "ability" and a.support then return "heal" end
     return nil
 end
 
