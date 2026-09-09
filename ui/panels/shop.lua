@@ -49,7 +49,10 @@
 -- between them is the one the shape already implies: right enters the rack, left comes back out.
 --
 -- Buying puts a confirmation in front of the spend (Shop:buy) -- on the pad and the keyboard the
--- confirm button is also the one that walks the list, and gold is quest-work to earn back.
+-- confirm button is also the one that walks the list, and gold is quest-work to earn back. SELLING
+-- ASKS ON THE SAME PRESS FOR THE SAME REASON (Shop:sell): a sale pays half and buying the piece back
+-- pays full, so the stray Enter costs more on this tab than on the other one. A stack is asked by its
+-- count popup, which now names the gold and says Sell on its button rather than Move.
 --
 -- The detail pane closes with a GLOSSARY block (ui/glossary_panel.lua, gathered by
 -- models/glossary.lua) defining every status the highlighted item can inflict and every keyword its
@@ -1341,6 +1344,34 @@ function Shop:commitBuy(entry)
     self:refresh()
 end
 
+-- WHAT THE SALE LEAVES, in one line under the price -- the sell side of Shop:heldLine, and the one
+-- fact the Sell tab cannot show: a stash row counts the pile, never the copies already on somebody's
+-- grid. "Your last one" is the sentence that stops the mistake this question exists to stop. The split
+-- repeats heldLine's for the same reason it exists there: what is in the pile is there to be handed
+-- out, what is on a grid is already somebody's.
+function Shop:leavesLine(itemId, n)
+    local total, stashed, worn = Player.ownedCount(self.player, itemId)
+    local left = math.max(0, total - n)
+    if left <= 0 then return "Your last one." end
+    local parts = {}
+    local pile = math.max(0, stashed - n)
+    if pile > 0 then parts[#parts + 1] = pile .. " in the stash" end
+    if worn > 0 then parts[#parts + 1] = worn .. " carried" end
+    if #parts == 0 then return "You would keep " .. left .. "." end
+    return "You would keep " .. left .. ": " .. table.concat(parts, ", ") .. "."
+end
+
+-- SELLING ASKS TOO, and for a harder reason than buying does. The press is the same stray Enter on the
+-- same list, but the undo is worse: a sale pays half (Vendor.sellValue) and buying the piece back --
+-- where this house stocks it at all -- costs the full price, so a mis-press on the Sell tab is a real
+-- loss rather than a slow one. The question is the same shape as the purchase's, tooltip pane and all,
+-- because a sale is the same decision read from the other side: this thing, this number, yes or no.
+--
+-- A STACK IS ASKED ONCE, NOT TWICE. The count popup already stands between the press and the gold with
+-- a Cancel on it, so it IS the confirmation -- it was simply never told what the count was worth, and
+-- its button said "Move". It says both now (ui/quantity_popup.lua's `note` and `confirmLabel`), and a
+-- second are-you-sure card behind a card the player just answered would only teach them to hammer
+-- through both.
 function Shop:sell(row)
     local item = row.item
     local value = Vendor.sellValue(item)
@@ -1352,12 +1383,31 @@ function Shop:sell(row)
         self.quantityPopup = QuantityPopup.new({
             max = item.quantity, value = item.quantity,
             title = "Sell how many?", label = item.name,
+            confirmLabel = "Sell",
+            note = function(n) return "+" .. (value * n) .. " gold" end,
             onConfirm = function(n) self.quantityPopup = nil; self:commitSell(item, value, n) end,
             onCancel = function() self.quantityPopup = nil end,
         })
         return
     end
-    self:commitSell(item, value, 1)
+    -- Measured once here, exactly as the purchase does it: nothing about the piece changes while the
+    -- box is up, and the reading the player had under the cursor should not be what the question covers.
+    local layout = ItemTooltip.measure(item)
+    self.confirm = Choice.new({
+        title = "Confirm Sale",
+        prompt = (item.name or "?") .. "  -  +" .. value .. " gold\n" .. self:leavesLine(item.id, 1),
+        pane = layout and {
+            w = layout.w, h = layout.h,
+            draw = function(x, y) ItemTooltip.paint(layout, x, y) end,
+        } or nil,
+        options = {
+            { label = "Sell", accent = { 0.42, 0.80, 0.62 },
+                cb = function() self.confirm = nil; self:commitSell(item, value, 1) end },
+            { label = "Cancel", accent = { 0.78, 0.52, 0.50 },
+                cb = function() self.confirm = nil end },
+        },
+        onClose = function() self.confirm = nil end,
+    })
 end
 
 function Shop:commitSell(item, value, n)

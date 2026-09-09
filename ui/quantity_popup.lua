@@ -14,6 +14,14 @@
 --       max = stack.quantity, value = stack.quantity, title = "Move how many?", label = item.name,
 --       onConfirm = function(n) ... end, onCancel = function() ... end,
 --   })
+--
+-- A NOTE AND A BUTTON WORD turn the same widget into a confirmation instead of a splitter, which is
+-- what the shop's sale needs: `confirmLabel` puts the act on the button that performs it (a popup
+-- headed "Sell how many?" answered by a button reading "Move" is two transactions on one card), and
+-- `note` is a line under the count -- a string, or a function of the chosen count -- so the sale can
+-- say what the count is WORTH ("+36 gold") while the player is still moving the slider. Money named
+-- before it changes hands is the whole reason a sale asks at all. A caller that passes neither is laid
+-- out and worded exactly as before.
 
 local CloseButton = require("ui.close_button")
 local Scale = require("scale")
@@ -23,6 +31,10 @@ local QuantityPopup = {}
 QuantityPopup.__index = QuantityPopup
 
 local BOX_W, BOX_H = 340, 210
+-- What a note costs the box: a line of its own, ADDED to the height rather than taken out of the space
+-- the count and the slider already stand in. A popup carrying one is the same popup with a sentence in
+-- it, not a tighter one.
+local NOTE_H = 26
 
 local function pointIn(r, x, y)
     return x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
@@ -35,25 +47,30 @@ function QuantityPopup.new(opts)
     self.value = math.max(1, math.min(self.max, opts.value or self.max))
     self.title = opts.title or "How many?"
     self.label = opts.label
+    self.note = opts.note
+    self.confirmLabel = opts.confirmLabel or "Move"
     self.onConfirm = opts.onConfirm
     self.onCancel = opts.onCancel
 
     self.titleFont = Theme.display(20)
     self.labelFont = Theme.body(14)
     self.valueFont = Theme.display(34)
+    self.noteFont = Theme.body(15)
     self.btnFont = Theme.body(16)
 
+    self.noteH = self.note and NOTE_H or 0
+    self.boxH = BOX_H + self.noteH
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
-    self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
+    self.boxY = Scale.HEIGHT / 2 - self.boxH / 2
 
-    local rowY = self.boxY + 116
+    local rowY = self.boxY + 116 + self.noteH
     self.minusBtn = { x = self.boxX + 24, y = rowY, w = 34, h = 30 }
     self.plusBtn = { x = self.boxX + BOX_W - 58, y = rowY, w = 34, h = 30 }
     local trackX = self.minusBtn.x + self.minusBtn.w + 12
     self.track = { x = trackX, y = rowY + 10, w = self.plusBtn.x - trackX - 12, h = 10 }
 
     local btnW = (BOX_W - 56) / 2
-    local btnY = self.boxY + BOX_H - 48
+    local btnY = self.boxY + self.boxH - 48
     self.confirmBtn = { x = self.boxX + 24, y = btnY, w = btnW, h = 34 }
     self.cancelBtn = { x = self.confirmBtn.x + btnW + 8, y = btnY, w = btnW, h = 34 }
 
@@ -61,6 +78,13 @@ function QuantityPopup.new(opts)
     self.hover = nil     -- which button the mouse is over (for highlight)
     self.dragging = false -- dragging the slider thumb
     return self
+end
+
+-- The note as it reads at the CURRENT count. A function is asked every frame, because a note worth
+-- putting on this widget is one that moves with the slider.
+function QuantityPopup:noteText()
+    if type(self.note) == "function" then return self.note(self.value) end
+    return self.note
 end
 
 function QuantityPopup:setValue(v)
@@ -94,9 +118,9 @@ function QuantityPopup:draw()
     love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
 
     love.graphics.setColor(0.14, 0.15, 0.21)
-    love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, BOX_H, 10, 10)
+    love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, self.boxH, 10, 10)
     love.graphics.setColor(0.5, 0.55, 0.7)
-    love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, BOX_H, 10, 10)
+    love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, self.boxH, 10, 10)
 
     love.graphics.setFont(self.titleFont)
     love.graphics.setColor(0.95, 0.85, 0.55)
@@ -113,6 +137,15 @@ function QuantityPopup:draw()
     love.graphics.setColor(0.95, 0.95, 0.97)
     love.graphics.printf(self.value .. " / " .. self.max, self.boxX, self.boxY + 66, BOX_W, "center")
 
+    -- The note stands between the count and the controls that change it: what the number is worth,
+    -- directly under the number, in the amber every price in this city is written in.
+    local note = self:noteText()
+    if note then
+        love.graphics.setFont(self.noteFont)
+        love.graphics.setColor(0.95, 0.85, 0.55)
+        love.graphics.printf(note, self.boxX, self.boxY + 108, BOX_W, "center")
+    end
+
     self:drawStepper(self.minusBtn, "-")
     self:drawStepper(self.plusBtn, "+")
 
@@ -127,7 +160,7 @@ function QuantityPopup:draw()
     love.graphics.setColor(0.9, 0.92, 0.98)
     love.graphics.circle("fill", tx, self.track.y + self.track.h / 2, 8)
 
-    self:drawButton(self.confirmBtn, "Move", { 0.30, 0.55, 0.32 }, { 0.45, 0.75, 0.48 })
+    self:drawButton(self.confirmBtn, self.confirmLabel, { 0.30, 0.55, 0.32 }, { 0.45, 0.75, 0.48 })
     self:drawButton(self.cancelBtn, "Cancel", { 0.30, 0.24, 0.28 }, { 0.6, 0.5, 0.55 })
 
     self.closeButton:draw()
@@ -192,7 +225,7 @@ function QuantityPopup:mousepressed(x, y, button)
         return true
     end
     -- Clicking outside the box cancels (matches the other modals' click-away dismiss).
-    if not pointIn({ x = self.boxX, y = self.boxY, w = BOX_W, h = BOX_H }, x, y) then
+    if not pointIn({ x = self.boxX, y = self.boxY, w = BOX_W, h = self.boxH }, x, y) then
         self:cancel()
     end
     return true -- always swallow: this popup is modal over the panel beneath it
