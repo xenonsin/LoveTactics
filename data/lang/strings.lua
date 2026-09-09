@@ -287,9 +287,10 @@ return {
     ["line.conversation_descent_sloth.2"] = { en = "I held a post once. Nobody came. You will find out what I found out, and it will take you about fifteen years.", ja = "" },  -- TODO
     ["line.conversation_descent_wrath.1"] = { en = "Do not make it quick. A quick blow is a blow somebody is holding back.", ja = "" },  -- TODO
     ["line.conversation_descent_wrath.2"] = { en = "I have had a lifetime of being handled. Come and hit me properly.", ja = "" },  -- TODO
-    ["line.conversation_flight_champion.1"] = { en = "Stop here, {name}. That big one has a name. The rest of them don't.", ja = "" },  -- TODO
+    ["line.conversation_flight_champion.1"] = { en = "Stop here, {name}. That's a demon champion.", ja = "" },  -- TODO
     ["line.conversation_flight_champion.2"] = { en = "It won't go down the way the others did, and the small ones will throw themselves at us to keep us off it.", ja = "" },  -- TODO
     ["line.conversation_flight_champion.3"] = { en = "Cut it down and the rest stop mattering. Stay out of its reach and let it come to us.", ja = "" },  -- TODO
+    ["line.conversation_flight_champion.5"] = { en = "The report said imps. That thing came up out of the breach with the rest of them trailing after it.", ja = "" },  -- TODO
     ["line.conversation_flight_event_shrine.1"] = { en = "A shrine, still standing with the whole block burned around it.", ja = "" },  -- TODO
     ["line.conversation_flight_event_shrine.2"] = { en = "Someone cut a healer's rite into the stone. We can learn it, or we can patch ourselves up and move. Choose...", ja = "" },  -- TODO
     ["line.conversation_flight_event_shrine.3"] = { en = "Kneel and learn the rite.", ja = "" },  -- TODO
