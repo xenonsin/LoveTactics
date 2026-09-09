@@ -71,21 +71,26 @@ return {
         waves = {
             -- The melee grunt held out of the opening, now closing behind the imps from the tree line.
             { at = 6, from = "back", composition = function() return { "character_demon_grunt" } end },
-            -- The party has stepped forward by now; these come in on their flank, whichever side that is.
-            { at = 10, from = "flank", composition = function() return { "character_demon_imp", "character_demon_imp" } end },
+            -- The party has stepped forward by now; this one comes in on their flank, whichever side
+            -- that is -- a single imp, because the party holding this line is two bodies (the avatar
+            -- and Rowan) and the wave's job is to pull one of them off the screen, not to break it.
+            { at = 10, from = "flank", composition = function() return { "character_demon_imp" } end },
             -- The self-destruct demons the Champion later throws at you, taught here first: they charge
             -- straight at the survivors and BURST when they die (data/characters/character_demon_bomblet.lua).
             -- Intercept them -- pop them at range, shove them off -- or lose the caravan to a blast. One or
-            -- two, beside the Shout (Taunt) this stop grants, so the lesson reads without swamping the board.
+            -- two, beside the Shout (Taunt) this stop grants, so the lesson reads without swamping the
+            -- board -- which is what the wave said and not what it fielded: three at once, converging
+            -- from every open side, is more interceptions than two bodies have turns for.
             { at = 14, from = "surround", composition = function(ctx)
-                local list = { "character_demon_bomblet", "character_demon_bomblet", "character_demon_bomblet"  }
+                local list = { "character_demon_bomblet", "character_demon_bomblet" }
                 if (ctx.day or 1) >= 2 then list[#list + 1] = "character_demon_bomblet" end
                 return list
             end },
-            -- The encirclement closes: the late wave fans in from every open side at once.
+            -- The encirclement closes: the late wave fans in from every open side at once. Three, not
+            -- five: it is the last thing the stop asks, and it has to be a closing press the party can
+            -- still answer while the bomblets before it are being cleaned up, not a second fight.
             { at = 20, from = "surround", composition = function(ctx)
-                local list = { "character_demon_imp", "character_demon_imp", "character_demon_imp",
-                               "character_demon_imp", "character_demon_imp" }
+                local list = { "character_demon_imp", "character_demon_imp", "character_demon_imp" }
                 if (ctx.day or 1) >= 2 then list[#list + 1] = "character_demon_grunt" end
                 return list
             end },
