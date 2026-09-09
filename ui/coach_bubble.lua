@@ -82,6 +82,72 @@ local function clamp(v, lo, hi)
     return v
 end
 
+-- THE MARK ON THE TARGET: a ring that BREATHES rather than a line that sits there.
+--
+-- Every coach step in the game points at something -- a tile, a button, a stash slot -- and the ring
+-- is the half of the instruction a player following the words has to find. A static outline reads as
+-- part of the interface (these screens are full of framed rectangles), so it was looked past on
+-- exactly the screens where the bubble matters most. Motion is what an outline cannot borrow: the
+-- halo swells out of the target's edge as the inner ring brightens, on the same clock as the bubble's
+-- own border and key cap, so the whole prompt beats as one thing.
+--
+-- Shared by every caller of CoachBubble.draw -- the overworld's four steps, the guided fight, the
+-- Gate's first visit, the hub's Quest Board -- because a highlight the player learns to look for has
+-- to mean the same thing on all of them.
+function CoachBubble.highlight(rect, pulse)
+    -- The swell: a wide, faint ring pushing outward on the beat.
+    local grow = 4 * pulse
+    love.graphics.setColor(GOLD[1], GOLD[2], GOLD[3], 0.28 * (1 - pulse))
+    love.graphics.setLineWidth(3)
+    love.graphics.rectangle("line", rect.x - 3 - grow, rect.y - 3 - grow,
+        rect.w + 6 + grow * 2, rect.h + 6 + grow * 2, 6, 6)
+
+    -- A wash inside it, which is what makes the target read as LIT rather than merely circled -- and
+    -- the only thing carrying the highlight when the rest of the screen is pushed back behind a
+    -- scrim (CoachBubble.dim).
+    love.graphics.setColor(GOLD[1], GOLD[2], GOLD[3], 0.05 + 0.10 * pulse)
+    love.graphics.rectangle("fill", rect.x - 2, rect.y - 2, rect.w + 4, rect.h + 4, 4, 4)
+
+    love.graphics.setColor(GOLD[1], GOLD[2], GOLD[3], 0.40 + 0.45 * pulse)
+    love.graphics.setLineWidth(2)
+    love.graphics.rectangle("line", rect.x - 2, rect.y - 2, rect.w + 4, rect.h + 4, 4, 4)
+    love.graphics.setLineWidth(1)
+    love.graphics.setColor(1, 1, 1)
+end
+
+-- PUSH THE REST OF THE SCREEN BACK. A scrim over everything except `rect`, for a step that holds the
+-- game shut until one particular control is used: the screen then says with light what the gate says
+-- with input, and the one live thing on it is the only thing left at full brightness.
+--
+-- Cut as four rectangles around the hole rather than a full sheet with a stencil punched in it, so
+-- the target is never drawn over at all. A sheet would need the button redrawn on top of it, and this
+-- widget has no way to redraw somebody else's control.
+--
+-- Drawn by the CALLER, immediately before CoachBubble.draw, so the bubble and its ring land on top.
+local SCRIM = { 0.03, 0.03, 0.04, 0.60 }
+local HOLE_PAD = 6 -- clear of the ring's own swell, so the highlight never sits on the scrim's edge
+
+function CoachBubble.dim(rect, opts)
+    opts = opts or {}
+    local alpha = opts.alpha or SCRIM[4]
+    local W, H = Scale.WIDTH, Scale.HEIGHT
+    love.graphics.setColor(SCRIM[1], SCRIM[2], SCRIM[3], alpha)
+    if not rect then
+        love.graphics.rectangle("fill", 0, 0, W, H)
+        love.graphics.setColor(1, 1, 1)
+        return
+    end
+    local left = clamp(rect.x - HOLE_PAD, 0, W)
+    local top = clamp(rect.y - HOLE_PAD, 0, H)
+    local right = clamp(rect.x + rect.w + HOLE_PAD, 0, W)
+    local bottom = clamp(rect.y + rect.h + HOLE_PAD, 0, H)
+    love.graphics.rectangle("fill", 0, 0, W, top)                          -- above
+    love.graphics.rectangle("fill", 0, bottom, W, H - bottom)              -- below
+    love.graphics.rectangle("fill", 0, top, left, bottom - top)            -- left
+    love.graphics.rectangle("fill", right, top, W - right, bottom - top)   -- right
+    love.graphics.setColor(1, 1, 1)
+end
+
 function CoachBubble.draw(text, rect, opts)
     if not (text and rect) then return end
     opts = opts or {}
@@ -209,10 +275,8 @@ function CoachBubble.draw(text, rect, opts)
         tipY = (side == "below") and (rect.y + rect.h + GAP) or (rect.y - GAP)
     end
 
-    -- A soft ring around the thing itself, so the eye lands on the target and not only on the words.
-    love.graphics.setColor(GOLD[1], GOLD[2], GOLD[3], 0.30 + 0.35 * pulse)
-    love.graphics.setLineWidth(2)
-    love.graphics.rectangle("line", rect.x - 2, rect.y - 2, rect.w + 4, rect.h + 4, 4, 4)
+    -- The mark on the thing itself, so the eye lands on the target and not only on the words.
+    CoachBubble.highlight(rect, pulse)
 
     -- Dark fill, gold edge and gold text. A cream bubble reads as a system alert pasted over the
     -- game: it is the brightest thing on a deliberately dim screen, it fights every other panel, and

@@ -4087,6 +4087,13 @@ function game.drawCoach()
         -- an empty corner (a company of one leaves room under the button).
         local strip = { x = STRIP_X - 6, y = STRIP_Y - 6, w = 218,
             h = PartyStatus.stripHeight(#(game.player and game.player.roster or {})) }
+        -- THE ONE STEP THAT IS ALSO A DOOR IS THE ONE STEP THAT DIMS. The road is held shut here
+        -- (mapHeld) until the button is pressed, and a map that has stopped answering while still
+        -- drawn at full brightness reads as a game that hung. Pushing everything but the button back
+        -- says the same thing in light that the hold says in input: there is one live control on this
+        -- screen, and the bubble is pointing at it. Every other coach step out here leaves the board
+        -- playable, so none of them earns a scrim.
+        CoachBubble.dim(anchor)
         CoachBubble.draw(Locale.text("conversation_tutorial_flight", node), anchor,
             { prefer = "below", key = loadoutKey(), bounds = belowBounds, avoid = { strip } })
     elseif step == "equip" and game.activePanel and game.activePanel.coachAnchor then
