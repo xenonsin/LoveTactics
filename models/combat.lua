@@ -11504,6 +11504,72 @@ function Combat.charName(id)
     return (def and def.name) or id or "the target"
 end
 
+-- ---- IS THIS BODY THE BOSS? ----------------------------------------------------------------------
+--
+-- Asked by every surface that has to say so -- the board's nameplate, heavier notched bar and thick
+-- token border (ui/battle_map.lua), and the turn strip's crest and notched bar (ui/combat_panel.lua).
+-- It lives HERE, in the model, because it is a fact about the FIGHT and not about a widget: two screens
+-- each keeping their own copy of it is two screens that can disagree about who the fight is about.
+--
+-- It is deliberately NOT `char.boss`, which reads like the right field and is not. That flag is a
+-- mechanical immunity marker -- Coup de Grace won't execute one, Charm and Polymorph won't turn one --
+-- worn by fifty blueprints including the whole discipline-exemplar roster and four recruitable
+-- companions. Keyed off it, a general's nameplate would hang over half the Elite rung and over Clem.
+--
+-- Two clauses, and the FIRST is the one that matters: the body this fight is NAMED AFTER -- the mark of
+-- an `assassinate`, matched on the same `char.id` Combat.evaluate matches to decide the win, and
+-- excluding a summoned duplicate for the same reason evaluate does. That is what a boss is from where
+-- the player stands: the thing whose death ends this, said in Rowan's own words at the champion's gate
+-- ("cut it down and the rest stop mattering"). Fight-scoped on purpose, so `character_champion` fielded
+-- as one body in a pack stays an ordinary red token and the same blueprint standing as a quest's mark
+-- does not.
+--
+-- The second is `tier == 4`, the bestiary's top rung (docs/bestiary.md) -- 17 bodies, every one of them
+-- a quest's ending. It covers a general fielded under some other win type, and it covers the wrath
+-- general's SECOND BODY: a `transform` phase swaps the `char.id` the mark clause matches, and the shape
+-- it wears is itself tier 4, so the reading survives the one moment it would most be missed.
+--
+-- Not gated on side. Nothing tier 4 is recruitable and a boss is bossProof against every turning
+-- effect, so a boss on the party's side is not a case that arises -- and were one to, each surface
+-- draws it in its own side colour and reads correctly anyway.
+Combat.BOSS_TIER = 4
+
+function Combat.isBoss(combat, unit)
+    if not (unit and unit.char) then return false end
+    if unit.char.tier == Combat.BOSS_TIER then return true end
+    local obj = combat and combat.objective
+    return obj ~= nil and obj.type == "assassinate" and obj.target ~= nil
+        and unit.char.id == obj.target and not unit.summoned
+end
+
+-- The health fractions this body's fight turns on, DESCENDING -- every `at` in the phase script carried
+-- by the relic in its grid, which is the same table data/traits/trait_boss_phases.lua reads when the
+-- blow that crosses one lands. So a notch on a bar cannot drift from its stage: there is one authored
+-- list, and both the rule and the readouts ask it.
+--
+-- Nil for a body carrying no phased relic. A boss whose fight has no stages gets the heavy bar and no
+-- notches, rather than an evenly-ticked bar promising thresholds nobody wrote. 0 and 1 are dropped,
+-- since a notch at either end of a bar is a notch on the bar's own edge.
+function Combat.bossThresholds(unit)
+    local inv = unit and unit.char and unit.char.inventory
+    if not inv then return nil end
+    local out
+    for _, item in pairs(inv) do
+        for _, ph in ipairs(item.phases or {}) do
+            local at = ph.at
+            if at and at > 0 and at < 1 then
+                out = out or {}
+                out[#out + 1] = at
+            end
+        end
+    end
+    -- Sorted rather than left in grid order: `pairs` over a sparse inventory has no order worth
+    -- trusting, and each notch is drawn on its own reading of the current ratio, so this buys
+    -- determinism (a board hash, a screenshot diff) rather than anything a draw needs.
+    if out then table.sort(out, function(a, b) return a > b end) end
+    return out
+end
+
 -- The marked ground the objective is currently decided on: the tiles the board washes amber/green
 -- (ui/battle_map.lua drawObjective) and the tooltip describes. `control` follows its moving node, a
 -- `defend` with a charge follows the body it is fought over (which walks), and the authored tile

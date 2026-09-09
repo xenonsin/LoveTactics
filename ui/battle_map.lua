@@ -66,8 +66,33 @@ local function bodyScale(sw, sh, bw, bh)
     return math.min(bw * BODY_FIT / sw, bh * BODY_FIT / sh)
 end
 
+-- ---- WHAT MAKES A BOSS LOOK LIKE ONE -------------------------------------------------------------
+--
+-- Before this, a general and a rat were the same red token wearing the same 5px sliver of health bar,
+-- and the only thing between them was an outline half a pixel heavier. The fiction had already
+-- promised otherwise -- conversation_flight_champion opens the Demon Champion fight saying "every
+-- fight before this has been a horde, this one has a NAME" -- so the board was contradicting its own
+-- script. Two things answer it, and only these two: a boss WEARS ITS NAME on the board (nothing else
+-- does -- every other body is named in a tooltip or the turn strip and nowhere on the ground), and its
+-- health bar is a heavier instrument NOTCHED AT THE STAGES ITS FIGHT ACTUALLY TURNS ON.
+--
+-- WHICH body that is, is not decided here: Combat.isBoss owns it, and the turn strip asks the same
+-- function (ui/combat_panel.lua), so the two surfaces cannot come to different conclusions about who
+-- the fight is about. That header carries the reasoning -- in short, the mark of an `assassinate`, or
+-- the bestiary's top rung, and never `char.boss`.
+local BOSS_BAR_H = 9   -- against 5 for every other body: the bar IS the fight, so it is drawn like one
+local BOSS_PLATE_H = 17
+local BOSS_PLATE_GAP = 3 -- between the plate and the body it names
+
 local BattleMap = {}
 BattleMap.__index = BattleMap
+
+-- Does this body read as a boss on THIS board? Straight through to the model, which owns the question
+-- (see Combat.isBoss) -- kept as a method here only so the draws below read as one call and not as a
+-- reach through `self.combat` at four sites.
+function BattleMap:isBoss(u)
+    return Combat.isBoss(self.combat, u)
+end
 
 -- Arena tile type -> overworld tileset type, so each biome's art/colours flavour the
 -- arena ground.
@@ -119,6 +144,10 @@ function BattleMap.new(arena, opts)
     self.leftMargin = opts.leftMargin or 0
     self.font = opts.font or Theme.body(14)
     self.numberFont = opts.numberFont or Theme.body(12)
+    -- The boss nameplate's face: the DISPLAY family, which is the same voice the encounter's own title
+    -- is set in at the top of the screen. A body important enough to be named on the ground is named in
+    -- the type the fight is named in, and not in the body face the turn numbers use.
+    self.plateFont = opts.plateFont or Theme.display(13)
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
     self.axisActive = false
     self.overlays = { move = {}, range = {}, threat = {}, traps = {}, hazards = {}, walls = {}, props = {}, charges = {} }
@@ -1355,7 +1384,12 @@ function BattleMap:drawUnits()
                 local dw, dh = sw * scale, sh * scale
                 local dmin = math.min(dw, dh)
                 local sc = self:unitColor(u)
-                love.graphics.setLineWidth(math.max(1.5, dmin * (u.char.boss and 0.045 or 0.03)))
+                -- The heavy border asks BattleMap:isBoss, the same question the plate and the notched
+                -- bar ask, rather than `char.boss` -- which it used to read, and which put the thick
+                -- frame on fifty blueprints including every discipline exemplar the player fights as
+                -- ordinary line bodies. One definition of "this is the boss", or the board says it in
+                -- three places and means three things.
+                love.graphics.setLineWidth(math.max(1.5, dmin * (self:isBoss(u) and 0.045 or 0.03)))
                 love.graphics.setColor(sc[1] * tint, sc[2] * tint, sc[3] * tint, a)
                 love.graphics.rectangle("line",
                     cx - dw / 2 + 0.046875 * dw, cy - dh / 2 + 0.046875 * dh,
@@ -1457,6 +1491,44 @@ function BattleMap:drawUnitInfo()
             self.lastOrderIndex[u] = nil -- fully gone: drop its stale number
         end
     end
+
+    -- Nameplates last, in a pass of their own: a plate rides ABOVE its body's tile, in the airspace the
+    -- unit standing on the row above owns, so drawn inside the loop it would be scribbled over by that
+    -- unit's own bar and badges. There is at most one of these on the board in an ordinary fight.
+    for _, u in ipairs(self.combat.units) do
+        if self:isBoss(u) and u.alive and not self:heldUnit(u) then
+            self:drawBossPlate(u, self:unitOrigin(u))
+        end
+    end
+end
+
+-- The boss's name, on a plate over its head. The one body on the board that says what it is without
+-- being pointed at -- see the BOSS_TIER note at the top of this file for why that is worth a draw.
+--
+-- Above the head rather than under the feet, for two reasons: the bar, the badges and the downed clock
+-- have already spent the bottom of the tile, and the only other thing that draws over a head is the
+-- player's turn chevron, which never appears on a body this plate can be on (drawTurnCue draws for
+-- player-controlled units alone). A boss standing on the top row has no airspace, so there the plate
+-- drops under its feet instead of printing itself into the HUD band above the board.
+function BattleMap:drawBossPlate(u, wx, wy, boxW, boxH)
+    local name = u.char and u.char.name
+    if not name or name == "" then return end
+    love.graphics.setFont(self.plateFont)
+    local w = math.max(self.plateFont:getWidth(name) + 20, boxW)
+    local x = math.floor(wx + (boxW - w) / 2)
+    local y = math.floor(wy - BOSS_PLATE_GAP - BOSS_PLATE_H)
+    if y < (self.originY or 0) then y = math.floor(wy + boxH + BOSS_PLATE_GAP) end
+
+    love.graphics.setColor(0, 0, 0, 0.72)
+    love.graphics.rectangle("fill", x, y, w, BOSS_PLATE_H, 3, 3)
+    -- Framed in the body's OWN side colour, the same red/blue the token's border and its bar are drawn
+    -- in, so the plate reads as belonging to that body rather than as a fourth kind of board furniture.
+    local sc = self:unitColor(u)
+    love.graphics.setColor(sc[1], sc[2], sc[3], 0.9)
+    love.graphics.rectangle("line", x + 0.5, y + 0.5, w - 1, BOSS_PLATE_H - 1, 3, 3)
+    Theme.set(Theme.ink)
+    love.graphics.printf(name, x, y + math.floor((BOSS_PLATE_H - self.plateFont:getHeight()) / 2), w, "center")
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 -- Whose move it is, made unmissable -- but only when it is the PLAYER's. Two layers over the acting
@@ -1546,8 +1618,11 @@ function BattleMap:statusBadgeRects(u, wx, wy)
     local shown = (slots < #list) and (slots - 1) or #list
     local totalW = slots * bw + (slots - 1) * gap
     local startX = wx + boxW - BADGE_INSET - totalW
-    -- The HP bar's black backing tops out at wy + boxH - 9; sit the badges a couple px above it.
-    local by = wy + boxH - 11 - BADGE_H
+    -- Sit the row a couple of px above the HP bar's black backing, which is one px proud of the bar
+    -- itself. Asked of hpBarRect rather than worked out here, because a boss's bar is taller than
+    -- everyone else's and a second copy of this arithmetic would put its badges inside it.
+    local barY = select(2, self:hpBarRect(u, wx, wy))
+    local by = barY - 3 - BADGE_H
     local rects = {}
     for i = 1, slots do
         local r = { x = startX + (i - 1) * (bw + gap), y = by, w = bw, h = BADGE_H }
@@ -1602,6 +1677,16 @@ end
 -- on the side, so how hurt the unit is reads from the bar's length, darkened toward empty by
 -- Colors.drain rather than shifting hue.
 -- `alpha` (default 1) fades the whole bar out with the body as a felled unit dies (drawUnitInfo).
+-- The HP bar's rect for a body (x, y, w, h), and the ONE place its height is decided. A boss's runs
+-- BOSS_BAR_H rather than 5, and the badge row above it reads its top from here rather than from a
+-- second copy of the arithmetic -- otherwise the heavier bar would draw straight through the badges.
+-- Bottom-anchored, so both heights sit on the same line along the footprint's bottom edge.
+function BattleMap:hpBarRect(u, wx, wy)
+    local boxW, boxH = self:spanPixels(u.w, u.h)
+    local h = self:isBoss(u) and BOSS_BAR_H or 5
+    return wx + 4, wy + boxH - 3 - h, boxW - 8, h
+end
+
 function BattleMap:drawHpBar(u, wx, wy, alpha)
     local al = alpha or 1
     local hp = u.char.stats.health
@@ -1613,8 +1698,7 @@ function BattleMap:drawHpBar(u, wx, wy, alpha)
     if hp and hp.max and hp.max > 0 then ratio = math.max(0, math.min(1, shown / hp.max)) end
     -- Span the bar across the body's whole footprint and sit it along the box's bottom edge, so a
     -- wide unit gets a wide bar rather than one hugging its top-left cell. 1×1 is the original geometry.
-    local boxW, boxH = self:spanPixels(u.w, u.h)
-    local bx, by, bw, bh = wx + 4, wy + boxH - 8, boxW - 8, 5
+    local bx, by, bw, bh = self:hpBarRect(u, wx, wy)
     love.graphics.setColor(0, 0, 0, 0.6 * al)
     love.graphics.rectangle("fill", bx - 1, by - 1, bw + 2, bh + 2, 2, 2)
 
@@ -1641,6 +1725,29 @@ function BattleMap:drawHpBar(u, wx, wy, alpha)
         local dr, dg, db = Colors.drain(side, ratio)
         love.graphics.setColor(dr, dg, db, al)
         love.graphics.rectangle("fill", bx, by, bw * ratio, bh, 2, 2)
+    end
+
+    -- A boss's bar is finished as an instrument: a bronze frame around it, and a notch at each health
+    -- fraction its phase script turns on. A notch still ahead of the drain stands in bone -- that is a
+    -- stage you have not paid for yet, and the distance to it is the only forecast the fight gives.
+    -- One already crossed goes dark and stays drawn, so the bar reads as a count of how far in you are
+    -- rather than quietly dropping the evidence. Ratio, not `hp.current`, so a notch is only spent once
+    -- the bar has actually drained past it -- reading the model would blacken it a beat before the blow
+    -- that crossed it has played, giving the stage away ahead of its own arrival.
+    if self:isBoss(u) then
+        Theme.set(Theme.frame, 0.8 * al)
+        love.graphics.rectangle("line", bx - 0.5, by - 0.5, bw + 1, bh + 1, 2, 2)
+        for _, at in ipairs(Combat.bossThresholds(u) or {}) do
+            local nx = math.floor(bx + bw * at) + 0.5
+            local crossed = ratio <= at
+            love.graphics.setColor(0, 0, 0, 0.85 * al)
+            love.graphics.line(nx, by, nx, by + bh)
+            if not crossed then
+                Theme.set(Theme.ink, 0.9 * al)
+                love.graphics.line(nx + 1, by, nx + 1, by + bh)
+            end
+        end
+        love.graphics.setColor(1, 1, 1, 1)
     end
 end
 

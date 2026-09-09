@@ -174,7 +174,16 @@ end
 -- dimmed tail; the track still spans the pool's true maximum, so the usable fill visibly shrinks.
 -- `alpha` (default 1) fades the whole bar, so a turn-strip card can cross-fade its slim HP bar out as
 -- the full pool stack fades in while it grows into the frame.
-local function drawResourceBar(x, y, w, h, cur, max, color, delta, lethal, reserved, alpha)
+-- `notches` (optional, the last argument) is a list of health fractions to tick the bar at -- a boss's
+-- phase thresholds, read off its own relic (Combat.bossThresholds). The same marks the board's heavy
+-- bar wears (ui/battle_map.lua's drawHpBar) and drawn to the same recipe, so a player reading the
+-- strip and a player reading the board are reading one instrument in two places: a notch still ahead
+-- of the fill stands in bone, one already crossed goes dark and stays drawn.
+--
+-- Read off `ratio`, the drawn fill, and never off the model's true current -- which on this card lags
+-- behind a hit on purpose (shownHealth). Blackening a notch the instant the model crossed it would
+-- announce the stage a beat before the blow that bought it had played.
+local function drawResourceBar(x, y, w, h, cur, max, color, delta, lethal, reserved, alpha, notches)
     delta = delta or 0
     alpha = alpha or 1
     local ratio = (max > 0) and math.max(0, math.min(1, cur / max)) or 0
@@ -205,6 +214,15 @@ local function drawResourceBar(x, y, w, h, cur, max, color, delta, lethal, reser
     else
         love.graphics.setColor(color[1], color[2], color[3], 0.95 * alpha)
         love.graphics.rectangle("fill", x, y, w * ratio, h, 2, 2)
+    end
+    for _, at in ipairs(notches or {}) do
+        local nx = math.floor(x + w * at) + 0.5
+        love.graphics.setColor(0, 0, 0, 0.85 * alpha)
+        love.graphics.line(nx, y, nx, y + h)
+        if ratio > at then -- still standing: the stage has not been bought yet
+            Theme.set(Theme.ink, 0.9 * alpha)
+            love.graphics.line(nx + 1, y, nx + 1, y + h)
+        end
     end
     -- A hairline sepia outline so the fill doesn't bleed into the light parchment (see ui/theme.lua).
     Theme.set(Theme.barOutline, (Theme.barOutline[4] or 1) * alpha)
@@ -1006,7 +1024,9 @@ function CombatPanel:drawPoolBars(unit, rx, rw, topY, alpha)
         if glyph then glyph(rx + labelW, rowY, glyphW, barH, tr, tg, tb, 0.95 * alpha) end
         local barX = rx + labelW + glyphW + glyphGap
         local barW = rw - (barX - rx) - valueColW - 6
-        drawResourceBar(barX, rowY, barW, barH, r.cur, r.effMax, c, r.delta, r.lethal, r.reserved, alpha)
+        -- The HEALTH row alone carries a boss's phase notches; mana and stamina have no stages to mark.
+        drawResourceBar(barX, rowY, barW, barH, r.cur, r.effMax, c, r.delta, r.lethal, r.reserved, alpha,
+            r.res.key == "health" and Combat.isBoss(self.combat, unit) and Combat.bossThresholds(unit) or nil)
         -- Queue this row's projection for the floating pass. Anchored at the level the bar will
         -- SETTLE at (the after ratio), which is exactly the edge the pending slice ends on, so the
         -- pill points at the line the fill is about to move to.
@@ -1079,6 +1099,9 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha)
     -- blow that took it is seen to land, so its card does not start wearing an enemy intent icon while
     -- the thing that turned it is still walking in.
     local isParty = self:shownParty(unit)
+    -- Is this card the body the fight is about? Asked of the model, which is the same question the
+    -- board asks for its nameplate and heavy bar (Combat.isBoss), so the two surfaces cannot disagree.
+    local isBoss = Combat.isBoss(self.combat, unit)
     local p = entry.forceProm or self.cardProm[unit] or (isCurrent and 1 or 0)
     -- Top-anchored: the card hangs from its slot top (ey) and its height grows with p, so a card
     -- dropping into the frame slides its top down and fills the slot as it arrives.
@@ -1173,8 +1196,26 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha)
     -- colour warms to gold. We swap between two native faces rather than scaling one -- fonts are never
     -- scaled (a scaled bitmap font blurs), so the steady acting card stays crisp.
     love.graphics.setFont((p > 0.5) and self.headFont or self.nameFont)
+    local nameX = rx
+    -- THE FIGHT'S OWN CREST, on the card of the body the fight is named after. The strip is where the
+    -- boss was hardest to pick out: every card is the same plate at the same height, faction lives in a
+    -- bar, and a general and an imp differed by the word in the name row alone. The mark is the one
+    -- already flanking the encounter's title at the top of the screen (states/battle.lua's
+    -- drawEncounterLines), so the card carrying it reads as "this is the thing up there" rather than as
+    -- a fourth kind of badge to learn.
+    --
+    -- Deliberately NOT another coloured ring or border: the card's edge is already spoken for three
+    -- times over -- spotlight gold for whoever is acting, a white pulse for a hovered log line, cyan
+    -- for the body under the cursor on the board -- and a fourth would be the one that stops meaning
+    -- anything. An ornament in the name row collides with none of them.
+    if isBoss then
+        local ch = love.graphics.getFont():getHeight()
+        Theme.crest(rx + 5, dy + lerp(4, 8, p) + ch / 2, 5, { Theme.accentAmber[1], Theme.accentAmber[2],
+            Theme.accentAmber[3], ca })
+        nameX = rx + 15
+    end
     Theme.set(Theme.ink, ca)
-    love.graphics.print(unit.char.name or "?", rx, dy + lerp(4, 8, p))
+    love.graphics.print(unit.char.name or "?", nameX, dy + lerp(4, 8, p))
 
     for _, r in ipairs(self:statusBadgeRects(unit, ex, ew, dy)) do
         StatusBadge.draw(r.st, r.x, r.y, r.w, r.h)
@@ -1189,7 +1230,8 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha)
         local reserved = Combat.reservedAmount(unit.char, "health")
         local effMax = Combat.unreservedMax(unit.char, "health") + reserved
         drawResourceBar(rx, dy + 22, rw, 6, self:shownHealth(unit), effMax, self:unitColor(unit),
-            delta, pv and pv.lethal, reserved, (1 - p) * ca)
+            delta, pv and pv.lethal, reserved, (1 - p) * ca,
+            isBoss and Combat.bossThresholds(unit) or nil)
     end
     if p > 0.02 then
         self:drawPoolBars(unit, rx, rw, dy + 34, p * ca)
