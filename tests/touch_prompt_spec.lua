@@ -162,6 +162,29 @@ return {
         end,
     },
     {
+        -- A crash, on a phone, in shipped code: `local cx, cy = battle.map and battle.map:cellAt(x, y)`
+        -- yields ONE value, because that is what an `and` expression is, so the row came back nil and
+        -- Combat.unitAt compared it against a unit's. Only a finger ever ran the line -- dragTarget
+        -- turns a mouse back before reaching it -- and it only errors when the press lands in a column
+        -- somebody is standing in, which is how it got as far as a handset.
+        --
+        -- Guarded by shape rather than by call, because reaching the real dragTarget wants a live
+        -- fight: what is asserted is that the two cell coordinates are not taken out of a truncating
+        -- expression, and that a missing one turns the gesture down instead of travelling onward.
+        name = "the drag reads a whole cell, not the first half of one",
+        fn = function()
+            local src = assert(love.filesystem.read("states/battle.lua"), "states/battle.lua is readable")
+            local fn = src:match("function battle%.dragTarget(.-)\nend")
+            assert(fn, "battle.dragTarget is gone or renamed")
+            assert(not fn:find("local %w+, %w+ = [%w_.]+ and "),
+                "the cell pair is destructured out of an `and` expression again -- Lua yields one "
+                    .. "value from that, so the row is nil and unitAt errors on the first body "
+                    .. "sharing the pressed column")
+            assert(fn:find("not cx or not cy"),
+                "a half-resolved cell is passed on to unitAt instead of turning the drag down")
+        end,
+    },
+    {
         -- The bubble that teaches, off the screen on a handset. Nothing in the placement search
         -- narrows the box: candidates that do not fit are rejected and the last resort clamps, but a
         -- clamp cannot rescue a box wider than the bounds -- it parks it at the left edge and the

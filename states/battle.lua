@@ -6787,8 +6787,16 @@ function battle.dragTarget(x, y)
     if battle.over or busy() or not current or not Combat.isPlayerControlled(current) then return nil end
     if battle.log:contains(x, y) then return nil end
     if battle.panel and battle.panel:contains(x, y) then return nil end
-    local cx, cy = battle.map and battle.map:cellAt(x, y)
-    if not cx or Combat.unitAt(battle.combat, cx, cy) ~= current then return nil end
+    -- The cell pair used to be destructured straight out of `battle.map and <the cellAt call>`, and
+    -- it crashed the game on a handset. Such an expression yields ONE value, so the second return was
+    -- discarded and the row was always nil -- unitAt then compared it against a unit's, a hard error
+    -- the moment the press lands in a column any body is standing in. (Lua 5.1 compiles `a >= b` as
+    -- `b <= a`, which is why the report read "compare number with nil" and not the other way round.)
+    -- Only a finger ever reached it: a mouse is turned back at the top of this function.
+    if not battle.map then return nil end
+    local cx, cy = battle.map:cellAt(x, y)
+    if not cx or not cy then return nil end
+    if Combat.unitAt(battle.combat, cx, cy) ~= current then return nil end
     return current
 end
 
