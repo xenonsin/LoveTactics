@@ -5189,17 +5189,22 @@ function battle.enter(self, opts)
         if battle.tutorial then
             stage.overScene = true
             if Scale.inHandheldSpace then
-                -- NO BOX AT ALL, which hands the dialogue its own full-width bar along the bottom.
+                -- A bar the width of the whole space, and a QUARTER of its height.
                 --
-                -- There is no gutter to speak from here: the board owns the whole short axis
-                -- (battle.boardTop), so the desktop rect below comes out with a negative height. The
-                -- first attempt was a bar across the foot of the board, and on a handset it was
-                -- reported as not visible -- a 448x112 rect is fine in the abstract and lands as a
-                -- narrow strip once the screen is turned, because the turn transposes anything with a
-                -- long axis. The dialogue's own default is clamped into the live space by
-                -- Dialogue:fitToSpace, which is exactly the guarantee this needs: on screen, whatever
-                -- shape the screen is. `overScene` still holds, so the staging stays the compact one
-                -- rather than the full-screen scene with its busts.
+                -- Two wrong answers came first and they failed in opposite directions. A rect across
+                -- the foot of the BOARD (448x112) is fine in the abstract and lands as a narrow strip
+                -- once the screen is turned, because the turn transposes anything with a long axis --
+                -- reported from a handset as simply not visible. Handing the dialogue its own default
+                -- instead fixed that and overcorrected: BOX_H is 150, which is a fifth of a 720-tall
+                -- space and a THIRD of this one, so the box swallowed the board, the turn order and
+                -- the actions together.
+                --
+                -- The height is taken as a proportion of the space rather than inherited from a
+                -- taller one, which is the actual lesson: a constant tuned against 720 is not a
+                -- constant here. Full width so it cannot be stood on its end by the turn, and placed
+                -- rather than clamped, so it is on screen by construction.
+                local h = math.floor(Scale.HEIGHT * 0.24)
+                stage.box = { x = 20, y = Scale.HEIGHT - h - 10, w = Scale.WIDTH - 40, h = h }
             else
                 local _, by, _, bh = battle.map:boardRect()
                 local boardBottom = by + bh
