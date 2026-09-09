@@ -850,9 +850,16 @@ function Dialogue:draw()
 
         -- Full item tooltip for the highlighted choice's reward (the first item, if it grants one).
         -- Anchored just LEFT of the choice column so it doesn't cover the options, and driven by the
-        -- selection -- which mouse hover, keyboard and gamepad all move -- so it works three-input.
+        -- selection -- which keyboard and gamepad move -- so it works three-input.
+        --
+        -- With a pointer live it takes a real HOVER rather than just the selection: the first option
+        -- is highlighted the moment the choices appear, and a selection-driven panel would open over
+        -- the scene before the player had pointed at anything. A finger is exempt -- it has no hover,
+        -- and a tap commits the choice outright -- so touch keeps following the selection.
         local sel = self.choiceRects[self.choiceSel]
-        if sel and sel.reward and sel.reward.items[1] then
+        local pointing = not (InputMode.isMouse() and not InputMode.touch)
+            or pointIn(sel, self.mouseX or -1, self.mouseY or -1)
+        if pointing and sel and sel.reward and sel.reward.items[1] then
             ItemTooltip.draw(sel.reward.items[1], sel.x, sel.y, sel.x)
         end
     end
