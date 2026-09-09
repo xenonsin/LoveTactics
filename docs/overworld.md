@@ -233,27 +233,34 @@ on a floor a fifth full read one step at a time. `ui/overworld_map.lua`'s `marke
 the rule, and `hoveredFight` asks the same question — a readout that answered where no marker is drawn
 would turn the pointer into a probe you sweep across the dark.
 
-`Overworld:reveal` marks a place read at **one step** — Dream Quest's adjacency reveal — and
-**nothing widens it.** `Player.VISION = 1`, flat, on a rolled floor and an authored one alike.
+`Overworld:reveal` marks a place read at **one step** — Dream Quest's adjacency reveal — and exactly
+one thing in the game widens it. `Player.VISION = 1` is the base, on a rolled floor and an authored one
+alike; a **torch** in the company's packs adds one step on top (`Player.visionBonus`), so a lit party
+reads two.
 
-That is a rule with a history and two casualties, both worth naming. Sight was a base of 2, raised by
-the best `visionRadius` in the company's packs (a torch read 3) and by Gyeom's Ledger on top, so a
-kitted party saw four. Every part of that was right for a **tile** board, where three tiles of trail was
-a neighbourhood and the thing being hidden was the shape of the country. A cell is a place: one step is
-four places, two is a dozen, four is a whole floor from the doorway — and since the silhouette is given
-at arrival, the only thing left to discover is what is *standing* in each place, which is exactly what
-must be found by going. **A radius that reaches past your own neighbours answers the floor's only
+That number has a history worth naming, because it has now been turned twice. Sight was a base of 2,
+raised by the best `visionRadius` in the packs (a torch read an absolute 3) and by Gyeom's Ledger on top,
+so a kitted party saw four. Every part of that was right for a **tile** board, where three tiles of trail
+was a neighbourhood and the thing being hidden was the shape of the country. A cell is a place: one step
+is four places, two is a dozen, four is a whole floor from the doorway — and since the silhouette is
+given at arrival, the only thing left to discover is what is *standing* in each place, which is exactly
+what must be found by going. **A radius that reaches past your own neighbours answers the floor's only
 question for free.**
 
-It is flat rather than a base under a cap, because a cap invites a bonus that silently does nothing. Two
-things consequently give nothing on this axis any more: `utility_torch` (its only effect) and the vision
-half of Gyeom's Ledger. If sight is ever to be bought again it has to buy something other than distance
-— the obvious candidate is the dark, below.
+So it went flat, with nothing able to raise it — and what *that* produced was worse than a silent bonus:
+`utility_torch` stayed on the Lodge's shelf at 80 gold, its whole description an effect it no longer had.
+**A shelf that sells an effect has to have one.** It is a base and a bonus again, with the bonus held to
+**one step** and carried by that one item: the concession the paragraph above warns about, made on
+purpose, and priced at a ring of lookahead rather than a floor. The largest bonus in the packs wins;
+**they never sum**, so a second torch is a spare rather than an upgrade. The vision half of Gyeom's
+Ledger (`OverworldAbility.visionBonus`) is still unwired — the same one-line sum in `game:applyVision`,
+and a separate decision about a companion.
 
-**The dark takes it to nothing.** `game.darkFor` used to cut a radius of two-to-four down to one; against
-a flat one it would take nothing at all, and a hazard that costs the player nothing has been silently
-deleted. At **0** the company reads only the place it stands in and steps into whatever is beside it
-blind — the same bite, expressed in the new number.
+**The dark takes the base to nothing, and the torch is what stands on top of it.** At **0** the company
+reads only the place it stands in and steps into whatever is beside it blind. A light in the packs puts
+one step back, so the hazard costs a lit company its lookahead and an unlit one its footing — which is
+the effect the item's flavour has always claimed (*"the oldest answer to the dark"*) and the number never
+bought.
 
 **A cell that is not there takes no fog at all**, and it is drawn in the biome's own material — the
 forest's canopy, the underworld's basalt, the tundra's drift. The floor was cut out of that material,
@@ -638,10 +645,14 @@ A small, deliberately open category: items whose whole effect is on the board. O
 
 | Shape | Field | Item | What it does |
 |---|---|---|---|
-| **Passive** | `visionRadius` | `utility_torch` | widens the fog while carried, spent by nothing |
+| **Passive** | `visionBonus` | `utility_torch` | +1 step of fog while carried, spent by nothing |
 
 Read off the roster's grids **and** the stash, because a board item belongs to the company rather than
-to a body.
+to a body. The field is a **bonus in steps**, not a radius: it adds to `Player.VISION` rather than being
+taken over it, and `Player.VISION_BONUS_CAP` holds it to one so a future item cannot hand over a floor
+without that line being changed on purpose. `game:applyVision` re-reads the packs whenever a panel
+closes, which is the one seam every light passes through on its way into a pack — a torch pulled out of
+a chest lights its ring where the company is standing rather than at the next step.
 
 A **spent** shape lived here briefly: `extract`, on a Smoke Bolt, bought a walk-out that kept the haul
 back when every exit but the objective voided it. Walking out is free now, so the charge had nothing
@@ -785,12 +796,12 @@ the Arcanum reading an unknown discipline off a piece, the Cafe standing a round
 - **No biome has a tileset drawn yet** — all eight fall back to coloured rects, which on a grid of
   places is more visible than it was on a warren: a place is sixty pixels square and mostly flat colour.
   See [docs/art-assets.md](art-assets.md).
-- **A torch buys nothing, and neither does half of Gyeom's Ledger.** Sight is flat at one step and
-  nothing widens it, so `utility_torch`'s only effect is gone while the item is still on the Lodge's
-  shelf at 80 gold describing itself as *"Extends the party's vision on the overworld"*. The obvious
-  repair is the one its own flavour text already names — the dark now takes sight to **zero**, and a
-  torch is "the oldest answer to the dark" — but that is a content call, not a consequence of this
-  change, so it is written down rather than made.
+- **Half of Gyeom's Ledger still buys nothing.** The torch half of this was repaired — sight is a base
+  of one step with a torch adding a second, and the dark now cuts the base rather than the total, so the
+  item does what its flavour always claimed. `OverworldAbility.visionBonus` was written for the same axis
+  and has had no caller since sight went flat: wiring it is one sum in `game:applyVision`, but what a
+  *companion* should buy on this axis is a question about Gyeom rather than about the fog, so it is still
+  written down rather than made.
 - **The prologue's flight is four cells by three.** It re-authored cleanly and every beat survived, but
   a tutorial that teaches the walk on nine places is teaching it at the smallest scale the game has. Play
   it before assuming it still teaches what it used to.

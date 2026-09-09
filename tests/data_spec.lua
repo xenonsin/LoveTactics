@@ -183,44 +183,53 @@ return {
         end,
     },
     {
-        name = "torch item carries its configurable visionRadius through instantiation",
+        name = "torch item carries its configurable visionBonus through instantiation",
         fn = function()
             local torch = Item.instantiate("utility_torch")
-            assert(torch.visionRadius == Item.defs.utility_torch.visionRadius,
-                "torch instance should carry the blueprint's visionRadius")
+            assert(torch.visionBonus == Item.defs.utility_torch.visionBonus,
+                "torch instance should carry the blueprint's visionBonus")
             local sword = Item.instantiate("weapon_iron_sword")
-            assert(sword.visionRadius == nil, "a non-torch item has no visionRadius")
+            assert(sword.visionBonus == nil, "a non-torch item has no visionBonus")
         end,
     },
     {
-        name = "company vision is one step, and nothing widens it",
+        name = "company vision is one step, and a torch buys exactly one more",
         fn = function()
-            -- THIS CASE ASSERTED THE OPPOSITE, and the inversion is the change rather than a slip. It
-            -- read "company vision radius is driven by a torch-carrying member": the base was 2, the
-            -- best `visionRadius` in the company's packs was taken over it, and Gyeom's Ledger added
-            -- one on top, so a kitted party saw four.
+            -- THIS CASE HAS BEEN INVERTED TWICE, and both turns are the rule rather than a slip. It
+            -- first read "vision is driven by a torch-carrying member" against a base of 2 raised to an
+            -- absolute 3 (plus Gyeom's Ledger), which was right for a TILE board where the fog hid the
+            -- shape of the country. A cell is a PLACE now (models/overworld.lua), so that was flattened
+            -- to one step with nothing able to raise it -- and what THAT produced was an 80-gold item on
+            -- the Lodge's shelf whose whole description was an effect it no longer had.
             --
-            -- That was a radius over a TILE board, where the fog hid the shape of the country and three
-            -- tiles of trail was a neighbourhood. A cell is a PLACE now (models/overworld.lua): one step
-            -- is four places, four steps is most of a floor, and what the fog hides is no longer where
-            -- the places are but what is standing in them -- which is the one thing that has to be found
-            -- by going. So sight is flat at one and nothing raises it (models/player.lua's
-            -- Player.VISION).
+            -- So: a base of one step, and one item in the game that adds one more. Not three, and never
+            -- summed across packs (models/player.lua's Player.visionBonus).
             local p = Player.new()
-            assert(Player.visionRadius(p) == 1, "a company sees one step")
 
-            -- The knight still starts with a torch, and it changes nothing.
+            -- The opening company carries a torch, so the fitted party is the two-step case.
             local hasTorch = false
             for _, char in ipairs(p.roster) do
-                for _, item in ipairs(char.inventory or {}) do
-                    if item.visionRadius then hasTorch = true end
+                for _, item in ipairs(Character.eachItem(char)) do
+                    if item.visionBonus then hasTorch = true end
                 end
             end
-            assert(hasTorch, "the opening company still carries the item this rule used to read")
-            assert(Player.visionRadius(p) == 1, "a torch does not widen sight any more")
+            assert(hasTorch, "the opening company still carries the item this rule reads")
+            assert(Player.visionBonus(p) == 1, "a torch in the packs is worth one step")
+            assert(Player.visionRadius(p) == 2, "so a lit company reads the places beyond its own")
 
+            -- A second torch is a spare, not an upgrade: the LARGEST, never the sum.
+            local spare = Item.instantiate("utility_torch")
+            p.stash = p.stash or {}
+            p.stash[#p.stash + 1] = spare
+            assert(Player.visionRadius(p) == 2, "two torches are one torch's worth of light")
+            -- ...and one lying in the stash still counts, because a board item belongs to the company
+            -- rather than to a body.
             for _, char in ipairs(p.roster) do char.inventory = {} end
-            assert(Player.visionRadius(p) == 1, "and neither does carrying nothing")
+            assert(Player.visionRadius(p) == 2, "a torch in the stash lights the same ground")
+
+            p.stash = {}
+            assert(Player.visionBonus(p) == 0, "an unlit company buys nothing")
+            assert(Player.visionRadius(p) == 1, "and sees one step")
             assert(Player.visionRadius(nil) == 1, "nil player (dev/test launch) sees the same")
         end,
     },

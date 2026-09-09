@@ -712,10 +712,16 @@ local function buildBlocks(item, actor, innerW, out, owner, warn)
     end
 
     -- Utility passives.
-    if item.visionRadius or item.detectRadius then
+    if item.visionBonus or item.detectRadius then
         blocks[#blocks + 1] = { kind = "sep" }
-        if item.visionRadius then
-            blocks[#blocks + 1] = { kind = "stat", label = "Vision", value = "+" .. tostring(item.visionRadius) }
+        -- STEPS, named, because the bare "+1" beside "Vision" reads as a stat point rather than as a
+        -- ring of the overworld fog. The field is a bonus on top of the company's step
+        -- (models/player.lua's Player.visionBonus), so the "+" is honest -- it was not while this printed
+        -- an absolute radius.
+        if item.visionBonus then
+            local n = item.visionBonus
+            blocks[#blocks + 1] = { kind = "stat", label = "Overworld sight",
+                value = "+" .. tostring(n) .. (n == 1 and " step" or " steps") }
         end
         if item.detectRadius then
             blocks[#blocks + 1] = { kind = "stat", label = "Trap detect", value = tostring(item.detectRadius) }

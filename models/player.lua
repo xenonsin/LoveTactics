@@ -30,10 +30,10 @@ Player.active = nil
 -- models/combat.lua declares its own mirror of this (Combat.MAX_FIELD) to stay player-free.
 Player.MAX_FIELD = 4
 
--- WHAT THE COMPANY CAN SEE ON THE FLOOR: the place they are standing in, and the places beside it.
--- ONE STEP, FLAT, and nothing raises it.
+-- WHAT THE COMPANY CAN SEE ON THE FLOOR, unlit: the place they are standing in, and the places beside
+-- it. ONE STEP, and exactly one thing in the game raises it.
 --
--- It was 2, with the largest `visionRadius` in the company's packs raised over it (a torch read 3) and
+-- It was 2, with the largest `visionRadius` in the company's packs taken over it (a torch read 3) and
 -- Gyeom's Ledger adding one on top -- so a well-kitted party saw four. That was a radius over a TILE
 -- board, where three tiles of trail was a neighbourhood you could read ahead and route around, and the
 -- thing the fog was hiding was mostly the shape of the country.
@@ -43,15 +43,53 @@ Player.MAX_FIELD = 4
 -- on the map from arrival, so the only thing left to discover is WHAT IS STANDING IN each place, which
 -- is precisely the thing that must be found by going. A radius that reaches past your own neighbours is
 -- a radius that answers the floor's only question for free.
---
--- FLAT RATHER THAN A BASE WITH A CAP OVER IT, because a cap invites a bonus that silently does nothing.
--- If sight is ever to be bought again it has to buy something other than distance.
 Player.VISION = 1
 
--- Kept as a function because every caller speaks it, and because the rule wants exactly one home. The
--- inventory scan that stood here is gone with the number it was raising; see the note above.
-function Player.visionRadius()
-    return Player.VISION
+-- AND THEN THE TORCH BOUGHT THE STEP BACK. The base sat flat for a while with nothing able to raise it,
+-- on the argument that a cap invites a bonus that silently does nothing -- and the thing that argument
+-- actually produced was worse than a silent bonus: `utility_torch` stayed on the Lodge's shelf at 80
+-- gold, described as extending the party's vision, doing nothing whatsoever. A shelf that sells an
+-- effect has to have one.
+--
+-- SO IT IS A BASE AND A BONUS AGAIN, with the bonus held to ONE STEP by the only item that carries it.
+-- Two is a dozen places rather than four, which is the concession the note above warns about and it is
+-- made deliberately: a floor is walked to learn what stands in each place, and a torch now buys reading
+-- one ring of that ahead -- routing, not the floor.
+--
+-- THE LARGEST, NEVER THE SUM. Two torches in two packs are one torch's worth of light, the same rule
+-- the old scan kept: a board item belongs to the COMPANY, and stacking one would price a second copy as
+-- an upgrade rather than a spare.
+Player.VISION_BONUS_CAP = 1
+
+-- How many extra steps the company's packs are worth. Read off every member's grid AND the shared
+-- stash, because a board item belongs to the company rather than to a body -- nothing here asks who is
+-- carrying it, unlike a combat item, which always does. See "Overworld items" further down.
+--
+-- Capped rather than trusted, so a future item authored with a fat number cannot quietly hand over a
+-- floor without this line being read and changed on purpose.
+--
+-- THERE IS A SECOND FUNCTION OF THIS NAME, and it is deliberately left where it is:
+-- OverworldAbility.visionBonus answers the same question for Gyeom's Ledger, and nothing has called it
+-- since sight went flat. Wiring it back is the same one-line sum in states/game.lua's applyVision, and
+-- it is a separate decision about a companion rather than about an item on a shelf.
+function Player.visionBonus(player)
+    local best = 0
+    local function consider(item)
+        local b = item and item.visionBonus
+        if b and b > best then best = b end
+    end
+    for _, char in ipairs(player and player.roster or {}) do
+        for _, item in ipairs(Character.eachItem(char)) do consider(item) end
+    end
+    for _, item in ipairs(player and player.stash or {}) do consider(item) end
+    return math.min(best, Player.VISION_BONUS_CAP)
+end
+
+-- The whole rule in one place: what the company reads on an ordinary floor. The DARK is the one caller
+-- that does not go through this -- it replaces the base with nothing and adds the bonus itself, which
+-- is what makes a torch the answer to it (states/game.lua's applyVision).
+function Player.visionRadius(player)
+    return Player.VISION + Player.visionBonus(player)
 end
 
 -- ---------------------------------------------------------------------------
@@ -887,7 +925,7 @@ end
 --
 -- A small and deliberately open category: items whose whole effect is on the BOARD rather than in a
 -- fight. One shape so far: PASSIVE -- a carried thing that changes the board while it is carried and
--- is spent by nothing. `visionRadius` (utility_torch) is the one; see Player.visionRadius above.
+-- is spent by nothing. `visionBonus` (utility_torch) is the one; see Player.visionBonus above.
 --
 -- Read off the roster's grids AND the stash, because a board item belongs to the company rather than to
 -- a body -- nothing here asks who is carrying it, unlike a combat item, which always does.

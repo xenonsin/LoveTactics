@@ -670,27 +670,38 @@ function game:inflictWounds(chars)
     return hurt
 end
 
--- HOW FAR THE COMPANY CAN SEE, re-resolved. The map widget's radius is settled once at enter from the
--- board's own, the party's torch and Gyeom's Ledger; this puts the Dark on top of all of it and takes it
--- off again when the stretch runs out.
+-- HOW FAR THE COMPANY CAN SEE, re-resolved. The map widget's radius is settled once at enter; this puts
+-- the Dark on top of it, takes it off again when the stretch runs out, and re-reads the packs whenever
+-- the kit can have changed.
 --
--- A separate call rather than a field on the widget because the radius has three owners now and only one
--- of them changes mid-floor. `darkFor` counts DOWN IN STEPS (game:onArrive), not seconds: a hazard
--- measured in wall-clock would punish a player who stopped to read a tooltip, and what the dark is
--- actually taking is ground covered blind.
+-- A separate call rather than a field on the widget because the radius has TWO owners that move under
+-- it: the dark, and what the company is carrying. `darkFor` counts DOWN IN STEPS (game:onArrive), not
+-- seconds: a hazard measured in wall-clock would punish a player who stopped to read a tooltip, and what
+-- the dark is actually taking is ground covered blind.
 function game:applyVision()
     if not (game.map and game.player) then return end
-    -- ONE STEP, and the dark takes it. Sight was a max of three sources -- the floor's own radius, the
-    -- best torch in the company's packs, and Gyeom's Ledger on top -- which is what a NEIGHBOURHOOD
-    -- needed when the fog hid the shape of the country. A place is the unit now and one step is four
-    -- places (models/player.lua's Player.VISION), so there is one source and nothing widens it.
+    -- THE DARK TAKES THE BASE TO NOTHING, and the torch is what stands on top of it. At zero the company
+    -- reads only the place it is standing in and steps into whatever is beside it blind -- which is what
+    -- "covering ground blind" has always meant here. A light in the packs puts one step back
+    -- (models/player.lua's Player.visionBonus), so the hazard costs a lit company its lookahead and an
+    -- unlit one its footing: the same bite, priced against what they thought to bring.
+    local base = ((game.darkFor or 0) > 0) and 0 or Player.VISION
+    local r = base + Player.visionBonus(game.player)
+    local was = game.map.visionRadius
+    game.map.visionRadius = r
+    -- A LIGHT LIGHTS ITS RING THE MOMENT IT IS PICKED UP, rather than at the next step. A torch pulled
+    -- out of a chest and put in a pack widens the fog from where the company is STANDING -- waiting for
+    -- a step would make the purchase read as broken for exactly as long as the player stood still
+    -- looking at it. Only on a widening: the dark narrows sight and must not re-reveal anything.
     --
-    -- THE DARK TAKES IT TO NOTHING, which is the same bite it always had rather than a new one. It used
-    -- to cut a radius of two-to-four down to one; against a flat one it would take nothing at all, and a
-    -- hazard that costs the player nothing is a hazard that has been silently deleted. At zero the
-    -- company reads only the place it is standing in and steps into whatever is beside it blind, which
-    -- is what "covering ground blind" meant before and means now.
-    game.map.visionRadius = ((game.darkFor or 0) > 0) and 0 or Player.visionRadius()
+    -- IT FIRES NO STEP HOOK, deliberately, and the cells it turns up are not counted for anything. The
+    -- per-step relics (the Poacher's Map's explore-for-coin, a Vice's road-toll) are paid by WALKING,
+    -- and a pickup is not a step -- routing this through onArrive would let a road-toll be sprung by
+    -- closing a panel. The cost is that the ring a new torch lights is a ring the Map does not bill for,
+    -- once, which is the right side to err on: it can under-pay, never mint.
+    if game.grid and r > (was or 0) then
+        game.grid:reveal(game.map.px, game.map.py, r)
+    end
 end
 
 -- Piles are gone (models/descent.lua, "What the company dropped where it fell -- DELETED"), so there is
@@ -1347,9 +1358,10 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
         -- What colours a fight's marker and counts its pips: where the company stands against THIS fight
         -- (models/muster.lua). The map owns no roster and does no comparing -- it asks.
         musterBand = function(cell) return game:musterBand(cell) end,
-        -- Fog: one step, on every floor rolled or authored (models/player.lua's Player.VISION).
-        -- game:applyVision is what moves it afterwards, and the only thing that does is the dark.
-        visionRadius = Player.visionRadius(),
+        -- Fog: one step on every floor rolled or authored (models/player.lua's Player.VISION), plus a
+        -- step for a torch in the company's packs. game:applyVision is what moves it afterwards -- the
+        -- dark, and a light picked up or put down mid-floor.
+        visionRadius = Player.visionRadius(game.player),
     })
 
     -- On a resume, seat the token where the player quit (the map widget otherwise spawns it at the start
@@ -4017,7 +4029,11 @@ function game.update(dt)
         -- A panel just closed. The Loadout is the one that can re-kit the company mid-run, and gear is
         -- what the muster ruler is made of -- so re-rate here and the markers answer to the
         -- weapon that was just handed over before the player has taken a step.
-        if game.panelWasOpen then game:refreshMuster() end
+        --
+        -- The fog is re-read on the same beat and for the same reason: a torch reaches the company
+        -- through a panel every time (a chest's loot reveal, a merchant, the Loadout's own grid), so
+        -- this is the one seam every light passes through on its way into a pack.
+        if game.panelWasOpen then game:refreshMuster(); game:applyVision() end
         game.map.locked = mapHeld()
         game.map:update(dt)
     end

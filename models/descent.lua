@@ -681,9 +681,11 @@ Descent.SPINNER_SPARES_EXIT = true
 
 -- THE DARK runs half a crossing. It is a DURATION and so it does scale: a stretch of walking means a
 -- stretch of THIS floor. It also bites harder than it used to for a reason that is not about size --
--- sight is flat at one step now (models/player.lua's Player.VISION), so the dark takes it to nothing
--- rather than merely narrowing it, and thirty steps of that on an eighteen-step floor is most of a
--- sitting spent unable to read the place you are about to walk into.
+-- the base is one step now (models/player.lua's Player.VISION) and the dark takes it to nothing rather
+-- than merely narrowing it, so thirty steps of that on an eighteen-step floor is most of a sitting spent
+-- unable to read the place you are about to walk into. UNLESS THE COMPANY BOUGHT A LIGHT: a torch's
+-- step rides on top of the dark's zero (states/game.lua's applyVision), which turns the same stretch
+-- from blind walking into ordinary walking. That is what the item is for.
 function Descent.darkSteps(grid)
     local span = ((grid and grid.cols) or 10) + ((grid and grid.rows) or 10)
     return math.max(4, math.floor(span / 2))
@@ -895,7 +897,9 @@ end
 -- TEN A SIDE, AND IT IS SIGHT THAT SETS IT rather than any argument about how much ground a floor
 -- should hold. The fog lifts ONE STEP (models/player.lua's Player.VISION) -- the place you stand in and
 -- the four beside it -- so what a floor costs to learn is a function of how many places there are to
--- stand in. Six a side was twenty-seven places and about nine steps corner to corner, which one step of
+-- stand in. A TORCH MAKES IT TWO, which is the size this number was picked against being softened by
+-- one item: measure a lit run before moving it, because the lookahead a light buys is exactly the thing
+-- a floor's size is meant to be selling. Six a side was twenty-seven places and about nine steps corner to corner, which one step of
 -- sight reads out almost completely on the way to the stair: the floor was known by the time it was
 -- crossed, and there was nothing left to have explored.
 --
