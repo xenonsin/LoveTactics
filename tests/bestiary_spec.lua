@@ -251,13 +251,16 @@ local function isArmourless(def)
 end
 
 -- WAIVED, NOT EXEMPT -- the entry is the argument, exactly as Balance.FROZEN's is.
-local NO_INNATE = {
-    -- The one body a rescale is also forbidden to touch (Balance.FROZEN). data/tutorials/village.lua
-    -- quotes its arithmetic line by line and the parry beat is built on it landing a specific blow and
-    -- surviving a specific answer; an innate resist is that arithmetic changing. It also declares
-    -- `scaling = false`, so there is nowhere for the change to hide either.
-    character_demon_grunt = "prologue: the parry lesson is written against these exact numbers",
-}
+--
+-- CURRENTLY EMPTY, and the one entry it used to hold is worth keeping written down. The Demon Grunt was
+-- waived because data/tutorials/village.lua quotes its arithmetic line by line and an innate resist is
+-- that arithmetic changing. Half of that was right and stays right: the prologue's blows are a sword and
+-- a mace, so a slash/pierce/impact redistribution really would move a number the lesson counted, and the
+-- grunt still carries none. But the lesson contains no holy damage at all, so the holy line the demon
+-- rule below requires costs the prologue nothing -- and the body is the first demon anybody meets, which
+-- is the worst possible place for the bestiary's one exception to live. It now declares `holy = -6` and
+-- nothing else, which is a legal table (the physical sum is trivially zero) and needs no waiver.
+local NO_INNATE = {}
 
 tests[#tests + 1] = { name = "every armourless body declares what it has instead", fn = function()
     local missing = {}
@@ -331,6 +334,38 @@ tests[#tests + 1] = { name = "an innate resist is a trade, not a buff", fn = fun
     end
     table.sort(bad)
     assert(#bad == 0, "innate `resist` tables that break the contract:\n  " .. table.concat(bad, "\n  "))
+end }
+
+tests[#tests + 1] = { name = "a demon takes holy the harder", fn = function()
+    -- The one thing `kind = "demon"` is allowed to MEAN mechanically. Everywhere else in this file kind
+    -- is a declared label that derives nothing (see the header) -- this is the deliberate exception, and
+    -- it is an exception because the whole holy line of the game is written against it: Smite, Demon
+    -- Bane ("cuts the damned tenfold"), the Cathedral's entire shelf, and the Priest's reason to exist
+    -- at all. A demon that a Smite lands on like anybody else quietly deletes the payoff of every one
+    -- of those, and nothing on the blueprint would say so.
+    --
+    -- MEASURED ON THE UNIT THAT FIGHTS, not on the blueprint, because the body is not obliged to carry
+    -- the line itself. The Demon Lord's holy weakness lives on the crown it wears
+    -- (data/items/utility/utility_demonic_essence.lua's `resist = { holy = -8 }`, bound and unstealable,
+    -- so it can never come off), which is the same statement made one layer out -- and the fold that
+    -- flattens the two is exactly what the player's Smite reads. Asserting on `def.resist` would have
+    -- failed that body for being written the more interesting way.
+    local weak = {}
+    for id, def in pairs(Character.defs) do
+        if def.kind == "demon" then
+            local unit = { char = Character.instantiate(id), alive = true, side = "enemy" }
+            Combat.refreshPassives(unit)
+            if (unit.resist.holy or 0) >= 0 then
+                weak[#weak + 1] = string.format("%s (holy resist %+d)", id, unit.resist.holy or 0)
+            end
+        end
+    end
+    table.sort(weak)
+    -- Asserted as a SET, like the innate contract above: the failure mode is the next demon added, not
+    -- any of the fifteen standing here now.
+    assert(#weak == 0, "these declare `kind = \"demon\"` and take holy damage like anybody else, so "
+        .. "Smite and Demon Bane are worth nothing against them (docs/bestiary.md):\n  "
+        .. table.concat(weak, "\n  "))
 end }
 
 tests[#tests + 1] = { name = "an innate resist reaches the unit that fights", fn = function()

@@ -32,7 +32,20 @@ return {
     -- price. See docs/bestiary.md, "What a creature wears instead of armour".
     --   She is wearing the wood the way somebody wears a name, and a point sticks in wood.
     --   Wood splits, and wood burns. Both of those are things the Cathedral already knows how to do.
-    resist = { pierce = 4, impact = -4, dark = 4, fire = -8 },
+    --
+    -- THE ELEMENT WEAKNESS IS SPLIT, and the split is what makes her a demon rather than a tree. She
+    -- was written as `fire = -8`: the whole of a tier-3 weakness spent on the one line her own flavour
+    -- asks for, and no holy line at all -- which made her the single body of the fifteen that answer to
+    -- `kind = "demon"` that a Smite landed on like anybody else. Whatever the wood is, the thing wearing
+    -- it is damned, and being damned is not a per-body flavour choice; it is what the kind MEANS
+    -- (docs/bestiary.md, and tests/bestiary_spec.lua now fails a demon that carries no holy line).
+    --
+    -- So the same -8 pays for both, at -4 each. Her total is untouched -- she is exactly as soft as she
+    -- was, and the dark resist above still costs her precisely what it cost her before -- but the party
+    -- now has two answers to her instead of one, and a Cathedral line that walked into the glades
+    -- carrying holy is no longer holding the one weapon she is indifferent to. Wood still burns; it is
+    -- simply no longer the only thing that opens her.
+    resist = { pierce = 4, impact = -4, dark = 4, fire = -4, holy = -4 },
     startingItems = { "weapon_antler_crown", "utility_chorister_call" },
     defaultAction = "weapon_antler_crown",
     archetype = "aggressive",

@@ -106,8 +106,26 @@ The bands are judged on the **best** melee probe, which is by construction the o
 So every body's TTK moves *down* as this table is authored, never up, and the pass needed no rescale
 behind it.
 
-`character_demon_grunt` is the one waiver, for the same reason `Balance.FROZEN` names it: the
-prologue's parry lesson is written against its exact arithmetic.
+There are no waivers. `character_demon_grunt` used to be one, for the same reason `Balance.FROZEN`
+names it — the prologue's parry lesson is written against its exact arithmetic — and it still carries
+no physical line, because the lesson's blows are a sword and a mace. It carries the holy line below,
+which the lesson never touches.
+
+### A demon takes holy the harder
+
+`kind` derives nothing anywhere else in this document; this is the one exception, and it is the one
+place the label is allowed to mean something mechanical. Every body that declares `kind = "demon"`
+must go into a fight with a **negative holy resist** — enforced in `tests/bestiary_spec.lua`, measured
+on the unit after `Combat.refreshPassives` rather than on the blueprint.
+
+The reason it is checked rather than left to authors: the game's whole holy line is written against it.
+Smite, Demon Bane ("cuts the damned tenfold"), the Cathedral's shelf and the Priest's reason to exist
+all pay off here and nowhere else. A demon that a Smite lands on like anybody else deletes that payoff
+silently, and nothing on the blueprint would say so.
+
+Measuring the *unit* is what lets the line live one layer out. The Demon Lord's is on the crown it
+wears (`utility_demonic_essence`, `holy = -8`, bound and unstealable, so it never comes off) rather
+than on the body — the same statement, made where the fiction wanted it.
 
 ## What each rung costs to author
 

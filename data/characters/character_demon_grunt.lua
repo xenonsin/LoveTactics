@@ -107,6 +107,30 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 6, luck = 5,
     },
+    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist table is
+    -- written in and summed into the same total. One line, where every other creature carries four --
+    -- and the missing three are the point.
+    --
+    -- THIS IS THE BODY THE INNATE PASS WAIVED, and the waiver was right about the half it was about.
+    -- The prologue quotes this stat block line by line (data/tutorials/village.lua, and see the header
+    -- above): five authored blows and the sliver the last one leaves. A slash/pierce/impact
+    -- redistribution IS that arithmetic changing -- the parry beat is a sword, Rowan's answer is a
+    -- mace, and either line moves a number the lesson counted.
+    --
+    -- Holy is not in the lesson. The five blows are the iron sword (slash), the iron mace (impact) and
+    -- Minor Shock (lightning); nothing in the village deals holy damage, and nothing the player carries
+    -- there can. So this is the one line that can be written on this body without touching a single
+    -- number the prologue counted -- and it has to be written, because a demon takes holy the harder
+    -- and this is the first demon anyone meets. It would be a strange bestiary whose one exception to
+    -- that was the creature the whole game names as the example.
+    --
+    -- -6 is the tier-2 weakness, the same depth the Assayer, the Chorister, the Cinder Kin and the
+    -- Forge Wretch carry (Balance.INNATE_BUDGET x Balance.INNATE_WEAKNESS_FACTOR). It buys nothing
+    -- back: a creature's hide is a redistribution across the three physical types, and this body is
+    -- forbidden the physical half, so it pays the price and takes no resist for it. That is the
+    -- correct shape here -- it is the sturdiest common enemy in the game for reasons that have
+    -- nothing to do with what it deserves, and Smite is the answer that was always meant to work.
+    resist = { holy = -6 },
     -- Its body IS its weapon, and that weapon is the point of the thing (see the file). It used to
     -- carry a borrowed iron sword, which cost the prologue twice over: a 6-damage swing at a 62-health
     -- avatar is not a reason to spend a whole mana pool delaying its turn, and the sword's Parry came
