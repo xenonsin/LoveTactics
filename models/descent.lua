@@ -2524,6 +2524,24 @@ function Descent.markTacticsTaught(player)
     return true
 end
 
+-- ...and the same mark for the Armory's OTHER tab that has to be explained before it can be used, the
+-- Roll (ui/class_editor.lua). Same shape, deliberately separate ledger -- two windows about two
+-- features, each of which goes out when its own has been read.
+--
+-- NOT GATED ON A DEPTH, unlike Tactics. A class is what a body IS and the tab is on the strip from the
+-- first morning, so there is no unlock to announce -- what the pip says is "you have never opened
+-- this", not "the room grew a control". That also means it never lights the Armory's door dot: nothing
+-- about the city changed while the company was below.
+function Descent.classesTaught(player)
+    return (player and player.classesTaught) or false
+end
+
+function Descent.markClassesTaught(player)
+    if not player then return false end
+    player.classesTaught = true
+    return true
+end
+
 -- ---------------------------------------------------------------------------
 -- The count: what the company left forming behind it
 -- ---------------------------------------------------------------------------

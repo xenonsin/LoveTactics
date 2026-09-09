@@ -25,7 +25,12 @@
 local CloseButton = require("ui.close_button")
 local Scale = require("scale")
 local InputMode = require("input_mode")
+local Locale = require("models.locale")
 local Theme = require("ui.theme")
+
+-- Where this window's own chrome is authored. The BODY comes in from the caller (already resolved
+-- through the same bag); only the footer belongs to the widget.
+local NOTES = "conversation_tutorial_notes"
 
 local TutorialNote = {}
 TutorialNote.__index = TutorialNote
@@ -109,8 +114,13 @@ function TutorialNote:draw()
     end
 
     Theme.set(Theme.muted)
-    local hint = InputMode.pick("A to continue", "Tap to continue", "Click, or press Enter to continue")
-    love.graphics.printf(hint, self.boxX, self.boxY + self.boxH - 34, BOX_W, "center")
+    -- The way out, named for the device in hand. `pick` chooses the LINE ID and the words come out of
+    -- the tutorial's hint bag like every other thing this window says, so the footer translates with
+    -- the body above it rather than being the one English sentence left on the screen.
+    local hint = Locale.line(NOTES, InputMode.pick("dismiss_pad", "dismiss_touch", "dismiss_key"))
+    if hint then
+        love.graphics.printf(hint, self.boxX, self.boxY + self.boxH - 34, BOX_W, "center")
+    end
 
     self.closeButton:draw()
 

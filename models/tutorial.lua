@@ -16,7 +16,6 @@
 -- the call sites in states/battle.lua (computeReachable / computeRange / computeThreat).
 
 local Registry = require("models.registry")
-local Conversation = require("models.conversation")
 local Locale = require("models.locale")
 
 local Tutorial = {}
@@ -53,23 +52,11 @@ end
 -- Text
 -- ---------------------------------------------------------------------------
 
--- Find an authored line by its `id` in the tutorial's conversation. Conversation nodes may nest
--- inside conditional blocks, so this walks rather than indexes -- the tutorial authors flat scripts,
--- but a walk costs nothing and cannot be wrong if that changes.
+-- Find an authored line by its `id` in the tutorial's conversation -- the same hint-bag lookup every
+-- other coached surface uses (models/locale.lua's Locale.node, which walks nested `when` blocks and
+-- memoizes the index). This file used to carry its own copy of that walk.
 local function nodeById(def, lineId)
-    local conv = Conversation.defs[def.lines]
-    if not (conv and lineId) then return nil end
-    local function search(entries)
-        for _, entry in ipairs(entries or {}) do
-            if entry.script then
-                local found = search(entry.script)
-                if found then return found end
-            elseif entry.id == lineId then
-                return entry
-            end
-        end
-    end
-    return search(conv.script)
+    return Locale.node(def.lines, lineId)
 end
 
 -- Resolve a line id to display text through the ordinary localization path, so a translated tutorial

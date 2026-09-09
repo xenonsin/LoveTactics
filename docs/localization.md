@@ -132,6 +132,48 @@ is what tells a caller to render words instead of a pill (`Locale.coachLine` →
 A line that needs the token mid-sentence will get a stray capital — reword it, or add a lowercase
 companion token the day a language genuinely needs one.
 
+### Caller tokens
+
+`Locale.line(conv, id, tokens)` and `Locale.coach(conv, id, tokens)` take a second token channel that
+the *caller* supplies — `{ stair = 2, max = 8 }` fills `{stair}` and `{max}` after the line has been
+localized. It is a separate channel from the table above on purpose: those are the fixed handful a
+scene may carry, all read off the active player; these belong to whatever is drawing the line.
+
+Use it for **any figure or name a teaching line quotes**. The alternative — concatenating the value
+into the sentence at the call site — puts it somewhere no translator can move it, and somewhere that
+goes stale the day the constant does. The Tally window was written that way and is the worked example
+of the fix: four of `models/descent.lua`'s constants, four tokens.
+
+## Teaching text: hint bags
+
+**Every word the tutorial says is authored in a conversation file**, including the words nobody
+speaks. A *hint bag* is a conversation nobody plays in order: each node carries an `id`, and a surface
+fetches one at a time.
+
+| File (`data/conversations/tutorial/`) | Fielded by |
+|---|---|
+| `conversation_tutorial_village.lua` | the guided battle's lesson (`models/tutorial.lua`) |
+| `conversation_tutorial_flight.lua` | the prologue's overworld coach (`states/game.lua`) |
+| `conversation_tutorial_wound.lua` | the first-wound bubble (`states/game.lua`) |
+| `conversation_tutorial_city.lua` | the Gate's and the plaza's bubbles (`states/gate.lua`, `states/hub.lua`) |
+| `conversation_tutorial_notes.lua` | the tutorial windows, and their footer (`ui/panels/tutorial_note.lua`) |
+
+The lookup is one seam — `Locale.node` / `Locale.line` / `Locale.coach` in `models/locale.lua` — which
+walks nested `when` blocks and memoizes per conversation. A miss resolves to `nil` and the caller
+draws nothing; an id renamed out from under a surface is an authoring slip, not a crash.
+
+**Why a conversation file and not a string in the state.** `extract-strings` looks at
+`data/conversations/` and nowhere else. A string typed into a state is never stamped, never mirrored
+into the grid, never checked for drift, and never reaches a translator — and nothing reports that it
+did not. `tests/tutorial_strings_spec.lua` fails the build over a teaching surface that carries its
+own English (a `TutorialNote` with a literal title or body, a `CoachBubble.draw` on a literal).
+
+**The remaining gap** is the grown-door bubble in the city: its frame is authored (`new_door`, with a
+`{door}` token), but the room's name and the sentence saying what it is for come off the building
+blueprint (`data/buildings/*.lua`), which the extraction tool does not reach yet. Blueprint strings —
+building, item and class names and descriptions — are the next namespace to extract; `Locale.key.name`
+already exists for them, and today only speaker names use it.
+
 ## Extraction tool
 
 `tools/extract_strings.lua` (`extract-strings`):

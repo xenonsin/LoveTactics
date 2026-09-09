@@ -46,6 +46,10 @@ local Theme = require("ui.theme")
 local CountMeter = require("ui.count_meter") -- Iselle's tally, on the Rift's plate
 local Descent = require("models.descent")    -- ...and what it reads, plus the mark that reveals it
 
+-- The plaza's coaching words, as a hint bag rather than strings in this file
+-- (data/conversations/tutorial/conversation_tutorial_city.lua; models/locale.lua's Locale.coach).
+local CITY = "conversation_tutorial_city"
+
 local hub = {}
 
 local titleFont = Theme.display(28)
@@ -103,10 +107,14 @@ local BURGER_X, BURGER_Y = 18, 18
 -- (The Gate stage was the Quest Board before that, which is cut outright. Coaching a door the city no
 -- longer has would leave the arrival pointing at nothing and the bubble anchored to a rect that is not
 -- there -- which is the failure both retirements had to be walked through.)
+-- The words are a hint bag (data/conversations/tutorial/conversation_tutorial_city.lua) rather than a
+-- string here, so the one instruction the first morning gives is stamped and translated like every
+-- other line the tutorial speaks. A stage names the LINE; hub.draw resolves it at draw time, which is
+-- also what lets its {select} re-read the device in the player's hands mid-visit.
 local INTRO_STAGES = {
     coach = {
         building = "the_gate",
-        text = "the Rift. The stair down is inside.",
+        line = "rift_card",
     },
 }
 
@@ -137,7 +145,12 @@ local coachedDoor  -- an INTRO_STAGES-shaped stage for a new door, or nil
 -- article normalized ("The Forge" -> "the Forge", "Cafe" -> "the Cafe", so a name already carrying one
 -- does not get two), then the blueprint's own sentence saying what the room is for.
 --
--- hub.draw composes "Click " in front of the whole thing, which is why it opens lowercase.
+-- It is the {door} token of the `new_door` line, which is what puts the press in front of it -- which
+-- is why it opens lowercase and carries no verb of its own.
+--
+-- THE NAME AND THE SENTENCE ARE STILL ENGLISH, and this is the one place in the tutorial where that is
+-- true: both come off the building blueprint (data/buildings/*.lua), which the extraction pipeline does
+-- not reach yet. The frame around them translates; the room's own words wait on blueprint extraction.
 local function doorText(b)
     local bare = (b.name or "door"):gsub("^[Tt]he%s+", "")
     local text = "the " .. bare .. "."
@@ -181,7 +194,7 @@ local function coachNextDoor()
     if coachedDoor or (hub.player and hub.player.hubIntro) then return end
     local b = table.remove(doorQueue, 1)
     if not b then return end
-    coachedDoor = { building = b.id, text = doorText(b), door = true }
+    coachedDoor = { building = b.id, line = "new_door", door = true, doorText = doorText(b) }
     focusCoachedCard()
 end
 
@@ -345,11 +358,12 @@ local function launchPanel(building)
         onClose = dismissPanel,
     })
 
-    -- THE TACTICS WINDOW IS BEHIND THE TAB IT EXPLAINS, not in front of this door: the Loadout panel
-    -- pips the unread tab and plays the lesson when it is pressed (ui/panels/party.lua's
-    -- tacticsUnread / openTacticsNote), so the room opens on the screen the player pressed it for and
-    -- the explanation arrives at the control being explained. Reading it there is what puts the
-    -- Armory's red dot below out, on the same ledger (Descent.tacticsTaught).
+    -- A TAB'S WINDOW IS BEHIND THE TAB IT EXPLAINS, not in front of this door: the Loadout panel pips
+    -- the unread tab and plays the lesson when it is pressed (ui/panels/party.lua's noteUnread /
+    -- openNote, which Tactics and the Roll both go through), so the room opens on the screen the
+    -- player pressed it for and the explanation arrives at the control being explained. Reading the
+    -- Tactics one there is what puts the Armory's red dot below out, on the same ledger
+    -- (Descent.tacticsTaught); the Roll's window lights no door, since nothing about the city grew.
     activePanel = opened
 end
 
@@ -708,9 +722,13 @@ function hub.draw()
     if stage and not activePanel then
         local rect = introBuildingRect(stage)
         if rect then
-            local key = Locale.selectKey() -- "Enter" / "A", or nil on the mouse
-            local text = key and stage.text or ("Click " .. stage.text)
-            CoachBubble.draw(text, rect, { prefer = "below", key = key, avoid = otherCardRects(stage) })
+            -- Both stages carry a line id, not a sentence: coachLine resolves it for the device in
+            -- hand ("Enter" / "A" as a cap, or the plain verb on a pointer), and a grown door's own
+            -- name arrives as the {door} token (see doorText).
+            local text, key = Locale.coach(CITY, stage.line, { door = stage.doorText })
+            if text then
+                CoachBubble.draw(text, rect, { prefer = "below", key = key, avoid = otherCardRects(stage) })
+            end
         end
     end
 

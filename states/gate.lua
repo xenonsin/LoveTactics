@@ -33,6 +33,11 @@ local CoachBubble = require("ui.coach_bubble") -- the first visit's one instruct
 local TutorialNote = require("ui.panels.tutorial_note") -- ...and the window that explains the tally
 local Locale = require("models.locale")        -- ...and the key cap it wears, or nil on the mouse
 
+-- The hint bags this screen draws its words from (data/conversations/tutorial/), by id rather than
+-- played as scenes. See models/locale.lua's Locale.node.
+local CITY = "conversation_tutorial_city"
+local NOTES = "conversation_tutorial_notes"
+
 local gate = {}
 
 local titleFont = Theme.display(34)
@@ -199,18 +204,19 @@ function gate.enter(self, opts)
     -- character. The mark is spent when the window is CLOSED (a modal has certainly been read), and it
     -- is saved there rather than passed through the switch, which would not survive a quit.
     if Descent.everClimbedOut(gate.player) and not Descent.tallyTaught(gate.player) then
+        -- The words live in data/conversations/tutorial/conversation_tutorial_notes.lua, like every
+        -- other line the tutorial speaks, so they are stamped and translated with no wiring here. The
+        -- four figures ride in as TOKENS rather than being concatenated into the sentence: they are
+        -- Descent's own constants, and a number welded into a clause is one a translator cannot move
+        -- and one that goes stale the day the constant does.
         gate.panel = TutorialNote.new({
-            title = "The Tally",
-            body = "Beside the stair is a count of what is forming on the floors you have left behind. "
-                .. "Nothing down there is born -- it forms, and it does not stop.\n"
-                .. "\n"
-                .. "Climb out early and the count rises by " .. Descent.COUNT_STAIR
-                .. ". Lose the company and it rises by " .. Descent.COUNT_WIPE
-                .. ". Every new floor you reach takes one back off, and sealing a circle takes off "
-                .. Descent.COUNT_SEAL .. ".\n"
-                .. "\n"
-                .. "Fill all " .. Descent.COUNT_MAX .. " marks and what is below stops waiting to be "
-                .. "found. It comes up the stair on its own -- which is what happened to Bellmere.",
+            title = Locale.line(NOTES, "tally_title"),
+            body = Locale.line(NOTES, "tally_body", {
+                stair = Descent.COUNT_STAIR,
+                wipe  = Descent.COUNT_WIPE,
+                seal  = Descent.COUNT_SEAL,
+                max   = Descent.COUNT_MAX,
+            }),
             onClose = function()
                 gate.panel = nil
                 Descent.markTallyTaught(gate.player)
@@ -291,8 +297,10 @@ function gate.draw()
     if not gate.panel and gate.menu and not Descent.gateCoached(gate.player) then
         for _, item in ipairs(gate.menu.items) do
             if item.coach and item.x then
-                local key = Locale.selectKey() -- "Enter" / "A", or nil on the mouse
-                local text = key and "to take the stair down." or "Click to take the stair down."
+                -- Authored with a leading {select} (conversation_tutorial_city.lua); coachLine hands
+                -- back the sentence without it plus the cap to draw, or the whole thing in words when
+                -- the device has no button worth drawing.
+                local text, key = Locale.coach(CITY, "gate_stair")
                 CoachBubble.draw(text, { x = item.x, y = item.y, w = item.w, h = item.h },
                                  { prefer = "above", key = key })
                 break

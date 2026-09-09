@@ -361,12 +361,24 @@ return {
     ["line.conversation_touchstone_vendor_intro.7"] = { en = "People have. I have named what was left of two of them.", ja = "" },  -- TODO
     ["line.conversation_touchstone_vendor_intro.8"] = { en = "You hold other people's things and you give them back whole. That is a good trade to be in.", ja = "" },  -- TODO
     ["line.conversation_touchstone_vendor_intro.9"] = { en = "I have seen a weigher put a thumb on a scale. Both thumbs, once.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_city.1"] = { en = "{select} to take the stair down.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_city.2"] = { en = "{select} the Rift. The stair down is inside.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_city.3"] = { en = "{select} {door}", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.1"] = { en = "Walk to the chest ahead. Use WASD, the arrow keys, or click a tile.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.2"] = { en = "Open your loadout to see what you found.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.3"] = { en = "{select} an item in your stash to equip it to a hero.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.4"] = { en = "A shield changes what Wait does: end the turn braced instead of idle.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.5"] = { en = "Armor answers a kind of damage. This one drinks fire, and nothing else.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.6"] = { en = "This one has no action to press. It sits in a cell and works on its own.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_notes.1"] = { en = "The Tally", ja = "" },  -- TODO
+    ["line.conversation_tutorial_notes.2"] = { en = "Beside the stair is a count of what is forming on the floors you have left behind. Nothing down there is born -- it forms, and it does not stop.\n\nClimb out early and the count rises by {stair}. Lose the company and it rises by {wipe}. Every new floor you reach takes one back off, and sealing a circle takes off {seal}.\n\nFill all {max} marks and what is below stops waiting to be found. It comes up the stair on its own -- which is what happened to Bellmere.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_notes.3"] = { en = "Tactics", ja = "" },  -- TODO
+    ["line.conversation_tutorial_notes.4"] = { en = "Your company can be taught to fight on its own.\n\nThis tab gives each body a list of rules, read top to bottom on its turn -- who to strike, when to fall back, what to save its breath for. A body with no rule it can obey simply waits for you.\n\nIn a fight, Auto hands the turn to those rules. Turn it off at any time and the company is yours again. Nothing is decided that you cannot take back.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_notes.5"] = { en = "Classes", ja = "" },  -- TODO
+    ["line.conversation_tutorial_notes.6"] = { en = "Every body in your company stands in one class, and that is what its levels buy -- what a knight gains on the way up is not what a rogue gains.\n\nA class climbs by being fought in: every action banks technique against the house the thing in the hand belongs to. Levels in a house open the classes beyond it, and a class still shut stands in the list with its name and the level that opens it, so there is always something to climb towards.\n\nChanging class is free and takes nothing back. Levels already earned stay earned -- a change costs you the levels ahead, never the ones behind -- so it is a choice you can afford to make early.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_notes.7"] = { en = "A to continue", ja = "" },  -- TODO
+    ["line.conversation_tutorial_notes.8"] = { en = "Tap to continue", ja = "" },  -- TODO
+    ["line.conversation_tutorial_notes.9"] = { en = "Click, or press Enter to continue", ja = "" },  -- TODO
     ["line.conversation_tutorial_village.1"] = { en = "Close the distance and strike without fear, {name}!", ja = "" },  -- TODO
     ["line.conversation_tutorial_village.10"] = { en = "{select} on the lit tile to move there.", ja = "" },  -- TODO
     ["line.conversation_tutorial_village.11"] = { en = "{select} on Clear Out in your grid to ready it.", ja = "" },  -- TODO
@@ -494,7 +506,9 @@ return {
     ["title.conversation_prologue_ruins"] = { en = "First Job", ja = "" },  -- TODO
     ["title.conversation_prologue_village"] = { en = "The Breach", ja = "" },  -- TODO
     ["title.conversation_touchstone_vendor_intro"] = { en = "The Touchstone", ja = "" },  -- TODO
+    ["title.conversation_tutorial_city"] = { en = "The City's Instructions", ja = "" },  -- TODO
     ["title.conversation_tutorial_flight"] = { en = "The Open Road", ja = "" },  -- TODO
+    ["title.conversation_tutorial_notes"] = { en = "What the Screen Owes You", ja = "" },  -- TODO
     ["title.conversation_tutorial_village"] = { en = "Rowan's Lesson", ja = "" },  -- TODO
     ["title.conversation_tutorial_wound"] = { en = "Carried Out", ja = "" },  -- TODO
     ["title.conversation_undercroft_discipline_unlocked"] = { en = "Off the Book", ja = "" },  -- TODO

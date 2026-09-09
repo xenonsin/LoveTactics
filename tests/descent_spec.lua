@@ -1239,4 +1239,19 @@ return {
         assert(Descent.tacticsUnlocked(back), "the unlock rides the save on `deepest`...")
         assert(Descent.tacticsTaught(back), "...and the window is not shown a second time")
     end },
+
+    { name = "the Roll's window is its own mark, and rides the save", fn = function()
+        -- The Classes tab's lesson (ui/panels/party.lua's NOTES) has no unlock beside it -- the tab is
+        -- on the strip from the first morning -- so the mark is the whole of what the pip reads. Kept
+        -- SEPARATE from the Tactics mark on purpose: reading about rule lists must not quietly spend
+        -- the window explaining what a class is, and this pins that they cannot be the same flag.
+        local p = Player.new()
+        assert(not Descent.classesTaught(p), "a company that has never opened the Roll has not read it")
+        Descent.markTacticsTaught(p)
+        assert(not Descent.classesTaught(p), "and the Tactics window does not read it for them")
+        Descent.markClassesTaught(p)
+        assert(Descent.classesTaught(p), "reading it puts the pip out")
+        local back = Save.restore(reserialize(Save.snapshot(p)))
+        assert(Descent.classesTaught(back), "...and it is not shown again after a reload")
+    end },
 }

@@ -66,22 +66,13 @@ local hudFont = Theme.body(16)
 
 -- Coach lines, keyed by conversation and node id and resolved through Locale so {select}/localization
 -- behave exactly as in a spoken line. Two files feed the map: the prologue's flight leg, and the one
--- line the campaign teaches out here (the first wound). Each is walked once and cached.
-local HINT_FILES = {
-    conversation_tutorial_flight = "data.conversations.tutorial.conversation_tutorial_flight",
-    conversation_tutorial_wound  = "data.conversations.tutorial.conversation_tutorial_wound",
-}
-local hintNodes = {}
+-- line the campaign teaches out here (the first wound).
+--
+-- The lookup itself moved to models/locale.lua (Locale.node), which is where every surface that fields
+-- a hint bag now goes -- the city's bubbles, the Gate's, the tutorial windows and the guided battle's
+-- lesson. This file had the third copy of the same six-line walk.
 local function hintNode(convId, id)
-    local nodes = hintNodes[convId]
-    if not nodes then
-        nodes = {}
-        for _, node in ipairs(require(HINT_FILES[convId]).script) do
-            if node.id then nodes[node.id] = node end
-        end
-        hintNodes[convId] = nodes
-    end
-    return nodes[id]
+    return Locale.node(convId, id)
 end
 
 -- The Loadout button is opened by I (keyboard) / Y (gamepad) / a click (mouse) -- NOT the confirm key

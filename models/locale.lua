@@ -210,4 +210,85 @@ function Locale.coachLine(convId, entry)
     return Locale.substitute((raw:gsub("^%s*{select}%s*", ""))), key
 end
 
+-- ---------------------------------------------------------------------------
+-- Hint bags: authored lines that are not scenes
+-- ---------------------------------------------------------------------------
+--
+-- A HINT BAG is a conversation file nobody plays in order. Each node carries an `id` and is fetched one
+-- at a time by whatever surface owns it -- a coach bubble pinned to a card, the body of a tutorial
+-- window. data/conversations/tutorial/ holds them all.
+--
+-- WHY A CONVERSATION FILE AND NOT A STRING IN THE STATE. Because that is where the extraction tool
+-- looks (tools/extract_strings.lua): a line put there is stamped with a stable tag, mirrored into the
+-- grid, checked for drift by tests/conversation_spec.lua and translated with no wiring of its own. A
+-- string typed into a state is none of those things -- it is simply English, forever, and invisible to
+-- everything that measures how much of this game a translator can reach. See docs/localization.md.
+--
+-- Three surfaces read them: the overworld coach (states/game.lua), the city's and the Gate's bubbles
+-- (states/hub.lua, states/gate.lua) and the tutorial windows (ui/panels/tutorial_note.lua's callers).
+-- The guided battle's lesson reads its own lines the same way, through models/tutorial.lua.
+
+-- The authored node carrying `id` in a conversation, or nil. Indexed once per conversation and
+-- memoized: a bubble asks for its line every frame it is drawn.
+--
+-- Walks nested `when` blocks rather than indexing the top level, so a hint that later needs a
+-- condition around it does not silently stop resolving. Conversation is required lazily -- it requires
+-- THIS module, and a file-scope require either way would be a cycle.
+local nodeIndex = {}
+function Locale.node(convId, nodeId)
+    if not (convId and nodeId) then return nil end
+    local index = nodeIndex[convId]
+    if not index then
+        index = {}
+        local def = require("models.conversation").defs[convId]
+        local function walk(entries)
+            for _, entry in ipairs(entries or {}) do
+                if entry.script then walk(entry.script)
+                elseif entry.id then index[entry.id] = entry end
+            end
+        end
+        walk(def and def.script)
+        nodeIndex[convId] = index
+    end
+    return index[nodeId]
+end
+
+-- THE CALLER'S OWN TOKENS, filled in after the line has been localized -- `{ stair = 2, max = 8 }`
+-- turns `{stair}` and `{max}` into those figures wherever the translator has moved them.
+--
+-- A SECOND TOKEN CHANNEL, beside Locale.substitute's, and the split is the point: that one knows the
+-- fixed handful a SCENE may carry ({name}, {discipline}, ...), all of them read off the active player.
+-- These are the caller's -- a balance constant the window is quoting, the name of the door a bubble is
+-- pointing at -- and the alternative to passing them is a number welded into the middle of a sentence
+-- where no translator can reach it (which is exactly what the Tally window used to be).
+--
+-- Replaced through a function so a value carrying `%` cannot be read back as a capture reference, for
+-- the reason {posting} gives above.
+local function fill(text, tokens)
+    if not (text and tokens) then return text end
+    for name, value in pairs(tokens) do
+        local v = tostring(value)
+        text = text:gsub("{" .. name .. "}", function() return v end)
+    end
+    return text
+end
+
+-- One hint's display text, localized and with its tokens substituted, or nil when no node carries that
+-- id. NIL RATHER THAN A PLACEHOLDER on purpose: an id renamed out from under a caller is an authoring
+-- slip, and the honest failure is a bubble that does not draw (states/game.lua's drawCoachLesson makes
+-- the same call).
+function Locale.line(convId, nodeId, tokens)
+    local node = Locale.node(convId, nodeId)
+    return node and fill(Locale.text(convId, node), tokens) or nil
+end
+
+-- ...and the coaching form of the same lookup: `text, key`, with a leading {select} lifted out for the
+-- bubble to draw as a key cap (see Locale.coachLine).
+function Locale.coach(convId, nodeId, tokens)
+    local node = Locale.node(convId, nodeId)
+    if not node then return nil end
+    local text, key = Locale.coachLine(convId, node)
+    return fill(text, tokens), key
+end
+
 return Locale

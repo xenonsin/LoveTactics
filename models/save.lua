@@ -649,6 +649,9 @@ function Save.snapshot(player)
         -- ...and whether the window explaining Tactics and Auto has been read. The UNLOCK itself is not
         -- saved: it is read off `deepest`, which already rides this snapshot (Descent.tacticsUnlocked).
         tacticsTaught = player.tacticsTaught or nil,
+        -- ...and whether the window explaining the Roll has been read (Descent.classesTaught). No
+        -- unlock rides beside this one: the Classes tab is on the strip from the first morning.
+        classesTaught = player.classesTaught or nil,
         -- ...AND THE TALLY ITSELF, which used to ride on the run (models/descent.lua's snapshot) and now
         -- rides here beside the mark that gates its readout. The note above is the reason it had to move:
         -- it said the tally "falls back to nought the moment they descend again", which was survivable
@@ -1023,6 +1026,7 @@ function Save.restore(snap)
         -- wrong: the worst case is one bubble over a button that company has pressed before.
         gateCoached = snap.gateCoached == true,
         tacticsTaught = snap.tacticsTaught == true, -- ...nor read the Tactics window, same worst case
+        classesTaught = snap.classesTaught == true, -- ...nor the Roll's, which costs one window at worst
         -- The tally (Descent.count). READ OFF THE RUN AS A FALLBACK, because that is where every save
         -- written before the move put it -- and it is read from the RAW snapshot rather than from the
         -- restored run, which no longer carries the field at all. A company mid-descent when this landed
