@@ -24,6 +24,7 @@
 
 local Theme = require("ui.theme")
 local Sprite = require("models.sprite")
+local ButtonPrompt = require("ui.button_prompt")
 local utf8 = require("utf8")
 
 local SpeechBox = {}
@@ -43,14 +44,34 @@ local TEXT_X = 24
 local TEXT_TOP = 12
 local TEXT_BOTTOM = 12
 
+-- THE FOOTER BAND: the control-hint row lives INSIDE the panel, and the line is laid out above it.
+--
+-- It used to straddle the bottom edge -- half the pill on the paper, half hanging into the margin
+-- below it -- to buy the line another row of the cramped gutter. On screen that does not read as a
+-- clever use of space, it reads as buttons falling out of the box. So the row is brought in, and the
+-- room it needs is RESERVED here rather than hoped for: `footerH` is subtracted from the text area,
+-- so a page can never be measured into the pixels the hints are about to print on.
+--
+-- Reserved for BOTH callers even though only the dialogue draws hints, because these two panels are
+-- one object and the line must not move an inch when a scene hands off to the standing instruction
+-- (see the header). A band one of them leaves empty is the price of that.
+local FOOTER_GAP = 4    -- between the last row of the line and the pills
+local FOOTER_BOTTOM = 6 -- between the pills and the box's bottom edge
+
 -- How the line is set. The face is the theme's display serif at the same size a full-screen scene
 -- uses -- but the gutter under an 8x8 board is only about a hundred pixels tall, and at 22pt that is
 -- ONE row per page: the village opening read out a clause at a time, a click per clause. So the size
 -- is chosen by measurement instead of authored: the largest face in the ladder that fits ROWS rows in
 -- the room actually available. A roomier gutter (a shallower board) keeps the full 22 and simply
--- shows more; the cramped one steps down until three rows fit. Measured, never scaled -- see the
--- project rule on Theme.fitText.
-local MAX_SIZE, MIN_SIZE, ROWS = 22, 15, 3
+-- shows more; the cramped one steps down. Measured, never scaled -- see the project rule on
+-- Theme.fitText.
+--
+-- ROWS is TWO, and that is the footer band's bill. What is left of a 100px gutter once the plate, the
+-- band and the paddings are paid is about 57px, and three rows of a readable serif do not fit in it:
+-- asking for three drops the whole ladder to the 15pt floor and then only two of them fit anyway. Two
+-- rows at 20 beats two rows at 15. ROWS is a floor, not a cap -- a taller box takes the full 22 and
+-- simply shows however many rows its room allows (see Dialogue:paginate).
+local MAX_SIZE, MIN_SIZE, ROWS = 22, 15, 2
 
 -- Left edge of the bust's column. Everything else in the box stops short of it, so one place decides
 -- where that column is.
@@ -64,7 +85,19 @@ end
 function SpeechBox.textArea(x, y, w, h)
     local tx = x + TEXT_X
     local tw = SpeechBox.bustLeft(x, w) - SpeechBox.PAD - tx
-    return tx, y + TEXT_TOP, tw, h - TEXT_TOP - TEXT_BOTTOM
+    return tx, y + TEXT_TOP, tw, h - TEXT_TOP - math.max(TEXT_BOTTOM, SpeechBox.footerH())
+end
+
+-- The reserved footer band: everything below the line -- the hint row and the padding either side of
+-- it. Subtracted from the text area above, so the two cannot overlap by construction.
+function SpeechBox.footerH()
+    return ButtonPrompt.height() + FOOTER_GAP + FOOTER_BOTTOM
+end
+
+-- The row the hints are drawn on, as ButtonPrompt.draw wants it (its pill starts 2px above the y it
+-- is handed), sat on the band's floor.
+function SpeechBox.footerY(y, h)
+    return y + h - FOOTER_BOTTOM - ButtonPrompt.height() + 2
 end
 
 -- The face the line is set in, for a text area `textH` tall. See MAX_SIZE above.

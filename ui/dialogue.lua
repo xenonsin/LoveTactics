@@ -256,10 +256,10 @@ end
 -- stops short of the footer control hints along the bottom (drawn at boxH - 26).
 function Dialogue:textArea()
     -- Over a live scene the rect is the shared panel's, to the pixel -- see ui/speech_box.lua. It is
-    -- both wider and taller than this one: the name plate is pinned to a fixed spot on the top edge
-    -- rather than floating to wherever the speaker is standing (so the line can start higher, flush
-    -- under it), and the footer hints move down onto the bottom edge rather than sitting inside the
-    -- box (so it runs lower).
+    -- wider than this one and starts higher: the name plate is pinned to a fixed spot on the top edge
+    -- rather than floating to wherever the speaker is standing, so the first row sits flush under it.
+    -- The footer hints are reserved out of the bottom there too (SpeechBox.footerH), by the panel
+    -- rather than by this file, so the mentor's standing line clears them identically.
     if self.overScene then
         return SpeechBox.textArea(self.boxX, self.boxY, self.boxW, self.boxH)
     end
@@ -445,15 +445,15 @@ function Dialogue:skipRect()
     return { x = x, y = y - 6, w = w, h = ButtonPrompt.height() + 10 }
 end
 
--- The row the footer control hints are drawn on.
+-- The row the footer control hints are drawn on. Inside the box, on both surfaces.
 --
--- Inside the box normally. Over a live scene it STRADDLES the bottom edge instead, mirroring the name
--- plate on the top one -- the box there is the gutter under the board and every row it gives up is a
--- row of the line, so the hints step off the paper rather than eat a third of it. They still clear
--- the screen: the over-scene box is laid out with a margin below it (states/battle.lua), which is
--- what the overhanging half sits in.
+-- Over a live scene it used to STRADDLE the bottom edge -- the box there is the gutter under the
+-- board and every row it gives up is a row of the line, so the hints stepped off the paper rather
+-- than eat one. Reported as exactly what it looks like: buttons hanging out of the box. The row is
+-- inside now, and the band it needs is reserved out of the text area (SpeechBox.footerH), which is
+-- what keeps a page of the line from being measured into the pixels the hints print on.
 function Dialogue:hintY()
-    if self.overScene then return self.boxY + self.boxH - ButtonPrompt.height() / 2 end
+    if self.overScene then return SpeechBox.footerY(self.boxY, self.boxH) end
     return self.boxY + self.boxH - 26
 end
 
