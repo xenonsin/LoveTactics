@@ -2,10 +2,16 @@
 --
 -- This exists because the rule it pins was invisible for a long time and cost a whole teaching beat.
 -- Every demon blueprint used to carry `mana = 0` while the flight leg handed the player Drain Mana
--- (data/items/ability/ability_drain_mana.lua) at stop 5 as its ROGUE class introduction, "siphoned off
--- the demons blocking the way out" -- and Act 0 fields nothing but demons from that stop to the
--- Champion. So the one gift of seven that could not work spent 4 stamina and restored nothing, and
--- the only reading a player could take from it was that the ability was broken.
+-- (data/items/ability/ability_drain_mana.lua) at stop 5, "siphoned off the demons blocking the way
+-- out" -- and Act 0 fields nothing but demons from that stop to the Champion. So the one gift of seven
+-- that could not work spent 4 stamina and restored nothing, and the only reading a player could take
+-- from it was that the ability was broken.
+--
+-- THE GIFT HAS SINCE LEFT THE ROUTE and the contract it forced is the part worth keeping. Act 0's
+-- sweep now teaches one ITEM MECHANIC per stop rather than one class, and a siphon is not one of them
+-- (states/prologue.lua's FLIGHT_QUEST) -- but Drain Mana is still sold in the city, the Champion still
+-- runs its three stages out of one pool, and a demon whose casts were free would still be a body the
+-- game lies about. So the cases below are a BESTIARY contract now, not a teaching one.
 --
 -- The fix was to make the fiction true rather than to move the gift: demons channel hellfire, so
 -- hellfire is what their mana buys. What that turns into, and what is asserted below:
@@ -83,7 +89,9 @@ return {
         -- for the pool, and a Drain Mana would start disarming it outright rather than defanging it.
         name = "a demon's claws are still paid for out of stamina",
         fn = function()
-            for _, id in ipairs({ "weapon_rending_claws", "weapon_great_claws" }) do
+            -- The two DEMON claw blueprints. The Champion's used to be weapon_great_claws, which is
+            -- the bear's -- they split when the demons were made to burn (weapon_demon_claws.lua).
+            for _, id in ipairs({ "weapon_rending_claws", "weapon_demon_claws" }) do
                 local stat = costOf(id)
                 assert(stat == "stamina", id .. " is a body, and a body costs stamina -- got " .. tostring(stat))
             end
@@ -186,7 +194,7 @@ return {
 
             -- ...and its stamina is left to its body. The Sigil's riposte is billed there too, so a
             -- Champion whose casts came out of stamina was competing with its own guard for it.
-            local claws = Fixture.itemNamed(char, "weapon_great_claws")
+            local claws = Fixture.itemNamed(char, "weapon_demon_claws")
             assert(claws, "the Champion carries its claws")
             assert(char.stats.stamina.max >= (claws.activeAbility.cost.amount or 0),
                 "and can pay for a swing out of stamina alone")

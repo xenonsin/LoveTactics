@@ -108,41 +108,99 @@ local FLIGHT_QUEST = {
             -- champion is fought fresh. Each entry may carry a payload (a treasure's exact `loot`, an
             -- event's `conversation`); see states/game.lua.
             --
-            -- The stops after the first chest also hand over class abilities, so the sweep finishes
-            -- introducing the roster of classes the street fight opened: it taught fighter (Clear Out) and
-            -- mage (Jolt) by play, and stop 1 hands the bow (hunter); stops 2-6 cover the rest, one
-            -- ability apiece (the last chest carrying two, a second strike and spell for the fighter
-            -- and mage the village opened with), delivered through whatever channel the stop already
-            -- owns -- an event's gift, a fight's spoils, a chest. Stop 7 is a plain rest and grants
-            -- nothing: it exists so the champion is fought fresh. The class rides on WHICH ability,
-            -- never on who may hold it (docs/classes.md): this is a lesson, not an equip gate.
+            -- ============================================================================
+            -- EVERY GIFT ON THIS ROUTE TEACHES ONE ITEM MECHANIC. That is the whole ladder, and it is
+            -- a correction of what this list used to be.
+            --
+            -- It used to hand over ONE CLASS PER STOP -- priest, knight, alchemist, rogue, mage,
+            -- fighter -- so the sweep finished introducing the roster the street fight opened. The
+            -- trouble is that a class is not a thing a player can DO anything with on this route.
+            -- There is no second body to build, no shelf to shop, no ladder to climb; the city where
+            -- a class means something is still two beats away. So six of the seven gifts taught a
+            -- NAME, and the two that happened to teach a mechanic (the bow's range band, Mark
+            -- Target's grid gate) taught it by accident -- Mark Target on one branch of a coin flip,
+            -- and Power Strike's own adjacency requirement never named at all.
+            --
+            -- What a player CAN use on this route is the thing every one of these gifts actually is:
+            -- an item, sitting in a 3x3 grid, with rules about where it sits and what it touches.
+            -- So each stop now introduces exactly one of those rules, each leaning on the last:
+            --
+            --   1  range band              a weapon decides where you may stand
+            --   2  adjacency AURA          a charm pays every item it touches        (the grid rewards)
+            --   3  stance swap             an item rewrites a button you already have
+            --   4  adjacency GATE          an item refuses to fire without its neighbour (the grid gates)
+            --   5  typed mitigation        a coat answers one KIND of blow and no other
+            --   6  a status in your favour + an item with no button at all
+            --   7  -                       a plain rest, so the champion is fought fresh
+            --
+            -- The class an item belongs to is still true of it and is now beside the point (see
+            -- docs/classes.md: a class is the vendor shelf that stocks a thing, never an equip gate).
+            -- What the stop is FOR is the rule.
+            --
+            -- Two mechanics were deliberately left without a stop. COATINGS -- an aura that is spent
+            -- as it is used -- want a consumable, and stop 1's potions are the whole consumable
+            -- budget of Act 0; they are bought at the Crucible instead. WIND-UP has no gift because
+            -- the Champion at the end of the trail IS the lesson: ability_demon_roar and
+            -- ability_demon_cleave both channel, armed a turn early with the telegraph on the board,
+            -- and meeting the mechanic as a threat you have to move away from beats meeting it as a
+            -- button.
+            -- ============================================================================
             always = {
-                -- Stop 1: the teaching chest -- the bow kit (hunter) and the potions that fill the grid.
+                -- Stop 1: THE RANGE BAND. The bow reaches 4, needs line of sight, and cannot shoot a
+                -- foe standing in your face (minRange 2) -- so the first thing an item ever teaches
+                -- is that what you hold decides where you may stand. The potions ride along to teach
+                -- the other half of a chest: an item can arrive as a STACK. This is also the stop that
+                -- unlocks the Loadout button (states/game.lua's itemsVisible), so the grid lesson has
+                -- to start here or it has nowhere to happen.
                 { id = "encounter_treasure", loot = {
                     "weapon_iron_bow",
                     "consumable_mana_potion", "consumable_mana_potion",
                     "consumable_healing_potion", "consumable_healing_potion", "consumable_healing_potion",
                 } },
-                -- Stop 2: priest (Heal) -- the street shrine's healing rite, granted by the scene's choices.
+                -- Stop 2: THE ADJACENCY AURA -- the Censer of Dawn, granted by the shrine scene's
+                -- choices. The first time the 3x3 is ever anything but storage: put it beside a
+                -- weapon and the weapon changes (Combat.auraApplies). It was chosen over the charms
+                -- that sharpen a number because it pays out on the very next block rather than in
+                -- theory -- it makes adjacent kit strike as HOLY, and every demon on this route runs
+                -- holy -8 to -4 (character_demon_imp.lua, character_demon_champion.lua). The lesson
+                -- and its proof are one step apart.
                 { id = "encounter_event", conversation = "conversation_flight_event_shrine" },
-                -- Stop 3: knight (Shout/Taunt) -- won holding the line for the survivors.
-                { id = "encounter_survivors_defend", loot = { "ability_shout" } },
-                -- Stop 4: alchemist (Assayer's Eye) -- the apothecary's own lens, pressed on you (scene choices).
+                -- Stop 3: THE STANCE SWAP -- a buckler, won on the one stop whose objective is
+                -- standing your ground. An item can rewrite a button you already have: `waitBehavior`
+                -- turns Wait into Defend. Nothing else in the game says that a piece of kit changes
+                -- what an existing control DOES, and Rowan has been carrying a shield that does it
+                -- since the first fight (armor_sworn_aegis) with nobody ever saying so.
+                { id = "encounter_survivors_defend", loot = { "armor_buckler" } },
+                -- Stop 4: THE ADJACENCY GATE -- Mark Target, off the survivor scene, and it is handed
+                -- over on BOTH branches of that choice on purpose. This is the hard half of the grid:
+                -- `requiresAdjacent` leaves the item dead unless a ranged weapon touches it, the
+                -- combat panel names what is missing in a red broken-link badge, and the loadout
+                -- lights the cells that would fix it green (Combat.adjacencyCandidateCells). The bow
+                -- from stop 1 is the only answer in the bag, which is why this stop comes after it.
+                -- It used to sit on one branch, so half of all players met the rule and half never
+                -- did; a lesson decided by a coin flip is not a lesson.
                 { id = "encounter_event", conversation = "conversation_flight_event_survivor" },
-                -- Stop 5: rogue (Drain Mana) -- siphoned off the demons blocking the way out, and the
-                -- one gift on this route that has to be checked against what the route actually fields.
-                -- It used to be inert for the whole rest of Act 0: every demon carried mana = 0, so the
-                -- class introduction the stop exists to make spent 4 stamina and restored nothing. The
-                -- demons pay for their hellfire in mana now (data/characters/character_demon_imp.lua
-                -- states the contract), so the gift has something to bite on for the rest of the sweep.
-                -- The spoils land after the win, so the body it is actually FOR is the Champion at the
-                -- end of the trail, whose Roar and Cleave come out of one 60-mana pool -- and the fight
-                -- it is won in is the argument for carrying it, since the grunt on this map spends its
-                -- own mana burning the street the driver has to walk down.
-                { id = "encounter_survivors_extract", loot = { "ability_drain_mana" } },
-                -- Stop 6: mage (Fire Bolt) + fighter (Power Strike) -- the last chest before the gate
-                -- rounds out the two classes the village opened with, one spell and one strike.
-                { id = "encounter_treasure", loot = { "ability_fire_bolt", "ability_power_strike" } },
+                -- Stop 5: TYPED MITIGATION -- a Salamander Hide off the demons blocking the way out.
+                -- The party has worn leather and chainmail since the first fight and nothing has ever
+                -- said that a coat answers a KIND of blow; this one is blunt enough to be unmissable
+                -- ("Does nothing whatever about anything else") and it is not a guess about what the
+                -- route fields. Every imp on it swings weapon_cinder_spit, the grunts throw Brimstone,
+                -- the grunt's own claws burn now (weapon_rending_claws.lua) and the Champion is met
+                -- with two imps beside her. Combat.mitigatedDamage sums the resist of every matching
+                -- tag, so the coat blunts all of it. The spoils land after the win, so the body it is
+                -- actually FOR is the Champion at the end of the trail.
+                { id = "encounter_survivors_extract", loot = { "armor_salamander_hide" } },
+                -- Stop 6: the last chest before the gate, and two passive lessons at once.
+                --   RENEWAL -- a status you WANT. Everything Act 0 has taught about statuses so far is
+                --   a wound (Burn, Stun, Bleed, Mark); this is the first one that helps, it lands on
+                --   somebody else, and it keeps working on its own without being cast again. It is
+                --   also the only healing ABILITY in Act 0 -- it used to be the shrine's gift, and it
+                --   moved here when the shrine took the censer.
+                --   SECOND WIND -- an item with NO BUTTON. It declares no activeAbility at all: it
+                --   never appears among the bearer's actions, it just sits in a cell and answers on
+                --   its own, once. A player who has not met that reads every empty cell as a missing
+                --   button. Its flat `bonus` (+2 Defense, +1 Luck) teaches the same fact twice over.
+                { id = "encounter_treasure", loot = { "ability_renewal", "utility_second_wind" } },
                 -- Stop 7: a plain rest so the champion is fought fresh -- no loot, just a full refill.
                 { id = "encounter_rest" },
             },
@@ -170,6 +228,31 @@ local FLIGHT_QUEST = {
 -- Exported so tests/flight_leg_spec.lua can pin the tutorial route rather than trust ids typed across
 -- several files (the same reason VILLAGE_MAP is exported above).
 prologue.FLIGHT_QUEST = FLIGHT_QUEST
+
+-- THE THREE GIFTS THAT ARRIVE WITH NOBODY SPEAKING, and the coach line each one is owed.
+--
+-- Every stop above teaches one item mechanic. Two of them are handed over inside a conversation, where
+-- Rowan can simply say what the thing does -- the censer at stop 2 ("keep it next to whatever you mean
+-- to swing"), the mark at stop 4. The other three land in silence: two as a fight's spoils and one out
+-- of a chest. Those get a bubble instead, and it points at the GRID rather than at the map, because the
+-- rule each of them teaches is about where the item sits and what it is beside
+-- (states/game.lua's noteLesson / drawCoachLesson).
+--
+-- KEYED ON THE ITEM, not on the stop, so the lesson follows the thing wherever the ladder moves it: a
+-- re-cut route that pays the buckler somewhere else still explains the buckler. Only ids listed here
+-- say anything, so the ordinary campaign -- and the rest of this route -- stays silent.
+--
+-- It lives HERE rather than in the overworld screen because it is a fact about the route, and because
+-- the screen cannot be required headless (ui/theme.lua wants a window) -- which would have left the one
+-- table with two silent failure modes as the one table no test could read.
+--
+-- The node ids are in data/conversations/tutorial/conversation_tutorial_flight.lua beside the other
+-- three coach lines, so every word the coach says is in one file for a translator.
+prologue.FLIGHT_LESSONS = {
+    armor_buckler         = "stance_hint",  -- stop 3: an item rewrites a button
+    armor_salamander_hide = "typed_hint",   -- stop 5: a coat answers one KIND of blow
+    utility_second_wind   = "passive_hint", -- stop 6: an item with no action to press
+}
 
 -- ---------------------------------------------------------------------------
 -- Beat runners
@@ -366,12 +449,18 @@ end
 -- skipped city play differently from the walked-into one.
 
 -- The two gifts the flight's "Choose..." stops hand over, as { item, from }. Authored rather than read
--- out of the scenes because each of those options is a TRADE -- the shrine's rite against a heal, the
--- survivor's lens against a mark -- so nothing in the data says which branch the stop exists to teach.
--- These are the two the route's own comments name: priest at stop 2, alchemist at stop 4.
+-- out of the scenes because a stop's two branches are not equal to the ladder: the shrine still TRADES
+-- (the censer against a heal you feel now), so nothing in its data says which branch the stop exists to
+-- teach, and this names it. These are the mechanics the route's own comments name at those two cells:
+-- the adjacency aura at stop 2, the adjacency gate at stop 4.
+--
+-- The survivor's entry reads as a duplicate of the scene and is not one. BOTH of its branches grant
+-- Mark Target now -- the gate is the lesson and a lesson cannot be a coin flip -- so a walked sweep
+-- hands it over whichever way the choice went, and this is the line that keeps a SKIPPED one level
+-- with it.
 prologue.SCENE_GIFTS = {
-    { item = "ability_renewal",      from = "conversation_flight_event_shrine" },
-    { item = "ability_assayers_eye", from = "conversation_flight_event_survivor" },
+    { item = "utility_censer_of_dawn", from = "conversation_flight_event_shrine" },
+    { item = "ability_mark_target",    from = "conversation_flight_event_survivor" },
 }
 
 -- ...and the flags those same choices set. Both of the survivor's branches set this one, so taking it
@@ -405,8 +494,10 @@ prologue.SKIP_ACTIONS_PER_FIGHT = 10
 -- action and a body's technique concentrates where it is declared, which is why the company reaches the
 -- city holding the Bastion (Rowan, declared knight, and the avatar's starting sword is the Bastion's
 -- shelf too) and the Colosseum (the avatar's own badge, fighter by Growth.NEUTRAL_CLASS) and not the
--- other five. The sweep INTRODUCES all seven classes, one opener apiece -- but introducing is not
--- swinging, and a played Act 0 does not open those doors either.
+-- other five, and it no longer even brushes them: the sweep used to hand over one opener per class and
+-- now hands over one item MECHANIC per stop (see FLIGHT_QUEST), so a body reaches the city holding what
+-- it actually swung rather than a shelf of borrowed houses. Either way the answer here is unchanged --
+-- carrying a class's item is not swinging one, and a played Act 0 does not open those doors either.
 --
 -- WHAT IS APPROXIMATED is the mix, because nothing recorded it: the actions divide evenly across the
 -- castable classes on the body's grid -- `activeAbility`, since an item with no cast is never the thing
@@ -513,8 +604,8 @@ function prologue.skip(player)
         end
     end
 
-    -- Every stop's authored loot: the two teaching chests, and the class abilities the two objective
-    -- lessons are won with. Read off the route rather than re-listed here.
+    -- Every stop's authored loot: the two teaching chests, and the kit the two objective lessons are
+    -- won with. Read off the route rather than re-listed here, so a re-cut ladder moves both at once.
     local stops = FLIGHT_QUEST.map.encounters.always
     for _, stop in ipairs(stops) do
         for _, id in ipairs(stop.loot or {}) do Player.grantItem(player, id) end

@@ -225,9 +225,11 @@ return {
             assert(def.rescue and (def.rescue.gold or 0) > 0, "the encounter prices a rescue per head")
 
             -- `rewardGold` pins the base payout so the roll's jitter cannot blur the comparison; the
-            -- authored `loot` is an override, so the base drop is exactly the stop's class ability.
+            -- authored `loot` is an override, so the base drop is exactly the stop's gift -- the
+            -- buckler, whose `waitBehavior` is the stance-swap mechanic this stop of the ladder
+            -- teaches (states/prologue.lua's FLIGHT_QUEST).
             local cell = { kind = "combat", id = "encounter_survivors_defend",
-                           loot = { "ability_shout" }, rewardGold = 100 }
+                           loot = { "armor_buckler" }, rewardGold = 100 }
             local function pay(saved, of)
                 return EncounterBattle.spoils({ encounter = cell, prestige = 1, enemyUnits = {},
                     rescue = saved and { saved = saved, of = of } or nil })
@@ -238,15 +240,15 @@ return {
             assert(one.gold == 100 + def.rescue.gold, "one head adds one purse, got " .. one.gold)
             assert(both.gold == 100 + def.rescue.gold * 2, "two heads add two, got " .. both.gold)
 
-            -- The class ability the stop teaches lands whatever happened to the survivors; the rescue
+            -- The mechanic the stop teaches lands whatever happened to the survivors; the rescue
             -- loot is added on top of it, per head.
             local per = #(def.rescue.loot or {})
             local function has(spoils, id)
                 for _, got in ipairs(spoils.loot) do if got == id then return true end end
                 return false
             end
-            assert(has(none, "ability_shout") and has(both, "ability_shout"),
-                "the stop's class ability is never at stake")
+            assert(has(none, "armor_buckler") and has(both, "armor_buckler"),
+                "the stop's teaching gift is never at stake")
             assert(#none.loot == 1, "nobody counted, nothing added, got " .. #none.loot)
             assert(#one.loot == 1 + per, "one head's share, got " .. #one.loot)
             assert(#both.loot == 1 + per * 2, "two heads' shares, got " .. #both.loot)
@@ -470,6 +472,98 @@ return {
                 end
             end
             assert(ends == 2, "the road has exactly two ends (the start and the champion), got " .. ends)
+        end,
+    },
+
+    -- ----- the ladder: one item mechanic per stop (states/prologue.lua's FLIGHT_QUEST) -----
+    {
+        -- The sweep used to hand over one CLASS per stop. It hands over one item MECHANIC per stop
+        -- now, and the three that arrive with nobody speaking -- two off a fight, one out of a chest
+        -- -- get a coach bubble instead (states/game.lua's FLIGHT_LESSONS). That table can rot two
+        -- ways and drawCoachLesson nil-guards both, so a bubble that has silently stopped existing
+        -- looks exactly like one that was never owed. This is what tells the difference.
+        name = "every coach mechanic is an item the route really hands over, with a line to say",
+        fn = function()
+            local prologue = require("states.prologue")
+            local lessons = prologue.FLIGHT_LESSONS
+            assert(lessons and next(lessons), "the flight's mechanic bubbles are declared")
+
+            -- Every id the sweep grants, from the single source: the route's own authored loot.
+            local granted = {}
+            for _, stop in ipairs(prologue.FLIGHT_QUEST.map.encounters.always) do
+                for _, id in ipairs(stop.loot or {}) do granted[id] = true end
+            end
+
+            -- Every node id the hint file actually defines.
+            local nodes = {}
+            for _, node in ipairs(require("data.conversations.tutorial.conversation_tutorial_flight").script) do
+                if node.id then nodes[node.id] = node end
+            end
+
+            local count = 0
+            for itemId, nodeId in pairs(lessons) do
+                count = count + 1
+                assert(granted[itemId],
+                    itemId .. " owes a coach bubble but the route never hands it over")
+                local node = nodes[nodeId]
+                assert(node, itemId .. " points at hint node '" .. nodeId .. "', which does not exist")
+                local text = node.text or node[2]
+                assert(type(text) == "string" and text ~= "",
+                    nodeId .. " has no line to say")
+            end
+            assert(count == 3, "three gifts arrive with nobody speaking, got " .. count)
+        end,
+    },
+
+    {
+        -- The other half of the ladder, and the one that is a CLAIM rather than a wiring check: each
+        -- stop teaches its own mechanic, so no two stops may lean on the same rule and every gift has
+        -- to be a thing the grid does something with. Pinned as the ids, because the argument for each
+        -- lives in FLIGHT_QUEST's header and the ids are what a re-cut would move.
+        name = "the sweep's gifts are the mechanics ladder, in walking order",
+        fn = function()
+            local prologue = require("states.prologue")
+            local stops = prologue.FLIGHT_QUEST.map.encounters.always
+            assert(#stops == 7, "seven stops, got " .. #stops)
+
+            -- Stop 1: the range band, plus the stacks that ride with it.
+            assert(stops[1].loot[1] == "weapon_iron_bow", "stop 1 opens on the bow")
+            -- Stop 3: the stance swap. Stop 5: typed mitigation. Stop 6: a wanted status + no button.
+            assert(stops[3].loot[1] == "armor_buckler", "stop 3 pays the stance swap")
+            assert(stops[5].loot[1] == "armor_salamander_hide", "stop 5 pays the typed coat")
+            assert(stops[6].loot[1] == "ability_renewal", "stop 6 carries the only heal in Act 0")
+            assert(stops[6].loot[2] == "utility_second_wind", "...and the item with no button")
+            -- Stop 7 grants nothing: it exists so the champion is fought fresh.
+            assert(stops[7].loot == nil, "the rest hands over nothing")
+
+            -- The two grid rules are the two SCENE stops, and both are handed over by a conversation
+            -- rather than by loot -- which is why they are absent from the lists above and named here.
+            assert(stops[2].conversation == "conversation_flight_event_shrine", "stop 2 is the aura")
+            assert(stops[4].conversation == "conversation_flight_event_survivor", "stop 4 is the gate")
+            local gifts = {}
+            for _, g in ipairs(prologue.SCENE_GIFTS) do gifts[g.from] = g.item end
+            assert(gifts.conversation_flight_event_shrine == "utility_censer_of_dawn",
+                "the shrine's mechanic is the adjacency aura")
+            assert(gifts.conversation_flight_event_survivor == "ability_mark_target",
+                "the survivor's mechanic is the adjacency gate")
+
+            -- ...and the gate is not a coin flip: EVERY branch of that scene grants it, which is the
+            -- whole reason it moved off one option. A lesson decided by a choice is not a lesson.
+            local scene = require("models.conversation").defs.conversation_flight_event_survivor
+            local branches, withMark = 0, 0
+            for _, node in ipairs(scene.script) do
+                for _, choice in ipairs(node.choices or {}) do
+                    branches = branches + 1
+                    local grant = choice.effect and choice.effect.grant
+                    local ids = type(grant) == "table" and grant or { grant }
+                    for _, id in ipairs(ids) do
+                        if id == "ability_mark_target" then withMark = withMark + 1 end
+                    end
+                end
+            end
+            assert(branches > 1, "the survivor still offers a choice, got " .. branches .. " branch(es)")
+            assert(withMark == branches,
+                "every branch grants the mark: " .. withMark .. " of " .. branches)
         end,
     },
 }

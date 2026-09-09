@@ -292,19 +292,21 @@ return {
     ["line.conversation_flight_champion.3"] = { en = "Cut it down and the rest stop mattering. Stay out of its reach and let it come to us.", ja = "" },  -- TODO
     ["line.conversation_flight_champion.5"] = { en = "The report said imps. That thing came up out of the breach with the rest of them trailing after it.", ja = "" },  -- TODO
     ["line.conversation_flight_event_shrine.1"] = { en = "A shrine, still standing with the whole block burned around it.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_shrine.2"] = { en = "Someone cut a healer's rite into the stone. We can learn it, or we can patch ourselves up and move. Choose...", ja = "" },  -- TODO
-    ["line.conversation_flight_event_shrine.3"] = { en = "Kneel and learn the rite.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_shrine.2"] = { en = "There's a censer left burning on the stone. We can carry it, or we can pour out what oil is left and dress our wounds with it. Choose...", ja = "" },  -- TODO
+    ["line.conversation_flight_event_shrine.3"] = { en = "Take the censer.", ja = "" },  -- TODO
     ["line.conversation_flight_event_shrine.4"] = { en = "Tend our wounds and move on.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_shrine.5"] = { en = "You have it. That will set a wound to closing, slow but sure. Even one that isn't yours.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_shrine.6"] = { en = "Patched up. We leave the rite for whoever comes through here after us.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_shrine.5"] = { en = "Keep it next to whatever you mean to swing. The smoke gets into the steel, and these things do not like being touched by the dawn.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_shrine.6"] = { en = "Patched up. We leave the censer for whoever comes through here after us.", ja = "" },  -- TODO
     ["line.conversation_flight_event_shrine.7"] = { en = "Now let's keep moving. There's more of this quarter to clear.", ja = "" },  -- TODO
     ["line.conversation_flight_event_survivor.1"] = { en = "Hold. Someone's under that wall, hurt and trying not to make a sound.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_survivor.2"] = { en = "Easy. We're not with the things that did this. Choose...", ja = "" },  -- TODO
-    ["line.conversation_flight_event_survivor.3"] = { en = "Ask which way the demons went.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_survivor.4"] = { en = "Share what we're carrying, and move on.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_survivor.5"] = { en = "North, through the market, in numbers. She gave us the tell as well: mark one before you strike and you'll see where its guard runs thin.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_survivor.6"] = { en = "Not much to spare, and she took it kindly. She pressed her lens on you for it: look through that and a demon's satchel keeps nothing back.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_survivor.2"] = { en = "Easy. We're not with the things that did this.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_survivor.3"] = { en = "Take the purse.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_survivor.4"] = { en = "Share what we're carrying, and take the lens.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_survivor.5"] = { en = "She pressed it on us and wouldn't hear otherwise. Said coin buys nothing in a quarter with no one left to sell.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_survivor.6"] = { en = "Not much to spare, and she took it kindly. Look through that lens and a demon's satchel keeps nothing back.", ja = "" },  -- TODO
     ["line.conversation_flight_event_survivor.7"] = { en = "An apothecary, before all this. She can make the square on her own now. Let's keep clearing, {name}.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_survivor.8"] = { en = "She's an apothecary, and she's already telling us the trick of them: mark one before you strike and you'll see where its guard runs thin. Keep that beside the bow and it'll work.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_survivor.9"] = { en = "She's got a purse she can't spend and a lens she can't carry. We can take the coin, or leave her our rations and take the glass. Choose...", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_discipline_unlocked.1"] = { en = "You walk the {discipline}'s trail now, {name}. The Lodge sets out gear for the ones who get this far. It is yours to draw.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_discipline_unlocked.3"] = { en = "That path knows when to stop. Take the kit. Remember the lesson with it.", ja = "" },  -- TODO
@@ -362,6 +364,9 @@ return {
     ["line.conversation_tutorial_flight.1"] = { en = "Walk to the chest ahead. Use WASD, the arrow keys, or click a tile.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.2"] = { en = "Open your loadout to see what you found.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.3"] = { en = "{select} an item in your stash to equip it to a hero.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_flight.4"] = { en = "A shield changes what Wait does: end the turn braced instead of idle.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_flight.5"] = { en = "Armor answers a kind of damage. This one drinks fire, and nothing else.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_flight.6"] = { en = "This one has no action to press. It sits in a cell and works on its own.", ja = "" },  -- TODO
     ["line.conversation_tutorial_village.1"] = { en = "Close the distance and strike without fear, {name}!", ja = "" },  -- TODO
     ["line.conversation_tutorial_village.10"] = { en = "{select} on the lit tile to move there.", ja = "" },  -- TODO
     ["line.conversation_tutorial_village.11"] = { en = "{select} on Clear Out in your grid to ready it.", ja = "" },  -- TODO

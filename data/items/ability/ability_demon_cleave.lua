@@ -16,7 +16,9 @@ return {
     type = "ability",
     class = "creature",
     dropTier = 6,
-    tags = { "slash", "physical", "melee" },
+    -- Fire, and deliberately not `magical` -- see the header of data/items/weapon/weapon_rending_claws.lua,
+    -- which carries the whole argument. The Champion's heavy burns for the same reason her claws do.
+    tags = { "slash", "physical", "melee", "fire" },
     activeAbility = {
         target = "tile",       -- aim an adjacent tile: it sets the facing the arc sweeps
         allowOccupied = true,

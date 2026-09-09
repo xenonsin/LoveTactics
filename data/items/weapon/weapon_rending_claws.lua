@@ -29,7 +29,21 @@ return {
     type = "weapon",
     class = "creature",
     dropTier = 6,
-    tags = { "natural", "slash", "physical", "melee" },
+    -- FIRE, ON A MELEE WEAPON, and not `magical`. Every demon on the sweep spits hellfire
+    -- (data/items/weapon/weapon_cinder_spit.lua, ability_demon_brimstone.lua) and the thing that
+    -- WALKS UP to you was the one attack in the bestiary that did not burn -- so the elemental coats
+    -- had nothing to drink and a Salamander Hide read as a dead item against demons.
+    --
+    -- The element is added; the CHANNEL is not moved. `magical` is what routes a hit through
+    -- magicDamage/magicDefense (models/combat.lua), and a demon's claws landing on Magic Defense
+    -- instead of armour would be a far larger change than making them burn -- it would walk straight
+    -- past every coat and shield the party is wearing. So: physical blow, fire element.
+    --
+    -- Combat.mitigatedDamage sums the resist of EVERY matching tag, so a fire coat now blunts a claw
+    -- as well as a spit (subtractive, floored at 1). `status_immune_fire` is the categorical version
+    -- and voids the swing outright for its duration -- a real counter to demon melee, and the
+    -- deliberate price of the tag.
+    tags = { "natural", "slash", "physical", "melee", "fire" },
     noSteal = true, -- a creature's body is not loot
     activeAbility = {
         target = "enemy",

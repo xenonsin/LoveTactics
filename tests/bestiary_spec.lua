@@ -394,6 +394,44 @@ tests[#tests + 1] = { name = "an innate resist reaches the unit that fights", fn
     assert(unit.resist.slash == 5, "a coat over a hide should be both: got " .. tostring(unit.resist.slash))
 end }
 
+-- docs/bestiary.md, "...and a demon's blows burn": what a demon SWINGS carries `fire`, not only what it
+-- casts, so the elemental coats the Crucible sells against demons have something to answer. Two halves,
+-- and the second is why this case exists at all.
+--
+-- THE SPLIT IS THE POINT. The Champion swung weapon_great_claws until this landed -- which is the DIRE
+-- BEAR's natural weapon, a shape a hunter wears. Tagging it would have set the bear on fire, so the
+-- blueprint was cut in two (weapon_demon_claws). Nothing in either file stops someone re-merging them
+-- to save a file; this does, and it is the only thing that names the bear's claws at all.
+tests[#tests + 1] = { name = "a demon's blows burn, and the bear it borrowed its claws from does not", fn = function()
+    local function tags(id)
+        local item = Item.instantiate(id)
+        assert(item, id .. " is a real item")
+        local set = {}
+        for _, t in ipairs(item.tags or {}) do set[t] = true end
+        return set
+    end
+
+    for _, id in ipairs({ "weapon_rending_claws", "weapon_demon_claws", "ability_demon_cleave" }) do
+        local t = tags(id)
+        assert(t.fire, id .. " is a demon's blow and must carry fire")
+        -- The element is added; the CHANNEL is not moved. `magical` routes a hit through
+        -- magicDamage/magicDefense, and a demon's claws landing on Magic Defense instead of armour
+        -- would walk past every coat and shield the party wears.
+        assert(not t.magical, id .. " must stay a physical blow -- fire is the element, not the channel")
+    end
+
+    local bear = tags("weapon_great_claws")
+    assert(not bear.fire, "the Dire Bear's claws are not infernal -- weapon_demon_claws is the demon's")
+
+    -- And the body actually holds the split one, or the tag above is true of nothing anyone fights.
+    local champion = Character.instantiate("character_demon_champion")
+    local held = false
+    for _, item in ipairs(Character.eachItem(champion)) do
+        if item.id == "weapon_demon_claws" then held = true end
+    end
+    assert(held, "the Champion carries the demon's claws, not the bear's")
+end }
+
 tests[#tests + 1] = { name = "the runtime character keeps kind, tier and discipline", fn = function()
     -- Character.instantiate builds its table field by field rather than cloning the blueprint, so a
     -- field nobody named there reads back nil at runtime and fails silently (its own header says so).

@@ -138,7 +138,6 @@ return {
     "utility_bloodstone_focus",
     "utility_brawlers_bandolier",
     "utility_burning_halo",
-    "utility_censer_of_dawn",
     "utility_closed_entry",
     "utility_codex_of_hubris",
     "utility_cutpurse_tally",

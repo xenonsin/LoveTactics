@@ -40,9 +40,13 @@
 --         stays the single source of WHAT it is (id / loot / conversation).
 --
 --   1 chest (bow kit)   2 shrine event   3 DEFEND   4 survivor event   5 EXTRACT   6 chest   7 rest
---   Each stop past the chest also teaches a class via one ability (states/prologue.lua's FLIGHT_QUEST):
---   2 priest (Heal)  3 knight (Shout)  4 alchemist (Assayer's Eye)  5 rogue (Drain Mana)  6 mage (Fire
---   Bolt)  7 fighter (Power Strike)
+--   Each stop also teaches ONE ITEM MECHANIC through what it hands over (states/prologue.lua's
+--   FLIGHT_QUEST, whose `always` list carries the whole argument):
+--     1 range band      2 adjacency AURA (censer)     3 stance swap (buckler)
+--     4 adjacency GATE (mark)   5 typed mitigation (fire coat)   6 a status you want + an item with
+--     no button   7 nothing -- a rest, so the champion is fought fresh
+--   It used to be one CLASS per stop, which is a name rather than a rule, and a name is not a thing
+--   this route gives anybody a use for.
 --
 -- THE ROUTE IS A SINGLE CHAIN. Every place has exactly two walkable neighbours except the two ends, so
 -- BFS distance from S rises by one at every step and the stops are met in exactly the authored order --

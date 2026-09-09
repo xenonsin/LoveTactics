@@ -64,12 +64,15 @@ return {
     resist = { slash = 4, impact = -4, fire = 4, holy = -8 },
     -- Its loadout as the 3x3 grid (row-major; false = empty). The Sigil is the build-around in the
     -- center (bound, unstealable); the claws and its two abilities sit around it.
+    -- The claws are the DEMON's, not the bear's (data/items/weapon/weapon_demon_claws.lua). She swung
+    -- weapon_great_claws until the demons were made to burn; the same numbers, plus `fire`, in a
+    -- blueprint the Dire Bear does not share -- see that file for why the split rather than a tag.
     startingItems = {
         "ability_heave", "ability_demon_roar",   "ability_demon_cleave",
-        "weapon_great_claws", "utility_demon_sigil", false,
+        "weapon_demon_claws", "utility_demon_sigil", false,
         false,           false,                  false,
     },
-    defaultAction = "weapon_great_claws",
+    defaultAction = "weapon_demon_claws",
     -- Basic tactics (models/ai.lua), top-to-bottom, first match wins:
     ai = {
         -- Stage 2: wind up the Roar whenever the phase system has armed it (status_roaring at 66%).

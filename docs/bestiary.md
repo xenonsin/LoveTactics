@@ -127,6 +127,34 @@ Measuring the *unit* is what lets the line live one layer out. The Demon Lord's 
 wears (`utility_demonic_essence`, `holy = -8`, bound and unstealable, so it never comes off) rather
 than on the body — the same statement, made where the fiction wanted it.
 
+### …and a demon's blows burn
+
+The other half of that arrangement, and the newer one: what a demon *swings* carries `fire`, not only
+what it *casts*. The imps always did — `weapon_cinder_spit` is `fire, magical` and is the whole of what
+an imp does — but the things that walk up to you did not, so `weapon_rending_claws` and the Champion's
+claws were the one part of the demon roster that no elemental coat answered. That made a Salamander
+Hide read as a dead item in a fight against demons, which is exactly backwards for the faction the
+Crucible sells the coat against.
+
+Two rules hold the change to what it is:
+
+- **The element is added; the channel is not moved.** `magical` is what routes a hit through
+  `magicDamage` / `magicDefense`. A demon's claws landing on Magic Defense instead of armour would walk
+  straight past every coat and shield the party wears — a far larger change than making them burn. So a
+  claw is `physical, slash, fire`: a physical blow with an element on it.
+- **A shared blueprint splits rather than lies.** The Champion swung `weapon_great_claws`, which is the
+  *bear's* natural weapon (`character_dire_bear`, a shape a hunter wears). Tagging it would have set the
+  bear on fire, so `weapon_demon_claws` was cut from it — same numbers, plus the element.
+
+The consequence worth stating: `Combat.mitigatedDamage` sums the resist of every matching tag, so a
+fire coat now blunts a claw as well as a spit (subtractive, floored at 1), and `status_immune_fire`
+voids the swing outright for its duration. A fire ward is a real counter to demon melee now. That was
+priced in deliberately — it is the same shape as the holy line above, an element the faction is
+answerable to — but it is a counter, and it is now on the board.
+
+The physical sum above is untouched by all of this: elements are free of it, and the melee probes the
+TTK bands are measured with still carry no element tag.
+
 ## What each rung costs to author
 
 The factoring that keeps this from being 37 disciplines × 4 rungs = 111 blueprints.
@@ -180,6 +208,46 @@ it is an `assassinate` mark.** The flag already means something specific in the 
 Coup de Grace, Charm and Polymorph, so the assassinate win is earned by fighting rather than skipped
 by a finisher (`character_demon_champion.lua`). Outside an assassinate objective the flag protects
 nothing and only removes verbs from the player's kit.
+
+### How a boss reads on screen
+
+Until recently, it didn't. A general and a rat were the same red token wearing the same 5px sliver of
+health bar, separated by an outline half a pixel heavier, and the same slate card in the turn strip —
+while `conversation_flight_champion` opened the Demon Champion fight promising the opposite: *every
+fight before this has been a horde; this one has a NAME*.
+
+Both surfaces answer it now, and both ask **one predicate**, `Combat.isBoss`. It lives in the model
+rather than in either widget on purpose: which body a fight is about is a fact about the fight, and two
+screens each holding their own copy of it are two screens that can come to disagree.
+
+On the **board** (`ui/battle_map.lua`):
+
+- a **nameplate over its head** — the only body on the field that says what it is without being
+  pointed at, since every other name lives in a tooltip or the turn strip. Above the head, or under
+  the feet where a top-row body has no airspace;
+- a **heavier health bar, notched at its phase thresholds** — the `at` values read off the relic's own
+  `phases` table, so a notch is the stage `trait_boss_phases` actually fires on and cannot drift from
+  it. A notch still ahead of the drain stands in bone; one already crossed goes dark and stays drawn;
+- the **thick token border**, which used to key off `char.boss` and therefore framed half the Elite rung.
+
+In the **turn strip** (`ui/combat_panel.lua`), where a boss was hardest to pick out — every card the
+same plate at the same height, faction living in a bar, a general and an imp differing by one word:
+
+- the **fight's own crest** in the name row, the same mark flanking the encounter title at the top of
+  the screen, so the card reads as *this is the thing up there*;
+- **the same notches** on the card's HP bar, on both the slim card and the acting one.
+
+Deliberately not a fourth border colour: the card's edge is already spoken for three times over —
+spotlight gold for whoever is acting, a white pulse for a hovered log line, cyan for the body under the
+cursor on the board — and a fourth would be the one that stops meaning anything.
+
+The predicate is **the `assassinate` mark, or `tier == 4`** — which is the rule this section asks for
+above, enforced at the one place it can be. `char.boss` is deliberately not consulted: until the flag
+narrows to the marks, keying presentation off it would plate every discipline exemplar and four
+companions. The mark clause is fight-scoped on purpose, so `character_champion` fielded as one body in
+a pack stays an ordinary red token while the same blueprint standing as a quest's mark does not; the
+`tier` clause covers a general fielded under some other win type, and the wrath general's second body,
+whose `transform` swaps the `char.id` the mark test matches. Pinned by `tests/boss_framing_spec.lua`.
 
 Across all 94 quests, `assassinate` is already the commonest objective (43), so the marks the wider
 game needs outnumber the discipline gates by three to one. Bosses are cheapest when a **line** shares
