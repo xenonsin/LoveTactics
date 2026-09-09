@@ -1288,6 +1288,19 @@ end
 function CombatPanel:drawBadge(sx, sy, sw, corner, iconKind, amount, color, a, row)
     local bw, bh = self:badgeSize(amount)
     local pad = 3
+    -- TWO CORNERS DO NOT FIT IN A HANDHELD SLOT. A badge is about 40 wide once it is big enough to
+    -- read, and the slot is 70 -- so the cost in the left corner and the initiative in the right one
+    -- were drawn straight through each other, across the middle of the icon they belong to. Making
+    -- them small enough to fit side by side is what they were before, and unreadable.
+    --
+    -- So the right-hand badge drops to the BOTTOM-LEFT: each then has the slot's whole width, the two
+    -- cannot meet whatever the numbers are (a two-digit cost overlaps a one-digit one at this size),
+    -- and both sit down one edge with the icon clear beside them. There is room because the name band
+    -- is gone on a handheld -- 3..28 for the top row, 30..55 for the bottom, in a 58-tall slot.
+    if Scale.inHandheldSpace and corner == "right" then
+        self:drawBadgeAt(sx + pad, sy + (self.slotH or bh) - pad - bh, iconKind, amount, color, a)
+        return
+    end
     local bx = (corner == "right") and (sx + sw - pad - bw) or (sx + pad)
     self:drawBadgeAt(bx, sy + pad + (row or 0) * (bh + 2), iconKind, amount, color, a)
 end

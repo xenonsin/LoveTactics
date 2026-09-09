@@ -88,4 +88,36 @@ return {
             end)
         end,
     },
+    {
+        -- A slot's cost sat in its left corner and its initiative in its right one, which is fine at
+        -- 320px of column and impossible at 70. Raised to a size a thumb could read, the two badges
+        -- were about 40 wide apiece in a 70-wide slot and were drawn straight through each other,
+        -- across the icon they both describe. So the right-hand one drops to the bottom-left.
+        --
+        -- Asserted as ARITHMETIC on the panel's own live metrics rather than as a grep for the
+        -- branch: the failure this guards against is a later size tweak, and a tweak leaves the
+        -- branch exactly where it is while quietly making the two rows collide again.
+        name = "a handheld slot's two badges cannot touch",
+        fn = function()
+            stubFonts(function()
+                local space = Scale.inHandheldSpace
+                Scale.inHandheldSpace = true
+                local ok, err = pcall(function()
+                    local p = panel()
+                    local pad = 3
+                    -- The two rows the drop-to-the-bottom placement puts them on. Height is the axis
+                    -- that can run out: the badge grew to 25 and the slot is a flat 58 whatever the
+                    -- panel's width, so there is 2px of daylight and a further size bump spends it.
+                    local top = pad + p.badgeH
+                    local bottom = p.slotH - pad - p.badgeH
+                    assert(bottom >= top,
+                        "the cost badge and the initiative badge overlap vertically in a "
+                            .. p.slotH .. "px slot: the top row ends at " .. top
+                            .. " and the bottom one starts at " .. bottom)
+                end)
+                Scale.inHandheldSpace = space
+                assert(ok, err)
+            end)
+        end,
+    },
 }

@@ -21,10 +21,22 @@ local Theme = require("ui.theme")
 
 local CoachBubble = {}
 
-local font, keyFont
+-- THE ONE TEXT THAT TEACHES WAS THE SMALLEST TEXT IN THE GAME. 13pt is a caption size, and in the
+-- handheld space it lands at roughly 11 CSS pixels on a handset -- under the glance floor, on the
+-- sentence telling a first-time player what to press. So it takes its own size there, and the box
+-- widens with it (see maxWidth below) so that a bigger face buys legibility rather than more lines.
+--
+-- Rebuilt on the space epoch rather than memoized once. These were plain module locals filled on the
+-- first draw, so a session that changed spaces -- which is every browser session, since the fit is
+-- measured after the first frames land -- kept whichever face it happened to build first.
+local font, keyFont, fontEpoch, fontSpace
 local function fonts()
-    font = font or Theme.body(13)
-    keyFont = keyFont or Theme.body(12)
+    local space = Scale.inHandheldSpace and true or false
+    if not font or fontEpoch ~= Scale.spaceEpoch or fontSpace ~= space then
+        font = Theme.body(space and 18 or 13)
+        keyFont = Theme.body(space and 16 or 12)
+        fontEpoch, fontSpace = Scale.spaceEpoch, space
+    end
     return font, keyFont
 end
 
@@ -46,6 +58,13 @@ end
 local GOLD = { 1.0, 0.82, 0.36 }
 
 local MAX_W = 240
+
+-- Held in step with the face above: at a given size a fixed-width bubble is a fixed number of
+-- characters, so raising the face without raising this turns a two-line prompt into a tall column.
+local function maxWidth()
+    return Scale.inHandheldSpace and 330 or MAX_W
+end
+
 local PAD = 9
 local TAIL = 10
 local TAIL_HALF = 7
@@ -80,8 +99,9 @@ function CoachBubble.draw(text, rect, opts)
     -- the width it was given. The extra pixel absorbs the rounding between measured and rendered
     -- advance widths, which is enough to push a final glyph over the edge on its own.
     -- The key cap claims its column first; the words wrap in whatever is left.
-    local wrapW, lines = f:getWrap(text, MAX_W - PAD * 2 - capW)
-    local w = math.min(MAX_W, math.ceil(wrapW) + 1 + PAD * 2 + capW)
+    local maxW = maxWidth()
+    local wrapW, lines = f:getWrap(text, maxW - PAD * 2 - capW)
+    local w = math.min(maxW, math.ceil(wrapW) + 1 + PAD * 2 + capW)
     local innerW = w - PAD * 2 - capW
     local textH = #lines * f:getHeight()
     local h = PAD * 2 + math.max(textH, key and (kf:getHeight() + KEY_PAD * 2) or 0)
