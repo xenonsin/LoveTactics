@@ -445,7 +445,11 @@ function CombatPanel:relayout(w)
 
     -- Item grid: 3x3, centred horizontally, sized to the room there actually is. A long Wait button
     -- sits under it at the very bottom, so the grid is lifted to make way (button + gap + margin).
-    self.slotW = math.min(SLOT_W, math.floor((w - SLOT_MARGIN * 2 - (COLS - 1) * SLOT_GAP) / COLS))
+    -- The margin is the cheapest width there is: on a handheld it is framing the grid against a
+    -- column that is already narrow, and every pixel of it comes straight off the slot, which is
+    -- where the icon and its two badges have to live together.
+    local margin = Scale.inHandheldSpace and 10 or SLOT_MARGIN
+    self.slotW = math.min(SLOT_W, math.floor((w - margin * 2 - (COLS - 1) * SLOT_GAP) / COLS))
     self.slotH = SLOT_H
     self.gridW = COLS * self.slotW + (COLS - 1) * SLOT_GAP
     self.gridH = ROWS * self.slotH + (ROWS - 1) * SLOT_GAP
@@ -487,6 +491,17 @@ function CombatPanel:relayout(w)
         self.badgePadX, self.badgeIconW, self.badgeGap, self.badgeH = BADGE_PAD_X, BADGE_ICON_W, BADGE_GAP, BADGE_H
         self.badgeFont = self.smallFont
     end
+
+    -- CORNERS IF THEY FIT, STACKED IF THEY DO NOT -- measured, not assumed. A slot's cost sits in
+    -- its left corner and its initiative in its right one, which is the arrangement that leaves the
+    -- icon between them entirely clear. It only works while two badges plus their corner pads fit
+    -- across the slot; below that they were being drawn through each other, and stacking them down
+    -- the left edge is the escape -- one that costs the icon its left half, so it is a fallback and
+    -- not the handheld layout. Sizing the column (states/battle.lua) is what keeps us out of it.
+    -- Measured off a one-digit label with clearance to spare, since that is the common case and a
+    -- rare two-digit cost may lean toward the middle without meeting anything.
+    local sample = self.badgePadX * 2 + self.badgeIconW + self.badgeGap + self.badgeFont:getWidth("9")
+    self.badgeStack = (sample * 2 + 6 + 8) > self.slotW
 
     self.stripX = self.x
     self.stripW = w
@@ -1288,16 +1303,13 @@ end
 function CombatPanel:drawBadge(sx, sy, sw, corner, iconKind, amount, color, a, row)
     local bw, bh = self:badgeSize(amount)
     local pad = 3
-    -- TWO CORNERS DO NOT FIT IN A HANDHELD SLOT. A badge is about 40 wide once it is big enough to
-    -- read, and the slot is 70 -- so the cost in the left corner and the initiative in the right one
-    -- were drawn straight through each other, across the middle of the icon they belong to. Making
-    -- them small enough to fit side by side is what they were before, and unreadable.
-    --
-    -- So the right-hand badge drops to the BOTTOM-LEFT: each then has the slot's whole width, the two
-    -- cannot meet whatever the numbers are (a two-digit cost overlaps a one-digit one at this size),
-    -- and both sit down one edge with the icon clear beside them. There is room because the name band
-    -- is gone on a handheld -- 3..28 for the top row, 30..55 for the bottom, in a 58-tall slot.
-    if Scale.inHandheldSpace and corner == "right" then
+    -- The fallback for a slot too narrow to hold two badges side by side (self.badgeStack, set in
+    -- relayout): the right-hand one drops to the BOTTOM-LEFT so the pair cannot meet whatever the
+    -- numbers are. It costs the icon its left half, which is why the column is sized to avoid it --
+    -- but a space can always get narrow enough, and overlapping badges are worse than a covered icon.
+    -- There is room for the second row only because the name band is gone on a handheld: 3..28 for
+    -- the top, 30..55 for the bottom, in a 58-tall slot.
+    if self.badgeStack and corner == "right" then
         self:drawBadgeAt(sx + pad, sy + (self.slotH or bh) - pad - bh, iconKind, amount, color, a)
         return
     end

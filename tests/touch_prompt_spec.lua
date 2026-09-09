@@ -162,6 +162,28 @@ return {
         end,
     },
     {
+        -- The bubble that teaches, off the screen on a handset. Nothing in the placement search
+        -- narrows the box: candidates that do not fit are rejected and the last resort clamps, but a
+        -- clamp cannot rescue a box wider than the bounds -- it parks it at the left edge and the
+        -- rest hangs off the far side. Raising the handheld width to 330 did exactly that in a board
+        -- region 432 across. love.draw cannot run headlessly, so this is read off the source.
+        name = "the coaching bubble is never wider than the room it was given",
+        fn = function()
+            local src = assert(love.filesystem.read("ui/coach_bubble.lua"), "the bubble is readable")
+            local maxW = src:match("local maxW = ([^\n]*)")
+            assert(maxW, "the bubble no longer decides a width before wrapping")
+            assert(maxW:find("bounds%.w"),
+                "the width is chosen without consulting the bounds, so a bubble too wide for its "
+                    .. "region goes off screen instead of wrapping into it")
+            -- The overworld's box was a file-scope constant stamped at require time, which is the
+            -- wrong space the moment a handheld battle has changed the logical dimensions.
+            local g = assert(love.filesystem.read("states/game.lua"), "the overworld is readable")
+            assert(not g:find("local COACH_BOUNDS = {"),
+                "the overworld's coach bounds are frozen at require time again -- they will be "
+                    .. "measured against whatever space happened to be live when it was first loaded")
+        end,
+    },
+    {
         -- The 3x3 item grid is a MECHANIC (Combat.adjacencyLinks: neighbouring cells form
         -- auras, boosts and requirements), so a slot cannot be widened by reshaping the grid
         -- to fit the actions a unit carries. The name band goes instead.

@@ -99,7 +99,13 @@ function CoachBubble.draw(text, rect, opts)
     -- the width it was given. The extra pixel absorbs the rounding between measured and rendered
     -- advance widths, which is enough to push a final glyph over the edge on its own.
     -- The key cap claims its column first; the words wrap in whatever is left.
-    local maxW = maxWidth()
+    -- CAPPED TO THE ROOM IT WAS GIVEN. Nothing below ever narrows the box: the placement search
+    -- rejects candidates that do not fit and the last resort clamps, but a clamp cannot help a box
+    -- wider than the bounds -- it parks it at the left edge and the rest hangs off the far side.
+    -- So a bubble too wide for its bounds went off screen rather than wrapping, which is what
+    -- raising the handheld width to 330 did to a board region only 432 across with a flank to spare.
+    -- The bounds are the truth here and the preferred width is only a preference.
+    local maxW = math.min(maxWidth(), math.max(120, bounds.w - PAD * 2))
     local wrapW, lines = f:getWrap(text, maxW - PAD * 2 - capW)
     local w = math.min(maxW, math.ceil(wrapW) + 1 + PAD * 2 + capW)
     local innerW = w - PAD * 2 - capW

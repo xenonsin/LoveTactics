@@ -93,7 +93,14 @@ local function loadoutKey()
 end
 
 -- Where a coach bubble is allowed to live: clear of the top HUD (title + buttons) and the bottom hint.
-local COACH_BOUNDS = { x = 20, y = 70, w = Scale.WIDTH - 40, h = Scale.HEIGHT - 70 - 44 }
+--
+-- Read per draw rather than frozen at require time. It was a file-scope constant, which stamps in
+-- whatever Scale.WIDTH happened to be when this module was first pulled in -- and the battle changes
+-- the logical space under a handheld, so requiring the overworld from inside one froze the box at the
+-- battle's dimensions and left every bubble here measured against a space that is not the live one.
+local function coachBounds()
+    return { x = 20, y = 70, w = Scale.WIDTH - 40, h = Scale.HEIGHT - 70 - 44 }
+end
 
 -- Where the always-on party strip is drawn (ui/party_status.lua). A constant rather than two literals
 -- because something now has to POINT at a row of it: the first-wound coach bubble anchors through
@@ -4050,17 +4057,17 @@ function game.drawCoach()
         local node = hintNode("conversation_tutorial_wound", "wound_hint")
         if anchor and node then
             CoachBubble.draw(Locale.text("conversation_tutorial_wound", node), anchor,
-                { prefer = "right", bounds = COACH_BOUNDS })
+                { prefer = "right", bounds = coachBounds() })
         end
         return
     end
     if step == "move" and not game.activePanel then
         local node = hintNode("conversation_tutorial_flight", "move_hint")
         CoachBubble.draw(Locale.text("conversation_tutorial_flight", node), game.map:tokenRect(),
-            { prefer = "above", bounds = COACH_BOUNDS })
+            { prefer = "above", bounds = coachBounds() })
     elseif step == "loadout" and not game.activePanel and game.itemsVisible then
         local node = hintNode("conversation_tutorial_flight", "loadout_hint")
-        -- The Items button lives in the top HUD strip, above COACH_BOUNDS; give this one bubble a
+        -- The Items button lives in the top HUD strip, above coachBounds(); give this one bubble a
         -- bounds that reaches up to the button so it can sit directly BELOW it, tail pointing up.
         -- The LIVE rect, not the authored lane: the flight tutorial hides Back, so Items sits in the
         -- first slot there and a bubble anchored on the old constant would point at empty air.
@@ -4074,7 +4081,7 @@ function game.drawCoach()
         if anchor then
             local node = hintNode("conversation_tutorial_flight", "equip_hint")
             local text, key = Locale.coachLine("conversation_tutorial_flight", node)
-            CoachBubble.draw(text, anchor, { prefer = "above", key = key, bounds = COACH_BOUNDS })
+            CoachBubble.draw(text, anchor, { prefer = "above", key = key, bounds = coachBounds() })
         end
     end
 end

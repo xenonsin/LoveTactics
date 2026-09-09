@@ -237,9 +237,22 @@ function battle.syncLayout()
     battle.layoutEpoch = Scale.spaceEpoch
     battle.layoutPanel = battle.panel
     if Scale.inHandheldSpace then
+        -- THE COLUMNS ARE NOT HALVES. Splitting the leftover evenly is the tidy-looking thing and it
+        -- gave the right column 263px, which is a 70px item slot -- too narrow to hold an icon and
+        -- its two badges at a size a thumb can read, so the badges ended up over the icon. The two
+        -- columns do not have the same job: the left one holds text, which reflows into whatever it
+        -- is given, while the right one holds a 3x3 grid whose slot has a floor under it. So the
+        -- right column asks for what the grid needs and the left takes the rest.
+        --
+        -- 302 is three 90px slots, two 6px gaps and a 10px margin either side -- 90 being where two
+        -- badges plus their corner pads fit across a slot with clearance (ui/combat_panel.lua sets
+        -- badgeStack off exactly that measurement, so this number and that one move together).
+        -- Capped so the left column keeps a floor: in the narrowest handheld space there is no
+        -- arrangement that satisfies both, and there the panel gives way and the badges stack.
         local board = 8 * battle.boardTile()
-        LEFT_W = math.floor((Scale.WIDTH - board) / 2)
-        PANEL_W = Scale.WIDTH - board - LEFT_W
+        local LEFT_FLOOR = 200
+        PANEL_W = math.min(302, Scale.WIDTH - board - LEFT_FLOOR)
+        LEFT_W = Scale.WIDTH - board - PANEL_W
     else
         LEFT_W = 320 -- the desktop pair; see the LEFT_W declaration for where 320 / 352 come from
         PANEL_W = CombatPanel.WIDTH

@@ -97,23 +97,37 @@ return {
         -- Asserted as ARITHMETIC on the panel's own live metrics rather than as a grep for the
         -- branch: the failure this guards against is a later size tweak, and a tweak leaves the
         -- branch exactly where it is while quietly making the two rows collide again.
-        name = "a handheld slot's two badges cannot touch",
+        name = "a slot's two badges cannot touch, at any column width",
         fn = function()
             stubFonts(function()
                 local space = Scale.inHandheldSpace
                 Scale.inHandheldSpace = true
                 local ok, err = pcall(function()
                     local p = panel()
-                    local pad = 3
-                    -- The two rows the drop-to-the-bottom placement puts them on. Height is the axis
-                    -- that can run out: the badge grew to 25 and the slot is a flat 58 whatever the
-                    -- panel's width, so there is 2px of daylight and a further size bump spends it.
-                    local top = pad + p.badgeH
-                    local bottom = p.slotH - pad - p.badgeH
-                    assert(bottom >= top,
-                        "the cost badge and the initiative badge overlap vertically in a "
-                            .. p.slotH .. "px slot: the top row ends at " .. top
-                            .. " and the bottom one starts at " .. bottom)
+                    local pad = 3 -- drawBadge's corner inset
+                    -- Every width the handheld split can hand the panel: 302 is what it asks for,
+                    -- and the narrower ones are what it gets when the left column's floor bites.
+                    for _, w in ipairs({ 352, 302, 280, 263, 240 }) do
+                        p:relayout(w)
+                        -- Measured through badgeSize, so this reads the same font the draw does
+                        -- whether the suite handed it a stub or a real one.
+                        local bw = p:badgeSize("9")
+                        if p.badgeStack then
+                            -- Stacked: the two rows are the axis that can run out. The slot is a
+                            -- flat 58 whatever the width, so a badge over 26 collides with itself.
+                            assert(pad + p.badgeH <= p.slotH - pad - p.badgeH,
+                                "panel " .. w .. ": stacked badges overlap vertically in a "
+                                    .. p.slotH .. "px slot at badgeH " .. p.badgeH)
+                        else
+                            -- Corners: the arrangement that leaves the icon between them clear. It
+                            -- is only allowed while the pair genuinely fits across the slot.
+                            assert(bw * 2 + pad * 2 <= p.slotW,
+                                "panel " .. w .. ": the cost and the initiative are in opposite "
+                                    .. "corners of a " .. p.slotW .. "px slot they need "
+                                    .. (bw * 2 + pad * 2) .. "px for -- they are drawn through "
+                                    .. "each other, across the icon they both describe")
+                        end
+                    end
                 end)
                 Scale.inHandheldSpace = space
                 assert(ok, err)
