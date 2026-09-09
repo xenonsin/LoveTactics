@@ -1,8 +1,17 @@
 -- The prologue: Act 0, the first-time experience (see docs/story.md, "The three acts"). A linear
 -- sequence of beats -- scenes, tutorial battles, an overworld leg -- that ends by opening the hub
--- (Act 1) at the capital's gate. It builds the party through play: the created avatar starts alone,
--- and Rowan (the knight) walks out of Bellmere with them. Bellmere is a POSTING, not a home: the two
--- of them are hands of the Ninth Charter, a chartered rift company, and the job kills the rest of it.
+-- (Act 1). It builds the party through play: the created avatar starts alone, and Rowan (the knight)
+-- fights beside them from the first street.
+--
+-- IT ALL HAPPENS IN ONE CITY, and that city is the capital -- the same one the hub is. A breach opens
+-- inside the walls, the avatar is a new hand on a party hired to deal with the fallout, and the
+-- overworld leg is the city itself: block by block, clearing what is still loose and pulling out who
+-- is left. THERE IS NO JOURNEY. Act 0 does not travel to Act 1; it ends standing in the town the hub
+-- opens on. (The earlier premise put the first fight in a frontier market town called Bellmere and
+-- spent the overworld on the king's road to the capital. Both are gone. Ids kept the old words --
+-- `tutorial_village`, `tutorial_flight`, FLIGHT_QUEST -- because renaming them is a sweep across the
+-- specs and the lang file, not a story change.)
+--
 -- Nothing is sworn to anybody in Act 0. The third companion, Saber, is NOT recruited
 -- here: the Colosseum debut that bests her is now the hub's own first-visit beat, taken from the Quest
 -- Board like any other quest (data/quests/arena_debut.lua carries the recruit and the victory scene as
@@ -32,7 +41,7 @@ local prologue = {}
 -- Beat content
 -- ---------------------------------------------------------------------------
 
--- The village defense: three imps, avatar + Rowan. The first fight anyone sees -- so it is also the
+-- The street defense: three imps, avatar + Rowan. The first fight anyone sees -- so it is also the
 -- one that teaches the game. `tutorial` hands states/battle.lua a lesson to enforce
 -- (data/tutorials/village.lua): Rowan speaks over her own head, the board accepts only the action she
 -- just asked for, and she and the imps run authored turns rather than the AI's. That lesson names
@@ -44,14 +53,14 @@ local prologue = {}
 -- data/characters/character_demon_imp.lua, where those numbers are pinned. The grunt is the step up:
 -- it takes several blows, and the lesson deliberately ends with it still standing.
 local VILLAGE_MAP = {
-    -- Paved, not wooded: Bellmere is a walled market town and this is one of its lanes. Art only on a
+    -- Paved, not wooded: this is one of the capital's own lanes, a street away from the breach. Art only on a
     -- curated board -- see the header of data/arenas/tutorial_village.lua, which carries the same
     -- biome and the reason the authored cells are untouched by it.
     biome = "castle",
     layout = "tutorial_village",
     tutorial = "village",
     objective = {
-        name = "Defend the Village",
+        name = "Hold the Street",
         composition = function()
             return { "character_demon_imp", "character_demon_imp", "character_demon_imp",
                      "character_demon_imp", "character_demon_imp" }
@@ -65,9 +74,15 @@ local VILLAGE_MAP = {
 -- typed into two different files.
 prologue.VILLAGE_MAP = VILLAGE_MAP
 
--- The flight to the capital: a short, real overworld leg (states.game) in the forest, introducing the
--- map and its encounter kinds, with a bandit ambush as the objective.
--- The flight is where the overworld teaches itself. `tutorial = "flight"` turns states/game.lua's
+-- The city sweep: a short, real overworld leg (states.game) through the capital's own streets,
+-- introducing the map and its encounter kinds, with the Demon Champion at the end of it.
+--
+-- IT IS NOT A ROAD ANY MORE. This leg used to be the flight to the capital -- a forest map, a king's
+-- road, a destination. The premise moved inside the walls, so the same authored chain of stops is now
+-- blocks of a breached city: `biome = "castle"` is what re-skins it (the first street is paved for the
+-- same reason), and the layout file's own header carries the rest. Every id below still says "flight".
+--
+-- The sweep is where the overworld teaches itself. `tutorial = "flight"` turns states/game.lua's
 -- coach flow on (the move/loadout/equip bubbles and the Loadout button that stays hidden until the
 -- first chest is opened); `layout = "tutorial_flight"` pins a HAND-AUTHORED map
 -- (data/overworld/tutorial_flight.lua) rather than rolling one, so the chest is always the first thing
@@ -75,14 +90,15 @@ prologue.VILLAGE_MAP = VILLAGE_MAP
 -- rest on the doorstep of the mini-boss, and the boss itself at the end of the trail. The `always` list
 -- is still the single source of each stop's content; the layout only fixes where each one sits.
 local FLIGHT_QUEST = {
-    name = "The Road to the Capital",
+    name = "Clear the Streets",
     -- A scene played over the map the instant it appears (states/game.lua fields it on enter). The
     -- overworld is the one screen the prologue hands over with no explanation at all -- markers, fog,
-    -- a road -- so Rowan names the aftermath and the errand while the player is looking straight at
-    -- it. See data/conversations/prologue_ruins.lua for why it is here and not a beat earlier.
+    -- a route -- so Rowan names the aftermath and the errand while the player is looking straight at
+    -- it. It also carries the two lines that used to be a scene beat of their own between the fight
+    -- and the map, and the join banner with them -- see that file's header.
     opening = "conversation_prologue_ruins",
     map = {
-        biome = "forest",
+        biome = "castle",
         tutorial = "flight",
         layout = "tutorial_flight", -- authored, not generated (see data/overworld/tutorial_flight.lua)
         encounters = {
@@ -92,8 +108,8 @@ local FLIGHT_QUEST = {
             -- champion is fought fresh. Each entry may carry a payload (a treasure's exact `loot`, an
             -- event's `conversation`); see states/game.lua.
             --
-            -- The stops after the first chest also hand over class abilities, so the road finishes
-            -- introducing the roster of classes the village opened: it taught fighter (Clear Out) and
+            -- The stops after the first chest also hand over class abilities, so the sweep finishes
+            -- introducing the roster of classes the street fight opened: it taught fighter (Clear Out) and
             -- mage (Jolt) by play, and stop 1 hands the bow (hunter); stops 2-6 cover the rest, one
             -- ability apiece (the last chest carrying two, a second strike and spell for the fighter
             -- and mage the village opened with), delivered through whatever channel the stop already
@@ -107,22 +123,22 @@ local FLIGHT_QUEST = {
                     "consumable_mana_potion", "consumable_mana_potion",
                     "consumable_healing_potion", "consumable_healing_potion", "consumable_healing_potion",
                 } },
-                -- Stop 2: priest (Heal) -- the roadside shrine's healing rite, granted by the scene's choices.
+                -- Stop 2: priest (Heal) -- the street shrine's healing rite, granted by the scene's choices.
                 { id = "encounter_event", conversation = "conversation_flight_event_shrine" },
                 -- Stop 3: knight (Shout/Taunt) -- won holding the line for the survivors.
                 { id = "encounter_survivors_defend", loot = { "ability_shout" } },
                 -- Stop 4: alchemist (Assayer's Eye) -- the apothecary's own lens, pressed on you (scene choices).
                 { id = "encounter_event", conversation = "conversation_flight_event_survivor" },
                 -- Stop 5: rogue (Drain Mana) -- siphoned off the demons blocking the way out, and the
-                -- one gift on this road that has to be checked against what the road actually fields.
+                -- one gift on this route that has to be checked against what the route actually fields.
                 -- It used to be inert for the whole rest of Act 0: every demon carried mana = 0, so the
                 -- class introduction the stop exists to make spent 4 stamina and restored nothing. The
                 -- demons pay for their hellfire in mana now (data/characters/character_demon_imp.lua
-                -- states the contract), so the gift has something to bite on for the rest of the road.
+                -- states the contract), so the gift has something to bite on for the rest of the sweep.
                 -- The spoils land after the win, so the body it is actually FOR is the Champion at the
                 -- end of the trail, whose Roar and Cleave come out of one 60-mana pool -- and the fight
                 -- it is won in is the argument for carrying it, since the grunt on this map spends its
-                -- own mana burning the road the driver has to walk down.
+                -- own mana burning the street the driver has to walk down.
                 { id = "encounter_survivors_extract", loot = { "ability_drain_mana" } },
                 -- Stop 6: mage (Fire Bolt) + fighter (Power Strike) -- the last chest before the gate
                 -- rounds out the two classes the village opened with, one spell and one strike.
@@ -251,16 +267,21 @@ local function buildBeats()
         -- So a New Game reaches a tactics board on the click after the name is typed.
         action(function() Player.recruit(Player.active, "character_rowan") end), -- Rowan joins for the fight
         battle(VILLAGE_MAP),
-        -- The Ninth ends once the village is held, and "[Rowan has joined your Party]" lands at the
-        -- end of this "Ashes" scene -- folded on by Conversation.drainJoins, because her recruit one
-        -- beat up queued it (models/conversation.lua). It survives the battle in between because that
-        -- fight's tutorial opening plays with `deferJoins` (states/battle.lua): an over-the-board scene
-        -- refuses the banner and holds it for the next full scene, which is this one. Every companion is
-        -- announced this way, so the prologue does not special-case its first one.
-        scene("conversation_prologue_flee"),
+        -- THERE IS NO SCENE BEAT BETWEEN THE FIGHT AND THE MAP. One stood here --
+        -- `conversation_prologue_flee`, played over a plain backdrop -- and it is deleted; its lines
+        -- moved into the sweep's own opening (conversation_prologue_ruins), which plays over the map
+        -- the instant it appears. One screen less between the first fight and the first map.
+        --
+        -- WHICH MOVES THE JOIN BANNER WITH THEM. "[Rowan has joined your Party]" is queued by her
+        -- recruit two beats up (models/conversation.lua) and survives the fight because that fight's
+        -- tutorial opening plays with `deferJoins` (states/battle.lua): an over-the-board scene refuses
+        -- the banner and holds it for the next FULL scene. That is now the overworld opening, which
+        -- states/game.lua plays with no `deferJoins`, so Conversation.drainJoins folds it on there.
+        -- Every companion is announced this way; the prologue does not special-case its first one.
         overworld(FLIGHT_QUEST),
-        -- The flight ends at the capital's gate, and the prologue with it: prologue.next past the last
-        -- beat opens the hub. The arrival is the hub's to stage now (states/hub.lua reads the hubIntro
+        -- The Champion falls and the prologue ends with it: prologue.next past the last beat opens the
+        -- hub, which is the SAME CITY the sweep was fought through -- there is no journey between the
+        -- two. The first-visit staging is the hub's (states/hub.lua reads the hubIntro
         -- flag begin() set): the guard scene plays over the city, the Quest Board is coached, and the
         -- Colosseum debut is taken from the board -- arena_debut carries the Saber recruit
         -- (`rewardCharacter`) and the victory scene (`outro = prologue_victory`), so the climax and the
@@ -304,8 +325,8 @@ function prologue.enter()
     -- only one in the game. The reasoning was that the prologue owns no screen of its own, and it was
     -- wrong in the direction that costs the most: this state is the first thing a new player reaches
     -- past the title, so the game's answer to New Game was the music stopping. Worse on the way back
-    -- through -- a resume lands here holding `music.victory`, so the scene sworn over the ash of
-    -- Bellmere would have opened under the bed that plays when you win something.
+    -- through -- a resume lands here holding `music.victory`, so the scene played over the held street
+    -- would have opened under the bed that plays when you win something.
     --
     -- `music.menu` rather than a bed of Act 0's own: it is the game's face, calm and written to sit
     -- under a still screen, which is exactly what a conversation over a plain backdrop is. Its
@@ -328,7 +349,7 @@ end
 -- WHAT THE PROLOGUE IS WORTH, HANDED OVER WITHOUT PLAYING IT. The debug column's "Skip Prologue"
 -- (states/menu.lua) starts a New Game and opens the city directly, which means every beat above still
 -- has to pay: the hub is met by a company that has been through Act 0 -- two bodies at level 4 carrying
--- a road's worth of kit -- and a level-1 pair with an empty stash reads as a broken city rather than a
+-- a sweep's worth of kit -- and a level-1 pair with an empty stash reads as a broken city rather than a
 -- skipped prologue.
 --
 -- DERIVED WHERE IT CAN BE. The two abilities Rowan hands over mid-fight, the chests, the loot the two
@@ -340,7 +361,7 @@ end
 --
 -- WHAT IT DOES NOT HAND OVER is the rolled half of a fight's spoils -- band loot and salvage. Those are
 -- a roll rather than something the player was ever "supposed to receive", and the authored lists are
--- what the road was written to give. The GOLD is paid, through Spoils' own arithmetic: a hub is a row
+-- what the sweep was written to give. The GOLD is paid, through Spoils' own arithmetic: a hub is a row
 -- of shops, and arriving at them on the starting purse is the one difference that would make the
 -- skipped city play differently from the walked-into one.
 
@@ -384,7 +405,7 @@ prologue.SKIP_ACTIONS_PER_FIGHT = 10
 -- action and a body's technique concentrates where it is declared, which is why the company reaches the
 -- city holding the Bastion (Rowan, declared knight, and the avatar's starting sword is the Bastion's
 -- shelf too) and the Colosseum (the avatar's own badge, fighter by Growth.NEUTRAL_CLASS) and not the
--- other five. The road INTRODUCES all seven classes, one opener apiece -- but introducing is not
+-- other five. The sweep INTRODUCES all seven classes, one opener apiece -- but introducing is not
 -- swinging, and a played Act 0 does not open those doors either.
 --
 -- WHAT IS APPROXIMATED is the mix, because nothing recorded it: the actions divide evenly across the
@@ -455,16 +476,16 @@ function prologue.skip(player)
     player.roster = { avatar }
     Player.applyAvatarBody(player)
 
-    -- Rowan, sworn in the ash of Bellmere.
+    -- Rowan, met on the first job.
     Player.recruit(player, "character_rowan")
     -- ...and her join banner dropped on the floor. Player.recruit queues "[Rowan has joined your Party]"
-    -- for the next scene to play (models/conversation.lua), and the scene it belongs to -- "Ashes" -- is
+    -- for the next scene to play (models/conversation.lua), and the scene it belongs to -- "First Job" -- is
     -- one of the ones being skipped. Left queued it would fold onto whatever the city opens first, which
     -- is a vendor's greeting three buildings later.
     local joins = Conversation.pendingJoins
     for i = #joins, 1, -1 do joins[i] = nil end
 
-    -- WHAT ROWAN HANDS OVER IN THE VILLAGE LANE, which is the one part of Act 0 that does not land in the
+    -- WHAT ROWAN HANDS OVER IN THE FIRST STREET, which is the one part of Act 0 that does not land in the
     -- stash. The village lesson gives the avatar Clear Out and then Jolt mid-fight (`grant` on a step,
     -- data/tutorials/village.lua), straight into the grid -- "it stays there after the battle, the art
     -- is the avatar's now, not a prop" -- and states/battle.lua puts them there with Character.addItem
@@ -504,16 +525,16 @@ function prologue.skip(player)
     player.flags = player.flags or {}
     for _, flag in ipairs(prologue.SCENE_FLAGS) do player.flags[flag] = true end
 
-    -- What the road pays for the fighting. Each combat stop rolls its gold through the same arithmetic
+    -- What the sweep pays for the fighting. Each combat stop rolls its gold through the same arithmetic
     -- the fight would have (Spoils.roll at day 1 -- Act 0 is played before the calendar starts), and a
     -- stop that prices its charges PER HEAD pays for all of them: models/encounter_battle.lua counts the
     -- ones still standing, and a skip hands over the run where everybody walked out.
     local function payFight(count)
         Player.addGold(player, Spoils.roll({ count = count, day = 1 }).gold)
     end
-    -- Counted rather than typed, because the technique below is priced per fight: the village lane to
+    -- Counted rather than typed, because the technique below is priced per fight: the first street to
     -- start with, a stop for every route entry that fields a composition, and the champion at the end.
-    -- A road that gains or loses a fight moves both payouts without either figure being touched.
+    -- A route that gains or loses a fight moves both payouts without either figure being touched.
     local fights = 1
     for _, stop in ipairs(stops) do
         local def = Encounter.defs[stop.id]

@@ -32,11 +32,12 @@ Conversation.active = nil
 
 -- Companions recruited but not yet announced in a conversation. Player.recruit appends to this and
 -- the next scene to play folds each onto its end as a "[<name> has joined your Party]" banner, then
--- clears the list. This is what puts a join IN the scene it belongs to -- the oath in "Ashes", Saber's
--- turn in "The Gatekeeper", a vendor line's outro -- rather than only in a toast off to one side. It
--- holds for EVERY companion without the author remembering to script it, because every recruit runs
--- through Player.recruit and every recruit is immediately followed by its scene (states/game.lua plays
--- the quest `outro` straight after Quest.complete; the prologue plays "Ashes" after the village). Held
+-- clears the list. This is what puts a join IN the scene it belongs to -- Rowan in the prologue's
+-- "First Job", Saber's turn in "The Gatekeeper", a vendor line's outro -- rather than only in a toast
+-- off to one side. It holds for EVERY companion without the author remembering to script it, because
+-- every recruit runs through Player.recruit and every recruit is immediately followed by its scene
+-- (states/game.lua plays the quest `outro` straight after Quest.complete, and the prologue's own
+-- overworld opening straight after the first fight). Held
 -- as display data (name/portrait), never the instance, so it stays load-safe and pins nothing.
 Conversation.pendingJoins = {}
 
@@ -399,8 +400,8 @@ function Conversation.play(id, onDone, ctx, opts)
     -- frozen board as the last words before the first turn, which is not the roster beat a join
     -- belongs in -- so it lets the banner fall through to the next SCRIPTED scene, one an author put
     -- the newcomer in on purpose. This holds whatever staging the opening took. The prologue relies
-    -- on this: Rowan is recruited before the village fight so she can fight in it, and the join waits
-    -- out the tutorial's opening to land in the "Ashes" scene after (states/prologue.lua).
+    -- on this: Rowan is recruited before the first fight so she can fight in it, and the join waits
+    -- out the tutorial's opening to land in the overworld's opening scene after (states/prologue.lua).
     if not (opts and opts.deferJoins) then Conversation.drainJoins(resolved) end
     if opts and opts.overScene then resolved.overScene = true end
     -- `opts.box` puts the text box somewhere other than the bottom of the screen -- the free gutter

@@ -3,43 +3,42 @@
 -- This header survives a re-stamp: the tool reads the leading run of `--` lines back off disk and
 -- re-emits it (tools/extract_strings.lua, `headerLines`). A comment further DOWN the file does not.
 --
--- Played when the overworld map first appears (the flight leg's `opening` in states/prologue.lua).
--- Staged as an ORDINARY scene, like the beats either side of it; the compact `overScene` staging is
--- kept for a GUIDED fight's opening, where the board is being read tile by tile
--- (conversation_prologue_village.lua).
+-- Played when the overworld map first appears (the sweep's `opening` in states/prologue.lua's
+-- FLIGHT_QUEST). Staged as an ORDINARY scene, like the beats either side of it; the compact
+-- `overScene` staging is kept for a GUIDED fight's opening, where the board is being read tile by
+-- tile (conversation_prologue_village.lua).
 --
--- Three jobs:
+-- IT IS THE BEAT AFTER THE FIRST FIGHT AND THE BEAT BEFORE THE MAP AT ONCE. `conversation_prologue_flee`
+-- ("First Job") used to stand between the two -- a scene beat of its own in states/prologue.lua,
+-- played over a plain backdrop -- and its lines are the ones below: it is DELETED and its contents
+-- moved here. What that buys is one less screen between the first fight and the first map, and a
+-- first-map scene that says what the map is FOR while the player is looking straight at it.
 --
---   * The SCALE. prologue_flee is one town wide. This is the valley, and what it widens to is that
---     BELLMERE'S WAS NOT THE ONLY FIELD THAT OPENED -- every column of smoke is another one. First
---     time the game says the rifts are a condition of the world rather than one bad job. Rowan does
---     NOT know why they open; she is reading smoke. The cause is Iselle's to sell, and a knight who
---     already had it would leave that scene with nothing.
+-- SO IT CARRIES THE JOIN BANNER NOW. "[Rowan has joined your Party]" is queued by her recruit before
+-- the first fight and held through it (the fight's own opening plays with `deferJoins`, states/battle.lua
+-- -- an over-the-board scene refuses the banner). The scene that folds it on is simply the next full
+-- one, which used to be "First Job" and is now this: states/game.lua plays a quest's `opening` with no
+-- `deferJoins`, so Conversation.drainJoins appends it here. Nothing had to be wired for that, and
+-- nothing may quietly add `deferJoins` to that call without moving the banner somewhere else.
 --
---     The count is what carries it now: NINE CHARTERS WORK THESE SHIRES AND THERE IS MORE SMOKE THAN
---     NINE. The trade the party is in is a licensed industry, and the valley is the first proof that
---     the industry is smaller than the problem -- which is the same sentence the guard says about the
---     capital's own Rift one scene later, said about the countryside instead. Do not let a later trim
---     take the number: it is the only place in Act 0 that says how big the trade is.
---   * The MAP. The player's first one, arriving with no explanation -- markers, fog, a road. Naming
---     what they are FOR turns a screen of icons into an errand.
---   * The AVATAR'S VOICE. The errand -- go and find them -- is the avatar's line, not Rowan's. She
---     agrees with it rather than issuing it, which is the difference between a companion and a
---     quest-giver.
+-- WHAT THE SCENE IS FOR, in one line each: the fight in the street is won, the job is not over, and
+-- the errand the map is about to hand over is the rest of the city -- what is still loose in it, and
+-- who is still in it. The player's first overworld arrives with no explanation at all (markers, fog, a
+-- route), and this is what turns a screen of icons into an errand.
 --
--- "Safe behind its walls" is dramatic irony and stays: the capital is sitting on the largest rift
--- there is, which the gate scene is about to tell them.
+-- WHAT THE OLD RUINS SCENE SPENT ITS SEVEN LINES ON, all of it cut with the re-premise and said
+-- nowhere now: a valley of smoke seen from a hillside, Bellmere gone behind them, that the party's was
+-- not the only field that opened -- the first statement in the game that rifts are a condition of the
+-- world rather than one bad job -- and the count under it, NINE CHARTERS WORK THESE SHIRES AND THERE IS
+-- MORE SMOKE THAN NINE, which was the only place in Act 0 that said how big the trade is. Act 0 no
+-- longer leaves the city, so the valley cannot be looked at from here; whatever still needs saying has
+-- to be said inside the walls.
 return {
-    title = "The Road",
-    cast  = { "character_avatar", "character_rowan" },
+    title = "First Job",
+    cast  = { "character_rowan", "character_avatar" },
 
     script = {
-        { "character_avatar", "Bellmere is gone. I don't know who else made it out.", tag = 6 },
-        { "character_rowan", "Many did. We held that lane long enough.", tag = 2 },
-        { "character_rowan", "Look down the valley, {name}. Ours wasn't the only field that opened last night.", tag = 3 },
-        { "character_rowan", "Nine charters work these shires. That is more smoke than nine.", tag = 8 },
-        { "character_rowan", "Nobody stood in the road at those. Whoever ran is out in the hills.", tag = 7 },
-        { "character_avatar", "Then let's find them.", tag = 4 },
-        { "character_rowan", "The king's road to the capital, then. We'll be safe behind its walls, and we save who we can on the way.", tag = 5 },
+        { "character_rowan", "Not too bad for your first job, but there's no time to rest.", tag = 1 },
+        { "character_rowan", "Let's move to clear out the remaining demons and find survivors.", tag = 2 },
     },
 }

@@ -82,7 +82,7 @@ local BURGER_X, BURGER_Y = 18, 18
 -- `player.hubIntro` runs "arrival" -> "coach" -> nil. The arrival is the guard's scene played over the
 -- city; the coach is a bubble on the Rift with every other card refused until it has been walked into.
 --
---   coach   the Rift, where the guard has just sent them (conversation_prologue_arrival). The stair
+--   coach   the Rift, where Rowan has just sent them (conversation_prologue_arrival). The stair
 --           itself is coached on the far side of that door, by a bubble on the descend row
 --           (states/gate.lua) -- this stage only gets them through it.
 --
@@ -571,13 +571,19 @@ function hub.enter()
     -- the queue), so the cursor is lined up with the hall or the stair the same way a grown door's is.
     focusCoachedCard()
 
-    -- First arrival at the capital (New Game only; the prologue set this flag -- states/prologue.lua).
-    -- ONE SCENE: the guard's arrival, played over the city the player is now looking at.
+    -- The first visit to the hub (New Game only; the prologue set this flag -- states/prologue.lua).
+    -- ONE SCENE: Rowan's, played over the city the player is now looking at.
+    --
+    -- IT IS NOT AN ARRIVAL. Act 0 is fought inside this same city (states/prologue.lua): the party
+    -- does not travel here, so there is no gate to be processed through and no refugee column to join.
+    -- `conversation_prologue_arrival` keeps the id and the slot, and what it now plays is the street
+    -- after the breach is cleared -- Rowan closing the job, naming why it happened, and pointing at the
+    -- Rift for the work and the coin.
     --
     -- IT USED TO BE TWO. A sponsor intercepted the party in the street straight afterwards, because the
-    -- guard's lines sent them to the Adventurers' Guild and something had to overtake that decision
-    -- before they reached the board. The guard names the Rift and points at it himself now -- the man
-    -- processing refugees all week knows where the work is -- so there is nothing left to intercept.
+    -- scene's lines sent them to the Adventurers' Guild and something had to overtake that decision
+    -- before they reached the board. The scene names the Rift and points at it itself now, so there is
+    -- nothing left to intercept.
     -- Iselle is at the top of the stair instead, and states/gate.lua plays her on the first visit there.
     --
     -- On its close the intro moves to its coaching stage, where the Gate is the only door that opens

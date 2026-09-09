@@ -2529,7 +2529,7 @@ end
 -- do not stay dug: nothing down there is born, it FORMS, out of whatever is at the bottom of the hole.
 -- The Crown pays by the floor to keep the number down and the trade calls it pruning. Leave the deep
 -- floors unpruned and the count climbs, and what is down there comes up the stair and out into the
--- country -- which is Bellmere, which is the fight the game opens on. NOTE: no scene states this to the
+-- streets over it -- which is the breach, which is the fight the game opens on. NOTE: no scene states this to the
 -- player before they descend any more; see the note on Descent.gateCoached.
 --
 -- WHAT IT IS FOR, MECHANICALLY. Every other event in the loop is already priced and priced well: a wipe

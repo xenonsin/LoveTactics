@@ -1,6 +1,13 @@
--- The flight to the capital, HAND-AUTHORED (models/overworld.lua's Overworld.fromLayout). The prologue
--- leg that teaches the overworld cannot be a roll: the coach says "walk to the chest ahead," and the
--- chest has to actually BE ahead -- the first place on the road, with nothing else beside the start.
+-- The city sweep, HAND-AUTHORED (models/overworld.lua's Overworld.fromLayout). The prologue leg that
+-- teaches the overworld cannot be a roll: the coach says "walk to the chest ahead," and the chest has
+-- to actually BE ahead -- the first place on the route, with nothing else beside the start.
+--
+-- IT IS A BREACHED CITY, NOT A ROAD. This file was authored as the flight to the capital -- a forest,
+-- a king's road, a wood either side of it -- and the premise moved inside the walls: Act 0 happens in
+-- the capital itself and this leg is its streets, block by block (states/prologue.lua's FLIGHT_QUEST).
+-- `biome = "castle"` is the whole re-skin; every argument below about SHAPE survives it unchanged,
+-- because a route threading a city is mostly buildings for the same reason a road threading a wood is
+-- mostly wood. The filename and the ids still say "flight".
 --
 -- IT IS A GRID OF PLACES, not a rectangle of tiles. Everything the old file said about itself was true
 -- of the board it was drawn for -- a road that wandered so no leg ran straight for more than five tiles,
@@ -21,10 +28,10 @@
 -- asking for.
 --
 -- SO: 9x7, and only twenty-one of its sixty-three cells are somewhere to stand. THE FORTY-TWO BLOCKED
--- CELLS ARE THE CONTENT, not waste around it -- a road threading a wood is mostly wood, and a board
+-- CELLS ARE THE CONTENT, not waste around it -- a route threading a city is mostly city, and a board
 -- whose every cell is a place has no silhouette to read. What that buys is twenty steps from the start
 -- to the Champion (against eight), with the stops two to four apart instead of shoulder to shoulder, so
--- the road has walking between its beats and the wood either side of it is visibly a wood.
+-- the route has walking between its beats and the blocks either side of it are visibly blocks.
 --
 -- Legend (see Overworld.fromLayout):
 --   #  a cell that is not there    .  a place        S  the start     X  the objective (the Champion)
@@ -37,7 +44,7 @@
 --   2 priest (Heal)  3 knight (Shout)  4 alchemist (Assayer's Eye)  5 rogue (Drain Mana)  6 mage (Fire
 --   Bolt)  7 fighter (Power Strike)
 --
--- THE ROAD IS A SINGLE CHAIN. Every place has exactly two walkable neighbours except the two ends, so
+-- THE ROUTE IS A SINGLE CHAIN. Every place has exactly two walkable neighbours except the two ends, so
 -- BFS distance from S rises by one at every step and the stops are met in exactly the authored order --
 -- which the flight_leg and prologue specs read directly, and which tests/flight_leg_spec.lua now pins
 -- neighbour by neighbour rather than trusting this paragraph. Open a second route between any two places
@@ -49,9 +56,9 @@
 -- relationship the old radius-2 fog had against a road that never ran straight. The one after it is
 -- still dark.
 return {
-    biome = "forest",
-    -- 9 wide x 7 tall, read as the map: S bottom-left, X top-left, the road running east along the
-    -- bottom, climbing the far side of the wood and coming back west across the top to the Champion.
+    biome = "castle",
+    -- 9 wide x 7 tall, read as the map: S bottom-left, X top-left, the route running east along the
+    -- bottom, up the far side of the quarter and back west across the top to the Champion.
     map = {
         "X7#######", -- y1  the Champion, and the rest on her doorstep
         "#.6######", -- y2  the last chest
@@ -59,6 +66,6 @@ return {
         "####..4.#", -- y4  the survivors, on the long turn west
         "#######.#", -- y5  the climb
         "####2..3#", -- y6  the shrine, and the defence at the top of the eastern leg
-        "S1...####", -- y7  the start and the teaching chest, with the road east ahead of it
+        "S1...####", -- y7  the start and the teaching chest, with the street east ahead of it
     },
 }

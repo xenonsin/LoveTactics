@@ -41,7 +41,7 @@
 -- imps' approach down two lanes instead of bunching them, and leaves the middle tile free.
 -- The biome is ART ONLY on a curated board -- Arena.BIOME_TERRAIN is consulted by generateLayout and
 -- nothing else, so every cell above keeps the exact walkability, move cost and sight cost it was
--- authored with. `castle` is here because Bellmere is a WALLED MARKET TOWN and this lane is paved:
+-- authored with. `castle` is here because the fight stands in the CAPITAL'S OWN STREETS and this lane is paved:
 -- flagstone and cold stone rather than the forest's greens (data/tilesets/castle.lua). A `town` biome
 -- would be the honest name, but tests/biome_spec.lua requires every biome to be used by a QUEST and
 -- the prologue's map is inline in states/prologue.lua, so a new one would be dead weight on arrival.

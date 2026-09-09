@@ -1,11 +1,12 @@
--- The player's created avatar -- a new hand of the Ninth Charter, the chartered rift company whose
--- Bellmere job goes wrong in Act 0, and the body the whole game is played as. Not one of the seven
+-- The player's created avatar -- a new hand on the party hired when the breach opens in the capital
+-- (Act 0), and the body the whole game is played as. Not one of the seven
 -- (see docs/story.md); has no class of its own and grows into whatever the player casts
 -- (Growth.NEUTRAL_CLASS is fighter, the class-less fallback). The blank slate is what the JOB buys: a
--- company hand on a first posting was trained in nothing in particular, and the only reason this body
+-- hand on a first job was trained in nothing in particular, and the only reason this body
 -- can hold a sword is that Rowan, the senior hand, taught it. It used to be the baron of Bellmere's
 -- child, orphaned by the prologue; there is no rank and no dead household any more, and what the
--- avatar is owed at a gate is correspondingly nothing (conversation_prologue_arrival.lua).
+-- avatar is owed anywhere in this city is correspondingly nothing -- though nothing in Act 0 says so
+-- out loud any more; the scene that did is rewritten (conversation_prologue_arrival.lua).
 --
 -- THE BODY IS CHOSEN ON ITS OWN FACE. Character creation offers two and shows both portraits side by
 -- side (states/character_creation.lua); the chosen one is stamped onto the instance by

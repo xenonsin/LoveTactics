@@ -287,25 +287,23 @@ return {
     ["line.conversation_descent_sloth.2"] = { en = "I held a post once. Nobody came. You will find out what I found out, and it will take you about fifteen years.", ja = "" },  -- TODO
     ["line.conversation_descent_wrath.1"] = { en = "Do not make it quick. A quick blow is a blow somebody is holding back.", ja = "" },  -- TODO
     ["line.conversation_descent_wrath.2"] = { en = "I have had a lifetime of being handled. Come and hit me properly.", ja = "" },  -- TODO
-    ["line.conversation_flight_champion.1"] = { en = "Stop here, {name}. That one has a name. The rest don't. It's the biggest thing that came up out of Bellmere's field.", ja = "" },  -- TODO
-    ["line.conversation_flight_champion.2"] = { en = "It's between us and the capital.", ja = "" },  -- TODO
-    ["line.conversation_flight_champion.3"] = { en = "It is. It won't go down the way the others did, and the imps will throw themselves at us to keep us off it.", ja = "" },  -- TODO
-    ["line.conversation_flight_champion.4"] = { en = "Then we cut it down and the imps stop mattering.", ja = "" },  -- TODO
-    ["line.conversation_flight_champion.5"] = { en = "Then stay out of its reach, and let it come to us.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_shrine.1"] = { en = "A wayside shrine, still standing where everything around it burned.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_shrine.2"] = { en = "Someone tended it to the last, and cut a healer's rite into the stone. It feels wrong to walk straight past. Choose...", ja = "" },  -- TODO
-    ["line.conversation_flight_event_shrine.3"] = { en = "Kneel and learn the rite by heart.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_shrine.4"] = { en = "Tend our wounds and press on.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_shrine.5"] = { en = "...there. It holds. I can set a wound to closing now, slow and sure. Even one that is not my own.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_shrine.6"] = { en = "Patched, and the worse for wear behind us. The rite we leave for whoever comes after. We've a road to make.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_shrine.7"] = { en = "The capital, then. Keep moving.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_survivor.1"] = { en = "Hold. Someone's in the brush. Hurt, and trying not to be heard.", ja = "" },  -- TODO
+    ["line.conversation_flight_champion.1"] = { en = "Stop here, {name}. That big one has a name. The rest of them don't.", ja = "" },  -- TODO
+    ["line.conversation_flight_champion.2"] = { en = "It won't go down the way the others did, and the small ones will throw themselves at us to keep us off it.", ja = "" },  -- TODO
+    ["line.conversation_flight_champion.3"] = { en = "Cut it down and the rest stop mattering. Stay out of its reach and let it come to us.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_shrine.1"] = { en = "A shrine, still standing with the whole block burned around it.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_shrine.2"] = { en = "Someone cut a healer's rite into the stone. We can learn it, or we can patch ourselves up and move. Choose...", ja = "" },  -- TODO
+    ["line.conversation_flight_event_shrine.3"] = { en = "Kneel and learn the rite.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_shrine.4"] = { en = "Tend our wounds and move on.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_shrine.5"] = { en = "You have it. That will set a wound to closing, slow but sure. Even one that isn't yours.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_shrine.6"] = { en = "Patched up. We leave the rite for whoever comes through here after us.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_shrine.7"] = { en = "Now let's keep moving. There's more of this quarter to clear.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_survivor.1"] = { en = "Hold. Someone's under that wall, hurt and trying not to make a sound.", ja = "" },  -- TODO
     ["line.conversation_flight_event_survivor.2"] = { en = "Easy. We're not with the things that did this. Choose...", ja = "" },  -- TODO
     ["line.conversation_flight_event_survivor.3"] = { en = "Ask which way the demons went.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_survivor.4"] = { en = "Share what little we carry, and press on.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_survivor.5"] = { en = "...north, along the ridge, in numbers. Good. We take the low road. And she gave you the tell: where a demon's guard runs thin, if you mark it before the strike.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_survivor.6"] = { en = "Nothing to spare but thanks, and she gave that freely. An assayer's lens, pressed on you in kind: look through it and a demon's satchel keeps nothing back.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_survivor.7"] = { en = "An apothecary, before the fires. Then the capital: reach the walls.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_survivor.4"] = { en = "Share what we're carrying, and move on.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_survivor.5"] = { en = "North, through the market, in numbers. She gave us the tell as well: mark one before you strike and you'll see where its guard runs thin.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_survivor.6"] = { en = "Not much to spare, and she took it kindly. She pressed her lens on you for it: look through that and a demon's satchel keeps nothing back.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_survivor.7"] = { en = "An apothecary, before all this. She can make the square on her own now. Let's keep clearing, {name}.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_discipline_unlocked.1"] = { en = "You walk the {discipline}'s trail now, {name}. The Lodge sets out gear for the ones who get this far. It is yours to draw.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_discipline_unlocked.3"] = { en = "That path knows when to stop. Take the kit. Remember the lesson with it.", ja = "" },  -- TODO
@@ -334,45 +332,16 @@ return {
     ["line.conversation_hunters_lodge_vendor_intro.4"] = { en = "The wild always makes more game. That is the mercy of it. There is always another beast worth killing.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_vendor_intro.5"] = { en = "Take a bow and the traps together, {name}. Half of what they sell here does nothing without the other half beside it.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_vendor_intro.6"] = { en = "Draw what you need. Rank up, and one day they carve your name on that wall.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.1"] = { en = "There it is. Walls still standing, gates still shut.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.10"] = { en = "It won't stop, either. The Rift under this city has to be cleared, deep and often.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.11"] = { en = "Not many can, and fewer will. So the deep floors get left, and whatever's down there comes up.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.13"] = { en = "The Rift, then. We'll want coin before we want anything else.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.14"] = { en = "Ninth Charter, out of Bellmere. There's two of us left of it.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.15"] = { en = "Bellmere. That's the whole eastern line gone, then. Your paper burned with the town it was written against.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.16"] = { en = "That's what this street is running from. No charter covers it -- it pays by the trip. Better than queuing for bread, if you can still hold a blade.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.2"] = { en = "The Bastion holds this wall. If anywhere's still standing, {name}, it's behind these stones.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.3"] = { en = "More of them. Third column through the gate since morning. Where are we meant to put them all?", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.4"] = { en = "Not under my roof. Barely bread enough for the mouths already inside.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.5"] = { en = "Off the road, with the others. Names, and where you've run from.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.7"] = { en = "...That plate. That's Bastion steel. Forgive me, ser. Pass, the pair of you.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.10"] = { en = "Away from it. The capital, {name}. Tonight.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.11"] = { en = "Half the town made the west road. I keep counting the half that didn't.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.12"] = { en = "You count them later, {name}. Everyone counts them later.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.13"] = { en = "The Ninth went down that lane at dusk. We came up an hour behind them.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.14"] = { en = "I know what hour we came up. I've been late before. Don't hand me this one as well.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.15"] = { en = "There's no company left to report to, and no charter to report on.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.16"] = { en = "The charter was signed in the capital. Another one gets signed there.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.17"] = { en = "You don't need another one. The Bastion would take you back tomorrow, plate and all.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.18"] = { en = "They would. Fifteen years somebody has told me where to stand, and tonight there's nobody left to tell me.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.19"] = { en = "So we go on. If you'll have me on the road.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.20"] = { en = "Then don't fall behind.", ja = "" },  -- TODO
-    ["line.conversation_prologue_flee.9"] = { en = "Go on where? The field is still open.", ja = "" },  -- TODO
-    ["line.conversation_prologue_ruins.2"] = { en = "Many did. We held that lane long enough.", ja = "" },  -- TODO
-    ["line.conversation_prologue_ruins.3"] = { en = "Look down the valley, {name}. Ours wasn't the only field that opened last night.", ja = "" },  -- TODO
-    ["line.conversation_prologue_ruins.4"] = { en = "Then let's find them.", ja = "" },  -- TODO
-    ["line.conversation_prologue_ruins.5"] = { en = "The king's road to the capital, then. We'll be safe behind its walls, and we save who we can on the way.", ja = "" },  -- TODO
-    ["line.conversation_prologue_ruins.6"] = { en = "Bellmere is gone. I don't know who else made it out.", ja = "" },  -- TODO
-    ["line.conversation_prologue_ruins.7"] = { en = "Nobody stood in the road at those. Whoever ran is out in the hills.", ja = "" },  -- TODO
-    ["line.conversation_prologue_ruins.8"] = { en = "Nine charters work these shires. That is more smoke than nine.", ja = "" },  -- TODO
-    ["line.conversation_prologue_village.1"] = { en = "Look at the field, {name}! Bellmere is burning.", ja = "" },  -- TODO
-    ["line.conversation_prologue_village.10"] = { en = "We hold it until they're clear, {name}. First job or not, you're holding it with me.", ja = "" },  -- TODO
-    ["line.conversation_prologue_village.2"] = { en = "That torn place above the fire is a rift. It opened at dusk.", ja = "" },  -- TODO
-    ["line.conversation_prologue_village.3"] = { en = "They open where they please, all over the world. No one has ever shut one.", ja = "" },  -- TODO
-    ["line.conversation_prologue_village.4"] = { en = "Demons climb out while it stands. More are coming up behind these.", ja = "" },  -- TODO
-    ["line.conversation_prologue_village.7"] = { en = "Two of them have seen us. Watch how I take mine.", ja = "" },  -- TODO
-    ["line.conversation_prologue_village.8"] = { en = "Our charter said a field tear and a dozen imps. Whoever wrote it never rode out here to look.", ja = "" },  -- TODO
-    ["line.conversation_prologue_village.9"] = { en = "The town is running for the west road. This is the only lane up from the field.", ja = "" },  -- TODO
+    ["line.conversation_prologue_arrival.1"] = { en = "That's the last of rift raff.", ja = "" },  -- TODO
+    ["line.conversation_prologue_arrival.2"] = { en = "The champion wasn't in the report but you did well to take it down.", ja = "" },  -- TODO
+    ["line.conversation_prologue_arrival.3"] = { en = "This is what happens when the guild fails to clear enough of The Rift.", ja = "" },  -- TODO
+    ["line.conversation_prologue_arrival.4"] = { en = "The deep floors get left alone, and whatever gathers down there comes up here.", ja = "" },  -- TODO
+    ["line.conversation_prologue_arrival.5"] = { en = "Let's collect our pay and see what work The Rift is offering, {name}.", ja = "" },  -- TODO
+    ["line.conversation_prologue_ruins.1"] = { en = "Not too bad for your first job, but there's no time to rest.", ja = "" },  -- TODO
+    ["line.conversation_prologue_ruins.2"] = { en = "Let's move to clear out the remaining demons and find survivors.", ja = "" },  -- TODO
+    ["line.conversation_prologue_village.1"] = { en = "The demons that breached through the rift are up ahead, {name}.", ja = "" },  -- TODO
+    ["line.conversation_prologue_village.2"] = { en = "They look like simple imps, so the guild report seems accurate.", ja = "" },  -- TODO
+    ["line.conversation_prologue_village.3"] = { en = "Strike before they start to notice us. Watch this!", ja = "" },  -- TODO
     ["line.conversation_touchstone_vendor_intro.1"] = { en = "Four houses dig that hole and not one of them trusts the other three to say what came out of it. So they pay me to say it. Everything that comes up unnamed comes up here.", ja = "" },  -- TODO
     ["line.conversation_touchstone_vendor_intro.10"] = { en = "Not on this counter.", ja = "" },  -- TODO
     ["line.conversation_touchstone_vendor_intro.11"] = { en = "No. I checked.", ja = "" },  -- TODO
@@ -508,17 +477,16 @@ return {
     ["title.conversation_descent_sloth"] = { en = "Acedia, the Unrelieved", ja = "" },  -- TODO
     ["title.conversation_descent_wrath"] = { en = "Ira, the Unappeased", ja = "" },  -- TODO
     ["title.conversation_flight_champion"] = { en = "The Champion", ja = "" },  -- TODO
-    ["title.conversation_flight_event_shrine"] = { en = "The Roadside Shrine", ja = "" },  -- TODO
-    ["title.conversation_flight_event_survivor"] = { en = "A Voice from the Brush", ja = "" },  -- TODO
+    ["title.conversation_flight_event_shrine"] = { en = "The Street Shrine", ja = "" },  -- TODO
+    ["title.conversation_flight_event_survivor"] = { en = "A Voice in the Rubble", ja = "" },  -- TODO
     ["title.conversation_hunters_lodge_discipline_unlocked"] = { en = "The Deeper Wood", ja = "" },  -- TODO
     ["title.conversation_hunters_lodge_errand_asked"] = { en = "The White Stag", ja = "" },  -- TODO
     ["title.conversation_hunters_lodge_errand_found"] = { en = "The White Stag", ja = "" },  -- TODO
     ["title.conversation_hunters_lodge_slot_01_outro"] = { en = "The Antlers", ja = "" },  -- TODO
     ["title.conversation_hunters_lodge_vendor_intro"] = { en = "The Hunter's Lodge", ja = "" },  -- TODO
-    ["title.conversation_prologue_arrival"] = { en = "The Capital", ja = "" },  -- TODO
-    ["title.conversation_prologue_flee"] = { en = "Ashes", ja = "" },  -- TODO
-    ["title.conversation_prologue_ruins"] = { en = "The Road", ja = "" },  -- TODO
-    ["title.conversation_prologue_village"] = { en = "Bellmere", ja = "" },  -- TODO
+    ["title.conversation_prologue_arrival"] = { en = "After the Breach", ja = "" },  -- TODO
+    ["title.conversation_prologue_ruins"] = { en = "First Job", ja = "" },  -- TODO
+    ["title.conversation_prologue_village"] = { en = "The Breach", ja = "" },  -- TODO
     ["title.conversation_touchstone_vendor_intro"] = { en = "The Touchstone", ja = "" },  -- TODO
     ["title.conversation_tutorial_flight"] = { en = "The Open Road", ja = "" },  -- TODO
     ["title.conversation_tutorial_village"] = { en = "Rowan's Lesson", ja = "" },  -- TODO

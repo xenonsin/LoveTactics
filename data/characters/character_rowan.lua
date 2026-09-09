@@ -1,8 +1,9 @@
--- Rowan, the knight companion (diligence) and the player's FIRST recruit -- the senior hand of the
--- Ninth Charter who taught the avatar the sword, fights at your shoulder over Bellmere, and when the
--- job is ash chooses to keep walking with you rather than take the Bastion back (states/prologue.lua).
+-- Rowan, the knight companion (diligence) and the player's FIRST recruit -- the senior hand who taught
+-- the avatar the sword and fights at your shoulder through the breached city of Act 0, and who keeps
+-- working beside you afterwards rather than taking the Bastion back (states/prologue.lua).
 -- She is the foil to sloth, whose general is the oath abandoned; Rowan is the oath kept. SHE SWEARS
--- NOTHING TO THE PLAYER -- that scene is re-premised (conversation_prologue_flee.lua) -- and she is the
+-- NOTHING TO THE PLAYER -- the scene that used to hold the oath is deleted, its lines moved into
+-- conversation_prologue_ruins.lua -- and she is the
 -- bodyguard and mentor anyway, which is the sharper reading: she guards whoever is beside her out of
 -- compulsion, with no vow underneath it (data/traits/trait_oathward.lua), and teaches the trade she
 -- already knows. Hers is the voice that warns and explains and the body that steps in front. Oath

@@ -14,7 +14,7 @@ local Conversation = require("models.conversation")
 -- not played as a scene -- it is the village fight's speech-bubble text (models/tutorial.lua) -- but
 -- it lives in the same folder and must resolve like any other. See states/hub.lua for the arrival.
 local PROLOGUE_SCENES = {
-    "conversation_prologue_village", "conversation_prologue_flee", "conversation_prologue_arrival",
+    "conversation_prologue_village", "conversation_prologue_ruins", "conversation_prologue_arrival",
     "conversation_colosseum_slot_01_outro", "conversation_tutorial_village",
 }
 -- `conversation_prologue_flier` was the sixth and is DELETED. `. content-report` reported it as an
@@ -26,6 +26,10 @@ local PROLOGUE_SCENES = {
 -- beat with no portrait art to render, so the game's opening was grey letterboxes on black. Its work
 -- moved into `conversation_prologue_village`, which is played over the board itself, and which is why
 -- that id is now the first entry above rather than a bubble-text file like `tutorial_village`.
+--
+-- `conversation_prologue_flee` was the scene beat between the first fight and the overworld, and it is
+-- deleted too: its lines moved into `conversation_prologue_ruins`, the sweep's own opening, which is
+-- why that id now stands in its place above. The join banner moved with them -- see that file.
 
 return {
     {
@@ -146,12 +150,17 @@ return {
         end,
     },
     {
-        name = "the opening scene explains the rift, in the mentor's voice alone",
+        name = "the opening scene names the fight, in the mentor's voice alone",
         fn = function()
-            -- THE PREMISE IS SAID OUT LOUD, and this is the assertion that keeps it that way. The
-            -- scene it replaced named a rift in its second line and glossed it nowhere, on the theory
-            -- that a hole over your own field explains itself. What the player actually has at that
-            -- moment is a noun attached to nothing, in the first thirty seconds of the game.
+            -- WHAT THE FIRST LINES OWE THE FIRST CLICK, and no more than that. The scene is three
+            -- lines long: it names the two nouns standing on the board behind it -- the rift the
+            -- things came out of, and the things -- and then hands the board to Rowan's opening kill.
+            --
+            -- IT USED TO ASSERT THE GLOSS TOO ("no one has ever shut one"), because the eight-line
+            -- draft carried the whole premise of the game in its first thirty seconds. That draft is
+            -- rewritten and the gloss is CUT, not moved: nothing in the prologue currently says a rift
+            -- cannot be closed. Whichever scene picks it up should take this assertion with it rather
+            -- than leaving the claim unpinned anywhere.
             local def = Conversation.defs["conversation_prologue_village"]
             assert(def, "the village opening must exist")
             local said = {}
@@ -161,9 +170,8 @@ return {
             end
             local all = table.concat(said, " ")
             assert(all:find("rift", 1, true), "the opening names the rift")
-            assert(all:find("close", 1, true) or all:find("shut", 1, true),
-                   "the opening says a rift is not something anyone closes")
-            assert(all:find("demon", 1, true), "the opening says what comes out of one")
+            assert(all:find("demon", 1, true) or all:find("imp", 1, true),
+                   "the opening says what came out of it")
             -- Whose voice it is in is pinned next door, by tests/tutorial_spec.lua: a lesson's opening
             -- is the mentor's alone, because it is the voice that teaches the seven steps after it.
             -- What THIS asserts is the other half -- that the scene carrying the premise is still the

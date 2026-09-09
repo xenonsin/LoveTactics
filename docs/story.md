@@ -108,44 +108,65 @@ fragment you have earned. Watching that count climb is the last stretch of the g
 
 The seven-general arc above is the middle of a three-act shape, not the whole of it.
 
-- **Act 0 — the prologue.** **Bellmere**, a walled market town on the eastern frontier, and the
-  demons that burn all of it. It is the tutorial and the reason to care at once: the antagonist
-  named, the first companion earned, the road to the city walked. It ends when the hub opens and the
-  Adventurers' Guild sets the board in front of you. Linear by design — the overworld's locked doors
-  and dead-end ambushes stay holstered until Act 1.
+- **Act 0 — the prologue.** **The capital itself**, and a breach that opens inside its walls. It is
+  the tutorial and the reason to care at once: the antagonist named, the first companion earned, the
+  city fought through street by street. It ends when the hub opens and the Adventurers' Guild sets the
+  board in front of you. Linear by design — the overworld's locked doors and dead-end ambushes stay
+  holstered until Act 1.
 
-  **The player is a hand of the Ninth Charter, and Bellmere is a posting.** The Ninth is a
-  *chartered rift company*: a licensed outfit of a dozen, paid by the crown's paper to work the small
-  field tears of the eastern shires. The avatar is its newest hand, on a first job; Rowan is the
-  senior hand who trained them. They are **friends on the same payroll**, and that is the whole of the
+  **ONE CITY, NO JOURNEY.** Act 0 and Act 1 stand on the same ground: the prologue's fight, its
+  overworld leg and the hub are all the capital. The first fight is a lane a street from the breach,
+  the overworld is the breached quarter block by block — clear what is still loose, pull out who is
+  left — and past the Champion at the end of it the hub simply opens, in the town the party has been
+  fighting in the whole time.
+
+  > This replaces a journey. Act 0 used to open in **Bellmere**, a walled market town on the eastern
+  > frontier that burned in the first fifteen minutes, and spend its overworld on the king's road to
+  > the capital. Both are gone, and so is the destination: there is nowhere to arrive from.
+  > `states/prologue.lua` and `data/overworld/tutorial_flight.lua` carry the re-skin (`biome =
+  > "castle"`); the ids still say `flight` and `village`.
+
+  **The player is a new hand on a hired party.** The avatar is on a first job; Rowan is the senior
+  hand who trained them. They are **friends on the same payroll**, and that is the whole of the
   relationship — nobody in Act 0 is anybody's ward, heir, or sworn body.
+
+  > **UNSETTLED, and the scenes no longer answer it:** whether that party is still the *Ninth
+  > Charter*. The company, the licensed trade it belonged to, and its death on the job were the spine
+  > of the old Act 0 and every line carrying them has been cut. What the rewritten lines name instead
+  > is a **guild**: the job comes off *"the guild report"* (the opening), and the breach happens because
+  > *"the guild fails to clear enough of The Rift"* (the seam). So the employer and the trade are the
+  > guild's now — but nothing yet says whether that is the Adventurers' Guild the hub's board belongs
+  > to, and the word *charter* still stands in the Bastion and the Rift's own fiction.
 
   > This replaces a noble origin. The avatar used to be the baron of Bellmere's child, orphaned in
   > the first fifteen minutes by a household that burned with the town, and Rowan used to be a knight
-  > the Order had *posted* to that child. Both are gone. What the charter buys that the rank did not:
-  > a reason the avatar is standing on a battlefield at all, a mentor who is a colleague rather than a
+  > the Order had *posted* to that child. Both are gone. What the job buys that the rank did not: a
+  > reason the avatar is standing on a battlefield at all, a mentor who is a colleague rather than a
   > bodyguard, and a trade the rest of the game is already inside.
 
-  **The rank is not replaced by another one — the avatar has none.** A company hand was trained in
+  **The rank is not replaced by another one — the avatar has none.** A hired hand was trained in
   nothing in particular, which is what earns the blank slate (`Growth.NEUTRAL_CLASS`), and the only
-  reason they can hold a sword at all is that Rowan taught them. It also means they reach the capital
-  with nothing anyone at a gate is obliged to honour: the charter is void with the town it was written
-  against. *The only credential in this party is Rowan's plate* — see
-  `data/conversations/prologue/conversation_prologue_arrival.lua`, where the paper is dismissed in one
-  sentence and the party gets through on the Bastion instead.
+  reason they can hold a sword at all is that Rowan taught them. It also means they hold nothing
+  anyone in this city is obliged to honour. *The only credential in this party is Rowan's plate* —
+  **which nothing now says out loud.** The beat lived in the old gate scene, where a guard clocked the
+  Bastion steel and took the party seriously on it; that scene is gone and the note has nowhere to
+  land until somebody writes it one.
 
-  **The charter is what the prologue kills.** The Ninth went down Bellmere's lane at dusk, an hour
-  ahead of the two of them, and did not come back up it. That is the loss Act 0 carries, and it is
-  *shared* — the company is a thing both of them lost, which is why the ash scene can be a
-  conversation between equals rather than one person consoling another. **Name the company, never a
-  roster of its dead.**
+  **The seam between the acts is `conversation_prologue_arrival.lua`** — five of Rowan's lines in the
+  street after the breach is cleared, played over the hub city on the first visit. It carries the
+  cause and nothing else: *the guild does not clear the Rift deep enough, the deep floors get left,
+  and what gathers down there comes up here.* That is the only statement in the game of why any of
+  this is happening, and it is what ties Act 0 to the loop.
 
-  **Nine charters work the shires, and there is more smoke than nine.** Said once, on the road
-  (`conversation_prologue_ruins.lua`), and it is the only place in Act 0 that sizes the trade. The
-  industry is real, licensed, and smaller than the problem — which is exactly the sentence the gate
-  guard says about the capital's own Rift a scene later. *No charter covers that one.* Field work is
-  paper; the Rift under the city is permanent, deeper than any paper was written for, and paid by the
-  trip. That gap is the escalation Act 0 exists to set up.
+  > **Cut with the guard, and said nowhere now:** that the work *pays by the trip* and **no charter
+  > covers it** — the escalation from licensed field work to a permanent hole nobody is obliged to go
+  > down — and *"not many can, and fewer will"*, which is the half of the cause the guild line does not
+  > state. Only the coin in Rowan's last line survives of it.
+
+  **What the sweep sizes, nothing now sizes.** The old road scene said it once — *nine charters work
+  these shires, and that is more smoke than nine* — and it was the only place in Act 0 that said how
+  big the trade is against how big the problem is. Act 0 no longer leaves the city, so that view no
+  longer exists; the same gap has to be argued from inside the walls or it is not argued at all.
 
   **Bryn is cut, and so is the household.** Character creation still offers two bodies, but the
   unchosen one is no longer spent on a sibling standing in a burning house — it is answered where it
@@ -155,32 +176,34 @@ The seven-general arc above is the middle of a three-act shape, not the whole of
   `arena_debut` still promises *"win it, and they will remember your name"* — a crowd learning a name
   you already had, which is the same promise it always was and is now the only one.
 
-  **The opening scene starts already burning**, over the board
+  **The opening scene is three lines, over the board**
   (`conversation_prologue_village.lua`), and Rowan speaks all of it — a lesson's opening establishes
   whose voice teaches the seven steps after it, and `tests/tutorial_spec.lua` enforces exactly that.
-  Its fifth line is the charter's: *the job was billed as a field tear and a dozen imps, and the paper
-  was wrong.* Everything that goes wrong in Act 0 goes wrong because a charter under-read a rift.
+  It names the rift the things came out of, says they are the small kind, and hands the board to her
+  opening kill. It does **not** gloss the rift: that they open anywhere, that no one has ever shut
+  one, and that things climb out while one stands used to be said here and is now said nowhere in the
+  game.
 
-  **What burns Bellmere is a rift, not an army.** It tears open in the town's own east field and
-  what walks out of it comes up the lane. This is why the prologue turns on a *lane* and never a wall:
-  the east wall is on the wrong side of the thing from the first line, and the lane is the board the
-  first fight is played on. The scene shows the player *that* a rift opened; Iselle supplies *why* one
-  did — an unpruned deep floor, which is her own trade's failure — and the Rift tally scene later tells
-  them straight out that they watched it happen.
+  **What breaks the city is a rift, not an army.** It tears open inside the walls and what walks out
+  of it comes up the streets. This is why the prologue turns on a *lane* and never a wall: a wall is
+  on the wrong side of the thing from the first line, and the lane is the board the first fight is
+  played on. The scene shows the player *that* a rift opened; Iselle supplies *why* one did — an
+  unpruned deep floor, which is her own trade's failure — and the Rift tally scene later tells them
+  straight out that they watched it happen.
 - **Act 1 — the seven.** This document. Open-ended: seven vendor lines, seven companions, seven
   generals, in whatever order standing allows.
 - **Act 2 — the Gate Below.** `quest_the_gate_below` and the Hollow Crown.
 
 The Crown re-summons the generals you have killed as its health falls (see *The Demon Lord*) —
 which is the whole reason the middle act is a general hunt and not a fetch list. **That logic has
-to be spoken, or it isn't there.** Plant the Demon Lord as a named threat in the burning village;
+to be spoken, or it isn't there.** Plant the Demon Lord as a named threat in the breached city;
 let the Guild say the rest aloud when it opens the board — the Crown is only ever as strong as its
 seven, and unmade one at a time it is hollow.
 
-You do not play one of the seven. The protagonist is a made character — the newest hand of a
-chartered rift company, no class of their own, growing into whatever they are cast as
+You do not play one of the seven. The protagonist is a made character — a new hand on a hired party,
+no class of their own, growing into whatever they are cast as
 (`Growth.NEUTRAL_CLASS`). The blank slate is *earned* by the job rather than argued around it: a
-company hand on a first posting was trained in nothing in particular, and the only
+hand on a first job was trained in nothing in particular, and the only
 reason they can hold a sword at all is that Rowan taught them. The player
 picks their **body** (1 or 2 — a sprite set, never a gender label) and types their **name** at
 character creation, before the first line is spoken (`states/character_creation.lua`).
@@ -349,8 +372,8 @@ walks into at slot 8.
 
 She was a squire on the relief column sent to Acedia's post, and it was ordered to turn back. She has
 spent her life since being the relief that comes — which is why she is fifteen years into the Order
-and still working a frontier charter nobody at the Bastion wanted, and why she held Bellmere's lane
-until the town was empty. She is compulsively the arrival that failed to happen.
+and still working the jobs nobody at the Bastion wanted, and why she holds the lane in Act 0 until the
+street behind it is empty. She is compulsively the arrival that failed to happen.
 
 **The flaw is that she cannot tell a duty from a bond — and nothing was ever issued to her about
 you.** She used to be *assigned* the baron's child, and the flaw read as a duty roster mistaken for
@@ -382,8 +405,10 @@ her. "Hold until relieved" reads as procedure, because that is what it is — an
 to tell a regulation from a vow *is* the sin. Rowan recites it flat at slot 1, the way you recite
 something you were handed.
 
-Her own is three. The first is said in the ash of Bellmere
-(`data/conversations/prologue/conversation_prologue_flee.lua`):
+Her own is three. **The first one is currently NOT IN THE GAME.** It was said in the ash of Bellmere,
+in `conversation_prologue_flee.lua` — a scene that is deleted with the town it stood in. Everything
+from here to the end of this subsection is design intent with nothing implementing it: the line has to
+be re-placed somewhere in the city before *hold until relieved* has anything to sit against.
 
 > **We go on. If you'll have me on the road.**
 

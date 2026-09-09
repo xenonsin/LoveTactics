@@ -76,7 +76,7 @@ return {
         fn = function()
             local player = skipped()
 
-            -- The avatar, alone until Bellmere burns, and Rowan sworn in the ash.
+            -- The avatar, alone until the breach, and Rowan met on the first job.
             assert(#player.roster == 2, "the prologue ends with a company of two, got " .. #player.roster)
             assert(player.roster[1].id == "character_avatar", "the avatar leads the roster")
             assert(player.roster[2].id == "character_rowan", "Rowan is the second body")
