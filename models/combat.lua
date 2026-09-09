@@ -722,6 +722,56 @@ function Combat.moveBudget(unit)
     return m > 0 and m or 0
 end
 
+-- What `char`'s GEAR is costing them in Move -- or nil when there is nothing worth saying. The Loadout
+-- screen's third warning and the sibling of Combat.unpayableCosts / Combat.adjacencyGap: those two say
+-- an item will not work, this one says the kit is working against itself.
+--
+-- STACKING IS THE WHOLE POINT, so one penalty is never a warning on its own. Almost every coat and
+-- shield on the shelf charges -1 Move and heavy plate charges -2 (docs/classes.md), and a knight in one
+-- of them has simply bought armor -- flagging that would flag the entire class. It is the second and the
+-- third piece that quietly turn a body into scenery, and the arithmetic for that is spread across three
+-- cells of a grid where no single item's tooltip can see the total.
+--
+-- IMMOBILITY IS SAID EVEN FROM ONE PIECE, because it is the outcome the sheet cannot show. Combat.moveBudget
+-- floors the budget at zero, so a body at 0 and a body at -4 both walk exactly nowhere and every further
+-- piece of armor is free: the player goes on paying a price that has already bottomed out, with nothing
+-- on screen to say it bottomed out. A -2 plate on a movement-2 body gets there in one item.
+--
+-- Reads the fold the sheet PRINTS (Character.statTotal: base + `bonus.movement` across the grid) rather
+-- than Combat.moveBudget, for two reasons. There is no unit built for an out-of-battle body to hand the
+-- budget reader, and the unclamped total is exactly what a warning needs -- "-4" and "0" are the same
+-- walk but not the same sentence, and only the unclamped figure knows that the last coat bought nothing.
+function Combat.movementPenalty(char)
+    if not char then return nil end
+    local count, penalty = 0, 0
+    for _, item in ipairs(Character.eachItem(char)) do
+        local v = item.bonus and item.bonus.movement
+        if v and v < 0 then
+            count = count + 1
+            penalty = penalty + v
+        end
+    end
+    if count == 0 then return nil end
+    local total = Character.statTotal(char, "movement")
+    if count < 2 and total > 0 then return nil end
+
+    -- TWO SENTENCES RATHER THAN ONE, because the second one is not always there and the surface that
+    -- prints them is a narrow column. `text` is the arithmetic and is always said; `note` is the
+    -- consequence and only exists once the walk is gone. Joined with a dash they are one message-bar
+    -- line, and stacked they are two centred lines that break where the meaning breaks -- where a
+    -- single long sentence wrapped wherever the column ran out and orphaned its last two words.
+    --
+    -- `text` quotes the STACK's own total and never the resulting stat: the Move row sits directly
+    -- above the line that prints this and already says where the body ended up. What no row can say is
+    -- that four of those points were bought, one cell at a time.
+    local pieces = count .. (count == 1 and " piece of gear costs " or " pieces of gear cost ")
+    return {
+        count = count, penalty = penalty, total = total, immobile = total <= 0,
+        text = pieces .. penalty .. " Move",
+        note = total <= 0 and "This body cannot move at all" or nil,
+    }
+end
+
 -- Public read of the fold above, for a model that needs an effective stat but has no business
 -- reaching into this one's internals -- models/status.lua's resist rating, which reads magicDefense /
 -- defense / statusResist off a unit exactly as mitigation does. Mirrors Combat.moveBudget: the same

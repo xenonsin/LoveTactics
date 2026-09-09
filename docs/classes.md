@@ -212,6 +212,23 @@ Root, and to the reachable preview, and means nothing in any of them. The floor 
 rather than in the fold, so the Loadout screen can still show a −5 and tell the player what they have
 done to themselves.
 
+And it does tell them, in a line under the stat block (`Combat.movementPenalty`, drawn by
+`ui/panels/party.lua`, pinned by `tests/loadout_warning_spec.lua`). Two things had to be true for it to
+be worth drawing:
+
+- **One coat is never a warning.** Every rung of the table above costs pace, so a warning that fired on
+  a single piece would fire on every armoured body in the game and be worth nothing by the second read.
+  It is the **second** piece that gets the line — `2 pieces of gear cost −3 Move` — because the
+  arithmetic is spread across cells of a grid where no one item's tooltip can see the total.
+- **Immobility is said even from one piece,** and it is said in words: `This body cannot move at all`.
+  That is the fact the sheet by itself cannot carry. Once the budget is on the floor every further coat
+  is free, and a player reading a Move row of 0 or −2 has no way to know they crossed the line two
+  pieces ago. A −2 heavy plate on the dire bear's 2 gets there in one item, so the count threshold has
+  to yield to it.
+
+The warning reads `Character.statTotal` rather than `moveBudget` — an out-of-battle body has no unit to
+hand the budget reader, and the **unclamped** figure is the one that knows the last coat bought nothing.
+
 ### `class` without `price`: the tally, not the shelf
 
 `class` mostly means *sold by* — but it has a second job, and `weapon_parasitic_staff` is the one to

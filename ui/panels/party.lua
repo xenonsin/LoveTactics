@@ -162,9 +162,16 @@ for _, row in ipairs(STAT_ROWS) do SHEET_KEYS[#SHEET_KEYS + 1] = row.key end
 -- it that is exactly how it read -- the equip delta gets away with the glyph only because it lives for
 -- as long as the gesture that caused it. The forecast states a TRANSITION instead, "16 → 17", which
 -- cannot describe a bonus already in effect, and it appears only while the growth clause is engaged.
+--
+-- SLOWED is the stacked-Move caution under the stats, and it is a QUIETER LOSS rather than a hue of its
+-- own: it is the same red an item card spends on a warning (ui/item_tooltip.lua's WARN), so a line here
+-- reads as the same class of thing a player has already met on a tooltip. Amber was the other candidate
+-- and is wrong twice over -- on this sheet it is the spotlight gold that means "focused", and the
+-- technique figures wear it three lines below, so a caution in it would read as a heading for them.
 local ANNOT_GAIN    = { 0.55, 0.90, 0.58 }
 local ANNOT_LOSS    = { 0.95, 0.45, 0.42 }
 local ANNOT_PENDING = { 0.48, 0.74, 0.51 }
+local ANNOT_SLOWED  = { 0.789, 0.361, 0.354 }
 local ARROW = "→"
 
 local function pointIn(r, x, y)
@@ -840,7 +847,8 @@ end
 -- Say so when `item` has just landed somewhere it will not work: on a body whose pools can never meet
 -- its price (Combat.unpayableCosts -- a mana-priced staff given to a fighter, a Counter-Magic charm on
 -- a knight), or in a cell with nothing beside it to answer what it requires (Combat.adjacencyGap -- a
--- Rain of Arrows dropped in the first free slot, three cells from the bow).
+-- Rain of Arrows dropped in the first free slot, three cells from the bow) -- or, third grade, when it
+-- is the coat that makes a stack of Move penalties worth mentioning (Combat.movementPenalty).
 --
 -- The item is still handed over: this screen warns, it does not refuse. Nothing in the game stops you
 -- arming somebody badly, and a silent refusal on the one screen for arming people would be worse than
@@ -856,12 +864,32 @@ end
 -- isn't one -- a cell drop, an auto-equip, a stack merge and a drag onto a rail portrait each write the
 -- inventory themselves. Returns true when it warned, so a caller with a success message of its own
 -- knows this one has taken the line.
+--
+-- THE THIRD GRADE IS THE STACKED MOVE PENALTY (Combat.movementPenalty), and it is last because it is the
+-- only one of the three that is not a fault: the coat works, it just costs, and it is the second coat
+-- that makes the cost worth saying out loud. It is checked ONLY when the incoming item is itself a Move
+-- penalty, or handing somebody a sword would announce the armor they put on ten minutes ago.
+--
+-- It is said here as well as on the sheet because of the one path the sheet cannot cover: an item
+-- dragged onto a rail PORTRAIT goes to a member who is not the focused one, so the stat block that
+-- would have shown it is somebody else's. The message line is the only surface that member has.
 function Party:noteUnusable(char, item)
     if not (char and item) then return false end
     local fault = Combat.unpayableCosts(char, item)[1] or Combat.adjacencyGap(char, item)
-    if not fault then return false end
-    self:setMsg((item.name or "That item") .. ": " .. fault.text .. ".", false)
-    return true
+    if fault then
+        self:setMsg((item.name or "That item") .. ": " .. fault.text .. ".", false)
+        return true
+    end
+    local slowing = item.bonus and (item.bonus.movement or 0) < 0
+    local slow = slowing and Combat.movementPenalty(char)
+    if slow then
+        -- One line here, where the sheet stacks the same two sentences (Combat.movementPenalty): the
+        -- message bar is a full panel wide and has room for the dash.
+        self:setMsg((char.name or "This body") .. ": " .. slow.text
+            .. (slow.note and (" -- " .. slow.note:lower()) or "") .. ".", false)
+        return true
+    end
+    return false
 end
 
 -- Refuse an unread piece, out loud. Player.takeFromStash already makes the move impossible
@@ -1975,6 +2003,29 @@ function Party:drawFocus()
         end
     end
     if n % 2 == 1 then sy = sy + 22 end
+
+    -- What the kit has cost this body in Move, when more than one piece is charging for it
+    -- (Combat.movementPenalty). Under the stats rather than beside the Move row, because it is a fact
+    -- about the GRID and not about that row: the row's right-hand slot already carries the delta and the
+    -- forecast, and a third tenant there would have to win an argument with both of them.
+    --
+    -- Read every frame, like the grid's own red cells and for the same reason -- every rearrangement on
+    -- this screen answers or re-poses the question, and a warning that outlives the fix is worse than no
+    -- warning at all. Silent below two pieces, so an ordinary armored knight is never nagged.
+    local slow = Combat.movementPenalty(char)
+    if slow then
+        love.graphics.setFont(self.smallFont)
+        -- Immobile takes the bright loss red the sheet already spends on a stat going the wrong way; a
+        -- stack that still walks takes the quieter one, because it is a caution and not a fault -- the
+        -- player may well have meant it, and the line is here so that they meant it knowingly.
+        Theme.set(slow.immobile and ANNOT_LOSS or ANNOT_SLOWED)
+        for _, line in ipairs({ slow.text, slow.note }) do
+            love.graphics.printf(line, x, sy, self.focusW, "center")
+            local _, wrapped = self.smallFont:getWrap(line, self.focusW)
+            sy = sy + math.max(1, #wrapped) * self.smallFont:getHeight()
+        end
+        sy = sy + 4
+    end
 
     self:drawTechnique(char, x, sy + 12)
 end

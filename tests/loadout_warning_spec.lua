@@ -1,12 +1,17 @@
--- The Loadout screen's two "this will not work" warnings: Combat.unpayableCosts (the body can never
--- pay the price) and Combat.adjacencyGap (nothing beside it answers what it requires).
+-- The Loadout screen's three warnings: Combat.unpayableCosts (the body can never pay the price),
+-- Combat.adjacencyGap (nothing beside it answers what it requires) and Combat.movementPenalty (the kit
+-- is working against itself).
 --
--- Both are OUT-OF-BATTLE twins of a gate that already exists in the fight, and in both cases the thing
--- under test is the DIFFERENCE. The cost gate (Combat.canAfford) reads `current`, where this one reads
--- the ceiling -- ask the battle question on this screen and it cries wolf at every tired party member.
--- The adjacency gate has no notion of an item that is not in the grid at all, where this one has to
--- tell "placed wrong" apart from "not placed yet" -- conflate them and every good item in the stash
+-- The first two are OUT-OF-BATTLE twins of a gate that already exists in the fight, and in both cases
+-- the thing under test is the DIFFERENCE. The cost gate (Combat.canAfford) reads `current`, where this
+-- one reads the ceiling -- ask the battle question on this screen and it cries wolf at every tired party
+-- member. The adjacency gate has no notion of an item that is not in the grid at all, where this one has
+-- to tell "placed wrong" apart from "not placed yet" -- conflate them and every good item in the stash
 -- lights up as an error.
+--
+-- The third has no gate behind it at all, and what is under test is WHEN IT KEEPS QUIET. Nearly every
+-- coat on the shelf costs Move, so a warning that fired on one would fire on every armored body in the
+-- game and be worth nothing by the second time it was read.
 
 local Character = require("models.character")
 local Combat = require("models.combat")
@@ -33,6 +38,12 @@ local function needsBow()
 end
 local function bow()
     return { id = "test_bow", name = "Test Bow", type = "weapon", tags = { "bow" } }
+end
+
+-- A coat charging `move` (negative) for itself. Synthetic for the same reason `priced` is: the point is
+-- the arithmetic across a grid, and a rebalance moving a real plate's price would break this for nothing.
+local function coat(move)
+    return { id = "test_coat", name = "Test Coat", type = "armor", bonus = { movement = move } }
 end
 
 return {
@@ -193,6 +204,93 @@ return {
             assert(Combat.adjacencyGap(char, char.inventory[1]) == nil)
             assert(Combat.adjacencyGap(char, bow()) == nil, "nor is a plain weapon with no ability")
             assert(Combat.adjacencyGap(nil, needsBow()) == nil, "and an absent body is answerable")
+        end,
+    },
+
+    -- Combat.movementPenalty ---------------------------------------------------------------------
+    {
+        -- The whole reason the warning has a threshold. -1 Move is the standard price of a coat
+        -- (docs/classes.md), so a body in one has bought armor, not made a mistake.
+        name = "ONE piece of gear costing Move is armor, not a warning",
+        fn = function()
+            local char = fighter()
+            char.inventory[1] = coat(-1)
+            assert(Combat.movementPenalty(char) == nil, "a knight in a coat is a knight in a coat")
+            assert(Character.statTotal(char, "movement") == 3, "and the Move row already says 3")
+        end,
+    },
+    {
+        name = "a SECOND piece is the warning, and it quotes the whole stack",
+        fn = function()
+            local char = fighter()
+            char.inventory[1], char.inventory[2] = coat(-1), coat(-2)
+            local slow = Combat.movementPenalty(char)
+            assert(slow, "two pieces charging for Move is the thing this exists to say")
+            assert(slow.count == 2 and slow.penalty == -3, "both pieces, summed")
+            assert(slow.total == 1, "4 base less 3 bought")
+            assert(not slow.immobile, "a body on 1 Move still walks")
+            assert(slow.text:find("2") and slow.text:find("-3"),
+                "the line quotes the count and the cost -- the total is on the Move row already")
+        end,
+    },
+    {
+        -- Combat.moveBudget floors at zero, so past this point the armor is free and the sheet has no
+        -- way to show it. This is the one grade of the warning that has to be said out loud.
+        name = "a stack that reaches zero says the body cannot move at all",
+        fn = function()
+            local char = fighter()
+            char.inventory[1], char.inventory[2] = coat(-2), coat(-2)
+            local slow = Combat.movementPenalty(char)
+            assert(slow.total == 0 and slow.immobile, "4 base less 4 bought is planted")
+            assert(slow.note and slow.note:find("cannot move"), "and the second line says so in words")
+
+            -- Past the floor: the fourth coat buys nothing, and only the unclamped total knows it.
+            char.inventory[3] = coat(-2)
+            local worse = Combat.movementPenalty(char)
+            assert(worse.total == -2 and worse.immobile,
+                "the reading is unclamped where Combat.moveBudget floors -- which is the whole point: "
+                .. "the budget cannot tell -4 from 0, so the warning has to")
+        end,
+    },
+    {
+        -- The threshold is on the COUNT, but immobility outranks it: one heavy plate on a slow body
+        -- plants it, and a warning that hid the worst case behind a count would be worse than none.
+        name = "one piece that plants the body is still said",
+        fn = function()
+            local char = fighter()
+            char.stats.movement = 2
+            char.inventory[1] = coat(-2)
+            local slow = Combat.movementPenalty(char)
+            assert(slow and slow.count == 1 and slow.immobile, "one plate, and nowhere to walk")
+            assert(slow.text:find("1 piece of gear costs"), "and it counts in the singular")
+        end,
+    },
+    {
+        name = "gear that gives Move back is weighed, and clears the warning it was carrying",
+        fn = function()
+            local char = fighter()
+            char.inventory[1], char.inventory[2] = coat(-1), coat(-1)
+            assert(Combat.movementPenalty(char), "two coats warn")
+            char.inventory[2] = nil
+            assert(Combat.movementPenalty(char) == nil,
+                "and taking one off clears it -- a warning that outlives the fix is worse than none")
+
+            -- A boot that ADDS Move is not one of the pieces charging for it, but its points still count
+            -- toward whether the body can walk.
+            char.inventory[2], char.inventory[3] = coat(-2), { id = "test_boots", name = "Test Boots",
+                type = "armor", bonus = { movement = 2 } }
+            local slow = Combat.movementPenalty(char)
+            assert(slow.count == 2 and slow.penalty == -3, "the boot is not charging, so it is not counted")
+            assert(slow.total == 3 and not slow.immobile, "but its +2 is in the walk, so the body is fine")
+        end,
+    },
+    {
+        name = "a body carrying nothing that costs Move has nothing to warn about",
+        fn = function()
+            local char = fighter()
+            char.inventory[1] = bow()
+            assert(Combat.movementPenalty(char) == nil)
+            assert(Combat.movementPenalty(nil) == nil, "and an absent body is answerable")
         end,
     },
 }
