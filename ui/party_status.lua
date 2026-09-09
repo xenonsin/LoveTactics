@@ -8,8 +8,9 @@
 --     the deployment phase (docs/deployment.md), so the panel is a pure readout and mutates nothing.
 --     Three inputs, closes via X / Esc / gamepad B.
 --
--- Both layers read char.stats[stat].current/.max over Character.RESOURCE_STATS; the strip is hidden on
--- the flight tutorial by its caller (states/game.lua), where the HUD is deliberately spare.
+-- Both layers read char.stats[stat].current/.max over Character.RESOURCE_STATS. The strip draws on
+-- every overworld leg, the prologue's flight tutorial included -- that leg holds back BUTTONS, not
+-- readouts (see states/game.lua's drawHud).
 
 local Scale = require("scale")
 local Colors = require("ui.colors")

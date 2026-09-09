@@ -237,13 +237,20 @@ local function openConsumables()
     })
 end
 
--- The always-on party HP/mana strip rides on every normal quest, but not the flight tutorial: that
--- leg's HUD is deliberately spare and its coach bubble lives where the strip would sit. The strip IS
+-- The always-on party HP/mana strip rides on EVERY leg, the flight tutorial included. The strip IS
 -- the readout now -- it once had a Party button opening the same figures at modal size, which stopped
 -- earning its place on the HUD the day the deployment phase took the marching grid out of that panel.
-local function partyVisible()
-    return game.tutorial ~= "flight"
-end
+--
+-- IT USED TO BE HELD OFF THE FLIGHT, on the grounds that the leg's HUD is deliberately spare and its
+-- coach bubble lived where the strip would sit. Neither half holds. The bubbles anchor on the token
+-- and on the Items button now, not on the corner; and the flight is the one leg where the figures are
+-- being TAUGHT -- three fights with attrition carrying between them (Player.restore), a chest full of
+-- potions, and a champion at the end of the trail. A player asked to spend a draught before the boss
+-- with no bars on the screen is being asked to guess. What is spare on this leg is the button ROW
+-- (backVisible, useVisible), which is a set of things to press; a readout is not clutter.
+--
+-- So there is no `partyVisible` any more: a test that is always true is not a test, and the flight is
+-- the only thing it ever answered for.
 
 -- A transient on-screen line an ability pushes when it fires (Amana heals X, Kaya forages, ...). Fades
 -- over TOAST_LIFE; the newest sits on top. Capped so a flurry of wins can't stack off the screen.
@@ -4052,7 +4059,7 @@ function game.drawCoach()
     -- The first wound, named on the row of the body that took it. Held off while a panel is open for
     -- the same reason the move hint is: the strip it is pointing at is behind that panel, so a bubble
     -- drawn over the top would be an arrow into a menu. Nothing spends it -- it waits (game:onArrive).
-    if step == "wound" and not game.activePanel and partyVisible() then
+    if step == "wound" and not game.activePanel then
         local anchor = PartyStatus.rowRect(game.player, game.coachChar, STRIP_X, STRIP_Y)
         local node = hintNode("conversation_tutorial_wound", "wound_hint")
         if anchor and node then
@@ -4074,8 +4081,14 @@ function game.drawCoach()
         local anchor = itemsRect()
         local belowBounds = { x = 20, y = anchor.y,
             w = Scale.WIDTH - 40, h = Scale.HEIGHT - anchor.y - 44 }
+        -- ...and BELOW is now directly on top of the party strip, which draws on this leg too. The
+        -- strip is handed over as something to avoid rather than a re-picked side: the bubble takes
+        -- the flank beside the button when the corner is occupied, and `prefer` still decides it on
+        -- an empty corner (a company of one leaves room under the button).
+        local strip = { x = STRIP_X - 6, y = STRIP_Y - 6, w = 218,
+            h = PartyStatus.stripHeight(#(game.player and game.player.roster or {})) }
         CoachBubble.draw(Locale.text("conversation_tutorial_flight", node), anchor,
-            { prefer = "below", key = loadoutKey(), bounds = belowBounds })
+            { prefer = "below", key = loadoutKey(), bounds = belowBounds, avoid = { strip } })
     elseif step == "equip" and game.activePanel and game.activePanel.coachAnchor then
         local anchor = game.activePanel:coachAnchor()
         if anchor then
@@ -4226,57 +4239,55 @@ function game.drawHud()
 
     -- Always-on party HP/mana strip: the run's attrition, legible while routing (models/player.lua).
     -- Pass the mouse (logical space) so the per-companion ability badge shows its tooltip on hover.
-    if partyVisible() then
-        local mx, my
-        if InputMode.isMouse() then mx, my = Scale.toGame(love.mouse.getPosition()) end
-        PartyStatus.drawStrip(game.player, STRIP_X, STRIP_Y, mx, my, game.abilityState)
-        -- THE RELIC TRAY, directly under the vitals rather than in the opposite corner. Both readouts
-        -- answer the same question -- how is this expedition doing -- and a pile parked across the screen
-        -- from the company carrying it is a pile the player checks once and then forgets while routing.
-        -- Chips rather than named rows, because the shelf stacks now and a dozen named rows is half the
-        -- screen (see ui/relic_strip.lua's header for the whole argument).
-        RelicStrip.draw(game.relicState, STRIP_X,
-            STRIP_Y + PartyStatus.stripHeight(#((game.player and game.player.roster) or {})) + 6, mx, my)
+    local mx, my
+    if InputMode.isMouse() then mx, my = Scale.toGame(love.mouse.getPosition()) end
+    PartyStatus.drawStrip(game.player, STRIP_X, STRIP_Y, mx, my, game.abilityState)
+    -- THE RELIC TRAY, directly under the vitals rather than in the opposite corner. Both readouts
+    -- answer the same question -- how is this expedition doing -- and a pile parked across the screen
+    -- from the company carrying it is a pile the player checks once and then forgets while routing.
+    -- Chips rather than named rows, because the shelf stacks now and a dozen named rows is half the
+    -- screen (see ui/relic_strip.lua's header for the whole argument).
+    RelicStrip.draw(game.relicState, STRIP_X,
+        STRIP_Y + PartyStatus.stripHeight(#((game.player and game.player.roster) or {})) + 6, mx, my)
 
-        -- "CARRIED THIS RUN" STOOD HERE, and it is deleted. It named the stake in a bet -- what an
-        -- expedition had accrued and would hand back by dying -- and the bet is gone: a wipe takes
-        -- nothing material now (the wipe branch above), so every find, every ingot and every coin was
-        -- already the player's the moment it landed. What was left was a second, quieter count of the
-        -- stash sitting beside the purse and claiming to be provisional.
-        --
-        -- WHAT STILL ASKS THE QUESTION asks it where it is still a question: the stair's own card, which
-        -- quotes the haul because the toll takes a share of it, and the way-out prompt, which names what
-        -- climbs out with the company (game:haulPhrase). Both are read at a decision. This was read at
-        -- all times and fed none.
-        local x = Scale.WIDTH - 16
-        local y = 60
-        love.graphics.setFont(hudFont)
+    -- "CARRIED THIS RUN" STOOD HERE, and it is deleted. It named the stake in a bet -- what an
+    -- expedition had accrued and would hand back by dying -- and the bet is gone: a wipe takes
+    -- nothing material now (the wipe branch above), so every find, every ingot and every coin was
+    -- already the player's the moment it landed. What was left was a second, quieter count of the
+    -- stash sitting beside the purse and claiming to be provisional.
+    --
+    -- WHAT STILL ASKS THE QUESTION asks it where it is still a question: the stair's own card, which
+    -- quotes the haul because the toll takes a share of it, and the way-out prompt, which names what
+    -- climbs out with the company (game:haulPhrase). Both are read at a decision. This was read at
+    -- all times and fed none.
+    local x = Scale.WIDTH - 16
+    local y = 60
+    love.graphics.setFont(hudFont)
 
-        -- THE RUN'S PURSE (models/scrip.lua), between the haul and the mule -- which is where it belongs
-        -- in the reading as well as on the screen: the haul is what goes home, the mule is what will
-        -- carry it, and this is the one number that does neither.
-        --
-        -- IT DRAWS ON AN EMPTY PURSE, which is the rule a spending LIMIT follows rather than the one a
-        -- ledger does: a limit is most worth stating at the moment it is binding, and a player standing
-        -- in front of a Merchant with nothing needs to be told that before they open it, not after.
-        --
-        -- A BANKED RESOURCE SHOWS ITS COUNT: this is the only place the purse is legible outside the two
-        -- panels that spend it, and money the player cannot see between stops is money they cannot plan
-        -- around.
-        --
-        -- IT SAYS GOLD NOW. It said Scrip while a descent had a purse of its own; there is one purse
-        -- (models/spoils.lua) and what is spent at the Merchant is the same coin the Forge bills.
-        if game.descent then
-            local purse = (game.player and game.player.gold) or 0
-            love.graphics.setColor(Theme.muted)
-            love.graphics.printf("Gold", x - 240, y, 240, "right")
-            love.graphics.setColor(purse > 0 and Theme.accentAmber or Theme.muted)
-            love.graphics.printf(purse .. "", x - 240, y + 18, 240, "right")
-            love.graphics.setColor(1, 1, 1)
-            y = y + 44
-        end
-
+    -- THE RUN'S PURSE (models/scrip.lua), between the haul and the mule -- which is where it belongs
+    -- in the reading as well as on the screen: the haul is what goes home, the mule is what will
+    -- carry it, and this is the one number that does neither.
+    --
+    -- IT DRAWS ON AN EMPTY PURSE, which is the rule a spending LIMIT follows rather than the one a
+    -- ledger does: a limit is most worth stating at the moment it is binding, and a player standing
+    -- in front of a Merchant with nothing needs to be told that before they open it, not after.
+    --
+    -- A BANKED RESOURCE SHOWS ITS COUNT: this is the only place the purse is legible outside the two
+    -- panels that spend it, and money the player cannot see between stops is money they cannot plan
+    -- around.
+    --
+    -- IT SAYS GOLD NOW. It said Scrip while a descent had a purse of its own; there is one purse
+    -- (models/spoils.lua) and what is spent at the Merchant is the same coin the Forge bills.
+    if game.descent then
+        local purse = (game.player and game.player.gold) or 0
+        love.graphics.setColor(Theme.muted)
+        love.graphics.printf("Gold", x - 240, y, 240, "right")
+        love.graphics.setColor(purse > 0 and Theme.accentAmber or Theme.muted)
+        love.graphics.printf(purse .. "", x - 240, y + 18, 240, "right")
+        love.graphics.setColor(1, 1, 1)
+        y = y + 44
     end
+
 
     -- Companion-ability toasts, stacked just under the party strip so ability feedback groups with the
     -- party it comes from. Newest on top; each fades over its life.
@@ -4405,7 +4416,14 @@ end
 
 -- Hand over the Back / Items buttons, or defer to an open panel; arrow over the overworld map (a
 -- click there travels -- map navigation, not a button). See ui/cursor.lua.
+--
+-- A hosted fight answers for itself, exactly as every other handler above hands it the input: the
+-- floor is still the state, but the board on top of it is what the pointer is over, and states/battle
+-- owns the reading of it (sword over a foe in reach, boots over a tile it can walk to, hand over the
+-- combat panel). Without this the whole fight -- every quest fight and every prologue stop, since a
+-- fight is fought on the floor it was found on -- shows one arrow whatever it is aimed at.
 function game:cursorKind(x, y)
+    if battling() then return game.battle.cursorKind() end
     if game.activePanel then
         return game.activePanel.cursorKind and game.activePanel:cursorKind(x, y) or "arrow"
     end
