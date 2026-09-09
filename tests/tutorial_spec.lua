@@ -1037,6 +1037,12 @@ return {
             end
 
             local function manhattan(a, b) return math.abs(a.x - b.x) + math.abs(a.y - b.y) end
+            -- The metric an AoE FOOTPRINT is measured in, which is not the metric reach is measured
+            -- in: Combat.aoeCells fills a `square` shape's whole box, so a radius-1 ring reaches a
+            -- diagonal neighbour as surely as an orthogonal one. Measuring the Clear Out below in
+            -- manhattan would call a corner two tiles away and quietly pass a lesson that steals
+            -- Rowan's kill on the board.
+            local function chebyshev(a, b) return math.max(math.abs(a.x - b.x), math.abs(a.y - b.y)) end
 
             -- Find the steps by what they DO rather than by where they sit in the list, so reordering
             -- the lesson doesn't quietly turn these assertions into checks on the wrong beat.
@@ -1113,7 +1119,7 @@ return {
                 "the avatar cannot reach the tile the lesson sends it to from where the opening kill "
                 .. "left it (" .. key(afterOpening) .. " -> " .. key(standCell) .. ")")
             local aoe = Item.defs[standStep.grant].activeAbility.aoe
-            assert(aoe.shape == "diamond", "the granted ability no longer sweeps a ring")
+            assert(aoe.shape == "square", "the granted ability no longer sweeps a ring")
             -- Only the IMP queues -- the ones keyed by a cell an imp actually spawns on. Rowan's is
             -- keyed by character id and the grunt's by the cell the lesson walks it on at, and
             -- neither has anything to do with the ring.
@@ -1122,11 +1128,11 @@ return {
                 local queue = def.script[key(sp)]
                 for _, turn in ipairs(queue or {}) do
                     if turn.strike then -- an imp closing to spit at the party: the Clear Out's business
-                        assert(manhattan(turn.move, standCell) <= aoe.radius,
+                        assert(chebyshev(turn.move, standCell) <= aoe.radius,
                             key(sp) .. " ends outside the Clear Out thrown from " .. key(standCell))
                         caught = caught + 1
                     elseif turn.move then -- ...and the one that closes on Rowan instead
-                        assert(manhattan(turn.move, standCell) > aoe.radius,
+                        assert(chebyshev(turn.move, standCell) > aoe.radius,
                             key(sp) .. " ends inside the Clear Out -- the player steals Rowan's kill")
                         -- Measured against the tile her own opening walk leaves her on, not her
                         -- spawn: she has already crossed to make her demonstration by the time this

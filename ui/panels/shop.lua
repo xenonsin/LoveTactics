@@ -166,8 +166,6 @@ local DEFAULT_COLOR = { 0.85, 0.85, 0.9 }
 -- (The sin-keyed placeholder tint that used to back the vendor portrait pane is gone with the pane. A
 -- house's colour lives in ui/vendor_icons.lua now, one table rather than two that could disagree.)
 
-local TARGET_LABEL = { enemy = "Enemy", ally = "Ally", self = "Self", tile = "Tile" }
-
 local function pointIn(r, x, y)
     return x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
 end
@@ -1951,8 +1949,11 @@ function Shop:drawDetail()
     -- to quote -- and this is the counter where the buying decision gets made.
     for _, traitRow in ipairs(Item.traitRows(item)) do statLine(traitRow.label, traitRow.value) end
     if ab then
-        if ab.target then statLine("Target", TARGET_LABEL[ab.target] or ab.target) end
-        statLine("Range", tostring(ab.range or 1))
+        if ab.target then statLine("Target", Item.targetLabel(ab)) end
+        -- No Range row for a self-cast: it has exactly one legal aim cell and the number answers a
+        -- question it never asks. Same rule the in-battle tooltip follows, off the same helper, so
+        -- the counter and the grid say one thing about an item (see Item.targetLabel).
+        if ab.target ~= "self" then statLine("Range", tostring(ab.range or 1)) end
         if ab.speed then statLine("Speed", tostring(ab.speed)) end
         -- One line however many pools it draws on: the shelf is comparing weapons, not budgeting a
         -- turn, so "4 mana + 5 stamina" is the useful shape here (the in-battle tooltip splits them).

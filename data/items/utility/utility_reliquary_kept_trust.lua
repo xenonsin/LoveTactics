@@ -42,7 +42,7 @@ return {
         description = "Wards every nearby ally, but not you. With Aegis and Regeneration.",
         target = "self", -- centred on her; the aoe catches the company around her
         support = true,  -- friendly cast: preview green
-        range = 1,
+        range = 0,
         speed = 6,
         cost = { stat = "mana", amount = 18 },
         unlock = { event = "healDone", count = 3, text = "Heal 3 times" },

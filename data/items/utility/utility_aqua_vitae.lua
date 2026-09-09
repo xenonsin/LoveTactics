@@ -38,7 +38,7 @@ return {
     activeAbility = {
         description = "Summons a copy of your strongest ally, fighting at your side. It is not fragile.",
         target = "self",
-        range = 1,
+        range = 0,
         speed = 6,
         cost = { stat = "mana", amount = 20 },
         unlock = { event = "healDone", count = 3, text = "Heal 3 times" },

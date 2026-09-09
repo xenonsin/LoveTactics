@@ -34,8 +34,11 @@
 --     is her whole turn's worth, and the avatar's is one tile short of his.
 --   * W (5,4) is the one tile adjacent to both a and b, so the Clear Out thrown from it takes them
 --     together. It sits 3 steps from x, where the opening kill leaves the avatar standing.
---   * c (7,6) is adjacent to r and NOT inside a Clear Out thrown from W (it is four tiles off), so the
---     third imp is Rowan's to cut down and never steals one of the player's.
+--   * c (7,6) is adjacent to r and NOT inside a Clear Out thrown from W, so the third imp is Rowan's
+--     to cut down and never steals one of the player's. The Clear Out sweeps the whole BOX around W
+--     -- corners included -- so the margin here is measured diagonally: c sits two steps out either
+--     way, one clear of the ring. Moving it to (6,5) would put it in the corner of the sweep and hand
+--     the player a kill the lesson has promised to Rowan.
 --
 -- The party stands two apart rather than shoulder to shoulder for a reason of its own: it splits the
 -- imps' approach down two lanes instead of bunching them, and leaves the middle tile free.

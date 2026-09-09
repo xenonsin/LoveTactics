@@ -40,7 +40,7 @@ return {
     activeAbility = {
         description = "Inflicts Root on every foe within two tiles of you or your wolf. Charges as the wolf draws blood; only while it lives.",
         target = "self", -- centred on Kaya; the effect also reaches around the wolf
-        range = 1,
+        range = 0,
         speed = 6,
         unlock = {
             event = "companionDamage", count = 40, text = "Wolf draws blood",

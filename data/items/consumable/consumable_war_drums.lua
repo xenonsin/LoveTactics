@@ -24,6 +24,7 @@ return {
     unlockQuests = 1,
     activeAbility = {
         target = "self", -- struck where the drummer stands; the cadence reaches the tile around them
+        range = 0,
         speed = 4,
         support = true,
         cost = { stat = "stamina", amount = 8 },

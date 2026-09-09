@@ -198,6 +198,44 @@ function Item.costList(cost)
     return out
 end
 
+-- WHAT AN ABILITY IS AIMED AT, in the words the player reads -- the Target row on every card that
+-- quotes one (ui/item_tooltip.lua, the shop's own column in ui/panels/shop.lua), answered here so
+-- the two surfaces cannot drift apart.
+--
+-- Three of the four targets are their own description: an Enemy, an Ally, a Tile. "Self" is the odd
+-- one, and it was actively misleading, because it is a TARGETING RULE rather than a statement about
+-- who the cast lands on: it means the aim cell is the caster's own tile, which is a different claim
+-- from "this happens to you". Read as the latter it says the OPPOSITE of what Clear Out does -- the
+-- ring cuts everyone within arm's length and never the body in the middle of it -- and the same for
+-- Self-Destruct, the Gleaner's Mantle, War Drums. So a self-cast that carries an area names the
+-- geometry instead, and the footprint diagram sitting directly beneath the row says which tiles.
+-- Only a self-cast with no area at all ("Fury", a Battle Tonic) genuinely lands on the caster and
+-- alone keeps the personal word.
+--
+-- The companion rule lives at the call sites: a self-cast prints no Range row and no reach diagram.
+-- Range is a decision -- how far off may I stand? -- and a self-cast does not offer it (computeRange
+-- hands one exactly one legal cell, its own), so a number there names nothing and a diagram there
+-- draws a lie.
+local TARGET_LABEL = { enemy = "Enemy", ally = "Ally", tile = "Tile" }
+
+function Item.targetLabel(ab)
+    local target = ab and ab.target
+    if not target then return nil end
+    if target == "self" then
+        return Item.aimsAtArea(ab) and "Centred on you" or "Yourself"
+    end
+    return TARGET_LABEL[target] or target
+end
+
+-- Does this cast cover ground beyond its aim cell? The one question both the label above and the
+-- tooltip's footprint block ask of an `aoe`, which may be authored as a shape, a bare radius, or a
+-- function that computes its own cells (the Wolfsong Horn).
+function Item.aimsAtArea(ab)
+    local aoe = ab and ab.aoe
+    if not aoe then return false end
+    return aoe.cells ~= nil or aoe.shape ~= nil or (tonumber(aoe.radius) or 0) > 0
+end
+
 -- Does `ab` draw on `stat`? The membership question the sorcery/silence gates ask ("is any part of
 -- this paid for in mana?"), asked once so a dual-cost spell counts as sorcery on the strength of its
 -- mana half rather than on whichever pool happened to be authored first.

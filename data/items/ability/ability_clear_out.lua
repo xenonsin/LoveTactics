@@ -5,7 +5,8 @@
 -- Deliberately the SELF-centred sibling of Cleave (data/items/ability/ability_cleave.lua). Cleave
 -- picks a facing and sweeps the three tiles in front; this one gives up the choice of facing and
 -- takes the whole ring instead -- which is the trade the two abilities exist to offer. A cleave asks
--- "which way are they?"; a clear out answers "all of them".
+-- "which way are they?"; a clear out answers "all of them", and means all eight cells of the box it
+-- stands in the middle of.
 --
 -- This is also the ability Rowan hands the player mid-fight in the prologue's village defense, and
 -- the lesson it teaches is the ring: stand BETWEEN two foes and both fall at once
@@ -29,6 +30,12 @@ return {
         -- nothing to pick but yourself (states/battle.lua's computeRange gives a self-target exactly
         -- one legal cell, its own).
         target = "self",
+        -- Stated outright rather than left to default to 1. A self-cast has no reach to pick --
+        -- computeRange hands it exactly one legal cell whatever this says -- and every other
+        -- self-target ability in data/items declares 0. The tooltip reads it: at 0 it drops the Range
+        -- row and its reach diagram entirely, so the card stops printing a number (and drawing a
+        -- picture) that says you may aim this a tile away.
+        range = 0,
         -- ...but it is not a KINDNESS, which is the one thing a self-target otherwise implies:
         -- Combat.isSupportAbility reads ally/self as friendly and would paint the ring green. Saying
         -- so outright overrides that, so the footprint previews red like every other blow.
@@ -36,7 +43,12 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
         damage = Curve.ramp(12, 22),
-        aoe = { shape = "diamond", radius = 1 }, -- the four tiles around you (and the one you stand on)
+        -- THE EIGHT TILES AROUND YOU, CORNERS INCLUDED -- the whole box, not the plus. A spin on the
+        -- spot has no facing and no gaps: a diagonal is exactly where a foe stands once it has worked
+        -- round your shoulder, and those four cells are what being surrounded is largely made OF. A
+        -- diamond answered a corner with "not that one", which is the single reading this ability may
+        -- never support. It is also why the ring costs 10 stamina and a whole turn.
+        aoe = { radius = 1, shape = "square" },
         effect = function(fx)
             -- Foes only. The ring is centred on the caster and every ally at their shoulder stands
             -- inside it -- a clear out that cut your own line would be unusable in the one situation it

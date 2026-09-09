@@ -87,8 +87,6 @@ local RES_COLOR = {
     health = Colors.PARTY,
 }
 
-local TARGET_LABEL = { enemy = "Enemy", ally = "Ally", self = "Self", tile = "Tile" }
-
 -- Text tints, all pitched for the parchment ground (ui/theme.lua): the neutral rows are the theme's
 -- ink/muted, and every coloured row is darkened so its hue reads on the light stock.
 local MUTED = Theme.muted
@@ -434,23 +432,29 @@ local function buildBlocks(item, actor, innerW, out, owner, warn)
         end
 
         if ab.target then
-            blocks[#blocks + 1] = { kind = "stat", label = "Target",
-                value = TARGET_LABEL[ab.target] or titleCase(ab.target) }
+            blocks[#blocks + 1] = { kind = "stat", label = "Target", value = Item.targetLabel(ab) }
         end
-        local rangeText = tostring(ab.range or 1)
-        if ab.minRange and ab.minRange > 1 then
-            -- A weapon with a dead zone shows the band it can hit (e.g. "2-3") rather than just the max.
-            rangeText = ab.minRange .. "-" .. (ab.range or 1)
-        end
-        blocks[#blocks + 1] = { kind = "stat", label = "Range", value = rangeText }
-        -- A little diamond map of that reach beneath the number: the caster at the centre, the
-        -- tiles it can strike tinted green (a friendly cast) or red (a hostile one). Skipped for a
-        -- self-only ability (range 0), which has no reach to draw. The shelf reads the same three
-        -- colours the board does, so an item's reach is one picture wherever it is met.
         local bandColor = rangeBandColor(ab)
-        local diagram = RangeDiagram.layout(ab, innerW)
-        if diagram then
-            blocks[#blocks + 1] = { kind = "rangediag", layout = diagram, color = bandColor }
+        -- REACH IS A DECISION, AND A SELF-CAST DOES NOT OFFER IT. Both the number and the little map
+        -- under it answer "how far off may I stand?", and a self-target ability has exactly one legal
+        -- aim cell -- the one it is standing on (states/battle.lua's computeRange). Printing "Range 0"
+        -- named nothing, and any ability that forgot to declare the field defaulted to 1 and drew a
+        -- reach diagram promising a tile it can never be thrown at. The Target row above already says
+        -- where it lands, and the footprint below says what it covers.
+        if ab.target ~= "self" then
+            local rangeText = tostring(ab.range or 1)
+            if ab.minRange and ab.minRange > 1 then
+                -- A weapon with a dead zone shows the band it can hit (e.g. "2-3") rather than just the max.
+                rangeText = ab.minRange .. "-" .. (ab.range or 1)
+            end
+            blocks[#blocks + 1] = { kind = "stat", label = "Range", value = rangeText }
+            -- A little diamond map of that reach beneath the number: the caster at the centre, the
+            -- tiles it can strike tinted green (a friendly cast) or red (a hostile one). The shelf reads
+            -- the same three colours the board does, so an item's reach is one picture wherever it is met.
+            local diagram = RangeDiagram.layout(ab, innerW)
+            if diagram then
+                blocks[#blocks + 1] = { kind = "rangediag", layout = diagram, color = bandColor }
+            end
         end
         -- The AREA footprint: the tiles the cast actually sweeps (a spear's line, an axe's arc, a
         -- blast's square), drawn around the caster. Shape is structured `aoe` data, so it belongs in

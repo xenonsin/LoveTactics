@@ -158,7 +158,13 @@ Several effect shapes have one canonical wording so the corpus reads uniform. Cl
   then…", "Drawn over a full turn". (`Channeled:` and `Toggle:` are mechanical labels, **exempt** from
   the banned prose frames — which are only `Triggered:`/`Passive:`/`Active:`.)
 - **Range is a row — don't state it.** Drop `"at range"`, `"at long range"`, `"a foe two tiles off"`;
-  the Range row and diagram carry reach.
+  the Range row and diagram carry reach. **A self-cast is the exception, because it has no Range row:**
+  `target = "self"` means the aim cell is the caster's own tile, one legal cell and no decision, so the
+  card prints neither the number nor the reach diagram (`Item.targetLabel`) — its Target row reads
+  *Centred on you* when it carries an area and *Yourself* when it does not, and the footprint diagram
+  says which tiles. Write such a description so the ring is in the words: *"Spins on the spot, cutting
+  every foe standing next to you."* Every self-target ability must also declare `range = 0` outright
+  (`tests/items_spec.lua`) — a missing field defaults to 1 and used to draw a reach the cast never had.
 - **Scaling uses specific math, never a vague magnitude or a flavor threshold. Always read the exact
   coefficient from the effect code.** `"up to double at death's door"` → `"Increase damage by 1% per
   1% of missing health."`; `"far harder for every kill"` → `"Increase damage by 25% per kill"`;

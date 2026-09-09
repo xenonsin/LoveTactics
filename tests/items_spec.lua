@@ -394,6 +394,56 @@ return {
         end,
     },
     {
+        name = "Clear Out takes the corners: the whole box around the spinner, not the plus",
+        fn = function()
+            -- The ability exists for being SURROUNDED, and a foe that has worked its way round your
+            -- shoulder stands on a diagonal. A diamond footprint answered that corner with "not that
+            -- one", so the fix is checked as a body falling rather than as a field reading "square".
+            local c = Combat.new(arena(8, 8),
+                { mkunit(4, 4, { stats = { stamina = 50 }, items = { "ability_clear_out" } }) },
+                { mkunit(5, 5, { stats = { defense = 0, health = 100 } }),   -- the corner
+                  mkunit(4, 3, { stats = { defense = 0, health = 100 } }) }) -- the orthogonal neighbour
+            local fighter, corner, side = c.units[1], c.units[2], c.units[3]
+            local c0, s0 = corner.char.stats.health.current, side.char.stats.health.current
+            openTurn(c, fighter)
+            -- One legal aim cell, and it is the tile the caster is standing on.
+            assert(Combat.useItem(c, fighter, fighter.char.inventory[1], 4, 4), "spin on the spot")
+            assert(corner.char.stats.health.current < c0, "the foe at the shoulder is cut too")
+            assert(side.char.stats.health.current < s0, "and the one straight ahead")
+        end,
+    },
+    {
+        name = "a self-cast quotes no reach: every self-target ability in the game declares range 0",
+        fn = function()
+            -- The contract the Target/Range rows are written against (Item.targetLabel): a self-cast
+            -- has exactly one legal aim cell -- its own -- so the number is not a decision and the
+            -- card prints neither it nor the reach diagram. Left to default, a missing field reads 1
+            -- and the tooltip drew a picture promising a tile the cast can never be thrown at, which
+            -- is how Clear Out came to advertise a reach it never had.
+            local offenders = {}
+            for id, def in pairs(Item.defs) do
+                local ab = def.activeAbility
+                if ab and ab.target == "self" and (ab.range or 1) ~= 0 then
+                    offenders[#offenders + 1] = id
+                end
+            end
+            table.sort(offenders)
+            assert(#offenders == 0, "self-target abilities quoting a reach: " .. table.concat(offenders, ", "))
+        end,
+    },
+    {
+        name = "the Target row never tells a self-centred blow that it lands on the caster",
+        fn = function()
+            -- "Self" is a targeting rule, not a statement about who is hit -- and for the abilities
+            -- that spin an area off the caster it says the opposite of the truth.
+            assert(Item.targetLabel(Item.defs.ability_clear_out.activeAbility) == "Centred on you",
+                "the ring reads as something done TO the spinner")
+            assert(Item.targetLabel(Item.defs.ability_fury.activeAbility) == "Yourself",
+                "a self-buff with no area is still personal")
+            assert(Item.targetLabel({ target = "enemy" }) == "Enemy", "the other three targets are unchanged")
+        end,
+    },
+    {
         name = "the Spear thrust spits the two tiles directly in front",
         fn = function()
             local c = Combat.new(arena(8, 6),
