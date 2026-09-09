@@ -22,7 +22,7 @@
 --       encounter = battle.encounter,                                        -- { name, ... } (optional)
 --       actions = {                                                          -- 1 button (win) or 1-2 (loss)
 --           { label = "Try Again",     onSelect = function() ... end },      -- fired when chosen; each
---           { label = "Return to Hub", onSelect = function() ... end },      -- callback dismisses the panel
+--           { label = "Return to City", onSelect = function() ... end },      -- callback dismisses the panel
 --       },
 --   })
 --
@@ -143,7 +143,7 @@ function BattleSummary.new(opts)
     local self = setmetatable({}, BattleSummary)
     self.win = opts.result ~= "loss"
     -- The panel's buttons, in order: { label, onSelect }. A win carries one ("Continue"); a defeat
-    -- carries "Try Again" and, when there is a hub to abandon to, a second "Return to Hub". The caller
+    -- carries "Try Again" and, when there is a hub to abandon to, a second "Return to City". The caller
     -- (states/battle.lua) owns the labels and callbacks; this panel only lays them out and drives them.
     self.actions = opts.actions or {}
     self.finished = false
@@ -496,7 +496,7 @@ function BattleSummary:select(i)
     if act.onSelect then act.onSelect() end
 end
 
--- The safe exit (Esc / gamepad B / the X): the last action -- "Return to Hub" on a normal defeat,
+-- The safe exit (Esc / gamepad B / the X): the last action -- "Return to City" on a normal defeat,
 -- or the only action when that is all there is (a win's "Continue", the tutorial's "Try Again").
 function BattleSummary:cancel()
     self:select(self.cancelBtn)
@@ -959,7 +959,7 @@ function BattleSummary:moveFocus(dir)
     self.focus = ((self.focus - 1 + dir) % self.n) + 1
 end
 
--- Cycle which action button is highlighted (a defeat with both Try Again and Return to Hub).
+-- Cycle which action button is highlighted (a defeat with both Try Again and Return to City).
 function BattleSummary:moveButtonFocus(dir)
     local n = #self.buttons
     if not self:isRevealed() or n <= 1 then return end
@@ -967,7 +967,7 @@ function BattleSummary:moveButtonFocus(dir)
 end
 
 -- Left/right steer the loot cards while there is loot to inspect (a win), otherwise the buttons
--- (a defeat's Try Again / Return to Hub).
+-- (a defeat's Try Again / Return to City).
 function BattleSummary:steer(dir)
     if self.n > 0 then self:moveFocus(dir) else self:moveButtonFocus(dir) end
 end

@@ -2010,7 +2010,7 @@ function game:openEncounter(cell, opts)
         -- panel's "Try Again" can restart THIS same encounter with a whole party -- consumed potions and
         -- any downed member undone. In-memory only, no disk save. The cell is not yet marked `cleared`
         -- (onWin does that), so a retry preserves overworld progress and loot already collected. A normal
-        -- quest takes no snapshot: losing it still costs the run (Return to Hub, below).
+        -- quest takes no snapshot: losing it still costs the run (Return to City, below).
         local retrySnapshot = game.tutorial and game.player and Save.snapshot(game.player) or nil
         -- THE FIGHT DOES NOT LEAVE THE MAP. states/battle.lua is entered as a SUB-STATE of this one
         -- rather than switched to: this state stays `State.current`, keeps its grid, its camera and the
@@ -2508,7 +2508,7 @@ function game:openEncounter(cell, opts)
                 require("models.sound").music("music.overworld")
                 game.battle = nil -- the fight is over; the map has input again (it never stopped being the state)
             end or nil,
-            -- "Return to Hub": give the fight up and fail the quest. Offered only once there is a hub to
+            -- "Return to City": give the fight up and fail the quest. Offered only once there is a hub to
             -- return to -- the prologue's flight leg (game.tutorial) has none yet, so there the panel
             -- shows Try Again alone.
             onLoss = (not game.tutorial) and function()

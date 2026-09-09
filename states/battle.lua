@@ -683,7 +683,7 @@ end
 -- state's own onWin/onLoss/onRetry is deferred until a panel button is pressed. A win offers one button
 -- ("Continue") and rolls the combat/elite spoils the panel reveals and passes to onWin; an objective
 -- win carries none (its reward flows through the hub's Company Advancement). A defeat offers "Try Again"
--- (onRetry, restart this fight) and, when there is a hub to abandon to, "Return to Hub" (onLoss). A
+-- (onRetry, restart this fight) and, when there is a hub to abandon to, "Return to City" (onLoss). A
 -- netplay duel keeps the immediate callback and shows no panel: it has no campaign player to reward and
 -- the harness owns the handoff.
 local function finishBattle(result)
@@ -765,7 +765,7 @@ local function finishBattle(result)
         -- launcher supplies both labels and the board -- which is the only thing that knows which of them
         -- just happened -- picks between them.
         if battle.onLoss then
-            local label = (battle.routed and battle.routedLabel) or battle.lossLabel or "Return to Hub"
+            local label = (battle.routed and battle.routedLabel) or battle.lossLabel or "Return to City"
             actions[#actions + 1] = action(label, battle.onLoss)
         end
         -- A decided fight must always offer a way out, even if a launcher wired neither exit.
@@ -4814,12 +4814,12 @@ function battle.enter(self, opts)
     -- already drawn on. See the BattleMap.new call below.
     battle.pinX, battle.pinY = opts.pinX, opts.pinY
     battle.onWin = opts.onWin
-    -- The defeat panel's two exits (either may be nil). onLoss is "Return to Hub" -- give the fight up
+    -- The defeat panel's two exits (either may be nil). onLoss is "Return to City" -- give the fight up
     -- and end the quest; onRetry is "Try Again" -- restart this same fight. The launcher decides which
     -- exist: an overworld fight has both, a tutorial fight has only onRetry (no hub to abandon to yet).
     -- See states/game.lua and states/prologue.lua.
     battle.onLoss = opts.onLoss
-    -- What that exit is CALLED. "Return to Hub" is right for a quest, which is abandoned back to the
+    -- What that exit is CALLED. "Return to City" is right for a quest, which is abandoned back to the
     -- city; a descent has no city to be returned to, and a button that names one the player cannot reach
     -- is a button that lies about where it goes. The launcher names it (states/game.lua); the default
     -- keeps every existing caller reading exactly as it did.

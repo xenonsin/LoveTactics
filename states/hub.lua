@@ -666,7 +666,7 @@ function hub.draw()
 
     love.graphics.setFont(titleFont)
     Theme.set(Theme.accentAmber)
-    love.graphics.printf("The Hub", 0, 24, screenW, "center")
+    love.graphics.printf("The City", 0, 24, screenW, "center")
 
     -- NO CLOCK UNDER THE TITLE, AND THAT IS THE SECOND TIME THIS LINE HAS COME OFF THE SCREEN.
     --

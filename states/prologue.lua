@@ -212,7 +212,7 @@ function prologue.runBattle(map, onWinExtra)
             prologue.resume()
         end,
         -- The defeat panel's "Try Again": restart this same fight from the pre-fight snapshot. There is
-        -- no "Return to Hub" here (no onLoss) -- Act 0 runs before the hub exists, so retrying is the
+        -- no "Return to City" here (no onLoss) -- Act 0 runs before the hub exists, so retrying is the
         -- only way out and a tutorial loss never ends the run.
         onRetry = function()
             local fresh = Save.restore(retrySnapshot)
