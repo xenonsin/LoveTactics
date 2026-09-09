@@ -380,11 +380,20 @@ end
 -- started shut. Nine band rows do not need folding, and the rack beside them shows one band at a time
 -- by construction.
 --
--- A LOCKED BAND STILL STANDS ON THE LIST, NAMED. It is the argument for earning the path -- the count
--- of what waits behind it is right there on the row, and its blurb says what the path IS -- but it
--- cannot be opened: what it holds is unbuyable to the last piece, and a rack of greyed tiles teaches
--- nothing the count has not already said. Pressing one says what opens it (Shop:activateBand).
+-- A LOCKED BAND STANDS ON THE LIST WITH ITS RACK, and that rack is drawn. It used to be named and
+-- emptied -- the count of what waited behind it stood on the row, its blurb said what the path was, and
+-- the stock itself was withheld on the argument that a wall of greyed tiles teaches nothing a count has
+-- not already said. It teaches the one thing the count cannot: WHAT. "35 pieces wait" is a number, and
+-- a number is not an argument for spending five levels on a path; the Warden's actual gear, read tile by
+-- tile with its stats and its keywords under the cursor, is. Every plate is greyed and every press is
+-- refused with what opens it (Shop:refuseReason, Shop:buy) -- exactly as a rung-locked or unfound piece
+-- on an OPEN band already behaves, so a shut band is no longer a second kind of row with a second rule.
+-- What the gate costs is not lost with the pitch: it rides above the rack (Shop:bandPitch).
 local BASE_KEY = "__base" -- the vendor's own shelf, which is not a discipline
+
+-- How many lines of a shut band's blurb stand over its rack (Shop:bandPitch). Three: a fourth line
+-- costs a whole row of tiles, and the tiles are the better half of the pitch now that they are drawn.
+local BAND_PITCH_LINES = 3
 
 local function sectionKey(classId) return classId or BASE_KEY end
 
@@ -462,11 +471,12 @@ function Shop:buildBuyRows()
             if r1.entry.price ~= r2.entry.price then return r1.entry.price < r2.entry.price end
             return r1.item.name < r2.item.name
         end)
-        -- A path this company has not opened yet gets its row and its count and NO RACK: `stock` is
-        -- what stands behind it, `rows` is what the rack may draw, and for a locked band the second is
-        -- empty. Note that a lock is not what empties it -- the PATH being shut is. A piece held by
-        -- nothing worse than this house's own rung stays on its band's rack, greyed, because "complete
-        -- 2 more" is a near thing worth showing, and it is the near things that pull.
+        -- A path this company has not opened yet gets its row, its count AND its rack. `stock` and
+        -- `rows` are the same list now and the second is kept only because every reader downstream
+        -- spells one or the other; nothing empties a band any more. `shut` survives as what the band
+        -- READS as -- muted rather than amber, gathered under the rule at the foot of the rail, and
+        -- carrying the gate above its tiles -- which is a statement about the path, not about whether
+        -- its stock exists. The tiles say the rest: grey plate, refused press, reason in the footer.
         local shut = g.shut or false
         -- One rule across the rail where the shopping stops. It is an inert Menu header -- no action, so
         -- the cursor steps over it -- which is also exactly how Menu draws a hairline for free.
@@ -481,7 +491,7 @@ function Shop:buildBuyRows()
             meta = rowMeta, pathLine = pathLine, blurb = self:sectionBlurb(g.discipline),
             count = (g.open or 0) .. " / " .. #g.rows,
             open = g.open or 0, total = #g.rows,
-            rows = (not shut) and g.rows or {},
+            rows = g.rows,
             stock = g.rows,
             -- The band wears the dot for stock it holds that has not been looked at. A tile carries
             -- its own (PoolGrid's isNew), so this is the mark that says which band to walk into.
@@ -602,8 +612,32 @@ end
 -- this panel -- the hover, the wheel, the tooltip, the press, the cursor/scroll carry across a rebuild
 -- -- is the same code the Market's stack runs, and neither shelf can drift from the other.
 --
--- A SHUT BAND BUILDS NO RACK AT ALL (its `rows` are empty), which is the whole of "it cannot be
--- opened": there is nothing for the cursor to cross into, and the pane beside it says why.
+-- A SHUT BAND BUILDS ITS RACK LIKE ANY OTHER, under the pitch that argues for its gate: the tiles are
+-- the argument (see buildBuyRows), and the pitch is what the tiles cannot say. The pitch is MEASURED
+-- HERE and the rack laid out under what it takes, rather than drawn over the top of a rack that was
+-- already placed -- the fixed block first, the grower capped by what is left.
+--
+-- WHAT A SHUT BAND SAYS ABOVE ITS TILES: what the path is, then what opens it. Capped at three lines of
+-- blurb because the fourth costs a whole row of stock, and the stock is now the better half of the
+-- pitch. Nil for an open band, which has nothing to argue and gives its whole column to the rack.
+function Shop:bandPitch(row)
+    if not (row and row.band and row.shut) then return nil end
+    local pitch = { w = math.min(self.rackW, 620), h = 0 }
+    if row.blurb then
+        local _, lines = self.bodyFont:getWrap(row.blurb, pitch.w)
+        pitch.blurb = row.blurb
+        pitch.blurbH = math.min(#lines, BAND_PITCH_LINES) * self.bodyFont:getHeight()
+        pitch.h = pitch.h + pitch.blurbH + 10
+    end
+    if row.discipline then
+        pitch.reason = self:lockReason({ discipline = row.discipline })
+        local _, lines = self.bodyFont:getWrap(pitch.reason, pitch.w)
+        pitch.reasonH = #lines * self.bodyFont:getHeight()
+        pitch.h = pitch.h + pitch.reasonH + 12
+    end
+    return pitch.h > 0 and pitch or nil
+end
+
 function Shop:buildBandSection()
     self:rememberGrid()
     local row = self.rows and self.rows[self.menu and self.menu.selected or 1]
@@ -622,11 +656,16 @@ function Shop:buildBandSection()
     local g = { key = row.key, label = row.label, rows = self:viewRows(row.rows) }
     -- A filter can empty the rack, and the well is still drawn -- one row deep, saying so inside the
     -- box (Shop:newPool's emptyText). A band with no stock at all is the other case entirely and never
-    -- reaches here: it has no rack, and the pane beside it argues for the gate instead.
+    -- reaches here: it has no rack, and the pane beside it says so instead.
+    g.pitch = self:bandPitch(row)
+    local top = self.bandTop + (g.pitch and g.pitch.h or 0)
+    -- Never less than one row of tiles, however long the gate clause runs: a rack squeezed to nothing
+    -- would put the stock back behind the count, which is the thing this rack exists to take it out of.
+    local room = math.max(PoolGrid.heightForRows(1), self.bandH - (g.pitch and g.pitch.h or 0))
     local rows = math.max(1, math.ceil(#g.rows / PoolGrid.colsFor(self.rackW)))
-    g.pool = self:newPool(self.bandTop, math.min(self.bandH, PoolGrid.heightForRows(rows)),
+    g.pool = self:newPool(top, math.min(room, PoolGrid.heightForRows(rows)),
         self.rackLeft, self.rackW)
-    g.labelY = self.bandTop -- unused by this shelf, kept so a section is a section either way
+    g.labelY = top -- unused by this shelf, kept so a section is a section either way
     self:fillPool(g)
     g.pool.focused = (self.zone == "grid")
     self.sections = { g }
@@ -1089,17 +1128,20 @@ end
 -- already on screen before the press (the pane follows the cursor), so confirm is left meaning
 -- "cross into the stock" rather than being a button that redraws what is drawn.
 --
--- A SHUT BAND HAS NO RACK TO WALK INTO, and answers with what opens it instead. That is the same
--- sentence its pane is already printing -- said again in the footer, at the moment the player asked
--- for the thing it refuses, which is the only moment a refusal is worth repeating.
+-- A SHUT BAND HAS A RACK TO WALK INTO AS WELL, and the walk is worth taking: the tiles are what the
+-- path buys, and reading them one by one is the only way that question gets answered. What it adds is a
+-- line in the footer naming the gate, so the player crossing into a rack where every plate is grey is
+-- told once WHY rather than having to press a piece to find out. Said on the crossing rather than
+-- printed forever, which is the same rule every other refusal on this panel keeps.
 function Shop:activateBand(row)
     if not row then return end
+    if row.shut and row.discipline then
+        self:setMsg(self:lockReason({ discipline = row.discipline }), false)
+    end
     if row.rows and #row.rows > 0 then
         self.zone = "grid"
         local g = self.sections[1]
         if g and g.pool then g.pool.focused = true end
-    elseif row.shut and row.discipline then
-        self:setMsg(self:lockReason({ discipline = row.discipline }), false)
     end
 end
 
@@ -1745,8 +1787,25 @@ end
 -- would having one do for me") is the one a grid of tiles structurally cannot -- it was the whole
 -- argument for this shelf keeping a list when the Market gave one up.
 --
--- A SHUT BAND SHOWS NO RACK. What stands in its place is what opens it and how much waits behind it:
--- the pitch for the gate, which is the only reason a path the player cannot shop is on the list at all.
+-- A SHUT BAND SHOWS ITS RACK TOO, greyed to the last plate, with the pitch for its gate above the tiles
+-- rather than instead of them (Shop:bandPitch measures it; the rack is laid out under what it takes).
+-- What a path IS still leads -- a player who has never held a Warden's gear needs the sentence before
+-- the pieces mean anything -- but the pieces follow it now, because "what do I get" is a question a
+-- count of them cannot answer and a rack of them answers by being read.
+function Shop:drawBandPitch(pitch, x)
+    local y = self.bandTop
+    if pitch.blurb then
+        Theme.set(Theme.ink)
+        printClamped(pitch.blurb, self.bodyFont, x, y, pitch.w, BAND_PITCH_LINES)
+        y = y + pitch.blurbH + 10
+    end
+    if pitch.reason then
+        love.graphics.setFont(self.bodyFont)
+        love.graphics.setColor(0.9, 0.6, 0.55)
+        love.graphics.printf(pitch.reason, x, y, pitch.w, "left")
+    end
+end
+
 function Shop:drawBandPane()
     local row = self.rows[self.menu.selected]
     if not (row and row.band) then return end
@@ -1780,14 +1839,15 @@ function Shop:drawBandPane()
 
     local g = self.sections[1]
     if g and g.pool and g.key == row.key then
+        if g.pitch then self:drawBandPitch(g.pitch, x) end
         g.pool:draw()
         love.graphics.setColor(1, 1, 1)
         return
     end
 
-    -- NO RACK, SO THE RACK'S ROOM IS THE PITCH. This is the one thing the reading pane carried that the
-    -- item tooltip cannot: what a path IS, for a player who has never held one. It is the whole argument
-    -- for the gate, and a locked band is the only place on this screen with the room to make it.
+    -- NOTHING ON THIS RACK AT ALL -- a band that stocks not one piece, which is a house with an unwritten
+    -- corner of catalogue rather than a gate. The room the tiles would have had says so, and says what
+    -- the path is while it has the space.
     -- This block FLOWS, where everything above it is pinned. Nothing here has to hold still for a rack
     -- that is not being drawn, so a one-line blurb does not leave three lines of hole above its gate.
     local py = self.bandTop + 8

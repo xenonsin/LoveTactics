@@ -1,13 +1,15 @@
 -- The vendor shelf's LADDER: ui/panels/shop.lua bands a house's Buy list per discipline, and every
 -- band is one row of a column with the selected band's stock standing beside it as tiles. What this
 -- pins is the shape of that column -- that a band is a row and not a heading over rows, that a path
--- the company has not opened is NAMED and carries the gate that opens it, and that its stock is not
--- reachable from here however the cursor is worked.
+-- the company has not opened is NAMED and carries the gate that opens it, and that its stock stands on
+-- the rack all the same, greyed to the last plate.
 --
 -- The old shelf folded instead: every band opened and shut, a locked one started shut, and a player
 -- could open one and read every greyed row behind it. The rack replaced the fold -- nine band rows do
--- not need folding, and one rack shows one band by construction -- and a locked band lost the ability
--- to be opened at all, because a screen of unbuyable tiles teaches nothing its count has not said.
+-- not need folding, and one rack shows one band by construction. For a while a locked band could not be
+-- opened at all, on the argument that a screen of unbuyable tiles teaches nothing its count has not
+-- said; it teaches the one thing a count cannot, which is WHAT is behind the gate, so the tiles came
+-- back and the refusal moved onto each of them.
 --
 -- Most of it exercises the row-building half only. Shop.new bakes fonts, so those panels are built
 -- straight through the metatable with the fields buildBuyRows actually reads -- the same trick
@@ -144,15 +146,24 @@ return {
         end,
     },
     {
-        name = "a locked band cannot be opened: it offers no rows, however it is pressed",
+        -- A locked band used to hand the rack NOTHING: the count of what waited behind it was the whole
+        -- of what a player got, on the argument that a wall of greyed tiles teaches nothing a number has
+        -- not said. It teaches the one thing a number cannot -- WHAT -- so the stock is dealt now and
+        -- every piece of it is shut. What this pins is both halves: the rack is whole, and not one tile
+        -- on it can be bought.
+        name = "a locked band hands the rack its stock, and not one piece of it is open",
         fn = function()
             local vendorId, classId = vendorWithLockedPath()
             local panel = shelf(vendorId)
             local band = bandFor(panel, classId)
-            assert(#band.rows == 0, classId .. ": a locked band hands the rack nothing, got " .. #band.rows)
-            assert(#band.stock > 0, classId .. ": while still counting what waits behind it")
+            assert(#band.stock > 0, classId .. ": a locked band counts what waits behind it")
+            assert(#band.rows == #band.stock, classId .. ": and hands every piece of it to the rack, got "
+                .. #band.rows .. " of " .. #band.stock)
             assert(band.total == #band.stock, classId .. ": and the count is that number")
             assert(band.open == 0, classId .. ": none of which is open to a company standing outside")
+            for _, row in ipairs(band.rows) do
+                assert(row.locked, classId .. ": " .. tostring(row.label) .. " is buyable on a shut path")
+            end
         end,
     },
     {
@@ -220,11 +231,15 @@ return {
         end,
     },
     {
-        name = "walking onto a locked band empties the rack rather than leaving the last one standing",
+        name = "walking onto a locked band brings its own rack, standing under the gate",
         fn = function()
-            -- The rack follows the cursor with no press (Shop:syncBand). A band with nothing to show
-            -- must therefore show NOTHING -- a rack left behind from the band above would price a
-            -- locked path with the pieces of an open one.
+            -- The rack follows the cursor with no press (Shop:syncBand), and a shut band is no
+            -- exception: what it must never do is leave the LAST band's rack standing, which would
+            -- price a locked path with the pieces of an open one.
+            --
+            -- The pitch that argues for the gate is measured first and the rack laid out under what it
+            -- takes (Shop:bandPitch) -- the fixed block placed off a measurement, the grower capped by
+            -- what is left -- so the tiles can never be drawn over by the sentence above them.
             stubFonts(function()
                 local vendorId, classId = vendorWithLockedPath()
                 local panel = Shop.new({
@@ -239,14 +254,20 @@ return {
                 end
                 panel.menu.selected = index
                 panel:syncBand()
-                assert(#panel.sections == 0, "a locked band builds no rack at all")
-                assert(panel.zone == "bands", "and the cursor cannot be left in one")
+                assert(#panel.sections == 1, "a locked band builds its rack like any other")
+                local rack, band = panel.sections[1], panel.rows[index]
+                assert(rack.key == band.key, "and it is THIS band's rack, not the one it walked off")
+                assert(rack.pool:count() == #band.rows and #band.rows > 0,
+                    "every piece it bands is a tile: " .. rack.pool:count() .. " of " .. #band.rows)
+                assert(rack.pitch and rack.pitch.h > 0, "the gate takes room above the tiles")
+                assert(rack.pool.y == panel.bandTop + rack.pitch.h,
+                    "and the rack begins under exactly what it took")
 
-                -- Pressing it says what opens it instead of opening anything.
-                panel:activateBand(panel.rows[index])
-                assert(panel.zone == "bands", "the press does not cross into a rack that is not there")
+                -- Pressing it crosses into the rack AND says what opens it, once, on the crossing.
+                panel:activateBand(band)
+                assert(panel.zone == "grid", "the press crosses into the rack")
                 assert(type(panel.message) == "string" and panel.message:find("Locked"),
-                    "it answers with the gate: " .. tostring(panel.message))
+                    "and answers with the gate: " .. tostring(panel.message))
             end)
         end,
     },
