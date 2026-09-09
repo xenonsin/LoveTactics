@@ -1170,14 +1170,15 @@ function Shop:lockReason(entry)
     -- than by growing a class. It is checked first because it outranks the others: a company that has
     -- never held one of these cannot buy it at any rung, in any discipline, at any level.
     --
-    -- IT NAMES A DEPTH, which is the whole reason the row is shown at all. "You have not found one" is
-    -- true and useless in the same way "unlock the Ninja path first" was -- it restates the lock. The
-    -- tier turns it into somewhere to go, and a shelf full of these is the want list the houses became
-    -- when they stopped selling this half of the catalogue (tools/drop_tier.lua).
+    -- IT NAMES A DEPTH AND ONLY THAT, which is the whole reason the row is shown at all. "You have not
+    -- found one" is true and useless in the same way "unlock the Ninja path first" was -- it restates
+    -- the lock. The floor turns it into somewhere to go, and a shelf full of these is the want list the
+    -- houses became when they stopped selling this half of the catalogue (tools/drop_tier.lua). It wears
+    -- the same "Floor N" wording the stash and the Touchstone use (Identify.floorOf), so a depth read on
+    -- a shelf and a depth read on a piece of loot are plainly the same number.
     if entry.lockReason == "undiscovered" then
         if entry.dropTier then
-            return "Not found: the rift gives this up from depth " .. entry.dropTier ..
-                ". Carry one out and this counter will stock it."
+            return "Found in Floor " .. entry.dropTier
         end
         return "Not found: carry one out of the rift and this counter will stock it."
     end

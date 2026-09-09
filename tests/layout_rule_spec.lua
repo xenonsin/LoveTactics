@@ -202,6 +202,29 @@ return {
         end,
     },
     {
+        -- The gutter under the board is the one rect whose ANSWER changes with the space, not just
+        -- its size: on a handheld there is no strip under the board to have, so the combat log drops
+        -- into the left column instead (states/battle.lua's gutterRect). Both things that live in it
+        -- -- the log and the deployment phase's hint line -- cache the rect, so a window resized OUT
+        -- of the handheld space re-laid the board and the two columns and left the log where the
+        -- phone had put it: a board-width record still drawn in a narrow column at the screen's edge.
+        -- Read off the source, the way every other claim about a state file is (cursor_spec).
+        name = "a space change re-stamps the gutter, not just the board and the columns",
+        fn = function()
+            local src = assert(love.filesystem.read("states/battle.lua"), "states/battle.lua is readable")
+            local body = src:match("function battle%.syncLayout%(%)\n(.-)\nend\n")
+            assert(body, "states/battle.lua no longer defines battle.syncLayout")
+            assert(body:find("battle%.syncGutter%(%)"),
+                "the space-change relayout no longer re-stamps the gutter -- the combat log keeps "
+                .. "whichever space's rect it was built in")
+            local gutter = src:match("function battle%.syncGutter%(%)\n(.-)\nend\n")
+            assert(gutter, "states/battle.lua no longer defines battle.syncGutter")
+            assert(gutter:find("battle%.log") and gutter:find("battle%.deploy"),
+                "syncGutter no longer tells BOTH occupants of the gutter -- the log and the "
+                .. "deployment phase's hint line share the rect and cannot drift apart")
+        end,
+    },
+    {
         -- Almost nothing caches geometry -- 65 files read Scale.WIDTH at draw time -- but the few
         -- that do need to be able to notice, and a counter that ticks when nothing moved is a
         -- rebuild every frame.

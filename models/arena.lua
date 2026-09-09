@@ -480,6 +480,12 @@ Arena.ENEMY_GROUP_MAX = 3
 -- body anywhere past ENEMY_MIN_DEPTH -- which is one row further on. Left alone that opens an escort
 -- fight with a demon already touching the survivor, decided before the party has moved: the ground the
 -- objective is pointed at is cleared to this radius, and the scatter forms up beyond it.
+--
+-- A charge with NO anchor (an escorted driver, who seats among the company -- see bindAllies) gets the
+-- same ring, drawn around the party's own spawns instead. It used to get nothing, on the reading that
+-- ENEMY_MIN_DEPTH already keeps the company clear -- but a body that has to WALK the length of the
+-- board is not the company, and the row it starts on is the one row of the crossing it cannot fight
+-- its way out of.
 Arena.ENEMY_PROTECT_CLEARANCE = 2
 -- How many free tiles an anchor is chosen from. Higher spreads the knots harder and makes the board
 -- more samey; this is enough to keep two groups off each other's toes.
@@ -913,12 +919,15 @@ function Arena.generateLayout(params)
     local probe = { cols = cols, rows = rows, tiles = tiles, partySpawns = partySpawns }
     -- The ground a `protect` objective is pointed at, plus a clearance ring, is off limits: the escorted
     -- body seats there later (bindAllies resolves the SAME region off the SAME party spawns), and the
-    -- fight has to open with room to get in front of it. `params.protectAnchor` is nil for every fight
-    -- that protects nobody, which is nearly all of them.
+    -- fight has to open with room to get in front of it. `params.protect` is nil for every fight that
+    -- protects nobody, which is nearly all of them; a charge with an anchor stands on that region, and
+    -- one without stands among the company, so the ring is drawn around the party's spawns instead.
     local keepClear = {}
-    if params.protectAnchor then
+    if params.protect then
         local c = Arena.ENEMY_PROTECT_CLEARANCE
-        for _, t in ipairs(Arena.resolveRegion(params.protectAnchor, probe)) do
+        local ground = params.protectAnchor and Arena.resolveRegion(params.protectAnchor, probe)
+            or partySpawns
+        for _, t in ipairs(ground) do
             for dy = -c, c do
                 for dx = -c, c do keepClear[key(t.x + dx, t.y + dy)] = true end
             end
@@ -997,6 +1006,7 @@ function Arena.pickLayout(spec, partyCount, enemyCount)
             party = partyCount, enemies = enemyCount,
             entry = spec.entry, -- the door the company came through, where there was one
             -- The ground an escorted body will stand on, so the enemy scatter leaves it room.
+            protect = spec.objective and spec.objective.protect,
             protectAnchor = spec.objective and spec.objective.protect and spec.objective.anchor,
             formation = spec.formation, formationCols = spec.formationCols,
             formationRows = spec.formationRows,
@@ -1206,6 +1216,7 @@ function Arena.build(ctx, spec)
         layout = Arena.generateLayout({
             biome = spec.biome, seed = spec.seed,
             party = #partyIds + #allyIds, enemies = #enemyIds,
+            protect = spec.objective and spec.objective.protect,
             protectAnchor = spec.objective and spec.objective.protect and spec.objective.anchor,
             formation = spec.formation, formationCols = spec.formationCols,
             formationRows = spec.formationRows,

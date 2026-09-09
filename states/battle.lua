@@ -278,6 +278,11 @@ function battle.syncLayout()
         battle.map.leftMargin, battle.map.rightMargin = LEFT_W, PANEL_W
         battle.map.topMargin = battle.boardTop()
         battle.map:layout()
+        -- ...and last, because it is measured off the board's screen rect: the gutter under the board,
+        -- which is the combat log's rect and the deployment phase's hint line. The board moving is not
+        -- the only reason it moves -- gutterRect answers a different question in each space (see there)
+        -- -- and neither the log nor the phase derives it per frame, so this is where they are told.
+        battle.syncGutter()
     end
 end
 
@@ -4516,6 +4521,26 @@ local function gutterRect()
     return { x = bx, y = y, w = bw, h = Scale.HEIGHT - y - 4 }
 end
 
+-- Re-stamp the gutter onto whatever is living in it: the combat log's own rect, and the deployment
+-- phase's hint line. Called from every place the rect can MOVE under a live fight -- the board turning
+-- (below) and the logical space changing (battle.syncLayout) -- because both the log and the phase
+-- cache the rect rather than deriving it per frame, so nothing tells them on its own.
+--
+-- The space case is the one that bit: gutterRect answers a different question in the short space (the
+-- strip under the board is six pixels there, so the log drops into the left column), and a window
+-- resized out of the handheld space re-laid the board and the two columns and left the log where the
+-- phone had put it -- a board-width record still drawn in a narrow column beside a full-height board.
+--
+-- A field on `battle` rather than a file local, for the local-ceiling reason at deploySettingsButton.
+function battle.syncGutter()
+    if not battle.map then return end
+    local g = gutterRect()
+    if battle.log then
+        battle.log.x, battle.log.y, battle.log.w, battle.log.h = g.x, g.y, g.w, g.h
+    end
+    if battle.deploy then battle.deploy.gutter = g end
+end
+
 -- Turn the board a quarter turn -- `dir` is -1 counter-clockwise, 1 clockwise. Purely a view control:
 -- it costs nothing, takes no turn, moves nobody, and is allowed while it is anyone's move and after the
 -- fight is decided. See ui/battle_map.lua's rotation section for what actually turns.
@@ -4529,11 +4554,7 @@ end
 function battle.turnBoard(dir)
     if not battle.map then return end
     battle.map:turn(dir)
-    local g = gutterRect()
-    if battle.log then
-        battle.log.x, battle.log.y, battle.log.w, battle.log.h = g.x, g.y, g.w, g.h
-    end
-    if battle.deploy then battle.deploy.gutter = g end
+    battle.syncGutter()
 end
 
 -- Face the board so the ground the player's own line stands on is the near side of the screen, for a
@@ -5187,10 +5208,10 @@ function battle.enter(self, opts)
     if opening then
         -- Never fold a queued party-join banner onto an opening, whichever staging it takes. A
         -- "[<name> has joined your Party]" line is a roster beat and belongs in a scripted scene
-        -- somebody wrote it into -- the oath in "Ashes", Saber's turn in "The Gatekeeper" -- not
+        -- somebody wrote it into -- Rowan in "First Job", Saber's turn in "The Gatekeeper" -- not
         -- tacked onto the last words before a fight starts. Holding it lets the join land in the next
-        -- authored scene instead: Rowan, recruited to fight the village battle, is announced in
-        -- "Ashes" after it (models/conversation.lua's drainJoins).
+        -- authored scene instead: Rowan, recruited to fight the first battle, is announced in the
+        -- overworld's opening scene after it (models/conversation.lua's drainJoins).
         local stage = { deferJoins = true }
         -- The mentor speaks from the free strip UNDER THE BOARD -- but only where there is one. On a
         -- handheld the board takes the whole short axis by design (battle.boardTop), so `boardBottom`

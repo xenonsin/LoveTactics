@@ -93,6 +93,54 @@ return {
             assert(driver.y >= a.rows - 1, "the driver seats on a near (party) row, not the middle")
         end,
     },
+    {
+        -- THE FLIGHT STOPS WERE UNWINNABLE, and nothing above this said why: every assertion in this
+        -- file is about where a body OPENS, and the reinforcements are where the fight actually is.
+        -- `flank` resolves to the edge nearest the party, which in a defend fight is the wall the
+        -- survivors have their backs to, and `surround` cycled bombers onto that same wall -- so a
+        -- grunt and three bomblets walked on BEHIND the screen the whole stop is about building. A
+        -- screen is a decision about where to stand, and it stops being one when the thing screened
+        -- can be reached from the side the player is not allowed to be on.
+        name = "a protect fight's reinforcements land clear of the charges, and never behind them",
+        fn = function()
+            local defend = Encounter.get("encounter_survivors_defend")
+            for _, seed in ipairs({ 1, 2, 3, 4, 5 }) do
+                local a = Arena.build({ day = 1 }, {
+                    biome = "forest", seed = seed,
+                    party = { "character_avatar", "character_rowan" },
+                    allies = defend.allies,
+                    composition = defend.composition,
+                    objective = defend.objective,
+                })
+                local partyUnits, enemyUnits = {}, {}
+                for _, p in ipairs(a.party) do partyUnits[#partyUnits + 1] = unit(p.id, p.x, p.y) end
+                for _, s in ipairs(a.allies or {}) do partyUnits[#partyUnits + 1] = unit(s.id, s.x, s.y) end
+                for _, e in ipairs(a.enemies) do enemyUnits[#enemyUnits + 1] = unit(e.id, e.x, e.y) end
+                local c = Combat.new(a, partyUnits, enemyUnits)
+
+                local survs = Combat.protectedTiles(c, "character_survivor")
+                assert(#survs == 2, "both survivors stand at the opening bell (seed " .. seed .. ")")
+                -- The wall each survivor has its back to: no wave may walk in from there.
+                local behind = {}
+                for _, s in ipairs(survs) do behind[Combat.nearestEdge(c, s.x, s.y)] = true end
+
+                for wi, wave in ipairs(defend.objective.waves) do
+                    local plan = Combat.previewWaveArrival(c, wave, { day = 1 })
+                    assert(plan and #plan.tiles > 0, "wave " .. wi .. " finds room to land (seed " .. seed .. ")")
+                    local where = " (seed " .. seed .. ", wave " .. wi .. ")"
+                    assert(not behind[plan.edge], "wave walks on from " .. plan.edge
+                        .. ", the side the survivors have their backs to" .. where)
+                    for _, t in ipairs(plan.tiles) do
+                        for _, s in ipairs(survs) do
+                            local d = math.max(math.abs(t.x - s.x), math.abs(t.y - s.y))
+                            assert(d >= Combat.WAVE_PROTECT_CLEARANCE,
+                                "a reinforcement lands " .. d .. " tiles off a survivor" .. where)
+                        end
+                    end
+                end
+            end
+        end,
+    },
 
     -- ----- the `defend` objective (models/combat.lua) -----
     {

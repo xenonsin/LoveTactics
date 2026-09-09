@@ -2402,15 +2402,68 @@ end
 -- by states/battle.lua to point the arrival arrow of a telegraph whose landing cell was AUTHORED
 -- rather than resolved from an edge (a scripted lesson's reinforcement): the marker still has to say
 -- which side the body marches in from, and the nearest edge to the cell is that side.
-function Combat.nearestEdge(combat, px, py)
+--
+-- `pool` (optional) narrows the answer to a subset of the sides -- "the nearest edge a wave is still
+-- allowed to walk in from". Absent, it is all four, which is every caller that only wants a direction.
+function Combat.nearestEdge(combat, px, py, pool)
     local cols = (combat.arena and combat.arena.cols) or 8
     local rows = (combat.arena and combat.arena.rows) or 8
     local dist = { top = py - 1, bottom = rows - py, left = px - 1, right = cols - px }
-    local best, bestD = "top", math.huge
-    for _, e in ipairs(Combat.EDGES) do
+    local best, bestD = nil, math.huge
+    for _, e in ipairs(pool or Combat.EDGES) do
         if dist[e] < bestD then best, bestD = e, dist[e] end
     end
+    return best or "top"
+end
+
+-- ---------------------------------------------------------------------------
+-- Room for the body the fight is fought over
+-- ---------------------------------------------------------------------------
+-- A `protect` fight stands somebody the company has to screen -- survivors rallied a couple of rows
+-- ahead of the line, a driver walking for the far edge. Screening is a decision about WHERE TO STAND,
+-- and it is only a decision while the thing being screened has one side facing the fight: a
+-- reinforcement that walks on behind the charge is one the player was never given the chance to
+-- intercept. That is exactly what the prologue's flight stops had become -- the `flank` wave resolved
+-- to the edge nearest the party, which in a defend fight is the edge the survivors have their backs
+-- to, and the bomblets of a `surround` wave were cycled onto that same wall.
+--
+-- So a wave in a protect fight is kept off the charge twice over: it does not walk in from the side a
+-- charge has its back to (the DYNAMIC edge forms only -- an author who names `top` means top), and it
+-- does not land within this many tiles of one. Neither guard costs anything in the great majority of
+-- fights, which protect nobody and take the same first free tile they always did.
+Combat.WAVE_PROTECT_CLEARANCE = 3
+
+-- Where the fight's charges are standing right now. Empty unless the objective carries a `protect`.
+local function protecteeTiles(combat)
+    local obj = combat.objective
+    if not (obj and obj.protect) then return {} end
+    return Combat.protectedTiles(combat, obj.protect)
+end
+
+-- Chebyshev distance from a cell to the nearest charge; huge when the fight protects nobody, which is
+-- what makes every guard below a no-op for an ordinary wave.
+local function distToCharge(charges, x, y)
+    local best = math.huge
+    for _, t in ipairs(charges) do
+        best = math.min(best, math.max(math.abs(t.x - x), math.abs(t.y - y)))
+    end
     return best
+end
+
+-- The sides a dynamic wave may still walk in from: all four, less the side each living charge has its
+-- back to. Never empty -- a board whose charges face every wall at once (a cramped arena, an escort
+-- spread across it) still has to field its reinforcements somewhere, and a wave that cannot land is a
+-- wave the fight silently loses.
+local function allowedEdges(combat)
+    local banned = {}
+    for _, t in ipairs(protecteeTiles(combat)) do banned[Combat.nearestEdge(combat, t.x, t.y)] = true end
+    local out = {}
+    for _, e in ipairs(Combat.EDGES) do
+        if not banned[e] then out[#out + 1] = e end
+    end
+    -- A fresh list every call, never Combat.EDGES itself: waveEdges sorts what it is handed.
+    if #out == 0 then return { "top", "bottom", "left", "right" } end
+    return out
 end
 
 -- Resolve a wave's `from` descriptor to a concrete edge, reading live board state for the dynamic
@@ -2420,15 +2473,18 @@ function Combat.resolveWaveEdge(combat, from, ctx)
     if type(from) == "function" then from = from(combat, ctx or {}) end
     if from == nil or from == "back" then return Combat.enemyHomeEdge(combat) end
     if from == "top" or from == "bottom" or from == "left" or from == "right" then return from end
-    if from == "random" then return Combat.EDGES[Combat.roll(combat, #Combat.EDGES)] end
+    -- The dynamic forms choose within the sides a charge does not have its back to (allowedEdges);
+    -- that list is all four in every fight that protects nobody.
+    local pool = allowedEdges(combat)
+    if from == "random" then return pool[Combat.roll(combat, #pool)] end
     if from == "flank" then
         local px, py = partyCentroid(combat)
         if not px then return Combat.enemyHomeEdge(combat) end
-        return Combat.nearestEdge(combat, px, py)
+        return Combat.nearestEdge(combat, px, py, pool)
     end
     if from == "open" then
         local best, bestFree = Combat.enemyHomeEdge(combat), -1
-        for _, e in ipairs(Combat.EDGES) do
+        for _, e in ipairs(pool) do
             local f = Combat.edgeOpenness(combat, e)
             if f > bestFree then best, bestFree = e, f end
         end
@@ -2447,7 +2503,7 @@ function Combat.waveEdges(combat, from, count, ctx)
         for i = 1, count do edges[i] = edge end
         return edges
     end
-    local order = { "top", "bottom", "left", "right" }
+    local order = allowedEdges(combat)
     table.sort(order, function(a, b)
         return Combat.edgeOpenness(combat, a) > Combat.edgeOpenness(combat, b)
     end)
@@ -2466,14 +2522,32 @@ end
 function Combat.waveArrivalTile(combat, from, edge, w, h, freeFn)
     w, h = w or 1, h or 1
     freeFn = freeFn or function(fw, fh, x, y) return Combat.footprintFree(combat, fw, fh, x, y) end
+
+    -- The ground on offer, in the order it has always been preferred.
+    local candidates = {}
     if from == nil or from == "back" then
         for _, e in ipairs((combat.arena and combat.arena.enemies) or {}) do
-            if freeFn(w, h, e.x, e.y) then return e.x, e.y end
+            candidates[#candidates + 1] = e
         end
     end
-    for _, t in ipairs(Combat.edgeTiles(combat, edge, 3)) do
-        if freeFn(w, h, t.x, t.y) then return t.x, t.y end
+    for _, t in ipairs(Combat.edgeTiles(combat, edge, 3)) do candidates[#candidates + 1] = t end
+
+    -- ROOM FOR THE CHARGE (see WAVE_PROTECT_CLEARANCE). The first free tile that clears every living
+    -- charge wins, exactly as the first free tile always won -- `charges` is empty in a fight that
+    -- protects nobody, so distToCharge is huge and this is the old loop. Where nothing on the edge
+    -- clears (a packed board, a charge that has walked into the landing ground), the arrival takes the
+    -- FARTHEST free tile rather than being dropped: a wave that finds no room is a wave the fight
+    -- silently never has to face.
+    local charges = protecteeTiles(combat)
+    local far, farDist
+    for _, t in ipairs(candidates) do
+        if freeFn(w, h, t.x, t.y) then
+            local d = distToCharge(charges, t.x, t.y)
+            if d >= Combat.WAVE_PROTECT_CLEARANCE then return t.x, t.y end
+            if not farDist or d > farDist then far, farDist = t, d end
+        end
     end
+    if far then return far.x, far.y end
     return nil
 end
 
