@@ -4073,14 +4073,34 @@ function game.draw()
         return
     end
 
-    game.drawHud()
+    -- A FULL-STAGED CONVERSATION OWNS THIS SCREEN'S CORNER, so the HUD stands down while one plays.
+    -- The overlay is modal (main.lua routes every event to it and freezes the state behind it), it
+    -- dims the whole screen and stands bottom-anchored portraits over it, and it prints the scene
+    -- title top-left -- which is where the button row sits and directly on top of the party strip
+    -- under it. A row of buttons nobody can press, showing through the dim with a title lying across
+    -- them, is two screens claiming the same pixels.
+    --
+    -- The compact `overScene` staging is the opposite bargain and keeps the HUD: it barely dims, it
+    -- drops the busts, and it already suppresses its own title for exactly this reason (ui/dialogue
+    -- .lua) -- a fight mid-turn is the thing being talked about and has to stay readable. Either the
+    -- scene owns that corner or the host does, and the staging is what says which.
+    local sceneCovers = false
+    do
+        local scene = require("models.conversation").active
+        sceneCovers = scene ~= nil and not scene.overScene
+    end
+
+    if not sceneCovers then game.drawHud() end
 
     if game.activePanel then
         game.activePanel:draw()
     end
 
     -- The coach bubble sits on TOP of everything, including an open panel: the equip step points at
-    -- the stash inside the Loadout screen.
+    -- the stash inside the Loadout screen. It stands down under a full-staged scene for the same
+    -- reason the HUD does -- several of its steps anchor to the very rects the title is standing on,
+    -- and all of them point at a control the scene has frozen.
+    if sceneCovers then return end
     game.drawCoach()
     -- ...and the mechanic bubble beside it, on its own channel. Only ever drawn over an open panel, so
     -- it is not wanted on the battle path above -- unlike drawCoach, which follows the fight in.
