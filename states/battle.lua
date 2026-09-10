@@ -31,6 +31,7 @@ local Class = require("models.class")
 local Growth = require("models.growth")
 local Item = require("models.item")
 local Combat = require("models.combat")
+local CombatTrace = require("models.combat_trace") -- debug builds only: this fight, recorded to a file
 local Experience = require("models.experience") -- the bench's share of a won fight (finishBattle)
 local Command = require("models.command") -- the vocabulary a live duel speaks (models/netplay.lua)
 local Trap = require("models.trap")
@@ -698,6 +699,12 @@ end
 -- netplay duel keeps the immediate callback and shows no panel: it has no campaign player to reward and
 -- the harness owns the handoff.
 local function finishBattle(result)
+    -- Seal the debug trace with how the fight actually ended (models/combat_trace.lua). First thing in
+    -- here, before the duel's early return, so every decided fight -- a win, a wipe, a forfeit, a duel's
+    -- immediate handoff -- closes its file with a result and a standing count rather than trailing off
+    -- mid-turn. A release build and an untraced fight both no-op.
+    CombatTrace.close(result)
+
     if battle.session then
         local cb = result == "win" and battle.onWin or battle.onLoss
         if cb then cb() end
@@ -5055,6 +5062,32 @@ function battle.enter(self, opts)
           -- click by click, and a miss there refuses the one move the player was just told to make
           -- (Tutorial.alwaysHits). Nil for every other fight in the game.
           alwaysHits = Tutorial.alwaysHits(battle.tutorial) or nil })
+
+    -- THE FIGHT, RECORDED TO A FILE, in a debug build and nowhere else (models/combat_trace.lua). Opened
+    -- here rather than inside Combat.new so the headless suite -- which builds combats by the thousand
+    -- and never comes through this state -- writes nothing. Closed on every exit in finishBattle and in
+    -- battle.leave, so a forfeited or abandoned fight still leaves a readable file behind.
+    --
+    -- Deliberately AFTER Combat.new and before openBattle: the header wants both rosters as they stood
+    -- at the bell, and every opener trait's log line belongs in the body of the trace rather than above
+    -- its own heading.
+    --
+    -- Written without a local of its own on purpose. This function sits within a couple of declarations
+    -- of Lua 5.1's 200-local ceiling (see the ctx note above), and crossing it is a compile error naming
+    -- an unrelated line -- so the meta table is built inline and the path is read back off the module.
+    CombatTrace.open(battle.combat, {
+        name = battle.encounter and battle.encounter.name,
+        kind = battle.encounter and battle.encounter.kind,
+        objective = CombatTrace.describeObjective(battle.combat.objective),
+        layout = battle.arena and (battle.arena.cols .. "x" .. battle.arena.rows) or nil,
+        biome = opts.biome,
+        day = battle.day,
+        prestige = opts.prestige,
+        enemyLevel = battle.enemyLevel,
+    })
+    -- Printed, not merely written: the save directory is off in the user's AppData and nobody guesses
+    -- their way to it. Reaches a terminal under the console build (`lovec`) and is harmless otherwise.
+    if CombatTrace.absolutePath() then print("combat trace: " .. CombatTrace.absolutePath()) end
 
     -- The battle purse: the pot the greed (rogue) money kit spends in-fight (fx.spendPurse ->
     -- Combat.spendPurse), and the pot the debug "Add gold" tool funds. EVERY battle gets one now, so a

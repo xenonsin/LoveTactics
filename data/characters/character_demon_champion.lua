@@ -19,8 +19,25 @@
 --
 -- `boss = true` marks it a quest objective: immune to instant execution (Coup de Grace), Charm and
 -- Polymorph, so the assassinate win is earned by fighting it down rather than skipped by a finisher.
--- Health is ~115 (up from 92): the fuller toolkit kills 92 before the later stages can read. Reusable
--- as a mid-tier demon boss in later content -- the phase system is all in the Sigil.
+-- Reusable as a mid-tier demon boss in later content -- the phase system is all in the Sigil.
+--
+-- HEALTH IS THE FIGHT'S RUNNING TIME, and it has now been raised twice for the same reason: 92 -> 115
+-- -> 150. The three stages above are worth about six rounds of board time and kept being handed three.
+-- Two bodies -- the avatar and Rowan, which is the whole party at this point in Act 0 -- put roughly 40
+-- a round into it, so 115 was dead on round three: the Roar's channel never resolved, and because a
+-- KILLING blow crosses no threshold (data/traits/trait_boss_phases.lua says so outright), stage 3 was
+-- routinely skipped whole. The player met a stat block, not a script.
+--
+-- 115 was also priced without the road's own gift. `resist.holy = -8` below means the Censer of Dawn
+-- from stop 2 of the flight leg -- which makes every item it touches strike as HOLY -- adds 8 to every
+-- swing landed on this body. That is deliberate (the lesson and its proof one step apart, see
+-- states/prologue.lua) and it very nearly doubles what the party throws, so the health it is priced
+-- against has to be read with the censer equipped, not without it.
+--
+-- 150 and not more: tier 3 claims 81-154 (models/balance.lua's HEALTH_BANDS, enforced by
+-- tests/bestiary_spec.lua), and the rung is correct -- this is an Elite that the FIGHT makes a boss,
+-- which is the distinction tests/boss_framing_spec.lua exists to hold. Past 154 the answer stops being
+-- a number here and becomes a re-tier, and a re-tier obliges a rebalance of everything it carries.
 return {
     name = "Demon Champion",
     kind = "demon",
@@ -46,7 +63,7 @@ return {
         -- casts at a default 1/tick regen (Combat.DEFAULT_STAMINA_REGEN), which is nothing like enough
         -- for a 12-stamina swing, so a long stage-3 saw the boss punching. Its casting turns now bank
         -- stamina instead of spending it.
-        health = 115, mana = 60, stamina = 24,
+        health = 150, mana = 60, stamina = 24,
         damage = 14, magicDamage = 0,          -- base; the stage-3 enrage adds up to +20 as it empties
         defense = 8, magicDefense = 4,
         movement = 4,

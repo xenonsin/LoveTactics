@@ -1,6 +1,6 @@
 -- The Demon Champion's second-stage move (armed at 66% health by data/traits/trait_boss_phases.lua,
 -- which raises status_roaring; the Champion's AI winds this up only while that marker stands). A
--- telegraphed bellow: it winds up over three ticks and, if it resolves, calls two Bomblets to the
+-- telegraphed bellow: it winds up over two ticks and, if it resolves, calls two Bomblets to the
 -- Champion's side and quickens it. INTERRUPT it -- a Stun (Jolt / Power Strike) or a shove (a mace, the
 -- Sworn Aegis) breaks any channel (Combat.interruptChannel), and the pending call is wasted: no
 -- Bomblets. That denial is the whole point of the stage.
@@ -27,7 +27,15 @@ return {
         allowOccupied = true,
         range = 1,
         speed = 6,
-        windup = 3, -- the three-tick tell: the window a Stun or a shove has to deny the call
+        -- The two-tick tell: the window a Stun or a shove has to deny the call.
+        --
+        -- It was THREE, and three was a threat that never arrived. The Roar is armed at 66% health, and
+        -- the fight it is armed in runs about four rounds -- so a channel opened on round two and paid
+        -- out on round five resolved after the Champion was already dead, and the Bomblets the stage is
+        -- made of never reached the board at all. A denial lesson needs something to deny. Two ticks
+        -- still leaves a full turn to answer it in, which is the window Jolt and the Sworn Aegis were
+        -- handed over for.
+        windup = 2,
         -- Paid in MANA, like the Cleave: the Champion's body (its claws, the Sigil's riposte, a Heave)
         -- is billed to stamina and its WILL to mana, which is the contract every demon on the board
         -- keeps (data/characters/character_demon_grunt.lua). 12 of a 60-mana pool, and mana does not

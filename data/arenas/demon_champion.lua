@@ -50,7 +50,8 @@ return {
         { x = 4, y = 8 }, { x = 5, y = 8 },
         { x = 3, y = 8 }, { x = 6, y = 8 },
     },
-    -- Composition order: champion, imp, imp. The Champion is aligned to the gap; the imps flank it.
+    -- Composition order: champion, imp, grunt (states/prologue.lua's FLIGHT_QUEST objective). The
+    -- Champion is aligned to the gap; the other two flank it, the imp left and the grunt right.
     enemySpawns = {
         { x = 4, y = 1 }, { x = 2, y = 2 }, { x = 7, y = 2 },
     },

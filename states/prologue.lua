@@ -186,7 +186,7 @@ local FLIGHT_QUEST = {
                 -- ("Does nothing whatever about anything else") and it is not a guess about what the
                 -- route fields. Every imp on it swings weapon_cinder_spit, the grunts throw Brimstone,
                 -- the grunt's own claws burn now (weapon_rending_claws.lua) and the Champion is met
-                -- with two imps beside her. Combat.mitigatedDamage sums the resist of every matching
+                -- with an imp and a grunt beside her. Combat.mitigatedDamage sums the resist of every matching
                 -- tag, so the coat blunts all of it. The spoils land after the win, so the body it is
                 -- actually FOR is the Champion at the end of the trail.
                 { id = "encounter_survivors_extract", loot = { "armor_salamander_hide" } },
@@ -216,8 +216,19 @@ local FLIGHT_QUEST = {
             -- states/battle.lua's specFor off the objective rather than the overworld map's `layout`.
             -- Its terrain answers the boss's three stages (the neck, the high ground, the treeline).
             layout = "demon_champion",
+            -- ONE IMP AND ONE GRUNT, not two imps. An imp has 14 health for a stated reason -- it dies
+            -- to one stroke of the starting sword (character_demon_imp.lua argues the number) -- which
+            -- makes a pair of them beside the Champion no call on the party's attention at all: two
+            -- bodies, two strokes, and both attackers are back on the boss by round two. The grunt is
+            -- 80 health and has to be dealt with, so it holds one of the party's two swords away from
+            -- the Champion for a turn or two -- which is the same thing as giving the Champion's
+            -- wind-ups a window to resolve in. Not a THIRD attacker's worth of incoming damage against
+            -- a two-body party; a body that costs turns.
+            --
+            -- Its claws burn (weapon_rending_claws.lua), so stop 5's Salamander Hide still answers what
+            -- walks in here, which is what that gift was placed for.
             composition = function()
-                return { "character_demon_champion", "character_demon_imp", "character_demon_imp" }
+                return { "character_demon_champion", "character_demon_imp", "character_demon_grunt" }
             end,
             win = { type = "assassinate", target = "character_demon_champion" },
         },

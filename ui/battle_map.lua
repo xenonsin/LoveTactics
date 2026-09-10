@@ -72,17 +72,23 @@ end
 -- and the only thing between them was an outline half a pixel heavier. The fiction had already
 -- promised otherwise -- conversation_flight_champion opens the Demon Champion fight saying "every
 -- fight before this has been a horde, this one has a NAME" -- so the board was contradicting its own
--- script. Two things answer it, and only these two: a boss WEARS ITS NAME on the board (nothing else
--- does -- every other body is named in a tooltip or the turn strip and nowhere on the ground), and its
--- health bar is a heavier instrument NOTCHED AT THE STAGES ITS FIGHT ACTUALLY TURNS ON.
+-- script. Two things answer it, and only these two: a boss wears THE FIGHT'S OWN CREST in the corner
+-- of its tile, and its health bar is a heavier instrument.
+--
+-- The crest, and not a name and not a notched bar. A 60px tile has room for a mark and no room for a
+-- sentence: the nameplate this once drew over the head was a black slab as wide as the body it
+-- belonged to, and the phase notches cut a 9px bar into thirds that read as three bars rather than as
+-- one forecast. Both still say their piece where the player can actually read them -- the name in the
+-- turn strip and the body tooltip, the notches on the strip card's full-width bar -- so on the ground
+-- only the one glyph stays. It is the same crest already flanking the encounter's title at the top of
+-- the screen and riding the boss's card in the strip, so it is a mark the board has already taught.
 --
 -- WHICH body that is, is not decided here: Combat.isBoss owns it, and the turn strip asks the same
 -- function (ui/combat_panel.lua), so the two surfaces cannot come to different conclusions about who
 -- the fight is about. That header carries the reasoning -- in short, the mark of an `assassinate`, or
 -- the bestiary's top rung, and never `char.boss`.
 local BOSS_BAR_H = 9   -- against 5 for every other body: the bar IS the fight, so it is drawn like one
-local BOSS_PLATE_H = 17
-local BOSS_PLATE_GAP = 3 -- between the plate and the body it names
+local BOSS_CREST_R = 7 -- the corner mark's radius; its backing plate is squared off around it
 
 local BattleMap = {}
 BattleMap.__index = BattleMap
@@ -144,10 +150,6 @@ function BattleMap.new(arena, opts)
     self.leftMargin = opts.leftMargin or 0
     self.font = opts.font or Theme.body(14)
     self.numberFont = opts.numberFont or Theme.body(12)
-    -- The boss nameplate's face: the DISPLAY family, which is the same voice the encounter's own title
-    -- is set in at the top of the screen. A body important enough to be named on the ground is named in
-    -- the type the fight is named in, and not in the body face the turn numbers use.
-    self.plateFont = opts.plateFont or Theme.display(13)
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
     self.axisActive = false
     self.overlays = { move = {}, range = {}, threat = {}, traps = {}, hazards = {}, walls = {}, props = {}, charges = {} }
@@ -1480,6 +1482,7 @@ function BattleMap:drawUnitInfo()
             local alpha = fade and (1 - fade) or 1
             self:drawHpBar(u, wx, wy, alpha)
             self:drawTurnNumber(orderIndex[u] or self.lastOrderIndex[u], wx, wy, alpha)
+            if self:isBoss(u) then self:drawBossMark(u, wx, wy, alpha) end
             if u.alive then self:drawStatusBadges(u, wx, wy) end
         elseif Status.get(u, "status_downed") and self:corpseVisible(u) then
             -- A fallen but revivable body: its rescue clock stands in for the HP bar it no longer has,
@@ -1491,43 +1494,33 @@ function BattleMap:drawUnitInfo()
             self.lastOrderIndex[u] = nil -- fully gone: drop its stale number
         end
     end
-
-    -- Nameplates last, in a pass of their own: a plate rides ABOVE its body's tile, in the airspace the
-    -- unit standing on the row above owns, so drawn inside the loop it would be scribbled over by that
-    -- unit's own bar and badges. There is at most one of these on the board in an ordinary fight.
-    for _, u in ipairs(self.combat.units) do
-        if self:isBoss(u) and u.alive and not self:heldUnit(u) then
-            self:drawBossPlate(u, self:unitOrigin(u))
-        end
-    end
 end
 
--- The boss's name, on a plate over its head. The one body on the board that says what it is without
--- being pointed at -- see the BOSS_TIER note at the top of this file for why that is worth a draw.
+-- The fight's own crest, in the top-right corner of the boss's tile. The one body on the board that
+-- says what it is without being pointed at -- see the BOSS_TIER note at the top of this file for why
+-- that is worth a draw, and why it is a glyph rather than the name this once printed on a plate.
 --
--- Above the head rather than under the feet, for two reasons: the bar, the badges and the downed clock
--- have already spent the bottom of the tile, and the only other thing that draws over a head is the
--- player's turn chevron, which never appears on a body this plate can be on (drawTurnCue draws for
--- player-controlled units alone). A boss standing on the top row has no airspace, so there the plate
--- drops under its feet instead of printing itself into the HUD band above the board.
-function BattleMap:drawBossPlate(u, wx, wy, boxW, boxH)
-    local name = u.char and u.char.name
-    if not name or name == "" then return end
-    love.graphics.setFont(self.plateFont)
-    local w = math.max(self.plateFont:getWidth(name) + 20, boxW)
-    local x = math.floor(wx + (boxW - w) / 2)
-    local y = math.floor(wy - BOSS_PLATE_GAP - BOSS_PLATE_H)
-    if y < (self.originY or 0) then y = math.floor(wy + boxH + BOSS_PLATE_GAP) end
-
-    love.graphics.setColor(0, 0, 0, 0.72)
-    love.graphics.rectangle("fill", x, y, w, BOSS_PLATE_H, 3, 3)
-    -- Framed in the body's OWN side colour, the same red/blue the token's border and its bar are drawn
-    -- in, so the plate reads as belonging to that body rather than as a fourth kind of board furniture.
-    local sc = self:unitColor(u)
-    love.graphics.setColor(sc[1], sc[2], sc[3], 0.9)
-    love.graphics.rectangle("line", x + 0.5, y + 0.5, w - 1, BOSS_PLATE_H - 1, 3, 3)
-    Theme.set(Theme.ink)
-    love.graphics.printf(name, x, y + math.floor((BOSS_PLATE_H - self.plateFont:getHeight()) / 2), w, "center")
+-- Top-RIGHT because the rest of the tile is spoken for: the turn-order number holds the top-left, and
+-- the badge row and the HP bar hold the bottom. On a body wider than one cell the mark rides the
+-- FOOTPRINT's corner, not its first cell's, so it stays at the edge of the shape the player sees. It
+-- fades on the same alpha its bar does, so a felled boss does not leave a crest hanging over an empty
+-- tile.
+--
+-- The backing is near-opaque and framed, unlike the turn number's 0.7 wash, because the art it lands on
+-- is not a flat token: the Champion's own portrait carries a gold moon in exactly this corner, and at
+-- 0.7 the moon read straight through the plate and the two became one unreadable smear. A badge over
+-- artwork has to be a badge -- cut out of the tile rather than tinted onto it.
+function BattleMap:drawBossMark(u, wx, wy, alpha)
+    local al = alpha or 1
+    local boxW = self:spanPixels(u.w, u.h)
+    local d = BOSS_CREST_R * 2 + 6
+    local x, y = math.floor(wx + boxW - 3 - d), math.floor(wy + 3)
+    love.graphics.setColor(0.05, 0.05, 0.07, 0.94 * al)
+    love.graphics.rectangle("fill", x, y, d, d, 4, 4)
+    Theme.set(Theme.accentAmber, 0.75 * al)
+    love.graphics.rectangle("line", x + 0.5, y + 0.5, d - 1, d - 1, 4, 4)
+    Theme.crest(x + d / 2, y + d / 2, BOSS_CREST_R,
+        { Theme.accentAmber[1], Theme.accentAmber[2], Theme.accentAmber[3], al })
     love.graphics.setColor(1, 1, 1, 1)
 end
 
@@ -1727,26 +1720,14 @@ function BattleMap:drawHpBar(u, wx, wy, alpha)
         love.graphics.rectangle("fill", bx, by, bw * ratio, bh, 2, 2)
     end
 
-    -- A boss's bar is finished as an instrument: a bronze frame around it, and a notch at each health
-    -- fraction its phase script turns on. A notch still ahead of the drain stands in bone -- that is a
-    -- stage you have not paid for yet, and the distance to it is the only forecast the fight gives.
-    -- One already crossed goes dark and stays drawn, so the bar reads as a count of how far in you are
-    -- rather than quietly dropping the evidence. Ratio, not `hp.current`, so a notch is only spent once
-    -- the bar has actually drained past it -- reading the model would blacken it a beat before the blow
-    -- that crossed it has played, giving the stage away ahead of its own arrival.
+    -- A boss's bar is finished as an instrument: a bronze frame around it, and nothing else. The phase
+    -- notches this once cut into it are drawn on the turn strip's card instead (ui/combat_panel.lua's
+    -- drawResourceBar, off the same Combat.bossThresholds) -- there the bar runs the width of a card
+    -- and a tick reads as a stage still ahead, where at 9px across a tile it only read as the bar
+    -- having been chopped into pieces.
     if self:isBoss(u) then
         Theme.set(Theme.frame, 0.8 * al)
         love.graphics.rectangle("line", bx - 0.5, by - 0.5, bw + 1, bh + 1, 2, 2)
-        for _, at in ipairs(Combat.bossThresholds(u) or {}) do
-            local nx = math.floor(bx + bw * at) + 0.5
-            local crossed = ratio <= at
-            love.graphics.setColor(0, 0, 0, 0.85 * al)
-            love.graphics.line(nx, by, nx, by + bh)
-            if not crossed then
-                Theme.set(Theme.ink, 0.9 * al)
-                love.graphics.line(nx + 1, by, nx + 1, by + bh)
-            end
-        end
         love.graphics.setColor(1, 1, 1, 1)
     end
 end

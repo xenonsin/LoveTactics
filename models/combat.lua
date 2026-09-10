@@ -354,6 +354,13 @@ function Combat.logEvent(combat, kind, text, subjects)
     end
     log[#log + 1] = entry
     if #log > Combat.LOG_CAP then table.remove(log, 1) end
+    -- A DEBUG BUILD MAY BE RECORDING THIS FIGHT TO A FILE (models/combat_trace.lua). The hook is a
+    -- plain field rather than a require, for two reasons: this module stays ignorant of the filesystem
+    -- (it is the one module the headless suite leans on hardest, and it must not learn to write), and
+    -- the trace pays for itself only while it is open -- every other build, and every test, pays one
+    -- nil test per logged line. The trace is opened by states/battle.lua and by nothing else, so the
+    -- suite never sets this no matter how many combats it builds.
+    if Combat.trace then Combat.trace(combat, entry) end
     return entry
 end
 

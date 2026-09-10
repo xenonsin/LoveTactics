@@ -1,9 +1,13 @@
 -- Tests for what tells a BOSS apart from the bodies around it, on both surfaces that have to say so:
 --
---   * the board (ui/battle_map.lua) -- a nameplate over its head, a heavier health bar notched at its
---     phase thresholds, and the thick token border;
---   * the turn strip (ui/combat_panel.lua) -- the fight's own crest in the name row, and the same
---     notches on the card's HP bar.
+--   * the board (ui/battle_map.lua) -- the fight's crest in the corner of its tile, a heavier health
+--     bar, and the thick token border;
+--   * the turn strip (ui/combat_panel.lua) -- the same crest in the name row, and the phase
+--     thresholds notched on the card's HP bar.
+--
+-- The notches live on the STRIP alone. A card's bar is wide enough for a tick to read as a stage still
+-- ahead; the board's is 9px, where the same ticks read as the bar having been cut into pieces. Both
+-- surfaces still ask one function for the numbers, which is why the threshold cases below sit here.
 --
 -- All of it asks ONE question, and the question lives in the model (Combat.isBoss) rather than in
 -- either widget, because it is a fact about the fight. That is the invariant most worth pinning: two
@@ -163,7 +167,7 @@ return {
             local m = map({ type = "assassinate", target = "character_demon_champion" })
             assert(m:isBoss(champ), "standing as the flight leg's mark, it is the boss")
             assert(barH(m, champ) > 5, "and the board draws it like one")
-            assert(#Combat.bossThresholds(champ) == 2, "and both bars notch at its two stages")
+            assert(#Combat.bossThresholds(champ) == 2, "and the strip card notches at its two stages")
         end,
     },
 }
