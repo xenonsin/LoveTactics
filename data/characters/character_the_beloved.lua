@@ -13,6 +13,7 @@ return {
     name = "The Beloved",
     kind = "demon",
     tier = 3,
+    boss = true, -- the fight is it: off the execute and Charm tables (tests/charm_balance_spec.lua)
     sprite = "assets/chars/the_beloved.png",
     footprint = { w = 2, h = 2 },
     stats = {
@@ -33,7 +34,10 @@ return {
     --   Lust's apex sheds bodies rather than taking wounds, and the outside of it does not cut.
     --   Underneath the shedding there is one body, and a point reaches one body.
     resist = { slash = 4, pierce = -4, dark = 4, holy = -8 },
-    startingItems = { "weapon_antler_crown", "utility_beloveds_devotion" },
+    -- The lash for the same reason the Bride carries one: the Crown is a rank-taker, so it is the
+    -- action the last-free-body rule refuses most often, and an apex with nothing else to swing would
+    -- simply stop swinging. See data/characters/character_the_hartwood_bride.lua.
+    startingItems = { "weapon_antler_crown", "weapon_briar_lash", "utility_beloveds_devotion" },
     defaultAction = "weapon_antler_crown",
     archetype = "defensive",
     ai = {

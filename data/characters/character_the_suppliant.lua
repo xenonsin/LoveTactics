@@ -42,7 +42,15 @@ return {
     --   It offered everything it had and kept only the shell it was kneeling in.
     --   The shell is empty. A weight lands in it and there is nothing behind it to stop.
     resist = { slash = 5, impact = -5, dark = 5, holy = -10 },
-    startingItems = { "weapon_petal_touch", "utility_offered_nothing" },
+    -- THREE THINGS TO DO, where it used to have one. This body is the guard on the first stair a
+    -- descent meets, and it stood there with a single action that Charmed -- so the opening fight of a
+    -- whole campaign was one move repeated, and the party's answer to it was one move repeated back.
+    -- The touch is still its best line at melee and still what it reaches for first; the lash gives it
+    -- a press at reach instead of a shuffle, and the bough is the circle's own sentence -- a body
+    -- called out of the line -- at a volume that can be answered on the turn it happens rather than
+    -- two turns later. See data/items/weapon/weapon_beckoning_bough.lua.
+    startingItems = { "weapon_petal_touch", "weapon_briar_lash", "weapon_beckoning_bough",
+                      "utility_offered_nothing" },
     defaultAction = "weapon_petal_touch",
     archetype = "aggressive",
     ai = {

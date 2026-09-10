@@ -31,7 +31,12 @@ return {
     --   A point goes through it and comes out the far side having accomplished nothing.
     --   A blade takes the whole drift at once, and a spark takes it faster than that.
     resist = { pierce = 2, slash = -2, fire = -4 },
-    startingItems = { "weapon_petal_touch" },
+    -- The lash does not change what a drift IS -- the touch above is still its whole argument, and the
+    -- dilemma in the header is untouched. What it changes is the drift with nothing to do: one held at
+    -- reach, or one the planner has refused a Charm to (AI.lastFreeBody), used to spend its turn
+    -- walking. A swarm body that goes inert on the turn its one trick is unavailable is a swarm that
+    -- stops being a reason for anything.
+    startingItems = { "weapon_petal_touch", "weapon_briar_lash" },
     defaultAction = "weapon_petal_touch",
     archetype = "aggressive",
     ai = {

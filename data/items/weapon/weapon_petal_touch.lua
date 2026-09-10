@@ -24,8 +24,15 @@ return {
         cost = { stat = "stamina", amount = 3 },
         damage = Curve.ramp(2, 12),
         effect = function(fx)
-            fx.damage(fx.target)
-            fx.applyStatus(fx.target, "status_charm")
+            -- THE CHARM RIDES THE BLOW, and that is the whole of its accuracy. Applied on the line
+            -- BELOW the damage, it landed on a MISS: docs/accuracy.md is unambiguous that a miss is a
+            -- clean miss and takes the on-hit statuses with it, and this weapon simply was not asking.
+            -- So the one mechanic the circle is built on ignored the dice -- every swing of it took a
+            -- body, against any Avoid, on any ground, while the wound it rode in on rolled like
+            -- everything else. `inflicts` carries the status INSIDE Combat.dealFlatDamage (a hammer's
+            -- stun, the lancet's poison), which the miss gate in Combat.dealDamage never reaches, so
+            -- the take now costs exactly the roll the wound costs.
+            fx.damage(fx.target, { inflicts = "status_charm" })
         end,
     },
 }

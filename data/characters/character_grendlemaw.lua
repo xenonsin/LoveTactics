@@ -17,6 +17,7 @@ return {
     name = "Grendlemaw",
     kind = "beast",
     tier = 3,
+    boss = true, -- the fight is it: off the execute and Charm tables (tests/charm_balance_spec.lua)
     sprite = "assets/chars/grendlemaw.png",
     stats = {
         health = 118, mana = 0, stamina = 26,

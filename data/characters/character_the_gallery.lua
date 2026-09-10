@@ -12,6 +12,7 @@ return {
     name = "The Gallery",
     kind = "construct",
     tier = 3,
+    boss = true, -- the fight is it: off the execute and Charm tables (tests/charm_balance_spec.lua)
     sprite = "assets/chars/the_gallery.png",
     stats = {
         health = 122, mana = 0, stamina = 22,

@@ -10,6 +10,7 @@ return {
     name = "The Long Winter",
     kind = "elemental",
     tier = 3,
+    boss = true, -- the fight is it: off the execute and Charm tables (tests/charm_balance_spec.lua)
     sprite = "assets/chars/the_long_winter.png",
     footprint = { w = 2, h = 2 },
     stats = {

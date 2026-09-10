@@ -29,7 +29,11 @@ return {
     --   Whatever it is wearing closes over a puncture before the puncture finishes.
     --   An edge takes more than it can close, and a censer takes the thing that is doing the closing.
     resist = { pierce = 3, slash = -3, dark = 3, holy = -6 },
-    startingItems = { "weapon_petal_touch", "utility_chorister_call" },
+    -- The lash is what it does between calls. Its Lure is on a fourteen-tick cooldown by design (see
+    -- data/traits/trait_lure.lua on why a constant one is a lock rather than a decision), and until it
+    -- had a second weapon the singer spent that cooldown delivering the same Charm by hand anyway --
+    -- which made the cooldown decorative. Now the gap between calls is a body doing something else.
+    startingItems = { "weapon_petal_touch", "weapon_briar_lash", "utility_chorister_call" },
     defaultAction = "weapon_petal_touch",
     archetype = "skirmish",
     ai = {

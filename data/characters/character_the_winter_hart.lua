@@ -14,6 +14,7 @@ return {
     name = "The Winter Hart",
     kind = "beast",
     tier = 3,
+    boss = true, -- the fight is it: off the execute and Charm tables (tests/charm_balance_spec.lua)
     sprite = "assets/chars/the_winter_hart.png",
     footprint = { w = 2, h = 2 },
     stats = {

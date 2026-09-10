@@ -25,8 +25,12 @@ return {
         aoe = { shape = "front", width = 3 },
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do
-                fx.damage(u)
-                fx.applyStatus(u, "status_charm")
+                -- Carried, not followed: the sweep rolls against every body it catches, and one it
+                -- misses is not taken. See weapon_petal_touch for the argument. Applied on the line
+                -- after the damage it took the whole rank whatever the dice said, which made her the
+                -- one body on the board a party's Avoid bought nothing against -- and she is the body
+                -- that takes three at a time, so she is the worst possible one to make that true of.
+                fx.damage(u, { inflicts = "status_charm" })
             end
         end,
     },

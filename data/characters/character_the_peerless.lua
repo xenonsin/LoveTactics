@@ -15,6 +15,7 @@ return {
     name = "The Peerless",
     kind = "humanoid",
     tier = 3,
+    boss = true, -- the fight is it: off the execute and Charm tables (tests/charm_balance_spec.lua)
     sprite = "assets/chars/the_peerless.png",
     stats = {
         health = 148, mana = 20, stamina = 26,

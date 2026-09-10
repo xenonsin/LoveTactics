@@ -10906,7 +10906,14 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
     -- cast provoked are thrown first, in the order the blows landed, and then the on-cast ones -- the
     -- same order they ran in when the answers were still inline.
     Combat.endAnswers(combat)
-    Trait.onCast(combat, unit, { item = item, ability = ab, tx = tx, ty = ty })
+    -- `damageDealt` rides along so an on-cast trait can tell a cast that CONNECTED from one that was
+    -- thrown and missed. Everything a trait needed to know used to be knowable from the aim alone --
+    -- what was used, and where -- but since accuracy that is only half of what happened, and a rider
+    -- hung on onCast is a rider outside the dice: it fires on a whiff, which is exactly the hole the
+    -- Chorister's Lure was sitting in (data/traits/trait_lure.lua). Totalled across the whole cast
+    -- rather than per body, which is the honest grain for a hook that is handed an aim and not a target.
+    Trait.onCast(combat, unit, { item = item, ability = ab, tx = tx, ty = ty,
+                                 damageDealt = result.damageDealt })
     -- ...and the field's own answer to a working having been done in it (the Gaunt Vigil). Fired after
     -- the caster's own hook, so a ward that punishes sorcery bites on the far side of a finished spell
     -- rather than into the middle of one.

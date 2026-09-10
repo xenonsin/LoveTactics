@@ -13,6 +13,10 @@ return {
     name = "The Hartwood Bride",
     kind = "demon",
     tier = 3,
+    -- The fight is her: `boss = true` keeps her off the execute and Charm tables. She is the body whose
+    -- own sweep takes a rank at a time, so turning her was the shortest way to hand the party the
+    -- circle's best weapon and the swarm to point it at.
+    boss = true,
     sprite = "assets/chars/the_hartwood_bride.png",
     footprint = { w = 2, h = 2 },
     stats = {
@@ -46,7 +50,11 @@ return {
     -- carrying holy is no longer holding the one weapon she is indifferent to. Wood still burns; it is
     -- simply no longer the only thing that opens her.
     resist = { pierce = 4, impact = -4, dark = 4, fire = -4, holy = -4 },
-    startingItems = { "weapon_antler_crown", "utility_chorister_call" },
+    -- A single-target answer beside the sweep, and she is the body that most needed one. The Crown
+    -- takes a rank at a time, so it is also the action most often refused by the rule about not taking
+    -- a side's last free body (AI.lastFreeBody) -- a four-tile mythic standing still because the only
+    -- thing she can do is the one thing she may not is a worse fight than the one being fixed.
+    startingItems = { "weapon_antler_crown", "weapon_briar_lash", "utility_chorister_call" },
     defaultAction = "weapon_antler_crown",
     archetype = "aggressive",
     ai = {

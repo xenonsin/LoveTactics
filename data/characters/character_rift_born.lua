@@ -13,6 +13,7 @@ return {
     name = "Rift-Born",
     kind = "elemental",
     tier = 3,
+    boss = true, -- the fight is it: off the execute and Charm tables (tests/charm_balance_spec.lua)
     sprite = "assets/chars/rift_born.png",
     footprint = { w = 2, h = 2 },
     stats = {

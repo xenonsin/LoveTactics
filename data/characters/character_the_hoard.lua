@@ -14,6 +14,7 @@ return {
     name = "The Hoard",
     kind = "object",
     tier = 3,
+    boss = true, -- the fight is it: off the execute and Charm tables (tests/charm_balance_spec.lua)
     sprite = "assets/chars/the_hoard.png",
     footprint = { w = 2, h = 2 },
     stats = {

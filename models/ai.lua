@@ -563,6 +563,51 @@ function AI.protectee(combat, unit)
     return nil
 end
 
+-- The one body `side` has left that is still ITS OWN -- still un-Charmed -- or nil when it has more
+-- than one, or none at all.
+--
+-- WHAT IT IS FOR. Charm moves a body onto the charmer's side (data/status/status_charm.lua), and
+-- Combat.eliminated counts a side by who is standing on it, so a company with every member charmed is
+-- scored as wiped out. That is deliberate -- taking a whole company IS a way to beat it -- but a
+-- planner that hunts the last free body with it is not playing the fight, it is ending it, and the
+-- player watching that happen did not lose to a decision they could have made differently. So the
+-- rule is narrow and it is about intent: an AI will take three of your four and it will not reach for
+-- the fourth. The wipe stays reachable by everything that is not a planner's choice -- the sweetbriar
+-- underfoot (data/hazards/hazard_sweetbriar.lua), which is ground and chooses nothing, and charms
+-- landing faster than they fall off.
+--
+-- Membership is read through Status.ownSide, not `unit.side`, because the whole question is about
+-- bodies that have already changed hands: a charmed party member is standing on the enemy's side and
+-- is still one of the four this rule is counting. It is skipped for being charmed, not for being over
+-- there, and those are different sentences the moment the charm expires.
+function AI.lastFreeBody(combat, side)
+    local found
+    for _, u in ipairs(combat.units) do
+        if u.alive and Status.ownSide(u) == side and not Status.has(u, "status_charm") then
+            if found then return nil end -- more than one still its own: nothing to protect
+            found = u
+        end
+    end
+    return found
+end
+
+-- Which bodies `cand` would Charm if it were executed -- read off the preview the scorer already
+-- built, so a weapon that carries the status, an ability that applies it and an AoE that catches a
+-- rank are all answered the same way and none of them needs a flag.
+--
+-- The one thing a preview cannot see is a charm hung on the CAST rather than on the ability: the
+-- Chorister's Lure fires from onCast and no preview of its touch mentions it. Its bearer declares
+-- `charms` instead (data/traits/trait_lure.lua) and that is folded in here, against the candidate's
+-- own mark -- which is the tile Lure reads too.
+function AI.charmsDealt(combat, unit, cand)
+    local out = cand.charms
+    if Trait.flag(unit, "charms") and cand.target and cand.target.side ~= unit.side then
+        out = out or {}
+        out[cand.target] = true
+    end
+    return out
+end
+
 -- The body `unit` leaves alone this turn, or nil -- which is the answer on almost every board, since
 -- most maps protect nobody. Read ONCE per plan and carried on the ctx: it is a fact about where the
 -- unit is standing at the top of its turn, and re-asking it per candidate would let a unit walk two
@@ -1029,6 +1074,19 @@ local function outcomeScore(combat, unit, cand, w, previews)
         score = score + (e.damage or 0) * odds * (friendly and -w.FRIENDLY_FIRE or w.DAMAGE)
         score = score + (e.heal or 0) * (friendly and w.HEAL or -w.HEAL)
         score = score + #(e.statuses or {}) * odds * (friendly and 0 or w.STATUS)
+        -- WHOM THIS WOULD TAKE, recorded rather than priced. Charm is scored as an ordinary status
+        -- above and that is right -- it is worth about what a status is worth -- but AI.plan has a
+        -- policy about it that no weight can express (see AI.lastFreeBody), and policy is not a term
+        -- you add to a total. So the scorer reports the fact and the planner decides what to do with
+        -- it, which is the same division of labour `lethal` is reported under.
+        if not friendly then
+            for _, s in ipairs(e.statuses or {}) do
+                if s.id == "status_charm" then
+                    cand.charms = cand.charms or {}
+                    cand.charms[e.unit] = true
+                end
+            end
+        end
         if e.lethal then
             score = score + (friendly and -w.KILL or w.KILL) * odds
             -- `lethal` stays a claim about what the blow WOULD do, not how likely it is to. It gates
@@ -1741,12 +1799,39 @@ function AI.plan(combat, unit)
                 -- the first soft body the scorer met. A rule left with nothing else to hit takes no
                 -- action and the turn falls through to the approach below -- which walks at the nearest
                 -- foe, which is the body doing the screening.
+                -- ...and throw out anything that would take a side's LAST un-Charmed body, for a
+                -- reason of the same hard kind: it is not a bad-value action, it is one this planner
+                -- does not take. A full-company Charm reads as a wipe to Combat.eliminated, so the
+                -- alternative is an AI that can end a fight outright by picking the cruellest of
+                -- several equally-scored marks -- and losing that way teaches the player nothing they
+                -- could have done about it. Dropped before scoring, like the escorted charge, because
+                -- a penalty would simply be outbid by a big enough number. See AI.lastFreeBody: the
+                -- wipe is still on the board, it is just no longer something the AI aims at.
+                --
+                -- Memoised per side across the whole pool. It cannot change while this unit plans --
+                -- nothing has been executed yet -- and re-walking the roster per candidate would make
+                -- the filter quadratic on the one loop every enemy turn runs through.
                 local spare = (not namesObjective(rule)) and ctx.spared or nil
+                local lastFree = {}
+                local function takesTheLast(c)
+                    local charmed = AI.charmsDealt(combat, unit, c)
+                    if not charmed then return false end
+                    for u in pairs(charmed) do
+                        local side = Status.ownSide(u)
+                        if lastFree[side] == nil then
+                            lastFree[side] = AI.lastFreeBody(combat, side) or false
+                        end
+                        if lastFree[side] == u then return true end
+                    end
+                    return false
+                end
                 local scored = {}
                 for _, c in ipairs(pool) do
                     c.score = AI.scoreCandidate(combat, unit, c, w, previews)
                     c.score = c.score + prefBonus(ctx, rule, c, w)
-                    if c.outcome > 0 and c.target ~= spare then scored[#scored + 1] = c end
+                    if c.outcome > 0 and c.target ~= spare and not takesTheLast(c) then
+                        scored[#scored + 1] = c
+                    end
                 end
                 pool = scored
 
