@@ -314,6 +314,18 @@
         });
       }
 
+      // The click is not the last time the context can go away. A browser is free to suspend the audio
+      // of a page it has put in the background -- a phone locking the screen always does -- and it does
+      // NOT necessarily resume it when the page comes back, so the game returns to a running engine
+      // making no sound at all. Asking again on the way back costs nothing when the context is already
+      // running, and is the only thing that can bring it back when it is not. (The bed itself is
+      // separately revived in Lua: see Sound.update in models/sound.lua, which handles the other half of
+      // this -- the stream that starved while requestAnimationFrame was stopped.)
+      document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) resumeAudio();
+      }, false);
+      window.addEventListener('focus', resumeAudio, false);
+
 
       start.addEventListener('click', function () {
         gate.classList.add('gone');

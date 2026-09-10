@@ -14,6 +14,7 @@
 --   Sound.music("music.hub")            -- the looping bed; swapping tracks is idempotent
 --   Sound.stopMusic()
 --   Sound.refresh()                     -- re-read the volume preferences and push them to live audio
+--   Sound.update(dt)                    -- per frame from main.lua; revives a bed that fell silent
 --
 -- Volumes are three preferences (models/settings.lua): master, music and sfx, each 0-100. A category's
 -- effective gain is master x category, so pulling master down pulls everything with it and the two
@@ -177,8 +178,80 @@ function Sound.music(id)
         source:setVolume(Sound.volumeOf("music") * (def.volume or 1))
         source:play()
     end)
-    current = { id = resolved, source = source }
+    current = { id = resolved, source = source, at = 0, still = 0, moved = false }
     return source
+end
+
+-- ---------------------------------------------------------------------------
+-- The bed that dies while the player is away
+-- ---------------------------------------------------------------------------
+--
+-- THE WEB BUILD'S MUSIC, kept alive across an alt-tab.
+--
+-- A music bed is a STREAM: the engine holds a few tenths of a second of decoded audio and refills the
+-- queue every frame. On the desktop that refill runs on LOVE's own audio thread and never stops. Under
+-- love.js there is no audio thread -- the compatibility build is the engine with the threads taken out
+-- (tools/web-build.ps1) -- so the refill rides the main loop, and the main loop is
+-- `requestAnimationFrame`, which the browser stops calling the moment the tab goes to the background.
+-- A few frames later the queue is empty and OpenAL parks the source.
+--
+-- Coming back does not undo it. The engine still believes a LOOPING stream is playing (a loop is never
+-- "finished", so nothing releases it and `isPlaying` keeps saying yes) while the source underneath has
+-- stopped, and the bed is gone for the rest of the session -- exactly what alt-tabbing away from the
+-- web build did.
+--
+-- So the bed is watched by its POSITION rather than by `isPlaying`, which is the thing that lies. A
+-- track whose clock has not moved for half a second of frames is dead however it died, and is stopped,
+-- seeked back to where it fell silent, and started again -- a stop is required first, since the engine
+-- thinks it is already playing and would ignore a bare `play`.
+--
+-- Three properties keep this from being a hazard of its own:
+--
+--   * it self-gates on FRAMES. A hidden tab runs none, so the check cannot fire while the player is
+--     away -- the bed comes back when they do, rather than playing to an empty room.
+--   * the frame budget is CLAMPED (`STALL_STEP`), so the one enormous dt that arrives on return does
+--     not trip it instantly. The engine gets ~15 frames to recover on its own, and if it does -- the
+--     position moves -- nothing here touches it.
+--   * it demands EVIDENCE that the clock works at all (`moved`). Where `tell` is unimplemented and
+--     answers a constant, this degrades to today's behaviour -- silence -- rather than to a bed that
+--     restarts itself every half second forever.
+--
+-- Desktop is unaffected in practice: its bed never stops, so the position always moves.
+
+Sound.STALL_SECONDS = 0.5 -- how long a bed's clock may stand still before it counts as dead
+Sound.STALL_STEP = 1 / 30 -- the most any single frame may contribute to that (see above)
+
+-- Fold one position reading into a bed's stall bookkeeping; true when it has been still long enough to
+-- count as dead. `track` is the mutable table Sound.music built ({ at, still, moved }).
+--
+-- Exported rather than local because it is the half of the watchdog a headless test can actually
+-- exercise: producing a REAL stall needs a browser tab going away. See tests/sound_spec.lua.
+function Sound.stall(track, at, dt)
+    if at ~= track.at then
+        track.at, track.still, track.moved = at, 0, true
+        return false
+    end
+    track.still = (track.still or 0) + math.min(dt or 0, Sound.STALL_STEP)
+    return track.moved == true and track.still >= Sound.STALL_SECONDS
+end
+
+-- Per frame, from main.lua. Cheap: one position read while all is well.
+function Sound.update(dt)
+    if not current or not isSource(current.source) then return end
+
+    -- A bed authored to END (music.credits) is allowed to end; only a loop is expected to still be
+    -- running, so only a loop may be revived.
+    local def = Sound.cues[current.id]
+    if def and def.loop == false then return end
+
+    local ok, at = pcall(function() return current.source:tell("seconds") end)
+    if not ok or type(at) ~= "number" then return end
+    if not Sound.stall(current, at, dt) then return end
+
+    current.still = 0
+    pcall(function() current.source:stop() end)  -- the engine thinks it is playing; take that away
+    pcall(function() current.source:seek(at, "seconds") end) -- and resume where the silence began
+    pcall(function() current.source:play() end)
 end
 
 function Sound.stopMusic()

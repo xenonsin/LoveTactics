@@ -236,4 +236,48 @@ return {
             assert(ok, err)
         end,
     },
+
+    -- The stall watchdog (Sound.stall). A REAL stall needs a browser tab going away, so what is tested
+    -- here is the bookkeeping that decides one has happened -- including the two ways it must refuse to
+    -- fire, which are the whole reason it is safe to run on every frame of every platform.
+    {
+        name = "a bed whose clock keeps moving is never called dead",
+        fn = function()
+            local track = { at = 0, still = 0, moved = false }
+            local at = 0
+            for _ = 1, 300 do -- five seconds of frames, far past the half-second threshold
+                at = at + 1 / 60
+                assert(not Sound.stall(track, at, 1 / 60), "a moving position is a playing bed")
+            end
+        end,
+    },
+    {
+        name = "a bed whose clock stops is called dead -- but not before the engine can recover",
+        fn = function()
+            local track = { at = 0, still = 0, moved = false }
+            assert(not Sound.stall(track, 12.5, 1 / 60), "the first move is what proves the clock works")
+
+            -- The frame a backgrounded tab returns on carries an enormous dt. It must NOT be enough on
+            -- its own: the engine gets its frames to refill the queue first.
+            assert(not Sound.stall(track, 12.5, 40), "one huge frame must not trip it")
+
+            local frames = 1
+            while not Sound.stall(track, 12.5, 1 / 60) do
+                frames = frames + 1
+                assert(frames < 600, "a standing-still clock should have been called dead by now")
+            end
+            assert(frames >= 10, "expected the engine several frames of grace, got " .. frames)
+        end,
+    },
+    {
+        name = "a clock that never moved at all is left alone, however long it stands still",
+        fn = function()
+            -- Where `tell` is unimplemented it answers one constant forever. Reviving on that would
+            -- restart the bed twice a second for the rest of the session; silence is the better failure.
+            local track = { at = 0, still = 0, moved = false }
+            for _ = 1, 600 do
+                assert(not Sound.stall(track, 0, 1 / 60), "no evidence the clock works, no revival")
+            end
+        end,
+    },
 }

@@ -4,6 +4,7 @@ local InputMode = require("input_mode")
 local Cursor = require("ui.cursor")
 local Conversation = require("models.conversation")
 local ScreenFx = require("ui.screen_fx")
+local Sound = require("models.sound")
 
 function love.load(args)
     -- Headless test entry: `& "E:\LOVE\lovec.exe" . test [pattern]`
@@ -380,6 +381,10 @@ love.update = function(dt)
     -- flash run down (ui/screen_fx.lua). A state that wants the freeze applies ScreenFx.timeScale() to
     -- its own gameplay dt (states/battle.lua); everything else ignores it.
     ScreenFx.update(dt)
+    -- The music bed is watched on REAL dt too, and above the conversation short-circuit for the same
+    -- reason: a bed that fell silent while the tab was in the background (models/sound.lua, Sound.update)
+    -- must come back whatever is on screen when the player returns -- a scene included.
+    Sound.update(dt)
     local overlay = Conversation.active
     if overlay then
         if overlay.update then overlay:update(dt) end
