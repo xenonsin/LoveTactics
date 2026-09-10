@@ -247,10 +247,16 @@ function battle.syncLayout()
         -- 302 is three 90px slots, two 6px gaps and a 10px margin either side -- 90 being where two
         -- badges plus their corner pads fit across a slot with clearance (ui/combat_panel.lua sets
         -- badgeStack off exactly that measurement, so this number and that one move together).
-        -- Capped so the left column keeps a floor: in the narrowest handheld space there is no
-        -- arrangement that satisfies both, and there the panel gives way and the badges stack.
+        --
+        -- ...and the FLOOR is what has to hold in the narrowest space there is, which is where a real
+        -- handset lands: Scale.HANDHELD_MIN_W clamps the space at 880, the board takes 448 of it, and
+        -- 200 left the panel 232 and the slot 66 -- under the 72 a cost and an initiative need in
+        -- opposite corners, so the badges stacked down the left edge and buried the icon behind them.
+        -- 188 is what the grid needs at that clamp (a 74px slot on the tightened handheld framing);
+        -- the left column holds text, which reflows into whatever it is given, and this is the one
+        -- width where the two columns are actually in competition.
         local board = 8 * battle.boardTile()
-        local LEFT_FLOOR = 200
+        local LEFT_FLOOR = 188
         PANEL_W = math.min(302, Scale.WIDTH - board - LEFT_FLOOR)
         LEFT_W = Scale.WIDTH - board - PANEL_W
     else

@@ -373,7 +373,7 @@ function CombatPanel:update(dt)
         if not e.entry.preview then
             local u = e.entry.unit
             present[u] = true
-            self.lastLayout[u] = { entry = e.entry, y = e.y, h = e.h }
+            self.lastLayout[u] = { entry = e.entry, y = e.y, h = e.h, w = e.w, x = e.x }
             if self.cardY[u] == nil then self.cardY[u] = e.y end
             if u == self.snapOut then
                 self.cardY[u] = e.y -- land straight at its rank (no sweep from the frame); fades in there
@@ -463,14 +463,19 @@ function CombatPanel:relayout(w)
 
     -- Item grid: 3x3, centred horizontally, sized to the room there actually is. A long Wait button
     -- sits under it at the very bottom, so the grid is lifted to make way (button + gap + margin).
-    -- The margin is the cheapest width there is: on a handheld it is framing the grid against a
-    -- column that is already narrow, and every pixel of it comes straight off the slot, which is
-    -- where the icon and its two badges have to live together.
-    local margin = Scale.inHandheldSpace and 10 or SLOT_MARGIN
-    self.slotW = math.min(SLOT_W, math.floor((w - margin * 2 - (COLS - 1) * SLOT_GAP) / COLS))
+    -- The margin and the gap are the cheapest width there is: on a handheld they are framing the grid
+    -- against a column that is already narrow, and every pixel of them comes straight off the slot,
+    -- which is where the icon and its two badges have to live together. 10 and 6 bought a 66px slot
+    -- in the narrowest space the game can produce, six short of the 72 two corner badges need -- and
+    -- the slot is the only one of the three that has a hard floor under it. So on a handheld the
+    -- framing yields first and the slot gets what it needs; see badgeStack below for what happens
+    -- when even that is not enough.
+    local margin = Scale.inHandheldSpace and 6 or SLOT_MARGIN
+    self.slotGap = Scale.inHandheldSpace and 4 or SLOT_GAP
+    self.slotW = math.min(SLOT_W, math.floor((w - margin * 2 - (COLS - 1) * self.slotGap) / COLS))
     self.slotH = SLOT_H
-    self.gridW = COLS * self.slotW + (COLS - 1) * SLOT_GAP
-    self.gridH = ROWS * self.slotH + (ROWS - 1) * SLOT_GAP
+    self.gridW = COLS * self.slotW + (COLS - 1) * self.slotGap
+    self.gridH = ROWS * self.slotH + (ROWS - 1) * self.slotGap
     self.gridX = self.x + math.floor((w - self.gridW) / 2)
     -- The bottom lane: one bar the width of the grid, pinned to the panel bottom. Wait/Focus/Defend
     -- owns the whole of it, and shares it with FALL BACK on the turns that move is on offer (see
@@ -502,24 +507,47 @@ function CombatPanel:relayout(w)
     -- is 71px and has no band any more, so the same pill reads as two specks in a corner -- and a
     -- cost and a time cost are not decoration, they are the two numbers a turn is actually decided
     -- on. They get the room the name gave up.
-    if Scale.inHandheldSpace then
-        self.badgePadX, self.badgeIconW, self.badgeGap, self.badgeH = 6, 13, 4, 25
-        self.badgeFont = Theme.body(17)
-    else
-        self.badgePadX, self.badgeIconW, self.badgeGap, self.badgeH = BADGE_PAD_X, BADGE_ICON_W, BADGE_GAP, BADGE_H
-        self.badgeFont = self.smallFont
-    end
-
     -- CORNERS IF THEY FIT, STACKED IF THEY DO NOT -- measured, not assumed. A slot's cost sits in
     -- its left corner and its initiative in its right one, which is the arrangement that leaves the
     -- icon between them entirely clear. It only works while two badges plus their corner pads fit
     -- across the slot; below that they were being drawn through each other, and stacking them down
-    -- the left edge is the escape -- one that costs the icon its left half, so it is a fallback and
-    -- not the handheld layout. Sizing the column (states/battle.lua) is what keeps us out of it.
-    -- Measured off a one-digit label with clearance to spare, since that is the common case and a
-    -- rare two-digit cost may lean toward the middle without meeting anything.
-    local sample = self.badgePadX * 2 + self.badgeIconW + self.badgeGap + self.badgeFont:getWidth("9")
-    self.badgeStack = (sample * 2 + 6 + 8) > self.slotW
+    -- the left edge is the escape.
+    --
+    -- TWO PILLS, AND THE LARGER ONE FIRST. The handheld pill was a single size chosen for a 90px
+    -- slot, and a 90px slot is not what every handset gives: on a narrow one the right column falls
+    -- to 232 and the slot to 66, which is under the fat pill's corner fit AND under the lean one's --
+    -- so the fat pill stacked, buried the icon under a badge top and bottom, and the only thing left
+    -- of a Minor Shock was a sliver of lightning past the numbers. Measure both and take the first
+    -- that keeps its corners; the lean pill fits a slot the fat one cannot, which is exactly what a
+    -- fallback is for. Measured off a one-digit label with clearance to spare, since that is the
+    -- common case and a rare two-digit cost may lean toward the middle without meeting anything.
+    local function pill(padX, iconW, gap, h, font)
+        return { padX = padX, iconW = iconW, gap = gap, h = h, font = font,
+                 width = padX * 2 + iconW + gap + font:getWidth("9") }
+    end
+    local pills = {}
+    if Scale.inHandheldSpace then
+        -- The desktop numbers were chosen for a 96px slot carrying a name band as well. A handheld
+        -- slot has no band any more, so the same pill reads as two specks in a corner -- and a cost
+        -- and a time cost are not decoration, they are the two numbers a turn is actually decided
+        -- on. They get the room the name gave up, when the slot has it to give.
+        pills[#pills + 1] = pill(6, 13, 4, 25, Theme.body(17))
+    end
+    pills[#pills + 1] = pill(BADGE_PAD_X, BADGE_ICON_W, BADGE_GAP, BADGE_H, self.smallFont)
+    local chosen, stack = pills[#pills], true
+    for _, p in ipairs(pills) do
+        if (p.width * 2 + 6 + 8) <= self.slotW then chosen, stack = p, false break end
+    end
+    self.badgePadX, self.badgeIconW, self.badgeGap, self.badgeH =
+        chosen.padX, chosen.iconW, chosen.gap, chosen.h
+    self.badgeFont = chosen.font
+    self.badgeStack = stack
+    -- THE GUTTER A STACK CLAIMS, and the width the icon has left because of it. Stacking runs a pill
+    -- down the slot's left edge, top and bottom, so the icon must draw in what is left to the right
+    -- of it rather than centred under it -- a smaller icon that can be seen beats a larger one behind
+    -- two numbers. Zero in the corner arrangement, where the badges take the top corners only and the
+    -- icon keeps the whole plate.
+    self.badgeGutter = stack and (3 + chosen.width + 3) or 0
 
     self.stripX = self.x
     self.stripW = w
@@ -539,8 +567,8 @@ end
 function CombatPanel:slotRect(index)
     local col = (index - 1) % COLS
     local row = math.floor((index - 1) / COLS)
-    return self.gridX + col * (self.slotW + SLOT_GAP),
-        self.gridY + row * (self.slotH + SLOT_GAP), self.slotW, self.slotH
+    return self.gridX + col * (self.slotW + self.slotGap),
+        self.gridY + row * (self.slotH + self.slotGap), self.slotW, self.slotH
 end
 
 -- The turn-order card `unit` currently occupies, as x, y, w, h -- or nil when it has no card on
@@ -677,7 +705,15 @@ end
 
 -- Bottom edge of the scrollable (upcoming) region: just above the pinned current card (leaving its
 -- caption gap), or the strip bottom when nothing is pinned. The current card is fixed here.
+--
+-- A strip sent to another column stacks in ITS band instead (stripFloor), exactly as entryLayout
+-- lays it out -- and this must say the same thing entryLayout does, because visibleCount and
+-- maxScroll are measured off it. Left reading the panel's own geometry it answered for a region the
+-- cards are not in: on a handset the acting card's reserved slot sits ABOVE stripTop, so the span
+-- came out negative, one card was reckoned to fit where three do, and the strip showed a scrollbar
+-- and scrolled a queue that was entirely on screen.
 function CombatPanel:upcomingBottom()
+    if self.stripFloor then return self.stripFloor end
     if self:hasPinnedCurrent() then
         return self.stripBottom - CURRENT_H - CURRENT_TOP_GAP
     end
@@ -766,13 +802,18 @@ function CombatPanel:drawTurnStrip()
         end
         -- A card drawn where entryLayout put it, which for the upcoming strip may be another column
         -- entirely (see relayout's stripX). drawEntry lays every part of a card out from self.x, so
-        -- rather than thread a rect through all of it, the whole card is TRANSLATED into place. That
-        -- is exact rather than approximate because the two columns are the same width by
-        -- construction -- battle.syncLayout splits what the board leaves evenly, so they differ by at
-        -- most the odd pixel.
+        -- rather than thread a rect through all of it, the whole card is TRANSLATED into place.
+        --
+        -- THE WIDTH HAS TO GO WITH IT. This used to translate and nothing else, on the grounds that
+        -- "the two columns are the same width by construction" -- which stopped being true the day
+        -- battle.syncLayout stopped splitting the leftover evenly: the right column now asks for what
+        -- the item grid needs and the left takes the rest, so on a narrow handset they are 232 and
+        -- 200. A card translated but still drawn `self.w - 16` wide hung 24px of every upcoming turn
+        -- out over the board. entryLayout already measures each card against the column it is going
+        -- to, so the fix is to draw the width it worked out rather than the panel's own.
         local shift = e.x - (self.x + 8)
         if shift ~= 0 then love.graphics.push(); love.graphics.translate(shift, 0) end
-        self:drawCard(e.entry, y, e.num, e.h)
+        self:drawCard(e.entry, y, e.num, e.h, nil, e.w)
         if shift ~= 0 then love.graphics.pop() end
     end
     -- During the "out" phase the outgoing actor's big card stays in the frame, fading out, while its
@@ -781,12 +822,16 @@ function CombatPanel:drawTurnStrip()
         self:drawCard({ unit = self.frameFade.unit, forceProm = 1 }, self.frameY, nil, CURRENT_H, self.frameFade.t)
     end
     -- A just-fallen unit's card, fading to black in place before it's gone (it has already left the
-    -- live order, so it isn't in entryLayout above).
+    -- live order, so it isn't in entryLayout above). Drawn at the width and in the column it last
+    -- occupied, for the same reason the live cards above are.
     for u, dc in pairs(self.dyingCards) do
         local fade = (self.fx and self.fx:deathFade(u)) or 0
-        self:drawCard(dc.entry, dc.y, nil, dc.h)
+        local shift = (dc.x or (self.x + 8)) - (self.x + 8)
+        if shift ~= 0 then love.graphics.push(); love.graphics.translate(shift, 0) end
+        self:drawCard(dc.entry, dc.y, nil, dc.h, nil, dc.w)
         love.graphics.setColor(0, 0, 0, fade)
-        love.graphics.rectangle("fill", self.x + 8, dc.y, self.w - 16, dc.h, 6, 6)
+        love.graphics.rectangle("fill", self.x + 8, dc.y, dc.w or (self.w - 16), dc.h, 6, 6)
+        if shift ~= 0 then love.graphics.pop() end
     end
     self:drawScrollBar()
     -- Last, so a projection floats clear over the card it belongs to. Clamped to the panel's inner
@@ -797,7 +842,12 @@ end
 -- Draw one turn-strip card at (its left is self.x + 8) row-top `y`, applying the struck unit's hit
 -- rumble (a translated shake) and flash (a red overlay) so a blow reads on the timeline card exactly
 -- as it does on the board sprite. Preview ghosts and un-struck cards just draw plainly.
-function CombatPanel:drawCard(entry, y, num, h, alpha)
+--
+-- `w` is the card's own width, for a strip that has been sent to a column narrower than this panel
+-- (see drawTurnStrip); it defaults to the panel's own inner width, which is what the acting card and
+-- every desktop card wants.
+function CombatPanel:drawCard(entry, y, num, h, alpha, w)
+    w = w or (self.w - 16)
     local u = not entry.preview and entry.unit
     local dx, dy, flash = 0, 0, 0
     if u and self.fx then
@@ -808,10 +858,10 @@ function CombatPanel:drawCard(entry, y, num, h, alpha)
         love.graphics.push()
         love.graphics.translate(dx, dy)
     end
-    self:drawEntry(entry, y, num, h, alpha)
+    self:drawEntry(entry, y, num, h, alpha, w)
     if flash > 0 then
         love.graphics.setColor(1.0, 0.4, 0.35, flash * 0.45)
-        love.graphics.rectangle("fill", self.x + 8, y, self.w - 16, h, 6, 6)
+        love.graphics.rectangle("fill", self.x + 8, y, w, h, 6, 6)
     end
     -- Hovering a combat-log line lights the units it names -- here on the strip and, in the same
     -- white, on the board (ui/battle_map's logSubjects). So a line about a unit that has already
@@ -821,10 +871,10 @@ function CombatPanel:drawCard(entry, y, num, h, alpha)
     if u and hl and hl[u] then
         local pulse = 0.55 + 0.45 * math.sin((self.time or 0) * 5)
         love.graphics.setColor(1, 1, 1, 0.07)
-        love.graphics.rectangle("fill", self.x + 8, y, self.w - 16, h, 6, 6)
+        love.graphics.rectangle("fill", self.x + 8, y, w, h, 6, 6)
         love.graphics.setColor(1, 1, 1, 0.50 + 0.40 * pulse)
         love.graphics.setLineWidth(2)
-        love.graphics.rectangle("line", self.x + 8, y, self.w - 16, h, 6, 6)
+        love.graphics.rectangle("line", self.x + 8, y, w, h, 6, 6)
         love.graphics.setLineWidth(1)
     elseif u and u == self.view.boardHover then
         -- Pointing at a body on the board rings ITS card here, in the exact cyan the board rings a
@@ -833,10 +883,10 @@ function CombatPanel:drawCard(entry, y, num, h, alpha)
         -- pulsing -- it tracks the cursor rather than answering a question, which is what the log's
         -- white pulse is for, and why that one wins the card when both apply.
         love.graphics.setColor(0.75, 0.95, 1.0, 0.08)
-        love.graphics.rectangle("fill", self.x + 8, y, self.w - 16, h, 6, 6)
+        love.graphics.rectangle("fill", self.x + 8, y, w, h, 6, 6)
         love.graphics.setColor(0.75, 0.95, 1.0, 0.85)
         love.graphics.setLineWidth(2)
-        love.graphics.rectangle("line", self.x + 8, y, self.w - 16, h, 6, 6)
+        love.graphics.rectangle("line", self.x + 8, y, w, h, 6, 6)
         love.graphics.setLineWidth(1)
     end
     if dx ~= 0 or dy ~= 0 then love.graphics.pop() end
@@ -866,7 +916,9 @@ function CombatPanel:drawScrollBar()
     -- The track spans only the scrollable region (above the pinned current card), since that card
     -- never moves -- so the bar sits over exactly what it scrolls.
     local total = #(self.view.order or {}) - (self:hasPinnedCurrent() and 1 or 0)
-    local bx, bw = self.x + self.w - 5, 3
+    -- Down the STRIP's right edge, wherever the strip is -- not the panel's. It followed the cards
+    -- to the left column on a handheld and this did not, which put the track over the board.
+    local bx, bw = self.stripX + self.stripW - 5, 3
     local by, bh = self.stripTop, self:upcomingBottom() - self.stripTop
 
     Theme.set(Theme.frame, 0.25)
@@ -1050,10 +1102,10 @@ function CombatPanel:drawPoolBars(unit, rx, rw, topY, alpha)
     end
 end
 
-function CombatPanel:drawEntry(entry, ey, num, h, alpha)
+function CombatPanel:drawEntry(entry, ey, num, h, alpha, w)
     local unit = entry.unit
     local ex = self.x + 8
-    local ew = self.w - 16
+    local ew = w or (self.w - 16)
 
     -- Preview ghost: a faded, dashed hypothetical slot showing where the actor would land, not stats.
     -- Ghosts are NOT always ours -- a foe mid-channel projects its follow-up slot, and a stun/freeze
@@ -1468,19 +1520,23 @@ function CombatPanel:drawItemGrid()
             local dim = inert and 0.3 or ((not usable) and 0.45 or 1)
             local ab = item.activeAbility
 
-            -- Icon fills the slot; the badges and name overlay its corners/bottom.
+            -- Icon fills the slot; the badges and name overlay its corners/bottom. Except where the
+            -- badges STACK (see relayout's badgeGutter): a pill down the left edge top and bottom
+            -- covers a centred icon almost entirely, so there the icon draws in the plate to the
+            -- right of the gutter and is fully visible at the smaller size.
             local sprite = item.sprite
-            local icx, icy = sx + sw / 2, sy + sh / 2
+            local iconX, iconW = sx + self.badgeGutter, sw - self.badgeGutter
+            local icx, icy = iconX + iconW / 2, sy + sh / 2
             if type(sprite) == "userdata" then
                 love.graphics.setColor(dim, dim, dim)
                 local iw, ih = sprite:getDimensions()
-                local scale = math.min((sw - 8) / iw, (sh - 8) / ih)
+                local scale = math.min((iconW - 8) / iw, (sh - 8) / ih)
                 love.graphics.draw(sprite, icx, icy, 0, scale, scale, iw / 2, ih / 2)
             else
                 -- Art missing: a rounded placeholder with the item's initial.
-                local ph = sh - 10
+                local ph = math.min(sh - 10, iconW - 6)
                 love.graphics.setColor(0.55 * dim, 0.55 * dim, 0.60 * dim)
-                love.graphics.rectangle("fill", icx - ph / 2, sy + 5, ph, ph, 5, 5)
+                love.graphics.rectangle("fill", icx - ph / 2, icy - ph / 2, ph, ph, 5, 5)
                 love.graphics.setFont(self.headFont)
                 love.graphics.setColor(dim, dim, dim)
                 love.graphics.printf((item.name or "?"):sub(1, 1), icx - ph / 2, icy - 12, ph, "center")
