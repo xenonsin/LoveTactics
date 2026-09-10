@@ -596,4 +596,90 @@ return {
             end
         end,
     },
+
+    -- ----- the escort road (data/encounters/encounter_survivors_extract.lua) -----
+    {
+        -- The wagon is a clock the party has to keep the road ahead of, and how far "ahead" reaches is
+        -- set by how far a demon comes in one turn. A hold shorter than that stride lets the column
+        -- roll into ground a demon can take back before it moves again, which is the whole of what made
+        -- the crossing a stroll. Pinned against the two bodies this road actually fields, so making a
+        -- demon faster fails here rather than quietly making the escort easier.
+        name = "the escorted column will not roll while a demon can still close on it in one step",
+        fn = function()
+            local Character = require("models.character")
+            local driver = Character.defs["character_caravan_driver"]
+            local rule = (driver.ai or {})[1]
+            assert(rule and rule.act == "wait", "the driver holds rather than fights back")
+            assert(rule.when and rule.when.subject == "any_foe" and rule.when.test == "within",
+                "and it holds on ANY foe standing inside the range, not just the nearest")
+
+            local stride, who = 0, nil
+            for _, id in ipairs({ "character_demon_imp", "character_demon_grunt" }) do
+                local m = Character.defs[id].stats.movement or 0
+                if m > stride then stride, who = m, id end
+            end
+            assert(rule.when.value >= stride,
+                "the column holds for " .. tostring(rule.when.value) .. " tiles, but " .. tostring(who)
+                    .. " walks " .. stride .. ": it would roll into ground a demon can take back")
+        end,
+    },
+    {
+        -- Two halves of one fight: the column stands still while the road is not clear, and the road
+        -- does not stay clear. Authoring `waves` opts out of the trickle Arena.normalizeObjective hands
+        -- every reach objective, so this is the one place that says the replacement is still endless --
+        -- a capped tide gives the last stretch of the crossing back to the stroll.
+        --
+        -- Where it lands is the other half. The wagon is the fight's charge, and reinforcements that
+        -- walk in behind a charge are not pressure on the crossing, they are a knife nobody was given a
+        -- side to stand on (the same rule tests/flight_leg_spec.lua pins for the defend stop).
+        name = "the extraction road keeps closing, and its tide never lands behind the wagon",
+        fn = function()
+            local Encounter = require("models.encounter")
+            local Character = require("models.character")
+            local def = Encounter.get("encounter_survivors_extract")
+            local waves = (def.objective or {}).waves
+            assert(waves and #waves > 0,
+                "the crossing authors its own tide rather than taking the synthesized one")
+            local endless = false
+            for _, w in ipairs(waves) do endless = endless or (w.every ~= nil and w.count == nil) end
+            assert(endless, "one of them recurs without a cap, or the road stops closing partway across")
+
+            for _, seed in ipairs({ 1, 2, 3, 4, 5 }) do
+                local a = Arena.build({ day = 1 }, {
+                    biome = "forest", seed = seed,
+                    party = { "character_avatar", "character_rowan" },
+                    allies = def.allies, composition = def.composition, objective = def.objective,
+                })
+                local partyUnits, enemyUnits = {}, {}
+                for _, p in ipairs(a.party) do
+                    partyUnits[#partyUnits + 1] = { char = Character.instantiate(p.id), x = p.x, y = p.y }
+                end
+                for _, s in ipairs(a.allies or {}) do
+                    partyUnits[#partyUnits + 1] =
+                        { char = Character.instantiate(s.id), x = s.x, y = s.y, control = "ai" }
+                end
+                for _, e in ipairs(a.enemies) do
+                    enemyUnits[#enemyUnits + 1] = { char = Character.instantiate(e.id), x = e.x, y = e.y }
+                end
+                local c = Combat.new(a, partyUnits, enemyUnits)
+
+                local wagon = Combat.protectedTiles(c, "character_caravan_driver")
+                assert(#wagon == 1, "the column is on the board at the opening bell (seed " .. seed .. ")")
+                local behind = Combat.nearestEdge(c, wagon[1].x, wagon[1].y)
+                for wi, w in ipairs(c.objective.waves) do
+                    local where = " (seed " .. seed .. ", wave " .. wi .. ")"
+                    local plan = Combat.previewWaveArrival(c, w, { day = 1 })
+                    assert(plan and #plan.tiles > 0, "wave " .. wi .. " finds room to land" .. where)
+                    assert(plan.edge ~= behind,
+                        "a reinforcement walks on from " .. plan.edge .. ", the wall the wagon has its"
+                            .. " back to" .. where)
+                    for _, t in ipairs(plan.tiles) do
+                        local d = math.max(math.abs(t.x - wagon[1].x), math.abs(t.y - wagon[1].y))
+                        assert(d >= Combat.WAVE_PROTECT_CLEARANCE,
+                            "a reinforcement lands " .. d .. " tiles off the wagon" .. where)
+                    end
+                end
+            end
+        end,
+    },
 }

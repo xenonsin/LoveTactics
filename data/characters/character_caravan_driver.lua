@@ -12,7 +12,7 @@
 -- One caveat on that walk: it will NOT stroll on while a demon is breathing down its neck. The
 -- escort posture's `advance` heads for the exit, not the enemy, but the exit can lie past a foe, and
 -- a driver that keeps trundling forward would hand itself over. So a single `wait` rule sits on top
--- of the empty escort list: while any foe is within CLOSE_RANGE tiles it stands its ground and lets
+-- of the empty escort list: while any foe is within one demon's stride it stands its ground and lets
 -- the party clear the road; only once the way is clear of nearby demons does it drop through to
 -- `advance` and press on. It still never moves TOWARD a foe -- it either walks for the exit or holds.
 --
@@ -54,11 +54,17 @@ return {
     },
 
     -- Hold while the enemy is near, advance only when the coast is clear. `within` matches when ANY
-    -- foe sits inside the range, so a lone demon three tiles off is enough to stop the column. When no
+    -- foe sits inside the range, so a lone demon four tiles off is enough to stop the column. When no
     -- foe is that close, this rule doesn't fire and the escort posture's `advance` fallback carries the
-    -- driver on toward the exit (never toward the enemy). 3 tiles ~ one demon step of breathing room;
-    -- raise it to make the driver more skittish, lower it to make it press on through closer danger.
+    -- driver on toward the exit (never toward the enemy).
+    --
+    -- FOUR, which is exactly one demon's stride: an imp and a grunt both walk 4 (their blueprints), so
+    -- the column refuses to roll while anything on the board could close on it inside a single turn.
+    -- That is the number the rule was always reaching for -- 3 was written as "~ one demon step" and
+    -- undershot it by a tile, which let the wagon creep forward into ground a demon could take back
+    -- before it moved again. At 4 the road has to be genuinely clear, not nearly clear, so a turn the
+    -- column spends moving is a turn the party has already paid for.
     ai = {
-        { act = "wait", when = { subject = "any_foe", test = "within", value = 3 } },
+        { act = "wait", when = { subject = "any_foe", test = "within", value = 4 } },
     },
 }
