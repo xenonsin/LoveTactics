@@ -367,9 +367,6 @@ return {
     ["line.conversation_tutorial_flight.1"] = { en = "Walk to the chest ahead. Use WASD, the arrow keys, or click a tile.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.2"] = { en = "Open your loadout to see what you found.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.3"] = { en = "{select} an item in your stash to equip it to a hero.", ja = "" },  -- TODO
-    ["line.conversation_tutorial_flight.4"] = { en = "A shield changes what Wait does: end the turn braced instead of idle.", ja = "" },  -- TODO
-    ["line.conversation_tutorial_flight.5"] = { en = "Armor answers a kind of damage. This one drinks fire, and nothing else.", ja = "" },  -- TODO
-    ["line.conversation_tutorial_flight.6"] = { en = "This one has no action to press. It sits in a cell and works on its own.", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.1"] = { en = "The Tally", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.2"] = { en = "Beside the stair is a count of what is forming on the floors you have left behind. Nothing down there is born -- it forms, and it does not stop.\n\nClimb out early and the count rises by {stair}. Lose the company and it rises by {wipe}. Every new floor you reach takes one back off, and sealing a circle takes off {seal}.\n\nFill all {max} marks and what is below stops waiting to be found. It comes up the stair on its own -- which is what happened to Bellmere.", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.3"] = { en = "Tactics", ja = "" },  -- TODO

@@ -72,7 +72,7 @@ return {
             end
 
             -- A miss is nil, never a placeholder: the caller draws nothing rather than printing an id
-            -- at the player (states/game.lua's drawCoachLesson makes the same bet).
+            -- at the player (states/game.lua's drawCoach makes the same bet).
             assert(Locale.line(NOTES, "no_such_line") == nil, "an unknown id resolves to nil")
             assert(Locale.node("no_such_conversation", "anything") == nil, "...and so does an unknown bag")
         end,

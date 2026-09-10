@@ -229,30 +229,13 @@ local FLIGHT_QUEST = {
 -- several files (the same reason VILLAGE_MAP is exported above).
 prologue.FLIGHT_QUEST = FLIGHT_QUEST
 
--- THE THREE GIFTS THAT ARRIVE WITH NOBODY SPEAKING, and the coach line each one is owed.
---
--- Every stop above teaches one item mechanic. Two of them are handed over inside a conversation, where
--- Rowan can simply say what the thing does -- the censer at stop 2 ("keep it next to whatever you mean
--- to swing"), the mark at stop 4. The other three land in silence: two as a fight's spoils and one out
--- of a chest. Those get a bubble instead, and it points at the GRID rather than at the map, because the
--- rule each of them teaches is about where the item sits and what it is beside
--- (states/game.lua's noteLesson / drawCoachLesson).
---
--- KEYED ON THE ITEM, not on the stop, so the lesson follows the thing wherever the ladder moves it: a
--- re-cut route that pays the buckler somewhere else still explains the buckler. Only ids listed here
--- say anything, so the ordinary campaign -- and the rest of this route -- stays silent.
---
--- It lives HERE rather than in the overworld screen because it is a fact about the route, and because
--- the screen cannot be required headless (ui/theme.lua wants a window) -- which would have left the one
--- table with two silent failure modes as the one table no test could read.
---
--- The node ids are in data/conversations/tutorial/conversation_tutorial_flight.lua beside the other
--- three coach lines, so every word the coach says is in one file for a translator.
-prologue.FLIGHT_LESSONS = {
-    armor_buckler         = "stance_hint",  -- stop 3: an item rewrites a button
-    armor_salamander_hide = "typed_hint",   -- stop 5: a coat answers one KIND of blow
-    utility_second_wind   = "passive_hint", -- stop 6: an item with no action to press
-}
+-- EVERY ITEM ON THIS ROUTE NOW LANDS WITHOUT A BUBBLE. The stops still teach one item mechanic each
+-- (see FLIGHT_QUEST's stop-by-stop argument above), but the three that arrived with nobody speaking
+-- used to raise a coach bubble over the stash naming the rule -- FLIGHT_LESSONS, keyed on the item id.
+-- All three said something the item's own tooltip and the grid already said, over the top of the screen
+-- the player had just opened to read them, so the table and the channel that drew it are deleted. What
+-- teaches these mechanics is the kit itself and the two conversations that hand a gift over in words
+-- (the censer at stop 2, the mark at stop 4).
 
 -- ---------------------------------------------------------------------------
 -- Beat runners

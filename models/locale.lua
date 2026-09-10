@@ -275,8 +275,8 @@ end
 
 -- One hint's display text, localized and with its tokens substituted, or nil when no node carries that
 -- id. NIL RATHER THAN A PLACEHOLDER on purpose: an id renamed out from under a caller is an authoring
--- slip, and the honest failure is a bubble that does not draw (states/game.lua's drawCoachLesson makes
--- the same call).
+-- slip, and the honest failure is a bubble that does not draw (states/game.lua's drawCoach makes the
+-- same call).
 function Locale.line(convId, nodeId, tokens)
     local node = Locale.node(convId, nodeId)
     return node and fill(Locale.text(convId, node), tokens) or nil

@@ -349,23 +349,6 @@ local function fireRelics(event, extra)
     return Relic.dispatch(event, ctx)
 end
 
--- THE FOURTH COACH BUBBLE: note a mechanic lesson owed, when the item that teaches it lands.
---
--- The table itself is states/prologue.lua's FLIGHT_LESSONS, which is where it belongs -- a lesson is a
--- property of the ROUTE, and the route is that file's business. It is also the only reason this reads
--- through a lazy require: prologue pulls states/battle and states/game back in, so a top-level require
--- here would be a cycle, and this runs on a loot grant rather than on a frame.
---
--- Nothing is spoken here. An item drops into a stash the player is usually not looking at, so the line
--- waits for the Loadout screen to be open and the item to be somewhere it can be pointed at (see
--- game.drawCoachLesson). Last one wins -- the chest at stop 6 hands over two items and only one of them
--- carries a rule worth a bubble, so there is never a queue.
-local function noteLesson(game, id)
-    if game.tutorial ~= "flight" then return end
-    local node = require("states.prologue").FLIGHT_LESSONS[id]
-    if node then game.coachLesson = node end
-end
-
 -- Open the Party screen over the overworld (same modal slot as the encounter panel).
 local function openLoadout()
     -- During the flight tutorial, opening the loadout is the step that unlocks the equip lesson: the
@@ -387,11 +370,6 @@ local function openLoadout()
         onClose = function()
             game.activePanel = nil
             if game.coach == "equip" then game.coach = nil end -- lesson done (closed without equipping)
-            -- A mechanic bubble is spent by having been READ, and closing this screen is the only
-            -- signal that it was: it draws over the stash the item is sitting in, so the screen being
-            -- shut is the player having looked at both. Cleared here rather than on a timer so it
-            -- cannot be missed by opening the panel for half a second.
-            game.coachLesson = nil
         end,
     })
 end
@@ -1436,7 +1414,6 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     game.useUnlocked = (mp.tutorial ~= "flight")
     game.coach = nil
     game.coachChar = nil
-    game.coachLesson = nil -- the mechanic bubble's own channel (FLIGHT_LESSONS)
 
     -- Autosave the run so quitting mid-quest resumes onto the map (states/menu.lua's Continue). Only a
     -- board quest is resumable (runResumable) -- a scripted/tutorial leg has no hub to return to. The live
@@ -1932,7 +1909,6 @@ function game:openEncounter(cell, opts)
                 local left = 0
                 for _, id in ipairs(spoils.loot or {}) do
                     Player.grantItem(game.player, id)
-                    noteLesson(game, id) -- the sweep's two fight-won mechanics (buckler, fire coat)
                 end
                 -- ...and the unread find, on the rare stop that paid one (models/identify.lua). Granted
                 -- through Identify.grant rather than Player.grantItem: the piece goes into the stash as a
@@ -2916,7 +2892,6 @@ function game:openEncounter(cell, opts)
                 cell.cleared = true
                 for _, id in ipairs(loot) do
                     Player.grantItem(game.player, id)
-                    noteLesson(game, id) -- the sweep's chest-found mechanic (the no-button charm)
                 end
                 for _, find in ipairs(sealed) do
                     Identify.grant(game.player, find.id, find.floor)
@@ -4142,9 +4117,6 @@ function game.draw()
     -- and all of them point at a control the scene has frozen.
     if sceneCovers then return end
     game.drawCoach()
-    -- ...and the mechanic bubble beside it, on its own channel. Only ever drawn over an open panel, so
-    -- it is not wanted on the battle path above -- unlike drawCoach, which follows the fight in.
-    game.drawCoachLesson()
 end
 
 -- WHICH DEAD END A COMPANION IS STANDING AT, as `x, y, asked`, or nil when there is nobody to point
@@ -4283,33 +4255,6 @@ function game.drawCoach()
             CoachBubble.draw(text, anchor, { prefer = "above", key = key, bounds = coachBounds() })
         end
     end
-end
-
--- The mechanic bubble: what the thing that just landed in the stash actually DOES, said once, over the
--- stash it landed in. Its own channel rather than a step of the chain above (see FLIGHT_LESSONS),
--- because it is owed by an ITEM and answered by a screen, where every step above is one link in a
--- fixed sequence.
---
--- IT YIELDS TO THE EQUIP STEP. Both want the same anchor and the equip lesson is the one holding the
--- road shut, so a first chest that owed a mechanic would otherwise draw two bubbles onto one rect. The
--- sweep never actually collides -- stop 1 is the only chest that raises the equip step and it carries
--- no lesson id -- but the guard is a line and the alternative is a bug that only appears on a re-cut
--- ladder.
-function game.drawCoachLesson()
-    local node = game.coachLesson
-    if not node then return end
-    if game.coach == "equip" then return end
-    local panel = game.activePanel
-    if not (panel and panel.coachAnchor) then return end
-    local anchor = panel:coachAnchor()
-    if not anchor then return end
-    -- Nil-guarded on the NODE rather than on the text: an id that has been renamed out of the hint
-    -- file is an authoring slip, and the honest failure is a bubble that does not draw rather than a
-    -- crash on the one screen the prologue cannot be played without.
-    local entry = hintNode("conversation_tutorial_flight", node)
-    if not entry then return end
-    CoachBubble.draw(Locale.text("conversation_tutorial_flight", entry), anchor,
-        { prefer = "above", bounds = coachBounds() })
 end
 
 -- The line at the top of the board. A ground and a day for a campaign trip; a scripted or descent leg

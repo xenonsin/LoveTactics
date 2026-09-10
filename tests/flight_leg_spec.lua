@@ -477,41 +477,36 @@ return {
 
     -- ----- the ladder: one item mechanic per stop (states/prologue.lua's FLIGHT_QUEST) -----
     {
-        -- The sweep used to hand over one CLASS per stop. It hands over one item MECHANIC per stop
-        -- now, and the three that arrive with nobody speaking -- two off a fight, one out of a chest
-        -- -- get a coach bubble instead (states/game.lua's FLIGHT_LESSONS). That table can rot two
-        -- ways and drawCoachLesson nil-guards both, so a bubble that has silently stopped existing
-        -- looks exactly like one that was never owed. This is what tells the difference.
-        name = "every coach mechanic is an item the route really hands over, with a line to say",
+        -- The sweep used to hand over one CLASS per stop; it hands over one item MECHANIC per stop now.
+        -- The three gifts that arrived with nobody speaking used to raise a MECHANIC BUBBLE over the
+        -- stash naming the rule (states/prologue.lua's FLIGHT_LESSONS, drawn by game.drawCoachLesson).
+        -- All of it is deleted: each of those lines restated what the item's own tooltip and the grid
+        -- already said, over the top of the screen the player had just opened to read them.
+        --
+        -- So the flight's bag is the fixed chain and NOTHING ELSE, and this is what keeps it that way:
+        -- a line that comes back into the file is a line no surface fields, which is exactly how the
+        -- deleted bubbles would return -- silently, as words nobody draws and a translator still pays
+        -- for. The chain's own three are checked here too, since tutorial_strings_spec's FIELDED list
+        -- covers the city and the notes rather than this bag.
+        name = "the flight coach says the fixed chain and nothing else, all of it stamped",
         fn = function()
+            local Locale = require("models.locale")
             local prologue = require("states.prologue")
-            local lessons = prologue.FLIGHT_LESSONS
-            assert(lessons and next(lessons), "the flight's mechanic bubbles are declared")
+            assert(prologue.FLIGHT_LESSONS == nil,
+                "the mechanic-bubble table is gone; a route that wants one again needs its channel back")
 
-            -- Every id the sweep grants, from the single source: the route's own authored loot.
-            local granted = {}
-            for _, stop in ipairs(prologue.FLIGHT_QUEST.map.encounters.always) do
-                for _, id in ipairs(stop.loot or {}) do granted[id] = true end
+            local CONV = "conversation_tutorial_flight"
+            local WANT = { "move_hint", "loadout_hint", "equip_hint" }
+            local script = require("data.conversations.tutorial." .. CONV).script
+            assert(#script == #WANT, "the flight bag holds " .. #WANT .. " lines, got " .. #script)
+            for i, id in ipairs(WANT) do
+                assert(script[i].id == id, "line " .. i .. " of the chain is `" .. id .. "`")
+                local node = Locale.node(CONV, id)
+                assert(node and type(node.tag) == "number",
+                    id .. " carries no stamped tag (run extract-strings)")
+                local text = Locale.line(CONV, id)
+                assert(type(text) == "string" and #text > 0, id .. " resolves to nothing")
             end
-
-            -- Every node id the hint file actually defines.
-            local nodes = {}
-            for _, node in ipairs(require("data.conversations.tutorial.conversation_tutorial_flight").script) do
-                if node.id then nodes[node.id] = node end
-            end
-
-            local count = 0
-            for itemId, nodeId in pairs(lessons) do
-                count = count + 1
-                assert(granted[itemId],
-                    itemId .. " owes a coach bubble but the route never hands it over")
-                local node = nodes[nodeId]
-                assert(node, itemId .. " points at hint node '" .. nodeId .. "', which does not exist")
-                local text = node.text or node[2]
-                assert(type(text) == "string" and text ~= "",
-                    nodeId .. " has no line to say")
-            end
-            assert(count == 3, "three gifts arrive with nobody speaking, got " .. count)
         end,
     },
 
