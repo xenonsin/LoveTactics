@@ -42,7 +42,8 @@ local function askName()
     widget = NameEntry.new({
         -- "And what do they call you?" stood here, and the "And" was continuing a conversation the
         -- step before it never started: the body step asks a question with a picture, not a sentence.
-        prompt = "What do they call you?",
+        -- "What do they call you?" then asked about a reputation when the field wants a name.
+        prompt = "What's your name?",
         onSubmit = function(name)
             if Player.active then Player.active.name = name end
             State.switch(require("states.prologue"))

@@ -34,6 +34,15 @@ local ROWS = {
 local MAX_LEN = 14
 local KEY_W, KEY_H, KEY_GAP = 84, 56, 10
 
+-- The prompt is this screen's TITLE, and in character creation it is the second of two screens that
+-- each have one: step 1 draws "A New Journey" at 150 in Theme.display(40)/accentAmber. The block used
+-- to be centred on the window instead, which put the prompt at 84 -- so the heading jumped 66px up
+-- and shrank a size between the picture and the name, in one flow. Both numbers here are that title's
+-- (states/character_creation.lua); the field and keyboard hang off it rather than off the centre.
+local TITLE_Y = 150
+local TITLE_TO_FIELD = 60   -- title top to field top
+local FIELD_TO_KEYS = 96    -- field top to the first key row
+
 function NameEntry.new(opts)
     opts = opts or {}
     local self = setmetatable({}, NameEntry)
@@ -42,7 +51,7 @@ function NameEntry.new(opts)
     self.text = ""
     self.row, self.col = 1, 1
 
-    self.titleFont = Theme.display(30)
+    self.titleFont = Theme.display(40)
     self.fieldFont = Theme.display(34)
     self.keyFont = Theme.body(22)
 
@@ -51,10 +60,11 @@ function NameEntry.new(opts)
     return self
 end
 
--- Compute each key's rect, the block centered horizontally and sitting below the field.
+-- Compute each key's rect, the block centered horizontally and hanging off the title (TITLE_Y).
 function NameEntry:layout()
-    local totalH = #ROWS * KEY_H + (#ROWS - 1) * KEY_GAP
-    local startY = Scale.HEIGHT / 2 - totalH / 2 + 40
+    self.titleY = TITLE_Y
+    self.fieldY = self.titleY + TITLE_TO_FIELD
+    local startY = self.fieldY + FIELD_TO_KEYS
     self.keys = {}
     for r, row in ipairs(ROWS) do
         local rowW = #row * KEY_W + (#row - 1) * KEY_GAP
@@ -70,7 +80,6 @@ function NameEntry:layout()
             }
         end
     end
-    self.fieldY = startY - 96
 end
 
 function NameEntry:keyAt(r, c)
@@ -218,10 +227,10 @@ function NameEntry:draw()
     -- player between the picture and the name.
     Theme.drawMount(Scale.WIDTH, Scale.HEIGHT)
 
-    -- The prompt.
+    -- The prompt, in the title's own place and register (see TITLE_Y).
     love.graphics.setFont(self.titleFont)
-    love.graphics.setColor(0.95, 0.85, 0.55)
-    love.graphics.printf(self.prompt, 0, self.fieldY - 60, Scale.WIDTH, "center")
+    Theme.set(Theme.accentAmber)
+    love.graphics.printf(self.prompt, 0, self.titleY, Scale.WIDTH, "center")
 
     -- The text field: a wide box with the typed name and a blinking caret.
     local fw, fh = 520, 60
