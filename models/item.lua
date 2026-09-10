@@ -405,8 +405,11 @@ end
 -- generators and the ceiling they generate up to cannot drift apart.
 Item.MAX_LEVEL = Curve.LEVELS - 1
 
+-- A stat key rendered as words. Every caller here hands it a camelCase field name off a blueprint
+-- (`magicDamage`, `magicDefense`), so the hump is a WORD BOUNDARY and has to become a space -- a
+-- header that upper-cases the result otherwise reads "MAGICDAMAGE".
 local function titleCase(s)
-    return (tostring(s):gsub("^%l", string.upper))
+    return (tostring(s):gsub("(%l)(%u)", "%1 %2"):gsub("^%l", string.upper))
 end
 
 -- Sorted keys of a map, so pairs-driven rows (armor bonuses/resists) chart deterministically.

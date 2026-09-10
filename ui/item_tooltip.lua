@@ -112,8 +112,11 @@ local RANGE_HARMLESS = { 0.404, 0.678, 0.729 }
 local GLYPH_GAP = 4 -- between a stat row's glyph and the value it marks
 local STAT_GAP = 8  -- least space kept between a stat row's label and its value column
 
+-- A stat key rendered as words: the hump in a camelCase field name (`magicDamage`) is a word
+-- boundary, so it becomes a space before the first letter is raised. Without it the bonus rows read
+-- "MagicDamage" and the header, which upper-cases what it is given, reads "MAGICDAMAGE".
 local function titleCase(s)
-    return (tostring(s):gsub("^%l", string.upper))
+    return (tostring(s):gsub("(%l)(%u)", "%1 %2"):gsub("^%l", string.upper))
 end
 
 -- The tint an ability's reach pictures wear, in the same order the board decides it: harmless first

@@ -105,8 +105,10 @@ local STAT_ROWS = {
     { stat = "luck",         label = "Luck" },
 }
 
+-- A key rendered as words: a camelCase stat name (`magicDamage`) carries a word boundary at the hump,
+-- so the "... bonus" line below reads "Magic Damage bonus" rather than "MagicDamage bonus".
 local function titleCase(s)
-    return (tostring(s):gsub("^%l", string.upper))
+    return (tostring(s):gsub("(%l)(%u)", "%1 %2"):gsub("^%l", string.upper))
 end
 
 -- Round a status duration to 1 decimal, dropping a trailing ".0" so whole turns read as "3"
