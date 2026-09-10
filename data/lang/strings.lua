@@ -379,6 +379,8 @@ return {
     ["line.conversation_tutorial_notes.7"] = { en = "A to continue", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.8"] = { en = "Tap to continue", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.9"] = { en = "Click, or press Enter to continue", ja = "" },  -- TODO
+    ["line.conversation_tutorial_recruit.1"] = { en = "Somebody is standing at that end, with work of her own to ask for. Walking up to hear it costs us nothing. Doing the job she names is what brings her into the company.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_recruit.2"] = { en = "She is waiting on the far side of that door, and the work she asked for is the way through it. Win that fight and she comes out with us.", ja = "" },  -- TODO
     ["line.conversation_tutorial_village.1"] = { en = "Close the distance and strike without fear, {name}!", ja = "" },  -- TODO
     ["line.conversation_tutorial_village.10"] = { en = "{select} on the lit tile to move there.", ja = "" },  -- TODO
     ["line.conversation_tutorial_village.11"] = { en = "{select} on Clear Out in your grid to ready it.", ja = "" },  -- TODO
@@ -509,6 +511,7 @@ return {
     ["title.conversation_tutorial_city"] = { en = "The City's Instructions", ja = "" },  -- TODO
     ["title.conversation_tutorial_flight"] = { en = "The Open Road", ja = "" },  -- TODO
     ["title.conversation_tutorial_notes"] = { en = "What the Screen Owes You", ja = "" },  -- TODO
+    ["title.conversation_tutorial_recruit"] = { en = "Somebody At The End Of It", ja = "" },  -- TODO
     ["title.conversation_tutorial_village"] = { en = "Rowan's Lesson", ja = "" },  -- TODO
     ["title.conversation_tutorial_wound"] = { en = "Carried Out", ja = "" },  -- TODO
     ["title.conversation_undercroft_discipline_unlocked"] = { en = "Off the Book", ja = "" },  -- TODO
