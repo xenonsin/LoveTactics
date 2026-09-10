@@ -89,6 +89,7 @@
       @media (pointer: coarse) {
         #canvas { width: 100%; height: 100%; }
         .touch-only { display: inline; }
+        #note { display: block; }
       }
       #gate {
         position: fixed; inset: 0; z-index: 10;
@@ -113,7 +114,8 @@
         color: var(--ink); background: var(--panel); border: 1px solid var(--frame);
       }
       #start:hover { color: var(--gold); border-color: var(--gold); }
-      #note { color: var(--muted); font-size: 12px; max-width: 46ch; }
+      /* Nothing left to say on a desktop, and an empty flex item would still eat a 22px gap. */
+      #note { display: none; color: var(--muted); font-size: 12px; max-width: 46ch; }
       #full {
         position: fixed; right: 10px; bottom: 8px; z-index: 5; display: none;
         padding: 5px 12px; font: inherit; font-size: 12px; letter-spacing: .1em;
@@ -133,7 +135,7 @@
       <div id="bar"><div id="fill"></div></div>
       <div id="status">Downloading&hellip;</div>
       <button id="start">Play</button>
-      <div id="note">Roughly 32&nbsp;MB on a first visit; your browser caches it afterwards. Mouse, touch, keyboard and gamepad all work.<span class="touch-only"> Held upright, the picture is turned a quarter turn &mdash; tilt the handset to the left to read it.</span></div>
+      <div id="note"><span class="touch-only">Held upright, the picture is turned a quarter turn &mdash; tilt the handset to the left to read it.</span></div>
     </div>
 
 
