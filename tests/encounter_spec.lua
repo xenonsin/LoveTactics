@@ -98,8 +98,8 @@ return {
             -- Asserted as a set rather than a sample, because the failure being guarded is a kind
             -- quietly joining the fights, and a sample cannot see one it does not name.
             for _, kind in ipairs({ "town", "treasure", "event", "rest", "relic_cache", "shrine",
-                                    "merchant", "crossroads", "ascent", "stair",
-                                    "dark", "spinner", "translation" }) do
+                                    "merchant", "crossroads", "ascent", "stair", "anvil",
+                                    "weeping_stone", "dark", "spinner", "translation" }) do
                 assert(not Encounter.opensBattle({ kind = kind }),
                     kind .. " is not a fight and must not wear the combat border")
             end

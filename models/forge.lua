@@ -35,6 +35,7 @@
 -- THE CEILING is keyed on the item, not on where you stand (the old Vendor.abilityLevelCap gated by
 -- whichever shop happened to be open). See Forge.ceilingFor.
 
+local Character = require("models.character") -- MAX_INVENTORY: the cells a body carries a kit in
 local Class = require("models.class")
 local Errand = require("models.errand") -- how many rungs a house asks for; the ladder the ceiling is laid on
 local Item = require("models.item")
@@ -373,6 +374,69 @@ function Forge.upgradeTo(player, item, target)
         current = stepped
     end
     return current
+end
+
+-- ---------------------------------------------------------------------------
+-- A rung given rather than sold
+-- ---------------------------------------------------------------------------
+
+-- Everything the company is CARRYING that a level can improve: one entry per occupied grid cell across
+-- the roster, `{ item, char, cell, where }`, in roster order and then cell order.
+--
+-- The stash is deliberately not in it, which is the one way this differs from the bench's own collector
+-- (ui/panels/forge.lua's ForgePanel:collect). Standing at a bench in the city is a moment with the whole
+-- inventory open; a stop on the road is not. What a wayside forge can reach is what somebody walked in
+-- wearing, so the offer is a question about the LOADOUT -- the kit the player has already committed to
+-- for this floor -- rather than about the pile back home.
+function Forge.equipped(player)
+    local out = {}
+    for _, char in ipairs((player and player.roster) or {}) do
+        for cell = 1, Character.MAX_INVENTORY do
+            local item = char.inventory and char.inventory[cell]
+            if item and Forge.canWork(item) then
+                out[#out + 1] = { item = item, char = char, cell = cell, where = char.name or "?" }
+            end
+        end
+    end
+    return out
+end
+
+-- Raise `item` one rung for FREE: no gold, no technique, no craft or house stock. Returns a fresh
+-- instance at the new level -- the caller swaps it into the cell it came from, exactly as Forge.upgrade
+-- does -- or nil + one of "not forgeable" | "max level" | "locked".
+--
+-- THE BILL IS WAIVED AND THE CEILING IS NOT, and that split is the whole of what this function decides.
+-- Gold and technique are a PRICE: a thing the player pays, and a thing a gift is entitled to cover. The
+-- ceiling is a STANDING -- how far into this item's own class the company has actually climbed
+-- (Forge.ceilingFor) -- and no stop on the road may hand that over, because a rung past it is depth
+-- nobody played for. That is the one rule this file exists to hold (see the header: gold buys breadth,
+-- technique buys depth); a boon that broke it would be the road quietly selling the bench's job.
+--
+-- So a free rung is worth exactly what the bench's next rung is worth, and never more. An item already
+-- standing at its ceiling is refused with "locked" and the caller says so out loud, rather than the
+-- gift silently landing on something else.
+--
+-- ONE RUNG, never a batch. Forge.upgradeTo exists for a climb somebody is buying; a gift that could be
+-- scrubbed up the track would make the size of the boon a thing the player picks, and a boon you set
+-- the magnitude of is not a boon.
+--
+-- Split in two so the LIST and the COMMIT cannot disagree. A panel offering free rungs has to grey out
+-- the pieces that cannot take one and say why (ui/panels/anvil.lua), and a second copy of these three
+-- clauses living in the drawing code is exactly how a row ends up greyed for one reason and refused for
+-- another -- or, worse, drawn bright and refused anyway. Forge.grantRefusal is the only place that
+-- decides; Forge.grant is that decision plus the instance.
+function Forge.grantRefusal(player, item)
+    if not Forge.canWork(item) then return "not forgeable" end
+    local target = (item.level or 0) + 1
+    if target > Item.MAX_LEVEL then return "max level" end
+    if target > Forge.ceilingFor(player, item) then return "locked" end
+    return nil
+end
+
+function Forge.grant(player, item)
+    local reason = Forge.grantRefusal(player, item)
+    if reason then return nil, reason end
+    return Item.instantiate(item.id, item.quantity, (item.level or 0) + 1)
 end
 
 -- ---------------------------------------------------------------------------

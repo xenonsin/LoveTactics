@@ -30,6 +30,8 @@ local LootReveal = require("ui.panels.loot_reveal")
 local RelicOffer = require("ui.panels.relic_offer")   -- the Reliquary's pick-one-of-three
 local RelicReveal = require("ui.panels.relic_reveal") -- the Sin's Altar's single relic + toll
 local Merchant = require("ui.panels.merchant") -- the road's shop: ordinary goods, priced under the ceiling
+local Anvil = require("ui.panels.anvil")   -- the Cold Forge's pick-one-piece, and the free rung it takes
+local Forge = require("models.forge")      -- ...and what the road may and may not give away for nothing
 local Choice = require("ui.panels.choice")
 local Crossroads = require("models.crossroads")
 local RestChoice = require("ui.panels.rest_choice")
@@ -3165,6 +3167,44 @@ function game:openEncounter(cell, opts)
                 local _, n = Relic.grant(game.relicState, id)
                 local name = Relic.info(id).name or id
                 game:pushToast("The stone takes its due: " .. name .. ((n and n > 1) and ("  x" .. n) or ""))
+                game.activePanel = nil
+                saveRun()
+            end,
+            onLeave = function() game.activePanel = nil end,
+        })
+        return
+    end
+
+    -- THE COLD FORGE: one free rung, on one piece the company is CARRYING. The road's only source of
+    -- depth -- everything else out here (the Merchant, the Reliquary, the Altar, a chest) hands over
+    -- something new, and nothing made what you already had better. See
+    -- data/encounters/encounter_cold_forge.lua for why the road is allowed to give this, and
+    -- models/forge.lua's Forge.grant for the one rule it keeps: the BILL is waived, the CEILING is not.
+    --
+    -- LEAVING KEEPS THE CELL, like the Merchant's and unlike the Reliquary's. There is nothing rolled
+    -- here to re-roll -- the offer is the player's own kit, which is the same kit whichever way they walk
+    -- in -- so coming back to it costs the run nothing and refusing it once should not spend it. The
+    -- cell clears on the STRIKE, which is the only thing that happens here.
+    --
+    -- An empty forge is a real state and it clears itself rather than opening onto a shrug: a company
+    -- early enough to be carrying nothing a level can improve should walk over the tile, not be shown a
+    -- panel with an empty list in it.
+    if kind == "anvil" then
+        local rows = Forge.equipped(game.player)
+        if #rows == 0 then
+            game:pushToast("The coals are cold, and there is nothing here worth working.")
+            cell.cleared = true
+            saveRun()
+            return
+        end
+        game.activePanel = Anvil.new({
+            title = cell.encounter.name or "The Cold Forge",
+            player = game.player,
+            onStrike = function(row)
+                cell.cleared = true
+                -- The new name already carries its "+n" (Item.instantiate bakes it on), so the toast
+                -- names the thing the player now owns rather than restating the rung beside it.
+                game:pushToast("Forged on the road: " .. row.newItem.name)
                 game.activePanel = nil
                 saveRun()
             end,

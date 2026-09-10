@@ -590,6 +590,21 @@ local function markerColor(kind, enc)
     if kind == "relic_cache" then return 0.80, 0.52, 0.92 end -- a reliquary: a run relic waits inside
     if kind == "shrine" then return 0.88, 0.40, 0.48 end       -- a sin's altar: a Vice for a toll
     if kind == "merchant" then return 0.90, 0.74, 0.32 end      -- a wandering market: goods for gold
+    -- THE COLD FORGE goes COOL, and that is a choice made by elimination rather than by fiction. A forge
+    -- wants ember orange and it may not have it: the elite's orange and the fight red own that whole
+    -- corner of the wheel, and a stop whose entire content is a GIFT must never be found sitting between
+    -- the board's two danger colours. So it takes the iron rather than the coals -- a bright quenched
+    -- blue, well clear of the rest's teal (which is green-blue in equal parts, where this is plainly
+    -- blue) and of the ward's darker steel (which always wears the red combat ring this never does).
+    -- The anvil mark is unlike any other silhouette out there and settles what the hue narrows.
+    if kind == "anvil" then return 0.48, 0.74, 0.98 end
+    -- THE WEEPING STONE deals the reliquary's goods and charges the run's body for them, so it wears the
+    -- reliquary's violet banked dark: a bruise rather than a bloom. It had NO ENTRY here at all and fell
+    -- through to the combat red at the bottom of this function, wearing the crossed swords with it -- the
+    -- one stop on the board that sells you a rare relic was drawn as an ordinary fight, and the only way
+    -- to find that out was to walk onto it. See the header of Encounter.opensBattle: a marker that
+    -- promises a fight the state then does not run is a lie.
+    if kind == "weeping_stone" then return 0.62, 0.38, 0.72 end
     if kind == "crossroads" then return 0.70, 0.72, 0.80 end     -- a branching dilemma: a gamble
     if kind == "ascent" then return 0.72, 0.78, 0.86 end -- the way back up: cold daylight, and the only one
     -- The way DOWN, opened by putting the floor's guard off it. Deliberately the same family as the way
@@ -746,6 +761,32 @@ function MarkerIcon.shrine(x, y, w, h, r, g, b, a)
     -- A flame licking up off it.
     love.graphics.polygon("fill", x + w * 0.5, y + h * 0.1,
         x + w * 0.66, y + h * 0.5, x + w * 0.5, y + h * 0.42, x + w * 0.34, y + h * 0.5)
+end
+
+-- A standing stone with a drop running off it: the Weeping Stone, which sells a relic for a permanent
+-- cut to every maximum. The tear is the price, and it is the only thing on the board drawn falling.
+function MarkerIcon.weeping_stone(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    -- The slab: a rounded head over a straight body.
+    love.graphics.circle("fill", x + w * 0.5, y + h * 0.34, w * 0.26)
+    love.graphics.rectangle("fill", x + w * 0.24, y + h * 0.34, w * 0.52, h * 0.52, 2, 2)
+    -- The drop, in the deeper shade the other marks use for their detail.
+    love.graphics.setColor(r * 0.35, g * 0.35, b * 0.35, a)
+    love.graphics.circle("fill", x + w * 0.5, y + h * 0.66, w * 0.11)
+    love.graphics.polygon("fill", x + w * 0.5, y + h * 0.44,
+        x + w * 0.61, y + h * 0.68, x + w * 0.39, y + h * 0.68)
+end
+
+-- An anvil: the Cold Forge, where one carried piece takes a free rung. Drawn as the silhouette and not
+-- as a hammer -- a hammer is a weapon at this size, and this is the one stop out here that is neither.
+function MarkerIcon.anvil(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    -- The face, with the horn running off its left edge.
+    love.graphics.polygon("fill", x + w * 0.06, y + h * 0.36, x + w * 0.88, y + h * 0.32,
+        x + w * 0.88, y + h * 0.50, x + w * 0.16, y + h * 0.50)
+    -- The waist, and the foot it stands on.
+    love.graphics.rectangle("fill", x + w * 0.38, y + h * 0.50, w * 0.24, h * 0.26)
+    love.graphics.rectangle("fill", x + w * 0.20, y + h * 0.76, w * 0.60, h * 0.16, 1, 1)
 end
 
 -- A tent: a safe camp to rest at.
