@@ -10,7 +10,7 @@
 --
 --   local dlg = Dialogue.new(conversationDef, function() ...scene over... end)
 --   dlg:update(dt); dlg:draw()
---   dlg:mousemoved(x, y); dlg:mousepressed(x, y, button)
+--   dlg:mousemoved(x, y); dlg:mousepressed(x, y, button); dlg:mousereleased(x, y, button)
 --   dlg:keypressed(key); dlg:gamepadpressed(joystick, button)
 --
 -- Lazy fonts (newed in :new, never at require-time) keep it load-safe under tests/ui_load_spec.
@@ -425,27 +425,55 @@ function Dialogue:sourceRect()
     return { x = self.boxX + 28, y = y - 6, w = w, h = ButtonPrompt.height() + 10 }
 end
 
--- The SKIP control, and it exists only for a finger.
+-- ADVANCE and SKIP: the footer row, and both of them are things you press.
 --
--- Skipping a scene is `escape` on a keyboard and `B` on a pad; a touchscreen has neither, so until
--- this the footer told a phone player to press Esc and the function was simply unreachable -- every
--- scene had to be tapped through line by line. A key that is not on the device is not a control, so
--- touch gets a real one: a plate at the footer's left, tapped like any other button.
---
--- Nil on every other device, which is what keeps it off the desktop screen -- there the hint row
--- already names a key that works, and a second way to do it would be clutter. Sized off the same
--- ButtonPrompt metrics as the source control beside it so the row reads as one run of plates.
-function Dialogue:skipRect()
-    if not InputMode.touch then return nil end
-    local w = ButtonPrompt.width({ { glyph = "Skip", label = "" } })
-    local y = self:hintY()
-    local x = self.boxX + 28
-    local src = self:sourceRect()
-    if src then x = src.x + src.w + 30 end -- dev builds: fall in behind "edit this scene"
-    return { x = x, y = y - 6, w = w, h = ButtonPrompt.height() + 10 }
+-- They used to be hints and nothing else -- a row naming Enter and Esc -- and that failed two
+-- devices at once. A touchscreen has neither key, so a phone could not leave a scene at all (it was
+-- given a plate of its own here, and was the only device that had one); and a mouse is meant to
+-- play the whole game without reaching for the keyboard, which a scene skippable only by Esc is
+-- not. So the row IS the control now, on every device: each segment is a button, and its glyph goes
+-- on naming the key that does the same thing wherever there is one.
+function Dialogue:hintSegments()
+    local choosing = self:choicesActive()
+    return {
+        { glyph = InputMode.pick("A", "Tap", choosing and "Enter" or "Click"),
+          label = choosing and "Choose" or "Advance", action = "confirm" },
+        { glyph = InputMode.pick("B", "Tap", "Esc"), label = "Skip", action = "skip" },
+    }
 end
 
--- The row the footer control hints are drawn on. Inside the box, on both surfaces.
+-- The band the row is laid out in: right-aligned inside the box, pulled in ahead of the side bust
+-- over a live scene, and starting where the development-only source control stops -- so a long file
+-- name pushes the buttons along instead of printing underneath them.
+function Dialogue:hintRow()
+    local x = self.boxX
+    local w = self.overScene and (self:sideBustLeft() - SIDE_PAD - self.boxX) or (self.boxW - 24)
+    local src = self:sourceRect()
+    if src then
+        local right = src.x + src.w + 24
+        w = w - (right - x)
+        x = right
+    end
+    return x, self:hintY(), w
+end
+
+-- One rect per footer button, carrying the action it commits.
+--
+-- Grown by exactly the gap the footer band already reserves either side of the pills (speech_box's
+-- FOOTER_GAP / FOOTER_BOTTOM) and not a pixel more. A taller target would be kinder to a thumb and
+-- reach up into the last row of the LINE, where Skip -- which ends the scene -- would be sitting
+-- under the text you were reading.
+local HINT_PAD = 4
+
+function Dialogue:hintRects()
+    local x, y, w = self:hintRow()
+    local segs = self:hintSegments()
+    local rects = ButtonPrompt.rects(segs, x, y, w, { align = "right", pad = HINT_PAD })
+    for i, r in ipairs(rects) do r.action = segs[i].action end
+    return rects
+end
+
+-- The row the footer controls are drawn on. Inside the box, on both surfaces.
 --
 -- Over a live scene it used to STRADDLE the bottom edge -- the box there is the gutter under the
 -- board and every row it gives up is a row of the line, so the hints stepped off the paper rather
@@ -588,8 +616,9 @@ local function pointIn(r, x, y)
     return r and x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
 end
 
-function Dialogue:mousepressed(x, y, button)
-    if button ~= 1 then return end
+-- Everything a pointer can act on, in one place -- so a mouse (which acts on the press) and a finger
+-- (which acts on the release) are answering the same question and cannot drift apart.
+function Dialogue:pressAt(x, y)
     -- The debug "edit this scene" control is tested FIRST: it sits inside the box, and every other
     -- click in the box advances the line, so anything but first-refusal would skip a line each time
     -- the file was opened.
@@ -597,16 +626,18 @@ function Dialogue:mousepressed(x, y, button)
         self:openSource()
         return
     end
-    -- ...and the touch-only Skip plate, for the same reason: it sits inside the box, where every
+    -- ...and the footer's own buttons, for the same reason: they sit inside the box, where every
     -- other press advances the line.
-    if pointIn(self:skipRect(), x, y) then
-        self:finish()
-        return
+    for _, r in ipairs(self:hintRects()) do
+        if pointIn(r, x, y) then
+            if r.action == "skip" then self:finish() else self:confirm() end
+            return
+        end
     end
     -- A click on a choice option commits it; a click anywhere else advances the line.
     if self:choicesActive() and self.choiceRects then
         for i, r in ipairs(self.choiceRects) do
-            if x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h then
+            if pointIn(r, x, y) then
                 self.choiceSel = i
                 self:confirm()
                 return
@@ -619,14 +650,45 @@ function Dialogue:mousepressed(x, y, button)
     self:confirm()
 end
 
--- Hand over a choice option; arrow elsewhere. See ui/cursor.lua.
+-- A FINGER DECIDES NOTHING ON THE PRESS, and that is what made a phone ask twice for every choice.
+--
+-- There is no mouse under a touchscreen: SDL invents one, and the position it presses at is the one
+-- it was already holding -- the motion carrying the finger's own position arrives with the tap, not
+-- before it. So the first tap pressed wherever the LAST one had been (empty box, and nothing
+-- happened) while its motion moved the highlight onto the option under the thumb; the second tap
+-- then pressed at the first tap's position, which by now was that option, and committed it. Two taps
+-- to choose, and worse than slow: change your mind between them and the press commits the option you
+-- have just moved OFF, since that is the position it is still carrying.
+--
+-- The release does not have this problem -- by then the motion has landed -- which is why every other
+-- touch surface in the game already acts there (ui/overworld_map.lua's tap-or-swipe, the board's
+-- drag). This one was the exception, so it is the one that had to be tapped twice. A mouse is
+-- untouched: its press is exactly where it says it is, and waiting for the button to come back up
+-- would only add lag to every line of every scene.
+function Dialogue:mousepressed(x, y, button)
+    if button ~= 1 then return end
+    if InputMode.touch then
+        self.pendingTap = true
+        return
+    end
+    self:pressAt(x, y)
+end
+
+function Dialogue:mousereleased(x, y, button)
+    if button ~= 1 or not self.pendingTap then return end
+    self.pendingTap = nil
+    self:pressAt(x, y)
+end
+
+-- Hand over a choice option or a footer button; arrow elsewhere. See ui/cursor.lua.
 function Dialogue:cursorKind(x, y)
     if pointIn(self:sourceRect(), x, y) then return "hand" end
+    for _, r in ipairs(self:hintRects()) do
+        if pointIn(r, x, y) then return "hand" end
+    end
     if self:choicesActive() and self.choiceRects then
         for _, r in ipairs(self.choiceRects) do
-            if x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h then
-                return "hand"
-            end
+            if pointIn(r, x, y) then return "hand" end
         end
     end
     return "arrow"
@@ -864,30 +926,15 @@ function Dialogue:draw()
         end
     end
 
-    -- Footer control hints, bottom-right of the box.
-    -- Skip is missing from the touch row on purpose: a finger has no Esc and no B, so naming either
-    -- would advertise a way out that is not there. It gets a control of its own instead -- see
-    -- skipRect, drawn below -- which is the only honest way to offer it.
-    local segs
-    if self:choicesActive() then
-        segs = InputMode.pick(
-            { { glyph = "A", label = "Choose" }, { glyph = "B", label = "Skip" } },
-            { { glyph = "Tap", label = "Choose" } },
-            { { glyph = "Enter", label = "Choose" }, { glyph = "Esc", label = "Skip" } })
-    else
-        segs = InputMode.pick(
-            { { glyph = "A", label = "Advance" }, { glyph = "B", label = "Skip" } },
-            { { glyph = "Tap", label = "Advance" } },
-            { { glyph = "Click", label = "Advance" }, { glyph = "Esc", label = "Skip" } })
-    end
-    -- Right-aligned in the box, but pulled in ahead of the side bust when one stands at that end.
-    local hintX, hintY = self.boxX, self:hintY()
-    local hintW = self.overScene and (self:sideBustLeft() - SIDE_PAD - self.boxX) or (self.boxW - 24)
+    -- The footer's controls, bottom-right of the box: Advance (or Choose) and Skip, both of them
+    -- pressable on every device -- see hintSegments.
+    local segs = self:hintSegments()
+    local hintX, hintY, hintW = self:hintRow()
 
     -- The development-only "edit this scene" control takes the other end of the same footer, and the
-    -- hint row is measured from where it stops -- so a long file name pushes the hints along instead
-    -- of printing underneath them. It wears a plate the hints do not, because it is the one thing on
-    -- this row you can click; hovering lights the glyph the way a focused control does.
+    -- button row is measured from where it stops (hintRow) -- so a long file name pushes the buttons
+    -- along instead of printing underneath them. It wears a plate of its own; hovering lights the
+    -- glyph the way a focused control does.
     local source = self:sourceSegments()
     if source then
         local r = self:sourceRect()
@@ -898,23 +945,16 @@ function Dialogue:draw()
         love.graphics.rectangle("line", r.x - 6, r.y, r.w + 12, r.h, Theme.R, Theme.R)
         source[1].color = hovered and Theme.accentAmber or Theme.cursor
         ButtonPrompt.draw(source, r.x, hintY, r.w, { align = "left" })
-        hintX = r.x + r.w + 24
-        hintW = hintW - (hintX - self.boxX)
-    end
-    -- The touch-only Skip plate (see skipRect). Drawn on the same row and in the same dress as the
-    -- source control, because it is the same kind of thing: the one item on this row you press.
-    local skip = self:skipRect()
-    if skip then
-        Theme.set(Theme.slot, 0.75)
-        love.graphics.rectangle("fill", skip.x - 6, skip.y, skip.w + 12, skip.h, Theme.R, Theme.R)
-        Theme.set(Theme.frame)
-        love.graphics.rectangle("line", skip.x - 6, skip.y, skip.w + 12, skip.h, Theme.R, Theme.R)
-        ButtonPrompt.draw({ { glyph = "Skip", label = "", color = Theme.accentAmber } },
-            skip.x, hintY, skip.w, { align = "left" })
-        local right = skip.x + skip.w + 24
-        if right > hintX then hintW = hintW - (right - hintX) hintX = right end
     end
 
+    -- A pointer over one of the two lights its pill. Not on a finger: it has no hover, and its last
+    -- press would leave a button lit for the rest of the scene (see input_mode.lua).
+    if InputMode.isMouse() and not InputMode.touch then
+        local rects = ButtonPrompt.rects(segs, hintX, hintY, hintW, { align = "right", pad = HINT_PAD })
+        for i, seg in ipairs(segs) do
+            seg.hovered = pointIn(rects[i], self.mouseX or -1, self.mouseY or -1)
+        end
+    end
     ButtonPrompt.draw(segs, hintX, hintY, hintW, { align = "right" })
 
     love.graphics.setColor(1, 1, 1)

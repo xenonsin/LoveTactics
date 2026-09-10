@@ -32,6 +32,9 @@ local GLYPH_COLOR = {
 local DEFAULT_GLYPH = { 0.85, 0.87, 0.92 }
 local LABEL_COLOR = { 0.62, 0.66, 0.74 }
 local PILL_BG = { 0.20, 0.22, 0.28, 0.9 }
+-- Lit where a host has made its row clickable and the pointer is over a segment (`seg.hovered`).
+local PILL_HOVER = { 0.32, 0.35, 0.44, 0.95 }
+local LABEL_HOVER = { 0.88, 0.90, 0.95 }
 
 local PAD = 6      -- glyph-pill inner padding
 local GAP = 6      -- glyph pill -> its label
@@ -47,18 +50,25 @@ local function rowWidth(segments, gf, lf)
     return w
 end
 
+-- Where the row starts, given its alignment inside (x, w). Shared by draw and rects, so a hit-test
+-- lands on the pixels the row was drawn at rather than on a second guess at the same arithmetic.
+local function startX(segments, x, w, opts, gf, lf)
+    if opts.align == "center" then return x + (w - rowWidth(segments, gf, lf)) / 2 end
+    if opts.align == "right" then return x + w - rowWidth(segments, gf, lf) end
+    return x
+end
+
 function ButtonPrompt.draw(segments, x, y, w, opts)
     if not segments or #segments == 0 then return end
     opts = opts or {}
     local gf, lf = fonts()
     local gh = gf:getHeight()
-    local cx = x
-    if opts.align == "center" then cx = x + (w - rowWidth(segments, gf, lf)) / 2
-    elseif opts.align == "right" then cx = x + w - rowWidth(segments, gf, lf) end
+    local cx = startX(segments, x, w, opts, gf, lf)
 
     for _, seg in ipairs(segments) do
         local gw = gf:getWidth(seg.glyph) + PAD * 2
-        love.graphics.setColor(PILL_BG[1], PILL_BG[2], PILL_BG[3], PILL_BG[4])
+        local pill = seg.hovered and PILL_HOVER or PILL_BG
+        love.graphics.setColor(pill[1], pill[2], pill[3], pill[4])
         love.graphics.rectangle("fill", cx, y - 2, gw, gh + 4, 4, 4)
         local gc = seg.color or GLYPH_COLOR[seg.glyph] or DEFAULT_GLYPH
         love.graphics.setFont(gf)
@@ -67,7 +77,8 @@ function ButtonPrompt.draw(segments, x, y, w, opts)
         cx = cx + gw + GAP
 
         love.graphics.setFont(lf)
-        love.graphics.setColor(LABEL_COLOR[1], LABEL_COLOR[2], LABEL_COLOR[3])
+        local lc = seg.hovered and LABEL_HOVER or LABEL_COLOR
+        love.graphics.setColor(lc[1], lc[2], lc[3])
         love.graphics.print(seg.label, cx, y)
         cx = cx + lf:getWidth(seg.label) + SEG_GAP
     end
@@ -81,6 +92,25 @@ function ButtonPrompt.width(segments)
     if not segments or #segments == 0 then return 0 end
     local gf, lf = fonts()
     return rowWidth(segments, gf, lf)
+end
+
+-- Where each segment lands, in the same layout draw() uses: one rect per segment, in order, covering
+-- the glyph pill AND its label. What a host needs when the row is not a hint but the control itself
+-- (ui/dialogue.lua's Advance / Skip). `opts.pad` grows each rect vertically, so a 16px-tall row is
+-- still something a thumb can hit.
+function ButtonPrompt.rects(segments, x, y, w, opts)
+    if not segments or #segments == 0 then return {} end
+    opts = opts or {}
+    local gf, lf = fonts()
+    local pad = opts.pad or 0
+    local cx = startX(segments, x, w, opts, gf, lf)
+    local out = {}
+    for i, seg in ipairs(segments) do
+        local sw = gf:getWidth(seg.glyph) + PAD * 2 + GAP + lf:getWidth(seg.label)
+        out[i] = { x = cx, y = y - 2 - pad, w = sw, h = gf:getHeight() + 4 + pad * 2 }
+        cx = cx + sw + SEG_GAP
+    end
+    return out
 end
 
 -- The height of a rendered row, for hit-testing a clickable prompt.

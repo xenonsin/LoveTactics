@@ -50,15 +50,42 @@ return {
     {
         -- Reachability, not wording. love.draw cannot run headlessly, so the route is read off the
         -- source -- the same check the quarter turn and the drawn cursor needed, for the same reason.
-        name = "the dialogue offers a finger a way out of a scene",
+        name = "the dialogue's advance and skip are controls, not key names",
         fn = function()
             local src = assert(love.filesystem.read("ui/dialogue.lua"), "ui/dialogue.lua is readable")
-            assert(src:find("function Dialogue:skipRect"),
-                "no skip control -- a touch player cannot leave a scene, and Esc is not on the device")
-            assert(src:find("pointIn%(self:skipRect%(%)"),
-                "the skip control is drawn but never hit-tested, so pressing it does nothing")
-            assert(src:find("InputMode%.touch"),
-                "skipRect must be gated on touch: the desktop row already names a key that works")
+            assert(src:find("function Dialogue:hintSegments"),
+                "no footer controls -- a finger has no Esc and a mouse should not need one")
+            assert(src:find('action = "skip"') and src:find('action = "confirm"'),
+                "the footer row names no actions, so it is a hint again and nothing presses it")
+            assert(src:find("function Dialogue:hintRects"),
+                "the row is drawn but has no rects, so there is nothing to hit-test")
+            assert(src:find('r%.action == "skip"'),
+                "the footer buttons are drawn but never hit-tested, so pressing one does nothing")
+            -- The pair must be UNGATED: this is the whole repair. A branch that hands Skip to one
+            -- device only is how a phone lost it in the first place, and how a mouse never had it.
+            local segs = src:match("function Dialogue:hintSegments.-\nend")
+            assert(segs and not segs:find("if "),
+                "hintSegments branches -- a device is being left without a way out of a scene")
+        end,
+    },
+    {
+        -- Reported from a handset: every choice in every scene had to be tapped twice. There is no
+        -- mouse under a touchscreen -- SDL invents one, and the press it synthesises carries the
+        -- position it was already holding, the motion with the finger's own position arriving WITH
+        -- the tap rather than before it. So the first tap moved the highlight and pressed empty box,
+        -- and the second pressed where the first had been. Read off the source: love.draw cannot run
+        -- headlessly, so there are no choice rects to press at.
+        name = "a finger's tap on a scene is answered by the release, not the press",
+        fn = function()
+            local src = assert(love.filesystem.read("ui/dialogue.lua"), "ui/dialogue.lua is readable")
+            local press = src:match("function Dialogue:mousepressed.-\nend")
+            assert(press, "the dialogue's press handler is gone or renamed")
+            assert(press:find("InputMode%.touch") and press:find("pendingTap"),
+                "a tap acts on the press again -- the position it carries is the LAST tap's, so the "
+                .. "first tap on a choice does nothing and the second commits whatever you moved off")
+            local release = src:match("function Dialogue:mousereleased.-\nend")
+            assert(release and release:find("pressAt"),
+                "nothing answers the tap on the release, so a finger cannot choose at all")
         end,
     },
     {
