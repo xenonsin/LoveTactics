@@ -13,7 +13,8 @@
 -- Stash -> character is one step: clicking (or confirming on) a stash item EQUIPS the whole thing to
 -- the focused member's next open slot (stackables merge first). Reordering a member's grid is the
 -- separate action -- pick-then-place with keyboard/gamepad, drag-and-drop with the mouse -- and a
--- mouse drag from the stash onto a specific cell/portrait is how you aim a slot, member, or quantity.
+-- mouse drag from the stash onto a specific cell/portrait is how you aim a slot or a member. Either
+-- reach asks "how many?" when the stack holds more than one.
 --
 -- Three-input + mouse-only: click cells/rows/portraits, or drag; keyboard (arrows + Enter, Tab to
 -- switch grid<->stash, Q/E character, Esc); gamepad (D-pad + A, Y grid<->stash, shoulders character,
@@ -1130,9 +1131,14 @@ function Party:canMergeStack(char, stashItem)
     return false
 end
 
--- Auto-equip a whole stash item onto the focused member's first empty slot (stackables merge into an
+-- Auto-equip a stash item onto the focused member's first empty slot (stackables merge into an
 -- existing same-id stack first). This is what a plain click / confirm on a stash cell does; a mouse
--- drag onto a specific cell or portrait is the way to aim a slot, member, or a partial quantity.
+-- drag onto a specific cell or portrait is the way to aim a slot or a member.
+--
+-- HOW MANY IS ASKED THE SAME WAY A DRAG ASKS IT. Carrying three potions to the focused member is a
+-- decision about how many, and the answer does not depend on how the player reached for them -- so a
+-- stack holding more than one opens the same "Move how many?" popup a drag onto a cell opens, rather
+-- than emptying itself onto the member because the reach was a click.
 function Party:equipStashItem(poolIndex)
     local char = self:currentChar()
     local stashItem = self.player and self.player.stash and self.player.stash[self:stashIndex(poolIndex)]
@@ -1143,7 +1149,11 @@ function Party:equipStashItem(poolIndex)
         self:setMsg((char.name or "This character") .. "'s inventory is full.", false)
         return
     end
-    self:commitStashToGrid(stashItem, slot, stashItem.quantity or 1)
+    if Item.isStackable(stashItem) and (stashItem.quantity or 1) > 1 then
+        self:openQuantityPopup(stashItem, slot)
+    else
+        self:commitStashToGrid(stashItem, slot, stashItem.quantity or 1)
+    end
 end
 
 -- ---------------------------------------------------------------------------
@@ -2702,7 +2712,7 @@ function Party:mousepressed(x, y, button)
                 self:stowFromGrid(self.grid.picked)
             else
                 -- Begin a potential drag. Released without dragging, this reads as a click and
-                -- auto-equips (mousereleased); dragged, it lets the player aim a slot/member/quantity.
+                -- auto-equips (mousereleased); dragged, it lets the player aim a slot or a member.
                 self:beginDrag("pool", idx, x, y)
             end
         end
