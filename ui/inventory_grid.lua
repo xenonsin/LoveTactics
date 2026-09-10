@@ -94,6 +94,7 @@ function InventoryGrid.new(opts)
     self.cursor = 1       -- keyboard/gamepad cursor cell (1..9)
     self.picked = nil     -- the cell currently picked up, or nil
     self.hover = nil      -- mouse-hover cell, or nil
+    self.auraHint = nil   -- item the host says is under the pointer/cursor (setAuraHint), or nil
     self.nameFont = Theme.body(11)
     self.bigFont = Theme.display(22)
     self.countFont = Theme.body(12)
@@ -155,6 +156,28 @@ function InventoryGrid:candidateCells()
     local item = self:heldItem()
     if not item then return {} end
     return Combat.adjacencyCandidateCells(self.char, item)
+end
+
+-- The item the grid is answering ABOUT: one in hand (picked up here, or dragged in from the host's
+-- stash), or -- when the hands are empty -- whatever the host says is under the pointer/cursor
+-- (setAuraHint). A held item wins, since what you are carrying is the louder question.
+function InventoryGrid:auraSubject()
+    return self:heldItem() or self.auraHint
+end
+
+-- Tell the grid which item is merely being LOOKED at, so the aura marks answer for a hover as well as
+-- for a pickup. Pass nil when nothing is under the pointer. Separate from setHeldItem on purpose: the
+-- green candidate wash means "drop it here", which is only true of an item actually in hand.
+function InventoryGrid:setAuraHint(item)
+    self.auraHint = item
+end
+
+-- Cells holding an item the subject would pair with through an aura (Combat.auraPairCells) -- the
+-- censer's neighbours-to-be, marked before the placement that would make them neighbours.
+function InventoryGrid:auraCells()
+    local item = self:auraSubject()
+    if not item then return {} end
+    return Combat.auraPairCells(self.char, item)
 end
 
 -- Cell rect for a 1-based index (row-major -- matches ui/combat_panel.lua and Character grid math).
@@ -252,6 +275,8 @@ function InventoryGrid:draw()
     -- by the plate wash and the outline pass below.
     local candidates = self:candidateCells()
     local unusable = self:unusableCells()
+    -- ...and the cells that would GAIN from what the player is holding or pointing at.
+    local auraCells = self:auraCells()
 
     -- Cell plates, then the adjacency wires across them -- both under the items, so a wire reads
     -- over the plate without ever covering an icon or a name band.
@@ -260,6 +285,8 @@ function InventoryGrid:draw()
         local item = inv[i]
         if candidates[i] then
             love.graphics.setColor(0.16, 0.30, 0.20) -- green: drop the held item here and it works
+        elseif auraCells[i] then
+            love.graphics.setColor(0.30, 0.17, 0.08) -- ember: this item gains from what's in hand
         elseif item and Item.isBound(item) then
             love.graphics.setColor(0.24, 0.20, 0.14) -- a warm plate marks a bound (locked) cell
         else
@@ -355,6 +382,26 @@ function InventoryGrid:draw()
             love.graphics.rectangle("fill", sx + 3, sy + 3, w + 8, 16, 4, 4)
             Theme.set(Theme.ink)
             love.graphics.print(label, sx + 7, sy + 4)
+        end
+    end
+
+    -- An ember GLOW inside every cell whose item would gain from the one in hand (or under the
+    -- pointer): the tint the aura wires and their legend row already carry, so the mark needs no
+    -- legend of its own -- it is the wire's colour, promising the wire.
+    --
+    -- Deliberately NOT a rim, and drawn a few pixels in from the edge. The two crisp rims are verdicts
+    -- about the CELL -- green "drop it here", red "this one is broken" -- and a third crisp rim in a
+    -- third colour would be read as a third verdict, which this is not: it is a statement about the
+    -- ITEM sitting there. Worse, ember and the warning red are close enough at this size that the two
+    -- would be told apart by hue alone. A soft halo inside a cell that may also wear a rim says both
+    -- things at once, and the plate wash beneath it carries the colour where an icon covers the rest.
+    for i = 1, COLS * ROWS do
+        if auraCells[i] then
+            local sx, sy, sw, sh = self:slotRect(i)
+            local c = AdjacencyLinks.COLOR.aura
+            love.graphics.setColor(c[1], c[2], c[3], 0.30)
+            love.graphics.setLineWidth(6)
+            love.graphics.rectangle("line", sx + 7, sy + 7, sw - 14, sh - 14, 5, 5)
         end
     end
 

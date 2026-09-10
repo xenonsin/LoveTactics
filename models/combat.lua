@@ -5735,6 +5735,34 @@ function Combat.adjacencyCandidateCells(char, item)
     return out
 end
 
+-- Every cell of `char`'s grid holding an item that would PAIR with `item` through an aura, as a set
+-- keyed by cell index -- the cells an "aura" wire would run to if the two ended up side by side
+-- (Combat.adjacencyLinks draws that wire once they are). Both directions count, because the question
+-- the player is asking is the same one either way: the held censer's blessing reaching a sword, and a
+-- held sword walking into an equipped censer's blessing, are one pairing seen from its two ends.
+--
+-- Unlike adjacencyCandidateCells, this does NOT say where to drop the item. It names the items that
+-- gain, which is what the loadout rims in the aura's own ember (ui/inventory_grid.lua) while a piece is
+-- held, dragged or merely pointed at -- an aura is otherwise invisible until the two are already
+-- touching, so the pairing has to be readable BEFORE the placement that makes it.
+--
+-- `item` is never its own partner: a piece already in this grid answers the same as one still in the
+-- stash, so the marks don't change under the player as an item is picked up.
+function Combat.auraPairCells(char, item)
+    local out = {}
+    if not (char and item) then return out end
+    for i = 1, Character.MAX_INVENTORY do
+        local nb = char.inventory[i]
+        if nb and nb ~= item then
+            if (item.aura and Combat.auraApplies(item.aura, nb))
+                or (nb.aura and Combat.auraApplies(nb.aura, item)) then
+                out[i] = true
+            end
+        end
+    end
+    return out
+end
+
 -- Why `item` cannot reach what it needs from where `char` keeps it, or nil when it can. The Loadout
 -- screen's second warning and the twin of Combat.unpayableCosts: that one asks whether this body can
 -- pay for a thing, this one whether the GRID is arranged so the thing works at all.

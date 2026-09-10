@@ -3,6 +3,10 @@
 -- a `requiresAdjacent` (Rain of Arrows needs a bow beside it) lights only the cells where that
 -- requirement would actually be met, so the player can see where it goes instead of guessing and
 -- finding out in battle. Pure logic, headless.
+--
+-- The second half covers the other hint on that grid: Combat.auraPairCells, the ember glow that names
+-- the items an aura would REACH. A requirement lights where a thing may go; an aura lights what it
+-- would do once there, which is the half that is otherwise invisible until the two already touch.
 
 local Character = require("models.character")
 local Item = require("models.item")
@@ -123,6 +127,98 @@ return {
                     char.inventory[i] = nil
                     assert((cells[i] or false) == met,
                         "cell " .. i .. ": the hint and the gate disagree")
+                end
+            end
+        end,
+    },
+    {
+        name = "auraPairCells lights the kit an aura would reach, and nothing it wouldn't",
+        fn = function()
+            local char = emptyChar("character_archer")
+            char.inventory[1] = Item.instantiate("weapon_iron_sword")       -- weapon: blessed
+            char.inventory[2] = Item.instantiate("ability_rain_of_arrows")  -- ability: blessed
+            char.inventory[3] = Item.instantiate("armor_leather_armor")     -- armor: not in appliesTo
+            char.inventory[4] = Item.instantiate("consumable_healing_potion") -- nor a draught
+            local censer = Item.instantiate("utility_censer_of_dawn")
+
+            local cells = Combat.auraPairCells(char, censer)
+            assert(cells[1] and cells[2], "the censer's blessing reaches a weapon and an ability")
+            assert(not cells[3] and not cells[4],
+                "it reaches neither armor nor a potion: got " .. table.concat(keys(cells), ","))
+            assert(not cells[9], "an empty cell holds nothing to gain")
+        end,
+    },
+    {
+        name = "the glow reads both ends of a pairing: the aura held, and the aura already worn",
+        fn = function()
+            -- The player asking "what does this go with" is asking one question, and the answer must
+            -- not depend on which of the two pieces happens to be in hand.
+            local char = emptyChar("character_archer")
+            char.inventory[5] = Item.instantiate("consumable_fire_stone") -- an aura already in the grid
+            local sword = Item.instantiate("weapon_iron_sword")           -- and a plain blade in hand
+
+            assert(Combat.auraPairCells(char, sword)[5],
+                "the stone that would infuse this blade lights up, though the blade carries no aura")
+        end,
+    },
+    {
+        name = "an exception is not a pairing -- exceptTags kit stays dark",
+        fn = function()
+            -- Hand-built rather than instantiated: the censer's carve-out is `shadow`, and no shipped
+            -- WEAPON carries that tag today (the only one is a utility relic, which the aura does not
+            -- reach anyway). A case that could only pass would prove nothing about the filter, so the
+            -- input is written out here -- the same plain shape Combat.auraApplies reads off an item.
+            local char = emptyChar("character_archer")
+            char.inventory[1] = Item.instantiate("weapon_iron_sword")
+            char.inventory[2] = { id = "weapon_shadow_test", name = "Shadow Blade",
+                type = "weapon", tags = { "sword", "shadow" } }
+            local censer = Item.instantiate("utility_censer_of_dawn")
+
+            local cells = Combat.auraPairCells(char, censer)
+            assert(cells[1], "the plain blade is blessed")
+            assert(not cells[2], "kit that already channels shadow refuses the blessing, and stays dark")
+        end,
+    },
+    {
+        name = "an item with no aura at either end lights nothing",
+        fn = function()
+            local char = emptyChar("character_archer")
+            char.inventory[1] = Item.instantiate("weapon_iron_sword")
+            char.inventory[5] = Item.instantiate("armor_leather_armor")
+            assert(#keys(Combat.auraPairCells(char, Item.instantiate("weapon_iron_bow"))) == 0,
+                "two plain weapons and a coat make no pairing to promise")
+        end,
+    },
+    {
+        name = "a glowing cell is a wire the grid will really draw once the two touch",
+        fn = function()
+            -- The mark is drawn in the aura wire's own colour, so it promises that wire. Walk the
+            -- censer into every free cell and check the two reads agree: a cell that glows must produce
+            -- an "aura" link the moment the censer lands beside it, and one that doesn't must not.
+            local char = emptyChar("character_archer")
+            char.inventory[1] = Item.instantiate("weapon_iron_sword")
+            char.inventory[9] = Item.instantiate("armor_leather_armor")
+            local censer = Item.instantiate("utility_censer_of_dawn")
+            local glowing = Combat.auraPairCells(char, censer)
+
+            for cell = 1, 9 do
+                if char.inventory[cell] == nil then
+                    char.inventory[cell] = censer
+                    local wired = {}
+                    for _, link in ipairs(Combat.adjacencyLinks(char)) do
+                        if link.kind == "aura" and link.from == cell then wired[link.to] = true end
+                    end
+                    char.inventory[cell] = nil
+                    for _, other in ipairs({ 1, 9 }) do
+                        local adjacent = false
+                        for _, i in ipairs(Character.adjacentIndices(cell)) do
+                            if i == other then adjacent = true end
+                        end
+                        -- Adjacent AND glowing is exactly the wire; anything else draws none.
+                        assert((wired[other] or false) == (adjacent and (glowing[other] or false)),
+                            "censer in cell " .. cell .. ": the glow on cell " .. other ..
+                                " disagrees with the wire")
+                    end
                 end
             end
         end,

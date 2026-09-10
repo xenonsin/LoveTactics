@@ -7,7 +7,7 @@
 -- what is not offered.
 return {
     name = "Censer of Dawn",
-    description = "Adjacent weapons and abilities strike as holy. Shadow kit refuses it.",
+    description = "Adjacent weapons and abilities gain holy.",
     flavor = "The Cathedral insists it purifies. It never explains why it must be carried at all times, nor what the smoke keeps at arm's length.",
     sprite = "assets/items/censer_of_dawn.png",
     type = "utility",

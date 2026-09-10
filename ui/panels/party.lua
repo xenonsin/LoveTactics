@@ -2151,6 +2151,11 @@ function Party:drawMemberGrid()
         incoming = self.pool:itemAt(self.pool.picked)
     end
     self.grid:setHeldItem(incoming)
+    -- ...and the item merely being LOOKED at, which is what lights the aura glow when nothing is in
+    -- hand. An aura is the one thing on this screen that cannot be read off the item alone -- the
+    -- tooltip says "adjacent weapons and abilities gain holy", and which of THESE nine that is stays a
+    -- puzzle until the censer is already placed. Pointing at it answers first.
+    self.grid:setAuraHint(self:shownItem())
 
     love.graphics.setFont(self.smallFont)
     Theme.set(Theme.muted)
@@ -2447,6 +2452,30 @@ end
 -- The focused member goes down as the tooltip's `owner` instead, including for a STASH cell, where the
 -- question the player is actually asking is "should this go to them" -- so the box priced against
 -- whoever the sheet is showing is the one that can answer it before the item is handed over.
+-- The item ON SHOW, and which half of the screen it came from ("pool" or "grid"): whatever the pointer
+-- is over in mouse mode, or the focused region's cursor cell on keyboard/gamepad. Nothing when an
+-- editor or the filter dropdown owns the screen.
+--
+-- ONE definition, because two surfaces ask the same question of it -- the tooltip that describes the
+-- item, and the member grid's ember glow that says which of the nine cells this item would pair with
+-- through an aura. A hover that explains an item on one surface and lights a different one on the
+-- other is the drift this exists to prevent.
+--
+-- Mouse mode reads the HOVER and never the cursor: a cursor cell sits somewhere at all times, and a
+-- glow the player never asked for would burn on the grid from the moment the screen opened.
+function Party:shownItem()
+    if self:columnEditor() or self.filterOpen then return nil end
+    local char = self:currentChar()
+    if InputMode.isMouse() then
+        if self.pool.hover then return self.pool:itemAt(self.pool.hover), "pool" end
+        if self.grid.hover then return char and char.inventory[self.grid.hover], "grid" end
+        return nil
+    end
+    if self.focus == "pool" then return self.pool:itemAt(self.pool.cursor), "pool" end
+    if self.focus == "grid" then return char and char.inventory[self.grid.cursor], "grid" end
+    return nil
+end
+
 function Party:drawActiveTooltip()
     if self:columnEditor() then return end -- an editor labels its own fields; no item is on show
     if self.filterOpen then return end     -- the dropdown overlays the stash; no cell tooltip beneath it
@@ -2456,26 +2485,21 @@ function Party:drawActiveTooltip()
         -- The star badge under the pointer wins over the item tooltip (they'd otherwise stack in the
         -- cell's top-right corner), naming what a click there does.
         if self.grid.hoverStar then self:drawStarTooltip(self.grid.hoverStar) return end
-        local item, maxRight
-        if self.pool.hover then
-            item, maxRight = self.pool:itemAt(self.pool.hover), Scale.WIDTH -- ItemTooltip flips left
-        elseif self.grid.hover then
-            local char = self:currentChar()
-            item, maxRight = char and char.inventory[self.grid.hover], self.pool.x
-        end
+        local item, region = self:shownItem()
+        -- A stash box is free to run to the screen edge (ItemTooltip flips it left); a grid box stops
+        -- at the stash column.
+        local maxRight = (region == "pool") and Scale.WIDTH or self.pool.x
         if item then ItemTooltip.draw(item, self.mx, self.my, maxRight, nil, self:currentChar()) end
         return
     end
 
-    -- Keyboard / gamepad: anchor at the focused region's cursor cell.
-    local item, maxRight, ax, ay
-    if self.focus == "pool" then
-        item = self.pool:itemAt(self.pool.cursor)
+    -- Keyboard / gamepad: same subject, anchored at the focused region's cursor cell.
+    local item, region = self:shownItem()
+    local maxRight, ax, ay
+    if region == "pool" then
         local cx, cy, cw = self.pool:cellRect(self.pool.cursor)
         if cx then maxRight, ax, ay = Scale.WIDTH, cx + cw, cy end
-    elseif self.focus == "grid" then
-        local char = self:currentChar()
-        item = char and char.inventory[self.grid.cursor]
+    elseif region == "grid" then
         local cx, cy, cw = self.grid:slotRect(self.grid.cursor)
         maxRight, ax, ay = self.pool.x, cx + cw, cy
     end
