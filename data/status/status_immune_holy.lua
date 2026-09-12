@@ -7,7 +7,7 @@
 return {
     name = "Immune: Holy",
     abbr = "Iho",
-    description = "Holy-sealed: holy damage is voided entirely for a short time.",
+    description = "Holy-sealed: holy damage is voided entirely.",
     color = { 0.910, 0.816, 0.541 }, -- badge tint (holy's own hue; the abbr marks the state)
     duration = 6,            -- ~1 turn: the answer to a telegraphed blow, gone before it is a stance
     immune = { holy = true },

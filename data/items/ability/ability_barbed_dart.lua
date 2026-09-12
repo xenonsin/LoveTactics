@@ -13,7 +13,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Barbed Dart",
-    description = "Deals light piercing damage and inflicts Vulnerable: Pierce.",
+    description = "Inflicts Vulnerable: Pierce.",
     flavor = "You do not throw it to wound. You throw it so the arrows after it mean more.",
     sprite = "assets/items/ability_barbed_dart.png",
     type = "ability",

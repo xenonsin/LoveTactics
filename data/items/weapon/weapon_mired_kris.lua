@@ -19,7 +19,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Mired Kris",
-    description = "Deals damage and inflicts Bleed and Mired.",
+    description = "Inflicts Bleed and Mired.",
     flavor = "The Undercroft does not sell it to people who want someone dead. It sells it to people who want someone stuck.",
     sprite = "assets/items/mired_kris.png",
     type = "weapon",

@@ -13,7 +13,7 @@
 -- Generic, like the Mask beside it: a wolf, a construct or a raised corpse all catch the wind.
 return {
     name = "Ghost-Wind",
-    description = "Everything you summon arrives Hasted.",
+    description = "Grants Haste to everything you summon.",
     flavor = "It does not carry them, exactly. It agrees with them about where they were going.",
     sprite = "assets/items/utility_ghost_wind.png",
     type = "utility",

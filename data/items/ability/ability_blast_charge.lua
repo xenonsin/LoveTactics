@@ -15,7 +15,7 @@
 -- it is a mistake the item will absolutely let you make.
 return {
     name = "Blast Charge",
-    description = "Buries powder on a nearby tile: the first enemy across it detonates, wounding everything adjacent.",
+    description = "Buries powder on a tile. The first foe across it sets off damage in area.",
     flavor = "The Crucible's contribution to siege warfare is patience, sold by the pot.",
     sprite = "assets/items/ability_blast_charge.png",
     type = "ability",

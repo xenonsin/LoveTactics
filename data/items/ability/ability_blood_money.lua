@@ -24,7 +24,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Blood Money",
-    description = "A modest strike, but it spends gold from your purse, and every coin lands as extra damage.",
+    description = "Consume gold from your purse for the blow: increase damage by 1 per 5 gold spent.",
     flavor = "He counted it out onto the table between them. Then he collected the table.",
     sprite = "assets/items/ability_blood_money.png",
     type = "ability",
@@ -41,7 +41,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 5 }, -- the swing still tires you; the purse is the OTHER cost
         damage = Curve.ramp(15, 25), -- fx.amount: the floor, before a single coin is spent
-        description = "Spends up to your affordable pour of gold; each 5 gold adds 1 damage on top of the swing.",
+        description = "Consume gold up to the cap you can afford. Increase damage by 1 per 5 gold spent.",
         effect = function(fx)
             local t = fx.target
             if not t then return end

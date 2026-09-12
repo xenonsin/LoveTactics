@@ -21,7 +21,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Iron Crook",
-    description = "Replaces Wait with Focus. Its strike is honest iron: no ward turns it, and no silence stops it.",
+    description = "Replaces Wait with Focus. Its strike works under Silence and passes a magic ward.",
     flavor = "Four hundred years of theory, and the Archmage's answer to being gagged was a stick with a lump on the end.",
     sprite = "assets/items/iron_crook.png",
     type = "weapon",

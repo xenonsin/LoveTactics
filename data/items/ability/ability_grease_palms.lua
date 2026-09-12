@@ -15,7 +15,7 @@
 -- -- a brief quickening -- so the cast is never dead, it is only ever cheap.
 return {
     name = "Grease Palms",
-    description = "Hastes an ally, and the more gold you spend from your purse, the longer the haste lasts.",
+    description = "Grants Haste, consuming gold from your purse: 1 extra tick per 3 gold spent.",
     flavor = "A door is only locked to those who have not paid the doorman.",
     sprite = "assets/items/ability_grease_palms.png",
     type = "ability",
@@ -31,7 +31,7 @@ return {
         speed = 3,
         support = true,
         cost = { stat = "stamina", amount = 3 },
-        description = "Spends up to your affordable pour of gold to Haste an ally; each 3 gold buys 1 extra tick.",
+        description = "Consume gold up to the cap you can afford. Grants Haste, 1 tick longer per 3 gold spent.",
         effect = function(fx)
             local t = fx.target
             if not t then return end

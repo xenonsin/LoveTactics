@@ -11,7 +11,7 @@
 -- written to reward carrying it rather than to duplicate it.
 return {
     name = "The Wedge",
-    description = "Drives down a lane, shoving and Sundering everything standing in it.",
+    description = "Knockback 2 and inflicts Sunder down the lane ahead of you.",
     flavor = "He is not making a hole to walk through. He is making one for everybody behind him.",
     sprite = "assets/items/sig_the_wedge.png",
     type = "utility",
@@ -23,7 +23,7 @@ return {
         range = 1, -- aim the ADJACENT first tile: forced movement resolves on the dominant axis
         speed = 6,
         cost = { stat = "stamina", amount = 12 },
-        description = "Shoves and Sunders everything down the lane ahead of you.",
+        description = "Knockback 2 and inflicts Sunder on every foe down the lane ahead of you.",
         unlock = { event = "hitDealt", count = 3, text = "Land 3 blows" },
         effect = function(fx)
             -- Walk the lane out from the aimed tile, in the direction it points. Everything caught is

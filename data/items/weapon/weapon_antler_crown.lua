@@ -8,7 +8,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Antler Crown",
-    description = "Sweeps everything in front of it and leaves Charm.",
+    description = "Inflicts Charm in area.",
     flavor = "Stag-headed, and wearing the wood the way somebody wears a name they were given.",
     sprite = "assets/items/antler_crown.png",
     type = "weapon",

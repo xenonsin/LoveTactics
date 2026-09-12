@@ -27,7 +27,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Skeptic's Harness",
-    description = "You cannot use magic at all. Magical afflictions land for a fraction of their duration, or not at all.",
+    description = "Applies Magic Denied. Magical afflictions land for a fraction of their duration, or not at all.",
     flavor = "Worn by someone who has decided, as a matter of settled fact, that magic is not real. It is wrong. It also works.",
     sprite = "assets/items/skeptics_harness.png",
     type = "armor",

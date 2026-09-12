@@ -22,7 +22,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Sworn Aegis",
-    description = "The first hit each turn on an adjacent ally is taken by you instead.",
+    description = "Takes the first hit each turn on an adjacent ally in their place.",
     flavor = "The shield the oath was sworn on, and it never leaves your hand. A knight is the promise, not the steel.",
     sprite = "assets/items/sig_sworn_aegis.png",
     type = "armor", -- a shield: `bound` (not the type) is what locks it in place

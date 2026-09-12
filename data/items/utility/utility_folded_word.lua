@@ -11,7 +11,7 @@
 -- turns of it.
 return {
     name = "The Folded Word",
-    description = "Your next three blows each carry the element of your last spell.",
+    description = "Grants your next three blows the element of your last spell.",
     flavor = "He stopped saying them out loud some years ago. They go in the swing now.",
     sprite = "assets/items/sig_folded_word.png",
     type = "utility",

@@ -43,7 +43,7 @@ return {
             when = function(unit) return require("models.combat").chargePool(unit, "tempo") >= 1 end,
             text = "Hold Tempo by pressing one foe",
         },
-        description = "Consume all Tempo. Increase damage by 40% per Tempo spent. Duelbound foes only.",
+        description = "Consume all Tempo: increase damage by 40% per Tempo spent. Duelbound foes only.",
         -- The duel gate lives in the EFFECT rather than in `usable`, because `usable` is handed only
         -- (unit, item) -- a pure read of the bearer and its grid, with no target in scope
         -- (Combat.itemBlockReason). So the button stays live and the thrust declines on arrival,

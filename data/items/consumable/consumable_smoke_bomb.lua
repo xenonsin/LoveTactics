@@ -14,7 +14,7 @@
 -- which is the line between this and armor_smokecloth_wrap, the woven once-per-battle version.
 return {
     name = "Smoke Bomb",
-    description = "The next attack that would hit you is lost in smoke; you slip two tiles clear. One bomb per escape.",
+    description = "Deflects the next attack that would hit you and slips you two tiles clear.",
     flavor = "The Undercroft does not teach fighting. It teaches leaving.",
     sprite = "assets/items/smoke_bomb.png",
     type = "consumable",

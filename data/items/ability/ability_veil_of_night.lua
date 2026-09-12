@@ -22,7 +22,7 @@
 -- whether you want the enemy to be unable to reach you or unable to shoot you.
 return {
     name = "Veil of Night",
-    description = "Blots out a 3x3 of ground. Nothing can see a line across it; walking through is free.",
+    description = "Leaves Darkness in area.",
     flavor = "It is not a shadow. A shadow is what light leaves behind, and there is nothing behind this.",
     sprite = "assets/items/ability_silence.png", -- placeholder until its own art exists
     type = "ability",

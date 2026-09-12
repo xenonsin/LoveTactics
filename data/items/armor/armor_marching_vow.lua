@@ -14,7 +14,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Marching Vow",
-    description = "Spends your Zeal to lay consecrated ground around you, healing your side and burning theirs.",
+    description = "Consume Zeal to leave Sacred Ground around you, healing your side and burning theirs.",
     flavor = "The vow was never to win. It was to keep going, and to bring the ground with him.",
     sprite = "assets/items/sig_marching_vow.png",
     type = "armor",

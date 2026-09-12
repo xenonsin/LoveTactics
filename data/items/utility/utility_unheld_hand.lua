@@ -17,7 +17,7 @@
 -- spend rather than adding to a store -- the copy below is why other pools are not clobbered with it.
 return {
     name = "The Unheld Hand",
-    description = "Refills your chi to everything your fists have earned this fight.",
+    description = "Restores every point of chi you have spent this fight.",
     flavor = "The hand that holds nothing is the one with something left in it.",
     sprite = "assets/items/sig_unheld_hand.png",
     type = "utility",

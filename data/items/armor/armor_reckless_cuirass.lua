@@ -30,7 +30,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Reckless Cuirass",
-    description = "Increases the damage you deal, and the physical damage you take.",
+    description = "Grants bonus damage, and physical blows land on you for 3 more.",
     flavor = "The Colosseum's smiths cut the plate away where it was slowing the swing, and then kept going.",
     sprite = "assets/items/armor_reckless_cuirass.png",
     type = "armor",

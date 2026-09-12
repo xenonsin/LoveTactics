@@ -7,7 +7,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Leaping Crash",
-    description = "Leaps to an empty tile and slams down, damaging everything around you.",
+    description = "Leaps to an empty tile and deals damage in area.",
     flavor = "A gap-closer and an opener at once. The Colosseum mostly loves the noise.",
     sprite = "assets/items/ability_leaping_crash.png",
     type = "ability",

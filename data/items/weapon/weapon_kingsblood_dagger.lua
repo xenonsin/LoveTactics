@@ -17,7 +17,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Kingsblood Dagger",
-    description = "Inflicts a deep Bleed. Deal 50% more damage to a bleeding foe.",
+    description = "Inflicts a Bleed of 5. Deal 50% more damage to a foe that already carries Bleed.",
     flavor = "The Undercroft never says whose blood named it, only what the name is worth. It does not make the opening; it takes what is already open.",
     sprite = "assets/items/kingsblood_dagger.png",
     type = "weapon",

@@ -22,7 +22,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Unreturning",
-    description = "Fires a dark bolt; a foe it kills leaves a corpse at once and cannot be revived this battle.",
+    description = "Deals damage. A foe it kills leaves a corpse at once and cannot be revived this battle.",
     flavor = "The Arcanum does not call it cruel. It calls it tidy: a death that files itself.",
     sprite = "assets/items/the_unreturning.png",
     type = "weapon",

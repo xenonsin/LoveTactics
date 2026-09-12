@@ -18,7 +18,7 @@
 -- Natural kit: no class, no price, noSteal (tests/bestiary_spec.lua).
 return {
     name = "Marginal Note",
-    description = "Unravels the first spell aimed at it, and calls in its rank once wounded.",
+    description = "Deflects the first spell aimed at it, and calls in its rank once wounded.",
     flavor = "Somebody argued with the Codex in its own margins, at length, and was eventually answered.",
     sprite = "assets/items/marginal_note.png",
     type = "utility",

@@ -5,7 +5,7 @@
 -- without stopping, held open until the standard is cut down. Modeled on ability_rally_banner.
 return {
     name = "March-Warden's Standard",
-    description = "Plants a standard whose 3x3 of ground Halts any foe that crosses it. Cut it down to lift the zone.",
+    description = "Plants a standard whose 3x3 of ground inflicts Halt on any foe that crosses it. Cut it down to lift the zone.",
     flavor = "The March does not hold the line with bodies. It teaches a patch of ground to say no.",
     sprite = "assets/items/ability_march_wardens_standard.png",
     type = "ability",

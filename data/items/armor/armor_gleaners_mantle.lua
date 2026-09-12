@@ -40,7 +40,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Gleaner's Mantle",
-    description = "Banks a charge from every spell cast nearby; spend them all to ward the ring against magic.",
+    description = "Banks a charge from every spell cast nearby; consume them all to ward the ring against magic.",
     flavor = "The Arcanum rules that ambient working is unowned. The ruling was written by people wearing these.",
     sprite = "assets/items/armor_gleaners_mantle.png",
     type = "armor",
@@ -51,7 +51,7 @@ return {
     bonus = { magicDefense = Curve.ramp(4, 14), movement = -1 },
     resist = { magical = 2 },
     activeAbility = {
-        description = "Spends the whole bank: a Magical Barrier over you and every adjacent ally, one blow warded per 3 charges.",
+        description = "Consume the whole bank: grants Magical Barrier to you and adjacent allies, one blow per 3 charges.",
         -- Self-centred rather than aimed: the hem covers the ring the wearer is standing in, and there
         -- is nothing to choose about where that is (cf. Answering Blow, built the same way).
         target = "self",

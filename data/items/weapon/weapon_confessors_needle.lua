@@ -9,7 +9,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Confessor's Needle",
-    description = "Inflicts Bleed and holy damage; executes a failing foe, and executes a Marked one from far higher.",
+    description = "Inflicts Bleed. Executes a foe under a tenth of its health, or a Marked one under a third.",
     flavor = "The charge is read. The Mark is the verdict. This is only the sentence.",
     sprite = "assets/items/weapon_confessors_needle.png",
     type = "weapon",

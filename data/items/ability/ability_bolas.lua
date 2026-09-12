@@ -11,7 +11,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Bolas",
-    description = "Deals damage and inflicts Root.",
+    description = "Inflicts Root.",
     flavor = "The Lodge tracks. The Undercroft collects. This is the knot where the two trades meet.",
     sprite = "assets/items/ability_bolas.png",
     type = "ability",

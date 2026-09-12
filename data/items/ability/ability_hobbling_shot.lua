@@ -5,7 +5,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Hobbling Shot",
-    description = "Deals damage and inflicts Cripple. Requires an adjacent bow.",
+    description = "Inflicts Cripple. Requires an adjacent bow.",
     flavor = "An arrow to the leg. The Lodge maintains that this is the humane option.",
     sprite = "assets/items/ability_hobbling_shot.png",
     type = "ability",

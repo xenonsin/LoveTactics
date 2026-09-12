@@ -15,7 +15,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Meteor Storm",
-    description = "Calls six meteors onto random tiles in a wide zone, each bursting over a 3x3 block and leaving fire.",
+    description = "Calls six meteors onto random tiles in area, each bursting over a 3x3 and leaving Fire.",
     flavor = "You choose the zone. The sky chooses the tiles, and the sky is not consulted twice.",
     sprite = "assets/items/ability_meteor_storm.png",
     type = "ability",

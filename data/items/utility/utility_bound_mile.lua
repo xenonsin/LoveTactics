@@ -18,7 +18,7 @@ end
 
 return {
     name = "The Bound Mile",
-    description = "Everything you are holding stays held, and is worn down where it stands.",
+    description = "Inflicts Root and Halt again on every foe already held, and damages each.",
     flavor = "The line was always there. He is simply the first person to insist on it.",
     sprite = "assets/items/sig_bound_mile.png",
     type = "utility",
@@ -29,7 +29,7 @@ return {
         range = 0,
         speed = 6,
         cost = { stat = "stamina", amount = 12 },
-        description = "Re-binds every held foe and damages each where it stands.",
+        description = "Inflicts Root and Halt on every held foe, and damages each where it stands.",
         unlock = {
             field = { of = "unit", side = "foe", count = 4,
                       test = function(u) return held(u) end },

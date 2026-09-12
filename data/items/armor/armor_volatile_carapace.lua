@@ -24,7 +24,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Volatile Carapace",
-    description = "On death: bursts, hitting everything nearby, allies included.",
+    description = "On death: deals damage in area, allies included.",
     flavor = "The Crucible logs it as a containment vessel. The containment is understood to be temporary.",
     sprite = "assets/items/armor_volatile_carapace.png",
     type = "armor",

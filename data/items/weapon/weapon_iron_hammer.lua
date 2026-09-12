@@ -5,7 +5,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Iron Hammer",
-    description = "Deals heavy damage and inflicts Stun.",
+    description = "Inflicts Stun.",
     flavor = "It lands like a falling tree. You buy the stun with your own tempo, and the price is never negotiable.",
     sprite = "assets/items/war_hammer.png",
     type = "weapon",

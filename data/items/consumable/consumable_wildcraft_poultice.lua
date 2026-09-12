@@ -9,7 +9,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Wildcraft Poultice",
-    description = "Restores health to an ally and draws out Poison.",
+    description = "Restores health and clears Poison.",
     flavor = "The Crucible boils its cures. The Lodge already knew which leaf to crush.",
     sprite = "assets/items/consumable_wildcraft_poultice.png",
     type = "consumable",

@@ -21,8 +21,10 @@ flavor last — italic, dimmed, below a separator — so the mechanical read is 
 
 `tests/item_schema_spec.lua` enforces that both fields exist, differ, and that the description stays
 under its length ceiling. `tests/item_text_style_spec.lua` enforces the mechanical style rules below
-(banned filler, canonical durations, keyword capitalization, a status named-not-re-explained, and no
-prose-frame lead like `Toggle:`) so they cannot quietly drift.
+(banned filler, canonical durations, keyword capitalization, a status named-not-re-explained, no
+prose-frame lead like `Toggle:`, no row restated in the sentence, and one verb per mechanic —
+Consume/Summon/Deflect) so they cannot quietly drift. The filler and one-verb sweeps run over statuses
+and traits as well as items, because the glossary column beside the tooltip is the same rules text.
 
 ## description — what it does
 

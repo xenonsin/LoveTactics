@@ -20,7 +20,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Bellfounder's Hammer",
-    description = "Inflicts Stun on the target, and a shorter Stun on everything standing around it.",
+    description = "Inflicts Stun on the target, and a shorter Stun in area.",
     flavor = "A bellfounder strikes once and the whole village hears about it. The principle transfers.",
     sprite = "assets/items/bellfounders_hammer.png",
     type = "weapon",

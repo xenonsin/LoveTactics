@@ -26,7 +26,7 @@ return {
         range = 0,
         speed = 6,
         cost = { stat = "mana", amount = 14 },
-        description = "Every working you laid is copied under every foe.",
+        description = "Copies every working you laid under every foe on the field.",
         unlock = {
             field = { of = "hazard", side = "party", count = 3 },
             text = "3 workings on the ground",

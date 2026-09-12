@@ -27,7 +27,7 @@ return {
         range = 0,
         speed = 6,
         cost = { stat = "mana", amount = 12 },
-        description = "Your summons are braced, hastened, and strengthened by each other.",
+        description = "Grants Defending and Haste to every summon you hold, +3 damage per other summon standing.",
         unlock = {
             field = { of = "unit", summoned = true, count = 3 },
             text = "3 summons standing",

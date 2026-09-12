@@ -34,7 +34,7 @@ return {
     traits = { "trait_ledger_diligence" },
     bonus = { magicDamage = Curve.ramp(2, 12) }, -- the suppressed floor; the little she shows
     activeAbility = {
-        description = "Strikes for heavy magical damage.",
+        description = "Deals damage.",
         target = "enemy",
         range = 3,
         requiresSight = true, -- a released bolt still needs a clear line

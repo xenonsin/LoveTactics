@@ -5,7 +5,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Pinning Shot",
-    description = "Deals damage and inflicts Root. Requires an adjacent bow.",
+    description = "Inflicts Root. Requires an adjacent bow.",
     flavor = "Lock the charger down and let the line walk around it at leisure.",
     sprite = "assets/items/ability_pinning_shot.png",
     type = "ability",

@@ -13,7 +13,7 @@
 -- Stripped Plate is what collects on it.
 return {
     name = "Breaker's Wedge",
-    description = "Every shove you throw also Sunders the body it moved.",
+    description = "Every knockback you throw also inflicts Sunder on the body it moved.",
     flavor = "The gate did not need to be cut. It needed to be encouraged, once, in the right direction.",
     sprite = "assets/items/utility_breakers_wedge.png",
     type = "utility",

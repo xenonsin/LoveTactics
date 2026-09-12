@@ -12,7 +12,7 @@
 return {
     name = "Immune: Fire",
     abbr = "Ifi",
-    description = "Fireproof: fire damage is voided entirely for a short time.",
+    description = "Fireproof: fire damage is voided entirely.",
     color = { 0.878, 0.541, 0.235 }, -- badge tint (fire's own amber; the abbr marks the state)
     duration = 6,            -- ~1 turn: the answer to a telegraphed nuke, gone before it is a stance
     immune = { fire = true },

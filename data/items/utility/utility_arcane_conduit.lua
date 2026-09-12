@@ -15,7 +15,7 @@
 -- no damage of its own -- so a battlemage running it in the centre is trading a slot for the shape.
 return {
     name = "Arcane Conduit",
-    description = "Grid neighbours cast half again as hard, spending a point of Arcane each time. Casting banks Arcane.",
+    description = "Grid neighbours deal and heal 50% more, consuming 2 Arcane each time. Casting banks Arcane.",
     flavor = "Everything in the case is wired to everything else. He insists this is normal.",
     sprite = "assets/items/utility_arcane_conduit.png",
     type = "utility",

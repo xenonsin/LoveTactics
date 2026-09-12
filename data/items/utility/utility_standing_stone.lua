@@ -10,7 +10,7 @@
 -- earth is more permanent than the person who put it there.
 return {
     name = "The Standing Stone",
-    description = "The ground between your totems is consecrated, and stays so after they fall.",
+    description = "Leaves Sacred Ground between your totems, and it stays after they fall.",
     flavor = "The totems are not the point. They are how she remembers where the point was.",
     sprite = "assets/items/sig_standing_stone.png",
     type = "utility",

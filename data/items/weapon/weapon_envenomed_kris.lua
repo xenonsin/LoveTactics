@@ -15,7 +15,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Envenomed Kris",
-    description = "Deals damage and inflicts both Bleed and Poison. Moving costs blood; standing still costs time.",
+    description = "Inflicts Bleed and Poison. Moving costs blood; standing still costs time.",
     flavor = "The Alchemist sells the blade at cost. The refills are where the money is.",
     sprite = "assets/items/envenomed_kris.png",
     type = "weapon",

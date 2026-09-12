@@ -25,7 +25,7 @@
 -- Foes only. The mage is not gathering its own line.
 return {
     name = "Collapse",
-    description = "Drags every foe within four tiles up against you, over everything in the way.",
+    description = "Drags every foe in area up against you, over everything in the way.",
     flavor = "The Arcanum calls it a correction. It is difficult to watch and call it that.",
     sprite = "assets/items/ability_pull.png", -- placeholder until its own art exists
     type = "ability",

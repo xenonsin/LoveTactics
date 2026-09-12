@@ -6,7 +6,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Scroll of Revival",
-    description = "Raises an adjacent fallen ally, restoring part of their health.",
+    description = "Revives an adjacent fallen ally, restoring part of their health.",
     flavor = "The priest will tell you the words are the easy part. Standing over the body is the rest of it.",
     sprite = "assets/items/revive_scroll.png",
     type = "consumable",

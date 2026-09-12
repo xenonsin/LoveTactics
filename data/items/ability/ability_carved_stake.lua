@@ -5,7 +5,7 @@
 -- static ground control, alive until the stake is cut down. Requires an adjacent bow in the grid.
 return {
     name = "Carved Stake",
-    description = "Plants a warding totem whose 3x3 zone gives allies a barrier that swallows a blow. Needs an adjacent bow.",
+    description = "Plants a warding totem whose 3x3 zone leaves Shared Bulwark. Needs an adjacent bow.",
     flavor = "The Cathedral blesses a shield. The Lodge blesses a stick and hammers it where the shield would have stood.",
     sprite = "assets/items/ability_carved_stake.png",
     type = "ability",

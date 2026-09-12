@@ -4,7 +4,7 @@
 -- pass without stopping. Requires an adjacent bow in the grid.
 return {
     name = "Warding Line",
-    description = "Drives a snare stake into a tile: the foe that crosses it is Rooted. Needs an adjacent bow.",
+    description = "Drives a snare stake into a tile; it inflicts Root on the foe that crosses it. Needs an adjacent bow.",
     flavor = "The March does not build a wall. It teaches the ground to hold.",
     sprite = "assets/items/ability_warding_line.png",
     type = "ability",

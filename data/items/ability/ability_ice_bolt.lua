@@ -6,7 +6,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Ice Bolt",
-    description = "Deals damage and inflicts Frozen.",
+    description = "Inflicts Frozen.",
     flavor = "The shard is only the setup. The hammer that follows is the argument.",
     sprite = "assets/items/ability_ice_bolt.png",
     type = "ability",

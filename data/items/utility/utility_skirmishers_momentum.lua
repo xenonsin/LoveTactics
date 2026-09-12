@@ -5,7 +5,7 @@
 -- the reward for never being where you were.
 return {
     name = "Skirmisher's Momentum",
-    description = "The first strike after moving deals extra damage; standing still gives nothing.",
+    description = "Increase damage by 5 on your first strike after moving.",
     flavor = "The Lodge's outriders have a saying: the arrow that matters is the one loosed at a gallop.",
     sprite = "assets/items/utility_skirmishers_momentum.png",
     type = "utility",

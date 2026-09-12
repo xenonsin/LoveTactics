@@ -8,7 +8,7 @@
 -- shelf's keyword (docs/classes.md). See docs/vulnerability.md for the family.
 return {
     name = "Oil Flask",
-    description = "Coats the target area, leaving everything caught in it Vulnerable: Fire.",
+    description = "Inflicts Vulnerable: Fire in area.",
     flavor = "The Crucible does not sell you the fire. It sells you the reason the fire works.",
     sprite = "assets/items/oil_flask.png",
     type = "consumable",

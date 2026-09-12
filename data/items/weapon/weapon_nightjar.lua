@@ -20,7 +20,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Nightjar",
-    description = "Deals damage and inflicts Bleed. A kill leaves you Invisible until your next turn.",
+    description = "Inflicts Bleed. A kill leaves you Invisible until your next turn.",
     flavor = "The bird is named for the noise it makes, which is nothing, and for when it makes it.",
     sprite = "assets/items/nightjar.png",
     type = "weapon",

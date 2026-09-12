@@ -7,7 +7,7 @@
 return {
     name = "Immune: Pierce",
     abbr = "Ipi",
-    description = "Pierce-sealed: pierce damage is voided entirely for a short time.",
+    description = "Pierce-sealed: pierce damage is voided entirely.",
     color = { 0.769, 0.345, 0.431 }, -- badge tint (pierce's own hue; the abbr marks the state)
     duration = 6,            -- ~1 turn: the answer to a telegraphed blow, gone before it is a stance
     immune = { pierce = true },

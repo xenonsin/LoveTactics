@@ -16,7 +16,7 @@
 -- to them.
 return {
     name = "Vow-Marked",
-    description = "Every affliction you take on hardens you: defense kept for the battle.",
+    description = "Increase defense by 2 for each affliction you take, kept for the battle.",
     magnitude = 2, -- defense kept per affliction borne
     onStatusApplied = function(ctx)
         if ctx.role ~= "recipient" then return end

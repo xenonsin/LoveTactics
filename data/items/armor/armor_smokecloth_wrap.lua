@@ -14,7 +14,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Smokecloth Wrap",
-    description = "The first attack that would hit you is lost in smoke, and you blink two tiles clear.",
+    description = "Deflects the first attack that would hit you, and blinks you two tiles clear.",
     flavor = "Woven with the stuff the Undercroft burns when it would rather not be asked anything.",
     sprite = "assets/items/armor_smokecloth_wrap.png",
     type = "armor",

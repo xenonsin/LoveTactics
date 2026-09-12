@@ -2,7 +2,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Healing Potion",
-    description = "Restores health to an ally.",
+    description = "Restores health.",
     flavor = "The Crucible's steadiest seller. Nobody has ever haggled over one twice.",
     sprite = "assets/items/potion.png",
     type = "consumable",

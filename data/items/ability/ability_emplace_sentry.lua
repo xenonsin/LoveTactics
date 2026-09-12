@@ -25,7 +25,7 @@
 -- the mage shelf too, and locks it until Artificer is unlocked (see docs/classes.md, "Disciplines").
 return {
     name = "Emplace Sentry",
-    description = "Bolts down a crossbow sentry that cannot move and fires four tiles. Reserves a fifth of your max mana.",
+    description = "Summons a crossbow sentry that cannot move and fires four tiles. Reserves a fifth of your max mana.",
     flavor = "The Crucible will not teach you to shoot. It will sell you something that already can.",
     sprite = "assets/items/ability_emplace_sentry.png",
     type = "ability",

@@ -32,7 +32,7 @@ return {
         speed = 5,
         support = true,
         cost = { stat = "mana", amount = 12 },
-        description = "Plants a totem laying Renewal around it: allies gain Regeneration and keep it when they leave.",
+        description = "Plants a totem that leaves Renewing Ground; allies gain Regeneration and keep it when they leave.",
         effect = function(fx)
             local totem = fx.summon("character_totem", fx.tx, fx.ty, {
                 control = "none", timeless = true, scaling = { health = 3 }, amount = fx.level,

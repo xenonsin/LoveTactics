@@ -7,7 +7,7 @@
 -- inert without stock -- and, like it, that is the whole build.
 return {
     name = "Reagent Harness",
-    description = "A spell beyond your mana is paid for out of a Mana Potion instead.",
+    description = "Pays for a spell beyond your mana out of a Mana Potion instead.",
     flavor = "Not a way of having more magic. A way of having more supplies.",
     sprite = "assets/items/alchemists_reservoir.png",
     type = "utility",

@@ -26,7 +26,7 @@
 -- selling.
 return {
     name = "The Closed Ring",
-    description = "Raises a ring of barrier around one tile: nothing walks in, and nothing walks out.",
+    description = "Raises a wall on all eight tiles around one tile, boxing in whatever stands there.",
     flavor = "The Bastion's oldest sentence, carved over the cells: we shall hold. It was never only about gates.",
     sprite = "assets/items/ability_closed_ring.png",
     type = "ability",

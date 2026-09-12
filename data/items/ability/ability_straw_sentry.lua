@@ -23,7 +23,7 @@
 --     confused enemy rather than a bug, and it is a perfectly good outcome for ten stamina.
 return {
     name = "Straw Sentry",
-    description = "Plants a lifeless dummy and Taunts nearby foes onto it instead of you.",
+    description = "Plants a lifeless dummy and inflicts Taunt on nearby foes, onto it instead of you.",
     flavor = "It cannot fight, cannot move, and cannot be reasoned with. Two of those are shared with the men attacking it.",
     sprite = "assets/items/ability_straw_sentry.png",
     type = "ability",

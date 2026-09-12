@@ -22,7 +22,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Thrill of the Hunt",
-    description = "Felling a foe you had Marked, Bled, Rooted or Crippled hands your turn back, once a turn.",
+    description = "Returns your turn, once a turn, when you fell a Marked, Bleeding, Rooted or Crippled foe.",
     flavor = "The tracking is the work. What comes after is not properly hunting and she has never pretended otherwise.",
     sprite = "assets/items/thrill_of_the_hunt.png",
     type = "utility",

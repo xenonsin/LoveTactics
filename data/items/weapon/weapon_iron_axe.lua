@@ -13,7 +13,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Iron Axe",
-    description = "Cleaves a wide arc, cutting everything standing in front of you.",
+    description = "Deals damage in area.",
     flavor = "The first axe anyone is handed. It asks only that you count what is in front of you before you swing.",
     sprite = "assets/items/hatchet.png",
     type = "weapon",

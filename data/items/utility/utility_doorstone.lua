@@ -14,7 +14,7 @@
 -- Rank and Closed Ring punish whatever queues at the new bottleneck.
 return {
     name = "Doorstone",
-    description = "Raises a wall across three tiles, and Halts whoever it puts out of the way.",
+    description = "Raises a wall across three tiles, and inflicts Halt on whoever it displaces.",
     flavor = "A door is not a weapon. It is the argument you no longer have to have.",
     sprite = "assets/items/sig_doorstone.png",
     type = "utility",
@@ -26,7 +26,7 @@ return {
         range = 1, -- aim the tile the door is centred on; it spreads to either side of that
         speed = 6,
         cost = { stat = "stamina", amount = 14 },
-        description = "Raises a wall across three tiles, Halting whoever it displaces.",
+        description = "Raises a wall across three tiles and inflicts Halt on whoever it displaces.",
         unlock = {
             field = { of = "unit", side = "foe", within = 2, count = 4 },
             text = "4 foes within 2 tiles",

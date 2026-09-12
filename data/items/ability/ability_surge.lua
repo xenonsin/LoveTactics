@@ -35,7 +35,7 @@
 -- ceiling or it loops, which is exactly what `free` provides.
 return {
     name = "Surge",
-    description = "A free action: keep your turn and act once more, back to back. The extra swing's time is paid when you finally stop.",
+    description = "Grants an extra action now. Its time is paid when your turn finally ends.",
     flavor = "The pause between two blows is where most people decide to stop. He has removed the pause.",
     sprite = "assets/items/ability_charge.png", -- placeholder until its own art exists
     type = "ability",

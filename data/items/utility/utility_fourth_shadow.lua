@@ -10,7 +10,7 @@
 -- it sounds like -- four or six small blasts placed wherever he has been scattering himself.
 return {
     name = "The Fourth Shadow",
-    description = "Doubles your clones, then every one of them cuts everything beside it.",
+    description = "Doubles your clones, then each one damages every foe beside it.",
     flavor = "Ask which is real and you have already spent the turn you had.",
     sprite = "assets/items/sig_fourth_shadow.png",
     type = "utility",

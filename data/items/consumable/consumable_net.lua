@@ -5,7 +5,7 @@
 -- duration is fixed), so it never appears at the alchemist's upgrade bench.
 return {
     name = "Net",
-    description = "Inflicts Root on a foe.",
+    description = "Inflicts Root.",
     flavor = "There is no craft in it at all, which is why it costs so little and works so often.",
     sprite = "assets/items/net.png",
     type = "consumable",

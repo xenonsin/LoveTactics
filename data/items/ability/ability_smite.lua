@@ -6,7 +6,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Smite",
-    description = "Strikes for holy damage and consecrates the ground, granting Regeneration to allies who stand on it.",
+    description = "Leaves Sanctuary where it lands.",
     flavor = "The blow is for them. The ground it blesses is for you.",
     sprite = "assets/items/ability_smite.png",
     type = "ability",

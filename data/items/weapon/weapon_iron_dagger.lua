@@ -13,7 +13,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Iron Dagger",
-    description = "Deals damage and inflicts Bleed.",
+    description = "Inflicts Bleed.",
     flavor = "The Undercroft's first blade. It does not need to kill you; it only needs you to keep moving.",
     sprite = "assets/items/dagger.png",
     type = "weapon",

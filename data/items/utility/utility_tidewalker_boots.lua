@@ -21,7 +21,7 @@
 -- blaze they walk through, that is a change to Hazard.place, not something this blueprint already buys.
 return {
     name = "Tidewalker Boots",
-    description = "Leaves every tile you step off drenched: crossers are left Wet, and the wet ground conducts lightning.",
+    description = "Leaves Rain on every tile you step off; crossers are left Wet.",
     flavor = "The first mage to wear them drowned no one. The second brought a friend who knew Jolt.",
     sprite = "assets/items/tidewalker_boots.png",
     type = "utility",

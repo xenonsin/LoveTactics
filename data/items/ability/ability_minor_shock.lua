@@ -22,7 +22,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Minor Shock",
-    description = "Deals light damage and inflicts Stun.",
+    description = "Inflicts Stun.",
     flavor = "The first thing an apprentice is taught, and the first thing they overestimate.",
     sprite = "assets/items/ability_jolt.png",
     type = "ability",

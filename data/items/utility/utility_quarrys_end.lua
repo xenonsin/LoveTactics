@@ -12,7 +12,7 @@
 -- versions that teach the verb and fill the gate.
 return {
     name = "Quarry's End",
-    description = "Roots and Marks every foe on the field at once.",
+    description = "Inflicts Root and Mark on every foe on the field.",
     flavor = "The hunt was over some time ago. This is the part where he says so.",
     sprite = "assets/items/sig_quarrys_end.png",
     type = "utility",
@@ -23,7 +23,7 @@ return {
         range = 0,
         speed = 6,
         cost = { stat = "stamina", amount = 11 },
-        description = "Every foe is Rooted and Marked, opening them to the whole shelf.",
+        description = "Inflicts Root and Mark on every foe on the field.",
         unlock = { event = "hitDealt", count = 3, text = "Land 3 blows" },
         effect = function(fx)
             for _, u in ipairs((fx.combat and fx.combat.units) or {}) do

@@ -6,7 +6,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Coup de Grace",
-    description = "Slays an adjacent foe below a quarter health outright. Bosses are immune. Needs a melee weapon adjacent.",
+    description = "Slays an adjacent foe below a quarter health outright; bosses are immune. Needs a melee weapon adjacent.",
     flavor = "The Undercroft does not call it mercy. It does not call it anything else either.",
     sprite = "assets/items/ability_coup_de_grace.png",
     type = "ability",

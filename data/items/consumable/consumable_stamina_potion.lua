@@ -9,7 +9,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Stamina Potion",
-    description = "Restores stamina to an ally.",
+    description = "Restores stamina.",
     flavor = "Nothing it buys is unavailable to patience. All of it is unavailable to urgency.",
     sprite = "assets/items/stamina_potion.png",
     type = "consumable",

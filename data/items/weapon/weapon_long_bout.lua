@@ -17,7 +17,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Long Bout",
-    description = "A duelling blade whose blow grows with every turn spent on the same body.",
+    description = "Increase damage by 15% per consecutive strike on the same foe.",
     flavor = "Everybody else on the field is weather. He has been having one conversation all day.",
     sprite = "assets/items/sig_long_bout.png",
     type = "weapon",

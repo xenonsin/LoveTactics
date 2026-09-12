@@ -7,7 +7,7 @@
 return {
     name = "Immune: Slash",
     abbr = "Isl",
-    description = "Slash-sealed: slash damage is voided entirely for a short time.",
+    description = "Slash-sealed: slash damage is voided entirely.",
     color = { 0.714, 0.737, 0.776 }, -- badge tint (slash's own hue; the abbr marks the state)
     duration = 6,            -- ~1 turn: the answer to a telegraphed blow, gone before it is a stance
     immune = { slash = true },

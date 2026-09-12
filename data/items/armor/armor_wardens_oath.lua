@@ -5,7 +5,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Warden's Oath",
-    description = "The first hit each turn on an adjacent ally is taken by you instead.",
+    description = "Takes the first hit each turn on an adjacent ally in their place.",
     flavor = "The Bastion will sell the vow to anyone. Keeping it is not included in the price.",
     sprite = "assets/items/wardens_oath.png",
     type = "armor",

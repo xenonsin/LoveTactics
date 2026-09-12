@@ -6,7 +6,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Ghost Kit",
-    description = "Sets off a demolition on a tile: a 3x3 burst of fire on the ground you chose.",
+    description = "Leaves Fire in area.",
     flavor = "She is never in the room when it goes. That was, from the very beginning, the entire plan.",
     sprite = "assets/items/ability_ghost_kit.png",
     type = "ability",

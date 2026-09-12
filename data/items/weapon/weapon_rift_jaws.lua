@@ -8,7 +8,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Rift Jaws",
-    description = "Sweeps everything in front of it, burning what it catches.",
+    description = "Inflicts Burn in area.",
     flavor = "The rift did not make it. The rift is simply where it stopped going down.",
     sprite = "assets/items/rift_jaws.png",
     type = "weapon",

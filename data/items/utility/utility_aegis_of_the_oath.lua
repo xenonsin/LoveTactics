@@ -7,7 +7,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Aegis of the Oath",
-    description = "Raises a moving ward around you: allies beside you carry a barrier that swallows a blow.",
+    description = "Grants Physical Barrier to adjacent allies.",
     flavor = "An oath is not a wall you stand behind. It is a wall that follows you to where the wall is needed.",
     sprite = "assets/items/utility_aegis_of_the_oath.png",
     type = "utility", -- a charm, not armour: the walking ward IS the item (cf. utility_coveted_blood)

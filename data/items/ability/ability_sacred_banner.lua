@@ -5,7 +5,7 @@
 -- See data/items/ability/ability_rally_banner.lua for how the banner and its aura work.
 return {
     name = "Sacred Banner",
-    description = "Plants a destructible banner that Blesses nearby allies while it stands.",
+    description = "Plants a destructible banner that leaves Sacred Ground around it while it stands.",
     flavor = "Raised over ground the Cathedral has already decided to keep.",
     sprite = "assets/items/ability_sacred_banner.png",
     type = "ability",

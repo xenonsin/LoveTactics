@@ -9,7 +9,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Pestilent Flail",
-    description = "Knockback 2 and inflicts Poison on it and everything adjacent.",
+    description = "Knockback 2 and inflicts Poison in area.",
     flavor = "The Bastion forges the head. The Crucible only ever has to suggest what to pack it with.",
     sprite = "assets/items/weapon_pestilent_flail.png",
     type = "weapon",

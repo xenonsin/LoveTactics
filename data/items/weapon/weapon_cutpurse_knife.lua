@@ -15,7 +15,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Cutpurse Knife",
-    description = "Deals damage, inflicts Bleed, and drains the target's stamina into your own.",
+    description = "Inflicts Bleed and drains the target's stamina into your own.",
     flavor = "Everyone watches the blade. Nobody watches the other hand.",
     sprite = "assets/items/cutpurse_knife.png",
     type = "weapon",

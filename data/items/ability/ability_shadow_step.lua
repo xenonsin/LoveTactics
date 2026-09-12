@@ -10,7 +10,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Shadow Step",
-    description = "Blinks to a foe's side and strikes it.",
+    description = "Blinks to the target's side and strikes it.",
     flavor = "The Undercroft's preferred introduction.",
     sprite = "assets/items/ability_shadow_step.png",
     type = "ability",

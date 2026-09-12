@@ -23,7 +23,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Throughline",
-    description = "The tile behind takes 40% damage and Bleed, +20% per adjacent dagger.",
+    description = "Deals 40% damage and inflicts Bleed on the tile behind, +20% per adjacent dagger.",
     flavor = "The Undercroft teaches the angle, not the blade. The angle is the part that costs money.",
     sprite = "assets/items/weapon_throughline.png",
     type = "weapon",

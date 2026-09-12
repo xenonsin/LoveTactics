@@ -22,7 +22,7 @@ local Hazard = require("models.hazard")
 
 return {
     name = "Old Breath",
-    description = "A cone carrying the element of the ground you stand in.",
+    description = "Deals damage in area, in the element of the ground you stand in.",
     flavor = "Older than the wood, and it has been breathing the wood in the whole time.",
     sprite = "assets/items/old_breath.png",
     type = "ability",

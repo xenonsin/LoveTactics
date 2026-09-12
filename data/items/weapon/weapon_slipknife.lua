@@ -21,7 +21,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Slipknife",
-    description = "Deals damage and inflicts Bleed. On hit taken: appear beside the attacker and cut.",
+    description = "Inflicts Bleed. On hit taken: appear beside the attacker and cut.",
     flavor = "You do not block a knife like this one. You turn around.",
     sprite = "assets/items/slipknife.png",
     type = "weapon",

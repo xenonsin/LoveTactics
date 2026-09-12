@@ -26,7 +26,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 8 },
-        description = "A blow, then your movement returns and the turn does not end.",
+        description = "Strikes, restores your movement, and does not end your turn.",
         unlock = { event = "tilesMoved", count = 12, text = "Cross 12 tiles" },
         counter = function(unit)
             return unit and require("models.combat").tallyCount(unit, "tilesMoved") or 0

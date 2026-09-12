@@ -16,7 +16,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Vow-Marked Plate",
-    description = "Every debuff you take hardens you for the battle. When an ally falls, a ward closes over you.",
+    description = "Increase defense by 2 for each debuff you take this battle. Grants Aegis when an ally falls.",
     flavor = "The marks are not damage. The armourer files them in deliberately, one for each promise.",
     sprite = "assets/items/armor_vow_marked_plate.png",
     type = "armor",

@@ -18,7 +18,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Sever the Thread",
-    description = "Fires a dark bolt; a foe it kills leaves a corpse at once and can never be revived this battle.",
+    description = "Deals damage. A foe it kills leaves a corpse at once and cannot be revived this battle.",
     flavor = "There is a thread. The Arcanum teaches which one, and then teaches that it is only a thread.",
     sprite = "assets/items/ability_sever_the_thread.png",
     type = "ability",

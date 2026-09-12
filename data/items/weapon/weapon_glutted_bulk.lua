@@ -12,7 +12,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Glutted Bulk",
-    description = "Sweeps everything in front of it.",
+    description = "Deals damage in area.",
     flavor = "It has eaten most of a circle. It has not moved far to do it.",
     sprite = "assets/items/glutted_bulk.png",
     type = "weapon",

@@ -21,7 +21,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Unspent Blow",
-    description = "Holds its stun back. Every third swing spends all three at once. Unblockable, and armour cannot turn it.",
+    description = "Holds its Stun back; every third swing lands all three at once. Damage ignores armor.",
     flavor = "It is not that he is not hitting you. It is that he has not decided to yet.",
     sprite = "assets/items/unspent_blow.png",
     type = "weapon",

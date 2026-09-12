@@ -23,7 +23,7 @@
 -- the same slot the emberwand and the flask both want.
 return {
     name = "Writ of Fire",
-    description = "Burns a mark on any tile; a turn later it takes everything standing there.",
+    description = "Leaves Writ of Fire on the aimed tile.",
     flavor = "The Arcanum files it, seals it, and lets the ground carry out the sentence.",
     sprite = "assets/items/ability_writ_of_fire.png",
     type = "ability",

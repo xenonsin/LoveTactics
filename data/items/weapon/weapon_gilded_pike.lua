@@ -13,7 +13,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Gilded Pike",
-    description = "Strikes a foe up to two tiles away.",
+    description = "Deals damage.",
     flavor = "Nobody is holding it. It has been at the correct angle for four hundred years.",
     sprite = "assets/items/gilded_pike.png",
     type = "weapon",

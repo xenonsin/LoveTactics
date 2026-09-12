@@ -22,7 +22,7 @@ return {
         range = 0,
         speed = 7,
         cost = { stat = "mana", amount = 16 },
-        description = "Raises a spirit from every hazard standing on the field.",
+        description = "Summons an allied spirit from every hazard on the field.",
         unlock = { event = "cast", count = 3, text = "Cast 3 times" },
         effect = function(fx)
             -- Snapshot the ground first: a summon lands ON a tile and the list would otherwise grow

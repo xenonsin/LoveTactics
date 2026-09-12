@@ -17,7 +17,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Standing Debt",
-    description = "For two turns nothing can aim at anyone else, and every blow taken hardens you for good.",
+    description = "Grants bonus defense, and replaces Wait with Defend.",
     flavor = "She does not offer. She simply stands where the answer has to go through.",
     sprite = "assets/items/sig_standing_debt.png",
     type = "armor",
@@ -31,7 +31,7 @@ return {
         range = 0,
         speed = 5,
         cost = { stat = "stamina", amount = 12 },
-        description = "Taunts every foe on the field, and braces you behind it.",
+        description = "Inflicts Taunt on every foe on the field and grants you Defending.",
         unlock = {
             field = { of = "unit", side = "ally", hpBelow = 0.5, count = 3 },
             text = "3 allies below half",

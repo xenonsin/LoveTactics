@@ -18,7 +18,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Beat the Bounds",
-    description = "Inflicts Root on every enemy standing in a hazard, and deals damage.",
+    description = "Inflicts Root on every enemy standing in a hazard.",
     flavor = "Once a year the parish walks its own edges, striking them, so that everyone remembers where they are.",
     sprite = "assets/items/ability_beat_the_bounds.png",
     type = "ability",
@@ -32,7 +32,7 @@ return {
         speed = 5,
         cost = { stat = "stamina", amount = 9 },
         damage = Curve.ramp(10, 20),
-        description = "Inflicts Root on and damages every enemy standing in a hazard, wherever it is and whoever laid it.",
+        description = "Inflicts Root on every enemy standing in a hazard, whoever laid it.",
         effect = function(fx)
             local Hazard = require("models.hazard")
             local caught = 0

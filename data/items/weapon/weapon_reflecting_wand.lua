@@ -35,7 +35,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Reflecting Wand",
-    description = "The bolt leaves its caster Mirrored.",
+    description = "Grants you Reflect Magic.",
     flavor = "It does not argue with the spell. It agrees with it, and then asks where it was going.",
     sprite = "assets/items/reflecting_wand.png",
     type = "weapon",

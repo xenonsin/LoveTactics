@@ -6,7 +6,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Power Strike",
-    description = "Deals damage and inflicts Stun. Requires an adjacent melee weapon.",
+    description = "Inflicts Stun. Requires an adjacent melee weapon.",
     flavor = "The disciplined cousin of the war hammer: the same stun, off any blade at all.",
     sprite = "assets/items/ability_power_strike.png",
     type = "ability",

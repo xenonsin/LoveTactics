@@ -17,7 +17,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Unbroken Vigil",
-    description = "A prayer nothing can break. Hold it as long as you dare; it heals your side and burns theirs by the waiting.",
+    description = "Channeled: heals your side and burns theirs, scaled by how long you hold it.",
     flavor = "The short version is for people who expect to be interrupted.",
     sprite = "assets/items/sig_unbroken_vigil.png",
     type = "utility",

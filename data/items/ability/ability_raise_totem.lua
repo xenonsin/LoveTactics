@@ -5,7 +5,7 @@
 -- it turn after turn. Cut the totem down to lift the zone.
 return {
     name = "Raise Totem",
-    description = "Raises a healing totem whose 3x3 zone Regenerates allies who stand within. Cut it down to lift it.",
+    description = "Summons a totem whose 3x3 zone heals allies standing in it. Cut it down to lift it.",
     flavor = "A priest cannot be everywhere. A totem is the priest's way of having already been.",
     sprite = "assets/items/ability_raise_totem.png",
     type = "ability",

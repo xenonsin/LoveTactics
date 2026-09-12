@@ -16,7 +16,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Sentence",
-    description = "Strips every blessing from a Marked foe, then strikes it with holy fire. Lethal to the weakened.",
+    description = "Dispels a Marked foe's blessings, then strikes it; executes it under a third health.",
     flavor = "The reading of it takes longer than the carrying of it out.",
     sprite = "assets/items/ability_sentence.png",
     type = "ability",

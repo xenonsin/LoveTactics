@@ -17,7 +17,7 @@
 -- rather than a restriction.
 return {
     name = "Totem-Carver's Kit",
-    description = "Everything you summon stands up with +16 health.",
+    description = "Grants +16 health to everything you summon.",
     flavor = "Green wood splits in the first frost. She has never once been in a hurry.",
     sprite = "assets/items/utility_totem_carvers_kit.png",
     type = "utility",

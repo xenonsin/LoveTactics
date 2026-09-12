@@ -23,7 +23,7 @@ return {
         range = 0,
         speed = 7,
         cost = { stat = "mana", amount = 16 },
-        description = "Spends every zombie you hold to return one fallen ally.",
+        description = "Consume every zombie you hold to revive one fallen ally.",
         unlock = {
             field = { of = "unit", summoned = true, count = 3 },
             text = "3 of your undead standing",

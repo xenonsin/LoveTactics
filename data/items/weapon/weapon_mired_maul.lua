@@ -19,7 +19,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Mired Maul",
-    description = "Inflicts Stun, and turns the ground the blow lands on to quicksand: everything there moves and acts for double.",
+    description = "Inflicts Stun and leaves Quicksand where the blow lands.",
     flavor = "The head is packed with river clay. The armourers say it is for the weight. It is not for the weight.",
     sprite = "assets/items/mired_maul.png",
     type = "weapon",

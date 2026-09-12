@@ -9,7 +9,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Gilt Maw",
-    description = "Sweeps everything in front of it and takes coin from what it catches.",
+    description = "Deals damage in area and gains gold.",
     flavor = "It ate the vault, then the vault's owners, and has been slowly becoming both.",
     sprite = "assets/items/gilt_maw.png",
     type = "weapon",

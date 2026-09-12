@@ -1,6 +1,6 @@
 return {
     name = "Torch",
-    description = "The company reads one place further on the overworld, and keeps its sight in the dark.",
+    description = "Reveals one more place on the overworld, and keeps your sight in the dark.",
     flavor = "The oldest answer to the dark, and still the only one anybody trusts.",
     sprite = "assets/items/torch.png",
     type = "utility", -- no active ability -> no speed, ignored by combat initiative

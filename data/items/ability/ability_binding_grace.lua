@@ -22,7 +22,7 @@
 -- ADJACENCY: a `censer` beside it. The Cathedral binds and looses with its own instrument.
 return {
     name = "Binding Grace",
-    description = "Wards an ally against all magic, and binds their hands to any weapon while it holds.",
+    description = "Applies Magic Denied and Disarm.",
     flavor = "The Cathedral has never regarded the second clause as a price. It regards it as the point.",
     sprite = "assets/items/ability_binding_grace.png",
     type = "ability",

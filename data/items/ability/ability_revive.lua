@@ -8,7 +8,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Revive",
-    description = "Raises a fallen ally where they lie, restoring half their health.",
+    description = "Revives a fallen ally where they lie, restoring half their health.",
     flavor = "The miracle, and the Cathedral's entire claim on your attention.",
     sprite = "assets/items/ability_revive.png",
     type = "ability",

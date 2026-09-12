@@ -11,7 +11,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Crack the Guard",
-    description = "Deals impact damage and inflicts Vulnerable: Impact.",
+    description = "Inflicts Vulnerable: Impact.",
     flavor = "A shield is only as good as the shoulder behind it. Crack the shoulder.",
     sprite = "assets/items/ability_crack_the_guard.png",
     type = "ability",

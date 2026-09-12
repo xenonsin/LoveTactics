@@ -9,7 +9,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Hoarfrost Antlers",
-    description = "Sweeps everything in front of it and leaves Freeze.",
+    description = "Inflicts Frozen in area.",
     flavor = "Something walked north until it stopped being an animal, and kept walking.",
     sprite = "assets/items/hoarfrost_antlers.png",
     type = "weapon",

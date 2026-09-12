@@ -42,6 +42,7 @@ local BANNED = {
     "for a while",
     "a short while",
     "for a time",
+    "for a short time", -- the eleven immunity statuses all said this; the hourglass row is the duration
     "briefly",
     "for most of the battle",
     "most of the battle",
@@ -107,6 +108,47 @@ local LEAKS = {
 -- word for putting health back.
 local MEND_WORDS = { "mend", "mends", "mending", "mended" }
 
+-- Rows the tooltip already prints, said a second time in the sentence (docs/item-text.md rule 6).
+-- A full sweep of the 840 description strings found 139 lines that had drifted back into doing the
+-- rows' job; these are the tells that can be matched without judgment:
+--
+--   * the TARGET row already names who the ability hits, so a plain single-target line ends at the
+--     status -- "Inflicts Root on a foe." is the target row read aloud. (A scope phrase that reaches
+--     PAST the aimed target -- "on adjacent foes", "to an ally beside you" -- is legitimate and does
+--     not end in a full stop the way the restatement does, which is why these patterns are anchored.)
+--   * the RANGE row and its diagram carry reach: "at range", "at long range".
+--   * the TAG row carries the school: physical vs magical is never restated.
+--   * the FOOTPRINT diagram carries the shape, and an area effect ends on the canonical `in area`
+--     rather than "in the target area" / "on everyone hit" / "friend and foe".
+--   * absence of damage is never stated at all.
+--
+-- Case-insensitive, plain find. Anchored with a trailing period where the phrase is only wrong as a
+-- whole clause.
+local BANNED_ROWS = {
+    "to a foe.", "on a foe.", "to an ally.", "on an ally.",
+    "at range", "at long range",
+    "physical damage", "magical damage",
+    "in the target area", "on everyone hit", "friend and foe",
+    "deals no damage", "ignoring armor", "ignoring armour", "cuts through armor",
+}
+
+-- One verb per mechanic, whole-word and case-insensitive (docs/item-text.md, "Standardized effect
+-- forms"). Each of these shipped in the corpus until the sweep: the Gleaner's Mantle "Spends the whole
+-- bank", the Old Wind "Raises a spirit", Marginalia "Unravels the first spell aimed at it". The right
+-- word is in the message, and it is never a synonym.
+--
+-- Narrow on purpose. `Raises` is absent because it is the corpus verb for a WALL and for a maximum
+-- stat (the Doorstone, Toughness), and "turns aside" is absent because a parry/riposte keeps its own
+-- words -- only the creature-summoning and reflex senses are wrong, and neither is matchable here.
+local ONE_VERB = {
+    { word = "spends", say = "Consume" },
+    { word = "conjures", say = "Summon" },
+    { word = "calls forth", say = "Summon" },
+    { word = "unravels", say = "Deflect" },
+    { word = "negates", say = "Deflect" },
+    { word = "evades", say = "Deflect" },
+}
+
 local function eachItem()
     local out = {}
     for id, def in pairs(Item.defs) do out[#out + 1] = { id = id, def = def } end
@@ -156,17 +198,46 @@ end
 
 return {
     {
+        -- Over eachRulesText, not just items: the eleven "voided entirely for a short time" immunity
+        -- statuses are the same defect in the same glossary column, and were the last place it hid.
         name = "no description uses vague duration or magnitude filler (docs/item-text.md)",
+        fn = function()
+            for _, entry in ipairs(eachRulesText()) do
+                local low = entry.text:lower()
+                for _, phrase in ipairs(BANNED) do
+                    assert(not low:find(phrase, 1, true),
+                        entry.id .. ' says "' .. phrase .. '" -- a card never times an effect that'
+                            .. ' way; use a controlled duration or let the tooltip row carry it'
+                            .. ' (docs/item-text.md)')
+                end
+            end
+        end,
+    },
+    {
+        name = "a description never restates a row the tooltip already prints (docs/item-text.md)",
         fn = function()
             for _, it in ipairs(eachItem()) do
                 for _, desc in ipairs(descriptions(it.def)) do
                     local low = desc:lower()
-                    for _, phrase in ipairs(BANNED) do
+                    for _, phrase in ipairs(BANNED_ROWS) do
                         assert(not low:find(phrase, 1, true),
-                            it.id .. ' says "' .. phrase .. '" -- a card never times an effect that'
-                                .. ' way; use a controlled duration or let the tooltip row carry it'
+                            it.id .. ' says "' .. phrase .. '" -- the target, range, tag and footprint'
+                                .. ' rows already carry that; say the EFFECT and let the rows speak'
                                 .. ' (docs/item-text.md)')
                     end
+                end
+            end
+        end,
+    },
+    {
+        name = "one verb per mechanic: Consume, Summon, Deflect (docs/item-text.md)",
+        fn = function()
+            for _, entry in ipairs(eachRulesText()) do
+                local low = entry.text:lower()
+                for _, rule in ipairs(ONE_VERB) do
+                    assert(not low:find("%f[%a]" .. rule.word .. "%f[%A]"),
+                        entry.id .. ' says "' .. rule.word .. '" -- the game has one word for that'
+                            .. ' mechanic and it is "' .. rule.say .. '" (docs/item-text.md)')
                 end
             end
         end,

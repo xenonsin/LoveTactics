@@ -15,7 +15,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Apothecary's Lancet",
-    description = "Deals light damage and inflicts Poison.",
+    description = "Inflicts Poison.",
     flavor = "The Alchemist calls it a delivery mechanism. It is, in fairness, a very small knife.",
     sprite = "assets/items/apothecarys_lancet.png",
     type = "weapon",

@@ -4,7 +4,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Jolt",
-    description = "Deals lightning damage and inflicts Stun.",
+    description = "Inflicts Stun.",
     flavor = "The apprentice's shock, grown up: the same idea, with a storm behind it.",
     sprite = "assets/items/ability_jolt.png",
     type = "ability",

@@ -24,7 +24,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Gaff Line",
-    description = "Hooks a distant foe, wounds it, and hauls it in across everything between.",
+    description = "Hooks the target and hauls it to your side, across everything between.",
     flavor = "The Crucible's answer to a man who will not come to the door.",
     sprite = "assets/items/ability_gaff_line.png",
     type = "ability",

@@ -10,7 +10,7 @@
 -- afterwards. A bombardier is having a moment; a saboteur is removing a building.
 return {
     name = "The Signal",
-    description = "Every charge you planted goes off, and the ground each stood on is left in ruins.",
+    description = "Detonates every charge you planted and leaves Quicksand where each stood.",
     flavor = "The signal is not for the charges. They were never going to change their minds.",
     sprite = "assets/items/sig_the_signal.png",
     type = "utility",
@@ -21,7 +21,7 @@ return {
         range = 0,
         speed = 5,
         cost = { stat = "stamina", amount = 8 },
-        description = "Detonates your charges and leaves the ground they stood on ruined.",
+        description = "Detonates your charges and leaves Quicksand where they stood.",
         unlock = { event = "cast", count = 3, text = "Cast 3 times" },
         effect = function(fx)
             -- Where they were, taken before firing: detonation clears the entries, so the rubble has

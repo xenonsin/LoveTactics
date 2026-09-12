@@ -17,7 +17,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Splitglass Saber",
-    description = "Strikes an adjacent foe, and answers a melee blow by cutting back and raising Splitglass on yourself.",
+    description = "Answers a melee blow by cutting back and granting you Splitglass.",
     flavor = "The Bastion's smiths never agreed on whether the glass in the name is what it is made of or what it leaves behind.",
     sprite = "assets/items/splitglass_saber.png",
     type = "weapon",

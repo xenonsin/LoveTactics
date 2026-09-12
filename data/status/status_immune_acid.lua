@@ -7,7 +7,7 @@
 return {
     name = "Immune: Acid",
     abbr = "Iac",
-    description = "Acid-sealed: acid damage is voided entirely for a short time.",
+    description = "Acid-sealed: acid damage is voided entirely.",
     color = { 0.565, 0.689, 0.223 }, -- badge tint (acid's own hue; the abbr marks the state)
     duration = 6,            -- ~1 turn: the answer to a telegraphed blow, gone before it is a stance
     immune = { acid = true },

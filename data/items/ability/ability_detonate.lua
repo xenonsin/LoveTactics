@@ -6,7 +6,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Detonate",
-    description = "Detonates Burn or Poison on a foe into an area blast, consuming it. Weak without one.",
+    description = "Consumes Burn or Poison on the target to deal damage in area. Weak without one.",
     flavor = "The Arcanum did not light the fire. It only found a use for someone else's.",
     sprite = "assets/items/ability_detonate.png",
     type = "ability",

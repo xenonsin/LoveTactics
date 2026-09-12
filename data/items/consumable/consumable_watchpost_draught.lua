@@ -12,7 +12,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Watchpost Draught",
-    description = "Restores stamina to an ally and braces them where they stand.",
+    description = "Restores stamina and grants Defending.",
     flavor = "Third night on a post with nothing behind it. The watch is stood anyway, so it may as " ..
         "well be stood awake.",
     sprite = "assets/items/watchpost_draught.png",

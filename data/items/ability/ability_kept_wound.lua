@@ -23,7 +23,7 @@
 -- ADJACENCY: a `censer` beside it, like the rest of the Cathedral's serious work.
 return {
     name = "The Kept Wound",
-    description = "Wards an ally from physical blows, then bursts for everything it swallowed.",
+    description = "Grants an ally Kept Wound.",
     flavor = "Nothing is forgiven. It is only ever held, and the Cathedral is very good at holding.",
     sprite = "assets/items/ability_kept_wound.png",
     type = "ability",

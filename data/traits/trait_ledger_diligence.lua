@@ -23,7 +23,7 @@
 -- trait.lua) -- which is what keeps it true once her recruit-fight boss flag goes inert and she is yours.
 return {
     name = "Diligence",
-    description = "Every action she takes lifts her magic a little, and keeps it, for the rest of the battle.",
+    description = "Increase magic damage by 2 per action she takes, kept this battle.",
     step = 2, -- magicDamage banked per action; small, so the lift is the long game rather than a spike
     onCast = function(ctx)
         local gained = ctx.addBonus("magicDamage", ctx.def.step)

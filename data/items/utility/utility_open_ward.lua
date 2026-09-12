@@ -13,7 +13,7 @@
 -- the envy half of an apothecary: everything here is somebody else's quality, borrowed.
 return {
     name = "The Open Ward",
-    description = "For the rest of the fight, every heal you cast also lends its number back as a ward.",
+    description = "Every heal you cast also lends its number back as a ward this battle.",
     flavor = "The ward is always open. It is the only thing about him that is.",
     sprite = "assets/items/sig_open_ward.png",
     type = "utility",
@@ -24,7 +24,7 @@ return {
         range = 0,
         speed = 5,
         cost = { stat = "mana", amount = 10 },
-        description = "Your heals also lend guard, and your side is warded now.",
+        description = "Grants Lent Guard to your side, and every heal you cast lends its number back as a ward.",
         unlock = {
             field = { of = "unit", side = "ally", status = "status_lent_guard", count = 3 },
             text = "3 allies carrying what you lent",

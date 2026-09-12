@@ -6,7 +6,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Tangling Roots",
-    description = "Deals light damage and inflicts Root.",
+    description = "Inflicts Root.",
     flavor = "The answer to a charging bruiser: pin it out in the open and take your time.",
     sprite = "assets/items/ability_tangling_roots.png",
     type = "ability",

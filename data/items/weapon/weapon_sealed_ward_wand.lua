@@ -32,7 +32,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Wand of the Sealed Ward",
-    description = "The bolt leaves its caster holding a Sealed Ward.",
+    description = "Grants you Sealed Ward.",
     flavor = "The Arcanum is very clear that it is not a shield. A shield would have to be hit.",
     sprite = "assets/items/sealed_ward_wand.png",
     type = "weapon",

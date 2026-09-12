@@ -10,7 +10,7 @@
 -- data/items/ability/ability_sacred_banner.lua (Blessing) and ability_renewal_banner.lua (Regeneration).
 return {
     name = "Rally Banner",
-    description = "Plants a destructible banner that Inspires nearby allies while it stands.",
+    description = "Plants a destructible banner that grants Inspiration to nearby allies while it stands.",
     flavor = "It fights by standing. Plant it where the line will hold, not where it is breaking.",
     sprite = "assets/items/ability_rally_banner.png",
     type = "ability",

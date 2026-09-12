@@ -13,7 +13,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Stone",
-    description = "Deals damage to a foe.",
+    description = "Deals damage.",
     flavor = "The cheapest thing on the sand, and the first thing the crowd reaches for.",
     sprite = "assets/items/throwing_stone.png",
     type = "consumable",

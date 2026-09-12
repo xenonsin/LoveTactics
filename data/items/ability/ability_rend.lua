@@ -12,7 +12,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Rend",
-    description = "Deals slashing damage and inflicts Vulnerable: Slash.",
+    description = "Inflicts Vulnerable: Slash.",
     flavor = "The first cut is not the one that kills. It is the one that lets the next one in.",
     sprite = "assets/items/ability_rend.png",
     type = "ability",

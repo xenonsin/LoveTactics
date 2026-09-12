@@ -16,7 +16,7 @@
 -- Beat the Bounds, which collects on everyone standing in ground of any kind.
 return {
     name = "Warden's Writ",
-    description = "Every hazard you place also Halts the foes that enter it.",
+    description = "Every hazard you place also inflicts Halt on the foes that enter it.",
     flavor = "The border is wherever she last set something down. It has been moving all week.",
     sprite = "assets/items/utility_wardens_writ.png",
     type = "utility",

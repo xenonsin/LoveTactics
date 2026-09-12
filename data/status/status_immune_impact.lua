@@ -7,7 +7,7 @@
 return {
     name = "Immune: Impact",
     abbr = "Iim",
-    description = "Impact-sealed: impact damage is voided entirely for a short time.",
+    description = "Impact-sealed: impact damage is voided entirely.",
     color = { 0.788, 0.604, 0.388 }, -- badge tint (impact's own hue; the abbr marks the state)
     duration = 6,            -- ~1 turn: the answer to a telegraphed blow, gone before it is a stance
     immune = { impact = true },

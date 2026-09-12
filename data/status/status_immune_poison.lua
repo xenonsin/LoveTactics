@@ -7,7 +7,7 @@
 return {
     name = "Immune: Poison",
     abbr = "Ipo",
-    description = "Poison-sealed: poison damage is voided entirely for a short time.",
+    description = "Poison-sealed: poison damage is voided entirely.",
     color = { 0.537, 0.663, 0.310 }, -- badge tint (poison's own hue; the abbr marks the state)
     duration = 6,            -- ~1 turn: the answer to a telegraphed blow, gone before it is a stance
     immune = { poison = true },

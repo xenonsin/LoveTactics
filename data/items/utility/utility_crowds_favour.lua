@@ -19,7 +19,7 @@
 -- being a wall.
 return {
     name = "Crowd's Favour",
-    description = "Increase defense by 1 per 2 Defiance held. Banks Defiance when an ally beside you is struck. Defiance caps at 8.",
+    description = "Increase defense by 1 per 2 Defiance held, up to 8. Banks Defiance when an ally beside you is struck.",
     flavor = "They cheer for whoever is still standing. He intends that to keep being him, and them.",
     sprite = "assets/items/utility_crowds_favour.png",
     type = "utility",

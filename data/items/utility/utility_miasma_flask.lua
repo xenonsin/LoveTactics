@@ -22,7 +22,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Miasma Flask",
-    description = "Gasses everything adjacent every turn, its wearer included.",
+    description = "Carries Choking Fumes with you, its wearer included.",
     flavor = "The Crucible's seal on it reads DO NOT OPEN. Somebody has scratched out the NOT, twice.",
     sprite = "assets/items/utility_miasma_flask.png",
     type = "utility",

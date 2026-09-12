@@ -29,7 +29,7 @@
 -- short of an action, it is short of being alive.
 return {
     name = "Vital Points",
-    description = "An ally's next turn carries two actions instead of one, and comes sooner.",
+    description = "Grants an ally two actions on their next turn, and brings it sooner.",
     flavor = "Three fingers, just under the shoulder. She has never explained it and nobody has asked twice.",
     sprite = "assets/items/ability_vital_points.png",
     type = "ability",
@@ -51,7 +51,7 @@ return {
             when = function(unit) return require("models.combat").chargePool(unit, "focus") >= 5 end,
             text = "Bank Focus by healing and casting",
         },
-        description = "Spend Focus: an ally's next turn carries two actions instead of one, and arrives sooner.",
+        description = "Consume Focus: grants an ally two actions on their next turn, and brings it sooner.",
         effect = function(fx)
             local ally = fx.target
             if not (ally and ally.alive) then return end

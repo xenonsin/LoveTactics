@@ -27,7 +27,7 @@ end
 
 return {
     name = "The Sealed Bell",
-    description = "Every affliction on a foe is copied onto every other foe within 2 of it.",
+    description = "Copies every affliction on the target onto every other foe within 2 tiles.",
     flavor = "It has not been rung in a long time. Nothing about that was an accident.",
     sprite = "assets/items/sig_sealed_bell.png",
     type = "utility",

@@ -33,7 +33,7 @@ return {
         speed = 5,
         cost = { stat = "stamina", amount = 9 },
         aoe = { radius = 2, shape = "square" },
-        description = "Throws everything in the bag at every foe within 2.",
+        description = "Deals damage in area, scaled by what the bag holds.",
         unlock = { event = "stolen", count = 3, text = "Take 3 things" },
         effect = function(fx)
             -- Everything she is carrying, thrown at once. The count is read off the bag rather than

@@ -12,7 +12,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Mana Potion",
-    description = "Restores mana to an ally.",
+    description = "Restores mana.",
     flavor = "Mana in a bottle, which the Arcanum considers an insult and buys anyway.",
     sprite = "assets/items/mana_potion.png",
     type = "consumable",

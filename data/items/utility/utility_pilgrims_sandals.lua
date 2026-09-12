@@ -26,7 +26,7 @@
 -- turn to hallow one tile must outlast footprints that cost nothing at all.
 return {
     name = "Pilgrim's Sandals",
-    description = "Every tile you leave is hallowed: your allies heal in your footsteps, and the walking heals you.",
+    description = "Leaves Sanctuary on every tile you step off, and the walking heals you.",
     flavor = "The road is consecrated by the walking. The only theology the Cathedral has never charged for.",
     sprite = "assets/items/pilgrims_sandals.png",
     type = "utility",

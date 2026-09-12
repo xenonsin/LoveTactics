@@ -25,7 +25,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Reckoning",
-    description = "Consume all Zeal for a holy blow, +3 damage per point, healing adjacent allies as much as it dealt.",
+    description = "Consume all Zeal: +3 damage per point, healing adjacent allies as much as it dealt.",
     flavor = "The account had been open a long while. She closed it in one motion, for everyone at once.",
     sprite = "assets/items/ability_reckoning.png",
     type = "ability",

@@ -40,7 +40,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Deadfall Bow",
-    description = "Channeled: arms a trap where it lands, or Roots whoever is already standing there.",
+    description = "Channeled: arms a trap where it lands, or inflicts Root on whoever is already standing there.",
     flavor = "The Lodge's trappers do not draw on the animal. They draw on the path.",
     sprite = "assets/items/deadfall_bow.png",
     type = "weapon",

@@ -13,7 +13,7 @@ local Curve = require("models.curve")
 
 return {
     name = "The Crowd's Due",
-    description = "Taunts every foe on the field, and braces you to answer what comes.",
+    description = "Inflicts Taunt on every foe on the field and grants you Defending.",
     flavor = "They paid to watch a fight. He has never once been the one who has to start it.",
     sprite = "assets/items/sig_crowds_due.png",
     type = "armor",
@@ -26,7 +26,7 @@ return {
         range = 0,
         speed = 5,
         cost = { stat = "stamina", amount = 12 },
-        description = "Every foe must come at you, and you are braced when they do.",
+        description = "Inflicts Taunt on every foe on the field and grants you Defending.",
         unlock = { event = "hitTaken", count = 4, text = "Weather 4 blows" },
         effect = function(fx)
             for _, u in ipairs((fx.combat and fx.combat.units) or {}) do

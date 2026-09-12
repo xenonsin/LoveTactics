@@ -35,7 +35,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Wand of the Second Utterance",
-    description = "The bolt leaves its caster holding Second Utterance.",
+    description = "Grants you Second Utterance.",
     flavor = "Saying it once was always enough. The Arcanum spent four hundred years finding out who had to say it.",
     sprite = "assets/items/second_utterance_wand.png",
     type = "weapon",
