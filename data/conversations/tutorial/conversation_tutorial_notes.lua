@@ -35,9 +35,9 @@ return {
 
     script = {
         { "character_rowan", "The Tally", tag = 1, id = "tally_title" },
-        { "character_rowan", "Beside the stair is a count of what is forming on the floors you have left behind. Nothing down there is born -- it forms, and it does not stop.\n\nClimb out early and the count rises by {stair}. Lose the company and it rises by {wipe}. Every new floor you reach takes one back off, and sealing a circle takes off {seal}.\n\nFill all {max} marks and what is below stops waiting to be found. It comes up the stair on its own -- which is what happened to Bellmere.", tag = 2, id = "tally_body" },
+        { "character_rowan", "This meter measures the energy of the rift and tells us if a breach is imminent. It will increase every day, but clearing the champion on each floor reduces the meter.\n\nThe merchants lobby heavily to keep the rift active, but many lives are spent keeping the balance.", tag = 2, id = "tally_body" },
         { "character_rowan", "Tactics", tag = 3, id = "tactics_title" },
-        { "character_rowan", "Your company can be taught to fight on its own.\n\nThis tab gives each body a list of rules, read top to bottom on its turn -- who to strike, when to fall back, what to save its breath for. A body with no rule it can obey simply waits for you.\n\nIn a fight, Auto hands the turn to those rules. Turn it off at any time and the company is yours again. Nothing is decided that you cannot take back.", tag = 4, id = "tactics_body" },
+        { "character_rowan", "Characters can be taught to fight on their own using tactics.\n\nTactics are prioritized and evaluated from top to bottom and are used when the character is set to auto mode.", tag = 4, id = "tactics_body" },
         { "character_rowan", "Classes", tag = 5, id = "classes_title" },
         { "character_rowan", "Leveling up increases the stats determined by your chosen class. You are free to change classes at any time.\n\nYour class level increases when you use actions in combat. Using an action that's the same class increases your class technique by 2, using an action that's not the same class increases your class technique by 1, and the action's class technique by 1.\n\nClass level unlocks abilities from trainers and new classes, while the technique can be spent to upgrade your items.", tag = 6, id = "classes_body" },
 

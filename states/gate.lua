@@ -206,17 +206,12 @@ function gate.enter(self, opts)
     if Descent.everClimbedOut(gate.player) and not Descent.tallyTaught(gate.player) then
         -- The words live in data/conversations/tutorial/conversation_tutorial_notes.lua, like every
         -- other line the tutorial speaks, so they are stamped and translated with no wiring here. The
-        -- four figures ride in as TOKENS rather than being concatenated into the sentence: they are
-        -- Descent's own constants, and a number welded into a clause is one a translator cannot move
-        -- and one that goes stale the day the constant does.
+        -- window quotes no figure and so takes no tokens: the count's constants belong on the meter
+        -- drawn beside it, not welded into a clause a translator cannot move and that goes stale the
+        -- day the constant does.
         gate.panel = TutorialNote.new({
             title = Locale.line(NOTES, "tally_title"),
-            body = Locale.line(NOTES, "tally_body", {
-                stair = Descent.COUNT_STAIR,
-                wipe  = Descent.COUNT_WIPE,
-                seal  = Descent.COUNT_SEAL,
-                max   = Descent.COUNT_MAX,
-            }),
+            body = Locale.line(NOTES, "tally_body"),
             onClose = function()
                 gate.panel = nil
                 Descent.markTallyTaught(gate.player)

@@ -119,32 +119,19 @@ return {
         end,
     },
     {
-        -- THE FIGURES IN THE TALLY WINDOW ARE TOKENS. They are Descent's own constants, and welding one
-        -- into the middle of a clause puts it somewhere a translator cannot move it AND somewhere that
-        -- goes stale the day the constant does. Both halves are pinned: the line carries no digits of
-        -- its own, and the state fills every token it declares.
-        name = "the tally window quotes its constants as tokens, and the Gate fills them",
+        -- THE TALLY WINDOW QUOTES NO FIGURE. It says what the meter is and which way play moves it; the
+        -- numbers themselves are Descent's constants and belong on the meter, not welded into a clause
+        -- where a translator cannot move them and where they go stale the day the constant does. So the
+        -- line carries no digit of its own -- and no {token} either, since the Gate hands it nothing to
+        -- fill and a brace left behind would be printed raw.
+        name = "the tally window quotes no figure, and leaves no token unfilled",
         fn = function()
             local authored = Locale.node(NOTES, "tally_body")
             authored = authored.text or authored[2]
             assert(not authored:find("%d"), "the tally's English has a figure typed into it")
-            for _, token in ipairs({ "{stair}", "{wipe}", "{seal}", "{max}" }) do
-                assert(authored:find(token, 1, true), "the tally line no longer names " .. token)
-            end
-
-            local filled = Locale.line(NOTES, "tally_body", {
-                stair = Descent.COUNT_STAIR, wipe = Descent.COUNT_WIPE,
-                seal = Descent.COUNT_SEAL, max = Descent.COUNT_MAX,
-            })
-            assert(not filled:find("{", 1, true), "every token is filled at draw time")
-            assert(filled:find(tostring(Descent.COUNT_MAX), 1, true), "...with the constants themselves")
-
-            -- The state has to still be handing those four over, or the window prints raw braces.
-            local src = source("states/gate.lua")
-            for _, pair in ipairs({ "stair = Descent.COUNT_STAIR", "wipe  = Descent.COUNT_WIPE",
-                                    "seal  = Descent.COUNT_SEAL", "max   = Descent.COUNT_MAX" }) do
-                assert(src:find(pair, 1, true), "states/gate.lua no longer fills " .. pair)
-            end
+            assert(not authored:find("{", 1, true), "the tally line names a token the Gate does not fill")
+            assert(not Locale.line(NOTES, "tally_body"):find("{", 1, true),
+                "the tally window would print a raw brace")
         end,
     },
     {
