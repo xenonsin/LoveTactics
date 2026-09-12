@@ -13,7 +13,8 @@
          to miss until it is already live).
 
       2. COMPILE -- runs love.js over that .love into build/web, then drops tools/web/index.html
-         over the demo page love.js generates.
+         over the demo page love.js generates and tools/web/persist.js over the one line of glue
+         that was supposed to be keeping the player's save (see Set-SavePersistence).
 
     Defaults to love.js's COMPATIBILITY build, and that is not a detail. The release build is
     multi-threaded: it needs SharedArrayBuffer, which a browser only hands to a page served with
@@ -217,6 +218,11 @@ function Invoke-LoveJs {
         }
     }
 
+    # Replace love.js's one-line save flush with tools/web/persist.js. Ahead of the cache stamp,
+    # which hashes love.js AFTER every edit to it -- a patch applied afterwards would ship under
+    # the previous build's ?v= and be served from cache.
+    Set-SavePersistence
+
     # Stamp each fetched artifact's URL with a hash of its own contents. Without this the browser
     # keeps serving the PREVIOUS deploy's 28 MB game.data -- Pages hands it out as max-age=600
     # under a name that never changes -- so a republished bundle goes on running the old Lua, and
@@ -228,6 +234,32 @@ function Invoke-LoveJs {
     $mb = (Get-ChildItem $Web -Recurse -File | Measure-Object -Property Length -Sum).Sum / 1MB
     $engine = if ($Threaded) { 'threaded' } else { 'compat' }
     Write-Host ("compiled -> build/web ({0:N1} MB total, {1})" -f $mb, $engine)
+}
+
+# The save directory is an IDBFS mount, and love.js flushes it to IndexedDB from a beforeunload
+# handler alone -- which never works, because FS.syncfs is asynchronous and the document is gone
+# before the transaction commits. Every campaign was therefore discarded with the tab. The
+# replacement flushes on the WRITE instead; tools/web/persist.js carries the whole explanation.
+#
+# It has to go here, into the generated glue, because `FS` lives inside love.js's module closure
+# and this build exports no handle on it: a <script> in index.html cannot reach the filesystem at
+# all. Asserted rather than assumed, exactly as Set-CacheStamp is -- if an upgrade rewords the
+# line, a silent no-op here would ship a build that quietly loses saves again.
+function Set-SavePersistence {
+    $path = Join-Path $Web 'love.js'
+    $find = 'window.addEventListener("beforeunload",function(event){FS.syncfs(false,function(err){if(err){Module["printErr"](err)}})})'
+
+    $text = [System.IO.File]::ReadAllText($path)
+    if (-not $text.Contains($find)) {
+        throw "web-build: love.js no longer contains its beforeunload save flush -- love.js has changed its glue, and saves would ship unpersisted (see tools/web/persist.js)"
+    }
+
+    $persist = Join-Path $PSScriptRoot 'web/persist.js'
+    if (-not (Test-Path $persist)) { throw 'web-build: tools/web/persist.js is missing' }
+
+    $utf8 = New-Object System.Text.UTF8Encoding $false
+    $patch = "`n/* tools/web/persist.js */`n" + [System.IO.File]::ReadAllText($persist, [System.Text.Encoding]::UTF8)
+    [System.IO.File]::WriteAllText($path, $text.Replace($find, $patch), $utf8)
 }
 
 # Content-hashed URLs for the four artifacts a player's browser fetches. game.js asks for

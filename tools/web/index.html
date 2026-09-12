@@ -3,7 +3,7 @@
   The shipping page for the love.js bundle. tools/web-build.ps1 copies this over the demo page
   love.js generates, substituting __TITLE__ and __MEMORY__.
 
-  Three things it does that the generated page does not:
+  Four things it does that the generated page does not:
 
     * LETTERBOXES -- and on a TOUCHSCREEN, hands the whole viewport over instead. The game is
       authored in a fixed 1280x720 logical space (scale.lua) and CSS scales the canvas to a 16:9
@@ -28,6 +28,10 @@
       Module.preRun, and preRun is drained by the runtime during startup. No Love(Module), no
       startup, no preRun, no request -- a page that sits on "Downloading..." forever having
       downloaded nothing at all.
+
+    * ASKS TO KEEP THE SAVE. Browser storage is evictable by default, and a campaign lives in it
+      (tools/web/persist.js, which does the writing). requestPersistentStorage below asks for the
+      bucket that survives a browser clearing space for itself.
 -->
 <html lang="en-us">
   <head>
@@ -327,12 +331,34 @@
       window.addEventListener('focus', resumeAudio, false);
 
 
+      // Ask the browser not to throw the save away. Storage for an origin is EVICTABLE by default:
+      // under disk pressure a browser discards least-recently-used origins WHOLE, and a campaign
+      // goes with the rest of the site's data. navigator.storage.persist() asks for the exempt
+      // bucket instead. The save itself is written by tools/web/persist.js; this only argues for
+      // its right to stay.
+      //
+      // Asked once, and the answer ignored, because there is nothing to do with it: Chrome decides
+      // silently on its own engagement heuristics and Firefox prompts, and a player told "the
+      // browser declined to keep your save" could act on it in no way whatsoever. Nor is a grant a
+      // guarantee -- it does not cover clearing site data by hand, and it does not override
+      // Safari's rule that script-writable storage is deleted after seven days without a visit.
+      // An improvement on the odds, and only that.
+      function requestPersistentStorage() {
+        try {
+          if (navigator.storage && navigator.storage.persist) {
+            var p = navigator.storage.persist();
+            if (p && p.catch) p.catch(function () {});
+          }
+        } catch (e) { /* an origin that has no Storage API has nothing to ask */ }
+      }
+
       start.addEventListener('click', function () {
         gate.classList.add('gone');
         document.getElementById('canvas').style.visibility = 'visible';
         // A button that cannot do its one job is worse than no button: see goFullScreen.
         if (fsRequest) full.style.display = 'block';
         resumeAudio();
+        requestPersistentStorage();
         document.getElementById('canvas').focus();
         // The canvas has just become visible and the phone's URL bar is about to move: tell the
         // engine what shape it is now playing on, and again once the browser has settled.
