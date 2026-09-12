@@ -148,54 +148,39 @@ function CoachBubble.dim(rect, opts)
     love.graphics.setColor(1, 1, 1)
 end
 
-function CoachBubble.draw(text, rect, opts)
-    if not (text and rect) then return end
+-- WHERE A BUBBLE GOES: a box `w` x `h` placed against the thing it points at, inside `opts.bounds`,
+-- covering as little of `opts.avoid` as it can. Returns the side it took and its top-left corner.
+--
+-- Split out of draw() and PUBLIC because it is not really about the coach's gold box -- it is the
+-- geometry of pointing at something on a crowded board, and ui/tutorial_prompt.lua's mentor bubble
+-- needs exactly the same answer in a different register. Two copies of a placement search is two
+-- behaviours: the one that gets tuned and the one that quietly stops matching it.
+--
+--   opts.prefer -- "above" / "below" / "right" / "left"; the side to try first
+--   opts.bounds -- the rect the box must land inside (defaults to the whole space)
+--   opts.avoid  -- rects the box should cover as little of as possible
+--
+-- The bubble is laid over a board the player is being taught to READ, so where it lands matters:
+-- parked above a tile in a crowded lane it hides the very unit the next instruction is about. So a
+-- board anchor tries the sides first (the flanks of a lane are empty ground), while a panel anchor
+-- tries above (a 320px column has no room beside anything) and a body tries over its own head.
+-- Each candidate is taken only if the whole box fits inside `bounds`; the last is a guaranteed
+-- fallback, clamped.
+local PREFER_ORDER = {
+    above = { "above", "below", "right", "left" },
+    below = { "below", "above", "right", "left" },
+    right = { "right", "left", "above", "below" },
+    left  = { "left", "right", "above", "below" },
+}
+
+local function horizontalSide(side) return side == "right" or side == "left" end
+
+function CoachBubble.place(w, h, rect, opts)
     opts = opts or {}
     local bounds = opts.bounds or { x = 0, y = 0, w = Scale.WIDTH, h = Scale.HEIGHT }
-    local f, kf = fonts()
-    local key = opts.key
-    local capW = keyCapWidth(key, kf)
-
-    time = time + love.timer.getDelta()
-    local pulse = 0.5 + 0.5 * math.sin(time * PULSE_SPEED)
-
-    -- Measure at the widest the bubble may be, then SHRINK the box to the longest line -- and lay the
-    -- text out at the shrunk width, not the measured one. Printing at the measurement width into a
-    -- narrower box is what spills text past the border: getWrap only reports where it would break at
-    -- the width it was given. The extra pixel absorbs the rounding between measured and rendered
-    -- advance widths, which is enough to push a final glyph over the edge on its own.
-    -- The key cap claims its column first; the words wrap in whatever is left.
-    -- CAPPED TO THE ROOM IT WAS GIVEN. Nothing below ever narrows the box: the placement search
-    -- rejects candidates that do not fit and the last resort clamps, but a clamp cannot help a box
-    -- wider than the bounds -- it parks it at the left edge and the rest hangs off the far side.
-    -- So a bubble too wide for its bounds went off screen rather than wrapping, which is what
-    -- raising the handheld width to 330 did to a board region only 432 across with a flank to spare.
-    -- The bounds are the truth here and the preferred width is only a preference.
-    local maxW = math.min(maxWidth(), math.max(120, bounds.w - PAD * 2))
-    local wrapW, lines = f:getWrap(text, maxW - PAD * 2 - capW)
-    local w = math.min(maxW, math.ceil(wrapW) + 1 + PAD * 2 + capW)
-    local innerW = w - PAD * 2 - capW
-    local textH = #lines * f:getHeight()
-    local h = PAD * 2 + math.max(textH, key and (kf:getHeight() + KEY_PAD * 2) or 0)
-
-    -- Placement. The bubble is a prompt laid over a board the player is being taught to READ, so
-    -- where it lands matters: parked above a tile in a crowded lane it hides the very unit the next
-    -- instruction is about. So a board anchor tries the sides first (the flanks of a lane are empty
-    -- ground), while a panel anchor tries above (a 320px column has no room beside anything).
-    -- Each candidate is taken only if the whole box fits inside `bounds`; the last is a guaranteed
-    -- fallback, clamped.
     local cx, cy = rect.x + rect.w / 2, rect.y + rect.h / 2
-    -- The preferred side leads; the rest follow as fallbacks. A board anchor (no `prefer`) tries the
-    -- flanks first (empty ground beside a lane), while a panel/HUD anchor names the side it wants.
-    local PREFER_ORDER = {
-        above = { "above", "below", "right", "left" },
-        below = { "below", "above", "right", "left" },
-        right = { "right", "left", "above", "below" },
-        left  = { "left", "right", "above", "below" },
-    }
+    -- The preferred side leads; the rest follow as fallbacks.
     local order = PREFER_ORDER[opts.prefer] or { "right", "left", "above", "below" }
-
-    local function horizontalSide(side) return side == "right" or side == "left" end
 
     -- A placement pins ONE axis; the other is free to slide along the bounds, and does. (Getting
     -- this wrong rejects perfectly good placements: an "above" bubble wider than its target is
@@ -255,25 +240,59 @@ function CoachBubble.draw(text, rect, opts)
         x = clamp(x, bounds.x, math.max(bounds.x, bounds.x + bounds.w - w))
         y = clamp(y, bounds.y, math.max(bounds.y, bounds.y + bounds.h - h))
     end
+    return side, x, y
+end
 
-    -- The tail always points back at the target, even when the box was clamped away from it, so a
-    -- shoved bubble still visibly belongs to the thing it is naming.
-    local bx1, by1, bx2, by2, tipX, tipY
+-- The tail: its two flank points on the box's edge and its tip, just off the target. It always
+-- points back at the target, even when the box was clamped away from it, so a shoved bubble still
+-- visibly belongs to the thing it is naming. Returns bx1, by1, bx2, by2, tipX, tipY -- a triangle,
+-- to be filled and then stroked along the two flanks only.
+function CoachBubble.tail(side, x, y, w, h, rect)
+    local cx, cy = rect.x + rect.w / 2, rect.y + rect.h / 2
     if horizontalSide(side) then
         local edgeX = (side == "right") and x or (x + w)
         local anchorY = clamp(cy, y + RADIUS + TAIL_HALF, y + h - RADIUS - TAIL_HALF)
-        bx1, by1 = edgeX, anchorY - TAIL_HALF
-        bx2, by2 = edgeX, anchorY + TAIL_HALF
-        tipX = (side == "right") and (rect.x + rect.w + GAP) or (rect.x - GAP)
-        tipY = anchorY
-    else
-        local edgeY = (side == "below") and y or (y + h)
-        local anchorX = clamp(cx, x + RADIUS + TAIL_HALF, x + w - RADIUS - TAIL_HALF)
-        bx1, by1 = anchorX - TAIL_HALF, edgeY
-        bx2, by2 = anchorX + TAIL_HALF, edgeY
-        tipX = anchorX
-        tipY = (side == "below") and (rect.y + rect.h + GAP) or (rect.y - GAP)
+        return edgeX, anchorY - TAIL_HALF, edgeX, anchorY + TAIL_HALF,
+            (side == "right") and (rect.x + rect.w + GAP) or (rect.x - GAP), anchorY
     end
+    local edgeY = (side == "below") and y or (y + h)
+    local anchorX = clamp(cx, x + RADIUS + TAIL_HALF, x + w - RADIUS - TAIL_HALF)
+    return anchorX - TAIL_HALF, edgeY, anchorX + TAIL_HALF, edgeY,
+        anchorX, (side == "below") and (rect.y + rect.h + GAP) or (rect.y - GAP)
+end
+
+function CoachBubble.draw(text, rect, opts)
+    if not (text and rect) then return end
+    opts = opts or {}
+    local bounds = opts.bounds or { x = 0, y = 0, w = Scale.WIDTH, h = Scale.HEIGHT }
+    local f, kf = fonts()
+    local key = opts.key
+    local capW = keyCapWidth(key, kf)
+
+    time = time + love.timer.getDelta()
+    local pulse = 0.5 + 0.5 * math.sin(time * PULSE_SPEED)
+
+    -- Measure at the widest the bubble may be, then SHRINK the box to the longest line -- and lay the
+    -- text out at the shrunk width, not the measured one. Printing at the measurement width into a
+    -- narrower box is what spills text past the border: getWrap only reports where it would break at
+    -- the width it was given. The extra pixel absorbs the rounding between measured and rendered
+    -- advance widths, which is enough to push a final glyph over the edge on its own.
+    -- The key cap claims its column first; the words wrap in whatever is left.
+    -- CAPPED TO THE ROOM IT WAS GIVEN. Nothing below ever narrows the box: the placement search
+    -- rejects candidates that do not fit and the last resort clamps, but a clamp cannot help a box
+    -- wider than the bounds -- it parks it at the left edge and the rest hangs off the far side.
+    -- So a bubble too wide for its bounds went off screen rather than wrapping, which is what
+    -- raising the handheld width to 330 did to a board region only 432 across with a flank to spare.
+    -- The bounds are the truth here and the preferred width is only a preference.
+    local maxW = math.min(maxWidth(), math.max(120, bounds.w - PAD * 2))
+    local wrapW, lines = f:getWrap(text, maxW - PAD * 2 - capW)
+    local w = math.min(maxW, math.ceil(wrapW) + 1 + PAD * 2 + capW)
+    local innerW = w - PAD * 2 - capW
+    local textH = #lines * f:getHeight()
+    local h = PAD * 2 + math.max(textH, key and (kf:getHeight() + KEY_PAD * 2) or 0)
+
+    local side, x, y = CoachBubble.place(w, h, rect, opts)
+    local bx1, by1, bx2, by2, tipX, tipY = CoachBubble.tail(side, x, y, w, h, rect)
 
     -- The mark on the thing itself, so the eye lands on the target and not only on the words.
     CoachBubble.highlight(rect, pulse)

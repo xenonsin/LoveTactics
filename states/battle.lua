@@ -4534,6 +4534,51 @@ local function gutterRect()
     return { x = bx, y = y, w = bw, h = Scale.HEIGHT - y - 4 }
 end
 
+-- THE MENTOR'S RECTANGLE: the box a LESSON speaks from when it speaks from a box.
+--
+-- On a DESKTOP two things speak from it seconds apart -- the fight's opening scene (ui/dialogue.lua
+-- in `overScene` staging, staged below) and the standing instruction while the fight is being fought
+-- (ui/tutorial_prompt.lua) -- and the handoff between them happens mid-breath. They are already one
+-- panel (ui/speech_box.lua is the chrome behind both), so the rect has to be one function as well:
+-- written out twice it drifts, and the words move at the exact moment the player is reading them.
+-- That is not hypothetical -- this geometry was written out twice, and only one copy learned about
+-- the short space.
+--
+-- ON A HANDHELD THERE IS NO STRIP UNDER THE BOARD TO SPEAK FROM. The board takes the whole short axis
+-- by design (battle.boardTop), so `boardBottom` IS the bottom of the screen and the desktop rect comes
+-- out with a negative height: the standing prompt drew a sliver of frame off the bottom edge, and
+-- Rowan went silent for the length of the lesson on every phone.
+--
+-- So there the two part company, and only the OPENING SCENE still uses this rect. A scene is paged
+-- prose with hint pills and more than one speaker, and it plays over a board that is frozen behind
+-- it -- so a bar laid across the board's foot costs nothing and is the only shape that fits it. The
+-- standing instruction is one sentence from one body on a board the player is actively tapping, and
+-- it becomes a bubble over the speaker's head instead (ui/tutorial_prompt.lua argues the trade).
+--
+-- Even frozen, the bar stops at the combat panel rather than running the full width: the scene ends
+-- and the fight resumes with the player's eye where the words were, and the acting column is the one
+-- region that should never have been covered on the way there.
+--
+-- The height is a PROPORTION of the space and never a constant carried down from the 720 one; see the
+-- opening staging below for the two wrong answers that came before it. Full board-and-column width so
+-- the box cannot be stood on its end by the quarter turn a handset renders through.
+--
+-- A field on `battle` rather than a file local, for the local-ceiling reason at deploySettingsButton.
+function battle.speechRect()
+    if Scale.inHandheldSpace then
+        local h = math.floor(Scale.HEIGHT * 0.24)
+        return { x = 12, y = Scale.HEIGHT - h - 10, w = Scale.WIDTH - PANEL_W - 24, h = h }
+    end
+    local _, by, _, bh = battle.map:boardRect()
+    local x = LEFT_W + GUTTER_PAD
+    local y = by + bh + GUTTER_GAP
+    return {
+        x = x, y = y,
+        w = Scale.WIDTH - PANEL_W - GUTTER_PAD - x,
+        h = Scale.HEIGHT - GUTTER_BOTTOM - y,
+    }
+end
+
 -- Re-stamp the gutter onto whatever is living in it: the combat log's own rect, and the deployment
 -- phase's hint line. Called from every place the rect can MOVE under a live fight -- the board turning
 -- (below) and the logical space changing (battle.syncLayout) -- because both the log and the phase
@@ -5252,43 +5297,20 @@ function battle.enter(self, opts)
         -- authored scene instead: Rowan, recruited to fight the first battle, is announced in the
         -- overworld's opening scene after it (models/conversation.lua's drainJoins).
         local stage = { deferJoins = true }
-        -- The mentor speaks from the free strip UNDER THE BOARD -- but only where there is one. On a
-        -- handheld the board takes the whole short axis by design (battle.boardTop), so `boardBottom`
-        -- IS the bottom of the screen and this rect comes out with a negative height: the box drew
-        -- off the bottom edge, which is one of the two overlay breakages that kept the short space
-        -- switched off. There, the dialogue falls back to its own full-width bar along the bottom,
-        -- which is the right answer anyway -- a scene freezes the fight, so covering board it is not
-        -- your turn to use costs nothing.
+        -- The mentor speaks from battle.speechRect -- the free strip under the board on a desktop, a
+        -- bar laid over the board's foot on a handheld where there is no strip to have. The rect is
+        -- NOT written out here: ui/tutorial_prompt.lua takes over this exact box the moment the scene
+        -- is dismissed, and the two must be the same rectangle rather than two that agree.
+        --
+        -- Two wrong answers came first on the short space, and they failed in opposite directions. A
+        -- rect across the foot of the BOARD alone (448x112) is fine in the abstract and lands as a
+        -- narrow strip once the screen is turned, because the turn transposes anything with a long
+        -- axis -- reported from a handset as simply not visible. Handing the dialogue its own default
+        -- instead fixed that and overcorrected: BOX_H is 150, a fifth of a 720-tall space and a THIRD
+        -- of this one, so the box swallowed the board, the turn order and the actions together.
         if battle.tutorial then
             stage.overScene = true
-            if Scale.inHandheldSpace then
-                -- A bar the width of the whole space, and a QUARTER of its height.
-                --
-                -- Two wrong answers came first and they failed in opposite directions. A rect across
-                -- the foot of the BOARD (448x112) is fine in the abstract and lands as a narrow strip
-                -- once the screen is turned, because the turn transposes anything with a long axis --
-                -- reported from a handset as simply not visible. Handing the dialogue its own default
-                -- instead fixed that and overcorrected: BOX_H is 150, which is a fifth of a 720-tall
-                -- space and a THIRD of this one, so the box swallowed the board, the turn order and
-                -- the actions together.
-                --
-                -- The height is taken as a proportion of the space rather than inherited from a
-                -- taller one, which is the actual lesson: a constant tuned against 720 is not a
-                -- constant here. Full width so it cannot be stood on its end by the turn, and placed
-                -- rather than clamped, so it is on screen by construction.
-                local h = math.floor(Scale.HEIGHT * 0.24)
-                stage.box = { x = 20, y = Scale.HEIGHT - h - 10, w = Scale.WIDTH - 40, h = h }
-            else
-                local _, by, _, bh = battle.map:boardRect()
-                local boardBottom = by + bh
-                local x = LEFT_W + GUTTER_PAD
-                local y = boardBottom + GUTTER_GAP
-                stage.box = {
-                    x = x, y = y,
-                    w = Scale.WIDTH - PANEL_W - GUTTER_PAD - x,
-                    h = Scale.HEIGHT - GUTTER_BOTTOM - y,
-                }
-            end
+            stage.box = battle.speechRect()
         end
         Conversation.play(opening, nil, nil, stage)
     end
@@ -5624,37 +5646,50 @@ end
 -- The interface half of the tutorial: a bubble pinned to the thing the current step is about. Kept
 -- separate from the mentor's panel on purpose -- see data/tutorials/village.lua for why the fiction
 -- and the instruction are not allowed to share a mouth.
+-- The region a bubble laid over the BOARD may live in: the board's own column, clear of both side
+-- columns. Shared by the coach's bubble and the mentor's (ui/tutorial_prompt.lua on a handheld),
+-- because two bubbles judging "am I on screen" by two different rectangles is how one of them ends
+-- up half under a panel.
+--
+-- Fields on `battle` rather than file locals, for the local-ceiling reason at deploySettingsButton.
+function battle.boardBounds()
+    local top = battle.boardTop()
+    return { x = LEFT_W + 8, y = top - 4,
+             w = Scale.WIDTH - PANEL_W - LEFT_W - 16, h = Scale.HEIGHT - top }
+end
+
+-- Every living body's tile, as rects -- what a bubble over the board should cover as little of as it
+-- can. The lesson is about these bodies; a box parked on one hides the thing being taught.
+function battle.boardBodies()
+    local rects = {}
+    for _, u in ipairs(battle.combat.units) do
+        if u.alive then
+            local ux, uy = battle.map:cellToPixel(u.x, u.y)
+            rects[#rects + 1] = { x = ux, y = uy, w = battle.map.size, h = battle.map.size }
+        end
+    end
+    return rects
+end
+
 function battle.drawCoach()
     if not lessonAddressesPlayer() then return end
     local coach = Tutorial.coach(battle.tutorial)
     if not coach then return end
     local rect, region = coachTarget(coach.anchor)
     if not rect then return end
-    -- A bubble over the board is kept clear of both columns; one over the panel may use the panel's
-    -- full width, since that is the only place it can go.
     -- A bubble over the board is kept clear of both columns and prefers a flank, so it doesn't park
     -- on top of the lane the lesson is about; one over the panel has no room beside a slot in a
-    -- 320px column, so it goes above.
+    -- 320px column, so it goes above and may use the panel's full width, since that is the only
+    -- place it can go.
     local bounds = region == "panel"
         and { x = Scale.WIDTH - PANEL_W + 4, y = 4, w = PANEL_W - 8, h = Scale.HEIGHT - 8 }
-        or { x = LEFT_W + 8, y = battle.boardTop() - 4,
-             w = Scale.WIDTH - PANEL_W - LEFT_W - 16, h = Scale.HEIGHT - battle.boardTop() }
-    -- Every living body on the board, so the bubble can settle where it hides the fewest of them.
-    -- Only for a board anchor: over the panel there is nowhere else to go anyway.
-    local avoid
-    if region == "board" then
-        avoid = {}
-        for _, u in ipairs(battle.combat.units) do
-            if u.alive then
-                local ux, uy = battle.map:cellToPixel(u.x, u.y)
-                avoid[#avoid + 1] = { x = ux, y = uy, w = battle.map.size, h = battle.map.size }
-            end
-        end
-    end
+        or battle.boardBounds()
     CoachBubble.draw(coach.text, rect, {
         bounds = bounds,
         prefer = region == "panel" and "above" or "side",
-        avoid = avoid,
+        -- Every living body on the board, so the bubble can settle where it hides the fewest of
+        -- them. Only for a board anchor: over the panel there is nowhere else to go anyway.
+        avoid = region == "board" and battle.boardBodies() or nil,
         key = coach.key, -- the button to press, drawn as a cap rather than written into the sentence
     })
 end
@@ -5797,7 +5832,13 @@ function battle.draw()
     -- The log yields rather than the box moving, by the rule already written three lines down for the
     -- tutorial's panel: a scene the player is being told outranks a record they can toggle back. It
     -- comes straight back when the scene ends, with nothing missed -- the log is a record, not a feed.
-    if not Conversation.active then battle.log:draw() end
+    --
+    -- ...and it yields to the MENTOR'S PANEL on exactly the same terms, where she has one: that panel
+    -- takes this very rect and is only mostly opaque, so the record printed through the line she was
+    -- saying. Only on a desktop -- on a handheld she speaks from a bubble over her own head
+    -- (ui/tutorial_prompt.lua) and the log keeps the column it was given.
+    if not (Conversation.active
+        or (lessonAddressesPlayer() and not Scale.inHandheldSpace)) then battle.log:draw() end
     -- The tutorial's instruction panel shares the gutter under the board with the combat log, and is
     -- drawn after it: a lesson the player is mid-way through outranks a log they can toggle back.
     -- Same rule as the coach bubble: the mentor's direction is a direction, so it waits for a turn
@@ -5809,11 +5850,25 @@ function battle.draw()
         if prompt and battle.tutorialNudge then
             prompt = { speaker = prompt.speaker, text = battle.tutorialNudge.text, alert = true }
         end
-        local _, by, _, bh = battle.map:boardRect()
-        TutorialPrompt.draw(battle.combat, prompt, {
-            leftMargin = LEFT_W, rightMargin = PANEL_W,
-            boardBottom = by + bh,
-        })
+        -- TWO SHAPES, AND THE SPACE PICKS. On a desktop she takes the panel in the gutter, which is
+        -- the same rectangle the lesson's opening scene spoke from -- handed over whole rather than
+        -- re-derived, see battle.speechRect for why that is not a tidiness point. On a handheld
+        -- there is no gutter and a panel has to be laid over the board's foot, so she speaks from a
+        -- bubble over her own head instead (ui/tutorial_prompt.lua argues the trade).
+        if Scale.inHandheldSpace then
+            -- What her bubble must not sit on: every living body, and the thing the coach bubble is
+            -- about to point at. The coach draws after her and so wins where they do overlap, but a
+            -- box that lands off the target in the first place is better than one drawn over.
+            local avoid = battle.boardBodies()
+            local coach = Tutorial.coach(battle.tutorial)
+            local target = coach and coachTarget(coach.anchor)
+            if target then avoid[#avoid + 1] = target end
+            TutorialPrompt.draw(battle.combat, prompt, {
+                map = battle.map, bounds = battle.boardBounds(), avoid = avoid,
+            })
+        else
+            TutorialPrompt.draw(battle.combat, prompt, { box = battle.speechRect() })
+        end
         battle.drawCoach()
     end
     battle.drawNotice()
