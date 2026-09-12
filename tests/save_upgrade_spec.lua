@@ -1,10 +1,23 @@
 -- Tests that a save round-trips its schema through Save.snapshot -> Save.restore (models/save):
 -- item upgrade levels, forging materials, recipe tiers, the pinned default action, and the created
 -- avatar (player body/name + a per-character display name). Pure: no disk. Headless.
+--
+-- The last two cases are about the FILE rather than the schema: a release build writes it without
+-- the pretty-printing, and Save.encode itself must not move when that happens.
 
 local Save = require("models.save")
+local Debug = require("models.debug")
 local Player = require("models.player")
 local Item = require("models.item")
+
+-- Structural equality, so a round trip can be checked rather than eyeballed.
+local function same(a, b)
+    if type(a) ~= type(b) then return false end
+    if type(a) ~= "table" then return a == b end
+    for k, v in pairs(a) do if not same(v, b[k]) then return false end end
+    for k in pairs(b) do if a[k] == nil then return false end end
+    return true
+end
 
 return {
     {
@@ -222,6 +235,54 @@ return {
             snap.roster[1].defaultWeaponSlot = nil
             local restored2 = Save.restore(snap)
             assert(restored2.roster[1].defaultActionSlot == nil, "a save without either field loads as nil")
+        end,
+    },
+    {
+        -- The compact form is a FORMATTING change and nothing else: the same keys, in the same order,
+        -- carrying the same values. Checked against the shapes a save actually holds -- a sparse array
+        -- (a grid with gaps), a nested table, an empty one, and the scalar types.
+        name = "a compact save carries exactly what the pretty one did",
+        fn = function()
+            local data = {
+                day = 2, gold = 484, won = true, name = "Wend",
+                empty = {},
+                cells = { [1] = { tile = "path" }, [11] = { tile = "path", encounter = { kind = "objective" } } },
+            }
+
+            local pretty = Save.encode(data, 0)
+            local compact = Save.encode(data, 0, true)
+
+            assert(same(Save.decode("return " .. compact), data), "the compact form decodes to what went in")
+            assert(same(Save.decode("return " .. pretty), Save.decode("return " .. compact)),
+                "both forms decode to the same table")
+            assert(#compact < #pretty, "the compact form is smaller: " .. #compact .. " vs " .. #pretty)
+            assert(not compact:find("\n", 1, true), "the compact form carries no newline")
+        end,
+    },
+    {
+        -- THE HAZARD THIS SHAPE EXISTS TO AVOID. Save.encode is not only the save writer's: the state
+        -- hash projects a board through it and netplay compares that digest against the other peer's
+        -- after every turn (models/state_hash.lua). A dev client and a release client that disagreed
+        -- about whitespace would hash an identical board differently and call the duel desynced on
+        -- turn one. So the build flag reaches the FILE writer and nothing else.
+        name = "the build flag moves the save file, and never Save.encode",
+        fn = function()
+            local data = { day = 2, cells = { [1] = { tile = "path" } } }
+
+            -- Both flavours read before anything is asserted: an assert here runs under pcall, and a
+            -- flag left flipped would follow every later spec in the run.
+            local was = Debug.enabled
+            Debug.enabled = true
+            local devEncode, devFile = Save.encode(data, 0), Save.encodeFile(data)
+            Debug.enabled = false
+            local relEncode, relFile = Save.encode(data, 0), Save.encodeFile(data)
+            Debug.enabled = was
+
+            assert(devEncode == relEncode, "Save.encode must be byte-stable across builds -- the duel hash rides on it")
+            assert(devFile == devEncode, "a dev build writes the readable file")
+            assert(#relFile < #devFile, "a release build writes the compact one: " .. #relFile .. " vs " .. #devFile)
+            assert(same(Save.decode("return " .. relFile), Save.decode("return " .. devFile)),
+                "and the two files load as the same save")
         end,
     },
 }

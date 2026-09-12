@@ -14,6 +14,7 @@
 -- Headless-safe: love.filesystem only, no love.graphics at require time.
 
 local Character = require("models.character")
+local Debug = require("models.debug")
 local Descent = require("models.descent")
 local Growth = require("models.growth")
 local Item = require("models.item")
@@ -43,7 +44,19 @@ end
 -- sparse arrays (a 3x3 inventory with gaps) survive the round trip intact, and sorted
 -- so a save file diffs cleanly. Only data types are supported -- functions, userdata,
 -- and love objects must never reach here, which is why the snapshot below stores ids.
-local function encode(value, indent)
+--
+-- `compact` drops the indentation and the newlines, which is most of the file: a mid-expedition
+-- save reads 31 KB pretty-printed and 10.7 KB compact, because a board is 121 cells nested five
+-- deep and every one of them pays for its own pad. Nothing about WHAT is stored changes -- same keys,
+-- same order, same values -- and the compact form loads back through decode like any other Lua.
+--
+-- IT IS OFF BY DEFAULT, AND THAT IS THE IMPORTANT PART. This encoder is not only the save writer's:
+-- models/state_hash.lua projects a board through it and digests the result, and models/netplay.lua
+-- compares that digest against the other peer's after every turn. Two clients whose builds disagreed
+-- about whitespace would hash the same board differently and call a duel desynced on turn one. So
+-- the format stays byte-stable for every caller, and the one place allowed to ask for anything else
+-- is a file nobody but the player will ever open -- see Save.encodeFile.
+local function encode(value, indent, compact)
     local t = type(value)
     if t == "number" or t == "boolean" then
         return tostring(value)
@@ -58,8 +71,15 @@ local function encode(value, indent)
     table.sort(keys, keyOrder)
     if #keys == 0 then return "{}" end
 
-    local pad = string.rep(" ", indent + 4)
     local parts = {}
+    if compact then
+        for _, k in ipairs(keys) do
+            parts[#parts + 1] = "[" .. encode(k, 0, true) .. "]=" .. encode(value[k], 0, true)
+        end
+        return "{" .. table.concat(parts, ",") .. "}"
+    end
+
+    local pad = string.rep(" ", indent + 4)
     for _, k in ipairs(keys) do
         parts[#parts + 1] = pad .. "[" .. encode(k, 0) .. "] = " .. encode(value[k], indent + 4)
     end
@@ -826,6 +846,18 @@ Save.encode = encode
 Save.decode = decode
 Save.known = known
 
+-- The body of a file written into the SAVE DIRECTORY, and the one place that decides whether such a
+-- file is pretty-printed. A dev build keeps the indentation: a save is a plain Lua table, and reading
+-- one -- or hand-editing it to stand up a bug on day nine with 4000 gold -- is how a good deal of the
+-- content work gets done. A release build has nobody to read it and two thirds of its bytes are pad.
+--
+-- Both save-directory writers go through here (Save.write, and models/draft_run.lua), so the flavours
+-- cannot drift apart. A caller that is NOT writing a save -- the state hash, a netplay envelope, a
+-- shared build string -- calls Save.encode instead and always gets the stable form.
+function Save.encodeFile(data)
+    return encode(data, 0, not Debug.enabled)
+end
+
 -- Rebuild mutable player state from a snapshot. Returns nil if the snapshot is unusable
 -- (wrong version, malformed), letting the caller fall back to a fresh game.
 function Save.restore(snap)
@@ -1105,7 +1137,7 @@ end
 -- Returns true on success, or false plus a message.
 function Save.write(player, file)
     local source = "-- Project Tactics save. Generated file; edit at your own risk.\nreturn "
-        .. encode(Save.snapshot(player), 0) .. "\n"
+        .. Save.encodeFile(Save.snapshot(player)) .. "\n"
     return love.filesystem.write(fileOf(file), source)
 end
 
