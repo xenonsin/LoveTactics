@@ -407,15 +407,28 @@ return {
         -- It walks on at (6,1) rather than further off for the same arithmetic: one move gets it
         -- here, so it arrives on its first turn and every beat after it is countable.
         --
-        -- The two HOLDS after the charge are what make the shove mean anything. A scripted unit falls
-        -- back to the ordinary AI the moment its queue runs dry, and the AI's answer to being knocked
-        -- two tiles back is to walk straight in again -- which it did, closing the gap before the
-        -- player ever got a turn to look at it, and turning the ranged Jolt back into a point-blank
-        -- one. So it reels: shoved, it stays shoved, for the beat the lesson needs. It is stunned by
-        -- the end of it anyway, and the fight is over before it would have moved again.
+        -- ...and then the turn the JOLT TAKES AWAY FROM IT. `pace` seats the grunt a second time on
+        -- purpose (see its note): when the player casts, the grunt has to be the next card up, a real
+        -- turn about to happen, or the stun has nothing to shove and the beat teaches nothing. This is
+        -- what that card SAYS it will do -- and the intent telegraph reads this entry, so what the
+        -- card promises and what the turn would do are the same sentence.
+        --
+        -- It spits Brimstone at the avatar rather than charging, and the reason is the Jolt. Shoved
+        -- two tiles clear, a grunt that walks back in closes the very gap that makes the spell a
+        -- RANGED throw -- which is how this entry read for a while as a pair of bare holds: standing
+        -- still was the only way to keep the distance. But a held turn telegraphs `wait`, so the one
+        -- card the lesson is teaching the turn order with announced that nothing was coming, and the
+        -- player was asked to empty their whole mana pool to delay a body that was doing nothing. The
+        -- gout is both at once: it is thrown from where it stands, so the gap survives, and it is a
+        -- real blow coming at a wounded party, so the card is worth pushing down the strip.
+        --
+        -- The lesson always hits (Tutorial.alwaysHits), so the Jolt always stuns and this turn never
+        -- actually arrives -- but if the fight ever drifted far enough that it did, the grunt would
+        -- throw the gout it promised and still be standing two tiles off, which is the one thing the
+        -- closing steps need of it.
         ["6,1"] = {
             { move = { x = 6, y = 4 }, strike = { x = 5, y = 4 } }, -- charge the avatar; the sword answers
-            { hold = true }, { hold = true },
+            { strike = { x = 5, y = 4 }, item = "ability_demon_brimstone" },
         },
     },
 }

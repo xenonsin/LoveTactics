@@ -35,11 +35,16 @@
 -- the middle of that and carries both.
 --
 -- None of it touches the prologue's arithmetic. The grunt is hand-driven for every turn it takes in
--- the village (data/tutorials/village.lua's `script` -- it charges, it is answered, it holds), so it
--- never reaches for Brimstone there, and the column above is counted in physical blows: its claw
--- against the avatar's Defense, the Jolt against the magicDefense below. `magicDamage` was 0 and is
--- now 6 for one reason -- Brimstone is `magical`, and a gout thrown by a body with no magic behind it
--- would land for nothing and never be worth the mana. Nothing in the prologue reads it.
+-- the village (data/tutorials/village.lua's `script` -- it charges, it is answered, and then it winds
+-- up a gout it never gets to throw), and the column above is counted in physical blows: its claw
+-- against the avatar's Defense, the Jolt against the magicDefense below.
+--
+-- THE PROLOGUE DOES READ `magicDamage` AFTER ALL, though it never spends a point of it. The grunt's
+-- second authored turn is a Brimstone aimed at the avatar -- the turn the Jolt's stun takes away, and
+-- the reason that card is worth pushing down the timeline at all. The player reads its number off the
+-- intent telegraph and the stun then deletes the turn, so this stat is a THREAT here rather than a
+-- blow. It was 0 once, and a gout thrown by a body with no magic behind it would land for nothing and
+-- never be worth the mana -- which, on the card, would have read as a demon promising nothing.
 return {
     name = "Demon Grunt",
     kind = "demon",

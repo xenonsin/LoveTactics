@@ -13,6 +13,7 @@ local Arena = require("models.arena")
 local Item = require("models.item")
 local Character = require("models.character")
 local Combat = require("models.combat")
+local Intent = require("models.intent")
 
 local TUTORIAL = "village"
 local ARENA = "tutorial_village"
@@ -82,26 +83,45 @@ local function walkTo(combat, unit, x, y)
     return unit.x == x and unit.y == y
 end
 
--- states/battle.lua's scriptedAction and executeEnemyAction, collapsed: pop the unit's authored turn,
--- walk it, and swing if the entry names a living foe (or, for a post, if one is at its elbow).
-local function runScripted(combat, t, unit)
-    local entry = Tutorial.scriptFor(t, unit.scriptKey or unit.char.id)
-    if not entry then Combat.pass(combat, unit) return end
-    if entry.move then walkTo(combat, unit, entry.move.x, entry.move.y) end
-    local tx, ty
+-- states/battle.lua's scriptedAction, mirrored: the unit's authored turn as a { move, item, tx, ty }
+-- plan. `peek` reads it without spending it, which is what the intent telegraph does. The item is the
+-- one the entry names off the unit's own kit (the grunt's Brimstone) or the weapon in its hands, and
+-- an entry whose cell is out of that item's reach FROM WHERE THE ENTRY LANDS carries no action at all
+-- -- the turn would be refused, so the telegraph must say so too.
+local function scriptedPlan(combat, t, unit, peek)
+    local entry = Tutorial.scriptFor(t, unit.scriptKey or unit.char.id, peek)
+    if not entry then return nil end
+    local act = { move = entry.move }
     if entry.strike then
         local foe = Combat.unitAt(combat, entry.strike.x, entry.strike.y)
-        if foe and foe.side ~= unit.side then tx, ty = entry.strike.x, entry.strike.y end
+        local item = entry.item and heldItem(unit.char, entry.item) or Combat.defaultWeapon(unit.char)
+        local ab = item and item.activeAbility
+        local from = entry.move or { x = unit.x, y = unit.y }
+        local dist = math.abs(from.x - entry.strike.x) + math.abs(from.y - entry.strike.y)
+        if foe and foe.alive and foe.side ~= unit.side and ab
+            and dist <= Combat.abilityRange(combat, unit, ab, from.x, from.y)
+            and dist >= Combat.abilityMinRange(ab) then
+            act.item, act.tx, act.ty = item, entry.strike.x, entry.strike.y
+        end
     elseif entry.guard then
         for _, other in ipairs(combat.units) do
             if other.alive and other.side ~= unit.side
                 and math.abs(other.x - unit.x) + math.abs(other.y - unit.y) == 1 then
-                tx, ty = other.x, other.y
+                act.item = Combat.defaultWeapon(unit.char)
+                act.tx, act.ty = other.x, other.y
                 break
             end
         end
     end
-    if tx and Combat.useItem(combat, unit, Combat.defaultWeapon(unit.char), tx, ty) then return end
+    return act
+end
+
+-- ...and executeEnemyAction on top of it: walk the plan, then act on it.
+local function runScripted(combat, t, unit)
+    local act = scriptedPlan(combat, t, unit)
+    if not act then Combat.pass(combat, unit) return end
+    if act.move then walkTo(combat, unit, act.move.x, act.move.y) end
+    if act.item and act.tx and Combat.useItem(combat, unit, act.item, act.tx, act.ty) then return end
     Combat.pass(combat, unit)
 end
 
@@ -941,6 +961,40 @@ return {
             for _, u in ipairs(combat.units) do
                 assert(u.alive or u.side == "enemy", "the lesson cost the player a unit: " .. u.char.id)
             end
+        end,
+    },
+    {
+        name = "the card the Jolt is thrown at announces a blow, not a held turn",
+        fn = function()
+            -- Step 6 is the one beat in the game that teaches the turn order, and the whole argument
+            -- rests on the grunt's card being worth pushing down the strip: it is the next turn up,
+            -- the stun shoves it below both party members, and the two turns that buys are the two
+            -- that kill it. What the player reads that threat off is the intent telegraph
+            -- (models/intent.lua), planned here exactly as states/battle.lua's intentResolver plans
+            -- it -- the authored turn first, the AI only where there is no script.
+            --
+            -- The regression: the grunt's second authored turn was a bare hold, so the telegraph
+            -- said `wait` on the one card the lesson asks the player to empty their entire mana pool
+            -- to delay. The coaching said a demon was coming for them; the badge over its head said
+            -- it was doing nothing, and the badge is the one that can be checked.
+            local t, combat = playVillage(6)
+            assert(t.index == 6, "the lesson did not reach the Jolt, stopping at " .. t.index)
+            local grunt, avatar = livingById(combat, "character_demon_grunt"),
+                                  livingById(combat, "character_avatar")
+            assert(grunt and avatar, "the Jolt's beat is missing one of the two bodies it is about")
+            local plan = scriptedPlan(combat, t, grunt, true)
+            local intent = Intent.of(combat, grunt, function(u) return scriptedPlan(combat, t, u, true) end)
+            assert(intent.kind ~= "wait", "the card the Jolt pushes down announces nothing")
+            assert(intent.target == avatar,
+                "the grunt's next turn is aimed at " .. (intent.target and intent.target.char.id or "nobody"))
+            assert((intent.amount or 0) > 0, "the telegraph promises a blow that lands nothing")
+
+            -- ...and it throws that blow from where Rowan's shove left it. A charge would telegraph
+            -- just as loudly and close the gap on its way, and the gap is what makes the spell a
+            -- RANGED throw -- which is the other half of what this step teaches.
+            assert(plan and not plan.move, "the grunt's authored answer walks back in")
+            assert(math.abs(grunt.x - avatar.x) + math.abs(grunt.y - avatar.y) > 1,
+                "the grunt is already at the avatar's elbow: the Jolt has no distance to cross")
         end,
     },
     {
