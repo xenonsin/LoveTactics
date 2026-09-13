@@ -76,7 +76,7 @@ local SPEED_STEPS = { 1, 2, 3 }
 -- occupies once the bell rings. The two above it are the host's: the banner, which reads "Deployment
 -- Phase" while this is up, and the objective under it, which says the same thing before the fight as
 -- during it. This line is the one about how to WORK the phase, so it goes last, directly above the
--- board. The host passes the row down (`bounds.titleY`, states/battle.lua's HUD_HINT_Y), because the
+-- board. The host passes the row down (`bounds.titleY`, states/battle.lua's battle.hintY), because the
 -- three rows are one column of text and a widget guessing at the third would drift off the first two.
 -- The fallback is only for a probe that hands no bounds at all.
 local TITLE_Y = 68

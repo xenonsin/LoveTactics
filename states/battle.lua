@@ -149,7 +149,8 @@ local BOARD_TILE = 64
 --
 -- The 16 the header gives up is the top margin (20 -> 8) and the gap over the hint (8 -> 4), not the
 -- lines themselves; the measured faces are 30 / 22 / 16 tall (display 22, display 16, body 13), which
--- with HUD_TITLE_Y / HUD_OBJECTIVE_Y / HUD_HINT_Y below sums to exactly 84 and leaves 4 clear.
+-- with HUD_TITLE_Y and the rows battle.objectiveY / battle.hintY measure under it sums to exactly 84
+-- and leaves 4 clear.
 local BOARD_TOP = 88
 -- ...on a DESKTOP, where the short axis has room to spare. A handheld's does not, and that -- not the
 -- font size -- is what made the game unplayable on a phone.
@@ -181,9 +182,13 @@ end
 -- The three HUD rows above the board. Named rather than typed at their four draw sites, because they
 -- are one column of text whose spacing only reads if it is decided in one place -- and because the sum
 -- of them IS BOARD_TOP above.
+-- ...but only the FIRST of the three is a constant. The other two are measured off the rows above
+-- them (battle.objectiveY, battle.hintY), because the band's width is the host's and not every host
+-- is 512 wide: in a handheld's left column the name and the objective both wrap, and a row placed at
+-- a constant y is a row printed on top of the one before it. In the desktop band the two functions
+-- return 42 (what wins the fight -- display 16, h 22) and 68 (the control hint -- body 13, h 16),
+-- which is what they were as constants.
 local HUD_TITLE_Y = 8      -- the encounter name (or the phase's, before the bell) -- display 22, h 30
-local HUD_OBJECTIVE_Y = 42 -- what wins the fight -- display 16, h 22
-local HUD_HINT_Y = 68      -- the contextual control hint -- body 13, h 16
 local AI_DELAY = 0.35 -- seconds between enemy actions, so each move is watchable
 -- Seconds a walking unit rests on every tile it steps onto, the destination included. A move is
 -- played out one tile at a time (see startWalk) rather than teleporting, so the route a unit takes
@@ -233,10 +238,19 @@ end
 -- would never touch it -- the strip override below would simply never be applied. The same class of
 -- bug as every other cached-geometry miss in this file: the thing that needs telling did not exist
 -- yet when the telling happened.
+--
+-- ...and guarded on the HUD BAND's measured height for the third time, for the same reason a third
+-- time over: the band is what the deployment furniture is laid out under, its height depends on the
+-- fight's own name and objective wrapping in this column (battle.hintY), and battle.enter calls this
+-- before the arena that carries them is built. Measured with the columns as they stand -- a space
+-- that changed under it moves the epoch, which re-runs this anyway and re-measures on the next frame.
 function battle.syncLayout()
-    if battle.layoutEpoch == Scale.spaceEpoch and battle.layoutPanel == battle.panel then return end
+    local band = Scale.inHandheldSpace and battle.hintY(LEFT_W) or 0
+    if battle.layoutEpoch == Scale.spaceEpoch and battle.layoutPanel == battle.panel
+        and battle.layoutBand == band then return end
     battle.layoutEpoch = Scale.spaceEpoch
     battle.layoutPanel = battle.panel
+    battle.layoutBand = band
     if Scale.inHandheldSpace then
         -- THE COLUMNS ARE NOT HALVES. Splitting the leftover evenly is the tidy-looking thing and it
         -- gave the right column 263px, which is a 70px item slot -- too narrow to hold an icon and
@@ -287,7 +301,7 @@ function battle.syncLayout()
     if Scale.inHandheldSpace then
         -- The same ceiling the fight's docked boxes take (menuBottom), so the column's second run
         -- starts on the same pixel before the bell as after it.
-        local top = battle.hudDrop() + HUD_HINT_Y + 22
+        local top = battle.hudDrop() + battle.hintY(LEFT_W) + 22
         battle.deploySettingsButton.y = top
         battle.deployTurnLeftButton.y = top + 44
         battle.deployTurnRightButton.y = top + 44
@@ -313,8 +327,9 @@ function battle.syncLayout()
         -- frames into the action grid directly beneath it.
         if Scale.inHandheldSpace then
             battle.panel.stripX, battle.panel.stripW = 0, LEFT_W
-            -- Clear of the HUD, whose hint line WRAPS to two rows in a column this narrow.
-            battle.panel.stripTop = battle.hudDrop() + HUD_HINT_Y + 80
+            -- Clear of the HUD, whose hint line WRAPS to two rows in a column this narrow -- and
+            -- measured from the hint's own row, which the objective above it can push down.
+            battle.panel.stripTop = battle.hudDrop() + battle.hintY(LEFT_W) + 80
             battle.panel.stripFloor = math.floor(Scale.HEIGHT * 0.78)
         end
     end
@@ -432,7 +447,7 @@ local function menuBottom()
     -- further down the column than the HUD does, and the ceiling has to clear the drawer or the
     -- tooltips dock straight through it.
     if Scale.inHandheldSpace and not battle.deploy and not battle.menuOpen then
-        return battle.hudDrop() + HUD_HINT_Y + 22
+        return battle.hudDrop() + battle.hintY(LEFT_W) + 22
     end
     -- Before the bell there is no drawer to open or shut: Settings and the turn pair always stand, so
     -- the ceiling is always under them.
@@ -608,46 +623,123 @@ local function objectiveWaves(obj, combat)
     return arrived, 1 + #waves
 end
 
--- Draw the objective line, and for a timed one append its remaining ticks as "<hourglass> N" on the
--- same line -- the text and the clock centred together as one group. The hourglass is the game's mark
--- for "measured in ticks" (ui/glyphs.lua), worn wherever a duration is quoted, so the countdown reads
--- in the same unit as the turn-order strip and every cost badge rather than in "turns", which the
--- player is never shown.
-function battle.drawObjective(x, y, w)
-    love.graphics.setFont(hudFont)
-    local obj = battle.arena.objective
+-- The banner's own name for this fight. Split out of drawEncounterLines because the rows UNDER it are
+-- placed off how tall it wraps to (battle.objectiveY), and the measuring has to read the same string
+-- the drawing prints.
+--
+-- BEFORE THE BELL THE BANNER NAMES THE BEAT, not the fight. The deployment phase is a thing the
+-- player is doing and it ends; the encounter's name is a thing that is true either way, and the
+-- objective line under it is already saying what this fight is. The name comes back the instant the
+-- phase commits, which is also the moment it starts mattering.
+function battle.encounterName()
+    if battle.deploy then return "Deployment Phase" end
+    return (battle.encounter and battle.encounter.name) or "Battle"
+end
+
+-- The objective row's layout in a column `w` wide: the text's wrapped lines, the trailing read-out,
+-- and whether that read-out rides the last line or takes one of its own. ONE function measures it and
+-- one draws off what it returns, because the HUD rows UNDER this one are placed off its measured
+-- height (battle.hintY) -- two arithmetics for one block is how the hint ends up printed over the
+-- objective.
+--
+-- THE ROW WRAPS, because the column it is printed in is not always wider than the sentence. Over the
+-- board it is 512 and always was, so it never had to. In a handheld's left column it is 188-259 and
+-- "Objective: Clear every wave, keep Survivor alive" is ~340 at this face: the group-centred x came
+-- out NEGATIVE, so the first three words ran off the side of the screen and the wave tally printed
+-- over the board's top-left tile.
+--
+-- The tail's fit is decided against a DIGIT-PADDED sample of its label rather than the label itself: a
+-- tick countdown gets narrower as it counts down, so deciding per frame would pull the read-out up a
+-- line -- and every row under it up with it -- somewhere around the last few ticks of the fight.
+function battle.objectiveRow(w)
+    local obj = battle.arena and battle.arena.objective
     local text = objectiveText(obj)
-    local textW = hudFont:getWidth(text)
+    local row = { gw = 11, gap = 12, numGap = 5 }
 
     -- The trailing read-out is one of two things: a tick countdown (survive/hold), worn with the
     -- hourglass because it is measured in ticks, OR a wave tally (the wave-based defend), drawn as
     -- plain text and NOT the hourglass -- the hourglass is the game's mark for ticks alone.
     -- The countdown in TICKS (Combat.objectiveRemaining), the same number the hover tooltip quotes on
     -- the marked ground itself -- one formula, so the banner and the tile can never disagree.
-    local remaining = Combat.objectiveRemaining(battle.combat)
+    local remaining = battle.combat and Combat.objectiveRemaining(battle.combat)
     local wArrived, wTotal = objectiveWaves(obj, battle.combat)
-    local gw, gap, numGap = 11, 12, 5
+    row.clock = remaining and tostring(remaining) or nil
+    row.wave = wArrived and ("Wave " .. wArrived .. "/" .. wTotal) or nil
+
+    local widest -- the label at the width it is widest at, over the whole fight
+    row.tailW, row.fitW = 0, 0
+    if row.clock then
+        widest = string.rep("8", math.max(2, #row.clock))
+        row.tailW = row.gap + row.gw + row.numGap + hudFont:getWidth(row.clock)
+        row.fitW = row.gap + row.gw + row.numGap + hudFont:getWidth(widest)
+    elseif row.wave then
+        widest = row.wave:gsub("%d", "8")
+        row.tailW = row.gap + hudFont:getWidth(row.wave)
+        row.fitW = row.gap + hudFont:getWidth(widest)
+    end
+
+    local _, wrapped = hudFont:getWrap(text, w)
+    row.lines = (wrapped and #wrapped > 0) and wrapped or { text }
+    local last = row.lines[#row.lines]
+    row.tailOwnLine = row.fitW > 0 and (hudFont:getWidth(last) + row.fitW > w)
+    row.h = (#row.lines + (row.tailOwnLine and 1 or 0)) * hudFont:getHeight()
+    return row
+end
+
+-- The read-out that trails the objective, drawn from `sx` -- the pixel its leading gap starts at, so
+-- the caller places the pair and this only ever draws it.
+function battle.drawObjectiveTail(row, sx, y)
     local col = Theme.accentAmber
-    local clockLabel = remaining and tostring(remaining) or nil
-    local waveLabel = wArrived and ("Wave " .. wArrived .. "/" .. wTotal) or nil
-
-    local tailW = 0
-    if clockLabel then tailW = gap + gw + numGap + hudFont:getWidth(clockLabel)
-    elseif waveLabel then tailW = gap + hudFont:getWidth(waveLabel) end
-    local sx = x + (w - (textW + tailW)) / 2
-
-    Theme.set(Theme.ink)
-    love.graphics.print(text, sx, y)
-    if clockLabel then
-        local cx = sx + textW + gap
-        Glyphs.hourglass(cx, y + 2, gw, hudFont:getHeight() - 4, col[1], col[2], col[3], 1)
+    love.graphics.setColor(col[1], col[2], col[3])
+    if row.clock then
+        local cx = sx + row.gap
+        Glyphs.hourglass(cx, y + 2, row.gw, hudFont:getHeight() - 4, col[1], col[2], col[3], 1)
         love.graphics.setColor(col[1], col[2], col[3])
-        love.graphics.print(clockLabel, cx + gw + numGap, y)
-    elseif waveLabel then
-        love.graphics.setColor(col[1], col[2], col[3])
-        love.graphics.print(waveLabel, sx + textW + gap, y)
+        love.graphics.print(row.clock, cx + row.gw + row.numGap, y)
+    elseif row.wave then
+        love.graphics.print(row.wave, sx + row.gap, y)
     end
     love.graphics.setColor(1, 1, 1)
+end
+
+-- Draw the objective line, and for a timed one append its remaining ticks as "<hourglass> N" on the
+-- same line -- the text and the clock centred together as one group. The hourglass is the game's mark
+-- for "measured in ticks" (ui/glyphs.lua), worn wherever a duration is quoted, so the countdown reads
+-- in the same unit as the turn-order strip and every cost badge rather than in "turns", which the
+-- player is never shown. Where the pair does not fit the column, the read-out drops to a centred line
+-- of its own -- it is still the same group, one row lower.
+function battle.drawObjective(x, y, w)
+    love.graphics.setFont(hudFont)
+    local row = battle.objectiveRow(w)
+    local lineH = hudFont:getHeight()
+    for i, line in ipairs(row.lines) do
+        local pad = (i == #row.lines and not row.tailOwnLine) and row.tailW or 0
+        local sx = x + (w - (hudFont:getWidth(line) + pad)) / 2
+        Theme.set(Theme.ink)
+        love.graphics.print(line, sx, y + (i - 1) * lineH)
+        if pad > 0 then battle.drawObjectiveTail(row, sx + hudFont:getWidth(line), y + (i - 1) * lineH) end
+    end
+    if row.tailOwnLine then
+        -- Alone on its line the leading gap is not between anything, so it is centred out of the ink
+        -- rather than out of the slot.
+        battle.drawObjectiveTail(row, x + (w - (row.tailW - row.gap)) / 2 - row.gap,
+            y + #row.lines * lineH)
+    end
+    love.graphics.setColor(1, 1, 1)
+end
+
+-- The HUD band's second and third rows, MEASURED rather than constant. The band is one column of text
+-- and the column is the host's: 512 over a desktop's board, as little as 188 in a handheld's left
+-- column, where both the fight's name and its objective are wider than the space they are printed in.
+-- These return the old constants in the desktop band (8 + 30 + 4 = 42, 42 + 22 + 4 = 68); a row that
+-- wraps pushes what is under it down by what it actually took.
+function battle.objectiveY(w)
+    local _, lines = titleFont:getWrap(battle.encounterName(), w)
+    return HUD_TITLE_Y + math.max(1, lines and #lines or 1) * titleFont:getHeight() + 4
+end
+
+function battle.hintY(w)
+    return battle.objectiveY(w) + battle.objectiveRow(w).h + 4
 end
 
 -- A real-time clock as m:ss, floored (never shows a phantom extra second). Used by the chess-clock
@@ -5910,7 +6002,8 @@ function battle.draw()
         battle.drawDeployMenu()
         -- `titleY` is the HUD's third row, which the phase's own headline takes (the row the control
         -- hint occupies once the bell rings). Handed over rather than repeated in the widget, so the
-        -- three rows stay one column of text decided in one file -- see HUD_HINT_Y.
+        -- three rows stay one column of text decided in one file -- see battle.hintY, which measures
+        -- that row rather than naming it, so a wrapped objective carries the headline down with it.
         --
         -- ...and in the short space that row is in the COLUMN with the other two, so the headline is
         -- handed the column as well. Sent the board's rect it centred "Set your line" over the top row
@@ -5918,10 +6011,11 @@ function battle.draw()
         -- it to sit in. The three rows read as one block either way; only the block moved.
         if Scale.inHandheldSpace then
             battle.deploy:draw({ x = 0, w = LEFT_W, dockW = LEFT_W - 32,
-                                 dockTop = menuBottom(), titleY = battle.hudDrop() + HUD_HINT_Y })
+                                 dockTop = menuBottom(), titleY = battle.hudDrop() + battle.hintY(LEFT_W) })
         else
             battle.deploy:draw({ x = LEFT_W, w = Scale.WIDTH - LEFT_W - PANEL_W, dockW = LEFT_W - 32,
-                                 dockTop = menuBottom(), titleY = HUD_HINT_Y })
+                                 dockTop = menuBottom(),
+                                 titleY = battle.hintY(Scale.WIDTH - LEFT_W - PANEL_W) })
         end
         -- The Loadout screen or the potion screen, over the phase and under the settings overlay: what
         -- the company carries and what is left in it are decisions about THIS fight, so they are taken
@@ -6537,19 +6631,22 @@ end
 -- that decision is being made, at the same two y's it keeps once the bell rings.
 function battle.drawEncounterLines(boardX, boardW)
     love.graphics.setFont(titleFont)
-    -- BEFORE THE BELL THE BANNER NAMES THE BEAT, not the fight. The deployment phase is a thing the
-    -- player is doing and it ends; the encounter's name is a thing that is true either way, and the
-    -- objective line under it is already saying what this fight is. The name comes back the instant the
-    -- phase commits, which is also the moment it starts mattering.
-    local name = battle.deploy and "Deployment Phase" or (battle.encounter.name or "Battle")
+    local name = battle.encounterName()
     local cx, cyTitle = boardX + boardW / 2, HUD_TITLE_Y + titleFont:getHeight() / 2
     local halfTitle = titleFont:getWidth(name) / 2
-    Theme.crest(cx - halfTitle - 20, cyTitle, 9)
-    Theme.crest(cx + halfTitle + 20, cyTitle, 9)
+    -- THE CRESTS FLANK THE NAME ONLY WHERE THE COLUMN HAS ROOM FOR THE PAIR. Over the board it always
+    -- does. In a handheld's left column the name is most of the width -- "Deployment Phase" is 245 of
+    -- 259 -- so the left crest was struck off the side of the screen and the right one sat alone on
+    -- the board's top-left tile, which is what a lone diamond on the first tile of every phone fight
+    -- was. A decoration that does not fit is not drawn; the name itself still wraps and is read.
+    if halfTitle + 29 <= boardW / 2 then
+        Theme.crest(cx - halfTitle - 20, cyTitle, 9)
+        Theme.crest(cx + halfTitle + 20, cyTitle, 9)
+    end
     Theme.set(Theme.accentAmber)
     love.graphics.printf(name, boardX, HUD_TITLE_Y, boardW, "center")
 
-    battle.drawObjective(boardX, HUD_OBJECTIVE_Y, boardW)
+    battle.drawObjective(boardX, battle.objectiveY(boardW), boardW)
     if battle.isDraft then battle.drawControlHud(boardX, boardW) end
 end
 
@@ -6642,7 +6739,7 @@ function battle.drawHudText(boardX, boardW)
     -- board top.
     love.graphics.setFont(hintFont)
     Theme.set(Theme.muted)
-    love.graphics.printf(hint, boardX, HUD_HINT_Y, boardW, "center")
+    love.graphics.printf(hint, boardX, battle.hintY(boardW), boardW, "center")
     love.graphics.setColor(1, 1, 1)
 end
 
