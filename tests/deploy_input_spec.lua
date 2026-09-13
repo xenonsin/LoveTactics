@@ -40,6 +40,7 @@ local function phase(opts)
         autoSpeed = 1,
         speedSteps = { 1, 2, 3 },
         onLoadout = opts.onLoadout,
+        onPotions = opts.onPotions,
         map = opts.map or stubMap(),
     }, DeployPhase)
 end
@@ -71,9 +72,10 @@ return {
     {
         name = "every control in the stack is reachable by the keyboard/pad selection",
         fn = function()
-            -- The fullest stack the phase can show: a fight with a stash behind it, auto armed (which
-            -- is the only state the speed cycler exists in).
-            local p = phase({ onLoadout = function() end, autoBattle = true })
+            -- The fullest stack the phase can show: a fight with a player behind it (so both the
+            -- Loadout and the Potions plates stand), auto armed (which is the only state the speed
+            -- cycler exists in).
+            local p = phase({ onLoadout = function() end, onPotions = function() end, autoBattle = true })
             local seen = reachable(p)
             for _, c in ipairs(p:controls()) do
                 assert(seen[c.key], "control '" .. c.key .. "' cannot be reached without a mouse")
@@ -91,6 +93,34 @@ return {
             p.autoFill = function() hit = true end
             p:keypressed("r")
             assert(hit, "R did not press Reset Line")
+        end,
+    },
+    {
+        name = "Potions stands under the Loadout, answers U, and is on the ring",
+        fn = function()
+            local p = phase({ onLoadout = function() end, onPotions = function() end })
+            local keys = {}
+            for i, c in ipairs(p:controls()) do keys[i] = c.key end
+            assert(keys[1] == "loadout" and keys[2] == "potions",
+                "the potion plate belongs directly under the kit plate, not somewhere else in the stack")
+
+            assert(reachable(p)["potions"], "Potions is mouse-only")
+
+            local opened = false
+            p.onPotions = function() opened = true end
+            p:keypressed("u")
+            assert(opened, "U did not open the potion screen -- the overworld's own key for it")
+        end,
+    },
+    {
+        name = "a fight with nobody behind it offers no potions to spend",
+        fn = function()
+            -- A probe or a debug board: no player, so no satchel -- and a plate that opened an empty
+            -- screen would be a plate the eye has to rule out every time.
+            local p = phase()
+            for _, c in ipairs(p:controls()) do
+                assert(c.key ~= "potions", "a fight with no player behind it drew a potion plate")
+            end
         end,
     },
     {

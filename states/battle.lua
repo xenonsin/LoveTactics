@@ -3525,14 +3525,43 @@ local function previewOrConfirmWait()
     end
 end
 
+-- What an entry acts WITH: the thing it names off the unit's own kit, or -- naming nothing -- the
+-- weapon in its hands. Naming one is how an authored turn can be something other than a swing, which
+-- the village grunt's second turn needs: it is a Brimstone cast thrown from where it stands, and the
+-- default weapon would have been claws it is two tiles too far away to use.
+local function scriptedItem(unit, id)
+    if not id then return Combat.defaultWeapon(unit.char) end
+    for _, item in ipairs(Character.eachItem(unit.char)) do
+        if item.id == id then return item end
+    end
+    return nil -- the kit does not carry it: hold, rather than swing something the lesson didn't name
+end
+
+-- Can the entry's action reach the cell it names, from the tile the entry leaves the unit on? A
+-- scripted turn is read TWICE -- once by the intent telegraph, once by the turn itself -- and the
+-- answer has to be the same both times: out of reach, Combat.useItem refuses and the unit passes, so
+-- a telegraph that promised the blow would be promising one that never comes (models/intent.lua).
+-- Measured from `from` rather than from the unit, because an entry that walks first strikes from
+-- where it lands -- which is the whole reason the grunt's charge telegraphs an attack while it is
+-- still three tiles away.
+local function scriptedReaches(unit, item, from, tx, ty)
+    local ab = item and item.activeAbility
+    if not ab then return false end
+    local dist = math.abs(from.x - tx) + math.abs(from.y - ty)
+    if dist > Combat.abilityRange(battle.combat, unit, ab, from.x, from.y)
+        + Combat.adjacencyRangeBonus(unit.char, item) then return false end
+    return dist >= Combat.abilityMinRange(ab)
+end
+
 -- A tutorial's authored turn for this unit, translated into the same { move, item, tx, ty } plan
 -- shape planEnemyAction returns -- so a hand-scripted mentor and an ordinary enemy travel the exact
 -- same walk-then-act path below, with no second execution route to keep in step.
 --
 -- Returns nil (and the caller falls back to the AI) when the unit isn't scripted, when its queue has
--- run dry, or when the authored strike cell no longer holds a living foe. That last case is why the
--- weapon lookup lives here rather than in models/tutorial.lua: the lesson is pure data and knows
--- nothing of the board, so the check for whether its script still makes sense belongs on this side.
+-- run dry, or when the authored strike cell no longer holds a living foe within reach of the thing
+-- the entry acts with. Those last cases are why the item lookup lives here rather than in
+-- models/tutorial.lua: the lesson is pure data and knows nothing of the board, so the check for
+-- whether its script still makes sense belongs on this side.
 -- `peek` runs the plan WITHOUT spending the scripted turn: the intent preview (intentResolver) reads
 -- what a unit is about to do to draw its target line, and must not consume the queue entry the unit's
 -- real turn is owed. Only executeEnemyAction, which actually takes the turn, consumes. See
@@ -3544,8 +3573,11 @@ local function scriptedAction(unit, peek)
     local act = { move = entry.move }
     if entry.strike then
         local target = Combat.unitAt(battle.combat, entry.strike.x, entry.strike.y)
-        if target and target.alive and target.side ~= unit.side then
-            act.item = Combat.defaultWeapon(unit.char)
+        local item = scriptedItem(unit, entry.item)
+        local from = entry.move or { x = unit.x, y = unit.y }
+        if target and target.alive and target.side ~= unit.side
+            and scriptedReaches(unit, item, from, entry.strike.x, entry.strike.y) then
+            act.item = item
             act.tx, act.ty = entry.strike.x, entry.strike.y
         end
     elseif entry.guard then
@@ -4828,7 +4860,7 @@ end
 -- Modal over the phase, exactly as the Settings overlay is, and required lazily: a fight that skips
 -- deployment (a duel, a draft, a scripted lesson) never pays to load the panel.
 function battle.openDeployLoadout(player)
-    if battle.deployLoadout or not battle.deploy then return end
+    if battle.deployModal() or not battle.deploy then return end
     local standing = battle.deploy:deployedChars()
     battle.deployLoadout = require("ui.panels.party").new({
         player = player,
@@ -4840,9 +4872,11 @@ function battle.openDeployLoadout(player)
         -- during a tutorial fight on top of that -- the same line states/game.lua draws over the
         -- overworld, and the same one autoAllowed draws for the switch that runs them.
         tactics = not battle.tutorial and require("models.descent").tacticsUnlocked(battle.player),
-        -- ...and the roll with it, for the same reason: on the flight leg this screen is the equip
-        -- lesson and nothing else.
-        classes = not battle.tutorial,
+        -- ...and the roll with it, for the same reason: before the city this screen is the equip lesson
+        -- and nothing else. Gated on the company having reached the town rather than on this fight
+        -- being a scripted one (Descent.classesUnlocked) -- the sweep's stops are launched from the
+        -- overworld as ordinary encounters, deployment and all, and carry no tutorial flag to read.
+        classes = require("models.descent").classesUnlocked(battle.player),
         onClose = function()
             battle.deployLoadout = nil
             -- A body snapshots what its gear decides at the moment it is stood up (its initiative is
@@ -4856,6 +4890,43 @@ function battle.openDeployLoadout(player)
     for i, char in ipairs(player.roster or {}) do
         if char == standing[1] then battle.deployLoadout:focusChar(i) break end
     end
+end
+
+-- The POTIONS screen, opened over the deployment phase: the same panel the overworld's Potions
+-- button opens (ui/panels/consumables.lua), on the same roster and the same satchel.
+--
+-- Wounds carry between the fights of a run, and the last place to spend a draught against them was a
+-- leg of overworld ago -- before the player had seen the ground, the enemy line or the objective. So a
+-- body that walks in at half health walks in that way because nobody could do anything about it on the
+-- one screen where the damage it is about to take is legible. Out here the flask costs no turn, which
+-- is the whole difference from quaffing one mid-fight: the tempo trade that makes an in-combat drink a
+-- real decision does not exist before the bell, and the cost is the flask.
+--
+-- A member restored here needs nothing re-stamped: a deployed unit holds its character by reference,
+-- so the pool the panel refills is the one the fight reads. Closing still runs refreshPlacements, for
+-- the half of it that is not about gear -- it puts down anything the player was carrying when they
+-- opened the screen.
+--
+-- Modal over the phase on exactly the terms the Loadout screen is, and required lazily for the same
+-- reason: a fight that skips deployment never pays to load it.
+function battle.openDeployPotions(player)
+    if battle.deployModal() or not battle.deploy then return end
+    battle.deployPotions = require("ui.panels.consumables").new({
+        player = player,
+        onClose = function()
+            battle.deployPotions = nil
+            if battle.deploy then battle.deploy:refreshPlacements() end
+        end,
+    })
+end
+
+-- Whichever screen is open OVER the deployment phase -- the Loadout or the Potions panel -- or nil
+-- while the phase itself owns the screen. One reading of "is the phase covered", so the update, the
+-- draw and every input route can never disagree about which surface the player is looking at; the two
+-- are never both up, because each opener refuses while the other stands (they are opened from plates
+-- on a stack that is behind both).
+function battle.deployModal()
+    return battle.deployLoadout or battle.deployPotions
 end
 
 -- WHAT THE BOARD SHOWS BEFORE THE BELL. The phase used to light the deploy zone and nothing else, which
@@ -4903,6 +4974,10 @@ local function openDeployPhase(opts)
         -- The Loadout screen, but only for a fight with a real player (and therefore a stash) behind
         -- it: a probe or a debug board has nothing to open. See battle.openDeployLoadout.
         onLoadout = opts.player and function() battle.openDeployLoadout(opts.player) end or nil,
+        -- ...and the potion screen beside it, on the same terms: a fight with a player behind it has a
+        -- satchel, and this is the last beat before the bell where a wound the run walked in with can
+        -- still be mended without paying a turn for it. See battle.openDeployPotions.
+        onPotions = opts.player and function() battle.openDeployPotions(opts.player) end or nil,
         -- Whether the fight is played or watched is asked HERE, next to the bell, seeded from the
         -- standing preference (battle.autoAll carries across fights, like the playback speed) and
         -- handed back on the commit -- so the phase's switch and the drawer's Auto entry are one flag
@@ -5264,8 +5339,10 @@ function battle.enter(self, opts)
     -- didn't. See MENU_BUTTON / menuBottom.
     battle.menuOpen = false
     -- Nothing is open over the deployment phase yet. Cleared here rather than trusted to have been
-    -- closed, so a fight retried out of the defeat panel cannot inherit the last one's Loadout screen.
+    -- closed, so a fight retried out of the defeat panel cannot inherit the last one's Loadout screen
+    -- -- or its potion screen, which is the same trap wearing the other plate.
     battle.deployLoadout = nil
+    battle.deployPotions = nil
     -- Auto-battle playback speed carries across fights as a preference (like autoAll itself), so a
     -- player who likes 3x keeps it -- but seed it the first time so battle.update's multiply is safe.
     battle.autoSpeed = battle.autoSpeed or 1
@@ -5503,9 +5580,10 @@ function battle.update(dt)
     -- there is nothing to advance. Only the board ticks, so its cursor and hover still feel live while
     -- the player drags their company onto it.
     if battle.deploy then
-        -- The Loadout screen is modal over the phase (openDeployLoadout): while it is up the board
-        -- behind it is not being pointed at, so only the panel ticks.
-        if battle.deployLoadout then battle.deployLoadout:update(dt) else battle.map:update(dt) end
+        -- The Loadout and Potions screens are modal over the phase (battle.deployModal): while one
+        -- is up the board behind it is not being pointed at, so only the panel ticks.
+        local modal = battle.deployModal()
+        if modal then modal:update(dt) else battle.map:update(dt) end
         return
     end
 
@@ -5845,9 +5923,10 @@ function battle.draw()
             battle.deploy:draw({ x = LEFT_W, w = Scale.WIDTH - LEFT_W - PANEL_W, dockW = LEFT_W - 32,
                                  dockTop = menuBottom(), titleY = HUD_HINT_Y })
         end
-        -- The Loadout screen, over the phase and under the settings overlay: gear is a decision about
-        -- this fight, so it is taken on this screen rather than a leg of overworld ago.
-        if battle.deployLoadout then battle.deployLoadout:draw() end
+        -- The Loadout screen or the potion screen, over the phase and under the settings overlay: what
+        -- the company carries and what is left in it are decisions about THIS fight, so they are taken
+        -- on this screen rather than a leg of overworld ago.
+        if battle.deployModal() then battle.deployModal():draw() end
         -- Opened from that drawer, and modal over the phase exactly as it is over the fight.
         if battle.settingsMenu then battle.drawSettingsOverlay() end
         love.graphics.setColor(1, 1, 1)
@@ -6624,12 +6703,12 @@ function battle.keypressed(key)
     end
     -- The deployment phase owns every other input until the player commits their line. It is not a modal
     -- over the fight -- it is what the screen IS before the fight starts -- so it simply takes the key.
-    -- The Loadout screen IS a modal over it, and closes itself on Esc.
-    if battle.deployLoadout then battle.deployLoadout:keypressed(key); return end
+    -- The Loadout and Potions screens ARE modals over it, and each closes itself on Esc.
+    if battle.deployModal() then battle.deployModal():keypressed(key); return end
     -- Turning the board (Q / E) is answered above every owner below it, because it is a fact about the
     -- PICTURE and not about whatever is being decided on it: it means the same thing while a line is
     -- being deployed, while a body is being picked off the bench, and after the fight is over. Only the
-    -- two screens that cover the board -- the settings overlay and the Loadout -- take it first. The
+    -- screens that cover the board -- the settings overlay, the Loadout and the potions -- take it first. The
     -- column's two plates are the mouse's way to the same pair. Q and E because WASD is the board
     -- cursor, so the keys that turn the view sit either side of the hand already steering it.
     if key == "q" then battle.turnBoard(-1); return end
@@ -6738,7 +6817,7 @@ function battle.gamepadpressed(joystick, button)
         if button == "b" then closeSettings() else battle.settingsMenu:gamepadpressed(joystick, button) end
         return
     end
-    if battle.deployLoadout then battle.deployLoadout:gamepadpressed(joystick, button); return end
+    if battle.deployModal() then battle.deployModal():gamepadpressed(joystick, button); return end
     if battle.deploy then battle.deploy:gamepadpressed(joystick, button); return end
     -- The wind-up chooser owns the pad while a chargeable swing is being sized (D-pad / bumpers adjust,
     -- A commits, B backs out).
@@ -6828,7 +6907,7 @@ function battle.mousemoved(x, y, dx, dy)
         battle.settingsClose:mousemoved(x, y)
         return
     end
-    if battle.deployLoadout then battle.deployLoadout:mousemoved(x, y); return end
+    if battle.deployModal() then battle.deployModal():mousemoved(x, y); return end
     if battle.deploy then
         battle.menuHoverCue(x, y) -- the pre-bell controls are hoverable like any other left-column button
         battle.deploy:mousemoved(x, y)
@@ -6860,7 +6939,7 @@ end
 -- the log is closed, so a wheel over the board falls through to the strip.
 function battle.wheelmoved(dx, dy)
     if battle.settingsMenu then return end -- the short list needs no scroll; swallow it
-    if battle.deployLoadout then battle.deployLoadout:wheelmoved(dx, dy); return end
+    if battle.deployModal() then battle.deployModal():wheelmoved(dx, dy); return end
     -- SWALLOWED, not routed. The deployment strip used to own the wheel and page the company sideways
     -- through it; there is no strip and nothing to page (ui/deploy_phase.lua), and the phase has no
     -- wheelmoved to call. Still a `return`, so a wheel over the board cannot fall through to the fight
@@ -7002,8 +7081,8 @@ function battle.mousepressed(x, y, button)
     end
     -- The settings overlay, opened from the pre-bell Settings plate, is modal over the deployment phase (see
     -- keypressed) -- so it is asked before the phase is, and the shared block below handles it.
-    if battle.deployLoadout and not battle.settingsMenu then
-        battle.deployLoadout:mousepressed(x, y, button)
+    if battle.deployModal() and not battle.settingsMenu then
+        battle.deployModal():mousepressed(x, y, button)
         return
     end
     if battle.deploy and not battle.settingsMenu then
@@ -7201,7 +7280,13 @@ function battle.mousereleased(x, y, button)
     end
     if battle.settingsMenu then return end -- the modal took the press; the release is not the board's
     -- The Loadout screen is drag-driven (stash to grid), so its release matters as much as the phase's.
-    if battle.deployLoadout then battle.deployLoadout:mousereleased(x, y, button); return end
+    -- The potion screen is click-driven and defines no mousereleased at all, so the release is
+    -- SWALLOWED there rather than routed: it must not fall through to the board it is covering.
+    if battle.deployModal() then
+        local modal = battle.deployModal()
+        if modal.mousereleased then modal:mousereleased(x, y, button) end
+        return
+    end
     if battle.deploy then battle.deploy:mousereleased(x, y, button); return end
     if battle.spendChooser then battle.spendChooser:mousereleased(x, y, button); return end
     if battle.windupChooser then battle.windupChooser:mousereleased(x, y, button) end
@@ -7220,7 +7305,7 @@ function battle.cursorKind()
         if battle.settingsClose:contains(mx, my) then return "hand" end
         return battle.settingsMenu:mouseOverItem(mx, my) and "hand" or "arrow"
     end
-    if battle.deployLoadout then return battle.deployLoadout:cursorKind(mx, my) end
+    if battle.deployModal() then return battle.deployModal():cursorKind(mx, my) end
     if battle.deploy then
         -- The column's two standing controls are clickable before the bell too.
         if overMenuEntry(mx, my) then return "hand" end

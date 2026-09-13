@@ -21,12 +21,12 @@
 -- fight (ui/battle_map.lua's drawDeployZone), so "you may stand here" is said once, in one visual
 -- language, at minute zero and at minute ten alike.
 --
--- THE CONTROLS -- Loadout, Reset Line, Auto (with the playback-speed cycler paired to its right while
---   it is on) and the bell -- stack down the LEFT COLUMN, under the two standing plates the host keeps
---   there before the bell (Settings and the board-turn pair -- there is no hamburger on this screen),
---   in the band the fight's own entries occupy. The column is where this screen already keeps its
---   furniture, so the controls read as the screen's rather than the board's. The host passes the band
---   in (battle's deployControlRect).
+-- THE CONTROLS -- Loadout, Potions, Reset Line, Auto (with the playback-speed cycler paired to its
+--   right while it is on) and the bell -- stack down the LEFT COLUMN, under the two standing plates
+--   the host keeps there before the bell (Settings and the board-turn pair -- there is no hamburger
+--   on this screen), in the band the fight's own entries occupy. The column is where this screen
+--   already keeps its furniture, so the controls read as the screen's rather than the board's. The
+--   host passes the band in (battle's deployControlRect).
 -- THE HINT LINE is all that is left in the gutter, drawn along its top edge, directly under the board:
 --   the last refusal, or how to work the phase. The host still passes the rect (battle's gutterRect)
 --   because it is the combat log's and the two must not drift apart.
@@ -96,6 +96,9 @@ local TITLE_Y = 68
 --   onLoadout           opens the Loadout screen over the phase; nil hides the button outright (a
 --                       fight with no player behind it -- a probe, a debug board -- has no stash to
 --                       open). The host owns that modal, exactly as it owns the Settings one.
+--   onPotions           opens the Potions screen (the overworld's own potion panel) over the phase;
+--                       nil hides that button on the same terms, and for the same reason -- a fight
+--                       with nobody behind it carries no flasks.
 function DeployPhase.new(opts)
     opts = opts or {}
     local self = setmetatable({}, DeployPhase)
@@ -106,6 +109,7 @@ function DeployPhase.new(opts)
     self.player = opts.player
     self.onCommit = opts.onCommit
     self.onLoadout = opts.onLoadout
+    self.onPotions = opts.onPotions
     self.gutter = opts.gutter or { x = 0, y = 0, w = 0, h = 0 }
     self.column = opts.column or { x = 16, y = 104, w = 130 }
 
@@ -383,8 +387,8 @@ end
 -- that is hidden here is hidden everywhere, which is what keeps a fight with no stash behind it from
 -- having an invisible Loadout you can still click.
 --
--- The order is the order the decisions are made in: kit the company, put the line back, say who plays
--- -- and the bell last, because it is the one that ends the phase.
+-- The order is the order the decisions are made in: kit the company, mend it, put the line back, say
+-- who plays -- and the bell last, because it is the one that ends the phase.
 function DeployPhase:controls()
     local out, row = {}, 0
     local function add(key, label, enabled, on)
@@ -401,6 +405,13 @@ function DeployPhase:controls()
                           rect = { x = prev.x + prev.w + PAIR_GAP, y = prev.y, w = PAIR_W, h = CTRL_H } }
     end
     if self.onLoadout then add("loadout", "Loadout") end
+    -- Drinking, directly under kitting: both are questions about what the company CARRIES, and both
+    -- were last askable a leg of overworld ago. A draught spent here costs no turn -- which is the
+    -- whole reason the plate belongs on this side of the bell rather than only in the fight's bag: a
+    -- body that walks in at half health has already lost the first exchange, and the player could see
+    -- that the moment the phase drew the board. Same screen the overworld's Potions button opens, on
+    -- the same roster and the same stash (ui/panels/consumables.lua), hosted by the caller.
+    if self.onPotions then add("potions", "Potions") end
     -- "Reset Line", not the "Auto-Fill" it was: there is nothing left to fill FROM, and what the button
     -- now does is put a shuffled line back the way the phase opened it. Its neighbour "Clear" went with
     -- the strip -- a board the player could empty with no card to refill it from is a phase you can
@@ -440,6 +451,7 @@ end
 -- What each control means, in one place, so a click and a key press cannot drift apart.
 function DeployPhase:press(key)
     if key == "loadout" then if self.onLoadout then self.onLoadout() end
+    elseif key == "potions" then if self.onPotions then self.onPotions() end
     elseif key == "autofill" then self:autoFill()
     elseif key == "auto" then self:toggleAuto()
     elseif key == "speed" then self:cycleSpeed()
@@ -929,6 +941,9 @@ function DeployPhase:keypressed(key)
     -- I, the overworld's own Loadout key (states/game.lua): the screen it opens is the same screen,
     -- so it answers to the same letter before a fight as on the road to it.
     elseif key == "i" then self:press("loadout")
+    -- U, the overworld's own Potions key (states/game.lua): same screen, same flasks, same letter on
+    -- both sides of the fight.
+    elseif key == "u" then self:press("potions")
     elseif key == "left" or key == "a" then self:navigate(-1, 0)
     elseif key == "right" or key == "d" then self:navigate(1, 0)
     elseif key == "up" or key == "w" then self:navigate(0, -1)
@@ -946,7 +961,9 @@ function DeployPhase:gamepadpressed(_, button)
     -- before the bell and after it.
     elseif button == "rightstick" then self:cycleSpeed()
     -- X for the Loadout, since the overworld's Y is spoken for here. The other face buttons are the
-    -- phase's own (place / drop), and the shoulder pair is not a place to hide a screen.
+    -- phase's own (place / drop), and the shoulder pair is not a place to hide a screen. Potions
+    -- takes no button at all for the same reason Reset Line takes none: the face buttons are spent,
+    -- and every plate in the stack is already on the selection ring one step left of the board.
     elseif button == "x" then self:press("loadout")
     elseif button == "dpleft" then self:navigate(-1, 0)
     elseif button == "dpright" then self:navigate(1, 0)

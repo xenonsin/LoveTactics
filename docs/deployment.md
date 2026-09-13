@@ -127,7 +127,8 @@ ends; the encounter's own name comes back the instant the bell rings.
   they stand *open*: there is no hamburger on this screen, because a fold over two always-legal
   controls hides nothing and costs a click on the beat where turning the board is the first thing a
   player wants to do. The drawer returns with the fight. The controls read top to bottom in the
-  order the decisions are made in: **Loadout**, **Reset Line**, **Auto**, and the bell last.
+  order the decisions are made in: **Loadout**, **Potions**, **Reset Line**, **Auto**, and the bell
+  last.
 - **Reset Line** re-runs the opening arrangement — the four who fought last battle
   (`Player.lastDeployed`, ids only; no tiles are ever persisted) on the board's own bound spawns. It is
   the only way back to that arrangement once the player has shuffled, which is why it survives with
@@ -142,6 +143,17 @@ ends; the encounter's own name comes back the instant the bell rings.
   initiative is the average speed of a body's ability items, snapshotted when it was stood up). Nobody
   is moved, and nothing is rebuilt — a re-placed body would knit back in through the summon shader, and
   nobody arrived. A fight with no player behind it (a probe, a debug board) has no stash, so no button.
+- **Potions** (`U`) opens `ui/panels/consumables.lua` over the phase — the overworld's own potion
+  screen, under the overworld's own word for it, on the same roster and the same satchel. It sits
+  directly under the Loadout because both ask what the company is CARRYING. A run's wounds carry
+  between its fights, and until this plate the last chance to mend one was a leg of overworld ago — so
+  a body walked into a fight at half health because the only screen where the damage it was about to
+  take is legible had no way to spend a flask.
+  A draught drunk here costs no turn, which is the whole difference from quaffing one mid-fight: the
+  tempo trade that makes an in-combat drink a decision does not exist before the bell, and the price is
+  the flask. Nothing is re-stamped on the way out — a deployed unit holds its character by reference,
+  so the pool the panel refills is the pool the fight reads. Same gate as the Loadout: no player behind
+  the fight, no satchel, no button.
 - **Auto** (directly above the bell; `V`, pad `Y`) decides whether the fight opens played or
   watched — it is the same `battle.autoAll` flag the in-fight drawer's Auto entry flips, seeded from it
   and handed back on the commit, so the two can never disagree and the setting carries across fights
@@ -161,9 +173,10 @@ ends; the encounter's own name comes back the instant the bell rings.
   moving selection, clear of the gold a thrown switch wears. This is the one crossing on the screen —
   the strip's second region went with the strip — and it is read off the board cursor *refusing to
   move*, so a board the player has turned still crosses on the key pointing at the column.
-- That ring is why **Reset Line** needs no pad button of its own, and why a fourth plate added to the
-  stack will not have to go hunting for a spare face button. Direct keys stand beside it for the hands
-  already there: `R` resets the line, `I` / pad `X` the Loadout, `V` / pad `Y` the auto switch, `F` /
+- That ring is why **Reset Line** and **Potions** need no pad button of their own, and why the next
+  plate added to the stack will not have to go hunting for a spare face button. Direct keys stand
+  beside it for the hands already there: `R` resets the line, `U` the potions, `I` / pad `X` the
+  Loadout, `V` / pad `Y` the auto switch, `F` /
   pad right-stick the speed, `Enter` / pad `Start` the bell. `tests/deploy_input_spec.lua` walks the
   ring and fails if any control in the stack has fallen off it. The wheel is unbound (the host swallows
   it).
@@ -266,8 +279,9 @@ everyone who marched, and a benched member has to arrive already wearing it.
 | `models/combat.lua` | `deferOpen` / `Combat.openBattle`, `deployUnit`, `undeployUnit`, `restampDeployed`, and what is left of the bench section (`benchUnit`, `reinforceTiles`, `fieldCount`, `benchCount`, `eliminated`) |
 | `ui/deploy_phase.lua` | the phase: the drag, the placement, the column's control stack, the keyboard/pad selection ring |
 | `ui/panels/party.lua` | the Loadout screen the phase opens (`fielded` badges the standing line) |
+| `ui/panels/consumables.lua` | the Potions screen the phase opens -- the overworld's own, unchanged |
 | `ui/battle_map.lua` | `drawDeployZone` (the phase) |
 | `ui/combat_panel.lua` | the panel's layout, built and checked by `tests/combat_panel_spec.lua` |
-| `states/battle.lua` | `gutterRect`, `deployControlRect`, `commitDeploy`, `openDeployPhase`, `openDeployLoadout` |
+| `states/battle.lua` | `gutterRect`, `deployControlRect`, `commitDeploy`, `openDeployPhase`, `openDeployLoadout`, `openDeployPotions`, `deployModal` |
 | `tests/deploy_spec.lua`, `tests/bench_spec.lua` | the rules above, headless |
 | `tests/deploy_input_spec.lua` | the selection ring: every control in the stack is reachable without a mouse |
