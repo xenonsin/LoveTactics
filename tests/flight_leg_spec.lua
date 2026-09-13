@@ -542,23 +542,28 @@ return {
             assert(gifts.conversation_flight_event_survivor == "ability_mark_target",
                 "the survivor's mechanic is the adjacency gate")
 
-            -- ...and the gate is not a coin flip: EVERY branch of that scene grants it, which is the
-            -- whole reason it moved off one option. A lesson decided by a choice is not a lesson.
+            -- ...and the survivor's branch is the mark against her purse, nothing else. ONE branch
+            -- teaches it and the other pays coin instead; no third thing rides along, which is what
+            -- keeps the stop's stake legible -- a thing you can spend against a thing you can only be
+            -- taught. The Assayer's Eye used to sit on the giving branch and is off this stop for good.
             local scene = require("models.conversation").defs.conversation_flight_event_survivor
-            local branches, withMark = 0, 0
+            local branches, withMark, withGold, granted = 0, 0, 0, {}
             for _, node in ipairs(scene.script) do
                 for _, choice in ipairs(node.choices or {}) do
                     branches = branches + 1
-                    local grant = choice.effect and choice.effect.grant
-                    local ids = type(grant) == "table" and grant or { grant }
+                    local effect = choice.effect or {}
+                    local ids = type(effect.grant) == "table" and effect.grant or { effect.grant }
                     for _, id in ipairs(ids) do
+                        if id then granted[#granted + 1] = id end
                         if id == "ability_mark_target" then withMark = withMark + 1 end
                     end
+                    if (effect.gold or 0) > 0 then withGold = withGold + 1 end
                 end
             end
-            assert(branches > 1, "the survivor still offers a choice, got " .. branches .. " branch(es)")
-            assert(withMark == branches,
-                "every branch grants the mark: " .. withMark .. " of " .. branches)
+            assert(branches == 2, "the survivor offers two branches, got " .. branches)
+            assert(withMark == 1, "exactly one branch teaches the mark, got " .. withMark)
+            assert(withGold == 1, "exactly one branch pays coin instead, got " .. withGold)
+            assert(#granted == 1, "the mark is the only item on the stop, got " .. #granted)
         end,
     },
 }

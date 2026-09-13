@@ -301,12 +301,12 @@ return {
     ["line.conversation_flight_event_survivor.1"] = { en = "Hold. Someone's under that wall, hurt and trying not to make a sound.", ja = "" },  -- TODO
     ["line.conversation_flight_event_survivor.2"] = { en = "Easy. We're not with the things that did this.", ja = "" },  -- TODO
     ["line.conversation_flight_event_survivor.3"] = { en = "Take the purse.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_survivor.4"] = { en = "Share what we're carrying, and take the lens.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_survivor.4"] = { en = "Share what we're carrying, and hear her out.", ja = "" },  -- TODO
     ["line.conversation_flight_event_survivor.5"] = { en = "She pressed it on us and wouldn't hear otherwise. Said coin buys nothing in a quarter with no one left to sell.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_survivor.6"] = { en = "Not much to spare, and she took it kindly. Look through that lens and a demon's satchel keeps nothing back.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_survivor.6"] = { en = "Not much to spare, and she took it kindly. Then she told us how they're put together.", ja = "" },  -- TODO
     ["line.conversation_flight_event_survivor.7"] = { en = "An apothecary, before all this. She can make the square on her own now. Let's keep clearing, {name}.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_survivor.8"] = { en = "She's an apothecary, and she's already telling us the trick of them: mark one before you strike and you'll see where its guard runs thin. Keep that beside the bow and it'll work.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_survivor.9"] = { en = "She's got a purse she can't spend and a lens she can't carry. We can take the coin, or leave her our rations and take the glass. Choose...", ja = "" },  -- TODO
+    ["line.conversation_flight_event_survivor.8"] = { en = "Mark one before you strike and you'll see where its guard runs thin. Keep that beside the bow and it'll work.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_survivor.9"] = { en = "She's an apothecary. She's got a purse she can't spend down here, and she's got the trick of these things in her head. She'll give us the one or the other. Choose...", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_discipline_unlocked.1"] = { en = "You walk the {discipline}'s trail now, {name}. The Lodge sets out gear for the ones who get this far. It is yours to draw.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_discipline_unlocked.3"] = { en = "That path knows when to stop. Take the kit. Remember the lesson with it.", ja = "" },  -- TODO

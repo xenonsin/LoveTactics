@@ -450,10 +450,11 @@ end
 -- teach, and this names it. These are the mechanics the route's own comments name at those two cells:
 -- the adjacency aura at stop 2, the adjacency gate at stop 4.
 --
--- The survivor's entry reads as a duplicate of the scene and is not one. BOTH of its branches grant
--- Mark Target now -- the gate is the lesson and a lesson cannot be a coin flip -- so a walked sweep
--- hands it over whichever way the choice went, and this is the line that keeps a SKIPPED one level
--- with it.
+-- The survivor's entry reads as a duplicate of the scene and is not one. ONE of her branches teaches
+-- Mark Target and the other takes her purse instead, so a walked sweep may or may not carry the gate
+-- out of stop 4 -- and a SKIPPED one has no choice to have made. This line is what it takes: the skip
+-- hands over the taught branch, so the company that never played Act 0 stands level with the one that
+-- heard her out rather than with the one that took the coin.
 prologue.SCENE_GIFTS = {
     { item = "utility_censer_of_dawn", from = "conversation_flight_event_shrine" },
     { item = "ability_mark_target",    from = "conversation_flight_event_survivor" },
