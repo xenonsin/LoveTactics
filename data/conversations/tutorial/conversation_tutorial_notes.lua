@@ -6,14 +6,15 @@
 -- order: this is a hint bag, not a scene, and nothing here is ever spoken by anybody.
 --
 -- A WINDOW EXPLAINS A FEATURE; a bubble points at a control. That line is drawn in
--- ui/panels/tutorial_note.lua and it is why these three are long: a tally with three rules and a
--- failure state, a rule list the fight can be handed to, a ladder every body climbs. The bubbles' own
--- words are next door in conversation_tutorial_city.lua.
+-- ui/panels/tutorial_note.lua and it is why these are long: a tally with three rules and a failure
+-- state, a rule list the fight can be handed to, a ladder every body climbs, a purchase that is handed
+-- back at the stair. The bubbles' own words are next door in conversation_tutorial_city.lua.
 --
 -- WHO FIELDS THEM:
 --   tally    states/gate.lua      -- the first time the company has turned back and the meter is drawn
 --   tactics  ui/panels/party.lua  -- the Armory tab that arrives with the first descent
 --   classes  ui/panels/party.lua  -- ...and the tab beside it, which has been there all along
+--   relics   states/game.lua      -- the first relic ever put in front of the company, underground
 --
 -- THE WINDOW'S OWN CHROME IS HERE TOO -- the three `dismiss_*` lines, which are the footer under every
 -- one of these bodies (ui/panels/tutorial_note.lua). Three lines rather than one with a token, because
@@ -40,7 +41,8 @@ return {
         { "character_rowan", "Characters can be taught to fight on their own using tactics.\n\nTactics are prioritized and evaluated from top to bottom and are used when the character is set to auto mode.", tag = 4, id = "tactics_body" },
         { "character_rowan", "Classes", tag = 5, id = "classes_title" },
         { "character_rowan", "Leveling up increases the stats determined by your chosen class. You are free to change classes at any time.\n\nYour class level increases when you use actions in combat. Using an action that's the same class increases your class technique by 2, using an action that's not the same class increases your class technique by 1, and the action's class technique by 1.\n\nClass level unlocks abilities from trainers and new classes, while the technique can be spent to upgrade your items.", tag = 6, id = "classes_body" },
-
+        { "character_rowan", "Relics", tag = 10, id = "relics_title" },
+        { "character_rowan", "Relics are bonuses that affect the whole party that only last until you leave the rift.", tag = 11, id = "relics_body" },
         { "character_rowan", "A to continue", tag = 7, id = "dismiss_pad" },
         { "character_rowan", "Tap to continue", tag = 8, id = "dismiss_touch" },
         { "character_rowan", "Click, or press Enter to continue", tag = 9, id = "dismiss_key" },

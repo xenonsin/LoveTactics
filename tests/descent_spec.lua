@@ -1254,4 +1254,22 @@ return {
         local back = Save.restore(reserialize(Save.snapshot(p)))
         assert(Descent.classesTaught(back), "...and it is not shown again after a reload")
     end },
+
+    { name = "the relic window is its own mark, and rides the save", fn = function()
+        -- The lesson the rift owes a first-time company: a relic is carried for THIS descent and handed
+        -- back at the stair, which is the one thing its card cannot say (states/game.lua's teachRelics).
+        --
+        -- RIDING THE SAVE IS THE WHOLE POINT OF THE CASE. The thing it explains lives on the run, and a
+        -- mark kept there would be spent again every expedition -- so this pins that it is the PLAYER's,
+        -- survives a reload, and is not read by any of the windows beside it.
+        local p = Player.new()
+        assert(not Descent.relicsTaught(p), "nobody has explained what a relic is to a new company")
+        Descent.markTacticsTaught(p)
+        Descent.markClassesTaught(p)
+        assert(not Descent.relicsTaught(p), "and the Armory's windows do not read it for them")
+        Descent.markRelicsTaught(p)
+        assert(Descent.relicsTaught(p), "the window is read once")
+        local back = Save.restore(reserialize(Save.snapshot(p)))
+        assert(Descent.relicsTaught(back), "...and a descent later, it is not read again")
+    end },
 }

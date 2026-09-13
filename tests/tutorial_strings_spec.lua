@@ -37,6 +37,8 @@ local FIELDED = {
     { conv = NOTES, id = "tactics_body" },
     { conv = NOTES, id = "classes_title" },
     { conv = NOTES, id = "classes_body" },
+    { conv = NOTES, id = "relics_title" },
+    { conv = NOTES, id = "relics_body" },
     -- The window's own footer, one line per device (ui/panels/tutorial_note.lua picks the id).
     { conv = NOTES, id = "dismiss_pad" },
     { conv = NOTES, id = "dismiss_touch" },
@@ -140,7 +142,8 @@ return {
         -- literal. This is the case that fails the day somebody adds a fourth window the easy way.
         name = "no teaching surface carries its own English",
         fn = function()
-            for _, path in ipairs({ "states/gate.lua", "states/hub.lua", "ui/panels/party.lua" }) do
+            for _, path in ipairs({ "states/gate.lua", "states/hub.lua", "ui/panels/party.lua",
+                                    "states/game.lua" }) do
                 local src = source(path)
                 local from = 1
                 while true do
@@ -162,6 +165,13 @@ return {
             for _, id in ipairs({ "tactics_title", "tactics_body", "classes_title", "classes_body" }) do
                 assert(party:find(id, 1, true), "ui/panels/party.lua stopped asking for `" .. id .. "`")
             end
+            -- ...and the floor still asks for the relic lesson by name (states/game.lua's teachRelics,
+            -- fielded at every stop that puts a relic in front of the company).
+            local floor = source("states/game.lua")
+            for _, id in ipairs({ "relics_title", "relics_body" }) do
+                assert(floor:find(id, 1, true), "states/game.lua stopped asking for `" .. id .. "`")
+            end
+
             local hub = source("states/hub.lua")
             assert(hub:find("\"rift_card\"", 1, true), "the first morning's bubble lost its line id")
             assert(hub:find("\"new_door\"", 1, true), "a grown door's bubble lost its line id")
