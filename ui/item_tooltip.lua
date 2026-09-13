@@ -445,16 +445,21 @@ local function buildBlocks(item, actor, innerW, out, owner, warn)
         -- reach diagram promising a tile it can never be thrown at. The Target row above already says
         -- where it lands, and the footprint below says what it covers.
         if ab.target ~= "self" then
-            local rangeText = tostring(ab.range or 1)
+            -- A BORROWED reach is quoted as the grid grants it, not as the data file authors it: Mark
+            -- Target reaches as far as the bow beside it, so the number here and the tiles the board
+            -- lights are one figure. With no owner to read -- the shelf, the stash -- the authored
+            -- range stands, which is the floor every qualifying weapon clears.
+            local range = (owner and Combat.borrowedRange(owner, item)) or ab.range or 1
+            local rangeText = tostring(range)
             if ab.minRange and ab.minRange > 1 then
                 -- A weapon with a dead zone shows the band it can hit (e.g. "2-3") rather than just the max.
-                rangeText = ab.minRange .. "-" .. (ab.range or 1)
+                rangeText = ab.minRange .. "-" .. range
             end
             blocks[#blocks + 1] = { kind = "stat", label = "Range", value = rangeText }
             -- A little diamond map of that reach beneath the number: the caster at the centre, the
             -- tiles it can strike tinted green (a friendly cast) or red (a hostile one). The shelf reads
             -- the same three colours the board does, so an item's reach is one picture wherever it is met.
-            local diagram = RangeDiagram.layout(ab, innerW)
+            local diagram = RangeDiagram.layout(ab, innerW, range)
             if diagram then
                 blocks[#blocks + 1] = { kind = "rangediag", layout = diagram, color = bandColor }
             end

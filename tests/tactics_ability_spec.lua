@@ -361,4 +361,52 @@ return {
             assert(boss.side == "enemy", "the boss stays on the enemy side")
         end,
     },
+    {
+        name = "Mark Target reaches as far as the ranged weapon beside it, and no further",
+        fn = function()
+            local mark = Item.defs.ability_mark_target
+            local pred = mark.activeAbility.rangeFromAdjacent
+            assert(pred, "Mark Target borrows its reach from the grid")
+
+            -- The reach a grid actually grants the mark: what the range gate, the targeting highlight
+            -- and the AI all read (Combat.abilityRange + Combat.adjacencyRangeBonus).
+            local function armed(weaponId)
+                local char = withGrid("character_archer", { "ability_mark_target", weaponId })
+                local c = Combat.new(arena(10, 10), { unit(char, 1, 1) },
+                    { unit(dummy("character_bandit"), 1, 6) })
+                local u = c.units[1]
+                local it = itemOf(u.char, "ability_mark_target")
+                local reach = Combat.abilityRange(c, u, it.activeAbility)
+                    + Combat.adjacencyRangeBonus(u.char, it)
+                return reach, c, u, it
+            end
+
+            local short, c2, u2, it2 = armed("weapon_iron_bow")
+            local long, c, u, it = armed("weapon_iron_longbow")
+            assert(short == 3, "a hand-bow's three tiles are the mark's three tiles, not five")
+            assert(long == 5, "a longbow's five are the mark's five")
+
+            -- And the cast agrees with the number: five tiles out lands with the longbow, and the same
+            -- aim is refused to the hand-bow.
+            refresh(c, u)
+            assert(Combat.useItem(c, u, it, 1, 6), "the longbow's mark reaches five tiles")
+            assert(Status.has(Combat.unitAt(c, 1, 6), "status_mark"), "the far foe is marked")
+
+            refresh(c2, u2)
+            assert(not Combat.useItem(c2, u2, it2, 1, 6), "the hand-bow's mark does not")
+            assert(not Status.has(Combat.unitAt(c2, 1, 6), "status_mark"), "and nothing is marked")
+
+            -- THE AUTHORED RANGE IS A FLOOR, and the shelf quotes it with no grid to read (the shop,
+            -- the stash). It is only honest while every weapon the predicate reaches clears it -- a new
+            -- ranged weapon shorter than this would have the tooltip promising a tile it cannot paint.
+            local floor = mark.activeAbility.range
+            for id, def in pairs(Item.defs) do
+                if Combat.matchesAdjacency(def, pred) then
+                    local r = def.activeAbility and def.activeAbility.range
+                    assert(r and r >= floor,
+                        id .. " is shorter than Mark Target's authored floor of " .. floor)
+                end
+            end
+        end,
+    },
 }

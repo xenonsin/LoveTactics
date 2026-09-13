@@ -5597,14 +5597,52 @@ local function castAmount(combat, unit, ab, tx, ty, auraMods, item)
     return amount
 end
 
+-- The reach an ability BORROWS from the grid, or nil: the longest authored range among the adjacent
+-- items answering its `rangeFromAdjacent` predicate. Mark Target paints as far as the weapon beside
+-- it shoots, because the mark IS the shot's setup -- a flat five over a hunter carrying a hand-bow
+-- promised a tile she could never follow up on, and the same five over a longbow said nothing about
+-- the choice of bow at all. Borrowing makes the weapon in the grid the thing that decides.
+--
+-- The neighbour's AUTHORED range is what is read, not its effective one. A bow lengthened by a charm
+-- of its own is still a bow; folding the charm in here would let one aura pay out twice, once on the
+-- shot and again on the mark that sets it up.
+--
+-- nil rather than 0 when nothing qualifies, so a caller can tell "borrows nothing" from "borrows a
+-- reach of zero" -- the ability's own `range` stands as the floor in that case, which for anything
+-- carrying `requiresAdjacent` is a state the cast gate has already refused anyway.
+function Combat.borrowedRange(char, item)
+    local ab = item and item.activeAbility
+    local pred = ab and ab.rangeFromAdjacent
+    local idx = pred and char and Character.slotIndex(char, item)
+    if not idx then return nil end
+    local best
+    for _, nb in ipairs(Character.adjacentItems(char, idx)) do
+        if nb ~= item and Combat.matchesAdjacency(nb, pred) then
+            local r = nb.activeAbility and nb.activeAbility.range
+            if r and (not best or r > best) then best = r end
+        end
+    end
+    return best
+end
+
 -- The range a neighboring charm's aura adds to a cast of `item` from `char`'s grid (a Long-Fuse
 -- Reagent lengthening an adjacent bomb's throw), or 0. Public so the range gate, the targeting
 -- highlight, the target scan, and the AI all extend reach by the same amount the cast will get --
 -- a highlight that outran the gate (or fell short of it) would read as a bug.
+--
+-- A BORROWED reach (Combat.borrowedRange) rides in here as the difference from the ability's own
+-- authored range, for exactly that reason: every reader of reach in the game already adds this one
+-- number on top of Combat.abilityRange, so the gate, the highlight, the tooltip and the AI learn a
+-- borrowing ability for free rather than each having to learn the word.
 function Combat.adjacencyRangeBonus(char, item)
     if not (char and item) then return 0 end
     local _, _, mods = adjacencyAura(char, item)
-    return mods.range
+    local bonus = mods.range
+    local borrowed = Combat.borrowedRange(char, item)
+    if borrowed then
+        bonus = bonus + (borrowed - ((item.activeAbility and item.activeAbility.range) or 1))
+    end
+    return bonus
 end
 
 -- The initiative a neighboring charm's aura shaves off (or adds to) a cast of `item`, or 0. Negative

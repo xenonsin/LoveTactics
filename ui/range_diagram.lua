@@ -6,6 +6,7 @@
 -- shape reads at a glance. No love.graphics at require-time.
 --
 --   local layout = RangeDiagram.layout(ab, maxWidth)   -- nil for a targetless ability (no reach)
+--   RangeDiagram.layout(ab, maxWidth, range)           -- ...at a reach the caller resolved itself
 --   RangeDiagram.draw(layout, x, y, color)             -- draws with top-left at (x, y)
 --
 -- `layout` carries its own { width, height } so the tooltip can measure the block before drawing,
@@ -23,8 +24,12 @@ local GAP = 1                          -- hairline gap baked into the step
 
 -- Build the drawable layout for `ab`, fitting within `maxWidth` px. Returns nil when the ability
 -- has no reach to picture (a self-only cast, range 0) so the caller can simply skip the block.
-function RangeDiagram.layout(ab, maxWidth)
-    local range = (ab and ab.range) or 1
+--
+-- `range` overrides the ability's authored reach, for an ability that does not carry its own: Mark
+-- Target borrows the reach of the bow beside it, and the picture has to be of the diamond the board
+-- will actually light, not of the floor the data file declares.
+function RangeDiagram.layout(ab, maxWidth, range)
+    range = range or (ab and ab.range) or 1
     local minRange = (ab and ab.minRange) or 0
     if range < 1 then return nil end -- range 0 == self: nothing to diagram
 
