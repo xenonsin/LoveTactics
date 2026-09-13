@@ -90,48 +90,6 @@ end
 -- a bright sprite, a tinted plate, a lit border -- and a bare disc loses its edge against the warm
 -- ones. Centred on (cx, cy) rather than filling a box: every caller anchors it to a corner.
 
--- The FIND mark: worn by anything this expedition picked up rather than marched in with
--- (models/player.lua's Player.atRisk). Descent only, and nothing draws it on a campaign board.
---
--- IT USED TO MEAN "THIS FALLS", and that is why it is an arrow. A wipe dropped everything the run had
--- found as a guarded heap, so the mark was a forecast of a loss and the arrow pointed the way the
--- items were about to go. Nothing is dropped any more -- losing costs marks on the count and nothing
--- a company can carry (models/descent.lua's COUNT_WIPE).
---
--- WHAT IT MEANS NOW is the other reader of exactly the same set, and it was always the more precise
--- one: the stair's toll takes a share of THE HAUL and may never reach into the kit somebody marched
--- down with (states/game.lua's game:payToll). So the mark still answers a question the player has to
--- be able to answer at a gate -- which of these can she take -- and deleting it with the pile would
--- have taken a live readout down with a dead one.
---
--- The arrow survives the change of meaning because the direction still holds: what is marked is what
--- leaves the company's hands when a toll is paid.
---
--- ONE SHAPE, NOT TWO. It was a satchel with an arrow cut through it -- the pile marker's own silhouette
--- -- and at ten pixels that is not a satchel, it is a dark blob with two gold nubs on it. The bag body
--- is four pixels tall at this size and the arrow cut eats all but its corners. Compound marks need
--- room; a corner badge has none, so it gets the half that carries the meaning.
---
--- BONE-GOLD RATHER THAN A WARNING RED, and that outlives the pile it was matched to: this is a fact
--- about an item, not an alarm. Saturated red is also spoken for -- it is the unseen dot, in the
--- opposite corner of the same cell, and two urgent reds on one card would leave neither meaning
--- anything.
---
--- Centred on (cx, cy) like the dot above, because every caller anchors it to a corner.
-local AT_RISK = { 0.85, 0.76, 0.44 }
-function Glyphs.atRisk(cx, cy, size)
-    local s = size or 10
-    -- A dark plate first: this sits over whatever the item icon happens to be, and a thin gold mark is
-    -- invisible over a bright sprite without one. Same reasoning as the unseen dot's rim.
-    love.graphics.setColor(0.05, 0.05, 0.06, 0.85)
-    love.graphics.rectangle("fill", cx - s * 0.60, cy - s * 0.60, s * 1.20, s * 1.20, s * 0.26)
-    love.graphics.setColor(AT_RISK[1], AT_RISK[2], AT_RISK[3])
-    -- Stem then head, the head wide enough to still read as a point when the stem is one pixel.
-    love.graphics.rectangle("fill", cx - s * 0.11, cy - s * 0.42, s * 0.22, s * 0.42)
-    love.graphics.polygon("fill", cx - s * 0.38, cy - s * 0.04, cx + s * 0.38, cy - s * 0.04,
-        cx, cy + s * 0.44)
-end
-
 local UNSEEN = { 0.851, 0.267, 0.251 }
 function Glyphs.unseenDot(cx, cy, radius)
     local r = radius or 4

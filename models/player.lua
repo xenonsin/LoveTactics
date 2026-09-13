@@ -956,12 +956,15 @@ end
 -- WHAT THIS EXPEDITION HAS FOUND, as a map from the LIVE item instance to how many of it are at stake.
 -- `before` is the entry snapshot -- the company exactly as it walked in.
 --
--- ONE WRITER, AND IT HAS TWO READERS THAT MUST NOT DISAGREE. A descent wipe drops what the expedition
--- found and leaves the kit the company marched down with (states/game.lua's onLoss), and the Loadout
--- badges those same items so the player can see what is at stake BEFORE the fight rather than after it
--- (ui/inventory_grid.lua, ui/pool_grid.lua). A player who reads the badge on four things and loses five
--- has been told the rule wrong, which is the same argument game:haulPhrase already makes about the
--- number -- so the badge, the phrase and the drop are all this one function.
+-- ONE WRITER, AND ITS READERS MUST NOT DISAGREE. The stair's toll takes a share of THE HAUL and may
+-- never reach into the kit somebody marched down with, and the count quoted at the gate is the size of
+-- that same set (states/game.lua's game:payToll, game:haulPhrase) -- so the price and the pile it comes
+-- out of are one function asked twice.
+--
+-- THE LOADOUT USED TO BADGE THEM TOO, and does not any more (ui/inventory_grid.lua, ui/pool_grid.lua,
+-- ui/glyphs.lua's atRisk arrow, all deleted). The badge said "dropped if you fall", which was true
+-- while a wipe left a pile and false from the day it stopped -- and re-pointing it at the toll would
+-- have marked particular copies for a gate that asks for a NUMBER and picks the copies itself.
 --
 -- MEASURED AGAINST THE SNAPSHOT rather than tracked as a running tally, for the reason Player.loseHaul
 -- gives below: no grant seam on the way in has to learn a new rule. A chest, a fight's spoils, an
@@ -1057,8 +1060,8 @@ function Player.atRisk(player, before)
     return out
 end
 
--- Take everything Player.atRisk named OFF the company and hand it back as a list, ready to be dropped
--- in a heap on the floor (models/descent.lua's Descent.dropPack).
+-- Take everything Player.atRisk named OFF the company and hand it back as a list. The stair's toll is
+-- the only caller: it keeps its share and puts the rest straight back (states/game.lua's game:payToll).
 --
 -- A PARTIAL STACK IS SPLIT rather than surrendered whole: the live stack is decremented to what the
 -- company brought and a copy carrying the surplus goes on the pile. A shallow copy is enough and is

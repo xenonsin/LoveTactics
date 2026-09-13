@@ -19,7 +19,6 @@ local Character = require("models.character")
 local Item = require("models.item")
 local Combat = require("models.combat")
 local AdjacencyLinks = require("ui.adjacency_links")
-local Glyphs = require("ui.glyphs")
 local Theme = require("ui.theme")
 
 local InventoryGrid = {}
@@ -87,10 +86,6 @@ function InventoryGrid.new(opts)
     -- shrink the grid; defaults keep every existing caller unchanged.
     self.slot = opts.slot or SLOT
     self.gap = opts.gap or GAP
-    -- `isAtRisk(item)` badges a cell holding something this expedition FOUND -- a wipe leaves it on the
-    -- floor (models/player.lua's Player.atRisk). Optional and nil everywhere but a descent, so a
-    -- campaign Loadout draws exactly what it always did. See the badge pass in :draw.
-    self.isAtRisk = opts.isAtRisk
     self.cursor = 1       -- keyboard/gamepad cursor cell (1..9)
     self.picked = nil     -- the cell currently picked up, or nil
     self.hover = nil      -- mouse-hover cell, or nil
@@ -349,22 +344,6 @@ function InventoryGrid:draw()
         if item and Item.isBound(item) then
             local sx, sy = self:slotRect(i)
             drawLock(sx + 13, sy + 13)
-        end
-    end
-
-    -- FIND cells: what this expedition picked up rather than marched in with -- which is the set the
-    -- stair's toll may take a share of, and the set it may never reach past (states/game.lua).
-    -- BOTTOM-LEFT, which is the one corner of a cell that is still free -- the lock and the stack count
-    -- hold the top-left and the default-action star the top-right -- and just above the name band so it
-    -- never sits on a word. The stash wears the same mark in the same corner (ui/pool_grid.lua): an item
-    -- carries its own answer to "is this at stake" wherever the player is looking at it.
-    if self.isAtRisk then
-        for i = 1, COLS * ROWS do
-            local item = inv[i]
-            if item and self.isAtRisk(item) then
-                local sx, sy, _, sh = self:slotRect(i)
-                Glyphs.atRisk(sx + 14, sy + sh - 28, 10)
-            end
         end
     end
 

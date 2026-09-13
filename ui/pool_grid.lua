@@ -91,12 +91,6 @@ function PoolGrid.new(opts)
     -- optional -- a pool given neither simply never dots anything.
     self.isNew = opts.isNew
     self.onSeen = opts.onSeen
-    -- `isAtRisk(item)` badges anything this expedition FOUND rather than marched in with -- the set the
-    -- stair's toll takes its share from (models/player.lua's Player.atRisk, states/game.lua's
-    -- game:payToll). It used to mean "a wipe leaves this on the floor", which stopped being true when
-    -- the pile system was deleted; the set is identical and the second reader outlived the first.
-    -- Optional and nil outside a descent, so a campaign Loadout and every shop shelf are untouched.
-    self.isAtRisk = opts.isAtRisk
     -- `priceOf(item, cell) -> string|nil` puts a gold badge on a STASH cell: the shop's Sell shelf is
     -- the stash with a price on it, and what a piece is worth is the whole of the decision there. A
     -- store cell has its price already (from the entry) and never asks; a pool given neither draws no
@@ -426,15 +420,6 @@ function PoolGrid:drawCell(i, sx, sy)
 
     -- Unseen: the red dot, top-right, over the locked wash and the name band so it survives both.
     if unseen then Glyphs.unseenDot(sx + CELL - 7, sy + 7, 4) end
-
-    -- FINDS: what this expedition picked up rather than marched in with -- the set the stair's toll
-    -- takes its share from, and never past.
-    -- Bottom-left, which is the corner the grid puts it in too (ui/inventory_grid.lua) -- an item has to
-    -- carry the same answer in the same place whether the player is looking at it in somebody's hands
-    -- or in the pile. Over the locked wash for the same reason the dot is.
-    if self.isAtRisk and self.isAtRisk(item, cell) then
-        Glyphs.atRisk(sx + 11, sy + CELL - 26, 10)
-    end
 
     -- Overlays: picked (in hand), hover (mouse), the keyboard/gamepad cursor.
     if lifted then
