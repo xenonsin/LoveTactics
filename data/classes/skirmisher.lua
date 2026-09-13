@@ -5,7 +5,8 @@
 -- quest_hunters_lodge_the_running_fight (pending). See docs/disciplines-plan.md.
 return {
     name    = "Skirmisher",
-    description = "Hit and run. A free move once you have swung, so a strike never leaves you standing where it landed.",
+    description = "Strikes and moves on. Attacking frees a move afterwards, so you never end a turn "
+        .. "standing where you swung.",
     exemplar = "character_skirmisher", -- NEW, pending
     requires = { fighter = 7, hunter = 7 },
 }

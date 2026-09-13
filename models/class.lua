@@ -10,6 +10,7 @@
 
 local Registry = require("models.registry")
 local Character = require("models.character")
+local Locale = require("models.locale")  -- the catalog seam a class's authored blurb is read through
 
 local Class = {}
 
@@ -161,9 +162,22 @@ end
 -- before earning it is that pane -- "Knight x Priest, locked, 5 pieces of stock" names the gate and
 -- says nothing about why anyone would want it. This is the why. Sits beside Class.displayName as
 -- the second thing the UI is allowed to ask a discipline about itself.
+--
+-- ...AND IT GOES THROUGH THE CATALOG, which is the one thing that made it more than a field read.
+-- Forty-six of these are the longest authored prose outside the conversations, and they were the only
+-- words on the Roll tab and the shop's detail pane that no translator could ever see: `extract-strings`
+-- walks data/conversations/ and nowhere else, so a blueprint string is never stamped, never mirrored
+-- into the grid, and nothing reports that it was not (docs/localization.md names this gap). The English
+-- stays authored inline on the blueprint and stays authoritative -- Locale.get returns the fallback
+-- untouched in the source language -- so this is a seam, not a second place to edit the words.
+--
+-- Keyed on the class id rather than on anything about the sentence, so rewriting a blurb keeps its row
+-- and its translations: the same stable-id promise a conversation's `tag` makes.
 function Class.description(id)
     local def = id and Class.defs[id]
-    return def and def.description or nil
+    local english = def and def.description
+    if not english then return nil end
+    return Locale.get(Locale.key.desc(id), english)
 end
 
 -- The growth paths a use of `item` should tally toward (models/growth.lua, which reads these as keys

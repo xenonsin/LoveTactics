@@ -457,6 +457,12 @@ function hub.enter()
     -- The session's one player, carried across every hub visit. Rebuilding it here (as this
     -- once did, via Player.new) would discard gold, quest progress, and everything bought.
     hub.player = Player.active or Player.start()
+    -- REACHING THE CITY IS ITSELF A PIECE OF PROGRESS, and this is the only place it can be recorded:
+    -- the town is the one screen every route into free play goes through -- the played prologue, the
+    -- skip, and a save loaded from anywhere else. What it opens is the Armory's Roll tab, which is held
+    -- back through Act 0 because nothing out there can answer it (Descent.classesUnlocked). Stamped
+    -- before any panel is built, so the first visit's own Armory already has it.
+    Descent.markCityReached(hub.player)
     -- A run resumes into states.game, never here; reaching the hub means the quest is over, so drop any
     -- resumable-run autosave (states/game.lua). A backstop for exit paths that don't clear it themselves,
     -- and for a resume descriptor left unconsumed. Persist only when there was one, so an ordinary hub

@@ -5,7 +5,8 @@
 -- Gate: one quest in the mage (Arcanum) line -- donor_roll. See docs/disciplines-plan.md.
 return {
     name    = "Summoner",
-    description = "The conjurer's court. Banks mana to field independent elementals that take turns of their own.",
+    description = "Fields elementals instead of spells. Mana is banked and spent to summon bodies that "
+        .. "take turns of their own.",
     exemplar = "character_summoner", -- NEW, pending
     requires = { mage = 6 },
 }

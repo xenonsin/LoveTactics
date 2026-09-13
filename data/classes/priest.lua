@@ -2,7 +2,7 @@
 -- blurb moved off Item.CLASSES.
 return {
     name    = "Priest",
-    description = "Zones and wards. Holds ground open and closes it to others -- holy damage, negates and "
-        .. "reflects, cleansing, friendly hazards, revival, and the bare fist.",
+    description = "Holds ground open and closes it to others. Heals and revives the party, wards the tiles "
+        .. "they stand on, cleanses what is on them, and burns demons with holy light.",
     exemplar = "character_amana", -- the companion the Cathedral posts
 }

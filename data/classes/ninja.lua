@@ -11,7 +11,8 @@
 -- quest_undercroft_the_shadowless (pending). See docs/disciplines-plan.md.
 return {
     name    = "Ninja",
-    description = "Fights by not being where you strike. Blink away, leave a clone to take the blow, and stay unseen until the killing one.",
+    description = "Avoids the blow and answers it. Blinks out of reach, leaves a clone standing to take "
+        .. "the hit, and stays unseen until the strike that kills.",
     exemplar = "character_ninja", -- was character_kaen (kept as the marquee named boss); dedicated body authored
     requires = { rogue = 7, mage = 7 },
 }

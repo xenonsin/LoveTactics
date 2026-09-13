@@ -6,7 +6,7 @@
 -- quest_bastion_the_border_watch (pending). See docs/disciplines-plan.md.
 return {
     name    = "Warden",
-    description = "Border control. Mark a zone, and anything that steps into it is Rooted or Halted.",
+    description = "Marks a zone and holds it. Crossing the line inflicts Root or Halt on whoever walked in.",
     exemplar = "character_warden", -- NEW, pending
     requires = { knight = 8, hunter = 8 },
 }

@@ -2,7 +2,7 @@
 -- the blurb moved off Item.CLASSES.
 return {
     name    = "Hunter",
-    description = "Setup, then payoff, most of it gated on a bow beside it in the grid. Marks, traps, "
-        .. "animal companions and shapeshifting, cripples and roots.",
+    description = "Sets a target up, then takes it. Marks, traps and crippling shots soften a foe, and "
+        .. "most of the kit needs a bow sitting beside it in the grid.",
     exemplar = "character_kaya", -- the companion the Hunter's Lodge posts
 }

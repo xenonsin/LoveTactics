@@ -9,7 +9,8 @@
 -- See docs/disciplines-plan.md.
 return {
     name    = "Necromancer",
-    description = "The raiser. Enemies that die on the field get back up as yours.",
+    description = "Raises the dead. A foe that falls on the board gets back up fighting on your side, and "
+        .. "a corpse you do not raise can be burst where it lies.",
     exemplar = "character_necromancer", -- NEW, pending
     requires = { mage = 4 },
 }

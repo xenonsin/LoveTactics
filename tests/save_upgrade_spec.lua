@@ -108,6 +108,31 @@ return {
         end,
     },
     {
+        -- THE ROLL TAB'S GATE, which is the one mark here whose ABSENCE and whose FALSE mean different
+        -- companies. A save can be written before the city (closing the Loadout on the prologue's
+        -- flight leg writes one), so a pre-city save has to come back pre-city -- while a save from
+        -- before the field existed has to come back with the tab, since the flag only ever hides a
+        -- control and every such save was written from the town. See Descent.classesUnlocked.
+        name = "reaching the city round-trips, and an older save reads as having reached it",
+        fn = function()
+            local Descent = require("models.descent")
+
+            local before = Save.restore(Save.snapshot(Player.new()))
+            assert(not Descent.classesUnlocked(before),
+                "a company still in Act 0 comes back with no Roll tab")
+
+            local player = Player.new()
+            Descent.markCityReached(player)
+            local after = Save.restore(Save.snapshot(player))
+            assert(Descent.classesUnlocked(after), "...and one that has reached the city keeps it")
+
+            local snap = Save.snapshot(Player.new())
+            snap.cityReached = nil
+            assert(Descent.classesUnlocked(Save.restore(snap)),
+                "a save from before the field existed was written in the city")
+        end,
+    },
+    {
         name = "visited-vendor and discipline-announced flags round-trip",
         fn = function()
             local player = Player.new()

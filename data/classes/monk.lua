@@ -8,7 +8,8 @@
 -- See docs/disciplines-plan.md.
 return {
     name    = "Monk",
-    description = "The ascetic. Unarmed strikes bank chi, and the bank is spent whole on a single burst.",
+    description = "Fights unarmed and banks the hits. Every strike stores chi, and the whole bank is spent "
+        .. "at once on a single heavy blow.",
     exemplar = "character_monk", -- NEW, pending
     requires = { priest = 4 },
 }

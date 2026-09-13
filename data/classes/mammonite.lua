@@ -31,7 +31,8 @@
 -- with the spending side at the end of the line. Not a single `unlockQuests` moved.
 return {
     name    = "Mammonite",
-    description = "The purse as a weapon. Gold is a combat resource in both directions: coin buys damage, tempo and your own skin, and every blow you land banks more of it.",
+    description = "Spends gold as a combat resource. Coin buys damage, tempo and your own survival, and "
+        .. "every blow you land banks more of it.",
     exemplar = "character_mammonite",
     requires = { rogue = 6 },
 }

@@ -56,6 +56,7 @@ local Relic = require("models.relic")
 local Meal = require("models.meal") -- the Cafe's supper: one platter, worn by the company all run
 local Wound = require("models.wound") -- what a body that went down carries out of the run
 local CoachBubble = require("ui.coach_bubble")
+local TutorialNote = require("ui.panels.tutorial_note") -- the window the first relic opens with
 local Locale = require("models.locale")
 local Theme = require("ui.theme")
 local ScreenFx = require("ui.screen_fx")
@@ -76,6 +77,12 @@ local hudFont = Theme.body(16)
 local function hintNode(convId, id)
     return Locale.node(convId, id)
 end
+
+-- The tutorial WINDOWS' bag, which is a different file from the bubbles above: a window explains a
+-- feature in paragraphs rather than pointing at a control, and all of them are authored in one place
+-- so a translator has one place to work (data/conversations/tutorial/conversation_tutorial_notes.lua).
+-- This file fields one of them -- the relic lesson, see game:teachRelics.
+local NOTES_CONV = "conversation_tutorial_notes"
 
 -- The Loadout button is opened by I (keyboard) / Y (gamepad) / a click (mouse) -- NOT the confirm key
 -- {select} names -- so the loadout hint's key cap is chosen per device here rather than in the line.
@@ -361,8 +368,11 @@ local function openLoadout()
         -- The flight leg is doubly excluded: it is before the city, and before any floor.
         tactics = game.tutorial ~= "flight" and Descent.tacticsUnlocked(game.player),
         -- The roll is the city's lesson too: a body on the flight leg has one job and no ladder to
-        -- read, so the tab arrives with the town that explains it.
-        classes = game.tutorial ~= "flight",
+        -- read, so the tab arrives with the town that explains it (Descent.classesUnlocked, stamped on
+        -- the first hub visit). Read off the company rather than off this leg's tutorial flag, because
+        -- the flag is not the whole of Act 0 -- the sweep's own fights are launched from here as
+        -- ordinary encounters and carry none.
+        classes = Descent.classesUnlocked(game.player),
         -- Clear the equip coach the instant the player equips something, not on panel close.
         onEquip = function()
             if game.coach == "equip" then game.coach = nil end
@@ -460,10 +470,15 @@ function game:refreshHaul()
     local entry = run and run.entry
     if not entry then game.haul = nil return end
 
-    -- Through Player.atRisk rather than a tally of its own, so the number on the defeat panel, the mark
-    -- in the Loadout and the pile a wipe actually drops are one answer asked three times. They used to
-    -- be two counts computed the same way in two files, which is exactly how a readout goes quietly
-    -- false (the badge would have been the third).
+    -- Through Player.atRisk rather than a tally of its own, so the number quoted at the stair and the
+    -- finds the toll actually lifts are one answer asked twice. They used to be two counts computed the
+    -- same way in two files, which is exactly how a readout goes quietly false.
+    --
+    -- THE LOADOUT NO LONGER MARKS THEM. A gold arrow sat on every found piece in the Armory reading
+    -- "dropped if you fall", which stopped being true the day a wipe stopped taking anything, and a
+    -- badge that names a loss the game cannot inflict teaches the player to hoard against nothing. The
+    -- toll is the set's only live reader now, and it quotes a COUNT at the gate rather than pointing at
+    -- particular items -- which finds she hands over was never a question the player was asked.
     -- THE ITEMS, off the same atRisk keys the toll spends rather than tallied at the grant, for the
     -- reason this whole function is a diff. There was a second figure here -- what the VALUABLES among
     -- them were worth -- and it went with the valuables themselves (models/spoils.lua's END_PURSE): an
@@ -1684,6 +1699,40 @@ function game:askErrand(cell, posting)
             game.map:retreatFromEncounter()
         end
     end)
+end
+
+-- THE FIRST RELIC EXPLAINS ITSELF, ONCE, IN FRONT OF THE STOP THAT IS OFFERING IT.
+--
+-- A relic card says what a relic DOES in exactly the register an item tooltip uses -- "+1 magic defense
+-- for the whole company" -- and it is bought with the same gold, off the same kind of shelf, as a coat
+-- that is kept forever. Nothing on that screen says this one is handed back at the stair. The lesson is
+-- therefore about a SCOPE, which is the one thing the shelf cannot show, and it has to land BEFORE the
+-- stop is answered rather than after the gold is spent.
+--
+-- A WINDOW, not a bubble: "these last until you climb out, and gear does not" is a rule with a
+-- consequence, and a tail on a shelf row cannot carry one (ui/panels/tutorial_note.lua draws that line).
+--
+-- OPENED IN FRONT OF WHATEVER IS ALREADY UP rather than instead of it -- the same move the Armory's tab
+-- lessons make (ui/panels/party.lua). The Reliquary's slate, the cart's shelf, the Stone's price: the
+-- panel the player walked onto is built and standing behind the window, so dismissing the lesson leaves
+-- them on the stop they stepped on rather than back on an empty floor. Call it AFTER setting the panel;
+-- with nothing open (a relic that simply arrived -- the whetstone at camp, a dilemma's answer) it opens
+-- alone and closes onto the map.
+--
+-- The mark is spent when the window is CLOSED, and saved there: a modal has certainly been read, and a
+-- player who quits on the stop must not be taught the same thing again on the way back in.
+function game:teachRelics()
+    if Descent.relicsTaught(game.player) then return end
+    local behind = game.activePanel
+    game.activePanel = TutorialNote.new({
+        title = Locale.line(NOTES_CONV, "relics_title"),
+        body = Locale.line(NOTES_CONV, "relics_body"),
+        onClose = function()
+            game.activePanel = behind
+            Descent.markRelicsTaught(game.player)
+            Player.save()
+        end,
+    })
 end
 
 -- Engaging an encounter. Combat kinds (combat / elite / objective) drop into the
@@ -2961,6 +3010,7 @@ function game:openEncounter(cell, opts)
             -- Persist on the way out too: the pin is what makes leaving safe instead of a free reroll.
             onLeave = function() game.activePanel = nil; saveRun() end,
         })
+        game:teachRelics() -- ...and what a relic is, if nobody has said yet. See game:teachRelics.
         return
     end
 
@@ -3101,6 +3151,9 @@ function game:openEncounter(cell, opts)
             options = options,
             onClose = function() game.activePanel = nil end,
         })
+        -- Asked at the DOOR rather than at the reveal behind it: both verbs here spend something for a
+        -- relic, so the scope has to be known before either is chosen.
+        game:teachRelics()
         return
     end
 
@@ -3150,6 +3203,8 @@ function game:openEncounter(cell, opts)
             end,
             onLeave = function() game.activePanel = nil end,
         })
+        -- The stop that prices a relic in maximum health is the worst one to meet uninformed.
+        game:teachRelics()
         return
     end
 
@@ -3232,6 +3287,7 @@ function game:openEncounter(cell, opts)
         end
         if #enc.stock == 0 then cell.cleared = true; saveRun(); return end
         local stock = {}
+        local sellsRelic = false -- ...and whether any of it is a relic, which is what opens the lesson
         for _, s in ipairs(enc.stock) do
             -- A shelf pinned to the cell can outlive the blueprint it names (a removed item, an older
             -- save), so a row whose id no longer resolves is simply not offered rather than crashing the
@@ -3244,6 +3300,7 @@ function game:openEncounter(cell, opts)
                     info.id = s.id
                     stock[#stock + 1] = { id = s.id, relic = info, price = s.price, bought = s.bought,
                                           held = Relic.count(game.relicState, s.id), src = s }
+                    sellsRelic = true
                 end
             elseif Item.defs[s.id] then
                 stock[#stock + 1] = { id = s.id, price = s.price, bought = s.bought, src = s }
@@ -3279,6 +3336,10 @@ function game:openEncounter(cell, opts)
             end,
             onClose = function() game.activePanel = nil; saveRun() end,
         })
+        -- A CART IS WHERE MOST COMPANIES MEET THEIR FIRST RELIC, and it is the one stop that asks for
+        -- gold by name -- so the scope is said over the shelf, before a row is bought, and only when
+        -- there is a relic on it to explain.
+        if sellsRelic then game:teachRelics() end
         return
     end
 
@@ -3290,6 +3351,10 @@ function game:openEncounter(cell, opts)
         -- What the answer handed up unread, set by ctx.grantSealed below and read by the option's
         -- callback after it. See grantSealed for why the find cannot open its own reveal.
         local sealedFound
+        -- ...and whether the answer handed over a RELIC, for the same reason and read at the same place:
+        -- a dilemma that pays one is the first relic some companies ever hold, and nothing was offered
+        -- to teach the scope over (game:teachRelics).
+        local relicGained = false
         local ctx = {
             rnd = rnd,
             notify = function(m) game:pushToast(m) end,
@@ -3338,6 +3403,7 @@ function game:openEncounter(cell, opts)
                 local _, n = Relic.grant(game.relicState, id)
                 local name = Relic.info(id).name or id
                 game:pushToast("You gain: " .. name .. ((n and n > 1) and ("  x" .. n) or ""))
+                relicGained = true
                 return name
             end,
             -- AN UNREAD PIECE, which is the one stake that exists because you are in the rift rather
@@ -3375,6 +3441,7 @@ function game:openEncounter(cell, opts)
                 cb = function()
                     cell.cleared = true
                     sealedFound = nil -- an answer reports its OWN find, never the last one's
+                    relicGained = false -- ...and its own relic, on the same terms
                     o.resolve(ctx)
                     game.activePanel = nil
                     -- ...and what came up unread takes the dilemma's place on screen, in the same panel
@@ -3390,6 +3457,9 @@ function game:openEncounter(cell, opts)
                             onCancel = close,
                         })
                     end
+                    -- Last, so the lesson opens in FRONT of whatever the answer put on screen: the
+                    -- window is read, and the unread find is still standing behind it.
+                    if relicGained then game:teachRelics() end
                     saveRun()
                 end,
             }
@@ -3437,6 +3507,8 @@ function game:openEncounter(cell, opts)
                     and ("You hone your edge again  (Honed Edge x" .. n .. ")")
                     or "You hone your edge  (Honed Edge)")
                 game.activePanel = nil
+                -- A camp hands one over with nothing to read it off, so the lesson opens alone here.
+                game:teachRelics()
                 saveRun()
             end,
             onStudy = function()
@@ -4175,94 +4247,12 @@ function game.draw()
     game.drawCoach()
 end
 
--- WHICH DEAD END A COMPANION IS STANDING AT, as `x, y, asked`, or nil when there is nobody to point
--- at. The anchor the recruit lesson below hangs on.
---
--- FOUND BY WALKING THE BOARD rather than read off the floor's spec (Descent.floorObjectives), because
--- what a bubble needs is the CELL: it is pinned to a rect on screen, and only the grid knows where the
--- run actually put the stop. Same walk game:stairGate does, for the same reason.
---
--- DISCOVERED ONLY. `markedStop` is the map's own answer to "does this marker draw at all", so the
--- bubble can never point into fog -- an arrow at a stop the company has not found yet teaches the
--- player that something is somewhere it is not, which is worse than teaching nothing.
---
--- THE HOUSE'S OPENER AND NOTHING ELSE. Errand.posting also answers for work asked for over a counter,
--- and that is an errand rather than a body waiting at the end of one.
-local function recruitPosting()
-    local grid, map = game.grid, game.map
-    if not (game.descent and grid and map and game.player) then return nil end
-    for y = 1, grid.rows do
-        for x = 1, grid.cols do
-            local cell = map:markedStop(x, y)
-            local id = cell and cell.encounter.questId
-            local posting = id and Errand.posting(game.player, id)
-            if posting and Errand.opener(posting.vendorId) == id then
-                return x, y, posting.kind == "asked"
-            end
-        end
-    end
-    return nil
-end
-
--- THE RECRUIT LESSON: what the one marker on this floor that is a PERSON is, said once in the game.
---
--- A CONDITION RATHER THAN A STEP SOMEBODY SETS, which is the one thing here that differs from the four
--- steps below. Every one of those is armed at a moment (a scene ends, a chest opens, a body is carried
--- out) and spent by the player doing the thing it asked for. This one is owed by a MARKER that is
--- standing on the board across floor entries, saves, resumes and the fight itself -- and `game.coach`
--- is cleared on every game.enter, so a flag would have to be re-armed from this same condition anyway.
--- Reading it live means the bubble is up exactly while the thing it points at is there.
---
--- WHICH ALSO SETTLES THE PRECEDENCE, for free: it draws only when no step is set (see drawCoach), so
--- the first wound -- armed at a moment, and gone the next time the company takes a step -- takes the
--- screen while it is up and this comes back underneath it.
---
--- TAUGHT WHILE THE FIRST RECRUIT IS OUTSTANDING, and that gate is Saber's posting rather than a new
--- mark on the player. She is the one companion the descent does not roll for -- floor one of every
--- descent until she joins (models/descent.lua's SCRIPTED_COMPANION) -- so "she has not joined yet" is
--- exactly "the company has never done this", with nothing to save and nothing to keep in step.
-local function recruitLessonOwed()
-    return game.player ~= nil
-        and not Errand.doorOpen(game.player, Descent.SCRIPTED_COMPANION)
-end
-
-function game.drawRecruitCoach()
-    -- Held off inside a fight (the map it points at is behind the battle) and under an open panel, for
-    -- the same reason the move and wound bubbles are: the marker is covered, so the arrow would be
-    -- pointing into a menu. Nothing spends this one -- it simply comes back when the screen is clear.
-    if battling() or game.activePanel then return end
-    if not recruitLessonOwed() then return end
-    local x, y, asked = recruitPosting()
-    if not x then return end
-    -- A RECRUIT IS TWO BEATS AT ONE END (models/errand.lua): the meeting is the doorway and the ask is
-    -- the room behind it, so the mark does not move between them and only the sentence does.
-    local convId = "conversation_tutorial_recruit"
-    local node = hintNode(convId, asked and "recruit_asked_hint" or "recruit_hint")
-    if not node then return end
-
-    -- OFF-SCREEN IS NOT AN ANCHOR, and this is the one way this bubble differs from every other one
-    -- out here. The others point at the player's own token or at a HUD rect, both of which are on the
-    -- screen by construction; a marker is not. A stop stays on the map once it has been found, so the
-    -- cell this is pinned to can be half a floor behind the company -- and CoachBubble's placement
-    -- search CLAMPS a candidate that will not fit rather than refusing it, which would park the bubble
-    -- against the edge with its tail pointing at nothing. The lesson is about the mark in front of you.
-    local anchor = game.map:cellRect(x, y)
-    local bounds = coachBounds()
-    if anchor.x + anchor.w < bounds.x or anchor.x > bounds.x + bounds.w then return end
-    if anchor.y + anchor.h < bounds.y or anchor.y > bounds.y + bounds.h then return end
-
-    CoachBubble.draw(Locale.text(convId, node), anchor, { prefer = "above", bounds = bounds })
-end
-
 -- The gold coach bubble, pinned to whatever the current step is about. Three of the four steps are the
 -- prologue's flight leg and draw nowhere else; the fourth ("wound") is the campaign's, and fires once
 -- ever, on the first body carried out of a fight (game:inflictWounds).
---
--- ...and the recruit lesson is the fifth, which is not a step at all -- it hangs off a marker rather
--- than a moment, so it is asked for here when no step holds the channel (see game.drawRecruitCoach).
 function game.drawCoach()
     local step = game.coach
-    if not step then return game.drawRecruitCoach() end
+    if not step then return end
     -- The first wound, named on the row of the body that took it. Held off while a panel is open for
     -- the same reason the move hint is: the strip it is pointing at is behind that panel, so a bubble
     -- drawn over the top would be an arrow into a menu. Nothing spends it -- it waits (game:onArrive).

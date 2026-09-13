@@ -4,7 +4,8 @@
 -- Gate: one quest in the fighter (Colosseum) line -- blood_in_the_sand. See docs/disciplines-plan.md.
 return {
     name    = "Barbarian",
-    description = "Wrath read straight. Damage climbs as your own health falls, and the heaviest strikes are paid for in blood.",
+    description = "Hits harder the worse you are hurt. Damage climbs as your own health falls, and the "
+        .. "heaviest strikes cost health to swing.",
     exemplar = "character_barbarian", -- NEW, pending
     requires = { fighter = 4 },
 }

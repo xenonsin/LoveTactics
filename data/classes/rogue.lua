@@ -2,7 +2,7 @@
 -- blurb moved off Item.CLASSES.
 return {
     name    = "Rogue",
-    description = "Guile, and taking what is not yours. Conditional multipliers, blinks that return you to "
-        .. "where you stood, executes, bleed, and theft.",
+    description = "Takes the opening and the purse. A strike that meets its condition hits for a multiple, "
+        .. "blinks return you to where you stood, and blows bleed, disarm or steal.",
     exemplar = "character_clem", -- the companion the Undercroft posts
 }

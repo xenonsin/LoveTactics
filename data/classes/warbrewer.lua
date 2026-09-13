@@ -6,7 +6,8 @@
 -- opens quest_colosseum_the_fighting_cellar (pending). See docs/disciplines-plan.md.
 return {
     name    = "Warbrewer",
-    description = "The rampage. Chug a self-buff draught as a free action mid-swing, and keep swinging.",
+    description = "Drinks in the middle of the swing. A self-buff draught costs no action, so you keep "
+        .. "attacking while it takes hold.",
     exemplar = "character_warbrewer", -- NEW, pending
     requires = { fighter = 8, alchemist = 8 },
 }

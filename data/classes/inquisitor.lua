@@ -6,7 +6,8 @@
 -- quest_cathedral_the_confession (pending). See docs/disciplines-plan.md.
 return {
     name    = "Inquisitor",
-    description = "Stealth plus smite. Mark a heretic, and the execute that follows lands as holy damage and strips their blessings.",
+    description = "Marks a foe and executes it. The mark strips their blessings, and the strike that "
+        .. "follows lands as holy damage.",
     exemplar = "character_inquisitor", -- NEW, pending
     requires = { rogue = 6, priest = 6 },
 }

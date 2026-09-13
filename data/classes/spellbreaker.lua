@@ -6,7 +6,8 @@
 -- quest_arcanum_the_silenced_tower (pending). See docs/disciplines-plan.md.
 return {
     name    = "Spellbreaker",
-    description = "The anti-caster. Melee that interrupts a channel and negates the next spell cast nearby.",
+    description = "Shuts casters down. A melee blow interrupts a spell being channelled, inflicts Silence, "
+        .. "and negates the next cast made nearby.",
     exemplar = "character_spellbreaker", -- NEW, pending
     requires = { knight = 8, mage = 8 },
 }

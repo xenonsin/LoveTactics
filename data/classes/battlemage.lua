@@ -6,7 +6,8 @@
 -- quest_arcanum_the_broken_siege (pending). See docs/disciplines-plan.md.
 return {
     name    = "Battlemage",
-    description = "Spell and steel in one motion. Folds a cantrip into a melee swing, so the blade casts as it lands.",
+    description = "Casts with the swing. Folds a spell into a melee attack, so a single action both "
+        .. "strikes and casts.",
     exemplar = "character_battlemage", -- NEW, pending
     requires = { fighter = 7, mage = 7 },
 }

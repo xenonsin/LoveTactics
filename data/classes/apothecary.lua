@@ -8,7 +8,8 @@
 -- opens quest_alchemist_apothecary_ren (pending). See docs/disciplines-plan.md.
 return {
     name    = "Apothecary",
-    description = "The field medic who reaches for a dose before a blade. Elixirs that heal and lend party stats, so what your column is carrying is what the dose is worth.",
+    description = "Treats the party with doses. Elixirs heal an ally and lend them your own stats, so what "
+        .. "you are carrying decides what a dose is worth.",
     exemplar = "character_apothecary", -- was character_ren (a root companion); dedicated exemplar authored
     requires = { priest = 6, alchemist = 6 },
 }

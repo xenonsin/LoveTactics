@@ -9,7 +9,8 @@
 -- See docs/disciplines-plan.md.
 return {
     name    = "Beastmaster",
-    description = "The pack-caller. Keeps a bonded beast on the field that acts every turn under your command.",
+    description = "Keeps a beast on the field. The bonded animal stands as a unit of its own and acts "
+        .. "every turn on your orders.",
     exemplar = "character_beastmaster", -- was character_kaya (a root companion); dedicated exemplar authored
     requires = { hunter = 3 },
 }

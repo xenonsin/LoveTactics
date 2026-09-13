@@ -6,7 +6,8 @@
 -- quest_cathedral_the_consecrated_march (pending). See docs/disciplines-plan.md.
 return {
     name    = "Crusader",
-    description = "The armed faithful. Holy bonus damage on demons and undead, and a kill that heals the one who dealt it.",
+    description = "Strikes with holy damage. Blows land for extra damage against demons and undead, and a "
+        .. "killing blow heals the one who dealt it.",
     exemplar = "character_crusader", -- NEW, pending
     requires = { fighter = 5, priest = 5 },
 }

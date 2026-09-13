@@ -672,6 +672,21 @@ function Save.snapshot(player)
         -- ...and whether the window explaining the Roll has been read (Descent.classesTaught). No
         -- unlock rides beside this one: the Classes tab is on the strip from the first morning.
         classesTaught = player.classesTaught or nil,
+        -- ...and whether the window explaining what a relic IS has been read (Descent.relicsTaught).
+        -- It rides on the PLAYER for the reason the marks above it do, and the reason bites harder
+        -- here: the thing it teaches about lives on the run, and the run does not survive the stair --
+        -- so a mark kept beside the relics would be spent again every expedition.
+        relicsTaught = player.relicsTaught or nil,
+        -- ...and whether they have ever walked into the city at all, which is what puts the Roll tab on
+        -- the strip in the first place (Descent.classesUnlocked). Saved rather than derived because a
+        -- save is loaded straight back onto the leg it was written on, where the panel opens with no
+        -- town in sight.
+        --
+        -- WRITTEN AS A BOOLEAN rather than elided when false, unlike every mark above it. A save CAN be
+        -- written before the city -- closing the Loadout panel on the flight leg writes one -- so
+        -- "absent" and "false" are different companies here, and only an explicit false says which.
+        -- Still purely additive, so Save.VERSION does not move; see the reader for the older save.
+        cityReached = player.cityReached == true,
         -- ...AND THE TALLY ITSELF, which used to ride on the run (models/descent.lua's snapshot) and now
         -- rides here beside the mark that gates its readout. The note above is the reason it had to move:
         -- it said the tally "falls back to nought the moment they descend again", which was survivable
@@ -1059,6 +1074,12 @@ function Save.restore(snap)
         gateCoached = snap.gateCoached == true,
         tacticsTaught = snap.tacticsTaught == true, -- ...nor read the Tactics window, same worst case
         classesTaught = snap.classesTaught == true, -- ...nor the Roll's, which costs one window at worst
+        relicsTaught = snap.relicsTaught == true,   -- ...nor been told what a relic is, same worst case
+        -- An older save has no field here, and it reads as TRUE rather than as the false every other
+        -- mark above defaults to: the flag only ever hides a control, and a company that has been
+        -- playing long enough to have a save from before it landed has certainly seen the town. A
+        -- genuine pre-city save written since carries an explicit false, which is what this respects.
+        cityReached = snap.cityReached ~= false,
         -- The tally (Descent.count). READ OFF THE RUN AS A FALLBACK, because that is where every save
         -- written before the move put it -- and it is read from the RAW snapshot rather than from the
         -- restored run, which no longer carries the field at all. A company mid-descent when this landed

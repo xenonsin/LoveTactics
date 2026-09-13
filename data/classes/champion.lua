@@ -5,7 +5,8 @@
 -- quest_colosseum_champions_challenge (pending). See docs/disciplines-plan.md.
 return {
     name    = "Champion",
-    description = "The arena's answer to a crowd. Taunt the field, then counter every striker who takes the bait.",
+    description = "Draws the whole field onto you. Taunts pull attacks your way, and every foe that takes "
+        .. "the bait is struck back automatically.",
     exemplar = "character_champion",
     requires = { fighter = 6, knight = 6 },
 }

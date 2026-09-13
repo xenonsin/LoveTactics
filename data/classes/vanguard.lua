@@ -6,7 +6,8 @@
 -- quest_bastion_the_salted_gate (pending). See docs/disciplines-plan.md.
 return {
     name    = "Vanguard",
-    description = "The breach. Knockback that strips guard and armor, opening a hole in the line for the rest to pour through.",
+    description = "Opens a hole in the enemy line. Knockback strips guard and armor from the foe it "
+        .. "pushes, leaving the gap for the rest of the party.",
     exemplar = "character_vanguard", -- NEW, pending
     requires = { knight = 7, rogue = 7 },
 }

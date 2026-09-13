@@ -5,7 +5,8 @@
 -- opens quest_undercroft_the_collapsed_vault (pending). See docs/disciplines-plan.md.
 return {
     name    = "Saboteur",
-    description = "The demolitions ghost. Place delayed charges unseen, then detonate them on your own signal.",
+    description = "Plants charges and picks the moment. Explosives are placed on tiles unseen and set off "
+        .. "on your own signal rather than on a timer.",
     exemplar = "character_saboteur", -- NEW, pending
     requires = { rogue = 8, alchemist = 8 },
 }

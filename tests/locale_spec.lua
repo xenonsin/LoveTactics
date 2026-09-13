@@ -67,9 +67,64 @@ return {
             assert(Locale.key.line("conversation_colosseum_slot_01_intro", 3) == "line.conversation_colosseum_slot_01_intro.3", "line key")
             assert(Locale.key.title("conversation_colosseum_slot_01_intro") == "title.conversation_colosseum_slot_01_intro", "title key")
             assert(Locale.key.name("colosseum") == "name.colosseum", "name key")
+            assert(Locale.key.desc("knight") == "desc.knight", "blueprint description key")
             local langs = {}
             for _, l in ipairs(Locale.languages()) do langs[l] = true end
             assert(langs.en and langs.ja, "languages() should report en and ja columns")
+        end,
+    },
+    {
+        -- THE BLUEPRINT HALF OF THE CATALOG, and the reason it is asserted rather than trusted: a
+        -- string authored on a blueprint reaches a translator only if something walks that registry,
+        -- and nothing reports a walk that quietly collects nothing. tests/conversation_spec.lua asks
+        -- exactly this of every authored LINE; this asks it of every authored class blurb.
+        --
+        -- Fails on a class whose description was written or rewritten without `. extract-strings`
+        -- being run after -- which is the point. The row is what the translator gets, and a row still
+        -- mirroring last week's English is a translation of a sentence the game no longer says.
+        name = "every class description is in the grid, with its en cell in sync",
+        fn = function()
+            local Class = require("models.class")
+            local grid = Locale.strings()
+            local checked = 0
+            for id, def in pairs(Class.defs) do
+                if type(def.description) == "string" and def.description ~= "" then
+                    local key = Locale.key.desc(id)
+                    local row = grid[key]
+                    assert(row, id .. ": no '" .. key .. "' row -- run `. extract-strings`")
+                    assert(row.en == def.description,
+                        id .. ": the grid's en cell has drifted from the blueprint -- run `. extract-strings`")
+                    checked = checked + 1
+                end
+            end
+            -- All 46 carry one today; the floor is written under that rather than at it, so adding a
+            -- class is not a failing test, and deleting the walk is.
+            assert(checked >= 40, "the class registry should have contributed a blurb for nearly every class")
+        end,
+    },
+    {
+        -- The seam itself: a class blurb resolves through the catalog like any authored line, and in
+        -- the source language the inline English wins untouched (Locale.get is identity there), so a
+        -- blueprint is never localized against its own generated mirror.
+        name = "a class description resolves through the catalog and is the blueprint's own in English",
+        fn = function()
+            local Class = require("models.class")
+            local saved, grid = Locale.current, Locale.strings()
+
+            Locale.set("en")
+            assert(Class.description("knight") == Class.defs.knight.description,
+                "in English a class says exactly what its blueprint says")
+
+            grid["desc.knight"] = grid["desc.knight"] or {}
+            local savedCell = grid["desc.knight"].ja
+            grid["desc.knight"].ja = "壁。"
+            Locale.set("ja")
+            assert(Class.description("knight") == "壁。", "a translated cell wins in that language")
+            assert(Class.description("not_a_class") == nil,
+                "an unknown id is still nil, in any language -- there is no English to fall back to")
+
+            grid["desc.knight"].ja = savedCell -- leave the loaded grid as it was found
+            Locale.set(saved)
         end,
     },
 }

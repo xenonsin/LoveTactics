@@ -9,7 +9,8 @@
 -- See docs/disciplines-plan.md.
 return {
     name    = "Bombardier",
-    description = "The thrower. Scatter bombs seed hazards at range and chain-detonate off each other.",
+    description = "Throws bombs at range. Each one leaves a hazard on the ground where it lands, and a "
+        .. "blast sets off any other bomb near it.",
     exemplar = "character_bombardier", -- NEW, pending
     requires = { alchemist = 3 },
 }

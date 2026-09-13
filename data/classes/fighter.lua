@@ -2,7 +2,7 @@
 -- the blurb moved off Item.CLASSES.
 return {
     name    = "Fighter",
-    description = "Wrath is what happens directly in front of you. Trades its own health and tempo for "
-        .. "damage: front-arc sweeps, stuns, and strikes that cost you something to land.",
+    description = "Trades health and tempo for damage. Heavy axes and hammers sweep the tiles in front of "
+        .. "you, stun what they hit, and cost you something to swing.",
     exemplar = "character_saber", -- the companion the Colosseum posts
 }

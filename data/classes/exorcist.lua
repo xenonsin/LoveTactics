@@ -10,7 +10,8 @@
 -- See docs/disciplines-plan.md.
 return {
     name    = "Exorcist",
-    description = "The rite-worker. Banishes summons off the field outright, and strips enemy buffs and hazards.",
+    description = "Undoes what the enemy has built. Banish removes a summon from the field outright, and "
+        .. "rites strip enemy buffs and clear hazards.",
     exemplar = "character_exorcist", -- was character_amana (a root companion); dedicated exemplar authored
     requires = { priest = 3 },
 }

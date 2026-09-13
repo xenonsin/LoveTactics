@@ -8,7 +8,8 @@
 -- See docs/disciplines-plan.md.
 return {
     name    = "Druid",
-    description = "The shapeshifter. Trades your whole kit for a beast form for a few turns. Bear to hold ground, wolf to cover it.",
+    description = "Changes shape mid-fight. Wild Shape trades your whole grid for a beast form for a few "
+        .. "turns. Bear holds ground, wolf covers it.",
     exemplar = "character_druid", -- NEW, pending
     requires = { hunter = 4 },
 }

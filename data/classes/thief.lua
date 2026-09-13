@@ -8,7 +8,8 @@
 -- See docs/disciplines-plan.md.
 return {
     name    = "Thief",
-    description = "Larceny. Strikes take an item, a buff or a stat off the target and hand it to you.",
+    description = "Steals with the strike. A blow takes an item, a buff or a stat off the target and gives "
+        .. "it to you.",
     exemplar = "character_thief", -- NEW, pending
     requires = { rogue = 3 },
 }

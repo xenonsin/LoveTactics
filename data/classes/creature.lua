@@ -16,7 +16,7 @@
 -- job -- which is exactly what the items in it are.
 return {
     name    = "Creature",
-    description = "Not a job. The kit that belongs to no house -- natural weapons, a demon's own art, "
-        .. "and the machinery a boss runs its phases on. Never sold, never taught, mostly never carried.",
+    description = "Gear rather than a career. Natural weapons, demon art, and the machinery a boss runs "
+        .. "its phases on. None of it is sold, taught, or carried by the party.",
     playable = false, -- never offered as a career: no exemplar, no shelf, no gate
 }

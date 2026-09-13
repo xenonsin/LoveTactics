@@ -5,7 +5,8 @@
 -- Gate: one quest in the fighter (Colosseum) line -- warlord_keep. See docs/disciplines-plan.md.
 return {
     name    = "Warlord",
-    description = "The commander. Planted banners project stacking aura fields the party fights inside of.",
+    description = "Commands from inside the formation. Planted banners project auras that stack, and the "
+        .. "party fights inside the field they make.",
     exemplar = "character_warlord",
     requires = { fighter = 3 },
 }

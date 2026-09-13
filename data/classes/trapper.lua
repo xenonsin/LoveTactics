@@ -5,7 +5,8 @@
 -- Gate: one quest in the hunter (Lodge) line -- the_silent_wood. See docs/disciplines-plan.md.
 return {
     name    = "Trapper",
-    description = "The ambusher. Pre-places tile triggers that root or wound whoever walks into them.",
+    description = "Prepares the ground before the fight reaches it. Traps are placed on tiles in advance "
+        .. "and inflict Root or damage on whoever walks in.",
     exemplar = "character_trapper_ambusher", -- character_trapper is the Colosseum debut spotter; dedicated exemplar authored
     requires = { hunter = 5 },
 }

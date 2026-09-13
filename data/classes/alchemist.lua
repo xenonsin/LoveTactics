@@ -2,7 +2,7 @@
 -- the blurb moved off Item.CLASSES.
 return {
     name    = "Alchemist",
-    description = "Covets others' power rather than casting its own. Consumables, poison and acid, "
-        .. "coatings and elixirs, and grid auras that lend what you are not.",
+    description = "Fights with what it brews. Throws bombs and acid, drinks elixirs that raise a stat for "
+        .. "a few turns, and coats blades in poison between swings.",
     exemplar = "character_ren", -- the companion the Crucible posts
 }

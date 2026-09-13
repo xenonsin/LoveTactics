@@ -9,7 +9,7 @@
 -- one blueprint, and a blurb kept in a second table beside the ladder is exactly how the two axes drift.
 return {
     name    = "Knight",
-    description = "The wall. It does not kill you, it decides where you stand -- taunts, Halts, knockback, "
-        .. "and guard redirects that take an ally's hit onto your own plate.",
+    description = "Decides where the enemy stands. Taunts pull attacks onto you, Knockback and Halt move "
+        .. "foes off their tiles, and a guard takes an ally's hit onto your own plate.",
     exemplar = "character_rowan", -- the companion the Bastion posts; roots are the companions' own tier
 }

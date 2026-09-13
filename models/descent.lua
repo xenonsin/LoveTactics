@@ -2524,14 +2524,38 @@ function Descent.markTacticsTaught(player)
     return true
 end
 
+-- WHETHER THE COMPANY HAS WALKED INTO THE CITY YET, which is what the Armory's Roll tab waits for.
+--
+-- A class is what a body IS, and the tab that changes one is a shelf of decisions -- a subclass to open,
+-- a crossing to pay for -- every one of which is answered in the town: the Armory explains it, the Hall
+-- fills the roster it is read across, and the levels it spends are banked by work the city hands out.
+-- Act 0 has none of that. A body on the flight leg has one job, one kit and no ladder to read, so the
+-- tab there is a screen of rungs nobody can reach, opened on the same panel that is teaching the grid.
+--
+-- A ONE-WAY MARK OF ITS OWN rather than a reading of some other ledger, because none of them answers
+-- this. `deepest` is nought on both sides of the gate (the city comes before the first descent), the day
+-- is 1 in the city and 1 on the street, and `hubIntro` is a staging flag that a loaded save and the
+-- prologue skip both clear. Set the first time states/hub.lua opens the town, so it covers the played
+-- prologue, the skip, and a save loaded straight back onto an overworld leg alike.
+function Descent.classesUnlocked(player)
+    return (player and player.cityReached) or false
+end
+
+function Descent.markCityReached(player)
+    if not player then return false end
+    player.cityReached = true
+    return true
+end
+
 -- ...and the same mark for the Armory's OTHER tab that has to be explained before it can be used, the
 -- Roll (ui/class_editor.lua). Same shape, deliberately separate ledger -- two windows about two
 -- features, each of which goes out when its own has been read.
 --
--- NOT GATED ON A DEPTH, unlike Tactics. A class is what a body IS and the tab is on the strip from the
--- first morning, so there is no unlock to announce -- what the pip says is "you have never opened
--- this", not "the room grew a control". That also means it never lights the Armory's door dot: nothing
--- about the city changed while the company was below.
+-- NOT GATED ON A DEPTH, unlike Tactics. The tab is on the strip from the first morning IN THE CITY
+-- (Descent.classesUnlocked above is what holds it back before that, and it has long since opened by the
+-- time anyone can read a window in the Armory), so there is no unlock to announce -- what the pip says
+-- is "you have never opened this", not "the room grew a control". That also means it never lights the
+-- Armory's door dot: nothing about the city changed while the company was below.
 function Descent.classesTaught(player)
     return (player and player.classesTaught) or false
 end
@@ -2851,6 +2875,29 @@ end
 function Descent.markTallyTaught(player)
     if not player then return false end
     player.tallyTaught = true
+    return true
+end
+
+-- HAS ANYBODY EXPLAINED WHAT A RELIC IS? The same one-way mark again, spent by the window that says it
+-- (ui/panels/tutorial_note.lua, fielded in states/game.lua) the first time a relic is put in front of
+-- the company -- a Reliquary's slate, the Altar's wager, the Stone's price, a cart with one on the
+-- shelf -- and never again.
+--
+-- WHAT IT TEACHES IS A SCOPE, AND A SCOPE IS THE ONE THING THE SHELF CANNOT SHOW. A relic's card says
+-- what it does in exactly the register an item's tooltip uses ("+1 magic defense for the whole
+-- company"), and every other thing that purse buys is kept. Nothing on the screen says this one is
+-- handed back at the stair -- so the lesson has to land BEFORE the stop is answered, not after the
+-- gold is spent.
+--
+-- ON THE PLAYER RATHER THAN ON THE RUN, like every mark above it: the descent it was read on ends, and
+-- a lesson re-taught every descent is not a lesson.
+function Descent.relicsTaught(player)
+    return (player and player.relicsTaught) or false
+end
+
+function Descent.markRelicsTaught(player)
+    if not player then return false end
+    player.relicsTaught = true
     return true
 end
 

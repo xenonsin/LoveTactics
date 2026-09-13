@@ -6,7 +6,8 @@
 -- quest_hunters_lodge_the_spirit_wood (pending). See docs/disciplines-plan.md.
 return {
     name    = "Shaman",
-    description = "The spirit-caller. Summons elemental spirits bound to the hazards they stand in, and leaves them to fight on their own.",
+    description = "Calls spirits out of the ground. Each one is bound to the hazard it stands in and "
+        .. "fights on its own once it is summoned.",
     exemplar = "character_shaman", -- NEW, pending
     requires = { hunter = 6, mage = 6 },
 }

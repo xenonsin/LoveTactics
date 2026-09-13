@@ -19,6 +19,7 @@
 
 local Character = require("models.character")
 local Vendor = require("models.vendor")
+local Class = require("models.class")
 local Locale = require("models.locale")
 
 local M = {}
@@ -326,6 +327,36 @@ local function collect(convId, def, out, seenNames)
     eachNode(def.script, function(n) noteName(nodeSpeaker(n)) end)
 end
 
+-- BLUEPRINT STRINGS, which are the other half of what a translator needs and the half this tool could
+-- not see. A conversation is walked because it is a script; a blueprint is a table in a registry, and
+-- until something here asks a registry for its words, a string authored on one reaches no grid, no
+-- translator and no report saying so (docs/localization.md's "remaining gap").
+--
+-- The classes are the first registry walked, and they are walked for their DESCRIPTIONS: forty-six
+-- blurbs, the longest authored prose outside the conversations, and the only thing a player can read
+-- about a path they have not earned (ui/panels/shop.lua's detail pane, ui/class_editor.lua's Roll row).
+-- A class NAME is deliberately not taken yet -- `name.<id>` is the right key for it and the walk below
+-- is where it would go, but one namespace at a time and only the one the runtime actually reads.
+--
+-- Reads Class.defs directly rather than Class.description, which is the seam this feeds: going through
+-- the reader would hand back the CURRENT language's cell and mirror a translation into the `en` column.
+-- The inline English is the mirror's only source, here as everywhere.
+-- Returns how many blueprints contributed a row, for the run's own report: a walk that silently
+-- collects nothing is the exact failure this is meant to end.
+local function collectClasses(out)
+    local ids, taken = {}, 0
+    for id in pairs(Class.defs) do ids[#ids + 1] = id end
+    table.sort(ids) -- `pairs` over a registry promises no order; the grid must diff the same twice
+    for _, id in ipairs(ids) do
+        local def = Class.defs[id]
+        if type(def.description) == "string" and def.description ~= "" then
+            out[#out + 1] = { key = Locale.key.desc(id), en = def.description }
+            taken = taken + 1
+        end
+    end
+    return taken
+end
+
 -- Load the translations already on disk as cells[key][lang] = value, plus the sorted list of the
 -- non-English languages found. Reads the grid (data/lang/strings.lua) when it exists, and ALSO folds
 -- in any legacy per-language file (data/lang/<lang>.lua, the pre-grid format) so the first run after
@@ -411,6 +442,7 @@ function M.run()
         end
         collect(conv.id, def, records, seenNames)
     end
+    local classCount = collectClasses(records)
 
     local cells, otherLangs = loadExistingCells()
     writeFile("data/lang/strings.lua", serializeGrid(records, cells, otherLangs))
@@ -420,8 +452,9 @@ function M.run()
     os.remove(sourcePath("data/lang/en.lua"))
     for _, lang in ipairs(otherLangs) do os.remove(sourcePath("data/lang/" .. lang .. ".lua")) end
 
-    print(string.format("extract-strings: %d string(s) across %d conversation(s); stamped %d file(s); languages: %s.",
-        #records, #convs, stamped, table.concat(otherLangs, ", ")))
+    print(string.format("extract-strings: %d string(s) across %d conversation(s) + %d blueprint(s); "
+        .. "stamped %d file(s); languages: %s.",
+        #records, #convs, classCount, stamped, table.concat(otherLangs, ", ")))
 end
 
 -- Exposed for tests/extract_strings_spec.lua: the pure half of the rewrite -- reading an authored

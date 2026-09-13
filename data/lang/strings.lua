@@ -3,6 +3,52 @@
 -- here -- edit the conversation/blueprint); translate the other columns. A blank cell (or
 -- `-- TODO`) falls back to English at runtime. See docs/localization.md.
 return {
+    ["desc.alchemist"] = { en = "Fights with what it brews. Throws bombs and acid, drinks elixirs that raise a stat for a few turns, and coats blades in poison between swings.", ja = "" },  -- TODO
+    ["desc.apothecary"] = { en = "Treats the party with doses. Elixirs heal an ally and lend them your own stats, so what you are carrying decides what a dose is worth.", ja = "" },  -- TODO
+    ["desc.artificer"] = { en = "Builds machines that fight for you. Sentries and turrets are placed on the board and take a turn of their own each round without orders.", ja = "" },  -- TODO
+    ["desc.assassin"] = { en = "Kills one target and leaves. Blinks to a wounded foe, lands a strike that is certain to finish it, and returns to the tile you started on.", ja = "" },  -- TODO
+    ["desc.barbarian"] = { en = "Hits harder the worse you are hurt. Damage climbs as your own health falls, and the heaviest strikes cost health to swing.", ja = "" },  -- TODO
+    ["desc.battlemage"] = { en = "Casts with the swing. Folds a spell into a melee attack, so a single action both strikes and casts.", ja = "" },  -- TODO
+    ["desc.beastmaster"] = { en = "Keeps a beast on the field. The bonded animal stands as a unit of its own and acts every turn on your orders.", ja = "" },  -- TODO
+    ["desc.bombardier"] = { en = "Throws bombs at range. Each one leaves a hazard on the ground where it lands, and a blast sets off any other bomb near it.", ja = "" },  -- TODO
+    ["desc.bulwark"] = { en = "Moves foes and holds ground. Knockback pushes a foe back and inflicts Halt where it lands, and your own stance makes you immovable.", ja = "" },  -- TODO
+    ["desc.champion"] = { en = "Draws the whole field onto you. Taunts pull attacks your way, and every foe that takes the bait is struck back automatically.", ja = "" },  -- TODO
+    ["desc.creature"] = { en = "Gear rather than a career. Natural weapons, demon art, and the machinery a boss runs its phases on. None of it is sold, taught, or carried by the party.", ja = "" },  -- TODO
+    ["desc.crusader"] = { en = "Strikes with holy damage. Blows land for extra damage against demons and undead, and a killing blow heals the one who dealt it.", ja = "" },  -- TODO
+    ["desc.druid"] = { en = "Changes shape mid-fight. Wild Shape trades your whole grid for a beast form for a few turns. Bear holds ground, wolf covers it.", ja = "" },  -- TODO
+    ["desc.duelist"] = { en = "Fights one foe at a time. A stance builds a bonus that grows for every turn you stay locked with the same opponent.", ja = "" },  -- TODO
+    ["desc.elementalist"] = { en = "Lays sigils that change spells. A sigil tile reshapes any spell cast beside it, making it twinned, farther, faster or safer.", ja = "" },  -- TODO
+    ["desc.exorcist"] = { en = "Undoes what the enemy has built. Banish removes a summon from the field outright, and rites strip enemy buffs and clear hazards.", ja = "" },  -- TODO
+    ["desc.fighter"] = { en = "Trades health and tempo for damage. Heavy axes and hammers sweep the tiles in front of you, stun what they hit, and cost you something to swing.", ja = "" },  -- TODO
+    ["desc.herbalist"] = { en = "Brews from the ground it stands on. Harvests hazards and growth on the board into consumables mid-fight, and the same stem makes a poison or a cure.", ja = "" },  -- TODO
+    ["desc.hunter"] = { en = "Sets a target up, then takes it. Marks, traps and crippling shots soften a foe, and most of the kit needs a bow sitting beside it in the grid.", ja = "" },  -- TODO
+    ["desc.inquisitor"] = { en = "Marks a foe and executes it. The mark strips their blessings, and the strike that follows lands as holy damage.", ja = "" },  -- TODO
+    ["desc.knight"] = { en = "Decides where the enemy stands. Taunts pull attacks onto you, Knockback and Halt move foes off their tiles, and a guard takes an ally's hit onto your own plate.", ja = "" },  -- TODO
+    ["desc.mage"] = { en = "Casts the elements and remakes the ground. Spells are channelled over a turn or two, hazards are laid on tiles, and sigils reshape whatever is cast beside them.", ja = "" },  -- TODO
+    ["desc.mammonite"] = { en = "Spends gold as a combat resource. Coin buys damage, tempo and your own survival, and every blow you land banks more of it.", ja = "" },  -- TODO
+    ["desc.monk"] = { en = "Fights unarmed and banks the hits. Every strike stores chi, and the whole bank is spent at once on a single heavy blow.", ja = "" },  -- TODO
+    ["desc.necromancer"] = { en = "Raises the dead. A foe that falls on the board gets back up fighting on your side, and a corpse you do not raise can be burst where it lies.", ja = "" },  -- TODO
+    ["desc.ninja"] = { en = "Avoids the blow and answers it. Blinks out of reach, leaves a clone standing to take the hit, and stays unseen until the strike that kills.", ja = "" },  -- TODO
+    ["desc.paladin"] = { en = "Stands as a ward for the party. A standing aura cuts the damage every ally beside you takes, and banners hold that ground while they stand.", ja = "" },  -- TODO
+    ["desc.plague_knight"] = { en = "Carries the plague into melee. Blows inflict Poison, and standing next to you poisons whoever is standing there.", ja = "" },  -- TODO
+    ["desc.poacher"] = { en = "Traps first, kills second. A snare leaves the quarry Rooted, and your strikes hit a Rooted foe far harder.", ja = "" },  -- TODO
+    ["desc.poisoner"] = { en = "Coats the blade before the swing. A weapon infusion adds its own damage and status to every hit, and is used up as it goes.", ja = "" },  -- TODO
+    ["desc.priest"] = { en = "Holds ground open and closes it to others. Heals and revives the party, wards the tiles they stand on, cleanses what is on them, and burns demons with holy light.", ja = "" },  -- TODO
+    ["desc.rogue"] = { en = "Takes the opening and the purse. A strike that meets its condition hits for a multiple, blinks return you to where you stood, and blows bleed, disarm or steal.", ja = "" },  -- TODO
+    ["desc.saboteur"] = { en = "Plants charges and picks the moment. Explosives are placed on tiles unseen and set off on your own signal rather than on a timer.", ja = "" },  -- TODO
+    ["desc.sentinel"] = { en = "Takes the hits meant for someone else. Attacks aimed at an adjacent ally are redirected onto you instead.", ja = "" },  -- TODO
+    ["desc.shaman"] = { en = "Calls spirits out of the ground. Each one is bound to the hazard it stands in and fights on its own once it is summoned.", ja = "" },  -- TODO
+    ["desc.skirmisher"] = { en = "Strikes and moves on. Attacking frees a move afterwards, so you never end a turn standing where you swung.", ja = "" },  -- TODO
+    ["desc.spellbreaker"] = { en = "Shuts casters down. A melee blow interrupts a spell being channelled, inflicts Silence, and negates the next cast made nearby.", ja = "" },  -- TODO
+    ["desc.summoner"] = { en = "Fields elementals instead of spells. Mana is banked and spent to summon bodies that take turns of their own.", ja = "" },  -- TODO
+    ["desc.theurge"] = { en = "Holds a holy spell and lets it grow. A wind-up gains power for every turn you keep channelling, and leaves blessed ground where it lands.", ja = "" },  -- TODO
+    ["desc.thief"] = { en = "Steals with the strike. A blow takes an item, a buff or a stat off the target and gives it to you.", ja = "" },  -- TODO
+    ["desc.totemist"] = { en = "Plants totems that work on their own. Each stake projects a field around it that heals the party or negates what is cast into it.", ja = "" },  -- TODO
+    ["desc.trapper"] = { en = "Prepares the ground before the fight reaches it. Traps are placed on tiles in advance and inflict Root or damage on whoever walks in.", ja = "" },  -- TODO
+    ["desc.vanguard"] = { en = "Opens a hole in the enemy line. Knockback strips guard and armor from the foe it pushes, leaving the gap for the rest of the party.", ja = "" },  -- TODO
+    ["desc.warbrewer"] = { en = "Drinks in the middle of the swing. A self-buff draught costs no action, so you keep attacking while it takes hold.", ja = "" },  -- TODO
+    ["desc.warden"] = { en = "Marks a zone and holds it. Crossing the line inflicts Root or Halt on whoever walked in.", ja = "" },  -- TODO
+    ["desc.warlord"] = { en = "Commands from inside the formation. Planted banners project auras that stack, and the party fights inside the field they make.", ja = "" },  -- TODO
     ["line.conversation_alchemist_discipline_unlocked.1"] = { en = "The {discipline}'s Work is unlocked to you, {name}. The Crucible releases its guarded cut for that method. The shelf has more to offer you.", ja = "" },  -- TODO
     ["line.conversation_alchemist_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_alchemist_discipline_unlocked.3"] = { en = "You made this yours honestly. That is rarer here than the gear is. Take it.", ja = "" },  -- TODO
@@ -368,6 +414,8 @@ return {
     ["line.conversation_tutorial_flight.2"] = { en = "Open your loadout to see what you found.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.3"] = { en = "{select} an item in your stash to equip it to a hero.", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.1"] = { en = "The Tally", ja = "" },  -- TODO
+    ["line.conversation_tutorial_notes.10"] = { en = "Relics", ja = "" },  -- TODO
+    ["line.conversation_tutorial_notes.11"] = { en = "Relics are bonuses that affect the whole party that only last until you leave the rift.", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.2"] = { en = "This meter measures the energy of the rift and tells us if a breach is imminent. It will increase every day, but clearing the champion on each floor reduces the meter.\n\nThe merchants lobby heavily to keep the rift active, but many lives are spent keeping the balance.", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.3"] = { en = "Tactics", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.4"] = { en = "Characters can be taught to fight on their own using tactics.\n\nTactics are prioritized and evaluated from top to bottom and are used when the character is set to auto mode.", ja = "" },  -- TODO
@@ -376,8 +424,6 @@ return {
     ["line.conversation_tutorial_notes.7"] = { en = "A to continue", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.8"] = { en = "Tap to continue", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.9"] = { en = "Click, or press Enter to continue", ja = "" },  -- TODO
-    ["line.conversation_tutorial_recruit.1"] = { en = "Somebody is standing at that end, with work of her own to ask for. Walking up to hear it costs us nothing. Doing the job she names is what brings her into the company.", ja = "" },  -- TODO
-    ["line.conversation_tutorial_recruit.2"] = { en = "She is waiting on the far side of that door, and the work she asked for is the way through it. Win that fight and she comes out with us.", ja = "" },  -- TODO
     ["line.conversation_tutorial_village.1"] = { en = "Close the distance and strike without fear, {name}!", ja = "" },  -- TODO
     ["line.conversation_tutorial_village.10"] = { en = "{select} on the lit tile to move there.", ja = "" },  -- TODO
     ["line.conversation_tutorial_village.11"] = { en = "{select} on Clear Out in your grid to ready it.", ja = "" },  -- TODO
@@ -508,7 +554,6 @@ return {
     ["title.conversation_tutorial_city"] = { en = "The City's Instructions", ja = "" },  -- TODO
     ["title.conversation_tutorial_flight"] = { en = "The Open Road", ja = "" },  -- TODO
     ["title.conversation_tutorial_notes"] = { en = "What the Screen Owes You", ja = "" },  -- TODO
-    ["title.conversation_tutorial_recruit"] = { en = "Somebody At The End Of It", ja = "" },  -- TODO
     ["title.conversation_tutorial_village"] = { en = "Rowan's Lesson", ja = "" },  -- TODO
     ["title.conversation_tutorial_wound"] = { en = "Carried Out", ja = "" },  -- TODO
     ["title.conversation_undercroft_discipline_unlocked"] = { en = "Off the Book", ja = "" },  -- TODO

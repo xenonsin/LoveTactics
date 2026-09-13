@@ -6,7 +6,8 @@
 -- Gate: one quest in the knight (Bastion) line -- held_position. See docs/disciplines-plan.md.
 return {
     name    = "Bulwark",
-    description = "The immovable wall that moves everyone else. Knockback that also Halts whoever it displaced.",
+    description = "Moves foes and holds ground. Knockback pushes a foe back and inflicts Halt where it "
+        .. "lands, and your own stance makes you immovable.",
     exemplar = "character_bulwark", -- was character_greywatch_captain (a story-disguised encounter unit); dedicated exemplar authored
     requires = { knight = 3 },
 }

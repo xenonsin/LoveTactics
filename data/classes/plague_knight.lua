@@ -7,7 +7,8 @@
 -- opens quest_bastion_the_rot_beneath_the_plate (pending). See docs/disciplines-plan.md.
 return {
     name    = "Plague Knight",
-    description = "A walking miasma. Melee spreads poison, and standing next to you sickens whoever is standing there.",
+    description = "Carries the plague into melee. Blows inflict Poison, and standing next to you poisons "
+        .. "whoever is standing there.",
     exemplar = "character_plague_knight", -- was character_forsworn_knight (a story-critical Bastion enemy); dedicated exemplar authored
     requires = { knight = 6, alchemist = 6 },
 }

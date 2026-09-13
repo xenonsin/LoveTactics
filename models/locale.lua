@@ -77,6 +77,16 @@ Locale.key = {
     line = function(conv, tag) return "line." .. conv .. "." .. tostring(tag) end,
     title = function(conv) return "title." .. conv end,
     name = function(id) return "name." .. id end,
+    -- A BLUEPRINT'S BLURB, keyed by the blueprint's own id -- the sentence or two saying what a thing
+    -- IS, as opposed to what it is called. The first residents are the classes (data/classes/*.lua's
+    -- `description`, read through Class.description); items and buildings are the same shape and are
+    -- what this namespace is sized for.
+    --
+    -- The FLAT id space `name.` already uses, rather than a per-kind prefix, and for the same reason:
+    -- a blueprint id is unique across the game by construction -- it is the filename its registry
+    -- loaded it from -- so "desc.knight" can only ever be the Knight's. A kind in the key would also
+    -- be a lie waiting to happen the first time a thing is both (a class IS a shop shelf).
+    desc = function(id) return "desc." .. id end,
 }
 
 -- What `{select}` stands for on each device: the button that acts on whatever the cursor is over.

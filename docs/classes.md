@@ -333,8 +333,8 @@ Blueprints live in `data/classes/<id>.lua`:
 ```lua
 return {
     name    = "Ninja",
-    description = "Fights by not being where you strike. Blink away, leave a clone to take the blow, "
-        .. "and stay unseen until the killing one.",
+    description = "Avoids the blow and answers it. Blinks out of reach, leaves a clone standing to take "
+        .. "the hit, and stays unseen until the strike that kills.",
     classes = { "rogue", "mage" },     -- 2 = multiclass; 1 = subclass
     exemplar = "character_kaen",       -- the NPC built AS this discipline, met in its unlock quest
     requiredQuests = { "quest_the_shadowless" },
@@ -370,7 +370,24 @@ handed one up, graded at the floor that finished it, and the Hall spent it on a 
 dealt near that depth. It went with the Hall.
 
 **`description` is the mechanic said out loud** — what the path is, then the one thing it does, in a
-sentence or two (`Discipline.description`, pinned by `tests/class_ladder_spec.lua`). It is the same claim
+sentence or two (`Discipline.description`, pinned by `tests/class_ladder_spec.lua`).
+
+**Write it as plain prose, not as an epigram.** The whole set was rewritten on 2026-09-12 because it
+had drifted into a shape: a noun-fragment title, then a sentence undercutting it (*"The wall. It does
+not kill you, it decides where you stand"*, *"Wrath read straight."*, *"Larceny."*). Forty-six of those
+read side by side in one list, and a title is not a description — the player is choosing between these
+paths, so each has to say what it DOES in words they can compare. The rules the set now holds to:
+
+- **Lead with the verb, in the third person.** *"Raises the dead."*, *"Throws bombs at range."* Never a
+  bare noun phrase (*"The thrower."*), and never a definition by negation (*"Covets others' power
+  rather than casting its own"*, *"Fights by not being where you strike"*).
+- **Name the mechanic in the game's own words.** Capitalized statuses where one is applied (`inflicts
+  Halt`, `inflicts Poison`), `Knockback`, `heal` — the vocabulary `docs/item-text.md` fixes for rules
+  text, because this sentence is read on the same shelf as that one.
+- **No lore.** No houses, no arenas, no factions. That is the vendor's own copy, one pane over.
+- **No ` -- `.** The em dash is how an undercut hinges; banning it is what forces the plain sentence.
+
+Sentence two is the mechanic, not a second angle on sentence one. It is the same claim
 as the "Signature mechanic" line in each blueprint's header comment, written for the player instead of
 for us. The shop's Buy list collapses a locked path to its header, so the section detail is the only
 room a player has to read what a discipline is *before* paying the gate for it: without this, that pane

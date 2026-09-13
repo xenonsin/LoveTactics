@@ -6,7 +6,8 @@
 -- quest_cathedral_the_twin_liturgy (pending). See docs/disciplines-plan.md.
 return {
     name    = "Theurge",
-    description = "The channeller. Wind-up holy spells that grow with every turn held, and divine ground laid where they land.",
+    description = "Holds a holy spell and lets it grow. A wind-up gains power for every turn you keep "
+        .. "channelling, and leaves blessed ground where it lands.",
     exemplar = "character_theurge", -- NEW, pending
     requires = { mage = 8, priest = 8 },
 }
