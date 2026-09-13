@@ -264,6 +264,44 @@ function battle.syncLayout()
         LEFT_W = 320 -- the desktop pair; see the LEFT_W declaration for where 320 / 352 come from
         PANEL_W = CombatPanel.WIDTH
     end
+    -- THE DEPLOYMENT COLUMN IS RE-STAMPED FOR THE SPACE, exactly as the turn strip below is.
+    --
+    -- Its three rects are authored against the desktop column, which has nothing above them: Settings
+    -- in the corner, the board-turn pair under it, the phase's own band under that -- one unbroken run
+    -- of plates from the top of the column to the bell.
+    --
+    -- In the short space the top of that column is already spoken for. The HUD rows live THERE
+    -- (battle.boardTop), and the run drew straight through them -- the encounter's name and its
+    -- objective came out from under the Loadout plate, which is what the overworld's fights looked
+    -- like the first time one of them was fought in this space. Nobody had seen it, because until then
+    -- every fight that reached the short space skipped the phase outright (`deploy = false`).
+    --
+    -- So the furniture drops below the rows, and the phase's own band crosses to the RIGHT column,
+    -- which is empty until the bell and is already this space's acting half -- what you READ is on the
+    -- left (HUD rows, turn strip, docked boxes) and what you ACT with is on the right, the split the
+    -- strip below is moved for. It is also the only column with room for four plates and the docked
+    -- boxes underneath them: stacked under the rows on the left, the bell landed on the hint line.
+    --
+    -- Mutated in place rather than rebuilt: the phase holds `battle.deployControlRect` by reference as
+    -- its own `column` (DeployPhase.new), so a live phase follows a space that changes under it.
+    if Scale.inHandheldSpace then
+        -- The same ceiling the fight's docked boxes take (menuBottom), so the column's second run
+        -- starts on the same pixel before the bell as after it.
+        local top = battle.hudDrop() + HUD_HINT_Y + 22
+        battle.deploySettingsButton.y = top
+        battle.deployTurnLeftButton.y = top + 44
+        battle.deployTurnRightButton.y = top + 44
+        battle.deployControlRect.x = Scale.WIDTH - PANEL_W + 16
+        battle.deployControlRect.y = 16
+        battle.deployControlRect.w = PANEL_W - 32
+    else
+        battle.deploySettingsButton.y = 16
+        battle.deployTurnLeftButton.y = 60
+        battle.deployTurnRightButton.y = 60
+        battle.deployControlRect.x = 16
+        battle.deployControlRect.y = 104
+        battle.deployControlRect.w = 130
+    end
     -- The two things that cache geometry rather than deriving it per frame.
     if battle.panel then
         battle.panel:relayout(PANEL_W)
@@ -4550,10 +4588,12 @@ end
 -- Rowan went silent for the length of the lesson on every phone.
 --
 -- So there the two part company, and only the OPENING SCENE still uses this rect. A scene is paged
--- prose with hint pills and more than one speaker, and it plays over a board that is frozen behind
--- it -- so a bar laid across the board's foot costs nothing and is the only shape that fits it. The
--- standing instruction is one sentence from one body on a board the player is actively tapping, and
--- it becomes a bubble over the speaker's head instead (ui/tutorial_prompt.lua argues the trade).
+-- prose with hint pills and more than one speaker, and it plays over a board that is FROZEN behind
+-- it -- so a bar laid across the board's foot costs nothing and is the only shape that fits it.
+--
+-- The STANDING INSTRUCTION gets no rect there at all: it would be laid over a board the player is
+-- actively tapping, for the length of the fight, beside a coach bubble already doing the half of the
+-- lesson that can be acted on. She simply does not speak during a handheld fight (battle.draw).
 --
 -- Even frozen, the bar stops at the combat panel rather than running the full width: the scene ends
 -- and the fight resumes with the player's eye where the words were, and the acting column is the one
@@ -4884,11 +4924,14 @@ end
 function battle.enter(self, opts)
     battle.syncLayout() -- before anything is laid out against the columns
     opts = opts or {}
-    -- Is this fight running inside another state's screen? An overworld fight is: it is fought on the
-    -- floor it was found on and the map is still drawn behind it (states/game.lua). The draft, the duel
-    -- and the prologue's scripted legs are not -- they switch here and this IS the screen. Read by
-    -- battle.draw, which turns its own background into a scrim when the answer is yes.
-    battle.hosted = opts.hosted or false
+    -- A FIGHT IS ONE SCREEN, HOWEVER IT WAS REACHED. A `hosted` flag stood here, set by the overworld
+    -- and read by battle.draw, which turned this screen's own mount into a scrim so that the floor the
+    -- fight was found on stayed visible behind the board. It is gone, and with it the last thing that
+    -- made a quest fight look like a different screen from the draft, the duel, the menu's mock board
+    -- and the prologue's stops. The overworld still HOSTS the fight -- it stays the state and forwards
+    -- every callback (states/game.lua) -- but hosting is invisible now: same ground, same columns, same
+    -- space (game.useHandheldSpace). One screen, learned once.
+    --
     -- Where the board goes, when the host knows: the chamber's top-left pixel on the screen it is
     -- already drawn on. See the BattleMap.new call below.
     battle.pinX, battle.pinY = opts.pinX, opts.pinY
@@ -5647,9 +5690,9 @@ end
 -- separate from the mentor's panel on purpose -- see data/tutorials/village.lua for why the fiction
 -- and the instruction are not allowed to share a mouth.
 -- The region a bubble laid over the BOARD may live in: the board's own column, clear of both side
--- columns. Shared by the coach's bubble and the mentor's (ui/tutorial_prompt.lua on a handheld),
--- because two bubbles judging "am I on screen" by two different rectangles is how one of them ends
--- up half under a panel.
+-- columns. One bubble is laid over the board now -- the coach's -- since the mentor went quiet on the
+-- short space rather than growing a second one; it stays a named region all the same, because "am I
+-- on screen" is a question about the board and not about the widget asking it.
 --
 -- Fields on `battle` rather than file locals, for the local-ceiling reason at deploySettingsButton.
 function battle.boardBounds()
@@ -5753,23 +5796,18 @@ function battle.draw()
     -- the two columns plus the board are sized from it. Cheap: it returns at once unless the
     -- space actually moved (Scale.spaceEpoch).
     battle.syncLayout()
-    -- HOSTED: the fight is running inside the overworld state, on the floor it was found on
-    -- (states/game.lua's openEncounter), and that floor has already drawn itself under us. So the mount
-    -- becomes a SCRIM rather than a wall -- the chamber, its doors and the plan of the level stay
-    -- visible behind the board, which is the whole point of not leaving the map.
+    -- THE FIGHT'S OWN GROUND, ALWAYS. An overworld fight used to draw this as a scrim instead, so the
+    -- floor it was found on stayed visible behind the board -- the room, its doors, the plan of the
+    -- level. It read well, and it made the campaign's fights a different screen from every other fight
+    -- in the game: the one a new player is taught on, the draft's, the duel's, the menu's mock board.
+    -- A screen learned once should not have to be re-learned because of how it was entered, and the
+    -- map is one dismissal away on the far side of the fight either way.
     --
-    -- A wash and not nothing: this screen carries a left column, a combat panel and three rows of HUD
-    -- text, and every one of them is typeset against a dark ground. Reading them over a lit floor is
-    -- what the mount was for. Set by the caller (`opts.hosted`); nil for the draft, the duel and every
-    -- other entry that really is its own screen.
-    if battle.hosted then
-        local m = Theme.mount
-        love.graphics.setColor(m[1], m[2], m[3], 0.82)
-        love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
-        love.graphics.setColor(1, 1, 1)
-    else
-        Theme.drawMount(Scale.WIDTH, Scale.HEIGHT)
-    end
+    -- It cost the thing over it, too. This screen carries a left column, a combat panel and three rows
+    -- of HUD text, every one of them typeset against a dark ground, and a lit floor printed up through
+    -- all of them -- which is what a mount is for. The host stands its own drawing down while a fight
+    -- is up (states/game.lua's draw), so there is nothing behind this to show through.
+    Theme.drawMount(Scale.WIDTH, Scale.HEIGHT)
 
     -- Before the bell: the board with the deploy zone lit and the company in the gutter. The SCREEN is
     -- the same screen -- left column, hamburger, the encounter's name and objective over the board --
@@ -5795,8 +5833,18 @@ function battle.draw()
         -- `titleY` is the HUD's third row, which the phase's own headline takes (the row the control
         -- hint occupies once the bell rings). Handed over rather than repeated in the widget, so the
         -- three rows stay one column of text decided in one file -- see HUD_HINT_Y.
-        battle.deploy:draw({ x = LEFT_W, w = Scale.WIDTH - LEFT_W - PANEL_W,
-                             dockTop = menuBottom(), titleY = HUD_HINT_Y })
+        --
+        -- ...and in the short space that row is in the COLUMN with the other two, so the headline is
+        -- handed the column as well. Sent the board's rect it centred "Set your line" over the top row
+        -- of tiles, because the board starts at the top of the screen here and there is no band above
+        -- it to sit in. The three rows read as one block either way; only the block moved.
+        if Scale.inHandheldSpace then
+            battle.deploy:draw({ x = 0, w = LEFT_W, dockW = LEFT_W - 32,
+                                 dockTop = menuBottom(), titleY = battle.hudDrop() + HUD_HINT_Y })
+        else
+            battle.deploy:draw({ x = LEFT_W, w = Scale.WIDTH - LEFT_W - PANEL_W, dockW = LEFT_W - 32,
+                                 dockTop = menuBottom(), titleY = HUD_HINT_Y })
+        end
         -- The Loadout screen, over the phase and under the settings overlay: gear is a decision about
         -- this fight, so it is taken on this screen rather than a leg of overworld ago.
         if battle.deployLoadout then battle.deployLoadout:draw() end
@@ -5835,8 +5883,8 @@ function battle.draw()
     --
     -- ...and it yields to the MENTOR'S PANEL on exactly the same terms, where she has one: that panel
     -- takes this very rect and is only mostly opaque, so the record printed through the line she was
-    -- saying. Only on a desktop -- on a handheld she speaks from a bubble over her own head
-    -- (ui/tutorial_prompt.lua) and the log keeps the column it was given.
+    -- saying. Only on a desktop -- on a handheld she does not speak while the fight is being fought
+    -- at all (below), and the log keeps the column it was given.
     if not (Conversation.active
         or (lessonAddressesPlayer() and not Scale.inHandheldSpace)) then battle.log:draw() end
     -- The tutorial's instruction panel shares the gutter under the board with the combat log, and is
@@ -5844,29 +5892,31 @@ function battle.draw()
     -- Same rule as the coach bubble: the mentor's direction is a direction, so it waits for a turn
     -- the player can follow it in. She goes quiet while she and the demons take theirs.
     if lessonAddressesPlayer() then
-        local prompt = Tutorial.narration(battle.tutorial)
-        -- A live correction displaces the mentor's standing line until it ages out. She scolds; the
-        -- coach bubble below goes on saying which thing to click.
-        if prompt and battle.tutorialNudge then
-            prompt = { speaker = prompt.speaker, text = battle.tutorialNudge.text, alert = true }
-        end
-        -- TWO SHAPES, AND THE SPACE PICKS. On a desktop she takes the panel in the gutter, which is
-        -- the same rectangle the lesson's opening scene spoke from -- handed over whole rather than
-        -- re-derived, see battle.speechRect for why that is not a tidiness point. On a handheld
-        -- there is no gutter and a panel has to be laid over the board's foot, so she speaks from a
-        -- bubble over her own head instead (ui/tutorial_prompt.lua argues the trade).
-        if Scale.inHandheldSpace then
-            -- What her bubble must not sit on: every living body, and the thing the coach bubble is
-            -- about to point at. The coach draws after her and so wins where they do overlap, but a
-            -- box that lands off the target in the first place is better than one drawn over.
-            local avoid = battle.boardBodies()
-            local coach = Tutorial.coach(battle.tutorial)
-            local target = coach and coachTarget(coach.anchor)
-            if target then avoid[#avoid + 1] = target end
-            TutorialPrompt.draw(battle.combat, prompt, {
-                map = battle.map, bounds = battle.boardBounds(), avoid = avoid,
-            })
-        else
+        -- ON A HANDHELD SHE DOES NOT SPEAK WHILE THE FIGHT IS BEING FOUGHT. The lesson keeps the half
+        -- that names the control and drops the half that carries the fiction.
+        --
+        -- There is no gutter on the short space -- the board takes the whole short axis by design
+        -- (battle.boardTop) -- so a standing line has nowhere to live that is not the board itself. A
+        -- bubble over her head was tried, and as geometry it works; it is still a second box parked on
+        -- a 448-wide board that already carries the coach's, told apart from it by register alone once
+        -- position has stopped doing that job. The lesson says everything twice on purpose (see
+        -- data/tutorials/village.lua): she says what is happening, the coach says which thing to press.
+        -- Where there is only room for one of them, the one that can be ACTED on is the one that
+        -- stays, so here the coach bubble is the whole lesson.
+        --
+        -- Her OPENING SCENE is untouched and still plays from battle.speechRect: the board is frozen
+        -- behind it, so covering tiles costs nothing when it is nobody's turn to use them.
+        if not Scale.inHandheldSpace then
+            local prompt = Tutorial.narration(battle.tutorial)
+            -- A live correction displaces the mentor's standing line until it ages out. She scolds;
+            -- the coach bubble below goes on saying which thing to click. It rides her channel and so
+            -- goes quiet with her on a handheld -- what a refused click leaves on screen there is the
+            -- coach bubble, still ringing the thing that click was supposed to land on.
+            if prompt and battle.tutorialNudge then
+                prompt = { speaker = prompt.speaker, text = battle.tutorialNudge.text, alert = true }
+            end
+            -- The same rectangle the lesson's opening scene spoke from -- handed over whole rather
+            -- than re-derived, see battle.speechRect for why that is not a tidiness point.
             TutorialPrompt.draw(battle.combat, prompt, { box = battle.speechRect() })
         end
         battle.drawCoach()

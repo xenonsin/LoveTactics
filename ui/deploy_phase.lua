@@ -771,7 +771,13 @@ function DeployPhase:drawHover(bounds)
     -- The column's full width, minus the 16px margins the fight's docked boxes keep. The stack rises to
     -- the host's ceiling (`dockTop`) -- under the Settings and board-turn plates it stands there --
     -- exactly as the fight's own boxes do, so the two never draw over each other.
-    local W = math.max(180, ((bounds and bounds.x) or 0) - 32)
+    --
+    -- TOLD, not inferred. This read the width off `bounds.x` -- true only while `bounds` is the board's
+    -- rect and the left column is therefore everything to its left. In the short space the host hands
+    -- the COLUMN down instead (its headline belongs there), and the same arithmetic came out negative
+    -- and fell to the floor: a 180px box docked in a 250px column, narrower than the fight's own boxes
+    -- in the same corner. The host owns that rect and now says so.
+    local W = math.max(180, (bounds and bounds.dockW) or (((bounds and bounds.x) or 0) - 32))
     local gap = 8
     -- Under the host's ceiling AND under the phase's own control stack, which shares this column: a
     -- readout that grew up over the bell would cover the one control the phase cannot do without.

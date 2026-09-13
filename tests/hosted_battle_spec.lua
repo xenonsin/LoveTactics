@@ -12,6 +12,11 @@
 -- of it. That is the shape a failure route always fails in: the losing path is the one nobody walks
 -- while building the winning one ([[failure-route-skips-bookkeeping]]).
 --
+-- THE CLEAR IS A CALL NOW, not an assignment: `game.endFight()`, which clears the field AND gives back
+-- the logical space the fight borrowed from this screen (states/game.lua's useHandheldSpace -- a hosted
+-- fight on a phone lays out in the short space and the map does not). Same invariant, one more thing
+-- riding on it, and the same reason it is one function: eight exits cannot each remember two acts.
+--
 -- SOURCE-SCANNED RATHER THAN DRIVEN, deliberately. What is being asserted is a property of every EXIT,
 -- including the ones written after this file -- and a behavioural test can only reach the exits somebody
 -- thought to drive, which is precisely the set that was already correct. Reading the file catches the
@@ -44,10 +49,10 @@ return {
             -- The reset block every entry runs, whatever route reached it. Anchored on its two
             -- neighbours so this fails if the line is moved somewhere that does not run on every enter,
             -- rather than merely if it is deleted.
-            local reset = between(src, "game.activePanel = nil", "game.battle = nil")
+            local reset = between(src, "game.activePanel = nil", "game.endFight()")
             assert(reset:find("game.complete = false", 1, true),
                 "the enter reset block was not found where it was")
-            assert(reset:find("game.battle = nil", 1, true),
+            assert(reset:find("game.endFight()", 1, true),
                 "states/game.lua's enter does not clear game.battle -- a floor can open inside a fight "
                 .. "that some other route left behind")
         end,
@@ -63,7 +68,7 @@ return {
                 "State.switch(require(\"states.gate\")")
             assert(wipe:find("Player.recordFound", 1, true),
                 "the wipe branch was not found where it was -- re-anchor this case rather than deleting it")
-            assert(wipe:find("game.battle = nil", 1, true),
+            assert(wipe:find("game.endFight()", 1, true),
                 "the wipe leaves states/game.lua holding the battle it just lost: walking back down the "
                 .. "stair drops the company into the arena they were routed in")
         end,
@@ -72,16 +77,21 @@ return {
         name = "every exit from a hosted battle clears it",
         fn = function()
             -- The census, so an eighth route cannot quietly join the six. Each `game.battle = Battle`
-            -- opens one; each `game.battle = nil` closes one. There is exactly one opener, and the
+            -- opens one; each `game.endFight()` closes one. There is exactly one opener, and the
             -- closers are the six outcomes plus the wipe plus the door.
+            --
+            -- Comment lines are skipped: the prose at both ends of this file names the line it is
+            -- counting, and a census that counts its own explanation is a census that cannot fail.
             local src = source()
             local opens, closes = 0, 0
             for line in (src .. "\n"):gmatch("([^\n]*)\n") do
-                if line:find("game.battle = Battle", 1, true) then opens = opens + 1 end
-                if line:find("game.battle = nil", 1, true) then closes = closes + 1 end
+                if not line:match("^%s*%-%-") then
+                    if line:find("game.battle = Battle", 1, true) then opens = opens + 1 end
+                    if line:find("game.endFight()", 1, true) then closes = closes + 1 end
+                end
             end
             assert(opens == 1, "a hosted battle should be opened in exactly one place, found " .. opens)
-            assert(closes >= 8, "only " .. closes .. " routes clear game.battle -- there were eight "
+            assert(closes >= 8, "only " .. closes .. " routes call game.endFight -- there were eight "
                 .. "(six outcomes, the wipe, and the door). A new way out of a fight needs one too")
         end,
     },

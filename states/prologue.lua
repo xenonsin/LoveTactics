@@ -43,9 +43,11 @@ local prologue = {}
 
 -- The street defense: three imps, avatar + Rowan. The first fight anyone sees -- so it is also the
 -- one that teaches the game. `tutorial` hands states/battle.lua a lesson to enforce
--- (data/tutorials/village.lua): Rowan speaks over her own head, the board accepts only the action she
--- just asked for, and she and the imps run authored turns rather than the AI's. That lesson names
--- exact tiles, so `layout` pins the board it was authored against instead of rolling one.
+-- (data/tutorials/village.lua): Rowan talks it through from the gutter under the board, the board
+-- accepts only the action she just asked for, and she and the imps run authored turns rather than the
+-- AI's. (On a handheld there is no gutter and she goes quiet for the fight -- the coach bubble, the
+-- half that names the control, carries the lesson alone; see states/battle.lua's draw.) That lesson
+-- names exact tiles, so `layout` pins the board it was authored against instead of rolling one.
 --
 -- Five imps, and the Demon Grunt the lesson walks on itself partway through (the tutorial's `spawn`,
 -- which is why it is absent from this composition). Imps rather than grunts for the teaching because

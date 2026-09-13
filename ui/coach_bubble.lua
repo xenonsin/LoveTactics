@@ -151,10 +151,11 @@ end
 -- WHERE A BUBBLE GOES: a box `w` x `h` placed against the thing it points at, inside `opts.bounds`,
 -- covering as little of `opts.avoid` as it can. Returns the side it took and its top-left corner.
 --
--- Split out of draw() and PUBLIC because it is not really about the coach's gold box -- it is the
--- geometry of pointing at something on a crowded board, and ui/tutorial_prompt.lua's mentor bubble
--- needs exactly the same answer in a different register. Two copies of a placement search is two
--- behaviours: the one that gets tuned and the one that quietly stops matching it.
+-- Split out of draw() but LOCAL: the mentor's own bubble briefly shared it, and she no longer speaks
+-- from a bubble anywhere (ui/tutorial_prompt.lua), so there is one caller again and no reason to hold
+-- the geometry open as API. Should a second box ever need the same answer, it is shared rather than
+-- copied -- two placement searches is two behaviours, the one that gets tuned and the one that
+-- quietly stops matching it.
 --
 --   opts.prefer -- "above" / "below" / "right" / "left"; the side to try first
 --   opts.bounds -- the rect the box must land inside (defaults to the whole space)
@@ -175,7 +176,7 @@ local PREFER_ORDER = {
 
 local function horizontalSide(side) return side == "right" or side == "left" end
 
-function CoachBubble.place(w, h, rect, opts)
+local function placeBox(w, h, rect, opts)
     opts = opts or {}
     local bounds = opts.bounds or { x = 0, y = 0, w = Scale.WIDTH, h = Scale.HEIGHT }
     local cx, cy = rect.x + rect.w / 2, rect.y + rect.h / 2
@@ -247,7 +248,7 @@ end
 -- points back at the target, even when the box was clamped away from it, so a shoved bubble still
 -- visibly belongs to the thing it is naming. Returns bx1, by1, bx2, by2, tipX, tipY -- a triangle,
 -- to be filled and then stroked along the two flanks only.
-function CoachBubble.tail(side, x, y, w, h, rect)
+local function tailPoints(side, x, y, w, h, rect)
     local cx, cy = rect.x + rect.w / 2, rect.y + rect.h / 2
     if horizontalSide(side) then
         local edgeX = (side == "right") and x or (x + w)
@@ -291,8 +292,8 @@ function CoachBubble.draw(text, rect, opts)
     local textH = #lines * f:getHeight()
     local h = PAD * 2 + math.max(textH, key and (kf:getHeight() + KEY_PAD * 2) or 0)
 
-    local side, x, y = CoachBubble.place(w, h, rect, opts)
-    local bx1, by1, bx2, by2, tipX, tipY = CoachBubble.tail(side, x, y, w, h, rect)
+    local side, x, y = placeBox(w, h, rect, opts)
+    local bx1, by1, bx2, by2, tipX, tipY = tailPoints(side, x, y, w, h, rect)
 
     -- The mark on the thing itself, so the eye lands on the target and not only on the words.
     CoachBubble.highlight(rect, pulse)

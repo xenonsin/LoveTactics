@@ -13,6 +13,11 @@
 -- So the fiction stays clean and the instruction stays unambiguous, and neither has to carry the
 -- other's job. Both are localized through data/conversations/tutorial_village.lua.
 --
+-- On a HANDHELD only the `coach` half is shown. There is no gutter to speak from on the short space
+-- and a second box over the board is worse than one, so the half that can be acted on is the half
+-- that stays; every step is authored to be followable from its coach line alone, and every `line`
+-- below is still written as though it will be read, because on every other screen it is.
+--
 -- Pure data, deliberately: no closures anywhere in this file. Every target is an id and a fixed cell
 -- on a fixed board (data/arenas/tutorial_village.lua), which is what buys that -- a predicate like
 -- "the nearest imp" would need a function and could not be checked by a test.

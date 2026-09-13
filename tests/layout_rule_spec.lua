@@ -122,16 +122,98 @@ return {
         name = "the battle screen opts in, and the state manager is what reads the opt-in",
         fn = function()
             local b = assert(love.filesystem.read("states/battle.lua"), "states/battle.lua is readable")
-            -- Deliberately asserts the FLAG EXISTS, not which way it is set. It ships false: the
-            -- board is ready for a 540-tall space but the overlays drawn over it are not, and a
-            -- conversation is a global overlay that Scale.allowHandheldSpace cannot gate. Whoever
-            -- finishes that pass flips it, and should not have to edit a test that hard-coded "off"
-            -- as though it were the intent.
+            -- Deliberately asserts the FLAG EXISTS, not which way it is set -- a screen that is later
+            -- taken back out of the short space should not have to edit a test that hard-coded the
+            -- answer as though it were the intent.
             assert(b:find("battle%.handheldSpace%s*=%s*%a+"),
                 "the battle screen no longer carries the handheld-space switch at all")
             local s = assert(love.filesystem.read("states/init.lua"), "states/init.lua is readable")
             assert(s:find("Scale%.allowHandheldSpace%s*=%s*state%.handheldSpace"),
                 "State.switch no longer carries the opt-in, so every screen gets the same space")
+        end,
+    },
+    {
+        -- ...AND THE OPT-IN IS ASKED AT State.switch, WHICH A HOSTED FIGHT NEVER REACHES.
+        --
+        -- An overworld fight is fought on the floor it was found on: states/game.lua stays the state
+        -- and calls Battle.enter directly, holding it in `game.battle`. So the flag State.switch read
+        -- was the overworld's, which has none -- so every quest fight, every descent fight and the
+        -- whole flight leg were laid out in the 1280x720 desktop space on a phone, while the same fight
+        -- reached by a real switch (the prologue's village stop) came out right. The host has to ask
+        -- for the space on the fight's behalf and give it back with the screen.
+        --
+        -- Read off the source, for the reason tests/cursor_spec.lua reads the same file that way:
+        -- states/game.lua builds fonts at require time and will not load without a window.
+        name = "a fight hosted on the overworld claims the short space, and hands it back",
+        fn = function()
+            local g = assert(love.filesystem.read("states/game.lua"), "states/game.lua is readable")
+            assert(g:find("Scale%.allowHandheldSpace%s*=%s*on"),
+                "states/game.lua no longer asks for the space on a hosted fight's behalf -- every "
+                .. "overworld fight will be laid out in the desktop space on a phone")
+            assert(g:find("game%.useHandheldSpace%(true%)"),
+                "nothing claims the short space before the fight is entered, so the board lays "
+                .. "itself out in whatever space the map left live")
+            assert(g:find("game%.useHandheldSpace%(false%)"),
+                "nothing gives the space back, so the map redraws in the fight's space")
+            -- The release has to be the SAME act as the fight ending. There are seven exits from a
+            -- hosted fight plus the floor-open guarantee, and a bare clear at any one of them is a
+            -- clear that forgot the space -- so there is exactly one `game.battle = nil` in the file
+            -- and it is inside game.endFight.
+            -- Code lines only: the prose either side of the call names the assignment it replaced,
+            -- and a census that counts its own explanation is a census that cannot fail.
+            local clears = 0
+            for line in (g .. "\n"):gmatch("([^\n]*)\n") do
+                if not line:match("^%s*%-%-") and line:find("game%.battle%s*=%s*nil") then
+                    clears = clears + 1
+                end
+            end
+            assert(clears == 1,
+                "a hosted fight is cleared somewhere other than game.endFight (" .. clears ..
+                " bare clears) -- that exit hands the map back without its space")
+            local body = g:match("function game%.endFight%(%)(.-)end")
+            assert(body and body:find("game%.battle%s*=%s*nil") and body:find("useHandheldSpace"),
+                "game.endFight no longer ends the fight AND releases its space together")
+        end,
+    },
+    {
+        -- ONE FIGHT SCREEN, HOWEVER IT WAS ENTERED. The overworld used to keep drawing its floor under
+        -- a fight, which the fight then washed over rather than covered -- so a quest fight looked
+        -- like a different screen from the prologue's stops, the draft, the duel and the menu's mock
+        -- board, all of which draw the fight on its own ground.
+        --
+        -- It is also what makes the borrowed space possible: the overworld has not been laid out for
+        -- a 450-tall one and would draw its grid off the bottom edge of it. Both halves -- the host
+        -- not drawing, the fight keeping its own mount -- or a phone gets a clipped map under a board.
+        name = "a fight is drawn on its own ground, whatever screen it was entered from",
+        fn = function()
+            local g = assert(love.filesystem.read("states/game.lua"), "states/game.lua is readable")
+            assert(g:find("if%s+not%s+battling%(%)%s+then"),
+                "states/game.lua draws its floor while a fight is up -- the map will print through "
+                .. "the board's HUD, and a phone will show a clipped grid under the fight")
+            local b = assert(love.filesystem.read("states/battle.lua"), "states/battle.lua is readable")
+            assert(not b:find("battle%.hosted"),
+                "the fight still branches its own background on who entered it -- a campaign fight "
+                .. "and the prologue's are supposed to be the same screen")
+            assert(b:find("Theme%.drawMount%(Scale%.WIDTH, Scale%.HEIGHT%)"),
+                "the fight no longer draws its own mount at all")
+        end,
+    },
+    {
+        -- The deployment phase is the one beat of a fight that had never been seen in the short space:
+        -- every fight that reached it skipped the phase outright (`deploy = false`), and the overworld's
+        -- fights -- which do not -- could not reach it at all. Its three rects are authored against a
+        -- desktop column with nothing above them, and the HUD rows live in that column here.
+        name = "the deployment column is re-stamped for the short space",
+        fn = function()
+            local b = assert(love.filesystem.read("states/battle.lua"), "states/battle.lua is readable")
+            assert(b:find("battle%.deployControlRect%.x%s*=%s*Scale%.WIDTH%s*%-%s*PANEL_W"),
+                "the phase's control band is left in the left column, under the HUD rows it was "
+                .. "authored above -- the objective line draws out from under the Loadout plate")
+            assert(b:find("battle%.deploySettingsButton%.y%s*=%s*top"),
+                "the phase's furniture is left in the corner the HUD rows occupy in this space")
+            assert(b:find("titleY%s*=%s*battle%.hudDrop%(%)"),
+                "the phase's headline is still handed the desktop's row, which in this space is a "
+                .. "row of board tiles")
         end,
     },
     {

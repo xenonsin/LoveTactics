@@ -71,7 +71,7 @@ return {
     },
     {
         -- A fight is fought on the floor it was found on: states/game.lua stays the state and the board
-        -- draws on top of it (battle.hosted). Every other input handler there hands the fight its input
+        -- draws on top of it (game.battle). Every other input handler there hands the fight its input
         -- first; the cursor has to do the same, or every quest fight and every prologue stop shows one
         -- arrow whatever it is aimed at -- foe, walkable tile, combat panel and all. Read off the source
         -- for the reason the main.lua case above is: states/game.lua builds fonts at require time and

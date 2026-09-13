@@ -200,14 +200,15 @@ return {
         assert(fork, "the rout fork is gone from onLoss, no longer opens on `battle.routed`, "
             .. "or no longer sits above the wipe branch")
 
-        -- `game.battle = nil` is how this exit hands the floor back, and it used to read
-        -- `State.current = game`. The act is the same one -- the map takes the screen again -- and only
-        -- the mechanism moved: a fight is now a SUB-STATE of the overworld rather than a state of its
-        -- own (states/game.lua's openEncounter), so the map never stopped being current and there is
-        -- nothing to restore, only a battle to clear. The assertion has to move with it or it is
-        -- checking for a line whose job has been done by another.
+        -- `game.endFight()` is how this exit hands the floor back, and it has read three things in
+        -- turn: `State.current = game`, then `game.battle = nil`, now the call. The act is the same one
+        -- -- the map takes the screen again -- and only the mechanism moved: a fight is a SUB-STATE of
+        -- the overworld (states/game.lua's openEncounter), so the map never stopped being current, and
+        -- clearing the fight now also hands back the SPACE the fight borrowed (game.useHandheldSpace).
+        -- The assertion has to move with it or it is checking for a line whose job has been done by
+        -- another.
         for _, call in ipairs({ "Errand%.fail", "game:inflictWounds", "saveRun", "Player%.save",
-                               "retreatFromEncounter", "game%.battle = nil" }) do
+                               "retreatFromEncounter", "game%.endFight%(%)" }) do
             assert(fork:find(call), "the rout exit no longer calls " .. call:gsub("%%", ""))
         end
         -- ...and it must NOT do the wipe's work. A rout that dropped the pack or cut the haul would be

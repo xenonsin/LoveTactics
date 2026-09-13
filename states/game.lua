@@ -1274,7 +1274,7 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- The wipe clears it too, alongside its six siblings, because a state left inconsistent between the
     -- switch and the next enter is still wrong. This is the guarantee: whatever any exit forgets, a
     -- floor opens with no fight on it.
-    game.battle = nil
+    game.endFight()
     -- Per-run scratch for companion overworld abilities (banked vigils/doses/steps/forage) and the run's
     -- relic inventory (models/relic.lua). Reset each run, like the fog -- relics are CARRIED, not kept.
     --
@@ -2038,12 +2038,15 @@ function game:openEncounter(cell, opts)
         -- A place is one cell. Pinning an 8x8 board to a 101-pixel cell hangs half the arena off the
         -- side of the screen, which is what it did the first time this was run -- and centring the board
         -- ON the cell would only move the clipping to the floors where the fight is near an edge. The
-        -- continuity it bought is real and it is bought elsewhere now: the fight opens over the floor it
-        -- was found on, scrimmed rather than covered, with the company deploying on the side they walked
-        -- in from (ui/overworld_map.lua's :entryEdge).
+        -- continuity it bought is real, and what carries it now is not the picture: the company deploys
+        -- on the side they walked in from (ui/overworld_map.lua's :entryEdge), on a board rolled for the
+        -- ground they are standing on. The floor itself is no longer drawn behind the fight at all --
+        -- see game.draw for why a fight is the same screen however it was entered.
+        --
+        -- The fight's own space, claimed before enter() lays a single column out in this one.
+        game.useHandheldSpace(true)
         game.battle = Battle
         Battle.enter(Battle, {
-            hosted = true, -- fought on this screen: battle.draw scrims rather than covers. See above.
             encounter = cell.encounter,
             biome = mp.biome,
             -- THE SIDE THE COMPANY CAME IN ON, so they deploy where they walked in from.
@@ -2221,7 +2224,7 @@ function game:openEncounter(cell, opts)
                         -- sitting over it -- so the restore is here, above the fork, rather than
                         -- repeated down each arm and forgotten on one.
                         require("models.sound").music("music.overworld")
-                        game.battle = nil -- the fight is over; the map has input again (it never stopped being the state)
+                        game.endFight() -- the fight is over; the map has input again (it never stopped being the state)
                         game:refreshMuster() -- the fight was paid for in health and potions; re-rate
 
                         -- THE WARD BROKEN. A warded circle bars its stair with a BODY (models/descent.lua's
@@ -2426,7 +2429,7 @@ function game:openEncounter(cell, opts)
                             -- a fresh board and lose the run).
                             game:refreshMuster()
                             require("models.sound").music("music.overworld")
-                            game.battle = nil -- the fight is over; the map has input again (it never stopped being the state)
+                            game.endFight() -- the fight is over; the map has input again (it never stopped being the state)
                         else
                             State.switch(require("states.hub"))
                         end
@@ -2447,7 +2450,7 @@ function game:openEncounter(cell, opts)
                         -- The map has to be back on screen for the panel to sit over: the battle state
                         -- is still current at this point, frozen on its last frame.
                         require("models.sound").music("music.overworld")
-                        game.battle = nil -- the fight is over; the map has input again (it never stopped being the state)
+                        game.endFight() -- the fight is over; the map has input again (it never stopped being the state)
                         game.activePanel = require("ui.panels.advancement").new({
                             reward = game.reward,
                             onClose = function()
@@ -2486,7 +2489,7 @@ function game:openEncounter(cell, opts)
                     -- Resuming the map does NOT re-run game.enter, so the overworld bed the battle
                     -- swapped out for its victory sting has to be restored here by hand (idempotent).
                     require("models.sound").music("music.overworld")
-                    game.battle = nil -- the fight is over; the map has input again (it never stopped being the state)
+                    game.endFight() -- the fight is over; the map has input again (it never stopped being the state)
                 end
             end,
             -- "Try Again": restore the party from the pre-fight snapshot, then hand the player back to
@@ -2511,7 +2514,7 @@ function game:openEncounter(cell, opts)
                 -- Same seam as the won-combat resume above: restore the overworld bed the defeat
                 -- swapped out, since stepping back onto the map here skips game.enter.
                 require("models.sound").music("music.overworld")
-                game.battle = nil -- the fight is over; the map has input again (it never stopped being the state)
+                game.endFight() -- the fight is over; the map has input again (it never stopped being the state)
             end or nil,
             -- "Return to City": give the fight up and fail the quest. Offered only once there is a hub to
             -- return to -- the prologue's flight leg (game.tutorial) has none yet, so there the panel
@@ -2595,7 +2598,7 @@ function game:openEncounter(cell, opts)
                     -- is where the bookkeeping goes unwritten.
                     saveRun()
                     Player.save()
-                    game.battle = nil -- the fight is over; the map has input again (it never stopped being the state)
+                    game.endFight() -- the fight is over; the map has input again (it never stopped being the state)
                     return
                 end
 
@@ -2660,7 +2663,7 @@ function game:openEncounter(cell, opts)
                     -- arena they had just been routed in the moment they walked back down the stair.
                     -- game.enter now clears it at the door as well; both, because a route that leaves
                     -- this screen holding a dead battle is wrong even if the next entry tidies up.
-                    game.battle = nil
+                    game.endFight()
 
                     -- THE RIFT CLOSES ON A WIPE TOO, and the symmetry is load-bearing: if dying
                     -- preserved the floor stack and leaving did not, a company standing deep would be
@@ -4045,6 +4048,45 @@ end
 -- main.lua already enumerates.
 local function battling() return game.battle ~= nil end
 
+-- THE FIGHT ASKS FOR THE SCREEN'S SPACE, because on a handheld the fight IS the screen.
+--
+-- Which logical space a screen is laid out in is decided ONCE, at State.switch, off the state's own
+-- `handheldSpace` flag (states/init.lua -> Scale.allowHandheldSpace). A hosted fight never switches,
+-- so the flag answering for it was this state's -- and this state does not have one. On a phone that
+-- put every overworld fight in the 1280x720 desktop space, letterboxed to a third of the glass, while
+-- the same fight reached by a real switch (the prologue's village stop) came out right. The opt-in
+-- has to follow whatever OWNS the screen rather than whichever table happens to be State.current,
+-- which is the cursorKind miss below wearing different clothes.
+--
+-- THE OVERWORLD ITSELF STILL DOES NOT CLAIM IT. Its grid runs off the bottom of a 450-tall space and
+-- takes the button row with it; that screen wants a layout pass of its own before it is given one
+-- (states/battle.lua's header carries the rule: every screen is looked at in the short space first).
+-- So the space is BORROWED for the length of the fight and handed straight back. What makes that
+-- possible is that this screen stops drawing entirely while a fight is up (game.draw) -- which it does
+-- for its own reason, so that a fight is one screen however it was entered.
+--
+-- It only ASKS. scale.lua grants the short space on a small device and nowhere else (Scale.handheld),
+-- so a desktop window sees nothing change.
+function game.useHandheldSpace(on)
+    if Scale.allowHandheldSpace == on then return end
+    Scale.allowHandheldSpace = on
+    -- Guarded exactly as State.switch's own re-fit is: there is no window to measure under the
+    -- headless suite.
+    if love.graphics and Scale.windowW then
+        Scale.resize(love.graphics.getDimensions())
+    end
+end
+
+-- The fight is over: the map has input again (it never stopped being the state), and its space comes
+-- back with it. A function rather than a bare `game.battle = nil` at each of the seven exits, because
+-- the space has to return on the SAME beat the fight ends -- a win can be handed over from inside
+-- battle.update (the overruled fade-out), and one frame of the map drawn in the fight's space is one
+-- frame of clipped grid.
+function game.endFight()
+    game.battle = nil
+    game.useHandheldSpace(false)
+end
+
 function game.update(dt)
     if battling() then return game.battle.update(dt) end
     -- Ability toasts fade regardless of whether a panel is open (they were pushed as the player
@@ -4074,17 +4116,31 @@ function game.update(dt)
 end
 
 function game.draw()
-    love.graphics.setColor(0.05, 0.05, 0.07)
-    love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
+    -- WHILE A FIGHT IS UP, THIS SCREEN STANDS DOWN. Not dimmed and not scrimmed: not drawn.
+    --
+    -- The floor used to stay visible behind the board -- the room the company walked into, its doors,
+    -- the plan of the level -- with the fight washing over it rather than covering it (the old
+    -- battle.hosted). What that bought was continuity; what it cost was a fight that looked like a
+    -- different screen depending on how it was reached, which is the opposite of what a screen the
+    -- player learns once should do. Every other way into a fight -- the prologue's stops, the draft,
+    -- the duel, the menu's mock board -- draws it on its own ground, and now so does this one.
+    --
+    -- It is also what lets the fight BORROW this screen's space (game.useHandheldSpace). The overworld
+    -- has not been laid out for a 450-tall space and would draw its grid off the bottom edge of one;
+    -- not drawing it at all is the difference between lending the space and needing that pass first.
+    --
+    -- The coaching goes with it. Every step out here is pinned to a piece of THIS screen -- the party
+    -- token, the party strip, the Items button -- and a bubble pointing at furniture that is not drawn
+    -- is an arrow into nothing. The fight brings coaching of its own (battle.drawCoach).
+    if not battling() then
+        love.graphics.setColor(0.05, 0.05, 0.07)
+        love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
+        game.map:draw()
+    end
 
-    game.map:draw()
-
-    -- The fight draws OVER the floor it is being fought on, and the floor is still there behind it --
-    -- the room, its doors, the plan of the level. Drawn after the map and before this state's own HUD,
-    -- because while a battle is running the battle's HUD is the one that answers for the screen.
+    -- The fight owns the screen from here: its HUD answers for everything this state's would have.
     if battling() then
         game.battle.draw()
-        game.drawCoach()
         return
     end
 
