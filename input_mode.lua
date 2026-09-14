@@ -25,6 +25,22 @@ InputMode.AXIS_DEADZONE = 0.5
 -- move, and cleared the same way.
 InputMode.touch = false
 
+-- THE DEVICE ITSELF SAID IT IS A HANDSET (main.lua, from the native OS or the browser's coarse
+-- pointer). On such a build the only pointer there is IS a finger, so a pointer event arriving with
+-- istouch = false is the ENGINE'S OWN SYNTHESIS rather than a mouse -- emscripten's SDL raises a
+-- mouse move alongside every tap, and whether it carries the touch id varies run to run.
+--
+-- It cost a live build to find: two runs of the same web bundle, driven identically, disagreed about
+-- whether the name screen showed "Type Name / Enter Done". One tap had cleared the flag in the first
+-- and had not in the second, so a phone got keyboard prompts back for the rest of the session on a
+-- coin toss. The flag therefore latches on a declared handheld: `pointer` may still set it, never
+-- clear it.
+--
+-- A mouse plugged into a tablet is the case this gives up, and it is the right one to give up: a
+-- prompt row naming Esc to somebody holding a phone is wrong on every handset, every session, where
+-- the tablet-plus-mouse player merely keeps a cursor they could have done without.
+InputMode.handheld = false
+
 function InputMode.set(mode)
     InputMode.current = mode
 end
@@ -33,7 +49,11 @@ end
 -- mousepressed / mousereleased.
 function InputMode.pointer(istouch)
     InputMode.current = "mouse"
-    InputMode.touch = istouch and true or false
+    if istouch then
+        InputMode.touch = true
+    elseif not InputMode.handheld then
+        InputMode.touch = false
+    end
 end
 
 -- Set gamepad mode only when an axis actually moves past the deadzone (stick drift stays quiet).

@@ -259,6 +259,9 @@ function love.load(args)
     -- to follow (see input_mode.lua). Start in touch mode rather than waiting for the first tap to
     -- say so, or the glyph appears on that tap and strands itself there.
     InputMode.touch = handheld
+    -- ...and it LATCHES there, because on this device every pointer event is a finger even when
+    -- the engine forgets to say so (see input_mode.lua's InputMode.handheld).
+    InputMode.handheld = handheld
 
     -- The DRAWABLE, not the window: in a browser the two are different sizes, and fitting to the
     -- window while drawing into the buffer is what put the whole frame in one corner (see scale.lua).

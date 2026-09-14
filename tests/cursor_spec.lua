@@ -53,6 +53,40 @@ return {
         end,
     },
     {
+        -- ...EXCEPT ON A DEVICE THAT SAID IT IS A HANDSET, where the only pointer there is is a
+        -- finger and an istouch = false is the engine's own synthesis. emscripten's SDL raises a
+        -- mouse move beside every tap and does not reliably mark it as touch: two runs of the same
+        -- web build, driven identically, disagreed about whether the name screen showed
+        -- "Type Name / Enter Done", because one tap had cleared the flag and the other had not.
+        -- A phone got keyboard prompts back for the rest of the session on a coin toss.
+        name = "a declared handheld latches touch mode, so a synthesized mouse event cannot clear it",
+        fn = function()
+            local mode, touch, hand = InputMode.current, InputMode.touch, InputMode.handheld
+            InputMode.handheld = true
+            InputMode.pointer(true)
+            assert(InputMode.touch, "a tap on a handheld is a tap")
+            InputMode.pointer(false)
+            assert(InputMode.touch,
+                "a handheld's own synthesized mouse event cleared touch mode -- every prompt on the "
+                .. "device goes back to naming keys it does not have")
+            -- ...and the latch is exactly that narrow: a desktop still gets its cursor back.
+            InputMode.handheld = false
+            InputMode.pointer(false)
+            assert(not InputMode.touch, "a real mouse on a desktop must still clear the flag")
+            InputMode.current, InputMode.touch, InputMode.handheld = mode, touch, hand
+        end,
+    },
+    {
+        -- The flag is armed from the SAME signal that turns the screen and picks the short space, so
+        -- a build cannot end up rotated-and-handheld while its prompts think a keyboard is attached.
+        name = "main.lua arms the latch from the handheld signal itself",
+        fn = function()
+            local src = assert(love.filesystem.read("main.lua"), "main.lua is readable")
+            assert(src:find("InputMode%.handheld = handheld"),
+                "main.lua no longer arms InputMode.handheld from the handheld signal")
+        end,
+    },
+    {
         -- The drawn cursor replaces a HIDDEN OS pointer, and a finger has no pointer to hide or to
         -- follow: left ungated the glyph appears on the first tap and sits there for the whole
         -- session. love.draw cannot run headlessly, so the gate is read off the source -- the same
