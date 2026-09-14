@@ -26,6 +26,13 @@ return {
         "ability_reckoning",    "utility_vow_of_the_march", "armor_crusaders_tabard",
         "consumable_healing_potion", "armor_marching_vow",               false,
     },
+    drops = {
+        "utility_brawlers_bandolier",
+        "utility_field_still",
+        "utility_round_for_the_house",
+        "utility_survivors_reflex",
+        "weapon_anvil_of_the_ninth",
+    },
     defaultAction = "ability_smite",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
     -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the

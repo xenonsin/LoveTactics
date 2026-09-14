@@ -25,6 +25,13 @@ return {
         "utility_spirit_fetish", "utility_ancestor_mask", "utility_ghost_wind",
         "consumable_healing_potion", "utility_old_wind",           false,
     },
+    drops = {
+        "armor_stalkers_pelt",
+        "armor_outriders_harness",
+        "weapon_long_silence",
+        "utility_marchstone",
+        "weapon_hailfall_longbow",
+    },
     defaultAction = "weapon_iron_bow",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
     -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the

@@ -2840,6 +2840,12 @@ function game:openEncounter(cell, opts)
                 floorLevel = game.quest and game.quest.floorLevel or nil,
                 houseMaterial = game.houseMaterial,
                 combat = combat,
+                -- ...and the same ledger the fought path passes, so a walked-off stop draws from the
+                -- same half of a body's list (docs/drops.md).
+                player = game.player,
+                -- ...and the same floor drought, or walking a stop off would neither be lifted by a dry
+                -- floor nor count toward one.
+                run = game.player and game.player.descentRun or nil,
             })
 
             cell.cleared = true

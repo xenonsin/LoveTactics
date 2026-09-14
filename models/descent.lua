@@ -225,32 +225,47 @@ Descent.SINS = {
 --
 -- `. content-report items` is the check: it reports what a deletion would strand, and it counts these
 -- lists as a live source.
+-- THE LISTS WERE TRIMMED, 2026-09-14, and this is what took the overflow off them.
+--
+-- The paragraph above says a list may grow, and it grew: sixty-four unpriced pieces came off the
+-- retired Quest Board and were parked here, which took Acedia to twenty-one entries and Ira to
+-- fifteen. A list walked unowned-first is a QUEUE, and a circle is visited once per descent -- so an
+-- entry's position is a count of complete runs to that circle, and the back half of those lists was
+-- content nobody could reach (docs/shelf.md's reachability clause, measured by `. drop-report`).
+--
+-- Thirty-three entries came off because they now have a BODY to fall from: `drops` on a character
+-- blueprint, dealt by tools/drop_assign.lua (docs/drops.md). None was deleted -- every one of them is
+-- reachable off the circle's own ordinary bodies, which is where a circle's stock belonged all along.
+--
+-- WHAT STAYED IS WHAT HAD NOWHERE ELSE TO GO. Thirty-one entries still sit here, deep in a queue,
+-- because no placed body of their class can carry them yet -- Wrath's line is one rollable blueprint
+-- and Lust's is two. A queued item is still reachable and a deleted one is not, so they keep their
+-- place until the bodies exist. `. drop-report bosses` re-asks the question and names them.
+--
+-- ENTRY #1 NEVER MOVES. The relic is what the fight was built to hand over, and a circle is a
+-- two-piece set in the order it taught it -- that is the whole argument above and the trim does not
+-- touch it.
 Descent.DROPS = {
     gluttony = { minor = { "utility_larder_hook" }, general = {
         "utility_maw_of_the_unfed",
-        "armor_bogwalkers_coat", "armor_raveners_hide", "weapon_corvids_bow", "weapon_held_breath",
-        "weapon_last_word", "weapon_sunfall", "weapon_unravelling_shaft", "weapon_witchlight_bow",
+        "armor_raveners_hide", "weapon_held_breath",
+        "weapon_last_word",
     } },
     lust     = { minor = { "utility_beggars_bowl" }, general = {
         "utility_reliquary_unbidden",
-        "armor_hem_of_the_stayed_hand", "armor_reliquary_mantle", "armor_robes_unbidden",
         "weapon_censer_of_the_grasping_hollow", "weapon_censer_of_the_hollow_dark",
         "weapon_censer_of_the_unravelling", "weapon_renewal_staff",
     } },
     greed    = { minor = { "utility_tally_stick" }, general = {
         "utility_bottomless_purse",
-        "armor_slipstep_leathers", "armor_smokecloth_wrap", "armor_unlit_hood",
-        "weapon_nightjar", "weapon_slipknife", "weapon_throughline",
     } },
     envy     = { minor = { "utility_second_vessel" }, general = {
         "utility_envious_glass",
-        "armor_choking_apron", "armor_ichor_coat", "armor_volatile_carapace",
     } },
     wrath    = { minor = { "utility_anvils_face" }, general = {
         "armor_mail_of_the_unappeased",
         "armor_adrenal_harness", "armor_blood_fever_mail", "armor_last_stand_plate",
-        "weapon_anvil_of_the_ninth", "weapon_carrion_axe", "weapon_given_hour", "weapon_hollow_arc",
-        "weapon_kingsfall", "weapon_long_count", "weapon_mired_maul", "weapon_reapers_due",
+        "weapon_given_hour", "weapon_kingsfall", "weapon_long_count", "weapon_mired_maul", "weapon_reapers_due",
         "weapon_tempo_debt", "weapon_the_stillness", "weapon_whitening",
     } },
     -- Acedia's relic is her PIKE, and it took a second look to see it: it is tagged
@@ -259,17 +274,16 @@ Descent.DROPS = {
     -- whole.
     sloth    = { minor = { "utility_unblown_horn" }, general = {
         "weapon_forsworn_pike",
-        "armor_aegis_unbidden", "armor_given_guard", "armor_kept_wound_shield", "armor_martyrs_shield",
-        "armor_reflecting_shield", "consumable_bannerets_steel", "utility_closed_entry",
+        "consumable_bannerets_steel", "utility_closed_entry",
         "utility_forty_one_marks", "utility_names_he_kept", "utility_relief_order",
-        "utility_struck_name", "weapon_debt_bell", "weapon_knell_point", "weapon_lending_blade",
-        "weapon_shepherds_crook", "weapon_splitglass_saber", "weapon_sunderers_answer",
-        "weapon_suspension_mace", "weapon_tidesbreak", "weapon_wardens_tongue",
+        "utility_struck_name", "weapon_lending_blade",
+        "weapon_splitglass_saber", "weapon_sunderers_answer",
+        "weapon_wardens_tongue",
     } },
     pride    = { minor = { "utility_marginal_gloss" }, general = {
         "utility_codex_unanswered",
-        "armor_sealed_coat", "armor_unravelling_habit", "weapon_overchannelled_staff",
-        "weapon_sealed_ward_wand", "weapon_swineherds_wand", "weapon_unravelling_wand",
+        "armor_unravelling_habit", "weapon_overchannelled_staff",
+        "weapon_unravelling_wand",
     } },
 }
 
@@ -2935,11 +2949,33 @@ function Descent.advance(run, player)
     if not run then return end
     run.cleared = math.max(run.cleared or 0, run.floor or 1)
     run.floor = (run.floor or 1) + 1
+    -- A NEW FLOOR IS A NEW DRY SPELL. The husk pity counter is per floor and not per run (see
+    -- Descent.sealedDrought): a player who was paid on floor two has not thereby been paid on floor
+    -- three, and carrying the tally down would let one lucky floor make the next four dry ones legal.
+    run.sealedDrought = 0
     -- The pruning, paid to the COMPANY's tally rather than the run's (Descent.count). `player` is
     -- optional for the same reason it is on Descent.retreat: a spec that only cares where the party is
     -- standing passes a bare run and walks the stack unchanged.
     Descent.countBy(player, -1)
     return run
+end
+
+-- HOW MANY STOPS ON THIS FLOOR HAVE PAID NO HUSK, which is what lifts the next one's chance
+-- (Spoils.SEALED_PITY). Two functions rather than a field the callers poke, because there are two
+-- callers on two different beats -- the roll reads it, the payout writes it -- and a floor that reset
+-- the tally in only one of them would be dry in a way nothing announced.
+--
+-- Lives on the RUN rather than on the player: it is a fact about the floor being walked, it resets at
+-- every stair, and a descent that resets on extraction must not carry it home (models/save.lua keeps
+-- `run` as plain data, so this is one integer and needs no migration).
+function Descent.sealedDrought(run)
+    return (run and run.sealedDrought) or 0
+end
+
+-- Record what a stop paid: a husk resets the tally, a dry stop lengthens it.
+function Descent.recordSealed(run, paidAny)
+    if not run then return end
+    run.sealedDrought = paidAny and 0 or (Descent.sealedDrought(run) + 1)
 end
 
 -- The party has cleared a floor and is standing on its landing. Called before the extract-or-descend

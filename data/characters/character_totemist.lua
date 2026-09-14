@@ -26,6 +26,13 @@ return {
         "ability_ley_line",     "ability_carved_stake", "utility_totem_carvers_kit",
         "consumable_healing_potion", "utility_standing_stone",           false,
     },
+    drops = {
+        "utility_ancestor_mask",
+        "utility_skirmishers_momentum",
+        "weapon_poachers_kris",
+        "utility_surveyors_chain",
+        "weapon_knell_shaft",
+    },
     defaultAction = "ability_totem_of_renewal",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
     -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the

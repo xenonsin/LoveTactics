@@ -33,6 +33,13 @@ return {
         "utility_twinned_sigil",      "utility_quickened_sigil", "utility_distant_sigil",
         "consumable_healing_potion",  "utility_ninth_sigil",                    false,
     },
+    drops = {
+        "armor_overchannel_weave",
+        "utility_battle_casting",
+        "utility_spellstrike",
+        "weapon_second_utterance_wand",
+        "weapon_swineherds_wand",
+    },
     defaultAction = "ability_blizzard",
     -- Basic tactics: a glass body breaks off when bloodied rather than standing to trade; the Blizzard
     -- carries its own wind-up rule, and the sigils are laid, not chosen turn by turn.

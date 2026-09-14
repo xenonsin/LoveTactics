@@ -26,6 +26,13 @@ return {
         "utility_reading_the_blade", "utility_duelists_poise", "armor_leather_armor",
         "consumable_healing_potion", "weapon_long_bout",             false,
     },
+    drops = {
+        "utility_vanishing_act",
+        "armor_unlit_hood",
+        "utility_duelists_poise",
+        "weapon_kingsblood_dagger",
+        "weapon_thin_place",
+    },
     defaultAction = "weapon_main_gauche",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
     -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the

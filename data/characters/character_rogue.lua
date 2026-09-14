@@ -33,6 +33,13 @@ return {
     },
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so its
     -- range shows, and driving the basic click-to-use. The player can re-pin any ability.
+    drops = {
+        "armor_smokecloth_wrap",
+        "utility_cutpurse_tally",
+        "utility_skimmers_cut",
+        "utility_reading_the_blade",
+        "weapon_nightjar",
+    },
     defaultAction = "weapon_iron_dagger",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
     -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the

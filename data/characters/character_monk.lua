@@ -27,6 +27,13 @@ return {
         "utility_drunken_fist", "ability_asura_strike", "utility_shadow_fist",
         "armor_leather_armor", "consumable_healing_potion", "utility_unheld_hand",
     },
+    drops = {
+        "utility_drill_standard",
+        "utility_pilgrims_sandals",
+        "utility_second_utterance",
+        "utility_vigil_beads",
+        "weapon_litany_staff",
+    },
     defaultAction = "ability_flurry",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
     -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the

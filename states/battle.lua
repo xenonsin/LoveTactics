@@ -858,6 +858,12 @@ local function finishBattle(result)
             -- priced per head (models/encounter_battle.lua's rescue pay). Counted in win(), above the
             -- mercy revive -- see the note there.
             rescue = battle.rescue,
+            -- The discovery ledger, for the authored `drops` route: a body gives what the company does
+            -- not hold before it repeats itself (docs/drops.md).
+            player = battle.player,
+            -- ...and the run, which carries the floor's husk drought (Descent.sealedDrought). Nil in
+            -- the campaign, where there is no floor to be dry.
+            run = battle.player and battle.player.descentRun or nil,
         })
         -- ...and what the OBJECTIVE itself pays, hung beside the rolled spoils rather than folded into
         -- them. A separate field because the two are granted by different code on different beats: the

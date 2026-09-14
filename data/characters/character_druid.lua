@@ -25,6 +25,13 @@ return {
         "ability_wild_shape_raven", "ability_thicketing",   "armor_stalkers_pelt",
         "consumable_healing_potion", "utility_borrowed_pelt",                false,
     },
+    drops = {
+        "armor_kennelbound_jerkin",
+        "weapon_harriers_bow",
+        "utility_cullers_kit",
+        "utility_totem_carvers_kit",
+        "weapon_piercing_draw",
+    },
     defaultAction = "weapon_iron_bow",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
     -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the

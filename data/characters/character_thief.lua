@@ -25,6 +25,13 @@ return {
         "ability_shakedown",     "ability_charm",      "utility_cutpurse_tally",
         "armor_leather_armor",   "consumable_healing_potion", "utility_bag_of_holding",
     },
+    drops = {
+        "utility_sidelong_greaves",
+        "utility_opportunists_charm",
+        "armor_slipstep_leathers",
+        "weapon_cutpurse_knife",
+        "weapon_slipknife",
+    },
     defaultAction = "weapon_cutpurse_knife",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
     -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the

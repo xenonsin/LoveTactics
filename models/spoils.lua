@@ -124,6 +124,17 @@ local END_PURSE_SHARES = { elite = 1, objective = 1, general = 2 }
 -- no consumables can never pay a potion, and the band is the only thing that stocks the everyday
 -- restock. Three drops in four coming off the corpse is enough for the connection to read.
 local CARRIED_BIAS = 0.75
+-- ...and the same question one rung up, for a body's AUTHORED list (docs/drops.md). Read first, so a
+-- body that is known for something pays that thing half the time and falls through to what it happened
+-- to be carrying the rest.
+--
+-- LOWER THAN CARRIED_BIAS ON PURPOSE, which reads backwards until you count what each one gates. The
+-- carried pool is every priced item in every beaten grid -- a pack of six is a dozen entries, so 0.75
+-- spread over that is a low chance of any PARTICULAR piece. An authored list is two to five entries on
+-- the one body the player came for, so half of all drops coming off it is already the loudest signal
+-- in the roll. Push it higher and the other two routes stop existing on any board with a named body on
+-- it, including the band that stocks the everyday restock.
+local AUTHORED_BIAS = 0.5
 
 -- love.math.random when running under LÖVE, else math.random. Same call signatures: () -> [0,1),
 -- (m) -> [1,m], (m,n) -> [m,n]. Kept behind one helper so the whole module is engine-agnostic.
@@ -294,6 +305,59 @@ local function carriedCandidates(enemyUnits)
     return pool
 end
 
+-- Does this company already hold `itemId`? The same question models/descent.lua's own `ownsItem` asks
+-- of a boss list, asked here for the same reason and answered the same way: "already got this" means
+-- held anywhere in the company, so a relic worn by the knight is not one they are missing, and selling
+-- one makes it droppable again. Duplicated rather than exported because the two callers are on
+-- opposite sides of a require cycle (descent -> spoils), and eight lines is cheaper than the seam.
+local function companyOwns(player, itemId)
+    if not (player and itemId) then return false end
+    for _, item in ipairs(player.stash or {}) do
+        if (type(item) == "table" and item.id or item) == itemId then return true end
+    end
+    for _, char in ipairs(player.roster or {}) do
+        for _, item in pairs(char.inventory or {}) do
+            if type(item) == "table" and item.id == itemId then return true end
+        end
+    end
+    return false
+end
+
+-- THE AUTHORED POOL: what the bodies you just beat are KNOWN FOR, off their blueprints' `drops` lists.
+--
+-- The third route and the one docs/drops.md is built around. The carried pool below is incidental --
+-- whatever the blueprint happened to be wielding -- and it is excellent for exactly that reason (you
+-- took his axe), but it can only ever hand over kit somebody thought to put in a grid. A `drops` list
+-- is the other half: the piece a body is worth going to find, named on the body rather than scattered
+-- through a depth band.
+--
+-- UNOWNED FIRST, which is Descent.dropFor's rule lifted wholesale. A body with anything new to give
+-- gives that; only a fully-spent list falls back to repeating itself. Without a `player` to ask -- a
+-- headless caller, a test -- nothing is owned and the whole list stands, which is the tolerant reading
+-- and keeps every existing call site working unchanged.
+--
+-- GATED ON DEPTH exactly as the band is (Spoils.depthOf), and this is not optional politeness: a list
+-- is authored on the body, and a body can be met shallower than its best piece is ranked or than its
+-- class gate allows. Without the gate an ordinary floor-one stop could hand over eight-rung kit purely
+-- because somebody wrote it onto a wanderer that rolls early.
+local function authoredCandidates(enemyUnits, tier, player)
+    local pool, fresh = {}, {}
+    if not enemyUnits then return pool end
+    for _, unit in ipairs(enemyUnits) do
+        local char = unit and unit.char
+        local def = char and char.id and Character.defs[char.id]
+        for _, id in ipairs((def or {}).drops or {}) do
+            local item = Item.defs[id]
+            if item and not item.bound and Spoils.depthOf(item) <= (tier or 0) then
+                local entry = { id = id, weight = 1 }
+                pool[#pool + 1] = entry
+                if not companyOwns(player, id) then fresh[#fresh + 1] = entry end
+            end
+        end
+    end
+    return #fresh > 0 and fresh or pool
+end
+
 -- Weighted draw of one id from a { id, weight } pool, or nil for an empty pool.
 local function pick(pool)
     if #pool == 0 then return nil end
@@ -313,7 +377,7 @@ end
 -- `scale` (default 1) is the difficulty-tier bump. A gentler curve than gold uses -- sqrt(scale) --
 -- widens the price band and lifts both drop chances, so a tier-3 fight tends to pay a richer, likelier
 -- drop without a low-prestige map suddenly raining top-shelf gear.
-local function rollLoot(day, kind, override, enemyUnits, scale, floorLevel)
+local function rollLoot(day, kind, override, enemyUnits, scale, floorLevel, player)
     if override then
         local out = {}
         for _, id in ipairs(override) do
@@ -336,10 +400,18 @@ local function rollLoot(day, kind, override, enemyUnits, scale, floorLevel)
     local tier = math.min(Class.CLASS_LEVEL_CAP, depth)
     local band = lootCandidates(maxPrice, tier)
     local carried = carriedCandidates(enemyUnits)
+    local authored = authoredCandidates(enemyUnits, tier, player)
 
-    -- One drop: off a body when there is one to loot and the bias says so, else out of the band.
-    -- Each drop rolls its own source, so a two-drop fight can pay one of each.
+    -- One drop, off the first of three sources that answers. Each drop rolls its own source, so a
+    -- two-drop fight can pay one of each.
+    --
+    -- THE ORDER IS THE DESIGN: authored, then carried, then the band. What a body is known for beats
+    -- what it happened to be holding, which beats a draw over everything in range -- so a player who
+    -- went to fight a particular thing for a particular piece is answered by the fight rather than by
+    -- the depth they fought it at. Neither bias is a guarantee: a list is a POOL and not a promise
+    -- (docs/drops.md), and whether anything drops at all is still the two rolls below.
     local function draw()
+        if #authored > 0 and rnd() < AUTHORED_BIAS then return pick(authored) end
         if #carried > 0 and rnd() < CARRIED_BIAS then return pick(carried) end
         return pick(band)
     end
@@ -378,6 +450,25 @@ end
 -- that sentence would make the option a lie about a third of the time. It draws from a chest's ordinary
 -- pool, not a vault's slice -- what a dilemma hands over is a find, not a reward for searching.
 Spoils.SEALED_CHANCE = { combat = 0.15, elite = 0.35, treasure = 0.35, secret = 1.0, offer = 1.0 }
+
+-- HOW FAST A DRY FLOOR STOPS BEING DRY. Each stop that pays no husk lifts the next stop's chance by
+-- this much of the base rate, and a stop that pays one resets it (Descent.sealedDrought).
+--
+-- FIVE FOURTHS, and the arithmetic is the whole argument rather than a feel. An ordinary fight is 15%,
+-- so reaching certainty on the Nth dry stop wants (1/0.15 - 1)/N; at N = 5 that is 1.13 and at N = 4 it
+-- is 1.42. A floor holds eight fights at the top of the stack and eleven at the bottom
+-- (Descent.FLOOR_FIGHTS), so certainty by the fifth dry stop clears the shortest floor in the game with
+-- three fights to spare -- and 1.25 is the round number inside that window.
+--
+-- (The first cut of this was 2/3 and the header claimed certainty by the fourth dry fight. It reaches
+-- 0.65 there. Nothing in the reachable range of a floor would ever have hit 1, which the spec caught
+-- and the prose did not -- the number was chosen to sound moderate rather than derived from the rate it
+-- was modifying.)
+--
+-- Deliberately a SHARE of each kind's own rate rather than a flat addition: an elite starts at 35% and
+-- reaches certainty on its second dry stop, which is right, because a player who beat one and got
+-- nothing has a louder complaint than one who cleared a wolf pack.
+Spoils.SEALED_PITY = 1.25
 
 -- How far above the road's own band a CHEST may reach, as a multiple of it. See sealedCandidates.
 Spoils.SEALED_ABOVE = 2.5
@@ -472,13 +563,30 @@ end
 --
 -- At most one per stop. Two husks off one fight would make the counter a chore rather than a choice, and
 -- the second is never the one the player remembers.
+--
+-- ...AND NEVER A WHOLE FLOOR OF NOTHING. `opts.drought` is how many stops on this floor have already
+-- paid no husk, and it lifts the chance until one does (Spoils.SEALED_PITY). A dry floor is survivable
+-- at a thousand kills an hour and is not survivable at eight to eleven fights: at the bare 15% a floor
+-- paying nothing at all is common enough to be a regular experience, and it is the experience that ends
+-- runs.
+--
+-- The gamble stays where it is already good -- the READING, at the Touchstone, which has a floor of one
+-- and no duds for exactly this reason (docs/identification.md). What is being removed here is the roll
+-- for whether anything happened today, which is the boring half.
+--
+-- A LIFT RATHER THAN A HARD GUARANTEE, because nothing here knows which stop is the floor's last. By
+-- the fifth dry ordinary fight the chance is past certainty, so the shortest floor in the game reaches
+-- it with three fights to spare; a floor whose pool is empty still pays nothing, and must, or the
+-- guarantee would invent an item the depth gate had already refused.
 function Spoils.rollSealed(opts)
     opts = opts or {}
     local floor = opts.floorLevel
     if not floor then return {} end
     local kind = opts.kind or "combat"
     local chance = Spoils.SEALED_CHANCE[kind]
-    if not chance or rnd() >= chance then return {} end
+    if not chance then return {} end
+    chance = chance * (1 + Spoils.SEALED_PITY * math.max(0, opts.drought or 0))
+    if rnd() >= chance then return {} end
     local id = pick(sealedCandidates(floor, kind, opts.enemyUnits))
     if not id then return {} end
     return { { id = id, floor = floor } }
@@ -655,6 +763,10 @@ end
 --                    Absent/1 reproduces the pre-tier payout exactly. Overrides ignore it.
 --   opts.tier        the encounter's difficulty tier 1..3, for the salvage grade (see Spoils.materials)
 --   opts.houseMaterial the run's house stock, for an elite's salvage (see Spoils.materials)
+--   opts.player      OPTIONAL, and only the authored `drops` route reads it: a body with something new
+--                    on its list gives that before it repeats itself (authoredCandidates). Absent, the
+--                    whole list stands -- so every caller that has not been taught to pass one behaves
+--                    exactly as it did, and a headless test needs no fixture to get a drop
 --
 -- `enemyUnits` now feeds BOTH rolled halves: its length sets the gold, and its grids are the drop
 -- table. Passing `count` alone still works and still pays gold, it just has no bodies to loot, so the
@@ -708,7 +820,7 @@ function Spoils.roll(opts)
     local purse = authored and 0 or Spoils.endPurse(kind, opts.floorLevel or day)
     return {
         gold = (authored or rolled) + purse,
-        loot = rollLoot(day, kind, opts.loot, opts.enemyUnits, scale, opts.floorLevel),
+        loot = rollLoot(day, kind, opts.loot, opts.enemyUnits, scale, opts.floorLevel, opts.player),
         -- The unread piece, on the rare stop that pays one. A SEPARATE field from `loot` rather than an
         -- entry in it, because the two are granted differently and by different code: loot is a list of
         -- ids that Player.grantItem instantiates in the clear, and this is a list of finds that

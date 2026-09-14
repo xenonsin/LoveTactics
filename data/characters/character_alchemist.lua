@@ -33,6 +33,13 @@ return {
     },
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so its
     -- range shows, and driving the basic click-to-use. The player can re-pin any ability.
+    drops = {
+        "armor_ichor_coat",
+        "utility_contagion",
+        "utility_rot_fume_gauntlet",
+        "weapon_envenomed_kris",
+        "utility_philosophers_stone",
+    },
     defaultAction = "consumable_fire_bomb",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
     -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the

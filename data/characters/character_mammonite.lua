@@ -65,6 +65,13 @@ return {
         "ability_grease_palms", "armor_cutpurse_coat",       "ability_price_on_the_head",
         "weapon_iron_dagger",   "consumable_healing_potion", "utility_with_interest",
     },
+    drops = {
+        "armor_breakers_harness",
+        "armor_smoke_mantle",
+        "utility_breakers_wedge",
+        "weapon_mired_kris",
+        "weapon_throughline",
+    },
     defaultAction = "weapon_iron_dagger",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
     -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the

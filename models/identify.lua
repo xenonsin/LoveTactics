@@ -220,8 +220,33 @@ end
 -- answer on the price tag: a player who sees one husk quoted at ninety and another at four hundred has
 -- identified both without paying for either. The bill may only ever read facts the player already has,
 -- and the floor is the one fact the husk is allowed to carry.
-Identify.FEE_BASE = 60
-Identify.FEE_PER_FLOOR = 20
+-- RE-PRICED 2026-09-14, BECAUSE 60 + 20f WAS NOISE AGAINST A RUN'S PURSE and a cost nobody notices is
+-- not a decision. The arithmetic, off the constants rather than off a feeling:
+--
+--   income      a run is 76 fights (Descent.FLOOR_FIGHTS, 8/8/9/9/10/10/11/11). An ordinary stop pays
+--               GOLD_PER_FIGHT 30 + 8 a body at the skirmish cap, times a depth slope that reaches 3.8x
+--               by the bottom -- about 130 a fight averaged over the stack, so ~9,900. Ends pay an END
+--               PURSE on top (130 on a slope of 0.55, capped at floor 11) and a floor carries two, so
+--               ~10,000 more. Call a complete descent 20,000 gold.
+--   the bill    ~16 husks a run (15% a fight, 35% an elite or chest, and Spoils.SEALED_PITY now stops a
+--               floor paying none) at 60 + 20f over floors 1..8 -- about 150 each, 2,400 in all.
+--
+-- Twelve per cent. Naming the whole satchel was something a player did without looking at the purse,
+-- which means the room's actual question -- NAME THIS ONE, OR LET IT GO -- was never asked. At 120 +
+-- 60f the same satchel runs about 6,200, near a third of the run, and the satchel becomes a budget.
+--
+-- THE SYMMETRY IS WHAT MAKES THIS SAFE TO RAISE. The counter buys for exactly what it charges
+-- (Identify.sellValue), so a dearer reading is also a dearer sale: a company that cannot afford to name
+-- its finds is richer for selling them, not poorer for holding them. Raising the fee sharpens the
+-- choice without pricing a need -- which is the law this could otherwise have broken
+-- (docs/the-count.md).
+--
+-- The income figures are DERIVED, not rolled. `. board-report 40 descent` measures the board (8 fights
+-- and 2 ends on a floor one, which is where the per-floor counts above come from); the gold on top of
+-- that is arithmetic over models/spoils.lua's constants. If the fee ever reads wrong in play, that is
+-- the measurement to take properly first.
+Identify.FEE_BASE = 120
+Identify.FEE_PER_FLOOR = 60
 
 -- ONE NUMBER, TWO DIRECTIONS: what the counter charges to name a piece is also what it PAYS to take the
 -- piece off you unnamed. The symmetry makes selling and naming come out roughly even in gold, which puts

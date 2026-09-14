@@ -266,6 +266,9 @@ function EncounterBattle.spoils(opts)
     local encounter = opts.encounter or {}
     local kind = encounter.kind
     local spoils
+    -- The husk pity tally is written HERE rather than at each branch, on the way out -- see the tail of
+    -- this function. Held so the branches below can stay about what a fight pays.
+    local run = opts.run
 
     if kind == "combat" or kind == "elite" then
         spoils = Spoils.roll({
@@ -280,6 +283,13 @@ function EncounterBattle.spoils(opts)
             rewardScale = EncounterBattle.TIER_GOLD[encounter.tier or 1] or 1.0,
             tier = encounter.tier,
             houseMaterial = opts.houseMaterial,
+            -- So a body with an authored `drops` list gives what the company does not already hold
+            -- before it repeats itself (docs/drops.md). Optional on the roll, and the walk-off path
+            -- reaches this same function, so both routes read the same ledger.
+            player = opts.player,
+            -- How many stops on this floor have paid no husk, which lifts this one's chance
+            -- (Spoils.SEALED_PITY). Nil off a descent, where there is no floor to be dry.
+            drought = opts.run and require("models.descent").sealedDrought(opts.run) or 0,
         })
     elseif kind == "objective" then
         -- The general's JOB pays through Quest.complete, not through spoils -- but the SALVAGE floor is
@@ -354,6 +364,31 @@ function EncounterBattle.spoils(opts)
     if bounty > 0 then
         spoils = spoils or { gold = 0, scrip = 0, loot = {} }
         spoils.gold = (spoils.gold or 0) + bounty
+    end
+
+    -- THE HUSK PITY TALLY, written once on the way out so every branch above is covered by it and none
+    -- of them has to remember. A stop that paid a husk resets the floor's dry spell; one that did not
+    -- lengthens it, and the next stop's chance is lifted by Spoils.SEALED_PITY.
+    --
+    -- Counted off what the roll ACTUALLY returned rather than off whether it was asked for, which is
+    -- the only reading that stays true when the pool is empty: a floor whose depth gate refuses
+    -- everything pays nothing however long the drought runs, and the tally climbing forever there is
+    -- correct and harmless.
+    if run then
+        require("models.descent").recordSealed(run, spoils and #(spoils.sealed or {}) > 0)
+    end
+
+    -- THE BESTIARY STAMP, on the same seam and for the same reason: the fought path and the walk-off
+    -- path both reach this function, and a book that only filled in on fights you actually played would
+    -- have holes a player could not explain (models/bestiary.lua).
+    --
+    -- HERE RATHER THAN AT THE SURFACE, which is where `found` is stamped and is right for `found`: what
+    -- opens a shelf line is carrying a thing OUT, but what fills in a bestiary entry is having stood in
+    -- front of the body. A run that wipes on floor six has still met everything on floors one to six,
+    -- and taking that back would make the book a record of successful runs instead of a record of what
+    -- is down there.
+    if opts.player and opts.enemyUnits then
+        require("models.bestiary").recordMet(opts.player, opts.enemyUnits)
     end
 
     return spoils

@@ -1135,20 +1135,29 @@ end
 -- with everything (docs/the-count.md), so both surface, and both discover. Not stamped at pickup: the
 -- sentence the design is built on is that carrying a thing OUT is what opens its line, and while there
 -- is no route that loses a haul today, a stamp at the surface stays correct if one ever returns.
+-- ONE id into the ledger, and whether it was new. Split out of the sweep below because the sweep is
+-- not the only way a thing gets discovered any more: breaking a piece underground (models/salvage.lua)
+-- has to stamp it BEFORE it goes, or the surface sweep finds nothing in the stash and the counter line
+-- that first copy opened is lost for good. Same mark, same dot, one place it is written.
+function Player.markFound(player, itemId)
+    if not (player and itemId) then return false end
+    player.found = player.found or {}
+    if player.found[itemId] then return false end
+    player.found[itemId] = true
+    -- ...AND THE HOUSE IT BELONGS TO WEARS A DOT. A discovery is new stock in the exact sense the mark
+    -- was built for -- a line that was not for sale before and is now -- so it uses the same channel a
+    -- quest-opened shelf does (Vendor.hasMarkedStock, states/hub.lua) rather than a second
+    -- notification the city would have to learn.
+    Player.markNew(player, Player.NEW_STOCK, itemId)
+    return true
+end
+
 function Player.recordFound(player)
     if not player then return 0 end
     player.found = player.found or {}
     local added = 0
     local function mark(item)
-        if item and item.id and not player.found[item.id] then
-            player.found[item.id] = true
-            added = added + 1
-            -- ...AND THE HOUSE IT BELONGS TO WEARS A DOT. A discovery is new stock in the exact sense
-            -- the mark was built for -- a line that was not for sale before and is now -- so it uses
-            -- the same channel a quest-opened shelf does (Vendor.hasMarkedStock, states/hub.lua)
-            -- rather than a second notification the city would have to learn.
-            Player.markNew(player, Player.NEW_STOCK, item.id)
-        end
+        if item and item.id and Player.markFound(player, item.id) then added = added + 1 end
     end
     for _, char in ipairs(player.roster or {}) do
         for cell = 1, Character.MAX_INVENTORY do mark((char.inventory or {})[cell]) end

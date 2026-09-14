@@ -31,6 +31,13 @@ return {
         false,               false,           false,
         false,               false,           false,
     },
+    drops = {
+        "armor_given_guard",
+        "armor_tower_shield",
+        "weapon_debt_bell",
+        "weapon_long_fall",
+        "weapon_sworn_lance",
+    },
     defaultAction = "weapon_iron_sword",
     -- Basic tactics (models/ai.lua): press the wounded -- finish the foe already closest to falling,
     -- ahead of the posture's ordinary "hit whatever is in reach".

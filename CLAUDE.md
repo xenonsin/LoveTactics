@@ -94,7 +94,9 @@ The codebase is organized into layers loaded via `require()`. See
   consumables, and a house's opening weapon. **Everything else is found in the rift** (`dropTier`) and
   a counter stocks it only once the company has carried one out (`Player.recordFound`, `Vendor.stock`'s
   `lockReason`). See [docs/shelf.md](docs/shelf.md) (`models/grade.lua`, `. grade-report`,
-  `. drop-tier recut`). `data/meals/` is the one content type that is *not* an item: the Cafe's supper,
+  `. drop-tier recut`). *Which body* hands a found item over is [docs/drops.md](docs/drops.md) —
+  `. drop-report` measures reachability by placement, and is the pass to run before authoring a
+  drop list. `data/meals/` is the one content type that is *not* an item: the Cafe's supper,
   one per day out, worn by the whole company — see [docs/meals.md](docs/meals.md).
   There is **one currency**, gold — no valuables to carry out and sell, no scrip; an end simply pays a
   richer purse (`Spoils.endPurse`) — and what keeps an underground purchase from being priced against a

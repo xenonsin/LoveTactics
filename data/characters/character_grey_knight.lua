@@ -42,6 +42,13 @@ return {
         false,               false,             false,
         false,               false,             false,
     },
+    drops = {
+        "armor_wardens_oath",
+        "armor_aegis_unbidden",
+        "armor_martyrs_shield",
+        "utility_crowds_favour",
+        "weapon_rimebell",
+    },
     defaultAction = "weapon_iron_spear",
     -- Basic tactics (models/ai.lua): a spearman charges a line. Held by his `guard` leash, he still
     -- presses when two or more foes crowd into reach and lets the scorer find the skewer.

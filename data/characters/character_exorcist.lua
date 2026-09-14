@@ -34,6 +34,13 @@ return {
         "ability_dispel_illusions",  "ability_silence",          "utility_cleansing_ward",
         "ability_heal",              "utility_rite_unspoken",                     false,
     },
+    drops = {
+        "armor_censer_cloth_habit",
+        "armor_reliquary_mantle",
+        "armor_warding_chasuble",
+        "utility_shared_ledger",
+        "weapon_confessors_needle",
+    },
     defaultAction = "ability_banish",
     -- Basic tactics: heal the moment healing matters; Banish and the dispels carry their own reads about
     -- when a summon or a buff is worth unmaking.

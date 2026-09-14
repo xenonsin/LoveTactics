@@ -100,6 +100,27 @@ function love.load(args)
         return
     end
 
+    -- Drop reachability: `& "E:\LOVE\lovec.exe" . drop-report [unreachable | queued | bodies]`
+    -- The other half of the drop-tier question. `drop-tier` says how deep a thing falls at; this says
+    -- whether any body in the game ever hands one over -- measured by sweeping Encounter.pool and
+    -- resolving each blueprint's own composition, because an item on an unplaced body is not content.
+    -- Reports only; there is no apply. See tools/drop_report and docs/shelf.md's reachability clause.
+    if args and args[1] == "drop-report" then
+        require("tools.drop_report").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
+    -- Dealing the catalogue out: `& "E:\LOVE\lovec.exe" . drop-assign [full] [apply]`
+    -- Computes each placed body's `drops` list from the item's class and depth against the body's own
+    -- class and rung, so 429 items are one ranking applied rather than 429 decisions taken. Dry run by
+    -- default. See tools/drop_assign and docs/drops.md.
+    if args and args[1] == "drop-assign" then
+        require("tools.drop_assign").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
     -- The class fold: `& "E:\LOVE\lovec.exe" . class-fold [creature] [apply]`
     -- Collapses `class` and `discipline` onto one taxonomy of 46 classes -- the default pass moves an
     -- item's discipline into its class, `creature` buckets the kit that belongs to no job. Dry run by

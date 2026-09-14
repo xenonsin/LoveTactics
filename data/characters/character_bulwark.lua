@@ -33,6 +33,13 @@ return {
         "ability_closed_ring", "ability_stand_down", "utility_rooted_stance",
         "armor_halting_rank", "utility_doorstone", "consumable_healing_potion",
     },
+    drops = {
+        "armor_vow_marked_plate",
+        "armor_mirrorsilk",
+        "utility_spell_eater",
+        "weapon_exposing_pike",
+        "weapon_tidesbreak",
+    },
     defaultAction = "weapon_iron_mace",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
     -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the

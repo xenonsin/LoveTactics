@@ -25,6 +25,13 @@ return {
         "ability_beat_the_bounds", "utility_wardens_writ", "utility_marchstone",
         "armor_chainmail",     "consumable_healing_potion", "utility_bound_mile",
     },
+    drops = {
+        "armor_unyielding_harness",
+        "weapon_answering_bell",
+        "utility_empty_vessel",
+        "weapon_disarming_pike",
+        "weapon_silencing_blade",
+    },
     defaultAction = "weapon_iron_spear",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
     -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the

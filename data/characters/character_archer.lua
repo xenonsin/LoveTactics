@@ -37,6 +37,13 @@ return {
     },
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so
     -- its range shows, and driving the basic click-to-use. The player can re-pin any ability.
+    drops = {
+        "utility_companion_whistle",
+        "utility_spirit_fetish",
+        "weapon_corvids_bow",
+        "weapon_stillhunter",
+        "weapon_unravelling_shaft",
+    },
     defaultAction = "weapon_iron_bow",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
     -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the

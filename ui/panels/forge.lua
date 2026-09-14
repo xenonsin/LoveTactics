@@ -37,6 +37,7 @@ local Item = require("models.item")
 local Material = require("models.material")
 local MaterialTooltip = require("ui.material_tooltip")
 local Player = require("models.player")
+local Salvage = require("models.salvage")
 local Scale = require("scale")
 local Sound = require("models.sound")
 local Sprite = require("models.sprite")
@@ -51,12 +52,23 @@ local LIST_W = 340
 local CARD_H, CARD_GAP, MAX_VISIBLE = 54, 6, 7
 local CONTENT_TOP = 112 -- below the title and the category strip
 
-local MODES = { "gear", "ability", "recipe" }
-local MODE_LABEL = { gear = "Gear", ability = "Abilities", recipe = "Recipes" }
+-- A FOURTH MODE, AND IT IS A MODE RATHER THAN A SECOND BUTTON ON THE GEAR ROW.
+--
+-- Breaking a piece is the one irreversible thing this bench can do -- there is no buy-back the way the
+-- Touchstone has one (docs/identification.md) -- and a destructive verb sitting beside a constructive
+-- one on the same selected row is how somebody loses a relic to muscle memory. Its own tab means
+-- reaching it is a decision before the button is a decision.
+--
+-- It belongs at the FORGE and not at a counter of its own, because this is the only screen in the city
+-- that spends stock, and the place that spends it is the place that should make it. See
+-- models/salvage.lua for what a break pays and docs/drops.md for why the faucet exists.
+local MODES = { "gear", "ability", "recipe", "break" }
+local MODE_LABEL = { gear = "Gear", ability = "Abilities", recipe = "Recipes", ["break"] = "Break" }
 local EMPTY_LABEL = {
     gear = "No weapons, armor or gear to forge.",
     ability = "No abilities to hone.",
     recipe = "No recipes to refine.",
+    ["break"] = "Nothing here can be broken down.",
 }
 
 local DIM = Theme.muted
@@ -186,7 +198,19 @@ function ForgePanel:refresh()
     local keep = self.sel or 1
     self.rows = {}
 
-    if self.mode == "recipe" then
+    if self.mode == "break" then
+        -- Everything the company holds that models/salvage.lua will take. The refusals live there and
+        -- not here, so the bench and the model can never disagree about what is breakable -- and a
+        -- husk, a bound relic and a piece worth nothing simply do not appear rather than appearing
+        -- greyed: there is no action to explain, so there is no row to explain it on.
+        for _, up in ipairs(self:collect(function(item)
+            return Salvage.canBreak(self.player, item)
+        end)) do
+            local yield = Salvage.yield(up.item)
+            self.rows[#self.rows + 1] = { kind = "break", item = up.item, up = up,
+                level = up.item.level or 0, yield = yield, where = up.where }
+        end
+    elseif self.mode == "recipe" then
         for _, id in ipairs(self:collectRecipes()) do
             local level = Player.recipeLevel(self.player, id)
             local sample = Item.instantiate(id, nil, level)
@@ -222,6 +246,13 @@ function ForgePanel:resetAim()
     self.aim = row and math.min((row.level or 0) + 1, Item.MAX_LEVEL) or nil
     self.hoverAim = nil
     self.growthId, self.growth = nil, nil
+    -- An armed break belongs to ONE object. This runs on every selection change and every refresh, so
+    -- a player who armed a break and then moved the highlight has disarmed it -- otherwise the second
+    -- press lands on whatever is under the cursor now, which is the exact accident the two-press guard
+    -- exists to prevent. Keyed on the item and cleared here, so both halves have to agree.
+    if self.breakArmed and (not row or row.item ~= self.breakArmed) then
+        self.breakArmed = nil
+    end
 end
 
 function ForgePanel:setMode(mode)
@@ -411,7 +442,51 @@ end
 function ForgePanel:commit()
     local row = self:current()
     if not row then return end
-    if row.kind == "recipe" then self:refine(row) else self:upgrade(row) end
+    if row.kind == "break" then self:breakRow(row)
+    elseif row.kind == "recipe" then self:refine(row)
+    else self:upgrade(row) end
+end
+
+-- Break the highlighted piece into stock. TWO PRESSES: the first arms, the second commits -- see
+-- drawBreakDetail for why this one button asks twice when nothing else on the bench does.
+--
+-- The model banks the yield and stamps the discovery ledger; removing the piece is this panel's job,
+-- because only the panel knows where it was sitting. Salvage.breakDown deliberately does not reach
+-- into a grid or a stash for exactly that reason.
+function ForgePanel:breakRow(row)
+    local item = row.item
+    if self.breakArmed ~= item then
+        self.breakArmed = item
+        return
+    end
+
+    local yield, why = Salvage.breakDown(self.player, item)
+    self.breakArmed = nil
+    if not yield then
+        self:setMsg(self:refusal(why, item), false)
+        return
+    end
+
+    local up = row.up
+    if up.loc.kind == "grid" then
+        up.loc.char.inventory[up.loc.cell] = nil
+    else
+        table.remove(self.player.stash, up.loc.index)
+    end
+    Player.save()
+
+    -- Name what came out of it. A destructive action that reports only "done" leaves the player with
+    -- no way to tell whether it was worth doing.
+    local parts = {}
+    local ids = {}
+    for id in pairs(yield) do ids[#ids + 1] = id end
+    table.sort(ids)
+    for _, id in ipairs(ids) do
+        local def = Material.get(id)
+        parts[#parts + 1] = yield[id] .. " " .. ((def and def.name) or id)
+    end
+    self:setMsg((item.name or "It") .. " broken down: " .. table.concat(parts, ", ") .. ".", true)
+    self:refresh()
 end
 
 -- Forge the highlighted instance up to the aimed rung in ONE commit, swap the fresh instance into the
@@ -496,7 +571,7 @@ function ForgePanel:draw()
     else
         -- An empty category draws no track, no chips and no button, so drop the rects that would
         -- otherwise keep answering clicks on behalf of whatever was listed a moment ago.
-        self.track, self.forgeRect, self.chipRects = nil, nil, {}
+        self.track, self.forgeRect, self.breakRect, self.chipRects = nil, nil, nil, {}
         love.graphics.setFont(self.bodyFont)
         Theme.set(Theme.muted)
         love.graphics.printf(EMPTY_LABEL[self.mode] or "Nothing to forge.",
@@ -660,9 +735,90 @@ function ForgePanel:caption(text, x, y, w)
     return tw
 end
 
+-- THE BREAK PANE. Its own draw rather than a branch threaded through the forging one, because it
+-- shares almost nothing with it: no rung track, no growth curve, no aim, no bill -- one object, one
+-- outcome, and the outcome is not a number that climbs.
+--
+-- WHAT IT SHOWS IS THE YIELD, in full, before the button. models/salvage.lua draws no RNG precisely so
+-- this can be exact (a gamble on top of a gamble is not a decision), and a screen that said "break it
+-- and find out" would throw that away.
+function ForgePanel:drawBreakDetail(row, x, y, w)
+    local item = row.item
+    self.forgeRect, self.track, self.chipRects = nil, nil, {}
+
+    love.graphics.setFont(self.nameFont)
+    Theme.set(Theme.ink)
+    love.graphics.printf(Item.displayName and Item.displayName(item) or (item.name or "?"),
+        x, y, w, "left")
+    y = y + self.nameFont:getHeight() + 6
+
+    love.graphics.setFont(self.bodyFont)
+    Theme.set(Theme.muted)
+    love.graphics.printf(item.description or "", x, y, w, "left")
+    y = y + self.bodyFont:getHeight() * 2 + 14
+
+    self:caption("Breaks down into", x, y, w)
+    y = y + self.capFont:getHeight() + 10
+
+    -- The yield, one row per stock, with what the company already holds beside it -- the same reading
+    -- the bill above gives, so the two halves of this bench quote stock the same way.
+    love.graphics.setFont(self.bodyFont)
+    local ids = {}
+    for id in pairs(row.yield or {}) do ids[#ids + 1] = id end
+    table.sort(ids)
+    for _, id in ipairs(ids) do
+        local def = Material.get(id)
+        Theme.set(Material.isHouse(id) and Theme.accentAmber or Theme.ink)
+        love.graphics.print("+" .. row.yield[id] .. "  " .. ((def and def.name) or id), x, y)
+        Theme.set(Theme.muted, 0.8)
+        local have = "hold " .. Player.materialCount(self.player, id)
+        love.graphics.print(have, x + w - self.bodyFont:getWidth(have), y)
+        y = y + self.bodyFont:getHeight() + 6
+    end
+
+    y = y + 10
+    love.graphics.setFont(self.smallFont)
+    Theme.set(Theme.muted, 0.85)
+    -- The two facts a player needs and cannot work out from the rows: this cannot be undone, and the
+    -- counter keeps the line anyway (Salvage.breakDown stamps the ledger before the piece goes).
+    love.graphics.printf(
+        "Breaking is final -- there is no buying this one back. The counter keeps the line: "
+        .. "having carried one out is what stocks it, and breaking it does not take that away.",
+        x, y, w, "left")
+    y = y + self.smallFont:getHeight() * 3 + 16
+
+    -- THE COMMIT, ARMED IN TWO PRESSES. Everything else this bench does is additive and reversible by
+    -- simply forging further; this is the one button that deletes an object, so it asks twice. The
+    -- arming is cleared by changing row or tab (see setMode and the selection paths), or a player who
+    -- armed a break on one thing would fire it on another.
+    local bw, bh = 224, 46
+    local bx = x + w - bw
+    local armed = self.breakArmed == item
+    self.breakRect = { x = bx, y = y, w = bw, h = bh }
+
+    Theme.set(armed and Theme.panel2 or Theme.panel)
+    love.graphics.rectangle("fill", bx, y, bw, bh, 3, 3)
+    love.graphics.setLineWidth(1.5)
+    Theme.set(armed and SHORT or Theme.frame, armed and 1 or 0.7)
+    love.graphics.rectangle("line", bx, y, bw, bh, 3, 3)
+    love.graphics.setLineWidth(1)
+
+    love.graphics.setFont(self.cardFont)
+    Theme.set(armed and SHORT or Theme.ink)
+    love.graphics.printf(armed and "Break it" or "Break", bx, y + 8, bw, "center")
+
+    love.graphics.setFont(self.smallFont)
+    Theme.set(Theme.muted, 0.8)
+    love.graphics.printf(armed and "this cannot be undone" or InputMode.pick("A", "", "Enter"),
+        bx, y + 28, bw, "center")
+end
+
 function ForgePanel:drawDetail()
     local row = self:current()
     if not row then return end
+    if row.kind == "break" then
+        return self:drawBreakDetail(row, self.detailX, self.boxY + CONTENT_TOP, self.detailW)
+    end
     local item = row.item
     local x, w = self.detailX, self.detailW
     local y = self.boxY + CONTENT_TOP
@@ -886,6 +1042,9 @@ function ForgePanel:drawBill(row, cost, x, y, w, batch, aim, level)
     -- item selected would still answer a click after the thing it belonged to stopped being drawn.
     self.chipRects = {}
     self.forgeRect = nil
+    -- ...and the other pane's button, which is drawn by a different function on a different tab: a
+    -- rect left standing answers clicks on behalf of a control that is no longer on screen.
+    self.breakRect = nil
 
     if not cost then
         love.graphics.setFont(self.bodyFont)
@@ -1022,6 +1181,7 @@ function ForgePanel:cursorKind(x, y)
         if pointIn(self.segRects[m], x, y) then return "hand" end
     end
     if pointIn(self.forgeRect, x, y) then return "hand" end
+    if pointIn(self.breakRect, x, y) then return "hand" end
     if self.track and ForgeTrack.hit(self.track, x, y) then return "hand" end
     if self:hasRows() then
         for i = 1, #self.rows do
@@ -1042,7 +1202,7 @@ function ForgePanel:mousepressed(x, y, button)
         if pointIn(self.segRects[m], x, y) then self:setMode(m) return end
     end
     if self:hasRows() then
-        if pointIn(self.forgeRect, x, y) then
+        if pointIn(self.forgeRect, x, y) or pointIn(self.breakRect, x, y) then
             Sound.play("ui.confirm")
             self:commit()
             return

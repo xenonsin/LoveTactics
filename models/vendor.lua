@@ -160,8 +160,31 @@ end
 -- game to hang off a table every quest and shop already loads -- and a new top-level require reorders
 -- `pairs` over the registry, which is enough on its own to redden a spec that has nothing to do with
 -- this change.
+-- `unstocked` IS THE ONE THING A FOUND WARE CAN SAY THAT KEEPS IT OFF A COUNTER FOREVER.
+--
+-- The recut's rule is that a found ware reaches a shelf once the company has carried one out, and that
+-- rule is right for the catalogue: a house is a record of what you have brought it. But it leaves no
+-- way to author a piece that is *only* ever taken off a body -- and that is exactly what a rift-only
+-- rule-breaker is (docs/drops.md). Without this flag the second copy of the rarest thing in the game is
+-- something you buy, which is the whole of what makes it rare undone by a counter.
+--
+-- IT IS NOT `bound`. Bound means nailed to one grid -- never earned, moved or carried, which is what
+-- keeps a boss's phase machinery out of the player's hands. An unstocked piece is yours: take it, keep
+-- it, move it between your own bodies, forge it, break it down (models/salvage.lua). What it is not is
+-- MERCHANDISE.
+--
+-- Answered here, at the price, rather than at Vendor.sells -- because a thing with no price is a thing
+-- no counter can quote, and every caller that wants to know "would a shop deal this" already comes
+-- through this function.
+--
+-- WHICH ALSO MEANS IT CANNOT BE SOLD, because Vendor.sellValue reads this same figure -- and that is the
+-- better rule rather than a side effect worth patching around. A piece that exists only where it fell
+-- has no market price in either direction: there is nobody to buy one from and nobody who would know
+-- what to pay for one. The company's options are to use it or to break it, which is exactly the shape a
+-- thing this rare should have.
 function Vendor.foundPrice(item)
     if not (item and item.dropTier) then return nil end
+    if item.unstocked then return nil end
     return require("models.grade").priceFor(math.max(0, item.dropTier - 1), item.type)
 end
 

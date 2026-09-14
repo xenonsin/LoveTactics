@@ -475,6 +475,16 @@ function Save.snapshot(player)
         if seen then found[itemId] = true end
     end
 
+    -- WHICH BODIES HAVE BEEN FOUGHT (models/bestiary.lua). The other half of the chase board: `found`
+    -- above says which items have been carried out, this says which bodies are known to carry them, and
+    -- the bestiary redacts a row that is on a met body's list and not in `found`. Additive like every
+    -- set around it, so Save.VERSION does NOT move -- an older save loads having met nothing, and fills
+    -- the book in again on its next fight, which costs it nothing it can notice.
+    local met = {}
+    for charId, seen in pairs(player.met or {}) do
+        if seen then met[charId] = true end
+    end
+
     local announcedDisciplines = {}
     for classId, seen in pairs(player.announcedDisciplines or {}) do
         if seen then announcedDisciplines[classId] = true end
@@ -717,6 +727,7 @@ function Save.snapshot(player)
         recipes = recipes,
         visitedVendors = visitedVendors,
         found = found,
+        met = met,
         announcedDisciplines = announcedDisciplines,
         seenDoors = seenDoors,
         flags = flags,
@@ -972,6 +983,15 @@ function Save.restore(snap)
         if known(Item.defs, itemId) and seen then found[itemId] = true end
     end
 
+    -- THE BESTIARY (models/bestiary.lua): which bodies this company has fought. Filtered through
+    -- `known` like every id set here, so a character deleted from data/ drops out rather than leaving
+    -- an entry the book cannot draw. Nil on an older save, which loads as a company that has met
+    -- nothing -- and fills in again on its next fight.
+    local met = {}
+    for charId, seen in pairs(snap.met or {}) do
+        if known(require("models.character").defs, charId) and seen then met[charId] = true end
+    end
+
     -- Class-unlocked announcement flags (states/hub.lua). Same shape and same forgiving default:
     -- nil on an older save loads empty, so an already-unlocked discipline simply announces once more.
     local announcedDisciplines = {}
@@ -1106,6 +1126,7 @@ function Save.restore(snap)
         recipes = recipes,
         visitedVendors = visitedVendors,
         found = found,
+        met = met,
         announcedDisciplines = announcedDisciplines,
         seenDoors = seenDoors,     -- nil on an older save, which is what the hub seeds off (see above)
         flags = flags,             -- absent on a save from before this existed; empty reads as unanswered

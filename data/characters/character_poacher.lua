@@ -26,6 +26,13 @@ return {
         "utility_quarrys_due",  "utility_the_long_wait", "armor_leather_armor",
         "consumable_healing_potion", "utility_quarrys_end",             false,
     },
+    drops = {
+        "utility_zephyr_striders",
+        "armor_opportunists_harness",
+        "armor_cutpurse_coat",
+        "utility_greyveil_cloak",
+        "weapon_main_gauche",
+    },
     defaultAction = "weapon_poachers_kris",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
     -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the

@@ -57,20 +57,17 @@ local GRAVITY = 520              -- px/s^2 on the thrown shards
 -- it -- the top of a scale wants to read as a different kind of thing, not as more of the last one.
 -- Deliberately the same four waypoints the crossing uses, so the two reveals agree about what "good"
 -- looks like in this city.
-local BANDS = {
-    { 0.360, 0.498, 0.659 }, -- +1     dim steel
-    { 0.435, 0.596, 0.835 }, -- +2     steel
-    { 0.831, 0.729, 0.447 }, -- +3-4   the house gold
-    { 0.878, 0.573, 0.310 }, -- +5-6   hot amber
-    { 0.788, 0.639, 0.925 }, -- +7up   violet
-}
+-- THE LADDER MOVED TO ui/theme.lua (Theme.GRADE_BANDS) and this is the reading of it. A third surface
+-- wanted the same five swatches -- a find's rank, drawn at the moment it drops (docs/drops.md) -- and
+-- the paragraph above already claimed the two reveals agree about what good looks like in this city.
+-- Two copies is how that claim stops being true without anybody editing a colour.
+--
+-- Ten is the forge's own top (Item.MAX_LEVEL), passed rather than assumed so this reading says which
+-- ladder it is on.
+local LEVEL_TOP = 10
 
 local function bandFor(level)
-    if level <= 1 then return BANDS[1] end
-    if level == 2 then return BANDS[2] end
-    if level <= 4 then return BANDS[3] end
-    if level <= 6 then return BANDS[4] end
-    return BANDS[5]
+    return Theme.gradeBand(level, LEVEL_TOP)
 end
 
 local function easeOut(t) return 1 - (1 - t) * (1 - t) end

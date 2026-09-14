@@ -36,6 +36,13 @@ return {
     },
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so
     -- its range shows, and driving the basic click-to-use. The player can re-pin any ability.
+    drops = {
+        "utility_bloodstone_focus",
+        "armor_sealed_coat",
+        "utility_codex_of_hubris",
+        "weapon_reflecting_wand",
+        "weapon_turning_year",
+    },
     defaultAction = "ability_fireball",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
     -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the

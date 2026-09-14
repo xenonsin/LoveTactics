@@ -388,6 +388,64 @@ function Theme.crest(cx, cy, r, color)
         cx + i, cy + i, cx, cy + r * 0.35, cx - i, cy + i, cx - o, cy - r * 0.1, cx - i, cy - i * 0.2)
 end
 
+-- ---------------------------------------------------------------------------
+-- The grade ladder: what "good" looks like, on every surface that says it
+-- ---------------------------------------------------------------------------
+
+-- FIVE BANDS, cool-and-dim to warm-and-bright, with the top stepping OUT of the warm family into
+-- violet rather than continuing it -- the top of a scale wants to read as a different KIND of thing,
+-- not as more of the last one.
+--
+-- IT LIVED IN ui/panels/identify_reveal.lua AND NOW LIVES HERE, because a third surface wanted it
+-- (ui/panels/loot_reveal.lua, drawing a find's rank at the moment it lands -- docs/drops.md). Two
+-- copies of a five-swatch ladder is how a city ends up disagreeing with itself about what good looks
+-- like, and the reveal's own header already claimed the opposite: "deliberately the same four
+-- waypoints the crossing uses, so the two reveals agree".
+--
+-- A ladder rather than a per-step table on purpose: the scales that read it run to eight and ten, and
+-- ten authored swatches would be ten chances for two neighbours to be indistinguishable.
+Theme.GRADE_BANDS = {
+    { 0.360, 0.498, 0.659 }, -- dim steel
+    { 0.435, 0.596, 0.835 }, -- steel
+    { 0.831, 0.729, 0.447 }, -- the house gold
+    { 0.878, 0.573, 0.310 }, -- hot amber
+    { 0.788, 0.639, 0.925 }, -- violet
+}
+
+-- The band for step `n` of a ladder whose top is `top` (default 10, the forge's). Proportional rather
+-- than a threshold list, so a shorter ladder -- a find's depth runs 1..8, a forge level 1..10 -- lands
+-- on the same shape instead of bunching at one end.
+--
+-- The forge's own cut was 1 / 2 / 3-4 / 5-6 / 7up, and the proportional reading reproduces it closely
+-- enough that a player who learned one reads the other. `n` below 1 answers the bottom band rather
+-- than nil: a thing with no rank at all is the least interesting thing on the card, not an error.
+function Theme.gradeBand(n, top)
+    local bands = Theme.GRADE_BANDS
+    top = math.max(1, top or 10)
+    n = math.max(1, math.min(top, n or 1))
+    -- -1/-1 so step 1 lands on band 1 and the top step lands on the last band exactly.
+    local t = (n - 1) / math.max(1, top - 1)
+    return bands[math.max(1, math.min(#bands, 1 + math.floor(t * (#bands - 1) + 0.5)))]
+end
+
+-- THE OTHER CHANNEL. A count of struck marks beside the colour, because hue alone is a fragile carrier
+-- -- it fails on a dim panel, in daylight, and for anyone with a colour vision deficiency -- and a
+-- count does not. Drawn right-to-left from (x, y) so a badge can sit in a card's corner without the
+-- caller measuring it first. Returns the width it used.
+--
+-- The marks are TALL AND THIN and the stack badge beside them is a rounded plate, which is the rule
+-- about two marks on one card separating by SHAPE rather than by hue.
+function Theme.gradeMarks(n, x, y, color, alpha)
+    local w, h, gap = 3, 9, 3
+    n = math.max(0, math.min(5, n or 0))
+    if n == 0 then return 0 end
+    Theme.set(color or Theme.frame, alpha or 1)
+    for i = 1, n do
+        love.graphics.rectangle("fill", x - (i - 1) * (w + gap) - w, y, w, h)
+    end
+    return n * (w + gap) - gap
+end
+
 -- Carved L-bracket ornaments at the four corners of a rect -- the engraved-plate look. `len` is the
 -- arm length; draws in `color` (default frame). Sits just inside the border it decorates.
 function Theme.corners(x, y, w, h, len, color)

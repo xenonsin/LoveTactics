@@ -26,6 +26,13 @@ return {
         "consumable_wildcraft_poultice", "consumable_bitterroot_draught", "utility_cullers_kit",
         "consumable_healing_potion", "utility_cullers_basket",          false,
     },
+    drops = {
+        "armor_bogwalkers_coat",
+        "utility_quarrys_due",
+        "utility_thrill_of_the_hunt",
+        "weapon_limning_bow",
+        "weapon_sunfall",
+    },
     defaultAction = "weapon_iron_bow",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
     -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the

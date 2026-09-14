@@ -364,14 +364,43 @@ function LootReveal:drawParticles(ox, oy)
     end
 end
 
+-- WHAT RANK A FIND IS, on the ladder Theme.gradeBand reads. `Spoils.depthOf` is the axis the whole
+-- found catalogue is ordered on -- how dear a thing is, the deeper of its own rank and its class gate
+-- -- so it is the honest answer to "is this worth looking at" and it is already derived for every
+-- item in the game (docs/shelf.md).
+--
+-- A HUSK ANSWERS NOTHING, deliberately. Its whole point is that its quality is unknown until the
+-- Touchstone reads it (docs/identification.md), and a rank badge on the card would print the answer
+-- the fee is charged for. The husk has its own card treatment and keeps it.
+local function rankOf(item)
+    if not item or not item.id then return nil end
+    if require("models.identify").isUnidentified(item) then return nil end
+    local def = require("models.item").defs[item.id]
+    if not (def and def.dropTier) then return nil end
+    return require("models.spoils").depthOf(def)
+end
+
+-- The top of the ladder a find's rank sits on, so the band reading says which scale it is on rather
+-- than inheriting the forge's ten.
+local RANK_TOP = 8
+
 function LootReveal:drawCard(item, count, cx, cy, alpha, scale, focused)
     local w, h = CARD_W * scale, CARD_H * scale
     local x, y = cx - w / 2, cy - h / 2
+    local rank = rankOf(item)
+    local band = rank and Theme.gradeBand(rank, RANK_TOP) or nil
 
     love.graphics.setColor(0.15, 0.16, 0.21, alpha)
     love.graphics.rectangle("fill", x, y, w, h, 6, 6)
+    -- THE RANK TAKES THE BORDER, which is the 150-millisecond half of the appraisal: a player reads
+    -- the edge of the card before they read a word on it. Focus still wins the border outright --
+    -- where the selection is has to stay the loudest thing on any screen (Theme.cursor's rule) -- so
+    -- an unfocused card wears its rank and the focused one wears the cursor.
     if focused then
         love.graphics.setColor(0.95, 0.85, 0.55, alpha)
+        love.graphics.setLineWidth(2)
+    elseif band then
+        love.graphics.setColor(band[1], band[2], band[3], alpha * 0.95)
         love.graphics.setLineWidth(2)
     else
         love.graphics.setColor(0.45, 0.48, 0.58, alpha * 0.8)
@@ -407,6 +436,19 @@ function LootReveal:drawCard(item, count, cx, cy, alpha, scale, focused)
     love.graphics.setFont(font)
     love.graphics.setColor(0.92, 0.92, 0.96, alpha)
     love.graphics.print(name, cx - font:getWidth(name) / 2, y + h - 16 * scale)
+
+    -- THE SECOND CHANNEL: one struck mark per band of rank, along the card's bottom-left. Hue alone is
+    -- a fragile carrier -- it fails on a dim panel, in daylight, and for a colour vision deficiency --
+    -- and a count does not, which is the rule ui/panels/identify_reveal.lua already works to.
+    --
+    -- It separates from the stack badge by SHAPE and not by hue: these are tall thin strokes low-left,
+    -- that is a rounded plate with a number in it high-right. Two marks on one card that differed only
+    -- in colour would be two readings of the same thing.
+    if band and rank then
+        local step = math.max(1, math.min(#Theme.GRADE_BANDS,
+            1 + math.floor(((rank - 1) / math.max(1, RANK_TOP - 1)) * (#Theme.GRADE_BANDS - 1) + 0.5)))
+        Theme.gradeMarks(step, x + 6 + step * 6, y + h - 27 * scale, band, alpha)
+    end
 
     -- Stack badge in the top-right corner when the chest gave more than one of this item.
     if count and count > 1 then

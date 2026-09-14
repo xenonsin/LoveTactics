@@ -33,6 +33,13 @@ return {
         false,               false,             false,
         false,               false,             false,
     },
+    drops = {
+        "utility_held_ground",
+        "armor_buckler",
+        "armor_reflecting_shield",
+        "utility_odds_against",
+        "weapon_second_rank",
+    },
     defaultAction = "weapon_iron_sword",
     -- Basic tactics (models/ai.lua): press the wounded -- finish the foe already closest to falling.
     -- His `guard` leash still holds him to the camp; this only decides who he strikes once they come.

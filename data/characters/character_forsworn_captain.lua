@@ -56,6 +56,13 @@ return {
         "armor_wardens_oath", "utility_lent_aegis", false,
         false,                false,                false,
     },
+    drops = {
+        "armor_bulwark_shield",
+        "utility_aegis_of_the_oath",
+        "armor_skeptics_harness",
+        "utility_wardens_writ",
+        "weapon_knell_point",
+    },
     defaultAction = "weapon_iron_mace",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
     -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua).

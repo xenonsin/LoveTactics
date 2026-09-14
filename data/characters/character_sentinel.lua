@@ -27,6 +27,13 @@ return {
         "ability_straw_sentry", "utility_lent_aegis",   "utility_unyielding_seal",
         "armor_bulwark_shield", "consumable_healing_potion", "armor_standing_debt",
     },
+    drops = {
+        "armor_shared_bulwark",
+        "utility_stripped_plate",
+        "utility_dampening_oath",
+        "weapon_crescent_blade",
+        "weapon_marching_standard",
+    },
     defaultAction = "weapon_iron_sword",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
     -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the

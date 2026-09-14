@@ -38,6 +38,13 @@ return {
     },
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so its
     -- range shows, and driving the basic click-to-use. The player can re-pin any ability.
+    drops = {
+        "weapon_bellfounders_hammer",
+        "weapon_bellowing_edge",
+        "weapon_carrion_axe",
+        "weapon_avalanche",
+        "weapon_hollow_arc",
+    },
     defaultAction = "weapon_iron_axe",
     -- The two items that ARE this unit. Draft mode strips a bought body down to exactly these
     -- (models/draft_chassis.lua), so a drafted fighter arrives as axe-and-Rend: cut one body open, then

@@ -396,4 +396,55 @@ return {
             assert(Identify.everFound(player), "the door came off the plaza after being used")
         end,
     },
+    {
+        -- THE RE-PRICE, PINNED. `Identify.fee` was 60 + 20f, which measured about twelve per cent of a
+        -- complete descent's purse -- a cost nobody looks at, which means the room's question (name
+        -- this one, or let it go) was never actually asked.
+        --
+        -- ANCHORED TO WHAT A FLOOR PAYS rather than to a gold figure, because a bare threshold is the
+        -- thing that goes stale silently: models/spoils.lua's income has moved twice already, and an
+        -- assertion on "at least 300 gold" would keep passing while the purse grew around it. An end
+        -- purse is the one number that tracks depth the way the fee does, and a floor carries about two
+        -- of them, so a husk costing a real share of ONE end is a satchel that has to be budgeted.
+        name = "naming a find costs a real share of what its floor pays",
+        fn = function()
+            local Descent = require("models.descent")
+            local Spoils = require("models.spoils")
+            for floor = 1, Descent.FLOORS do
+                local level = floor * Descent.LEVEL_PER_FLOOR
+                local fee = Identify.fee({ unidentified = floor })
+                local end_ = Spoils.endPurse("elite", level)
+                assert(end_ > 0, "the fixture must actually pay an end purse on floor " .. floor)
+                local share = fee / end_
+                assert(share >= 0.25, "floor " .. floor .. ": naming costs " .. fee ..
+                    " against an end purse of " .. end_ .. " (" .. math.floor(share * 100) ..
+                    "%) -- a fee this small is noise, not a decision")
+                assert(share <= 1.2, "floor " .. floor .. ": naming costs " .. fee ..
+                    " against an end purse of " .. end_ .. " (" .. math.floor(share * 100) ..
+                    "%) -- past an end's whole purse it stops being a choice and starts being a wall")
+            end
+        end,
+    },
+    {
+        -- The symmetry is what made the re-price safe: a dearer reading is also a dearer sale, so a
+        -- company that cannot afford to name its finds is richer for selling them. If those two ever
+        -- come apart, raising the fee starts pricing a need (docs/the-count.md).
+        --
+        -- EXERCISED RATHER THAN COMPARED, because there is no sell-price function to read: Identify.sell
+        -- pays Identify.fee straight out of its own body, and a case that asserted on a second accessor
+        -- would be pinning a number this code does not consult.
+        name = "the sale still pays exactly what the reading charges, at the new price",
+        fn = function()
+            for floor = 1, 8 do
+                local husk = Identify.sealed(sealableId(), floor, 2)
+                local player = stubPlayer(0)
+                player.stash[1] = husk
+                local ok = Identify.sell(player, husk)
+                assert(ok, "the sale should have gone through on floor " .. floor)
+                assert(player.gold == Identify.fee(husk),
+                    "floor " .. floor .. ": sold for " .. player.gold ..
+                    " but naming costs " .. Identify.fee(husk))
+            end
+        end,
+    },
 }

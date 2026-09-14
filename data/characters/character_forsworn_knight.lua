@@ -28,6 +28,13 @@ return {
         false,               false,             false,
         false,               false,             false,
     },
+    drops = {
+        "armor_kept_wound_shield",
+        "armor_whirlplate",
+        "weapon_shepherds_crook",
+        "weapon_pestilent_flail",
+        "weapon_wetstone_mace",
+    },
     defaultAction = "weapon_iron_spear",
     -- Basic tactics (models/ai.lua): the spear is the whole job. Press hard whenever two or more foes
     -- are on the board -- Acedia's oath makes the huddle, and the scorer finds the tile that skewers

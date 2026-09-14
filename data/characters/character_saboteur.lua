@@ -26,6 +26,13 @@ return {
         "ability_ghost_kit",   "ability_bring_it_down", "consumable_sappers_line",
         "consumable_healing_potion", "utility_the_signal",          false,
     },
+    drops = {
+        "utility_feather_boots",
+        "utility_deadhand_grip",
+        "armor_second_chance_vest",
+        "utility_substitution",
+        "weapon_quietus",
+    },
     defaultAction = "ability_set_charge",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
     -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the

@@ -141,6 +141,20 @@ function gate:build()
     -- reason the inn and the store are: this screen is a hole in the ground and a look at the company,
     -- not a counter. The mule's ladder (models/mule.lua) still exists -- it just does not get bought at
     -- the mouth of the stair.
+    -- THE BOOK, and it opens HERE rather than from a door in the city, because the question it answers
+    -- is asked at the mouth of the stair: what am I going down for (models/bestiary.lua,
+    -- docs/drops.md). It is a record the company keeps, not a counter somebody stands behind, so it
+    -- wants no building, no keeper and no unlock.
+    --
+    -- Drawn unconditionally. An empty book is not a missing control -- it says what fills it in, which
+    -- is exactly what a player who has never opened it needs to read.
+    items[#items + 1] = { label = "The Book", action = function()
+        gate.panel = require("ui.panels.bestiary").new({
+            player = gate.player,
+            onClose = function() gate.panel = nil end,
+        })
+    end }
+
     items[#items + 1] = { label = "Back to the City", action = function()
         State.switch(require("states.hub"))
     end }

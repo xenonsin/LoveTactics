@@ -26,6 +26,13 @@ return {
         "ability_the_long_prayer", "utility_vigil_beads", "armor_silk_robes",
         "consumable_healing_potion", "utility_unbroken_vigil",            false,
     },
+    drops = {
+        "armor_gaunt_vigil_plate",
+        "utility_mana_wellspring",
+        "utility_arcane_conduit",
+        "utility_resonant_grip",
+        "weapon_sealed_ward_wand",
+    },
     defaultAction = "weapon_litany_staff",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
     -- Draft mode strips a bought body down to exactly these (models/draft_chassis.lua), so the

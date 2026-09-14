@@ -31,6 +31,53 @@ local function realRoster(id, n)
     return units
 end
 
+-- Stamp a `drops` list onto a blueprint for the length of one case, and hand back the undo. The
+-- authored route reads Character.defs directly, so this is the whole of what a fixture needs -- and
+-- stamping rather than picking a body that already carries one keeps these cases true while the
+-- catalogue is still being authored (docs/drops.md).
+local function withDrops(charId, list)
+    local def = Character.defs[charId]
+    local had = def.drops
+    def.drops = list
+    return function() def.drops = had end
+end
+
+-- An unbound item the rift will give up at the shallowest depth there is, chosen by SCANNING rather
+-- than typed, so a re-tier moves the fixture instead of reddening the spec on an id that moved.
+local function shallowItem()
+    local best
+    for id, def in pairs(Item.defs) do
+        if def.dropTier and not def.bound and Spoils.depthOf(def) <= 1 then
+            if not best or id < best then best = id end
+        end
+    end
+    return best
+end
+
+-- Two distinct shallow ones, for the unowned-first case.
+local function twoShallowItems()
+    local out = {}
+    for id, def in pairs(Item.defs) do
+        if def.dropTier and not def.bound and Spoils.depthOf(def) <= 1 then out[#out + 1] = id end
+    end
+    table.sort(out)
+    return out[1], out[2]
+end
+
+-- ...and one ranked or gated well past the top of a shallow floor, for the depth-gate case.
+local function deepItem()
+    local best, bestDepth
+    for id, def in pairs(Item.defs) do
+        if def.dropTier and not def.bound then
+            local d = Spoils.depthOf(def)
+            if d >= 8 and (not bestDepth or d > bestDepth or (d == bestDepth and id < best)) then
+                best, bestDepth = id, d
+            end
+        end
+    end
+    return best
+end
+
 -- The priced, unbound ids a roster is carrying -- the set a carried drop must come from.
 local function carriedIds(units)
     local set = {}
@@ -478,6 +525,160 @@ return {
                 assert(not seen[id], "the exhausted pool must not start repeating: " .. tostring(id))
                 seen[id] = true
             end
+        end,
+    },
+
+    -- ---------------------------------------------------------------------------
+    -- The authored route: a body's own `drops` list (docs/drops.md)
+    -- ---------------------------------------------------------------------------
+    --
+    -- EVERY CASE HERE COLLECTS FIRST, RESTORES, AND ONLY THEN ASSERTS. The runner pcalls a case, so an
+    -- assert that fires inside a `withDrops` window would skip the undo and leave a stamped blueprint
+    -- behind -- which is exactly how the first cut of this block turned one real failure into two, the
+    -- second of them in an unrelated case that had done nothing wrong.
+    {
+        -- The whole point of the third route. A body that is KNOWN FOR something has to be able to hand
+        -- that thing over, off its blueprint rather than off a depth band that happens to reach it.
+        name = "a body's authored drops list can pay out",
+        fn = function()
+            local id = shallowItem()
+            assert(id, "the catalogue must hold at least one shallow unbound item to test with")
+            local restore = withDrops("character_bandit", { id })
+            local seen = false
+            for _ = 1, 400 do
+                for _, got in ipairs(Spoils.roll({
+                    enemyUnits = realRoster("character_bandit", 3), day = 9, floorLevel = 9,
+                }).loot) do
+                    if got == id then seen = true end
+                end
+            end
+            restore()
+            assert(seen, "400 fights against a body listing " .. id .. " never paid one")
+        end,
+    },
+    {
+        -- A list is authored on the BODY, and a body can be met shallower than its best piece is
+        -- ranked or than its class gate allows. Without the depth gate an ordinary floor-one stop
+        -- hands over eight-rung kit purely because somebody wrote it onto a wanderer that rolls early.
+        name = "an authored drop still obeys the depth gate",
+        fn = function()
+            local deep = deepItem()
+            assert(deep, "the catalogue must hold a deep-ranked unbound item to test with")
+            local restore = withDrops("character_bandit", { deep })
+            local leaked = false
+            for _ = 1, 300 do
+                for _, got in ipairs(Spoils.roll({
+                    enemyUnits = realRoster("character_bandit", 3), day = 1, floorLevel = 1,
+                }).loot) do
+                    if got == deep then leaked = true end
+                end
+            end
+            restore()
+            assert(not leaked, deep .. " fell out on floor one; depthOf says "
+                .. tostring(Spoils.depthOf(Item.defs[deep])))
+        end,
+    },
+    {
+        -- Descent.dropFor's rule, lifted: a body with anything new to give gives that. Without it a
+        -- list is a lottery you re-roll for the piece you are missing, which is the frustration the
+        -- boss lists were already designed to avoid.
+        --
+        -- MEASURED AS A RATIO, NOT AS AN ABSENCE, and the reason is worth keeping: the band and the
+        -- carried pool are both still live, so a shallow owned id can and will turn up through them --
+        -- asserting it NEVER appears is a claim about three routes while only one of them is under
+        -- test. What unowned-first actually promises is that the authored route stops offering it, so
+        -- the new one has to come out far oftener than the held one. Without the rule the two would be
+        -- drawn evenly.
+        name = "an authored drop pays what the company does not already hold",
+        fn = function()
+            local a, b = twoShallowItems()
+            assert(a and b, "need two distinct shallow items to test unowned-first")
+            local restore = withDrops("character_bandit", { a, b })
+            local player = { stash = { { id = a } }, roster = {} } -- the company holds `a`
+            local held, new = 0, 0
+            for _ = 1, 800 do
+                for _, got in ipairs(Spoils.roll({
+                    enemyUnits = realRoster("character_bandit", 3), day = 9, floorLevel = 9,
+                    player = player,
+                }).loot) do
+                    if got == a then held = held + 1 elseif got == b then new = new + 1 end
+                end
+            end
+            restore()
+            assert(new > 0, "the unowned entry " .. b .. " never dropped at all")
+            assert(new > held * 2, "unowned-first should favour " .. b .. " heavily, got "
+                .. new .. " new vs " .. held .. " held")
+        end,
+    },
+    {
+        -- The tolerant reading: every caller that has not been taught to pass a player must behave
+        -- exactly as it did, which means the whole list stands rather than nothing does.
+        name = "a body with no drops list is unaffected by the authored route",
+        fn = function()
+            local units = realRoster("character_bandit", 3)
+            assert(not (Character.defs["character_bandit"] or {}).drops,
+                "character_bandit must carry no authored list for this to mean anything")
+            for _ = 1, 200 do
+                for _, got in ipairs(Spoils.roll({ enemyUnits = units, day = 5 }).loot) do
+                    assert(Item.defs[got], "every rolled id still resolves: " .. tostring(got))
+                end
+            end
+        end,
+    },
+    {
+        -- P8: a floor may not pay nothing. At the bare 15% a dry floor of eight fights happens about a
+        -- quarter of the time, which at ~14 husks a run is the experience that ends runs.
+        name = "a dry floor lifts the husk chance until it pays",
+        fn = function()
+            local function rate(drought)
+                local hits = 0
+                for _ = 1, 600 do
+                    local s = Spoils.roll({
+                        enemyUnits = realRoster("character_bandit", 3),
+                        day = 6, floorLevel = 6, kind = "combat", drought = drought,
+                    })
+                    if #(s.sealed or {}) > 0 then hits = hits + 1 end
+                end
+                return hits / 600
+            end
+            local dry0, dry3 = rate(0), rate(3)
+            assert(dry3 > dry0, "three dry stops must lift the chance, got "
+                .. dry0 .. " -> " .. dry3)
+            assert(rate(5) > 0.9, "by the fifth dry stop a husk should be near certain")
+        end,
+    },
+    {
+        -- The half worth protecting: a floor that pays on its first stop has had its rate touched not
+        -- at all, so the common case stays the authored one.
+        name = "no drought leaves the authored rate exactly where it was",
+        fn = function()
+            local hits = 0
+            for _ = 1, 1200 do
+                local s = Spoils.roll({
+                    enemyUnits = realRoster("character_bandit", 3),
+                    day = 6, floorLevel = 6, kind = "combat",
+                })
+                if #(s.sealed or {}) > 0 then hits = hits + 1 end
+            end
+            local rate = hits / 1200
+            -- SEALED_CHANCE.combat is 0.15; the pool can refuse, so this is an upper-bounded band.
+            assert(rate <= 0.15 + 0.04,
+                "an undroughted fight must not exceed its authored 15%, got " .. rate)
+        end,
+    },
+    {
+        -- The tally is a fact about the FLOOR. Carrying it down would let one lucky floor make the next
+        -- four dry ones legal.
+        name = "a new floor resets the husk drought",
+        fn = function()
+            local Descent = require("models.descent")
+            local run = { floor = 1, sealedDrought = 4 }
+            Descent.advance(run)
+            assert(Descent.sealedDrought(run) == 0, "advancing a floor clears the dry spell")
+            Descent.recordSealed(run, false)
+            assert(Descent.sealedDrought(run) == 1, "a dry stop lengthens it")
+            Descent.recordSealed(run, true)
+            assert(Descent.sealedDrought(run) == 0, "a paid stop resets it")
         end,
     },
 }
