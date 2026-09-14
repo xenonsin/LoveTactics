@@ -26,11 +26,11 @@ return {
         "consumable_healing_potion", "utility_borrowed_pelt",                false,
     },
     drops = {
-        "armor_kennelbound_jerkin",
-        "weapon_harriers_bow",
+        "utility_ancestor_mask",
+        "utility_quarrys_due",
+        "utility_skirmishers_momentum",
+        "weapon_poachers_kris",
         "utility_cullers_kit",
-        "utility_totem_carvers_kit",
-        "weapon_piercing_draw",
     },
     defaultAction = "weapon_iron_bow",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

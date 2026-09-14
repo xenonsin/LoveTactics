@@ -43,11 +43,11 @@ return {
     -- its range shows, and driving the basic click-to-use. Jolt (an offensive zap) keeps click-to-
     -- attack intuitive; the player can re-pin the heal or any other ability.
     drops = {
-        "armor_crusaders_tabard",
-        "armor_robes_unbidden",
-        "armor_hem_of_the_stayed_hand",
-        "utility_coveted_blood",
-        "weapon_intercessors_staff",
+        "armor_censer_cloth_habit",
+        "armor_reliquary_mantle",
+        "armor_vestments_open_hand",
+        "utility_shared_ledger",
+        "armor_vow_marked_plate",
     },
     defaultAction = "ability_minor_shock",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

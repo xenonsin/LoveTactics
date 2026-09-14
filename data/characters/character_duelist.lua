@@ -27,11 +27,11 @@ return {
         "consumable_healing_potion", "weapon_long_bout",             false,
     },
     drops = {
-        "utility_vanishing_act",
-        "armor_unlit_hood",
-        "utility_duelists_poise",
         "weapon_kingsblood_dagger",
-        "weapon_thin_place",
+        "weapon_main_gauche",
+        "weapon_nightjar",
+        "weapon_quietus",
+        "weapon_throughline",
     },
     defaultAction = "weapon_main_gauche",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

@@ -27,11 +27,11 @@ return {
         "consumable_healing_potion", "utility_unbroken_vigil",            false,
     },
     drops = {
-        "armor_gaunt_vigil_plate",
-        "utility_mana_wellspring",
-        "utility_arcane_conduit",
-        "utility_resonant_grip",
-        "weapon_sealed_ward_wand",
+        "utility_bloodstone_focus",
+        "weapon_emberwand",
+        "weapon_reflecting_wand",
+        "weapon_turning_year",
+        "weapon_silencing_blade",
     },
     defaultAction = "weapon_litany_staff",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

@@ -34,11 +34,11 @@ return {
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so its
     -- range shows, and driving the basic click-to-use. The player can re-pin any ability.
     drops = {
-        "armor_smokecloth_wrap",
-        "utility_cutpurse_tally",
+        "utility_sidelong_greaves",
+        "utility_vanishing_act",
+        "armor_opportunists_harness",
         "utility_skimmers_cut",
-        "utility_reading_the_blade",
-        "weapon_nightjar",
+        "armor_smoke_mantle",
     },
     defaultAction = "weapon_iron_dagger",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

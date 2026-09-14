@@ -27,11 +27,11 @@ return {
         "consumable_healing_potion", "utility_the_signal",          false,
     },
     drops = {
-        "utility_feather_boots",
-        "utility_deadhand_grip",
+        "utility_slipchain_charm",
+        "utility_zephyr_striders",
+        "utility_cutpurse_tally",
         "armor_second_chance_vest",
-        "utility_substitution",
-        "weapon_quietus",
+        "utility_breakers_wedge",
     },
     defaultAction = "ability_set_charge",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

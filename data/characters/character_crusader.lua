@@ -27,11 +27,11 @@ return {
         "consumable_healing_potion", "armor_marching_vow",               false,
     },
     drops = {
+        "armor_outriders_harness",
+        "utility_arcane_conduit",
+        "utility_battle_casting",
+        "utility_resonant_grip",
         "utility_brawlers_bandolier",
-        "utility_field_still",
-        "utility_round_for_the_house",
-        "utility_survivors_reflex",
-        "weapon_anvil_of_the_ninth",
     },
     defaultAction = "ability_smite",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

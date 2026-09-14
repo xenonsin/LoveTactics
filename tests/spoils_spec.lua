@@ -724,4 +724,133 @@ return {
             end
         end,
     },
+    {
+        -- THE ASK, IN ONE CASE: "each character has a meaningful droplist with a powerful one as low
+        -- percentage." Measured off the real catalogue rather than a fixture, so a re-deal that
+        -- flattened a list would redden here.
+        name = "a body's best piece is rare, and stays rare once its commons are held",
+        fn = function()
+            local Character = require("models.character")
+            -- Any body whose list actually has a deepest entry above the rest.
+            local id, list, deepest, dd
+            for _, cid in ipairs((function()
+                local out = {}
+                for k in pairs(Character.defs) do out[#out + 1] = k end
+                table.sort(out) return out
+            end)()) do
+                local drops = (Character.defs[cid] or {}).drops
+                if drops and #drops > 2 then
+                    local lo, hi, best = nil, -1, nil
+                    for _, i in ipairs(drops) do
+                        local d = Spoils.depthOf(Item.defs[i])
+                        if not lo or d < lo then lo = d end
+                        if d > hi then hi, best = d, i end
+                    end
+                    if hi > lo then id, list, deepest, dd = cid, drops, best, hi break end
+                end
+            end
+            assert(id, "no body carries a list with a standout -- run `. drop-assign apply`")
+
+            local units = {}
+            for i = 1, 3 do units[i] = { char = Character.instantiate(id) } end
+            local function rate(player)
+                local hits, N = 0, 4000
+                for _ = 1, N do
+                    for _, got in ipairs(Spoils.roll({ enemyUnits = units, day = 30, floorLevel = 8,
+                        player = player }).loot) do
+                        if got == deepest then hits = hits + 1 end
+                    end
+                end
+                return hits / N
+            end
+
+            local fresh = rate(nil)
+            assert(fresh > 0, deepest .. " never dropped in 4000 fights -- it is not reachable at all")
+            assert(fresh < 0.15, "the standout paid " .. math.floor(fresh * 100)
+                .. "% of fights, which is not a chase")
+
+            -- THE HALF THAT MATTERS. Filtering the pool to what is unowned would make the standout the
+            -- guaranteed next drop once the commons are held -- a pity timer wearing a rarity's
+            -- clothes. The draw runs over the whole list and simply declines a held entry, so the rate
+            -- must NOT climb.
+            local farmed = { stash = {}, roster = {} }
+            for _, i in ipairs(list) do
+                if i ~= deepest then farmed.stash[#farmed.stash + 1] = { id = i } end
+            end
+            local held = rate(farmed)
+            assert(held < fresh * 2, "holding the commons lifted " .. deepest .. " from "
+                .. string.format("%.1f%% to %.1f%%", fresh * 100, held * 100)
+                .. " -- the chase collapsed into a countdown")
+        end,
+    },
+    {
+        -- WHAT A FLOOR PAYS HAS TO BELONG TO THAT FLOOR. `tier` was always a hard ceiling, so nothing
+        -- ever dropped ABOVE the floor -- but nothing pulled toward it either, and two separate things
+        -- were pulling away from it:
+        --
+        --   the band weighted `1 + (tier - depth) / tier`, which is its own stated intent inverted --
+        --   the further BELOW the floor an item sat the likelier it got;
+        --   and the carried pool (~74% of all drops) had no depth relationship at all, so a floor-8
+        --   fight against bandits paid iron swords, because that is what a bandit holds and
+        --   Growth.spawn levels a body's stats rather than its gear.
+        --
+        -- Measured before: floor 8 averaged depth 1.98 with 7.6% of drops near its own tier. After:
+        -- 5.21 and 40.7%.
+        name = "a deep floor pays gear that belongs to it",
+        fn = function()
+            local Character = require("models.character")
+            local function sample(floor)
+                local units = {}
+                for i = 1, 3 do units[i] = { char = Character.instantiate("character_bandit") } end
+                local sum, n = 0, 0
+                for _ = 1, 1500 do
+                    for _, got in ipairs(Spoils.roll({ enemyUnits = units, day = 20,
+                        floorLevel = floor * 2 }).loot) do
+                        sum, n = sum + Spoils.depthOf(Item.defs[got]), n + 1
+                    end
+                end
+                assert(n > 200, "floor " .. floor .. " paid almost nothing -- nothing to measure")
+                return sum / n
+            end
+
+            local shallow, deep = sample(1), sample(8)
+            assert(deep > shallow * 2, "floor 8 averaged depth " .. string.format("%.2f", deep)
+                .. " against floor 1's " .. string.format("%.2f", shallow)
+                .. " -- what a floor pays has stopped tracking how deep it is")
+        end,
+    },
+    {
+        -- The carried pool is the one that needed a FILTER rather than a weight, and this is why:
+        -- weighting inside a pool only decides which entry leaves it, never whether one does, because
+        -- `pick` normalizes. A guard written as a weight here would have measured as no change at all.
+        name = "a floor too deep for a body's kit stops looting it",
+        fn = function()
+            local Character = require("models.character")
+            local units = {}
+            for i = 1, 3 do units[i] = { char = Character.instantiate("character_bandit") } end
+            local carried = {}
+            for _, u in ipairs(units) do
+                for _, it in ipairs(Character.eachItem(u.char)) do
+                    local def = Item.defs[it.id]
+                    if def and def.price and def.price > 0 then carried[it.id] = true end
+                end
+            end
+            assert(next(carried), "the fixture body must actually carry something priced")
+
+            local function share(floor)
+                local hits, n = 0, 0
+                for _ = 1, 1500 do
+                    for _, got in ipairs(Spoils.roll({ enemyUnits = units, day = 20,
+                        floorLevel = floor * 2 }).loot) do
+                        n = n + 1
+                        if carried[got] then hits = hits + 1 end
+                    end
+                end
+                return hits / math.max(1, n)
+            end
+
+            assert(share(1) > 0.4, "a floor at the body's own depth still loots it")
+            assert(share(8) < 0.1, "a floor eight rungs past a rusted sword should stop paying one")
+        end,
+    },
 }

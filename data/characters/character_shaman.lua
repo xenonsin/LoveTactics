@@ -26,11 +26,11 @@ return {
         "consumable_healing_potion", "utility_old_wind",           false,
     },
     drops = {
-        "armor_stalkers_pelt",
-        "armor_outriders_harness",
-        "weapon_long_silence",
+        "armor_kennelbound_jerkin",
+        "utility_companion_whistle",
+        "utility_spirit_fetish",
+        "weapon_harriers_bow",
         "utility_marchstone",
-        "weapon_hailfall_longbow",
     },
     defaultAction = "weapon_iron_bow",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

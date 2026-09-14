@@ -26,11 +26,11 @@ return {
         "armor_leather_armor",   "consumable_healing_potion", "utility_bag_of_holding",
     },
     drops = {
-        "utility_sidelong_greaves",
-        "utility_opportunists_charm",
+        "utility_boots_of_speed",
+        "armor_smokecloth_wrap",
+        "utility_deadhand_grip",
         "armor_slipstep_leathers",
-        "weapon_cutpurse_knife",
-        "weapon_slipknife",
+        "utility_duelists_poise",
     },
     defaultAction = "weapon_cutpurse_knife",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

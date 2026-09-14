@@ -136,6 +136,50 @@ local CARRIED_BIAS = 0.75
 -- it, including the band that stocks the everyday restock.
 local AUTHORED_BIAS = 0.5
 
+-- HOW MUCH RARER EACH RUNG OF DEPTH MAKES AN ENTRY ON ITS OWN BODY'S LIST. A list is not a flat bag:
+-- the whole point of a named body is that it carries one thing worth going back for, and a uniform
+-- draw makes its best piece exactly as common as its worst.
+--
+-- TWO, so each step of depth halves the chance -- but only AMONG THE ORDINARY ENTRIES. What the
+-- standout itself is worth is authored directly, below, rather than falling out of this.
+Spoils.AUTHORED_FALLOFF = 2
+
+-- WHAT THE STANDOUT IS WORTH, as a share of its own body's list. THE ENDPOINT IS AUTHORED AND THE
+-- PER-STEP RATE IS NOT, which is this repo's own rule about any number spent many times: a step size
+-- silently re-prices the end every time the thing it steps across changes length.
+--
+-- It matters here because the depth gap is not uniform. tools/drop_assign.lua gives every body one
+-- piece deeper than the rest, but how MUCH deeper is whatever that class's catalogue happens to
+-- offer -- the Archer's standout sits three rungs above her base, the Alchemist's one. Under a bare
+-- falloff those two would be 8x and 2x rarer than their neighbours, so the same design intent would
+-- read as two completely different items. Pinning the share instead means "the thing this body is
+-- known for" is worth the same wherever the data lands.
+--
+-- TWELVE PER CENT, and the figure to argue with is the per-run one rather than this: a circle fields
+-- about seven gated bodies and a floor holds eight to eleven fights of roughly three bodies, so a
+-- company meets any ONE body three or four times a floor, and a floor per circle per run. Against
+-- AUTHORED_BIAS and the drop chances below that is on the order of a drop every several descents to
+-- that circle -- a chase rather than an errand, and it is deliberately not a pity timer: the piece is
+-- exactly as likely on the fiftieth fight as on the first.
+--
+-- The standout is also DEPTH-GATED like everything else, so it is not even in the pool until the
+-- company is deep enough to be offered it. Shallow floors pay the base of the list and nothing else,
+-- which is the right way round.
+Spoils.AUTHORED_STANDOUT_SHARE = 0.12
+
+-- HOW FAST A FIND BELOW THE FLOOR'S OWN TIER STOPS BEING WORTH PAYING. Every rung of gap between an
+-- item's depth and the floor's tier divides its weight; this is how many rungs of gap halve it.
+--
+-- TWO, so a floor pays mostly within a rung or two of itself: on floor 8 a depth-8 find weighs 1, a
+-- depth-6 one a half, a depth-4 one a quarter, and floor-one stock about a twelfth. Shallow gear is
+-- still reachable -- it has to be, or a deep floor whose own band happens to be thin would pay nothing
+-- at all -- but it stops being the likeliest thing in the pool.
+--
+-- IT DOES NOT TOUCH CONSUMABLES, which are priced and weighed on the branch above. That is deliberate:
+-- a potion is supply rather than a find, the restock has to stay available at every depth, and the
+-- thing being corrected here is a floor handing over GEAR that belongs to a floor it is nowhere near.
+Spoils.DEPTH_MATCH_SPREAD = 2
+
 -- love.math.random when running under LÖVE, else math.random. Same call signatures: () -> [0,1),
 -- (m) -> [1,m], (m,n) -> [m,n]. Kept behind one helper so the whole module is engine-agnostic.
 local function rnd(...)
@@ -284,7 +328,23 @@ local function lootCandidates(maxPrice, tier, pricedOnly)
                 pool[#pool + 1] = { id = id, weight = weight }
             end
         else
-            local weight = 1 + math.max(0, tier - Spoils.depthOf(def)) / math.max(1, tier)
+            -- WEIGHTED TOWARD THE FLOOR'S OWN TIER, and this ran the other way until it was measured.
+            --
+            -- It was `1 + (tier - depth) / tier`, on the argument that "a find well inside the company's
+            -- depth is common, one at the edge of it is rare -- so a floor does not suddenly start
+            -- raining its deepest finds the moment it can reach them." The intent is right and the
+            -- formula is its own opposite: the further BELOW the floor an item sits the heavier it got,
+            -- so floor one stock was the likeliest thing to fall out of the deepest fight in the game.
+            --
+            -- MEASURED before the change, over 4,400 drops a floor: floor 8 averaged depth 1.98, and
+            -- 7.6% of what it paid was anywhere near its own tier. A floor fought at level 16 was
+            -- handing over rung-2 gear nine times in ten.
+            --
+            -- So the curve peaks at the floor's tier and falls away beneath it. The edge is still not
+            -- rained -- `tier` is a hard ceiling a line above, and depth CANNOT exceed it -- but what a
+            -- floor pays now reads as belonging to that floor.
+            local gap = math.max(0, tier - Spoils.depthOf(def))
+            local weight = 1 / (2 ^ (gap / Spoils.DEPTH_MATCH_SPREAD))
             if def.type == "consumable" then weight = weight * 2 end
             pool[#pool + 1] = { id = id, weight = weight }
         end
@@ -299,7 +359,27 @@ end
 -- Tolerant about the shape it is handed, because the callers differ: a live battle passes real
 -- units, and a test or a headless caller may pass bare `{ char = { id = ... } }` stand-ins with no
 -- grid at all. A body with no inventory contributes nothing instead of erroring.
-local function carriedCandidates(enemyUnits)
+-- ...AND WHAT A FLOOR IS TOO DEEP TO BOTHER WITH. `tier` is the floor's own rung; a carried piece more
+-- than this many rungs beneath it is not worth stooping for and drops out of the pool.
+--
+-- THIS HAD TO BE A FILTER AND NOT A WEIGHT, which is the whole reason it exists as a constant. The
+-- carried pool is ~74% of every drop (CARRIED_BIAS), and weighting inside a pool only decides WHICH
+-- entry comes out of it, never whether one does -- `pick` normalizes, so down-weighting every entry
+-- equally changes nothing at all. Measured before this: floor 8 averaged depth 1.98 and paid iron
+-- swords, because the bandits standing on it carry one apiece and `Growth.spawn` levels a body's STATS
+-- and not its gear. A dropped entry lets the draw fall through to the band, which is depth-matched.
+--
+-- FOUR, which on floor 8 keeps anything from rung 4 up and lets floor-one stock go. Generous on
+-- purpose: this is meant to stop a deep fight paying opening-rack gear, not to make a body's own kit
+-- unlootable the moment the company outgrows one rung of it. Shallow floors are untouched -- at tier 2
+-- the cutoff is below every rung there is.
+--
+-- What it does NOT do is break "you took his axe". The axe is still the drop wherever the axe is worth
+-- taking; what stops is a floor-eight corpse handing over a rusted blade because that is what the
+-- blueprint happened to be holding.
+Spoils.CARRIED_DEPTH_REACH = 4
+
+local function carriedCandidates(enemyUnits, tier)
     local pool = {}
     if not enemyUnits then return pool end
     for _, unit in ipairs(enemyUnits) do
@@ -307,7 +387,8 @@ local function carriedCandidates(enemyUnits)
         if char and char.inventory then
             for _, item in ipairs(Character.eachItem(char)) do
                 local def = item.id and Item.defs[item.id]
-                if def and def.price and def.price > 0 and not def.bound then
+                if def and def.price and def.price > 0 and not def.bound
+                    and (not tier or Spoils.depthOf(def) >= tier - Spoils.CARRIED_DEPTH_REACH) then
                     pool[#pool + 1] = { id = item.id, weight = 1 }
                 end
             end
@@ -352,21 +433,73 @@ end
 -- class gate allows. Without the gate an ordinary floor-one stop could hand over eight-rung kit purely
 -- because somebody wrote it onto a wanderer that rolls early.
 local function authoredCandidates(enemyUnits, tier, player)
-    local pool, fresh = {}, {}
+    local pool = {}
     if not enemyUnits then return pool end
     for _, unit in ipairs(enemyUnits) do
         local char = unit and unit.char
         local def = char and char.id and Character.defs[char.id]
-        for _, id in ipairs((def or {}).drops or {}) do
+        -- The list's own shallowest entry is the baseline every other entry is rare AGAINST. Read per
+        -- body rather than per board: a list is a body's own ladder, and two bodies in one fight must
+        -- not have their rarities flattened together by whichever happened to carry the deeper piece.
+        local list = (def or {}).drops or {}
+        local floor_, ceil_ = nil, nil
+        for _, id in ipairs(list) do
             local item = Item.defs[id]
-            if item and not item.bound and Spoils.depthOf(item) <= (tier or 0) then
-                local entry = { id = id, weight = 1 }
-                pool[#pool + 1] = entry
-                if not companyOwns(player, id) then fresh[#fresh + 1] = entry end
+            if item then
+                local d = Spoils.depthOf(item)
+                if not floor_ or d < floor_ then floor_ = d end
+                if not ceil_ or d > ceil_ then ceil_ = d end
             end
         end
+
+        -- Two bands, weighed separately, because they answer different questions. The STANDOUT -- the
+        -- deepest entry on this body's list -- is worth an authored share of the whole. Everything
+        -- under it splits the remainder, halving per rung so the cheap end of a list is its common end.
+        local standouts, ordinary = {}, {}
+        for _, id in ipairs(list) do
+            local item = Item.defs[id]
+            if item and not item.bound and Spoils.depthOf(item) <= (tier or 0) then
+                local row = { id = id, owned = companyOwns(player, id) }
+                if ceil_ and Spoils.depthOf(item) >= ceil_ and (ceil_ > (floor_ or 0)) then
+                    standouts[#standouts + 1] = row
+                else
+                    row.raw = 1 / (Spoils.AUTHORED_FALLOFF
+                        ^ math.max(0, Spoils.depthOf(item) - (floor_ or 0)))
+                    ordinary[#ordinary + 1] = row
+                end
+            end
+        end
+
+        -- A list whose standout the floor cannot reach yet pays its base at full weight rather than at
+        -- 88% of it -- the missing share belongs to a row that is not on the table, and holding it back
+        -- would quietly thin every shallow floor's drops for no reason a player could see.
+        local share = (#standouts > 0 and #ordinary > 0) and Spoils.AUTHORED_STANDOUT_SHARE or nil
+        local rawTotal = 0
+        for _, row in ipairs(ordinary) do rawTotal = rawTotal + row.raw end
+        for _, row in ipairs(ordinary) do
+            row.weight = share and ((1 - share) * row.raw / rawTotal) or (row.raw / rawTotal)
+            pool[#pool + 1] = row
+        end
+        for _, row in ipairs(standouts) do
+            row.weight = share and (share / #standouts) or (1 / #standouts)
+            pool[#pool + 1] = row
+        end
     end
-    return #fresh > 0 and fresh or pool
+    return pool
+end
+
+-- Weighted draw of one ENTRY from a { id, weight, ... } pool, or nil for an empty pool. Split out of
+-- `pick` because the authored route needs the whole row it drew (see `draw`), not just its id.
+local function pickEntry(pool)
+    if #pool == 0 then return nil end
+    local total = 0
+    for _, e in ipairs(pool) do total = total + e.weight end
+    local r = rnd() * total
+    for _, e in ipairs(pool) do
+        r = r - e.weight
+        if r <= 0 then return e end
+    end
+    return pool[#pool] -- float slop guard: the last entry mops up the remainder
 end
 
 -- Weighted draw of one id from a { id, weight } pool, or nil for an empty pool.
@@ -410,7 +543,7 @@ local function rollLoot(day, kind, override, enemyUnits, scale, floorLevel, play
     local depth = math.max(1, math.floor((floorLevel or day or 1) * bump + (elite and 1 or 0)))
     local tier = math.min(Class.CLASS_LEVEL_CAP, depth)
     local band = lootCandidates(maxPrice, tier)
-    local carried = carriedCandidates(enemyUnits)
+    local carried = carriedCandidates(enemyUnits, tier)
     local authored = authoredCandidates(enemyUnits, tier, player)
 
     -- One drop, off the first of three sources that answers. Each drop rolls its own source, so a
@@ -422,7 +555,29 @@ local function rollLoot(day, kind, override, enemyUnits, scale, floorLevel, play
     -- the depth they fought it at. Neither bias is a guarantee: a list is a POOL and not a promise
     -- (docs/drops.md), and whether anything drops at all is still the two rolls below.
     local function draw()
-        if #authored > 0 and rnd() < AUTHORED_BIAS then return pick(authored) end
+        if #authored > 0 and rnd() < AUTHORED_BIAS then
+            -- DRAW, THEN DECLINE IF IT IS ALREADY HELD -- never re-pick. This is the half that keeps a
+            -- powerful entry at a LOW PERCENTAGE instead of at a delay.
+            --
+            -- The first cut filtered the pool down to what the company did not hold (Descent.dropFor's
+            -- rule, and right for a boss list of authored relics). On a weighted body list it quietly
+            -- inverts the design: own the four commons and the pool is the standout ALONE, so the
+            -- rarest thing on the body becomes the guaranteed next drop off it. That is a pity timer
+            -- wearing a rarity's clothes -- "four drops, then the good one" -- and the thing being
+            -- asked for is a chance, not a countdown.
+            --
+            -- So the draw runs over the WHOLE list at its authored weights, and a held entry simply
+            -- pays nothing and falls through to the routes below. A farmed body therefore goes quiet
+            -- rather than raining duplicates, and its best piece stays exactly as rare on the fiftieth
+            -- fight as on the first.
+            --
+            -- WHAT MADE THIS SAFE TO GIVE UP is models/salvage.lua: a duplicate is no longer a dead
+            -- end, it is stock. Dropping the no-duplicate guarantee before the faucet existed would
+            -- have been a straight downgrade.
+            local entry = pickEntry(authored)
+            if entry and not entry.owned then return entry.id end
+            if entry then return nil end
+        end
         if #carried > 0 and rnd() < CARRIED_BIAS then return pick(carried) end
         return pick(band)
     end
@@ -558,6 +713,11 @@ local function sealedCandidates(floor, kind, enemyUnits)
         end
         for i = from, #priced do pool[#pool + 1] = priced[i] end
     else
+        -- NO DEPTH CUTOFF ON THE SEALED PATH, deliberately. A husk's whole point is that the fee reads
+        -- the FLOOR and never the piece (docs/identification.md) -- it is drawn richer than the band
+        -- allows and its value comes from the reading, not from the blueprint underneath. Filtering by
+        -- the blueprint's own rung here would quietly make a deep floor seal nothing off a modest body,
+        -- which is the opposite of what the feature is for.
         for _, entry in ipairs(carriedCandidates(enemyUnits)) do
             if Identify.canSeal(entry.id) then pool[#pool + 1] = entry end
         end

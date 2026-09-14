@@ -3,6 +3,7 @@
 --     & "E:\LOVE\lovec.exe" . drop-report                -- the ledger
 --     & "E:\LOVE\lovec.exe" . drop-report unreachable    -- only what nothing pays
 --     & "E:\LOVE\lovec.exe" . drop-report queued         -- only what sits past the end of a boss queue
+--     & "E:\LOVE\lovec.exe" . drop-report bosses         -- what a general can now let go of
 --     & "E:\LOVE\lovec.exe" . drop-report bodies         -- the placement census on its own
 --
 -- WHY THIS EXISTS, and why it had to be built BEFORE the per-body drop lists rather than after.
@@ -17,19 +18,23 @@
 -- named on a body's list is not reachable unless some encounter seats that body, and an encounter does
 -- not seat a body unless its `condition` passes somewhere on the calendar. So the census is taken by
 -- sweeping Encounter.pool over real contexts and resolving each blueprint's own `composition` -- the same
--- call the overworld makes -- rather than by grepping ids out of the files. 66 of the 154 character
+-- call the overworld makes -- rather than by grepping ids out of the files. 56 of the 154 character
 -- blueprints turn out never to be placed at all, which a read of the data cannot see.
 --
 -- THE FOUR ROUTES an item can reach a player by, and they are not equal:
 --
---   drops     an authored per-body list (`drops` on the character blueprint). The route being built.
+--   drops     an authored per-body list (`drops` on the character blueprint). What a body is KNOWN
+--             for, and the only route a player can aim at on purpose.
 --   carried   the body is holding one, so the carried pool can hand it over (models/spoils.lua's
 --             CARRIED_BIAS). Incidental rather than authored, but real and connected: you took his axe.
 --   boss      Descent.DROPS -- a lieutenant's or a general's list. WALKED UNOWNED-FIRST, so a long list
 --             is a QUEUE and position is reachability: the 21st entry needs 21 separate descents to that
 --             circle. That is what QUEUE_REACH below measures against.
---   band      the depth-banded random draw, which is the fallback the per-body work is set to DELETE.
---             So "band only" is not a route in the finished design -- it is the authoring worklist.
+--   band      the depth-banded random draw. A PERMANENT route and the catalogue's long tail -- not
+--             every item is meant to come off a body (docs/drops.md). Deleting it was decided in
+--             review and then reversed once the per-body pass showed what total coverage costs, so
+--             read "band only" as how much of the catalogue no body is known for: a quality figure
+--             rather than a backlog.
 --
 -- Read nothing into an item appearing under several routes; the report prints the best one it has and
 -- counts the rest, because what matters is whether a player can go and get it on purpose.
@@ -53,7 +58,7 @@ local M = {}
 local QUEUE_REACH = 6
 
 -- WHAT A LEGIBLE LIST LOOKS LIKE, for the bill at the bottom. Five is the figure the catalogue already
--- lands on when it is spread over every placed body (429 / 88), and it is about what a Monster Hunter
+-- lands on when it is spread over every placed body (429 / 98), and it is about what a Monster Hunter
 -- reward table runs -- long enough that a body is known for more than one thing, short enough to read on
 -- a card.
 local TARGET_LIST = 5
@@ -405,8 +410,9 @@ function M.run(args)
     print(string.format("  To land at %d per list you need %d gear-carrying bodies: %+d on today's %d.",
         TARGET_LIST, wanted, wanted - gearBodies, gearBodies))
     print("")
-    print("  Deleting the band (R2-4) makes every BAND ONLY row above an item with no route, so the")
-    print("  two decisions are one piece of work: the bodies have to exist before the fallback goes.")
+    print("  BAND ONLY is the long tail, not a backlog: the band is a permanent route and not every")
+    print("  item is meant to come off a body (docs/drops.md). Read this number as how much of the")
+    print("  catalogue no body is KNOWN FOR -- a quality figure, not a debt.")
     print("")
 end
 

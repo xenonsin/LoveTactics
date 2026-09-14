@@ -1,7 +1,7 @@
 # Drops
 
-Where a found item comes from, which body hands it over, and why the depth-banded random draw is
-being deleted.
+Where a found item comes from, which body hands it over, and why the thing it is known for is the
+rare one.
 
 [shelf.md](shelf.md) settles what an item is *worth* and how deep it falls at. This is the other half:
 **who drops it.** The two meet at one field — `dropTier` says how deep, a body's `drops` list says
@@ -19,21 +19,30 @@ authoring anything here; it is the only pass in the tree that asks whether an it
 | **drops** | a per-body list on the character blueprint | yes — the route being built |
 | **carried** | the body is holding one, so the carried pool can hand it over | incidental |
 | **boss** | `Descent.DROPS` — a lieutenant's or a general's list | yes |
-| **band** | the depth-banded random draw over everything in range | no — **being deleted** |
+| **band** | the depth-banded random draw over everything in range | no — **the long tail** |
 
-Measured today (`. drop-report`), over the 429 items carrying a `dropTier`:
+Measured (`. drop-report`), over the 429 items carrying a `dropTier`:
 
-```
-drops (authored)        0     a body's own list
-carried               127     a placed body is holding one
-boss list              78     Descent.DROPS, walked unowned-first
-BAND ONLY             224     <- the random draw
-NOTHING                 0     <- no route at all
-```
+| route | at the start | now |
+|---|---|---|
+| drops (authored) | 0 | **160** |
+| carried | 127 | 86 |
+| boss list | 78 | **45** |
+| band only | 224 | **138** |
+| nothing | 0 | 0 |
 
-**Nothing reads as unreachable only because the band catches everything.** That is the whole reason the
-number above is zero and the reason it is not reassuring: deleting the band turns those 224 rows into
-items with no route, which is why the fallback cannot go until the bodies exist.
+**Not every item needs a body, and that is the decision.** The band is the long tail: 138 rows reach
+the player only through it, and they are meant to. What matters is not total coverage but that each
+body's list is *meaningful* and carries one powerful piece at a low rate — so the ~35-body figure in the
+bill below is a quality target, not a precondition.
+
+> **Deleting the band was decided and then un-decided, and the record is worth keeping.** It was
+> approved in review as *"an authored list replaces the price-band fallback entirely"* — over an
+> explicit recommendation to deny it, on the grounds that a wolf pack carries nothing priced and 88
+> bodies would each need a complete list before anything shipped. It was never implemented for that
+> reason, and the decision was reversed once the per-body work landed and showed what total coverage
+> would actually cost. **The band is not a fallback waiting to be removed; it is the route the tail of
+> the catalogue takes.**
 
 ## Reachability is placement, not authoring
 
@@ -84,14 +93,30 @@ drops = { "weapon_throughline", "armor_slipstep_leathers" },
 
 Four rules, none of them new:
 
-1. **Walked unowned-first**, exactly as `Descent.dropFor` does. The guarantee D2 never had.
-2. **Creatures carry none.** [bestiary.md](bestiary.md)'s split: bodied chaff carry priced, lootable
-   gear; creature chaff carry natural weapons only. A wolf is not a Beastmaster. The engine already
-   enforces this economically — 33 items are `noSteal` and `Spoils` uses `price` as the shoppable
-   marker. **Demons and undead are unstated there**, and that gap is 9 of the 83 placed bodies.
+1. **A body part is never on one.** [bestiary.md](bestiary.md)'s split: bodied chaff carry priced,
+   lootable gear; creature chaff carry natural weapons only. A wolf is not a Beastmaster. The gate is
+   `noSteal` — read directly by `Spoils`, and skipped by `tools/drop_tier.lua` so nothing mints one a
+   depth. It used to be enforced as a side effect of `price`, which stopped being true at the recut and
+   put all 92 natural weapons in the drop table in silence. **Demons and undead are unstated in the
+   doc**, and that gap is 9 of the 98 placed bodies; `drop_assign` counts them as gear-carrying.
 3. **A list is a pool, not a promise.** Whether anything drops stays with `models/spoils.lua`; `drops`
    only says what it draws from.
-4. **The carried pool stays.** *You took his axe* is the best connection in the system
+4. **A list is weighted, and its deepest entry is the chase.** `tools/drop_assign.lua` deals in two
+   passes so every body gets one piece deeper than the rest of its list, and `Spoils` weighs that
+   entry at an authored share of the whole (`AUTHORED_STANDOUT_SHARE`, 12%) rather than at whatever
+   falls out of the depth gap — the gap is whatever a class's catalogue happens to offer, so pinning
+   the share is what keeps "the thing this body is known for" worth the same everywhere. Measured:
+   **4.5% of fights** against that body.
+5. **A held entry declines; it is never re-picked.** The draw runs over the whole list at its authored
+   weights, and if it lands on something the company already holds the authored route pays nothing and
+   falls through. Filtering to unowned instead — `Descent.dropFor`'s rule, and right for a boss list of
+   authored relics — quietly inverts the design on a weighted list: own the four commons and the pool
+   is the standout alone, so the rarest thing on the body becomes its guaranteed next drop. That is a
+   pity timer wearing a rarity's clothes. Measured, the rate holds at **4.4% with every common held**,
+   and duplicates of held commons run at 0.07%. A farmed body goes quiet rather than raining
+   duplicates. What made this safe to give up is [salvage](#salvage-and-the-discovery-ledger): a
+   duplicate is stock, not a dead end.
+6. **The carried pool stays.** *You took his axe* is the best connection in the system
    (`CARRIED_BIAS = 0.75`). `drops` sits beside it: what a body is *known for*, over and above what it
    happened to be holding.
 
@@ -99,27 +124,28 @@ Four rules, none of them new:
 
 ```
 429 items to place
- 36 humanoid bodies placed      ->  11.9 items per list
- 83 placed bodies in all        ->   5.2 items per list
+ 51 humanoid bodies placed      ->   8.4 items per list
+ 98 placed bodies in all        ->   4.4 items per list
 ```
 
 A legible list is about five — long enough that a body is known for more than one thing, short enough to
-read on a card, and roughly what a Monster Hunter reward table runs. **Landing at five needs ~86
-gear-carrying bodies, against today's 36.**
+read on a card, and roughly what a Monster Hunter reward table runs. Landing at five across the whole
+catalogue would want ~86 gear-carrying bodies against today's 51, but the band carries the tail, so that
+is a target rather than a bill.
 
-So "each circle gets more bodies of its own" is not a separate nice-to-have. With the band deleted every
-item must sit on a list, and the number of gear-carrying bodies *is* the list length. The two decisions
-are one piece of work, and the bodies come first. Ten to twelve per circle lands it, and fills
-[bestiary.md](bestiary.md)'s open chaff gap with the same authoring.
+Where it is worth spending anyway is **legibility**, not coverage. Wrath's entire rollable non-boss line
+is `character_fighter` — every fight in that circle is the same body repeated, which a player notices
+long before they notice a drop table. `. drop-assign` prints the per-class shortfall.
 
-## What deleting the band costs
+## What the band is still for
 
-Narrower than it looks. `Spoils`' salvage floor is not a roll, so a fight never pays literally nothing
-even with no band. What actually goes is **consumables as drops** — `CARRIED_BIAS` deliberately keeps a
-slice of the band so potions turn up in fights against people who weren't carrying any.
+`Spoils`' salvage floor is not a roll, so a fight never pays literally nothing regardless. What the band
+uniquely carries is **consumables** — `CARRIED_BIAS` keeps a slice of it so potions turn up in fights
+against people who weren't carrying any — and the long tail of stock no body is known for.
 
-That pushes consumables entirely onto the pre-descent stock decision and the road's Merchant, which
-sharpens an intent [shelf.md](shelf.md) already states: *a consumable stays priced because the stock
+Were it ever removed, consumables would fall entirely to the pre-descent stock decision and the road's
+Merchant, which sharpens an intent [shelf.md](shelf.md) already states: *a consumable stays priced
+because the stock
 decision before a descent has to be makeable.* If it reads badly in play, the dial is the Merchant's
 stock, not the band coming back.
 
@@ -203,9 +229,15 @@ Placement went from 83 bodies to **98** on seven new circle-gated encounters and
 eighteen class exemplars were authored and never seated. The longest boss queue fell from 21 to 11, and
 items past reachable position from 31 to **21**.
 
-**136 rows still rest on the band, so the band cannot go yet.** That is the whole of what is left: the
-bill above wants ~35 more gear-carrying bodies, and until they exist deleting the fallback would strand
-every one of those items.
+**The band stays, and that is now a decision rather than a delay.** 136 rows rest on it alone, and the
+author's call is that *not every item needs to be droppable by a character* — what matters is that each
+body's list is meaningful and carries one powerful piece at a low rate. So the band is the long tail
+and the ~35-body bill is a quality target rather than a precondition. Deleting the fallback was decided
+in review and reversed; see *The four routes* above.
+
+What is still worth doing for its own sake: **Wrath**, whose entire rollable non-boss line is
+`character_fighter`, so every fight in that circle is the same body repeated — a legibility problem
+before it is a drop problem.
 
 ## Running it
 

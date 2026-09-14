@@ -39,11 +39,11 @@ return {
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so
     -- its range shows, and driving the basic click-to-use. The player can re-pin any ability.
     drops = {
+        "armor_rimeguard",
         "utility_shield_bash",
-        "armor_cuirass_of_the_roll",
-        "armor_runed_plate",
+        "armor_whirlplate",
         "utility_reprisal",
-        "weapon_suspension_mace",
+        "weapon_exposing_pike",
     },
     defaultAction = "weapon_iron_spear",
     -- The two items that ARE this unit. Draft mode strips a bought body down to exactly these

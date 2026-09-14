@@ -150,7 +150,23 @@ local function bodiesForClass(bodies, class)
     return out
 end
 
--- The deal. Returns the bodies (with `list` filled) and the items nothing could take.
+-- The deal, in TWO PASSES, and the split is the whole of what makes a list worth reading.
+--
+-- One pass cannot do it. Dealing deepest-first and seating each item on the nearest-rung body with
+-- room clusters by construction: the deep items are gone by the time a mid-rung body comes up, so it
+-- takes five of whatever band happens to be current. The first cut of this produced an Archer holding
+-- five items all at depth 6 -- a list with nothing on it worth a second trip, and a list that makes
+-- models/spoils.lua's depth weighting describe nothing, since every entry weighs the same.
+--
+--   PASS 1  every body takes ONE standout: the deepest piece of its class still unclaimed. This is the
+--           thing the body is known for, and the thing its weighting makes rare.
+--   PASS 2  the remaining slots fill from what is left, nearest-rung as before, and never as deep as
+--           that body's own standout -- so the standout stays the deepest thing on its list and the
+--           rarity ladder is real rather than nominal.
+--
+-- Bodies take their standout DEEPEST-RUNG FIRST, so the deepest kit lands on the bodies that can
+-- legally hold it before a shallow body takes it off the table (Spoils.depthOf still refuses anything
+-- the floor cannot reach, but a piece seated too shallow is a piece nobody meets at the right depth).
 local function assign()
     local placed = require("tools.drop_report").placement()
     local bodies = eligibleBodies(placed)
@@ -164,26 +180,57 @@ local function assign()
         return a.id < b.id
     end)
 
-    local orphans = {}
-    for _, item in ipairs(items) do
-        local candidates = bodiesForClass(bodies, item.def.class)
-        local best, bestScore
-        for _, body in ipairs(candidates) do
-            if #body.list < TARGET_LIST then
-                -- Nearest rung wins; a shorter list breaks the tie, which is what spreads the stock.
-                local score = math.abs(body.rung - item.depth) * 100 + #body.list
-                if not bestScore or score < bestScore then best, bestScore = body, score end
+    local taken = {}
+
+    -- PASS 1: one standout each.
+    local byRung = {}
+    for _, body in ipairs(bodies) do byRung[#byRung + 1] = body end
+    table.sort(byRung, function(a, b)
+        if a.rung ~= b.rung then return a.rung > b.rung end
+        return a.id < b.id
+    end)
+    for _, body in ipairs(byRung) do
+        for _, item in ipairs(items) do -- already deepest-first
+            if not taken[item.id] and item.depth > body.rung then
+                local ok = false
+                for _, cand in ipairs(bodiesForClass({ body }, item.def.class)) do
+                    if cand == body then ok = true end
+                end
+                if ok then
+                    taken[item.id] = true
+                    body.list[#body.list + 1] = item.id
+                    body.standoutDepth = item.depth
+                    break
+                end
             end
-        end
-        if best then
-            best.list[#best.list + 1] = item.id
-        else
-            orphans[#orphans + 1] = item
         end
     end
 
-    -- Shallowest first within a list, so a body's own entries read as a ladder and Descent.dropFor's
-    -- unowned-first walk hands over the cheap one before the dear one.
+    -- PASS 2: fill the rest, and never at or past the body's own standout.
+    local orphans = {}
+    for _, item in ipairs(items) do
+        if not taken[item.id] then
+            local candidates = bodiesForClass(bodies, item.def.class)
+            local best, bestScore
+            for _, body in ipairs(candidates) do
+                if #body.list < TARGET_LIST
+                    and (not body.standoutDepth or item.depth < body.standoutDepth) then
+                    -- Nearest rung wins; a shorter list breaks the tie, which spreads the stock.
+                    local score = math.abs(body.rung - item.depth) * 100 + #body.list
+                    if not bestScore or score < bestScore then best, bestScore = body, score end
+                end
+            end
+            if best then
+                taken[item.id] = true
+                best.list[#best.list + 1] = item.id
+            else
+                orphans[#orphans + 1] = item
+            end
+        end
+    end
+
+    -- Shallowest first within a list, so a body's own entries read as a ladder -- and so the standout,
+    -- which is the deepest, sits at the bottom where the eye finishes.
     for _, body in ipairs(bodies) do
         table.sort(body.list, function(a, b)
             local da, db = Spoils.depthOf(Item.defs[a]), Spoils.depthOf(Item.defs[b])

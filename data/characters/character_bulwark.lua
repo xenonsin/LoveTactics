@@ -34,11 +34,11 @@ return {
         "armor_halting_rank", "utility_doorstone", "consumable_healing_potion",
     },
     drops = {
-        "armor_vow_marked_plate",
+        "armor_aegis_unbidden",
+        "armor_bulwark_shield",
+        "utility_martyrs_icon",
+        "weapon_rimebell",
         "armor_mirrorsilk",
-        "utility_spell_eater",
-        "weapon_exposing_pike",
-        "weapon_tidesbreak",
     },
     defaultAction = "weapon_iron_mace",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

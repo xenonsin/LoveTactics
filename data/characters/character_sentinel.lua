@@ -28,11 +28,11 @@ return {
         "armor_bulwark_shield", "consumable_healing_potion", "armor_standing_debt",
     },
     drops = {
-        "armor_shared_bulwark",
-        "utility_stripped_plate",
+        "armor_given_guard",
+        "armor_unyielding_harness",
+        "weapon_long_fall",
+        "weapon_sworn_lance",
         "utility_dampening_oath",
-        "weapon_crescent_blade",
-        "weapon_marching_standard",
     },
     defaultAction = "weapon_iron_sword",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

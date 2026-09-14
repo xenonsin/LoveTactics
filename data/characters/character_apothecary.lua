@@ -35,11 +35,11 @@ return {
         "utility_shared_ledger",     "consumable_the_tithe",    "utility_open_ward",
     },
     drops = {
-        "armor_choking_apron",
-        "armor_volatile_carapace",
-        "utility_miasmal_plate",
-        "utility_salvage_rig",
-        "weapon_vitriol_wand",
+        "armor_everdraught_bandolier",
+        "armor_ichor_coat",
+        "utility_rot_fume_gauntlet",
+        "weapon_envenomed_kris",
+        "utility_philosophers_stone",
     },
     defaultAction = "ability_heal",
     -- Basic tactics: reach for Heal the instant an ally slips below two-thirds; the lent-vitality line

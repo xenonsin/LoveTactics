@@ -27,11 +27,11 @@ return {
         "consumable_healing_potion", "armor_held_oath",           false,
     },
     drops = {
-        "armor_oathkeeper_shield",
-        "utility_martyrs_icon",
+        "armor_cuirass_of_the_roll",
+        "armor_shared_bulwark",
+        "weapon_answering_bell",
+        "weapon_suspension_mace",
         "utility_counter_magic",
-        "weapon_boar_spear",
-        "weapon_mailpiercer",
     },
     defaultAction = "ability_lay_on_hands",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.
