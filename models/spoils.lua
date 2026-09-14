@@ -264,6 +264,17 @@ local function lootCandidates(maxPrice, tier, pricedOnly)
     for id, def in pairs(Item.defs) do
         local priced = def.price and def.price > 0
         if def.bound then -- nailed to one grid; never earned, bought, stolen or found
+        -- A BODY PART IS NOT LOOT. `noSteal` is the blueprint's own declaration that this cannot be
+        -- taken off the body wearing it (a beast's fangs, a wyrm's breath), and a thing a pickpocket
+        -- cannot lift mid-fight is not a thing that falls off the corpse afterwards.
+        --
+        -- THIS USED TO BE ENFORCED BY ACCIDENT AND STOPPED BEING. docs/bestiary.md still claims "the
+        -- engine already enforces this economically ... models/spoils.lua uses `price` as the shoppable
+        -- marker, so an unpriced natural weapon can never enter the drop pool." That was true until
+        -- tools/drop_tier.lua started handing every unpriced item a `dropTier` -- which is the second
+        -- half of the `or` below, and which let all 92 of them straight back in. A proxy gate is only as
+        -- good as the thing it is a proxy for, and this one's meaning changed underneath it.
+        elseif def.noSteal then
         elseif not (priced or (def.dropTier and not pricedOnly)) then -- nothing this caller may hand over
         elseif Spoils.depthOf(def) > tier then -- ranked or gated deeper than this floor reaches
         elseif priced then

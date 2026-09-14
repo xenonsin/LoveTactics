@@ -48,9 +48,24 @@ The single split that keeps the catalogue from becoming a class list with hit po
   outside every family roster, and **never** a discipline item. A wolf is not a Beastmaster; a wolf is
   what a Beastmaster *has*.
 
-The engine already enforces this economically and did so before the rule was written: 33 items carry
-`noSteal`, and `models/spoils.lua` uses `price` as the shoppable marker, so an unpriced natural weapon
-can never enter the drop pool. The rule above is a naming of existing practice, not a new constraint.
+The engine enforces this, and **`noSteal` is now the gate rather than a side effect of pricing.** 92
+items carry the flag; `models/spoils.lua`'s pool refuses them outright, and `tools/drop_tier.lua`
+skips them so nothing mints them a depth in the first place.
+
+> **It used to be enforced by accident, and the accident expired.** This paragraph read "`spoils.lua`
+> uses `price` as the shoppable marker, so an unpriced natural weapon can never enter the drop pool."
+> That was true right up until the shelf recut, when `tools/drop_tier.lua` began handing every unpriced
+> item a `dropTier` — and the pool admits *either* a price or a tier. All 92 natural weapons in the game
+> were in the drop table from that day, silently: a wolf's fangs could fall out of a fight and be carried
+> home. Nothing failed, because the only thing asserting the rule was this sentence.
+>
+> A proxy gate is worth exactly as much as the thing it proxies for. `price` meant "shoppable" and then
+> stopped meaning it. `tests/spoils_spec.lua`'s *a natural weapon never enters the drop pool, at any
+> depth* is what holds the rule now, and it asserts on the **pool** rather than on sampled rolls —
+> a 92-in-N draw would need thousands of fights to fail reliably, which is a test that stays green on a
+> broken build.
+
+The rule above is a naming of existing practice; the enforcement is not.
 
 The consequence worth stating out loud: **a pack that mixes both kinds is the default shape, not a
 special case.** Basic hunters led by a Trapper is the canonical example — the human beaters carry

@@ -681,4 +681,47 @@ return {
             assert(Descent.sealedDrought(run) == 0, "a paid stop resets it")
         end,
     },
+    {
+        -- A BODY PART IS NOT LOOT, and this is the case that would have caught it. docs/bestiary.md
+        -- claims the engine enforces the creature/bodied split economically, via `price` as the
+        -- shoppable marker -- and that stopped being true the day tools/drop_tier.lua began handing
+        -- unpriced items a `dropTier`, because the pool admits either. All 92 natural weapons in the
+        -- game were in the drop table, and nothing said so.
+        --
+        -- Asserted on the POOL rather than on a roll: at a 92-in-N draw a sampling test would need
+        -- thousands of fights to fail reliably, which is a test that goes green on a bad build.
+        name = "a natural weapon never enters the drop pool, at any depth",
+        fn = function()
+            local Class = require("models.class")
+            local natural, tiered = {}, 0
+            for id, def in pairs(Item.defs) do
+                if def.noSteal then
+                    natural[id] = true
+                    if def.dropTier then tiered = tiered + 1 end
+                end
+            end
+            local n = 0
+            for _ in pairs(natural) do n = n + 1 end
+            assert(n > 50, "only " .. n .. " noSteal items -- this case is measuring almost nothing")
+
+            -- Sweep the whole ladder, because the leak was depth-gated rather than absent: a natural
+            -- weapon with a deep dropTier simply waited for a deep floor.
+            for tier = 1, Class.CLASS_LEVEL_CAP do
+                for _, entry in ipairs(Spoils.shelf({ day = 40, floorLevel = tier, count = 400 })) do
+                    assert(not natural[entry], entry .. " is a body part and reached a shelf at tier "
+                        .. tier)
+                end
+            end
+
+            -- ...and off a real roll, which reads the same pool through a different door.
+            for _ = 1, 300 do
+                for _, got in ipairs(Spoils.roll({
+                    enemyUnits = realRoster("character_bandit", 3),
+                    day = 30, floorLevel = 8, kind = "elite",
+                }).loot) do
+                    assert(not natural[got], got .. " is a body part and fell out of a fight")
+                end
+            end
+        end,
+    },
 }

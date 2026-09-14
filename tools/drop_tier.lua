@@ -37,6 +37,16 @@
 --   BOUND          `bound = true` already means "nailed to one grid, never earned, bought, stolen or
 --                  moved". Nothing about a tier applies.
 --   PRICED         it has a shelf. That is its answer.
+--   noSteal        a body part. `noSteal` is the blueprint saying this cannot be taken off the body
+--                  wearing it -- a beast's fangs, a wyrm's breath -- and a thing a pickpocket cannot
+--                  lift is not a thing that falls off the corpse either (docs/bestiary.md's split).
+--                  ALL 92 OF THEM WERE BEING TIERED, and a tier is a licence: models/spoils.lua's
+--                  pool admits any unpriced item that carries one, so every natural weapon in the
+--                  game was in the drop table. The doc's claim that "the engine already enforces
+--                  this economically" was true of the PRICE gate and died when this pass started
+--                  handing out depths instead. Excluded here so a re-run stops minting the licence;
+--                  the pool refuses them on `noSteal` directly, which is the gate that holds whatever
+--                  this pass does.
 --
 -- Report first. Nothing is written until you say `apply`.
 
@@ -62,7 +72,8 @@ end
 function M.candidates()
     local out = {}
     for id, def in pairs(Item.defs) do
-        if def.class and not def.price and not def.bound and not hasTag(def, "signature") then
+        if def.class and not def.price and not def.bound and not def.noSteal
+            and not hasTag(def, "signature") then
             out[#out + 1] = id
         end
     end
