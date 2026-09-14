@@ -399,10 +399,32 @@ function DeployPhase:controls()
     end
     -- A control that shares the row above it, flush to its right: it is a setting ON that control, not
     -- a step after it, and a stack that spent a whole row on it would say otherwise.
+    --
+    -- IT SPILLS PAST THE COLUMN ONLY WHERE THERE IS SCREEN TO SPILL INTO. The desktop column is the
+    -- LEFT one, 130 wide against a 1280 space, and the pair hangs off its right edge into empty
+    -- gutter. The handheld column is the RIGHT one (battle's deployControlRect, re-stamped for the
+    -- short space), whose right edge is already the screen's -- and the cycler hung off that into
+    -- nothing: drawn off the side, hit-tested off the side, so on a handset the auto switch was a
+    -- plate with no speed beside it and no way to reach one. Where the pair does not fit outside, the
+    -- row is re-cut INSIDE the column: the plate above gives up the width and the pair sits flush to
+    -- the column's own right edge, which is the same arrangement one register in.
+    --
+    -- The margin it has to clear is the gutter THE COLUMN ITSELF keeps from its nearest screen edge,
+    -- rather than a number written here -- the host owns the rect, and a widget that guessed at 16
+    -- would be wrong the first time the host inset the column differently.
     local function addBeside(key, label, enabled, on)
         local prev = out[#out].rect
+        local margin = math.min(self.column.x, Scale.WIDTH - (self.column.x + self.column.w))
+        local x, w = prev.x + prev.w + PAIR_GAP, PAIR_W
+        if x + w > Scale.WIDTH - margin then
+            -- Never wider than half the column: a pair that kept its 56 in a narrow column would leave
+            -- the plate it is a setting ON too thin to read its own label.
+            w = math.min(PAIR_W, math.floor((self.column.w - PAIR_GAP) / 2))
+            prev.w = self.column.w - PAIR_GAP - w
+            x = prev.x + prev.w + PAIR_GAP
+        end
         out[#out + 1] = { key = key, label = label, enabled = enabled ~= false, on = on,
-                          rect = { x = prev.x + prev.w + PAIR_GAP, y = prev.y, w = PAIR_W, h = CTRL_H } }
+                          rect = { x = x, y = prev.y, w = w, h = CTRL_H } }
     end
     if self.onLoadout then add("loadout", "Loadout") end
     -- Drinking, directly under kitting: both are questions about what the company CARRIES, and both

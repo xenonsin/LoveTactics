@@ -170,6 +170,42 @@ return {
         end,
     },
     {
+        name = "the cycler stays ON SCREEN when the column is the one against the right edge",
+        fn = function()
+            -- THE HANDHELD DEPLOY COLUMN IS THE RIGHT ONE (states/battle.lua re-stamps
+            -- deployControlRect into the combat panel's half for the short space), so there is no
+            -- gutter to its right to hang a paired plate in. The cycler was hung there anyway: 56
+            -- pixels starting four past the screen's own margin, drawn off the side of a handset and
+            -- hit-tested off it too, which is a speed control that does not exist on the one device
+            -- most likely to want a fight played for it.
+            local Scale = require("scale")
+            local was = Scale.WIDTH
+            Scale.WIDTH = 880 -- the narrowest handheld space there is (Scale.HANDHELD_MIN_W)
+            local ok, err = pcall(function()
+                local p = phase({ autoBattle = true })
+                p.column = { x = 594, y = 16, w = 270 } -- WIDTH - PANEL_W + 16, PANEL_W - 32
+                local auto, speed
+                for _, c in ipairs(p:controls()) do
+                    if c.key == "auto" then auto = c elseif c.key == "speed" then speed = c end
+                end
+                assert(speed, "the cycler should still be built while auto is armed")
+                assert(speed.rect.x + speed.rect.w <= Scale.WIDTH - 16,
+                    "the cycler is drawn off the right edge of the screen")
+                assert(speed.rect.x >= auto.rect.x + auto.rect.w,
+                    "the cycler overlaps the switch it is paired with")
+                assert(speed.rect.y == auto.rect.y,
+                    "the cycler left the row it is a setting on")
+                assert(auto.rect.w >= speed.rect.w,
+                    "the switch gave up more width than the setting beside it")
+                -- And it can actually be pressed there, which is the half a player notices.
+                assert(p:controlAt(speed.rect.x + speed.rect.w / 2, speed.rect.y + speed.rect.h / 2)
+                    == "speed", "a tap on the cycler did not reach it")
+            end)
+            Scale.WIDTH = was
+            assert(ok, err)
+        end,
+    },
+    {
         name = "a focused plate that disappears hands the selection on, never drops it",
         fn = function()
             -- V throws the auto switch off while the selection is sitting on the cycler paired to it.
