@@ -169,11 +169,15 @@ function Bag:draw()
 
     for i = 1, self.cap do self:drawCell(i, i == self.focus) end
 
-    local hint = InputMode.isGamepad() and "D-pad choose  -  A take out  -  B close"
-        or "Arrows choose  -  Enter take out  -  Esc close"
-    love.graphics.setFont(self.hintFont)
-    love.graphics.setColor(0.55, 0.6, 0.7)
-    love.graphics.printf(hint, bx, by + self.oHint, self.boxW, "center")
+    -- Nothing on a finger: every cell here is tapped and the X closes it, so a line naming keys the
+    -- device does not have would be describing a way in that is not there (input_mode.lua's pick).
+    local hint = InputMode.pick("D-pad choose  -  A take out  -  B close", nil,
+        "Arrows choose  -  Enter take out  -  Esc close")
+    if hint then
+        love.graphics.setFont(self.hintFont)
+        love.graphics.setColor(0.55, 0.6, 0.7)
+        love.graphics.printf(hint, bx, by + self.oHint, self.boxW, "center")
+    end
 
     self.closeButton:draw()
     love.graphics.setColor(1, 1, 1)

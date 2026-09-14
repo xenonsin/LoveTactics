@@ -135,11 +135,13 @@ function RestChoice:draw()
         love.graphics.printf(o.desc, r.x + 18, r.y + 42, r.w - 34, "left")
     end
 
-    local hint = InputMode.isGamepad() and "D-pad choose  -  A confirm  -  B leave"
-        or "Arrows choose  -  Enter confirm  -  Esc leave"
-    love.graphics.setFont(self.hintFont)
-    love.graphics.setColor(0.55, 0.6, 0.7)
-    love.graphics.printf(hint, bx, by + self.boxH - 22, self.boxW, "center")
+    local hint = InputMode.pick("D-pad choose  -  A confirm  -  B leave", nil,
+        "Arrows choose  -  Enter confirm  -  Esc leave")
+    if hint then
+        love.graphics.setFont(self.hintFont)
+        love.graphics.setColor(0.55, 0.6, 0.7)
+        love.graphics.printf(hint, bx, by + self.boxH - 22, self.boxW, "center")
+    end
 
     self.closeButton:draw()
     love.graphics.setColor(1, 1, 1)

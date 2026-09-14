@@ -2053,6 +2053,10 @@ function Shop:drawFooter()
     local hint = pad
         and ("A: confirm    LB/RB: " .. cycle .. (grid and "    D-pad: move" or "    D-pad: scroll") .. view .. "    B: close")
         or ("Enter: confirm    Tab: " .. cycle .. (grid and "    Arrows: move" or "    Wheel: scroll") .. view .. "    Esc: close")
+    -- ...and no line at all on a finger: every one of these -- the tabs, the sort and filter pills,
+    -- the rack itself, the X -- is a thing on the screen to be tapped, so the row would be naming
+    -- keys nobody has for controls already in front of them (input_mode.lua's pick).
+    if InputMode.touch then return end
     love.graphics.printf(hint, self.boxX, self.hintY, BOX_W, "center")
 end
 

@@ -291,10 +291,14 @@ function PartyStatus:draw()
         end
     end
 
-    love.graphics.setFont(self.hintFont)
-    love.graphics.setColor(0.5, 0.55, 0.65)
-    local hint = require("input_mode").isGamepad() and "B: close" or "Esc: close"
-    love.graphics.printf(hint, self.boxX, self.boxY + BOX_H - 34, BOX_W, "center")
+    -- Nothing on a finger, which has neither key -- the X in the corner is the way out, and it is
+    -- drawn right below this line (input_mode.lua's pick).
+    local hint = require("input_mode").pick("B: close", nil, "Esc: close")
+    if hint then
+        love.graphics.setFont(self.hintFont)
+        love.graphics.setColor(0.5, 0.55, 0.65)
+        love.graphics.printf(hint, self.boxX, self.boxY + BOX_H - 34, BOX_W, "center")
+    end
 
     self.closeButton:draw()
     love.graphics.setColor(1, 1, 1)

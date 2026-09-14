@@ -258,11 +258,13 @@ function RelicOffer:draw()
     self:drawButton(self.takeBtn, "Take", true, true)
 
     local refuse = self.leaveLabel:lower()
-    local hint = InputMode.isGamepad() and ("D-pad choose  -  A take  -  B " .. refuse)
-        or ("Arrows choose  -  Enter take  -  Esc " .. refuse)
-    love.graphics.setFont(self.hintFont)
-    love.graphics.setColor(0.55, 0.6, 0.7)
-    love.graphics.printf(hint, bx, by + self.oHint, self.boxW, "center")
+    local hint = InputMode.pick("D-pad choose  -  A take  -  B " .. refuse, nil,
+        "Arrows choose  -  Enter take  -  Esc " .. refuse)
+    if hint then
+        love.graphics.setFont(self.hintFont)
+        love.graphics.setColor(0.55, 0.6, 0.7)
+        love.graphics.printf(hint, bx, by + self.oHint, self.boxW, "center")
+    end
 
     if self.closeButton then self.closeButton:draw() end
     love.graphics.setColor(1, 1, 1)

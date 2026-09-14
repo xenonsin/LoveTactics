@@ -11,6 +11,7 @@
 -- Lazy fonts (newed on first draw) keep this require-safe under headless tests.
 
 local Theme = require("ui.theme")
+local InputMode = require("input_mode")
 
 local ButtonPrompt = {}
 
@@ -83,6 +84,22 @@ function ButtonPrompt.draw(segments, x, y, w, opts)
         cx = cx + lf:getWidth(seg.label) + SEG_GAP
     end
     love.graphics.setColor(1, 1, 1)
+end
+
+-- THE SAME ROW, BUT ONLY WHERE THE DEVICE HAS THE BUTTONS IT NAMES.
+--
+-- A finger has no Enter, no Esc and no A. A row of pills reading "Enter Use  Esc Close" on a handset
+-- is not merely unhelpful -- it says those functions are reached that way, and they are not; the way
+-- to use a potion there is to tap the potion, and the way out is the X in the corner. So a HINT row
+-- is not drawn at all in touch mode (input_mode.lua's `pick` states the same rule for prose: no text
+-- beats naming a key that is not there).
+--
+-- Use this for a row that TELLS the player about controls elsewhere on the screen. Keep plain draw()
+-- for a row that IS the control -- ui/dialogue.lua's Advance / Skip are pressable pills, and a finger
+-- presses them like anything else (see ButtonPrompt.rects).
+function ButtonPrompt.drawHints(segments, x, y, w, opts)
+    if InputMode.touch then return end
+    return ButtonPrompt.draw(segments, x, y, w, opts)
 end
 
 -- The pixel width the same row would draw at -- what a caller needs when the row is not the only

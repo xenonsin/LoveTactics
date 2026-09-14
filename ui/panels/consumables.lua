@@ -28,6 +28,9 @@ local Theme = require("ui.theme")
 local Consumables = {}
 Consumables.__index = Consumables
 
+-- The box's PREFERRED size. What it actually gets is fitted to the live space in Consumables:layout
+-- -- see there -- because this panel is opened over the fight as well as over the overworld, and the
+-- fight has a space 450 tall.
 local BOX_W = 860
 
 -- Left (party) column geometry.
@@ -57,6 +60,11 @@ local HEAD_H, FOOT_H, CARET_BAND = 90, 72, 14
 -- neither can be laid out on the assumption that it fits.
 local LIST_H = MIN_MEMBER_ROWS * MEMBER_H + (MIN_MEMBER_ROWS - 1) * MEMBER_GAP
 local BOX_H = HEAD_H + LIST_H + FOOT_H
+
+-- The gutter the box keeps from the edge of the screen when it has to be squeezed. It is what the
+-- close X hangs in (CloseButton sits ON the top-right corner, half outside the frame), so a box
+-- flush to the top edge is a box with no way out on a device that has no Esc key.
+local FIT_MARGIN = 16
 
 -- Prompt tints, matching the A=confirm / B=cancel language the other panels use.
 local PROMPT_GO = { 0.55, 0.90, 0.58 }
@@ -89,15 +97,8 @@ function Consumables.new(opts)
     self.smallFont = Theme.body(13)
     self.tinyFont = Theme.body(11)
 
-    self.boxX = Scale.WIDTH / 2 - BOX_W / 2
-    self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
-    self.contentY = self.boxY + HEAD_H
-    self.captionY = self.contentY - CARET_BAND - 20 -- "Party" / "Potions", clear of the top caret
-
     self.members = (self.player and self.player.roster) or {}
-    self.leftX = self.boxX + 24
-    self.rightX = self.leftX + MEMBER_W + 24
-    self.rightW = self.boxX + BOX_W - 24 - self.rightX
+    self:layout()
 
     self.target = 1        -- index into self.members: the highlighted member is who drinks
     self.itemCursor = 1    -- index into self.entries
@@ -108,9 +109,44 @@ function Consumables.new(opts)
     self.hoverItem = nil
     self.mx, self.my = 0, 0
 
-    self.closeButton = CloseButton.new(self.boxX + BOX_W, self.boxY)
     self:refresh()
     return self
+end
+
+-- SIZE THE BOX TO THE SPACE IT IS ACTUALLY DRAWN IN, and cut the lists down to what is left.
+--
+-- The panel was authored at a fixed 860x576 and centred, which is right in the 1280x720 space it was
+-- written for and strands it in the short one. Opened over the deployment phase on a handheld
+-- (states/battle.lua's openDeployPotions, in a space 880x450) a 576-tall box centres at y = -63: the
+-- title, the prompt strip, the message line and -- the part that matters -- the close X all sit off
+-- the screen. A phone has no Esc key and no gamepad B, and the box covers the full width bar a
+-- ten-pixel sliver down each side, so the click-off escape in mousepressed is unreachable too. The
+-- panel could be opened and not closed.
+--
+-- So the height is fitted, and the LIST takes the loss: both columns already scroll (they have to --
+-- the whole roster marches, and the flask list is whatever the company happens to carry), so a
+-- shorter window onto them costs a caret, not a feature. The head and foot bands are not squeezed,
+-- because they hold the title, the close X, the message line and the button prompts -- the four
+-- things the player needs when the panel is at its most cramped.
+--
+-- Re-runnable: the space can change under an open panel (a phone turned, a window dragged), so this
+-- is called again from update when Scale.spaceEpoch moves rather than only from new.
+function Consumables:layout()
+    self.spaceEpoch = Scale.spaceEpoch
+    self.boxW = math.min(BOX_W, Scale.WIDTH - FIT_MARGIN * 2)
+    self.boxH = math.min(BOX_H, Scale.HEIGHT - FIT_MARGIN * 2)
+    -- One row is the floor: a list window shorter than a row draws nothing and scrolls forever.
+    self.listH = math.max(MEMBER_H, self.boxH - HEAD_H - FOOT_H)
+    self.boxH = HEAD_H + self.listH + FOOT_H
+    self.boxX = math.floor(Scale.WIDTH / 2 - self.boxW / 2)
+    self.boxY = math.floor(Scale.HEIGHT / 2 - self.boxH / 2)
+    self.contentY = self.boxY + HEAD_H
+    self.captionY = self.contentY - CARET_BAND - 20 -- "Party" / "Potions", clear of the top caret
+    self.leftX = self.boxX + 24
+    self.rightX = self.leftX + MEMBER_W + 24
+    self.rightW = self.boxX + self.boxW - 24 - self.rightX
+    self.closeButton = CloseButton.new(self.boxX + self.boxW, self.boxY)
+    if self.entries then self:clampScroll() end
 end
 
 -- (Re)gather the party's restoratives and clamp the item cursor to the new length. Called on open and
@@ -127,13 +163,17 @@ function Consumables:currentTarget()
 end
 
 -- ---------------------------------------------------------------------------
--- Scrolling (both columns; see LIST_H)
+-- Scrolling (both columns; see Consumables:layout)
 -- ---------------------------------------------------------------------------
 
-local function rowsIn(rowH, gap) return math.max(1, math.floor((LIST_H + gap) / (rowH + gap))) end
+-- A method rather than a file local: the window is the FITTED height (see layout), which is a
+-- property of this panel in this space and not a constant of the file.
+function Consumables:rowsIn(rowH, gap)
+    return math.max(1, math.floor((self.listH + gap) / (rowH + gap)))
+end
 
-function Consumables:visibleMembers() return rowsIn(MEMBER_H, MEMBER_GAP) end
-function Consumables:visibleItems() return rowsIn(ITEM_H, ITEM_GAP) end
+function Consumables:visibleMembers() return self:rowsIn(MEMBER_H, MEMBER_GAP) end
+function Consumables:visibleItems() return self:rowsIn(ITEM_H, ITEM_GAP) end
 
 function Consumables:maxMemberScroll() return math.max(0, #self.members - self:visibleMembers()) end
 function Consumables:maxItemScroll() return math.max(0, #self.entries - self:visibleItems()) end
@@ -167,7 +207,7 @@ function Consumables:drawOverflow(x, w, scroll, total, visible)
         love.graphics.polygon("fill", cx - 7, base, cx + 7, base, cx, base - 8)
     end
     if total - scroll - visible > 0 then
-        local base = self.contentY + LIST_H + 4
+        local base = self.contentY + self.listH + 4
         love.graphics.polygon("fill", cx - 7, base, cx + 7, base, cx, base + 8)
     end
 end
@@ -243,13 +283,13 @@ function Consumables:draw()
     love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
 
     Theme.set(Theme.panel)
-    love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
+    love.graphics.rectangle("fill", self.boxX, self.boxY, self.boxW, self.boxH, Theme.R, Theme.R)
     Theme.set(Theme.frame)
-    love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
+    love.graphics.rectangle("line", self.boxX, self.boxY, self.boxW, self.boxH, Theme.R, Theme.R)
 
     love.graphics.setFont(self.titleFont)
     Theme.set(Theme.accentAmber)
-    love.graphics.printf(self.title, self.boxX, self.boxY + 18, BOX_W, "center")
+    love.graphics.printf(self.title, self.boxX, self.boxY + 18, self.boxW, "center")
 
     love.graphics.setFont(self.smallFont)
     Theme.set(Theme.muted)
@@ -451,7 +491,7 @@ function Consumables:drawFooter()
         love.graphics.setFont(self.smallFont)
         love.graphics.setColor(self.messageOk and 0.6 or 0.9, self.messageOk and 0.85 or 0.6,
             self.messageOk and 0.6 or 0.55)
-        love.graphics.printf(self.message, self.boxX, self.boxY + BOX_H - 52, BOX_W, "center")
+        love.graphics.printf(self.message, self.boxX, self.boxY + self.boxH - 52, self.boxW, "center")
     end
 
     local pad = InputMode.isGamepad()
@@ -464,14 +504,19 @@ function Consumables:drawFooter()
         add(pad and "A" or "Enter", #self.entries > 0 and "Pick a potion" or "Select", PROMPT_GO)
         add(pad and "B" or "Esc", "Close", PROMPT_NO)
     end
-    ButtonPrompt.draw(segments, self.boxX, self.boxY + BOX_H - 30, BOX_W, { align = "center" })
+    ButtonPrompt.drawHints(segments, self.boxX, self.boxY + self.boxH - 30, self.boxW, { align = "center" })
 end
 
 -- ---------------------------------------------------------------------------
 -- Input
 -- ---------------------------------------------------------------------------
 
-function Consumables:update() end
+-- A SPACE THAT CHANGES UNDER AN OPEN PANEL. Turning a phone (or dragging a desktop window across
+-- the handheld threshold) re-fits the whole screen, and a box laid out once at open would keep the
+-- old shape -- which is how a close X ends up off the edge again, one rotation later.
+function Consumables:update()
+    if self.spaceEpoch ~= Scale.spaceEpoch then self:layout() end
+end
 
 function Consumables:cursorKind(x, y)
     if self.closeButton:contains(x, y) then return "hand" end
@@ -521,7 +566,7 @@ function Consumables:mousepressed(x, y, button)
         end
     end
 
-    if not pointIn({ x = self.boxX, y = self.boxY, w = BOX_W, h = BOX_H }, x, y) then
+    if not pointIn({ x = self.boxX, y = self.boxY, w = self.boxW, h = self.boxH }, x, y) then
         self:close()
     end
 end

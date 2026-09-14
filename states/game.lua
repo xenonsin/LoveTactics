@@ -4608,9 +4608,13 @@ function game.drawHud()
     -- "Esc: end run" down there, which was true and was the problem: one keystroke, on the key every
     -- other screen uses to close a panel, discarding the whole floor stack.
     local back = backVisible() and (InputMode.isGamepad() and "Back: hub" or "Esc: hub") or ""
-    local hint = InputMode.isGamepad()
-        and ("Move: D-pad / Stick      " .. items .. use .. back)
-        or ("Move: WASD / Arrows / click adjacent tile      " .. items .. use .. back)
+    -- A FINGER IS TOLD ONLY WHAT IT CANNOT SEE. The item, potion and hub hints above name keys for
+    -- buttons that are already drawn on this screen, so on a handset they are dropped and what is
+    -- left is the one thing the overworld does NOT put a button on: how the company moves.
+    local hint = InputMode.pick(
+        "Move: D-pad / Stick      " .. items .. use .. back,
+        "Tap an adjacent tile to move",
+        "Move: WASD / Arrows / click adjacent tile      " .. items .. use .. back)
     love.graphics.printf(hint, 0, Scale.HEIGHT - 30, Scale.WIDTH, "center")
     love.graphics.setColor(1, 1, 1)
 

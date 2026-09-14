@@ -181,11 +181,13 @@ function RelicReveal:draw()
     self:drawButton(self.takeBtn, takeLabel, true, self.focus == "take", self.priceLabel and not self.canPay)
 
     local verb = self.priceLabel and "pay" or "take"
-    local hint = InputMode.isGamepad() and ("A " .. verb .. "  -  B leave")
-        or ("Enter " .. verb .. "  -  Esc leave")
-    love.graphics.setFont(self.hintFont)
-    love.graphics.setColor(0.55, 0.6, 0.7)
-    love.graphics.printf(hint, bx, by + self.oHint, self.boxW, "center")
+    local hint = InputMode.pick("A " .. verb .. "  -  B leave", nil,
+        "Enter " .. verb .. "  -  Esc leave")
+    if hint then
+        love.graphics.setFont(self.hintFont)
+        love.graphics.setColor(0.55, 0.6, 0.7)
+        love.graphics.printf(hint, bx, by + self.oHint, self.boxW, "center")
+    end
 
     self.closeButton:draw()
     love.graphics.setColor(1, 1, 1)

@@ -88,6 +88,10 @@ local XP_MARGIN = 34     -- clearance from the box edge on either side of the ro
 -- in the unit that is actually short. Spent heads first and rows after (see the trim below): the bar
 -- is the headline, and a talkative first body must not push the fourth body's bar off the panel.
 local MAX_SECTION_H = 216
+-- The gutter the box keeps from the edge of the screen when the fight pays out more than the screen
+-- can hold. The close X sits ON the top-right corner (half outside the frame), so a box flush to the
+-- top edge is a box whose X is off it.
+local FIT_MARGIN = 16
 
 -- Pacing (seconds), timed off `elapsed`. The banner lands, then gold counts up, then loot cards rise.
 local BANNER_IN  = 0.50   -- title fades + scales in over this
@@ -337,12 +341,94 @@ function BattleSummary.new(opts)
     table.sort(techOnly, byAmount)
     for _, block in ipairs(techOnly) do blocks[#blocks + 1] = block end
 
-    -- A fight that ranged widely banks more than the panel has height for. Reserve every body's HEAD
-    -- first and spend what is left on technique rows, top-down: the bar is the headline -- it is the
-    -- whole of what that body took out of the fight -- so a talkative first block must not push the
-    -- fourth body's bar off the panel. A technique-only block has to fit its name AND a row to be
-    -- worth keeping; a bare name says nothing.
-    local budget, kept = MAX_SECTION_H, {}
+    self.bannerFont = Theme.display(44)
+    self.subFont = Theme.body(16)
+    self.goldFont = Theme.display(26)
+    self.nameFont = Theme.body(13)
+    self.hintFont = Theme.body(15)
+    self.titleFont = Theme.display(30) -- the card icon-letter fallback font
+    self.techFont = Theme.body(15)
+    self.techNameFont = Theme.body(16) -- the body a block of technique rows was earned by
+    self.capFont = Theme.body(14)      -- the section caption, and the bench's line under it
+
+    local hasGold = self.gold > 0
+    local hasCards = self.n > 0
+
+    -- THE SPACE THIS IS BEING DRAWN IN, which is not always the one it was authored in. The panel
+    -- grows with the fight: banner, gold, a bar and a technique block per body, a grid of loot, the
+    -- action row. In 1280x720 there is room for all of it and the box simply gets taller. In the
+    -- handheld space the fight uses (880x450 -- states/battle.lua's handheldSpace) a rich victory came
+    -- out some 550 tall and centred, so it hung off both ends: the close X went off the top and the
+    -- ACTION ROW went off the bottom. That is not a clipped decoration, it is the way out of the
+    -- screen -- and on a handheld there is no Esc key standing behind it.
+    --
+    -- So the fixed furniture is RESERVED and the growers are CAPPED to what is left, in this order:
+    -- the card grid gets a wider row before it gets a second one (the short space is wide, and it is
+    -- height that is scarce), and the per-body section then takes whatever height remains, down to
+    -- nothing. See the section budget below, and the bottom-anchored action row further down.
+    local avail = Scale.HEIGHT - FIT_MARGIN * 2
+
+    -- Box width tracks the card row; a spoils-less panel (a defeat) stays compact.
+    --
+    -- MAX_PER_ROW is a LOOK, not a fit: four cards to a row is how the haul is meant to read, and the
+    -- desktop keeps it whatever the drop. It is widened only when the rows it implies will not fit the
+    -- height, and then only as far as the live width allows -- spending the axis that is not scarce.
+    local roomW = math.min(Scale.WIDTH - FIT_MARGIN * 2, 1200) - 80
+    local maxPerRow = math.max(MAX_PER_ROW, math.floor((roomW + CARD_GAP) / (CARD_W + CARD_GAP)))
+    self.perRow = MAX_PER_ROW
+    if hasCards then
+        while self.perRow < maxPerRow
+            and math.ceil(self.n / self.perRow) * (CARD_H + CARD_GAP) > avail / 2 do
+            self.perRow = self.perRow + 1
+        end
+    end
+    local cols = math.min(math.max(1, self.n), self.perRow)
+    local rows = self.n > 0 and math.ceil(self.n / self.perRow) or 0
+    local gridW = cols * CARD_W + (cols - 1) * CARD_GAP
+    local BOX_W = math.min(math.max(460, hasCards and (gridW + 80) or 0), Scale.WIDTH - FIT_MARGIN * 2)
+
+    -- THE PER-BODY SECTION IS THE GROWER, and it is capped here rather than at MAX_SECTION_H alone: a
+    -- fight that ranged widely banks more rows than any panel has height for, and in the short space
+    -- the bands around it have already spent most of what there is. Reserve every body's HEAD first
+    -- and spend what is left on technique rows, top-down -- the bar is the headline, it is the whole
+    -- of what that body took out of the fight, so a talkative first block must not push the fourth
+    -- body's bar off the panel. A technique-only block has to fit its name AND a row to be worth
+    -- keeping; a bare name says nothing.
+    local fixedH = 34 + 62
+        + (self.subtitle and 26 or 0) + (self.note and 20 or 0)
+        + (hasGold and 46 or 0) + (self.scrip > 0 and (hasGold and 20 or 34) or 0)
+        + (hasCards and (rows * CARD_H + (rows - 1) * CARD_GAP + 8) or 0)
+        + 8 + BUTTON_H + (self.onReviewLog and (12 + REVIEW_H) or 0) + BOTTOM_PAD
+    --
+    -- The room is measured for the WHOLE section -- its caption, the bars, the technique rows, the
+    -- bench's line and the gap under it -- and then those pieces are taken out of it, rather than
+    -- added on afterwards. Added on afterwards is how the first cut of this overran: the blocks were
+    -- trimmed to a budget the bench's one line was not counted against, so a panel that had just been
+    -- told it had no room for a section spent 32px on one anyway, pushed the loot grid down into the
+    -- action row, and drew Continue across the card labels.
+    -- NO PER-BODY SECTION ON A HANDHELD, as a rule rather than as an outcome of the arithmetic.
+    --
+    -- Left to the budget it was a coin toss: a win with six drops squeezed the bars out and a win
+    -- with two kept three of them, so the same screen answered "what did each body earn" differently
+    -- fight to fight, and a player could not learn where to look. The short space cannot hold the
+    -- section AND the haul AND the way out, so this says which one goes, once: a phone's victory
+    -- screen is what the fight PAID -- the purse, the drops -- and the button that leaves it. The
+    -- per-body tally is a desktop reading, and it is not lost anywhere else: the levels it reports
+    -- are on the bodies themselves, on every sheet that draws them.
+    local sectionRoom = 0
+    if not Scale.inHandheldSpace then
+        sectionRoom = math.max(0, math.min(MAX_SECTION_H, avail - fixedH))
+    end
+    -- The bench line belongs to the section and goes with it: where there is not room for the line
+    -- and the gap that separates it from the grid, there is no section at all.
+    if sectionRoom < TECH_ROW_H + 10 then self.benchShare = nil end
+    local anyXp = false
+    for _, block in ipairs(blocks) do
+        if block.xp then anyXp = true; break end
+    end
+    local budget = math.max(0, sectionRoom - (anyXp and XP_HEAD_H or 0)
+        - (self.benchShare and TECH_ROW_H or 0) - 10)
+    local kept = {}
     for i, block in ipairs(blocks) do
         local head = (i > 1 and TECH_GROUP_GAP or 0) + headHeight(block)
         if budget < head + (block.xp and 0 or TECH_ROW_H) then break end
@@ -366,27 +452,9 @@ function BattleSummary.new(opts)
         if block.xp then self.hasXp = true; break end
     end
 
-    self.bannerFont = Theme.display(44)
-    self.subFont = Theme.body(16)
-    self.goldFont = Theme.display(26)
-    self.nameFont = Theme.body(13)
-    self.hintFont = Theme.body(15)
-    self.titleFont = Theme.display(30) -- the card icon-letter fallback font
-    self.techFont = Theme.body(15)
-    self.techNameFont = Theme.body(16) -- the body a block of technique rows was earned by
-    self.capFont = Theme.body(14)      -- the section caption, and the bench's line under it
-
-    local hasGold = self.gold > 0
-    local hasCards = self.n > 0
     local techH = self.blocks and blockHeight(self.blocks) or 0
     if self.hasXp then techH = techH + XP_HEAD_H end
     if self.benchShare then techH = techH + TECH_ROW_H end
-
-    -- Box width tracks the card row; a spoils-less panel (a defeat) stays compact.
-    local cols = math.min(math.max(1, self.n), MAX_PER_ROW)
-    local rows = self.n > 0 and math.ceil(self.n / MAX_PER_ROW) or 0
-    local gridW = cols * CARD_W + (cols - 1) * CARD_GAP
-    local BOX_W = math.max(460, hasCards and (gridW + 80) or 0)
 
     -- Vertical layout, top-down. Relative offsets first, so the total height is known before centring.
     local y = 34
@@ -410,17 +478,26 @@ function BattleSummary.new(opts)
         y = y + rows * CARD_H + (rows - 1) * CARD_GAP + 8
     end
     if not hasGold and not hasCards and techH == 0 then y = y + 10 end
-    self.buttonRelY = y + 8
-    local afterButtons = self.buttonRelY + BUTTON_H
-    if self.onReviewLog then
-        self.reviewRelY = afterButtons + 12
-        afterButtons = self.reviewRelY + REVIEW_H
-    end
-    local BOX_H = afterButtons + BOTTOM_PAD
+    -- THE WAY OUT IS ANCHORED TO THE FOOT OF THE BOX, not to the bottom of the content. In the
+    -- ordinary case the two are the same pixel -- the box is exactly as tall as what is in it, which
+    -- is the arithmetic that stood here before. Where the content still overruns the space after the
+    -- caps above (a haul too big for a screen 450 tall), the box stops at the screen and the action
+    -- row, the review button and the close X stay inside it: what is lost is a row of the tally, and
+    -- never the button that dismisses the panel.
+    -- Where the tally actually ends. Kept as a field because it is the one thing the caps above are
+    -- FOR: the action row is anchored to the foot of the box, so a section that overran its budget
+    -- does not push the button off the panel -- it draws the button across the loot instead, which is
+    -- how the bench's one unbudgeted line put Continue through the card labels. The invariant is
+    -- contentRelY <= buttonRelY, and tests/victory_panel_fit_spec.lua is what holds it.
+    self.contentRelY = y
+    local footH = 8 + BUTTON_H + (self.onReviewLog and (12 + REVIEW_H) or 0) + BOTTOM_PAD
+    local BOX_H = math.min(y + footH, avail)
+    self.buttonRelY = BOX_H - BOTTOM_PAD - (self.onReviewLog and (REVIEW_H + 12) or 0) - BUTTON_H
+    if self.onReviewLog then self.reviewRelY = self.buttonRelY + BUTTON_H + 12 end
 
     self.boxW, self.boxH = BOX_W, BOX_H
-    self.boxX = Scale.WIDTH / 2 - BOX_W / 2
-    self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
+    self.boxX = math.floor(Scale.WIDTH / 2 - BOX_W / 2)
+    self.boxY = math.floor(Scale.HEIGHT / 2 - BOX_H / 2)
 
     self.closeButton = CloseButton.new(self.boxX + BOX_W, self.boxY)
 
@@ -454,9 +531,9 @@ function BattleSummary.new(opts)
     self.sourceY = self.boxY + self.bannerRelY + 40
     self.slots = {}
     for i = 1, self.n do
-        local col = (i - 1) % MAX_PER_ROW
-        local row = math.floor((i - 1) / MAX_PER_ROW)
-        local rowCount = math.min(self.n - row * MAX_PER_ROW, MAX_PER_ROW)
+        local col = (i - 1) % self.perRow
+        local row = math.floor((i - 1) / self.perRow)
+        local rowCount = math.min(self.n - row * self.perRow, self.perRow)
         local rowW = rowCount * CARD_W + (rowCount - 1) * CARD_GAP
         local startX = self.boxX + BOX_W / 2 - rowW / 2
         self.slots[i] = {

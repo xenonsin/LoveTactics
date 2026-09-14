@@ -53,9 +53,27 @@ local Theme = require("ui.theme")
 local Party = {}
 Party.__index = Party
 
+-- The box's PREFERRED size. What it gets is fitted to the live space in the layout below: this panel
+-- opens over the deployment phase as well as in the city, and a fight on a handheld is played in a
+-- space 880x450 (states/battle.lua's handheldSpace) -- a third of what these two numbers ask for.
 local BOX_W, BOX_H = 1160, 650
+-- The gutter the box keeps from the edge of the screen when it is squeezed. The close X sits ON the
+-- top-right corner, half outside the frame, so a box flush to the top edge is a box with no X.
+local FIT_MARGIN = 16
 local DRAG_THRESHOLD = 5
 local GHOST = 48
+
+-- The member grid's cell, full size and squeezed: the authored 92 with its 12px gaps, and the floor
+-- it may shrink to in a short space. 56 is where an icon plus its count is still a thumb-sized
+-- target; below that the grid stops being something you can play with on a handset.
+local SLOT_FULL, SLOT_GAP_FULL = 92, 12
+local SLOT_MIN, SLOT_GAP_TIGHT = 56, 8
+-- What the stash needs to stay a stash: three columns of ui/pool_grid.lua's 64px cells and their
+-- gaps. Below three it reads as a list with a scrollbar, which is not what the drag target is for.
+local POOL_MIN_W = 64 * 3 + 8 * 2
+-- The focus sheet's authored width, and the narrowest it may be and still hold two stat columns.
+-- Under that it is dropped rather than clipped (see the layout).
+local FOCUS_W, FOCUS_MIN_W = 300, 200
 
 -- Vertical roster rail down the left.
 local PORTRAIT = 72
@@ -340,8 +358,14 @@ function Party.new(opts)
     self.smallFont = require("ui.theme").body(13)
     self.tinyFont = require("ui.theme").body(11)
 
-    self.boxX = Scale.WIDTH / 2 - BOX_W / 2
-    self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
+    -- THE BOX IS FITTED TO THE SPACE, which is not always the one this screen was authored in. At
+    -- 1160x650 centred it does not merely overflow an 880x450 handheld -- it covers the whole screen
+    -- and then some, putting the close X off the top and leaving no outside for the click-off escape
+    -- to land in. Opened from the deployment phase's Loadout plate on a phone, it could not be shut.
+    self.boxW = math.min(BOX_W, Scale.WIDTH - FIT_MARGIN * 2)
+    self.boxH = math.min(BOX_H, Scale.HEIGHT - FIT_MARGIN * 2)
+    self.boxX = math.floor(Scale.WIDTH / 2 - self.boxW / 2)
+    self.boxY = math.floor(Scale.HEIGHT / 2 - self.boxH / 2)
 
     self.chars = (self.player and self.player.roster) or {}
     self.charIndex = 1
@@ -363,7 +387,7 @@ function Party.new(opts)
     -- must not require finding four other offsets.
     self.modeY = self.boxY + 60
     local contentY = self.modeY + MODE_H + 14
-    local bottom = self.boxY + BOX_H - 40
+    local bottom = self.boxY + self.boxH - 40
     self.railX = self.boxX + 24
     self.railY = contentY
     self.railW = 96
@@ -371,14 +395,40 @@ function Party.new(opts)
     self.railVisible = math.max(1, math.floor((self.railH + RAIL_GAP) / (RAIL_CELL_H + RAIL_GAP)))
 
     self.focusX = self.railX + self.railW + 20
-    self.focusW = 300
+
+    -- THE GRID IS SIZED FIRST, because it is what this screen is FOR: nine cells whose arrangement is
+    -- the mechanic (ui/adjacency_links.lua). Its slot shrinks to whatever the content band can hold
+    -- rather than the band being assumed to hold 92s -- three of those plus their gaps want 300px of
+    -- height, and a handheld's band is about 250.
+    local band = bottom - (contentY + 24)
+    local slot, gap = SLOT_FULL, SLOT_GAP_FULL
+    if slot * 3 + gap * 2 > band then
+        gap = SLOT_GAP_TIGHT
+        slot = math.max(SLOT_MIN, math.min(SLOT_FULL, math.floor((band - gap * 2) / 3)))
+    end
+    local gridW = slot * 3 + gap * 2
+
+    -- THE FOCUS SHEET IS THE COLUMN THAT GIVES WAY. The rail, the grid and the stash are all things
+    -- the player ACTS on; the sheet is a reading of the member already named and ringed on the rail
+    -- beside it. Where the width left over cannot seat it legibly next to a grid and a stash three
+    -- columns wide, it is dropped outright rather than squeezed into a column that clips its own
+    -- numbers -- and drawFocus draws nothing, so what is left is the three surfaces you touch.
+    local room = self.boxX + self.boxW - 24 - self.focusX
+    local needed = 20 + gridW + 24 + POOL_MIN_W
+    self.focusW = math.max(0, math.min(FOCUS_W, room - needed))
+    if self.focusW < FOCUS_MIN_W then self.focusW = 0 end
 
     self.gridLabelY = contentY
     self.grid = InventoryGrid.new({
-        x = self.focusX + self.focusW + 20,
+        x = self.focusX + (self.focusW > 0 and (self.focusW + 20) or 0),
         y = contentY + 24,
+        slot = slot,
+        gap = gap,
         char = self.chars[self.charIndex],
     })
+    -- The arrangement, named once so the draw does not re-derive it: a grid that had to shrink is a
+    -- screen with no room under it for the connector legend either (see drawLoadout).
+    self.compact = slot < SLOT_FULL or self.focusW == 0
 
     local poolX = self.grid.x + self.grid.gridW + 24
     self.poolHeaderY = contentY
@@ -387,7 +437,7 @@ function Party.new(opts)
     self.pool = PoolGrid.new({
         x = poolX,
         y = poolTop,
-        w = self.boxX + BOX_W - 24 - poolX,
+        w = self.boxX + self.boxW - 24 - poolX,
         h = bottom - poolTop,
         -- The red corner dot on anything that arrived in the stash and has not been looked at
         -- (Player.markNew). Cleared on a look, and persisted then and there: the Armory is a screen a
@@ -437,7 +487,7 @@ function Party.new(opts)
     -- happily beside them (and just gets narrowed by the same view).
     if Debug.enabled and not self.onFilterChanged then
         local dbgW = 190
-        self.debugRect = { x = self.boxX + BOX_W - 24 - dbgW, y = self.modeY, w = dbgW, h = MODE_H }
+        self.debugRect = { x = self.boxX + self.boxW - 24 - dbgW, y = self.modeY, w = dbgW, h = MODE_H }
     end
     self.debugAll = false
 
@@ -446,7 +496,7 @@ function Party.new(opts)
     -- change.
     local column = {
         x = self.focusX, y = contentY,
-        w = self.boxX + BOX_W - 24 - self.focusX,
+        w = self.boxX + self.boxW - 24 - self.focusX,
         h = bottom - contentY,
         char = self.chars[self.charIndex],
         player = self.player, -- the roll asks the COMPANY whether a house has opened (ui/class_editor)
@@ -471,7 +521,7 @@ function Party.new(opts)
     -- Kept for the existing call sites that name the rule editor directly.
     self.tactics = self.editors.tactics
 
-    self.closeButton = CloseButton.new(self.boxX + BOX_W, self.boxY)
+    self.closeButton = CloseButton.new(self.boxX + self.boxW, self.boxY)
     return self
 end
 
@@ -1799,13 +1849,13 @@ function Party:draw()
     love.graphics.rectangle("fill", 0, 0, Scale.WIDTH, Scale.HEIGHT)
 
     Theme.set(Theme.panel)
-    love.graphics.rectangle("fill", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
+    love.graphics.rectangle("fill", self.boxX, self.boxY, self.boxW, self.boxH, Theme.R, Theme.R)
     Theme.set(Theme.frame)
-    love.graphics.rectangle("line", self.boxX, self.boxY, BOX_W, BOX_H, Theme.R, Theme.R)
+    love.graphics.rectangle("line", self.boxX, self.boxY, self.boxW, self.boxH, Theme.R, Theme.R)
 
     love.graphics.setFont(self.titleFont)
     Theme.set(Theme.accentAmber)
-    love.graphics.printf(self.title, self.boxX, self.boxY + 18, BOX_W, "center")
+    love.graphics.printf(self.title, self.boxX, self.boxY + 18, self.boxW, "center")
 
     self:drawModeSelector()
     self:drawDebugToggle()
@@ -1907,6 +1957,10 @@ end
 -- One face, said twice, for a third of the column's height -- the stats and the technique ledger get
 -- that room instead.
 function Party:drawFocus()
+    -- Dropped outright where the width could not seat it (see the layout): the member it describes is
+    -- named and ringed on the rail two columns left, so what goes missing is the stat block, not who
+    -- is being edited.
+    if self.focusW <= 0 then return end
     local char = self:currentChar()
     if not char then return end
     local x, y = self.focusX, self.boxY + 96
@@ -2090,7 +2144,7 @@ function Party:drawTechnique(char, x, y)
     local spendW = 64                     -- the amber bank, right-aligned against the panel edge
     local nameW = self.focusW - spendW - 20
 
-    local floor = self.boxY + BOX_H - 64 -- above the message line and the prompt bar
+    local floor = self.boxY + self.boxH - 64 -- above the message line and the prompt bar
     local fit = math.max(1, math.floor((floor - y) / 20))
     local shown = #rows
     if shown > fit then shown = math.max(0, fit - 1) end -- the tail line costs a row
@@ -2142,6 +2196,12 @@ function Party:drawMemberGrid()
     love.graphics.print("Inventory", self.grid.x, self.gridLabelY)
     self.grid:draw()
 
+    -- THE LEGEND IS THE OTHER THING THAT GOES IN A SHORT SPACE. It is five rows of prose under the
+    -- grid explaining marks that are drawn on the cells themselves, and in a band that had to shrink
+    -- the grid to fit there is no room under it at all -- the rows would print over the stash's own
+    -- foot. What it teaches stays reachable on the cell: every item's tooltip names its aura, its
+    -- boost and what it requires.
+    if self.compact then return end
     local ly = self.grid.y + self.grid.gridH + 16
     love.graphics.setFont(self.bodyFont)
     for _, row in ipairs(LEGEND) do
@@ -2231,7 +2291,7 @@ function Party:drawFooter()
     if self.message then
         love.graphics.setColor(self.messageOk and 0.6 or 0.9, self.messageOk and 0.85 or 0.6,
             self.messageOk and 0.6 or 0.55)
-        love.graphics.printf(self.message, self.boxX, self.boxY + BOX_H - 52, BOX_W, "center")
+        love.graphics.printf(self.message, self.boxX, self.boxY + self.boxH - 52, self.boxW, "center")
     end
     self:drawPromptBar()
 end
@@ -2267,7 +2327,7 @@ function Party:drawPromptBar()
         add(cancelGlyph, "Close", PROMPT_NO)
         add(pad and "LT/RT" or self:tabGlyph(), "Tab")
         add(switchGlyph, "Switch")
-        ButtonPrompt.draw(segments, self.boxX, self.boxY + BOX_H - 30, BOX_W, { align = "center" })
+        ButtonPrompt.drawHints(segments, self.boxX, self.boxY + self.boxH - 30, self.boxW, { align = "center" })
         return
     end
 
@@ -2303,7 +2363,7 @@ function Party:drawPromptBar()
             add(pad and "X" or "F", "Default")
         end
     end
-    ButtonPrompt.draw(segments, self.boxX, self.boxY + BOX_H - 30, BOX_W, { align = "center" })
+    ButtonPrompt.drawHints(segments, self.boxX, self.boxY + self.boxH - 30, self.boxW, { align = "center" })
 end
 
 function Party:drawDrag()
@@ -2630,7 +2690,7 @@ function Party:mousepressed(x, y, button)
             self:setFocus("editor")
             return
         end
-        if not pointIn({ x = self.boxX, y = self.boxY, w = BOX_W, h = BOX_H }, x, y) then self:close() end
+        if not pointIn({ x = self.boxX, y = self.boxY, w = self.boxW, h = self.boxH }, x, y) then self:close() end
         return
     end
 
@@ -2704,7 +2764,7 @@ function Party:mousepressed(x, y, button)
         return
     end
 
-    if not pointIn({ x = self.boxX, y = self.boxY, w = BOX_W, h = BOX_H }, x, y) then
+    if not pointIn({ x = self.boxX, y = self.boxY, w = self.boxW, h = self.boxH }, x, y) then
         self:close()
     end
 end

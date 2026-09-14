@@ -260,7 +260,9 @@ function NameEntry:draw()
     local segs = InputMode.isGamepad()
         and { { glyph = "A", label = "Press" }, { glyph = "B", label = "Back" }, { glyph = "Start", label = "Done" } }
         or { { glyph = "Type", label = "Name" }, { glyph = "Enter", label = "Done" } }
-    ButtonPrompt.draw(segs, 0, Scale.HEIGHT - 40, Scale.WIDTH - 40, { align = "right" })
+    -- Not on a finger: this screen's own keyboard is drawn for tapping, and "Type Name / Enter Done"
+    -- names two keys a handset does not have (ButtonPrompt.drawHints).
+    ButtonPrompt.drawHints(segs, 0, Scale.HEIGHT - 40, Scale.WIDTH - 40, { align = "right" })
 
     love.graphics.setColor(1, 1, 1)
 end

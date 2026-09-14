@@ -312,9 +312,14 @@ function Choice:draw()
     else
         hint = (pad and "D-pad choose  -  A confirm" or "Arrows choose  -  Enter confirm") .. leaveHint
     end
-    love.graphics.setFont(self.hintFont)
-    love.graphics.setColor(0.55, 0.6, 0.7)
-    love.graphics.printf(hint, cx, by + self.boxH - 22, BOX_W, "center")
+    -- ...and nothing at all on a finger, which has neither key: the cards are the control, and one of
+    -- them is tapped (input_mode.lua's pick).
+    if InputMode.touch then hint = nil end
+    if hint then
+        love.graphics.setFont(self.hintFont)
+        love.graphics.setColor(0.55, 0.6, 0.7)
+        love.graphics.printf(hint, cx, by + self.boxH - 22, BOX_W, "center")
+    end
 
     if self.onClose then self.closeButton:draw() end
     love.graphics.setColor(1, 1, 1)

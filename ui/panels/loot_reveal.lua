@@ -480,11 +480,16 @@ function LootReveal:draw()
 
     -- Inspect hint + tooltip, once everything is revealed.
     if self:isRevealed() then
-        local hint = InputMode.isGamepad() and "D-pad to inspect  -  A to take"
-            or "Hover / arrows to inspect  -  Enter to take"
-        love.graphics.setFont(self.hintFont)
-        love.graphics.setColor(0.55, 0.6, 0.7)
-        love.graphics.printf(hint, bx, self.button.y + oy - 30, self.boxW, "center")
+        -- A finger gets its own wording rather than silence: this screen has a step that a tap does
+        -- NOT make obvious -- the cards can be inspected before the button is pressed -- and "hover"
+        -- is exactly the verb a handset does not have.
+        local hint = InputMode.pick("D-pad to inspect  -  A to take",
+            "Tap a card to inspect it", "Hover / arrows to inspect  -  Enter to take")
+        if hint then
+            love.graphics.setFont(self.hintFont)
+            love.graphics.setColor(0.55, 0.6, 0.7)
+            love.graphics.printf(hint, bx, self.button.y + oy - 30, self.boxW, "center")
+        end
 
         -- In mouse mode the tooltip only shows while the cursor is actually over a card -- move off the
         -- cards and it goes away. Keyboard/gamepad always inspect the focused card (there is no "off").

@@ -309,11 +309,13 @@ function Merchant:draw()
         love.graphics.printf(label, r.x, r.y + r.h / 2 - self.priceFont:getHeight() / 2, r.w - 16, "right")
     end
 
-    local hint = InputMode.isGamepad() and "D-pad move  -  A buy  -  B leave"
-        or "Arrows move  -  Enter buy  -  Esc leave"
-    love.graphics.setFont(self.hintFont)
-    love.graphics.setColor(0.55, 0.6, 0.7)
-    love.graphics.printf(hint, bx, by + self.boxH - 22, self.boxW, "center")
+    local hint = InputMode.pick("D-pad move  -  A buy  -  B leave", nil,
+        "Arrows move  -  Enter buy  -  Esc leave")
+    if hint then
+        love.graphics.setFont(self.hintFont)
+        love.graphics.setColor(0.55, 0.6, 0.7)
+        love.graphics.printf(hint, bx, by + self.boxH - 22, self.boxW, "center")
+    end
 
     self.closeButton:draw()
 

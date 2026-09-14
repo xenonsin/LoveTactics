@@ -971,9 +971,11 @@ function ForgePanel:drawBill(row, cost, x, y, w, batch, aim, level)
 
     love.graphics.setFont(self.smallFont)
     Theme.set(Theme.muted, 0.8)
+    -- The key that presses this button, under its label -- and nothing there on a finger, which
+    -- presses it by touching it (input_mode.lua's pick).
     local sub = blocked and "beyond your standing"
         or (not affordable and "short on stock")
-        or (InputMode.isGamepad() and "A" or "Enter")
+        or InputMode.pick("A", "", "Enter")
     love.graphics.printf(sub, bx, y + 26, bw, "center")
 
     if blocked then
