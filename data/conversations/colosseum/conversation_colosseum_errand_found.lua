@@ -1,35 +1,46 @@
 -- Conversation authored inline (English); localization ids (`tag`) are stamped by
 -- tools/extract_strings.lua and must not be hand-edited. See models/conversation.lua.
 --
--- SABER, MET AT THE COLOSSEUM'S POSTING, and hers is the odd one of the six: every other companion asks
--- you to go and fight something else, and the thing behind Saber's door is Saber. The debut bout IS her
--- ask (data/quests/colosseum/quest_colosseum_slot_01.lua -- character_saber_bout and a netter), so this
--- scene is a body at a doorway offering herself as the work, which is exactly what the arena's
--- gatekeeper does: she fights every newcomer, waiting for the pair who can beat her
--- (data/characters/character_saber.lua).
+-- SABER, MET AT A DEAD END SOMEWHERE IN THE RIFT. The first beat of a recruit (models/errand.lua): she
+-- is standing at an end the floor already carved, she asks for one piece of work, and clearing it
+-- recruits her. Hers is the odd one of the six: every other companion asks you to go and fight
+-- something else, and the thing behind Saber's ask is Saber (quest_colosseum_slot_01's objective).
 --
--- HER VOICE IS THE ONE ALREADY ON THE SAND -- clipped, contracted, generous with what she knows -- and
--- conversation_colosseum_slot_01_confront.lua is the reference; she gives away her own tell there,
--- inside the bout, for free. Nothing here may spend that: the swing is the confront scene's to name.
+-- SHE IS ROLLED LIKE THE REST, so depth is hers to talk about. The scripted floor-one meeting is
+-- Amana's now (Descent.SCRIPTED_COMPANION), which is what lets Saber turn up deep and be surprised to
+-- see anybody down there with her.
 --
--- She is the only one of the six who does not need the company. That is the point of her patience: she
--- has enough, every fight, and can walk off any time -- so the ask is an invitation rather than a plea.
+-- THE VIBE IS THE AUTHOR'S, from a two-line sketch: bored, cocky, delighted to see a party rather than
+-- more rift raff, asking them to entertain her. Everything else was cut to keep those two beats clean.
+-- No house, no card, no crowd, no gate. She walked in herself because she loves fighting and this is
+-- where the hard ones are.
+--
+-- THERE IS NO WAY TO REFUSE HER, and that is authored rather than an oversight. Every other posting
+-- ends on a two-option node -- take the work or leave it -- and hers ends on one answer, because a
+-- fighter who has already decided you are her entertainment is not offering a choice. The machinery
+-- is unchanged: the single choice still carries `answer = "accept"`, which is the only answer
+-- states/game.lua acts on (askErrand / askErrandAtDoor). What is gone is the decline branch, so
+-- stepping onto her end is committing to the bout.
+--
+-- SHE NEVER OFFERS TO JOIN. She is the only one of the six who does not need the company: what stands
+-- at the dead end is a fighter who wants a challenge, and nothing in her head is recruiting anybody.
+-- The recruit happens anyway, because the ask IS her bout and clearing it pays `rewardCharacter`.
+--
+-- SHE ALSO NO LONGER NAMES THE NETTER the objective fields beside her (character_trapper). Nothing
+-- warns about it now: it is a surprise at the bell, and the deploy screen is the only thing that says
+-- it is coming.
 return {
-    title = "The Card's Opener",
+    title = "Somebody Worth Swinging At",
     cast  = { "character_avatar", "character_saber", { id = "character_rowan", when = { has = "character_rowan" } } },
 
     script = {
-        { "character_saber", "There you are. No house, no record, and you came all the way down here anyway. That's already the most interesting thing on the card.", tag = 1 },
-        { "character_avatar", "{posting}", tag = 2 },
-        { "character_saber", "Through that door it's me, and a netter the house booked to make it honest, and a crowd that doesn't know your name yet. That's the whole bout. I'm not going to dress it up for you.", tag = 3 },
+        { "character_saber", "Hold there! Not used to seeing a party this deep. It is mostly rift raff down here.", tag = 21 },
         { when = { has = "character_rowan" }, script = {
-            { "character_rowan", "She is telling you the composition of the room she means to beat you in, {name}. Nobody does that who is worried.", tag = 4 },
+            { "character_rowan", "She is alone and she is not worried, {name}. Keep your guard up.", tag = 22 },
         } },
-        { "character_saber", "I open the same way every time. Years of it. Nobody's read it yet and I've stopped waiting for somebody to, which is the only reason I still enjoy the job.", tag = 5 },
-        { "character_saber", "Beat me and I'm yours. I go where I like -- and I'd like to go with whoever finally reads the swing.", tag = 6 },
-        { "character_avatar", "We take the bout, or we leave her standing. Choose...", tag = 7, choices = {
-            { "Take the bout.", tag = 8, answer = "accept" },
-            { "Leave her standing.", tag = 9, answer = "decline" },
+        { "character_saber", "No house sent me and nobody is paying me. I came in looking for a fight worth having.", tag = 23 },
+        { "character_saber", "I was growing bored. Care to be my entertainment?", tag = 24, choices = {
+            { "Draw.", tag = 25, answer = "accept" },
         } },
     },
 }

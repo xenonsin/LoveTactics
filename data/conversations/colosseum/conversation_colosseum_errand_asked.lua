@@ -2,18 +2,20 @@
 -- tools/extract_strings.lua and must not be hand-edited. See models/conversation.lua.
 --
 -- The second meeting: an ask already agreed to and not yet run (models/errand.lua's `asked` kind). Short
--- by design, and hers is the shortest of the six -- a fighter who is contented mid-bout has nothing to
--- add to an offer she already made, and no reason at all to hurry you toward it.
+-- by design, and hers is the shortest of the six. A fighter who is contented mid-bout has nothing to add
+-- to an offer she already made, and no reason at all to hurry you toward it.
+--
+-- ONE ANSWER, like her `found` scene and for the same reason: she is not offering a choice. The decline
+-- branch is gone and the single choice still carries `answer = "accept"`, which is the only answer
+-- states/game.lua acts on.
 return {
-    title = "The Card's Opener",
+    title = "Somebody Worth Swinging At",
     cast  = { "character_avatar", "character_saber" },
 
     script = {
-        { "character_saber", "Back already. I haven't moved -- there's nowhere I'd rather be than about to start.", tag = 1 },
-        { "character_saber", "Same opening. Same door. Whenever you're ready.", tag = 2 },
-        { "character_avatar", "Now, or on the way past. Choose...", tag = 3, choices = {
-            { "Take the bout.", tag = 4, answer = "accept" },
-            { "Leave her standing.", tag = 5, answer = "decline" },
+        { "character_saber", "Back already? I have not moved. There is nowhere I would rather be than about to start.", tag = 30 },
+        { "character_saber", "Same opening. Same ground. Whenever you are ready.", tag = 31, choices = {
+            { "Draw.", tag = 32, answer = "accept" },
         } },
     },
 }

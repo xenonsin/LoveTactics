@@ -1967,7 +1967,7 @@ end
 -- floor of the run is rolled at COMPANION_CHANCE, the first floor to hit is where somebody is standing,
 -- and that is the whole of the descent's offering. A run can come up having met nobody.
 --
--- WITH ONE BODY OUTSIDE THE ROLL ENTIRELY: Saber stands on floor one of every descent until she joins,
+-- WITH ONE BODY OUTSIDE THE ROLL ENTIRELY: Amana stands on floor one of every descent until she joins,
 -- and the roll does not run at all while she is outstanding. See Descent.SCRIPTED_COMPANION below for
 -- why the first companion in the game cannot be one the dice may never hand over.
 --
@@ -1997,7 +1997,7 @@ end
 -- companion on the same ground. Stamped once, a descent offers one and only one.
 Descent.COMPANION_CHANCE = 25 -- percent, rolled per floor; ~87% that a run meets somebody at all
 
--- SABER IS THE FIRST BODY THE RIFT OFFERS, AND SHE IS NOT ROLLED FOR. Until the Colosseum's posting is
+-- AMANA IS THE FIRST BODY THE RIFT OFFERS, AND SHE IS NOT ROLLED FOR. Until the Cathedral's posting is
 -- finished -- which is to say until she is walking with you -- every descent stands her at a dead end on
 -- floor one, and the roll below never runs.
 --
@@ -2015,16 +2015,23 @@ Descent.COMPANION_CHANCE = 25 -- percent, rolled per floor; ~87% that a run meet
 -- the descent this is about. So the rolled path deals nobody on the run where meeting somebody matters
 -- most, and no amount of tuning COMPANION_CHANCE changes that -- the deck is empty, not unlucky.
 --
--- WHY HER AND WHY FLOOR ONE. Saber is the veteran who tests every newcomer with the same opening
--- (data/quests/colosseum/quest_colosseum_slot_01.lua) -- her whole premise is being the first real fight
--- somebody has, and her bout is authored as the shallowest thing the Colosseum posts. Floor one because
--- a scripted meeting the player can walk past on the roll's terms is a scripted meeting that does not
--- happen; the first board a new company ever stands on is the one place it is certain to look.
+-- WHY HER AND WHY FLOOR ONE. Amana is the priest (data/characters/character_amana.lua), and what floor
+-- one is missing is not a third sword: the opening floor is walked by two bodies with no healing between
+-- them, so the first companion the mode hands over is the one whose whole kit is keeping the other two
+-- standing. Floor one because a scripted meeting the player can walk past on the roll's terms is a
+-- scripted meeting that does not happen; the first board a new company ever stands on is the one place
+-- it is certain to look.
+--
+-- SABER USED TO STAND HERE and it was the wrong body twice over. She is the veteran who tests every
+-- newcomer, so scripting her made the first descent a duel the company had to win with two people and no
+-- healer; and her scene is written as a fighter surprised to meet anybody deep in the rift
+-- (conversation_colosseum_errand_found.lua), which is a line about a floor she never stood on while she
+-- was pinned to the first one. She is in the roll with the other five now.
 --
 -- IT IS NOT A HANDOUT. She still asks, and the ask is still the second beat: accepting marks one more end
 -- on the same floor and the company has to walk it and win it (models/errand.lua). What is scripted is
 -- the MEETING, not the recruit -- a run can still climb out having said no.
-Descent.SCRIPTED_COMPANION = "colosseum"       -- Saber's house (data/vendors/colosseum.lua's `companion`)
+Descent.SCRIPTED_COMPANION = "cathedral"       -- Amana's house (data/vendors/cathedral.lua's `companion`)
 Descent.SCRIPTED_COMPANION_FLOOR = 1           -- the first board a new company ever stands on
 
 -- Deal this run's single companion, as { house, floor }, or nil for a descent that meets nobody.

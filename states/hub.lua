@@ -99,8 +99,9 @@ local BURGER_X, BURGER_Y = 18, 18
 --
 -- THERE WAS A `hire` STAGE BEFORE THIS ONE, and it coached the Crossing: the sponsor's staked voucher,
 -- a rigged first pull that dealt Saber, and a lesson in what a pull looked like. The Crossing is retired
--- and there is no pull to teach, so the arrival hands straight to the Rift -- and Saber is met where she
--- belongs, standing on floor one (models/descent.lua's Descent.SCRIPTED_COMPANION). The old stage is why
+-- and there is no pull to teach, so the arrival hands straight to the Rift -- and the first companion is
+-- met where she belongs, standing on floor one (models/descent.lua's Descent.SCRIPTED_COMPANION, which
+-- is Amana; Saber is dealt by the roll like the rest). The old stage is why
 -- `stage.hire` is still read below: a stage that names a hire is spent by the body JOINING rather than
 -- by the door being opened, and the rule is kept for whatever is coached that way next.
 --

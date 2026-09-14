@@ -52,24 +52,20 @@ return {
     ["line.conversation_alchemist_discipline_unlocked.1"] = { en = "The {discipline}'s Work is unlocked to you, {name}. The Crucible releases its guarded cut for that method. The shelf has more to offer you.", ja = "" },  -- TODO
     ["line.conversation_alchemist_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_alchemist_discipline_unlocked.3"] = { en = "You made this yours honestly. That is rarer here than the gear is. Take it.", ja = "" },  -- TODO
-    ["line.conversation_alchemist_errand_asked.1"] = { en = "Still here. So is the crate, and so is whatever the college is calling it this week.", ja = "" },  -- TODO
-    ["line.conversation_alchemist_errand_asked.2"] = { en = "It keeps. It should not have to keep.", ja = "" },  -- TODO
-    ["line.conversation_alchemist_errand_asked.3"] = { en = "Now, or on the way past. Choose...", ja = "" },  -- TODO
-    ["line.conversation_alchemist_errand_asked.4"] = { en = "Go in with her.", ja = "" },  -- TODO
-    ["line.conversation_alchemist_errand_asked.5"] = { en = "Leave it standing.", ja = "" },  -- TODO
-    ["line.conversation_alchemist_errand_found.1"] = { en = "Stop there -- not for me, for the crate. Whatever the college told you is inside it, it is not a reagent, and it can hear every word we are saying.", ja = "" },  -- TODO
-    ["line.conversation_alchemist_errand_found.2"] = { en = "{posting}", ja = "" },  -- TODO
-    ["line.conversation_alchemist_errand_found.3"] = { en = "Intact. They are always very specific about intact, and never once about alive. I have carried three of these off that road and I have never yet been given the word for what I was carrying.", ja = "" },  -- TODO
-    ["line.conversation_alchemist_errand_found.4"] = { en = "She is unarmed, {name}, and she came down here anyway. That tells you what she thinks it is worth.", ja = "" },  -- TODO
-    ["line.conversation_alchemist_errand_found.5"] = { en = "The crew that took it will not hand it back to a woman with a satchel. Come in with me and it walks out. Do that, and I go where you go after -- I would rather spend myself on people who ask what is in the box.", ja = "" },  -- TODO
-    ["line.conversation_alchemist_errand_found.6"] = { en = "We go in with her, or we leave it lying where it is. Choose...", ja = "" },  -- TODO
-    ["line.conversation_alchemist_errand_found.7"] = { en = "Go in with her.", ja = "" },  -- TODO
-    ["line.conversation_alchemist_errand_found.8"] = { en = "Leave it lying.", ja = "" },  -- TODO
-    ["line.conversation_alchemist_slot_01_outro.1"] = { en = "Straw is dry. Seals are whole. Nothing has gone off inside it.", ja = "" },  -- TODO
-    ["line.conversation_alchemist_slot_01_outro.2"] = { en = "The crate never left our hands.", ja = "" },  -- TODO
-    ["line.conversation_alchemist_slot_01_outro.3"] = { en = "Then you are the first. Four consignments have come off that road this season and three came back as a smell.", ja = "" },  -- TODO
-    ["line.conversation_alchemist_slot_01_outro.4"] = { en = "The college will be told it was recovered intact. They will not be told by whom, because they would try to hire you.", ja = "" },  -- TODO
-    ["line.conversation_alchemist_slot_01_outro.5"] = { en = "Come to the Crucible instead. Our counter is on the markets and it is open to you.", ja = "" },  -- TODO
+    ["line.conversation_alchemist_errand_asked.30"] = { en = "Still here. So is the crate, and so is the crew sitting on it.", ja = "" },  -- TODO
+    ["line.conversation_alchemist_errand_asked.31"] = { en = "It keeps. It should not have to keep.", ja = "" },  -- TODO
+    ["line.conversation_alchemist_errand_asked.32"] = { en = "Go in with her.", ja = "" },  -- TODO
+    ["line.conversation_alchemist_errand_asked.33"] = { en = "Leave it lying.", ja = "" },  -- TODO
+    ["line.conversation_alchemist_errand_found.30"] = { en = "Stop there. Not for me. For the crate.", ja = "" },  -- TODO
+    ["line.conversation_alchemist_errand_found.31"] = { en = "That is a stretch of the Crucible's road, down here, with a consignment still standing on it.", ja = "" },  -- TODO
+    ["line.conversation_alchemist_errand_found.32"] = { en = "She is unarmed, {name}, and she came down here anyway.", ja = "" },  -- TODO
+    ["line.conversation_alchemist_errand_found.33"] = { en = "What is inside it is not a reagent. It can hear every word we are saying.", ja = "" },  -- TODO
+    ["line.conversation_alchemist_errand_found.34"] = { en = "That crew will not hand it back to a woman with a satchel. Come in with me and it walks out.", ja = "" },  -- TODO
+    ["line.conversation_alchemist_errand_found.35"] = { en = "Go in with her.", ja = "" },  -- TODO
+    ["line.conversation_alchemist_errand_found.36"] = { en = "Leave it lying.", ja = "" },  -- TODO
+    ["line.conversation_alchemist_slot_01_outro.30"] = { en = "Seals whole. Straw dry. Nothing has gone off inside it.", ja = "" },  -- TODO
+    ["line.conversation_alchemist_slot_01_outro.31"] = { en = "That is the word they use. Intact. Never once alive.", ja = "" },  -- TODO
+    ["line.conversation_alchemist_slot_01_outro.32"] = { en = "You asked what was in the box before you opened it. I go where you go.", ja = "" },  -- TODO
     ["line.conversation_alchemist_vendor_intro.1"] = { en = "Somebody in your company has been doing the Work. That is the only credential this house recognises.", ja = "" },  -- TODO
     ["line.conversation_alchemist_vendor_intro.2"] = { en = "The Crucible refines your gear and brews your medicine. Poison and acid, coatings, elixirs, and auras that lend you what you are not.", ja = "" },  -- TODO
     ["line.conversation_alchemist_vendor_intro.3"] = { en = "Lend it from whom?", ja = "" },  -- TODO
@@ -79,24 +75,20 @@ return {
     ["line.conversation_arcanum_discipline_unlocked.1"] = { en = "You have opened the {discipline}'s discipline, {name}. The Arcanum unseals what it holds for that study. The shelf is longer for you now.", ja = "" },  -- TODO
     ["line.conversation_arcanum_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_arcanum_discipline_unlocked.3"] = { en = "There is always more to learn on that road. Good. Take only what you will practise.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_errand_asked.1"] = { en = "Twelve now. One of them came back with a friend, which means my count was wrong when I gave it to you and I would rather you heard that from me.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_errand_asked.2"] = { en = "I will be on this step. The book is not going anywhere, and apparently neither am I.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_errand_asked.3"] = { en = "Now, or on the way past. Choose...", ja = "" },  -- TODO
-    ["line.conversation_arcanum_errand_asked.4"] = { en = "Take the room.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_errand_asked.5"] = { en = "Leave it standing.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_errand_found.1"] = { en = "Please do not go through that door yet. There are eleven of them in the reading room. I have counted them twice, from two positions, because once is not counting.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_errand_found.2"] = { en = "{posting}", ja = "" },  -- TODO
-    ["line.conversation_arcanum_errand_found.3"] = { en = "I have been sitting on this step for four hours working out how to take that room alone. The honest answer is that I cannot. That is not modesty, it is the arithmetic -- I did it properly and it comes out the same each time.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_errand_found.4"] = { en = "Four hours on a step, and she did not go in. There are worse things to have in front of you, {name}.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_errand_found.5"] = { en = "With your company in it, the arithmetic works. I would like the book. Rather more than the book, I would like to keep walking with people who check their numbers before they open a door.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_errand_found.6"] = { en = "We take the room, or we leave the book to the diggers. Choose...", ja = "" },  -- TODO
-    ["line.conversation_arcanum_errand_found.7"] = { en = "Take the room.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_errand_found.8"] = { en = "Leave the book.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_slot_01_outro.1"] = { en = "Do not open it here. It has been under water since before the city had a wall.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_slot_01_outro.2"] = { en = "There were four other parties down there digging for it.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_slot_01_outro.3"] = { en = "There were six. Two of them are still down there.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_slot_01_outro.4"] = { en = "You will want a table, light, and someone who can read it. The Arcanum has all three.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_slot_01_outro.5"] = { en = "Our counter is on the markets. Come and use it. That is what it is for.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_errand_asked.30"] = { en = "Twelve now. One of them came back with a friend, so my count was wrong when I gave it to you.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_errand_asked.31"] = { en = "I will be on this step. The book is not going anywhere.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_errand_asked.32"] = { en = "Take the room.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_errand_asked.33"] = { en = "Leave the book.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_errand_found.30"] = { en = "Please do not go through that door yet. There are eleven of them in there. I counted twice, from two positions.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_errand_found.31"] = { en = "The rift has copied a library, {name}, and flooded it on the way down.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_errand_found.32"] = { en = "I have been on this step four hours working out how to take that room alone. I cannot.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_errand_found.33"] = { en = "That is the arithmetic, not modesty. I did it properly and it comes out the same every time.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_errand_found.34"] = { en = "With your company in it the arithmetic works. I would like the book.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_errand_found.35"] = { en = "Take the room.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_errand_found.36"] = { en = "Leave the book.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_slot_01_outro.30"] = { en = "Do not open it here. It has been under water a very long time.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_slot_01_outro.31"] = { en = "Eleven, and then twelve. I was wrong once today and I have written down why.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_slot_01_outro.32"] = { en = "I would like to keep walking with people who check their numbers before they open a door.", ja = "" },  -- TODO
     ["line.conversation_arcanum_vendor_intro.1"] = { en = "Somebody in your company has been working. Practice leaves a mark, and this house is built to read it.", ja = "" },  -- TODO
     ["line.conversation_arcanum_vendor_intro.2"] = { en = "The Arcanum wins the wars the crown cannot. Elements, wind-ups, hazards laid on a tile and left standing there.", ja = "" },  -- TODO
     ["line.conversation_arcanum_vendor_intro.3"] = { en = "Everything here was made by somebody.", ja = "" },  -- TODO
@@ -186,23 +178,19 @@ return {
     ["line.conversation_cathedral_discipline_unlocked.1"] = { en = "The {discipline}'s calling is open to you, {name}. What the Cathedral kept back for that path is on the shelf. Take what serves.", ja = "" },  -- TODO
     ["line.conversation_cathedral_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_cathedral_discipline_unlocked.3"] = { en = "The Light gives what is earned, and you earned this. Carry it gently.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_errand_asked.1"] = { en = "It is still in there. It has hurt no one since you passed, which is not mercy -- there is no one left up here for it to hurt.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_errand_asked.2"] = { en = "I will not press you. Ask, and I come.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_errand_asked.3"] = { en = "Now, or on the way past. Choose...", ja = "" },  -- TODO
-    ["line.conversation_cathedral_errand_asked.4"] = { en = "Ask her in.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_errand_asked.5"] = { en = "Leave it standing.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_errand_found.1"] = { en = "You can lower that. Whatever is in the mill will not be talked out of it -- but it does not have to be met with drawn steel from the doorway either, and I would rather it was not.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_errand_found.2"] = { en = "{posting}", ja = "" },  -- TODO
-    ["line.conversation_cathedral_errand_found.3"] = { en = "Laid to rest. That is the Cathedral's phrase and it means made quiet. I was raised on that phrase. I have stopped pretending the two are the same sentence.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_errand_found.4"] = { en = "She wears their cloth and speaks of them like weather. Mark that, {name}.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_errand_found.5"] = { en = "I carry no blade and I am not going to start. I can keep every one of you standing in that room and I cannot end what is in it -- that part is yours. Ask me, and you have everything I have. I will not take the work off you unasked.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_errand_found.6"] = { en = "We ask her in, or we leave the mill to the dark. Choose...", ja = "" },  -- TODO
-    ["line.conversation_cathedral_errand_found.7"] = { en = "Ask her in.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_errand_found.8"] = { en = "Leave the mill.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_01_outro.1"] = { en = "It is quiet. I stood at that gate an hour and it did not start again.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_01_outro.2"] = { en = "He was still turning the wheel. He did not know the water was gone.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_01_outro.3"] = { en = "They rarely do. That is the whole of the work, and most people will not go and do it.", ja = "" },  -- TODO
-    ["line.conversation_cathedral_slot_01_outro.4"] = { en = "We keep a counter in the markets. Come to it. You have bought the right to be sold to.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_errand_asked.30"] = { en = "It is still in there. It has hurt nobody since you passed.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_errand_asked.31"] = { en = "I will not press you. Ask, and I come.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_errand_asked.32"] = { en = "Ask her in.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_errand_asked.33"] = { en = "Leave it standing.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_errand_found.30"] = { en = "You can lower that. I have been outside this mill since yesterday and it has not come out.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_errand_found.31"] = { en = "A mill. Under the ground, {name}. The rift has copied something it should not have.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_errand_found.32"] = { en = "The man inside is still turning the wheel. He does not know the water is gone.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_errand_found.33"] = { en = "I carry no blade and I cannot end him. Ask me in and I will keep all of you standing while you do.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_errand_found.34"] = { en = "Ask her in.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_errand_found.35"] = { en = "Leave the mill.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_01_outro.30"] = { en = "It is quiet. Listen. It is not starting again.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_01_outro.31"] = { en = "He was still turning the wheel. He did not know the water was gone.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_slot_01_outro.32"] = { en = "There will be more of these further down. I would rather not find the next one alone.", ja = "" },  -- TODO
     ["line.conversation_cathedral_slot_04_outro.1"] = { en = "The fold is clear. That is what the Cathedral hired us for.", ja = "" },  -- TODO
     ["line.conversation_cathedral_slot_04_outro.10"] = { en = "I stood close enough to be certain. Three things happen at that altar.", ja = "" },  -- TODO
     ["line.conversation_cathedral_slot_04_outro.11"] = { en = "It takes, and you get a soldier who will die gladly and never know what is in him. It takes wrong, and you get a thing that is hunted afterwards, and called a demon out of the wild.", ja = "" },  -- TODO
@@ -247,28 +235,14 @@ return {
     ["line.conversation_colosseum_discipline_unlocked.1"] = { en = "The {discipline}'s work is on your card now, {name}. The stable stocks for the fighters who reach it, and you reached it. Spend, and spend well.", ja = "" },  -- TODO
     ["line.conversation_colosseum_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_colosseum_discipline_unlocked.3"] = { en = "Knew you had it in you. That gear's sharper than the house lets most touch. Go on, kit up.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_errand_asked.1"] = { en = "Back already. I haven't moved -- there's nowhere I'd rather be than about to start.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_errand_asked.2"] = { en = "Same opening. Same door. Whenever you're ready.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_errand_asked.3"] = { en = "Now, or on the way past. Choose...", ja = "" },  -- TODO
-    ["line.conversation_colosseum_errand_asked.4"] = { en = "Take the bout.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_errand_asked.5"] = { en = "Leave her standing.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_errand_found.1"] = { en = "There you are. No house, no record, and you came all the way down here anyway. That's already the most interesting thing on the card.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_errand_found.2"] = { en = "{posting}", ja = "" },  -- TODO
-    ["line.conversation_colosseum_errand_found.3"] = { en = "Through that door it's me, and a netter the house booked to make it honest, and a crowd that doesn't know your name yet. That's the whole bout. I'm not going to dress it up for you.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_errand_found.4"] = { en = "She is telling you the composition of the room she means to beat you in, {name}. Nobody does that who is worried.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_errand_found.5"] = { en = "I open the same way every time. Years of it. Nobody's read it yet and I've stopped waiting for somebody to, which is the only reason I still enjoy the job.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_errand_found.6"] = { en = "Beat me and I'm yours. I go where I like -- and I'd like to go with whoever finally reads the swing.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_errand_found.7"] = { en = "We take the bout, or we leave her standing. Choose...", ja = "" },  -- TODO
-    ["line.conversation_colosseum_errand_found.8"] = { en = "Take the bout.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_errand_found.9"] = { en = "Leave her standing.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_01_confront.1"] = { en = "Opening bout! On the sand. Nobody, no house, no record.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_01_confront.2"] = { en = "And against them, on hire from no one in particular: Saber.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_01_confront.3"] = { en = "On hire from whoever paid, thank you. It's a living.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_01_confront.4"] = { en = "Right. You've not done this before, so. Two things, free, because I'd rather it was a bout than a mess.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_01_confront.5"] = { en = "One. The crowd is not on your side and it is not against you. It does not know you exist yet. Stop listening to it.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_01_confront.6"] = { en = "Two.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_01_confront.7"] = { en = "Everyone your size opens careful. Feels each other out, three or four exchanges, learns the range.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_01_confront.8"] = { en = "I don't.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_errand_asked.30"] = { en = "Back already? I have not moved. There is nowhere I would rather be than about to start.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_errand_asked.31"] = { en = "Same opening. Same ground. Whenever you are ready.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_errand_asked.32"] = { en = "Draw.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_errand_found.21"] = { en = "Hold there! Not used to seeing a party this deep. It is mostly rift raff down here.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_errand_found.22"] = { en = "She is alone and she is not worried, {name}. Keep your guard up.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_errand_found.23"] = { en = "No house sent me and nobody is paying me. I came in looking for a fight worth having.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_errand_found.24"] = { en = "I was growing bored. Care to be my entertainment?", ja = "" },  -- TODO
+    ["line.conversation_colosseum_errand_found.25"] = { en = "Draw.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_01_event.1"] = { en = "The tunnel to the sand is that way. And a man in a very good coat has been watching you since the gate.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_01_event.2"] = { en = "House colors, no house name. A booking man, here to price the nobody before the crowd does. Choose...", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_01_event.3"] = { en = "Hear his offer.", ja = "" },  -- TODO
@@ -276,27 +250,24 @@ return {
     ["line.conversation_colosseum_slot_01_event.5"] = { en = "...forty in coin to open the card, win or lose, so long as the show is good. He's already written the ending. I take the money anyway.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_01_event.6"] = { en = "No handler, no leash, no debt at the door. Whatever happens on that sand is ours alone, and we walk to it steady.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_01_event.7"] = { en = "They put their opener up against a team with nothing behind it, and look at her: a mismatch in her favor and she's glad of it. Not hungry, not bored, just happy for the fight. No one's read her opening in years. Go be the first.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_01_join.1"] = { en = "Footsteps behind us. The same weight that put me on my back an hour ago. She followed us out.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_01_join.2"] = { en = "Easy, knight. If I meant you harm I'd not announce it with my boots.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_01_join.3"] = { en = "Saber. That's the name the card gives me, and it'll do. You'll have heard the house one shouted over the sand. Forget that one. It was rented.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_01_join.4"] = { en = "I open every bout the same way, and no one has read it in years. You two did, and I had more fun losing that than I've had winning since I can remember. You didn't flinch at the crowd, you didn't flinch at me, and nobody paid you to stand there.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_01_join.5"] = { en = "{name}. No house, no handler, no leash at the gate. Someone will tell you that's a weakness before the week's out. It isn't. On that sand it is the only thing worth owning.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_01_join.6"] = { en = "There is a reckoning owed under this arena. Its patron has eaten better fighters than me, one at a time, because one at a time is how she likes them. I cannot reach her alone. You are the first outfit I've met that might.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_01_join.7"] = { en = "So. No coin this round, no booking, no ending written for me before the bell. Just the first fight in years I'd follow off the sand. I'm asking straight: take me on.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_01_join.8"] = { en = "You unseated a sworn knight in front of a house that wanted you to win, veteran. I would far rather have that swinging beside us than waiting on the next card.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_01_join.9"] = { en = "Then it's a team, and it has nothing behind it, and I have wanted that for longer than I'd say. Lead on. Let's see how far it goes.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_01_join.10"] = { en = "Someone is following us, {name}. It is her.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_01_join.11"] = { en = "Easy, knight. If I meant harm I would not walk this loud.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_01_join.12"] = { en = "Saber. That is the name on the card and it will do.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_01_join.13"] = { en = "I open every bout the same way. Nobody has read it in years. You did.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_01_join.14"] = { en = "That was the best fight I have had in a long time.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_01_join.15"] = { en = "There is something under this arena I cannot beat alone. You have no house and no handler. Neither do I.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_01_join.16"] = { en = "Take me with you.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_01_join.17"] = { en = "She put me on my back in front of a full crowd, {name}. I would rather have her beside us.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_01_join.18"] = { en = "Then it is settled. Lead on.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_01_kit.1"] = { en = "Someone kitted up for this card and never made it to the sand. Their bag's still here, straps cut in a hurry.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_01_kit.2"] = { en = "Cleansing draughts. A couple of clearwater vials and a panacea besides. Choose...", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_01_kit.3"] = { en = "Take the lot.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_01_kit.4"] = { en = "Rowan. Why would a fighter bring these to a sword bout?", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_01_kit.5"] = { en = "Because a house like the one we're drawn against doesn't win with the sword alone. It fields netters. They'll rope your legs and hold you still while the big blade winds up. Drink one the moment you're pinned and it cuts you loose. You get your step back before the swing lands. A panacea will do the same for whoever's caught beside you. Don't stand there roped, waiting for it.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_01_kit.6"] = { en = "Cut loose, then move. Understood. Let's not keep the veteran waiting.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_01_outro.1"] = { en = "Enough. Enough! It's been years since anyone put me on my back on this sand.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_01_outro.15"] = { en = "And the houses pay attention to who does the work. Mine has a counter on the markets. It is open to you now. Come and spend.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_01_outro.2"] = { en = "I've watched this place feed fighters to its patron, one after another. I will not be fed. And you two. No house behind you, and you still put me down.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_01_outro.3"] = { en = "Well fought. The Adventurers' Guild is always short of people who live through their first bout.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_01_outro.4"] = { en = "You want the Demon Lord? So does everyone who's lost a home. But it is only strong because of its seven. Its generals, its appetites. Unmake them one by one, and the crown is hollow.", ja = "" },  -- TODO
-    ["line.conversation_colosseum_slot_01_outro.5"] = { en = "Walk out slow. I'll catch you past the gate. There's a thing I mean to ask, and not with a booking man breathing on it.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_01_outro.30"] = { en = "Enough! Enough. Put it up.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_01_outro.31"] = { en = "It has been years since anybody put me on my back. You read the opening. Nobody reads the opening.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_slot_01_outro.32"] = { en = "I am coming with you. Do not make it strange. Just walk.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_03_intro.1"] = { en = "BEAT: the vendor gives the job. The Warlord fought under our banner once; bring him back, or bring him down.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_03_intro.2"] = { en = "BEAT: the avatar clocks that this one is a genuine bout, a named fighter on the other side, not a culling.", ja = "" },  -- TODO
     ["line.conversation_colosseum_slot_03_intro.3"] = { en = "BEAT: Saber is alight. THIS is the thing she loves: house against a fighter with a name, honest, no padding.", ja = "" },  -- TODO
@@ -356,25 +327,20 @@ return {
     ["line.conversation_hunters_lodge_discipline_unlocked.1"] = { en = "You walk the {discipline}'s trail now, {name}. The Lodge sets out gear for the ones who get this far. It is yours to draw.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_discipline_unlocked.3"] = { en = "That path knows when to stop. Take the kit. Remember the lesson with it.", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_errand_asked.1"] = { en = "It moved north while you were away. It is thinner. That is worse, not better -- a thin one eats sooner.", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_errand_asked.2"] = { en = "Once. My terms have not changed and they are not going to.", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_errand_asked.3"] = { en = "Now, or on the way past. Choose...", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_errand_asked.4"] = { en = "Take her terms.", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_errand_asked.5"] = { en = "Leave it standing.", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_errand_found.1"] = { en = "Down. Lower than that. The boars have your scent already and they will reach you a long time before the stag does.", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_errand_found.2"] = { en = "{posting}", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_errand_found.3"] = { en = "Antlers on a wall. That is what the Lodge wants and it is not why I have been sitting in this wood for nine days.", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_errand_found.4"] = { en = "Nine days, and a wolf that has not left her side. She is not the one being hunted here, {name}.", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_errand_found.5"] = { en = "It stopped being a stag two winters ago. It takes and it takes and the wood has gone quiet behind it -- so it comes down once, and nothing else in here does. Those are my terms and I do not move off them.", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_errand_found.6"] = { en = "Agree to that and my wolf goes in first and I go after her. Agree to it and I will walk you out of this wood, and further than that if you are going.", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_errand_found.7"] = { en = "We take it on her terms, or we leave the wood alone. Choose...", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_errand_found.8"] = { en = "Take her terms.", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_errand_found.9"] = { en = "Leave the wood.", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_slot_01_outro.1"] = { en = "Set them down. No, on the floor. I want to see how they stand.", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_slot_01_outro.2"] = { en = "Fourteen points. I have been telling them twelve for nine years.", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_slot_01_outro.3"] = { en = "It walked out of the fog and stopped. It had a look at us first.", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_slot_01_outro.4"] = { en = "It always does. That is why it is on the wall and not in a pot.", ja = "" },  -- TODO
-    ["line.conversation_hunters_lodge_slot_01_outro.5"] = { en = "The Lodge keeps a counter in the markets. It is open to you now. Ask for me by the wall.", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_errand_asked.30"] = { en = "It has gone deeper into the wood. It is thinner. That is worse, not better.", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_errand_asked.31"] = { en = "Once. My terms have not changed and they are not going to.", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_errand_asked.32"] = { en = "Take her terms.", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_errand_asked.33"] = { en = "Leave the wood.", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_errand_found.30"] = { en = "Down. Lower than that. There is a wood on this floor and it has boars in it.", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_errand_found.31"] = { en = "Trees, {name}. Under a mile of rock. Do not stand and stare at them.", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_errand_found.32"] = { en = "The stag in it takes and takes, and the wood has gone quiet behind it.", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_errand_found.33"] = { en = "So it comes down once, and nothing else in here does. Those are my terms.", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_errand_found.34"] = { en = "Agree to them and my wolf goes in first. I go after her.", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_errand_found.35"] = { en = "Take her terms.", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_errand_found.36"] = { en = "Leave the wood.", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_slot_01_outro.30"] = { en = "Fourteen points. The Lodge has been telling itself twelve for nine years.", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_slot_01_outro.31"] = { en = "It came down once. Nothing else in that wood dies today.", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_slot_01_outro.32"] = { en = "I am going further in. I would rather go with you than behind you.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_vendor_intro.1"] = { en = "There is a hunter in your company. The wood tells us that before you do.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_vendor_intro.2"] = { en = "The Lodge clears the beasts that would eat your children and feeds your town on what is left. Honest work, honest coin.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_vendor_intro.3"] = { en = "Never? Not one day in the year?", ja = "" },  -- TODO
@@ -443,24 +409,20 @@ return {
     ["line.conversation_undercroft_discipline_unlocked.1"] = { en = "The {discipline}'s trade is yours now, {name}. The firm keeps stock off the open book for a hand that reaches it, and you reached it. Quietly, mind.", ja = "" },  -- TODO
     ["line.conversation_undercroft_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_undercroft_discipline_unlocked.3"] = { en = "Took me years to get shown that rack. You did it faster. Don't get sloppy with it.", ja = "" },  -- TODO
-    ["line.conversation_undercroft_errand_asked.1"] = { en = "Still counting. He has not moved, and neither have the names in there.", ja = "" },  -- TODO
-    ["line.conversation_undercroft_errand_asked.2"] = { en = "Every day that door stays shut is a day somebody up top still owes. Whenever you like. Not slower than that.", ja = "" },  -- TODO
-    ["line.conversation_undercroft_errand_asked.3"] = { en = "Now, or on the way past. Choose...", ja = "" },  -- TODO
-    ["line.conversation_undercroft_errand_asked.4"] = { en = "Open it.", ja = "" },  -- TODO
-    ["line.conversation_undercroft_errand_asked.5"] = { en = "Leave it standing.", ja = "" },  -- TODO
-    ["line.conversation_undercroft_errand_found.1"] = { en = "You are loud. Be loud further back for a moment -- there is a man behind that door who counts footsteps for a living and he is very good at it.", ja = "" },  -- TODO
-    ["line.conversation_undercroft_errand_found.2"] = { en = "{posting}", ja = "" },  -- TODO
-    ["line.conversation_undercroft_errand_found.3"] = { en = "Two keys, three doors, and the Undercroft would prefer you did not sit down and do that sum. The third door is the keeper. He does not open politely for me and he will not open politely for you.", ja = "" },  -- TODO
-    ["line.conversation_undercroft_errand_found.4"] = { en = "She knows the count of the doors and the name of the man. She has been inside, {name}.", ja = "" },  -- TODO
-    ["line.conversation_undercroft_errand_found.5"] = { en = "So let us be clear before it is open, because after is too late to be clear. The gold is yours -- all of it, I will not touch a coin. What I want is the ledgers, and the ledgers are going in a fire, and everyone whose name is in them stops owing tonight.", ja = "" },  -- TODO
-    ["line.conversation_undercroft_errand_found.6"] = { en = "We open it on that understanding, or we walk away from the door. Choose...", ja = "" },  -- TODO
-    ["line.conversation_undercroft_errand_found.7"] = { en = "Open it.", ja = "" },  -- TODO
-    ["line.conversation_undercroft_errand_found.8"] = { en = "Walk away.", ja = "" },  -- TODO
-    ["line.conversation_undercroft_slot_01_outro.1"] = { en = "Two keys and a third door. I did wonder how you would take that.", ja = "" },  -- TODO
-    ["line.conversation_undercroft_slot_01_outro.2"] = { en = "You knew there were three.", ja = "" },  -- TODO
-    ["line.conversation_undercroft_slot_01_outro.3"] = { en = "I knew. I wanted to see what you did about the one I could not give you.", ja = "" },  -- TODO
-    ["line.conversation_undercroft_slot_01_outro.4"] = { en = "Most people come back and tell me the job was short a key. You came back with the box.", ja = "" },  -- TODO
-    ["line.conversation_undercroft_slot_01_outro.5"] = { en = "There is a stair off the markets with no sign on it. Take it. The shelf down there is yours to shop.", ja = "" },  -- TODO
+    ["line.conversation_undercroft_errand_asked.30"] = { en = "Still counting. He has not moved, and neither have the names in there.", ja = "" },  -- TODO
+    ["line.conversation_undercroft_errand_asked.31"] = { en = "Every day that door stays shut is a day somebody still owes. Whenever you like. Not slower than that.", ja = "" },  -- TODO
+    ["line.conversation_undercroft_errand_asked.32"] = { en = "Open it.", ja = "" },  -- TODO
+    ["line.conversation_undercroft_errand_asked.33"] = { en = "Walk away.", ja = "" },  -- TODO
+    ["line.conversation_undercroft_errand_found.30"] = { en = "You are loud. Be loud further back for a moment.", ja = "" },  -- TODO
+    ["line.conversation_undercroft_errand_found.31"] = { en = "There is a vault door on this floor with the Bank's mark on it, and a man behind it who counts footsteps for a living.", ja = "" },  -- TODO
+    ["line.conversation_undercroft_errand_found.32"] = { en = "She knows the mark and she knows the man, {name}. She has been inside one of these.", ja = "" },  -- TODO
+    ["line.conversation_undercroft_errand_found.33"] = { en = "So let us be clear before it is open. The gold is yours. All of it. I will not touch a coin.", ja = "" },  -- TODO
+    ["line.conversation_undercroft_errand_found.34"] = { en = "What I want is the ledgers, and the ledgers are going in a fire.", ja = "" },  -- TODO
+    ["line.conversation_undercroft_errand_found.35"] = { en = "Open it.", ja = "" },  -- TODO
+    ["line.conversation_undercroft_errand_found.36"] = { en = "Walk away.", ja = "" },  -- TODO
+    ["line.conversation_undercroft_slot_01_outro.30"] = { en = "Two keys and three doors. You did not stop when the sum came up short.", ja = "" },  -- TODO
+    ["line.conversation_undercroft_slot_01_outro.31"] = { en = "The gold is on the floor behind me. Take all of it. I said I would not touch a coin.", ja = "" },  -- TODO
+    ["line.conversation_undercroft_slot_01_outro.32"] = { en = "These go in the first fire we pass. Then I am with you.", ja = "" },  -- TODO
     ["line.conversation_undercroft_vendor_intro.1"] = { en = "There is a hand in your company who knows the trade. We hear about quiet work, friend. That is why this counter is open to you.", ja = "" },  -- TODO
     ["line.conversation_undercroft_vendor_intro.2"] = { en = "No sign, no door you would notice, and you found us anyway. Everything on this floor belonged to somebody else once.", ja = "" },  -- TODO
     ["line.conversation_undercroft_vendor_intro.3"] = { en = "And the people it belonged to?", ja = "" },  -- TODO
@@ -519,13 +481,12 @@ return {
     ["title.conversation_cathedral_slot_04_outro"] = { en = "The Purge in the Fold", ja = "" },  -- TODO
     ["title.conversation_cathedral_vendor_intro"] = { en = "The Cathedral", ja = "" },  -- TODO
     ["title.conversation_colosseum_discipline_unlocked"] = { en = "A New Card", ja = "" },  -- TODO
-    ["title.conversation_colosseum_errand_asked"] = { en = "The Card's Opener", ja = "" },  -- TODO
-    ["title.conversation_colosseum_errand_found"] = { en = "The Card's Opener", ja = "" },  -- TODO
-    ["title.conversation_colosseum_slot_01_confront"] = { en = "The Card's Opener", ja = "" },  -- TODO
+    ["title.conversation_colosseum_errand_asked"] = { en = "Somebody Worth Swinging At", ja = "" },  -- TODO
+    ["title.conversation_colosseum_errand_found"] = { en = "Somebody Worth Swinging At", ja = "" },  -- TODO
     ["title.conversation_colosseum_slot_01_event"] = { en = "The Tout on the Concourse", ja = "" },  -- TODO
     ["title.conversation_colosseum_slot_01_join"] = { en = "Past the Gate", ja = "" },  -- TODO
     ["title.conversation_colosseum_slot_01_kit"] = { en = "An Unclaimed Kit", ja = "" },  -- TODO
-    ["title.conversation_colosseum_slot_01_outro"] = { en = "The Gatekeeper", ja = "" },  -- TODO
+    ["title.conversation_colosseum_slot_01_outro"] = { en = "The Best of It", ja = "" },  -- TODO
     ["title.conversation_colosseum_slot_03_intro"] = { en = "Siege of Warlord's Keep", ja = "" },  -- TODO
     ["title.conversation_colosseum_slot_03_outro"] = { en = "Siege of Warlord's Keep", ja = "" },  -- TODO
     ["title.conversation_colosseum_slot_06_intro"] = { en = "Blood in the Sand", ja = "" },  -- TODO

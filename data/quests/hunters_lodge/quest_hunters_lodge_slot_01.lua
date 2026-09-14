@@ -4,7 +4,12 @@
 -- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "The Sacred Stag",
-    description = "A white stag walks the deep wood. The Lodge wants its antlers on their wall.",
+    -- The work in one line, read as a spoken line rather than as a notice on a board: the city has no
+    -- Quest Board any more, and the only code that reads this field is the companion posting scenes
+    -- through `{posting}` (states/game.lua sets player.postingWork off it). Written to the premise the
+    -- meeting scenes stand on: the rift copies places, and hers is standing on a floor of it.
+    description = "A wood grows under the ground, and the white stag in it has eaten the quiet out " ..
+        "of the place. A hunter has been waiting at the treeline for it.",
     difficulty = "Normal",
     sponsor = "hunters_lodge",
     ladder = 0, -- which rung of the Lodge this job opens (models/errand.lua)

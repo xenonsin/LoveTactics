@@ -5,7 +5,12 @@
 -- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "The Sunken Sanctum",
-    description = "A grimoire lies in the flooded ruins. Others are already digging for it.",
+    -- The work in one line, read as a spoken line rather than as a notice on a board: the city has no
+    -- Quest Board any more, and the only code that reads this field is the companion posting scenes
+    -- through `{posting}` (states/game.lua sets player.postingWork off it). Written to the premise the
+    -- meeting scenes stand on: the rift copies places, and hers is standing on a floor of it.
+    description = "A reading room lies flooded a long way below where it was built. Others are " ..
+        "already inside, digging for what is in it.",
     difficulty = "Normal",
     sponsor = "arcanum",
     -- The thanks for the job that OPENS this house. Its opener is seated on a descent floor unasked

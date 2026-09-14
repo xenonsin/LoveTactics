@@ -2331,6 +2331,26 @@ function game:openEncounter(cell, opts)
                                 -- which is naming the house whose ledger just moved.
                                 game:pushToast("Done for " ..
                                     ((Vendor.get(def.sponsor) or {}).name or "the house"))
+                                -- AND THE COMPANION, which is the whole reason the ask was walked to and
+                                -- was missing entirely. `rewardCharacter` is the field that recruits
+                                -- (models/errand.lua's Errand.companionOf reads it to decide who a house
+                                -- even posts), and the only code that ever granted it was
+                                -- Quest.complete -- the CAMPAIGN's payout seam, which this mode
+                                -- deliberately does not call. So a company could meet a body at a dead
+                                -- end, agree to her ask, walk the floor, win the fight, take the purse
+                                -- and the goods, and climb out without her: the mode's one non-gear
+                                -- reward paid nothing, silently, on every one of the six.
+                                --
+                                -- Before the outro rather than after, because the outro IS her first
+                                -- words as a member: Player.recruit queues the join banner and
+                                -- Conversation.play drains whatever is queued onto the scene it plays
+                                -- (models/conversation.lua), so recruiting here lands "[X has joined your
+                                -- Party]" on the end of the scene she speaks. Recruiting after would
+                                -- leave the banner queued for whatever spoke next, which on this path is
+                                -- the next floor's opening.
+                                if def.rewardCharacter then
+                                    Player.recruit(game.player, def.rewardCharacter)
+                                end
                                 if def.outro then require("models.conversation").play(def.outro) end
                             end
                             Player.save()

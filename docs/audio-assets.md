@@ -17,17 +17,20 @@ number here — re-run the check.
 
 ## Snapshot
 
-As of 2026-07-29 — **43 of 46 present**, 3 outstanding. Regenerate with the command above.
+As of 2026-09-12 — **45 of 57 present**, 12 outstanding. Regenerate with the command above.
 Each cue in [../data/sounds.lua](../data/sounds.lua) carries a one-line commission spec above it — that
 file is the brief; this doc is the counts and the sourcing.
 
 | bucket | have | needed | plays through |
 |---|---|---|---|
-| `music/` | 5 | 6 | `Sound.music(id)` — streamed, looped bed (one per place the player spends time) |
-| `ui/` | 4 | 4 | `Sound.play(id)` — the shared menu widget (FF-style synth blips) |
+| `music/` | 5 | 8 | `Sound.music(id)` — streamed, looped bed (one per place the player spends time) |
+| `ui/` | 5 | 5 | `Sound.play(id)` — the shared menu widget (FF-style synth blips) |
 | `battle/` | 30 | 30 | `Sound.play(id)` — one-shot per combat event, incl. 11 damage-type impacts |
 | `quest/` | 3 | 3 | `Sound.play(id)` — progress stings |
-| `treasure/` | 0 | 2 | `Sound.play(id)` — the chest-opening loot reveal (unlatch + payoff pop) |
+| `treasure/` | 2 | 2 | `Sound.play(id)` — the chest-opening loot reveal (unlatch + payoff pop) |
+| `rift/` | 0 | 4 | `Sound.play(id)` — the Crossing reveal (open, per-pip star, surge, overshoot) |
+| `shop/` | 0 | 1 | `Sound.play(id)` — a purchase committed at a counter |
+| `stone/` | 0 | 4 | `Sound.play(id)` — the Touchstone reading (read, per-rung mark, reveal, break) |
 
 **The split is: music is sourced, every other cue is a synthesized placeholder.** The five present
 music beds use real sourced (CC0) tracks; all SFX and stings are synthesized stand-ins (deterministic
@@ -35,7 +38,8 @@ DSP, licence-free) until real ones are recorded or sourced. **`music.boss` is in
 boss/objective fights run without a bed (ordinary battles use the sourced `battle` track; the Mock
 Battle asks for it too via `encounter.music`, since it is objective-kind but not a boss). Every cue
 stays declared and wired, so a real file dropped at any path starts playing with no code change — the
-one outstanding item above is `music.boss`, by choice.
+outstanding items above are `music.boss` (by choice) and the cues added since that first-pass fill:
+`music.victory` / `music.defeat`, and the `rift/`, `shop/` and `stone/` buckets. All wired, all silent.
 
 The `battle/` bucket grew from 10 to 30. The action-loop and turn cues: **playerturn** (control returns
 to the player, distinct from the neutral **turn** tick), **select** (arm an ability), **confirm**
@@ -73,7 +77,7 @@ worth a listen and an easy retune/swap.
 
 | source | covers |
 |---|---|
-| **Synthesized** (ffmpeg lavfi — deterministic DSP, not AI, no licence) | EVERY non-music cue — all `ui/*` (FF/KH-style soft bells); all `battle/*` (impacts, whooshes, shimmers, stings, the 11 damage-type hits); all `quest/*` stings |
+| **Synthesized** (deterministic DSP, not AI, no licence) | all `ui/*` (FF/KH-style soft bells); all `battle/*` (impacts, whooshes, shimmers, stings, the 11 damage-type hits); all `quest/*` stings; both `treasure/*` cues |
 | [RandomMind — *Medieval:* series](https://opengameart.org/users/randommind) (OpenGameArt, CC0) | `music/menu` (Harvest Season) `hub` (Market Day, purpose-made loop) `overworld` (Exploration) `credits` (Victory Theme) |
 | [Emma_MA — QaziJamJam (orchestral battle theme)](https://opengameart.org/content/qazijamjam-orchestral-battle-theme) (OpenGameArt, CC0) | `music/battle` — orchestral, strings/brass/woodwinds/drums |
 | _(none yet)_ | `music/boss` — pulled for now; boss/objective fights run silent until a track lands |

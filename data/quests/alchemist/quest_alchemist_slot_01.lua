@@ -34,8 +34,12 @@
 -- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
     name = "The Runaway Reagent",
-    description = "A crate came off the Crucible's road and the college wants it back intact. They " ..
-        "are specific about intact. They are not specific about anything else.",
+    -- The work in one line, read as a spoken line rather than as a notice on a board: the city has no
+    -- Quest Board any more, and the only code that reads this field is the companion posting scenes
+    -- through `{posting}` (states/game.lua sets player.postingWork off it). Written to the premise the
+    -- meeting scenes stand on: the rift copies places, and hers is standing on a floor of it.
+    description = "A stretch of the Crucible's road lies in the rift with a consignment still " ..
+        "standing on it, and a crew around the crate.",
     difficulty = "Easy",
     sponsor = "alchemist",
     -- The thanks for the job that OPENS this house. Its opener is seated on a descent floor unasked

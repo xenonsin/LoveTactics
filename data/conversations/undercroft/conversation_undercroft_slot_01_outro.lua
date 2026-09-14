@@ -1,16 +1,19 @@
 -- Conversation authored inline (English); localization ids (`tag`) are stamped by
 -- tools/extract_strings.lua and must not be hand-edited. See models/conversation.lua.
 --
--- THE OPENER'S THANKS. See data/conversations/cathedral/conversation_cathedral_slot_01_outro.lua.
+-- PLAYED ON THE FLOOR, over the open vault. Clem joins here: states/game.lua's errand payout recruits
+-- `rewardCharacter` immediately before this plays, so the join banner drains onto the end of it.
+--
+-- IT USED TO BE THE UNDERCROFT'S DEBRIEF: the fence in the city admitting he knew about the third door
+-- and pointing at an unsigned stair off the markets. She made a division at the door, and the scene that
+-- ends her ask is her keeping it, which is the half a fence would never have mentioned.
 return {
     title = "The Third Door",
-    cast  = { "undercroft", "character_avatar" },
+    cast  = { "character_avatar", "character_clem" },
 
     script = {
-        { "undercroft", "Two keys and a third door. I did wonder how you would take that.", tag = 1 },
-        { "character_avatar", "You knew there were three.", tag = 2 },
-        { "undercroft", "I knew. I wanted to see what you did about the one I could not give you.", tag = 3 },
-        { "undercroft", "Most people come back and tell me the job was short a key. You came back with the box.", tag = 4 },
-        { "undercroft", "There is a stair off the markets with no sign on it. Take it. The shelf down there is yours to shop.", tag = 5 },
+        { "character_clem", "Two keys and three doors. You did not stop when the sum came up short.", tag = 30 },
+        { "character_clem", "The gold is on the floor behind me. Take all of it. I said I would not touch a coin.", tag = 31 },
+        { "character_clem", "These go in the first fire we pass. Then I am with you.", tag = 32 },
     },
 }

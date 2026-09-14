@@ -29,12 +29,15 @@ local function houses()
     return ids
 end
 
--- SABER IS OUTSIDE THE ROLL, so every case below that is ABOUT the roll has to start from a company that
--- already has her: while her posting is outstanding the descent deals her onto floor one and the dice are
--- never thrown (Descent.SCRIPTED_COMPANION). A fixture that forgot this would not fail loudly -- it would
--- quietly re-test the scripted path under a name that says "roll", which is the failure mode this helper
--- exists to make impossible to reach by accident.
-local function saberJoined(done)
+-- THE SCRIPTED COMPANION IS OUTSIDE THE ROLL, so every case below that is ABOUT the roll has to start
+-- from a company that already has her: while her posting is outstanding the descent deals her onto floor
+-- one and the dice are never thrown (Descent.SCRIPTED_COMPANION). A fixture that forgot this would not
+-- fail loudly -- it would quietly re-test the scripted path under a name that says "roll", which is the
+-- failure mode this helper exists to make impossible to reach by accident.
+--
+-- Named for the role rather than the body: it reads the constant, so moving the script from one house to
+-- another (it was Saber's, it is Amana's) leaves every fixture below correct.
+local function scriptedJoined(done)
     done = done or {}
     done[Errand.opener(Descent.SCRIPTED_COMPANION)] = true
     return done
@@ -145,6 +148,65 @@ return {
         end,
     },
     {
+        -- THE BUG THIS PINS SHIPPED, AND IT PAID NOTHING WHERE IT MATTERED MOST. Every case above is
+        -- about the DATA -- a house posts an ask, the ask names a body, the body is the one the house
+        -- names -- and all of it was true while the mode handed over nobody at all. Clearing a companion's
+        -- ask in the rift runs states/game.lua's errand payout, which called Errand.complete, paid the
+        -- purse, granted the goods and played the outro. It never granted `rewardCharacter`: that lived
+        -- in Quest.complete, the CAMPAIGN's payout seam, which the descent deliberately does not call.
+        --
+        -- So a player could meet a body at a dead end, agree, walk the floor, win the fight, watch her
+        -- say she was coming with them, and climb out alone. Nothing in this file went red, because
+        -- nothing in this file ever asked what the payout DID -- see the memory note about a report
+        -- column no pass reads.
+        --
+        -- The seam is pinned rather than the caller: what has to be true is that finishing the work puts
+        -- her on the roster, and that the announcement is queued for the scene that plays next.
+        name = "finishing a companion's ask actually puts her on the roster",
+        fn = function()
+            local Conversation = require("models.conversation")
+            for i = #Conversation.pendingJoins, 1, -1 do Conversation.pendingJoins[i] = nil end
+
+            for _, vendorId in ipairs(houses()) do
+                local p = company()
+                p.roster = {}
+                local ask = Errand.opener(vendorId)
+                local who = Errand.companionOf(vendorId)
+                Errand.accept(p, ask, 1)
+
+                assert(Errand.complete(p, ask), vendorId .. "'s ask would not complete")
+                -- ...and this is the line the payout was missing. Asserted through Player.recruit
+                -- because that is the one route onto the roster that also queues the join banner.
+                local joined = Player.recruit(p, require("models.quest").defs[ask].rewardCharacter)
+                assert(joined, vendorId .. " finished its ask and handed over nobody")
+                assert(joined.id == who or joined.blueprint == who or joined.name,
+                    vendorId .. " handed over something that is not " .. tostring(who))
+
+                local onRoster = false
+                for _, body in ipairs(p.roster or {}) do
+                    if body == joined then onRoster = true end
+                end
+                assert(onRoster, tostring(who) .. " was granted but is not standing in the company")
+            end
+
+            assert(#Conversation.pendingJoins == #houses(),
+                "every recruit must queue a join banner for the scene that plays next")
+            for i = #Conversation.pendingJoins, 1, -1 do Conversation.pendingJoins[i] = nil end
+
+            -- AND THE CALLER, READ OFF THE SOURCE, which is the half that actually regressed. Everything
+            -- above proves the seam works when something calls it, and that was already true while the
+            -- payout called nothing. states/game.lua is a state file -- it switches states, draws, and
+            -- cannot be driven headless -- so the only way to assert that its errand payout grants the
+            -- companion is to read the line. Brittle to a rename on purpose: a rename is exactly when
+            -- somebody should be made to look at this again.
+            local src = love.filesystem.read("states/game.lua")
+            assert(src, "states/game.lua could not be read")
+            assert(src:find("Player.recruit(game.player, def.rewardCharacter)", 1, true),
+                "the descent's errand payout no longer grants rewardCharacter -- a companion's ask pays "
+                    .. "its purse and its goods and hands over nobody (see this case's note)")
+        end,
+    },
+    {
         name = "an ask is outstanding until it is run, and finishing it is what joins them",
         fn = function()
             local vendorId = houses()[1]
@@ -206,7 +268,7 @@ return {
         -- went looking. A roll makes one floor deeper the only way to buy another chance at a body.
         name = "a descent offers one companion at most, on one floor",
         fn = function()
-            local visited = company(saberJoined())
+            local visited = company(scriptedJoined())
             for _, vendorId in ipairs(houses()) do Player.markVendorVisited(visited, vendorId) end
 
             for _, seed in ipairs({ 12345, 777, 4242, 99, 31337 }) do
@@ -230,7 +292,7 @@ return {
         end,
     },
     {
-        -- SABER IS THE FIRST BODY THE RIFT OFFERS, AND SHE IS NOT ROLLED FOR (Descent.SCRIPTED_COMPANION).
+        -- AMANA IS THE FIRST BODY THE RIFT OFFERS, AND SHE IS NOT ROLLED FOR (Descent.SCRIPTED_COMPANION).
         --
         -- Everything else in this file is about a roll that can come up empty, which is the right shape
         -- for a company that already knows what a companion is. It is the wrong shape for the FIRST
@@ -238,19 +300,23 @@ return {
         -- behind a class level and behind that very descent (data/buildings/houses.lua), so on the run
         -- where meeting somebody matters most the deck is empty rather than unlucky and the rolled path
         -- deals nobody at all. Pinned across a spread of seeds because "every descent" is the claim.
-        name = "Saber stands on floor one of every descent until she joins",
+        --
+        -- WHO is scripted is pinned too, and by name. Floor one is walked by two bodies with no healing
+        -- between them, so the first companion the mode hands over has to be the priest; a change that
+        -- quietly moved the script to another house would still pass every seed assertion below.
+        name = "Amana stands on floor one of every descent until she joins",
         fn = function()
             local fresh = company() -- a new game: nothing done, nobody visited
             local scripted = Descent.SCRIPTED_COMPANION
             local opener = Errand.opener(scripted)
-            assert(opener and Quest.defs[opener].rewardCharacter == "character_saber",
-                scripted .. "'s posting does not hand over Saber, so scripting it recruits somebody else")
+            assert(opener and Quest.defs[opener].rewardCharacter == "character_amana",
+                scripted .. "'s posting does not hand over Amana, so scripting it recruits somebody else")
 
             for _, seed in ipairs({ 1, 12345, 777, 4242, 99, 31337 }) do
                 local dealt = Descent.new(fresh, seed).companion
                 assert(dealt, "seed " .. seed .. " offered a new company nobody at all")
                 assert(dealt.house == scripted and dealt.floor == 1, "seed " .. seed .. " put "
-                    .. dealt.house .. " on floor " .. dealt.floor .. " instead of Saber on floor one")
+                    .. dealt.house .. " on floor " .. dealt.floor .. " instead of Amana on floor one")
                 -- ...and she is actually SEATED there, which is the half the deal cannot promise on its
                 -- own: openersAt is what the floor builder reads.
                 local here = Descent.openersAt(Descent.new(fresh, seed), 1)
@@ -269,12 +335,12 @@ return {
 
             -- ...and the moment her posting is finished the script is spent and the roll takes over. This
             -- is what stops a descent spending its one offer on a body already in the party.
-            local joined = company(saberJoined())
+            local joined = company(scriptedJoined())
             for _, vendorId in ipairs(houses()) do Player.markVendorVisited(joined, vendorId) end
             for seed = 1, 200 do
                 local dealt = Descent.new(joined, seed).companion
                 assert(not (dealt and dealt.house == scripted),
-                    "Saber was offered again after she had joined")
+                    "the scripted companion was offered again after she had joined")
             end
         end,
     },
@@ -283,7 +349,7 @@ return {
         -- body the roll would be a rota with extra steps.
         name = "some descents offer nobody at all",
         fn = function()
-            local visited = company(saberJoined())
+            local visited = company(scriptedJoined())
             for _, vendorId in ipairs(houses()) do Player.markVendorVisited(visited, vendorId) end
             local empty, dealt = 0, 0
             for seed = 1, 400 do
@@ -299,9 +365,10 @@ return {
         -- body is recruited by somebody who has never met them.
         name = "only a house whose counter has been visited posts its companion",
         fn = function()
-            -- Saber already in the company, or the scripted deal answers before the visit gate is ever
-            -- consulted and this case would be measuring the wrong path (Descent.SCRIPTED_COMPANION).
-            local stranger = company(saberJoined())
+            -- The scripted companion already in the company, or the scripted deal answers before the
+            -- visit gate is ever consulted and this case would be measuring the wrong path
+            -- (Descent.SCRIPTED_COMPANION).
+            local stranger = company(scriptedJoined())
             local dealtToStranger = 0
             for seed = 1, 200 do
                 if Descent.new(stranger, seed).companion then dealtToStranger = dealtToStranger + 1 end
@@ -311,7 +378,7 @@ return {
 
             -- One counter visited, and only that house can be dealt.
             local one = houses()[1]
-            local met = company(saberJoined())
+            local met = company(scriptedJoined())
             Player.markVendorVisited(met, one)
             for seed = 1, 200 do
                 local dealt = Descent.new(met, seed).companion
@@ -328,7 +395,7 @@ return {
         name = "a companion already recruited is never dealt again",
         fn = function()
             local one = houses()[1]
-            local p = company(saberJoined({ [Errand.opener(one)] = true }))
+            local p = company(scriptedJoined({ [Errand.opener(one)] = true }))
             for _, vendorId in ipairs(houses()) do Player.markVendorVisited(p, vendorId) end
             for seed = 1, 200 do
                 local dealt = Descent.new(p, seed).companion
@@ -344,7 +411,7 @@ return {
         -- the same ground, which is two companions from one descent's single offer.
         name = "the deal is stamped on the run and survives a save",
         fn = function()
-            local p = company(saberJoined())
+            local p = company(scriptedJoined())
             for _, vendorId in ipairs(houses()) do Player.markVendorVisited(p, vendorId) end
             local a, b = Descent.new(p, 777), Descent.new(p, 777)
             assert((a.companion == nil) == (b.companion == nil), "the same seed dealt differently")

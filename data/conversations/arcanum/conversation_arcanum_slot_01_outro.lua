@@ -1,16 +1,19 @@
 -- Conversation authored inline (English); localization ids (`tag`) are stamped by
 -- tools/extract_strings.lua and must not be hand-edited. See models/conversation.lua.
 --
--- THE OPENER'S THANKS. See data/conversations/cathedral/conversation_cathedral_slot_01_outro.lua.
+-- PLAYED ON THE FLOOR, over the book. Gyeom joins here: states/game.lua's errand payout recruits
+-- `rewardCharacter` immediately before this plays, so the join banner drains onto the end of it.
+--
+-- IT USED TO BE THE ARCANUM'S DEBRIEF: the house's reader in the city warning her not to open it there,
+-- offering a table and a lamp at their counter. What replaces it is her own count, corrected out loud,
+-- which is the one thing she does that nobody else in the roster does.
 return {
     title = "Still Dripping",
-    cast  = { "arcanum", "character_avatar" },
+    cast  = { "character_avatar", "character_gyeom" },
 
     script = {
-        { "arcanum", "Do not open it here. It has been under water since before the city had a wall.", tag = 1 },
-        { "character_avatar", "There were four other parties down there digging for it.", tag = 2 },
-        { "arcanum", "There were six. Two of them are still down there.", tag = 3 },
-        { "arcanum", "You will want a table, light, and someone who can read it. The Arcanum has all three.", tag = 4 },
-        { "arcanum", "Our counter is on the markets. Come and use it. That is what it is for.", tag = 5 },
+        { "character_gyeom", "Do not open it here. It has been under water a very long time.", tag = 30 },
+        { "character_gyeom", "Eleven, and then twelve. I was wrong once today and I have written down why.", tag = 31 },
+        { "character_gyeom", "I would like to keep walking with people who check their numbers before they open a door.", tag = 32 },
     },
 }

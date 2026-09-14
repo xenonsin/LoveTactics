@@ -49,9 +49,15 @@
 -- `rewardItems` includes this slot's share of the line's quest-only shelf stock -- the unpriced
 -- pieces a vendor's shelf promises and never sells (docs/classes.md, tests/obtainable_spec.lua).
 return {
-    name = "Debut on the Sand",
-    description = "You have no house, no record, and an opening bout against the veteran who tests " ..
-        "every newcomer with the same opening -- the one no one has read in years. The odds are the entertainment.",
+    -- NOT "Debut on the Sand" ANY MORE. There is no sand: she is met at a dead end on whichever
+    -- floor the run deals her (models/descent.lua), and the name is what the worklist row shows.
+    name = "The Opening Nobody Reads",
+    -- READ ALOUD, and by the only route that reads it: the companion posting scenes speak this
+    -- through `{posting}` (states/game.lua sets player.postingWork off it) and nothing else in the
+    -- game displays it. So it is written as a spoken line about the floor the company is standing
+    -- on, not as a notice on a board that no longer exists.
+    description = "A fighter is waiting at a dead end with her blade already out, a long way from " ..
+        "anywhere she was sent. She is not lost and she is not leaving.",
     difficulty = "Easy",
     sponsor = "colosseum",
     rewardItems = { "weapon_ledgemans_axe", "armor_reckless_cuirass" },
@@ -140,7 +146,11 @@ return {
             composition = function()
                 return { "character_saber_bout", "character_trapper" }
             end,
-            opening = "conversation_colosseum_slot_01_confront",
+            -- NO OPENING SCENE. The bout used to play conversation_colosseum_slot_01_confront at the
+            -- bell, where the announcer sold the mismatch and Saber gave away her own tell for free
+            -- (everyone your size opens careful, she does not). That scene is deleted, and nothing
+            -- else names the tell: the opening blow now teaches it by landing. The concourse stop
+            -- above still sells the mismatch before the fight.
             -- Assassinate, not killAll: the bout ends when SABER goes down, which is both the fiction
             -- (you beat HER) and the fix for adds -- once her relic can summon hands, killAll would drag
             -- the win out into mopping up reinforcements after the fight was already decided. The mark

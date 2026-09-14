@@ -182,8 +182,10 @@ Legend: **N** narrative beat · **S** what it costs Saber · **Scenes** the scaf
   with the only house that isn't one. Tutorial for the foil arithmetic (her blow into full HP = the
   biggest number a new player has seen).
 - **S** Nothing yet — she's enjoying herself.
-- **Scenes** shipped: `conversation_wrath_intro`, `colosseum_debut_confront`, `arena_debut_event`,
-  `arena_debut_kit`, `prologue_victory`, `arena_saber_joins`.
+- **Scenes** shipped: `conversation_wrath_intro`, `arena_debut_event`, `arena_debut_kit`,
+  `prologue_victory`, `arena_saber_joins`. The bout's opening scene (`colosseum_debut_confront`, by
+  then `conversation_colosseum_slot_01_confront`) is **deleted**: the fight starts at the bell, and
+  her tell is taught by the opening blow rather than named aloud.
 
 ### Slot 2 — The Padded Card · `killAll` + protect
 - **N** The promoter's "warm-up" is a slaughter dressed as a bout. The house has carded the capital's
