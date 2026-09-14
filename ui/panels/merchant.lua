@@ -6,7 +6,14 @@
 -- game.activePanel and forwards input; three-input + mouse-only.
 --
 --   Merchant.new({ title=, stock={ {id, price}, ... }, gold=fn, unit=, suffix=,
---                  onBuy=fn(entry)->bool, onClose= })
+--                  heldLine=fn(entry)->string?, onBuy=fn(entry)->bool, onClose= })
+--
+-- BUYING ASKS FIRST, in the shape the city's counter asks (ui/panels/shop.lua's Shop:buy): one Choice
+-- modal carrying the item's own reading in its pane, the price, and what the purse is left holding. It
+-- is the same mistake the shelf in town had -- a row is one press from the cursor on every device, and
+-- on the pad and the keyboard the confirm button is the button that walks the list, so a stray Enter
+-- spent a floor's worth of foraged gold. Out here it is the worse press of the two: there is no
+-- sell-back on the road, and a cart met on floor three is not met again.
 --
 -- IT TOOK GOLD UNTIL THE ECONOMY SPLIT, and that is why the purse accessor is still called `gold`: the
 -- panel does not know or care which purse is behind the function, and renaming the field would have
@@ -25,6 +32,7 @@
 -- panel can say about a piece, and the keyboard and the pad reach it by moving the focus, same as the
 -- mouse does by hovering.
 
+local Choice = require("ui.panels.choice") -- the generic yes/no modal, hosted here as the buy confirmation
 local CloseButton = require("ui.close_button")
 local DebugMenu = require("ui.panels.debug_menu") -- the right-click item menu (development builds only)
 local GlossaryPanel = require("ui.glossary_panel") -- only for WIDTH: the room the aside needs beside the tooltip
@@ -86,6 +94,11 @@ function Merchant.new(opts)
     self.unit = opts.unit or "gold"
     self.suffix = opts.suffix or "g"
     self.onBuy = opts.onBuy
+    -- WHAT THE COMPANY ALREADY HOLDS OF A WARE, for the confirmation to print under the price. Optional
+    -- and caller-supplied because the panel has a purse accessor and no player: a shelf knows what it
+    -- charges, only the caller knows what is already in the stash. A relic row needs no such hand -- the
+    -- stack rides on the entry itself as `held`.
+    self.heldLine = opts.heldLine
     self.onClose = opts.onClose
     self.finished = false
     self.focus = 1
@@ -123,10 +136,73 @@ function Merchant.new(opts)
     return self
 end
 
+-- What the purse is left holding, which is the other half of "is this worth 120 gold" on a road where
+-- the next stop may be a Forge that bills for the same coin. Named before the money changes hands: that
+-- is the whole content of the ask.
+function Merchant:leavesLine(entry)
+    local left = self.gold() - (entry.price or 0)
+    if left <= 0 then return "That is the last of your " .. self.unit .. "." end
+    return "Leaves you " .. left .. " " .. self.unit .. "."
+end
+
+-- The reading the player was looking at when they pressed, measured once so the question can reserve a
+-- column for it and paint it there. Returns the { w, h, draw } a Choice pane takes, or nil if the piece
+-- has nothing to measure.
+function Merchant:readingPane(entry)
+    if entry.relic then
+        local at = (entry.held or 0) + 1
+        local w, h = RelicCard.tooltipSize(entry.relic, entry.held, { at = at })
+        return { w = w, h = h, draw = function(x, y)
+            RelicCard.tooltip(x, y, entry.relic, entry.held, { at = at })
+        end }
+    end
+    local layout = ItemTooltip.measure(entry.item)
+    if not layout then return nil end
+    return { w = layout.w, h = layout.h, draw = function(x, y) ItemTooltip.paint(layout, x, y) end }
+end
+
+-- Pressing a row ASKS; the spend happens in commitBuy behind the Yes. Affordability is settled here,
+-- before the question: being walked through a confirmation and only then told no is a worse answer than
+-- being told no on the press.
 function Merchant:buy(i)
     local entry = self.stock[i]
     if not entry or entry.bought then return end
     if self.gold() < (entry.price or 0) then return end -- can't afford: inert
+    self.focus = i -- the question is about the row that was pressed, and the shelf should say so behind it
+
+    local prompt = (entry.relic and (entry.relic.name or entry.id) or (entry.item.name or entry.id))
+        .. "  -  " .. (entry.price or 0) .. self.suffix .. "\n" .. self:leavesLine(entry)
+    -- The second fact, where there is one: a relic says what the stack would become (a duplicate DEEPENS
+    -- what you carry, and the reading beside the question is already resolved at that stack), a ware says
+    -- what is already in the stash.
+    if entry.relic then
+        if (entry.held or 0) > 0 then
+            prompt = prompt .. "\nYou hold " .. entry.held .. " already; this would make " .. (entry.held + 1) .. "."
+        end
+    elseif self.heldLine then
+        local held = self.heldLine(entry)
+        if held then prompt = prompt .. "\n" .. held end
+    end
+
+    self.confirm = Choice.new({
+        title = "Confirm Purchase",
+        prompt = prompt,
+        pane = self:readingPane(entry),
+        options = {
+            { label = "Buy", accent = { 0.42, 0.80, 0.62 },
+                cb = function() self.confirm = nil; self:commitBuy(entry) end },
+            { label = "Cancel", accent = { 0.78, 0.52, 0.50 },
+                cb = function() self.confirm = nil end },
+        },
+        onClose = function() self.confirm = nil end,
+    })
+end
+
+-- The spend. Re-checks the purse: the question stood open while nothing else could touch it, but the
+-- caller's onBuy is the only thing that actually moves money and it is entitled to refuse.
+function Merchant:commitBuy(entry)
+    if entry.bought then return end
+    if self.gold() < (entry.price or 0) then return end
     if self.onBuy and self.onBuy(entry) then entry.bought = true end
 end
 
@@ -134,6 +210,7 @@ function Merchant:close()
     if self.finished then return end
     self.finished = true
     self.itemDebug = nil -- a context menu never outlives the panel it was opened over
+    self.confirm = nil -- nor does an unanswered question
     if self.onClose then self.onClose() end
 end
 
@@ -244,7 +321,7 @@ function Merchant:draw()
     -- edge, level with the row it reads: the shelf inspects one row at a time whichever input is
     -- driving, and a box that followed the mouse would read differently for the pad than for the hand.
     local entry = self.stock[self.focus]
-    if entry and not self.itemDebug then
+    if entry and not self.itemDebug and not self.confirm then
         if entry.relic then
             -- The relic's own dwell surface (ui/relic_card.lua), which is the same one the overworld
             -- tray draws -- so a relic held twice reads the same on the shelf as it does in the tray.
@@ -258,6 +335,7 @@ function Merchant:draw()
         end
     end
     if self.itemDebug then self.itemDebug:draw() end -- modal over the shelf, and over the reading
+    if self.confirm then self.confirm:draw() end -- ...and the question over everything
     love.graphics.setColor(1, 1, 1)
 end
 
@@ -283,7 +361,10 @@ function Merchant:openItemDebug(x, y)
     return false
 end
 
+-- INPUT, innermost first: the question, then the debug menu, then the shelf. A row under the pointer
+-- must not take the focus out from under a question that names a different one.
 function Merchant:mousemoved(x, y)
+    if self.confirm then self.confirm:mousemoved(x, y) return end
     if self.itemDebug then self.itemDebug:mousemoved(x, y) return end
     self.closeButton:mousemoved(x, y)
     for i, entry in ipairs(self.stock) do
@@ -292,6 +373,7 @@ function Merchant:mousemoved(x, y)
 end
 
 function Merchant:cursorKind(x, y)
+    if self.confirm then return self.confirm:cursorKind(x, y) end
     if self.itemDebug then return self.itemDebug:cursorKind(x, y) end
     if self.closeButton:contains(x, y) then return "hand" end
     for _, entry in ipairs(self.stock) do if inRect(entry.rect, x, y) then return "hand" end end
@@ -299,6 +381,7 @@ function Merchant:cursorKind(x, y)
 end
 
 function Merchant:mousepressed(x, y, button)
+    if self.confirm then self.confirm:mousepressed(x, y, button) return end
     if self.itemDebug then self.itemDebug:mousepressed(x, y, button) return end
     if button == 2 then self:openItemDebug(x, y) return end
     if button ~= 1 then return end
@@ -311,6 +394,7 @@ end
 -- The shelf itself does not scroll -- it is a handful of fixed rows -- so the wheel exists here only
 -- for the debug menu's grade page, which is long enough to.
 function Merchant:wheelmoved(dx, dy)
+    if self.confirm then return end -- the shelf must not scroll out from under the question
     if self.itemDebug then self.itemDebug:wheelmoved(dx, dy) end
 end
 
@@ -320,6 +404,7 @@ function Merchant:moveFocus(d)
 end
 
 function Merchant:keypressed(key)
+    if self.confirm then self.confirm:keypressed(key) return end
     if self.itemDebug then self.itemDebug:keypressed(key) return end
     if key == "escape" then self:close()
     elseif key == "up" or key == "w" then self:moveFocus(-1)
@@ -328,6 +413,7 @@ function Merchant:keypressed(key)
 end
 
 function Merchant:gamepadpressed(joystick, button)
+    if self.confirm then self.confirm:gamepadpressed(joystick, button) return end
     if self.itemDebug then self.itemDebug:gamepadpressed(joystick, button) return end
     if button == "b" then self:close()
     elseif button == "dpup" then self:moveFocus(-1)

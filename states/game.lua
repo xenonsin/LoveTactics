@@ -3316,6 +3316,18 @@ function game:openEncounter(cell, opts)
             gold = function() return (game.player and game.player.gold) or 0 end,
             unit = "gold",
             suffix = "g",
+            -- What the stash already holds of a ware, for the buy confirmation to print under the price.
+            -- The panel has a purse and no player, so the count comes from here -- the same sentence the
+            -- city's shelf prints (ui/panels/shop.lua's Shop:heldLine), because it is the same fact and a
+            -- road that phrased it differently would read as a different question.
+            heldLine = function(entry)
+                local total, stashed, worn = Player.ownedCount(game.player, entry.id)
+                if total <= 0 then return "You have none." end
+                local parts = {}
+                if stashed > 0 then parts[#parts + 1] = stashed .. " in the stash" end
+                if worn > 0 then parts[#parts + 1] = worn .. " carried" end
+                return "You have " .. total .. " already: " .. table.concat(parts, ", ") .. "."
+            end,
             onBuy = function(entry)
                 if not (game.player and Player.spendGold(game.player, entry.price)) then return false end
                 if entry.relic then

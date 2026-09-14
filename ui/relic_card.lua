@@ -94,11 +94,16 @@ end
 -- `info` must carry `id` for the blurb to resolve its magnitude; without one the authored text is used.
 -- Draws at (x, y), clamped so a relic near an edge does not push its reading off screen. Returns the
 -- height used.
-function RelicCard.tooltip(x, y, info, count, opts)
+--
+-- The reading is MEASURED apart from the painting (the local `measure` below, published as
+-- RelicCard.tooltipSize) because a caller that reserves a column for this card has to know how tall it
+-- is before it lays the column out -- ui/panels/merchant.lua hands the card to the buy confirmation's
+-- pane, which takes a { w, h, draw } and nothing else. Both paths wrap the same strings at the same
+-- width, so the box the reserver got is the box the painter fills.
+local function measure(info, count, opts)
     opts = opts or {}
     local Relic = require("models.relic")
     local Theme = require("ui.theme")
-    local Scale = require("scale")
 
     local nameFont = Theme.display(15)
     local bodyFont = Theme.body(12)
@@ -120,6 +125,22 @@ function RelicCard.tooltip(x, y, info, count, opts)
     local h = PAD + nameFont:getHeight() + 2 + bodyFont:getHeight() + 4
         + #blurbLines * bodyFont:getHeight()
         + (#costLines > 0 and (4 + #costLines * bodyFont:getHeight()) or 0) + PAD
+
+    return W, h, PAD, nameFont, bodyFont, blurb, cost, blurbLines, costLines
+end
+
+-- The card's footprint without drawing it: width, height. Same arguments the tooltip takes.
+function RelicCard.tooltipSize(info, count, opts)
+    local w, h = measure(info, count, opts)
+    return w, h
+end
+
+function RelicCard.tooltip(x, y, info, count, opts)
+    opts = opts or {}
+    local Theme = require("ui.theme")
+    local Scale = require("scale")
+
+    local W, h, PAD, nameFont, bodyFont, blurb, cost, blurbLines, costLines = measure(info, count, opts)
 
     local tx = math.min(x, Scale.WIDTH - W - 8)
     local ty = math.min(math.max(8, y), Scale.HEIGHT - h - 8)
