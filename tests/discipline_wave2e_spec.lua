@@ -118,6 +118,41 @@ return {
         end,
     },
     {
+        -- The other half of "fire, then ride": ride FIRST and the shot has nothing left to leave open.
+        -- Holding the turn open there is a board with no legal input on it -- every item refused by the
+        -- sole-action latch, and the move already spent -- so the greyed grid read "move only" at a body
+        -- that had already moved. The turn ends instead, and the shot still bills no tempo.
+        name = "the Harrier's Bow ENDS the turn when the ride has already been spent",
+        fn = function()
+            local map = Fixture.new(12, 12)
+            local hero = Fixture.unit("character_kaya", 3, 3, { isolate = "bare",
+                items = { "weapon_harriers_bow", "weapon_iron_sword" } })
+            local foe = Fixture.unit("character_bandit", 3, 7,
+                { isolate = "bare", stats = { defense = 0, health = 900 } })
+            local combat = Fixture.combat(map, hero, foe)
+            local h, f = combat.units[1], combat.units[2]
+            h.char.stats.stamina.max, h.char.stats.stamina.current = 99, 99
+
+            Combat.startTurn(combat)
+            if Combat.currentUnit(combat) ~= h then return end -- initiative went elsewhere; nothing to prove
+            assert(Combat.moveUnit(combat, h, 3, 4), "the skirmisher rides in first")
+            assert(combat.turn.moved, "so the one move is spent")
+            local moveCost, foeWas = combat.turn.moveCost, f.initiative
+
+            -- Not Fixture.strike: it re-opens a FRESH turn (moved = false), which is the very state
+            -- this case is about not being in.
+            local hp = f.char.stats.health.current
+            assert(Combat.useItem(combat, h, Fixture.itemNamed(h.char, "weapon_harriers_bow"), f.x, f.y),
+                "and then shoots")
+            assert(f.char.stats.health.current < hp, "the shot lands exactly as it does before a ride")
+            assert(combat.turn == nil,
+                "and the turn is OVER -- there was no ride left for it to stay open for")
+            -- Rebase-proof: both initiatives shift by the same amount, so the GAP is what the turn cost.
+            assert(h.initiative - f.initiative == moveCost - foeWas,
+                "billing nothing for the shot -- the turn costs the ground it covered and no more")
+        end,
+    },
+    {
         -- The contract the battle UI keys on to CONTINUE an open turn instead of beginning a new one:
         -- a free action must leave combat.turn set on the SAME unit. beginTurn(resume) reads the unit
         -- off that open turn and, crucially, does NOT re-run Combat.startTurn -- which would wipe the

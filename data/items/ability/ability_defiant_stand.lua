@@ -27,10 +27,17 @@ return {
     activeAbility = {
         target = "self",
         range = 0,
+        -- The same box Provoke, Clear Out and Answering Blow take: the eight tiles around you, corners
+        -- included. The Champion's two taunts and the blow that spends what they earn are one gesture
+        -- at three prices, and a ring that changed shape between them would be three different rules.
+        aoe = { radius = 1, shape = "square" },
+        -- Done TO them, so it previews red: a self-target otherwise reads as a kindness
+        -- (Combat.isSupportAbility), and this one does not even brace -- see above.
+        support = false,
         speed = 3,
         cost = { stat = "stamina", amount = 6 },
         effect = function(fx)
-            for _, u in ipairs(fx.unitsNear(fx.user.x, fx.user.y, 1)) do
+            for _, u in ipairs(fx.aoeUnits()) do
                 if u.alive and u.side ~= fx.user.side then
                     local st = fx.applyStatus(u, "status_taunt")
                     if st then st.taunter = fx.user end

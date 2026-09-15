@@ -21,6 +21,9 @@ return {
     activeAbility = {
         target = "self",
         range = 0,
+        -- He presses it where he stands; everyone it lands on is quarry. A self-target left to the
+        -- guess previews green (Combat.isSupportAbility), and Root and Mark are not gifts.
+        support = false,
         speed = 6,
         cost = { stat = "stamina", amount = 11 },
         description = "Inflicts Root and Mark on every foe on the field.",

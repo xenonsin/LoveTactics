@@ -41,6 +41,10 @@ return {
         description = "Inflicts Root on every foe within two tiles of you or your wolf. Charges as the wolf draws blood; only while it lives.",
         target = "self", -- centred on Kaya; the effect also reaches around the wolf
         range = 0,
+        -- ...and the two rings are painted RED, which the note on `aoe` below has always claimed and
+        -- the data did not deliver: a self-target left to the guess reads as a kindness
+        -- (Combat.isSupportAbility), so the howl lit its victims in the friendly band.
+        support = false,
         speed = 6,
         unlock = {
             event = "companionDamage", count = 40, text = "Wolf draws blood",

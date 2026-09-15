@@ -394,7 +394,15 @@ AI.POSTURES = {
                 -- so every defender carrying one activated on turn 1 and the posture never actually
                 -- held anything -- masking, for as long as the campaign kit carried a potion, the
                 -- fact that a stripped draft body freezes instead.
-                if not Combat.isSupportAbility(item.activeAbility)
+                --
+                -- A SELF-cast is not reach either, for the same reason and a sharper one: its target
+                -- list is exactly one body, its own (Combat.abilityTargets), so a HOSTILE self-cast --
+                -- Provoke, Clear Out, the Bomblet's burst -- reports a target on every turn of the
+                -- fight, including the ones where nobody has come anywhere near. A defender holding a
+                -- ring it could spin in an empty field has not been engaged by anybody. Whatever it
+                -- could actually reach a foe with answers this question on its own.
+                local ab = item.activeAbility
+                if ab and ab.target ~= "self" and not Combat.isSupportAbility(ab)
                     and #Combat.abilityTargets(ctx.combat, ctx.unit, item) > 0 then return true end
             end
             return false

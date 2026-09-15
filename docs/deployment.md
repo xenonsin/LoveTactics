@@ -112,7 +112,9 @@ while the phase's own hover box described it perfectly well to anyone who though
 had no way to know was there. What is deliberately absent is anything the *fight* is doing — reach,
 threat, intent, a route — because nothing is acting yet.
 
-The HUD's three rows read **Deployment Phase** / the objective / *Set your line* while the phase is up.
+The HUD's three rows read **Deployment Phase** / the objective / *Position your units on the board*
+while the phase is up (shortened to *Position your units* where the column is too narrow for the
+sentence to stand on one line).
 The banner names the **beat** rather than the fight, because the phase is a thing you are doing and it
 ends; the encounter's own name comes back the instant the bell rings.
 
@@ -128,7 +130,16 @@ ends; the encounter's own name comes back the instant the bell rings.
   controls hides nothing and costs a click on the beat where turning the board is the first thing a
   player wants to do. The drawer returns with the fight. The controls read top to bottom in the
   order the decisions are made in: **Loadout**, **Potions**, **Reset Line**, **Auto**, and the bell
-  last.
+  last. The bell is **not one of the plates**: the four above it are settings on the line, and it is
+  the control that ends the screen, so it is **lit** — lettered a size larger on a warm face, inside
+  a doubled gold frame, with a slow amber halo breathing off its edges. With nobody on the board it
+  is disabled and wears none of that: a control that glows and then refuses the press is worse than
+  one that sits quiet. It is deliberately *not* the coach's highlight (`ui/coach_bubble.lua`), which
+  means "the game is pointing here, once"; the bell is standing furniture and its light never stops.
+  It is **not taller** than its neighbours, and that is a measurement rather than a taste: the
+  stack's foot is the ceiling the hover boxes dock under, and the desktop column has nine pixels of
+  slack in it (`tests/deploy_hover_spec.lua`), so a taller bell drops the ground box off every
+  hovered tile. Emphasis that costs the readouts nothing is emphasis in colour and light.
 - **Hovering a tile reads it**, in the two docked boxes the fight uses (`ui/tile_tooltip.lua`) — the
   ground at the foot of the left column, the body standing on it stacked above. When the column cannot
   hold both, **the body wins and the ground yields**, which is the opposite of the fight's rule
@@ -168,8 +179,9 @@ ends; the encounter's own name comes back the instant the bell rings.
 - **Auto** (directly above the bell; `V`, pad `Y`) decides whether the fight opens played or
   watched — it is the same `battle.autoAll` flag the in-fight drawer's Auto entry flips, seeded from it
   and handed back on the commit, so the two can never disagree and the setting carries across fights
-  like the playback speed does. Armed, the switch and the bell both wear the spotlight gold and the
-  bell reads **Begin (Auto)** — a fight that plays itself is not a thing to discover after turn one.
+  like the playback speed does. Armed, the switch wears the spotlight gold the lit bell below it
+  already carries, and the bell reads **Begin (Auto)** — a fight that plays itself is not a thing to
+  discover after turn one.
   Any input still takes the current turn straight back (`reclaimAutoTurn`). A tutorial forbids
   auto-battle outright (`autoAllowed`), and there the switch does not draw at all.
 - **Keyboard and pad reach all of it.** The selection starts on the board — seated on a body rather

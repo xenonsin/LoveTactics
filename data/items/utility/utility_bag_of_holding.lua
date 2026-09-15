@@ -33,6 +33,10 @@ return {
         speed = 5,
         cost = { stat = "stamina", amount = 9 },
         aoe = { radius = 2, shape = "square" },
+        -- The bag goes off around her, so it is aimed at her own tile -- and it is still a blow. Left
+        -- to the guess a self-target reads as a kindness (Combat.isSupportAbility) and the burst
+        -- previewed green.
+        support = false,
         description = "Deals damage in area, scaled by what the bag holds.",
         unlock = { event = "stolen", count = 3, text = "Take 3 things" },
         effect = function(fx)

@@ -64,6 +64,24 @@ local DRAG_THRESHOLD = 5
 -- so the column reads as one stack of plates rather than two kinds of button.
 local CTRL_H = 36
 local CTRL_GAP = 8
+-- THE BELL IS NOT ONE OF THE PLATES. Loadout, Potions, Reset Line and Auto are things you may do to
+-- the line; Begin Battle is the one that ENDS the phase, and it stood in the stack lettered and
+-- sized exactly like the four settings above it -- a player who had arranged their line was left
+-- hunting the column for the way out of the screen. It is lit now (drawButton's `primary`): a warm
+-- face, a doubled gold frame, a halo breathing off its edges and a size larger in the type, so the
+-- terminal action is the thing the eye lands on first.
+--
+-- IT IS NOT TALLER, THOUGH, AND THAT IS NOT AN OVERSIGHT. The stack's foot is the ceiling the hover
+-- boxes dock under (hoverDock), and that column has exactly NINE pixels of slack in it: at 1280x720
+-- an ordinary two-pool body's readout and its ground measure 274 + 105 against a 378px budget
+-- (tests/deploy_hover_spec.lua's "an ordinary body and its ground both stand"). A ten-pixel taller
+-- bell silently drops the ground box on every hovered tile. The prominence had to come out of
+-- colour, weight and light, all of which this column had going spare -- and none of which costs the
+-- readouts a pixel. If the bell is ever to grow, the height has to be found in the stack above it.
+--
+-- How far the halo breathes past the plate. It lives INSIDE the gap the docked boxes already keep
+-- from the stack (hoverDock's `gap`), so the glow costs the column nothing either.
+local BELL_GLOW = 6
 -- A control PAIRED to the right of the one above it, sharing its row: the playback-speed cycler beside
 -- the auto switch. The fight's own speed button has exactly this shape and offset beside its Auto entry
 -- (states/battle.lua's speedButton), so the pair reads the same before the bell as after it.
@@ -80,6 +98,22 @@ local SPEED_STEPS = { 1, 2, 3 }
 -- three rows are one column of text and a widget guessing at the third would drift off the first two.
 -- The fallback is only for a probe that hands no bounds at all.
 local TITLE_Y = 68
+
+-- THE HEADLINE ITSELF, long form and short. It read "Set your line" -- three words that name the
+-- phase to somebody who already knows what it is, and tell a first-time player nothing about what
+-- to do with the board in front of them. Interface copy states the rule and stops, and the rule
+-- here is a POSITION, per body, on the BOARD, so the sentence says that and nothing else.
+--
+-- The short form is for the handheld column, which is as narrow as 188px -- and there the headline
+-- is drawn centred over the board's own top row, so a sentence that wrapped would land on the tiles
+-- it is about. One size down before any words go (the long form is the one that teaches), the
+-- shorter sentence only where even that cannot stand on a single line. Never ellipsized: a headline
+-- trailing "..." is a sentence the player has been shown is being withheld.
+local TITLE = "Position your units on the board"
+local TITLE_SHORT = "Position your units"
+-- TITLE_MIN is Theme.MIN_DISPLAY: the theme floors every display size at 15 on its way through, so a
+-- smaller number here would read as a step the ladder does not actually have.
+local TITLE_SIZE, TITLE_MIN = 16, Theme.MIN_DISPLAY
 
 -- opts:
 --   combat, map, arena  the live (unopened) battle and its board widget
@@ -139,13 +173,22 @@ function DeployPhase.new(opts)
     self.message = nil
     self.mx, self.my = 0, 0
 
-    self.titleFont = Theme.display(16)
+    -- The headline is fitted to the width the HOST hands down each frame rather than baked here, so
+    -- the same phase reads on a desktop board and in a 188px handheld column (see DeployPhase:titleLine).
     self.font = Theme.body(13)
     -- The column's plates are lettered in the same display face as the host's entries they stack under
     -- (states/battle.lua's hudFont), so the whole column reads as one set of controls -- but sized ONCE
     -- against the longest label the stack can show, so every plate is lettered alike and the bell's two
     -- words are not the one thing that overflows its plate.
     self.buttonFont = Theme.fitText(Theme.display, "Begin Battle", self.column.w - 12, 16, 11)
+    -- ...and the bell gets a size ABOVE that, because it is the one plate that is not a setting
+    -- (see BELL_H). Sized off the WIDER of the two labels it can wear rather than off whichever one
+    -- happens to be showing, so arming auto-battle is never the press that shrinks the type on the
+    -- button it is a modifier on.
+    local bellLabel = "Begin Battle"
+    local probe = Theme.display(19)
+    if probe:getWidth("Begin (Auto)") > probe:getWidth(bellLabel) then bellLabel = "Begin (Auto)" end
+    self.bellFont = Theme.fitText(Theme.display, bellLabel, self.column.w - 12, 19, Theme.MIN_DISPLAY)
 
     -- Everyone the player brought, standing, before the phase has drawn a frame. This is not a
     -- convenience any more, it is the phase's premise: there is no strip to drag from, so a body that
@@ -391,9 +434,13 @@ end
 -- who plays -- and the bell last, because it is the one that ends the phase.
 function DeployPhase:controls()
     local out, row = {}, 0
-    local function add(key, label, enabled, on)
+    -- `primary` is the BELL and nothing else: the one plate here that is not a setting on the line
+    -- but the press that ends the screen. It changes how the plate is DRAWN and nothing about where
+    -- it sits -- see BELL_GLOW on why the emphasis is light rather than height.
+    local function add(key, label, enabled, on, primary)
         row = row + 1
         out[#out + 1] = { key = key, label = label, enabled = enabled ~= false, on = on,
+                   primary = primary,
                    rect = { x = self.column.x, y = self.column.y + (row - 1) * (CTRL_H + CTRL_GAP),
                             w = self.column.w, h = CTRL_H } }
     end
@@ -453,7 +500,7 @@ function DeployPhase:controls()
     end
     -- The bell says which fight it is ringing for. A player who armed auto and then pressed a button
     -- reading "Begin Battle" would have been told nothing about the fight they were about to not play.
-    add("begin", self.autoBattle and "Begin (Auto)" or "Begin Battle", #self.placed > 0)
+    add("begin", self.autoBattle and "Begin (Auto)" or "Begin Battle", #self.placed > 0, nil, true)
     return out
 end
 
@@ -569,6 +616,26 @@ end
 -- Draw
 -- ---------------------------------------------------------------------------
 
+-- The headline as (font, text) for a band `w` wide: the full sentence at the headline size where
+-- there is room, the same sentence a size down where there is not, and the short form only when
+-- even that will not stand on one line. Never ellipsized (see TITLE) and never wrapped -- the row
+-- it is drawn in is one of the HUD's three, and a second line would push into the board below it.
+--
+-- Memoized on the width, because the widths this is asked for are the two the host has (the board's
+-- and the handheld column's): a ladder walked every frame would bake a font per step per frame.
+function DeployPhase:titleLine(w)
+    w = math.max(1, w or 0)
+    if self._titleW ~= w then
+        local font, text = Theme.display(TITLE_SIZE), TITLE
+        if font:getWidth(text) > w then
+            font = Theme.display(TITLE_MIN)
+            if font:getWidth(text) > w then text = TITLE_SHORT end
+        end
+        self._titleW, self._titleFont, self._titleText = w, font, text
+    end
+    return self._titleFont, self._titleText
+end
+
 -- A company member's board token, or a lettered box when the art is missing (models/sprite.lua hands
 -- back a path string then). The same read the overworld strip and the turn cards take.
 local function drawPortrait(char, x, y, size, font)
@@ -596,11 +663,55 @@ end
 -- `focus` marks the plate the keyboard/pad selection is SITTING on -- the cool steel the rest of the UI
 -- spends on a selection that moves, kept clear of the gold a thrown switch wears, so a focused Auto
 -- reads as both at once (a steel ring around a gold plate) rather than one shouting over the other.
-function DeployPhase:drawButton(r, label, enabled, on, focus)
-    Theme.set(on and Theme.panel or Theme.panel2, enabled and 1 or 0.7)
+--
+-- `primary` is THE BELL, and it is the one plate here that is not a setting: a warm-lit face, a
+-- doubled gold frame and a halo that breathes off its edges, so the way out of this screen is found
+-- rather than hunted for. It is deliberately NOT the coach's highlight (ui/coach_bubble.lua's
+-- swelling ring, which means "the game is pointing you here, once") -- this is a bloom OUTSIDE the
+-- plate that never stops, because the bell is standing furniture and a player must be able to learn
+-- it rather than be taught it each time. A bell with nobody on the board is disabled and wears none
+-- of it: a control that glows and refuses the press is worse than one that sits quiet.
+local BELL_PULSE = 2.2 -- rad/s; a slow breath, on a screen the player is trying to read a board on
+-- The bell's label is warm BONE, not the frame's gold: spotlight gold on the warm face it sits on is
+-- gold on gold, and the two words that name the control came out the quietest thing on the plate. The
+-- frame and the halo carry the colour; the letters carry the reading.
+local BELL_INK = { 1.00, 0.95, 0.82 }
+function DeployPhase:drawButton(r, label, enabled, on, focus, primary)
+    local lit = primary and enabled
+    -- 0..1, the breath. Read off the wall clock rather than a tick of our own -- this widget has no
+    -- update, and the host would have to grow one to carry a single sine.
+    local pulse = 0
+    if lit and love.timer then pulse = 0.5 + 0.5 * math.sin(love.timer.getTime() * BELL_PULSE) end
+
+    if lit then
+        -- The halo: rings stepping outward off the plate, each fainter than the last, all of them
+        -- swelling and dimming together. Kept inside BELL_GLOW so the docked hover boxes below it
+        -- never have to give ground for a glow (hoverDock measures the plate, not the light).
+        for i = 1, 3 do
+            local grow = (i / 3) * BELL_GLOW * (0.55 + 0.45 * pulse)
+            Theme.set(Theme.accentAmber, (0.22 / i) * (0.45 + 0.55 * pulse))
+            love.graphics.setLineWidth(2)
+            love.graphics.rectangle("line", r.x - grow, r.y - grow, r.w + grow * 2, r.h + grow * 2,
+                Theme.R + grow, Theme.R + grow)
+        end
+    end
+
+    if lit then
+        -- A warm face rather than the stack's slate, so the bell reads as a different KIND of
+        -- control at a glance -- before the halo, before the label is read at all.
+        love.graphics.setColor(0.24, 0.19, 0.10, 1)
+    else
+        Theme.set(on and Theme.panel or Theme.panel2, enabled and 1 or 0.7)
+    end
     love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, Theme.R, Theme.R)
-    love.graphics.setLineWidth(on and 1.5 or 1)
-    if on then Theme.set(Theme.accentAmber) else Theme.set(Theme.frame, enabled and 1 or 0.5) end
+    if lit then
+        -- The wash the breath actually moves: the face brightens on the beat under a steady frame,
+        -- which reads as a plate that is lit rather than one that is flashing.
+        Theme.set(Theme.accentAmber, 0.10 + 0.10 * pulse)
+        love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, Theme.R, Theme.R)
+    end
+    love.graphics.setLineWidth(lit and 2 or (on and 1.5 or 1))
+    if lit or on then Theme.set(Theme.accentAmber) else Theme.set(Theme.frame, enabled and 1 or 0.5) end
     love.graphics.rectangle("line", r.x, r.y, r.w, r.h, Theme.R, Theme.R)
     if focus then
         Theme.set(Theme.cursor)
@@ -608,11 +719,13 @@ function DeployPhase:drawButton(r, label, enabled, on, focus)
         love.graphics.rectangle("line", r.x - 2.5, r.y - 2.5, r.w + 5, r.h + 5, Theme.R + 2, Theme.R + 2)
     end
     love.graphics.setLineWidth(1)
-    love.graphics.setFont(self.buttonFont)
-    if on then Theme.set(Theme.accentAmber)
+    love.graphics.setFont(primary and self.bellFont or self.buttonFont)
+    if lit then Theme.set(BELL_INK)
+    elseif on then Theme.set(Theme.accentAmber)
     elseif enabled then Theme.set(Theme.ink)
     else Theme.set(Theme.muted, 0.6) end
-    love.graphics.printf(label, r.x, r.y + r.h / 2 - self.buttonFont:getHeight() / 2, r.w, "center")
+    local font = primary and self.bellFont or self.buttonFont
+    love.graphics.printf(label, r.x, r.y + r.h / 2 - font:getHeight() / 2, r.w, "center")
 end
 
 -- `bounds` is the board region (left column .. combat panel), so the title centres over the board.
@@ -623,16 +736,17 @@ function DeployPhase:draw(bounds)
     -- No "N / 4 on the field" any more. That count was the strip's readout -- it moved while cards came
     -- on and off, and it was the only place the bench was legible. Everyone stands from the first frame
     -- now, so it could only ever read "4 / 4", and a figure no decision turns on is a figure to cut.
-    love.graphics.setFont(self.titleFont)
+    local titleFont, title = self:titleLine(bounds.w)
+    love.graphics.setFont(titleFont)
     Theme.set(Theme.accentAmber)
-    love.graphics.printf("Set your line", bounds.x, bounds.titleY or TITLE_Y, bounds.w, "center")
+    love.graphics.printf(title, bounds.x, bounds.titleY or TITLE_Y, bounds.w, "center")
 
     -- The selection ring is drawn only while the player is actually steering with it. On the mouse the
     -- pointer says where the press will land, and a second, stale marker parked on a plate nobody is
     -- looking at would be a lie about what Space does next.
     local focusKey = (not InputMode.isMouse()) and self.focus or nil
     for _, c in ipairs(self:controls()) do
-        self:drawButton(c.rect, c.label, c.enabled, c.on, c.key == focusKey)
+        self:drawButton(c.rect, c.label, c.enabled, c.on, c.key == focusKey, c.primary)
     end
 
     -- One line along the TOP of the gutter, board-width: either the last refusal, or how to work the
@@ -987,7 +1101,7 @@ end
 function DeployPhase:cancel()
     if self.focus then self.focus = nil
     elseif self.held then self.held = nil
-    else self.message = "Set your line, then Begin Battle." end
+    else self.message = "Position your units on the board, then Begin Battle." end
 end
 
 function DeployPhase:keypressed(key)

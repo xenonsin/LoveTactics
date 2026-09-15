@@ -20,6 +20,9 @@ return {
     activeAbility = {
         target = "self",
         range = 0,
+        -- She is not present for it, but it is still hers and it is still a blow: a self-target left
+        -- to the guess previews green (Combat.isSupportAbility). This collects a debt in blood.
+        support = false,
         speed = 6,
         cost = { stat = "stamina", amount = 10 },
         description = "Detonates the poison on every poisoned foe on the field.",

@@ -29,6 +29,12 @@ return {
         speed = 6,
         cost = { stat = "mana", amount = 14 },
         aoe = { radius = 3, shape = "square" },
+        -- IT PAYS BOTH SIDES, so the band stays green -- and says so outright rather than inheriting it
+        -- from the self-target guess (Combat.isSupportAbility), because every other self-centred cast
+        -- that reaches a foe now declares itself a blow. The footprint is ground a theurge WANTS her own
+        -- people standing in: the same three tiles that burn a foe heal an ally, and a red ring would
+        -- tell the half of the board it is rescuing to get out of the way.
+        support = true,
         -- The chooser: one tick at a minimum, six at the outside. Every extra tick is a turn the board
         -- gets to walk out of the footprint, which is what makes the depth a decision rather than a
         -- slider you always push to the end.

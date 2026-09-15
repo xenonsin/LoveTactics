@@ -105,6 +105,61 @@ local STAT_ROWS = {
     { stat = "luck",         label = "Luck" },
 }
 
+-- THE INTENT SECTION (models/intent.lua). The board badge and the turn card both draw a foe's coming
+-- turn as a bare glyph and a number, which is the right density for a mark worn over a sprite and the
+-- wrong one for learning what that mark MEANS. This section is where it is glossed: the same glyph, in
+-- the same kind colour, sitting next to the word it stands for, on the readout the player already
+-- opens by hovering the body or its turn card.
+--
+-- `name` is the word; `desc` is the one flat sentence that separates the kind from its neighbours --
+-- what an Attack is that a Spell isn't. The target and the figure are rows rather than part of that
+-- sentence, so no number is quoted twice.
+local INTENT_KINDS = {
+    attack  = { name = "Attack",  desc = "A weapon strike." },
+    cast    = { name = "Spell",   desc = "A spell, paid for with mana." },
+    support = { name = "Support", desc = "A heal or a buff on its own side." },
+    debuff  = { name = "Debuff",  desc = "A spell that inflicts a status instead of damage." },
+    wait    = { name = "Wait",    desc = "It acts on nobody this turn." },
+}
+
+-- The foe's predicted turn, appended as its own section: the mark and its name, who it comes for, and
+-- the figure the badge quotes -- labelled here, because a bare number on a card cannot say whether it
+-- is damage dealt or healing given.
+--
+-- A hold (`wait`) prints the mark and its sentence and nothing else: there is no target to name and no
+-- figure to quote, and a "Target: nobody" row would be a row about an absence.
+local function appendIntent(blocks, intent)
+    local kind = intent.kind or "wait"
+    local def = INTENT_KINDS[kind] or INTENT_KINDS.wait
+    blocks[#blocks + 1] = { kind = "sep" }
+    blocks[#blocks + 1] = { kind = "head", text = "Intent", color = { 0.85, 0.86, 0.92 } }
+    blocks[#blocks + 1] = { kind = "intent", name = def.name, glyphKind = kind,
+        color = Colors.INTENT[kind] or Colors.INTENT.wait }
+    local target = intent.target
+    if kind ~= "wait" and target and target.char then
+        blocks[#blocks + 1] = { kind = "stat", label = "Target",
+            value = target.char.name or "Unit", valueColor = Colors.unit(target) }
+    end
+    -- Only the two figures the badge itself quotes, and only where they are real: a strike shows the
+    -- damage it lands, a support cast the healing it gives. A debuff's mark already says "a status",
+    -- and the classifier counts those without naming them, so there is no row here worth printing.
+    --
+    -- LABELLED WITH THE VERB, not with "Damage" -- the unit's own Damage stat is a row in this very
+    -- box, eight lines up, and two rows reading "Damage 8" / "Damage 12" about entirely different
+    -- things is worse than no figure at all. "Deals" / "Heals" also say who the number happens TO,
+    -- which "Damage" never did.
+    local dmg = (kind == "attack" or kind == "cast") and (intent.amount or 0) or 0
+    local heal = (kind == "support") and (intent.heal or 0) or 0
+    if dmg > 0 then
+        blocks[#blocks + 1] = { kind = "stat", label = "Deals",
+            value = tostring(math.floor(dmg + 0.5)) }
+    elseif heal > 0 then
+        blocks[#blocks + 1] = { kind = "stat", label = "Heals",
+            value = tostring(math.floor(heal + 0.5)), valueColor = Colors.HEALING }
+    end
+    blocks[#blocks + 1] = { kind = "desc", text = def.desc }
+end
+
 -- A key rendered as words: a camelCase stat name (`magicDamage`) carries a word boundary at the hump,
 -- so the "... bonus" line below reads "Magic Damage bonus" rather than "MagicDamage bonus".
 local function titleCase(s)
@@ -214,7 +269,7 @@ end
 -- damage/heal an aimed ability would do: an amber "to be lost" segment (or green "to be gained"),
 -- with the value it would settle at quoted by a floating callout pill (ui/pool_callout.lua) -- the
 -- same blueprint the acting card's pool stack uses, so one preview reads the same on both surfaces.
-local function appendUnit(blocks, unit, preview)
+local function appendUnit(blocks, unit, preview, intent)
     local char = unit.char
     local sideCol = Colors.unit(unit)
     -- An ally we don't command reads as its own thing ("Ally (auto)"), matching the green the board
@@ -269,6 +324,10 @@ local function appendUnit(blocks, unit, preview)
         blocks[#blocks + 1] = { kind = "desc",
             text = "Assayed — K, or click its turn card, to read its kit." }
     end
+
+    -- What it is about to do, where the player is already asking about it. The badge on the body and
+    -- the mark on the turn card are the fast read; this is the slow one, and both hovers open it.
+    if intent then appendIntent(blocks, intent) end
 
     -- Active status effects: each shown as its name (in the status's colour) with the remaining
     -- duration on the right, so a stunned/rooted unit's condition reads in full here.
@@ -463,7 +522,7 @@ local function buildBlocks(info)
     local blocks = {}
     local unit = info.unit
     if unit and unit.char then
-        appendUnit(blocks, unit, info.preview)
+        appendUnit(blocks, unit, info.preview, info.intent)
         -- Terrain is only appended for a battlefield tile hover (info.cell present); a turn-order
         -- strip hover passes just the unit, so it shows the character alone. Hazards read between the
         -- occupant and the terrain.
@@ -645,12 +704,22 @@ local function measureBlocks(blocks, innerW, body)
             h = h + b.lines * bodyH + 2
         elseif b.kind == "sep" then h = h + 8
         elseif b.kind == "head" then h = h + bodyH + 3
+        elseif b.kind == "intent" then h = h + bodyH + 1 -- glyph + word, on one stat-row line
         -- A previewed pool reserves a lane above its row for the callout pill, so the projection
         -- floats in space made for it instead of over the row's own "cur / max".
         elseif b.kind == "bar" then h = h + bodyH + barH + 4 + (b.delta and (PoolCallout.H + GLYPH_GAP) or 0)
         else h = h + bodyH + 1 end -- stat
     end
     return h + 9 -- bottom pad
+end
+
+-- The assembled block list for `info`, without measuring or drawing any of it -- the same list both
+-- of those walk. Exported for the headless suite (tests/tile_tooltip_spec.lua): the blocks ARE what
+-- the player reads, and they can be read here without a window or a font, exactly as
+-- ui/body_tooltip.lua's own list is.
+function TileTooltip.blocks(info)
+    if not describable(info) then return {} end
+    return buildBlocks(info)
 end
 
 -- The height the box for `info` would need at `width`. Shares buildBlocks + the measure walk with
@@ -807,6 +876,16 @@ function TileTooltip.draw(info, mx, my, maxRight, opts)
             Theme.set(Theme.barOutline, Theme.barOutline[4] or 1)
             love.graphics.rectangle("line", bx + pad, barY, innerW, barH, 2, 2)
             ty = ty + bodyH + barH + 4
+        elseif b.kind == "intent" then
+            -- The mark beside its name, both in the kind's colour: the SAME glyph the board badge and
+            -- the turn card wear (ui/glyphs.lua INTENT), so what is learned here is legible there.
+            local glyph = Glyphs.INTENT[b.glyphKind] or Glyphs.INTENT.wait
+            local gw = bodyH - 3
+            glyph(bx + pad, ty + 2, gw, gw, b.color[1], b.color[2], b.color[3], 1)
+            love.graphics.setFont(body)
+            love.graphics.setColor(b.color[1], b.color[2], b.color[3], 1)
+            love.graphics.print(b.name, bx + pad + gw + GLYPH_GAP, ty)
+            ty = ty + bodyH + 1
         elseif b.kind == "status" then -- status name (in its colour) left, remaining duration right
             love.graphics.setFont(body)
             love.graphics.setColor(b.color[1], b.color[2], b.color[3], 1)

@@ -2828,9 +2828,7 @@ end
 -- a list of { unit, preview, initiative, previewLabel } entries in turn order (soonest first).
 -- Ordering matches Combat.turnOrder's tie-breaks so the strip agrees with the board's turn numbers;
 -- a preview ghost sorts AFTER real entries at an exact tie, so the live card stays lower in a
--- bottom-anchored strip. A repeat slot (`again`, see Combat.repeatSlots) rides the same rails as a
--- ghost -- it is a projection of a turn nobody has taken, so it consumes no turn number either --
--- and the strip tells the two apart by the flag, not by how they sort.
+-- bottom-anchored strip.
 --
 -- Every branch is guarded so comparing an entry with itself returns false (a
 -- valid weak order -- an unguarded `return not a.preview` here would assert x < x and corrupt sort);
@@ -2844,7 +2842,7 @@ function Combat.buildTimeline(combat, ghosts)
     end
     for _, g in ipairs(ghosts or {}) do
         entries[#entries + 1] = { unit = g.unit, preview = true, initiative = g.initiative,
-                                  previewLabel = g.label, again = g.again }
+                                  previewLabel = g.label }
     end
     table.sort(entries, function(a, b)
         if a.initiative ~= b.initiative then return a.initiative < b.initiative end
@@ -2891,58 +2889,6 @@ function Combat.channelGhosts(combat)
             }
         end
     end
-    return specs
-end
-
--- The tempo a body keeps: what one of its turns typically costs the timeline. The average speed of
--- the ability items it can actually reach -- the very figure Combat.initiative opens the fight on,
--- before the speed stat is taken off it -- plus any banked surge debt, which endTurn will charge.
---
--- AN ESTIMATE, AND ONLY EVER USED AS ONE. What a turn really costs is `moveCost + actionCost`
--- (endTurn), and neither is knowable before the turn is taken: the ability has not been chosen and
--- the ground has not been crossed. So nothing may be DECIDED on this -- it exists so the strip can
--- say "this one is due round again before that one moves at all", which is a shape, not a promise.
-function Combat.turnTempo(unit)
-    local char = unit.char
-    return math.max(1, Combat.initiative(char) + Combat.speed(char) + Combat.tempoDebt(unit))
-end
-
--- A body whose NEXT turn falls before the last body on the strip has taken its first is going to act
--- twice, and until now the timeline had no way to say so: Combat.turnOrder emits exactly one entry
--- per unit, so the single read a count-time battle exists to give away -- "I get two swings before
--- that thing moves" -- was the one read it could not make.
---
--- Returns timeline specs (the same shape channelGhosts returns) for each such body's second turn,
--- marked `again` so the strip can draw them as projections rather than as anybody's hypothetical.
--- Deliberately narrow:
---   * ONE per body, never a chain. The proposal is "twice", and a fast unit projected forward
---     repeatedly owns the whole strip and crowds out the bodies that have not acted at all.
---   * only slots that land inside the window the real order already covers -- past the last real
---     entry there is nothing to compare against, so the card would say nothing.
---   * at most MAX_REPEAT_SLOTS of them, soonest first, so a field of fast bodies cannot bury the queue.
--- A channeling body is skipped outright: channelGhosts already owns its follow-up slot, and two
--- projections of one unit's next turn would contradict each other.
-local MAX_REPEAT_SLOTS = 3
-function Combat.repeatSlots(combat)
-    local order = Combat.turnOrder(combat)
-    local last = order[#order]
-    if not last then return {} end
-    local horizon = last.initiative
-    local specs = {}
-    for _, u in ipairs(order) do
-        -- Never the body acting RIGHT NOW. Its next slot is already on the strip -- the aim preview
-        -- paints it while the turn is being steered and the committed move holds it afterwards -- so a
-        -- repeat card lands a second marker on the same tick and says nothing the first did not. Same
-        -- rule, and the same reason, as channelGhosts skipping the unit at 0.
-        if not u.channel and u.initiative > 0 then
-            local at = u.initiative + Combat.turnTempo(u)
-            if at < horizon then
-                specs[#specs + 1] = { unit = u, initiative = at, label = "acts again", again = true }
-            end
-        end
-    end
-    table.sort(specs, function(a, b) return a.initiative < b.initiative end)
-    while #specs > MAX_REPEAT_SLOTS do table.remove(specs) end
     return specs
 end
 
@@ -3311,6 +3257,31 @@ function Combat.wait(combat, unit)
     Combat.rebase(combat)
     return true
 end
+
+-- WHAT EACH WAIT SAYS IT DOES, in one sentence per stance -- the canonical gloss, and the only one.
+--
+-- It lives beside the functions it describes rather than in either screen that prints it, because it
+-- is printed TWICE: on the granting item's own tooltip (ui/item_tooltip.lua, which wrote these
+-- sentences first) and on the bottom lane's button (ui/combat_panel.lua's waitNote). Two copies of a
+-- sentence about one action is two sentences to keep true, and the second one drifted the day it was
+-- written -- a button reading "Ends your turn watching" over an item reading "ends your turn to fire
+-- on the first foe that moves into range", both describing the same press.
+--
+-- `delay` has no item to hang on and so was never written down at all, which is why the plainest
+-- action in the fight was the one nothing explained. It says the part a player cannot guess: Wait is
+-- not "skip", it is a re-entry one tick behind the next body (see Combat.wait, just above).
+--
+-- FIGURES DO NOT BELONG HERE. What a particular shield braces for is a property of that shield, and
+-- each surface quotes it in its own shape -- stat rows on the item, a joined clause on the button.
+Combat.WAIT_SWAP_NOTE = {
+    delay = "Wait ends your turn without acting: you fall back into the order just behind the next "
+        .. "body due to act. Ground you already walked this turn is still paid for.",
+    defend = "Defend ends your turn to brace: raises physical defense until your next turn.",
+    focus = "Focus ends your turn to recover mana.",
+    overwatch = "Overwatch ends your turn to fire on the first foe that moves into range.",
+    gather = "Gather ends your turn to coil: your next landed blow carries the stored force.",
+    perform = "Perform ends your turn to sound the next air, for you and every ally in earshot.",
+}
 
 -- How this unit's "Wait" behaves, resolved from the first inventory item that declares a
 -- `waitBehavior` table { kind = "focus"|"defend"|"overwatch"|"perform", ... }. Defaults to a plain
@@ -7899,6 +7870,22 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
             local have = Combat.chi(unit)
             return n and math.max(0, math.min(n, have)) or have
         end,
+        -- EVERY OTHER NAMED POOL, on the same terms as chi (which is one of them, kept above under its
+        -- own name for the monk effects that spell it that way). Defiance, Zeal, Tempo, Focus: read
+        -- truthfully, spent inertly, reporting what the live spend would take so a blow scored off the
+        -- spend (`fx.damage(u, { amount = fx.amount + fx.spendCharge("defiance") * 4 })`) previews the
+        -- number it is about to land.
+        --
+        -- Absent, they were not merely unreported -- they THREW, inside this dry run's own pcall, which
+        -- swallows the rest of the effect from that point on. So every ability that spends a pool
+        -- (Answering Blow, Coup Droit, Reckoning, Vital Points, The Marching Vow) previewed as doing
+        -- nothing at all: no damage on the bodies it was about to hit, and, because Combat.castDoesSomething
+        -- reads this same preview, a click on it could be taken for a step rather than a cast.
+        chargePool = function(key) return Combat.chargePool(unit, key) end,
+        spendCharge = function(key, n)
+            local have = Combat.chargePool(unit, key)
+            return n and math.max(0, math.min(n, have)) or have
+        end,
         -- The purse this cast could draw on, read truthfully off the live board so the previewed damage
         -- of a coin-scaled blow matches what it will land -- and an INERT spend that only reports what it
         -- would take, because a preview that emptied the purse under the cursor would be a bug that read
@@ -8504,6 +8491,10 @@ function Combat.abilityOutput(unit, item)
         -- blow off the spend (`fx.damage(t, { amount = base * fx.spendCharge(k, n) })`) quotes its full
         -- form rather than throwing. Mirrors spendChi above.
         spendCharge = function(_, n) return n or 0 end,
+        -- Its READ, which the live table and the aim preview both carry: all three fx tables have to
+        -- name the same verbs or an effect that reaches for one faults in whichever dry run is missing
+        -- it, and the tooltip simply goes blank (the trap fx.level and fx.chi are on all three to avoid).
+        chargePool = function(key) return Combat.chargePool(unit, key) end,
         dismiss = function() out.dismiss = true; return true end,
         placeProp = function(_, _, id) out.prop = id; return nil end,
         -- Record the shape rather than wearing it: the tooltip wants to name what the caster becomes.
@@ -8642,6 +8633,11 @@ end
 -- that lays down a friendly effect (a Sanctuary hazard) opts IN with `support = true`, and a
 -- self-targeted blow opts OUT with `support = false` -- a Clear Out is aimed at your own tile because
 -- that is where the spin is centred, not because it is a kindness (see ability_clear_out.lua).
+--
+-- The self-target half of that is SWEPT rather than left to each author to remember: tests/items_spec.lua
+-- stands every self-cast on a board and fails any that reaches a foe and still reads friendly. The guess
+-- is right for a stance and wrong for every ring, and nothing about a green band refuses to work, so the
+-- only way the mistake surfaces is somebody noticing the colour.
 function Combat.isSupportAbility(ab)
     if ab == nil then return false end
     if ab.support ~= nil then return ab.support end
@@ -11113,7 +11109,24 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         -- of the turn's action: latch it so Combat.itemBlockReason refuses everything after it. The move
         -- stays open (it is gated on combat.turn.moved, which this never sets), so "fire, then ride"
         -- holds -- fire, then only ride. Battle Tonic declares no soleAction and keeps the whole turn.
-        if ab.soleAction then unit.actionSpent = true end
+        --
+        -- ...but a turn is only worth leaving open while there is still a RIDE to leave open. Fire after
+        -- the walk -- or fire rooted -- and the latch above refuses every item while the move refuses
+        -- itself, which is a turn with no legal input left in it: a grid greyed end to end reading
+        -- "move only" at a body that has already moved, and a player hunting for the thing the game is
+        -- telling them to do. So the turn ends here instead, billing NOTHING for the shot: the freedom
+        -- stays exactly where the weapon's header puts it (the tempo), and the turn costs the ground it
+        -- covered and no more. Only the sole action closes this way -- a plain free action (Battle
+        -- Tonic) never spent the turn's action, so a moved unit still has one to take.
+        if ab.soleAction then
+            local rideLeft = combat.turn and combat.turn.unit == unit
+                and not combat.turn.moved and not Status.blocksMove(unit)
+            if rideLeft then
+                unit.actionSpent = true
+            else
+                endTurn(combat, unit, 0)
+            end
+        end
     else
         endTurn(combat, unit, ctl.speed)
     end

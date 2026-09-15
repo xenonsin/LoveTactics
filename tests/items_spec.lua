@@ -413,6 +413,138 @@ return {
         end,
     },
     {
+        name = "Provoke takes the same box Clear Out does, and the ring reads as something done TO them",
+        fn = function()
+            -- The Champion's opening and the fighter's are the same gesture -- a ring centred on the
+            -- body standing in the middle of it -- so they are aimed the same way, and a foe that has
+            -- worked round the shoulder is turned around by both. A diamond answered that corner with
+            -- "not that one", which is the one reading a taunt may never support.
+            local c = Combat.new(arena(8, 8),
+                { mkunit(4, 4, { stats = { stamina = 50 }, items = { "ability_provoke" } }) },
+                { mkunit(5, 5, { stats = { health = 100 } }),     -- the corner
+                  mkunit(4, 3, { stats = { health = 100 } }) })   -- the orthogonal neighbour
+            local champion, corner, side = c.units[1], c.units[2], c.units[3]
+            local item = champion.char.inventory[1]
+            -- ...and the ring is painted red. A self-target reads as friendly unless it says otherwise
+            -- (Combat.isSupportAbility), and what happens inside this one is not a kindness.
+            assert(not Combat.isSupportAbility(item.activeAbility),
+                "the taunt previews hostile, like the blow it sets up")
+            -- And the reach is DECLARED, which is what puts a picture of it on the card: the tooltip
+            -- draws a footprint block for any aoe that is a shape rather than a board-dependent cell
+            -- list (ui/item_tooltip.lua), tinted by the same hostile band the assertion above pins.
+            local aoe = item.activeAbility.aoe
+            assert(aoe and aoe.shape == "square" and aoe.radius == 1,
+                "Provoke states its ring, so the card can show one")
+            openTurn(c, champion)
+            assert(Combat.useItem(c, champion, item, 4, 4), "plant yourself and dare the line")
+            for _, foe in ipairs({ corner, side }) do
+                local st = Status.get(foe, "status_taunt")
+                assert(st, "every foe in the box is taunted, the diagonal included")
+                assert(st.taunter == champion, "and the taunt points back at the one who asked for it")
+            end
+            assert(Status.get(champion, "status_defending"), "the shouter braces for what it just invited")
+        end,
+    },
+    {
+        name = "a self-centred cast that only ever reaches foes is never dressed as a kindness",
+        fn = function()
+            -- `target = "self"` says where a cast is AIMED, not who it is for, and Combat.isSupportAbility
+            -- guesses the second from the first: absent a `support` line, a self-target previews green,
+            -- rings its friendly cue, and is sorted into the AI's support half. That guess is right for a
+            -- stance and wrong for every ring -- Clear Out, Provoke, The Pyre -- and the wrongness is
+            -- invisible, because nothing about a green band refuses to work.
+            --
+            -- So the rule is measured, not read: stand each self-cast on a board and see what it REACHES.
+            -- The bench is one where everything a self-cast might collect on is already true -- every foe
+            -- afflicted with the statuses the shelf reads and standing in a hazard, every tally banked so
+            -- a spender has a pool, a bag with something in it -- because a collection ability on an empty
+            -- board collects nothing and would pass this by doing nothing at all.
+            local Hazard = require("models.hazard")
+            local function bench(id)
+                local foes = {}
+                for dx = -3, 3 do
+                    for dy = -3, 3 do
+                        -- Every cell of the widest footprint on the shelf (a square of radius 3), less
+                        -- the caster's own and the one the ally stands on.
+                        if not (dx == 0 and dy == 0) and not (dx == 1 and dy == 0) then
+                            foes[#foes + 1] = mkunit(8 + dx, 8 + dy, { stats = { defense = 0, health = 400 } })
+                        end
+                    end
+                end
+                local c = Combat.new(arena(16, 16),
+                    { mkunit(8, 8, { stats = { stamina = 99, mana = 99, health = 400 }, items = { id } }),
+                      mkunit(9, 8, { stats = { defense = 0, health = 400 } }) },
+                    foes)
+                local caster = c.units[1]
+                -- The ally stands WOUNDED, because a heal aimed at a full bar lands nothing and would
+                -- read as a cast that does its own side no good at all.
+                c.units[2].char.stats.health.current = 100
+                for _, u in ipairs(c.units) do
+                    if u.side ~= caster.side then
+                        for _, s in ipairs({ "status_poison", "status_mark", "status_root", "status_halted" }) do
+                            Status.apply(c, u, s)
+                        end
+                        Hazard.place(c, u.x, u.y, "hazard_fire")
+                    end
+                end
+                for _, t in ipairs({ "hitTaken", "hitDealt", "allyStruck", "companionDamage" }) do
+                    Combat.tally(caster, t, 100)
+                end
+                local item = caster.char.inventory[1]
+                if item.bag then item.contents = { Item.instantiate("consumable_healing_potion") } end
+                return c, caster, item
+            end
+            -- The second detector, for the blow the bench cannot stage: a cast whose damage is gated on
+            -- something no fixture hands it (a clone already standing, six stolen things). Its own source
+            -- says it throws one. Comment lines are stripped, so a file that merely TALKS about fx.damage
+            -- is not accused of landing it.
+            local function sourceLandsDamage(id)
+                for line in (love.filesystem.read(Item.paths[id]) or ""):gmatch("[^\r\n]+") do
+                    if not line:match("^%s*%-%-")
+                        and (line:find("fx.damage", 1, true) or line:find("fx.flatDamage", 1, true)) then
+                        return true
+                    end
+                end
+                return false
+            end
+
+            local ids, offenders = {}, {}
+            for id, def in pairs(Item.defs) do
+                local ab = def.activeAbility
+                if ab and ab.target == "self" then ids[#ids + 1] = id end
+            end
+            table.sort(ids)
+            for _, id in ipairs(ids) do
+                local c, caster, item = bench(id)
+                local reachesFoe, paysAlly = false, false
+                -- pcall'd like the dry run itself: a fixture this sweep cannot satisfy must not take
+                -- the case down, it must simply reach nobody and prove nothing about that item.
+                pcall(function()
+                    local preview = Combat.previewAbility(c, caster, item, caster.x, caster.y)
+                    for _, e in ipairs(preview and preview.order or {}) do
+                        if e.unit ~= caster then
+                            if e.unit.side ~= caster.side then
+                                reachesFoe = true
+                            elseif (e.heal or 0) > 0 or #(e.statuses or {}) > 0 then
+                                -- THE ONE EXEMPTION, and it is measured too: a cast that pays the
+                                -- company in the same breath it costs the enemy (the Unbroken Vigil's
+                                -- vigil heals the ring it burns) keeps the friendly band, because a red
+                                -- footprint would tell the half of the board it is rescuing to move.
+                                paysAlly = true
+                            end
+                        end
+                    end
+                end)
+                if (reachesFoe or sourceLandsDamage(id)) and not paysAlly
+                    and Combat.isSupportAbility(item.activeAbility) then
+                    offenders[#offenders + 1] = id
+                end
+            end
+            assert(#offenders == 0,
+                "self-centred casts that reach a foe and still preview green: " .. table.concat(offenders, ", "))
+        end,
+    },
+    {
         name = "a self-cast quotes no reach: every self-target ability in the game declares range 0",
         fn = function()
             -- The contract the Target/Range rows are written against (Item.targetLabel): a self-cast

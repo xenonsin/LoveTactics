@@ -32,6 +32,11 @@ return {
         speed = 6,
         cost = { stat = "stamina", amount = 10 },
         aoe = { radius = 2, shape = "square" },
+        -- Green, declared rather than guessed (Combat.isSupportAbility reads a self-target as friendly).
+        -- What it lays is GROUND, and the ground is his: it heals his side and burns whoever will not
+        -- move off it, so the footprint is somewhere he wants his own line to stand. The Unbroken Vigil
+        -- is the other cast that pays both sides and the other one that says so.
+        support = true,
         description = "Consecrates the ground around you, scaled by the Zeal you spend.",
         -- The pool made visible on the slot, so he can see what the march is worth before committing
         -- it. Reads the same pool the effect spends, so badge and cast can never disagree.

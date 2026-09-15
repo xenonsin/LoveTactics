@@ -39,6 +39,9 @@ return {
         cost = { stat = "mana", amount = 16 },
         damage = Curve.ramp(16, 26), -- the base, before the crowd is counted
         aoe = { radius = 2, shape = "square" },
+        -- Centred on the caster's feet, and a blow all the same: without this a self-target reads as a
+        -- kindness (Combat.isSupportAbility) and the storm previewed green.
+        support = false,
         requiresAdjacent = { tag = "staff" },
         ai = { priority = "high", act = "attack",
                when = { subject = "any_foe", test = "count_at_least", value = 3 } },

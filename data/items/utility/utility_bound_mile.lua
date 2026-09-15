@@ -27,6 +27,9 @@ return {
     activeAbility = {
         target = "self",
         range = 0,
+        -- He casts it on the border, not on himself: a self-target left to the guess previews green
+        -- (Combat.isSupportAbility), and what this does is hold foes down and wear them out.
+        support = false,
         speed = 6,
         cost = { stat = "stamina", amount = 12 },
         description = "Inflicts Root and Halt on every held foe, and damages each where it stands.",

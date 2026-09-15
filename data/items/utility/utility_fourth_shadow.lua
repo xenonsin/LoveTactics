@@ -19,6 +19,9 @@ return {
     activeAbility = {
         target = "self",
         range = 0,
+        -- Aimed at himself because that is where the shadows are counted from; every one of them then
+        -- cuts. A self-target left to the guess reads as a kindness (Combat.isSupportAbility).
+        support = false,
         speed = 5,
         cost = { stat = "mana", amount = 12 },
         description = "Each clone spawns another, then all of them strike their neighbours.",

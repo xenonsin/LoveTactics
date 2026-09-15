@@ -31,6 +31,10 @@ return {
     activeAbility = {
         target = "self",
         range = 0,
+        -- Drunk by you and caught by them, which makes it a blow thrown from your own tile: a
+        -- self-target left to the guess reads as a kindness (Combat.isSupportAbility) and this
+        -- previewed green, poison and all.
+        support = false,
         speed = 2,
         consumesItem = true,
         description = "Inflicts Poison on you and every adjacent enemy.",

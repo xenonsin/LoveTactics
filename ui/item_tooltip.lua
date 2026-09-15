@@ -675,8 +675,14 @@ local function buildBlocks(item, actor, innerW, out, owner, warn)
     -- Wait-swap: an item that changes how this holder's Wait acts (a shield's Defend, a focus charm,
     -- an overwatch scope) spells out the swap and how much it grants. A shield's brace-defense is
     -- resolved to the item's upgrade level, so it quotes what the current (forged) shield actually braces.
+    --
+    -- The closing sentence of each branch is Combat.WAIT_SWAP_NOTE's, not this file's any more. These
+    -- five sentences were written here and are still printed here; they simply are not OWNED here,
+    -- because the battle panel's Wait button prints the same gloss over the same action and the two
+    -- had already drifted into different accounts of one press. One sentence, both surfaces.
     local wb = item.waitBehavior
     if wb and wb.kind and wb.kind ~= "delay" then
+        local swapNote = Combat.WAIT_SWAP_NOTE[wb.kind]
         blocks[#blocks + 1] = { kind = "sep" }
         if wb.kind == "defend" then
             blocks[#blocks + 1] = { kind = "stat", label = "Wait becomes", value = "Defend" }
@@ -684,25 +690,23 @@ local function buildBlocks(item, actor, innerW, out, owner, warn)
                 blocks[#blocks + 1] = { kind = "stat", label = "Brace defense",
                     value = "+" .. tostring(wb.defense), valueColor = BRACE }
             end
-            blocks[#blocks + 1] = { kind = "note",
-                text = "Defend ends your turn to brace: raises physical defense until your next turn." }
+            blocks[#blocks + 1] = { kind = "note", text = swapNote }
         elseif wb.kind == "focus" then
             blocks[#blocks + 1] = { kind = "stat", label = "Wait becomes", value = "Focus" }
             if wb.mana then
                 blocks[#blocks + 1] = { kind = "stat", label = "Restores", value = "+" .. tostring(wb.mana) .. " Mana" }
             end
-            blocks[#blocks + 1] = { kind = "note", text = "Focus ends your turn to recover mana." }
+            blocks[#blocks + 1] = { kind = "note", text = swapNote }
         elseif wb.kind == "overwatch" then
             blocks[#blocks + 1] = { kind = "stat", label = "Wait becomes", value = "Overwatch" }
-            blocks[#blocks + 1] = { kind = "note", text = "Overwatch ends your turn to fire on the first foe that moves into range." }
+            blocks[#blocks + 1] = { kind = "note", text = swapNote }
         elseif wb.kind == "gather" then
             blocks[#blocks + 1] = { kind = "stat", label = "Wait becomes", value = "Gather" }
             if wb.power then
                 blocks[#blocks + 1] = { kind = "stat", label = "Stored force",
                     value = "+" .. tostring(wb.power) .. " Attack", valueColor = BRACE }
             end
-            blocks[#blocks + 1] = { kind = "note",
-                text = "Gather ends your turn to coil: your next landed blow carries the stored force." }
+            blocks[#blocks + 1] = { kind = "note", text = swapNote }
         elseif wb.kind == "perform" then
             blocks[#blocks + 1] = { kind = "stat", label = "Wait becomes", value = "Perform" }
             -- The whole cycle, in order, because the ORDER is the cost: reaching the air you want means
@@ -718,8 +722,7 @@ local function buildBlocks(item, actor, innerW, out, owner, warn)
             if wb.earshot then
                 blocks[#blocks + 1] = { kind = "stat", label = "Earshot", value = tostring(wb.earshot) .. " tiles" }
             end
-            blocks[#blocks + 1] = { kind = "note",
-                text = "Perform ends your turn to sound the next air, for you and every ally in earshot." }
+            blocks[#blocks + 1] = { kind = "note", text = swapNote }
         end
     end
 

@@ -24,6 +24,10 @@ return {
     activeAbility = {
         target = "self",
         range = 0,
+        -- Pressed where he stands and aimed at all of them: a self-target left to the guess reads as a
+        -- kindness (Combat.isSupportAbility), and binding the whole field to one body is not one. The
+        -- brace is the only half that lands on him.
+        support = false,
         speed = 5,
         cost = { stat = "stamina", amount = 12 },
         description = "Inflicts Taunt on every foe on the field and grants you Defending.",

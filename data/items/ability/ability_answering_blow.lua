@@ -35,6 +35,10 @@ return {
         -- The ring of neighbours. fx.aoeUnits narrows it to whom a Careful Sigil beside it allows,
         -- and the self-target means the footprint is centred on the Champion rather than aimed.
         aoe = { radius = 1, shape = "square" },
+        -- A blow, not a kindness: a self-target otherwise reads as friendly and would paint the ring
+        -- green (Combat.isSupportAbility). It is centred on the Champion because that is where the turn
+        -- is made, not because it is done for anyone's benefit.
+        support = false,
         speed = 5,
         cost = { stat = "stamina", amount = 8 },
         damage = Curve.ramp(16, 26), -- the floor; Defiance is what makes it a blow

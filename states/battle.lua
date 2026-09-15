@@ -22,6 +22,7 @@ local CombatPanel = require("ui.combat_panel")
 local CombatFx = require("ui.combat_fx")
 local CombatLog = require("ui.combat_log")
 local StatusTooltip = require("ui.status_tooltip")
+local NoteTooltip = require("ui.note_tooltip")
 local ItemTooltip = require("ui.item_tooltip")
 local TileTooltip = require("ui.tile_tooltip")
 local InventoryPeek = require("ui.inventory_peek")
@@ -3981,7 +3982,17 @@ refreshView = function()
     -- yields TWO ghosts (resolution + follow-up turn); everything else yields one. See abilityGhosts.
     local ghosts
     local pendingMove = (battle.combat.turn and battle.combat.turn.moveCost) or 0
-    if isParty then
+    -- NOT WHILE THE LAST TURN IS STILL LANDING. Every branch below is a HOVER answering "where would
+    -- this put me", and the cursor does not move just because the turn did: hold the Wait button and
+    -- click it, and the pointer is still sitting there as the next body takes the frame -- so the new
+    -- actor's delay slot was painted on the strip the same instant the hand-off began, while its own
+    -- card was still travelling and every figure was still counting down. The answer arrived before
+    -- the question had finished being asked, and it was drawn against numbers that were still moving.
+    --
+    -- A COMMITTED slot is a different thing and is not gated: a move already paid for, a channel
+    -- winding up (Combat.channelGhosts) and the pendingAdvance re-entry below are facts about the
+    -- fight rather than a reply to the pointer, and they belong on the strip the whole way through.
+    if isParty and battle.panel:readyForPreview(current) then
         if battle.hoverWait or battle.waitPreview then
             -- Whatever the Wait button actually runs -- a plain delay, or a Focus/Defend/Overwatch
             -- swap with its own speed cost -- so the ghost lands on the same slot the action will.
@@ -4041,10 +4052,6 @@ refreshView = function()
     -- still winding up a channel -- so the resolution + follow-up the aim preview showed stay on the
     -- strip once the cast is committed (Combat.channelGhosts). Both kinds of ghost feed one build.
     local specs = Combat.channelGhosts(battle.combat)
-    -- ...and a projection of the SECOND turn of anybody due round again before the last body on the
-    -- strip has had a first (Combat.repeatSlots). A count-time battle's whole question is "how many
-    -- swings do I get before that thing moves", and one entry per unit cannot answer it.
-    for _, g in ipairs(Combat.repeatSlots(battle.combat)) do specs[#specs + 1] = g end
     for _, g in ipairs(ghosts or {}) do
         specs[#specs + 1] = { unit = current, initiative = g.initiative, label = g.label }
     end
@@ -5175,8 +5182,9 @@ function battle.enter(self, opts)
     battle.debugMenu = nil               -- the right-click debug context menu (debug builds only)
     battle.debugPickTile = nil           -- while the debug "Move to tile" is awaiting a destination click
     battle.over = false
-    -- The wait on each turn-order card. ON, and not as a debug default: it is the number the strip's
-    -- spacing is a picture of (ui/combat_panel.lua's drawInitiative). F6 turns it off.
+    -- The wait on each turn-order card. ON, and not as a debug default: the strip is an evenly
+    -- pitched list, so this figure is the whole of what says how long until a body moves
+    -- (ui/combat_panel.lua's drawInitiative). F6 turns it off.
     battle.showInitiative = true
 
     -- Draft/PvP chess clock: a real-time budget per side that only runs on that side's turn, so slow
@@ -5779,12 +5787,11 @@ function battle.update(dt)
             resolveAdvance()
         end
     elseif not battle.over and battle.current and battle.current.channel then
-        -- The current unit is mid-channel: once the hand-off has played its uninterruptible half
-        -- (handoffStaged, as for the AI below), count the think-pause down, then detonate the spell
-        -- and hand off. Checked before the
+        -- The current unit is mid-channel: once the timeline has finished reshuffling into the new
+        -- order, count the think-pause down, then detonate the spell and hand off. Checked before the
         -- AI branch so a player's own channel resolves too (a player channeler is player-controlled,
         -- so the AI branch below would skip it).
-        if battle.panel:handoffStaged() then
+        if battle.panel:cardsSettled() then
             battle.resolveTimer = (battle.resolveTimer or 0) - dt
             if battle.resolveTimer <= 0 then
                 Combat.resolveChannel(battle.combat, battle.current)
@@ -5797,16 +5804,15 @@ function battle.update(dt)
     -- the kind of thing that reads as a hang, and the second guard costs a comparison.
     elseif not battle.over and battle.current and battle.current.control ~= "remote"
         and (not Combat.isPlayerControlled(battle.current) or battle.autoPending == battle.current) then
-        -- Hold the enemy's think-pause until the hand-off has played the half that must not be
-        -- interrupted -- the outgoing card's morph, with the queue frozen (handoffStaged) -- so a fast
-        -- chain of AI turns never resolves out from under it. It used to wait for the cards to SETTLE
-        -- completely, which put the whole 0.8s reshuffle in front of every enemy turn; the phase that
-        -- follows is the incoming card growing into its frame, which an AI thinking disturbs not at
-        -- all, and AI_DELAY is longer than that growth anyway. The player's own turn isn't gated --
-        -- input is already held elsewhere.
+        -- Hold the enemy's think-pause until the turn-strip cards have SETTLED, so a fast chain of AI
+        -- turns never resolves out from under the card animation. Releasing it earlier, at the end of
+        -- the frozen phase, was tried and reverted with the halved durations it came in with: the
+        -- point of the strip is that a card can be followed from where it was to where it lands, and a
+        -- queue that starts its next reshuffle before the last one finished is one nobody can read.
+        -- The player's own turn isn't gated -- input is already held elsewhere.
         -- An auto-battling player unit rides the same clock, so it reads on screen exactly like any
         -- other unit taking its turn.
-        if battle.panel:handoffStaged() then
+        if battle.panel:cardsSettled() then
             battle.aiTimer = (battle.aiTimer or 0) - dt
             if battle.aiTimer <= 0 then executeEnemyAction() end
         end
@@ -6023,7 +6029,7 @@ function battle.draw()
         -- that row rather than naming it, so a wrapped objective carries the headline down with it.
         --
         -- ...and in the short space that row is in the COLUMN with the other two, so the headline is
-        -- handed the column as well. Sent the board's rect it centred "Set your line" over the top row
+        -- handed the column as well. Sent the board's rect it centred the headline over the top row
         -- of tiles, because the board starts at the top of the screen here and there is no band above
         -- it to sit in. The three rows read as one block either way; only the block moved.
         if Scale.inHandheldSpace then
@@ -6140,6 +6146,14 @@ function battle.draw()
         -- Suppressing the tooltip is ALL this does -- an early return here would leave draw before the
         -- modal's own draw call below, and an invisible panel that still eats every click reads as a
         -- frozen mouse rather than as an open bag.
+    elseif not InputMode.isMouse() and battle.waitPreview then
+        -- The armed Wait preview IS the selection resting on that button (previewOrConfirmWait clears
+        -- keySlot to make it so), and it reads the same note a hover would -- anchored to the plate,
+        -- there being no cursor to hang it off. The first of the two presses is exactly the beat where
+        -- "what is this going to do" gets asked, and a pad player has no other way to ask it.
+        local b = battle.panel:bottomBarRects()
+        local title, lines = CombatPanel.waitNote(battle.current)
+        NoteTooltip.draw(title, lines, b.x + b.w / 2, b.y + b.h / 2, Scale.WIDTH - PANEL_W)
     elseif not InputMode.isMouse() and battle.keySlot then
         -- Keyboard / pad play: the mouse isn't driving, so nothing is hovered -- float the selected slot's
         -- tooltip anchored to the slot itself, so a numpad/pad press reads the item the way a hover would.
@@ -6156,14 +6170,49 @@ function battle.draw()
         local peekItem = battle.peekUnit and battle.peek:itemAt(mx, my)
         local overPeek = battle.peekUnit and battle.peek:contains(mx, my)
         local st = not overPeek and battle.panel:statusAt(mx, my)
-        local boardSt = not overPeek and not st and battle.map:statusAt(mx, my)
-        local item = not overPeek and not st and not boardSt and battle.panel:itemAt(mx, my)
+        -- The wait figure on a turn-order card is its own hover target, ahead of the card it sits on:
+        -- the card answers "who is this", the figure answers "how long until they move", and the
+        -- second question is the one being asked by pointing at a clock.
+        local ini = not overPeek and not st and battle.panel:initiativeAt(mx, my)
+        local boardSt = not overPeek and not st and not ini and battle.map:statusAt(mx, my)
+        local item = not overPeek and not st and not ini and not boardSt and battle.panel:itemAt(mx, my)
         if peekItem then
             ItemTooltip.draw(peekItem, mx, my, Scale.WIDTH - PANEL_W, nil)
         elseif overPeek then
             -- over the card but not a slot: no other tooltip
+        elseif battle.hoverWait then
+            -- The bottom lane's button, glossed. It sits ahead of every reading below because nothing
+            -- below it can be true under that plate anyway, and the same flag that lights the plate
+            -- and paints its landing ghost is what raises this -- one hover, one answer.
+            --
+            -- Held OFF the panel (maxRight stops at its left edge) rather than allowed the full width
+            -- every other tooltip here gets. A box hung off a cursor resting in the bottom-right corner
+            -- flips left and clamps up, which put it squarely over the plate it was explaining and over
+            -- the action grid above it -- a reading that hides its own subject, and the timeline ghost
+            -- it is meant to be read alongside. The column stays visible; the words stand beside it.
+            local title, lines = CombatPanel.waitNote(battle.current)
+            NoteTooltip.draw(title, lines, mx, my, Scale.WIDTH - PANEL_W)
         elseif st then
             StatusTooltip.draw(st, mx, my, Scale.WIDTH)
+        elseif ini then
+            -- The figure is a COUNTDOWN, not a stat, and the note says so in the unit the strip is
+            -- measured in. A body at zero is not waiting for anything, and a hypothetical slot is not
+            -- anybody's turn yet -- both would read as lies in the ordinary wording.
+            local lines = {}
+            if ini.acting then
+                lines[1] = "This unit is acting now."
+            elseif ini.preview then
+                lines[1] = string.format("%.1f more ticks until this slot comes round.", ini.wait)
+            elseif ini.ready then
+                -- A body can stand at 0.0 without being the one acting: a wave that arrives together
+                -- shares an initiative, and the order among them is the tie-break rather than the
+                -- clock. Saying "acting now" here told four cards at once that each was the actor.
+                lines[1] = "No ticks left. This unit acts as soon as the bodies level with it have."
+                lines[2] = "Bodies on the same tick go in order of speed, fastest first."
+            else
+                lines[1] = string.format("%.1f more ticks until this unit can act.", ini.wait)
+            end
+            NoteTooltip.draw("Initiative", lines, mx, my, Scale.WIDTH)
         elseif boardSt then
             StatusTooltip.draw(boardSt, mx, my, Scale.WIDTH - PANEL_W)
         elseif item then
@@ -6368,7 +6417,7 @@ function battle.drawTileTooltip(mx, my)
     local objInfo
     -- Same precedence actionPreviewFor picks a strike target with (trap, then wall, then prop), so the
     -- box that opens describes the very thing a click would hit.
-    if unit and unit.char then objInfo = { unit = unit, preview = preview }
+    if unit and unit.char then objInfo = { unit = unit, preview = preview, intent = battle.intentFor(unit) }
     elseif body and body.char then objInfo = { unit = body, preview = preview }
     elseif trap then objInfo = { trap = trap, preview = preview }
     elseif wall then objInfo = { wall = wall, preview = preview }
@@ -6459,12 +6508,29 @@ function battle.drawTileTooltip(mx, my)
     end
 end
 
+-- The predicted intent to GLOSS on a body's readout, or nil. The badge on the sprite and the mark on
+-- the turn card are a glyph and a number with no words anywhere near them; this is what puts the words
+-- on, and it hangs off the same one cache both of those read (battle.enemyIntents), so a fourth
+-- surface cannot drift from the other three. Empty while the preference is off, which is how the whole
+-- read goes quiet together (computeIntents).
+--
+-- Never for the unit whose turn it IS: its card drops the mark for the same reason (ui/combat_panel's
+-- drawEntry), since a prediction about a turn already being taken is a forecast of the present.
+function battle.intentFor(unit)
+    if not unit or unit == battle.current then return nil end
+    return battle.enemyIntents and battle.enemyIntents[unit]
+end
+
 -- Stats tooltip for a unit hovered on the turn-order strip: the same widget as the tile hover, but
 -- fed only the unit (no tile), so it shows the character's stats alone without terrain. `maxRight`
 -- is the full screen width since a strip hover sits over the panel (the tooltip flips left of the
 -- cursor to stay on-screen).
+--
+-- Carries the intent too, so a hover on the CARD answers "what is this one about to do" in words --
+-- the same section a hover on the body opens (drawTileTooltip's objInfo). The two surfaces the mark is
+-- drawn on are the two surfaces that gloss it.
 function battle.drawUnitTooltip(unit, mx, my, maxRight)
-    TileTooltip.draw({ unit = unit }, mx, my, maxRight or Scale.WIDTH)
+    TileTooltip.draw({ unit = unit, intent = battle.intentFor(unit) }, mx, my, maxRight or Scale.WIDTH)
 end
 
 -- Backdrop for the left column (mirrors the right combat panel). The buttons and the docked
@@ -6737,6 +6803,16 @@ function battle.drawHudText(boardX, boardW)
                     hint = name .. "  ·  " .. hint
                 end
             end
+        elseif battle.current.actionSpent then
+            -- The turn's ACTION is spent and only the ride it left open remains (the Harrier's Bow --
+            -- see Combat.itemBlockReason's "acted" gate). The two lines below would name an attack and
+            -- an item grid that is greyed end to end, which is the one thing this turn can no longer
+            -- do, so the hint names the move and the way out and nothing else. The moved case never
+            -- reaches here: a sole action with no ride left ends the turn outright (models/combat.lua).
+            hint = pad and "A on a blue tile to move  ·  X to hold this turn"
+                or kbd and "Enter on a blue tile to move  ·  Space to hold this turn"
+                or (InputMode.touch and "Drag onto a blue tile to move  ·  Wait to hold this turn"
+                    or "Click a blue tile to move  ·  Wait to hold this turn")
         elseif Combat.hasMoved(battle.combat) then
             hint = pad and "A on a foe in range to attack  ·  Y to switch item  ·  X to hold this turn"
                 or kbd and "Enter on a foe in range to attack  ·  number keys to switch  ·  Space to hold this turn"

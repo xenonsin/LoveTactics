@@ -44,7 +44,6 @@ return {
     "ability_null_field",
     "ability_overcharge",
     "ability_power_strike",
-    "ability_provoke",
     "ability_rally_banner",
     "ability_reckless_stance",
     "ability_reflect_magic",

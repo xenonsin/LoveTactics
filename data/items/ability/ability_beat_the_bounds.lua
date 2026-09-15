@@ -29,6 +29,10 @@ return {
     activeAbility = {
         target = "self",
         range = 0,
+        -- Unaimed, not friendly: the cast is centred on the warden because a collection has nowhere
+        -- else to be thrown from, and a self-target left to the guess previewed green
+        -- (Combat.isSupportAbility) for a turn that damages and Roots the whole field's foes.
+        support = false,
         speed = 5,
         cost = { stat = "stamina", amount = 9 },
         damage = Curve.ramp(10, 20),

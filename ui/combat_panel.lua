@@ -26,6 +26,8 @@ local Scale = require("scale")
 local Combat = require("models.combat")
 local Item = require("models.item") -- for Item.costs: a cast may draw on more than one pool
 local Trait = require("models.trait") -- for Trait.stackReadout: a passive charm's banked stacks
+local Status = require("models.status") -- for waitNote: naming what a stance grants, not its id
+local Hazard = require("models.hazard") -- likewise, for the ground a meditation lays
 local AdjacencyLinks = require("ui.adjacency_links")
 local StatusBadge = require("ui.status_badge")
 local Glyphs = require("ui.glyphs")
@@ -48,7 +50,12 @@ local PANEL_W = 352
 CombatPanel.WIDTH = PANEL_W -- so states can reserve the same right-side margin
 local SLIM_H = 34      -- a non-current turn card: small portrait, name, one thin HP bar (no numbers)
 local CURRENT_H = 82   -- the acting unit's card: taller, larger portrait, full numbered HP/MP/SP
-local ENTRY_GAP = 6   -- gap between slim cards (a little air, matching the mock's spacing)
+-- 6 -> 5, and the pixel buys a whole card. The band above the acting card is 270px on a desktop and a
+-- slim card is 34, so at a 6px gap seven cards need 274 and the seventh was dropped four pixels short:
+-- the strip showed the actor plus six. At 5 it needs 268 and fits, so the strip shows EIGHT turns --
+-- the acting body and seven ahead of it. Nothing else changes; a pixel of air between cards is not
+-- what was doing the work, and one more turn of the queue plainly is.
+local ENTRY_GAP = 5   -- gap between slim cards (a little air, matching the mock's spacing)
 local NUM_GUTTER = 20  -- left column holding each card's turn number, kept clear of the portrait
 local INTENT_COL = 30  -- right column reserved on a foe's slim card for its predicted intent (icon + number)
 local CURRENT_TOP_GAP = 34 -- room above the acting card for its "Current Turn" caption + breathing space
@@ -78,12 +85,14 @@ local BADGE_PAD_X, BADGE_ICON_W, BADGE_GAP, BADGE_H = 5, 9, 3, 18
 -- floats them after the cards, so two pools changing at once stack clear of each other instead of
 -- colliding inside the 13px row pitch the bars are packed at.
 local SCROLL_STEP = 1 -- turn-strip entries per wheel notch (entries are tall; one reads best)
--- HOW FAST A HAND-OFF READS. These were 12 / 14 / 10, which measured at 0.38s for the "out" phase
--- and 0.41s for "in" -- 0.79s of card motion on EVERY turn, and the battle state holds the next
--- auto-resolving turn behind all of it (cardsSettled). Halved, which lands the whole hand-off near
--- 0.46s; the AI is released earlier still, at the end of "out" (handoffStaged), so its own 0.35s
--- think-pause overlaps the incoming card's growth instead of queueing up behind it.
-local CARD_SPEED = 16 -- exponential ease rate of a card sliding to its new slot as the order reshuffles
+-- HOW FAST A HAND-OFF READS, and it is paced to be FOLLOWED rather than to be over. The one thing
+-- this strip exists to let a player do is pick a card, watch it move, and never lose it -- so these
+-- are bounded below by what an eye can track, not above by what a fast player would prefer.
+--
+-- They were briefly halved (16 / 20 / 20), on the argument that 0.79s of card motion is a lot to pay
+-- on every one of six turns a round. It is, and it bought nothing worth having: at that pace a card
+-- crossing three ranks is a blur between two stills, which is the whole of what the strip is for.
+local CARD_SPEED = 12 -- exponential ease rate of a card sliding to its new slot as the order reshuffles
 -- A GHOST SLIDES TOO, and faster. It used to be drawn straight at whatever slot the layout gave it
 -- this frame, which made every reflow a collision: the real cards eased toward their new ranks over a
 -- fifth of a second while the hypotheticals stood still, so a card slid THROUGH a ghost on its way
@@ -91,37 +100,36 @@ local CARD_SPEED = 16 -- exponential ease rate of a card sliding to its new slot
 -- whole strip interpolates between two layouts that are each collision-free, rather than half of it
 -- moving against the other half. Faster than a card because an aim ghost tracks the cursor, and a
 -- slot that lags the thing it is previewing is worse than one that snaps.
-local GHOST_SPEED = 26
-local PROM_SPEED = 20 -- ease rate of a card's prominence (slim <-> tall current) as the turn passes
-local SOLIDIFY_SPEED = 20 -- ease rate a just-committed preview ghost solidifies into its real card
+local GHOST_SPEED = 18
+-- ...and the GROWTH is quicker than the travel, deliberately. A card crossing the strip is the thing
+-- being followed and wants time; a card changing SIZE in place is not going anywhere and reads the
+-- moment it starts. 14 put it at 0.38s, which on top of the wait above made the arrival feel like the
+-- slowest thing on screen.
+local PROM_SPEED = 24 -- ease rate of a card's prominence (slim <-> tall current) as the turn passes
+local SOLIDIFY_SPEED = 10 -- ease rate a just-committed preview ghost solidifies into its real card
 
--- THE STRIP IS A TIME AXIS, NOT A RANK LIST. A card's gap above the one below it grows with the WAIT
--- between them, so a foe a hair behind you hugs your card and one seven ticks out sits visibly adrift.
--- Without this the strip drew a 0.3-tick gap and a 7.4-tick gap identically, which is the whole of
--- what initiative means in a count-time battle (models/combat.lua's header).
---
--- Capped, because one long wait must not push the rest of the queue off the top of the panel: past
--- the cap the distance stops growing and the number on the card carries the rest. One slim card
--- tall, so "further than a whole card" reads as "a long way off" and stops there.
---
--- BOTH ARE MEASURED AGAINST THE BAND THEY HAVE TO FIT IN, not fixed. These figures are right for a
--- desktop strip, which is 270px and holds six cards; a handheld sends the queue to the left column
--- where the band is 119px and holds three (states/battle.lua's syncLayout), and spending a whole
--- 34px card of air there costs a THIRD of the queue rather than a sixth. So relayout scales them by
--- how much room there actually is, and the numbers below are what that scaling produces at full size.
-local PX_PER_TICK = 5
-local TICK_MAX = SLIM_H
-local BAND_REF = 270 -- the desktop band these two were chosen against
--- The rail the spacing is measured against: a mark where a body of each whole tick would stand.
--- Deliberately UNLABELLED -- every card already carries its own figure (drawInitiative), and a second
--- set of numbers down the edge would be the same reading twice.
-local RAIL_X = 3       -- from the strip's left edge, clear of the cards (which start at +8)
-local RAIL_TICK_W = 4  -- a whole-tick mark
-local RAIL_ZERO_W = 9  -- ...and the "acting now" mark, which is the one the rest are measured from
+-- THE QUEUE IS AN EVENLY PITCHED LIST, and it was briefly not. A pass spaced the cards by the WAIT
+-- between them -- a foe a hair behind you hugging your card, one seven ticks out sitting adrift --
+-- and drew a hairline rail of whole-tick marks beside them to measure it against. The arithmetic was
+-- sound and it read badly: gaps that size are noise rather than a scale, the rail was a graph down
+-- the side of a thing nobody reads as a graph, and on the short strip a handheld gets the air cost a
+-- whole card of queue. Reverted on sight of it running. The WAIT figure each card carries
+-- (drawInitiative) is what answers "how long until this one moves", and it does it in one place
+-- instead of two.
 -- An initiative that moved without the order moving: how big a change counts (ticks), and how long
 -- the card's pulse runs. See update's tempo pass.
 local POOL_PITCH = 13 -- row pitch of the acting card's HP/MP/SP stack, at its full height
-local INIT_PAD = 4 -- side padding inside the wait figure's plate
+-- How long a felled body's card may be held waiting for a death cue that has not arrived. Generous
+-- against the longest approach walk a carried blow can take, and finite so nothing is stranded.
+-- How fast the strip's own clock catches up with the model's after a turn is taken. See shownClock:
+-- slow enough that the count-down is a thing you watch happen rather than a set of numbers that were
+-- already different the next time you looked, and no slower -- it is the last thing holding the strip
+-- before the next body may act.
+local CLOCK_SPEED = 10
+-- The backstop on stage one: however long the acting card takes to reach its rank, the clock is not
+-- held past this. Comfortably longer than the slide itself at CARD_SPEED.
+local OUT_MAX = 1.2
+local DEATH_HOLD_MAX = 4
 local TEMPO_EPS = 0.25
 local TEMPO_PULSE = 0.45
 
@@ -290,9 +298,6 @@ function CombatPanel.new(combat, opts)
     self.headFont = Theme.display(16)
     self.nameFont = Theme.display(14)
     self.smallFont = Theme.body(12)
-    -- The wait figure gets its own face, one step up from the dense read-outs around it (a native
-    -- size, never a scaled one -- see Theme.body). It is the number a turn is decided on.
-    self.initFont = Theme.body(13)
     self.captionFont = Theme.display(12) -- section captions (Current Turn / Actions) wear the serif, matching Turn Order
     -- (item names in a grid slot fit a native sans via Theme.fitText -- see drawSlot; never scaled)
 
@@ -309,35 +314,52 @@ function CombatPanel.new(combat, opts)
     self.cardProm = {}    -- unit -> eased prominence 0..1 (1 = the tall framed current card)
     self.lastLayout = {}  -- unit -> { entry, y, h } last laid out, to seed a fading card
     self.dyingCards = {}  -- unit -> { entry, y, h } fading to black on death
+    -- ...and the reason it is being held there. A body leaves the turn order the INSTANT the model
+    -- fells it, which can be a third of a second before the blow that felled it is seen to play, so
+    -- "has the fade started" is the wrong question to hold its card on -- for that whole window the
+    -- answer is no and the card simply vanishes, then the death animates on an empty row. The right
+    -- question is the model's: it is dead, so hold the card until a fade has actually run its course.
+    self.deathHold = {}   -- unit -> { seenFade = bool, t = seconds held }
+    -- THE STRIP'S OWN CLOCK, lagging the model's. Taking a turn does two things at once and only one
+    -- of them is a reorder: endTurn adds the action's cost to the actor (which moves it down the
+    -- queue), and Combat.rebase then subtracts the new minimum from EVERYONE so the next body sits at
+    -- 0. Subtracting the same figure from every unit cannot change anybody's rank -- it is a clock
+    -- advancing, banked in combat.clock -- but it does change every number on screen at once.
+    --
+    -- Landing both on the same frame is what made the preview read as a lie: the ghost promises "you
+    -- act at 4.0", the card lands in exactly the promised place, and the number on it says something
+    -- else because the whole field counted down underneath it in the same instant. So the panel keeps
+    -- its own clock and shows `initiative + (clock - shownClock)`: held back, that is the figure the
+    -- ghost promised and every other card is untouched; eased forward, every number counts down
+    -- together and the next body arrives at 0.0. The cost lands first, then time passes -- which is
+    -- the order they actually happen in, and now the order they are seen in.
+    self.shownClock = nil -- nil until the first view; then a value trailing combat.clock
     -- On a turn advance the outgoing actor's card MORPHS in place at its preview ghost's slot -- content
     -- fading up from the ghost -- rather than sweeping the tall card through the list. wasCurrent tracks
     -- who held the frame so the hand-off fires exactly once.
-    self.solidify = {}    -- unit -> { t = 1..0, dashed = bool }, a card morphing in from its ghost
-    self.lastGhostY = {}  -- unit -> on-screen Y of its SOONEST preview ghost (sticky until it acts), so
-                          -- the morph solidifies at that exact (old-layout) slot rather than its new rank
+    self.solidify = {}    -- unit -> { t = 1..0, dashed = bool }, the ghost's dashes dissolving as the
+                          -- card that was promised that slot arrives in it
+    self.lastGhostY = {}  -- unit -> on-screen Y of its SOONEST preview ghost, so a hand-off knows the
+                          -- card is arriving at a slot a ghost was holding and can dissolve it
     self.wasCurrent = nil -- the unit that held the framed slot last frame
-    -- A turn advance plays out in two STAGED phases so it reads clearly instead of all at once:
-    --   "out" -- the outgoing actor's preview solidifies into its real queue card while its big frame
-    --            card fades out (frameFade); the incoming actor and the rest of the queue are frozen.
-    --   "in"  -- once that finishes, the incoming actor drops into the frame and the queue reflows.
-    -- (Hit reactions finish earlier still: the battle state holds the advance until fx settles.)
+    -- A turn advance plays out in two STAGES, and they are the two things the model does:
+    --   "out" -- THE COST LANDS. The acting card leaves the frame and travels to the rank its action
+    --            bought, shrinking to a slim card as it goes. The strip's clock is HELD here, so every
+    --            figure on screen still reads the wait the preview quoted.
+    --   "in"  -- TIME PASSES. The clock catches up: every wait counts down together, and the next body
+    --            reaches 0.0 and takes the frame.
+    -- Which is the order they happen in (endTurn charges the cost, THEN Combat.rebase advances the
+    -- clock) and now the order they are seen in. (Hit reactions finish earlier still: the battle state
+    -- holds the advance until fx settles.)
     self.phase = "idle"    -- "idle" | "out" | "in"
-    self.snapOut = nil     -- a ghost-less outgoing to drop straight at its rank (no sweep from the frame)
     self.outgoingUnit = nil -- the actor leaving the frame during "out"
-    self.frameFade = nil   -- { unit, t = 1..0 } the outgoing's big card fading out of the frame
-    self.frameY = nil      -- current frame-slot top (where the big card sits), cached each update
-    -- FREEZING THE QUEUE MEANS FREEZING WHAT IS ON THE SCREEN, NOT THE ORDER BEHIND IT. "out" holds
-    -- every card still by not easing cardY -- but entryLayout went on re-laying the live order each
-    -- frame, so a GHOST (a channel's resolve slot, say) was placed against the new ranking while the
-    -- real cards sat at the old one, and landed square on top of one for the whole phase.
-    --
-    -- Re-deriving the old layout does not fix it either, and that was the first attempt: a laid-out
-    -- slot and the eased position a card is actually DRAWN at are two different numbers whenever the
-    -- queue has not finished settling, which is exactly when a hand-off is most likely to arrive.
-    -- So the snapshot is the drawn rows themselves -- every rect as it stood on the frame the
-    -- hand-off began -- and it cannot disagree with the screen because it IS the screen.
-    self.prevRows = nil   -- last frame's drawn rows, the snapshot a hand-off freezes
-    self.frozenRows = nil -- ...and the snapshot itself, while "out" runs
+    -- NOTHING IS EVER HELD STILL. A hand-off used to freeze the whole strip for its first phase so
+    -- the outgoing card's morph played against a picture that was not moving -- which made sense only
+    -- while that card APPEARED at its destination instead of travelling to it. It travels now, and a
+    -- freeze is precisely what would stop it. What the freeze was really guarding against -- a ghost
+    -- placed against the new ranking while the cards still sat at the old one -- is answered instead
+    -- by easing the ghosts too (GHOST_SPEED): every row interpolates between the same two layouts, so
+    -- none of them is ever pinned against the others and there is nothing left to hold still.
     -- A tempo change that does NOT reorder anybody: every unit's initiative shifts by the same amount
     -- on a rebase, so a unit whose shift DIFFERS from the field's is one something actually moved
     -- (a stun's shove, a hasten's cut). Those get a pulse; the shared rebase gets nothing.
@@ -370,6 +392,14 @@ end
 -- Is `unit` drawn as ONE OF OURS right now? The same held read, for the places that branch on faction
 -- rather than paint with it -- notably the enemy-intent icon, which on an unheld read would announce a
 -- charm a whole beat before the touch that laid it, on the very card the player is watching.
+-- The wait to PRINT for a model initiative: its own figure plus however far the strip's clock is
+-- still behind the fight's. Zero difference at rest, so this is the model's own number every frame
+-- that is not a hand-off.
+function CombatPanel:shownWait(initiative)
+    local clock = (self.combat and self.combat.clock) or 0
+    return (initiative or 0) + (clock - (self.shownClock or clock))
+end
+
 function CombatPanel:shownParty(unit)
     if self.fx then return (self.fx:shownAllegiance(unit)) == "party" end
     return unit.side == "party"
@@ -402,51 +432,36 @@ function CombatPanel:update(dt)
         end
     end
 
-    -- Turn advanced: begin the STAGED hand-off (see the phase notes in new()). If the outgoing actor had
-    -- a preview, phase "out" solidifies its real card at that ghost slot while its big frame card fades
-    -- out and everything else is frozen; otherwise we skip straight to the "in" drop.
+    -- Turn advanced. THE ACTING CARD LEAVES THE FRAME ON ITS OWN FEET: it eases from the frame up to
+    -- the rank its cost bought, shrinking from the tall plate to a slim one as it goes, so the card a
+    -- player is most likely to be watching is one they can actually follow out.
+    --
+    -- It used to be MOVED THERE INSTANTLY -- cardY assigned to the ghost's slot, prominence assigned
+    -- to 0 -- while a copy of the big card stayed behind in the frame fading out. The argument was
+    -- that a full-height plate sweeping up through the queue looks wrong, and it does; but the cure
+    -- was a card that never travelled, and measured against a running fight it was a 188px jump on
+    -- every single turn. Shrinking it AS it travels answers both: nothing full-height ever crosses the
+    -- queue, and nothing teleports. Both tweens were already here; all that was needed was to stop
+    -- overwriting them.
     if current ~= self.wasCurrent then
         local out = self.wasCurrent
-        self.frozenRows = nil
+        self.arrivedCurrent = nil -- a new turn is landing; nothing has come to rest in it yet
         if out then
             self.outgoingUnit = out
-            self.cardProm[out] = 0
-            self.frameFade = { unit = out, t = 1 }
-            local gy = self.lastGhostY[out]
-            self.solidify[out] = { t = 1, dashed = gy ~= nil }
-            -- "out" ALWAYS RUNS when somebody is leaving the frame, because that phase is what holds
-            -- the incoming card slim while the outgoing's big one fades out of the slot. Skipping it
-            -- put two whole cards in the frame at once -- the old one fading, the new one growing
-            -- straight through it, two names and two portraits overprinted -- which is the thing the
-            -- phase exists to prevent and which only showed up once the arriving card stopped
-            -- travelling (it used to be halfway up the queue while the fade ran, and hid it).
-            --
-            -- FREEZING THE QUEUE IS A SEPARATE QUESTION, and the answer is "only from a standstill".
-            -- Freezing means holding the screen exactly as it stands, so freezing a screen with two
-            -- rows mid-crossing holds THAT, overprinted, for a fifth of a second. A queue still
-            -- reshuffling has nothing worth staging anyway: letting it reflow into the new turn in one
-            -- movement reads better than stopping it dead first. So the fade always plays; the freeze
-            -- comes with it only when there is a still picture to freeze.
+            -- The dashed border of the ghost it is arriving at dissolves as it lands, so the card is
+            -- seen to take the slot the preview promised. Its CONTENT no longer fades up from nothing:
+            -- the card was already on screen a moment ago and is simply somewhere else now.
+            self.solidify[out] = { t = 1, dashed = self.lastGhostY[out] ~= nil }
             self.phase = "out"
-            if gy then
-                self.cardY[out] = gy; self.snapOut = nil
-                if not self._cardsMoving then self:freezeRows(out) end
-            else
-                self.snapOut = out -- no ghost: land it at its new rank rather than sweep from the frame
-            end
             self.lastGhostY[out] = nil
         else
-            self.phase, self.outgoingUnit, self.frameFade, self.snapOut = "idle", nil, nil, nil
+            self.phase, self.outgoingUnit = "idle", nil
         end
         if current then self.lastGhostY[current] = nil end -- fresh turn: drop any stale ghost slot
         self.wasCurrent = current
     end
 
     local layout = self:entryLayout()
-    -- The frame slot is a FIXED rect, not whoever the layout happens to put first: during "out" the
-    -- frozen snapshot's first entry is the OUTGOING unit, so asking the layout for `current` would
-    -- hand the fading big card a slim card's slot halfway up the queue.
-    self.frameY = self:hasPinnedCurrent() and self:pinnedTop() or nil
 
     -- Prominence: non-current cards decay to slim. The incoming current is held slim through "out",
     -- grows through "in", and sits full at "idle" -- so the big card only inflates as it drops in.
@@ -457,25 +472,33 @@ function CombatPanel:update(dt)
         end
     end
     if current then
-        if self.phase == "out" then self.cardProm[current] = 0
-        elseif self.phase == "in" then self.cardProm[current] = approach(self.cardProm[current] or 0, 1, PROM_SPEED, dt)
-        else self.cardProm[current] = 1 end
+        -- THE ARRIVING CARD GROWS FROM THE FIRST FRAME OF THE HAND-OFF, not from the end of it. It
+        -- used to be pinned flat at 0 for the whole of stage one, so nothing happened to it at all
+        -- while the outgoing card travelled -- and only then did it begin. That dead wait read as the
+        -- growth being slow when the growth had not started: a fifth of a second of nothing, then the
+        -- tween. There is no longer anything to wait for. The card leaving the frame is travelling out
+        -- of it and shrinking as it goes, so the two can happen together: the frame is vacated and
+        -- filled in one movement, which is what a hand-over looks like.
+        if self.phase == "idle" then self.cardProm[current] = 1
+        else self.cardProm[current] = approach(self.cardProm[current] or 0, 1, PROM_SPEED, dt) end
     end
 
     local present = {}
     local moving = false
+    -- Has the acting card finished travelling to the rank its cost bought? Stage one ends on this.
+    --
+    -- TRUE UNTIL SOMETHING SAYS OTHERWISE. It was seeded `self.outgoingUnit == nil`, which is false
+    -- for every hand-off that has one -- and the loop below only ever clears it, never sets it. So it
+    -- could not become true while a card was leaving, stage one always ran to its backstop, and the
+    -- clock sat frozen for a second before it began to count down. Measured: cards at rest by +0.64s,
+    -- clock still untouched at +1.04s, settled at +1.78s.
+    local outSettled = true
     -- Ghost slots are numbered per unit as the layout is walked, and the number is stashed on the
     -- entry so the draw pass keys the same slot the ease did (both read one entryLayout, off one
     -- view.order, in one frame).
     local ghostSeen, ghostN = {}, {}
     for _, e in ipairs(layout) do
-        if e.entry.preview and self.frozenRows then
-            -- Frozen: the row already carries the exact position it is drawn at, and the slot numbers
-            -- below would be counting a DIFFERENT set -- freezeRows turns the outgoing's soonest
-            -- hypothetical into a card, so every later ghost of that body shifts down a number and
-            -- would inherit the eased position of the slot the card is now standing in.
-            e.entry.ghostSlot = nil
-        elseif e.entry.preview then
+        if e.entry.preview then
             local u = e.entry.unit
             local n = (ghostN[u] or 0) + 1
             ghostN[u] = n
@@ -508,154 +531,121 @@ function CombatPanel:update(dt)
             present[u] = true
             self.lastLayout[u] = { entry = e.entry, y = e.y, h = e.h, w = e.w, x = e.x }
             if self.cardY[u] == nil then self.cardY[u] = e.y end
-            if u == self.snapOut then
-                self.cardY[u] = e.y -- land straight at its rank (no sweep from the frame); fades in there
-                self.snapOut = nil
-            elseif u == current and self.phase == "in" then
-                -- THE ARRIVING CARD GROWS WHERE IT LANDS. It used to ease down from its old rank WHILE
-                -- inflating, which drew its top above the frame and straight through the "Current Turn"
-                -- caption behind it. Snapped to the frame slot instead: the only motion left is the
-                -- growth, and drawEntry fades its content up (the solidify below) so the move off the
-                -- queue reads as an arrival rather than a jump.
-                self.cardY[u] = e.y
-            elseif not self.frozenRows then
-                -- Ease toward the new layout. Only a FROZEN hand-off holds this still, so that the
-                -- outgoing card's in-place morph plays against a picture that is not moving.
-                local ny = approach(self.cardY[u], e.y, CARD_SPEED, dt)
-                if math.abs(e.y - ny) > 0.5 then moving = true end
-                self.cardY[u] = ny
+            -- Ease toward the new layout, always. This is the whole of how a card gets anywhere.
+            local ny = approach(self.cardY[u], e.y, CARD_SPEED, dt)
+            local far = math.abs(e.y - ny) > 0.5
+            if far then moving = true end
+            self.cardY[u] = ny
+            if u == self.outgoingUnit and (far or (self.cardProm[u] or 0) > 0.05) then
+                outSettled = false
             end
         end
     end
 
-    if self.frameFade then
-        self.frameFade.t = approach(self.frameFade.t, 0, SOLIDIFY_SPEED, dt)
-        if self.frameFade.t < 0.02 then self.frameFade = nil end
-    end
     for u, sd in pairs(self.solidify) do
         sd.t = approach(sd.t, 0, SOLIDIFY_SPEED, dt)
         if sd.t < 0.02 then self.solidify[u] = nil else moving = true end
     end
     for u, p in pairs(self.cardProm) do if u ~= current and p > 0.02 then moving = true end end
 
-    -- Advance the phase: "out" holds until the morph + frame fade finish, then "in" drops the incoming
-    -- card and reflows the queue, then back to "idle" once everything has settled.
+    -- Stage one is over when the acting card has ARRIVED -- when the cost it paid has been seen to
+    -- move it -- rather than when some fade happens to run out. `outSettled` is measured in the layout
+    -- loop above against the card itself. The cap is a backstop: a card whose target keeps moving (a
+    -- summon arriving mid-hand-off) must not hold the clock for ever.
     if self.phase == "out" then
         moving = true
-        if not self.frameFade and next(self.solidify) == nil then
+        self.outT = (self.outT or 0) + dt
+        if outSettled or self.outT > OUT_MAX then
             self.phase = "in"
-            self.frozenRows = nil -- the queue is free to reflow again
-            -- The incoming card is snapped to the frame the moment "in" opens (see the layout loop),
-            -- so give it the same content fade a solidifying card gets: it grows up out of nothing
-            -- at the frame rather than appearing there whole.
-            if current and not self.solidify[current] then
-                self.solidify[current] = { t = 1, dashed = false }
-            end
+            self.outT = nil
         end
     elseif self.phase == "in" then
         if current and (self.cardProm[current] or 0) < 0.995 then moving = true end
         if not moving then self.phase = "idle" end
     end
 
-    -- A unit that just left the order: hold its card as a dying card while the fx controller either is
-    -- fading it out (deathFade) or has not yet PLAYED the blow that felled it (awaiting -- a counter,
-    -- resolved in the model but still a beat away on screen). Without the latter the card would blink
-    -- out the instant the model killed it and never fade at all.
+    -- A unit that just left the order: hold its card while the blow that felled it is still to be
+    -- SEEN. Asked of the model (`alive`) rather than of the fx controller, because the two disagree
+    -- for as long as a third of a second: the model fells a body and drops it from the order at once,
+    -- while the cue that plays the death can still be sitting undrained behind an approach walk. Held
+    -- on "has the fade started" the card blinked out for that whole window and the death then
+    -- animated on a row with nothing in it -- measured at 19 and 20 frames in two fights out of four.
     for u in pairs(self.cardY) do
         if not present[u] then
-            if self.fx and (self.fx:deathFade(u) or self.fx:awaiting(u)) and self.lastLayout[u] then
+            local felled = (u.alive == false) or (self.fx and (self.fx:deathFade(u) or self.fx:awaiting(u)))
+            if felled and self.lastLayout[u] then
                 self.dyingCards[u] = self.lastLayout[u]
+                self.deathHold[u] = self.deathHold[u] or { seenFade = false, t = 0 }
             end
             self.cardY[u] = nil
         end
     end
-    for u in pairs(self.dyingCards) do
-        if not (self.fx and (self.fx:deathFade(u) or self.fx:awaiting(u))) then
+    -- ...and let it go once the fade has been seen to RUN and then finish. A fade that has not
+    -- started yet is not a fade that is over, which is the whole distinction the old test missed.
+    -- DEATH_HOLD_MAX is the backstop: a cue that never arrives (a body removed by something that
+    -- raises none) must not strand a card on the strip for the rest of the fight.
+    for u, h in pairs(self.deathHold) do
+        -- Back on its feet (a revive, a rotation returning a body): it is in the order again and owns
+        -- a live card, so the held one has to go at once rather than linger behind it until the
+        -- backstop expires.
+        if present[u] then
             self.dyingCards[u] = nil
+            self.deathHold[u] = nil
+        else
+        h.t = h.t + dt
+        local fade = self.fx and self.fx:deathFade(u)
+        if fade then h.seenFade = true end
+        local waiting = self.fx and self.fx:awaiting(u)
+        if (h.seenFade and not fade) or (h.t > DEATH_HOLD_MAX and not fade and not waiting) then
+            self.dyingCards[u] = nil
+            self.deathHold[u] = nil
+        end
         end
     end
     for u in pairs(self.lastLayout) do
         if not present[u] and not self.dyingCards[u] then self.lastLayout[u] = nil end
     end
     -- Drop the eased Y of any ghost slot that is no longer in the order, so a unit that loses its
-    -- second hypothetical does not hand that slot's stale position to a later one. Not while frozen,
-    -- where no slot was counted and every one of them would look abandoned.
-    if not self.frozenRows then
-        for u, slots in pairs(self.ghostY) do
-            local seen = ghostSeen[u]
-            if not seen then self.ghostY[u] = nil
-            else for n in pairs(slots) do if not seen[n] then slots[n] = nil end end end
-        end
+    -- second hypothetical does not hand that slot's stale position to a later one.
+    for u, slots in pairs(self.ghostY) do
+        local seen = ghostSeen[u]
+        if not seen then self.ghostY[u] = nil
+        else for n in pairs(slots) do if not seen[n] then slots[n] = nil end end end
+    end
+
+    -- THE CLOCK ADVANCES IN THE SECOND STAGE, never the first. Through "out" the outgoing card is
+    -- still travelling to the slot its ghost promised, so the numbers are held exactly as the preview
+    -- quoted them; once that has landed, time is allowed to pass and every figure counts down to the
+    -- new basis together. A first view (or a fight that jumps its clock, a wave arriving) snaps rather
+    -- than counting down from nowhere.
+    local clock = (self.combat and self.combat.clock) or 0
+    if self.shownClock == nil or math.abs(clock - self.shownClock) > 60 then
+        self.shownClock = clock
+    elseif self.phase ~= "out" then
+        self.shownClock = approach(self.shownClock, clock, CLOCK_SPEED, dt)
+        -- Done once no DIGIT can still change: the figures are printed to one decimal, so a twentieth
+        -- of a tick is under the resolution of the thing being animated. Chasing 0.02 held the strip
+        -- for a third of a second after the last number had stopped moving.
+        if math.abs(clock - self.shownClock) > 0.05 then moving = true end
     end
 
     self:trackTempo(dt, layout)
 
-    -- Last, so a hand-off beginning on the NEXT frame freezes the rows this one actually drew.
-    -- Each row carries the eased position it was rendered at, not the slot it was laid out for.
-    if not self.frozenRows then
-        local rows = {}
-        for _, e in ipairs(layout) do
-            local y = e.y
-            if e.entry.preview then
-                local slots = e.entry.ghostSlot and self.ghostY[e.entry.unit]
-                y = (slots and slots[e.entry.ghostSlot]) or e.y
-            else
-                y = self.cardY[e.entry.unit] or e.y
-            end
-            rows[#rows + 1] = { entry = e.entry, num = e.num, x = e.x, y = y, w = e.w, h = e.h }
-        end
-        self.prevRows = rows
-    end
 
     -- Cards still sliding/growing (or a death card fading) means the reshuffle isn't done.
     self._cardsMoving = moving or (next(self.dyingCards) ~= nil)
+    -- ...and the first frame it IS done, this body's turn has properly arrived. Latched, never
+    -- re-tested -- see readyForPreview for what happens when it is asked live.
+    if self.wasCurrent and not self._cardsMoving then self.arrivedCurrent = self.wasCurrent end
 end
 
 -- Take the snapshot phase "out" lays out from: last frame's entry list, with two substitutions that
--- put it in the shape the frozen screen is actually in.
---
---   * the OUTGOING unit's preview entry becomes its REAL card, because that ghost slot is exactly
---     where its card is solidifying (cardY[out] was pinned to it);
---   * its own entry at the head of the list becomes a RESERVED blank -- the pinned frame slot still
---     has to be held open (the caption and the grid hang off it), but the card standing in it is the
---     big one fading out, drawn by frameFade rather than by the strip.
---
--- Without the ghost to substitute there is nothing to freeze onto, so we decline and the live order
--- is laid out as before -- the same fallback as a hand-off that never had a ghost at all.
--- Two substitutions turn last frame's drawn rows into the picture "out" holds still:
---
---   * the outgoing body's own BIG row goes. The card standing in the frame through this phase is the
---     one fading out, which frameFade draws over the top; leaving the row in would draw a second,
---     full-height copy at the eased position its queue card is morphing into.
---   * its SOONEST hypothetical becomes a real card in place. That row is where lastGhostY measured
---     and where cardY has just been pinned, so the two agree by construction. Its siblings -- a
---     channeled cast previews the slot it resolves at AND the caster's follow-up -- stay ghosts and
---     keep their own rows, which is what stops the card from solidifying on top of one of them.
-function CombatPanel:freezeRows(out)
-    local prev = self.prevRows
-    if not prev then return end
-    local rows, swapped = {}, false
-    for _, r in ipairs(prev) do
-        local e = r.entry
-        if e.unit == out and not e.preview then
-            -- dropped: frameFade owns the frame for this phase
-        elseif e.unit == out and e.preview and not swapped then
-            rows[#rows + 1] = { entry = { unit = out, preview = false, initiative = e.initiative },
-                                num = nil, x = r.x, y = r.y, w = r.w, h = SLIM_H }
-            swapped = true
-        else
-            rows[#rows + 1] = r
-        end
-    end
-    if not swapped then return end
-    self.frozenRows = rows
-end
-
 -- A body whose initiative moved without the ORDER moving. Every unit shifts by the same amount when
 -- Combat.rebase drops the field back to zero, so the field's own shift is the MEDIAN delta and only a
 -- unit that deviates from it was actually moved by something -- a stun's shove, a hasten's cut. That
--- body's card slides to a new distance on its own (the spacing is proportional now), and this is the
--- receipt that says which way: gold and brighter for sooner, dim and smaller for later.
+-- receipt, and now the ONLY one: the queue is evenly pitched, so a change that reorders nobody moves
+-- no card at all and the figure is the single thing that can report it. Gold and brighter for sooner,
+-- dim and smaller for later.
 function CombatPanel:trackTempo(dt, layout)
     for u, tp in pairs(self.tempo) do
         tp.t = tp.t - dt
@@ -694,15 +684,27 @@ function CombatPanel:cardsSettled()
     return not self._cardsMoving
 end
 
--- Has the hand-off finished the half that must not be interrupted -- the outgoing card's morph, with
--- the whole queue held still? The battle state gates an auto-resolving turn (enemy AI, a channel going
--- off) on THIS rather than on cardsSettled: the phase that follows is the incoming card growing into
--- its frame, which nothing the AI does disturbs, and a think-pause is 0.35s (states/battle.lua's
--- AI_DELAY) against a 0.27s growth -- so the pause covers the rest of the animation instead of
--- starting after it. Waiting for everything to settle cost most of a second on every single turn.
-function CombatPanel:handoffStaged()
-    return self.phase ~= "out"
+-- Is the strip finished with THIS body's arrival, and therefore ready to answer a hover about it?
+--
+-- `cardsSettled` alone cannot say, because of when it is asked: states/battle.lua builds the view in
+-- refreshView, which runs BEFORE this panel's update on the same frame -- so on the very frame a turn
+-- changes, `_cardsMoving` still holds last frame's answer, and last frame everything was at rest. The
+-- gate passed, and the incoming actor's hover preview was painted the instant the hand-off began,
+-- against a card that had not moved a pixel and figures that were still counting down.
+--
+-- IT HAS TO BE A LATCH, NOT A LIVE QUESTION, and asking it live is a feedback loop rather than a
+-- near-miss. A preview is an extra ROW: showing it reflows the queue, which sets the cards moving,
+-- which makes `cardsSettled` false, which withdraws the preview, which reflows the queue back, which
+-- settles it, which shows the preview again. Measured with the pointer held still on the button: 33
+-- appearances and disappearances in 241 frames, a clean fifteen-frame oscillation.
+--
+-- So the panel latches the fact once, the first time it comes to rest with this body in the frame,
+-- and holds it until the next hand-off clears it. Motion the preview itself causes cannot revoke the
+-- permission to draw the preview.
+function CombatPanel:readyForPreview(unit)
+    return unit ~= nil and self.arrivedCurrent == unit
 end
+
 
 -- Feed the per-frame render data (computed by the battle state). A new actor re-anchors the
 -- turn strip to the bottom, so each turn opens showing whoever is acting now.
@@ -710,43 +712,8 @@ function CombatPanel:setView(view)
     view = view or { order = {}, items = {}, isPartyTurn = false }
     if view.current ~= self.view.current then self.scroll = 0 end
     self.view = view
-    -- Published BEFORE the trim measures it: stackUpcoming asks hasPinnedCurrent which reads this,
-    -- and left holding the previous turn's list it would measure the queue against the wrong floor.
-    self.order = view.order or {}
-    self.order = self:trimProjections(self.order)
 end
 
--- A PROJECTION NEVER DISPLACES A BODY. Repeat slots (Combat.repeatSlots) take their place in the
--- queue by time like everything else, and three of them will happily push a body that has not acted
--- at all off the top of the strip -- which is the exact opposite of what the strip is for. It is not
--- a thing the model can judge, either: how many rows there is room for is a fact about this panel in
--- this space, and the same fight on a handheld has fewer.
---
--- So it is settled here, and by measuring rather than by guessing a cap: stack the queue, and while a
--- live body is being dropped for want of room, throw away the furthest-out repeat and stack it again.
--- Bounded by the number of repeats, which Combat.repeatSlots already keeps small. Trimmed once per
--- view rather than per call, and always against an unscrolled strip, so scrolling through the queue
--- cannot make cards appear and vanish as it goes.
-function CombatPanel:trimProjections(entries)
-    local startIndex = (entries[1] and not entries[1].preview and entries[1].unit == self.view.current)
-        and 2 or 1
-    local list = entries
-    for _ = 1, 4 do
-        local live, shown = 0, 0
-        for i = startIndex, #list do if not list[i].preview then live = live + 1 end end
-        for _, r in ipairs(self:stackUpcoming(list, startIndex, 0)) do
-            if not r.entry.preview then shown = shown + 1 end
-        end
-        if shown >= live then break end
-        local cut
-        for i = #list, startIndex, -1 do if list[i].again then cut = i break end end
-        if not cut then break end
-        local copy = {}
-        for j = 1, #list do if j ~= cut then copy[#copy + 1] = list[j] end end
-        list = copy
-    end
-    return list
-end
 
 -- Lay the panel out for a given width, and again whenever the logical space changes under it.
 --
@@ -851,11 +818,6 @@ function CombatPanel:relayout(w)
     -- icon keeps the whole plate.
     self.badgeGutter = stack and (3 + chosen.width + 3) or 0
 
-    -- The room the wait figure's plate claims at a card's right edge, measured off its widest
-    -- plausible reading rather than guessed -- the status badges lay themselves out to the left of
-    -- exactly this, so a two-digit wait can't end up drawn through them (see statusBadgeRects).
-    self.initReserve = 3 + INIT_PAD * 2 + 7 + 3 + self.initFont:getWidth("99.9") + 3
-
     self.stripX = self.x
     self.stripW = w
     self.stripFloor = nil -- set by a host that has sent the strip to another column
@@ -948,30 +910,138 @@ function CombatPanel:bottomBarRects()
     return self.waitBtn
 end
 
+-- The word the bottom lane's button wears for `unit`: whichever wait swap its kit grants, else plain
+-- Wait. Static and pure so the plate and the note that explains it (waitNote, below) can never name
+-- two different actions -- they are the same button, read twice.
+function CombatPanel.waitLabel(unit)
+    if not unit then return "Wait" end
+    local behavior = Combat.waitBehavior(unit)
+    local kind = behavior.kind
+    -- A cycling stance names the air it would sound NEXT rather than the verb, because "Perform"
+    -- alone would be a button that does a different thing every press with no way to see which.
+    if kind == "perform" then
+        local song = Combat.nextSong(unit, behavior)
+        return (song and song.name) or "Perform"
+    end
+    return (kind == "focus" and "Focus") or (kind == "defend" and "Defend")
+        or (kind == "overwatch" and "Overwatch") or (kind == "gather" and "Gather") or "Wait"
+end
+
+-- WHAT THAT BUTTON WILL DO, as a NoteTooltip title and paragraphs -- the hover reading on the one
+-- control in the battle HUD that had none.
+--
+-- Every other plate in this panel is an item, and an item answers for itself (ui/item_tooltip.lua).
+-- This one is chrome wearing a verb, and the verb is the least obvious action in the fight: a plain
+-- Wait is not "skip", it is a re-entry just behind the next body, and a swapped one is a whole stance
+-- whose numbers live on a piece of kit the player is not currently pointing at. The button said WHICH
+-- and never WHAT.
+--
+-- TWO PARAGRAPHS, AND ONLY THE SECOND IS THIS FILE'S. The first is Combat.WAIT_SWAP_NOTE's -- the one
+-- canonical sentence per stance, which the granting item's own tooltip prints word for word. A button
+-- and an item describing one press in two different accounts is how the player learns to distrust
+-- both, so the account is shared and the figures are all this adds.
+--
+-- The figures are read off the LIVE, level-resolved behavior, so a forged shield quotes the brace it
+-- will actually plant. What they deliberately do NOT quote is the tempo: the timeline is already
+-- painting this action's landing slot, with its figure, at the exact moment this box is up
+-- (battle.hoverWait feeds the ghost), and a second answer in words would only be a chance to disagree.
+function CombatPanel.waitNote(unit)
+    local title = CombatPanel.waitLabel(unit)
+    local behavior = unit and Combat.waitBehavior(unit) or { kind = "delay" }
+    local kind = behavior.kind or "delay"
+
+    -- The figures, as short clauses joined into one sentence rather than a paragraph each. A stance
+    -- that hands out four things is a list, and four one-line paragraphs of "Every ally beside you..."
+    -- is a wall where a list is wanted -- the shared sentence above has already said what the action
+    -- IS, and this only has to say how much.
+    local clauses = {}
+    local function add(text) if text then clauses[#clauses + 1] = text end end
+    -- Names for the things a named stance hands out. A status or hazard id nobody authored a def for
+    -- is skipped rather than printed raw: an id in prose reads as a bug, and the clause it would sit
+    -- in is an extra, not the sentence the button is being asked for.
+    local function statusName(id)
+        local def = id and Status.defs[id]
+        return def and def.name
+    end
+    -- A figure only when there IS one. An instantiated item has had its curves resolved to numbers at
+    -- its forge level (models/item.lua), but a behavior read off anything less than a live instance
+    -- still carries the Curve table, and `tostring` on one prints an address into the player's prose.
+    -- A clause without its number is dropped rather than printed blank; the shared sentence stands.
+    local function num(v) return type(v) == "number" and tostring(v) or nil end
+    local function fmt(pattern, v) local n = num(v); return n and string.format(pattern, n) or nil end
+
+    if kind == "defend" then
+        add(fmt("braces +%s", behavior.defense))
+        add(fmt("every ally beside you +%s", behavior.covers))
+        add(statusName(behavior.status) and ("also grants " .. statusName(behavior.status)))
+        add(statusName(behavior.coversStatus)
+            and ("allies beside you gain " .. statusName(behavior.coversStatus)))
+
+    elseif kind == "focus" then
+        add(fmt("restores %s mana", behavior.mana))
+        add(fmt("every ally beside you +%s mana", behavior.covers))
+        add(statusName(behavior.status) and ("also grants " .. statusName(behavior.status)))
+        add(statusName(behavior.afflicts)
+            and ("enemies beside you take " .. statusName(behavior.afflicts)))
+        local hazard = behavior.hazard and Hazard.defs[behavior.hazard.id]
+        if hazard and hazard.name then
+            add("lays " .. hazard.name .. ((behavior.hazard.radius or 0) > 0
+                and " over the ground around you" or " on the tile you stand on"))
+        end
+        -- The toll is the one clause here that is a COST, and it is the one a player most needs before
+        -- pressing: an overchannelled staff buys its deeper mana out of the meditating body. Last, so
+        -- the sentence ends on what it takes.
+        if behavior.toll and behavior.toll.stat then
+            add(fmt("costs you %s " .. behavior.toll.stat, behavior.toll.amount))
+        end
+
+    elseif kind == "overwatch" then
+        add(fmt("each shot spends %s stamina", behavior.stamina))
+        add(fmt("ground beside you costs an enemy %s more to step onto", behavior.zone))
+        add("lapses when your own next turn opens")
+
+    elseif kind == "gather" then
+        add(fmt("stores +%s attack", behavior.power))
+        add(fmt("every ally beside you +%s", behavior.covers))
+
+    elseif kind == "perform" then
+        local song, idx = Combat.nextSong(unit, behavior)
+        add(statusName(song and song.status) and ("lands " .. statusName(song.status)))
+        add(fmt("within %s tiles", behavior.earshot))
+        add(fmt("holds %s turns", behavior.duration))
+        -- The ORDER is what this stance costs (models/combat.lua's Combat.perform), so the clause list
+        -- ends by pointing on. The button can only ever name one air; the decision is which one you are
+        -- spending turns to reach.
+        local songs = behavior.songs or {}
+        if #songs > 1 then
+            local nxt = songs[(idx % #songs) + 1]
+            add(nxt and nxt.name and ("next air: " .. nxt.name))
+        end
+    end
+
+    local lines = { Combat.WAIT_SWAP_NOTE[kind] or Combat.WAIT_SWAP_NOTE.delay }
+    if #clauses > 0 then
+        -- Joined, then raised at the front: which clause leads depends on what this particular piece of
+        -- kit declares (a shield naming no `defense` opens on its covers instead), so the capital cannot
+        -- be authored into any one of them.
+        local text = table.concat(clauses, "; ") .. "."
+        lines[#lines + 1] = text:sub(1, 1):upper() .. text:sub(2)
+    end
+    return title, lines
+end
+
 -- The long Wait button under the item grid. Its label mirrors the acting unit's wait behavior
 -- (item-swapped Focus / Defend, else Wait), matching the old corner button. Enabled only on a party
 -- turn; brightens under the cursor (waitHover) or while the keyboard Wait preview is armed
 -- (view.waitPreview). The battle state supplies onWait and reads waitHover (set in mousemoved) to
--- preview the delay slot on the timeline.
+-- preview the delay slot on the timeline -- and to raise waitNote's reading over it.
 function CombatPanel:drawWaitButton()
     local b = self:bottomBarRects() -- half the lane on the turns Fall Back shares it
     local enabled = self.view.isPartyTurn
     -- Brightens under the mouse (waitHover) OR while the keyboard Wait preview is armed (view.waitPreview,
     -- the first of its two presses) -- both are the selection resting on Wait, so it lights the same way.
     local hot = enabled and (self.waitHover or self.view.waitPreview)
-    local label = "Wait"
-    if self.view.current then
-        local behavior = Combat.waitBehavior(self.view.current)
-        local kind = behavior.kind
-        label = (kind == "focus" and "Focus") or (kind == "defend" and "Defend")
-            or (kind == "overwatch" and "Overwatch") or (kind == "gather" and "Gather") or "Wait"
-        -- A cycling stance names the air it would sound NEXT rather than the verb, because "Perform"
-        -- alone would be a button that does a different thing every press with no way to see which.
-        if kind == "perform" then
-            local song = Combat.nextSong(self.view.current, behavior)
-            label = (song and song.name) or "Perform"
-        end
-    end
+    local label = CombatPanel.waitLabel(self.view.current)
     if enabled then Theme.set(hot and Theme.panel or Theme.panel2)
     else Theme.set(Theme.slot) end
     love.graphics.rectangle("fill", b.x, b.y, b.w, b.h, 6, 6)
@@ -1005,10 +1075,9 @@ end
 -- order (refreshView anchors its real entry at index 1). When there's no current -- battle over,
 -- a lull -- nothing is pinned and every entry scrolls as a uniform slim card.
 -- The entry list the strip lays out from. Kept as its own call because several measurements ask for
--- it and they must all ask the same question; the frozen hand-off substitutes finished ROWS further
--- down (entryLayout), not a different order, so this is always the live one.
+-- it and they must all ask the same question.
 function CombatPanel:orderList()
-    return self.order or self.view.order or {}
+    return self.view.order or {}
 end
 
 function CombatPanel:hasPinnedCurrent()
@@ -1041,47 +1110,22 @@ function CombatPanel:upcomingBottom()
     return self.stripBottom
 end
 
--- The air opened ABOVE an upcoming entry: the wait between it and the entry below it (the one nearer
--- "now"), at PX_PER_TICK a tick and capped at TICK_MAX. This is the whole of P04 -- everything else
--- about the strip's geometry is unchanged. Returns 0 with nothing below it, and for an entry that
--- sorts at or before the one under it (two ghosts of the same slot, a tie).
--- Derived from the LIVE band rather than cached in relayout, because relayout runs before the host
--- has said where the strip is going: states/battle.lua calls it and only then moves the queue to the
--- left column. Two subtractions a card is cheaper than a stale scale.
-function CombatPanel:tickScale()
-    local band = self:upcomingBottom() - self.stripTop
-    local k = math.max(0.25, math.min(1, band / BAND_REF))
-    return PX_PER_TICK * k, TICK_MAX * k
-end
-
-function CombatPanel:airAbove(entry, below)
-    if not entry or not below then return 0 end
-    local d = (entry.initiative or 0) - (below.initiative or 0)
-    if d <= 0 then return 0 end
-    local px, cap = self:tickScale()
-    return math.min(d * px, cap)
-end
-
 -- Stack the upcoming (slim) cards upward from the region's floor, starting `scroll` entries along,
 -- and return the ones that FIT WHOLE -- a card that would cross stripTop is dropped, never drawn cut
--- off. The single source of truth for how the queue is spaced: entryLayout draws what this returns,
--- visibleCount counts it and maxScroll walks it. Cards are no longer a uniform pitch (airAbove), so
--- none of those three can be arithmetic on a card height any more; they all have to do the walk.
+-- off. Kept as one function rather than folded back into arithmetic now that the pitch is uniform
+-- again, because it is the single place the stacking geometry lives: entryLayout draws what this
+-- returns, visibleCount counts it and maxScroll walks it. Three answers from one walk cannot disagree
+-- with each other; three copies of a formula can.
 function CombatPanel:stackUpcoming(entries, startIndex, scroll)
     local out = {}
     local y = self:upcomingBottom()
-    -- What the first drawn card measures its air against: the acting card (initiative 0) when the
-    -- window is at the bottom, and nothing at all once it has scrolled past it.
-    local below = (scroll == 0 and self:hasPinnedCurrent()) and entries[1] or nil
     local skipped = 0
     for i = startIndex, #entries do
         skipped = skipped + 1
         if skipped > scroll then
-            y = y - self:airAbove(entries[i], below)
             local top = y - SLIM_H
             if top < self.stripTop then break end
             out[#out + 1] = { entry = entries[i], index = i, y = top }
-            below = entries[i]
             y = top - ENTRY_GAP
         end
     end
@@ -1089,8 +1133,8 @@ function CombatPanel:stackUpcoming(entries, startIndex, scroll)
 end
 
 -- How many upcoming cards are actually on screen, and how far the region can scroll before the last
--- of them sits at the bottom. maxScroll walks the stack for each candidate offset rather than
--- subtracting a count: with variable air between cards, how many fit DEPENDS on which ones they are.
+-- of them sits at the bottom. Both answer off stackUpcoming rather than off a card height, so they
+-- say whatever the strip is actually drawing.
 function CombatPanel:visibleCount()
     local entries = self:orderList()
     local startIndex = self:hasPinnedCurrent() and 2 or 1
@@ -1117,11 +1161,6 @@ end
 -- Only the `scroll`..`scroll + visibleCount` window is laid out, but numbering walks the whole
 -- order so a scrolled-to entry keeps the #N its board token shows.
 function CombatPanel:entryLayout()
-    -- A hand-off's "out" phase draws the rows it froze, verbatim: nothing is re-laid, nothing new
-    -- appears and nothing moves, which is what "the queue is held still" has to mean if a ghost is
-    -- never to be placed on top of a card that is standing somewhere else. See freezeRows.
-    if self.frozenRows then return self.frozenRows end
-
     local out = {}
     local entries = self:orderList()
     -- The order shrinks as units die and grows with summons/preview ghosts, so re-clamp here
@@ -1152,29 +1191,53 @@ function CombatPanel:entryLayout()
     -- another column stacks in ITS band, which is why the x/w below come from stripX/stripW and the
     -- acting card's above come from the panel's own -- the acting card never leaves the panel.
     for _, row in ipairs(self:stackUpcoming(entries, startIndex, self.scroll)) do
-        out[#out + 1] = { entry = row.entry, num = num[row.index], x = self.stripX + 8, y = row.y,
-                          w = self.stripW - 16, h = SLIM_H }
+        -- `index` travels with the row: it is the entry's place in the order, and drawOffTopPreview
+        -- needs it to tell a slot that fell off the TOP from one merely scrolled out of view below.
+        out[#out + 1] = { entry = row.entry, num = num[row.index], index = row.index,
+                          x = self.stripX + 8, y = row.y, w = self.stripW - 16, h = SLIM_H }
     end
     return out
 end
 
 function CombatPanel:drawTurnStrip()
     self.poolCallouts:clear() -- refilled by drawPoolBars below, then floated over the cards at the end
-    self:drawActivePanel() -- the frame tying the acting card to the grid, drawn behind the cards
     local layout = self:entryLayout()
-    self:drawTickRail(layout) -- behind the cards: the measure the spacing is read against
-    -- A frozen hand-off draws its rows exactly as they were captured -- they already hold the eased
-    -- positions everything was rendered at, so asking the tweens again could only disagree with them.
-    local frozen = self.frozenRows ~= nil
-    for _, e in ipairs(layout) do
-        local y = e.y
-        if frozen then -- y is the captured position
-        elseif not e.entry.preview and self.cardY[e.entry.unit] then
-            y = self.cardY[e.entry.unit] -- eased slot (slides as the order reshuffles)
+    -- THE CARD IN MOTION IS DRAWN LAST, over the ones it is passing. A card travelling from the frame
+    -- to the rank its cost bought has to cross every rank between the two -- that is what travelling
+    -- IS, and it is the price of being able to follow it at all. What is NOT acceptable is the pair
+    -- interpenetrating: two plates at the same depth, two names printed through each other, and the
+    -- card you were following the harder of the two to see. Drawn on top it simply passes in front,
+    -- which is what a moving object does, and it stays wholly legible the whole way.
+    -- DEPTH SAYS WHICH ROW MATTERS. Every row on this strip is easing toward a slot of its own, and
+    -- when the order changes they cross -- that is what movement is, and the price of being able to
+    -- follow anything at all. What must never happen is two rows meeting AT THE SAME DEPTH, printing
+    -- through each other so that the one you were watching is the harder of the two to read. So they
+    -- are drawn in three passes, back to front:
+    --
+    --   1. hypotheticals -- ghosts and repeat slots. A projection may be crossed by a body; it may
+    --      never obscure one.
+    --   2. the live cards.
+    --   3. whichever card is in FLIGHT out of the frame, over everything, because it is the one the
+    --      player is most likely to be following.
+    local lift = (self.phase == "out") and self.outgoingUnit or nil
+    local lifted
+    local function rowY(e)
+        if not e.entry.preview and self.cardY[e.entry.unit] then
+            return self.cardY[e.entry.unit] -- eased slot (slides as the order reshuffles)
         elseif e.entry.preview and e.entry.ghostSlot then
             local slots = self.ghostY[e.entry.unit]
-            y = (slots and slots[e.entry.ghostSlot]) or y -- ...and a hypothetical slides with them
+            return (slots and slots[e.entry.ghostSlot]) or e.y -- ...and a hypothetical slides with them
         end
+        return e.y
+    end
+    for pass = 1, 2 do
+    for _, e in ipairs(layout) do
+        local y = rowY(e)
+        if (e.entry.preview and pass ~= 1) or (not e.entry.preview and pass ~= 2) then
+            -- drawn in the other pass
+        elseif lift and not e.entry.preview and e.entry.unit == lift then
+            lifted = { e = e, y = y }
+        else
         -- A card drawn where entryLayout put it, which for the upcoming strip may be another column
         -- entirely (see relayout's stripX). drawEntry lays every part of a card out from self.x, so
         -- rather than thread a rect through all of it, the whole card is TRANSLATED into place.
@@ -1190,11 +1253,15 @@ function CombatPanel:drawTurnStrip()
         if shift ~= 0 then love.graphics.push(); love.graphics.translate(shift, 0) end
         self:drawCard(e.entry, y, e.num, e.h, nil, e.w)
         if shift ~= 0 then love.graphics.pop() end
+        end
     end
-    -- During the "out" phase the outgoing actor's big card stays in the frame, fading out, while its
-    -- real queue card solidifies above -- so the frame never blinks empty as the turn hands off.
-    if self.frameFade and self.frameY then
-        self:drawCard({ unit = self.frameFade.unit, forceProm = 1 }, self.frameY, nil, CURRENT_H, self.frameFade.t)
+    end
+    if lifted then
+        local e = lifted.e
+        local shift = e.x - (self.x + 8)
+        if shift ~= 0 then love.graphics.push(); love.graphics.translate(shift, 0) end
+        self:drawCard(e.entry, lifted.y, e.num, e.h, nil, e.w)
+        if shift ~= 0 then love.graphics.pop() end
     end
     -- A just-fallen unit's card, fading to black in place before it's gone (it has already left the
     -- live order, so it isn't in entryLayout above). Drawn at the width and in the column it last
@@ -1208,6 +1275,15 @@ function CombatPanel:drawTurnStrip()
         love.graphics.rectangle("fill", self.x + 8, dc.y, dc.w or (self.w - 16), dc.h, 6, 6)
         if shift ~= 0 then love.graphics.pop() end
     end
+    self:drawOffTopPreview(layout)
+    -- THE CAPTION GOES OVER THE CARDS, not behind them, and that is what lets the arriving actor
+    -- travel. It eases down from its old rank and its route crosses this line; drawn underneath, the
+    -- card swallowed the words for the length of the trip. The first fix was to stop the card
+    -- travelling at all -- which cured the overlap by making the arrival something nobody could watch.
+    -- Drawn over the top instead, the card passes BEHIND the caption and stays in sight the whole way,
+    -- and at rest the two do not overlap by a pixel (the caption sits 24 above the frame), so this
+    -- costs nothing on every frame that is not a hand-off.
+    self:drawActivePanel()
     self:drawScrollBar()
     -- Last, so a projection floats clear over the card it belongs to. Clamped to the panel's inner
     -- edges so a pill on a nearly-full bar can't hang off into the board.
@@ -1281,74 +1357,6 @@ function CombatPanel:drawActivePanel()
     Theme.caption("Current Turn", self.x + 5, self:pinnedTop() - 24, self.w - 10)
 end
 
--- THE MEASURE THE SPACING IS READ AGAINST: a hairline down the strip's left margin with a mark where
--- a body of each whole tick would stand, and a wider gold one on zero -- the acting card, which every
--- other distance is a wait from.
---
--- The scale is CUMULATIVE, not linear, and it has to be: every body ahead of you occupies a whole
--- 34px card whatever the wait is, so there is no constant pixels-per-tick to draw. A mark therefore
--- answers "a body at 3.0 would stand HERE", which is the question a player actually asks, by
--- interpolating between the cards either side of it. It is also why the marks bunch where the queue
--- is crowded and spread where it is strung out.
---
--- Unlabelled on purpose: every card already carries its own figure (drawInitiative), and a second
--- column of numbers down the edge is the same reading twice.
-function CombatPanel:drawTickRail(layout)
-    -- Only rows standing in the STRIP's own COLUMN, and the test is which column rather than where on
-    -- the screen. On a handheld the queue goes to the left column while the acting card stays in the
-    -- panel (relayout's stripFloor), and that card sits ABOVE the band rather than below it -- so a
-    -- "is it past the floor" test let it in, put the rail's lowest tick at the top of the screen and
-    -- inverted the whole scale, which the span guard below then threw out. The rail simply never drew
-    -- on a handheld. Comparing x says what was meant and cannot be fooled by which way the other
-    -- column lies; on a desktop both columns are the same one, so nothing changes there.
-    local stripX = self.stripX + 8
-    local pts = {}
-    for _, e in ipairs(layout) do
-        local entry = e.entry
-        -- EVERY row, hypothetical or not. They are all placed by the same initiative, so they are all
-        -- samples of the same mapping -- and a rail built from live cards alone stops at the last one
-        -- and leaves the top half of the strip, which is mostly projections, unmeasured.
-        if entry.initiative and e.x == stripX then
-            pts[#pts + 1] = { t = entry.initiative, y = e.y + e.h / 2 }
-        end
-    end
-    -- ...and the ZERO the rest are measured from, which is the acting body. Its card is the anchor
-    -- when it stands in this column; when it does not, the anchor is the floor the queue stacks off
-    -- (upcomingBottom), which is precisely the height a body at the acting initiative would occupy --
-    -- it is where stackUpcoming starts measuring. Without this a handheld rail has no zero at all.
-    local acting = self:orderList()[1]
-    if acting and not acting.preview and self.stripFloor then
-        pts[#pts + 1] = { t = acting.initiative or 0, y = self:upcomingBottom() }
-    end
-    if #pts < 2 then return end
-    table.sort(pts, function(a, b) return a.t < b.t end)
-    local top, bottom = pts[#pts].y, pts[1].y
-    if bottom - top < SLIM_H then return end -- nothing to measure
-
-    local x = self.stripX + RAIL_X
-    Theme.set(Theme.frame, 0.22)
-    love.graphics.setLineWidth(1)
-    love.graphics.line(x, top, x, bottom)
-
-    for tick = 0, math.floor(pts[#pts].t) do
-        local y
-        for i = 1, #pts - 1 do
-            if tick >= pts[i].t and tick <= pts[i + 1].t then
-                local span = pts[i + 1].t - pts[i].t
-                local f = (span > 1e-4) and ((tick - pts[i].t) / span) or 0
-                y = lerp(pts[i].y, pts[i + 1].y, f)
-                break
-            end
-        end
-        if y then
-            local zero = (tick == 0)
-            local w = zero and RAIL_ZERO_W or RAIL_TICK_W
-            Theme.set(zero and Theme.accentAmber or Theme.frame, zero and 0.55 or 0.30)
-            love.graphics.line(x - w / 2, y, x + w / 2, y)
-        end
-    end
-end
-
 -- A thin track + thumb down the strip's right edge, drawn only when the order overflows. It is
 -- the affordance that says "there are later turns up there" and shows where the window sits.
 function CombatPanel:drawScrollBar()
@@ -1371,6 +1379,63 @@ function CombatPanel:drawScrollBar()
     local t = self.scroll / max
     Theme.set(Theme.frame, 0.7)
     love.graphics.rectangle("fill", bx, by + (1 - t) * (bh - thumbH), bw, thumbH, 2, 2)
+end
+
+-- A SLOT THAT LANDS ABOVE THE STRIP still has to be announced. A preview is the answer to "where does
+-- this put me", and a queue longer than the panel can show swallows that answer whole: the player
+-- aims, the ghost is laid out past the top card, nothing is drawn, and the strip says the action has
+-- no effect on the order at all. So the top of the band carries a mark instead -- an upward chevron
+-- and the wait itself, in the slot's own faction colour and under a dashed rule, which is the same
+-- vocabulary the ghost card would have used had there been room for it.
+--
+-- Counts only hypotheticals that were laid out ABOVE the last drawn row. A ghost hidden by SCROLLING
+-- is a different thing -- the scrollbar already says there is more up there, and the player put it
+-- out of view themselves.
+function CombatPanel:drawOffTopPreview(layout)
+    local drawn, last = {}, 0
+    for _, e in ipairs(layout) do
+        drawn[e.entry] = true
+        if e.index and e.index > last then last = e.index end
+    end
+    local entries = self:orderList()
+    local best
+    for i = 1, #entries do
+        local entry = entries[i]
+        if entry.preview and not drawn[entry] and i > last then
+            if not best or (entry.initiative or 0) < (best.initiative or 0) then best = entry end
+        end
+    end
+    if not best then return end
+
+    local fc = self:unitColor(best.unit)
+    local y = self.stripTop - 13
+    local cx = self.stripX + self.stripW / 2
+    love.graphics.setFont(self.smallFont)
+    local text = string.format("%.1f", self:shownWait(best.initiative))
+    local tw = self.smallFont:getWidth(text)
+    local iconW, gap, chev = 7, 3, 9
+    local total = chev + 4 + iconW + gap + tw
+    local x = cx - total / 2
+
+    -- the chevron: two strokes, pointing up the way the slot lies
+    love.graphics.setColor(fc[1], fc[2], fc[3], 0.9)
+    love.graphics.setLineWidth(2)
+    love.graphics.line(x, y + 8, x + chev / 2, y + 2)
+    love.graphics.line(x + chev / 2, y + 2, x + chev, y + 8)
+    love.graphics.setLineWidth(1)
+
+    local ia = Theme.accentAmber
+    self:drawHourglass(x + chev + 4, y + 1, iconW, 9, ia[1], ia[2], ia[3], 0.95)
+    love.graphics.setColor(ia[1], ia[2], ia[3], 0.95)
+    love.graphics.print(text, x + chev + 4 + iconW + gap, y - 1)
+
+    -- and the dash under it, which is what says "hypothetical" everywhere else on this strip
+    Theme.set(fc, 0.55)
+    local dash, xx = 5, x - 2
+    while xx < x + total + 2 do
+        love.graphics.line(xx, y + 12, math.min(xx + 3, x + total + 2), y + 12)
+        xx = xx + dash
+    end
 end
 
 -- A dashed rectangle border, used to mark preview (ghost) entries as hypothetical and to dissolve
@@ -1405,7 +1470,7 @@ function CombatPanel:statusBadgeRects(unit, ex, ew, ey)
     if not statuses or #statuses == 0 then return {} end
     local bw, bh, gap = 18, 14, 3
     local out = {}
-    local x = ex + ew - (self.initReserve or 40)
+    local x = ex + ew - 40
     for i = #statuses, 1, -1 do
         x = x - bw
         out[#out + 1] = { st = statuses[i], x = x, y = ey + 4, w = bw, h = bh }
@@ -1448,48 +1513,61 @@ end
 -- Tagged with an hourglass -- the same time-to-act glyph as the speed badge, and the same mark every
 -- duration in the game wears -- so it reads as a timer rather than as a stat.
 --
--- IT IS THE INSTRUMENT, NOT A DEBUG READ-OUT. It was written as one and shipped switched on anyway
--- (states/battle.lua sets showInitiative true at every battle open), which left the one number a
--- count-time turn is decided on dressed as a developer's aid -- 9px, no ground, indistinguishable
--- from the grey values around it. The question is settled the other way: it is the figure the strip's
--- own spacing is a picture OF, so it gets a ground and an edge of its own, and F6 is now the toggle
--- for turning the instrument off rather than the toggle that grudgingly turns it on.
+-- IT IS THE INSTRUMENT, NOT A DEBUG READ-OUT, and after the strip stopped spacing its cards by the
+-- wait it is the ONLY one: an evenly pitched queue says who is next and nothing whatever about how
+-- long until they move, so every bit of that reading is carried here. The framing is what changed,
+-- not the drawing -- it was written as a developer's aid and shipped switched on anyway
+-- (states/battle.lua sets showInitiative at every battle open), and F6 is the toggle for turning the
+-- instrument off rather than the one that grudgingly turns it on.
+--
+-- IT WAS BRIEFLY DRESSED UP, on a tinted ground with a gold edge and a size of its own, on the
+-- argument that a number meant to be READ should not look like the grey values around it. Reverted
+-- with the spacing it was pitched beside: the plain amber figure reads perfectly well and the plate
+-- was chrome the card did not need.
+-- `shownClock` is what makes the figure agree with the preview that promised it: see the note on the
+-- field. While the strip's clock trails the model's, every card reads the wait the ghost quoted, and
+-- the catch-up is the count-down the player watches.
+-- The figure's own rect: glyph, gap and digits, as one hoverable thing. Shared by the draw and by
+-- initiativeAt, the way statusBadgeRects is, so the tooltip lands exactly on what is drawn rather
+-- than on a second guess at where it went.
+function CombatPanel:initiativeRect(entry, ex, ew, ey)
+    if not (self.view.showInitiative and entry and entry.initiative) then return nil end
+    local text = string.format("%.1f", self:shownWait(entry.initiative))
+    local tw = self.smallFont:getWidth(text)
+    local iconW, gap = 7, 3
+    local w = iconW + gap + tw
+    -- A couple of pixels of slack all round: the glyph is 7px wide and the digits are 12pt, and a
+    -- target that small wants a little more than its own ink to be hoverable with a real hand.
+    return ex + ew - 6 - w - 2, ey + 1, w + 8, 15, iconW, gap, tw
+end
+
 function CombatPanel:drawInitiative(entry, ex, ew, ey, tempo)
     if not (self.view.showInitiative and entry.initiative) then return end
-    love.graphics.setFont(self.initFont)
-    local text = string.format("%.1f", entry.initiative)
-    local tw = self.initFont:getWidth(text)
+    love.graphics.setFont(self.smallFont)
+    local text = string.format("%.1f", self:shownWait(entry.initiative))
+    local tw = self.smallFont:getWidth(text)
     local iconW, gap = 7, 3
     local ia = Theme.accentAmber
-    -- The figure sits on a tinted ground with a gold edge down its left, which is the whole of what
-    -- separates a number the player is meant to READ from the grey values around it. A body's wait is
-    -- the number a turn is decided on -- see the note above.
-    local padX = INIT_PAD
-    local w = padX * 2 + iconW + gap + tw
-    local x, y = ex + ew - 3 - w, ey + 2
-    local h = BADGE_H
-    love.graphics.setColor(ia[1], ia[2], ia[3], 0.10)
-    love.graphics.rectangle("fill", x, y, w, h, 2, 2)
-    love.graphics.setColor(ia[1], ia[2], ia[3], 0.55)
-    love.graphics.setLineWidth(1)
-    love.graphics.line(x + 0.5, y, x + 0.5, y + h)
     -- A wait that just MOVED without the order moving reports which way it went, for as long as the
-    -- pulse runs: brighter for sooner, dimmed for later. The card has already slid the distance
-    -- (the spacing is proportional); this says what the slide was.
-    local a = 0.95
+    -- pulse runs, and it does it in the FIGURE rather than in any chrome around it: the queue is
+    -- evenly pitched, so a change that reorders nobody leaves every card exactly where it stands and
+    -- this is the only thing on the strip that can say so (see trackTempo). Sooner lifts the gold
+    -- toward white and falls back to it; later dips the whole read-out and climbs back.
+    local r, g, b, a = ia[1], ia[2], ia[3], 0.95
     if tempo then
         local f = tempo.t / TEMPO_PULSE
         if tempo.dir == "sooner" then
-            love.graphics.setColor(1, 1, 1, 0.16 * f)
-            love.graphics.rectangle("fill", x, y, w, h, 2, 2)
+            r, g, b = lerp(r, 1, f), lerp(g, 1, f), lerp(b, 1, f)
             a = 1
         else
-            a = 0.55 + 0.40 * (1 - f)
+            a = 0.50 + 0.45 * (1 - f)
         end
     end
-    self:drawHourglass(x + padX, y + (h - 9) / 2, iconW, 9, ia[1], ia[2], ia[3], a)
-    Theme.set(Theme.accentAmber, a)
-    love.graphics.print(text, x + padX + iconW + gap, y + (h - self.initFont:getHeight()) / 2)
+    -- Laid out from the same rect the hover tests against, so the two cannot drift apart.
+    local rx = self:initiativeRect(entry, ex, ew, ey)
+    self:drawHourglass(rx + 2, ey + 4, iconW, 9, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.printf(text, ex, ey + 3, ew - 6, "right")
 end
 
 -- The acting unit's full pool stack (HP/MP/SP, each max>0), stacked from topY: a colour-tinted
@@ -1589,31 +1667,19 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha, w)
     -- portrait ring and the name instead (blue ours / green uncommanded / red theirs).
     if entry.preview then
         local fc = self:unitColor(unit)
-        -- A REPEAT SLOT IS NOT A HYPOTHETICAL, and the two must not read alike. A ghost is a slot the
-        -- player is being offered -- act, and you land here; a repeat (Combat.repeatSlots) is a slot
-        -- the fight is heading for whether anyone touches anything. So they separate by SHAPE, the way
-        -- every other pair of marks on this screen does, and never by hue: the ghost keeps its dashed
-        -- border, the repeat takes a solid hairline and a dimmer plate. Faction still rides both --
-        -- an ENEMY due round twice before you move is the reading this whole card exists for.
-        local rep = entry.again
         local pl = Theme.panel2
-        love.graphics.setColor(lerp(pl[1], fc[1], rep and 0.10 or 0.18), lerp(pl[2], fc[2], rep and 0.10 or 0.18),
-            lerp(pl[3], fc[3], rep and 0.10 or 0.18), rep and 0.34 or 0.5)
+        love.graphics.setColor(lerp(pl[1], fc[1], 0.18), lerp(pl[2], fc[2], 0.18),
+            lerp(pl[3], fc[3], 0.18), 0.5)
         love.graphics.rectangle("fill", ex, ey, ew, h, 6, 6)
         love.graphics.setLineWidth(1)
-        if rep then
-            love.graphics.setColor(fc[1], fc[2], fc[3], 0.30)
-            love.graphics.rectangle("line", ex, ey, ew, h, 6, 6)
-        else
-            self:dashedRect(ex, ey, ew, h, nil, fc)
-        end
+        self:dashedRect(ex, ey, ew, h, nil, fc)
         self:drawInitiative(entry, ex, ew, ey, nil)
         local ps = h - 6
         local px, py = ex + NUM_GUTTER, ey + 3
-        self:drawPortrait(unit, px, py, ps, rep and 0.40 or 0.55)
+        self:drawPortrait(unit, px, py, ps, 0.55)
         -- The same faction ring the acting card wears on its portrait, so ghost and real card mark
         -- side identically.
-        love.graphics.setColor(fc[1], fc[2], fc[3], rep and 0.45 or 0.75)
+        love.graphics.setColor(fc[1], fc[2], fc[3], 0.75)
         love.graphics.setLineWidth(2)
         love.graphics.rectangle("line", px, py, ps, ps, 4, 4)
         love.graphics.setLineWidth(1)
@@ -1621,12 +1687,17 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha, w)
         love.graphics.setFont(self.nameFont)
         -- The side hue lifted toward white, the same trick the pool tags use, so a deep enamel red or
         -- blue still reads as a name at this size.
-        local na = rep and 0.62 or 0.95
-        love.graphics.setColor(fc[1] * 0.6 + 0.28, fc[2] * 0.6 + 0.28, fc[3] * 0.6 + 0.28, na)
+        love.graphics.setColor(fc[1] * 0.6 + 0.28, fc[2] * 0.6 + 0.28, fc[3] * 0.6 + 0.28, 0.95)
         love.graphics.print(unit.char.name or "?", rx, ey + 3)
         love.graphics.setFont(self.smallFont)
-        Theme.set(Theme.muted, na)
-        love.graphics.print(entry.previewLabel or "would act here", rx, ey + 18)
+        Theme.set(Theme.muted, 0.95)
+        -- "NEXT TURN HERE", not "would act here". The old wording put the ACTION at this slot -- hover
+        -- Wait and it read as though the waiting happened down there rather than now -- when what the
+        -- row actually marks is where the body comes round AGAIN, having paid for the thing it is
+        -- about to do this instant. The conditional goes with it: "would" is already said by the
+        -- dashed border, which is how every hypothetical on this strip announces itself, and none of
+        -- the labelled ghosts beside it ("channel resolves here", "then acts here") hedges either.
+        love.graphics.print(entry.previewLabel or "next turn here", rx, ey + 18)
         return
     end
 
@@ -1648,9 +1719,11 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha, w)
     -- A card that just handed off its turn MORPHS in from its preview ghost: its content fades up
     -- (ca 0.35 -> 1) as `solidify` runs down, so the faded ghost visibly becomes the real card. An
     -- explicit `alpha` (the outgoing's fading frame card) overrides that.
+    -- `solidify` now carries only the ghost's dashes dissolving as this card lands in the slot that
+    -- ghost was holding. Its content does NOT fade up any more: the card was on screen a moment ago
+    -- and has merely travelled, and fading it would be losing sight of the very thing being followed.
     local sd = self.solidify[unit]
-    local st = sd and sd.t or 0
-    local ca = alpha or ((st > 0) and lerp(1, 0.35, st) or 1)
+    local ca = alpha or 1
 
     -- Plate: a slate card inset (panel2), lightening toward the panel surface as it grows current so
     -- the acting card reads as raised. The BORDER is bone-gold TRIM, not faction -- faction already
@@ -2295,6 +2368,36 @@ end
 
 -- The status instance whose turn-strip badge is under (px, py), or nil (drives the shared
 -- status tooltip). Skips preview ghosts, which don't draw badges.
+-- The wait under the cursor: the figure this card is showing, or nil. Returns the SHOWN wait rather
+-- than the model's, so a tooltip read mid-hand-off quotes the same number the card beside it does
+-- (see shownClock).
+--
+-- ACTING IS A QUESTION OF RANK, NOT OF THE NUMBER. Several bodies can sit at 0.0 at once -- a wave
+-- that arrives together shares an initiative -- and only the first of them is taking a turn; the rest
+-- have no ticks left to spend and are waiting on the tie-break, which sends the FASTER body first
+-- (models/combat.lua's orderBy). Reading "acting now" off a zero told three cards in a row that they
+-- were the one acting. So `acting` asks who holds the turn, and `ready` is the separate fact that a
+-- body has run its wait down without being first.
+function CombatPanel:initiativeAt(px, py)
+    for _, e in ipairs(self:entryLayout()) do
+        local y = e.y
+        if not e.entry.preview and self.cardY[e.entry.unit] then y = self.cardY[e.entry.unit]
+        elseif e.entry.preview and e.entry.ghostSlot then
+            local slots = self.ghostY[e.entry.unit]
+            y = (slots and slots[e.entry.ghostSlot]) or y
+        end
+        local rx, ry, rw, rh = self:initiativeRect(e.entry, e.x, e.w, y)
+        if rx and px >= rx and px <= rx + rw and py >= ry and py <= ry + rh then
+            local w = self:shownWait(e.entry.initiative)
+            local preview = e.entry.preview or false
+            return { wait = w, unit = e.entry.unit, preview = preview,
+                     acting = (not preview) and e.entry.unit == self.view.current,
+                     ready = (not preview) and w < 0.05 }
+        end
+    end
+    return nil
+end
+
 function CombatPanel:statusAt(px, py)
     for _, e in ipairs(self:entryLayout()) do
         if not e.entry.preview then

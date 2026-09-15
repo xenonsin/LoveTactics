@@ -29,6 +29,10 @@ return {
     activeAbility = {
         target = "self",
         range = 0,
+        -- The debt is called on THEM, so it reads as what it is: a self-target left to the guess
+        -- previews as a kindness (Combat.isSupportAbility), and Taunt on every foe on the board is a
+        -- demand. What she gets out of it is the brace, and that is the half aimed at her.
+        support = false,
         speed = 5,
         cost = { stat = "stamina", amount = 12 },
         description = "Inflicts Taunt on every foe on the field and grants you Defending.",

@@ -22,6 +22,9 @@ return {
     activeAbility = {
         target = "self",
         range = 0,
+        -- The charge is read from where she stands, and it is a sentence carried out: a self-target
+        -- left to the guess previews green (Combat.isSupportAbility), which this is not.
+        support = false,
         speed = 6,
         cost = { stat = "mana", amount = 14 },
         description = "Holy damage to every Marked foe, scaling with how many are Marked.",

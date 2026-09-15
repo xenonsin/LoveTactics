@@ -36,6 +36,9 @@ return {
     activeAbility = {
         target = "self",
         range = 0,
+        -- Rung where he stands, and every affliction it moves is moved onto a foe: a self-target left
+        -- to the guess previews green (Combat.isSupportAbility). Standing near him is the attack.
+        support = false,
         speed = 6,
         cost = { stat = "stamina", amount = 11 },
         description = "Copies every affliction outward to its neighbours.",

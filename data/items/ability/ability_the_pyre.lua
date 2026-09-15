@@ -28,6 +28,9 @@ return {
     activeAbility = {
         target = "self",
         range = 0,
+        -- Field-wide and unaimed, which is not the same as friendly: a self-target left to the guess
+        -- reads as a kindness (Combat.isSupportAbility), and this one sets people on fire.
+        support = false,
         speed = 6,
         cost = { stat = "mana", amount = 18 },
         damage = Curve.ramp(10, 20),
