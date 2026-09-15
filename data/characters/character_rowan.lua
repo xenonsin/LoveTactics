@@ -106,7 +106,13 @@ return {
     -- From the ground she is holding, though: the `defensive` posture leashes her stand tiles to the
     -- ring around the player, so this picks the best target among what has come to her.
     ai = {
-        { act = "attack", targetPref = "lowest_hp",
+        { priority = "high", act = "attack", targetPref = "lowest_hp",
           when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+        -- HER BOUND RELIC (armor_sworn_aegis): four weathered blows open it, and it strikes the whole
+        -- adjacent ring with Knockback 2 -- the wall's own verb, what closed on the post going back off
+        -- it. Under the rule above rather than over it: a foe already closest to falling is worth
+        -- finishing, and everything else that has closed is worth shoving.
+        { priority = "high", act = "attack", item = "armor_sworn_aegis",
+          when = { subject = "any_foe", test = "within", value = 1 } },
     },
 }

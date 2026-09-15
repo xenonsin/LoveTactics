@@ -1137,6 +1137,38 @@ return {
         end,
     },
     {
+        name = "every item a blueprint's rules name is an item that blueprint carries",
+        fn = function()
+            -- A rule naming an item the body does not hold collapses to "this rule cannot act"
+            -- (AI.rulesFor's `missing`) and says nothing while it does it -- the body just quietly
+            -- stops doing the thing it was written to do. That is the whole failure mode of an
+            -- authored rule block, and it is what a renamed or re-shelved item leaves behind.
+            -- tests/saber_debut_spec.lua asks this of one body; this asks it of every body, which is
+            -- what the companions' bound-relic rules need to stay honest.
+            local checked = 0
+            for id, def in pairs(Character.defs) do
+                local rules = def.ai
+                if rules then
+                    if rules.act or rules.when or rules.whenFn then rules = { rules } end
+                    local held = {}
+                    for _, entry in ipairs(def.startingItems or {}) do
+                        if type(entry) == "string" then held[entry] = true end
+                    end
+                    for i, rule in ipairs(rules) do
+                        if rule.item then
+                            checked = checked + 1
+                            assert(Item.defs[rule.item],
+                                id .. " rule " .. i .. " names an item that does not exist: " .. rule.item)
+                            assert(held[rule.item],
+                                id .. " rule " .. i .. " names " .. rule.item .. ", which it does not carry")
+                        end
+                    end
+                end
+            end
+            assert(checked > 0, "the sweep actually found some rules that name an item")
+        end,
+    },
+    {
         name = "every archetype named in data/characters is a real posture",
         fn = function()
             local seen = 0

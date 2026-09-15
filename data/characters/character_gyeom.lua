@@ -78,5 +78,11 @@ return {
     -- here (trait_counter_magic.lua), so nothing about it belongs in this list.
     ai = {
         { priority = "emergency", act = "retreat", when = { subject = "self", test = "hp_pct_below", value = 0.3 } },
+        -- HER BOUND RELIC (utility_ledger): four actions written down, then the one strike she kept
+        -- back. Spent the moment something stands inside its three tiles -- there is nothing to save it
+        -- FOR, since taking the four actions is what charges it again. Under the retreat, because a
+        -- glass body that is bloodied breaks off first and collects the debt from further away.
+        { priority = "high", act = "attack", item = "utility_ledger", targetPref = "lowest_hp",
+          when = { subject = "any_foe", test = "within", value = 3 } },
     },
 }

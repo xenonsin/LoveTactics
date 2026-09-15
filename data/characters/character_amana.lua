@@ -72,5 +72,12 @@ return {
     ai = {
         { priority = "urgent", act = "support", item = "ability_heal", targetPref = "most_wounded",
           when = { subject = "ally_lowest_hp", test = "hp_pct_below", value = 0.65 } },
+        -- HER BOUND RELIC (utility_reliquary_kept_trust): three given heals open it, and it lays Aegis
+        -- and Regeneration over every ally but herself. A band under the Heal, and shallower, which is
+        -- the division of labour between them: the Heal answers the dying, the reliquary wards the worn
+        -- before they get there. (The condition reads the whole side, herself included -- the cast
+        -- spares her either way, which is the point of it.)
+        { priority = "high", act = "support", item = "utility_reliquary_kept_trust",
+          when = { subject = "any_ally", test = "hp_pct_below", value = 0.75 } },
     },
 }

@@ -31,6 +31,8 @@ return {
     sprite = "assets/chars/kaya.png",
     portrait = "assets/portraits/kaya.png", -- large VN portrait for conversations (falls back if missing)
     class = "hunter",
+    -- The hunter root's posture (character_archer.lua): a bow keeps its distance and shoots from it.
+    archetype = "skirmish",
     -- PERSONAL GROWTH (models/growth.lua): two points a level she keeps in any class, both of them on
     -- the shot. Temperance is not frailty -- she takes no more than the shot needs, and the answer to
     -- that over a career is that the shot needs less. Spent on one stat rather than spread, which is
@@ -60,10 +62,18 @@ return {
     -- house's counter (models/vendor_visit.lua), and this is the pair its card is written from.
     signatureWeapon  = "weapon_iron_longbow",
     signatureAbility = "utility_wolfsong_horn",
+    -- Basic tactics (models/ai.lua), the hunter root's own (character_archer.lua): a hunter picks off the
+    -- wounded -- from the kept distance, spend the shot on the foe already closest to falling. The horn
+    -- and the wolf carry her control themselves.
     ai = {
-        -- Basic tactics (models/ai.lua): loose the bow at whatever is in reach; the horn and wolf carry
-        -- her control themselves.
-        { priority = "high", act = "attack", item = "weapon_iron_longbow",
-          when = { subject = "any_foe", test = "in_reach" } },
+        -- HER BOUND RELIC (utility_wolfsong_horn): Root on every foe within two tiles of her or the
+        -- wolf. Above the shot, because a rooted foe is what the shot wants -- and it asks only that
+        -- something has closed to the howl's radius. Its own gates do the rest: it stays silent until
+        -- the wolf has drawn blood, and for good once the wolf is gone (Combat.itemBlockReason), so
+        -- this rule simply does not fire on a turn the horn has nothing to say.
+        { priority = "high", act = "cast", item = "utility_wolfsong_horn",
+          when = { subject = "any_foe", test = "within", value = 2 } },
+        { priority = "high", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
     },
 }

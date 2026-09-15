@@ -33,7 +33,9 @@ return {
     portrait = "assets/portraits/clem.png", -- large VN portrait for conversations (falls back if missing)
     class = "rogue",
     boss = true,
-    archetype = "aggressive", -- a glass-cannon skirmisher; she opens the wound and takes the kill
+    -- The rogue root's posture (character_rogue.lua): a glass-cannon skirmisher keeps the distance she
+    -- opened the wound from. She finishes; she does not stand and trade.
+    archetype = "skirmish",
     -- The rogue base (character_rogue.lua) with the fixer's edge: harder hand, thinner stamina, faster
     -- regen, a point more speed. The magic side is the base's UNTOUCHED, which is the companion
     -- convention (Rowan holds the knight base's 15/4). It used to read 0/0, and zero is not "she is a
@@ -70,8 +72,17 @@ return {
     -- house's counter (models/vendor_visit.lua), and this is the pair its card is written from.
     signatureWeapon  = "weapon_borrowed_time",
     signatureAbility = "ability_shadow_strike",
+    -- Basic tactics (models/ai.lua), the rogue root's own (character_rogue.lua): spend the strike on the
+    -- foe already closest to falling. Naming no weapon is deliberate -- she carries two, and the scorer
+    -- picks between the kris and Borrowed Time rather than a rule pinning the lesser one.
     ai = {
-        { priority = "high", act = "attack", item = "weapon_envenomed_kris",
-          when = { subject = "any_foe", test = "in_reach" } },
+        -- HER BOUND RELIC (weapon_borrowed_time): its damage climbs with the mark's MISSING health, so
+        -- it is the one blade that is worth more the closer the thing is to falling -- and every third
+        -- kill it collects hands the whole party Haste. Deeper than the rule under it on purpose: above
+        -- two fifths the ordinary strike is the better trade, below it nothing she carries is.
+        { priority = "high", act = "attack", item = "weapon_borrowed_time", targetPref = "lowest_hp",
+          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.4 } },
+        { priority = "high", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
     },
 }

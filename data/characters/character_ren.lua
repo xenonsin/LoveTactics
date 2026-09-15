@@ -29,7 +29,10 @@ return {
     portrait = "assets/portraits/ren.png", -- large VN portrait for conversations (falls back if missing)
     class = "alchemist",
     boss = true,
-    archetype = "support", -- she heals before she strikes (models/ai.lua)
+    -- The alchemist's kept distance (character_alchemist.lua): she works from behind the line and
+    -- throws from there. Her own Heal still outranks the throw -- see the tactics below for why that
+    -- needs no posture to say it.
+    archetype = "skirmish",
     -- PERSONAL GROWTH (models/growth.lua): two points a level she keeps in any class, both in the pool
     -- she spends on other people. She lifts rather than kills and she does it by spending herself, so
     -- what grows is how much of herself there is to spend.
@@ -58,8 +61,19 @@ return {
     -- house's counter (models/vendor_visit.lua), and this is the pair its card is written from.
     signatureWeapon  = "weapon_vitriol_wand",
     signatureAbility = "utility_aqua_vitae",
+    -- Basic tactics (models/ai.lua), the alchemist root's own (character_alchemist.lua): from the kept
+    -- distance, spend the throw on the foe already closest to falling. Lifting is NOT lost by moving off
+    -- the priest's rule -- the Heal in her grid carries its own `urgent` support rule
+    -- (data/items/ability/ability_heal.lua), so it still runs ahead of this without a character rule
+    -- repeating it. What changes is what she does on a turn nobody needs mending.
     ai = {
-        { priority = "urgent", act = "support", item = "ability_heal", targetPref = "most_wounded",
-          when = { subject = "ally_lowest_hp", test = "hp_pct_below", value = 0.65 } },
+        -- HER BOUND RELIC (utility_aqua_vitae): three heals open it, and it gives the company a copy of
+        -- its own strongest -- the giving turned into a second body. Asked for when there is more than
+        -- one thing to answer, which is when an extra body is worth a turn; it is blocked while the
+        -- copy still stands, so it re-fires only once the gift is spent.
+        { priority = "high", act = "cast", item = "utility_aqua_vitae",
+          when = { subject = "any_foe", test = "count_at_least", value = 2 } },
+        { priority = "high", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
     },
 }
