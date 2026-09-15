@@ -1956,8 +1956,14 @@ function game:openEncounter(cell, opts)
                 -- still names what arrived, and a count that can only be zero is cheaper than three
                 -- call sites learning a new shape.
                 local left = 0
+                -- ...AND A FIND ARRIVES AT THE LEVEL ITS FLOOR IMPLIES (Spoils.foundLevel). Applied at
+                -- the GRANT rather than folded into `spoils.loot`, which stays a plain list of ids --
+                -- the same reason `sealed` is a field of its own: every reader of `loot` (the summary
+                -- panel, the reveal, the tutorial's grants) would otherwise have to learn a new shape.
+                -- Nil off a descent, so the campaign hands over base pieces exactly as it did.
+                local foundAt = game.quest and game.quest.floorLevel or nil
                 for _, id in ipairs(spoils.loot or {}) do
-                    Player.grantItem(game.player, id)
+                    Player.grantItem(game.player, id, Spoils.foundLevel(foundAt))
                 end
                 -- ...and the unread find, on the rare stop that paid one (models/identify.lua). Granted
                 -- through Identify.grant rather than Player.grantItem: the piece goes into the stash as a

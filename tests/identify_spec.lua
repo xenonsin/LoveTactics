@@ -410,16 +410,22 @@ return {
         fn = function()
             local Descent = require("models.descent")
             local Spoils = require("models.spoils")
+            -- THE RANGE IS THE POINT, AND THE FIRST CUT OF THIS CASE GOT IT WRONG. A husk stores
+            -- `Descent.floorLevel` -- 1 + (floor - 1) * LEVEL_PER_FLOOR, so 1..15 -- and this iterated
+            -- 1..8 while feeding the FLOOR NUMBER to a fee that reads the LEVEL. It therefore never
+            -- evaluated the top half of the real range, and passed green over a fee that was 21% out of
+            -- band at the deepest reading. A case that walks a domain the game cannot produce is not a
+            -- test of anything.
             for floor = 1, Descent.FLOORS do
-                local level = floor * Descent.LEVEL_PER_FLOOR
-                local fee = Identify.fee({ unidentified = floor })
+                local level = 1 + (floor - 1) * Descent.LEVEL_PER_FLOOR
+                local fee = Identify.fee({ unidentified = level })
                 local end_ = Spoils.endPurse("elite", level)
                 assert(end_ > 0, "the fixture must actually pay an end purse on floor " .. floor)
                 local share = fee / end_
-                assert(share >= 0.25, "floor " .. floor .. ": naming costs " .. fee ..
+                assert(share >= 0.25, "level " .. level .. ": naming costs " .. fee ..
                     " against an end purse of " .. end_ .. " (" .. math.floor(share * 100) ..
                     "%) -- a fee this small is noise, not a decision")
-                assert(share <= 1.2, "floor " .. floor .. ": naming costs " .. fee ..
+                assert(share <= 1.2, "level " .. level .. ": naming costs " .. fee ..
                     " against an end purse of " .. end_ .. " (" .. math.floor(share * 100) ..
                     "%) -- past an end's whole purse it stops being a choice and starts being a wall")
             end
@@ -436,7 +442,8 @@ return {
         name = "the sale still pays exactly what the reading charges, at the new price",
         fn = function()
             for floor = 1, 8 do
-                local husk = Identify.sealed(sealableId(), floor, 2)
+                local husk = Identify.sealed(sealableId(),
+                    1 + (floor - 1) * require("models.descent").LEVEL_PER_FLOOR, 2)
                 local player = stubPlayer(0)
                 player.stash[1] = husk
                 local ok = Identify.sell(player, husk)

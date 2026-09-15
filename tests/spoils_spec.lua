@@ -31,6 +31,16 @@ local function realRoster(id, n)
     return units
 end
 
+-- THE FLOOR THAT PAYS RANK `r`. Since the redesign a floor's rank is its CEILING and the band reaches
+-- one rung under it, so a fixture item and the floor it is rolled on have to agree -- an item three
+-- rungs below the floor is not "easily reachable", it is unreachable, and a case that rolls one and
+-- waits will simply never see it. Derived rather than typed: `Spoils.rankBand`'s centre works out to
+-- the floor number, so this is that arithmetic inverted.
+local function floorLevelForRank(r)
+    local Descent = require("models.descent")
+    return 1 + (math.max(1, r) - 1) * Descent.LEVEL_PER_FLOOR
+end
+
 -- Stamp a `drops` list onto a blueprint for the length of one case, and hand back the undo. The
 -- authored route reads Character.defs directly, so this is the whole of what a fixture needs -- and
 -- stamping rather than picking a body that already carries one keeps these cases true while the
@@ -544,10 +554,12 @@ return {
             local id = shallowItem()
             assert(id, "the catalogue must hold at least one shallow unbound item to test with")
             local restore = withDrops("character_bandit", { id })
+            -- Rolled on the floor whose rank this piece actually belongs to.
+            local at = floorLevelForRank(Spoils.depthOf(Item.defs[id]))
             local seen = false
             for _ = 1, 400 do
                 for _, got in ipairs(Spoils.roll({
-                    enemyUnits = realRoster("character_bandit", 3), day = 9, floorLevel = 9,
+                    enemyUnits = realRoster("character_bandit", 3), day = 9, floorLevel = at,
                 }).loot) do
                     if got == id then seen = true end
                 end
@@ -595,10 +607,11 @@ return {
             assert(a and b, "need two distinct shallow items to test unowned-first")
             local restore = withDrops("character_bandit", { a, b })
             local player = { stash = { { id = a } }, roster = {} } -- the company holds `a`
+            local at = floorLevelForRank(Spoils.depthOf(Item.defs[b]))
             local held, new = 0, 0
             for _ = 1, 800 do
                 for _, got in ipairs(Spoils.roll({
-                    enemyUnits = realRoster("character_bandit", 3), day = 9, floorLevel = 9,
+                    enemyUnits = realRoster("character_bandit", 3), day = 9, floorLevel = at,
                     player = player,
                 }).loot) do
                     if got == a then held = held + 1 elseif got == b then new = new + 1 end
@@ -753,10 +766,13 @@ return {
 
             local units = {}
             for i = 1, 3 do units[i] = { char = Character.instantiate(id) } end
+            -- On the floor the standout belongs to -- it is the deepest entry on the list, so this is
+            -- the deepest floor any of them can be met at.
+            local at = floorLevelForRank(dd)
             local function rate(player)
                 local hits, N = 0, 4000
                 for _ = 1, N do
-                    for _, got in ipairs(Spoils.roll({ enemyUnits = units, day = 30, floorLevel = 8,
+                    for _, got in ipairs(Spoils.roll({ enemyUnits = units, day = 30, floorLevel = at,
                         player = player }).loot) do
                         if got == deepest then hits = hits + 1 end
                     end
@@ -851,6 +867,39 @@ return {
 
             assert(share(1) > 0.4, "a floor at the body's own depth still loots it")
             assert(share(8) < 0.1, "a floor eight rungs past a rusted sword should stop paying one")
+        end,
+    },
+    {
+        -- R3-4. Depth decided WHICH item and said nothing about the copy, so a floor-8 axe and a
+        -- floor-1 axe arrived identical while a husk off the same floor came out forged. One rift, two
+        -- rules.
+        name = "a found piece arrives forged by its floor, and never richer than a husk",
+        fn = function()
+            local Identify = require("models.identify")
+            local Descent = require("models.descent")
+            local function mean(fn, n)
+                local sum = 0
+                for _ = 1, n do sum = sum + fn() end
+                return sum / n
+            end
+
+            -- The campaign opts out: no floorLevel, no forging, exactly as before.
+            assert(Spoils.foundLevel(nil) == 0, "a campaign fight hands over a base piece")
+
+            local shallow = mean(function() return Spoils.foundLevel(1) end, 3000)
+            local deep = mean(function()
+                return Spoils.foundLevel(1 + (Descent.FLOORS - 1) * Descent.LEVEL_PER_FLOOR)
+            end, 3000)
+            assert(deep > shallow, "the deep end must arrive better forged: "
+                .. string.format("%.2f vs %.2f", deep, shallow))
+
+            -- THE COUNTER MUST STAY WORTH WALKING TO. A husk is the richer outcome in expectation, or
+            -- the fee is buying a worse object than the floor hands out for nothing.
+            local husk = mean(function()
+                return Identify.rollLevel(1 + (Descent.FLOORS - 1) * Descent.LEVEL_PER_FLOOR)
+            end, 3000)
+            assert(husk > deep, "a husk must out-read a plain find: "
+                .. string.format("%.2f vs %.2f", husk, deep))
         end,
     },
 }

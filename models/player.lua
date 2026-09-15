@@ -160,8 +160,11 @@ end
 -- `Player.onItemGranted` is an optional observer (item -> ()) the UI layer sets once at startup
 -- (main.lua wires it to ui/notification.lua). Nil in headless tests, so grantItem stays pure there.
 Player.onItemGranted = nil
-function Player.grantItem(player, itemId)
-    local item = Item.instantiate(itemId)
+-- `level` is OPTIONAL and defaults to the blueprint's base, which is every caller that existed before
+-- found gear started arriving forged (Spoils.foundLevel). A quest reward, a purchase and a chest all
+-- still hand over a +0 piece; what passes one is a drop that knows which floor it fell on.
+function Player.grantItem(player, itemId, level)
+    local item = Item.instantiate(itemId, nil, level)
     Player.addToStash(player, item)
     -- Unseen until looked at: the Armory dots it so a reward found mid-quest is still findable in a
     -- sixty-row stash an hour later. See Player.markNew.

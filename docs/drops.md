@@ -12,14 +12,42 @@ authoring anything here; it is the only pass in the tree that asks whether an it
 
 ---
 
-## The four routes
+## One draw, two steps
 
-| route | what it is | authored? |
-|---|---|---|
-| **drops** | a per-body list on the character blueprint | yes — the route being built |
-| **carried** | the body is holding one, so the carried pool can hand it over | incidental |
-| **boss** | `Descent.DROPS` — a lieutenant's or a general's list | yes |
-| **band** | the depth-banded random draw over everything in range | no — **the long tail** |
+**The floor picks the rank. The body picks which item of that rank.** In that order, and the order is
+the whole design.
+
+| | |
+|---|---|
+| **Step 1** | the floor's depth chooses a **rank** — its own rung, and one below (`Spoils.rankBand`). Decided before anything looks at who died, so a floor cannot pay gear that does not belong to it. |
+| **Step 2** | the bodies standing there choose **which item of that rank**: what they are known for (`drops`), what they were holding, and their class's stock at that rank — the first two preferred (`BODY_PREFERENCE`). |
+
+If nothing standing there has stock at that rank, the draw falls to anything at that rank. That is a
+designed outcome, not a failure: the class ladders are deliberately incomplete, so this rung is how a
+Priest body on floor 8 gets paid at all.
+
+Consumables are drawn on a **separate supply track** off price rather than rank, so a potion never
+occupies a rank slot — but it shares the fight's drop budget rather than adding to it
+(`SUPPLY_SHARE`).
+
+> **What this replaced**, and why: three pools — an authored list, the beaten bodies' grids, and a
+> price band — blended by two independent probabilities. That arrangement decided an item's **rank**
+> (how good) and its **identity** (what it is) in the same weighted draw, and those are different
+> questions with different right answers. It is why every tuning pass landed on one and left the other
+> alone — most sharply when correcting the band's inverted weight, an unambiguous bug fix that moved
+> the measurement 7.6% → 9.6%, because the band was a quarter of the drops and the other three
+> quarters had no depth relationship at all.
+>
+> **Six constants came out** — `AUTHORED_BIAS`, `CARRIED_BIAS`, `AUTHORED_FALLOFF`,
+> `AUTHORED_STANDOUT_SHARE`, `DEPTH_MATCH_SPREAD`, `CARRIED_DEPTH_REACH` — along with the whole
+> `authoredCandidates` helper. Four went in, and unlike the six they compose into a sentence.
+
+### The band still exists, underneath
+
+`Descent.DROPS` (a lieutenant's or a general's authored relic) is untouched and sits outside this
+draw entirely. And the reachability picture below is still how the catalogue is audited — an item with
+no body that knows it is reached through Step 2's third rung, which is the "long tail" the old band
+named.
 
 Measured (`. drop-report`), over the 429 items carrying a `dropTier`:
 
@@ -116,9 +144,13 @@ Four rules, none of them new:
    and duplicates of held commons run at 0.07%. A farmed body goes quiet rather than raining
    duplicates. What made this safe to give up is [salvage](#salvage-and-the-discovery-ledger): a
    duplicate is stock, not a dead end.
-6. **The carried pool stays.** *You took his axe* is the best connection in the system
-   (`CARRIED_BIAS = 0.75`). `drops` sits beside it: what a body is *known for*, over and above what it
-   happened to be holding.
+6. **What it was holding counts too.** *You took his axe* is the best connection in the system, and it
+   survives as a preferred answer **at its own rank** — so the axe is still the drop wherever the axe
+   belongs to the floor, and a floor-eight corpse stops handing over a rusted blade.
+7. **A body's prize is not preferred.** The deepest entry on a list competes on equal terms with its
+   house's other stock at that rank. Preference says *this is its kit*, which is right for ordinary
+   stock; applied to the prize it made the piece a body is known for the likeliest thing it pays on
+   the one floor that can pay it — measured at 26% of fights, an errand rather than a chase.
 
 ## The bill
 
@@ -140,8 +172,8 @@ long before they notice a drop table. `. drop-assign` prints the per-class short
 ## What the band is still for
 
 `Spoils`' salvage floor is not a roll, so a fight never pays literally nothing regardless. What the band
-uniquely carries is **consumables** — `CARRIED_BIAS` keeps a slice of it so potions turn up in fights
-against people who weren't carrying any — and the long tail of stock no body is known for.
+uniquely carries is **consumables** — now their own supply track, so potions turn up in fights against
+people who weren't carrying any — and the long tail of stock no body is known for.
 
 Were it ever removed, consumables would fall entirely to the pre-descent stock decision and the road's
 Merchant, which sharpens an intent [shelf.md](shelf.md) already states: *a consumable stays priced
@@ -252,6 +284,23 @@ before it is a drop problem.
 & "E:\LOVE\lovec.exe" . drop-assign full           # ...every body and its list
 & "E:\LOVE\lovec.exe" . drop-assign apply          # write them onto the blueprints
 ```
+
+```powershell
+& "E:\LOVE\lovec.exe" . drop-sample               # what a floor actually pays, ROLLED
+& "E:\LOVE\lovec.exe" . drop-sample 8             # one floor
+& "E:\LOVE\lovec.exe" . drop-sample n=20000       # a wider sample
+```
+
+**`. drop-sample` is the one that rolls**, and it is the reason the redesign could be judged at all.
+`drop-report` walks reachability and `drop-assign` walks assignment; neither throws a die, and every
+real defect in this system has been invisible to both — the inverted band weight, the 74% carried
+share, the flat lists, the 92 natural weapons in the pool. Each was found by a throwaway spec that
+sampled the loop and printed a table, and each was deleted with it. This is that spec, kept.
+
+It found the tier saturation the moment it existed: `min(CLASS_LEVEL_CAP, floor × LEVEL_PER_FLOOR)`
+pinned at the cap from **floor 4**, so five of eight floors shared one rank band. `Spoils.rankBand`
+spreads the ladder across the whole stack instead, and the report asks the model for the band rather
+than recomputing it — an instrument that computes the thing it is checking is checking itself.
 
 `drop-report` writes nothing and has no `apply`: what to do about a hole is an authoring decision, not a
 number a tool could compute. `drop-assign` is the one that writes, and it is a dry run until told.

@@ -121,6 +121,16 @@ function love.load(args)
         return
     end
 
+    -- What a floor actually pays: `& "E:\LOVE\lovec.exe" . drop-sample [floor] [n=N]`
+    -- The third drop instrument, and the only one that ROLLS. `drop-report` walks reachability and
+    -- `drop-assign` walks assignment; neither throws a die, and every real defect in the drop system
+    -- so far has been invisible to both. See tools/drop_sample.
+    if args and args[1] == "drop-sample" then
+        require("tools.drop_sample").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
     -- The class fold: `& "E:\LOVE\lovec.exe" . class-fold [creature] [apply]`
     -- Collapses `class` and `discipline` onto one taxonomy of 46 classes -- the default pass moves an
     -- item's discipline into its class, `creature` buckets the kit that belongs to no job. Dry run by

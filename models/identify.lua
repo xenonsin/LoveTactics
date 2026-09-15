@@ -232,8 +232,18 @@ end
 --               floor paying none) at 60 + 20f over floors 1..8 -- about 150 each, 2,400 in all.
 --
 -- Twelve per cent. Naming the whole satchel was something a player did without looking at the purse,
--- which means the room's actual question -- NAME THIS ONE, OR LET IT GO -- was never asked. At 120 +
--- 60f the same satchel runs about 6,200, near a third of the run, and the satchel becomes a budget.
+-- which means the room's actual question -- NAME THIS ONE, OR LET IT GO -- was never asked.
+--
+-- THE UNIT IS `floorLevel`, NOT THE FLOOR NUMBER, and getting that wrong is what made the first re-price
+-- overshoot. A husk stores Descent.floorLevel -- 1 + (floor - 1) * LEVEL_PER_FLOOR, so 1 to 15 across an
+-- eight-floor stack, not 1 to 8. At 120 + 60f that put the deepest reading at 1,020 against an end purse
+-- of 845, and the satchel at roughly HALF a run's income rather than the third it was aimed at. The spec
+-- written to catch exactly this iterated floors 1..8 and never saw the top half of the real range.
+--
+-- SO IT IS PINNED TO A RATIO AND NOT TO A GOLD FIGURE. 100 + 45l puts a reading between 0.7 and 1.1 of
+-- what ONE end on that floor pays, all the way down -- a satchel that has to be budgeted, without any
+-- single reading costing more than the floor it came off can pay for. About 37% of a complete descent
+-- to name everything, against 12% before and 48% under the mis-united cut.
 --
 -- THE SYMMETRY IS WHAT MAKES THIS SAFE TO RAISE. The counter buys for exactly what it charges
 -- (Identify.sellValue), so a dearer reading is also a dearer sale: a company that cannot afford to name
@@ -245,8 +255,8 @@ end
 -- and 2 ends on a floor one, which is where the per-floor counts above come from); the gold on top of
 -- that is arithmetic over models/spoils.lua's constants. If the fee ever reads wrong in play, that is
 -- the measurement to take properly first.
-Identify.FEE_BASE = 120
-Identify.FEE_PER_FLOOR = 60
+Identify.FEE_BASE = 100
+Identify.FEE_PER_FLOOR = 45
 
 -- ONE NUMBER, TWO DIRECTIONS: what the counter charges to name a piece is also what it PAYS to take the
 -- piece off you unnamed. The symmetry makes selling and naming come out roughly even in gold, which puts
