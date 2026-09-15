@@ -781,7 +781,8 @@ end
 -- DOCKED into the left column, in the two stacked boxes the fight uses (states/battle.lua's
 -- drawTileTooltip): terrain at the column's foot, the occupant in its own box above it. Same place,
 -- same split, before the bell and after it -- and a box parked off the board never covers the ground
--- being aimed at, which is why it can stay up through a drag.
+-- being aimed at, which is why it can stay up through a drag. WHICH of the two stands when the column
+-- cannot hold both is DeployPhase:hoverDock's decision, and it is not the fight's.
 --
 -- `bounds` is the board region the phase draws its title over, so its left edge IS the column.
 function DeployPhase:drawHover(bounds)
@@ -802,34 +803,78 @@ function DeployPhase:drawHover(bounds)
     elseif kind == "wall" then objInfo = { wall = obj }
     elseif kind == "prop" then objInfo = { prop = obj } end
 
-    -- The column's full width, minus the 16px margins the fight's docked boxes keep. The stack rises to
-    -- the host's ceiling (`dockTop`) -- under the Settings and board-turn plates it stands there --
-    -- exactly as the fight's own boxes do, so the two never draw over each other.
-    --
-    -- TOLD, not inferred. This read the width off `bounds.x` -- true only while `bounds` is the board's
-    -- rect and the left column is therefore everything to its left. In the short space the host hands
-    -- the COLUMN down instead (its headline belongs there), and the same arithmetic came out negative
-    -- and fell to the floor: a 180px box docked in a 250px column, narrower than the fight's own boxes
-    -- in the same corner. The host owns that rect and now says so.
+    local plan = self:hoverDock(bounds, terrainInfo, objInfo)
+    local dock = { dock = true, dockX = 16, dockTop = plan.dockTop, width = plan.W }
+
+    -- Bottom-up: terrain takes the column's foot and the occupant stacks on top of it, each box told
+    -- where the one below it ended. A plan that dropped the terrain box hands the foot straight to the
+    -- body, which is the whole point of dropping it.
+    local foot = Scale.HEIGHT - 8
+    if plan.terrain then
+        local box = TileTooltip.draw(terrainInfo, ax, ay, Scale.WIDTH, dock)
+        foot = (box and box.y or foot) - plan.gap
+    end
+    if plan.occupant then
+        TileTooltip.draw(objInfo, ax, ay, Scale.WIDTH,
+            { dock = true, dockX = 16, dockTop = plan.dockTop, width = plan.W,
+              dockBottom = plan.terrain and foot or nil })
+    end
+end
+
+-- WHICH OF THE TWO DOCKED BOXES STAND, and where their stack is floored: `{ W, gap, dockTop, terrain,
+-- occupant }`. Pure -- it measures, it never draws -- so the arrangement can be pinned without a
+-- window (tests/deploy_hover_spec.lua).
+--
+-- The column's full width, minus the 16px margins the fight's docked boxes keep. The stack rises to
+-- the host's ceiling (`dockTop`) -- under the Settings and board-turn plates it stands there --
+-- exactly as the fight's own boxes do, so the two never draw over each other.
+--
+-- TOLD, not inferred. This read the width off `bounds.x` -- true only while `bounds` is the board's
+-- rect and the left column is therefore everything to its left. In the short space the host hands
+-- the COLUMN down instead (its headline belongs there), and the same arithmetic came out negative
+-- and fell to the floor: a 180px box docked in a 250px column, narrower than the fight's own boxes
+-- in the same corner. The host owns that rect and now says so.
+function DeployPhase:hoverDock(bounds, terrainInfo, objInfo)
     local W = math.max(180, (bounds and bounds.dockW) or (((bounds and bounds.x) or 0) - 32))
     local gap = 8
-    -- Under the host's ceiling AND under the phase's own control stack, which shares this column: a
-    -- readout that grew up over the bell would cover the one control the phase cannot do without.
-    local dockTop = math.max((bounds and bounds.dockTop) or 8, self:controlsBottom() + gap)
-    local dock = { dock = true, dockX = 16, dockTop = dockTop, width = W }
+    local dockTop = (bounds and bounds.dockTop) or 8
+    -- Floored by the phase's own control stack as well -- but ONLY where that stack stands in the
+    -- column the boxes dock into: a readout that grew up over the bell would cover the one control the
+    -- phase cannot do without. In the short space the host moves the controls to the FAR side of the
+    -- screen (battle's deployControlRect) while the boxes stay at dockX, and a ceiling read off a stack
+    -- in the other column throws away half of this one to clear something that is not in it.
+    local col = self.column
+    if not col or col.x < 16 + W then
+        dockTop = math.max(dockTop, self:controlsBottom() + gap)
+    end
 
-    -- Terrain never yields; the OCCUPANT is the valve, exactly as in the fight -- losing it costs the
-    -- player only a detail view of something already standing in front of them on the board.
+    local plan = { W = W, gap = gap, dockTop = dockTop, terrain = true, occupant = objInfo ~= nil }
+    if not objInfo then return plan end
+
     local budget = Scale.HEIGHT - 8 - dockTop
     local terrainH = TileTooltip.measure(terrainInfo, W) + gap
-    local objH = objInfo and (TileTooltip.measure(objInfo, W) + gap) or 0
+    local objH = TileTooltip.measure(objInfo, W) + gap
+    if objH + terrainH <= budget then return plan end
 
-    local box = TileTooltip.draw(terrainInfo, ax, ay, Scale.WIDTH, dock)
-    if objInfo and objH + terrainH <= budget then
-        TileTooltip.draw(objInfo, ax, ay, Scale.WIDTH,
-            { dock = true, dockX = 16, dockTop = dockTop, width = W,
-              dockBottom = (box and box.y or Scale.HEIGHT - 8) - gap })
-    end
+    -- BOTH CANNOT STAND, and before the bell the BODY wins -- the other way round from the fight,
+    -- where terrain never yields (states/battle.lua's drawTileTooltip). It is the same rule read
+    -- against a different screen: keep whatever has no second reading. In the fight that is the
+    -- ground, because the occupant is also a token, an HP bar, a turn card and the whole combat panel
+    -- the moment it acts. None of that furniture exists yet -- no strip, no panel, nobody acting -- so
+    -- before the bell the BODY is the thing said only once, while the ground still has its tile colour
+    -- and every overlay the phase lights it with.
+    --
+    -- It is also the thing this phase is FOR. The line is set against the enemy's reach, armour and
+    -- kit, and the column shipped 388px tall against a three-pool body's 293px box and a terrain box
+    -- of 105-122: every caster, healer and elite on the board silently withheld its readout, on the
+    -- one screen whose whole subject is reading them. An ordinary two-pool body fits beside its ground
+    -- and both still stand.
+    plan.terrain = false
+    -- ...unless the body's own box cannot stand either, in a column too short for anything tall. A box
+    -- taller than its column is drawn off the bottom of the screen; the ground always fits, and the
+    -- half that can be read beats the half that cannot.
+    if objH > budget then plan.terrain, plan.occupant = true, false end
+    return plan
 end
 
 -- ---------------------------------------------------------------------------

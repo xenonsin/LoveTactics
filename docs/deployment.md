@@ -129,6 +129,17 @@ ends; the encounter's own name comes back the instant the bell rings.
   player wants to do. The drawer returns with the fight. The controls read top to bottom in the
   order the decisions are made in: **Loadout**, **Potions**, **Reset Line**, **Auto**, and the bell
   last.
+- **Hovering a tile reads it**, in the two docked boxes the fight uses (`ui/tile_tooltip.lua`) — the
+  ground at the foot of the left column, the body standing on it stacked above. When the column cannot
+  hold both, **the body wins and the ground yields**, which is the opposite of the fight's rule
+  (`states/battle.lua`'s `drawTileTooltip`, where terrain never yields). It is the same rule read
+  against a different screen: keep whatever has no second reading. In the fight that is the ground,
+  because the occupant is also a token, an HP bar, a turn card and the whole combat panel the moment it
+  acts; before the bell none of that furniture exists, so the body is the thing said only once — and it
+  is what the phase is *for*. Held the other way round, the phase's five control plates left 388px of a
+  720 screen against a three-pool body's 293px readout and a terrain box of 105–122, so every caster,
+  healer and elite on the board answered a hover with "Open Ground" and nothing else
+  (`tests/deploy_hover_spec.lua`).
 - **Reset Line** re-runs the opening arrangement — the four who fought last battle
   (`Player.lastDeployed`, ids only; no tiles are ever persisted) on the board's own bound spawns. It is
   the only way back to that arrangement once the player has shuffled, which is why it survives with
