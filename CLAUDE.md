@@ -75,9 +75,13 @@ The codebase is organized into layers loaded via `require()`. See
 - **`states/`** — screens as plain tables with optional LÖVE callbacks (`enter`, `update`,
   `draw`, `keypressed`, `mousepressed`, `gamepadpressed`, …). `states/init.lua` is the
   minimal manager: `State.switch(state, ...)` sets the current state and calls its `enter`.
-  Flow: `menu → hub → (Quest Board → game)`. The Quest Board offers **grounds**, not quests: a day
-  buys a whole ground and every quest posted there stands on the map at once (`Quest.trip`) — see
-  [docs/progression.md](docs/progression.md) and [docs/overworld.md](docs/overworld.md).
+  Flow: `menu → hub → (Bounty Board → game)`. The **Bounty Board** posts work the company holds and
+  spends: a bounty names a ground, a tier, the body at the end and the one **piece** that body owes,
+  and taking it spends the posting whether the run is won or lost. Seven houses, each a ladder of an
+  authored opener plus two derived rungs; a stake of **augments** raises the danger and the pay before
+  you go. See [docs/bounties.md](docs/bounties.md); [docs/overworld.md](docs/overworld.md) owns the
+  ground it is walked on. **The rift (`states/gate.lua`, `models/descent.lua`) still stands beside it**
+  and is due to be parked — see bounties.md's Known debt for what that is blocked on.
 - **`ui/`** — reusable widgets that support **mouse + keyboard + gamepad** (project standard;
   see `ui/menu.lua`, `ui/building_map.lua`). Pop-up panels live in `ui/panels/`.
 - **`models/`** — logic + instantiation over the data layer. `models/registry.lua` auto-loads

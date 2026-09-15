@@ -376,6 +376,7 @@ return {
     ["line.conversation_tutorial_city.1"] = { en = "{select} to take the stair down.", ja = "" },  -- TODO
     ["line.conversation_tutorial_city.2"] = { en = "{select} the Rift. The stair down is inside.", ja = "" },  -- TODO
     ["line.conversation_tutorial_city.3"] = { en = "{select} {door}", ja = "" },  -- TODO
+    ["line.conversation_tutorial_city.4"] = { en = "{select} the Bounty Board. The houses post their work there.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.1"] = { en = "Walk to the chest ahead. Use WASD, the arrow keys, or click a tile.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.2"] = { en = "Open your loadout to see what you found.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.3"] = { en = "{select} an item in your stash to equip it to a hero.", ja = "" },  -- TODO

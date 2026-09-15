@@ -464,6 +464,11 @@ function Quest.complete(player, quest, carried, opts)
         return nil
     end
 
+    -- HAS THIS BODY GONE DOWN BEFORE? Read BEFORE the ledger line further down stamps it, because that
+    -- line is what would make the answer yes. It decides whether this kill pays the named piece or the
+    -- house's apex trophy (models/bounty.lua) -- the first time the thing, every time after the part.
+    local repeated = Player.hasCompleted(player, quest.id)
+
     local gold = quest.rewardGold or 0
 
     Player.addGold(player, gold)
@@ -490,6 +495,36 @@ function Quest.complete(player, quest, carried, opts)
     player.completedQuests = player.completedQuests or {}
     player.completedQuests[quest.id] = true
 
+    -- WHAT FINISHING A POSTING PUTS BACK ON THE PILE. A bounty is spent on the way out (Bounty.spend,
+    -- from the board), so without this the stock only ever falls and the deep work would be a thing a
+    -- company could run exactly as many times as it happened to find.
+    --
+    -- AFTER THE LEDGER LINE ABOVE, AND THAT ORDER IS THE WHOLE OF IT. The drop pool only deals postings
+    -- the ladder has OPENED, and finishing this one is what opens the rung above it -- so dealt a line
+    -- earlier, a house's opener paid nothing at all and the stock could never leave the ground. Caught
+    -- by tests/bounty_spec.lua, which is why that case builds the pool at the moment the ledger moves.
+    --
+    -- Guarded by the double-payout check at the top of this function, like every other grant here: a
+    -- re-cleared objective tile can no more mint a second posting than a second relic.
+    --
+    -- Lazily required: models/bounty.lua requires THIS file, so a top-level require would be a cycle.
+    local bountiesFound
+    if quest.bounty and quest.bounty.id then
+        local Bounty = require("models.bounty")
+        local def = Bounty.get(quest.bounty.id)
+        if def then
+            bountiesFound = Bounty.dealDrops(player, def)
+            -- ...AND WHAT THE STAKE BOUGHT. An augment that pays in postings pays here, on top of the
+            -- posting's own rate, so a staked run really does put more back on the pile than it took --
+            -- which is the half of the bet that makes staking anything worth doing.
+            for _ = 1, (quest.bounty.extraDrops or 0) do
+                for _, id in ipairs(Bounty.dealDrops(player, def)) do
+                    bountiesFound[#bountiesFound + 1] = id
+                end
+            end
+        end
+    end
+
     -- Item rewards: a general's relic, granted into the stash. Guarded by the double-payout check at
     -- the top of this function, so a re-cleared objective tile can never mint a second one. Note the
     -- relic is a TROPHY, not a key -- what opens the Gate Below is the line above, the completed
@@ -497,6 +532,29 @@ function Quest.complete(player, quest, carried, opts)
     local received = {}
     for _, itemId in ipairs(quest.rewardItems or {}) do
         received[#received + 1] = Player.grantItem(player, itemId)
+    end
+
+    -- THE PIECE THE BOARD PROMISED GOES FIRST, and this is what closes the bounty loop.
+    --
+    -- A bounty names ONE item before it is taken -- "The Breachward owes you a Relief Horn"
+    -- (models/bounty.lua) -- and that promise is the whole reason the day was spent. Without this it
+    -- arrived as one of three undifferentiated rows in "Items gained", in whatever order the blueprint
+    -- happened to list its rewards, and could be TRUNCATED OFF the panel entirely (the list caps at
+    -- four). A promise the game does not keep out loud is a promise the player stops reading.
+    --
+    -- Moved rather than reported separately, so it cannot fall off the end and needs no second section
+    -- competing for the same height. `piece` names the id so the panel can mark which row it is.
+    local piece
+    local promised = quest.bounty and quest.bounty.piece
+    if promised then
+        for i, item in ipairs(received) do
+            if item and item.id == promised then
+                table.remove(received, i)
+                table.insert(received, 1, item)
+                piece = promised
+                break
+            end
+        end
     end
 
     -- The companion, if this quest is the one that earns them. Player.recruit instantiates a fresh
@@ -527,6 +585,16 @@ function Quest.complete(player, quest, carried, opts)
     for matId, count in pairs(quest.rewardMaterials or {}) do grant(matId, count) end
     for matId, count in pairs(carried or {}) do grant(matId, count) end
 
+    -- THE APEX TROPHY, on a repeat kill only. See models/bounty.lua for why a repeat pays a PART rather
+    -- than the piece again: a drop here is a whole item, and a second copy of a sword you own is worth
+    -- nothing, so without this a posting would be worth taking exactly once.
+    if quest.bounty and quest.bounty.id and repeated then
+        local Bounty = require("models.bounty")
+        for matId, count in pairs(Bounty.trophyFor(Bounty.get(quest.bounty.id), true) or {}) do
+            grant(matId, count)
+        end
+    end
+
     -- The supper is eaten. A meal bought at the Cafe is bought FOR one quest (models/meal.lua's
     -- one-ration rule), and this is the objective that spends it -- so the next run is a fresh
     -- decision at the counter rather than a buff that quietly renews itself. Cleared here rather than
@@ -550,6 +618,14 @@ function Quest.complete(player, quest, carried, opts)
     return {
         gold = gold,
         received = received, -- item instances, for the reward panel to name
+        -- The one the bounty promised, by id, or nil when the work was not posted as one. It is
+        -- `received[1]` by construction above; the id is carried so the panel marks the row rather
+        -- than assuming a position.
+        piece = piece,
+        -- The postings this one put back in hand, by id, or nil when the work was not a bounty. Named
+        -- rather than merely granted: a bounty that arrives silently is a reward the player never
+        -- learns they have, and the whole of the sustain loop is knowing the pile grew.
+        bountiesFound = bountiesFound,
         materials = materials, -- { id = count } granted, for the reward panel to name
         -- The companion instance that just joined, or nil (including when they were already owned).
         -- The reward panel should announce this LOUDEST -- it is the only reward that changes who

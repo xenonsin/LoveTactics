@@ -11,7 +11,7 @@
 -- The plaza is where you go before going down; the square is a thing you earned. Putting the town's own
 -- counter behind the earned door would gate the opening kit on a class level.
 --
--- IT WAITS FOR THE FIRST DESCENT (models/building.lua's `unlockDepth`), and that is the only gate it
+-- IT WAITS FOR THE FIRST DESCENT (models/building.lua's `unlockExpeditions`), and that is the only gate it
 -- keeps. It was open on the first morning of a fresh save for a long time, and the argument was sound on
 -- its own terms: what the counter sells is bounded by the company's tier and by what it can afford
 -- (models/market.lua), so a shelf full of things you cannot pay for teaches the whole ladder at a glance.
@@ -34,5 +34,5 @@ return {
     panel = "shop",
     vendor = "market",
     description = "Everything anyone came back up with, and a few things nobody did.",
-    unlockDepth = 1, -- see above, and models/building.lua
+    unlockExpeditions = 1, -- see above, and models/building.lua
 }

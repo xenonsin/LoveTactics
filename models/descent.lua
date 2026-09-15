@@ -2528,8 +2528,11 @@ end
 -- the game uses (models/building.lua's unlockDepth, models/market.lua's stock).
 Descent.TACTICS_DEPTH = 1
 
+-- READ OFF EXPEDITIONS RATHER THAN FLOORS, for the reason Player.expeditionsOut gives: the stair is no
+-- longer the only way out of the city, and a gate that only a descent could open would leave Auto and
+-- the rule lists behind a door most companies never walk through.
 function Descent.tacticsUnlocked(player)
-    return Descent.deepest(player) >= Descent.TACTICS_DEPTH
+    return require("models.player").expeditionsOut(player) >= Descent.TACTICS_DEPTH
 end
 
 -- ...and whether the window explaining them has been read. A one-way mark of the same shape as

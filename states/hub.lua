@@ -81,21 +81,32 @@ end
 -- the eye goes for buildings, so the left corner is the one piece of chrome nothing else wants.
 local BURGER_X, BURGER_Y = 18, 18
 
--- THE FIRST-VISIT TUTORIAL, WHICH IS ONE DOOR AND IT GOES DOWN.
+-- THE FIRST-VISIT TUTORIAL, WHICH IS ONE DOOR AND IT IS THE BOARD.
 --
 -- `player.hubIntro` runs "arrival" -> "coach" -> nil. The arrival is the guard's scene played over the
--- city; the coach is a bubble on the Rift with every other card refused until it has been walked into.
+-- city; the coach is a bubble on the Bounty Board with every other card refused until it has been
+-- walked into.
 --
---   coach   the Rift, where Rowan has just sent them (conversation_prologue_arrival). The stair
---           itself is coached on the far side of that door, by a bubble on the descend row
---           (states/gate.lua) -- this stage only gets them through it.
+--   coach   the Bounty Board, where the houses post their work (docs/bounties.md). What is behind that
+--           door teaches itself: a row names a ground, a body and the one piece that body owes, and the
+--           stake is a second beat on the same panel.
 --
 -- ONE DOOR, AND THE CITY IS ARRANGED TO AGREE WITH IT. A tutorial that coaches one card while eight
 -- others stand open is a tutorial arguing with the board it is drawn on, so the plaza opens on TWO cards
--- -- the Armory and the stair -- and every other room arrives on the deed that gives it a job
+-- -- the Armory and the board -- and every other room arrives on the deed that gives it a job
 -- (models/building.lua's gate block). The Market and the Houses were the last two to move: both were
--- standing open on the first morning, and both now wait for the first descent, so the one screen a new
--- player is looking at has the hole in the ground and nothing else worth pressing.
+-- standing open on the first morning, and both now wait for the first expedition, so the one screen a
+-- new player is looking at has the work and nothing else worth pressing.
+--
+-- IT WAS THE RIFT, AND THE RIFT HAS LEFT THE CITY. The stair was the campaign's front door for a long
+-- run of passes; the campaign is posted work now, and a second front door with its own save semantics is
+-- how two paths drift. models/descent.lua is parked rather than cut -- it is still what the seven house
+-- ladders are derived from -- and states/gate.lua is reachable from the title screen's debug column.
+--
+-- WHAT THIS CHANGE LEAVES STALE, said here because it is the failure this seam has now been walked
+-- through three times: `conversation_prologue_arrival` is Rowan sending the player to the RIFT, in
+-- Rowan's own words, and it is the last thing said before this bubble appears. The bubble points at the
+-- board and the scene before it points at a stair. See docs/bounties.md's Known debt.
 --
 -- THERE WAS A `hire` STAGE BEFORE THIS ONE, and it coached the Crossing: the sponsor's staked voucher,
 -- a rigged first pull that dealt Saber, and a lesson in what a pull looked like. The Crossing is retired
@@ -114,8 +125,8 @@ local BURGER_X, BURGER_Y = 18, 18
 -- also what lets its {select} re-read the device in the player's hands mid-visit.
 local INTRO_STAGES = {
     coach = {
-        building = "the_gate",
-        line = "rift_card",
+        building = "bounty_board",
+        line = "board_card",
     },
 }
 

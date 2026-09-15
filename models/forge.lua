@@ -196,6 +196,12 @@ end
 -- `class` argument silently billed NOTHING: Material.houseFor("ninja") is nil, `add` ignores a nil id,
 -- and a crossing's gear would have forged with no house stock at all. One argument cannot be given to
 -- the wrong parameter.
+-- THE RUNG AT WHICH A HOUSE'S OWN GEAR STARTS DEMANDING A PART OFF ITS APEX. Eight of ten, so the
+-- last three rungs are the ones that cost something no shop can sell -- and everything below stays
+-- reachable by a company that has never gone apex hunting at all, which is what keeps the trophy a
+-- ceiling-raiser rather than a wall across the middle of the bench.
+Forge.TROPHY_RUNG = 8
+
 local function materialsFor(target, price, class)
     local materials = {}
     local function add(id, n)
@@ -214,6 +220,28 @@ local function materialsFor(target, price, class)
         end
     elseif class then
         add(Material.houseFor(class), math.ceil(target / 2))
+    end
+
+    -- APEX TROPHY, at the deep rungs only. What the top of a ladder costs is a part off the top of a
+    -- HOUSE -- a body you had to go and put down twice, because the first kill paid the piece and only
+    -- the ones after it pay this (models/bounty.lua).
+    --
+    -- WHY IT IS THE RIGHT SINK. A trophy with nothing to spend it on is a trophy, and this game already
+    -- has enough of those; the last three rungs of a house's own gear is the one bill in the game that
+    -- should cost something no shop can sell. It also closes the loop the board opened: the posting
+    -- names a piece, the repeat run pays the part, and the part is what makes the piece better.
+    --
+    -- Split the same way the house stock above is, and for the same reason: a discipline is a deep cut
+    -- of two lines, so it pays both their houses.
+    if target >= Forge.TROPHY_RUNG and class then
+        local function trophyOf(c)
+            return Material.trophyFor(Vendor.forClass(c))
+        end
+        if Class.defs[class] and not Class.isRoot(class) then
+            for _, parent in ipairs(Class.parents(class)) do add(trophyOf(parent), 1) end
+        else
+            add(trophyOf(class), 1)
+        end
     end
 
     return materials

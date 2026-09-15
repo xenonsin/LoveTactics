@@ -150,8 +150,10 @@ end
 --
 --   unlockPrestige   the campaign's ladder. Parked at 1 everywhere -- see Building.RETIRED.
 --   unlockQuest      a door a particular story opens. No shipped card uses it; see tests/hub_spec.lua.
---   unlockDepth      how far down this company has ever been (models/descent.lua's Descent.deepest).
---                    The Cafe at floor two, the Forge at floor four.
+--   unlockExpeditions  how many times this company has been out and finished what it went for, by
+--                    EITHER door (Player.expeditionsOut -- bounties finished, or floors descended).
+--                    The Cafe at two, the Forge at four. It was `unlockDepth` and read floors alone;
+--                    the stair stopped being the only way out of the city, so the noun had drifted.
 --   (unlockWound     somebody has been carried up broken. It opened the Inn, whose only job was setting
 --                    a bone. Both are gone: a wound is a condition of the expedition now and the surface
 --                    ends it for free (models/wound.lua), so there is no bone left to sell the setting
@@ -211,8 +213,8 @@ function Building.list(playerOrPrestige, opts)
                 locked = locked or not (player and Player.hasCompleted(player, def.unlockQuest))
             end
             -- ...and the two gates the city itself grew on (see the header).
-            if def.unlockDepth then
-                locked = locked or require("models.descent").deepest(player) < def.unlockDepth
+            if def.unlockExpeditions then
+                locked = locked or Player.expeditionsOut(player) < def.unlockExpeditions
             end
             if def.unlockUnidentified then
                 locked = locked or not require("models.identify").everFound(player)

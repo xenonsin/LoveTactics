@@ -1,7 +1,7 @@
 -- The Forge: the city's one upgrade bench. Vendors sell; this is where every ladder is climbed and the
 -- only door that spends materials (models/forge.lua, ui/panels/forge.lua).
 --
--- IT ARRIVES ON THE FOURTH FLOOR (models/building.lua's `unlockDepth`), and it is the last of the city
+-- IT ARRIVES ON THE FOURTH FLOOR (models/building.lua's `unlockExpeditions`), and it is the last of the city
 -- to. What this bench spends is MATERIALS, salvaged a handful at a time out of the fighting
 -- (models/spoils.lua) -- so a company three floors in is standing at a counter it cannot transact at,
 -- reading a ladder for gear it has not found yet. Four floors is roughly where the stock is deep enough
@@ -23,6 +23,6 @@ return {
     h = 130,
     panel = "forge",
     description = "Every upgrade to every piece of gear is bought at this bench.",
-    unlockDepth = 4, -- see models/building.lua
+    unlockExpeditions = 4, -- see models/building.lua
     unlockPrestige = 1,
 }

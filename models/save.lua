@@ -321,9 +321,21 @@ function Save.snapshotRun(run, player)
         end
     end
 
+    -- WHAT WAS STAKED ON THIS POSTING (models/augment.lua). It rides in the snapshot because a resume
+    -- REBUILDS the descriptor from the id alone -- so without it, quitting and reloading a run would
+    -- hand back the same expedition with the dangers removed and the materials already spent, which
+    -- is a way to un-take a bet after seeing the board.
+    local staked
+    local bounty = run.quest and run.quest.bounty
+    if bounty and bounty.staked then
+        staked = {}
+        for i, id in ipairs(bounty.staked) do staked[i] = id end
+    end
+
     return {
         questId = run.questId,
         day = run.day,
+        staked = staked,
         trip = trip,
         tripDone = tripDone,
         -- A DESCENT run: the floor stack and its seed, from which the whole board re-derives. Present
@@ -363,6 +375,19 @@ function Save.restoreRun(snap)
         -- discard a perfectly good expedition as "content removed since the run was saved".
         quest = require("models.quest").tripFromIds(snap.trip.groundId, snap.trip.questIds)
         if not quest then return nil end -- every quest on it is gone: nothing left to resume onto
+    elseif require("models.bounty").isBountyId(snap.questId) then
+        -- A POSTING the company was out on. Like the two branches around it, its descriptor is
+        -- synthesized and is not in Quest.defs, so the lookup below would discard a perfectly good
+        -- expedition as "content removed since the run was saved".
+        --
+        -- Rebuilt from the id alone, which is exactly what Bounty.questFor promises and why nothing in
+        -- it may close over a player or a run: this runs inside Save.load, where there is no player to
+        -- hand it yet.
+        local Bounty = require("models.bounty")
+        -- Rebuilt WITH ITS STAKE, or a reload would quietly undo the bet: the materials are already
+        -- spent and the dangers would come back off. See snapshotRun for why `staked` is stored.
+        quest = Bounty.stakedQuestFor(snap.questId:sub(#Bounty.ID_PREFIX + 1), nil, snap.staked)
+        if not quest then return nil end -- the posting has left the data: drop the run, keep the player
     elseif snap.descent then
         descent = Descent.restore(snap.descent)
         -- The rollback point is stored once, at the run level, and handed back to the descent here --
@@ -445,6 +470,13 @@ function Save.snapshot(player)
     local completedQuests = {}
     for questId, done in pairs(player.completedQuests or {}) do
         if done then completedQuests[questId] = true end
+    end
+
+    -- THE POSTINGS IN HAND (models/bounty.lua). Counted out rather than copied, so a zero or a
+    -- negative left by a bad write is dropped here instead of persisting as a row the board draws.
+    local bounties = {}
+    for id, n in pairs(player.bounties or {}) do
+        if type(n) == "number" and n > 0 then bounties[id] = n end
     end
 
     local materials = {}
@@ -599,6 +631,7 @@ function Save.snapshot(player)
         -- build their own previous session published. Nil on a save that never needed one.
         authorId = player.authorId,
         completedQuests = completedQuests,
+        bounties = bounties, -- postings in hand, as { bountyId = count }
         -- ERRANDS TAKEN ON AND NOT YET FINISHED, as { questId = floor } (models/errand.lua). A house
         -- asks for a small piece of work before it opens the next rung of its shelf, and the floor is
         -- stored beside the id because the shop has to be able to say WHERE to go -- an errand whose
@@ -956,6 +989,15 @@ function Save.restore(snap)
     local completedQuests = {}
     for questId in pairs(snap.completedQuests or {}) do completedQuests[questId] = true end
 
+    -- Postings in hand. An id that has left the data since the save is DROPPED rather than kept,
+    -- like every other id restored here: a board row for a bounty nobody wrote cannot be taken.
+    local bounties = {}
+    for id, n in pairs(snap.bounties or {}) do
+        if type(n) == "number" and n > 0 and known(require("models.bounty").defs, id) then
+            bounties[id] = n
+        end
+    end
+
     -- Materials are dropped if the id no longer exists in data/ (a removed tier), like every other id.
     local materials = {}
     for id, count in pairs(snap.materials or {}) do
@@ -1083,6 +1125,7 @@ function Save.restore(snap)
         staked = snap.staked ~= nil and snap.staked ~= false,
         riggedPull = known(require("models.character").defs, snap.riggedPull) and snap.riggedPull or nil,
         completedQuests = completedQuests,
+        bounties = bounties,          -- ...and a save from before the board holds no postings, which reads as none
         standing = standing,          -- absent on a save from before the descent; an empty table reads the same
         deepest = snap.deepest or 0,  -- ...and a company that has never been down has no record to beat
         wounds = wounds,              -- ...nor any bones to set

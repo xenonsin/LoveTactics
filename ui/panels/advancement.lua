@@ -383,7 +383,13 @@ function Advancement:drawGained()
         local avail = w - (tx - x) - kindW
         local font, name = Theme.fitText(Theme.body, item.name or "?", avail, 14, 11)
         love.graphics.setFont(font)
-        Theme.set(Theme.ink)
+        -- THE PIECE THE BOUNTY PROMISED WEARS THE SPOTLIGHT GOLD, and nothing else in this list does.
+        -- It is the thing the board named before the day was spent (models/bounty.lua), so it is the
+        -- one row the eye should find; amber means "look here" everywhere else in the chrome
+        -- (ui/theme.lua's accentAmber) and it is spent on exactly one row, which is what keeps it
+        -- meaning that. Quest.complete has already moved it to the front, so it can never be one of
+        -- the rows the cap truncates away.
+        Theme.set((self.reward.piece and item.id == self.reward.piece) and Theme.accentAmber or Theme.ink)
         love.graphics.print(name, tx, ry + (GAIN_ROW_H - font:getHeight()) / 2)
         if kind ~= "" then
             love.graphics.setFont(self.smallFont)

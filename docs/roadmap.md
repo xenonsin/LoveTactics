@@ -22,15 +22,47 @@ Regenerate with `& "E:\LOVE\lovec.exe" . test`, `. art-report` and `. audio-repo
 
 | | state |
 |---|---|
-| Test suite | 1326 passing, 0 failing |
-| Items | 558, all under the universal contract; 248 with a bespoke case |
-| Quests | 94 blueprints — **71 with no authored scene** |
-| Conversations | 73 — 20 of them the Bastion alone |
-| Characters | 64 blueprints |
-| Art | 131 of 644 referenced assets missing — **every portrait, character and vendor** |
-| Audio | system built and wired; **0 of 23 cues have a file** (`. audio-report`) |
-| Localization | 510 of 523 strings untranslated (`ja = ""`) |
+| Test suite | 2961 passing, 0 failing |
+| Items | 752 blueprints |
+| Characters | 154 blueprints |
+| Bounties | 7 authored openers + 14 derived rungs (`models/bounty.lua`) |
+| Quests | 7 — one surviving opener per house; the other 87 went with the board (`bedc7774`, `806ee8e7`) |
+| Conversations | 67 |
+| Art | 66 of 1013 referenced assets missing (`. art-report`) |
+| Audio | 12 of 57 cues missing (`. audio-report`) |
+| Localization | 520 strings across 67 conversations + 46 blueprints; `ja` untranslated |
 | Two-phase general fights | 0 of 7 built |
+
+> **This snapshot was stale for a long run of passes** — it read "94 quest blueprints" while
+> `data/quests/` held seven, and that wrong number was used to price a design decision before anybody
+> counted the directory. Every figure above is a command away; re-run it rather than editing it.
+
+## Phase 0 — the prologue no longer describes the game
+
+**The whole of Act 0 is premised on the rift, and the rift has left the city**
+([docs/bounties.md](bounties.md)). This is ahead of the phases below because it is the first thing a
+new player sees and it now points at a door that is not there.
+
+What is specifically stale, rather than a general unease:
+
+- **`conversation_prologue_arrival`** is Rowan's handoff and it names the building by name: *"Let's
+  collect our pay and see what work The Rift is offering."* `data/buildings/the_gate.lua` is deleted,
+  so she is pointing at nothing. Her scene's own header says *"`the_gate.lua`'s `name` must keep
+  agreeing with what she calls it"* — that agreement is now broken in the only direction it can be.
+- **The world premise she states is the count's**: *"This is what happens when the guild fails to clear
+  enough of The Rift. The deep floors get left alone, and whatever gathers down there comes up here."*
+  That is pruning — the fiction `models/descent.lua`'s tally measures — and the tally is parked. The
+  campaign's premise is now posted work: seven houses, a named body, a named piece.
+- **`conversation_prologue_village`** spends the first exposition in the game on *what a rift is*.
+  A rift breach is still a perfectly good inciting incident; what it can no longer do is set up the
+  loop the player is about to be handed.
+- **The hub's coaching bubble already moved** and says *"the Bounty Board. The houses post their work
+  there."* So the last line of Act 0 points at a stair and the first bubble of Act 1 points at a board.
+
+**This is the third time this seam has gone stale** — it was the Quest Board, then the Rift, now the
+Bounty Board — and each time the failure was the same: a scene naming a card the city no longer has.
+Worth writing the handoff so it names the ROLE (where the work is posted) rather than the building, so
+the next move costs a data edit instead of a rewrite.
 
 ## Phase 1 — close the spine
 

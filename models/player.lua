@@ -443,6 +443,14 @@ function Player.new()
         lastDeployed = {}, -- char ids fielded last battle; the deployment phase's opening pick (Player.noteDeployed)
         stash = {}, -- unequipped items; unbounded (see Player.addToStash)
         completedQuests = {}, -- quest id -> true; keeps finished quests off the board AND is a vendor's standing (Quest.sponsorProgress)
+        -- THE POSTINGS IN HAND, as { [bountyId] = count } (models/bounty.lua). Spent on taking one, win
+        -- or lose, and refilled by finishing them -- so it is the one resource that decides how much
+        -- deeper work the company may attempt before it has to fall back on a house's standing offer.
+        --
+        -- Deliberately NOT the same ledger as `completedQuests`. That one records what has ever been
+        -- finished and is what opens the next rung; this one records what may be attempted today. A
+        -- company that runs out of tier-3 postings has not lost its tier-3 standing.
+        bounties = {},
         -- Standing with each house, as { [vendorId] = circles cleared }: what a descent banks at
         -- extraction, added to the completed-quest count by Quest.sponsorProgress. The shelf, the
         -- forge's ceiling and the ability bench all open on the sum.
@@ -590,6 +598,26 @@ end
 -- Counted rather than cached. The ledger is a set keyed by id (it has to be, since order is the
 -- player's and a quest may be repeatable), and a parallel counter is one more thing New Game+ could
 -- forget to reset.
+-- HOW MANY TIMES THIS COMPANY HAS BEEN OUT AND FINISHED WHAT IT WENT FOR, by either door.
+--
+-- The one number the city grows on (models/building.lua's `unlockExpeditions`) and the one the Tactics
+-- tab waits for. It reads BOTH doors and takes the larger, which is what makes it survive the rift
+-- being parked without stranding a save that was made while the rift was the game:
+--
+--   bounties finished   the board's count (models/bounty.lua's Bounty.finished)
+--   deepest floor       the rift's high-water mark (models/descent.lua's Descent.deepest)
+--
+-- IT USED TO BE DEPTH ALONE, under the name `unlockDepth`, and the rename is the point rather than
+-- tidiness: the noun drifted the moment the stair stopped being the only way out of the city. A gate
+-- called "depth" that a company could satisfy without ever going down is a gate whose name is a lie,
+-- and the numbers on it (the Cafe at two, the Forge at four) were never about floors -- they were about
+-- how many times the company had been out.
+function Player.expeditionsOut(player)
+    local bounties = require("models.bounty").finished(player)
+    local depth = require("models.descent").deepest(player)
+    return math.max(bounties, depth)
+end
+
 function Player.questsCompleted(player)
     local n = 0
     for _ in pairs((player and player.completedQuests) or {}) do n = n + 1 end

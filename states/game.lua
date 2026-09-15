@@ -1225,6 +1225,11 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
             -- ...and raises the share cap to match. Absent (every campaign leg) the generator keeps
             -- its own 0.6.
             combatShare = mp.combatShare,
+            -- HOW MANY STOPS MAY BE RAISED A RANK. The generator has always taken this and nothing has
+            -- ever passed it -- it sat on its own default. An augment is what moves it now
+            -- (models/augment.lua's Bad Company), which is the seam that danger rides rather than a
+            -- second elite system standing beside it.
+            eliteShare = mp.eliteShare,
             -- A descent floor gives an ABSOLUTE fight cap instead, because its budget has to cover the
             -- ends this same table passes as `objectives` -- the stair, the errands, the openers -- and a
             -- share of the stop count cannot see them (models/descent.lua's Descent.FLOOR_FIGHTS).

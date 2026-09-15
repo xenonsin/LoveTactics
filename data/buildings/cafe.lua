@@ -1,6 +1,6 @@
 -- The Cafe: one supper before the road, worn by the whole company for the whole expedition.
 --
--- IT ARRIVES ON THE SECOND FLOOR (models/building.lua's `unlockDepth`). A meal is a decision made
+-- IT ARRIVES ON THE SECOND FLOOR (models/building.lua's `unlockExpeditions`). A meal is a decision made
 -- against a road you already know the shape of -- which floor, how deep, how long the company will be
 -- down there before it eats again -- and on the morning of the first descent the player knows none of
 -- that. A counter selling a buff for a trip nobody has taken is a menu read in a language not yet
@@ -21,6 +21,6 @@ return {
     -- It keeps a vendor id even so, because it keeps a shopkeeper: the portrait, the name and the
     -- one-time first-visit greeting all hang off this (states/hub.lua's vendorScenes).
     vendor = "cafe",
-    unlockDepth = 2, -- see models/building.lua
+    unlockExpeditions = 2, -- see models/building.lua
     unlockPrestige = 1,
 }

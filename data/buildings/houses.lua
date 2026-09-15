@@ -10,7 +10,7 @@
 -- a square of seven locked plates. That is a door onto a corridor of doors, and the one thing it can
 -- teach ("come back when you have played something") is a sentence the card says by not being there.
 --
--- ...AND NOT BEFORE THE STAIR HAS BEEN WALKED (`unlockDepth`), which is the gate on top of that one.
+-- ...AND NOT BEFORE THE STAIR HAS BEEN WALKED (`unlockExpeditions`), which is the gate on top of that one.
 -- The class level is what the square is FOR; the depth is about the first morning, which has exactly one
 -- thing to teach. A prologue that ends in two won fights can bank a class rung on its way into the city,
 -- so the tenant gate alone could stand this card open on the plaza next to the Rift -- a second door on
@@ -35,6 +35,6 @@ return {
     state = "houses",
     description = "Seven shelves around one square, each opened by climbing its class.",
     unlockAnyHouse = true, -- see models/building.lua
-    unlockDepth = 1,       -- ...and not on the first morning; see above
+    unlockExpeditions = 1,       -- ...and not on the first morning; see above
     unlockPrestige = 1,
 }

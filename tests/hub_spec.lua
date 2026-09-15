@@ -31,7 +31,7 @@ return {
     {
         name = "building registry discovers def files by filename",
         fn = function()
-            assert(Building.defs.the_gate, "the_gate missing")
+            assert(Building.defs.bounty_board, "bounty_board missing")
             assert(Building.defs.armory, "armory missing")
             assert(Building.defs.market, "market missing")
             assert(Building.defs.cafe, "cafe missing")
@@ -45,7 +45,8 @@ return {
                 assert(list[i - 1].order <= list[i].order,
                     "list not sorted at index " .. i)
             end
-            assert(list[1].id == "the_gate", "the Gate should sort first: it is the city's front door")
+            assert(list[1].id == "bounty_board",
+                "the Bounty Board should sort first: it is the city's front door")
         end,
     },
     {
@@ -56,7 +57,7 @@ return {
             -- door on one is locked here whatever its threshold and this case has nothing to say about
             -- it. Listed rather than spelled out one by one, so a sixth kind of deed added to the model
             -- and forgotten here fails loudly instead of quietly widening what this case claims.
-            local deeds = { "unlockQuest", "unlockDepth", "unlockUnidentified",
+            local deeds = { "unlockQuest", "unlockExpeditions", "unlockUnidentified",
                 "unlockClassLevel", "unlockAnyHouse" }
             for _, b in ipairs(Building.list(1)) do
                 local def = Building.defs[b.id]
@@ -229,7 +230,7 @@ return {
         -- rift, no supper worth buying for a road nobody has walked and nothing in the bag to forge -- so
         -- each arrives on the deed that gives it a job. Pinned card by card, because the whole value of
         -- the staging is the ORDER.
-        name = "the plaza opens on two doors, and the rest arrive on the deeds that give them work",
+        name = "the plaza opens on its two ways out, and the rest arrive on the deeds that give them work",
         fn = function()
             local Descent = require("models.descent")
             local Errand = require("models.errand")
@@ -249,13 +250,25 @@ return {
                 if not b.locked then open[#open + 1] = b.id end
             end
             table.sort(open)
-            -- TWO, AND THE MARKET IS THE ONE THAT LEFT. It stood open on the first morning for a long
-            -- time on the argument that a shelf of unaffordable things teaches the ladder -- but the
-            -- first morning has one thing to teach and it is the stair, and a counter stocks a ware only
-            -- once the company has carried one out, so the shop it opened onto was mostly locked rows
-            -- anyway (data/buildings/market.lua). It arrives on the first descent with the rest of them.
-            assert(table.concat(open, ",") == "armory,the_gate",
-                "a fresh city opens on the armory and the stair; got " ..
+            -- THE MARKET IS THE ONE THAT LEFT. It stood open on the first morning for a long
+            -- time on the argument that a shelf of unaffordable things teaches the ladder -- but a
+            -- counter stocks a ware only once the company has carried one out, so the shop it opened
+            -- onto was mostly locked rows anyway (data/buildings/market.lua). It arrives on the first
+            -- descent with the rest of them.
+            --
+            -- ...AND THE BOUNTY BOARD IS THE ONE THAT ARRIVED, which is the only card here that is
+            -- open on a fresh save WITHOUT being something you look at. It is a way OUT: posted work, a
+            -- day's walk, a body at the end of it and the piece that body owes (models/bounty.lua).
+            -- It passes this case's own rule -- a door open on the first morning must have something
+            -- behind it -- because the Bastion's opener is posted from the start.
+            --
+            -- AND THE RIFT IS GONE, which is what this line was waiting for. It stood beside the
+            -- board for one pass -- two ways out of the city on the first morning, which was a real
+            -- teaching regression and was written down as transitional. The stair left the city with
+            -- models/descent.lua parked (states/menu.lua's debug column), so the count is back to two
+            -- and the one screen a new player looks at has the work and nothing else worth pressing.
+            assert(table.concat(open, ",") == "armory,bounty_board",
+                "a fresh city opens on the armory and the board; got " ..
                 table.concat(open, ", "))
 
             -- THE INN IS NOT A CARD ANY MORE, and its absence is asserted rather than assumed: it was
@@ -393,10 +406,10 @@ return {
         name = "blueprints are untouched after Building.list",
         fn = function()
             Building.list(3)
-            local named = Building.defs.the_gate.name
+            local named = Building.defs.bounty_board.name
             Building.list(1)
-            assert(Building.defs.the_gate.name == named, "building name changed")
-            assert(Building.defs.the_gate.locked == nil, "building blueprint mutated")
+            assert(Building.defs.bounty_board.name == named, "building name changed")
+            assert(Building.defs.bounty_board.locked == nil, "building blueprint mutated")
         end,
     },
 }

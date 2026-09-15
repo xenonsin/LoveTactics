@@ -106,6 +106,44 @@ function Material.isHouse(id)
     return def ~= nil and def.class ~= nil
 end
 
+-- ---------------------------------------------------------------------------
+-- Apex trophies: the third family
+-- ---------------------------------------------------------------------------
+--
+-- A TROPHY IS NOT A HOUSE STOCK, and the distinction is load-bearing rather than tidy. House stock is
+-- keyed by `class` and indexed by it (houseIndex above), so a second material claiming `knight` would
+-- collide with Salt Iron and one of the two would win by whatever order `pairs` handed back. A trophy
+-- carries `house` -- the VENDOR -- instead, which nothing else indexes.
+--
+-- WHERE IT COMES FROM: only off a house's lieutenant or its general, and only on a repeat kill
+-- (models/bounty.lua). It cannot be dug out of a cache, bought, or found on the road.
+function Material.isTrophy(id)
+    local def = Material.defs[id]
+    return def ~= nil and def.house ~= nil
+end
+
+local trophyByHouse
+local function trophyIndex()
+    if trophyByHouse then return trophyByHouse end
+    trophyByHouse = {}
+    for id, def in pairs(Material.defs) do
+        if def.house then
+            -- ONE PER HOUSE, asserted rather than assumed: a second would make this index answer
+            -- differently on different machines, which is exactly the bug the class index can have.
+            assert(not trophyByHouse[def.house],
+                "two apex trophies claim the same house: " .. tostring(def.house))
+            trophyByHouse[def.house] = id
+        end
+    end
+    return trophyByHouse
+end
+
+-- The trophy a house's apex bodies pay, or nil for a house with none authored yet.
+function Material.trophyFor(house)
+    if not house then return nil end
+    return trophyIndex()[house]
+end
+
 -- Ordered list for any UI that enumerates materials: craft stock first by grade, then the houses by
 -- name, so the two families never interleave.
 function Material.list()

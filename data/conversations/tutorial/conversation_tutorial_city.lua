@@ -13,7 +13,11 @@
 --
 -- WHO FIELDS THEM:
 --   gate_stair  states/gate.lua  -- the descend row, until the company has actually gone down
---   rift_card   states/hub.lua   -- the first morning's one door (INTRO_STAGES)
+--   rift_card   states/hub.lua   -- RETIRED as the first morning's door; the Rift left the city
+--                                 (docs/bounties.md). Kept because the line is translated and the
+--                                 stair still exists behind the debug column.
+--   board_card  states/hub.lua   -- the first morning's one door (INTRO_STAGES). WANTS THE
+--                                 AUTHOR'S EYE: written by the pass that moved the door.
 --   new_door    states/hub.lua   -- every door the city grows afterwards, one per morning
 --
 -- new_door CARRIES A {door} TOKEN rather than a sentence, and that is the whole of what this file can
@@ -27,6 +31,7 @@ return {
     script = {
         { "character_rowan", "{select} to take the stair down.", tag = 1, id = "gate_stair" },
         { "character_rowan", "{select} the Rift. The stair down is inside.", tag = 2, id = "rift_card" },
+        { "character_rowan", "{select} the Bounty Board. The houses post their work there.", tag = 4, id = "board_card" },
         { "character_rowan", "{select} {door}", tag = 3, id = "new_door" },
     },
 }
