@@ -2828,7 +2828,11 @@ end
 -- a list of { unit, preview, initiative, previewLabel } entries in turn order (soonest first).
 -- Ordering matches Combat.turnOrder's tie-breaks so the strip agrees with the board's turn numbers;
 -- a preview ghost sorts AFTER real entries at an exact tie, so the live card stays lower in a
--- bottom-anchored strip. Every branch is guarded so comparing an entry with itself returns false (a
+-- bottom-anchored strip. A repeat slot (`again`, see Combat.repeatSlots) rides the same rails as a
+-- ghost -- it is a projection of a turn nobody has taken, so it consumes no turn number either --
+-- and the strip tells the two apart by the flag, not by how they sort.
+--
+-- Every branch is guarded so comparing an entry with itself returns false (a
 -- valid weak order -- an unguarded `return not a.preview` here would assert x < x and corrupt sort);
 -- two ghosts of the same unit only ever tie if their slots coincide, and then rank equal (fine).
 function Combat.buildTimeline(combat, ghosts)
@@ -2839,7 +2843,8 @@ function Combat.buildTimeline(combat, ghosts)
         end
     end
     for _, g in ipairs(ghosts or {}) do
-        entries[#entries + 1] = { unit = g.unit, preview = true, initiative = g.initiative, previewLabel = g.label }
+        entries[#entries + 1] = { unit = g.unit, preview = true, initiative = g.initiative,
+                                  previewLabel = g.label, again = g.again }
     end
     table.sort(entries, function(a, b)
         if a.initiative ~= b.initiative then return a.initiative < b.initiative end
@@ -2886,6 +2891,58 @@ function Combat.channelGhosts(combat)
             }
         end
     end
+    return specs
+end
+
+-- The tempo a body keeps: what one of its turns typically costs the timeline. The average speed of
+-- the ability items it can actually reach -- the very figure Combat.initiative opens the fight on,
+-- before the speed stat is taken off it -- plus any banked surge debt, which endTurn will charge.
+--
+-- AN ESTIMATE, AND ONLY EVER USED AS ONE. What a turn really costs is `moveCost + actionCost`
+-- (endTurn), and neither is knowable before the turn is taken: the ability has not been chosen and
+-- the ground has not been crossed. So nothing may be DECIDED on this -- it exists so the strip can
+-- say "this one is due round again before that one moves at all", which is a shape, not a promise.
+function Combat.turnTempo(unit)
+    local char = unit.char
+    return math.max(1, Combat.initiative(char) + Combat.speed(char) + Combat.tempoDebt(unit))
+end
+
+-- A body whose NEXT turn falls before the last body on the strip has taken its first is going to act
+-- twice, and until now the timeline had no way to say so: Combat.turnOrder emits exactly one entry
+-- per unit, so the single read a count-time battle exists to give away -- "I get two swings before
+-- that thing moves" -- was the one read it could not make.
+--
+-- Returns timeline specs (the same shape channelGhosts returns) for each such body's second turn,
+-- marked `again` so the strip can draw them as projections rather than as anybody's hypothetical.
+-- Deliberately narrow:
+--   * ONE per body, never a chain. The proposal is "twice", and a fast unit projected forward
+--     repeatedly owns the whole strip and crowds out the bodies that have not acted at all.
+--   * only slots that land inside the window the real order already covers -- past the last real
+--     entry there is nothing to compare against, so the card would say nothing.
+--   * at most MAX_REPEAT_SLOTS of them, soonest first, so a field of fast bodies cannot bury the queue.
+-- A channeling body is skipped outright: channelGhosts already owns its follow-up slot, and two
+-- projections of one unit's next turn would contradict each other.
+local MAX_REPEAT_SLOTS = 3
+function Combat.repeatSlots(combat)
+    local order = Combat.turnOrder(combat)
+    local last = order[#order]
+    if not last then return {} end
+    local horizon = last.initiative
+    local specs = {}
+    for _, u in ipairs(order) do
+        -- Never the body acting RIGHT NOW. Its next slot is already on the strip -- the aim preview
+        -- paints it while the turn is being steered and the committed move holds it afterwards -- so a
+        -- repeat card lands a second marker on the same tick and says nothing the first did not. Same
+        -- rule, and the same reason, as channelGhosts skipping the unit at 0.
+        if not u.channel and u.initiative > 0 then
+            local at = u.initiative + Combat.turnTempo(u)
+            if at < horizon then
+                specs[#specs + 1] = { unit = u, initiative = at, label = "acts again", again = true }
+            end
+        end
+    end
+    table.sort(specs, function(a, b) return a.initiative < b.initiative end)
+    while #specs > MAX_REPEAT_SLOTS do table.remove(specs) end
     return specs
 end
 

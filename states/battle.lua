@@ -4041,6 +4041,10 @@ refreshView = function()
     -- still winding up a channel -- so the resolution + follow-up the aim preview showed stay on the
     -- strip once the cast is committed (Combat.channelGhosts). Both kinds of ghost feed one build.
     local specs = Combat.channelGhosts(battle.combat)
+    -- ...and a projection of the SECOND turn of anybody due round again before the last body on the
+    -- strip has had a first (Combat.repeatSlots). A count-time battle's whole question is "how many
+    -- swings do I get before that thing moves", and one entry per unit cannot answer it.
+    for _, g in ipairs(Combat.repeatSlots(battle.combat)) do specs[#specs + 1] = g end
     for _, g in ipairs(ghosts or {}) do
         specs[#specs + 1] = { unit = current, initiative = g.initiative, label = g.label }
     end
@@ -5171,7 +5175,9 @@ function battle.enter(self, opts)
     battle.debugMenu = nil               -- the right-click debug context menu (debug builds only)
     battle.debugPickTile = nil           -- while the debug "Move to tile" is awaiting a destination click
     battle.over = false
-    battle.showInitiative = true -- initiative numbers on the turn order (F6 toggles)
+    -- The wait on each turn-order card. ON, and not as a debug default: it is the number the strip's
+    -- spacing is a picture of (ui/combat_panel.lua's drawInitiative). F6 turns it off.
+    battle.showInitiative = true
 
     -- Draft/PvP chess clock: a real-time budget per side that only runs on that side's turn, so slow
     -- play loses. A REAL-TIME overlay -- the combat model itself stays tick-based and headless; this
@@ -5773,11 +5779,12 @@ function battle.update(dt)
             resolveAdvance()
         end
     elseif not battle.over and battle.current and battle.current.channel then
-        -- The current unit is mid-channel: once the timeline has finished reshuffling into the new
-        -- order, count the think-pause down, then detonate the spell and hand off. Checked before the
+        -- The current unit is mid-channel: once the hand-off has played its uninterruptible half
+        -- (handoffStaged, as for the AI below), count the think-pause down, then detonate the spell
+        -- and hand off. Checked before the
         -- AI branch so a player's own channel resolves too (a player channeler is player-controlled,
         -- so the AI branch below would skip it).
-        if battle.panel:cardsSettled() then
+        if battle.panel:handoffStaged() then
             battle.resolveTimer = (battle.resolveTimer or 0) - dt
             if battle.resolveTimer <= 0 then
                 Combat.resolveChannel(battle.combat, battle.current)
@@ -5790,12 +5797,16 @@ function battle.update(dt)
     -- the kind of thing that reads as a hang, and the second guard costs a comparison.
     elseif not battle.over and battle.current and battle.current.control ~= "remote"
         and (not Combat.isPlayerControlled(battle.current) or battle.autoPending == battle.current) then
-        -- Hold the enemy's think-pause until the turn-strip cards have settled, so a fast chain of
-        -- AI turns never resolves out from under the card animation (the card would otherwise pop to
-        -- full size mid-slide). The player's own turn isn't gated -- input is already held elsewhere.
+        -- Hold the enemy's think-pause until the hand-off has played the half that must not be
+        -- interrupted -- the outgoing card's morph, with the queue frozen (handoffStaged) -- so a fast
+        -- chain of AI turns never resolves out from under it. It used to wait for the cards to SETTLE
+        -- completely, which put the whole 0.8s reshuffle in front of every enemy turn; the phase that
+        -- follows is the incoming card growing into its frame, which an AI thinking disturbs not at
+        -- all, and AI_DELAY is longer than that growth anyway. The player's own turn isn't gated --
+        -- input is already held elsewhere.
         -- An auto-battling player unit rides the same clock, so it reads on screen exactly like any
         -- other unit taking its turn.
-        if battle.panel:cardsSettled() then
+        if battle.panel:handoffStaged() then
             battle.aiTimer = (battle.aiTimer or 0) - dt
             if battle.aiTimer <= 0 then executeEnemyAction() end
         end
@@ -6841,7 +6852,7 @@ function battle.keypressed(key)
         Arena.save(battle.arena, (battle.arena.biome or "arena") .. "_" .. os.time())
         return
     end
-    if key == "f6" then -- debug: toggle initiative (timeline) numbers on the turn order
+    if key == "f6" then -- hide/show the wait figure on the turn-order cards
         battle.showInitiative = not battle.showInitiative
         return
     end
