@@ -231,8 +231,26 @@
       // mouse never sends it, so a desktop browser plays precisely the game the desktop build does.
       var IS_TOUCH = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
 
+      // ...and HOW BIG the screen is, which is a different question from whether it is touched: an
+      // iPad answers the pointer test exactly like an iPhone and should not get the phone's layout.
+      // screen.width/height are CSS pixels, which are angular units -- about 1.6 arcminutes on a
+      // handset at arm's length and on a monitor alike -- so the short edge is a fair proxy for how
+      // big the display really is, and one threshold serves every device (main.lua's
+      // Scale.TABLET_MIN_SHORT_EDGE). `screen` rather than `innerWidth` on purpose: the viewport
+      // shrinks for a browser chrome or a split view, and neither makes the device smaller.
+      var SHORT_EDGE = (function () {
+        var s = window.screen || {};
+        var w = s.width, h = s.height;
+        if (!(w > 0 && h > 0)) return null;
+        return Math.min(w, h);
+      })();
+
+      var LOVE_ARGS = ['./game.love'];
+      if (IS_TOUCH) { LOVE_ARGS.push('mobile'); }
+      if (SHORT_EDGE) { LOVE_ARGS.push('sw=' + SHORT_EDGE); }
+
       var Module = {
-        arguments: IS_TOUCH ? ['./game.love', 'mobile'] : ['./game.love'],
+        arguments: LOVE_ARGS,
         INITIAL_MEMORY: __MEMORY__,
         printErr: console.error.bind(console),
         canvas: (function () {

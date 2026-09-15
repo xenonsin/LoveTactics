@@ -276,16 +276,30 @@ function love.load(args)
     -- args[1], since the subcommand ladder above owns that slot.
     local os_ = love.system.getOS()
     local handheld = (os_ == "Android" or os_ == "iOS")
-    if not handheld then
-        for _, a in ipairs(args or {}) do
-            if a == "mobile" then handheld = true break end
-        end
+    -- ...and the screen's own short edge, which the browser knows exactly (`sw=<n>`, in CSS pixels)
+    -- and which a native build reads off the display. Scanned for like `mobile`, and both are
+    -- optional: an unknown size leaves shortEdge nil and the old behaviour stands.
+    local shortEdge
+    for _, a in ipairs(args or {}) do
+        if a == "mobile" then handheld = true end
+        local n = type(a) == "string" and a:match("^sw=(%d+)$")
+        if n then shortEdge = tonumber(n) end
     end
+    if handheld and not shortEdge then shortEdge = Scale.displayShortEdge() end
     Scale.allowRotate = handheld
-    -- ...and the same signal declares the screen SMALL, which the fit alone cannot work out: a native
-    -- handheld is 1280x720 at fit 1.0 and reads as a desktop, while its pixels subtend little over
-    -- half what a browser's do. See Scale.wantsHandheld.
+    -- A TABLET IS A HANDHELD WITH A BIG SCREEN, and those are two different questions that this line
+    -- used to answer with one flag. Turning, and being played with a finger, follow from the DEVICE;
+    -- the short arrangement follows from the SCREEN, and an iPad has a handset's pointer with a
+    -- laptop's display. Forcing the short space off the pointer gave every tablet the phone's fight
+    -- screen -- a 450-tall space, a 119px turn strip and a three-card queue -- on a panel with room
+    -- for the authored one.
+    --
+    -- The fit alone still cannot work it out (a native handheld is 1280x720 at fit 1.0 and reads as a
+    -- desktop while its pixels subtend half what a browser's do), so the declaration stays -- it is
+    -- just made about the display now. With no size to go on, a handheld declares itself small
+    -- exactly as before, so an unknown device is no worse off than it was.
     Scale.forceHandheld = handheld
+        and (shortEdge == nil or shortEdge < Scale.TABLET_MIN_SHORT_EDGE)
     -- The same signal says the game is played with a FINGER, which has no hover for a drawn cursor
     -- to follow (see input_mode.lua). Start in touch mode rather than waiting for the first tap to
     -- say so, or the glyph appears on that tap and strands itself there.

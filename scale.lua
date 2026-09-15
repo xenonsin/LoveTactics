@@ -106,6 +106,27 @@ Scale.HANDHELD_MIN_W, Scale.HANDHELD_MAX_W = 880, 1120
 -- draw time and simply follow -- but a cached rect that does not is a panel drawn for the last shape.
 Scale.spaceEpoch = 0
 
+-- A TABLET IS NOT A PHONE, and the difference is the SCREEN rather than the finger. The short edge
+-- of the display, in CSS pixels or iOS points -- which are angular units, ~1.6 arcminutes whether
+-- they are on a handset at 350mm or a monitor at 600mm, which is the whole reason one threshold can
+-- serve both (see the arcminute rule the type floors came from). Below this the screen really is
+-- small and the short space is the only way the fight fits; at or above it there is room for the
+-- authored one, and an iPad should get the same screen a laptop does.
+--
+-- 600 is Android's own sw600dp, which is this exact decision and is the best-tested line there is:
+-- an iPhone 15 Pro Max is 430 across, an iPad mini 744 and an iPad Pro 11" 834.
+Scale.TABLET_MIN_SHORT_EDGE = 600
+
+-- The display's short edge in those units, or nil when nothing can say. Window units in LOVE 11 are
+-- already DPI-scaled -- points on iOS, dp on Android -- so the desktop dimensions ARE the figure
+-- wanted, with no density arithmetic. The web build passes its own instead (main.lua), because a
+-- browser knows its CSS viewport exactly and should not be second-guessed from the canvas.
+function Scale.displayShortEdge()
+    local ok, w, h = pcall(love.window.getDesktopDimensions)
+    if not (ok and type(w) == "number" and type(h) == "number" and w > 0 and h > 0) then return nil end
+    return math.min(w, h)
+end
+
 Scale.HANDHELD_ENTER = 0.80 -- drop to the handheld arrangement below this fit...
 Scale.HANDHELD_EXIT  = 0.90 -- ...and only climb back out above this one
 Scale.forceHandheld = false -- a screen that knows it is small however the arithmetic reads

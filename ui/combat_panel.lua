@@ -101,10 +101,17 @@ local SOLIDIFY_SPEED = 20 -- ease rate a just-committed preview ghost solidifies
 -- what initiative means in a count-time battle (models/combat.lua's header).
 --
 -- Capped, because one long wait must not push the rest of the queue off the top of the panel: past
--- TICK_MAX the distance stops growing and the number on the card carries the rest. The cap is one
--- slim card tall, so "further than a whole card" reads as "a long way off" and stops there.
+-- the cap the distance stops growing and the number on the card carries the rest. One slim card
+-- tall, so "further than a whole card" reads as "a long way off" and stops there.
+--
+-- BOTH ARE MEASURED AGAINST THE BAND THEY HAVE TO FIT IN, not fixed. These figures are right for a
+-- desktop strip, which is 270px and holds six cards; a handheld sends the queue to the left column
+-- where the band is 119px and holds three (states/battle.lua's syncLayout), and spending a whole
+-- 34px card of air there costs a THIRD of the queue rather than a sixth. So relayout scales them by
+-- how much room there actually is, and the numbers below are what that scaling produces at full size.
 local PX_PER_TICK = 5
 local TICK_MAX = SLIM_H
+local BAND_REF = 270 -- the desktop band these two were chosen against
 -- The rail the spacing is measured against: a mark where a body of each whole tick would stand.
 -- Deliberately UNLABELLED -- every card already carries its own figure (drawInitiative), and a second
 -- set of numbers down the edge would be the same reading twice.
@@ -1038,11 +1045,21 @@ end
 -- "now"), at PX_PER_TICK a tick and capped at TICK_MAX. This is the whole of P04 -- everything else
 -- about the strip's geometry is unchanged. Returns 0 with nothing below it, and for an entry that
 -- sorts at or before the one under it (two ghosts of the same slot, a tie).
-local function airAbove(entry, below)
+-- Derived from the LIVE band rather than cached in relayout, because relayout runs before the host
+-- has said where the strip is going: states/battle.lua calls it and only then moves the queue to the
+-- left column. Two subtractions a card is cheaper than a stale scale.
+function CombatPanel:tickScale()
+    local band = self:upcomingBottom() - self.stripTop
+    local k = math.max(0.25, math.min(1, band / BAND_REF))
+    return PX_PER_TICK * k, TICK_MAX * k
+end
+
+function CombatPanel:airAbove(entry, below)
     if not entry or not below then return 0 end
     local d = (entry.initiative or 0) - (below.initiative or 0)
     if d <= 0 then return 0 end
-    return math.min(d * PX_PER_TICK, TICK_MAX)
+    local px, cap = self:tickScale()
+    return math.min(d * px, cap)
 end
 
 -- Stack the upcoming (slim) cards upward from the region's floor, starting `scroll` entries along,
@@ -1060,7 +1077,7 @@ function CombatPanel:stackUpcoming(entries, startIndex, scroll)
     for i = startIndex, #entries do
         skipped = skipped + 1
         if skipped > scroll then
-            y = y - airAbove(entries[i], below)
+            y = y - self:airAbove(entries[i], below)
             local top = y - SLIM_H
             if top < self.stripTop then break end
             out[#out + 1] = { entry = entries[i], index = i, y = top }
@@ -1277,19 +1294,31 @@ end
 -- Unlabelled on purpose: every card already carries its own figure (drawInitiative), and a second
 -- column of numbers down the edge is the same reading twice.
 function CombatPanel:drawTickRail(layout)
-    -- Only cards standing in the STRIP's own band. On a handheld the queue is sent to the left column
-    -- while the acting card stays in the panel (relayout's stripFloor), and a rail measured against a
-    -- card in the other column would run down the left edge past every card it was drawing for.
-    local floor = self.stripFloor or self.stripBottom
+    -- Only rows standing in the STRIP's own COLUMN, and the test is which column rather than where on
+    -- the screen. On a handheld the queue goes to the left column while the acting card stays in the
+    -- panel (relayout's stripFloor), and that card sits ABOVE the band rather than below it -- so a
+    -- "is it past the floor" test let it in, put the rail's lowest tick at the top of the screen and
+    -- inverted the whole scale, which the span guard below then threw out. The rail simply never drew
+    -- on a handheld. Comparing x says what was meant and cannot be fooled by which way the other
+    -- column lies; on a desktop both columns are the same one, so nothing changes there.
+    local stripX = self.stripX + 8
     local pts = {}
     for _, e in ipairs(layout) do
         local entry = e.entry
         -- EVERY row, hypothetical or not. They are all placed by the same initiative, so they are all
         -- samples of the same mapping -- and a rail built from live cards alone stops at the last one
         -- and leaves the top half of the strip, which is mostly projections, unmeasured.
-        if entry.initiative and e.y + e.h <= floor + 1 then
+        if entry.initiative and e.x == stripX then
             pts[#pts + 1] = { t = entry.initiative, y = e.y + e.h / 2 }
         end
+    end
+    -- ...and the ZERO the rest are measured from, which is the acting body. Its card is the anchor
+    -- when it stands in this column; when it does not, the anchor is the floor the queue stacks off
+    -- (upcomingBottom), which is precisely the height a body at the acting initiative would occupy --
+    -- it is where stackUpcoming starts measuring. Without this a handheld rail has no zero at all.
+    local acting = self:orderList()[1]
+    if acting and not acting.preview and self.stripFloor then
+        pts[#pts + 1] = { t = acting.initiative or 0, y = self:upcomingBottom() }
     end
     if #pts < 2 then return end
     table.sort(pts, function(a, b) return a.t < b.t end)
