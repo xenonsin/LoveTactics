@@ -378,6 +378,83 @@ return {
                 "still won by cutting the Champion down")
         end,
     },
+    -- ----- the scripted beat: the Champion fells Rowan at its last stage -----
+    {
+        name = "the last stage crosses the board and puts Rowan down, and nothing on her can refuse it",
+        fn = function()
+            -- She stands as far from the boss as the board allows, wearing every answer the game has to
+            -- a blow: a ward to eat it, and a guard beside her to take it instead. A scripted beat that
+            -- any of those can deny is one the player will replay the fight trying to deny.
+            local c = Combat.new(arena(8, 8),
+                { unit("character_rowan", 1, 1), unit("character_knight", 2, 1) },
+                { unit("character_demon_champion", 8, 8) })
+            local rowan, boss = c.units[1], c.units[3]
+            Status.apply(c, rowan, "status_physical_barrier", { magnitude = 5 })
+            for _, u in ipairs(c.units) do
+                if u.side == "party" then u.guard = { kind = "oathward", cooldown = 0 } end
+            end
+
+            local hp = boss.char.stats.health
+            hp.current = math.floor(hp.max * 0.32) + 1
+            Combat.dealFlatDamage(c, boss, 1, nil, "test")
+
+            assert(not rowan.alive, "the beat fells her through the ward and the interpose alike")
+            assert(rowan.noRevive, "and seals the window, so nothing puts her back up this battle")
+            assert(not rowan.incapacitated, "sealed means a corpse, not a countdown somebody can answer")
+            assert(math.max(math.abs(boss.x - rowan.x), math.abs(boss.y - rowan.y)) <= 1,
+                "it crossed the ground to reach her rather than killing from where it stood")
+        end,
+    },
+    {
+        name = "a felled companion is still carried off the won board -- felled is not killed",
+        fn = function()
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) },
+                { unit("character_demon_champion", 5, 5) })
+            local rowan = c.units[1]
+            assert(Combat.fell(c, rowan), "the scripted beat puts her down")
+            assert(not rowan.alive and rowan.noRevive, "sealed for the rest of the fight")
+
+            -- The seal is a BATTLE rule. Combat.reviveFallenParty reads char.revivable, not this flag,
+            -- which is what lets the story fell somebody it needs walking around in the next scene.
+            local carried = Combat.reviveFallenParty(c)
+            local sawRowan = false
+            for _, char in ipairs(carried) do sawRowan = sawRowan or char.id == "character_rowan" end
+            assert(sawRowan, "she is carried out of the won fight like any other casualty")
+            assert(rowan.alive, "and stands up on the far side of it, to be wounded rather than lost")
+        end,
+    },
+    {
+        name = "the fell entry is prologue-only: exactly one, aimed at Rowan, on the Champion's own relic",
+        fn = function()
+            -- The Champion's header offers it as a reusable mid-tier demon boss. Rowan is in the party
+            -- for the rest of the game, so a second fight fielding THIS relic would fell her again in a
+            -- scene nobody wrote. Reuse it with a twin relic that drops this entry; never with this one.
+            local Item = require("models.item")
+            local sigil = Item.defs["utility_demon_sigil"]
+            local found = {}
+            for _, phase in ipairs(sigil.phases or {}) do
+                for _, r in ipairs(phase.responses or {}) do
+                    if r.kind == "fell" then found[#found + 1] = { at = phase.at, target = r.target } end
+                end
+            end
+            assert(#found == 1, "one scripted felling, not two")
+            assert(found[1].target == "character_rowan", "and it is aimed at the body the scene is about")
+            assert(found[1].at == 0.33,
+                "at the LAST stage: felled at two-thirds the avatar finishes 100 health solo and loops")
+
+            -- Nothing else in the game may carry a scripted felling without a scene to justify it.
+            local bearers = {}
+            for id, item in pairs(Item.defs) do
+                for _, phase in ipairs(item.phases or {}) do
+                    for _, r in ipairs(phase.responses or {}) do
+                        if r.kind == "fell" then bearers[#bearers + 1] = id end
+                    end
+                end
+            end
+            assert(#bearers == 1 and bearers[1] == "utility_demon_sigil",
+                "the Sigil is the only relic that fells a named body by script")
+        end,
+    },
     {
         name = "the caravan defense now introduces the self-destruct Bomblet as a wave",
         fn = function()

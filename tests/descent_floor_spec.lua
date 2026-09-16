@@ -443,16 +443,24 @@ return {
         -- 60 descent`) with a wide margin under it. It is not a target -- it is the wall that says a
         -- later retune of either endpoint has quietly rebuilt the thing the budget was cut to fix.
         --
-        -- THE BAND MOVED WITH THE STACK, and the old one is worth recording because it was measuring a
-        -- different game: 90-140 was cut for a FIFTEEN-floor descent you could bank progress in and walk
-        -- across many sittings. The descent resets when you leave it now, so the whole stack has to be
-        -- walkable in one run -- eight floors, and about seventy-six fights. The ceiling is what stops a
-        -- later retune quietly rebuilding the marathon; the floor is what stops one hollowing the run
-        -- out into a corridor.
+        -- THE BAND HAS MOVED TWICE AND BOTH READINGS ARE WORTH KEEPING, because each was measuring a
+        -- different game and the third one is measuring a different game again:
+        --
+        --   90-140   a FIFTEEN-floor descent you could bank progress in and walk across many sittings.
+        --   60-110   eight floors, ~76 fights: the stack reset on leaving, so all of it had to be
+        --            walkable in one go and one go was the whole campaign.
+        --   20-40    what is cut here. The run is not the campaign any more -- it is an ATTEMPT at a
+        --            distance (models/descent.lua's FLOOR_FIGHTS header), so the unit is not what a
+        --            complete descent totals but what one sitting costs. ~28 fights is about
+        --            fifty-five minutes of combat, which is a thing a player starts again.
+        --
+        -- The ceiling is what stops a later retune quietly rebuilding the marathon. The floor is what
+        -- stops one hollowing the attempt out into a corridor -- below twenty, a run ends before the
+        -- snowball it is built around has anything in it.
         local total = 0
         for f = 1, Descent.FLOORS do total = total + Descent.floorFights(f) end
-        assert(total >= 60 and total <= 110, string.format(
-            "a descent bills %d fights end to end, outside the 60-110 a resettable run is cut to", total))
+        assert(total >= 20 and total <= 40, string.format(
+            "a descent bills %d fights end to end, outside the 20-40 one sitting is cut to", total))
     end },
 
     { name = "the deepest floor is still one connected place", fn = function()

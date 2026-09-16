@@ -141,7 +141,6 @@ return {
     "utility_codex_of_hubris",
     "utility_cutpurse_tally",
     "utility_deadhand_grip",
-    "utility_demon_sigil",
     "utility_distant_sigil",
     "utility_duelists_poise",
     "utility_falconers_glove",

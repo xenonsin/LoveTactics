@@ -8,7 +8,10 @@
 -- Signature ground: quicksand. Mired doubles what a step and a cast cost, which on the one board
 -- already built around slow crossings is the difference between arriving and not.
 return {
-    name = "Desert",
+    -- A PLACE, not a terrain category -- the id is the category, the name is what the board calls it
+    -- (models/biome.lua's naming note). The ridges are the bones of it, and there is nothing else to
+    -- stand behind.
+    name = "Ribstone Waste",
     tileset = "desert", -- data/tilesets/desert.lua (art for this biome)
     layout = "open", -- a plain with ridges and one walled ruin (models/layouts/open.lua)
     spacing = 5, -- 1-wide tracks, 4-tile-thick dune fill: the loosest maze, longest sightlines

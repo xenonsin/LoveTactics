@@ -25,10 +25,21 @@
 -- hours she never put on display. It lives on the Ledger's trait and not here because a blueprint's own
 -- `traits` field is never collected -- only an item's is (models/trait.lua).
 --
--- `boss = true` gives the recruit fight its integrity: the crown-backed Arcanum brands its own radical and
--- hires you to bring her in (data/quests/arcanum_the_radical.lua); best her and she is yours
--- (Player.recruit), exactly as the Cathedral keeps Amana and the Colosseum keeps Saber. It goes inert the
--- moment she is an ally, when only the Ledger's concealment still stands.
+-- `boss = true` gives the recruit fight its integrity: best her and she is yours (Player.recruit), exactly
+-- as the Colosseum keeps Saber. It goes inert the moment she is an ally, when only the Ledger's
+-- concealment still stands.
+--
+-- HER ACTUAL POSTING IS data/quests/arcanum/quest_arcanum_slot_01.lua, "The Sunken Sanctum" -- looters
+-- reached a flooded reading room first and the Arcanum would like its book back. The line that stood here
+-- described a different quest entirely (a crown-backed manhunt for the college's own radical, at
+-- `data/quests/arcanum_the_radical.lua`) and that file has never existed; the manhunt is the story
+-- docs/story.md tells about her, not the errand the game runs. Corrected rather than deleted because the
+-- premise is worth keeping in view if the opener is ever rewritten to match it.
+--
+-- SHE IS THE SCRIPTED COMPANION NOW (models/descent.lua's Descent.SCRIPTED_COMPANION): met on floor one of
+-- every descent until she joins, because the company walks out of Act 0 with three against an expedition
+-- cap of four and the seat that is open is the magic one. Read the note on that constant before moving
+-- her -- it carries the argument, including what her late-paying Ledger costs a first-time player.
 return {
     name = "Gyeom",
     kind = "humanoid",
@@ -45,10 +56,41 @@ return {
     -- grew formidable. A body that gets better BY LEVELLING, in the working and in the reserve to keep
     -- doing it, is that sentence written as arithmetic rather than said in a header.
     personalGrowth = { magicDamage = 1, mana = 1 },
+    -- REBALANCED TO THE MAGE TEMPLATE, 80/18 (data/characters/character_mage.lua), which restores the
+    -- standing rule rather than excusing another body from it: a companion copies its generic's magic side
+    -- whole, and Rowan holds the knight's 15/4, Saber the fighter's 5/3, Clem the rogue's 8/3.
+    --
+    -- SHE SHIPPED AT 46/6 AND ONE LINE OF ARITHMETIC CONDEMNS IT. Per-hit magic damage is `ability power +
+    -- the caster's MagicDamage - MagicDefense` (models/combat.lua), so on floor one the AVATAR threw HER
+    -- Fire Bolt for 6+16 = 22 and she threw it for 6+6+2 = 14. A classless body that was handed a sword
+    -- out-cast the specialist by half again, from turn one, with the same spell. And 6 sat below both
+    -- healers (Amana 9, Ren 8), each of whose header says outright that she does not kill. A mage who is
+    -- the worst caster in the game is not understated, she is broken.
+    --
+    -- "SHE READS WEAK ON PURPOSE" WAS BUYING NOTHING, and that is what settles the number. The claim was
+    -- that a suppressed sheet is her edge against Pride -- "a spell answered off her suppressed value is
+    -- answered off nothing" -- but data/traits/trait_counter_magic.lua reads no such value. The counter is
+    -- FLAT: it unravels a single-target spell whole, for a fixed mana price, and its own header says it
+    -- "eats a Meteor exactly as it eats a spark". So the suppression was prose describing a mechanism that
+    -- was never implemented, and it was being paid for in every fight of the game to buy an interaction in
+    -- one that does not exist. The real counter-play against Pride is the cooldown -- bait the reflex with
+    -- a cheap cast, then land the one that matters -- which is exactly the shape of her kit (a stream of
+    -- bolts, then the Release) and works at any base at all.
+    --
+    -- WHAT THE CHARACTER IS NOW, since it is not "the weak one": she is the mage who was never a prodigy
+    -- and trained anyway, and that reads in the ARC rather than in a low sheet. She arrives a full mage --
+    -- 18 against the avatar's 16 -- and Diligence still carries her up from there while a fight runs, so a
+    -- long fight is study and not downtime (data/traits/trait_ledger_diligence.lua). The Release rose with
+    -- her for free, 32 -> 44, because it scales off MagicDamage; its own curve was left alone.
     stats = {
-        health = 56, mana = 46, stamina = 10,
+        -- 80 is the mage template's pool, and it was never the judgment call: "a long fight is study, not
+        -- downtime" is unsayable on a body that is dry by the third cast. 46 bought two bolts and a Release.
+        health = 56, mana = 80, stamina = 10,
         staminaRegen = 2,
-        damage = 4, magicDamage = 6,    -- suppressed on purpose: she does not fight to be seen
+        -- The mage's own number. She is the specialist; she out-throws the reference body
+        -- (models/balance.lua's REFERENCE avatar, at 16) from the turn she joins, which is what every
+        -- other companion's class side does for its own school.
+        damage = 4, magicDamage = 18,
         defense = 7, magicDefense = 11, -- warded against the magic her line traffics in
         movement = 4,
         speed = 3,

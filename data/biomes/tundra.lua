@@ -12,7 +12,9 @@
 -- Signature ground: black ice, which Cripples whoever finds it -- the only thing on the board that
 -- costs a step, which is what makes the ROUTE across an otherwise open field worth choosing.
 return {
-    name = "Tundra",
+    -- A PLACE, not a terrain category (models/biome.lua's naming note). Named for the part of the cold
+    -- that did not set: the meltwater leads are the only thing on an open field worth routing around.
+    name = "Meltwater Reach",
     tileset = "tundra", -- data/tilesets/tundra.lua (art for this biome)
     layout = "floes", -- open flats quartered by meltwater (models/layouts/floes.lua)
     spacing = 3, -- between the forest's open trails and the castle's warren

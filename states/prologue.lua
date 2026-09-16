@@ -358,6 +358,28 @@ local function buildBeats()
         -- states/game.lua plays with no `deferJoins`, so Conversation.drainJoins folds it on there.
         -- Every companion is announced this way; the prologue does not special-case its first one.
         overworld(FLIGHT_QUEST),
+        -- THE CHAMPION FELLS ROWAN AT ITS LAST STAGE, and this is where that is collected on. The
+        -- `fell` response on its relic puts her down by script at 33% (utility_demon_sigil.lua), the
+        -- objective's win writes the wound to the ledger (states/game.lua's inflictWounds), and the
+        -- company carries her into the Cathedral -- which is where Amana is, and why she comes.
+        --
+        -- ABOVE GROUND, AND IT IS THE ONLY JOIN THAT IS. Amana used to stand on floor one of every
+        -- descent until she joined (models/descent.lua's SCRIPTED_COMPANION), recruited by clearing her
+        -- posting like the other six. A healer who joins because somebody in front of her is hurt is
+        -- the same recruit with a reason, and it puts the party at three before the first descent
+        -- instead of after it -- which matters because the expedition cap is four and a company of two
+        -- plays the run the whole premise is scored on (how far can you go) two-handed.
+        --
+        -- THE WOUND IS LIVE FOR EXACTLY THIS STRETCH. hub.enter clears the ledger free, so Rowan is
+        -- hurt from the Champion's last stage until the city gate and whole on the far side of it --
+        -- the fiction and the mechanic agree with no special case, and reaching the city IS the mending.
+        -- Do not add a healing counter to the Cathedral to "pay off" this scene; there is nothing to pay
+        -- off (models/wound.lua's header argues the whole case, twice reversed).
+        scene("conversation_prologue_infirmary"),
+        -- Her banner ("[Amana has joined your Party]") is queued here and folds onto the next FULL
+        -- scene, which is the hub's own first-visit staging -- the same route Rowan's takes two beats
+        -- up. The prologue still special-cases nobody.
+        action(function() Player.recruit(Player.active, "character_amana") end),
         -- The Champion falls and the prologue ends with it: prologue.next past the last beat opens the
         -- hub, which is the SAME CITY the sweep was fought through -- there is no journey between the
         -- two. The first-visit staging is the hub's (states/hub.lua reads the hubIntro

@@ -85,10 +85,26 @@ end
 --
 -- The name is what it was when this asked whether a shop's door had opened, and the question has not
 -- really changed: one piece of work, done or not. What changed is what it buys.
+--
+-- IT ASKS THE ROSTER TOO, AND THAT HALF IS LOAD-BEARING. The quest ledger answers "did they finish the
+-- posting"; every caller actually wants "are they walking with us", and those came apart the moment a
+-- companion could join anywhere but underground. Amana now joins ABOVE ground, in the prologue's
+-- Cathedral scene (states/prologue.lua), so her opener is never completed -- and on the ledger alone
+-- this would report her door shut forever: the descent would keep standing her on a floor to be met by
+-- a company she is already in, and the deck would keep dealing the Cathedral instead of one of the six
+-- houses that still have somebody to give (models/descent.lua's dealCompanion reads exactly this).
+--
+-- The roster test is the more honest one anyway. The posting is a ROUTE to the companion, not the fact
+-- about them, and asking after the route makes every future scripted join a silent duplicate.
 function Errand.doorOpen(player, vendorId)
     local opener = Errand.opener(vendorId)
     if not opener then return true end
-    return ((player and player.completedQuests) or {})[opener] == true
+    if ((player and player.completedQuests) or {})[opener] == true then return true end
+    local companion = Errand.companionOf(vendorId)
+    for _, char in ipairs((player and player.roster) or {}) do
+        if char.id == companion then return true end
+    end
+    return false
 end
 
 -- The floor a companion's ask is found on: the one they were met on, which is where it was marked.

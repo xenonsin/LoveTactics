@@ -6533,6 +6533,36 @@ local function killUnit(combat, target)
     leaveTurn(combat, target)
 end
 
+-- FELL A BODY BY SCRIPT: put `target` down where it stands, outside the damage pipeline entirely.
+--
+-- THIS IS NOT A BIG BLOW, AND THE DISTINCTION IS THE POINT. Every route through dealFlatDamage can be
+-- denied -- an Oathward steps in front of it, a barrier eats it, an immunity voids it, the Sealed Hour
+-- defers it -- and each of those is a correct answer to an ATTACK. A scripted beat is not an attack:
+-- it is the story stating what happened, and a player who parries it has been told the fight was
+-- winnable in a way it was not. Worse, they will replay the fight trying to save the body, because
+-- every other unavoidable thing in this game is telegraphed and answerable, so the one that isn't
+-- reads as their own misplay. So the pipeline is skipped rather than overwhelmed: no roll to beat, no
+-- number to out-armor, nothing to position around.
+--
+-- `opts.denyRevival` (default TRUE here, unlike a felling blow's) also seals the incapacitation
+-- window, so no Revive, scroll or Salts puts the body back up this battle. That is the same seam the
+-- Necromancer's severing kit uses (see dealFlatDamage's fatal branch), and for the same reason: the
+-- script has to hold for the rest of the fight or it is not a script. Pass `denyRevival = false` for a
+-- scripted downing that the party IS meant to be able to answer.
+--
+-- The body still comes back after the battle like any other party casualty (Combat.reviveFallenParty,
+-- which reads `char.revivable` and not this flag), so
+-- this fells a companion without killing them -- which is what makes it usable on somebody the story
+-- needs walking around afterwards.
+function Combat.fell(combat, target, opts)
+    if not (target and target.alive) then return false end
+    opts = opts or {}
+    if opts.denyRevival ~= false then target.noRevive = true end
+    target.char.stats.health.current = 0
+    killUnit(combat, target)
+    return true
+end
+
 -- An adjacent ally may throw itself in front of a blow aimed at `target`, taking it instead. Returns
 -- the guardian to strike (and spends its intercept) or nil for no redirect. Two guard kinds, both set
 -- by an onCombatStart trait onto `unit.guard`:

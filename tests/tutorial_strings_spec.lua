@@ -173,7 +173,7 @@ return {
             end
 
             local hub = source("states/hub.lua")
-            assert(hub:find("\"board_card\"", 1, true), "the first morning's bubble lost its line id")
+            assert(hub:find("\"rift_card\"", 1, true), "the first morning's bubble lost its line id")
             assert(hub:find("\"new_door\"", 1, true), "a grown door's bubble lost its line id")
 
             -- The window widget's footer is the one string it owns, and it must be picked as an ID

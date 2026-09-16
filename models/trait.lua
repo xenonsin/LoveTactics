@@ -802,6 +802,23 @@ local function ctxFor(combat, unit, trait, event)
             if not tgt then return 0 end
             return Combat.dealFlatDamage(combat, tgt, amount, tags, trait.name or trait.id)
         end,
+        -- Put a body down BY SCRIPT, outside the damage pipeline (Combat.fell). Not a blow: no guardian
+        -- steps in front of it, no barrier eats it, no armor softens it, and by default the
+        -- incapacitation window is sealed so nothing raises the body again this battle. What a
+        -- STORY BEAT reaches for -- the boss that fells the mentor at the turn of its last stage -- and
+        -- deliberately awkward to reach for anything else: an ordinary rule that wants somebody dead
+        -- should hit them, and be answerable for it.
+        fell = function(tgt, opts) return Combat.fell(combat, tgt, opts) end,
+        -- The living unit on this side, or the other, whose CHARACTER is `charId` -- what a scripted
+        -- response needs to find the one body a beat is written about, wherever it happens to be
+        -- standing. Returns nil when that character is not on the board (or is already down), which is
+        -- the caller's cue to do nothing rather than to improvise a different victim.
+        unitOf = function(charId)
+            for _, u in ipairs(combat.units or {}) do
+                if u.alive and u.char and u.char.id == charId then return u end
+            end
+            return nil
+        end,
         heal = function(tgt, amount)
             if not tgt then return 0 end
             return Combat.applyHeal(combat, tgt, amount)

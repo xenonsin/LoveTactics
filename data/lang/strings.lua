@@ -352,6 +352,10 @@ return {
     ["line.conversation_prologue_arrival.3"] = { en = "This is what happens when the guild fails to clear enough of The Rift.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.4"] = { en = "The deep floors get left alone, and whatever gathers down there comes up here.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.5"] = { en = "Let's collect our pay and see what work The Rift is offering, {name}.", ja = "" },  -- TODO
+    ["line.conversation_prologue_infirmary.1"] = { en = "PLACEHOLDER -- she takes Rowan's weight without being asked.", ja = "" },  -- TODO
+    ["line.conversation_prologue_infirmary.2"] = { en = "PLACEHOLDER -- what the city does for the people who go into the rift.", ja = "" },  -- TODO
+    ["line.conversation_prologue_infirmary.3"] = { en = "PLACEHOLDER -- she minds being carried more than she minds the wound.", ja = "" },  -- TODO
+    ["line.conversation_prologue_infirmary.4"] = { en = "PLACEHOLDER -- she asks to come, and says what she is for.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.1"] = { en = "Not too bad for your first job, but there's no time to rest.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.2"] = { en = "Let's move to clear out the remaining demons and find survivors.", ja = "" },  -- TODO
     ["line.conversation_prologue_village.1"] = { en = "The demons that breached through the rift are up ahead, {name}.", ja = "" },  -- TODO
@@ -510,6 +514,7 @@ return {
     ["title.conversation_hunters_lodge_slot_01_outro"] = { en = "The Antlers", ja = "" },  -- TODO
     ["title.conversation_hunters_lodge_vendor_intro"] = { en = "The Hunter's Lodge", ja = "" },  -- TODO
     ["title.conversation_prologue_arrival"] = { en = "After the Breach", ja = "" },  -- TODO
+    ["title.conversation_prologue_infirmary"] = { en = "The Cathedral", ja = "" },  -- TODO
     ["title.conversation_prologue_ruins"] = { en = "First Job", ja = "" },  -- TODO
     ["title.conversation_prologue_village"] = { en = "The Breach", ja = "" },  -- TODO
     ["title.conversation_touchstone_vendor_intro"] = { en = "The Touchstone", ja = "" },  -- TODO

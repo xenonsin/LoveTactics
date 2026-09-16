@@ -484,7 +484,32 @@ Descent.FLOORS_PER_CIRCLE = 1
 -- when the stack did: difficulty already climbs on every other axis down here, so a fight count that
 -- climbed harder would be charging twice for the same descent. Raising both ends by two keeps the
 -- proportion identical and leaves the pin honest.
-Descent.FLOOR_FIGHTS = 8
+--
+-- ---------------------------------------------------------------------------
+-- AND THEN THE RUN STOPPED BEING THE CAMPAIGN. Everything above is kept because its arithmetic is
+-- still right; what moved is the thing it was solving for.
+-- ---------------------------------------------------------------------------
+--
+-- Eight-to-eleven was authored when ONE RUN WAS THE WHOLE GAME -- a complete descent was the campaign,
+-- so seventy-six fights was a campaign's worth of fighting and floors were made bigger precisely so a
+-- run ending on floor two would not feel like it ended before it started.
+--
+-- The premise is a DISTANCE RUN now: how far can you go, with a build you brought and a snowball you
+-- pick up on the way down. That changes the unit the number is spent in. A score is attempted over and
+-- over, so what matters is not what a complete descent totals -- there is no complete descent -- it is
+-- WHAT ONE ATTEMPT COSTS IN AN EVENING. Seventy-six fights at two minutes each is two and a half hours
+-- of combat before any walking, and nobody starts that again at eleven at night.
+--
+-- THREE AND FOUR, worked backwards from the session rather than forwards from the stack. A strong run
+-- of fifty-five minutes is about twenty-eight fights; at three-to-four a floor that is eight or nine
+-- floors deep, and a bad run is over in fifteen minutes with something learned. It also makes the score
+-- READ: depth is the number the player is chasing (S-1 on the round-2 board), and "I got to fourteen"
+-- is a figure where "I got to four" is not.
+--
+-- WHAT DOES NOT CHANGE IS THE SPAN -- still one rung between the top and the bottom in proportion, for
+-- the reason three paragraphs up: difficulty already climbs on every other axis, so the fight count must
+-- not charge twice for the same descent.
+Descent.FLOOR_FIGHTS = 3
 
 -- WHAT THE BOTTOM HOLDS, and the whole argument is in how little it is above the top.
 --
@@ -508,7 +533,12 @@ Descent.FLOOR_FIGHTS = 8
 -- likely to move (Descent.FLOORS_PER_CIRCLE is one constant away from twenty-two floors) and a step
 -- would silently re-price the bottom every time it did. An endpoint holds its meaning: whatever the
 -- stack turns out to be, the last floor of it asks for nine.
-Descent.FLOOR_FIGHTS_DEEP = 11
+--
+-- FOUR NOW, and that paragraph is the reason this re-cut was one line rather than a pass. The endpoint
+-- was authored so the run's length could move without re-pricing anything, and under the distance
+-- premise the length moved to "as far as you get" -- which is the largest move it could make. The ramp
+-- restretched itself; nothing else here had to be touched. See FLOOR_FIGHTS above for why three.
+Descent.FLOOR_FIGHTS_DEEP = 4
 
 -- How many fights floor `f` may hold in all -- its ends included. Linear between the two constants
 -- above and rounded, so the climb is the same shape whatever the run's length turns out to be.
@@ -921,8 +951,9 @@ end
 -- steps. That is a floor you have to CHOOSE how much of to see -- which is the decision one-step sight
 -- exists to create, and the decision a floor small enough to sweep cannot offer.
 --
--- The stop budget does NOT move with it. Descent.FLOOR_FIGHTS is still six climbing to nine, argued
--- from Dream Quest and Darkest Dungeon, so a bigger floor is a THINNER one rather than a longer sitting
+-- The stop budget does NOT move with it. Descent.FLOOR_FIGHTS is three climbing to four (it read "six
+-- climbing to nine" here long after the constants said eight and eleven, and now says neither -- see
+-- that header for the distance-run re-cut), so a bigger floor is a THINNER one rather than a longer sitting
 -- -- about a fifth of the places holding something against half at six a side. That is the row to read
 -- if this ever wants revisiting (`. board-report N descent`, the `full` column): the fights are the
 -- length of the sitting and the places are how much floor there is to spend them across.
@@ -1967,9 +1998,9 @@ end
 -- floor of the run is rolled at COMPANION_CHANCE, the first floor to hit is where somebody is standing,
 -- and that is the whole of the descent's offering. A run can come up having met nobody.
 --
--- WITH ONE BODY OUTSIDE THE ROLL ENTIRELY: Amana stands on floor one of every descent until she joins,
+-- WITH ONE BODY OUTSIDE THE ROLL ENTIRELY: Gyeom stands on floor one of every descent until she joins,
 -- and the roll does not run at all while she is outstanding. See Descent.SCRIPTED_COMPANION below for
--- why the first companion in the game cannot be one the dice may never hand over.
+-- why the body that FILLS THE EXPEDITION cannot be one the dice may never hand over.
 --
 -- WHY A ROLL BEATS A ROTA. A dealt rota makes the recruit an errand you are owed on a timetable -- go
 -- down, collect the body the schedule says is yours. A roll makes going one floor deeper the only way
@@ -2015,23 +2046,41 @@ Descent.COMPANION_CHANCE = 25 -- percent, rolled per floor; ~87% that a run meet
 -- the descent this is about. So the rolled path deals nobody on the run where meeting somebody matters
 -- most, and no amount of tuning COMPANION_CHANCE changes that -- the deck is empty, not unlucky.
 --
--- WHY HER AND WHY FLOOR ONE. Amana is the priest (data/characters/character_amana.lua), and what floor
--- one is missing is not a third sword: the opening floor is walked by two bodies with no healing between
--- them, so the first companion the mode hands over is the one whose whole kit is keeping the other two
--- standing. Floor one because a scripted meeting the player can walk past on the roll's terms is a
--- scripted meeting that does not happen; the first board a new company ever stands on is the one place
--- it is certain to look.
+-- WHY HER AND WHY FLOOR ONE. The company arrives at the stair with three -- the avatar, Rowan, and Amana,
+-- who joins above ground in the prologue (states/prologue.lua) -- against an expedition cap of four
+-- (PARTY_MAX). So there is exactly one seat open, and this is the body that fills it. Floor one because
+-- a scripted meeting the player can walk past on the roll's terms is a scripted meeting that does not
+-- happen; the first board a new company ever stands on is the one place it is certain to look.
 --
--- SABER USED TO STAND HERE and it was the wrong body twice over. She is the veteran who tests every
--- newcomer, so scripting her made the first descent a duel the company had to win with two people and no
--- healer; and her scene is written as a fighter surprised to meet anybody deep in the rift
--- (conversation_colosseum_errand_found.lua), which is a line about a floor she never stood on while she
--- was pinned to the first one. She is in the roll with the other five now.
+-- WHY THE MAGE AND NOT ANOTHER SWORD. The three already standing are a knight, a priest, and an avatar
+-- who begins with a sword and was taught to use it -- whatever it eventually grows into
+-- (character_avatar.lua declares no class). What that party has no answer to is MAGIC DAMAGE: the hole is
+-- a second damage school, not a second range band, so the hunter would answer the question Rowan already
+-- answers from further away. Ren is the other caster and is not one -- her `defaultAction` is a heal and
+-- her blueprint says outright that she does not kill -- so she doubles Amana. It is Gyeom or nobody.
+--
+-- THE ONE THING THIS COSTS, and it is worth watching in playtest: Gyeom READS WEAK ON PURPOSE (damage 4,
+-- magicDamage 6, against the avatar's 16). Her Ledger banks four actions and only then releases what she
+-- kept back (utility_ledger.lua) -- a deliberately late payoff, now handed to a player who has never seen
+-- a spell land. If her recruit fight ends before one Release resolves, the lesson taught is that magic is
+-- worse than the sword they already have, which is exactly the failure character_avatar.lua was
+-- rebalanced to avoid. The fight is the fix if it needs one, not her numbers.
+--
+-- AMANA USED TO STAND HERE, and the reason she no longer does is that she now joins earlier and for a
+-- better reason: a healer who arrives because Rowan is hurt is the same recruit with a motive
+-- (data/conversations/prologue/conversation_prologue_infirmary.lua). SABER stood here before that, and was
+-- wrong twice over -- the veteran who tests every newcomer made the first descent a duel won with two
+-- bodies and no healer, and her scene is written as a fighter surprised to meet anybody DEEP in the rift
+-- (conversation_colosseum_errand_found.lua), a line about a floor she never stood on. Both are in the roll
+-- with the rest now.
 --
 -- IT IS NOT A HANDOUT. She still asks, and the ask is still the second beat: accepting marks one more end
 -- on the same floor and the company has to walk it and win it (models/errand.lua). What is scripted is
 -- the MEETING, not the recruit -- a run can still climb out having said no.
-Descent.SCRIPTED_COMPANION = "cathedral"       -- Amana's house (data/vendors/cathedral.lua's `companion`)
+--
+-- SELF-TERMINATING, so this needs no roster count beside it: the moment she joins, Errand.doorOpen reads
+-- her off the roster and the branch below falls through to the roll for good.
+Descent.SCRIPTED_COMPANION = "arcanum"         -- Gyeom's house (data/vendors/arcanum.lua's `companion`)
 Descent.SCRIPTED_COMPANION_FLOOR = 1           -- the first board a new company ever stands on
 
 -- Deal this run's single companion, as { house, floor }, or nil for a descent that meets nobody.

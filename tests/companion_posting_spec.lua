@@ -292,7 +292,37 @@ return {
         end,
     },
     {
-        -- AMANA IS THE FIRST BODY THE RIFT OFFERS, AND SHE IS NOT ROLLED FOR (Descent.SCRIPTED_COMPANION).
+        -- A COMPANION CAN NOW JOIN ABOVE GROUND, and Errand.doorOpen has to survive it.
+        --
+        -- Amana joins in the prologue's Cathedral scene (states/prologue.lua), so her POSTING is never
+        -- completed. Read off the quest ledger alone -- which is all this predicate used to do -- her
+        -- door stays shut forever: the descent keeps standing her on floor one to be met by a company
+        -- she is already in, and the deck keeps dealing the Cathedral instead of one of the six houses
+        -- that still have somebody to hand over. Both bugs are silent; both are one player-visible
+        -- symptom ("why is she introducing herself again?").
+        name = "a companion who joined without finishing her posting still reads as joined",
+        fn = function()
+            local house = Descent.SCRIPTED_COMPANION
+            local p = company()
+            assert(not Errand.doorOpen(p, house), "nobody has joined and no posting is done")
+
+            Player.recruit(p, Errand.companionOf(house))
+            assert(Errand.doorOpen(p, house),
+                "she is walking with the company, so her house has nothing left to give")
+            assert(not (p.completedQuests or {})[Errand.opener(house)],
+                "...and it is the ROSTER that says so -- her posting was never run")
+
+            -- ...which is the whole point: the run must stop offering her.
+            for _, seed in ipairs({ 1, 12345, 777, 4242 }) do
+                local dealt = Descent.new(p, seed).companion
+                assert(not dealt or dealt.house ~= house,
+                    "seed " .. seed .. " dealt a companion the company already has")
+            end
+        end,
+    },
+    {
+        -- GYEOM IS THE BODY THAT FILLS THE EXPEDITION, AND SHE IS NOT ROLLED FOR
+        -- (Descent.SCRIPTED_COMPANION).
         --
         -- Everything else in this file is about a roll that can come up empty, which is the right shape
         -- for a company that already knows what a companion is. It is the wrong shape for the FIRST
@@ -301,22 +331,33 @@ return {
         -- where meeting somebody matters most the deck is empty rather than unlucky and the rolled path
         -- deals nobody at all. Pinned across a spread of seeds because "every descent" is the claim.
         --
-        -- WHO is scripted is pinned too, and by name. Floor one is walked by two bodies with no healing
-        -- between them, so the first companion the mode hands over has to be the priest; a change that
-        -- quietly moved the script to another house would still pass every seed assertion below.
-        name = "Amana stands on floor one of every descent until she joins",
+        -- WHO is scripted is pinned by name, and the name carries an argument a seed assertion cannot.
+        -- The company walks out of Act 0 with three -- avatar, Rowan, Amana -- against PARTY_MAX of four,
+        -- so this is the seat-filler; and what those three have no answer to is magic damage, not another
+        -- sword at range. A change that quietly moved the script to the Hunter's Lodge would still pass
+        -- every seed check below while handing the player a second body that answers what Rowan answers.
+        name = "Gyeom stands on floor one of every descent until she joins",
         fn = function()
             local fresh = company() -- a new game: nothing done, nobody visited
             local scripted = Descent.SCRIPTED_COMPANION
             local opener = Errand.opener(scripted)
-            assert(opener and Quest.defs[opener].rewardCharacter == "character_amana",
-                scripted .. "'s posting does not hand over Amana, so scripting it recruits somebody else")
+            assert(opener and Quest.defs[opener].rewardCharacter == "character_gyeom",
+                scripted .. "'s posting does not hand over Gyeom, so scripting it recruits somebody else")
+            assert(require("models.character").instantiate("character_gyeom").class == "mage",
+                "the seat this fills is the magic one; a re-classed Gyeom means re-reading the choice")
+            -- THE ARITHMETIC THE CHOICE RESTS ON, pinned so it fails here rather than in a playtest.
+            -- Act 0 hands over three (the avatar, plus Rowan and Amana, both recruited in
+            -- states/prologue.lua's buildBeats) and this is the fourth. Move PARTY_MAX and the scripted
+            -- body stops being a seat-filler -- it becomes either a spare or one short of a legal party,
+            -- and the whole "why the mage" reasoning above has to be re-argued against a different hole.
+            assert(Descent.PARTY_MAX == 4,
+                "Act 0's three plus the scripted body is a full expedition only while the cap is four")
 
             for _, seed in ipairs({ 1, 12345, 777, 4242, 99, 31337 }) do
                 local dealt = Descent.new(fresh, seed).companion
                 assert(dealt, "seed " .. seed .. " offered a new company nobody at all")
                 assert(dealt.house == scripted and dealt.floor == 1, "seed " .. seed .. " put "
-                    .. dealt.house .. " on floor " .. dealt.floor .. " instead of Amana on floor one")
+                    .. dealt.house .. " on floor " .. dealt.floor .. " instead of Gyeom on floor one")
                 -- ...and she is actually SEATED there, which is the half the deal cannot promise on its
                 -- own: openersAt is what the floor builder reads.
                 local here = Descent.openersAt(Descent.new(fresh, seed), 1)

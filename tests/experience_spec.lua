@@ -90,7 +90,7 @@ return {
         assert(b.level == nil or b.level == 1, "the one that did nothing stays where it was")
     end },
 
-    { name = "the seventh circle is reached at about the level it is built for", fn = function()
+    { name = "the world's ladder outruns a descending company, and by how much", fn = function()
         -- THE CURVE'S ONE REAL CLAIM, anchored on the BOTTOM. A clean company musters at level 1 with no
         -- prestige behind it and fights its way down every floor, so if the curve is wrong the Hollow
         -- Crown is either a walk or a wall. Read off Descent.floorLevel at the last floor rather than a
@@ -121,9 +121,35 @@ return {
         -- retired (models/building.lua's RETIRED) and so is its curve; the descent's anchor is now the
         -- game's, and this case is what pins it.
         local reached = Experience.levelFor(earned)
-        assert(math.abs(reached - wanted) <= 2,
-            "a company that fights its way down should arrive near level " .. wanted ..
-            ", not " .. reached)
+
+        -- ---------------------------------------------------------------------------
+        -- AND THE TWO LADDERS NO LONGER MEET, WHICH IS THE POINT NOW RATHER THAN THE BUG.
+        -- ---------------------------------------------------------------------------
+        --
+        -- This asserted the two were within two levels of each other, on the premise that a company
+        -- fighting its way down should arrive at the bottom ready for it -- correct when one descent WAS
+        -- the campaign and the bottom was an ending you were meant to reach.
+        --
+        -- The premise is a DISTANCE RUN: how far can you go. Cutting the floor budget to three-and-four
+        -- (models/descent.lua's FLOOR_FIGHTS) cut what a body earns on the way down with it, so the
+        -- world's ladder -- LEVEL_PER_FLOOR, two a floor -- now climbs about twice as fast as the company
+        -- does. The gap IS the run's clock: you descend until the floor outruns you, and the only thing
+        -- you have to close it with is the snowball you picked up on the way.
+        --
+        -- SO WHAT IS PINNED IS THE GAP, not the match, and it is pinned for the same reason the match
+        -- was: a retune of EITHER ladder has to fail here rather than silently re-price how deep a run
+        -- gets. Read off both constants, never off literals.
+        --
+        -- WHAT IS NOT CLAIMED: that seven is the right gap. Nobody has played it. It puts the company
+        -- roughly three to four levels under the world around floor four or five, which is where a
+        -- fifty-five-minute run would want to end -- but that is arithmetic agreeing with a target, not
+        -- a measurement, and the number to watch is how deep a real attempt actually reaches.
+        local gap = wanted - reached
+        assert(gap >= 5 and gap <= 9, string.format(
+            "the world's ladder should outrun a descending company by 5-9 levels by floor %d " ..
+            "(it wants %d, the company earns %d, gap %d) -- if this moved, one of the two ladders " ..
+            "was retuned and the run's length moved with it",
+            Descent.FLOORS, wanted, reached, gap))
     end },
 
     { name = "there is one curve, and no call site can name a second", fn = function()

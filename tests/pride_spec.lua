@@ -43,6 +43,54 @@ return {
         end,
     },
     {
+        -- SHE IS A MAGE, PINNED AGAINST THE REFERENCE BODY -- which the delta test above deliberately
+        -- cannot do. It measures `step > 0`, and that is true at 2 and true at 200, so it stayed green
+        -- through the whole stretch where she shipped at magicDamage 6: the avatar threw HER Fire Bolt for
+        -- 6+16 = 22 and she threw it for 6+6+2 = 14, because per-hit magic damage is
+        -- `power + MagicDamage - MagicDefense` (models/combat.lua) and nothing asserted where her number
+        -- sat relative to anybody at all.
+        --
+        -- The claim now is the one her class makes: she OUT-THROWS the reference from the turn she joins,
+        -- and Diligence carries her further up while a fight runs. Read off the live blueprints, so it
+        -- moves when they move.
+        name = "Gyeom out-throws the reference body on arrival, and climbs from there",
+        fn = function()
+            local c = Combat.new(arena(6, 6),
+                { { char = Character.instantiate("character_gyeom"), x = 1, y = 1 },
+                  { char = Character.instantiate("character_avatar"), x = 2, y = 1 } },
+                { { char = Character.instantiate("character_bandit"), x = 5, y = 5 } })
+            local gyeom, avatar = c.units[1], c.units[2]
+
+            local function magic(u) return (u.char.stats.magicDamage or 0) + ((u.bonus or {}).magicDamage or 0) end
+            local reference = magic(avatar)
+            local opening = magic(gyeom)
+
+            assert(opening > reference,
+                "the specialist must out-throw the body every number in the game is measured against; "
+                .. "a mage the avatar out-casts is the class not working")
+
+            -- Four actions: the Ledger's own unlock count (utility_ledger.lua's `unlock.count`), so the
+            -- climb and the payoff are pinned to the same number rather than to a 4 typed twice.
+            local relic = gyeom.char.inventory[5]
+            for _ = 1, relic.activeAbility.unlock.count do Trait.onCast(c, gyeom, {}) end
+
+            assert(magic(gyeom) > opening,
+                "a long fight is study: by the turn she may Release she is above her own opening")
+            -- ...and the climb is a BONUS on a competent body, not a second fix for a broken one. Runaway
+            -- here is what a `step` raised to carry a low base would look like after the base was fixed.
+            assert(magic(gyeom) < opening * 2,
+                "the practice tops her up; it does not double her inside one fight")
+
+            -- ...and the ordering that says she is the MAGE. Both of these read their own headers as
+            -- bodies that do not kill, so a mage below either of them is the class not working.
+            for _, id in ipairs({ "character_amana", "character_ren" }) do
+                local support = Character.instantiate(id)
+                assert((gyeom.char.stats.magicDamage or 0) > (support.stats.magicDamage or 0),
+                    "the mage's base magic outranks " .. id .. ", who does not kill for a living")
+            end
+        end,
+    },
+    {
         name = "the Ledger releases only after she has done her best four times over",
         fn = function()
             local c = Combat.new(arena(6, 6),

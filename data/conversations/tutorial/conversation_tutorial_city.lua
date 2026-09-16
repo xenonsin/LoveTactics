@@ -13,11 +13,13 @@
 --
 -- WHO FIELDS THEM:
 --   gate_stair  states/gate.lua  -- the descend row, until the company has actually gone down
---   rift_card   states/hub.lua   -- RETIRED as the first morning's door; the Rift left the city
---                                 (docs/bounties.md). Kept because the line is translated and the
---                                 stair still exists behind the debug column.
---   board_card  states/hub.lua   -- the first morning's one door (INTRO_STAGES). WANTS THE
---                                 AUTHOR'S EYE: written by the pass that moved the door.
+--   rift_card   states/hub.lua   -- the first morning's one door (INTRO_STAGES), again. It was retired
+--                                 for a pass when the Bounty Board held the plaza, and kept rather
+--                                 than cut precisely because a translated line is dear to lose and
+--                                 the door might come back. It did.
+--   board_card  states/hub.lua   -- RETIRED with the board's card (the campaign is a distance run).
+--                                 Kept on the same reasoning that kept rift_card: it is translated,
+--                                 and models/bounty.lua is parked rather than deleted.
 --   new_door    states/hub.lua   -- every door the city grows afterwards, one per morning
 --
 -- new_door CARRIES A {door} TOKEN rather than a sentence, and that is the whole of what this file can

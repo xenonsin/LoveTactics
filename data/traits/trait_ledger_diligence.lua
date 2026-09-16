@@ -24,7 +24,18 @@
 return {
     name = "Diligence",
     description = "Increase magic damage by 2 per action she takes, kept this battle.",
-    step = 2, -- magicDamage banked per action; small, so the lift is the long game rather than a spike
+    -- magicDamage banked per action, and 2 is correct again now that the BODY is correct. It was briefly
+    -- 4, raised to compensate for a base of 6 -- a body that opened below both healers needed the climb to
+    -- do two jobs, get her to competent and then past it. Her base is the mage template's 18 now
+    -- (character_gyeom.lua), so the compensation would be a second fix for a problem already solved, and
+    -- stacking them puts her at 34 in four actions: 2.1x the reference body, on the caster who also has
+    -- the biggest single strike in her own kit waiting at the end of the same four.
+    --
+    -- SO THE CLIMB IS A BONUS, NOT THE REVEAL. She arrives a full mage and gets better while a fight
+    -- runs -- 18 to 26 across four actions, with the Release reading off the top of it. "A long fight is
+    -- study, not downtime" is a thing that happens to a competent body, which is the version of her that
+    -- is true on the sheet as well as in the header.
+    step = 2,
     onCast = function(ctx)
         local gained = ctx.addBonus("magicDamage", ctx.def.step)
         ctx.log("action", string.format("%s is a little better than she was.",

@@ -2,7 +2,9 @@
 -- node spacing and which tileset draws the map. Forest is loose: wide-apart trails
 -- with chunky forest blocks between them.
 return {
-    name = "Forest",
+    -- A PLACE, not a terrain category (models/biome.lua's naming note). Named for the sweetbriar it
+    -- hides -- the veil is the ambush this board is built to be.
+    name = "Thornveil Wood",
     tileset = "forest", -- data/tilesets/forest.lua (art for this biome)
     layout = "glades", -- trails through thick wood that open into clearings (models/layouts/glades.lua)
     spacing = 4, -- 1-wide trails, (spacing - 1) = 3-tile-thick fill

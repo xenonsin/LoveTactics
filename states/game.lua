@@ -2214,9 +2214,22 @@ function game:openEncounter(cell, opts)
                 -- callback rather than in either branch below, so the objective and an ordinary road
                 -- fight charge the same thing and neither can be given a fork that forgets to.
                 --
-                -- The tutorial is exempt: its flight leg is authored to be lost bodies and all, and a
-                -- lesson that permanently scars the company before the hub exists is not a lesson.
-                if not game.tutorial then game:inflictWounds() end
+                -- The tutorial's ROAD STOPS are exempt: the flight leg is authored to be lost bodies and
+                -- all, and a lesson that scars the company for every stop it fumbles is not a lesson.
+                --
+                -- ITS OBJECTIVE IS NOT EXEMPT, and that carve-out is where the wound mechanic is taught.
+                -- The Champion fells Rowan by script at its last stage (utility_demon_sigil.lua), and the
+                -- scene on the far side of this fight is the company carrying her to the Cathedral. A
+                -- wound the ledger never recorded would make that scene prose describing something the
+                -- game did not do -- so the one tutorial fight whose casualty is authored is the one
+                -- tutorial fight that charges for it.
+                --
+                -- It costs the player nothing, which is what makes it safe to teach with: the prologue
+                -- ends by opening the hub, and hub.enter clears the whole ledger free (Wound.clear). So
+                -- the wound is live for exactly the stretch the scene is about -- from the Champion's
+                -- last stage to the city gate -- and reaching the city IS the healing, with no special
+                -- case anywhere to say so.
+                if not game.tutorial or kind == "objective" then game:inflictWounds() end
 
                 -- The flight leg's Use lesson: the party walks off the survivors' defence wounded,
                 -- with a pocket of draughts from the teaching chest and nowhere to spend them, so the

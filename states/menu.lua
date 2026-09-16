@@ -381,21 +381,16 @@ local function buildDebugMenu()
         -- DRAFT, alone now. It shares none of the campaign's progression and is still being built, which
         -- is what this column is for: a mode lives here until it is worth putting in front of a player.
         --
-        -- THE DESCENT IS BACK IN THIS COLUMN, and the round trip is worth recording because both moves
-        -- were right when they were made. It left to be PROMOTED: it stopped being a mode beside the
-        -- campaign and became the campaign, reached from a card in the city. It comes back because the
-        -- campaign is the BOUNTY BOARD now (docs/bounties.md) -- the company takes posted work, goes out
-        -- for a named piece and comes home -- and a second front door with its own save semantics is
-        -- exactly how two paths drift.
+        -- THE DESCENT PASSED THROUGH THIS COLUMN TWICE AND IS OUT OF IT AGAIN. It left the first time by
+        -- being PROMOTED -- it stopped being a mode beside the campaign and became the campaign, reached
+        -- from a card in the city. It came back when the Bounty Board took that card, and it has left
+        -- again now the premise is a DISTANCE RUN: how far can you go, which is a question a stair asks
+        -- and a board of postings cannot. The card is back in the plaza (data/buildings/the_gate.lua).
         --
-        -- PARKED, NOT CUT. models/descent.lua is ~3,200 lines and is still load-bearing for the board:
-        -- Descent.SINS and Descent.DROPS are what the seven house ladders are derived from
-        -- (models/bounty.lua's deriveLadders). So the code stays, stays exercised, and stays reachable
-        -- from here -- which is a better park than deleting the door and leaving the module to rot.
-        { label = "The Rift", action = function()
-            Player.active = Player.active or Player.start()
-            State.switch(require("states.gate"), { player = Player.active, run = Player.active.descentRun })
-        end },
+        -- NO DEBUG DOOR BESIDE A REAL ONE, which is the rule this keeps rather than an opinion about the
+        -- mode: two entries onto one state carry their own save semantics, and that is exactly how two
+        -- paths drift. A mode lives in this column while it has no card, and leaves the moment it has.
+        --
         -- DRAFT: it shares none of the campaign's progression and is still being built, which is what
         -- this column is for -- a mode lives here until it is worth putting in front of a player.
         { label = "Draft", action = function() State.switch(require("states.draft")) end },

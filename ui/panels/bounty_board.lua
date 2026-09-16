@@ -383,11 +383,15 @@ function BountyBoard:drawDossier()
 
     -- WHERE, and HOW HARD, on one line each -- both are facts about the ground and both are read before
     -- the reward is looked at.
+    --
+    -- "LOCATION", not "Ground". `ground` is what the code calls the field and what the design docs call
+    -- the concept, and neither is what a board says to a player: a posting names a PLACE, and the value
+    -- beside this label is a proper noun now (data/biomes/*.lua) rather than a terrain category.
     local biome = Biome.get(def.ground)
     local groundName = (biome and biome.name) or def.ground
     if groundName then
         Theme.set(Theme.muted)
-        love.graphics.print("Ground", x, cy)
+        love.graphics.print("Location", x, cy)
         Theme.set(Theme.ink)
         love.graphics.printf(groundName, x, cy, w, "right")
         cy = cy + lineH + 4

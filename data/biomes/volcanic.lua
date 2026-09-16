@@ -11,7 +11,9 @@
 -- Signature ground: fire, which spreads on its own into anything `burnable`. The one seeded hazard that
 -- does not stay where it was put.
 return {
-    name = "Volcanic",
+    -- A PLACE, not a terrain category (models/biome.lua's naming note). The flows are what the board
+    -- is: barriers that separate two lines without hiding them from each other.
+    name = "Cinderfall Flows",
     tileset = "volcanic", -- data/tilesets/volcanic.lua (art for this biome)
     layout = "rifts", -- wide fractures meeting at chambers (models/layouts/rifts.lua)
     spacing = 2, -- kept for the river band; the carve no longer reads it

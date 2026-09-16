@@ -99,7 +99,7 @@ return {
             --
             -- IT WAS THREE, and the third was `hiring_hall` -- the Crossing, coached alongside the stair
             -- by an INTRO_STAGES entry that no longer exists. The building is deleted with the pull.
-            for _, id in ipairs({ "bounty_board", "armory" }) do
+            for _, id in ipairs({ "the_gate", "armory" }) do
                 assert(Building.seenDoor(p, id), id .. " is open on a fresh save and must be seeded")
             end
             -- ...and a seeded ledger is never EMPTY, which is what lets the save drop an empty one and
@@ -233,7 +233,7 @@ return {
             local restored = Save.restore(Save.snapshot(p))
             assert(Building.seeded(restored), "a seeded ledger must come back seeded")
             assert(Building.seenDoor(restored, "cafe"), "...and remember the Cafe was walked into")
-            assert(Building.seenDoor(restored, "bounty_board"), "...and everything it was seeded with")
+            assert(Building.seenDoor(restored, "the_gate"), "...and everything it was seeded with")
             assert(#Building.unannounced(restored) == 0,
                 "a loaded save owes no announcement for a door it has already shown")
 

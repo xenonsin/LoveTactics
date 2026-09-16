@@ -31,7 +31,7 @@ return {
     {
         name = "building registry discovers def files by filename",
         fn = function()
-            assert(Building.defs.bounty_board, "bounty_board missing")
+            assert(Building.defs.the_gate, "the_gate missing")
             assert(Building.defs.armory, "armory missing")
             assert(Building.defs.market, "market missing")
             assert(Building.defs.cafe, "cafe missing")
@@ -45,8 +45,13 @@ return {
                 assert(list[i - 1].order <= list[i].order,
                     "list not sorted at index " .. i)
             end
-            assert(list[1].id == "bounty_board",
-                "the Bounty Board should sort first: it is the city's front door")
+            -- FIRST IS THE FRONT DOOR, and which card that is has now changed three times -- the Quest
+            -- Board, then the Rift, then the Bounty Board, and back. So what this line pins is the
+            -- RULE rather than a favourite: whatever the city's way out is currently called, it sorts
+            -- ahead of every room you visit before or after using it. Under a distance run that is the
+            -- stair (data/buildings/the_gate.lua).
+            assert(list[1].id == "the_gate",
+                "the Rift should sort first: it is the city's front door, and order 1 is what says so")
         end,
     },
     {
@@ -262,13 +267,18 @@ return {
             -- It passes this case's own rule -- a door open on the first morning must have something
             -- behind it -- because the Bastion's opener is posted from the start.
             --
-            -- AND THE RIFT IS GONE, which is what this line was waiting for. It stood beside the
-            -- board for one pass -- two ways out of the city on the first morning, which was a real
-            -- teaching regression and was written down as transitional. The stair left the city with
-            -- models/descent.lua parked (states/menu.lua's debug column), so the count is back to two
-            -- and the one screen a new player looks at has the work and nothing else worth pressing.
-            assert(table.concat(open, ",") == "armory,bounty_board",
-                "a fresh city opens on the armory and the board; got " ..
+            -- AND THE RIFT IS BACK, so there are two ways out again and this case says so out loud
+            -- rather than letting a third card creep in unremarked. The premise moved: the campaign is
+            -- a DISTANCE RUN -- how far can you go -- which is a question the stair asks and a board of
+            -- postings cannot (data/buildings/the_gate.lua).
+            --
+            -- AND THE BOARD WENT WITH THE SAME PASS, so the count never actually reached three. It held
+            -- this slot while the campaign was posted work; the campaign is a DISTANCE RUN now -- how
+            -- far can you go -- and a posting names a fixed errand, which is the one shape that premise
+            -- has no room for. Parked exactly as the Rift was: the card is deleted, models/bounty.lua
+            -- stays on disk and stays required by six models, and one file undoes it.
+            assert(table.concat(open, ",") == "armory,the_gate",
+                "a fresh city opens on the armory and the stair; got " ..
                 table.concat(open, ", "))
 
             -- THE INN IS NOT A CARD ANY MORE, and its absence is asserted rather than assumed: it was
@@ -406,10 +416,10 @@ return {
         name = "blueprints are untouched after Building.list",
         fn = function()
             Building.list(3)
-            local named = Building.defs.bounty_board.name
+            local named = Building.defs.the_gate.name
             Building.list(1)
-            assert(Building.defs.bounty_board.name == named, "building name changed")
-            assert(Building.defs.bounty_board.locked == nil, "building blueprint mutated")
+            assert(Building.defs.the_gate.name == named, "building name changed")
+            assert(Building.defs.the_gate.locked == nil, "building blueprint mutated")
         end,
     },
 }
