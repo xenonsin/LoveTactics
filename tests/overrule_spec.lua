@@ -67,6 +67,36 @@ return {
         end,
     },
     {
+        -- THE SWEEP'S GUARANTEE, which nothing tested until the day it was found broken. `ov.fell` named
+        -- a body and states/battle.lua's landOverrule billed it twice its own pool through
+        -- Combat.dealFlatDamage -- certain past ARMOUR, which is subtractive and floors at 1, and that
+        -- was the whole of the reasoning. Armour is not the only thing standing in front of a blow: an
+        -- Oathward beside the target redirects it onto the guardian (Combat.tryRedirect), so the scene
+        -- about somebody's death played with her on her feet and the wrong body dead, and a barrier, an
+        -- immunity or the Sealed Hour each ate it whole.
+        --
+        -- It goes through Combat.fell now, outside the damage pipeline, so this pins the property the
+        -- scene actually needs: the named body drops wearing every answer the game has to an attack.
+        -- Asserted here as well as in tests/demon_champion_spec.lua because this is the file somebody
+        -- authoring a new `overrule` reads, and the guarantee is the reason the field is safe to use.
+        name = "the fell sweep drops its named body through a ward and an interpose alike",
+        fn = function()
+            local Status = require("models.status")
+            local c = Combat.new(arena(8, 8),
+                { unit("character_survivor", 4, 4), unit("character_rowan", 4, 5) },
+                { unit("character_general_wrath", 4, 1) })
+            local doomed, guard = c.units[1], c.units[2]
+            assert(doomed.char.id == overruleBlock().fell, "the fixture's named body is the one swept")
+
+            Status.apply(c, doomed, "status_physical_barrier", { magnitude = 5 })
+            guard.guard = { kind = "oathward", cooldown = 0 }
+
+            assert(Combat.fell(c, doomed), "the sweep reports it put the body down")
+            assert(not doomed.alive, "...and it did, past the ward and past the body stepping in front")
+            assert(guard.alive, "the guardian is untouched -- a script is not a blow to be intercepted")
+        end,
+    },
+    {
         name = "an unkillable body is held at 1 health however hard it is hit",
         fn = function()
             local c = Combat.new(arena(8, 8),

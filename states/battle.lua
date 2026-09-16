@@ -2002,17 +2002,24 @@ function battle.landOverrule(ov)
     if ov.fell then
         for _, u in ipairs(battle.combat.units) do
             if u.alive and u.char and u.char.id == ov.fell then
-                -- Through the ordinary damage funnel, so they drop with the death cues and the log
-                -- lines any other body gets, and billed to a NAMED source so the line reads as the axe
-                -- stroke it is rather than as an act of the engine.
+                -- A NAMED LINE, THEN THE BODY DROPS. The line is logged here rather than left to the
+                -- damage funnel so the beat still reads as the axe stroke it is and not as an act of
+                -- the engine; the felling itself goes through Combat.fell, outside the funnel entirely.
                 --
-                -- Twice the body's whole pool, rather than a huge round number: it is certain past any
-                -- armour (mitigation is subtractive and floors at 1, so nothing halves a bar) and the
-                -- figure that lands in the combat log is one a player can read as a killing blow. A
-                -- 9999 in that log is the engine talking.
-                local pool = u.char.stats and u.char.stats.health
-                local whole = (pool and (pool.max or pool.current)) or 1
-                Combat.dealFlatDamage(battle.combat, u, whole * 2, { "physical", "slash" }, "the patron")
+                -- IT USED TO BILL TWICE THE BODY'S POOL through Combat.dealFlatDamage, on the reasoning
+                -- that twice a whole bar is certain past any armour -- mitigation is subtractive and
+                -- floors at 1, so nothing halves it -- and prints a figure a player can read as a
+                -- killing blow, where a 9999 in the log is the engine talking. The armour half of that
+                -- was right and the CERTAINTY half was not: armour is not the only thing in front of a
+                -- blow. An Oathward standing beside the target redirects it onto the guardian
+                -- (Combat.tryRedirect), so the scene played with the body it is about still on its feet
+                -- and the wrong one dead; a barrier, an immunity or the Sealed Hour each eat it whole.
+                -- Every one of those is a correct answer to an ATTACK and none of them is a legal answer
+                -- to a SCRIPT. See models/combat.lua's Combat.fell for the argument in full -- it is the
+                -- one seam for this now, shared with the Demon Champion's phase beat.
+                Combat.logEvent(battle.combat, "action",
+                    string.format("The patron's stroke falls on %s.", u.char.name or "them"), u)
+                Combat.fell(battle.combat, u)
             end
         end
     end
