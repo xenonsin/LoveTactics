@@ -75,20 +75,18 @@ return {
     ["line.conversation_arcanum_discipline_unlocked.1"] = { en = "You have opened the {discipline}'s discipline, {name}. The Arcanum unseals what it holds for that study. The shelf is longer for you now.", ja = "" },  -- TODO
     ["line.conversation_arcanum_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_arcanum_discipline_unlocked.3"] = { en = "There is always more to learn on that road. Good. Take only what you will practise.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_errand_asked.30"] = { en = "Twelve now. One of them came back with a friend, so my count was wrong when I gave it to you.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_errand_asked.31"] = { en = "I will be on this step. The book is not going anywhere.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_errand_asked.32"] = { en = "Take the room.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_errand_asked.33"] = { en = "Leave the book.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_errand_found.30"] = { en = "Please do not go through that door yet. There are eleven of them in there. I counted twice, from two positions.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_errand_found.31"] = { en = "The rift has copied a library, {name}, and flooded it on the way down.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_errand_found.32"] = { en = "I have been on this step four hours working out how to take that room alone. I cannot.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_errand_found.33"] = { en = "That is the arithmetic, not modesty. I did it properly and it comes out the same every time.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_errand_found.34"] = { en = "With your company in it the arithmetic works. I would like the book.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_errand_found.35"] = { en = "Take the room.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_errand_found.36"] = { en = "Leave the book.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_slot_01_outro.30"] = { en = "Do not open it here. It has been under water a very long time.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_slot_01_outro.31"] = { en = "Eleven, and then twelve. I was wrong once today and I have written down why.", ja = "" },  -- TODO
-    ["line.conversation_arcanum_slot_01_outro.32"] = { en = "I would like to keep walking with people who check their numbers before they open a door.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_errand_asked.1"] = { en = "PLACEHOLDER -- what she told them before has changed, and she says why.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_errand_asked.2"] = { en = "PLACEHOLDER -- she will be here; the offer is still open.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_errand_asked.3"] = { en = "Take it together.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_errand_asked.4"] = { en = "Leave her to it.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_errand_found.1"] = { en = "PLACEHOLDER -- she gives her name before she asks for anything.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_errand_found.2"] = { en = "PLACEHOLDER -- there are things to learn down here that are nowhere else.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_errand_found.3"] = { en = "PLACEHOLDER -- a grimoire, and what is sitting on it, measured against one of her.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_errand_found.4"] = { en = "PLACEHOLDER -- she asks them to take it with her, and says she is coming.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_errand_found.5"] = { en = "Take it together.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_errand_found.6"] = { en = "Leave her to it.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_slot_01_outro.1"] = { en = "PLACEHOLDER -- she has the grimoire, and what taking it actually took.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_slot_01_outro.2"] = { en = "PLACEHOLDER -- there are more and they are deeper; she asks to come along.", ja = "" },  -- TODO
     ["line.conversation_arcanum_vendor_intro.1"] = { en = "Somebody in your company has been working. Practice leaves a mark, and this house is built to read it.", ja = "" },  -- TODO
     ["line.conversation_arcanum_vendor_intro.2"] = { en = "The Arcanum wins the wars the crown cannot. Elements, wind-ups, hazards laid on a tile and left standing there.", ja = "" },  -- TODO
     ["line.conversation_arcanum_vendor_intro.3"] = { en = "Everything here was made by somebody.", ja = "" },  -- TODO
@@ -466,9 +464,9 @@ return {
     ["title.conversation_alchemist_slot_01_outro"] = { en = "Intact", ja = "" },  -- TODO
     ["title.conversation_alchemist_vendor_intro"] = { en = "The Crucible", ja = "" },  -- TODO
     ["title.conversation_arcanum_discipline_unlocked"] = { en = "A Further Working", ja = "" },  -- TODO
-    ["title.conversation_arcanum_errand_asked"] = { en = "The Reading Room", ja = "" },  -- TODO
-    ["title.conversation_arcanum_errand_found"] = { en = "The Reading Room", ja = "" },  -- TODO
-    ["title.conversation_arcanum_slot_01_outro"] = { en = "Still Dripping", ja = "" },  -- TODO
+    ["title.conversation_arcanum_errand_asked"] = { en = "The Thing on the Book", ja = "" },  -- TODO
+    ["title.conversation_arcanum_errand_found"] = { en = "The Thing on the Book", ja = "" },  -- TODO
+    ["title.conversation_arcanum_slot_01_outro"] = { en = "What It Took", ja = "" },  -- TODO
     ["title.conversation_arcanum_vendor_intro"] = { en = "The Arcanum", ja = "" },  -- TODO
     ["title.conversation_bastion_discipline_unlocked"] = { en = "The Shelf Is Yours", ja = "" },  -- TODO
     ["title.conversation_bastion_slot_01_intro"] = { en = "Twelve Days Without Supply", ja = "" },  -- TODO

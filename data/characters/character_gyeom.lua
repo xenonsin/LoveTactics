@@ -25,16 +25,24 @@
 -- hours she never put on display. It lives on the Ledger's trait and not here because a blueprint's own
 -- `traits` field is never collected -- only an item's is (models/trait.lua).
 --
--- `boss = true` gives the recruit fight its integrity: best her and she is yours (Player.recruit), exactly
--- as the Colosseum keeps Saber. It goes inert the moment she is an ally, when only the Ledger's
--- concealment still stands.
+-- `boss = true` IS INERT, AND WAS ALWAYS AIMED AT A FIGHT THAT DOES NOT EXIST. It is meant to give a
+-- recruit fight its integrity -- immune to execution, Charm and Polymorph, so besting her is earned --
+-- the way it does for Saber, who really is fought at the Colosseum. SHE IS NEVER FOUGHT. Her posting is
+-- won against the crew holding the ground, and `character_gyeom` appears in that quest file exactly once,
+-- as `rewardCharacter`. Left set because it costs nothing and would matter the day somebody writes a
+-- fight she stands on the far side of; do not read it as evidence that one exists.
 --
--- HER ACTUAL POSTING IS data/quests/arcanum/quest_arcanum_slot_01.lua, "The Sunken Sanctum" -- looters
--- reached a flooded reading room first and the Arcanum would like its book back. The line that stood here
--- described a different quest entirely (a crown-backed manhunt for the college's own radical, at
--- `data/quests/arcanum_the_radical.lua`) and that file has never existed; the manhunt is the story
--- docs/story.md tells about her, not the errand the game runs. Corrected rather than deleted because the
--- premise is worth keeping in view if the opener is ever rewritten to match it.
+-- HER POSTING IS data/quests/arcanum/quest_arcanum_slot_01.lua, "As Far As She Got": she walked into the
+-- rift alone to find out how deep she could get, reached the first floor, and stopped, because a crew is
+-- holding it and her count does not work with one body. Take the ground and she comes with you.
+--
+-- TWO EARLIER DESCRIPTIONS OF THAT QUEST ARE WRONG AND BOTH ARE WORTH KNOWING ABOUT. This header used to
+-- cite `data/quests/arcanum_the_radical.lua` -- a crown-backed manhunt for the college's own radical --
+-- and that file has never existed; the manhunt is what docs/story.md tells about her, not what the game
+-- runs. The quest ITSELF was then "The Sunken Sanctum", a flooded reading room the rift had copied and
+-- looters had reached first, and that was re-premised on 2026-09-16 with the rest of the campaign fiction
+-- it belonged to. Depth is the score now and the dungeon is new every descent, so there is no copied
+-- place down there to loot.
 --
 -- SHE IS THE SCRIPTED COMPANION NOW (models/descent.lua's Descent.SCRIPTED_COMPANION): met on floor one of
 -- every descent until she joins, because the company walks out of Act 0 with three against an expedition
