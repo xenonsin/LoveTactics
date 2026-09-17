@@ -399,6 +399,39 @@ return {
         end,
     },
     {
+        -- ONE CARD TO A SLOT, ON EITHER BOARD. The Ward shipped on (175, 120) -- the Houses' rect -- and
+        -- the collision is invisible in the data: two blueprints, two unique `order`s, two different
+        -- gates, nothing to read wrong. On the screen it was one plate with two labels in it, and the
+        -- worse half is WHICH label won: the shut card draws its "???" last (ui/building_map.lua), so
+        -- the locked door hid the open one's name and the coach bubble pointed at a card that read
+        -- "???" while telling the player to click the Ward.
+        --
+        -- Asked of every pair on a board rather than of the known slots, because the failure is two
+        -- cards agreeing, not a card being off-grid: a future pair that shares some other rect is the
+        -- same bug and this catches it without being taught the layout. Overlap rather than equality
+        -- for the same reason -- the middle column is wider than the ring, so a card can collide with
+        -- a neighbour without matching it.
+        name = "no two cards share a slot on either board",
+        fn = function()
+            local function overlaps(a, b)
+                return a.x < b.x + b.w and b.x < a.x + a.w
+                   and a.y < b.y + b.h and b.y < a.y + a.h
+            end
+            for _, district in ipairs({ "city", "houses" }) do
+                -- Every card on the board, open or shut: Building.list flags a locked plate rather
+                -- than dropping it, and a locked plate is drawn, so it collides like any other.
+                local cards = Building.list(Player.new(), { district = district })
+                for i = 1, #cards do
+                    for j = i + 1, #cards do
+                        assert(not overlaps(cards[i], cards[j]),
+                            district .. ": " .. cards[i].id .. " and " .. cards[j].id ..
+                            " sit on the same slot; the shut one's \"???\" draws over the other's name")
+                    end
+                end
+            end
+        end,
+    },
+    {
         name = "quest registry discovers def files by filename",
         fn = function()
             assert(Quest.defs.quest_bastion_slot_01, "quest_bastion_slot_01 missing")

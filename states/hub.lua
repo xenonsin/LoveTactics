@@ -483,11 +483,19 @@ local function openPanel(building)
         elseif not stage.hire then
             hub.player.hubIntro = nil
         end
-        -- No scene between the coach and the door. The flier was Rowan spotting the Colosseum's contract
+        -- No scene between the COACH and the door. The flier was Rowan spotting the Colosseum's contract
         -- ON the Quest Board -- a beat about a board that is retired (models/building.lua's RETIRED), so
         -- playing it here would have her read a notice off a wall the city does not have. The guard said
         -- everything this moment needs to say, and the sponsor is waiting on the other side of the door.
-        launchPanel(building)
+        --
+        -- BUT THE ROOM'S OWN SCENE STILL PLAYS, so this goes through launchVendor like every other door
+        -- on the board. It called launchPanel directly while the only stage here was the hall's -- a
+        -- room with nothing to say on the way in -- and the Ward inheriting that path swallowed its
+        -- `intro` and the companion the scene `grants`: the one coached door that hands over a body
+        -- was the one door that skipped the code which hands one over. Amana simply never appeared.
+        -- The Gate is unaffected: it keeps neither `intro` nor `vendor`, so launchVendor is its
+        -- launchPanel.
+        launchVendor(building)
         return
     end
     launchVendor(building)
@@ -790,8 +798,13 @@ function hub.draw()
     -- device-honest -- a key cap for pad/keyboard, the plain verb for the mouse. Two things put a stage
     -- in force -- the first visit's two doors, and a door the city has just grown -- and this draws
     -- either without knowing which (coachedStage).
+    -- ...AND WHILE NOTHING IS BEING SAID OVER IT EITHER. A scene draws on top of the state rather than
+    -- instead of it (main.lua's love.draw), so the city keeps rendering underneath -- and the Ward hands
+    -- the intro on to the stair the moment its door is pressed, which is one scene BEFORE the player is
+    -- done with the room. Without this the stair's bubble sits behind Amana's first words, pointing at
+    -- the door after the one being walked into.
     local stage = coachedStage()
-    if stage and not activePanel then
+    if stage and not activePanel and not Conversation.active then
         local rect = introBuildingRect(stage)
         if rect then
             -- Both stages carry a line id, not a sentence: coachLine resolves it for the device in
@@ -799,7 +812,24 @@ function hub.draw()
             -- name arrives as the {door} token (see doorText).
             local text, key = Locale.coach(CITY, stage.line, { door = stage.doorText })
             if text then
-                CoachBubble.draw(text, rect, { prefer = "below", key = key, avoid = otherCardRects(stage) })
+                -- THE TITLE'S BAND IS NOT THE BUBBLE'S TO SIT IN, and it has to be said in `bounds`
+                -- rather than in `avoid`: avoid is a score the placement search trades off, so a
+                -- bubble that hides ten pixels of "The City" and nothing else still wins on points.
+                -- Bounds is a floor -- a side that would land above the line is not a candidate at
+                -- all -- and the search then takes the least-bad placement under the title instead.
+                --
+                -- It matters on exactly one card, which is why it was not needed until now: the Ward
+                -- sits in the plaza's top-middle slot, hard under this line, and a bubble pointing
+                -- down at it from above is the placement the scorer likes best (the cards to either
+                -- side are plates it would rather not cover). Every other coached door has a whole
+                -- row over it.
+                local band = 24 + titleFont:getHeight() + 6
+                CoachBubble.draw(text, rect, {
+                    prefer = "below",
+                    key = key,
+                    avoid = otherCardRects(stage),
+                    bounds = { x = 0, y = band, w = screenW, h = screenH - band },
+                })
             end
         end
     end

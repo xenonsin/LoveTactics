@@ -17,7 +17,7 @@ Building.defs = Registry.load("data/buildings", "data.buildings")
 --
 -- THE CITY IS A PLAZA WITH THE GATE IN THE MIDDLE OF IT.
 --
---     The Houses         --              The Market
+--     The Houses       The Ward          The Market
 --     Armory          [  THE GATE  ]     The Forge
 --     Cafe             Touchstone        Dueling Grounds
 --
@@ -27,8 +27,11 @@ Building.defs = Registry.load("data/buildings", "data.buildings")
 -- states the loop instead of listing it, and the ring reads as what it is: the town that grew up around
 -- a hole in the ground.
 --
--- The slot over the Gate is deliberately EMPTY. It is the approach -- the avenue the plaza opens onto
--- -- and it is also the next card's home, so the city can grow once more without the layout moving.
+-- The slot over the Gate was deliberately EMPTY -- the approach, the avenue the plaza opens onto, and
+-- the next card's home, so the city could grow once more without the layout moving. THE WARD IS THAT
+-- CARD (data/buildings/the_ward.lua), and it arrives on the first wound rather than on day one, which
+-- is the growth that slot was held for. The ring is full now: a tenth card needs a new slot, not a
+-- spare one, and it must not simply borrow a neighbour's -- see the last line of this block.
 --
 -- THE HOUSES: the second board, and the seven class shelves standing round it. Four over a centred
 -- three. Different question from the plaza, different shape.
@@ -57,8 +60,11 @@ Building.defs = Registry.load("data/buildings", "data.buildings")
 -- (models/market.lua). A house is one class's whole ladder, never rolled, and it grows as that class
 -- does. Day-one shopping and earned shopping, one card each.
 --
--- Keep new buildings on these coordinates; two cards on one slot is invisible in the data and obvious
--- only on the screen.
+-- Keep new buildings on these coordinates, and keep one card to a slot. Two plates on one rect is
+-- invisible in the data and obvious only on the screen -- and worse than obvious when one of the two
+-- is SHUT, because the locked plate draws last and its "???" prints over the open card's name
+-- (ui/building_map.lua). The Ward shipped on the Houses' slot and read exactly that way.
+-- tests/hub_spec.lua pins it.
 Building.GRID = {
     -- The city plaza. Three columns, symmetric about x = 640: the middle one is wider because the Gate
     -- stands in it, and its neighbours match that width so the column reads as a column.

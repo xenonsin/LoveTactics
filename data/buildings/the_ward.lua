@@ -29,9 +29,14 @@
 return {
     name = "The Ward",
     order = 2,
-    x = 175,
+    -- THE APPROACH -- the empty slot over the Gate, which models/building.lua's plaza map has been
+    -- holding for the next card since the ring was laid out. This is that card, so it takes the
+    -- middle column's width (300, the Gate's) rather than a ring card's 270: the column reads as a
+    -- column. It was authored on (175, 120) -- the Houses' slot -- and the two plates drew on top of
+    -- each other, the shut one's "???" printing over this one's name.
+    x = 490,
     y = 120,
-    w = 270,
+    w = 300,
     h = 130,
     panel = "ward",
     -- ONE SENTENCE, and it is the whole of what the player is told about this room before walking in
