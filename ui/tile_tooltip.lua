@@ -27,6 +27,7 @@ local Trap = require("models.trap")
 local Prop = require("models.prop")
 local Colors = require("ui.colors")
 local Glyphs = require("ui.glyphs")
+local TerrainArt = require("ui.terrain_art")
 local Theme = require("ui.theme")
 local PoolCallout = require("ui.pool_callout")
 
@@ -40,27 +41,91 @@ local function fonts()
     return titleFont, bodyFont, smallFont
 end
 
--- Display metadata per arena tile type (models/arena.lua TILE_PROPS keys). `name` is the
--- human-readable terrain name; `desc` is a short flavour/mechanics line.
+-- Display metadata per terrain type (models/terrain.lua's keys). `name` is the human-readable terrain
+-- name; `desc` is a short flavour/mechanics line.
+--
+-- ALL SIXTEEN, and until now it was six. The other ten fell through to a title-cased id and an empty
+-- description, so a player hovering the drift that fills a tundra board read the bare word "Ice" and
+-- was told nothing -- not that it is the one floor on the board that does not tax a step, and not that
+-- it carries a charge. That was survivable while every tile was one flat colour and nobody could tell
+-- them apart anyway; it is not survivable now that each has a picture on it, because THIS is where the
+-- picture is learned (see the swatch in appendTerrain, and ui/terrain_art.lua's header).
+--
+-- What each line says is the thing the mark cannot: a shape can say "trees" and not "costs two and is
+-- worth twenty points of somebody's aim". The numbers themselves are rows below, off the live cell --
+-- never retyped here, or the two would drift.
 local TILE_INFO = {
     ground   = { name = "Open Ground", desc = "Flat, open field. No movement penalty." },
-    forest   = { name = "Forest",      desc = "Slow to cross. Soft cover that hampers line of sight." },
+    path     = { name = "Trail",       desc = "A worn track. Open ground, and no faster for being a road." },
+    bridge   = { name = "Bridge",      desc = "A built crossing -- the only way over a river." },
+    forest   = { name = "Forest",      desc = "Slow to cross. Soft cover that hampers line of sight. It catches fire." },
+    thicket  = { name = "Dense Wood",  desc = "Too thick to enter, and nothing sees through it. It catches fire." },
     mountain = { name = "High Ground", desc = "Steep and slow, but grants extra reach and blocks the view behind it." },
-    rough    = { name = "Rough Terrain", desc = "Broken ground that slows movement." },
+    rough    = { name = "Rough Terrain", desc = "Broken ground that slows movement and makes a body harder to hit." },
+    rock     = { name = "Standing Rock", desc = "Solid stone. Blocks movement and line of sight." },
     obstacle = { name = "Obstacle",    desc = "Solid terrain. Blocks movement and line of sight." },
+    grass    = { name = "Scrub",       desc = "Growth too dense to push through. Blocks movement and line of sight." },
+    river    = { name = "River",       desc = "Impassable except at a bridge -- but you can see the far bank perfectly well." },
     water    = { name = "Shallow Water", desc = "Wadeable but slow. Conducts lightning: a bolt striking beside it arcs in." },
+    lava     = { name = "Lava Flow",   desc = "Impassable. Like a river it blocks the feet and not the eye." },
+    mire     = { name = "Mire",        desc = "Sucking bog. The heaviest ground to cross, and it leaves a body easier to hit. It conducts." },
+    sand     = { name = "Loose Sand",  desc = "Heavy going, with nothing to hide behind." },
+    ice      = { name = "Ice",         desc = "The one floor that costs nothing to cross. It conducts: a bolt sweeps the whole sheet." },
 }
 
--- Accent per terrain type (title + border tint).
+-- Accent per terrain type (title + border tint). Cool for what stops you, warm for what merely slows
+-- you, and each family shaded off the one above it so the list reads as four kinds of ground rather
+-- than sixteen colours. The MARK is what identifies a terrain (see ui/terrain_art.lua); this only has
+-- to keep the heading legible and roughly in the right key.
 local TILE_COLOR = {
     ground   = { 0.80, 0.78, 0.62 },
+    path     = { 0.80, 0.78, 0.62 },
+    bridge   = { 0.82, 0.66, 0.44 },
     forest   = { 0.55, 0.80, 0.55 },
+    thicket  = { 0.42, 0.66, 0.44 },
     mountain = { 0.72, 0.74, 0.82 },
     rough    = { 0.80, 0.66, 0.45 },
+    rock     = { 0.66, 0.64, 0.62 },
     obstacle = { 0.62, 0.62, 0.68 },
+    grass    = { 0.60, 0.76, 0.50 },
+    river    = { 0.45, 0.68, 0.95 },
     water    = { 0.45, 0.68, 0.95 },
+    lava     = { 0.95, 0.55, 0.30 },
+    mire     = { 0.62, 0.72, 0.44 },
+    sand     = { 0.90, 0.80, 0.54 },
+    ice      = { 0.72, 0.88, 0.95 },
 }
 local DEFAULT_COLOR = { 0.86, 0.87, 0.92 }
+
+-- The terrain vocabulary, exported so tests/terrain_art_spec.lua can ask the real question -- "is this
+-- type AUTHORED here" -- rather than a proxy for it. Reading it back off the built blocks cannot tell
+-- an authored "Bridge" from the fallback's title-cased `bridge`, and a guard that cannot see the fault
+-- it exists to catch is worse than none.
+TileTooltip.TERRAIN = TILE_INFO
+
+-- The swatch that teaches the mark: a square of the tile's own ground tone with the terrain's mark
+-- drawn on it, set beside the name.
+--
+-- It takes its size from the HEADING'S OWN LINE HEIGHT rather than a constant, which is the whole
+-- reason it needs no entry in measureBlocks: a square that is never taller than the row it sits on
+-- cannot change the row's height, and this file's box height is measured once and drawn once from the
+-- same list precisely so the two can never disagree. Whatever font the heading is in -- the serif
+-- title on a bare tile, the smaller sans when a body owns the title above it -- the swatch matches it.
+local SWATCH_GAP = 6
+
+-- Draw the mark for `kind` on its ground tone at (x, y), `size` square, and answer how far the text
+-- after it must move right. Zero, and nothing drawn, when there is no swatch to show.
+local function drawSwatch(b, x, y, size)
+    if not (b.swatch and b.tone) then return 0 end
+    local t = b.tone
+    love.graphics.setColor(t[1], t[2], t[3], 1)
+    love.graphics.rectangle("fill", x, y, size, size, 2, 2)
+    TerrainArt.draw(b.swatch, x, y, size, size, t[1], t[2], t[3], 3, 5)
+    Theme.set(Theme.frame, 0.45) -- the same hairline the box itself is trimmed in
+    love.graphics.setLineWidth(1)
+    love.graphics.rectangle("line", x + 0.5, y + 0.5, size - 1, size - 1, 2, 2)
+    return size + SWATCH_GAP
+end
 
 local PARTY_COLOR = Colors.PARTY
 local ENEMY_COLOR = Colors.ENEMY
@@ -216,7 +281,14 @@ local function appendTerrain(blocks, info, asHead)
     local meta = TILE_INFO[cell.type] or { name = titleCase(cell.type or "Tile"), desc = "" }
     local col = TILE_COLOR[cell.type] or DEFAULT_COLOR
 
-    blocks[#blocks + 1] = { kind = asHead and "head" or "title", text = meta.name, color = col }
+    -- The heading carries the board's own swatch when the caller handed one over (`info.tone`, from
+    -- BattleMap:tileTone): the exact tone that tile is painted in, with its mark on it. This is the
+    -- dwell surface for ui/terrain_art.lua's vocabulary -- the player meets the picture here, next to
+    -- the words and the move cost, and afterwards recognises it on the ground at a glance. Absent
+    -- whenever the board is drawing a real tileset sheet instead, and the heading is then just a
+    -- heading, exactly as it was.
+    blocks[#blocks + 1] = { kind = asHead and "head" or "title", text = meta.name, color = col,
+                            swatch = info.tone and cell.type or nil, tone = info.tone }
     if meta.desc and meta.desc ~= "" then
         blocks[#blocks + 1] = { kind = "desc", text = meta.desc }
     end
@@ -780,8 +852,9 @@ function TileTooltip.draw(info, mx, my, maxRight, opts)
     for _, b in ipairs(blocks) do
         if b.kind == "title" then
             love.graphics.setFont(title)
+            local off = drawSwatch(b, bx + pad, ty + 1, titleH - 2)
             love.graphics.setColor(b.color[1], b.color[2], b.color[3], 1)
-            love.graphics.print(b.text, bx + pad, ty)
+            love.graphics.print(b.text, bx + pad + off, ty)
             ty = ty + titleH + 3
         elseif b.kind == "desc" then
             love.graphics.setFont(body)
@@ -794,8 +867,9 @@ function TileTooltip.draw(info, mx, my, maxRight, opts)
             ty = ty + 8
         elseif b.kind == "head" then
             love.graphics.setFont(body)
+            local off = drawSwatch(b, bx + pad, ty + 1, bodyH - 2)
             love.graphics.setColor(b.color[1], b.color[2], b.color[3], 1)
-            love.graphics.print(b.text, bx + pad, ty)
+            love.graphics.print(b.text, bx + pad + off, ty)
             ty = ty + bodyH + 3
         elseif b.kind == "bar" then
             -- Step past the lane measureBlocks reserved for this row's callout pill (if any).

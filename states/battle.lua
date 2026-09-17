@@ -6648,7 +6648,12 @@ function battle.drawTileTooltip(mx, my)
     -- the only sign of the mechanic is a move overlay that quietly reaches less far than expected.
     local actor = battle.current
     local watched = actor and Combat.watchTax(battle.combat, actor, cx, cy) or 0
+    -- The exact tone this tile is painted in, so the box can set the terrain's own mark beside its
+    -- name (ui/terrain_art.lua is learned here, not on the ground). Nil while a tileset sheet is
+    -- loaded, and the heading simply goes without.
+    local tr, tg, tb = battle.map:tileTone(cx, cy)
     local terrainInfo = { cell = cell, bonus = Combat.fieldBonus(battle.combat, cx, cy),
+                          tone = tr and { tr, tg, tb } or nil,
                           hazards = Hazard.allAt(battle.combat, cx, cy),
                           watched = watched > 0 and watched or nil,
                           objective = Combat.objectiveTileInfo(battle.combat, cx, cy),

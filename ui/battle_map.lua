@@ -30,6 +30,7 @@ local Colors = require("ui.colors")
 local FieldFx = require("ui.field_fx")
 local BurstFx = require("ui.burst_fx")
 local Glyphs = require("ui.glyphs")
+local TerrainArt = require("ui.terrain_art")
 local SpriteShader = require("shaders.sprite")
 local Theme = require("ui.theme")
 
@@ -138,6 +139,14 @@ BattleMap.TERRAIN_TINT = {
     sand     = { 0.52, 0.40, 0.14, 0.26 }, -- dry ochre: heavy going, no cover
     mire     = { 0.14, 0.20, 0.10, 0.38 }, -- the heaviest wash, for the heaviest walkable floor
 }
+
+-- What a tile you CANNOT ENTER keeps of its colour. It was 0.55 (a flat 45% black over the top) back
+-- when the darkening was the entire difference between a wall and the walkable floor painted in the
+-- same biome green -- see ui/terrain_art.lua for how that happened. The terrain's own mark now says
+-- "solid" out loud (a canopy, three boulders, set masonry, all of them edge to edge and near-opaque),
+-- so the dimming can go back to being the quiet second voice it should always have been. Too dark and
+-- the mark it is drawn over is mud, which costs more legibility than the dimming buys.
+BattleMap.BLOCKED_DIM = 0.70
 
 local DEFAULTS = { axisThreshold = 0.5 }
 
@@ -970,6 +979,43 @@ function BattleMap:drawProps()
     love.graphics.setColor(1, 1, 1)
 end
 
+-- THE GROUND TONE OF ONE TILE, with everything that shades it already folded in: the biome's colour
+-- for its art role, a hair of per-tile variation, and then either the impassable darkening or the
+-- terrain's cost wash. Returned rather than painted in three passes so ui/terrain_art.lua can shade
+-- its mark against what is ACTUALLY under it -- a canopy drawn against the nominal palette entry and
+-- then darkened with the tile beneath it loses the whole of its contrast.
+--
+-- The variation is deterministic off the tile's own grid position (never math.random): eight by eight
+-- cells of one exact colour read as a painted sheet with a grid ruled over it, and five percent either
+-- way is enough to make a field look like ground without making any tile look like a different type.
+local function groundTone(def, cell, artType, x, y)
+    local col = def.tiles[artType].color
+    local n = (x * 48271 + y * 16807) % 251 / 251
+    local k = 0.955 + n * 0.09
+    local r, g, b = col[1] * k, col[2] * k, col[3] * k
+    if not cell.walkable then
+        return r * BattleMap.BLOCKED_DIM, g * BattleMap.BLOCKED_DIM, b * BattleMap.BLOCKED_DIM
+    end
+    local t = BattleMap.TERRAIN_TINT[cell.type]
+    if t then
+        local a = t[4]
+        return r * (1 - a) + t[1] * a, g * (1 - a) + t[2] * a, b * (1 - a) + t[3] * a
+    end
+    return r, g, b
+end
+
+-- The ground tone tile (x, y) is actually painted in, for a readout that wants to show the player the
+-- same swatch the board is showing them (ui/tile_tooltip.lua draws the terrain's mark on it beside the
+-- terrain's name -- a mark met only on the tile is a rebus). Nil while a real tileset sheet is loaded:
+-- the board is then drawing photographs of ground rather than a colour and a mark, and there is no one
+-- tone to hand back.
+function BattleMap:tileTone(x, y)
+    if self.tileset then return nil end
+    local cell = self.arena.tiles[y] and self.arena.tiles[y][x]
+    if not cell then return nil end
+    return groundTone(self.tilesetDef, cell, BattleMap.ART[cell.type] or "path", x, y)
+end
+
 function BattleMap:drawTiles()
     local s = self.size
     for y = 1, self.arena.rows do
@@ -981,22 +1027,27 @@ function BattleMap:drawTiles()
                 love.graphics.setColor(1, 1, 1)
                 love.graphics.draw(self.tileset, self.quads[artType], wx, wy, 0,
                     self.tileScale, self.tileScale)
-            else
-                local col = self.tilesetDef.tiles[artType].color
-                love.graphics.setColor(col[1], col[2], col[3])
-                love.graphics.rectangle("fill", wx, wy, s, s)
-            end
-            -- Impassable tiles get a darkening overlay so blocked cells read clearly;
-            -- walkable-but-costly terrain gets its per-type wash.
-            if not cell.walkable then
-                love.graphics.setColor(0, 0, 0, 0.45)
-                love.graphics.rectangle("fill", wx, wy, s, s)
-            else
-                local tint = BattleMap.TERRAIN_TINT[cell.type]
-                if tint then
-                    love.graphics.setColor(tint[1], tint[2], tint[3], tint[4])
+                -- Impassable tiles get a darkening overlay so blocked cells read clearly;
+                -- walkable-but-costly terrain gets its per-type wash. Laid OVER the sheet here,
+                -- where the colour path folds them into the fill instead (groundTone).
+                if not cell.walkable then
+                    love.graphics.setColor(0, 0, 0, 1 - BattleMap.BLOCKED_DIM)
                     love.graphics.rectangle("fill", wx, wy, s, s)
+                else
+                    local tint = BattleMap.TERRAIN_TINT[cell.type]
+                    if tint then
+                        love.graphics.setColor(tint[1], tint[2], tint[3], tint[4])
+                        love.graphics.rectangle("fill", wx, wy, s, s)
+                    end
                 end
+            else
+                -- No sheet: the ground is a flat colour, and the terrain's own mark is what says
+                -- WHICH ground it is (ui/terrain_art.lua). Drawn only on this path -- a real tileset
+                -- carries its own pictures, and two sets of them on one tile is one too many.
+                local r, g, b = groundTone(self.tilesetDef, cell, artType, x, y)
+                love.graphics.setColor(r, g, b)
+                love.graphics.rectangle("fill", wx, wy, s, s)
+                TerrainArt.draw(cell.type, wx, wy, s, s, r, g, b, x, y)
             end
             -- Grid line.
             love.graphics.setColor(0, 0, 0, 0.25)

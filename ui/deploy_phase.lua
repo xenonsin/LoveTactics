@@ -907,8 +907,14 @@ function DeployPhase:drawHover(bounds)
 
     local unit = Combat.unitAt(self.combat, cx, cy)
     local obj, kind = Combat.objectAt(self.combat, cx, cy)
+    -- The tile's own tone, so the heading carries the terrain's mark beside its name exactly as it
+    -- does mid-fight (ui/terrain_art.lua). It belongs here at least as much as there: the line is
+    -- being chosen against the ground, so this is where a player first has reason to ask what the
+    -- picture on a square means.
+    local tr, tg, tb = self.map and self.map.tileTone and self.map:tileTone(cx, cy)
     local terrainInfo = { cell = cell,
                           bonus = Combat.fieldBonus(self.combat, cx, cy),
+                          tone = tr and { tr, tg, tb } or nil,
                           hazards = Hazard.allAt(self.combat, cx, cy),
                           -- Marked objective ground, so "hold this" is read while choosing who stands on it.
                           objective = Combat.objectiveTileInfo(self.combat, cx, cy) }
