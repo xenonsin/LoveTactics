@@ -331,6 +331,24 @@ return {
                 "only an allegiance is held back -- an ordinary affliction holds only its own badge")
         end,
     },
+    {
+        -- A STRUCK CUE IS A HIT REACTION WITH NOTHING BEHIND IT. Raised only by a scripted blow
+        -- (states/battle.lua's SCRIPT_BEATS, the Demon Champion's last stage), which puts a body down
+        -- through Combat.fell rather than through the damage pipeline -- so there is no number, and
+        -- without this cue there is no reaction either: the sword arrives and the body simply dies.
+        name = "a scripted strike reads as a hit, and floats no number: nothing was ever billed",
+        fn = function()
+            local fx = newFx()
+            local victim = { x = 4, y = 4, char = { name = "Rowan" } }
+            local striker = { x = 4, y = 3, char = { name = "the Champion" } }
+            fx:ingest({ { type = "struck", unit = victim, attacker = striker } }, nil)
+
+            assert(#fx.floaters == 0, "nothing was billed, so there is no number to float")
+            local r = fx:reaction(victim)
+            assert(r.shakeT and r.flashT, "the body flinches and flashes, as it does under any blow")
+            assert(r.knockT and r.knockDy and r.knockDy > 0,
+                "and recoils AWAY from what hit it -- southward, from a striker standing north")
+            assert(fx:busy(), "and the turn hand-off waits on the reaction, like any other")
+        end,
+    },
 }
-
-

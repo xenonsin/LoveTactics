@@ -306,6 +306,8 @@ return {
     ["line.conversation_flight_champion.2"] = { en = "It won't go down the way the others did, and the small ones will throw themselves at us to keep us off it.", ja = "" },  -- TODO
     ["line.conversation_flight_champion.3"] = { en = "Cut it down and the rest stop mattering. Stay out of its reach and let it come to us.", ja = "" },  -- TODO
     ["line.conversation_flight_champion.5"] = { en = "The report said imps. That thing came up out of the breach with the rest of them trailing after it.", ja = "" },  -- TODO
+    ["line.conversation_flight_champion_fall.1"] = { en = "PLACEHOLDER -- she says what she misread, with the blow already on her.", ja = "" },  -- TODO
+    ["line.conversation_flight_champion_fall.2"] = { en = "PLACEHOLDER -- and that the fight is still there to be finished.", ja = "" },  -- TODO
     ["line.conversation_flight_champion_turn.1"] = { en = "PLACEHOLDER -- it has stopped swinging at whoever is nearest.", ja = "" },  -- TODO
     ["line.conversation_flight_champion_turn.2"] = { en = "PLACEHOLDER -- it has picked somebody. She does not know it is her.", ja = "" },  -- TODO
     ["line.conversation_flight_event_shrine.1"] = { en = "A shrine, still standing with the whole block burned around it.", ja = "" },  -- TODO
@@ -508,6 +510,7 @@ return {
     ["title.conversation_descent_sloth"] = { en = "Acedia, the Unrelieved", ja = "" },  -- TODO
     ["title.conversation_descent_wrath"] = { en = "Ira, the Unappeased", ja = "" },  -- TODO
     ["title.conversation_flight_champion"] = { en = "The Champion", ja = "" },  -- TODO
+    ["title.conversation_flight_champion_fall"] = { en = "She Does Not Get Up", ja = "" },  -- TODO
     ["title.conversation_flight_champion_turn"] = { en = "It Has Stopped Fighting", ja = "" },  -- TODO
     ["title.conversation_flight_event_shrine"] = { en = "The Street Shrine", ja = "" },  -- TODO
     ["title.conversation_flight_event_survivor"] = { en = "A Voice in the Rubble", ja = "" },  -- TODO

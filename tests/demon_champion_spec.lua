@@ -432,6 +432,92 @@ return {
         end,
     },
     {
+        -- THE BEAT IS HANDED TO THE VIEW AS SIX MOMENTS, NOT AS A RESULT. The model still resolves the
+        -- crossing and the felling in one pass (the test above) -- what this covers is the staging it
+        -- leaves behind for states/battle.lua to play: where the body started, the ground it covers on
+        -- the way, and the line she speaks with the blow on her. Nothing here asserts a second of
+        -- timing, because the model does not own one; it asserts that the view is TOLD ENOUGH to
+        -- animate the beat instead of snapping it.
+        --
+        -- It exists because the beat shipped once with all of this missing: the demon blinked to her
+        -- tile and she died in the same frame, and the whole of the fix lives in a field a spec can
+        -- check somebody is still writing.
+        name = "the crossing hands the view a staging: an origin, a route and her line",
+        fn = function()
+            local c = Combat.new(arena(8, 8),
+                { unit("character_rowan", 1, 1) },
+                { unit("character_demon_champion", 8, 8) })
+            local rowan, boss = c.units[1], c.units[2]
+            Status.apply(c, boss, "status_champion_fixation")
+            assert(not c.scriptedStrike, "nothing is staged before the mark is spent")
+
+            Status.onTurnStart(c, boss)
+            local staged = c.scriptedStrike
+            assert(staged, "the spent mark leaves the view a beat to play")
+            assert(staged.unit == boss and staged.victim == rowan, "who crossed, and who it reached")
+            assert(staged.fromX == 8 and staged.fromY == 8,
+                "and WHERE IT STOOD, which the model has already overwritten -- without it the wind-up "
+                .. "and the walk would both play on the destination tile")
+            assert(staged.windup and staged.windup > 0, "the wind-up is timed by the status, not the view")
+
+            -- THE ROUTE, which is what makes it a crossing rather than a blink.
+            local route = staged.route
+            assert(route and #route > 1, "the ground it covers, tile by tile")
+            assert(route[1].x == 8 and route[1].y == 8, "origin-first, like every other path in the model")
+            assert(math.max(math.abs(route[#route].x - rowan.x), math.abs(route[#route].y - rowan.y)) <= 1,
+                "and it ends beside her, on the tile the body is now standing on")
+            assert(route[#route].x == boss.x and route[#route].y == boss.y, "the same tile, said twice")
+            for i = 2, #route do
+                local step = math.abs(route[i].x - route[i - 1].x) + math.abs(route[i].y - route[i - 1].y)
+                assert(step == 1, "one tile at a time: the view walks this, so a jump in it is a teleport")
+            end
+
+            -- HER LINE, played between the blow landing and the body going down. A scene that does not
+            -- exist would simply be skipped by the view, which is how the beat reads as sudden again.
+            local Conversation = require("models.conversation")
+            assert(staged.scene and Conversation.defs[staged.scene],
+                "she speaks after she is hit, and the scene she speaks is one that exists")
+        end,
+    },
+    {
+        -- THE ROUTE IS ROAD, NOT A RULER. A straight line between two tiles walks through the arena's
+        -- own walls -- and THE NECK (data/arenas/demon_champion.lua's y4 obstacle wall, gap at x4-5) is
+        -- the wall this fight is built around, so the one board the beat actually plays on is the board
+        -- that would show it.
+        name = "a scripted route goes around a wall rather than through it",
+        fn = function()
+            local a = arena(8, 8)
+            for x = 1, 8 do
+                if x ~= 4 and x ~= 5 then
+                    a.tiles[4][x] = { type = "obstacle", moveCost = 1, walkable = false, sightCost = 2 }
+                end
+            end
+            local c = Combat.new(a, { unit("character_rowan", 1, 8) },
+                { unit("character_demon_champion", 1, 1) })
+            local boss = c.units[2]
+            local route = Combat.scriptedRoute(c, boss, 2, 8)
+            assert(route, "there is a road: the gap in the wall")
+            for _, cell in ipairs(route) do
+                assert(a.tiles[cell.y][cell.x].walkable, "and every tile of it is ground it can stand on")
+            end
+            local gap = false
+            for _, cell in ipairs(route) do
+                if cell.y == 4 then gap = (cell.x == 4 or cell.x == 5) end
+            end
+            assert(gap, "the wall is crossed at the gap, which is the only place it can be crossed")
+
+            -- No road at all is answered with nil rather than a straight line, so the view falls back
+            -- to gliding the body across instead of walking it through a wall.
+            local sealed = arena(8, 8)
+            for x = 1, 8 do
+                sealed.tiles[4][x] = { type = "obstacle", moveCost = 1, walkable = false, sightCost = 2 }
+            end
+            local c2 = Combat.new(sealed, { unit("character_rowan", 1, 8) },
+                { unit("character_demon_champion", 1, 1) })
+            assert(not Combat.scriptedRoute(c2, c2.units[2], 2, 8), "a walled-off goal has no route")
+        end,
+    },
+    {
         -- THE WARNING IS QUEUED, NOT PLAYED. A status is pure logic and may not reach the UI, so it
         -- leaves the scene id on the combat and states/battle.lua's beginTurn plays it at the next turn
         -- boundary -- which is also the only moment it COULD play, since the blow that armed it is still
@@ -498,6 +584,10 @@ return {
             -- player's own blow again and this is the assertion that says so.
             assert(def.onTurnStart, "the mark is spent at the top of the Champion's turn")
             assert(def.scene and def.duration, "it owes a warning first, and outlives the round to pay it")
+            -- ...and a second line, spoken with the blow on her, between the strike and the body going
+            -- down (states/battle.lua's SCRIPT_BEATS). Named here for the same reason `scene` is: the
+            -- beat is one thing, and both halves of what it says should be readable off one def.
+            assert(def.hitScene, "she speaks AFTER she is hit, or the felling reads as sudden again")
 
             -- Nothing else in the game may carry a scripted felling without a scene to justify it.
             local bearers = {}

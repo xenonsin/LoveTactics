@@ -570,6 +570,29 @@ function CombatFx:playBeat(events, actor)
             -- reserved for things that did.
             self:floatText(e.unit, "MISS", { 0.62, 0.70, 0.78 })
             Sound.play("battle.miss")
+        elseif e.type == "struck" then
+            -- A BLOW NOBODY WAS BILLED FOR: the whole hit reaction -- recoil, flash, impact burst and
+            -- the crit's own weight on the frame -- with no number over it, because no number exists.
+            -- Raised by a SCRIPTED strike (states/battle.lua's battle.playScripted, playing out the
+            -- Demon Champion's last stage), which puts a body down through Combat.fell, outside the
+            -- damage pipeline entirely. There is nothing to float and no damage cue to carry the
+            -- reaction, so without this the sword arrives and the body simply dies, unmoved.
+            --
+            -- Struck at full weight on purpose: `struck` is the view's word for a blow the story
+            -- landed, and a story does not land glancing ones. `attacker` aims the recoil and the
+            -- burst; without one (a blow from nowhere) the body just flinches in place.
+            local r = self:reaction(e.unit)
+            r.shakeT, r.shakeLen = SHAKE_TIME, SHAKE_TIME
+            r.flashT = FLASH_TIME
+            if e.attacker then self:knock(e.unit, e.attacker, HEAVY_HIT, e.unit) end
+            if self.bursts then
+                self.bursts:strike(e.unit.x, e.unit.y, e.tags,
+                    { angle = strikeAngle(self, e.attacker, e.unit), intensity = 1.2 })
+            end
+            Sound.play("battle.crit")
+            ScreenFx.freeze(0.07)
+            ScreenFx.punch(0.7)
+            ScreenFx.shake(6, 0.32)
         elseif e.type == "shake" then
             -- A SHAKE NOBODY HIT ANYBODY FOR. :hit raises the same cue as a flinch -- 0.26s, decaying,
             -- read as "that landed" -- and this is the opposite statement: a body winding UP, held long

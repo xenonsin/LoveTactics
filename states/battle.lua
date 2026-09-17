@@ -961,6 +961,7 @@ end
 local function win()
     battle.over = true
     battle.walk = nil -- nobody finishes their stroll once the battle is decided
+    battle.script = nil -- nor does a story beat keep playing over a fight that is already decided
     battle.heldObjects = nil -- and the final board shows every zone it holds, walk unfinished or not
     ScreenFx.vignette(0) -- a won fight is not a dying one: drop any low-HP edge before the panel opens
     Combat.logEvent(battle.combat, "system", "Victory!")
@@ -989,6 +990,7 @@ end
 local function lose()
     battle.over = true
     battle.walk = nil
+    battle.script = nil
     battle.heldObjects = nil
     Combat.logEvent(battle.combat, "system", "Defeat.")
     -- Nobody is carried out of a lost fight, but everyone who fell in it is still hurt. Recorded on
@@ -1715,6 +1717,19 @@ local function beginTurn(resume)
     local current = resume and battle.combat.turn and battle.combat.turn.unit
         or Combat.startTurn(battle.combat)
     battle.current = current
+    -- A SCRIPTED BEAT THE TURN JUST OPENED WITH. Combat.startTurn fires the statuses a unit wears
+    -- before it may act, and one of them resolves a whole story beat on the spot (the Demon Champion's
+    -- last stage, data/status/status_champion_fixation.lua) -- the crossing and the felling both, in a
+    -- single call, as the model resolves everything. What it leaves behind is the staging, and this is
+    -- where it is picked up: battle.playScripted holds the cues and plays the beat out in moments the
+    -- player can actually follow. Claimed off the combat so it can never play twice, and read here
+    -- rather than in the AI branch because the body has to be seen crossing BEFORE it takes its
+    -- ordinary turn.
+    if current and battle.combat.scriptedStrike then
+        local staged = battle.combat.scriptedStrike
+        battle.combat.scriptedStrike = nil
+        battle.playScripted(staged)
+    end
     -- Square a running lesson with a board that moved on: a step whose target died (to Rowan's own
     -- strike, a trap, an overwatch shot) is skipped, and a step whose actor died abandons the lesson
     -- outright. The latter is the one that matters -- Combat.evaluate only calls a loss when EVERY
@@ -2066,6 +2081,7 @@ end
 function battle.endOverruled()
     battle.over = true
     battle.walk = nil
+    battle.script = nil
     battle.heldObjects = nil
     ScreenFx.vignette(0)
     Combat.logEvent(battle.combat, "system", "Defeat.")
@@ -2309,7 +2325,7 @@ end
 -- the spell going off, and letting the player arm a second action then would double-cast. The input
 -- guards below test this instead of raw walking().
 local function busy()
-    return walking() or battle.pendingAdvance ~= nil
+    return walking() or battle.script ~= nil or battle.pendingAdvance ~= nil
         or (battle.current ~= nil and battle.current.channel ~= nil)
 end
 
@@ -2321,9 +2337,13 @@ local function walkStep(w)
     w.i = w.i + 1
     local step = w.steps[w.i]
     if not step then return false end
-    w.timer = MOVE_STEP
+    -- A walk paces itself at MOVE_STEP a tile. `w.step` is the exception, and there is one: a SCRIPTED
+    -- crossing (battle.playScripted) covers its ground at a run, because the beat it belongs to says the
+    -- thing was on her before she could set her feet -- and a demon strolling the length of the board at
+    -- walking pace would say the opposite over two full seconds.
+    w.timer = w.step or MOVE_STEP
     Sound.play("battle.step") -- one footstep per tile of the route, either side's walk
-    battle.fx:setSlide(w.unit, step.fromX, step.fromY, MOVE_STEP, nil, step.x, step.y)
+    battle.fx:setSlide(w.unit, step.fromX, step.fromY, w.step or MOVE_STEP, nil, step.x, step.y)
     -- A trap that sprang, a hazard that bit, an overwatch shot -- float its number on arrival. No
     -- actor leans in: this is damage taken while walking, not a strike the unit made. This step's cues
     -- were held up front (beginWalk) so a unit felled LATER in the route keeps its HP bar and turn-strip
@@ -2341,8 +2361,8 @@ end
 -- ran for the frame), and without this prime that draw would flash the sprite on its destination tile
 -- for a frame before the walk snaps it back to the origin. Priming here places it on the origin from
 -- frame one.
-local function beginWalk(unit, steps, onDone)
-    local w = { steps = steps, i = 0, timer = 0, onDone = onDone, unit = unit }
+local function beginWalk(unit, steps, onDone, step)
+    local w = { steps = steps, i = 0, timer = 0, onDone = onDone, unit = unit, step = step }
     battle.walk = w
     -- The model resolved the ENTIRE route in startWalk, so every trap/overwatch death down the line has
     -- ALREADY set alive=false -- which drops that unit from Combat.buildTimeline at once. Hold every
@@ -2400,6 +2420,177 @@ local function updateWalk(dt)
     if walkStep(w) then return end
     battle.walk = nil
     if w.onDone then w.onDone() end
+end
+
+-- ---------------------------------------------------------------------------
+-- A SCRIPTED BEAT, PLAYED OUT
+--
+-- The model resolves a story beat the way it resolves everything else: in one uninterrupted pass,
+-- before a frame is drawn. For an ordinary blow that is exactly right, and the machinery above
+-- (holdLanding, fx:hold, the approach walk) is what turns the finished exchange back into something
+-- with moments in it. A SCRIPT needs the same treatment and more of it, because it is the one kind of
+-- action nobody is allowed to answer -- so all it has to offer the player is the watching.
+--
+-- The Demon Champion's last stage is the one that exists (data/status/status_champion_fixation.lua):
+-- the mark is spent at the top of its turn, and the model crosses the board and fells Rowan in a
+-- single call. Left to play itself that reads as a demon appearing beside her and a corpse, in one
+-- frame, with no blow in between -- reported by the author as a death that is "too sudden".
+--
+-- So the status leaves `combat.scriptedStrike` behind and this plays it, one beat at a time:
+--
+--   1. the body is PINNED where it started, and rattles there (the wind-up already on the telegraph)
+--   2. it COMES ACROSS THE GROUND, tile by tile at a run, around whatever the arena has in the way
+--   3. it SWINGS -- a lunge and the swing's own sound, aimed at her
+--   4. she TAKES IT -- recoil, flash, an impact burst, and no number, because nothing was billed
+--   5. she SPEAKS, on her feet, with the blow on her
+--   6. and only then does she GO DOWN: the held death cue is let go and the body fades
+--
+-- The felling's cues are held from the first beat to the last (`held`) for the same reason a walked-in
+-- blow's are: the model already put her health at zero and her card off the timeline, and without the
+-- hold she would be dead on the board through all six beats of dying.
+--
+-- Beats hand themselves on two ways -- a delay in seconds, or nil for a beat that waits on a callback
+-- (the walk coming to rest, the scene being dismissed). Kept on `battle` rather than in file-scope
+-- locals for the ceiling reason given at win(); the beat list is a constant and is built once.
+battle.SCRIPT_RUN = 0.12 -- seconds per tile of a scripted crossing: a run, against MOVE_STEP's walk
+
+battle.SCRIPT_BEATS = {
+    -- 1. Pinned, and rattling. The model has ALREADY put the body on its destination tile, so the pin
+    --    is what keeps the wind-up where the player last saw the thing standing -- an unbounded hold
+    --    (the same one pinSlides uses), released by the first tile of the walk below.
+    function(sc)
+        battle.fx:setSlide(sc.unit, sc.fromX, sc.fromY, battle.SCRIPT_RUN, false, nil, nil, math.huge)
+        battle.fx:ingest({ { type = "shake", unit = sc.unit, duration = sc.windup } }, nil)
+        return sc.windup
+    end,
+    -- 2. The crossing itself, replayed as a walk over ground the model never charged it for
+    --    (Combat.scriptedRoute traced the route while the body still stood on the far end of it). No
+    --    route -- a victim walled off from it -- and the body glides across instead, which is what the
+    --    beat used to be in full.
+    function(sc)
+        battle.replayScriptLog(sc.logCross) -- what it is doing, said as it starts doing it
+        sc.logCross = nil
+        local route = sc.route
+        if not (route and #route > 1) then
+            battle.fx:forcedSlide(sc.unit, sc.fromX, sc.fromY)
+            return battle.SCRIPT_RUN * (math.abs(sc.fromX - sc.unit.x) + math.abs(sc.fromY - sc.unit.y))
+        end
+        local steps = {}
+        for i = 1, #route - 1 do
+            steps[i] = { fromX = route[i].x, fromY = route[i].y, x = route[i + 1].x, y = route[i + 1].y }
+        end
+        beginWalk(sc.unit, steps, battle.nextScriptBeat, battle.SCRIPT_RUN)
+        return nil -- the walk hands itself on when the feet stop
+    end,
+    -- 3. The swing. The ordinary activation cue, so it leans, glows and sounds like every other strike
+    --    in the fight -- the one thing this beat should not be is a new visual vocabulary.
+    function(sc)
+        battle.fx:ingest({ { type = "cast", unit = sc.unit, tx = sc.victim.x, ty = sc.victim.y } }, nil)
+        return 0.14 -- contact lands a beat into the lunge, as it does under an ordinary blow
+    end,
+    -- 4. The impact, on a body nothing was billed against (ui/combat_fx.lua's `struck`).
+    function(sc)
+        battle.fx:ingest({ { type = "struck", unit = sc.victim, attacker = sc.unit } }, nil)
+        return 0.75 -- long enough for the recoil to settle before she opens her mouth
+    end,
+    -- 5. Her line, over a board that is holding perfectly still (a conversation freezes the state).
+    --    She is still standing here, and still on the timeline: that is the whole point of the hold.
+    function(sc)
+        if not (sc.scene and Conversation.defs[sc.scene]) then return 0 end
+        Conversation.play(sc.scene, battle.nextScriptBeat, nil, { deferJoins = true })
+        return nil
+    end,
+    -- 6. And she goes down. Everything the model raised while it resolved the beat -- her death, her
+    --    bar, whatever the crossing set off on the way -- is released here, in one drain, and read at
+    --    last. `unit` is handed in as the actor so anything in that batch leans off the body that did it.
+    function(sc)
+        if sc.held then
+            battle.fx:hold(sc.held, -1)
+            battle.fx:ingest(sc.held, sc.unit)
+            sc.held = nil
+        end
+        battle.replayScriptLog(sc.logFell) -- "Rowan is defeated!", on the frame she actually is
+        sc.logFell = nil
+        return 0.55 -- the death fade's own length, so the body is gone before the turn carries on
+    end,
+}
+
+-- Take the staging the model left behind and begin playing it. Everything already raised is drained
+-- and held here, before a frame is drawn, so no part of the beat is seen out of order.
+function battle.playScripted(s)
+    if not (s and s.unit and s.victim) then return end
+    local held = Combat.drainFx(battle.combat)
+    if held then battle.fx:hold(held, 1) end
+    battle.script = {
+        unit = s.unit, victim = s.victim, route = s.route,
+        fromX = s.fromX or s.unit.x, fromY = s.fromY or s.unit.y,
+        windup = s.windup or 0.9, scene = s.scene,
+        held = held, i = 0, t = 0,
+    }
+    -- THE LOG IS A READOUT TOO, and the only one the fx holds cannot reach. The model wrote the whole
+    -- beat into it a moment ago, so without this the panel reads "It is across the ground before she
+    -- can set her feet." and "Rowan is defeated!" while the demon is still standing at the far end of
+    -- the board winding up -- the answer, a full two seconds before the board gets to it. So the tail
+    -- the beat wrote is lifted straight back off (`logAdded`, counted by the status from the end for
+    -- the trim reason it gives) and re-filed under the beats that earn each line: what it did when it
+    -- does it, and what became of her when she drops.
+    local n = s.logAdded or 0
+    if n > 0 and battle.combat.log then
+        local cross, fell = {}, {}
+        local lifted = {}
+        for _ = 1, n do
+            local entry = table.remove(battle.combat.log)
+            if not entry then break end
+            table.insert(lifted, 1, entry)
+        end
+        for _, entry in ipairs(lifted) do
+            -- The felling's own lines wait for the body to go down; everything else is the crossing.
+            local list = (entry.kind == "death") and fell or cross
+            list[#list + 1] = entry
+        end
+        battle.script.logCross, battle.script.logFell = cross, fell
+    end
+    battle.nextScriptBeat()
+end
+
+-- Re-file one of the lifted log lists at the beat that earned it.
+function battle.replayScriptLog(list)
+    local log = battle.combat and battle.combat.log
+    if not (log and list) then return end
+    for _, entry in ipairs(list) do log[#log + 1] = entry end
+end
+
+-- Advance to the next beat, or end the script. Also the callback a waiting beat hands itself on with.
+function battle.nextScriptBeat()
+    local sc = battle.script
+    if not sc then return end
+    sc.i = sc.i + 1
+    local beat = battle.SCRIPT_BEATS[sc.i]
+    if not beat then
+        -- Nothing left owing: release anything a skipped beat was still holding, so a script that ended
+        -- early can never strand a body mid-death with its bar full.
+        if sc.held then
+            battle.fx:hold(sc.held, -1)
+            battle.fx:ingest(sc.held, sc.unit)
+        end
+        battle.replayScriptLog(sc.logCross)
+        battle.replayScriptLog(sc.logFell)
+        battle.script = nil
+        return
+    end
+    sc.t = beat(sc)
+end
+
+-- The script's clock, run instead of the turn's while one is playing (battle.update) -- so the AI
+-- think-pause, the channel resolve and the turn hand-off all wait it out. A beat that is walking
+-- delegates to the walk loop; a beat waiting on a callback (t == nil) simply holds.
+function battle.runScript(dt)
+    local sc = battle.script
+    if not sc then return end
+    if walking() then updateWalk(dt); return end
+    if sc.t == nil then return end
+    sc.t = sc.t - dt
+    if sc.t <= 0 then battle.nextScriptBeat() end
 end
 
 -- Take everything the action just resolved and keep it off the screen until the walk replaying its
@@ -5467,6 +5658,8 @@ function battle.enter(self, opts)
     -- opens on a full-colour board rather than the grey the loss faded to (ui/screen_fx.lua).
     ScreenFx.reset()
     battle.pendingAdvance = nil
+    battle.walk = nil
+    battle.script = nil -- and no story beat is half-played into a fresh fight (battle.playScripted)
     -- A technique award parked by the last fight must never surface over this one's opening board:
     -- it names a unit from a company that may not even be on this field (see releaseGrowthAward).
     battle.pendingAward = nil
@@ -5794,7 +5987,12 @@ function battle.update(dt)
         battle.tutorialNudge.life = battle.tutorialNudge.life - dt
         if battle.tutorialNudge.life <= 0 then battle.tutorialNudge = nil end
     end
-    if walking() then
+    if battle.script then
+        -- A story beat is playing itself out (battle.playScripted). It outranks every clock below --
+        -- including the walk, which it drives itself for the stretch where the beat IS a walk -- so
+        -- nothing takes a turn, resolves a channel or hands off in the middle of it.
+        battle.runScript(dt)
+    elseif walking() then
         updateWalk(dt) -- a walk holds the AI clock: whoever is on their feet finishes first
     elseif battle.pendingAdvance then
         -- An action just resolved: hold until the reaction beat elapses AND the sprite reactions finish

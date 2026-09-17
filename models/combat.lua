@@ -3956,6 +3956,45 @@ function Combat.travelField(combat, unit, goal, ignore)
     return field
 end
 
+-- THE GROUND A SCRIPTED CROSSING ACTUALLY COVERS: the tile-by-tile route from where `unit` stands to
+-- (x, y), origin-first, or nil when no road joins the two.
+--
+-- Not a move and never priced as one -- no budget is spent, no turn is claimed, nothing is checked for
+-- legality -- because the caller is a script and the model has already decided the body ends up there
+-- (data/status/status_champion_fixation.lua blinks it with Combat.teleportUnit). What this answers is
+-- the VIEW's question, and only the view's: a beat the player is meant to watch happen has to be
+-- walked across the board rather than blinked, and a straight line between the two tiles would take
+-- the demon through the arena's own walls. So the route is traced down Combat.travelField -- the same
+-- budget-free road cost the enemy AI plans two turns out with -- which honours terrain, walls and
+-- props and ignores bodies, exactly right for something that is coming through whoever is in the way.
+--
+-- Strictly downhill, so it always terminates; the step cap is belt and braces for a field that has
+-- been handed a goal it cannot reach.
+function Combat.scriptedRoute(combat, unit, x, y)
+    local arena = combat and combat.arena
+    if not (arena and unit and x and y) then return nil end
+    local field = Combat.travelField(combat, unit, { x = x, y = y })
+    local cx, cy = unit.x, unit.y
+    local cost = field[key(cx, cy)]
+    if cost == nil then return nil end
+    local path = { { x = cx, y = cy } }
+    local cap = arena.cols * arena.rows
+    while not (cx == x and cy == y) do
+        local nx, ny, ncost
+        for _, d in ipairs(DIRS) do
+            local tx, ty = cx + d[1], cy + d[2]
+            local c = field[key(tx, ty)]
+            if c and c < (ncost or cost) then nx, ny, ncost = tx, ty, c end
+        end
+        if not nx then return nil end -- no downhill step: the road runs out short of the goal
+        cx, cy, cost = nx, ny, ncost
+        path[#path + 1] = { x = cx, y = cy }
+        cap = cap - 1
+        if cap <= 0 then return nil end
+    end
+    return path
+end
+
 -- Every cell a unit could strike THIS turn with a `range`-reach weapon: for the origin tile
 -- and each tile it can move to, the Manhattan diamond of radius `range`, clamped to the arena.
 -- Returns `{ [key] = { x, y, fromX, fromY, moveCost } }`, where from/moveCost is the CHEAPEST
@@ -5165,7 +5204,12 @@ end
 -- Set `unit` down on (x, y) in a blink, setting off whatever the tile holds (a trap, a hazard) --
 -- the self-relocation a Leaping Crash makes before it bursts. No move cost and no line check: a
 -- teleport, not a walk. Returns true once placed (false for a dead/nil unit).
-function Combat.teleportUnit(combat, unit, x, y)
+--
+-- `opts.silent` drops the log line alone -- everything else still happens. For a caller that is
+-- writing a BETTER line about the same movement and would otherwise print two: the Demon Champion's
+-- crossing is resolved as a blink (no budget, no legality) but played on the board as a run, so
+-- "it leaps to (4, 7)" would be the engine contradicting what the player is watching.
+function Combat.teleportUnit(combat, unit, x, y, opts)
     if not (unit and unit.alive) then return false end
     -- Bank the DISTANCE CROSSED WITHOUT WALKING toward any signature gated on it (Combat.tally). The
     -- Assassin's relic is built on this and nothing else: her damage is the ground she did not cover
@@ -5173,8 +5217,10 @@ function Combat.teleportUnit(combat, unit, x, y)
     -- and in the same Chebyshev tiles the board reasons in everywhere else.
     Combat.tally(unit, "tilesBlinked", math.max(math.abs((unit.x or x) - x), math.abs((unit.y or y) - y)))
     unit.x, unit.y = x, y
-    Combat.logEvent(combat, "move",
-        string.format("%s leaps to (%d, %d).", unitName(unit), x, y), unit)
+    if not (opts and opts.silent) then
+        Combat.logEvent(combat, "move",
+            string.format("%s leaps to (%d, %d).", unitName(unit), x, y), unit)
+    end
     -- No `reason`: a leap crosses no ground, so it springs the tile it lands on but never fires a
     -- per-tile status. Bleeding out of a melee costs blood; blinking out of one does not.
     Combat.enterTile(combat, unit, x, y)
