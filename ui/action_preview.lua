@@ -21,6 +21,7 @@
 
 local Scale = require("scale")
 local Colors = require("ui.colors")
+local Glyphs = require("ui.glyphs")
 local Theme = require("ui.theme")
 
 local ActionPreview = {}
@@ -142,7 +143,8 @@ local function buildCounterBlocks(action)
         blocks[#blocks + 1] = { kind = "note", text = "Strikes first", color = MUTED }
     end
     if c.lethal then
-        blocks[#blocks + 1] = { kind = "note", text = "Would defeat you!", color = LETHAL }
+        blocks[#blocks + 1] = { kind = "note", text = "Would defeat you!", color = LETHAL,
+            glyph = Glyphs.skull }
     end
     -- What answering costs THEM. An answer is priced as a swing and doubles with each one already
     -- thrown this round (Trait.answerCost), so this row is the other half of the trade the player is
@@ -174,7 +176,8 @@ end
 --   sub   { text }                     -- second line ("vs <target>", "onto this tile", ...)
 --   sep   {}                           -- divider + gap
 --   stat  { label, value, valueColor } -- label (left) + value (right)
---   note  { text, color }              -- a standalone coloured line (e.g. "Defeats target!")
+--   note  { text, color, glyph }       -- a standalone coloured line (e.g. "Defeats target!"),
+--                                        with an optional inline mark drawn before the words
 local function buildBlocks(action)
     if action.kind == "counter" then return buildCounterBlocks(action) end
     local accent = accentFor(action)
@@ -272,7 +275,11 @@ local function buildBlocks(action)
                 value = tostring(action.crit) .. "%", valueColor = TIME }
         end
         if entry.lethal then
-            blocks[#blocks + 1] = { kind = "note", text = "Defeats target!", color = LETHAL }
+            -- The skull is carried here as well as on the board (ui/battle_map.lua drawLethalMark),
+            -- so the mark is met beside the words that gloss it: the panel is where the player
+            -- reads, the board is where the same mark has to work at a glance.
+            blocks[#blocks + 1] = { kind = "note", text = "Defeats target!", color = LETHAL,
+                glyph = Glyphs.skull }
         end
     end
     if entry and (entry.heal or 0) > 0 then
@@ -381,8 +388,19 @@ function ActionPreview.draw(action, charBox, maxRight, opts)
         elseif b.kind == "note" then
             love.graphics.setFont(body)
             local c = b.color or MUTED
+            local tx = bx + pad
+            -- An optional inline mark, sized to sit INSIDE the line rather than stretch it: a note's
+            -- row height is the body font's either way, so a marked note can never drift from
+            -- measureBlocks. It is punched against the panel face, which is what it lands on.
+            if b.glyph then
+                local gh = bodyH - 2
+                local gw = gh / 1.15
+                b.glyph(tx, ty + 1, gw, gh, c[1], c[2], c[3], 1,
+                    Theme.panel[1], Theme.panel[2], Theme.panel[3])
+                tx = tx + gw + 4
+            end
             love.graphics.setColor(c[1], c[2], c[3], 1)
-            love.graphics.print(b.text, bx + pad, ty)
+            love.graphics.print(b.text, tx, ty)
             ty = ty + bodyH + 1
         else -- stat: label left, value right
             love.graphics.setFont(body)

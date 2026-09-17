@@ -534,7 +534,8 @@ function BattleMap:draw()
     self.bursts:draw(self) -- impacts, blooms and bolts, over the bodies and highlights, under the readouts
     self:drawUnitInfo() -- HP bars + turn numbers + status badges sit above the highlight fills
     self:drawTurnCue() -- whose turn it is (player only): a chevron over the head + the turn-start burst
-    self:drawIntentBadges() -- the Threats-survey intent icons, on each foe's body, above every readout
+    self:drawIntentBadges() -- the Threats-survey intent icons, on each foe's body, above the bars and badges
+    self:drawLethalMarks() -- the kill mark over any body the aimed cast would fell, above every other readout
     self:drawCursor()
     love.graphics.setColor(1, 1, 1)
 end
@@ -1522,6 +1523,66 @@ function BattleMap:drawBossMark(u, wx, wy, alpha)
     Theme.crest(x + d / 2, y + d / 2, BOSS_CREST_R,
         { Theme.accentAmber[1], Theme.accentAmber[2], Theme.accentAmber[3], al })
     love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- THE KILL MARK: a skull over every body the aimed cast would fell.
+--
+-- The model already knew this (Combat.previewAbility's `entry.lethal`) and two places already said it
+-- -- an amber slice on the HP bar instead of the ordinary bone one, and "Defeats target!" in the action
+-- panel. Both are readouts you have to be LOOKING at: the bar is 5px tall and the difference between
+-- Colors.PENDING and Colors.LETHAL on it is a hue, and the panel is off to the side of the board. While
+-- the eye is on the board picking a target -- which is the whole of a targeting decision -- a kill and
+-- an ordinary chip read the same. So the flag gets a mark of its own, in the one place the eye is.
+--
+-- It wears Colors.LETHAL, the same amber the bar slice under it turns, so the two are one statement and
+-- the skull needs no legend: whatever else is on screen, the mark and the sliver match.
+--
+-- IT SITS ON THE BODY, not over its head. The first cut floated it above the tile to keep the body's
+-- centre free for the intent badge (drawIntentBadge); the author's correction is the right one --
+-- "over the character" means ON the character, and a mark hovering above a token is a mark about the
+-- TILE. The badge collision costs nothing in practice: the aimed target's intent badge is already
+-- suppressed by states/battle.lua, and in the one case that gets past that -- an AoE aimed at a tile
+-- killing a foe the cursor happens to be resting on -- the skull is drawn last and wins, which is the
+-- right order anyway. What a corpse was going to do next is not the read.
+--
+-- So no plate: an opaque badge on the token would hide the body it is a verdict about. It is cut out
+-- of the picture the other way, by a dark silhouette drawn a hair larger underneath -- the same trick
+-- that keeps the glyph legible over artwork, without taking the artwork away.
+local LETHAL_MARK_SPAN = 0.46 -- glyph width as a fraction of one tile
+
+function BattleMap:drawLethalMark(u)
+    local wx, wy, boxW, boxH = self:unitOrigin(u)
+    local gw = math.floor(self.size * LETHAL_MARK_SPAN)
+    local gh = gw * 1.15
+    -- Centred on the FOOTPRINT, so a 2x2 body wears it in the middle of the shape the player sees
+    -- rather than on its anchor cell. Lifted a touch off centre: the badge row and the HP bar own the
+    -- bottom of the tile, and a mark centred on the box sits half on them.
+    local gx = math.floor(wx + (boxW - gw) / 2)
+    local gy = math.floor(wy + (boxH - gh) / 2 - self.size * 0.06)
+
+    local c = Colors.LETHAL
+    local dark = { 0.04, 0.04, 0.05 }
+    -- The silhouette first, a pixel out on every side: over a pale token the amber alone would melt
+    -- into it, and a stroke this mark can't have (the glyph is a fill) is what the shadow stands in for.
+    Glyphs.skull(gx - 1.5, gy - 1.5, gw + 3, gh + 3, dark[1], dark[2], dark[3], 0.85,
+        dark[1], dark[2], dark[3])
+    -- ...then the mark, breathing, with its sockets punched in that same dark so the holes read as
+    -- holes against the body showing through around it rather than as a second colour.
+    local pulse = 0.82 + 0.18 * math.sin((self.time or 0) * 5)
+    Glyphs.skull(gx, gy, gw, gh, c[1], c[2], c[3], pulse, dark[1], dark[2], dark[3])
+    love.graphics.setColor(1, 1, 1)
+end
+
+-- Every body the hovered cast would fell, marked. Reads the same per-unit preview the on-board HP bars
+-- project (overlays.hpPreview), so a blast that kills three puts three skulls up and the panel's single
+-- "Area hit -- 3 in blast" line stops being the only place the kills are counted.
+function BattleMap:drawLethalMarks()
+    local pv = self.overlays and self.overlays.hpPreview
+    if not pv or not self.combat then return end
+    for _, u in ipairs(self.combat.units) do
+        local p = u.alive and not self:heldUnit(u) and pv[u]
+        if p and p.lethal then self:drawLethalMark(u) end
+    end
 end
 
 -- Whose move it is, made unmissable -- but only when it is the PLAYER's. Two layers over the acting

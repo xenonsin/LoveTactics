@@ -270,6 +270,45 @@ function Glyphs.padlock(x, y, w, h, r, g, b, a)
     love.graphics.rectangle("fill", x + w * 0.1, bodyTop, w * 0.8, h - h * 0.42, 1, 1)
 end
 
+
+-- THE SKULL: the game's mark for "this body does not survive what is being aimed at it". Worn by the
+-- lethal preview over a doomed unit on the board (ui/battle_map.lua's drawLethalMark), where the
+-- amber sliver on the HP bar and the panel's "Defeats target!" line are both too quiet to catch an
+-- eye that is on the board and not on the readouts.
+--
+-- Coarse geometry with HOLES in it, on the vendor-crest lesson (ui/vendor_icons.lua): a domed cranium
+-- over a squat jaw, with the sockets, the nasal notch and the tooth gaps CUT OUT rather than shaded.
+-- Detail inside a shape is invisible at 17px; a silhouette and the voids in it are not. `br, bg, bb`
+-- is the colour those voids are punched in -- the plate the glyph sits on -- so a hole reads as a hole
+-- and not as a second mark. Authored taller than wide: pass h ~= w * 1.15.
+function Glyphs.skull(x, y, w, h, r, g, b, a, br, bg, bb)
+    a = a or 1
+    local cx = x + w / 2
+    local domeY = y + w * 0.5 -- the cranium is a circle as wide as the glyph, so its radius sets this
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.circle("fill", cx, domeY, w * 0.5)
+    -- The jaw: a block narrower than the dome, run to the baseline so the two read as one silhouette.
+    local jawTop, jawW = y + w * 0.70, w * 0.60
+    love.graphics.rectangle("fill", cx - jawW / 2, jawTop, jawW, (y + h) - jawTop, w * 0.12, w * 0.12)
+    -- ...and the voids.
+    love.graphics.setColor(br or 0, bg or 0, bb or 0, a)
+    love.graphics.circle("fill", cx - w * 0.23, y + w * 0.46, w * 0.17)
+    love.graphics.circle("fill", cx + w * 0.23, y + w * 0.46, w * 0.17)
+    love.graphics.polygon("fill", cx, y + w * 0.62,
+        cx + w * 0.09, y + w * 0.80, cx - w * 0.09, y + w * 0.80)
+    -- Two tooth gaps, which is what tells the block under the dome from a chin -- but only while the
+    -- jaw is big enough to have a chin at all. Below ~15px the slots stop being gaps and become the
+    -- shape, and the mark reads as a bug rather than a skull: at the size it is quoted inline in a
+    -- panel note, the dome and the sockets carry it alone.
+    if w >= 15 then
+        local slot = math.max(1.5, w * 0.09)
+        local teethTop = y + w * 0.95
+        for i = -1, 1, 2 do
+            love.graphics.rectangle("fill", cx + i * w * 0.13 - slot / 2, teethTop, slot,
+                (y + h) - teethTop)
+        end
+    end
+end
 -- A whole rank in one call: `stars` filled pips out of `outOf`, laid left to right inside (x, y, w, h)
 -- with the pips sized to the height. Returns the width actually drawn, so a caller can lay text after
 -- it without measuring twice.
