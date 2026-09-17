@@ -41,7 +41,7 @@ generals existed; they are the spec.
 | Sin | Vendor | Class | Rank-4 foreshadow item | The general's rule |
 |---|---|---|---|---|
 | **wrath** | The Colosseum | fighter | Crimson Greataxe | grows on damage taken |
-| **lust** | The Cathedral | priest | Censer of Dawn | takes what is not offered |
+| **lust** | The Cathedral | priest | Dawn Chrism | takes what is not offered |
 | **gluttony** | Hunter's Lodge | hunter | Hornbow of the Hunt | never stops being hungry |
 | **sloth** | The Bastion | knight | Oathkeeper Shield | not idleness — the oath abandoned |
 | **pride** | The Arcanum | mage | Codex of Hubris | answers every spell with your own |
@@ -867,7 +867,7 @@ Luxuria as Amana's emptied cohort-sister, which the *outside demon* decision abo
 ### The ten slots
 
 Ten against the four-rank ladder (`ranks = { 0, 40, 100, 200 }`; Penitent → Acolyte → Confessor →
-Saint), the general behind rank 4 — the same standing that puts the **Censer of Dawn** on the shelf,
+Saint), the general behind rank 4 — the same standing that puts the **Dawn Chrism** on the shelf,
 whose file comment is the spec. Reuses four shipped quests; six are new.
 
 **Amana is not recruited in this line.** She joins in the Colosseum's second slot, at the revival that

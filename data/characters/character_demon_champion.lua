@@ -28,7 +28,7 @@
 -- KILLING blow crosses no threshold (data/traits/trait_boss_phases.lua says so outright), stage 3 was
 -- routinely skipped whole. The player met a stat block, not a script.
 --
--- 115 was also priced without the road's own gift. `resist.holy = -8` below means the Censer of Dawn
+-- 115 was also priced without the road's own gift. `resist.holy = -8` below means the Dawn Chrism
 -- from stop 2 of the flight leg -- which makes every item it touches strike as HOLY -- adds 8 to every
 -- swing landed on this body. That is deliberate (the lesson and its proof one step apart, see
 -- states/prologue.lua) and it very nearly doubles what the party throws, so the health it is priced

@@ -544,7 +544,7 @@ return {
             assert(stops[4].conversation == "conversation_flight_event_survivor", "stop 4 is the gate")
             local gifts = {}
             for _, g in ipairs(prologue.SCENE_GIFTS) do gifts[g.from] = g.item end
-            assert(gifts.conversation_flight_event_shrine == "utility_censer_of_dawn",
+            assert(gifts.conversation_flight_event_shrine == "utility_dawn_chrism",
                 "the shrine's mechanic is the adjacency aura")
             assert(gifts.conversation_flight_event_survivor == "ability_mark_target",
                 "the survivor's mechanic is the adjacency gate")

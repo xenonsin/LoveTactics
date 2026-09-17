@@ -139,10 +139,10 @@ return {
             char.inventory[2] = Item.instantiate("ability_rain_of_arrows")  -- ability: blessed
             char.inventory[3] = Item.instantiate("armor_leather_armor")     -- armor: not in appliesTo
             char.inventory[4] = Item.instantiate("consumable_healing_potion") -- nor a draught
-            local censer = Item.instantiate("utility_censer_of_dawn")
+            local chrism = Item.instantiate("utility_dawn_chrism")
 
-            local cells = Combat.auraPairCells(char, censer)
-            assert(cells[1] and cells[2], "the censer's blessing reaches a weapon and an ability")
+            local cells = Combat.auraPairCells(char, chrism)
+            assert(cells[1] and cells[2], "the chrism's blessing reaches a weapon and an ability")
             assert(not cells[3] and not cells[4],
                 "it reaches neither armor nor a potion: got " .. table.concat(keys(cells), ","))
             assert(not cells[9], "an empty cell holds nothing to gain")
@@ -164,7 +164,7 @@ return {
     {
         name = "an exception is not a pairing -- exceptTags kit stays dark",
         fn = function()
-            -- Hand-built rather than instantiated: the censer's carve-out is `shadow`, and no shipped
+            -- Hand-built rather than instantiated: the chrism's carve-out is `shadow`, and no shipped
             -- WEAPON carries that tag today (the only one is a utility relic, which the aura does not
             -- reach anyway). A case that could only pass would prove nothing about the filter, so the
             -- input is written out here -- the same plain shape Combat.auraApplies reads off an item.
@@ -172,9 +172,9 @@ return {
             char.inventory[1] = Item.instantiate("weapon_iron_sword")
             char.inventory[2] = { id = "weapon_shadow_test", name = "Shadow Blade",
                 type = "weapon", tags = { "sword", "shadow" } }
-            local censer = Item.instantiate("utility_censer_of_dawn")
+            local chrism = Item.instantiate("utility_dawn_chrism")
 
-            local cells = Combat.auraPairCells(char, censer)
+            local cells = Combat.auraPairCells(char, chrism)
             assert(cells[1], "the plain blade is blessed")
             assert(not cells[2], "kit that already channels shadow refuses the blessing, and stays dark")
         end,
@@ -193,17 +193,17 @@ return {
         name = "a glowing cell is a wire the grid will really draw once the two touch",
         fn = function()
             -- The mark is drawn in the aura wire's own colour, so it promises that wire. Walk the
-            -- censer into every free cell and check the two reads agree: a cell that glows must produce
-            -- an "aura" link the moment the censer lands beside it, and one that doesn't must not.
+            -- chrism into every free cell and check the two reads agree: a cell that glows must produce
+            -- an "aura" link the moment the chrism lands beside it, and one that doesn't must not.
             local char = emptyChar("character_archer")
             char.inventory[1] = Item.instantiate("weapon_iron_sword")
             char.inventory[9] = Item.instantiate("armor_leather_armor")
-            local censer = Item.instantiate("utility_censer_of_dawn")
-            local glowing = Combat.auraPairCells(char, censer)
+            local chrism = Item.instantiate("utility_dawn_chrism")
+            local glowing = Combat.auraPairCells(char, chrism)
 
             for cell = 1, 9 do
                 if char.inventory[cell] == nil then
-                    char.inventory[cell] = censer
+                    char.inventory[cell] = chrism
                     local wired = {}
                     for _, link in ipairs(Combat.adjacencyLinks(char)) do
                         if link.kind == "aura" and link.from == cell then wired[link.to] = true end
@@ -216,7 +216,7 @@ return {
                         end
                         -- Adjacent AND glowing is exactly the wire; anything else draws none.
                         assert((wired[other] or false) == (adjacent and (glowing[other] or false)),
-                            "censer in cell " .. cell .. ": the glow on cell " .. other ..
+                            "chrism in cell " .. cell .. ": the glow on cell " .. other ..
                                 " disagrees with the wire")
                     end
                 end

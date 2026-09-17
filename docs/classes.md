@@ -105,11 +105,13 @@ Four notes on how this shook out:
   edge, they just never carry one. A knight holding a holy blade is a crusader, which is what
   knight+priest is built from anyway.
 - **The `censer` family is the Cathedral's alone.** A censer is a liturgical object; nobody else has
-  any business swinging one — which is also why the priest's signature relic is already one
-  (`utility_hallowed_censer`). Its two directions therefore live on the *same* shelf: `weapon_censer`
+  any business swinging one. Its two directions therefore live on the *same* shelf: `weapon_censer`
   blesses the ground it walks and `weapon_censer_of_ashes` chokes it. That is not a contradiction —
   "the faithful arm those who purge" is the shop's own line, and a faith with a punitive half is
-  precisely what lust's shelf is. The object never changes; only the voice it is swung in.
+  precisely what lust's shelf is. The object never changes; only the voice it is swung in. The
+  priest's *signature* relic is **not** in this family, and this bullet used to claim it was:
+  `utility_hallowed_chalice` is a utility aura that lays no ground and swings at nobody. It was named
+  a censer until it was renamed for exactly that reason, and the argument above never needed it.
 - **Priest and alchemist racks are otherwise authored.** Nothing else in the catalog spoke lust or
   envy, and every borrowed alternative would have broken the corollary on day one. A plain hammer on
   the envy shelf is exactly the drift this file exists to stop.

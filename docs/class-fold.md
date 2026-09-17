@@ -266,7 +266,7 @@ Four things that no current test would catch:
   Creature root as well, but they need the marker adding so the reason is readable.
 - **~12 are player gear with no job**, and these are the real call: `armor_leather_armor`,
   `armor_padded_vest`, `ability_haste`, `ability_pull`, `ability_rain`, `utility_decoy`,
-  `utility_focus_stone`, `utility_gatekeepers_measure`, `utility_hallowed_censer`,
+  `utility_focus_stone`, `utility_gatekeepers_measure`, `utility_hallowed_chalice`,
   `utility_overflowing_focus`, `consumable_wildcraft_reagent`, `weapon_gralloch_knife`.
 
 Calling a padded vest creature kit would be a lie, and `class_spec` already records the reason these

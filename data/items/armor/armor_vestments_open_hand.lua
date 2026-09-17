@@ -17,7 +17,7 @@
 -- the vestments kept, because the armour is the version that costs something: a square of pace and a
 -- chest slot, against a grid cell that was free to a priest with a spare one.
 --
--- utility_hallowed_censer and utility_reliquary_kept_trust still grant the same presence from a grid
+-- utility_hallowed_chalice and utility_reliquary_kept_trust still grant the same presence from a grid
 -- cell, so the slotted build survives -- it is quest stock now rather than shelf stock, which is the
 -- right place for a second spelling. Stacking two sources does stack the healing, which is a legitimate
 -- (expensive) build rather than an oversight.

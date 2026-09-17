@@ -83,10 +83,10 @@ return {
     {
         name = "the Priest's Sanctified Presence heals an adjacent ally each tick",
         fn = function()
-            -- The generic priest is relic-free; the Hallowed Censer (Sanctified Presence) is Amana's
-            -- signature, so it is added here explicitly rather than pulled from a default kit.
+            -- The generic priest is relic-free and the Hallowed Chalice (Sanctified Presence) sits in
+            -- nobody's default kit, so it is added here explicitly rather than pulled from one.
             local priestChar = Character.instantiate("character_priest")
-            Character.addItem(priestChar, Item.instantiate("utility_hallowed_censer"))
+            Character.addItem(priestChar, Item.instantiate("utility_hallowed_chalice"))
             local c = Combat.new(arena(8, 8),
                 { { char = priestChar, x = 2, y = 2 }, unit("character_rowan", 3, 2) },
                 { unit("character_bandit", 8, 8) })

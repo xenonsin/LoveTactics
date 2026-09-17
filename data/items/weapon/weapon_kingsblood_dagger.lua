@@ -26,7 +26,7 @@ return {
     unlockQuests = 6,
     dropTier = 7,
     -- The Undercroft's rank-4, and priced like the other six lines' (800 / rank 4: the Crimson Greataxe,
-    -- the Oathkeeper Shield, the Censer of Dawn, the Hornbow of the Hunt, the Philosopher's Stone, the
+    -- the Oathkeeper Shield, the Dawn Chrism, the Hornbow of the Hunt, the Philosopher's Stone, the
     -- Codex of Hubris). That symmetry is load-bearing: for every vendor, the standing that finally puts
     -- its 800-gold relic on the shelf is the standing that lets you face the general the relic has been
     -- describing (docs/story.md). Greed was the one line where it did not hold -- this file said

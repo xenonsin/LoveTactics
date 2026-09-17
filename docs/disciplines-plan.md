@@ -523,7 +523,7 @@ alchemist 35 → 34, mage 56 → 54, fighter 32 → 30, rogue 28 → 27, hunter 
 | Sacred Banner *(ability)* | priest | **Paladin** | the banner rule |
 | Renewal Banner *(ability)* | priest | **Paladin** | the banner rule |
 | Martyr's Icon *(utility)* | priest | **Paladin** | the Ward aura's thesis: your body in place of the one beside you |
-| Censer of Dawn *(utility)* | priest | **Crusader** | Smite as an aura — the Cathedral consecrating somebody else's steel |
+| Dawn Chrism *(utility)* | priest | **Crusader** | Smite as an aura — the Cathedral consecrating somebody else's steel |
 | The Burning Halo *(utility)* | priest | **Crusader** | the armed faithful's ring; it asks a priest to stand in the line |
 
 **The banner rule is new and it decides by object, not by mechanic.** A banner belongs to Paladin or
@@ -592,7 +592,7 @@ The two utilities were retired and the armour kept in both cases, on the rule th
 > that was free to anyone with a spare one. A shelf that sells one rule twice is selling a spelling
 > rather than a choice.
 
-Worth knowing what the merge gave up, since it is not nothing: `utility_hallowed_censer` and
+Worth knowing what the merge gave up, since it is not nothing: `utility_hallowed_chalice` and
 `utility_reliquary_kept_trust` still carry Sanctified Presence from a grid cell, but both are unpriced
 quest stock — so the *bought* slotted build is gone for both traits. That is the intended trade (a second
 spelling belongs in quest stock, not on the rack), not an oversight. Priest 33 → 31.

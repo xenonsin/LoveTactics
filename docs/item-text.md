@@ -183,7 +183,7 @@ Several effect shapes have one canonical wording so the corpus reads uniform. Cl
   is the shape: `"Adjacent weapons and abilities gain fire and inflict Burn."` Never a coloured verb
   for the grant: `"Adjacent weapons and abilities strike as holy"` → `"…gain holy."` And **don't write
   the exception.** An `exceptTags` carve-out is a filter on the aura, not a second effect, and no item
-  in the corpus states its own (the Fire Stone says nothing about water); the Censer of Dawn's second
+  in the corpus states its own (the Fire Stone says nothing about water); the Dawn Chrism's second
   sentence — `"Shadow kit refuses it."` — was prose about a case no shipped weapon can even reach. The
   pairing is answered on the grid instead, where the loadout glows every cell the aura would reach the
   moment the item is held or pointed at (`Combat.auraPairCells`).

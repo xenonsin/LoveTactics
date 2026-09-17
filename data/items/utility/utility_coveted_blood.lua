@@ -21,8 +21,10 @@
 -- reach for as long as the effect is wanted, which is the price that makes the effect worth having.
 -- Where it is standing IS the decision -- and that is a positional item on a shelf that had none.
 --
--- `radius` deliberately does not scale with the forge, on the same principle the Hallowed Censer
--- follows: an upgrade buys a stronger blessing, never a wider one (see Combat.layIncense).
+-- `radius` deliberately does not scale with the forge, on the same principle weapon_censer follows:
+-- an upgrade buys a stronger blessing, never a wider one (see Combat.layIncense). That is the CENSER
+-- FAMILY's rule, not the Hallowed Chalice's -- the chalice this line used to name lays no ground and
+-- has no radius to scale.
 local Curve = require("models.curve")
 
 return {

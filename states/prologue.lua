@@ -177,7 +177,7 @@ local FLIGHT_QUEST = {
                     "consumable_mana_potion", "consumable_mana_potion",
                     "consumable_healing_potion", "consumable_healing_potion", "consumable_healing_potion",
                 } },
-                -- Stop 2: THE ADJACENCY AURA -- the Censer of Dawn, granted by the shrine scene's
+                -- Stop 2: THE ADJACENCY AURA -- the Dawn Chrism, granted by the shrine scene's
                 -- choices. The first time the 3x3 is ever anything but storage: put it beside a
                 -- weapon and the weapon changes (Combat.auraApplies). It was chosen over the charms
                 -- that sharpen a number because it pays out on the very next block rather than in
@@ -514,8 +514,8 @@ end
 -- hands over the taught branch, so the company that never played Act 0 stands level with the one that
 -- heard her out rather than with the one that took the coin.
 prologue.SCENE_GIFTS = {
-    { item = "utility_censer_of_dawn", from = "conversation_flight_event_shrine" },
-    { item = "ability_mark_target",    from = "conversation_flight_event_survivor" },
+    { item = "utility_dawn_chrism",  from = "conversation_flight_event_shrine" },
+    { item = "ability_mark_target",  from = "conversation_flight_event_survivor" },
 }
 
 -- ...and the flags those same choices set. Both of the survivor's branches set this one, so taking it

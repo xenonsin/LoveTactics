@@ -180,9 +180,9 @@ local DRAFT = {
 
     -- ---- priest (lust: zones and wards, holy, and the bare fist) ----
     utility_burning_halo         = { bonus = "magicDamage = 2", why = "a halo that burns whoever stands in it" },
-    utility_censer_of_dawn       = { bonus = "magicDamage = 2", why = "it makes the grid beside it holy" },
     utility_centering_charm      = { bonus = "skill = 2", why = "centering is composure, and composure is aim" },
     utility_cleansing_ward       = { bonus = "magicDefense = 2", why = "the first debuff simply does not land" },
+    utility_dawn_chrism          = { bonus = "magicDamage = 2", why = "it makes the grid beside it holy" },
     utility_drunken_fist         = { bonus = "luck = 2", why = "the drunk's own luck; the Power belongs to the fist, not the wielder" },
     utility_iron_fist            = { bonus = "defense = 1", why = "a gauntlet guards the hand; the Power is unarmedBonus's, not a weapon's" },
     utility_martyrs_icon         = { bonus = "defense = 2", why = "standing in front of somebody is guard" },

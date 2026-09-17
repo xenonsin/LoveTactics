@@ -311,11 +311,11 @@ return {
     ["line.conversation_flight_champion_turn.1"] = { en = "PLACEHOLDER -- it has stopped swinging at whoever is nearest.", ja = "" },  -- TODO
     ["line.conversation_flight_champion_turn.2"] = { en = "PLACEHOLDER -- it has picked somebody. She does not know it is her.", ja = "" },  -- TODO
     ["line.conversation_flight_event_shrine.1"] = { en = "A shrine, still standing with the whole block burned around it.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_shrine.2"] = { en = "There's a censer left burning on the stone. We can carry it, or we can pour out what oil is left and dress our wounds with it. Choose...", ja = "" },  -- TODO
-    ["line.conversation_flight_event_shrine.3"] = { en = "Take the censer.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_shrine.2"] = { en = "There's a flask of chrism on the stone, {name}. The priests blessed it at dawn. We can carry it, or pour it out on our wounds. Choose...", ja = "" },  -- TODO
+    ["line.conversation_flight_event_shrine.3"] = { en = "Take the chrism.", ja = "" },  -- TODO
     ["line.conversation_flight_event_shrine.4"] = { en = "Tend our wounds and move on.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_shrine.5"] = { en = "Keep it next to whatever you mean to swing. The smoke gets into the steel, and these things do not like being touched by the dawn.", ja = "" },  -- TODO
-    ["line.conversation_flight_event_shrine.6"] = { en = "Patched up. We leave the censer for whoever comes through here after us.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_shrine.5"] = { en = "Keep it next to whatever you mean to swing. The oil goes onto the steel. These things do not like being touched by the dawn.", ja = "" },  -- TODO
+    ["line.conversation_flight_event_shrine.6"] = { en = "Patched up. We leave the flask for whoever comes through here after us.", ja = "" },  -- TODO
     ["line.conversation_flight_event_shrine.7"] = { en = "Now let's keep moving. There's more of this quarter to clear.", ja = "" },  -- TODO
     ["line.conversation_flight_event_survivor.1"] = { en = "Hold. Someone's under that wall, hurt and trying not to make a sound.", ja = "" },  -- TODO
     ["line.conversation_flight_event_survivor.2"] = { en = "Easy. We're not with the things that did this.", ja = "" },  -- TODO

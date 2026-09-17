@@ -9,16 +9,22 @@
 -- sweep used to hand over one CLASS per stop and this one was the priest's -- a healing rite, Renewal.
 -- The trouble with a class here is that there is nothing on this route to do with one: no second body
 -- to build, no shelf to shop, no ladder to climb. What a player CAN use is the thing the gift actually
--- is -- an item in a 3x3 grid with rules about what it touches -- so the shrine now gives the Censer of
--- Dawn, whose whole text is about its NEIGHBOURS ("Adjacent weapons and abilities strike as holy").
+-- is -- an item in a 3x3 grid with rules about what it touches -- so the shrine now gives the Dawn
+-- Chrism, whose whole text is about its NEIGHBOURS ("Adjacent weapons and abilities gain holy").
 -- The heal moved to the last chest, where it is still the only healing ability in Act 0.
+--
+-- THE OBJECT WAS A CENSER UNTIL THE RENAME, and the lines moved with it. `censer` is a weapon family
+-- (docs/weapons.md) whose claim is `incense`, ground that walks with its bearer; this gift lays no
+-- ground and swings at nobody, so it became the Dawn Chrism, a flask of consecrated oil. Tags 2, 3, 5
+-- and 6 were rewritten for the new object. The trade got PLAINER rather than weaker: the branch is now
+-- the same oil either way, carried for the blessing or poured out onto a wound.
 --
 -- IT PAYS OUT ON THE NEXT BLOCK, which is why this charm and not one of the ones that sharpen a number.
 -- Every demon on this route runs a negative holy resist (character_demon_imp.lua: holy -4; the Champion:
 -- holy -8), so the lesson and its proof are one step apart -- put it beside your blade and the very next
 -- thing you swing at takes more.
 --
--- THE CHOICE IS STILL A TRADE, and that is the whole reason the stop exists: the censer against a heal
+-- THE CHOICE IS STILL A TRADE, and that is the whole reason the stop exists: the chrism against a heal
 -- you can feel right now. Neither is the right answer and the branch must stay priced that way. What
 -- the branch no longer decides is whether a MECHANIC is met -- compare the survivor at stop 4, where
 -- the gate is the lesson and both branches therefore grant it. The effects are pinned by
@@ -26,7 +32,7 @@
 -- when Act 0 is skipped.
 --
 -- ROWAN POINTS AT THE GRID WITHOUT NAMING IT. "Keep it next to whatever you mean to swing" is true in
--- her mouth as a thing you do with a censer and true on the loadout screen as the rule -- which is the
+-- her mouth as a thing you do with a flask of oil and true on the loadout screen as the rule -- which is the
 -- one place a conversation can carry an interface lesson without becoming a manual. The coach bubbles
 -- (data/conversations/tutorial/conversation_tutorial_flight.lua) are where "cell" and "grid" may live.
 --
@@ -40,12 +46,12 @@ return {
 
     script = {
         { "character_rowan", "A shrine, still standing with the whole block burned around it.", tag = 1 },
-        { "character_rowan", "There's a censer left burning on the stone. We can carry it, or we can pour out what oil is left and dress our wounds with it. Choose...", tag = 2, choices = {
-            { "Take the censer.", tag = 3, goto = "pray", effect = { grant = "utility_censer_of_dawn" } },
+        { "character_rowan", "There's a flask of chrism on the stone, {name}. The priests blessed it at dawn. We can carry it, or pour it out on our wounds. Choose...", tag = 2, choices = {
+            { "Take the chrism.", tag = 3, goto = "pray", effect = { grant = "utility_dawn_chrism" } },
             { "Tend our wounds and move on.", tag = 4, goto = "take", effect = { heal = 12 } },
         } },
-        { "character_rowan", "Keep it next to whatever you mean to swing. The smoke gets into the steel, and these things do not like being touched by the dawn.", tag = 5, id = "pray", goto = "leave" },
-        { "character_rowan", "Patched up. We leave the censer for whoever comes through here after us.", tag = 6, id = "take" },
+        { "character_rowan", "Keep it next to whatever you mean to swing. The oil goes onto the steel. These things do not like being touched by the dawn.", tag = 5, id = "pray", goto = "leave" },
+        { "character_rowan", "Patched up. We leave the flask for whoever comes through here after us.", tag = 6, id = "take" },
         { "character_rowan", "Now let's keep moving. There's more of this quarter to clear.", tag = 7, id = "leave" },
     },
 }
