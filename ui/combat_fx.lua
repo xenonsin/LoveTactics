@@ -570,6 +570,19 @@ function CombatFx:playBeat(events, actor)
             -- reserved for things that did.
             self:floatText(e.unit, "MISS", { 0.62, 0.70, 0.78 })
             Sound.play("battle.miss")
+        elseif e.type == "shake" then
+            -- A SHAKE NOBODY HIT ANYBODY FOR. :hit raises the same cue as a flinch -- 0.26s, decaying,
+            -- read as "that landed" -- and this is the opposite statement: a body winding UP, held long
+            -- enough to be read as intent rather than as impact. The Demon Champion rattles like this
+            -- before it crosses the board (data/status/status_champion_fixation.lua).
+            --
+            -- It reuses shakeT rather than earning a field of its own, because the jitter, the card
+            -- rumble and the :busy gate are all already wired to it -- a second timer would have to be
+            -- taught to three places that already know how to do this. What it adds is `shakeLen`, so
+            -- the decay is read against the length the CALLER asked for instead of the flinch constant.
+            local r = self:reaction(e.unit)
+            r.shakeT = e.duration or SHAKE_TIME
+            r.shakeLen = r.shakeT
         elseif e.type == "slide" then
             -- If this cue was pinned while it waited (see :pinSlides) the sprite is already sitting on
             -- its origin tile, so arming the real slide here picks up exactly where the pin left off
@@ -625,7 +638,7 @@ end
 -- direction-blind shake instead.
 function CombatFx:hit(unit, amount, lethal, attacker, cell, critical)
     local r = self:reaction(unit)
-    r.shakeT = SHAKE_TIME
+    r.shakeT, r.shakeLen = SHAKE_TIME, SHAKE_TIME
     r.flashT = FLASH_TIME
     if attacker then self:knock(unit, attacker, amount, cell) end
     -- A CRITICAL reads as one before the player has finished counting the number. It floats in the
@@ -976,7 +989,7 @@ function CombatFx:spriteState(unit, size)
         -- Damage with nobody behind it -- a Burn tick, a hazard, a trap -- has no line to recoil
         -- along, so it keeps the direction-blind jitter this file has always used. Screen-space on
         -- purpose (no :rotate): a rattle is about the picture, not the board.
-        offX = offX + math.sin(r.shakeT * 90) * SHAKE_MAG * (r.shakeT / SHAKE_TIME)
+        offX = offX + math.sin(r.shakeT * 90) * SHAKE_MAG * (r.shakeT / (r.shakeLen or SHAKE_TIME))
     end
 
     -- DEATH -- the collapse under the dissolve. Accelerating, not eased: a body that has been killed
@@ -1031,7 +1044,7 @@ end
 function CombatFx:cardShake(unit)
     local r = self.units[unit]
     if not r or not r.shakeT then return 0, 0 end
-    local p = r.shakeT / SHAKE_TIME -- decays 1 -> 0
+    local p = r.shakeT / (r.shakeLen or SHAKE_TIME) -- decays 1 -> 0
     local dx = math.sin(r.shakeT * 90) * CARD_SHAKE_MAG * p
     local dy = math.cos(r.shakeT * 74) * CARD_SHAKE_MAG * 0.7 * p
     return dx, dy

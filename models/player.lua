@@ -765,7 +765,9 @@ end
 
 -- Refill every roster member's resource stats to full. Health and mana carry across the
 -- battles *within* a quest -- attrition over a run is the point -- but reaching a town rests the whole
--- company. Called from states/hub.lua and states/gate.lua on entry, each beside a Wound.clear, so a
+-- company. Called from states/hub.lua and states/gate.lua on entry. A wound is NOT cleared beside it
+-- any more (the Ward does that now), so the refill fills against the wounded ceiling rather than
+-- through it -- which is the honest reading: a body that is still hurt still reads as hurt. So a
 -- quest won or lost always leaves the party whole and this is why models/save.lua need not persist
 -- current resources.
 function Player.restore(player)
@@ -781,7 +783,7 @@ function Player.restore(player)
         -- exhaustion, and taking the caster's pool would silently disarm them instead of hurting them.
         --
         -- THE TWO TOWN CALLERS SEE NO CAP AT ALL, and that is not this function being bypassed: both
-        -- states/hub.lua and states/gate.lua run Wound.clear on the way in, so by the time they reach
+        -- Wound.healShare caps this, and the town no longer clears the ledger on the way in, so
         -- here the ledger is empty and every share is 1. The cap is for the callers that are still
         -- underground or mid-fight -- a battle retry, a body rebuilt from a resumed save -- which is
         -- exactly the set of moments a wound is supposed to still be true.

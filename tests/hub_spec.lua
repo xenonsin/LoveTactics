@@ -63,7 +63,7 @@ return {
             -- it. Listed rather than spelled out one by one, so a sixth kind of deed added to the model
             -- and forgotten here fails loudly instead of quietly widening what this case claims.
             local deeds = { "unlockQuest", "unlockExpeditions", "unlockUnidentified",
-                "unlockClassLevel", "unlockAnyHouse" }
+                "unlockClassLevel", "unlockAnyHouse", "unlockWound" }
             for _, b in ipairs(Building.list(1)) do
                 local def = Building.defs[b.id]
                 local onDeed = false

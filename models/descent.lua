@@ -1501,15 +1501,21 @@ Descent.PARTY_MAX = 4
 --
 -- Filtered against the live roster on the way out, so a party naming somebody who has since left (or a
 -- save from before this existed) degrades to whoever is really there rather than to a hole in the line.
--- EVERY BODY ON THE ROSTER IS PICKABLE, and there is no second filter here any more. Anyone lodged at
--- the Inn used to be strained out on the way through -- a bed took them out of the company for a day a
--- wound, and that absence was the real cost of the stay. The Inn is gone (models/wound.lua): a wound is
--- a condition of the expedition it was taken on and the surface ends it, so there is no state a body can
--- be in that makes them unavailable to send.
+-- A BODY LYING IN THE WARD IS NOT PICKABLE, and that filter IS the cost of the free path. Resting is
+-- free in gold and costs exactly this: the body is out of the company for the descents its term runs
+-- (models/wound.lua's ward block), and an expedition is four. So a company that rests somebody goes down
+-- short, or goes down with somebody worse -- which is the whole price, and it evaporates if this filter
+-- is not here. Strained out at the SOURCE rather than in the picker, so every caller agrees about who is
+-- available: the Gate's list, the default first-four, and a party picked before the stay began.
+--
+-- (The Inn did exactly this once and it was deleted with the building. It is back because the thing that
+-- made it punishing is gone: the Inn also charged at the door, so a company that could not pay was
+-- locked out of BOTH paths. Resting costs nothing now, so this filter prices a choice instead of a debt.)
 function Descent.party(run, player)
+    local Wound = require("models.wound")
     local roster = {}
     for _, char in ipairs((player and player.roster) or {}) do
-        roster[#roster + 1] = char
+        if Wound.resting(player, char.id) <= 0 then roster[#roster + 1] = char end
     end
 
     local picked = run and run.party

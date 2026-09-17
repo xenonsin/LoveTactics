@@ -132,10 +132,13 @@ function gate:build()
     --
     -- It existed to let a company too hurt to descend reach the morning that would mend them, because
     -- the only other way to spend a day was to walk into the stair -- a cure on the far side of the
-    -- fight you were too hurt to take. Nothing waits for a morning any more: the surface sets every bone
-    -- the moment the company is standing on it (Wound.clear, in gate.enter below), so a button that
-    -- spends a day and mends nobody is a control with nothing left to do. A control draws where it can
-    -- be used, and this one no longer can be.
+    -- fight you were too hurt to take.
+    --
+    -- IT STAYS DELETED EVEN THOUGH RESTING IS BACK (the Ward, 2026-09-16), because the circularity it
+    -- patched is GONE rather than solved. A rest is priced in DESCENTS now, served by Gate.night as the
+    -- company walks down -- so the way to pass the time is to go, with whoever is standing. You never
+    -- need the resting body to descend, which is the exact thing that made a wait button necessary. A
+    -- control draws where it can be used, and this one still cannot.
     --
     -- AND NOTHING IS SOLD HERE EITHER. "Widen the mule" was a row on this menu and is gone for the same
     -- reason the inn and the store are: this screen is a hole in the ground and a look at the company,
@@ -168,15 +171,14 @@ end
 function gate.enter(self, opts)
     opts = opts or {}
     gate.player = opts.player or Player.active
-    -- STANDING HERE IS BEING OUT OF THE HOLE, so the dive's injuries end here (models/wound.lua's
-    -- Wound.clear) and the company is topped back up to the ceiling that leaves them.
+    -- STANDING HERE IS BEING OUT OF THE HOLE, so the company is topped back up -- to the ceiling a
+    -- wound leaves them, not through it (models/wound.lua's healShare).
     --
-    -- BOTH TOWN SCREENS DO THIS, not one, and the pair is not redundant: a company that takes the stair
-    -- up lands here, a company that is beaten on campaign ground lands in the city (states/hub.lua does
-    -- the same two calls at its own door), and a wiped descent lands here with `opts.wiped` set. Whoever
-    -- arrives first sets the bones; the other finds nothing to do and costs a table walk.
-    require("models.wound").clear(gate.player)
-    Player.restore(gate.player)
+    -- THE BONES ARE NOT SET HERE ANY MORE. Wound.clear stood beside this line and an expedition's
+    -- injuries ended the moment anybody stood on either town screen. They end at the Ward now
+    -- (data/buildings/the_ward.lua) -- free if you rest them off, paid if you want them gone today --
+    -- and the stair is emphatically not the Ward: a company that walks down to look at the hole and
+    -- climbs back out has not been treated by doing so.
     -- THE RUN LIVES ON THE PLAYER, and that is the whole of the descent joining the campaign save.
     --
     -- It used to be a throwaway profile in a file of its own (Descent.FILE), because the descent was a

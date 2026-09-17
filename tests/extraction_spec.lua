@@ -276,7 +276,11 @@ return {
         -- is built not to charge for (models/wound.lua's header).
         player.wounds[char.id] = 1
         player.gold = 0
-        Wound.clear(player)
+        -- Mended the way the town mends now: the WARD, on the free path, which takes no purse test at
+        -- all (models/wound.lua's ward block). Wound.clear stood here and is deleted -- standing above
+        -- ground is no longer the whole of it.
+        Wound.rest(player, char.id)
+        for _ = 1, Wound.REST_DESCENTS do Wound.tickRest(player) end
         Player.restore(player)
         assert(Wound.count(player, char.id) == 0, "the wound is gone")
         assert(player.wounds[char.id] == nil, "and left no zero behind to accumulate")

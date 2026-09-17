@@ -13,9 +13,9 @@
 -- The two-stage script:
 --   66%  the guard's spell is spoken and the Champion starts winding up the Roar (status_roaring, which
 --        its AI cast-rule reads) -- it calls Bomblets and quickens itself unless you break the channel.
---   33%  it stops roaring, turns FAST (status_hasted) and ENRAGES (the wrath curve) -- and it opens the
---        stage by CROSSING THE BOARD AND PUTTING ROWAN DOWN (the `fell` response). It now hunts your
---        softest body, and it has just removed the one body that was standing in front of them.
+--   33%  it stops roaring, turns FAST (status_hasted), ENRAGES (the wrath curve), and MARKS ROWAN
+--        (status_champion_fixation). On its next turn it crosses the board and puts her down. It now
+--        hunts your softest body, and it has just removed the one body that stood in front of them.
 --
 -- WHY THE STAGE ANNOUNCES ITSELF BY KILLING THE KNIGHT. Stage 3's authored answers were all Rowan --
 -- taunt it onto her, let Oathward intercept, sustain behind her -- so felling her is the stage stating
@@ -31,7 +31,7 @@
 -- a loss restarts the fight, so the player loops on something the script made unwinnable. At 33% it is
 -- about 50 health: two or three rounds, alone, which is a climax.
 --
--- THE `fell` ENTRY IS PROLOGUE-ONLY, and this relic is the one thing standing between that and a bug.
+-- THE FIXATION ENTRY IS PROLOGUE-ONLY, and this relic is the one thing standing between that and a bug.
 -- The Champion's header offers it as a reusable mid-tier demon boss, and today the flight leg is its only
 -- composer (states/prologue.lua). The moment a second fight fields it, Rowan -- who is in the party for
 -- the rest of the game -- gets felled again, silently, in a scene nobody wrote. Reuse the Champion by
@@ -57,17 +57,20 @@ return {
             { kind = "log", text = "The Champion draws breath, and the tree line stirs behind it." },
         } },
         -- 33%: stop roaring; turn fast and enrage; fix on the weakest (its AI already presses lowest-HP).
-        -- The `fell` runs LAST, after the stage has turned and said so: the player reads the change, and
-        -- then watches the Champion prove it on the one body that was holding the line.
+        -- The MARK goes on last, after the stage has turned and said so, so the log reads in the order
+        -- the fight happens: the change, then who it has picked, then -- a turn later -- the proof.
         { at = 0.33, responses = {
             { kind = "clear",  id = "status_roaring" },
             { kind = "status", id = "status_hasted" },
             { kind = "enrage", magnitude = 20 },
             { kind = "log", text = "The Champion's wounds catch fire -- it fixes on the weakest of you." },
-            -- TODO(author): `text` is a placeholder. This is the line the whole wound mechanic is
-            -- introduced by and it wants writing, not generating -- see the Cathedral scene it sets up.
-            { kind = "fell", target = "character_rowan", name = "Break the Wall",
-              text = "It is across the ground before she can set her feet -- and Rowan does not get up." },
+            -- ...AND IT MARKS HER, rather than killing her here. A phase crosses inside Trait.onDamaged,
+            -- which runs inside the resolution of the PLAYER's blow -- so felling on the crossing put the
+            -- teleport and the kill on top of the sword that caused them, with no turn boundary between.
+            -- The status spends itself on the CHAMPION'S OWN TURN instead (Status.onTurnStart), which is
+            -- where a scripted moment belongs: shake, blink, fell, with the board settled around it. It
+            -- also buys the player a full turn of warning, because Rowan speaks when this lands.
+            { kind = "status", id = "status_champion_fixation" },
         } },
     },
 }

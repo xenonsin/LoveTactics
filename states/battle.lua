@@ -1695,6 +1695,23 @@ end
 -- bug. On a resume we read the current unit off the open turn and leave every model latch untouched;
 -- only the UI overlays are recomputed for the continued turn.
 local function beginTurn(resume)
+    -- A LINE THE FIGHT OWES THE PLAYER, PAID AT THE TURN BOUNDARY. `combat.pendingScene` is set by
+    -- whatever happened during the last action -- today only the Demon Champion's fixation
+    -- (data/status/status_champion_fixation.lua), which marks Rowan and wants her warned before the
+    -- Champion spends the mark. Played HERE and not where it was raised, for two reasons: a model may
+    -- not reach into the UI, and the blow that raised it is still resolving at that point, so a scene
+    -- opened from there would land on top of its own cause -- the same defect that moved the felling
+    -- out of the phase table in the first place.
+    --
+    -- Cleared BEFORE the scene opens, and beginTurn re-entered from the callback, so a scene can never
+    -- replay itself into a loop. `resume` skips it: a free action is the same turn carrying on, and a
+    -- cut-scene in the middle of one would read as the game stopping for no reason.
+    if not resume and battle.combat and battle.combat.pendingScene then
+        local scene = battle.combat.pendingScene
+        battle.combat.pendingScene = nil
+        Conversation.play(scene, function() beginTurn(false) end, nil, { deferJoins = true })
+        return
+    end
     local current = resume and battle.combat.turn and battle.combat.turn.unit
         or Combat.startTurn(battle.combat)
     battle.current = current

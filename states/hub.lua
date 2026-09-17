@@ -13,8 +13,10 @@
 -- read. See the gate table in models/building.lua for the whole list and why there is one.
 --
 -- (An INN stood on this plaza too, opened by the first body carried up broken, and setting a bone was
--- the only thing it did. It is deleted with the toll it charged: a wound lasts the expedition now and
--- reaching this screen ends it, free -- see models/wound.lua and the Wound.clear in hub.enter.)
+-- the only thing it did. It was deleted with the toll it charged, and reaching this screen set every
+-- bone for free instead. BOTH of those are now gone: the WARD stands where the Inn did, opened by the
+-- same mark, and mending is a door you walk into rather than a doorstep you cross -- free if you rest
+-- it off, paid if you want it today. See models/wound.lua's ward block for why that is not the Inn.)
 --
 -- SO A FRESH SAVE ARRIVES AT TWO DOORS -- the Armory and the stair -- and the first visit is coached
 -- through one of them: go down (INTRO_STAGES below).
@@ -126,6 +128,19 @@ local BURGER_X, BURGER_Y = 18, 18
 -- other line the tutorial speaks. A stage names the LINE; hub.draw resolves it at draw time, which is
 -- also what lets its {select} re-read the device in the player's hands mid-visit.
 local INTRO_STAGES = {
+    -- THE WARD FIRST, AND THE STAIR SECOND. The player arrives carrying Rowan's wound off the Champion
+    -- (data/status/status_champion_fixation.lua), so the first thing the city can usefully say is where
+    -- that gets dealt with -- and the room is where Amana is, so the coached door hands over a companion
+    -- as well as a lesson. Sending them down the hole first would coach the stair to a company that is
+    -- short a body and does not yet know there was anything to do about it.
+    --
+    -- It is also the only order the wound ITSELF allows. The Ward card exists because somebody is hurt
+    -- (`unlockWound`), and the wound now survives the walk into town -- so on this one morning the city
+    -- has a door that is both new and urgent, which is exactly what the coach grammar is for.
+    ward = {
+        building = "the_ward",
+        line = "ward_card",
+    },
     coach = {
         building = "the_gate",
         line = "rift_card",
@@ -388,6 +403,31 @@ end
 --
 -- A building with no vendor has nothing to say and opens straight away.
 local function launchVendor(building)
+    -- A ROOM WITH NO SHELF CAN STILL HAVE SOMETHING TO SAY. `intro` is a one-time scene the blueprint
+    -- names, played the first time this door is walked into, and `grants` is the companion it hands over
+    -- as it closes -- which is how the Ward introduces Amana (data/buildings/the_ward.lua).
+    --
+    -- KEYED ON ITS OWN FLAG, and the first version of this was keyed on Building.seenDoor and was
+    -- BROKEN BY IT. Those are two different questions: seenDoor asks "has this card been ANNOUNCED",
+    -- and hub.enter seeds it wholesale on the first visit for every door the city already has open
+    -- (Building.seedSeen) -- so that nothing already standing is ever coached as news. The Ward is open
+    -- the moment the company walks out of Act 0, because Rowan is hurt, so it was seeded seen on the
+    -- very first frame of the city and Amana's scene never fired for anybody. A scene played once is not
+    -- the same fact as a card announced once, and conflating them silently ate a companion.
+    --
+    -- The recruit fires BEFORE the scene, so the "[X has joined your Party]" banner folds onto the end
+    -- of it, which is the route every other companion's takes (models/conversation.lua).
+    local introFlag = "intro_" .. tostring(building.id)
+    hub.player.flags = hub.player.flags or {}
+    if building.intro and not hub.player.flags[introFlag]
+        and Conversation.defs[building.intro] then
+        hub.player.flags[introFlag] = true
+        Building.markSeen(hub.player, building.id)
+        if building.grants then Player.recruit(hub.player, building.grants) end
+        Player.save()
+        Conversation.play(building.intro, function() launchPanel(building) end)
+        return
+    end
     if not building.vendor then launchPanel(building); return end
     VendorVisit.play(hub.player, building.vendor, function() launchPanel(building) end)
 end
@@ -435,7 +475,14 @@ local function openPanel(building)
         -- because opening the Gate IS leaving the city. The hall's stage is spent by the hire joining
         -- the company (see introAdvance), so a player who walks in, reads her card and walks out is
         -- coached back to the room rather than left in a city that thinks the lesson landed.
-        if not stage.hire then hub.player.hubIntro = nil end
+        -- THE WARD HANDS ON TO THE STAIR rather than ending the intro: two doors are coached on the
+        -- first morning now (see INTRO_STAGES), and a stage that cleared here would leave the Rift --
+        -- the door the whole mode is behind -- uncoached on the one visit that teaches the city.
+        if stage.building == "the_ward" then
+            hub.player.hubIntro = "coach"
+        elseif not stage.hire then
+            hub.player.hubIntro = nil
+        end
         -- No scene between the coach and the door. The flier was Rowan spotting the Colosseum's contract
         -- ON the Quest Board -- a beat about a board that is retired (models/building.lua's RETIRED), so
         -- playing it here would have her read a notice off a wall the city does not have. The guard said
@@ -489,11 +536,15 @@ function hub.enter()
     -- COMING HOME MAKES THE COMPANY WHOLE, and that is now both halves of it rather than one.
     --
     -- Health and mana refill (Player.restore) as they always have: attrition lasts a quest, not forever.
-    -- And every bone the dive broke is set, free (models/wound.lua's Wound.clear) -- a wound is a
-    -- condition of the expedition it was taken on, and this is where the expedition ends. BEFORE the
-    -- restore, so the refill fills against the whole body rather than against the wounded ceiling and
-    -- the player is not left looking at a bar that stops short for a reason no longer on the sheet.
-    Wound.clear(hub.player)
+    -- THE TOWN NO LONGER SETS BONES ON THE DOORSTEP. It used to: Wound.clear stood here and an
+    -- expedition's damage ended the moment the player was standing in the city, free and unasked. What
+    -- replaced it is a door -- the Ward (data/buildings/the_ward.lua) -- where mending is still free
+    -- (rest it off) and paying buys only speed. A wound that evaporates on arrival cannot be taught,
+    -- cannot be decided about, and gave the building the tutorial now points at nothing to do.
+    --
+    -- The POOLS still refill here, and that half was never the wound's business: health and mana come
+    -- back because attrition lasts a quest, and Player.restore fills against the wounded ceiling rather
+    -- than through it (models/wound.lua's healShare), so a body that is still hurt still reads as hurt.
     Player.restore(hub.player)
     activePanel = nil
     -- The town is the safe home a battle hands back to, so clear any screen effect the last fight left
@@ -620,12 +671,13 @@ function hub.enter()
     -- nothing left to intercept.
     -- Iselle is at the top of the stair instead, and states/gate.lua plays her on the first visit there.
     --
-    -- On its close the intro moves to its coaching stage, where the Gate is the only door that opens
-    -- (see openPanel and hub.draw). A loaded save never carries this flag, so its hub opens straight to
-    -- free play.
+    -- On its close the intro moves to its first coaching stage -- the WARD, because the company walks
+    -- out of Act 0 carrying a wound and that is the door the city grew to answer it. The Ward hands on
+    -- to the stair when it is walked into (see openPanel). A loaded save never carries this flag, so its
+    -- hub opens straight to free play.
     if hub.player.hubIntro == "arrival" then
         Conversation.play("conversation_prologue_arrival", function()
-            hub.player.hubIntro = "coach"
+            hub.player.hubIntro = "ward"
             Player.save()
         end)
         return -- nothing else opens over the arrival; there is no pending summary on a first visit

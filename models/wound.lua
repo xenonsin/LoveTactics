@@ -248,24 +248,134 @@ function Wound.mend(player, n)
     return mended
 end
 
--- THE TOWN SETS EVERY BONE, FREE. Called on arrival at the city and at the Gate (states/hub.lua,
--- states/gate.lua) -- the two screens that are above ground -- so an expedition's damage ends with the
--- expedition however it ended: by the stair, by walking out, or by being carried out.
+-- ---------------------------------------------------------------------------
+-- The Ward: the two ways a bone gets set above ground
+-- ---------------------------------------------------------------------------
 --
--- FREE AND UNCONDITIONAL, which is the point rather than an oversight. See the header: a price on this
--- lands only on the player who needed it, and the campaign's pacing is the count's job now.
+-- REINTRODUCED 2026-09-16, and this is the THIRD pass at charging for recovery, so the two that failed
+-- are worth stating before the one that did not.
 --
--- Returns the ids it mended, so a caller can say so -- though both callers are a screen the player
--- walked into rather than a button they pressed, and neither needs to.
-function Wound.clear(player)
-    if not (player and player.wounds) then return {} end
-    local mended = {}
-    for id in pairs(player.wounds) do mended[#mended + 1] = id end
-    player.wounds = {}
-    Wound.stamp(player)
-    table.sort(mended)
-    return mended
+--   1. A SURGEON'S COUNTER, gold per wound. Deleted.
+--   2. AN INN: 60g a wound at the door, or a day a wound in a bed. Deleted 2026-09-02, and the autopsy
+--      is in this file's header -- a wipe wounds the WHOLE expedition by construction, so a company
+--      that lost badly woke poorer, worse, and holding a bill, with no bench to rotate and no way to
+--      earn the coin except to go back down hurt. A spiral entered by losing.
+--
+-- WHAT IS DIFFERENT NOW, on the one axis that killed the Inn: RECOVERY IS FREE AND ALWAYS AVAILABLE.
+-- The Inn charged at the door, so you paid to be treated at all. Here `Wound.rest` costs nothing ever,
+-- and `Wound.treat` buys only SPEED. The need is free; the decision is priced. That is exactly the line
+-- docs/the-count.md draws, and the reason this pass is legal where both earlier ones were not.
+--
+-- AND A BENCH FINALLY EXISTS. The Inn's other defect was that benching needs somebody to bench INTO,
+-- and the roster was two to four bodies for most of the campaign. The company now leaves Act 0 with
+-- three and fills its fourth on floor one (models/descent.lua's SCRIPTED_COMPANION), with the roll
+-- adding more -- so resting a body is a choice about who goes rather than a body simply missing.
+--
+-- A DAY IS A DESCENT, and that is the load-bearing decision here. Nothing in this game advances the
+-- calendar except walking into the stair (models/gate.lua's Gate.night, the only Calendar.spend caller),
+-- and `Descent.dangerLevel` reads the day off the floor ladder rather than off the calendar -- so days
+-- are nearly inert as a currency and "rest three days" priced against them would cost nothing at all.
+-- Priced against DESCENTS it costs exactly the right thing: a body resting sits out that many trips, and
+-- an expedition is four (Descent.PARTY_MAX). You go down short, or you go down with somebody worse.
+--
+-- IT ALSO DODGES THE TRAP THAT KILLED THE GATE'S "WAIT A DAY" ROW -- "a cure on the far side of the
+-- fight you were too hurt to take". You never need the RESTING body to descend; you descend with whoever
+-- is left, and the rest ticks because you went. A wounded body is still fieldable either way (the
+-- reserve floors at FLOOR), so resting is always a choice and never a lockout.
+
+-- Gold to set one bone immediately. Priced against a rank-0 shelf item rather than against a dive's
+-- takings: it has to read as "an afternoon of somebody's time", not as a fine.
+Wound.TREAT_COST = 40
+
+-- How many descents a body sits out to mend one wound for nothing. Two, so a single wound is a real
+-- shrug and three wounds on one body is a decision the player actually makes rather than a formality.
+Wound.REST_DESCENTS = 2
+
+-- Is this body in the ward right now, and for how many more descents?
+function Wound.resting(player, charId)
+    if not (player and charId) then return 0 end
+    return (player.resting or {})[charId] or 0
 end
+
+-- Everyone currently lying in the ward, as { { char, left }, ... } in roster order. What the deployment
+-- picker greys and what the ward panel lists under its second heading.
+function Wound.resters(player)
+    local out = {}
+    for _, char in ipairs((player and player.roster) or {}) do
+        local left = Wound.resting(player, char.id)
+        if left > 0 then out[#out + 1] = { char = char, left = left } end
+    end
+    return out
+end
+
+-- PAY, AND THE BONE IS SET NOW. Takes the gold and drops one wound. Returns true if it happened; false
+-- when the body is not hurt or the purse is short, so the caller can say which rather than guess.
+--
+-- One wound per press, deliberately: a body carried out three times is three decisions, and a single
+-- "mend everything" button would hide the one moment where paying stops being worth it.
+function Wound.treat(player, charId)
+    if not (player and charId) then return false end
+    if Wound.count(player, charId) <= 0 then return false end
+    local cost = Wound.TREAT_COST
+    if (player.gold or 0) < cost then return false end
+    player.gold = player.gold - cost
+    local have = player.wounds[charId]
+    player.wounds[charId] = have > 1 and (have - 1) or nil
+    Wound.stamp(player)
+    return true
+end
+
+-- REST, AND IT COSTS ONLY TIME. Lays the body up for REST_DESCENTS trips per wound it carries. Free,
+-- always, with no purse test and no gate -- see the header for why that is the whole legality of this.
+--
+-- Returns the number of descents it will be out, or 0 if there was nothing to rest off.
+function Wound.rest(player, charId)
+    if not (player and charId) then return 0 end
+    local n = Wound.count(player, charId)
+    if n <= 0 then return 0 end
+    player.resting = player.resting or {}
+    local owed = n * Wound.REST_DESCENTS
+    -- Never shortens a stay already being served: a body put back in bed is in for the longer of the two.
+    player.resting[charId] = math.max(owed, Wound.resting(player, charId))
+    return player.resting[charId]
+end
+
+-- A NIGHT PASSES -- which in this game means the company walked into the stair (models/gate.lua's
+-- Gate.night). Ticks every stay down one and mends whoever has served theirs.
+--
+-- Mends ONE wound per completed stay rather than clearing the body: the stay was bought against a
+-- single wound (Wound.rest multiplies by the count), so a body that went in carrying three comes out
+-- of its full term whole, and one pulled out early has simply not finished.
+--
+-- Returns the ids that walked out of the ward, sorted, so a caller can name them.
+function Wound.tickRest(player)
+    if not (player and player.resting) then return {} end
+    local up = {}
+    for id, left in pairs(player.resting) do
+        local now = left - 1
+        if now <= 0 then
+            player.resting[id] = nil
+            player.wounds = player.wounds or {}
+            player.wounds[id] = nil -- the full term sets every bone that bought it
+            up[#up + 1] = id
+        else
+            player.resting[id] = now
+        end
+    end
+    Wound.stamp(player)
+    table.sort(up)
+    return up
+end
+
+-- (WOUND.CLEAR IS DELETED. It set every bone on the player at once, free, and both town screens called
+-- it on the way in -- so an expedition's damage ended the moment anybody was standing above ground.
+-- The Ward replaced it on 2026-09-16 (see the block above): mending is still free, but it is a thing
+-- you go and do rather than a thing that happens to you, because a wound that evaporates on arrival
+-- cannot be taught, cannot be decided about, and left the room the tutorial points at with no job.
+--
+-- Deleted rather than parked, because a "clear the whole ledger" call is exactly the shape somebody
+-- reaches for when a screen wants the old behaviour back, and the point is that no screen should.
+-- Wound.tickRest is what ends a stay now, and Wound.treat is what ends one early.)
 
 -- Everyone on the roster carrying at least one, as { { char, count }, ... } in roster order. What the
 -- party sheet walks, and what the controls that bind bones ask before they draw.

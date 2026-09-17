@@ -50,6 +50,56 @@ end
 
 return {
     {
+        -- THE SKIP HAS TO HAND OVER THE WOUND, because the city is built on it. The Demon Champion
+        -- fells Rowan at its last stage, and that one mark is what grows the WARD on the plaza
+        -- (models/building.lua's `unlockWound`) -- and Amana is standing inside the Ward. A skip that
+        -- arrives whole opens a city with no ward, no healer, and a party of two against an expedition
+        -- of four, which is the "broken city rather than a skipped prologue" this whole grant exists to
+        -- prevent. Reported from a real play-through of the debug button, not from reading the code.
+        name = "a skipped Act 0 still arrives carrying Rowan's wound, so the Ward is on the plaza",
+        fn = function()
+            local Wound = require("models.wound")
+            local Building = require("models.building")
+            local p = skipped()
+
+            local rowan
+            for _, char in ipairs(p.roster) do if char.id == "character_rowan" then rowan = char end end
+            assert(rowan, "the skip recruits Rowan")
+            assert(Wound.count(p, rowan.id) == 1, "and she is carried out of the last fight, exactly once")
+            assert(Wound.everWounded(p), "which sets the one-way mark the door is hung on")
+
+            local open
+            -- The PLAYER, not a prestige number: every deed gate reads the player, and a bare figure
+            -- answers none of them (models/building.lua's Building.list).
+            for _, b in ipairs(Building.list(p)) do
+                if b.id == "the_ward" then open = not b.locked end
+            end
+            assert(open, "so the Ward stands on the plaza the skip lands in")
+        end,
+    },
+    {
+        -- THE ROOM'S SCENE IS NOT THE CARD'S ANNOUNCEMENT, and this pins the bug that conflating them
+        -- caused. hub.enter seeds `seenDoors` wholesale on the first visit -- every door already open is
+        -- recorded as announced, so nothing standing is ever coached as news (Building.seedSeen). The
+        -- Ward is open on that very first frame, because Rowan is hurt before the city exists. So a
+        -- first-visit scene keyed on seenDoor was consumed before anyone could walk through the door,
+        -- and Amana was never met by ANY player, skipped prologue or played one.
+        name = "seeding the city's doors does not spend the Ward's first-visit scene",
+        fn = function()
+            local Building = require("models.building")
+            local p = skipped()
+            Building.seedSeen(p)
+            assert(Building.seenDoor(p, "the_ward"),
+                "precondition: the seed does mark it announced, which is what broke this")
+            assert(not (p.flags or {})["intro_the_ward"],
+                "but the scene is a separate ledger and is still owed")
+
+            local def = Building.defs["the_ward"]
+            assert(def.intro and def.grants == "character_amana",
+                "...and it is the scene that hands the companion over, so spending it early loses her")
+        end,
+    },
+    {
         name = "the skip's experience is the level the prologue's four fights pay",
         fn = function()
             -- models/experience.lua states it in prose from the other end: "around eighty a head, which

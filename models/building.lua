@@ -154,10 +154,18 @@ end
 --                    EITHER door (Player.expeditionsOut -- bounties finished, or floors descended).
 --                    The Cafe at two, the Forge at four. It was `unlockDepth` and read floors alone;
 --                    the stair stopped being the only way out of the city, so the noun had drifted.
---   (unlockWound     somebody has been carried up broken. It opened the Inn, whose only job was setting
---                    a bone. Both are gone: a wound is a condition of the expedition now and the surface
---                    ends it for free (models/wound.lua), so there is no bone left to sell the setting
---                    of. The gate is deleted rather than parked -- nothing authors it.)
+--   unlockWound      somebody has been carried up broken. It opened the INN, which was deleted on
+--                    2026-09-02 along with the toll it charged, and this gate went with it. Both are
+--                    back as of 2026-09-16, pointed at the WARD (data/buildings/the_ward.lua) -- and the
+--                    difference is the whole reason it is legal this time: the Inn charged at the door,
+--                    so you paid to be treated at all, where the Ward's rest is free forever and the
+--                    gold buys only speed. See models/wound.lua's ward block for the full argument and
+--                    for the two earlier passes it is not repeating.
+--
+--                    THE GATE IS THE LESSON. The Ward is the one door in the city whose job a player
+--                    cannot understand until it is needed, so it arrives on the beat that teaches it:
+--                    Rowan is felled by the Demon Champion at the end of Act 0, and the wound she
+--                    carries into town is what puts this card on the plaza.
 --   unlockUnidentified  the company is carrying something it cannot read (models/identify.lua). The
 --                    Touchstone, whose only job is reading it. The most literal of the six: the player
 --                    finds the thing, cannot use it, and THEN the door is there.
@@ -219,6 +227,12 @@ function Building.list(playerOrPrestige, opts)
             if def.unlockUnidentified then
                 locked = locked or not require("models.identify").everFound(player)
             end
+            -- ...and the door that opens the first time somebody is carried up broken. The mark is
+            -- one-way and never cleared -- not by setting the bone, not by walking home -- so the Ward
+            -- stays on the plaza once it has arrived (models/wound.lua's Wound.everWounded).
+            if def.unlockWound then
+                locked = locked or not require("models.wound").everWounded(player)
+            end
             -- The ONLY place a hand-authored 1280x720 rect crosses into the live space. Every
             -- building in data/buildings positions its door by eye against the city art, and on a
             -- handheld that space is shorter and wider (scale.lua) -- so the rect has to travel with
@@ -236,6 +250,14 @@ function Building.list(playerOrPrestige, opts)
                 panel = def.panel,
                 state = def.state, -- a whole screen this door opens instead of a pop-up, or nil
                 vendor = def.vendor, -- vendor id for shop buildings; nil otherwise
+                -- A ONE-TIME SCENE THIS ROOM PLAYS THE FIRST TIME IT IS WALKED INTO, and optionally the
+                -- companion it hands over -- which is how the Ward introduces Amana. A shop does this
+                -- through models/vendor_visit.lua, keyed on its vendor id; a room with no shelf has no
+                -- vendor to key on, and inventing one so a door can say a sentence would put an empty
+                -- counter in the data to carry a scene. `Building.seenDoor` is already the ledger of
+                -- which rooms have been walked into, so the flag this needs exists.
+                intro = def.intro,
+                grants = def.grants,
                 unlockPrestige = def.unlockPrestige or 1,
                 unlockQuest = def.unlockQuest, -- quest id that opens this door, or nil
                 unlockDepth = def.unlockDepth, -- floor this company must have stood on, or nil

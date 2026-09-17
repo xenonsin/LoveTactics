@@ -667,7 +667,7 @@ function game:inflictWounds(chars)
     -- the map inside the same function -- the haul is cut, the run is dropped, and the next screen is
     -- the city (or the Gate). A bubble pinned to an overworld that is already gone draws nothing, and
     -- there is nothing left for it to point at either: the surface sets every bone the moment the
-    -- company is standing on it (models/wound.lua's Wound.clear), so a wiped company has no mark on any
+    -- company is standing on it -- it does not any more (the Ward does), so a wiped company has a mark on a
     -- bar to be taught. The split falls out of where each path ends rather than out of a flag -- a
     -- company still standing on the board learns the mark, a company standing in a town has nothing to
     -- learn yet and will be taught by the first body carried out of a fight it survives.
@@ -2225,7 +2225,7 @@ function game:openEncounter(cell, opts)
                 -- tutorial fight that charges for it.
                 --
                 -- It costs the player nothing, which is what makes it safe to teach with: the prologue
-                -- ends by opening the hub, and hub.enter clears the whole ledger free (Wound.clear). So
+                -- ends by opening the hub, and the Ward on that plaza is where the bone gets set. So
                 -- the wound is live for exactly the stretch the scene is about -- from the Champion's
                 -- last stage to the city gate -- and reaching the city IS the healing, with no special
                 -- case anywhere to say so.

@@ -306,6 +306,8 @@ return {
     ["line.conversation_flight_champion.2"] = { en = "It won't go down the way the others did, and the small ones will throw themselves at us to keep us off it.", ja = "" },  -- TODO
     ["line.conversation_flight_champion.3"] = { en = "Cut it down and the rest stop mattering. Stay out of its reach and let it come to us.", ja = "" },  -- TODO
     ["line.conversation_flight_champion.5"] = { en = "The report said imps. That thing came up out of the breach with the rest of them trailing after it.", ja = "" },  -- TODO
+    ["line.conversation_flight_champion_turn.1"] = { en = "PLACEHOLDER -- it has stopped swinging at whoever is nearest.", ja = "" },  -- TODO
+    ["line.conversation_flight_champion_turn.2"] = { en = "PLACEHOLDER -- it has picked somebody. She does not know it is her.", ja = "" },  -- TODO
     ["line.conversation_flight_event_shrine.1"] = { en = "A shrine, still standing with the whole block burned around it.", ja = "" },  -- TODO
     ["line.conversation_flight_event_shrine.2"] = { en = "There's a censer left burning on the stone. We can carry it, or we can pour out what oil is left and dress our wounds with it. Choose...", ja = "" },  -- TODO
     ["line.conversation_flight_event_shrine.3"] = { en = "Take the censer.", ja = "" },  -- TODO
@@ -350,10 +352,6 @@ return {
     ["line.conversation_prologue_arrival.3"] = { en = "This is what happens when the guild fails to clear enough of The Rift.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.4"] = { en = "The deep floors get left alone, and whatever gathers down there comes up here.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.5"] = { en = "Let's collect our pay and see what work The Rift is offering, {name}.", ja = "" },  -- TODO
-    ["line.conversation_prologue_infirmary.1"] = { en = "PLACEHOLDER -- she takes Rowan's weight without being asked.", ja = "" },  -- TODO
-    ["line.conversation_prologue_infirmary.2"] = { en = "PLACEHOLDER -- what the city does for the people who go into the rift.", ja = "" },  -- TODO
-    ["line.conversation_prologue_infirmary.3"] = { en = "PLACEHOLDER -- she minds being carried more than she minds the wound.", ja = "" },  -- TODO
-    ["line.conversation_prologue_infirmary.4"] = { en = "PLACEHOLDER -- she asks to come, and says what she is for.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.1"] = { en = "Not too bad for your first job, but there's no time to rest.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.2"] = { en = "Let's move to clear out the remaining demons and find survivors.", ja = "" },  -- TODO
     ["line.conversation_prologue_village.1"] = { en = "The demons that breached through the rift are up ahead, {name}.", ja = "" },  -- TODO
@@ -379,6 +377,7 @@ return {
     ["line.conversation_tutorial_city.2"] = { en = "{select} the Rift. The stair down is inside.", ja = "" },  -- TODO
     ["line.conversation_tutorial_city.3"] = { en = "{select} {door}", ja = "" },  -- TODO
     ["line.conversation_tutorial_city.4"] = { en = "{select} the Bounty Board. The houses post their work there.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_city.5"] = { en = "{select} the Ward. They will see to that arm, and it costs nothing to wait.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.1"] = { en = "Walk to the chest ahead. Use WASD, the arrow keys, or click a tile.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.2"] = { en = "Open your loadout to see what you found.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.3"] = { en = "{select} an item in your stash to equip it to a hero.", ja = "" },  -- TODO
@@ -432,6 +431,10 @@ return {
     ["line.conversation_undercroft_vendor_intro.4"] = { en = "Owed. Everyone is owed, up above. We only hold the note. That is not cruelty, that is the world.", ja = "" },  -- TODO
     ["line.conversation_undercroft_vendor_intro.5"] = { en = "Buy from him and pay him in coin, {name}. Owe this house nothing.", ja = "" },  -- TODO
     ["line.conversation_undercroft_vendor_intro.6"] = { en = "The floor is open. Everything is for sale, and everything is owed.", ja = "" },  -- TODO
+    ["line.conversation_ward_first_visit.1"] = { en = "PLACEHOLDER -- she takes Rowan's weight without being asked.", ja = "" },  -- TODO
+    ["line.conversation_ward_first_visit.2"] = { en = "PLACEHOLDER -- time sets a bone; she can set it sooner.", ja = "" },  -- TODO
+    ["line.conversation_ward_first_visit.3"] = { en = "PLACEHOLDER -- she minds being carried more than she minds the wound.", ja = "" },  -- TODO
+    ["line.conversation_ward_first_visit.4"] = { en = "PLACEHOLDER -- she asks to come, and says what she is for.", ja = "" },  -- TODO
     ["name.alchemist"] = { en = "The Crucible", ja = "" },  -- TODO
     ["name.arcanum"] = { en = "The Arcanum", ja = "" },  -- TODO
     ["name.bastion"] = { en = "The Bastion", ja = "" },  -- TODO
@@ -504,6 +507,7 @@ return {
     ["title.conversation_descent_sloth"] = { en = "Acedia, the Unrelieved", ja = "" },  -- TODO
     ["title.conversation_descent_wrath"] = { en = "Ira, the Unappeased", ja = "" },  -- TODO
     ["title.conversation_flight_champion"] = { en = "The Champion", ja = "" },  -- TODO
+    ["title.conversation_flight_champion_turn"] = { en = "It Has Stopped Fighting", ja = "" },  -- TODO
     ["title.conversation_flight_event_shrine"] = { en = "The Street Shrine", ja = "" },  -- TODO
     ["title.conversation_flight_event_survivor"] = { en = "A Voice in the Rubble", ja = "" },  -- TODO
     ["title.conversation_hunters_lodge_discipline_unlocked"] = { en = "The Deeper Wood", ja = "" },  -- TODO
@@ -512,7 +516,6 @@ return {
     ["title.conversation_hunters_lodge_slot_01_outro"] = { en = "The Antlers", ja = "" },  -- TODO
     ["title.conversation_hunters_lodge_vendor_intro"] = { en = "The Hunter's Lodge", ja = "" },  -- TODO
     ["title.conversation_prologue_arrival"] = { en = "After the Breach", ja = "" },  -- TODO
-    ["title.conversation_prologue_infirmary"] = { en = "The Cathedral", ja = "" },  -- TODO
     ["title.conversation_prologue_ruins"] = { en = "First Job", ja = "" },  -- TODO
     ["title.conversation_prologue_village"] = { en = "The Breach", ja = "" },  -- TODO
     ["title.conversation_touchstone_vendor_intro"] = { en = "The Touchstone", ja = "" },  -- TODO
@@ -526,4 +529,5 @@ return {
     ["title.conversation_undercroft_errand_found"] = { en = "The Vault Door", ja = "" },  -- TODO
     ["title.conversation_undercroft_slot_01_outro"] = { en = "The Third Door", ja = "" },  -- TODO
     ["title.conversation_undercroft_vendor_intro"] = { en = "The Undercroft", ja = "" },  -- TODO
+    ["title.conversation_ward_first_visit"] = { en = "The Ward", ja = "" },  -- TODO
 }

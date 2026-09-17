@@ -13,7 +13,10 @@
 --
 -- WHO FIELDS THEM:
 --   gate_stair  states/gate.lua  -- the descend row, until the company has actually gone down
---   rift_card   states/hub.lua   -- the first morning's one door (INTRO_STAGES), again. It was retired
+--   ward_card   states/hub.lua   -- the first morning's FIRST door (INTRO_STAGES). The company walks
+--                                 out of Act 0 with Rowan hurt, so the city's opening instruction is
+--                                 where that gets seen to -- and Amana is standing in the room.
+--   rift_card   states/hub.lua   -- the first morning's second door (INTRO_STAGES), again. It was retired
 --                                 for a pass when the Bounty Board held the plaza, and kept rather
 --                                 than cut precisely because a translated line is dear to lose and
 --                                 the door might come back. It did.
@@ -32,6 +35,7 @@ return {
 
     script = {
         { "character_rowan", "{select} to take the stair down.", tag = 1, id = "gate_stair" },
+        { "character_rowan", "{select} the Ward. They will see to that arm, and it costs nothing to wait.", tag = 5, id = "ward_card" },
         { "character_rowan", "{select} the Rift. The stair down is inside.", tag = 2, id = "rift_card" },
         { "character_rowan", "{select} the Bounty Board. The houses post their work there.", tag = 4, id = "board_card" },
         { "character_rowan", "{select} {door}", tag = 3, id = "new_door" },

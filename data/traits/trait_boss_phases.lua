@@ -33,24 +33,13 @@
 --                               do, never how much killing it takes.
 --   enrage    { magnitude }     switch on the continuous Rising-Wrath curve for the rest of the fight
 --   log       { text }          a line in the combat log
---   fell      { target, name }  THE SCRIPTED BEAT: the bearer crosses the board to the body named by
---                               `target` (a character id) and puts it down where it stands. Blink
---                               first, so the move is something the player watches happen and not a
---                               death that arrives from off screen, then Combat.fell -- outside the
---                               damage pipeline, so no guardian intercepts it, no barrier eats it and
---                               nothing raises the body again this battle (see models/combat.lua's
---                               Combat.fell for the full argument). `name` is what the log calls it,
---                               because an unanswerable thing that arrives unnamed reads as a bug.
 --
---                               IT IS NOT AN ABILITY, and that is deliberate. An ability is targeted,
---                               previewed, resisted and answered -- every seam that makes the rest of
---                               this game fair is a seam a scripted beat can fail at. A body the story
---                               requires on a stretcher cannot be left standing because somebody had a
---                               ward up. Author it here, where nothing can refuse it, and pay for it by
---                               telegraphing the STAGE rather than the strike.
---
---                               Does nothing at all when the named character is not on the board, so a
---                               boss carrying this script stays legal in any fight its scene is not in.
+-- THERE IS NO `fell` RESPONSE, AND THERE MUST NOT BE ONE. It existed here briefly and the reason it went
+-- is worth keeping: a phase crosses inside onDamaged, which runs inside the resolution of the blow that
+-- crossed it, so ANYTHING a phase does lands on top of the player's own attack with no turn boundary
+-- between them. That is fine for a status or a stat bump, which are state; it is wrong for an ACT. A
+-- boss that is meant to do something dramatic arms a marker here and spends it on its own turn --
+-- data/status/status_champion_fixation.lua is the worked example.
 local RESPONSES = {
     status = function(ctx, r) ctx.applyStatus(ctx.unit, r.id, r.opts) end,
     clear  = function(ctx, r) ctx.clearStatus(ctx.unit, r.id) end,
@@ -66,20 +55,6 @@ local RESPONSES = {
     -- bearer's damage off missing health every later survived blow (ctx.trait.applied tracks paid).
     enrage = function(ctx, r) ctx.trait.enrageMagnitude = r.magnitude end,
     log    = function(ctx, r) if r.text then ctx.log("system", r.text) end end,
-    fell   = function(ctx, r)
-        local victim = r.target and ctx.unitOf(r.target)
-        if not victim then return end
-        -- Arrive first. The tile is picked beside the victim rather than on it, and a hemmed-in body is
-        -- reached from wherever the bearer already stands -- the blink is the beat's staging, not its
-        -- mechanism, so failing to find ground must not cost the beat.
-        local x, y = ctx.openTileNear(victim.x, victim.y)
-        if x then ctx.teleport(x, y) end
-        -- Authored `text` wins, like every other narrative line in a phase table; the fallback only has
-        -- to be legible, not good, because a beat worth scripting is a beat somebody wrote a line for.
-        ctx.log("action", r.text or string.format("%s: %s falls.",
-            r.name or "The strike", victim.char.name or "the body"), { ctx.unit, victim })
-        ctx.fell(victim)
-    end,
 }
 
 return {

@@ -7,7 +7,7 @@
 -- kept failing to be (see models/descent.lua's Descent.account on why that button was hollow).
 --
 -- WHAT IT HAS IS NO LONGER A COUNTER. Coming up the stair IS the treatment: the surface sets every bone
--- the dive broke, free and without being asked (models/wound.lua's Wound.clear, called from this
+-- the dive broke -- no longer: the Ward sets them now (models/wound.lua), and what this
 -- screen's enter and from the city's). So a company that walks out of a floor at half strength is whole
 -- the moment it is standing in a town, and the only thing that follows it up is the count.
 --
@@ -54,6 +54,11 @@ local Gate = {}
 function Gate.night(player)
     if not player then return end
     require("models.calendar").spend(player)
+    -- ...AND THE WARD SERVES ITS TERMS. A rest is priced in DESCENTS rather than in calendar days
+    -- (models/wound.lua's ward block argues why: the calendar is nearly inert in a mode that reads its
+    -- danger off the floor ladder), and walking into the stair is the one moment a descent begins -- so
+    -- this is where a stay ticks. Returns who walked out of the ward, for a caller that wants to say so.
+    return require("models.wound").tickRest(player)
 end
 
 -- ---------------------------------------------------------------------------

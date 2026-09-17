@@ -62,18 +62,23 @@ return {
         -- handed the bill (models/wound.lua, docs/the-count.md). What replaces it is scope: a wound
         -- lasts the expedition it was taken on, and the two town screens end it on the way in.
         --
-        -- Driven through Wound.clear + Player.restore in that order, which is exactly the pair
-        -- states/hub.lua and states/gate.lua each run at their door. Order is load-bearing: clear first,
-        -- or the refill fills to a wounded ceiling that is about to stop existing.
+        -- Driven through the WARD's free path and then Player.restore. It used to be Wound.clear +
+        -- restore, the pair both town screens ran at their door -- and that pair is gone: the doorstep
+        -- no longer sets bones, a room does (data/buildings/the_ward.lua). Order is still load-bearing
+        -- for the same reason: mend first, or the refill fills to a ceiling that is about to move.
         local p = company(1, 0) -- and NO GOLD, which is the whole point: recovery is not for sale
         local char = p.roster[1]
         for _ = 1, 3 do Wound.inflict(p, { char }) end
         char.stats.health.current = 1
         assert(Wound.count(p, char.id) == 3, "precondition: somebody is badly hurt")
 
-        local mended = Wound.clear(p)
+        Wound.rest(p, char.id)
+        local mended = {}
+        for _ = 1, 3 * Wound.REST_DESCENTS do
+            for _, id in ipairs(Wound.tickRest(p)) do mended[#mended + 1] = id end
+        end
         Player.restore(p)
-        assert(#mended == 1 and mended[1] == char.id, "the clear names who it set")
+        assert(#mended == 1 and mended[1] == char.id, "the term walks exactly one body out, and names her")
         assert(Wound.count(p, char.id) == 0, "and left nothing on the ledger")
         assert(char.woundShare == nil, "nor any reserve stamped on the body")
         assert(char.stats.health.current == char.stats.health.max,
@@ -103,7 +108,8 @@ return {
         flask.quantity = 1
         char.stats.health.current = 1
 
-        Wound.clear(p)
+        Wound.rest(p, char.id)
+        for _ = 1, 3 * Wound.REST_DESCENTS do Wound.tickRest(p) end
         Player.restore(p)
         assert(char.stats.health.current == char.stats.health.max,
             "precondition: an unwounded body tops all the way up, so this case ran a real rest")
