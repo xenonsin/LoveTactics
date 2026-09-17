@@ -271,6 +271,23 @@ return {
           -- a body standing somewhere else. A seat ahead of the whole board says "acts next" outright;
           -- the next rebase normalizes it away.
           spawn = { { char = "character_demon_grunt", x = 6, y = 1, initiative = -1 } },
+          -- ...and the board says so THREE steps out, from the moment the avatar's turn opens, rather
+          -- than on the one click before it (Tutorial.spawnTelegraph). The muster marker -- the same
+          -- pulsing box and inward arrow a timed wave gets -- sits on (6,1) from "advance" onward, so
+          -- the player walks into position, arms the Clear Out and throws it with the grunt's landing
+          -- tile lit in the corner the whole time, and the body arrives where the board promised it.
+          --
+          -- One step of lead was the old rule and it read as none: it lit the tile for the single
+          -- click that throws the Clear Out, and that click is aimed at the avatar's OWN square with
+          -- the player's eyes on their own grid. Nobody saw it, and the grunt still walked on out of
+          -- nowhere.
+          --
+          -- "advance" and not earlier, for two reasons that agree. It is the top of the turn that ends
+          -- by landing the grunt -- the same one-TURN warning every timed wave gets. And step 1 is the
+          -- `calm` step, which strips the board of its danger paint on purpose: the first thing anyone
+          -- ever sees here is one tile to stand on and one body to hit, and a third mark pulsing in the
+          -- corner of it would be the exact noise that step deletes.
+          telegraphFrom = "advance",
           gate = { kind = "arm", item = "ability_minor_shock", approach = {} },
           anchor = { kind = "item", id = "ability_minor_shock" } },
 

@@ -265,25 +265,54 @@ function Tutorial.claimSpawn(t)
     return Tutorial.step(t).spawn
 end
 
--- The reinforcements the NEXT step will walk on, for the board to TELEGRAPH -- the same muster marker
+-- Where the warning for a coming muster STARTS: the index of the first step whose board should carry
+-- the marker for the spawn on step `at`. A step may name that step itself by its `line` id
+-- (`telegraphFrom`); absent the field -- or if the id names no earlier step -- the lead is one step,
+-- which is the floor for any spawn at all.
+local function telegraphStart(def, at)
+    local from = def.steps[at].telegraphFrom
+    if from then
+        for i = 1, at - 1 do
+            if def.steps[i].line == from then return i end
+        end
+    end
+    return at - 1
+end
+
+-- The reinforcements a COMING step will walk on, for the board to TELEGRAPH -- the same muster marker
 -- a timed wave gets (states/battle.lua refreshView, ui/battle_map.lua drawReinforcements). Nil unless
--- a body is genuinely one step out.
+-- a body is genuinely due.
 --
--- One step of lead, and it can only be one. A spawn lands the instant its own step becomes current, so
--- read from the current step the marker and the body would appear in the same frame and warn nobody;
--- read further ahead than one and the village lesson would have the grunt's landing zone lit while
--- the player is still learning to walk. One step is the whole window: the marker comes up as the
--- player arms the Clear Out, sits there while they aim it, and the body it promised walks onto that
--- very tile as the blow resolves. The muster is not a surprise, and the board said so.
+-- HOW MUCH LEAD is the only thing worth arguing about here, and the floor is not in question: a spawn
+-- lands the instant its own step becomes current, so read from the current step the marker and the
+-- body would appear in the same frame and warn nobody. One step is the least it can ever be.
+--
+-- It was also the MOST until the village fight was watched being played, and one step there turned out
+-- to be a window nobody is looking through. The grunt lands as the Clear Out resolves, so a single
+-- step of lead lights its tile for exactly one click -- and that click is thrown at the avatar's own
+-- square, with the player's eyes on their own body and their own item grid. The board said so, in the
+-- corner, while they were reading somewhere else, and the arrival still read as out of nowhere.
+--
+-- So a step may name where its own warning opens (`telegraphFrom`, an earlier step's `line` id), and
+-- the village grunt opens its own at the top of the turn that ends by landing it. That is the rule the
+-- timed waves already keep -- a muster surfaces one TURN out, never one beat (states/battle.lua gates
+-- the overlay to TICKS_PER_TURN) -- and a lesson's steps are the only clock a scripted arrival has.
 --
 -- Deliberately NOT a claim -- it is asked every frame, changes nothing, and goes quiet on its own the
 -- moment claimSpawn takes the step it was pointing at.
 function Tutorial.spawnTelegraph(t)
     if not t or t.abandoned or Tutorial.done(t) then return nil end
-    local ahead = t.index + 1
-    local step = t.def.steps[ahead]
-    if not step or not step.spawn or t.spawned[ahead] then return nil end
-    return step.spawn
+    local steps = t.def.steps
+    for i = t.index + 1, #steps do
+        if steps[i].spawn then
+            -- Only ever the NEXT muster: one already claimed is a body, not a promise, and one further
+            -- down the lesson waits its turn behind this one.
+            if t.spawned[i] then return nil end
+            if t.index < telegraphStart(t.def, i) then return nil end
+            return steps[i].spawn
+        end
+    end
+    return nil
 end
 
 -- What to say when the player tries something the current step didn't ask for. Falls back to the

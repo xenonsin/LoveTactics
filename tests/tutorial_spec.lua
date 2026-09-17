@@ -697,13 +697,14 @@ return {
         end,
     },
     {
-        name = "the reinforcement is telegraphed one step before it lands, and never after",
+        name = "the reinforcement is telegraphed from the step it names, and never after it lands",
         fn = function()
             -- A scripted spawn lands the instant its own step becomes current, so the board has to be
-            -- told about it a step EARLY or the marker and the body appear in the same frame and warn
-            -- nobody. states/battle.lua feeds this straight into the muster overlay the timed waves
-            -- use, so the village grunt's landing tile is lit while the player winds up the Clear Out
-            -- that lands it.
+            -- told about it EARLY or the marker and the body appear in the same frame and warn nobody.
+            -- states/battle.lua feeds this straight into the muster overlay the timed waves use, so the
+            -- village grunt's landing tile is lit for the whole turn that ends by walking it on: the
+            -- spawning step names where the warning opens (`telegraphFrom`), and one step is the floor
+            -- when it names nothing.
             local def = Tutorial.defs[TUTORIAL]
             local spawning
             for i, step in ipairs(def.steps) do
@@ -712,23 +713,42 @@ return {
             assert(spawning, "nothing ever reinforces the village fight")
             assert(spawning > 1, "a spawn on the first step could never be telegraphed")
 
-            local warned = Tutorial.spawnTelegraph(atStep(spawning - 1))
-            assert(warned and #warned == #def.steps[spawning].spawn,
-                "the step before the muster does not telegraph it")
-            for i, s in ipairs(warned) do
-                local real = def.steps[spawning].spawn[i]
-                assert(s.x == real.x and s.y == real.y and s.char == real.char,
-                    "the telegraph marks a different tile than the body walks onto")
+            -- Where the warning is supposed to open, read the same way the model reads it -- and a
+            -- `telegraphFrom` that names no earlier step is an authoring error, not a silent fallback
+            -- to one step of lead.
+            local opens = spawning - 1
+            local from = def.steps[spawning].telegraphFrom
+            if from then
+                local found
+                for i = 1, spawning - 1 do
+                    if def.steps[i].line == from then found = i break end
+                end
+                assert(found, "telegraphFrom names '" .. from .. "', which is no step before the muster")
+                opens = found
             end
+            assert(opens < spawning, "the warning opens no earlier than the body it warns about")
 
-            -- Exactly one step of lead: every other step is quiet, including the spawning step itself
-            -- (by then the arrival is a body, not a promise).
-            for i = 1, #def.steps do
-                if i ~= spawning - 1 then
-                    assert(Tutorial.spawnTelegraph(atStep(i)) == nil,
-                        "step " .. i .. " telegraphs a muster it is not one step from")
+            for at = opens, spawning - 1 do
+                local warned = Tutorial.spawnTelegraph(atStep(at))
+                assert(warned and #warned == #def.steps[spawning].spawn,
+                    "step " .. at .. " is inside the warning window and telegraphs nothing")
+                for i, s in ipairs(warned) do
+                    local real = def.steps[spawning].spawn[i]
+                    assert(s.x == real.x and s.y == real.y and s.char == real.char,
+                        "the telegraph marks a different tile than the body walks onto")
                 end
             end
+
+            -- Outside that window every step is quiet, including the spawning step itself (by then the
+            -- arrival is a body, not a promise) -- and step 1, which is the `calm` step and must carry
+            -- no third mark whatever a lesson asks for.
+            for i = 1, #def.steps do
+                if i < opens or i >= spawning then
+                    assert(Tutorial.spawnTelegraph(atStep(i)) == nil,
+                        "step " .. i .. " telegraphs a muster outside the window that warns about it")
+                end
+            end
+            assert(opens > 1, "the calm opening step carries a muster marker")
 
             -- ...and it goes quiet on its own once the body is claimed, so a marker can never outlive
             -- the arrival it promised. (Claiming happens on the NEXT step, which is the state this
