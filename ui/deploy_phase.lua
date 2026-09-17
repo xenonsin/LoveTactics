@@ -911,7 +911,10 @@ function DeployPhase:drawHover(bounds)
     -- does mid-fight (ui/terrain_art.lua). It belongs here at least as much as there: the line is
     -- being chosen against the ground, so this is where a player first has reason to ask what the
     -- picture on a square means.
-    local tr, tg, tb = self.map and self.map.tileTone and self.map:tileTone(cx, cy)
+    -- Called on its own line, never folded into an `and` chain: a call inside one is truncated to a
+    -- single value, and a tone of (r, nil, nil) reaches setColor as a crash rather than a missing swatch.
+    local tr, tg, tb
+    if self.map and self.map.tileTone then tr, tg, tb = self.map:tileTone(cx, cy) end
     local terrainInfo = { cell = cell,
                           bonus = Combat.fieldBonus(self.combat, cx, cy),
                           tone = tr and { tr, tg, tb } or nil,
