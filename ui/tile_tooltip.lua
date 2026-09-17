@@ -145,6 +145,25 @@ local DESC = Theme.ink
 
 local GLYPH_GAP = 4 -- between a row's glyph and the value it marks (matches ui/item_tooltip.lua)
 local BAR_GLYPH_W = 7 -- the resource mark ahead of a pool bar's HP/MP/SP tag
+local PAIR_GAP = 14 -- the gutter between the two halves of a paired row
+
+-- Lay `rows` out two to a line as `pair` blocks. Each row is a half: `{ label, value, valueColor,
+-- labelColor, hourglass }` -- the same shape a full-width `stat` or `status` block carries, because
+-- one renderer draws all three (drawLeaderRow).
+--
+-- WHY ANYTHING IS PAIRED AT ALL: this box docks into a column 288 wide and 652 tall, and it shares
+-- that column with the ground underfoot and with the whole exchange while a blow is being aimed. Eight
+-- stat rows spend 144px of it printing eight two-digit numbers, each alone on a line wide enough for
+-- three of them. Paired, the same eight numbers cost 72 and read as a grid -- which is how a stat
+-- block wants to be read anyway, in pairs down a column rather than as a list.
+--
+-- An odd last row keeps its own line with the right half empty, rather than stretching across it: a
+-- lone value sliding out to the far edge breaks the column the rows above it just made.
+local function appendPairs(blocks, rows)
+    for i = 1, #rows, 2 do
+        blocks[#blocks + 1] = { kind = "pair", left = rows[i], right = rows[i + 1] }
+    end
+end
 
 -- Resource pools shown as labeled bars, in draw order. Health has no fixed colour: it's filled with
 -- the unit's SIDE colour (blue ally / red foe) like the board token's bar and the turn card's, so
@@ -196,13 +215,17 @@ local INTENT_KINDS = Intent.GLOSS
 local function appendIntent(blocks, intent)
     local kind = intent.kind or "wait"
     local def = INTENT_KINDS[kind] or INTENT_KINDS.wait
+    -- THE HEADING IS THE ROW'S OWN LABEL. A "Intent" line with the mark on the line under it spent two
+    -- rows saying one thing, in a box that has to share its column with the ground and the whole
+    -- exchange. "Intent .... [mark] Attack" is the same statement on one line, and it reads as the
+    -- stat rows above it do -- the question on the left, the answer on the right.
     blocks[#blocks + 1] = { kind = "sep" }
-    blocks[#blocks + 1] = { kind = "head", text = "Intent", color = { 0.85, 0.86, 0.92 } }
-    blocks[#blocks + 1] = { kind = "intent", name = def.name, glyphKind = kind,
+    blocks[#blocks + 1] = { kind = "intent", label = "Intent", name = def.name, glyphKind = kind,
         color = Colors.INTENT[kind] or Colors.INTENT.wait }
+    local rows = {}
     local target = intent.target
     if kind ~= "wait" and target and target.char then
-        blocks[#blocks + 1] = { kind = "stat", label = "Target",
+        rows[#rows + 1] = { label = "Target",
             value = target.char.name or "Unit", valueColor = Colors.unit(target) }
     end
     -- Only the two figures the badge itself quotes, and only where they are real: a strike shows the
@@ -216,12 +239,14 @@ local function appendIntent(blocks, intent)
     local dmg = (kind == "attack" or kind == "cast") and (intent.amount or 0) or 0
     local heal = (kind == "support") and (intent.heal or 0) or 0
     if dmg > 0 then
-        blocks[#blocks + 1] = { kind = "stat", label = "Deals",
-            value = tostring(math.floor(dmg + 0.5)) }
+        rows[#rows + 1] = { label = "Deals", value = tostring(math.floor(dmg + 0.5)) }
     elseif heal > 0 then
-        blocks[#blocks + 1] = { kind = "stat", label = "Heals",
+        rows[#rows + 1] = { label = "Heals",
             value = tostring(math.floor(heal + 0.5)), valueColor = Colors.HEALING }
     end
+    -- Who it comes for and what it lands, on one line: two short answers to the one question the
+    -- section exists to ask, and the column has other things to hold while this box is open.
+    appendPairs(blocks, rows)
     blocks[#blocks + 1] = { kind = "desc", text = def.desc }
 end
 
@@ -293,23 +318,28 @@ local function appendTerrain(blocks, info, asHead)
         blocks[#blocks + 1] = { kind = "desc", text = meta.desc }
     end
 
+    -- THE TWO THINGS EVERY TILE SAYS -- what it costs to walk on and what it does to a sightline --
+    -- share a line, because they are read together and because this box shares its column with the
+    -- body standing here and with the whole exchange while a blow is aimed. The watch tax stays on a
+    -- line of its own: it is not a property of the ground (see below) and must not be read as one.
+    local ground = {}
     if cell.walkable == false then
-        blocks[#blocks + 1] = { kind = "stat", label = "Movement", value = "Impassable",
-            valueColor = ENEMY_COLOR }
+        ground[#ground + 1] = { label = "Movement", value = "Impassable", valueColor = ENEMY_COLOR }
     else
         -- The tile's own price, and then what somebody watching it adds. Two lines rather than one
         -- summed figure: the ground charges what it charges whoever walks on it, while the tax is a
         -- fact about an enemy currently standing beside this square and will lift when they stop --
         -- folding them together would say the mud got deeper.
         local mc = cell.moveCost or 1
-        blocks[#blocks + 1] = { kind = "stat", label = "Move cost", value = tostring(mc),
+        ground[#ground + 1] = { label = "Move cost", value = tostring(mc),
             valueColor = mc > 1 and { 0.92, 0.72, 0.42 } or VALUE }
-        if info.watched then
-            blocks[#blocks + 1] = { kind = "stat", label = "Watched", value = "+" .. tostring(info.watched),
-                valueColor = ENEMY_COLOR }
-        end
     end
-    blocks[#blocks + 1] = { kind = "stat", label = "Line of sight", value = coverText(cell.sightCost) }
+    ground[#ground + 1] = { label = "Line of sight", value = coverText(cell.sightCost) }
+    appendPairs(blocks, ground)
+    if cell.walkable ~= false and info.watched then
+        blocks[#blocks + 1] = { kind = "stat", label = "Watched", value = "+" .. tostring(info.watched),
+            valueColor = ENEMY_COLOR }
+    end
 
     -- Positional bonuses granted for standing here (terrain + any field object), aggregated by
     -- combat into a flat bag, e.g. { range = 1 }.
@@ -348,14 +378,21 @@ local function appendUnit(blocks, unit, preview, intent)
     -- token wears for it, so a survivor isn't taken for a party member you can order about.
     local uncommanded = unit.side == "party" and (unit.control == "ai" or unit.control == "none")
     local sideLabel = unit.side == "party" and (uncommanded and "Ally (auto)" or "Ally") or "Enemy"
-    blocks[#blocks + 1] = { kind = "title", text = (char.name or "Unit"), color = sideCol }
-    blocks[#blocks + 1] = { kind = "stat", label = "Side",
-        value = sideLabel, valueColor = sideCol }
+    -- THE SIDE RIDES THE NAME LINE rather than taking a row under it. It is one word, it is already
+    -- the colour the name is printed in, and a row of its own bought nothing but 18px of a column that
+    -- has none to spare. On the name line it reads as what it is: which of the two this body is.
+    blocks[#blocks + 1] = { kind = "title", text = (char.name or "Unit"), color = sideCol,
+        right = sideLabel, rightColor = sideCol }
 
     -- Net change to the health pool the aimed ability would cause (damage negative, heal positive).
     local hpDelta = 0
     if preview then hpDelta = (preview.heal or 0) - (preview.damage or 0) end
 
+    -- HEALTH TAKES A LINE OF ITS OWN and the two spendable pools share the one under it. Health is the
+    -- pool an aimed blow forecasts on, and the pill quoting that forecast needs the width to float in;
+    -- mana and stamina are never previewed and are read as a pair anyway -- what this body can still
+    -- spend. Three full-width bars cost 81px of a column that also holds the ground and the exchange.
+    local spendable = {}
     for _, r in ipairs(RESOURCES) do
         local res = char.stats and char.stats[r.stat]
         -- Only pools the unit actually has (max > 0); a beast with no mana skips the MP bar.
@@ -374,19 +411,35 @@ local function appendUnit(blocks, unit, preview, intent)
                 block.delta = hpDelta
                 block.lethal = preview and preview.lethal
             end
-            blocks[#blocks + 1] = block
+            if r.stat == "health" then
+                blocks[#blocks + 1] = block
+            else
+                spendable[#spendable + 1] = block
+            end
         end
     end
+    -- A body with only one of the two keeps it full width: half a row with nothing beside it would
+    -- read as a pool that had lost something, which is exactly what a bar is for saying.
+    if #spendable == 2 then
+        blocks[#blocks + 1] = { kind = "barPair", left = spendable[1], right = spendable[2] }
+    else
+        for _, block in ipairs(spendable) do blocks[#blocks + 1] = block end
+    end
 
+    -- Two to a line (appendPairs says why), in the order STAT_ROWS lists them -- so the offensive
+    -- pair sits above the defensive pair above the movement pair above the two accuracy stats, and
+    -- each line is a question with its answer beside it.
+    local statRows = {}
     for _, row in ipairs(STAT_ROWS) do
         local base = char.stats and char.stats[row.stat]
         if type(base) == "number" then
             local bonus = (unit.bonus and unit.bonus[row.stat]) or 0
             local value = tostring(base + bonus)
             if bonus ~= 0 then value = value .. " (" .. (bonus > 0 and "+" or "") .. bonus .. ")" end
-            blocks[#blocks + 1] = { kind = "stat", label = row.label, value = value }
+            statRows[#statRows + 1] = { label = row.label, value = value }
         end
     end
+    appendPairs(blocks, statRows)
 
     -- A foe whose kit has been laid open (the Assayer's Eye) says so, and says how to read it. The
     -- reveal lasts the whole fight and its card no longer opens on a hover, so without this line the
@@ -407,16 +460,22 @@ local function appendUnit(blocks, unit, preview, intent)
     if statuses and #statuses > 0 then
         blocks[#blocks + 1] = { kind = "sep" }
         blocks[#blocks + 1] = { kind = "head", text = "Status Effects", color = { 0.85, 0.86, 0.92 } }
+        local rows = {}
         for _, st in ipairs(statuses) do
             local def = st.def or {}
-            blocks[#blocks + 1] = { kind = "status",
-                name = def.name or st.name or "Status",
-                color = def.color or { 0.82, 0.82, 0.88 },
+            rows[#rows + 1] = {
+                label = def.name or st.name or "Status",
+                labelColor = def.color or { 0.82, 0.82, 0.88 },
                 -- A self-expiring status (Defending, Channeling) carries a meaningless countdown and
                 -- opts out of it, exactly as in ui/status_tooltip.lua -- the same status must not
                 -- quote a duration in one tooltip and withhold it in the other.
-                remaining = not def.hideDuration and st.remaining or nil }
+                value = (not def.hideDuration and st.remaining) and fmtDuration(st.remaining) or nil,
+                hourglass = true }
         end
+        -- Paired like the stats above them, and for the same reason: a status is a word and a number,
+        -- and four of them stacked one per line is 72px of a column spent on eight short strings. The
+        -- hourglass stays on every duration it quotes -- half a row is still a row.
+        appendPairs(blocks, rows)
     end
 end
 
@@ -776,10 +835,12 @@ local function measureBlocks(blocks, innerW, body)
             h = h + b.lines * bodyH + 2
         elseif b.kind == "sep" then h = h + 8
         elseif b.kind == "head" then h = h + bodyH + 3
-        elseif b.kind == "intent" then h = h + bodyH + 1 -- glyph + word, on one stat-row line
+        elseif b.kind == "intent" then h = h + bodyH + 1 -- label, glyph + word, on one stat-row line
+        elseif b.kind == "pair" then h = h + bodyH + 1 -- two stat rows sharing one line
         -- A previewed pool reserves a lane above its row for the callout pill, so the projection
         -- floats in space made for it instead of over the row's own "cur / max".
         elseif b.kind == "bar" then h = h + bodyH + barH + 4 + (b.delta and (PoolCallout.H + GLYPH_GAP) or 0)
+        elseif b.kind == "barPair" then h = h + bodyH + barH + 4 -- two pools on one line, neither previewed
         else h = h + bodyH + 1 end -- stat
     end
     return h + 9 -- bottom pad
@@ -801,6 +862,74 @@ function TileTooltip.measure(info, width)
     if not describable(info) then return 0 end
     local _, body = fonts()
     return measureBlocks(buildBlocks(info), ((width or 210) - 9 * 2), body)
+end
+
+-- WHAT OF A HOVERED BODY'S READOUT STANDS when the column it docks into also has to hold the ground
+-- underfoot and the exchange being aimed at it: `{ occupant = bool, intent = bool }`. Pure -- it
+-- measures, it never draws -- so the fight's arrangement can be pinned without a window
+-- (tests/tile_hover_fit_spec.lua). `budget` is the free height of the column, `gap` the space kept
+-- between two stacked boxes.
+--
+-- TWO VALVES, IN ORDER, and the order is the whole of it. The terrain box never yields (states/battle
+-- .lua's drawTileTooltip says why), so the occupant was the entire valve: a body's readout either
+-- stood or vanished. Aiming a blow puts an exchange box in the same column, and an occupant box
+-- carrying the intent section overran what was left of it by a few dozen pixels -- so pointing a
+-- weapon at a foe deleted its armour, its reach and its pools at the one moment they are being read,
+-- and pointing at the tile beside it brought them all back.
+--
+-- The INTENT SECTION yields first because it is the one part of that box with somewhere else to be
+-- read: the same prediction is a badge on the body, a mark on its turn card, and a hover note on
+-- each of those. The stats above it have no second reading anywhere. Only when even the trimmed box
+-- will not fit does the whole of it go, which is the rule exactly as it was.
+function TileTooltip.dockPlan(terrainInfo, objInfo, width, budget, gap)
+    gap = gap or 8
+    local plan = { occupant = objInfo ~= nil, intent = objInfo ~= nil and objInfo.intent ~= nil }
+    if not objInfo then return plan end
+
+    local terrainH = TileTooltip.measure(terrainInfo, width) + gap
+    if TileTooltip.measure(objInfo, width) + gap + terrainH <= budget then return plan end
+
+    if plan.intent then
+        -- Measured off a COPY. The plan is a read, and a caller that asked what would fit and got its
+        -- own table quietly emptied would be a foul thing to find from the far side of a draw call.
+        local trimmed = {}
+        for k, v in pairs(objInfo) do trimmed[k] = v end
+        trimmed.intent = nil
+        plan.intent = false
+        if TileTooltip.measure(trimmed, width) + gap + terrainH <= budget then return plan end
+    end
+
+    plan.occupant = false
+    return plan
+end
+
+-- ONE "label ....... value" ROW, laid into whatever column it is handed -- the full inner width for a
+-- stat or a status, or half of it for either side of a paired row. The dotted leader walks whatever
+-- gap is left between the label and the value, which is exactly what keeps a 130px half legible: the
+-- eye follows the dots across rather than measuring the whitespace.
+--
+-- `half` is `{ label, value, valueColor, labelColor, hourglass }`. A row with no value prints its
+-- label alone (a status that opts out of its countdown), and `hourglass` sets the game's mark for
+-- "measured in ticks" ahead of the number, which every duration in the game wears.
+local function drawLeaderRow(body, half, x, w, ty)
+    if not half or not half.label then return end
+    local bodyH = body:getHeight()
+    love.graphics.setFont(body)
+    local lc = half.labelColor or MUTED
+    love.graphics.setColor(lc[1], lc[2], lc[3], 1)
+    love.graphics.print(half.label, x, ty)
+    if not half.value then return end
+    local vc = half.valueColor or VALUE
+    local valueLeft = x + w - body:getWidth(half.value)
+    local leaderRight = valueLeft - 6
+    if half.hourglass then
+        local gw = 7
+        leaderRight = valueLeft - GLYPH_GAP - gw - 6
+        Glyphs.hourglass(valueLeft - GLYPH_GAP - gw, ty + 2, gw, bodyH - 4, MUTED[1], MUTED[2], MUTED[3], 1)
+    end
+    Theme.leader(x + body:getWidth(half.label) + 6, leaderRight, ty + bodyH - 3)
+    love.graphics.setColor(vc[1], vc[2], vc[3], 1)
+    love.graphics.printf(half.value, x, ty, w, "right")
 end
 
 -- Draw the tooltip for the hovered tile `info` anchored near (mx, my). `maxRight` caps the box's
@@ -848,6 +977,92 @@ function TileTooltip.draw(info, mx, my, maxRight, opts)
     -- always layers over the box rather than under the row below it.
     local callouts = PoolCallout.new()
 
+    -- ONE POOL ROW -- its tag and its mark, its "cur / max", and the track under them -- laid into
+    -- whatever column it is handed: the full inner width for health, which carries the forecast
+    -- pill and must have room for it, or half of it for the two spendable pools, which share a
+    -- line. Returns the height it used, callout lane and all, so the caller's cursor can never
+    -- come apart from measureBlocks.
+    local function drawPoolBar(b, x, w, ty)
+        -- Step past the lane measureBlocks reserved for this row's callout pill (if any).
+        if b.delta then ty = ty + PoolCallout.H + GLYPH_GAP end
+        local rowTop = ty
+        love.graphics.setFont(small)
+        -- The pool's own mark just after its HP/MP/SP tag -- the same heart / gem / drop the turn
+        -- strip and the cost badges use, tinted like the label rather than the bar so the row
+        -- reads as one caption. `b.stat` is absent only for a pool with no shape of its own.
+        love.graphics.setColor(MUTED[1], MUTED[2], MUTED[3], 1)
+        love.graphics.print(b.label, x, ty)
+        local glyph = b.stat and Glyphs.RESOURCE[b.stat]
+        if glyph then
+            glyph(x + small:getWidth(b.label) + GLYPH_GAP, ty + 2,
+                BAR_GLYPH_W, bodyH - 4, MUTED[1], MUTED[2], MUTED[3], 1)
+        end
+        -- Value text stays "cur / max" no matter what is aimed: the projection is quoted by the
+        -- floating callout instead, so the numbers under the cursor hold still while the aim
+        -- moves. `b.max` is the ceiling (max less anything reserved); a reservation appends its
+        -- size.
+        local curN = math.floor(b.cur + 0.5)
+        local valueText = curN .. " / " .. b.max
+        -- A reservation names ITSELF where it is not the battle's own: what holds a summon back is
+        -- "res.", what a wound has taken off the top says so in the word the player is being
+        -- charged in (ui/body_tooltip.lua). Same slice of bar, two different debts.
+        if b.reserved then
+            valueText = valueText .. " (" .. b.reserved .. " " .. (b.reservedLabel or "res.") .. ")"
+        end
+        love.graphics.setColor(VALUE[1], VALUE[2], VALUE[3], 1)
+        love.graphics.printf(valueText, x, ty, w, "right")
+        local barY = ty + bodyH
+        -- The track spans the pool's TRUE maximum, so the reserved slice occupies real width at
+        -- its far end and the unreserved fill visibly shrinks by exactly what was committed.
+        local scale = b.fullMax or b.max
+        local ratio = (scale > 0) and math.max(0, math.min(1, b.cur / scale)) or 0
+        Theme.set(Theme.barTrack)
+        love.graphics.rectangle("fill", x, barY, w, barH, 2, 2)
+        if b.reserved and scale > 0 then
+            -- The locked-away tail: the pool colour, dimmed and hatched by opacity alone.
+            local resW = w * (b.reserved / scale)
+            love.graphics.setColor(b.color[1] * 0.5, b.color[2] * 0.5, b.color[3] * 0.5, 0.7)
+            love.graphics.rectangle("fill", x + w - resW, barY, resW, barH, 2, 2)
+        end
+        if b.delta and scale > 0 then
+            -- Show the change as a second segment: the "after" fill in the pool colour, then the
+            -- lost slice in amber (damage) or the gained slice in green (heal) beside it. The
+            -- lost slice can't be red -- an enemy's HP bar is red, and red-on-red reads as nothing.
+            local afterVal = math.max(0, math.min(b.max, b.cur + b.delta))
+            local afterRatio = math.max(0, math.min(1, afterVal / scale))
+            -- Queue the projection for the floating pass: the same pill the acting card's pool
+            -- stack wears (ui/pool_callout.lua), anchored on the edge the pending slice ends at.
+            callouts:add({
+                anchorX = x + w * afterRatio, anchorY = barY, barH = barH,
+                aboveY = rowTop,
+                key = b.stat, text = tostring(math.floor(afterVal + 0.5)),
+                color = (b.delta > 0 and Colors.HEALING)
+                    or (b.lethal and Colors.LETHAL) or Colors.PENDING,
+            })
+            if b.delta < 0 then
+                local loseCol = b.lethal and Colors.LETHAL or Colors.PENDING
+                love.graphics.setColor(b.color[1], b.color[2], b.color[3], 0.95)
+                love.graphics.rectangle("fill", x, barY, w * afterRatio, barH, 2, 2)
+                love.graphics.setColor(loseCol[1], loseCol[2], loseCol[3], 0.95)
+                love.graphics.rectangle("fill", x + w * afterRatio, barY,
+                    w * (ratio - afterRatio), barH, 2, 2)
+            else
+                local gain = Colors.HEALING
+                love.graphics.setColor(b.color[1], b.color[2], b.color[3], 0.95)
+                love.graphics.rectangle("fill", x, barY, w * ratio, barH, 2, 2)
+                love.graphics.setColor(gain[1], gain[2], gain[3], 0.9)
+                love.graphics.rectangle("fill", x + w * ratio, barY,
+                    w * (afterRatio - ratio), barH, 2, 2)
+            end
+        else
+            love.graphics.setColor(b.color[1], b.color[2], b.color[3], 0.95)
+            love.graphics.rectangle("fill", x, barY, w * ratio, barH, 2, 2)
+        end
+        Theme.set(Theme.barOutline, Theme.barOutline[4] or 1)
+        love.graphics.rectangle("line", x, barY, w, barH, 2, 2)
+        return (b.delta and (PoolCallout.H + GLYPH_GAP) or 0) + bodyH + barH + 4
+    end
+
     local ty = by + pad
     for _, b in ipairs(blocks) do
         if b.kind == "title" then
@@ -855,6 +1070,14 @@ function TileTooltip.draw(info, mx, my, maxRight, opts)
             local off = drawSwatch(b, bx + pad, ty + 1, titleH - 2)
             love.graphics.setColor(b.color[1], b.color[2], b.color[3], 1)
             love.graphics.print(b.text, bx + pad + off, ty)
+            -- The side word on the name's own line, in the body face and sat on the serif's optical
+            -- centre, so the line reads "who this is ......... which side it is on".
+            if b.right then
+                local rc = b.rightColor or MUTED
+                love.graphics.setFont(body)
+                love.graphics.setColor(rc[1], rc[2], rc[3], 1)
+                love.graphics.printf(b.right, bx + pad, ty + math.floor((titleH - bodyH) / 2), innerW, "right")
+            end
             ty = ty + titleH + 3
         elseif b.kind == "desc" then
             love.graphics.setFont(body)
@@ -872,119 +1095,53 @@ function TileTooltip.draw(info, mx, my, maxRight, opts)
             love.graphics.print(b.text, bx + pad + off, ty)
             ty = ty + bodyH + 3
         elseif b.kind == "bar" then
-            -- Step past the lane measureBlocks reserved for this row's callout pill (if any).
-            if b.delta then ty = ty + PoolCallout.H + GLYPH_GAP end
-            local rowTop = ty
-            love.graphics.setFont(small)
-            -- The pool's own mark just after its HP/MP/SP tag -- the same heart / gem / drop the turn
-            -- strip and the cost badges use, tinted like the label rather than the bar so the row
-            -- reads as one caption. `b.stat` is absent only for a pool with no shape of its own.
-            love.graphics.setColor(MUTED[1], MUTED[2], MUTED[3], 1)
-            love.graphics.print(b.label, bx + pad, ty)
-            local glyph = b.stat and Glyphs.RESOURCE[b.stat]
-            if glyph then
-                glyph(bx + pad + small:getWidth(b.label) + GLYPH_GAP, ty + 2,
-                    BAR_GLYPH_W, bodyH - 4, MUTED[1], MUTED[2], MUTED[3], 1)
-            end
-            -- Value text stays "cur / max" no matter what is aimed: the projection is quoted by the
-            -- floating callout instead, so the numbers under the cursor hold still while the aim
-            -- moves. `b.max` is the ceiling (max less anything reserved); a reservation appends its
-            -- size.
-            local curN = math.floor(b.cur + 0.5)
-            local valueText = curN .. " / " .. b.max
-            -- A reservation names ITSELF where it is not the battle's own: what holds a summon back is
-            -- "res.", what a wound has taken off the top says so in the word the player is being
-            -- charged in (ui/body_tooltip.lua). Same slice of bar, two different debts.
-            if b.reserved then
-                valueText = valueText .. " (" .. b.reserved .. " " .. (b.reservedLabel or "res.") .. ")"
-            end
-            love.graphics.setColor(VALUE[1], VALUE[2], VALUE[3], 1)
-            love.graphics.printf(valueText, bx + pad, ty, innerW, "right")
-            local barY = ty + bodyH
-            -- The track spans the pool's TRUE maximum, so the reserved slice occupies real width at
-            -- its far end and the unreserved fill visibly shrinks by exactly what was committed.
-            local scale = b.fullMax or b.max
-            local ratio = (scale > 0) and math.max(0, math.min(1, b.cur / scale)) or 0
-            Theme.set(Theme.barTrack)
-            love.graphics.rectangle("fill", bx + pad, barY, innerW, barH, 2, 2)
-            if b.reserved and scale > 0 then
-                -- The locked-away tail: the pool colour, dimmed and hatched by opacity alone.
-                local resW = innerW * (b.reserved / scale)
-                love.graphics.setColor(b.color[1] * 0.5, b.color[2] * 0.5, b.color[3] * 0.5, 0.7)
-                love.graphics.rectangle("fill", bx + pad + innerW - resW, barY, resW, barH, 2, 2)
-            end
-            if b.delta and scale > 0 then
-                -- Show the change as a second segment: the "after" fill in the pool colour, then the
-                -- lost slice in amber (damage) or the gained slice in green (heal) beside it. The
-                -- lost slice can't be red -- an enemy's HP bar is red, and red-on-red reads as nothing.
-                local afterVal = math.max(0, math.min(b.max, b.cur + b.delta))
-                local afterRatio = math.max(0, math.min(1, afterVal / scale))
-                -- Queue the projection for the floating pass: the same pill the acting card's pool
-                -- stack wears (ui/pool_callout.lua), anchored on the edge the pending slice ends at.
-                callouts:add({
-                    anchorX = bx + pad + innerW * afterRatio, anchorY = barY, barH = barH,
-                    aboveY = rowTop,
-                    key = b.stat, text = tostring(math.floor(afterVal + 0.5)),
-                    color = (b.delta > 0 and Colors.HEALING)
-                        or (b.lethal and Colors.LETHAL) or Colors.PENDING,
-                })
-                if b.delta < 0 then
-                    local loseCol = b.lethal and Colors.LETHAL or Colors.PENDING
-                    love.graphics.setColor(b.color[1], b.color[2], b.color[3], 0.95)
-                    love.graphics.rectangle("fill", bx + pad, barY, innerW * afterRatio, barH, 2, 2)
-                    love.graphics.setColor(loseCol[1], loseCol[2], loseCol[3], 0.95)
-                    love.graphics.rectangle("fill", bx + pad + innerW * afterRatio, barY,
-                        innerW * (ratio - afterRatio), barH, 2, 2)
-                else
-                    local gain = Colors.HEALING
-                    love.graphics.setColor(b.color[1], b.color[2], b.color[3], 0.95)
-                    love.graphics.rectangle("fill", bx + pad, barY, innerW * ratio, barH, 2, 2)
-                    love.graphics.setColor(gain[1], gain[2], gain[3], 0.9)
-                    love.graphics.rectangle("fill", bx + pad + innerW * ratio, barY,
-                        innerW * (afterRatio - ratio), barH, 2, 2)
-                end
-            else
-                love.graphics.setColor(b.color[1], b.color[2], b.color[3], 0.95)
-                love.graphics.rectangle("fill", bx + pad, barY, innerW * ratio, barH, 2, 2)
-            end
-            Theme.set(Theme.barOutline, Theme.barOutline[4] or 1)
-            love.graphics.rectangle("line", bx + pad, barY, innerW, barH, 2, 2)
-            ty = ty + bodyH + barH + 4
+            ty = ty + drawPoolBar(b, bx + pad, innerW, ty)
+        elseif b.kind == "barPair" then
+            -- Two pools sharing a line. Neither can carry a forecast (only health is ever
+            -- previewed), so neither reserves a callout lane and the two halves are the same
+            -- height -- which is what lets one of them stand for the row.
+            local half = math.floor((innerW - PAIR_GAP) / 2)
+            drawPoolBar(b.left, bx + pad, half, ty)
+            ty = ty + drawPoolBar(b.right, bx + pad + half + PAIR_GAP, half, ty)
         elseif b.kind == "intent" then
             -- The mark beside its name, both in the kind's colour: the SAME glyph the board badge and
             -- the turn card wear (ui/glyphs.lua INTENT), so what is learned here is legible there.
             local glyph = Glyphs.INTENT[b.glyphKind] or Glyphs.INTENT.wait
             local gw = bodyH - 3
-            glyph(bx + pad, ty + 2, gw, gw, b.color[1], b.color[2], b.color[3], 1)
             love.graphics.setFont(body)
-            love.graphics.setColor(b.color[1], b.color[2], b.color[3], 1)
-            love.graphics.print(b.name, bx + pad + gw + GLYPH_GAP, ty)
-            ty = ty + bodyH + 1
-        elseif b.kind == "status" then -- status name (in its colour) left, remaining duration right
-            love.graphics.setFont(body)
-            love.graphics.setColor(b.color[1], b.color[2], b.color[3], 1)
-            love.graphics.print(b.name, bx + pad, ty)
-            -- The duration, under the hourglass -- the game's mark for "measured in ticks", worn by
-            -- every number on that clock (speed badges, recovery, the initiative read-out). A status
-            -- that opts out of its countdown (hideDuration) prints the name alone.
-            if b.remaining then
+            -- The section's own heading is this row's label (appendIntent says why), so the mark and
+            -- its word sit at the value end where every other answer in the box sits.
+            local wordW = body:getWidth(b.name)
+            local markX = bx + pad + innerW - wordW - gw - GLYPH_GAP
+            if b.label then
                 love.graphics.setColor(MUTED[1], MUTED[2], MUTED[3], 1)
-                local text = fmtDuration(b.remaining)
-                love.graphics.printf(text, bx + pad, ty, innerW, "right")
-                local gw = 7
-                local vx = bx + pad + innerW - body:getWidth(text)
-                Glyphs.hourglass(vx - GLYPH_GAP - gw, ty + 2, gw, bodyH - 4, MUTED[1], MUTED[2], MUTED[3], 1)
+                love.graphics.print(b.label, bx + pad, ty)
+                Theme.leader(bx + pad + body:getWidth(b.label) + 6, markX - 6, ty + bodyH - 3)
+            else
+                markX = bx + pad
             end
+            glyph(markX, ty + 2, gw, gw, b.color[1], b.color[2], b.color[3], 1)
+            love.graphics.setColor(b.color[1], b.color[2], b.color[3], 1)
+            love.graphics.print(b.name, markX + gw + GLYPH_GAP, ty)
+            ty = ty + bodyH + 1
+        elseif b.kind == "status" then
+            -- A standing clock on the tile rather than on a body (a wall's "Fades in", a muster's
+            -- "Lands in"): the name in its own colour, the count under the hourglass. Same row the
+            -- stats are drawn with -- the duration is the value.
+            drawLeaderRow(body, { label = b.name, labelColor = b.color,
+                value = b.remaining and fmtDuration(b.remaining) or nil, hourglass = true },
+                bx + pad, innerW, ty)
+            ty = ty + bodyH + 1
+        elseif b.kind == "pair" then
+            -- Two rows sharing a line, each laid into its own half with its own leader. The gutter
+            -- between them is what stops the left half's value and the right half's label reading as
+            -- one run of text.
+            local half = math.floor((innerW - PAIR_GAP) / 2)
+            drawLeaderRow(body, b.left, bx + pad, half, ty)
+            drawLeaderRow(body, b.right, bx + pad + half + PAIR_GAP, half, ty)
             ty = ty + bodyH + 1
         else -- stat: label left, value right, a dotted leader walking between them (as ui/item_tooltip)
-            love.graphics.setFont(body)
-            love.graphics.setColor(MUTED[1], MUTED[2], MUTED[3], 1)
-            love.graphics.print(b.label, bx + pad, ty)
-            local vc = b.valueColor or VALUE
-            local valueLeft = bx + pad + innerW - body:getWidth(b.value)
-            Theme.leader(bx + pad + body:getWidth(b.label) + 6, valueLeft - 6, ty + bodyH - 3)
-            love.graphics.setColor(vc[1], vc[2], vc[3], 1)
-            love.graphics.printf(b.value, bx + pad, ty, innerW, "right")
+            drawLeaderRow(body, b, bx + pad, innerW, ty)
             ty = ty + bodyH + 1
         end
     end

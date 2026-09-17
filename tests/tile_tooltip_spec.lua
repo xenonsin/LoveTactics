@@ -22,10 +22,22 @@ local function body(id, side)
 end
 
 -- The first block of `kind`, optionally the first whose label / name / text matches `label`.
+--
+-- A `stat` is looked for INSIDE paired rows as well as among the full-width blocks. The readout lays
+-- short rows two to a line to fit the column it docks into (ui/tile_tooltip.lua's appendPairs), and
+-- which half of which line a row landed on is a fitting decision, not a reading one -- a spec that
+-- could only see the full-width rows would call a paired "Deals" missing and fail on the layout
+-- rather than on the words.
 local function find(blocks, kind, label)
+    local function matches(b)
+        return not label or b.label == label or b.name == label or b.text == label
+    end
     for _, b in ipairs(blocks) do
-        if b.kind == kind and (not label or b.label == label or b.name == label or b.text == label) then
-            return b
+        if b.kind == kind and matches(b) then return b end
+        if kind == "stat" and b.kind == "pair" then
+            for _, half in ipairs({ b.left, b.right }) do
+                if half and matches(half) then return half end
+            end
         end
     end
 end
@@ -38,9 +50,12 @@ return {
             local blocks = TileTooltip.blocks({ unit = foe,
                 intent = { kind = "attack", target = mark, amount = 12.4 } })
 
-            assert(find(blocks, "head", "Intent"), "no Intent section on a body with a predicted turn")
             local row = find(blocks, "intent")
             assert(row, "the section names no kind")
+            -- The section is LABELLED, wherever the label sits: it shares the mark's own row rather
+            -- than taking a heading line above it, but a mark with no word for what it is answering
+            -- is the thing this section exists to prevent.
+            assert(row.label == "Intent", "the intent row carries no heading")
             assert(row.name == "Attack", "attack is glossed as " .. tostring(row.name))
             -- The mark taught here must be the mark worn out there: the same glyph and the same tint
             -- the card and the board badge look up, not a second drawing of the same idea.
@@ -94,7 +109,6 @@ return {
             -- off (computeIntents leaves the cache empty): the section must vanish rather than draw a
             -- heading over nothing.
             local blocks = TileTooltip.blocks({ unit = body("character_rowan", "party") })
-            assert(not find(blocks, "head", "Intent"), "an Intent heading with no intent behind it")
             assert(not find(blocks, "intent"), "an intent row with no intent behind it")
         end,
     },

@@ -42,6 +42,7 @@ local OFFENSE = { 0.95, 0.52, 0.46 } -- title/border tint for a strike / trap ac
 local SUPPORT = { 0.45, 0.85, 0.50 } -- ...for a heal / buff
 local MOVE = { 0.48, 0.70, 0.98 }    -- ...for a move (matches the blue reachable overlay)
 local MUTED = Theme.muted
+local PAIR_GAP = 14 -- the gutter between the two halves of a paired row (ui/tile_tooltip.lua)
 local VALUE = Theme.ink
 local DESC = Theme.ink
 local DAMAGE = { 0.95, 0.45, 0.42 }
@@ -178,7 +179,7 @@ end
 --   stat  { label, value, valueColor } -- label (left) + value (right)
 --   note  { text, color, glyph }       -- a standalone coloured line (e.g. "Defeats target!"),
 --                                        with an optional inline mark drawn before the words
-local function buildBlocks(action)
+local function buildRawBlocks(action)
     if action.kind == "counter" then return buildCounterBlocks(action) end
     local accent = accentFor(action)
     local blocks = { { kind = "title", text = titleFor(action), color = accent } }
@@ -301,6 +302,40 @@ local function buildBlocks(action)
     return blocks
 end
 
+-- THE FORECAST IS A GRID, NOT A LIST. Every row here is a short label and a shorter number, and one
+-- per line spent a third of a 652px column saying "Damage -12" across 270 pixels. Consecutive stat
+-- rows are folded two to a line as a last pass over the built list, so no branch above has to know
+-- about it and no row can be paired in one box and stranded in another.
+--
+-- Only a RUN of stats folds: a note or a divider between two rows means the author put them in
+-- different sections, and pairing across that would say they belong together. An odd row at the end
+-- of a run keeps its own line -- see ui/tile_tooltip.lua's appendPairs for why a lone value must not
+-- stretch across the box.
+--
+-- This is the same pass that keeps the docked column honest. The exchange, the body under the cursor
+-- and the ground it stands on share one column, and every row folded here is a row the body's own
+-- readout does not have to give up (states/battle.lua's drawTileTooltip).
+local function pairStats(blocks)
+    local out = {}
+    local i = 1
+    while i <= #blocks do
+        local b = blocks[i]
+        local nextB = blocks[i + 1]
+        if b.kind == "stat" and nextB and nextB.kind == "stat" then
+            out[#out + 1] = { kind = "pair", left = b, right = nextB }
+            i = i + 2
+        else
+            out[#out + 1] = b
+            i = i + 1
+        end
+    end
+    return out
+end
+
+local function buildBlocks(action)
+    return pairStats(buildRawBlocks(action))
+end
+
 -- Sum the height of `blocks`. Shared by measure + draw, so a box's height can never drift from what
 -- it renders.
 local function measureBlocks(blocks)
@@ -310,7 +345,7 @@ local function measureBlocks(blocks)
         if b.kind == "title" then h = h + title:getHeight() + 3
         elseif b.kind == "sub" then h = h + small:getHeight() + 4
         elseif b.kind == "sep" then h = h + 8
-        else h = h + body:getHeight() + 1 end -- stat, note
+        else h = h + body:getHeight() + 1 end -- stat, pair, note
     end
     return h + 9 -- bottom pad
 end
@@ -401,6 +436,22 @@ function ActionPreview.draw(action, charBox, maxRight, opts)
             end
             love.graphics.setColor(c[1], c[2], c[3], 1)
             love.graphics.print(b.text, tx, ty)
+            ty = ty + bodyH + 1
+        elseif b.kind == "pair" then
+            -- Two stat rows sharing a line, each in its own half with a gutter between, so the left
+            -- half's value and the right half's label cannot read as one run of text.
+            love.graphics.setFont(body)
+            local half = math.floor((innerW - PAIR_GAP) / 2)
+            for _, side in ipairs({ { b.left, bx + pad }, { b.right, bx + pad + half + PAIR_GAP } }) do
+                local s, sx = side[1], side[2]
+                if s then
+                    love.graphics.setColor(MUTED[1], MUTED[2], MUTED[3], 1)
+                    love.graphics.print(s.label, sx, ty)
+                    local vc = s.valueColor or VALUE
+                    love.graphics.setColor(vc[1], vc[2], vc[3], 1)
+                    love.graphics.printf(s.value, sx, ty, half, "right")
+                end
+            end
             ty = ty + bodyH + 1
         else -- stat: label left, value right
             love.graphics.setFont(body)

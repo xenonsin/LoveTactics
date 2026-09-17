@@ -6741,13 +6741,15 @@ function battle.drawTileTooltip(mx, my)
     -- each other. So measure first and let a box yield -- but never the terrain. The board draws the
     -- occupant twice over (its token, its HP bar, its status badges) and the tile it stands on not at
     -- all beyond a flat colour, so terrain is the one thing here that has no second reading anywhere
-    -- on screen. It always draws; the OCCUPANT is the valve, since losing it costs the player only a
-    -- detail view of something already in front of them.
+    -- on screen. It always draws; everything above it yields in turn, and TileTooltip.dockPlan owns
+    -- that order -- the occupant's intent section first (it is drawn on the body and on its turn card
+    -- besides), and only then the occupant box itself.
     local budget = Scale.HEIGHT - 8 - dockTop
     for _, a in ipairs(exchange) do budget = budget - ActionPreview.measure(a) - exGap end
-    local objH = objInfo and (TileTooltip.measure(objInfo, W) + gap) or 0
-    local terrainH = TileTooltip.measure(terrainInfo, W) + gap
-    local showObj = objInfo ~= nil and objH + terrainH <= budget
+    local plan = TileTooltip.dockPlan(terrainInfo, objInfo, W, budget, gap)
+    -- Applying the plan is dropping the section it withheld, on the same table it was measured
+    -- against, so what was measured and what is drawn cannot come apart.
+    if objInfo and not plan.intent then objInfo.intent = nil end
 
     -- Terrain box at the very bottom of the column. Any hazards on the tile ride along on the same
     -- info so they read as a section directly above the terrain (and below the occupant box).
@@ -6755,7 +6757,7 @@ function battle.drawTileTooltip(mx, my)
         { dock = true, dockX = 16, dockTop = dockTop, width = W })
 
     -- Occupant (unit or trap) in its own box, separated from the terrain by a gap.
-    if showObj then
+    if plan.occupant then
         local objBox = TileTooltip.draw(objInfo, mx, my, maxRight,
             { dock = true, dockX = 16, dockTop = dockTop, width = W,
               dockBottom = (topBox and topBox.y or Scale.HEIGHT - 8) - gap })
