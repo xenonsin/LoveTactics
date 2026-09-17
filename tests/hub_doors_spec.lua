@@ -40,7 +40,47 @@ local function seededPlayer()
     return p
 end
 
+-- The one seam in states/hub.lua this file can reach, read as text. openPanel is a local in a state
+-- file and there is no window here to press a card in, but the failure below is a ROUTE rather than a
+-- behaviour -- which branch of a two-branch function a door leaves through -- and a route is legible in
+-- the source.
+local function hubSource()
+    return assert(love.filesystem.read("states/hub.lua"), "states/hub.lua is readable")
+end
+
+-- openPanel's body, sliced out between its own header and the next top-level local function. Nested
+-- `end`s make matching the function's own close unreliable; the next declaration is unambiguous.
+local function openPanelBody(src)
+    local from = assert(src:find("local function openPanel", 1, true), "openPanel is still named that")
+    local to = src:find("\nlocal function ", from + 1, true) or #src
+    return src:sub(from, to)
+end
+
 return {
+    {
+        -- A COACHED DOOR IS STILL A DOOR, and this pins the bug that forgetting it caused. openPanel has
+        -- two ways out: the coached branch, which refuses every card but the one the bubble is on, and
+        -- free play. Free play goes through launchVendor -- the greeting, the room's own `intro`, the
+        -- companion that scene `grants` -- and the coached branch used to call launchPanel directly,
+        -- because for its whole life the only stage here was the hall's, a room with nothing to say on
+        -- the way in.
+        --
+        -- Then the WARD took a stage (INTRO_STAGES.ward) and inherited that path. So the one coached
+        -- door in the game that hands over a companion was the one door that skipped the code which
+        -- hands one over: the scene never played, Amana never joined, and the room opened straight onto
+        -- its two rows with nobody standing in it. Every ledger involved was correct -- the flag was
+        -- unspent, the blueprint carried `intro` and `grants` -- and the player still never met her,
+        -- which is why the fact asserted here is the CALL and not the data around it.
+        name = "a coached door opens through launchVendor, so the room's own scene still plays",
+        fn = function()
+            local body = openPanelBody(hubSource())
+            assert(body:find("launchVendor(building)", 1, true),
+                "openPanel must route doors through launchVendor")
+            assert(not body:find("launchPanel(building)", 1, true),
+                "...on EVERY branch: a coached door that calls launchPanel directly swallows its "
+                .. "building's `intro` and the companion the scene grants")
+        end,
+    },
     {
         -- WHAT THE COACH BUBBLE READS. `description` was an authored field with no reader for most of
         -- its life -- three of the sixteen blueprints carried one and nothing drew it -- so a card
