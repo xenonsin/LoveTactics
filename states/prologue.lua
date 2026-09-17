@@ -129,23 +129,41 @@ local FLIGHT_QUEST = {
             --
             --   1  range band              a weapon decides where you may stand
             --   2  adjacency AURA          a charm pays every item it touches        (the grid rewards)
-            --   3  stance swap             an item rewrites a button you already have
+            --   3  forced targeting       an item decides who the enemy swings at
             --   4  adjacency GATE          an item refuses to fire without its neighbour (the grid gates)
             --   5  typed mitigation        a coat answers one KIND of blow and no other
-            --   6  a status in your favour + an item with no button at all
+            --   6  a status in your favour   the first one you WANT
             --   7  -                       a plain rest, so the champion is fought fresh
             --
             -- The class an item belongs to is still true of it and is now beside the point (see
             -- docs/classes.md: a class is the vendor shelf that stocks a thing, never an equip gate).
             -- What the stop is FOR is the rule.
             --
-            -- Two mechanics were deliberately left without a stop. COATINGS -- an aura that is spent
-            -- as it is used -- want a consumable, and stop 1's potions are the whole consumable
-            -- budget of Act 0; they are bought at the Crucible instead. WIND-UP has no gift because
-            -- the Champion at the end of the trail IS the lesson: ability_demon_roar and
-            -- ability_demon_cleave both channel, armed a turn early with the telegraph on the board,
-            -- and meeting the mechanic as a threat you have to move away from beats meeting it as a
-            -- button.
+            -- FOUR mechanics are deliberately left without a stop, and the last two are a correction
+            -- of this ladder rather than an omission from it.
+            --
+            -- COATINGS -- an aura that is spent as it is used -- want a consumable, and stop 1's
+            -- potions are the whole consumable budget of Act 0; they are bought at the Crucible
+            -- instead. WIND-UP has no gift because the Champion at the end of the trail IS the
+            -- lesson: ability_demon_roar and ability_demon_cleave both channel, armed a turn early
+            -- with the telegraph on the board, and meeting the mechanic as a threat you have to move
+            -- away from beats meeting it as a button.
+            --
+            -- THE STANCE SWAP is gone because Rowan already teaches it. Stop 3 used to hand over a
+            -- buckler for `waitBehavior`, and its own comment admitted the hole in the argument: the
+            -- Sworn Aegis she has carried since the first street (armor_sworn_aegis) swaps Wait into
+            -- Defend, so the button on the body the player selects most after their own has read
+            -- "Defend" the whole way here. A gift that names a rule the screen has been drawing for
+            -- two fights is a caption, not a lesson.
+            --
+            -- AN ITEM WITH NO BUTTON goes the same way, and it was stop 6's second gift. The avatar
+            -- has worn leather and Rowan chainmail since the first fight, neither has ever offered an
+            -- action, and no player reaches this chest believing every cell owes them a button. The
+            -- item that carried it (utility_second_wind) had a worse problem besides: it is one
+            -- refusal to fall, handed over one stop before a script fells Rowan on purpose. The beat
+            -- survives it mechanically -- Combat.fell zeroes the body outside the damage pipeline and
+            -- never consults Trait.trySurvive -- which only makes the read worse. A player who put
+            -- the charm on her watches it stay silent through the exact blow it was sold against.
             -- ============================================================================
             always = {
                 -- Stop 1: THE RANGE BAND. The bow reaches 4, needs line of sight, and cannot shoot a
@@ -167,12 +185,28 @@ local FLIGHT_QUEST = {
                 -- holy -8 to -4 (character_demon_imp.lua, character_demon_champion.lua). The lesson
                 -- and its proof are one step apart.
                 { id = "encounter_event", conversation = "conversation_flight_event_shrine" },
-                -- Stop 3: THE STANCE SWAP -- a buckler, won on the one stop whose objective is
-                -- standing your ground. An item can rewrite a button you already have: `waitBehavior`
-                -- turns Wait into Defend. Nothing else in the game says that a piece of kit changes
-                -- what an existing control DOES, and Rowan has been carrying a shield that does it
-                -- since the first fight (armor_sworn_aegis) with nobody ever saying so.
-                { id = "encounter_survivors_defend", loot = { "armor_buckler" } },
+                -- Stop 3: FORCED TARGETING -- the Shout, won on the one stop whose objective is other
+                -- people's lives. Every rule the route has taught so far is about what the PLAYER may
+                -- do; this is the first item that reaches across the board and decides what the ENEMY
+                -- does. Taunt (data/status/status_taunt.lua) makes every foe in the diamond come for
+                -- the shouter with their default weapon and nothing else.
+                --
+                -- The stop is built around it and has been since before the ladder was re-cut: this
+                -- fight anchors the survivors AHEAD of the party's line, so the demons walk for them
+                -- rather than for you, and the bomblet wave at tick 14 charges them and bursts
+                -- (character_demon_bomblet). Two bodies cannot physically intercept everything that
+                -- fans in from every open side -- the wave's own comment sizes itself against this
+                -- gift by name. Pulling the charge onto the wall is the answer, and the proof lands
+                -- eight ticks after the item does. Same reason the censer was chosen at stop 2: the
+                -- lesson and the thing that pays it off are one step apart.
+                --
+                -- It also survives the trail. The Champion's Roar and Cleave are lane casts, and a
+                -- Shout that drags the bodies beside her out of the lane is the same verb again.
+                --
+                -- Deeper on the shelf than the rest (bulwark, 660g): a gift waives price, not
+                -- standing, and the censer and Mark Target are already crossings the player could not
+                -- buy here either.
+                { id = "encounter_survivors_defend", loot = { "ability_shout" } },
                 -- Stop 4: THE ADJACENCY GATE -- Mark Target, off the survivor scene, and it is handed
                 -- over on BOTH branches of that choice on purpose. This is the hard half of the grid:
                 -- `requiresAdjacent` leaves the item dead unless a ranged weapon touches it, the
@@ -192,17 +226,19 @@ local FLIGHT_QUEST = {
                 -- tag, so the coat blunts all of it. The spoils land after the win, so the body it is
                 -- actually FOR is the Champion at the end of the trail.
                 { id = "encounter_survivors_extract", loot = { "armor_salamander_hide" } },
-                -- Stop 6: the last chest before the gate, and two passive lessons at once.
-                --   RENEWAL -- a status you WANT. Everything Act 0 has taught about statuses so far is
-                --   a wound (Burn, Stun, Bleed, Mark); this is the first one that helps, it lands on
-                --   somebody else, and it keeps working on its own without being cast again. It is
-                --   also the only healing ABILITY in Act 0 -- it used to be the shrine's gift, and it
-                --   moved here when the shrine took the censer.
-                --   SECOND WIND -- an item with NO BUTTON. It declares no activeAbility at all: it
-                --   never appears among the bearer's actions, it just sits in a cell and answers on
-                --   its own, once. A player who has not met that reads every empty cell as a missing
-                --   button. Its flat `bonus` (+2 Defense, +1 Luck) teaches the same fact twice over.
-                { id = "encounter_treasure", loot = { "ability_renewal", "utility_second_wind" } },
+                -- Stop 6: the last chest before the gate, and ONE lesson -- RENEWAL, a status you
+                -- WANT. Everything Act 0 has taught about statuses so far is a wound (Burn, Stun,
+                -- Bleed, Mark); this is the first one that helps, it lands on somebody else, and it
+                -- keeps working on its own without being cast again. It is also the only healing
+                -- ABILITY in Act 0 -- it used to be the shrine's gift, and it moved here when the
+                -- shrine took the censer.
+                --
+                -- It used to be two gifts. The second (utility_second_wind, "an item with no button")
+                -- is cut for the two reasons the ladder's header states in full: the worn armor on
+                -- both bodies has been teaching that since the first fight, and a charm sold as one
+                -- refusal to fall does not belong one stop ahead of a scripted felling it cannot
+                -- answer.
+                { id = "encounter_treasure", loot = { "ability_renewal" } },
                 -- Stop 7: a plain rest so the champion is fought fresh -- no loot, just a full refill.
                 { id = "encounter_rest" },
             },

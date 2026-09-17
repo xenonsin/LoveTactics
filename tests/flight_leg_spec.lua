@@ -226,10 +226,10 @@ return {
 
             -- `rewardGold` pins the base payout so the roll's jitter cannot blur the comparison; the
             -- authored `loot` is an override, so the base drop is exactly the stop's gift -- the
-            -- buckler, whose `waitBehavior` is the stance-swap mechanic this stop of the ladder
-            -- teaches (states/prologue.lua's FLIGHT_QUEST).
+            -- Shout, whose Taunt is the forced-targeting mechanic this stop of the ladder teaches
+            -- (states/prologue.lua's FLIGHT_QUEST).
             local cell = { kind = "combat", id = "encounter_survivors_defend",
-                           loot = { "armor_buckler" }, rewardGold = 100 }
+                           loot = { "ability_shout" }, rewardGold = 100 }
             local function pay(saved, of)
                 return EncounterBattle.spoils({ encounter = cell, prestige = 1, enemyUnits = {},
                     rescue = saved and { saved = saved, of = of } or nil })
@@ -247,7 +247,7 @@ return {
                 for _, got in ipairs(spoils.loot) do if got == id then return true end end
                 return false
             end
-            assert(has(none, "armor_buckler") and has(both, "armor_buckler"),
+            assert(has(none, "ability_shout") and has(both, "ability_shout"),
                 "the stop's teaching gift is never at stake")
             assert(#none.loot == 1, "nobody counted, nothing added, got " .. #none.loot)
             assert(#one.loot == 1 + per, "one head's share, got " .. #one.loot)
@@ -523,11 +523,18 @@ return {
 
             -- Stop 1: the range band, plus the stacks that ride with it.
             assert(stops[1].loot[1] == "weapon_iron_bow", "stop 1 opens on the bow")
-            -- Stop 3: the stance swap. Stop 5: typed mitigation. Stop 6: a wanted status + no button.
-            assert(stops[3].loot[1] == "armor_buckler", "stop 3 pays the stance swap")
+            -- Stop 3: forced targeting. Stop 5: typed mitigation. Stop 6: a status you want.
+            assert(stops[3].loot[1] == "ability_shout", "stop 3 pays the taunt")
             assert(stops[5].loot[1] == "armor_salamander_hide", "stop 5 pays the typed coat")
             assert(stops[6].loot[1] == "ability_renewal", "stop 6 carries the only heal in Act 0")
-            assert(stops[6].loot[2] == "utility_second_wind", "...and the item with no button")
+            -- ...and NOTHING ELSE. The chest used to pay a second gift for "an item with no button"
+            -- (utility_second_wind), cut for two reasons: the worn armor on both bodies has been
+            -- teaching that since the first fight, and one refusal to fall does not belong one stop
+            -- ahead of a scripted felling it cannot answer (data/status/status_champion_fixation.lua
+            -- -- Combat.fell zeroes the body outside the damage pipeline and never reaches
+            -- Trait.trySurvive, so the charm stays silent through the exact blow it is sold against).
+            -- Pinned as a COUNT so the cut gift cannot drift back in as a second entry.
+            assert(#stops[6].loot == 1, "the last chest pays one gift, got " .. #stops[6].loot)
             -- Stop 7 grants nothing: it exists so the champion is fought fresh.
             assert(stops[7].loot == nil, "the rest hands over nothing")
 
@@ -564,6 +571,47 @@ return {
             assert(withMark == 1, "exactly one branch teaches the mark, got " .. withMark)
             assert(withGold == 1, "exactly one branch pays coin instead, got " .. withGold)
             assert(#granted == 1, "the mark is the only item on the stop, got " .. #granted)
+        end,
+    },
+
+    {
+        -- THE RULE THAT CUT THE BUCKLER, written down so the next re-cut cannot re-buy it. A teaching
+        -- gift earns its stop by naming a rule no surface the player is already reading has drawn --
+        -- and the party's own starting kit is a surface. Rowan has carried the Sworn Aegis since the
+        -- first street (data/characters/character_rowan.lua), its `waitBehavior` swaps her Wait button
+        -- into Defend, and stop 3 used to hand over a buckler to announce that same swap. The button
+        -- on the body the player selects most after their own had already read "Defend" for two fights.
+        --
+        -- Narrow on purpose: `waitBehavior` only. `bonus` and `resist` are on the starting armor too,
+        -- and stop 5's coat still teaches typed mitigation -- what the worn leather never says is that
+        -- a coat answers one KIND of blow, which is the coat's own tooltip and not a field's presence.
+        -- A field-by-field sweep would redden that gift for a rule it does not actually duplicate.
+        name = "no gift on the sweep re-teaches a rule the party's starting kit already draws",
+        fn = function()
+            local Item = require("models.item")
+            local prologue = require("states.prologue")
+
+            -- Every teaching gift on the route: the loot each stop pays, plus the two handed over by a
+            -- conversation rather than a chest.
+            local gifts = {}
+            for _, stop in ipairs(prologue.FLIGHT_QUEST.map.encounters.always) do
+                for _, id in ipairs(stop.loot or {}) do gifts[#gifts + 1] = id end
+            end
+            for _, g in ipairs(prologue.SCENE_GIFTS) do gifts[#gifts + 1] = g.item end
+            assert(#gifts > 0, "the sweep hands over nothing at all")
+
+            -- The wall's shield says it first, so nothing on the route may say it second.
+            local aegis = Item.defs.armor_sworn_aegis
+            assert(aegis and aegis.waitBehavior,
+                "Rowan's relic no longer swaps Wait -- this guard is pinned to the wrong item")
+
+            for _, id in ipairs(gifts) do
+                local def = Item.defs[id]
+                assert(def, "the sweep hands over an item that does not exist: " .. tostring(id))
+                assert(not def.waitBehavior,
+                    id .. " teaches the stance swap, which armor_sworn_aegis has been drawing on "
+                    .. "Rowan's Wait button since the first fight")
+            end
         end,
     },
 }

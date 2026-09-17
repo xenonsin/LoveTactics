@@ -42,9 +42,9 @@
 --   1 chest (bow kit)   2 shrine event   3 DEFEND   4 survivor event   5 EXTRACT   6 chest   7 rest
 --   Each stop also teaches ONE ITEM MECHANIC through what it hands over (states/prologue.lua's
 --   FLIGHT_QUEST, whose `always` list carries the whole argument):
---     1 range band      2 adjacency AURA (censer)     3 stance swap (buckler)
---     4 adjacency GATE (mark)   5 typed mitigation (fire coat)   6 a status you want + an item with
---     no button   7 nothing -- a rest, so the champion is fought fresh
+--     1 range band      2 adjacency AURA (censer)     3 forced targeting (the Shout)
+--     4 adjacency GATE (mark)   5 typed mitigation (fire coat)   6 a status you want (Renewal)
+--     7 nothing -- a rest, so the champion is fought fresh
 --   It used to be one CLASS per stop, which is a name rather than a rule, and a name is not a thing
 --   this route gives anybody a use for.
 --

@@ -15,6 +15,10 @@
 -- button. Each of them explained a rule the item's own tooltip and the grid already state, so what they
 -- actually did was cover the stash with words at the moment the player wanted to look at it. The chain
 -- above stays because it is a door: those three steps are the only ones holding the road shut.
+-- (Two of the three gifts those lines were written for are themselves gone now -- the buckler and the
+-- charm both taught rules the party's own starting kit had been drawing since the first fight, so the
+-- stops that handed them over were re-cut; see states/prologue.lua's FLIGHT_QUEST. The bubbles were
+-- deleted first and for the same reason, which is the tell that the gifts were the real problem.)
 return {
     title = "The Open Road",
     cast  = { "character_rowan" },

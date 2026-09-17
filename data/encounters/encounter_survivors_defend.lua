@@ -77,10 +77,17 @@ return {
             { at = 10, from = "flank", composition = function() return { "character_demon_imp" } end },
             -- The self-destruct demons the Champion later throws at you, taught here first: they charge
             -- straight at the survivors and BURST when they die (data/characters/character_demon_bomblet.lua).
-            -- Intercept them -- pop them at range, shove them off -- or lose the caravan to a blast. One or
-            -- two, beside the Shout (Taunt) this stop grants, so the lesson reads without swamping the
-            -- board -- which is what the wave said and not what it fielded: three at once, converging
-            -- from every open side, is more interceptions than two bodies have turns for.
+            -- Intercept them -- pop them at range, shove them off, or CALL them onto yourself -- or lose to
+            -- a blast. One or two, beside the Shout (Taunt) this stop grants, so the lesson reads without
+            -- swamping the board -- which is what the wave said and not what it fielded: three at once,
+            -- converging from every open side, is more interceptions than two bodies have turns for.
+            --
+            -- That Shout is load-bearing here, and this sentence outlived it once already: the stop's
+            -- gift drifted to a buckler when the flight ladder was re-cut from class-per-stop to
+            -- mechanic-per-stop, leaving a wave sized against a taunt the player no longer had. It is
+            -- back (states/prologue.lua's FLIGHT_QUEST, stop 3). Bomblets walk for the nearest enemy,
+            -- which is an anchored survivor; a taunt is the only thing on the route that changes whose
+            -- name is on that walk. Re-cut this wave and the gift together or not at all.
             { at = 14, from = "surround", composition = function(ctx)
                 local list = { "character_demon_bomblet", "character_demon_bomblet" }
                 if (ctx.day or 1) >= 2 then list[#list + 1] = "character_demon_bomblet" end
