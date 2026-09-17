@@ -23,6 +23,7 @@
 local Scale = require("scale")
 local Character = require("models.character")
 local Combat = require("models.combat")
+local Intent = require("models.intent")
 local Trap = require("models.trap")
 local Prop = require("models.prop")
 local Colors = require("ui.colors")
@@ -177,15 +178,14 @@ local STAT_ROWS = {
 -- opens by hovering the body or its turn card.
 --
 -- `name` is the word; `desc` is the one flat sentence that separates the kind from its neighbours --
--- what an Attack is that a Spell isn't. The target and the figure are rows rather than part of that
+-- what an Attack is that an Ability isn't. The target and the figure are rows rather than part of that
 -- sentence, so no number is quoted twice.
-local INTENT_KINDS = {
-    attack  = { name = "Attack",  desc = "A weapon strike." },
-    cast    = { name = "Spell",   desc = "A spell, paid for with mana." },
-    support = { name = "Support", desc = "A heal or a buff on its own side." },
-    debuff  = { name = "Debuff",  desc = "A spell that inflicts a status instead of damage." },
-    wait    = { name = "Wait",    desc = "It acts on nobody this turn." },
-}
+--
+-- NOT WRITTEN HERE. The sentences live beside the classifier that produces the kind
+-- (models/intent.lua's Intent.GLOSS), because the turn card's icon now hangs its own hover note off
+-- the same words (ui/combat_panel.lua's intentNote) and two boxes glossing one mark must not drift
+-- apart. tests/intent_note_spec.lua reads this file's source to keep them from being re-inlined here.
+local INTENT_KINDS = Intent.GLOSS
 
 -- The foe's predicted turn, appended as its own section: the mark and its name, who it comes for, and
 -- the figure the badge quotes -- labelled here, because a bare number on a card cannot say whether it

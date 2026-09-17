@@ -28,6 +28,7 @@ local Item = require("models.item") -- for Item.costs: a cast may draw on more t
 local Trait = require("models.trait") -- for Trait.stackReadout: a passive charm's banked stacks
 local Status = require("models.status") -- for waitNote: naming what a stance grants, not its id
 local Hazard = require("models.hazard") -- likewise, for the ground a meditation lays
+local Intent = require("models.intent") -- for Intent.GLOSS: the one gloss per intent kind
 local AdjacencyLinks = require("ui.adjacency_links")
 local StatusBadge = require("ui.status_badge")
 local Glyphs = require("ui.glyphs")
@@ -1876,22 +1877,44 @@ function CombatPanel:drawEntry(entry, ey, num, h, alpha, w)
     end
 end
 
+-- The figure the read quotes, or nil when the mark speaks alone. Shared by the draw, the rect the
+-- hover tests against and the note the hover opens, so the three cannot disagree about whether there
+-- is a number on this card at all.
+local function intentFigure(intent)
+    local kind = (intent and intent.kind) or "wait"
+    if kind == "attack" or kind == "cast" then
+        if intent.amount and intent.amount > 0 then return math.floor(intent.amount + 0.5) end
+    elseif kind == "support" then
+        if intent.heal and intent.heal > 0 then return math.floor(intent.heal + 0.5) end
+    end
+    return nil
+end
+
+local INTENT_ICON_W = 10
+
+-- The read's own rect -- glyph, gap and digits -- laid out right-to-left from `rightX` and centred on
+-- `cy`, the same way initiativeRect serves drawInitiative. Shared by the draw and by intentAt, so the
+-- tooltip lands exactly on what is drawn rather than on a second guess at where it went. A couple of
+-- pixels of slack all round: a 10px mark wants a little more than its own ink to be pointed at.
+function CombatPanel:intentRect(intent, rightX, cy)
+    local w = INTENT_ICON_W
+    local n = intentFigure(intent)
+    if n then w = w + 3 + self.smallFont:getWidth(tostring(n)) end
+    return rightX - w - 3, cy - 9, w + 6, 18
+end
+
 -- A foe's predicted intent (models/intent.lua) on its turn-order card: the kind glyph plus the number
 -- the blow carries, laid right-to-left ending at `rightX` and centred on `cy`. The number is the
 -- damage a strike or spell lands, or the healing a support cast gives -- the same deterministic
 -- figure the aimed-action HP-bar preview shows, so the timeline quotes a number the player already
 -- trusts. A debuff or a hold shows the icon alone (the mark itself says "status" / "coming for
--- nobody"). Tinted by the intent's kind, matching its target line on the board.
+-- nobody"). Tinted by the intent's kind, matching its target line on the board. What the mark MEANS
+-- is answered by intentNote below, on a hover of the rect above.
 function CombatPanel:drawIntentRead(intent, rightX, cy, alpha)
     local kind = intent.kind or "wait"
     local col = Colors.INTENT[kind] or Colors.RANGE
     local glyph = Glyphs.INTENT[kind] or Glyphs.INTENT.wait
-    local n
-    if kind == "attack" or kind == "cast" then
-        if intent.amount and intent.amount > 0 then n = math.floor(intent.amount + 0.5) end
-    elseif kind == "support" then
-        if intent.heal and intent.heal > 0 then n = math.floor(intent.heal + 0.5) end
-    end
+    local n = intentFigure(intent)
     local x = rightX
     if n then
         love.graphics.setFont(self.smallFont)
@@ -1900,8 +1923,36 @@ function CombatPanel:drawIntentRead(intent, rightX, cy, alpha)
         love.graphics.print(text, x - self.smallFont:getWidth(text), cy - self.smallFont:getHeight() / 2)
         x = x - self.smallFont:getWidth(text) - 3
     end
-    local iconW = 10
-    glyph(x - iconW, cy - iconW / 2, iconW, iconW, col[1], col[2], col[3], alpha)
+    glyph(x - INTENT_ICON_W, cy - INTENT_ICON_W / 2, INTENT_ICON_W, INTENT_ICON_W, col[1], col[2], col[3], alpha)
+end
+
+-- WHAT THAT MARK MEANS, as a NoteTooltip title and paragraphs: the hover reading on the icon itself.
+--
+-- The card as a whole already answers under the cursor -- it opens the body's full readout, intent
+-- section and all (states/battle.lua's drawUnitTooltip). But a stat block is the answer to "who is
+-- this", and a player pointing at a coloured mark in the corner of a card is asking the smaller
+-- question: what is this one about to do. The mark gets its own target and its own short answer, the
+-- way the wait figure two rows above it does (initiativeRect / the Initiative note).
+--
+-- THE SENTENCE IS NOT THIS FILE'S. It comes from Intent.GLOSS, which the body readout prints word for
+-- word; two boxes describing one mark in two accounts is how a player learns to trust neither. All
+-- this adds is who it comes for and the figure the mark is quoting -- labelled, because a bare number
+-- beside an icon cannot say whether it is damage dealt or healing given.
+function CombatPanel.intentNote(intent)
+    local kind = (intent and intent.kind) or "wait"
+    local def = Intent.GLOSS[kind] or Intent.GLOSS.wait
+    local lines = { def.desc }
+    if kind ~= "wait" then
+        local target = intent.target
+        if target and target.char then
+            lines[#lines + 1] = "Target: " .. (target.char.name or "Unit")
+        end
+        local n = intentFigure(intent)
+        if n then
+            lines[#lines + 1] = (kind == "support" and "Heals " or "Deals ") .. n
+        end
+    end
+    return "Intent: " .. def.name, lines
 end
 
 -- Small hourglass glyph (two triangles) for the speed badge, drawn in the given box. Kept as a method
@@ -2406,6 +2457,33 @@ function CombatPanel:statusAt(px, py)
                 if px >= r.x and px <= r.x + r.w and py >= r.y and py <= r.y + r.h then
                     return r.st
                 end
+            end
+        end
+    end
+    return nil
+end
+
+-- The predicted intent whose turn-card icon is under the cursor, plus the unit it belongs to -- else
+-- nil. Answered ahead of the card it sits on, the way the wait figure is: the card answers "who is
+-- this", the mark answers "what is it about to do", and pointing at the mark asks the second.
+--
+-- The conditions are drawEntry's, not a looser copy of them: only a foe's slim card carries the read
+-- (never ours, never the acting card, never a ghost or a body mid-channel), and it fades out as the
+-- card grows current, so a mark that is not drawn cannot be hovered.
+function CombatPanel:intentAt(px, py)
+    if not self.view.intents then return nil end
+    for _, e in ipairs(self:entryLayout()) do
+        local entry = e.entry
+        local unit = entry.unit
+        local intent = (not entry.preview) and unit ~= self.view.current and not self:shownParty(unit)
+            and not unit.channel and self.view.intents[unit]
+        if intent then
+            local p = entry.forceProm or self.cardProm[unit] or 0
+            local y = self.cardY[unit] or e.y
+            local dh = SLIM_H + (e.h - SLIM_H) * p
+            local rx, ry, rw, rh = self:intentRect(intent, e.x + e.w - 6, y + dh - 9)
+            if (1 - p) > 0.5 and px >= rx and px <= rx + rw and py >= ry and py <= ry + rh then
+                return intent, unit
             end
         end
     end

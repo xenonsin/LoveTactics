@@ -6416,8 +6416,13 @@ function battle.draw()
         -- the card answers "who is this", the figure answers "how long until they move", and the
         -- second question is the one being asked by pointing at a clock.
         local ini = not overPeek and not st and battle.panel:initiativeAt(mx, my)
-        local boardSt = not overPeek and not st and not ini and battle.map:statusAt(mx, my)
-        local item = not overPeek and not st and not ini and not boardSt and battle.panel:itemAt(mx, my)
+        -- ...and so is the intent mark in the card's other corner, for the same reason: the card
+        -- answers "who is this", the mark answers "what is it about to do", and a player pointing at a
+        -- coloured glyph is asking the second question rather than opening a stat block.
+        local intent = not overPeek and not st and not ini and battle.panel:intentAt(mx, my)
+        local boardSt = not overPeek and not st and not ini and not intent and battle.map:statusAt(mx, my)
+        local item = not overPeek and not st and not ini and not intent and not boardSt
+            and battle.panel:itemAt(mx, my)
         if peekItem then
             ItemTooltip.draw(peekItem, mx, my, Scale.WIDTH - PANEL_W, nil)
         elseif overPeek then
@@ -6455,6 +6460,12 @@ function battle.draw()
                 lines[1] = string.format("%.1f more ticks until this unit can act.", ini.wait)
             end
             NoteTooltip.draw("Initiative", lines, mx, my, Scale.WIDTH)
+        elseif intent then
+            -- The mark, glossed in the words the body's own readout uses (Intent.GLOSS, via
+            -- CombatPanel.intentNote) -- one account of one mark, on whichever of the two surfaces
+            -- the player happened to point at.
+            local title, lines = CombatPanel.intentNote(intent)
+            NoteTooltip.draw(title, lines, mx, my, Scale.WIDTH)
         elseif boardSt then
             StatusTooltip.draw(boardSt, mx, my, Scale.WIDTH - PANEL_W)
         elseif item then

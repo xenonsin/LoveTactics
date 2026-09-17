@@ -19,6 +19,28 @@ local Intent = {}
 -- kind so a holding or unengaged unit reads as "not coming for anyone" instead of as a blank card.
 Intent.KINDS = { "attack", "cast", "support", "debuff", "wait" }
 
+-- THE ONE GLOSS PER KIND: the word the mark goes by, and the one flat sentence that separates it from
+-- its neighbours -- what an Attack is that an Ability isn't.
+--
+-- Written in the FORECAST voice ("Will cast an ability"), because that is what the mark is: a claim
+-- about a turn that has not happened yet. A noun fragment ("A weapon strike") described the thing in
+-- the abstract and left the player to supply the tense the whole read exists to carry.
+--
+-- Homed here, beside the classifier that produces the kind, because the mark is drawn on three
+-- surfaces (the board badge, the turn card's icon, the target line) and glossed on two -- the body
+-- readout (ui/tile_tooltip.lua) and the hover note on the card's own icon (ui/combat_panel.lua's
+-- intentNote). Two boxes explaining one mark get one sentence, not two that happen to agree today.
+--
+-- The target and the figure are NOT part of the sentence: each surface quotes those in its own shape
+-- (a stat row on the readout, a line under the note), so no number is written twice.
+Intent.GLOSS = {
+    attack  = { name = "Attack",  desc = "Will attack with a weapon." },
+    cast    = { name = "Ability", desc = "Will cast an ability." },
+    support = { name = "Support", desc = "Will cast a support ability." },
+    debuff  = { name = "Debuff",  desc = "Will cast a debuff." },
+    wait    = { name = "Wait",    desc = "Will wait." },
+}
+
 -- Does the ability draw on mana? A mana cost is the signal that separates a CAST (a spell) from a
 -- plain melee ATTACK -- the same thing the HUD reads to tint a cost badge purple. Read off
 -- Combat.abilitySpend so a dual-cost weapon (stamina to swing, mana to channel) still counts as a
