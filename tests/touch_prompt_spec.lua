@@ -107,6 +107,30 @@ return {
         end,
     },
     {
+        -- The other half of "a finger is a mouse except hover". The board's target assist was gated on
+        -- `isMouse()` flat, so the one pointer that cannot rehearse a tile by pointing at it was the
+        -- one pointer refused the snap that would have rehearsed it for free: arming an item on a
+        -- handset aimed at nothing and previewed nothing. Read off the source, because reaching the
+        -- real snap wants a live fight with a reachable foe on the board.
+        name = "arming an item aims a finger at something, the way it aims a keyboard and a pad",
+        fn = function()
+            local src = assert(love.filesystem.read("states/battle.lua"), "states/battle.lua is readable")
+            local snap = src:match("local function snapToNearestTarget%(%).-list%[1%]%.y")
+            assert(snap, "the target assist is gone or renamed")
+            assert(snap:find("InputMode%.isMouse%(%) and not InputMode%.touch"),
+                "the snap turns a finger away with the mouse -- arming on a handset aims at nothing, "
+                .. "and the forecast stays blank until the turn is already spent")
+            -- The snap must stay an AIM. If it ever wrote battle.aim it would hand the board a
+            -- pre-armed commit, and the first tap on a foe the player never chose would spend the turn.
+            assert(not snap:find("battle%.aim"),
+                "the snap writes the touch commit latch -- the board would stop asking a finger twice")
+            -- Turn start reads the same rule: a pinned touch press is the last place touched, not a
+            -- hover, so it must not stand in for one and steal the snap below it.
+            assert(src:find("battle%.mouseX and InputMode%.isMouse%(%) and not InputMode%.touch"),
+                "a turn opens aimed at whatever cell the last tap landed on, instead of the nearest foe")
+        end,
+    },
+    {
         -- A mouse click is rehearsed by the hover that preceded it; a tap is not. Read off the source
         -- because a real battle.mousepressed wants a whole live fight, and this file is the only thing
         -- standing between the guard and a silent removal.

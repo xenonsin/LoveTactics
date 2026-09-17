@@ -5,6 +5,13 @@ local Cursor = require("ui.cursor")
 local Conversation = require("models.conversation")
 local ScreenFx = require("ui.screen_fx")
 local Sound = require("models.sound")
+local Debug = require("models.debug")
+local Theme = require("ui.theme")
+
+-- Pointer events that have ARRIVED, counted before any routing decides who hears them. Declared up
+-- here because forwardMouse below writes them and the readout that prints them is further down; see
+-- drawProbe for what they are for.
+local probeP, probeR, probeM = 0, 0, 0
 
 function love.load(args)
     -- Headless test entry: `& "E:\LOVE\lovec.exe" . test [pattern]`
@@ -409,6 +416,9 @@ end
 -- the logical space the states and widgets are authored in, then route to the overlay or state.
 local function forwardMouse(name)
     love[name] = function(x, y, a, b, c)
+        -- Counted here, above every route, so the readout can say whether an event ARRIVED
+        -- independently of whether anything acted on it (see drawProbe).
+        if name == "mousepressed" then probeP = probeP + 1 else probeR = probeR + 1 end
         InputMode.pointer(b) -- mousepressed/mousereleased pass istouch third; see input_mode.lua
         local gx, gy = Scale.toGame(x, y)
         local overlay = Conversation.active
@@ -442,6 +452,48 @@ love.update = function(dt)
     if state and state.update then return state.update(dt) end
 end
 
+-- ---------------------------------------------------------------------------
+-- THE INPUT READOUT (models/debug.lua's Debug.probe)
+-- ---------------------------------------------------------------------------
+--
+-- One line, drawn over everything, naming every thing that can take a pointer event before the
+-- screen under it sees one. It exists for a fault that only appears on a real handset against the
+-- web bundle, where the only instrument is a photograph of the screen.
+--
+-- GLOBAL rather than a line the overworld prints for itself, and that is the whole reason it is
+-- here: the leading suspicion is that the STATE is no longer the one whose picture is on the glass,
+-- which is the one fact a readout living inside that state could never report.
+--
+-- The counters are the half that settles the question. `p` and `r` are every press and release that
+-- reached love.mousepressed / love.mousereleased -- before any routing, before any state sees them
+-- -- so a screen that is dead while they climb is a screen refusing input it received, and a screen
+-- that is dead while they sit still never got any.
+local probeFont, probeState, probeName
+
+local function probeStateName(state)
+    if state == probeState then return probeName end
+    probeState, probeName = state, "?"
+    for k, v in pairs(package.loaded) do
+        if v == state and type(k) == "string" then probeName = (k:gsub("^states%.", "")) end
+    end
+    return probeName
+end
+
+local function drawProbe(state, overlay)
+    probeFont = probeFont or Theme.body(16)
+    local line = string.format("%s  scene=%s  p%d r%d m%d", probeStateName(state),
+        overlay and "Y" or "-", probeP, probeR, probeM)
+    if state and state.probeLine then line = line .. "  " .. state.probeLine() end
+    love.graphics.setFont(probeFont)
+    local w, h = probeFont:getWidth(line) + 14, probeFont:getHeight() + 8
+    local y = Scale.HEIGHT - h - 2
+    love.graphics.setColor(0, 0, 0, 0.78)
+    love.graphics.rectangle("fill", 4, y, w, h, 3, 3)
+    love.graphics.setColor(0.98, 0.80, 0.32)
+    love.graphics.print(line, 11, y + 4)
+    love.graphics.setColor(1, 1, 1)
+end
+
 love.draw = function()
     Scale.start()
     local state = State.current
@@ -471,6 +523,7 @@ love.draw = function()
     else
         love.mouse.setVisible(true) -- keyboard, gamepad or finger: leave the OS arrow available
     end
+    if Debug.probe then drawProbe(state, overlay) end
     Scale.finish()
 end
 
@@ -487,6 +540,7 @@ end
 -- toGameDelta rather than a bare divide: on a turned screen a drag across the glass is a drag DOWN
 -- the logical space.
 love.mousemoved = function(x, y, dx, dy, istouch)
+    probeM = probeM + 1
     InputMode.pointer(istouch)
     local gx, gy = Scale.toGame(x, y)
     local sdx, sdy = Scale.toGameDelta(dx, dy)

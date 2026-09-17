@@ -4675,6 +4675,22 @@ function game.drawHud()
     SeedReadout.draw(game.player, game.descent)
 end
 
+-- THE OVERWORLD'S HALF OF THE INPUT READOUT (main.lua's drawProbe, models/debug.lua's Debug.probe).
+--
+-- Every thing in this state that takes a pointer event before the map can see one, in the order
+-- game.mousepressed tests them -- so the first `Y` on the line is the one holding the finger. `lock`
+-- is the map's own refusal (mapHeld, the equip lesson's hold) and `at` is where the company stands,
+-- which is how a screenshot says whether a swipe moved anything.
+function game.probeLine()
+    local m = game.map
+    return string.format("fight=%s panel=%s lock=%s coach=%s at=%s",
+        battling() and "Y" or "-",
+        game.activePanel and "Y" or "-",
+        (m and m.locked) and "Y" or "-",
+        game.coach or "-",
+        m and (m.px .. "," .. m.py) or "?")
+end
+
 function game.mousemoved(x, y, dx, dy)
     if battling() then return game.battle.mousemoved(x, y, dx, dy) end
     if game.activePanel then

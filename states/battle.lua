@@ -1653,9 +1653,21 @@ end
 
 -- Snap the cursor onto the nearest valid target for the current aiming context. Called when a cursor
 -- player selects an item or the turn's default weapon, so the aim lands on something at once. A no-op
--- under mouse (which aims itself), and when the context has no unit target to snap to.
+-- under a MOUSE (which aims itself, because the hover in front of every click is the aim), and when
+-- the context has no unit target to snap to.
+--
+-- A FINGER TAKES THE SNAP, even though it is mouse mode. The guard below used to be `isMouse()` flat,
+-- which read as "a pointer aims itself" -- but only half of that is about being a pointer. It is the
+-- HOVER that aims, and a touchscreen is the one pointer without one: arming an item on a handset lit
+-- the reach bands and aimed at nothing, so the forecast, the blast footprint and the timeline slot
+-- all stayed blank until the finger had already committed to a tile. That is the rehearsal a mouse
+-- gets free and a finger was simply never given.
+--
+-- It cannot spend anything. The touch commit latch is `battle.aim`, a SEPARATE field that only a real
+-- press writes (battle.mousepressed) -- so a snapped cursor previews the blow and the board still asks
+-- the finger twice before it lands. The board choosing where to look is not the player aiming there.
 local function snapToNearestTarget()
-    if InputMode.isMouse() then return end
+    if InputMode.isMouse() and not InputMode.touch then return end
     -- A self-target ability has no unit ring to cycle (targetCells is empty), yet its one legal cell is
     -- the caster's own tile -- so aim there at once, sparing a cursor player from walking back onto self.
     local current = battle.current
@@ -1800,8 +1812,15 @@ local function beginTurn(resume)
         -- Snap the cursor to the new actor for keyboard/pad play. But if the mouse is the live device
         -- and still resting on a board cell, keep the cursor under it instead -- so a target the player
         -- was already hovering stays aimed and its action preview appears at once, without a mouse jiggle.
+        --
+        -- A FINGER IS NOT RESTING ANYWHERE, so it does not take this branch. `battle.mouseX` is pinned
+        -- by every touch press (see battle.mousepressed) to serve the docked inspector -- it is the
+        -- last place the player TOUCHED, not a place they are still pointing. Honouring it here opened
+        -- each turn aimed at whatever cell the previous turn happened to end on, which is arbitrary and
+        -- reads as a cursor that wandered; falling through to the snap opens the turn on the nearest
+        -- foe, the same place a keyboard and a pad open on.
         local hoverX, hoverY
-        if battle.mouseX and InputMode.isMouse() then
+        if battle.mouseX and InputMode.isMouse() and not InputMode.touch then
             hoverX, hoverY = battle.map:cellAt(battle.mouseX, battle.mouseY)
         end
         if hoverX then

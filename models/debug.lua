@@ -16,6 +16,25 @@ local Debug = {}
 
 Debug.enabled = true
 
+-- THE INPUT READOUT, and it is the one flag in this file a RELEASE BUILD KEEPS.
+--
+-- Everything else here is off in a shipped build by design. This is on in one, deliberately and
+-- temporarily, because the bug it exists to catch only happens on a real handset against the web
+-- bundle: the overworld stops answering a finger, with nothing drawn over it, and nothing in the
+-- desktop harness reproduces it. A screenshot of the live device is the only instrument that reaches
+-- it, so main.lua draws one line naming every thing that can take a pointer event before the map
+-- sees it -- which state is current, whether a scene is up, how many presses have arrived at all,
+-- and whatever the state itself reports (states/game.lua's game.probeLine).
+--
+-- WHY THE EVENT COUNTS ARE THE POINT: they separate the two halves of "unresponsive". If they climb
+-- while the screen is dead, the events are arriving and something in Lua is refusing them; if they
+-- stop, nothing is reaching the game at all and the fault is below it. One screenshot answers that.
+--
+-- A SEPARATE CONSTANT rather than a use of `enabled`, precisely so tools/web-build.ps1's -Release
+-- rewrite (anchored to the `Debug.enabled = true` line) leaves it alone. Set it to false here once
+-- the bug is found -- that is the whole of turning it off.
+Debug.probe = true
+
 -- Runtime toggles a developer flips from inside the game to test content out of order. Unlike
 -- `enabled` (a build constant), these change during a session -- so every reader must AND them with
 -- `enabled`, and the affordance that flips them must only exist when `enabled`. That keeps the rule
