@@ -1,5 +1,11 @@
 -- Conversation authored inline (English); localization ids (`tag`) are stamped by
 -- tools/extract_strings.lua and must not be hand-edited. See models/conversation.lua.
+--
+-- `confirm_hint` is the odd one out: it belongs to no step. On a touchscreen the board asks a finger
+-- twice before it spends a turn -- the first press aims, the second commits (states/battle.lua) --
+-- and this is the sentence that stands in for whichever step's coaching is current while that second
+-- press is owed. Named by the lesson rather than by a step (data/tutorials/village.lua's `confirm`),
+-- because it is one fact about the device and not about any of the seven things being taught.
 return {
     title = "Rowan's Lesson",
     cast  = { "character_rowan" },
@@ -13,6 +19,7 @@ return {
         { "character_rowan", "Let it have the spark. It will not know which way it is facing.", tag = 6, id = "jolt" },
         { "character_rowan", "While it's stunned, {name}. Let's finish this!", tag = 7, id = "finish" },
         { "character_rowan", "Not that, {name}. Do as I showed you.", tag = 8, id = "nudge" },
+        { "character_rowan", "{select} it again to confirm.", tag = 16, id = "confirm_hint" },
         { "character_rowan", "{select} on the imp to move in range and attack with your weapon.", tag = 9, id = "strike_hint" },
         { "character_rowan", "{select} on the lit tile to move there.", tag = 10, id = "advance_hint" },
         { "character_rowan", "{select} on Clear Out in your grid to ready it.", tag = 11, id = "ready_hint" },

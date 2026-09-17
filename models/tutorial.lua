@@ -81,17 +81,35 @@ end
 -- bubble pinned to that thing (states/battle.lua resolves the anchor to a rect), which is what lets
 -- this half say "click" while the narration above stays in character. Nil when the step authored no
 -- coaching -- a step may be pure fiction if the action is already obvious.
-function Tutorial.coach(t)
+--
+-- `pending` is the CELL A TAP IS WAITING ON -- the touchscreen's aim-then-commit, which the board
+-- runs for every fight and which nothing in the game says out loud (states/battle.lua's
+-- mousepressed). While one is live the step's own instruction has already been followed: the finger
+-- landed where it was told to, and the only thing left to say is the half the device adds. So the
+-- lesson's `confirm` line stands in for the step's, and the bubble re-pins to that cell -- the tile
+-- the finger is actually holding, which is where the second press has to land and is not always the
+-- thing the step was pointing at: an attack step leaves the blue band alone, so a tap on open ground
+-- is a legal aim on a step that never mentioned it.
+--
+-- Replaces rather than appends, and on a handheld that is not a preference: the coach bubble is the
+-- whole lesson there (the mentor's panel does not draw on the short space), and two sentences in one
+-- box over a 448-wide board is how a teaching bubble stops being read.
+function Tutorial.coach(t, pending)
     local step = Tutorial.step(t)
     if not step then return nil end
     -- Split rather than read whole: a coaching line opens with the `{select}` token, and the bubble
     -- draws that as a KEY CAP instead of writing a verb for it (see Locale.coachLine). `key` is nil
     -- for a line that names no button, and the bubble then lays out as words alone.
-    local node = nodeById(t.def, step.coach)
+    -- A lesson that authored no `confirm` line keeps its step coaching through the wait rather than
+    -- going silent: the bubble that is mid-instruction is worth more than no bubble at all.
+    local waiting = pending ~= nil and t.def.confirm ~= nil
+    local node = nodeById(t.def, waiting and t.def.confirm or step.coach)
     if not node then return nil end
     local text, key = Locale.coachLine(t.def.lines, node)
     if not text or text == "" then return nil end
-    return { text = text, key = key, anchor = step.anchor }
+    local anchor = step.anchor
+    if waiting then anchor = { kind = "cell", x = pending.x, y = pending.y } end
+    return { text = text, key = key, anchor = anchor }
 end
 
 -- The item id this step hands the player, or nil. A lesson may need something the player does not

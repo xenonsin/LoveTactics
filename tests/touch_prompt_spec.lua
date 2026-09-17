@@ -125,6 +125,66 @@ return {
         end,
     },
     {
+        -- The half of the two-press rule the board never said out loud. The guard above proves a
+        -- finger is asked twice; nothing told the player so, and the first fight anyone plays is
+        -- where a silent second press reads as a tap that did not land -- the instruction was
+        -- followed, the board did not move, and the only thing on screen goes on repeating the
+        -- direction that was already carried out.
+        name = "a pending tap turns the lesson's coaching into the press it is waiting on",
+        fn = function()
+            local Tutorial = require("models.tutorial")
+            local def = Tutorial.defs.village
+            assert(def and def.confirm, "the village lesson names no confirm line")
+            withMode("mouse", true, function()
+                for i = 1, #def.steps do
+                    -- Walk to step i the way the lesson itself advances: feed each earlier step the
+                    -- action it asked for.
+                    local t = Tutorial.new("village")
+                    for _ = 2, i do
+                        local step = Tutorial.step(t)
+                        local cell = step.gate.cells and step.gate.cells[1] or {}
+                        Tutorial.observe(t, { kind = step.gate.kind, actor = step.actor,
+                            target = step.gate.target, item = step.gate.item, x = cell.x, y = cell.y })
+                    end
+                    local idle = Tutorial.coach(t)
+                    local waiting = Tutorial.coach(t, { x = 3, y = 7 })
+                    assert(idle and waiting, "step " .. i .. " lost its coaching")
+                    assert(waiting.text ~= idle.text,
+                        "step " .. i .. " goes on giving a direction the finger has already followed")
+                    assert(waiting.text == "Tap it again to confirm.",
+                        "step " .. i .. " says " .. waiting.text)
+                    -- Re-pinned, and that is not decoration: an attack step leaves the blue band
+                    -- alone, so the tile a finger is holding is not always the thing the step was
+                    -- pointing at -- and a bubble still ringing the imp would send the second press
+                    -- somewhere it would only re-aim.
+                    assert(waiting.anchor and waiting.anchor.kind == "cell"
+                        and waiting.anchor.x == 3 and waiting.anchor.y == 7,
+                        "step " .. i .. "'s confirm prompt points somewhere other than the aimed tile")
+                end
+            end)
+        end,
+    },
+    {
+        -- A MOUSE commits on the press it aims with, so there is no second one to name -- and a pad
+        -- and a keyboard confirm outright from the cursor. The prompt is a fact about the finger.
+        name = "the lesson only names a second press to the device that owes one",
+        fn = function()
+            local src = assert(love.filesystem.read("states/battle.lua"), "states/battle.lua is readable")
+            local fn = src:match("local function pendingTapCell(.-)\nend")
+            assert(fn, "nothing resolves the tap the board is waiting on")
+            assert(fn:find("InputMode%.touch"),
+                "a mouse is told to click again -- its press already spent the turn")
+            assert(fn:find("a%.unit ~= battle%.current") and fn:find("a%.item ~= battle%.armedItem"),
+                "the pending aim is read without its staleness guard, so a lesson can prompt a "
+                .. "confirmation of an intent formed two turns ago")
+            assert(fn:find("actionPreviewFor"),
+                "the prompt is not checked against what a second press would DO, so a finger parked "
+                .. "on ground the step refuses is told to confirm a blow that would only be nudged back")
+            assert(src:find("Tutorial%.coach%(battle%.tutorial, pendingTapCell%(%)%)"),
+                "the coach bubble never asks whether a tap is waiting")
+        end,
+    },
+    {
         -- The authored coaching lines carry a {select} token so they can name whatever device is in
         -- hand. Touch fell into the mouse branch and the tutorial told a phone to click on a grunt.
         name = "a coaching line tells a finger to tap, not to click",

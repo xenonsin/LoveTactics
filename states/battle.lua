@@ -5931,9 +5931,29 @@ function battle.boardBodies()
     return rects
 end
 
+-- The cell a FINGER'S TAP is currently waiting on, or nil. On a touchscreen the first press aims and
+-- the second commits (battle.mousepressed), so between them there is a live intent nothing on screen
+-- accounts for -- and a player following an instruction they have just carried out, watching the
+-- board not act on it, reasonably concludes the tap did not land.
+--
+-- Read through actionPreviewFor rather than off battle.aim alone, because that is the exact question
+-- being answered: would the second press DO something here? It mirrors confirm()'s branching, and the
+-- lesson's gate has already narrowed every cell set it reads -- so a finger parked on ground this
+-- step refuses never gets told to confirm a blow that would only be nudged back.
+--
+-- The staleness guard is mousepressed's, repeated for the same reason it exists there: an aim carries
+-- the actor and the armed item it was formed under, and one formed two turns ago is not an aim.
+local function pendingTapCell()
+    local a = battle.aim
+    if not (InputMode.touch and a) then return nil end
+    if a.unit ~= battle.current or a.item ~= battle.armedItem then return nil end
+    if not actionPreviewFor(a.x, a.y) then return nil end
+    return a
+end
+
 function battle.drawCoach()
     if not lessonAddressesPlayer() then return end
-    local coach = Tutorial.coach(battle.tutorial)
+    local coach = Tutorial.coach(battle.tutorial, pendingTapCell())
     if not coach then return end
     local rect, region = coachTarget(coach.anchor)
     if not rect then return end

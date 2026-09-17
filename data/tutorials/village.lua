@@ -70,6 +70,14 @@
 return {
     arena    = "tutorial_village",
     lines    = "conversation_tutorial_village",
+    -- What the coach bubble says instead of the step's own line once a TOUCH aim is waiting on its
+    -- second press. A finger does not spend the turn on the press that aims it -- the board asks
+    -- twice, because a tap has no hover in front of it to rehearse the tile (states/battle.lua's
+    -- mousepressed) -- and the one place that rule has to be said out loud is the first fight.
+    -- Whole-lesson rather than per-step, because it is one fact about the device and not about any
+    -- of the seven things being taught: every step borrows the same sentence, pinned to whatever
+    -- tile the finger actually landed on.
+    confirm  = "confirm_hint",
     -- Played once, over the board, before a single turn resolves (states/battle.lua fields it on
     -- enter; a conversation is an overlay on a FROZEN state, so the lane is visible behind it). It
     -- exists to give Rowan's opening kill somewhere to land: without it her demonstration resolves in

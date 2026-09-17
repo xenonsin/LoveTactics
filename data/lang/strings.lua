@@ -399,6 +399,7 @@ return {
     ["line.conversation_tutorial_village.13"] = { en = "{select} on Jolt to ready it. Its cost is purple: that is mana, not stamina.", ja = "" },  -- TODO
     ["line.conversation_tutorial_village.14"] = { en = "{select} on the grunt to jolt it.", ja = "" },  -- TODO
     ["line.conversation_tutorial_village.15"] = { en = "{select} on the grunt to strike it. Its card slid down the order, so you act before it does.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_village.16"] = { en = "{select} it again to confirm.", ja = "" },  -- TODO
     ["line.conversation_tutorial_village.2"] = { en = "There's more to the north. Slay them both before they do even more damage.", ja = "" },  -- TODO
     ["line.conversation_tutorial_village.3"] = { en = "Now take it in hand.", ja = "" },  -- TODO
     ["line.conversation_tutorial_village.4"] = { en = "Turn on your heel, {name}. Open them both at once.", ja = "" },  -- TODO
